@@ -1,0 +1,246 @@
+defmodule StoryarnWeb.E2E.ProjectsTest do
+  @moduledoc """
+  E2E tests for project-related flows.
+
+  These tests use Playwright to run in a real browser.
+
+  Run with: mix test.e2e
+  """
+
+  use PhoenixTest.Playwright.Case, async: false
+
+  import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
+
+  @moduletag :e2e
+
+  # Helper to authenticate via magic link
+  # The magic link page shows a form that requires clicking to complete login
+  # We verify login completed by checking for "Settings" link before returning
+  defp authenticate_user(conn, user) do
+    {token, _db_token} = generate_user_magic_link_token(user)
+
+    conn
+    |> visit("/users/log-in/#{token}")
+    |> click_button("Keep me logged in on this device")
+    |> assert_has("a", text: "Settings")
+  end
+
+  describe "unauthenticated access" do
+    test "redirects to login when accessing projects", %{conn: conn} do
+      conn
+      |> visit("/projects")
+      |> assert_path("/users/log-in")
+    end
+
+    test "redirects to login when accessing project settings", %{conn: conn} do
+      conn
+      |> visit("/projects/1/settings")
+      |> assert_path("/users/log-in")
+    end
+  end
+
+  describe "project dashboard (authenticated)" do
+    test "shows empty state when user has no projects", %{conn: conn} do
+      user = user_fixture()
+
+      conn
+      |> authenticate_user(user)
+      |> visit("/projects")
+      |> assert_has("h1", text: "Projects")
+      |> assert_has("p", text: "No projects yet")
+    end
+
+    test "shows project list when user has projects", %{conn: conn} do
+      user = user_fixture()
+      project = project_fixture(user, %{name: "My Narrative Project"})
+
+      conn
+      |> authenticate_user(user)
+      |> visit("/projects")
+      |> assert_has("h3", text: project.name)
+    end
+
+    test "can open new project modal", %{conn: conn} do
+      user = user_fixture()
+
+      conn
+      |> authenticate_user(user)
+      |> visit("/projects")
+      |> click_link("New Project")
+      |> assert_has("h1", text: "New Project")
+    end
+
+    test "can create a new project", %{conn: conn} do
+      user = user_fixture()
+
+      conn
+      |> authenticate_user(user)
+      |> visit("/projects/new")
+      |> fill_in("Project Name", with: "My New Story")
+      |> fill_in("Description", with: "A narrative adventure")
+      |> click_button("Create Project")
+      |> assert_has("h1", text: "My New Story")
+    end
+  end
+
+  describe "project show page (authenticated)" do
+    test "displays project details", %{conn: conn} do
+      user = user_fixture()
+      project = project_fixture(user, %{name: "Epic Tale", description: "An epic story"})
+
+      conn
+      |> authenticate_user(user)
+      |> visit("/projects/#{project.id}")
+      |> assert_has("h1", text: "Epic Tale")
+    end
+
+    test "shows settings link for owner", %{conn: conn} do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      conn
+      |> authenticate_user(user)
+      |> visit("/projects/#{project.id}")
+      |> assert_has("a", text: "Settings")
+    end
+  end
+
+  describe "project settings (authenticated)" do
+    test "owner can access settings page", %{conn: conn} do
+      user = user_fixture()
+      project = project_fixture(user, %{name: "Settings Test"})
+
+      conn
+      |> authenticate_user(user)
+      |> visit("/projects/#{project.id}/settings")
+      |> assert_has("h1", text: "Project Settings")
+      |> assert_has("h3", text: "Project Details")
+    end
+
+    test "owner can update project name", %{conn: conn} do
+      user = user_fixture()
+      project = project_fixture(user, %{name: "Old Name"})
+
+      conn
+      |> authenticate_user(user)
+      |> visit("/projects/#{project.id}/settings")
+      |> fill_in("Project Name", with: "New Name")
+      |> click_button("Save Changes")
+      |> assert_has("p", text: "Project updated successfully")
+    end
+
+    test "shows team members section", %{conn: conn} do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      conn
+      |> authenticate_user(user)
+      |> visit("/projects/#{project.id}/settings")
+      |> assert_has("h3", text: "Team Members")
+    end
+
+    test "shows invite form", %{conn: conn} do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      conn
+      |> authenticate_user(user)
+      |> visit("/projects/#{project.id}/settings")
+      |> assert_has("h4", text: "Invite a new member")
+      |> assert_has("input[type=email]")
+    end
+
+    test "non-owner cannot access settings", %{conn: conn} do
+      owner = user_fixture()
+      viewer = user_fixture()
+      project = project_fixture(owner)
+      membership_fixture(project, viewer, "viewer")
+
+      conn
+      |> authenticate_user(viewer)
+      |> visit("/projects/#{project.id}/settings")
+      |> assert_path("/projects")
+    end
+  end
+
+  describe "project invitation page" do
+    test "shows invalid invitation message for bad token", %{conn: conn} do
+      conn
+      |> visit("/projects/invitations/invalid-token-12345")
+      |> assert_has("h1", text: "Invalid Invitation")
+    end
+
+    test "shows invitation details for valid token", %{conn: conn} do
+      owner = user_fixture()
+      project = project_fixture(owner, %{name: "Awesome Project"})
+
+      {token, _invitation} =
+        create_invitation_with_token(project, owner, "invitee@example.com", "editor")
+
+      conn
+      |> visit("/projects/invitations/#{token}")
+      |> assert_has("h3", text: "Awesome Project")
+      |> assert_has("span", text: "editor")
+    end
+
+    test "prompts login for unauthenticated user viewing invitation", %{conn: conn} do
+      owner = user_fixture()
+      project = project_fixture(owner)
+
+      {token, _invitation} =
+        create_invitation_with_token(project, owner, "invitee@example.com")
+
+      conn
+      |> visit("/projects/invitations/#{token}")
+      |> assert_has("a", text: "Log in to accept")
+    end
+
+    test "authenticated user can accept invitation", %{conn: conn} do
+      owner = user_fixture()
+      invitee = user_fixture(%{email: "invitee@example.com"})
+      project = project_fixture(owner, %{name: "Collaborative Project"})
+
+      {token, _invitation} =
+        create_invitation_with_token(project, owner, "invitee@example.com", "editor")
+
+      conn
+      |> authenticate_user(invitee)
+      |> visit("/projects/invitations/#{token}")
+      |> assert_has("button", text: "Accept Invitation")
+      |> click_button("Accept Invitation")
+      |> assert_path("/projects/#{project.id}")
+    end
+
+    test "shows email mismatch warning when logged in with different email", %{conn: conn} do
+      owner = user_fixture()
+      other_user = user_fixture(%{email: "other@example.com"})
+      project = project_fixture(owner)
+
+      {token, _invitation} =
+        create_invitation_with_token(project, owner, "invitee@example.com")
+
+      conn
+      |> authenticate_user(other_user)
+      |> visit("/projects/invitations/#{token}")
+      |> assert_has("span", text: "This invitation was sent to")
+    end
+  end
+
+  describe "home page" do
+    test "renders landing page with login link", %{conn: conn} do
+      conn
+      |> visit("/")
+      |> assert_has("a", text: "Log in")
+    end
+
+    test "authenticated user sees settings link", %{conn: conn} do
+      user = user_fixture()
+
+      conn
+      |> authenticate_user(user)
+      |> visit("/")
+      |> assert_has("a", text: "Settings")
+    end
+  end
+end
