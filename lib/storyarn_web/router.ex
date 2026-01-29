@@ -87,6 +87,22 @@ defmodule StoryarnWeb.Router do
       live "/projects/new", ProjectLive.Dashboard, :new
       live "/projects/:id", ProjectLive.Show, :show
       live "/projects/:id/settings", ProjectLive.Settings, :edit
+
+      # Entities
+      live "/projects/:project_id/entities", EntityLive.Index, :index
+      live "/projects/:project_id/entities/new", EntityLive.Index, :new
+      live "/projects/:project_id/entities/:id", EntityLive.Show, :show
+      live "/projects/:project_id/entities/:id/edit", EntityLive.Show, :edit
+
+      # Templates
+      live "/projects/:project_id/templates", TemplateLive.Index, :index
+      live "/projects/:project_id/templates/new", TemplateLive.Index, :new
+      live "/projects/:project_id/templates/:id/edit", TemplateLive.Index, :edit
+
+      # Variables
+      live "/projects/:project_id/variables", VariableLive.Index, :index
+      live "/projects/:project_id/variables/new", VariableLive.Index, :new
+      live "/projects/:project_id/variables/:id/edit", VariableLive.Index, :edit
     end
 
     post "/users/update-password", UserSessionController, :update_password

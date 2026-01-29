@@ -149,16 +149,24 @@ end
 - [x] Project settings
 - [x] E2E tests for all project flows
 
-### Phase 3: Domain Model - Entities (2 weeks)
-- [ ] Entity templates
-- [ ] Characters
-- [ ] Locations
-- [ ] Items
-- [ ] Variables (game state)
-- [ ] Assets (images, audio)
-- [ ] CRUD for each type
-- [ ] Entity browser (sidebar)
-- [ ] Search and filtering
+### Phase 3: Domain Model - Entities (Complete)
+- [x] Entity templates (schema with type, color, icon, custom fields)
+- [x] Entities (characters, locations, items, custom)
+- [x] Variables (boolean, integer, float, string with categories)
+- [x] CRUD for templates, entities, and variables
+- [x] Entity browser (collapsible sidebar component)
+- [x] Search and filtering (by type, by name)
+- [x] Unit tests (52 context tests)
+- [x] LiveView tests (42 tests)
+- [x] E2E tests (ready for Playwright)
+
+### Phase 3.2: Assets & Template Builder (Deferred)
+- [ ] Assets (images, audio) - Requires S3/R2 setup, presigned URLs, image processing
+- [ ] Visual template schema builder - Drag-and-drop field ordering
+
+> **Note:** Phase 3.2 was deferred from Phase 3 as it requires additional infrastructure
+> (cloud storage setup) and more complex UI work (drag-and-drop). These features will be
+> implemented after the Flow Editor is functional.
 
 ### Phase 4: Flow Editor - Core (3 weeks)
 - [ ] Flow schema
@@ -442,6 +450,7 @@ End-to-end tests simulating real users in the browser, integrated with ExUnit.
 ```
 test/e2e/
 ├── projects_e2e_test.exs    # Project flows (CRUD, invitations, settings)
+├── entities_e2e_test.exs    # Entity, template, and variable flows
 └── (future tests...)
 ```
 
@@ -450,7 +459,9 @@ test/e2e/
 - [x] Create and configure project
 - [x] Project invitations (send, accept)
 - [x] Project settings (update, team members)
-- [ ] Create entities (character, location)
+- [x] Create entities (character, location)
+- [x] Entity templates CRUD
+- [x] Variables CRUD
 - [ ] Flow editor: create nodes, connect, move
 - [ ] Collaboration: two users editing simultaneously
 - [ ] Export/Import project
