@@ -23,7 +23,7 @@ import "phoenix_html";
 import { Socket } from "phoenix";
 import { hooks as colocatedHooks } from "phoenix-colocated/storyarn";
 import { LiveSocket } from "phoenix_live_view";
-import topbar from "../vendor/topbar";
+import topbar from "topbar";
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
 const liveSocket = new LiveSocket("/live", Socket, {
@@ -36,6 +36,19 @@ const liveSocket = new LiveSocket("/live", Socket, {
 topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
 window.addEventListener("phx:page-loading-start", (_info) => topbar.show(300));
 window.addEventListener("phx:page-loading-stop", (_info) => topbar.hide());
+
+// Handle native dialog methods via custom events (used by show_modal/hide_modal in core_components)
+window.addEventListener("phx:show-modal", (event) => {
+  if (event.target instanceof HTMLDialogElement) {
+    event.target.showModal();
+  }
+});
+
+window.addEventListener("phx:hide-modal", (event) => {
+  if (event.target instanceof HTMLDialogElement) {
+    event.target.close();
+  }
+});
 
 // connect if there are any LiveViews on the page
 liveSocket.connect();
