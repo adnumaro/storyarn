@@ -7,6 +7,19 @@
 # General application configuration
 import Config
 
+config :storyarn, :scopes,
+  user: [
+    default: true,
+    module: Storyarn.Accounts.Scope,
+    assign_key: :current_scope,
+    access_path: [:user, :id],
+    schema_key: :user_id,
+    schema_type: :id,
+    schema_table: :users,
+    test_data_fixture: Storyarn.AccountsFixtures,
+    test_setup_helper: :register_and_log_in_user
+  ]
+
 config :storyarn,
   ecto_repos: [Storyarn.Repo],
   generators: [timestamp_type: :utc_datetime]
@@ -26,6 +39,9 @@ config :storyarn, StoryarnWeb.Endpoint,
 # Development uses Mailpit (SMTP on localhost:1025, UI on localhost:8025)
 # Production uses Resend API (configured in runtime.exs)
 config :storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Local
+
+# Email sender configuration (name and email address for outgoing emails)
+config :storyarn, :mailer_sender, {"Storyarn", "noreply@storyarn.com"}
 
 # Configure Swoosh API client (needed for Resend in production)
 config :swoosh, :api_client, Swoosh.ApiClient.Req
@@ -63,6 +79,30 @@ config :phoenix, :json_library, Jason
 config :storyarn, StoryarnWeb.Gettext,
   default_locale: "en",
   locales: ~w(en es)
+
+# Disable Tesla deprecation warning (used by OAuth libraries)
+config :tesla, disable_deprecated_builder_warning: true
+
+# Ueberauth OAuth configuration
+config :ueberauth, Ueberauth,
+  providers: [
+    github: {Ueberauth.Strategy.Github, [default_scope: "user:email"]},
+    google: {Ueberauth.Strategy.Google, [default_scope: "email profile"]},
+    discord: {Ueberauth.Strategy.Discord, [default_scope: "identify email"]}
+  ]
+
+# OAuth provider credentials (configured in runtime.exs for production)
+config :ueberauth, Ueberauth.Strategy.Github.OAuth,
+  client_id: System.get_env("GITHUB_CLIENT_ID"),
+  client_secret: System.get_env("GITHUB_CLIENT_SECRET")
+
+config :ueberauth, Ueberauth.Strategy.Google.OAuth,
+  client_id: System.get_env("GOOGLE_CLIENT_ID"),
+  client_secret: System.get_env("GOOGLE_CLIENT_SECRET")
+
+config :ueberauth, Ueberauth.Strategy.Discord.OAuth,
+  client_id: System.get_env("DISCORD_CLIENT_ID"),
+  client_secret: System.get_env("DISCORD_CLIENT_SECRET")
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

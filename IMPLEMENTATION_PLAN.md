@@ -123,15 +123,22 @@ end
 - [x] Basic CI setup (GitHub Actions)
 - [x] Playwright E2E test structure
 
-### Phase 1: Auth & Users (1 week)
-- [ ] User schema
-- [ ] Registration/login with email + password
-- [ ] OAuth with GitHub
-- [ ] OAuth with Google
-- [ ] OAuth with Discord
-- [ ] Email verification
-- [ ] Password reset
-- [ ] Session management
+### Phase 1: Auth & Users (Complete)
+- [x] User schema
+- [x] Registration/login with email + password
+- [x] OAuth with GitHub
+- [x] OAuth with Google
+- [x] OAuth with Discord
+- [x] Email verification (via magic link)
+- [x] Password reset (via magic link - users can login with magic link and set a new password in settings)
+- [x] Session management
+- [x] Profile settings (display name, avatar)
+- [x] Connected accounts management (link/unlink OAuth providers)
+
+> **Note on Password Reset:** Instead of a traditional "forgot password" flow, we use magic links.
+> Users who forgot their password can request a magic link via the login page, which logs them in
+> directly. Once logged in, they can set a new password in the settings page. This approach is
+> simpler, more secure (no password reset tokens to expire), and provides a better UX.
 
 ### Phase 2: Projects & Teams (1 week)
 - [ ] Project schema
