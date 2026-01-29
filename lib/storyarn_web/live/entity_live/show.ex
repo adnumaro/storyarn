@@ -65,17 +65,7 @@ defmodule StoryarnWeb.EntityLive.Show do
               <p class="whitespace-pre-wrap">{@entity.description}</p>
             </div>
 
-            <div :if={@entity.data != %{}} class="mb-6">
-              <h3 class="text-sm font-medium text-base-content/70 mb-2">
-                {gettext("Custom Fields")}
-              </h3>
-              <dl class="grid grid-cols-2 gap-2">
-                <div :for={{key, value} <- @entity.data} class="flex flex-col">
-                  <dt class="text-xs text-base-content/50">{humanize_key(key)}</dt>
-                  <dd class="font-medium">{format_value(value)}</dd>
-                </div>
-              </dl>
-            </div>
+            <.custom_fields_display entity={@entity} />
 
             <div class="text-xs text-base-content/50 mt-4 pt-4 border-t border-base-300">
               <span>
@@ -111,15 +101,42 @@ defmodule StoryarnWeb.EntityLive.Show do
     """
   end
 
+  attr :entity, :map, required: true
+
+  defp custom_fields_display(assigns) do
+    schema = assigns.entity.template.schema || []
+    data = assigns.entity.data || %{}
+    has_fields = is_list(schema) && schema != [] && data != %{}
+    assigns = assign(assigns, schema: schema, data: data, has_fields: has_fields)
+
+    ~H"""
+    <div :if={@has_fields} class="mb-6">
+      <h3 class="text-sm font-medium text-base-content/70 mb-2">
+        {gettext("Custom Fields")}
+      </h3>
+      <dl class="grid grid-cols-2 gap-2">
+        <div :for={field <- @schema} :if={Map.has_key?(@data, field["name"])} class="flex flex-col">
+          <dt class="text-xs text-base-content/50">
+            {field["label"] || humanize_key(field["name"])}
+          </dt>
+          <dd class="font-medium">{format_value(@data[field["name"]], field["type"])}</dd>
+        </div>
+      </dl>
+    </div>
+    """
+  end
+
   defp humanize_key(key) when is_binary(key) do
     key
     |> String.replace("_", " ")
     |> String.capitalize()
   end
 
-  defp format_value(value) when is_boolean(value), do: if(value, do: "Yes", else: "No")
-  defp format_value(value) when is_binary(value), do: value
-  defp format_value(value), do: inspect(value)
+  defp format_value(value, "boolean"),
+    do: if(value == "true", do: gettext("Yes"), else: gettext("No"))
+
+  defp format_value(value, _type) when is_binary(value), do: value
+  defp format_value(value, _type), do: inspect(value)
 
   @impl true
   def mount(%{"project_id" => project_id, "id" => entity_id}, _session, socket) do

@@ -77,14 +77,18 @@ defmodule StoryarnWeb.EntityLive.Form do
   attr :template, :any, required: true
 
   defp render_custom_fields(assigns) do
+    # Schema is now an array of field definitions
+    schema = assigns.template && assigns.template.schema
+    has_fields = is_list(schema) && schema != []
+    assigns = assign(assigns, :has_fields, has_fields)
+
     ~H"""
-    <div :if={@template && @template.schema != %{}} class="mt-4 pt-4 border-t border-base-300">
+    <div :if={@has_fields} class="mt-4 pt-4 border-t border-base-300">
       <h3 class="text-sm font-medium mb-3">{gettext("Custom Fields")}</h3>
-      <div :for={{field_name, field_config} <- @template.schema || %{}}>
+      <div :for={field <- @template.schema || []}>
         <.render_custom_field
           form={@form}
-          field_name={field_name}
-          field_config={field_config}
+          field={field}
         />
       </div>
     </div>
@@ -92,13 +96,27 @@ defmodule StoryarnWeb.EntityLive.Form do
   end
 
   attr :form, :any, required: true
-  attr :field_name, :string, required: true
-  attr :field_config, :map, required: true
+  attr :field, :map, required: true
 
   defp render_custom_field(assigns) do
-    field_type = Map.get(assigns.field_config, "type", "string")
-    label = Map.get(assigns.field_config, "label", assigns.field_name)
-    assigns = assign(assigns, field_type: field_type, label: label)
+    field = assigns.field
+    field_name = Map.get(field, "name")
+    field_type = Map.get(field, "type", "string")
+    label = Map.get(field, "label", field_name)
+    required = Map.get(field, "required", false)
+    description = Map.get(field, "description")
+    default = Map.get(field, "default", "")
+    options = Map.get(field, "options", [])
+
+    assigns =
+      assigns
+      |> assign(:field_name, field_name)
+      |> assign(:field_type, field_type)
+      |> assign(:label, label)
+      |> assign(:required, required)
+      |> assign(:description, description)
+      |> assign(:default, default)
+      |> assign(:options, options)
 
     ~H"""
     <div class="mb-2">
@@ -108,32 +126,58 @@ defmodule StoryarnWeb.EntityLive.Form do
             type="checkbox"
             name={"entity[data][#{@field_name}]"}
             label={@label}
-            value={get_data_value(@form, @field_name, "false")}
-            checked={get_data_value(@form, @field_name, "false") == "true"}
+            value={get_data_value(@form, @field_name, @default)}
+            checked={get_data_value(@form, @field_name, @default) == "true"}
+            required={@required}
           />
         <% "integer" -> %>
           <.input
             type="number"
             name={"entity[data][#{@field_name}]"}
             label={@label}
-            value={get_data_value(@form, @field_name, "0")}
+            value={get_data_value(@form, @field_name, @default)}
+            required={@required}
           />
         <% "text" -> %>
           <.input
             type="textarea"
             name={"entity[data][#{@field_name}]"}
             label={@label}
-            value={get_data_value(@form, @field_name, "")}
+            value={get_data_value(@form, @field_name, @default)}
             rows={3}
+            required={@required}
           />
+        <% "select" -> %>
+          <.input
+            type="select"
+            name={"entity[data][#{@field_name}]"}
+            label={@label}
+            value={get_data_value(@form, @field_name, @default)}
+            options={Enum.map(@options, &{&1, &1})}
+            prompt={gettext("Select an option")}
+            required={@required}
+          />
+        <% "asset_reference" -> %>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">{@label}</span>
+              <span :if={@required} class="label-text-alt text-error">*</span>
+            </label>
+            <div class="input input-bordered flex items-center justify-center text-base-content/50 h-20">
+              <.icon name="hero-photo" class="size-6 mr-2" />
+              {gettext("Asset upload coming soon")}
+            </div>
+          </div>
         <% _ -> %>
           <.input
             type="text"
             name={"entity[data][#{@field_name}]"}
             label={@label}
-            value={get_data_value(@form, @field_name, "")}
+            value={get_data_value(@form, @field_name, @default)}
+            required={@required}
           />
       <% end %>
+      <p :if={@description} class="text-xs text-base-content/50 mt-1">{@description}</p>
     </div>
     """
   end
