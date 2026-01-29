@@ -3,6 +3,9 @@ import Config
 # Only in tests, remove the complexity from the password hashing algorithm
 config :bcrypt_elixir, :log_rounds, 1
 
+# Enable SQL sandbox for E2E tests with Playwright
+config :storyarn, :sql_sandbox, true
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used
@@ -16,12 +19,12 @@ config :storyarn, Storyarn.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
-# We don't run a server during test. If one is required,
-# you can enable the server option below.
+# Server is enabled for E2E tests (Playwright requires a running server)
 config :storyarn, StoryarnWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "FeJDhWpJbfABMyHLm9bPO4lWdhmwJVzNdRuhnukQFhXRYMedUbeO/fZg+/TfwqMK",
-  server: false
+  server: true,
+  check_origin: false
 
 # In test we don't send emails
 config :storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Test
@@ -38,3 +41,13 @@ config :phoenix, :plug_init_mode, :runtime
 # Enable helpful, but potentially expensive runtime checks
 config :phoenix_live_view,
   enable_expensive_runtime_checks: true
+
+# PhoenixTest configuration for E2E tests
+config :phoenix_test,
+  otp_app: :storyarn,
+  endpoint: StoryarnWeb.Endpoint,
+  playwright: [
+    assets_dir: "assets",
+    browser: :chromium,
+    headless: System.get_env("PLAYWRIGHT_HEADLESS", "true") in ~w(t true 1)
+  ]

@@ -27,7 +27,7 @@ defmodule Storyarn.MixProject do
 
   def cli do
     [
-      preferred_envs: [precommit: :test]
+      preferred_envs: [precommit: :test, "test.e2e": :test]
     ]
   end
 
@@ -72,6 +72,7 @@ defmodule Storyarn.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
+      {:hammer, "~> 6.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
 
@@ -83,7 +84,11 @@ defmodule Storyarn.MixProject do
       # Testing utilities
       {:ex_machina, "~> 2.8", only: :test},
       {:mox, "~> 1.2", only: :test},
-      {:faker, "~> 0.18", only: :test}
+      {:faker, "~> 0.18", only: :test},
+
+      # E2E testing with Playwright
+      {:phoenix_test, "~> 0.4", only: :test, runtime: false},
+      {:phoenix_test_playwright, "~> 0.10", only: :test, runtime: false}
     ]
   end
 
@@ -99,6 +104,7 @@ defmodule Storyarn.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      "test.e2e": ["assets.build", "test test/e2e --include e2e"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["compile", "tailwind storyarn", "esbuild storyarn"],
       "assets.deploy": [
