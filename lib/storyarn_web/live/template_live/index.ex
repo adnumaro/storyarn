@@ -4,11 +4,42 @@ defmodule StoryarnWeb.TemplateLive.Index do
   alias Storyarn.Entities
   alias Storyarn.Entities.EntityTemplate
   alias Storyarn.Projects
+  alias StoryarnWeb.TemplateLive.SchemaBuilder
 
   @impl true
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
+      <%= if @live_action == :schema do %>
+        <.schema_view
+          template={@template}
+          project={@project}
+          can_edit={@can_edit}
+        />
+      <% else %>
+        <.index_view
+          templates={@templates}
+          entity_counts={@entity_counts}
+          project={@project}
+          can_edit={@can_edit}
+          live_action={@live_action}
+          form={@form}
+        />
+      <% end %>
+    </Layouts.app>
+    """
+  end
+
+  attr :templates, :list, required: true
+  attr :entity_counts, :map, required: true
+  attr :project, :map, required: true
+  attr :can_edit, :boolean, required: true
+  attr :live_action, :atom, required: true
+  attr :form, :any
+
+  defp index_view(assigns) do
+    ~H"""
+    <div>
       <div class="mb-8">
         <.back navigate={~p"/projects/#{@project.id}"}>{gettext("Back to project")}</.back>
       </div>
@@ -66,7 +97,47 @@ defmodule StoryarnWeb.TemplateLive.Index do
           project={@project}
         />
       </.modal>
-    </Layouts.app>
+    </div>
+    """
+  end
+
+  attr :template, :map, required: true
+  attr :project, :map, required: true
+  attr :can_edit, :boolean, required: true
+
+  defp schema_view(assigns) do
+    ~H"""
+    <div>
+      <div class="mb-8">
+        <.back navigate={~p"/projects/#{@project.id}/templates"}>
+          {gettext("Back to templates")}
+        </.back>
+      </div>
+
+      <div class="mb-8">
+        <div class="flex items-center gap-3 mb-2">
+          <.icon name={@template.icon} class="size-8" style={"color: #{@template.color}"} />
+          <div>
+            <h1 class="text-2xl font-bold">{@template.name}</h1>
+            <span class="badge badge-ghost">{@template.type}</span>
+          </div>
+        </div>
+        <p :if={@template.description} class="text-base-content/70">
+          {@template.description}
+        </p>
+      </div>
+
+      <div class="card bg-base-100 border border-base-300 shadow-sm">
+        <div class="card-body">
+          <.live_component
+            module={SchemaBuilder}
+            id="schema-builder"
+            template={@template}
+            can_edit={@can_edit}
+          />
+        </div>
+      </div>
+    </div>
     """
   end
 
@@ -76,6 +147,9 @@ defmodule StoryarnWeb.TemplateLive.Index do
   attr :can_edit, :boolean, required: true
 
   defp template_card(assigns) do
+    field_count = length(assigns.template.schema || [])
+    assigns = assign(assigns, :field_count, field_count)
+
     ~H"""
     <div class="card bg-base-100 border border-base-300 shadow-sm">
       <div class="card-body">
@@ -95,13 +169,23 @@ defmodule StoryarnWeb.TemplateLive.Index do
           {@template.description}
         </p>
         <div class="flex items-center justify-between mt-2">
-          <span class="text-sm text-base-content/50">
-            {ngettext("%{count} entity", "%{count} entities", @entity_count)}
-          </span>
-          <div :if={@can_edit} class="flex gap-2">
+          <div class="flex gap-2 text-sm text-base-content/50">
+            <span>{ngettext("%{count} entity", "%{count} entities", @entity_count)}</span>
+            <span class="text-base-content/30">|</span>
+            <span>{ngettext("%{count} field", "%{count} fields", @field_count)}</span>
+          </div>
+          <div :if={@can_edit} class="flex gap-1">
+            <.link
+              patch={~p"/projects/#{@project.id}/templates/#{@template.id}/schema"}
+              class="btn btn-ghost btn-xs"
+              title={gettext("Edit Schema")}
+            >
+              <.icon name="hero-rectangle-stack" class="size-3" />
+            </.link>
             <.link
               patch={~p"/projects/#{@project.id}/templates/#{@template.id}/edit"}
               class="btn btn-ghost btn-xs"
+              title={gettext("Edit Template")}
             >
               <.icon name="hero-pencil" class="size-3" />
             </.link>
@@ -109,6 +193,7 @@ defmodule StoryarnWeb.TemplateLive.Index do
               :if={@entity_count == 0}
               type="button"
               class="btn btn-ghost btn-xs text-error"
+              title={gettext("Delete Template")}
               phx-click="delete"
               phx-value-id={@template.id}
               data-confirm={gettext("Are you sure you want to delete this template?")}
@@ -266,6 +351,20 @@ defmodule StoryarnWeb.TemplateLive.Index do
     end
   end
 
+  defp apply_action(socket, :schema, %{"id" => id}) do
+    case Entities.get_template(socket.assigns.project.id, id) do
+      nil ->
+        socket
+        |> put_flash(:error, gettext("Template not found."))
+        |> push_patch(to: ~p"/projects/#{socket.assigns.project.id}/templates")
+
+      template ->
+        socket
+        |> assign(:template, template)
+        |> assign(:form, nil)
+    end
+  end
+
   defp apply_action(socket, _action, _params) do
     socket
     |> assign(:template, nil)
@@ -351,5 +450,16 @@ defmodule StoryarnWeb.TemplateLive.Index do
       {:error, changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset))}
     end
+  end
+
+  @impl true
+  def handle_info({SchemaBuilder, {:schema_changed, updated_template}}, socket) do
+    # Update both the template and the templates list
+    templates = Entities.list_templates(socket.assigns.project.id)
+
+    {:noreply,
+     socket
+     |> assign(:template, updated_template)
+     |> assign(:templates, templates)}
   end
 end

@@ -98,6 +98,7 @@ defmodule StoryarnWeb.Router do
       live "/projects/:project_id/templates", TemplateLive.Index, :index
       live "/projects/:project_id/templates/new", TemplateLive.Index, :new
       live "/projects/:project_id/templates/:id/edit", TemplateLive.Index, :edit
+      live "/projects/:project_id/templates/:id/schema", TemplateLive.Index, :schema
 
       # Variables
       live "/projects/:project_id/variables", VariableLive.Index, :index
