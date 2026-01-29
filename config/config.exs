@@ -83,6 +83,11 @@ config :storyarn, StoryarnWeb.Gettext,
 # Disable Tesla deprecation warning (used by OAuth libraries)
 config :tesla, disable_deprecated_builder_warning: true
 
+# Configure Hammer rate limiting
+# Using ETS backend for simplicity (suitable for single-node deployments)
+config :hammer,
+  backend: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60, cleanup_interval_ms: 60_000 * 10]}
+
 # Ueberauth OAuth configuration
 config :ueberauth, Ueberauth,
   providers: [

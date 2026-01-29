@@ -1,0 +1,22 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: es\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/storyarn/projects/project_notifier.ex:44
+#, elixir-autogen, elixir-format
+msgid "\n==============================\n\nHi,\n\n%{inviter} has invited you to join \"%{project}\" on Storyarn as %{role}.\n\nYou can accept this invitation by visiting the URL below:\n\n%{url}\n\nThis invitation will expire in %{days} days.\n\nIf you don't want to join this project, you can ignore this email.\n\n==============================\n"
+msgstr ""
+
+#: lib/storyarn/projects/project_notifier.ex:41
+#, elixir-autogen, elixir-format
+msgid "You've been invited to %{project}"
+msgstr ""

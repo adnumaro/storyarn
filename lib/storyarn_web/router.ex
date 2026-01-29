@@ -81,6 +81,12 @@ defmodule StoryarnWeb.Router do
       on_mount: [{StoryarnWeb.UserAuth, :require_authenticated}] do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
+
+      # Projects
+      live "/projects", ProjectLive.Dashboard, :index
+      live "/projects/new", ProjectLive.Dashboard, :new
+      live "/projects/:id", ProjectLive.Show, :show
+      live "/projects/:id/settings", ProjectLive.Settings, :edit
     end
 
     post "/users/update-password", UserSessionController, :update_password
@@ -94,6 +100,9 @@ defmodule StoryarnWeb.Router do
       live "/users/register", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
       live "/users/log-in/:token", UserLive.Confirmation, :new
+
+      # Project invitations (accessible with or without auth)
+      live "/projects/invitations/:token", ProjectLive.Invitation, :show
     end
 
     post "/users/log-in", UserSessionController, :create

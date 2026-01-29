@@ -90,11 +90,15 @@ defmodule StoryarnWeb.CoreComponents do
   """
   attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
   attr :class, :string
-  attr :variant, :string, values: ~w(primary)
+  attr :variant, :string, values: ~w(primary error)
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
-    variants = %{"primary" => "btn-primary", nil => "btn-primary btn-soft"}
+    variants = %{
+      "primary" => "btn-primary",
+      "error" => "btn-error",
+      nil => "btn-primary btn-soft"
+    }
 
     assigns =
       assign_new(assigns, :class, fn ->
@@ -419,6 +423,88 @@ defmodule StoryarnWeb.CoreComponents do
     """
   end
 
+  @doc """
+  Renders a back navigation link.
+
+  ## Examples
+
+      <.back navigate={~p"/posts"}>Back to posts</.back>
+  """
+  attr :navigate, :any, required: true
+  slot :inner_block, required: true
+
+  def back(assigns) do
+    ~H"""
+    <div class="mb-4">
+      <.link
+        navigate={@navigate}
+        class="text-sm font-semibold leading-6 text-base-content/70 hover:text-base-content inline-flex items-center gap-1"
+      >
+        <.icon name="hero-arrow-left" class="size-3" />
+        {render_slot(@inner_block)}
+      </.link>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders a modal dialog.
+
+  ## Examples
+
+      <.modal id="confirm-modal">
+        Are you sure?
+        <:actions>
+          <.button phx-click="delete">Delete</.button>
+        </:actions>
+      </.modal>
+
+  JS commands may be passed to the `:on_cancel` attribute for the caller
+  to react to the modal being closed.
+
+  ## Examples
+
+      <.modal id="confirm" on_cancel={JS.navigate(~p"/posts")}>
+        Are you sure?
+      </.modal>
+  """
+  attr :id, :string, required: true
+  attr :show, :boolean, default: false
+  attr :on_cancel, JS, default: %JS{}
+  slot :inner_block, required: true
+
+  def modal(assigns) do
+    ~H"""
+    <dialog
+      id={@id}
+      class="modal"
+      phx-mounted={@show && show_modal(@id)}
+      phx-remove={hide_modal(@id)}
+    >
+      <div
+        id={"#{@id}-container"}
+        class="modal-box relative"
+        phx-click-away={@on_cancel |> hide_modal(@id)}
+        phx-key="escape"
+        phx-window-keydown={@on_cancel |> hide_modal(@id)}
+      >
+        <button
+          type="button"
+          class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+          aria-label={gettext("close")}
+          phx-click={@on_cancel |> hide_modal(@id)}
+        >
+          <.icon name="hero-x-mark" class="size-5" />
+        </button>
+        {render_slot(@inner_block)}
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button type="button" phx-click={@on_cancel |> hide_modal(@id)}>close</button>
+      </form>
+    </dialog>
+    """
+  end
+
   ## JS Commands
 
   def show(js \\ %JS{}, selector) do
@@ -440,6 +526,18 @@ defmodule StoryarnWeb.CoreComponents do
         {"transition-all ease-in duration-200", "opacity-100 translate-y-0 sm:scale-100",
          "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
     )
+  end
+
+  def show_modal(js \\ %JS{}, id) when is_binary(id) do
+    js
+    |> JS.dispatch("phx:show-modal", to: "##{id}")
+    |> JS.focus_first(to: "##{id}-container")
+  end
+
+  def hide_modal(js \\ %JS{}, id) do
+    js
+    |> JS.dispatch("phx:hide-modal", to: "##{id}")
+    |> JS.pop_focus()
   end
 
   @doc """
@@ -468,6 +566,30 @@ defmodule StoryarnWeb.CoreComponents do
   """
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
+  end
+
+  @doc """
+  Renders a role badge.
+
+  ## Examples
+
+      <.role_badge role="owner" />
+      <.role_badge role="editor" />
+      <.role_badge role="viewer" />
+  """
+  attr :role, :string, required: true
+
+  def role_badge(assigns) do
+    ~H"""
+    <span class={[
+      "badge badge-sm",
+      @role == "owner" && "badge-primary",
+      @role == "editor" && "badge-secondary",
+      @role == "viewer" && "badge-ghost"
+    ]}>
+      {@role}
+    </span>
+    """
   end
 
   @doc """
