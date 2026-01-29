@@ -160,13 +160,24 @@ end
 - [x] LiveView tests (42 tests)
 - [x] E2E tests (ready for Playwright)
 
-### Phase 3.2: Assets & Template Builder (Deferred)
-- [ ] Assets (images, audio) - Requires S3/R2 setup, presigned URLs, image processing
-- [ ] Visual template schema builder - Drag-and-drop field ordering
+### Phase 3.2: Template Builder & Assets
 
-> **Note:** Phase 3.2 was deferred from Phase 3 as it requires additional infrastructure
-> (cloud storage setup) and more complex UI work (drag-and-drop). These features will be
-> implemented after the Flow Editor is functional.
+#### Part 1: Visual Template Schema Builder (Complete)
+- [x] Schema migration (map → array format for ordering)
+- [x] SortableJS integration for drag-and-drop
+- [x] Schema field validation (name, type, label, options)
+- [x] Schema management functions (add, update, remove, reorder)
+- [x] SchemaBuilder LiveComponent with field editor modal
+- [x] Support for field types: string, text, integer, boolean, select, asset_reference
+- [x] Entity form updated for array schema and select type
+- [x] Unit tests for schema validation and management
+
+#### Part 2: Assets System (Pending)
+- [ ] Cloudflare R2 integration (S3-compatible storage)
+- [ ] Asset schema and context
+- [ ] Image processing (thumbnails, resize with Mogrify)
+- [ ] Asset upload LiveComponent
+- [ ] asset_reference field type integration
 
 ### Phase 4: Flow Editor - Core (3 weeks)
 - [ ] Flow schema
