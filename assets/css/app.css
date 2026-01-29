@@ -27,3 +27,17 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
+
+/* SortableJS styles */
+.sortable-ghost {
+  opacity: 0.4;
+  background: oklch(var(--p) / 0.1);
+}
+
+.sortable-chosen {
+  background: oklch(var(--b2));
+}
+
+.sortable-drag {
+  opacity: 0.9;
+}

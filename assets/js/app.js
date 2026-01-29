@@ -25,11 +25,14 @@ import { hooks as colocatedHooks } from "phoenix-colocated/storyarn";
 import { LiveSocket } from "phoenix_live_view";
 import topbar from "topbar";
 
+// Custom hooks
+import { SortableList } from "./hooks/sortable_list";
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: { _csrf_token: csrfToken },
-  hooks: { ...colocatedHooks },
+  hooks: { ...colocatedHooks, SortableList },
 });
 
 // Show progress bar on live navigation and form submits
