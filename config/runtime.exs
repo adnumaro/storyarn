@@ -111,4 +111,38 @@ if config_env() == :prod do
   config :storyarn, :mailer_from,
     email: System.get_env("MAILER_FROM_EMAIL", "noreply@storyarn.com"),
     name: System.get_env("MAILER_FROM_NAME", "Storyarn")
+
+  # Cloudflare R2 Storage Configuration
+  # R2 is S3-compatible, so we use ExAws.S3
+  if r2_access_key = System.get_env("R2_ACCESS_KEY_ID") do
+    r2_secret_key =
+      System.get_env("R2_SECRET_ACCESS_KEY") ||
+        raise "R2_SECRET_ACCESS_KEY is required when R2_ACCESS_KEY_ID is set"
+
+    r2_bucket =
+      System.get_env("R2_BUCKET") ||
+        raise "R2_BUCKET is required when R2_ACCESS_KEY_ID is set"
+
+    r2_endpoint =
+      System.get_env("R2_ENDPOINT_URL") ||
+        raise "R2_ENDPOINT_URL is required when R2_ACCESS_KEY_ID is set"
+
+    r2_public_url = System.get_env("R2_PUBLIC_URL")
+
+    # Parse the endpoint URL to extract host
+    %URI{host: r2_host} = URI.parse(r2_endpoint)
+
+    config :ex_aws,
+      access_key_id: r2_access_key,
+      secret_access_key: r2_secret_key
+
+    config :ex_aws, :s3,
+      host: r2_host,
+      scheme: "https://"
+
+    config :storyarn, :r2,
+      bucket: r2_bucket,
+      public_url: r2_public_url,
+      endpoint_url: r2_endpoint
+  end
 end

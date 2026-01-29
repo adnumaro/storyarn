@@ -94,3 +94,10 @@ config :storyarn, Storyarn.Mailer,
 
 # Disable API client in dev (using SMTP instead)
 config :swoosh, :api_client, false
+
+# Local file storage for development (no R2 required)
+# Files are stored in priv/static/uploads and served directly
+config :storyarn, :storage,
+  adapter: :local,
+  upload_dir: "priv/static/uploads",
+  public_path: "/uploads"

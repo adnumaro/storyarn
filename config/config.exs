@@ -88,6 +88,15 @@ config :tesla, disable_deprecated_builder_warning: true
 config :hammer,
   backend: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60, cleanup_interval_ms: 60_000 * 10]}
 
+# ExAws configuration for Cloudflare R2 (S3-compatible)
+# Credentials are configured in runtime.exs
+config :ex_aws,
+  json_codec: Jason
+
+config :ex_aws, :s3,
+  scheme: "https://",
+  region: "auto"
+
 # Ueberauth OAuth configuration
 config :ueberauth, Ueberauth,
   providers: [
