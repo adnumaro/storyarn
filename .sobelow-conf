@@ -1,0 +1,11 @@
+[
+  verbose: false,
+  private: false,
+  skip: false,
+  router: "lib/storyarn_web/router.ex",
+  exit: "low",
+  format: "txt",
+  # HTTPS warning ignored - enabled in production via reverse proxy/load balancer
+  ignore: ["Config.HTTPS"],
+  ignore_files: []
+]

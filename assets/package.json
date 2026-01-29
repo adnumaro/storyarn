@@ -1,0 +1,15 @@
+{
+  "name": "storyarn-assets",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "biome lint js/",
+    "format": "biome format --write js/",
+    "check": "biome check js/",
+    "check:fix": "biome check --write js/"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0"
+  }
+}
