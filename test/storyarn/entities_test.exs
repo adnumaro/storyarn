@@ -107,6 +107,241 @@ defmodule Storyarn.EntitiesTest do
     end
   end
 
+  describe "template schema management" do
+    setup do
+      user = user_fixture()
+      project = project_fixture(user)
+      template = template_fixture(project, %{schema: []})
+      %{project: project, template: template}
+    end
+
+    test "add_schema_field/2 adds a field to the schema", %{template: template} do
+      field_attrs = %{
+        "name" => "age",
+        "type" => "integer",
+        "label" => "Age"
+      }
+
+      assert {:ok, updated} = Entities.add_schema_field(template, field_attrs)
+      assert length(updated.schema) == 1
+      assert hd(updated.schema)["name"] == "age"
+      assert hd(updated.schema)["type"] == "integer"
+      assert hd(updated.schema)["label"] == "Age"
+    end
+
+    test "add_schema_field/2 validates field name format", %{template: template} do
+      field_attrs = %{
+        "name" => "Invalid Name",
+        "type" => "string",
+        "label" => "Label"
+      }
+
+      assert {:error, reason} = Entities.add_schema_field(template, field_attrs)
+      assert reason =~ "snake_case"
+    end
+
+    test "add_schema_field/2 validates field type", %{template: template} do
+      field_attrs = %{
+        "name" => "test",
+        "type" => "invalid_type",
+        "label" => "Test"
+      }
+
+      assert {:error, reason} = Entities.add_schema_field(template, field_attrs)
+      assert reason =~ "invalid"
+    end
+
+    test "add_schema_field/2 requires label", %{template: template} do
+      field_attrs = %{
+        "name" => "test",
+        "type" => "string"
+      }
+
+      assert {:error, reason} = Entities.add_schema_field(template, field_attrs)
+      assert reason =~ "label"
+    end
+
+    test "add_schema_field/2 prevents duplicate field names", %{template: template} do
+      field_attrs = %{"name" => "age", "type" => "integer", "label" => "Age"}
+      {:ok, updated} = Entities.add_schema_field(template, field_attrs)
+
+      assert {:error, reason} = Entities.add_schema_field(updated, field_attrs)
+      assert reason =~ "duplicate"
+    end
+
+    test "add_schema_field/2 requires options for select type", %{template: template} do
+      field_attrs = %{
+        "name" => "status",
+        "type" => "select",
+        "label" => "Status"
+      }
+
+      assert {:error, reason} = Entities.add_schema_field(template, field_attrs)
+      assert reason =~ "options"
+    end
+
+    test "add_schema_field/2 accepts select type with options", %{template: template} do
+      field_attrs = %{
+        "name" => "status",
+        "type" => "select",
+        "label" => "Status",
+        "options" => ["active", "inactive", "pending"]
+      }
+
+      assert {:ok, updated} = Entities.add_schema_field(template, field_attrs)
+      assert hd(updated.schema)["options"] == ["active", "inactive", "pending"]
+    end
+
+    test "update_schema_field/3 updates an existing field", %{template: template} do
+      {:ok, template} =
+        Entities.add_schema_field(template, %{
+          "name" => "age",
+          "type" => "integer",
+          "label" => "Age"
+        })
+
+      assert {:ok, updated} =
+               Entities.update_schema_field(template, "age", %{
+                 "label" => "Character Age",
+                 "required" => true
+               })
+
+      field = hd(updated.schema)
+      assert field["label"] == "Character Age"
+      assert field["required"] == true
+      assert field["name"] == "age"
+    end
+
+    test "update_schema_field/3 returns error for non-existent field", %{template: template} do
+      assert {:error, "field not found"} =
+               Entities.update_schema_field(template, "nonexistent", %{"label" => "New"})
+    end
+
+    test "remove_schema_field/2 removes a field", %{template: template} do
+      {:ok, template} =
+        Entities.add_schema_field(template, %{
+          "name" => "age",
+          "type" => "integer",
+          "label" => "Age"
+        })
+
+      {:ok, template} =
+        Entities.add_schema_field(template, %{
+          "name" => "bio",
+          "type" => "text",
+          "label" => "Biography"
+        })
+
+      assert {:ok, updated} = Entities.remove_schema_field(template, "age")
+      assert length(updated.schema) == 1
+      assert hd(updated.schema)["name"] == "bio"
+    end
+
+    test "remove_schema_field/2 returns error for non-existent field", %{template: template} do
+      assert {:error, "field not found"} = Entities.remove_schema_field(template, "nonexistent")
+    end
+
+    test "reorder_schema_fields/2 reorders fields", %{template: template} do
+      {:ok, template} =
+        Entities.add_schema_field(template, %{
+          "name" => "field_a",
+          "type" => "string",
+          "label" => "A"
+        })
+
+      {:ok, template} =
+        Entities.add_schema_field(template, %{
+          "name" => "field_b",
+          "type" => "string",
+          "label" => "B"
+        })
+
+      {:ok, template} =
+        Entities.add_schema_field(template, %{
+          "name" => "field_c",
+          "type" => "string",
+          "label" => "C"
+        })
+
+      assert {:ok, updated} =
+               Entities.reorder_schema_fields(template, ["field_c", "field_a", "field_b"])
+
+      names = Enum.map(updated.schema, & &1["name"])
+      assert names == ["field_c", "field_a", "field_b"]
+    end
+
+    test "reorder_schema_fields/2 fails with mismatched names", %{template: template} do
+      {:ok, template} =
+        Entities.add_schema_field(template, %{
+          "name" => "field_a",
+          "type" => "string",
+          "label" => "A"
+        })
+
+      assert {:error, _reason} =
+               Entities.reorder_schema_fields(template, ["field_a", "nonexistent"])
+    end
+  end
+
+  describe "EntityTemplate schema validation" do
+    test "validate_schema_field/1 validates valid field" do
+      field = %{
+        "name" => "age",
+        "type" => "integer",
+        "label" => "Age"
+      }
+
+      assert :ok = EntityTemplate.validate_schema_field(field)
+    end
+
+    test "validate_schema_field/1 validates all field types" do
+      for type <- EntityTemplate.field_types() -- ["select"] do
+        field = %{"name" => "test", "type" => type, "label" => "Test"}
+        assert :ok = EntityTemplate.validate_schema_field(field)
+      end
+    end
+
+    test "validate_schema_field/1 validates select type with options" do
+      field = %{
+        "name" => "status",
+        "type" => "select",
+        "label" => "Status",
+        "options" => ["a", "b"]
+      }
+
+      assert :ok = EntityTemplate.validate_schema_field(field)
+    end
+
+    test "validate_schema/1 validates entire schema" do
+      schema = [
+        %{"name" => "age", "type" => "integer", "label" => "Age"},
+        %{"name" => "bio", "type" => "text", "label" => "Bio"}
+      ]
+
+      assert :ok = EntityTemplate.validate_schema(schema)
+    end
+
+    test "validate_schema/1 detects duplicate names" do
+      schema = [
+        %{"name" => "age", "type" => "integer", "label" => "Age"},
+        %{"name" => "age", "type" => "string", "label" => "Age Again"}
+      ]
+
+      assert {:error, reason} = EntityTemplate.validate_schema(schema)
+      assert reason =~ "duplicate"
+    end
+
+    test "build_field/1 creates field with defaults" do
+      field =
+        EntityTemplate.build_field(%{"name" => "test", "type" => "string", "label" => "Test"})
+
+      assert field["name"] == "test"
+      assert field["type"] == "string"
+      assert field["label"] == "Test"
+      assert field["required"] == false
+    end
+  end
+
   describe "entities" do
     setup do
       user = user_fixture()
