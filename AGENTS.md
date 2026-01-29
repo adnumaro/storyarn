@@ -1,5 +1,13 @@
 This is a web application written using the Phoenix web framework.
 
+## Project-Specific Notes
+
+**daisyUI:** This project uses daisyUI (installed via npm in `assets/package.json`). Use daisyUI components and classes instead of building from scratch. Configure themes in `assets/css/app.css` via `@plugin "daisyui"`.
+
+**Native Modals:** Use `JS.dispatch("phx:show-modal")` / `JS.dispatch("phx:hide-modal")` for `<dialog>` elements. Do NOT use `JS.exec("showModal")` as it requires registered attributes.
+
+**E2E Tests:** Use `mix test.e2e` to run Playwright E2E tests (in `test/e2e/`). Tests use PhoenixTest.Playwright with Ecto SQL Sandbox.
+
 ## Project guidelines
 
 - Use `mix precommit` alias when you are done with all changes and fix any pending issues

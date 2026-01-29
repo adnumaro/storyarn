@@ -141,12 +141,13 @@ end
 > simpler, more secure (no password reset tokens to expire), and provides a better UX.
 
 ### Phase 2: Projects & Teams (1 week)
-- [ ] Project schema
-- [ ] Project CRUD
-- [ ] Project dashboard
-- [ ] Project invitations
-- [ ] Roles (owner, editor, viewer)
-- [ ] Project settings
+- [x] Project schema
+- [x] Project CRUD
+- [x] Project dashboard
+- [x] Project invitations
+- [x] Roles (owner, editor, viewer)
+- [x] Project settings
+- [x] E2E tests for all project flows
 
 ### Phase 3: Domain Model - Entities (2 weeks)
 - [ ] Entity templates
@@ -435,81 +436,90 @@ test/storyarn_web/live/
 - State updates
 - Navigation
 
-#### 3. E2E Tests (Playwright)
-End-to-end tests simulating real users in the browser.
+#### 3. E2E Tests (PhoenixTest.Playwright)
+End-to-end tests simulating real users in the browser, integrated with ExUnit.
 
 ```
-e2e/
-├── playwright.config.ts
-├── fixtures/
-│   └── auth.ts              # Login helpers
-├── tests/
-│   ├── auth.spec.ts         # Login, register, OAuth
-│   ├── projects.spec.ts     # Project CRUD
-│   ├── entities.spec.ts     # Entity CRUD
-│   ├── flow-editor.spec.ts  # Flow editor (critical)
-│   └── collaboration.spec.ts # Multi-user
-└── utils/
-    └── helpers.ts
+test/e2e/
+├── projects_e2e_test.exs    # Project flows (CRUD, invitations, settings)
+└── (future tests...)
 ```
 
 **Critical E2E scenarios:**
-- [ ] Complete registration/login flow
-- [ ] Create and configure project
+- [x] Complete registration/login flow (magic link)
+- [x] Create and configure project
+- [x] Project invitations (send, accept)
+- [x] Project settings (update, team members)
 - [ ] Create entities (character, location)
 - [ ] Flow editor: create nodes, connect, move
 - [ ] Collaboration: two users editing simultaneously
 - [ ] Export/Import project
 
-### Playwright Setup
+### PhoenixTest.Playwright Setup
 
-```bash
-# Installation
-cd e2e
-npm init -y
-npm install -D @playwright/test
-npx playwright install
+E2E tests use `phoenix_test_playwright` which integrates Playwright with ExUnit and Ecto SQL Sandbox:
+
+```elixir
+# test/e2e/projects_e2e_test.exs
+defmodule StoryarnWeb.E2E.ProjectsTest do
+  use PhoenixTest.Playwright.Case, async: false
+
+  import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
+
+  @moduletag :e2e
+
+  # Authentication helper using magic link
+  defp authenticate_user(conn, user) do
+    {token, _db_token} = generate_user_magic_link_token(user)
+
+    conn
+    |> visit("/users/log-in/#{token}")
+    |> click_button("Keep me logged in on this device")
+    |> assert_has("a", text: "Settings")
+  end
+
+  test "can create a new project", %{conn: conn} do
+    user = user_fixture()
+
+    conn
+    |> authenticate_user(user)
+    |> visit("/projects/new")
+    |> fill_in("Project Name", with: "My New Story")
+    |> click_button("Create Project")
+    |> assert_has("h1", text: "My New Story")
+  end
+end
 ```
 
-```typescript
-// e2e/playwright.config.ts
-import { defineConfig } from '@playwright/test';
+Configuration is in `config/test.exs`:
+```elixir
+config :storyarn, :sql_sandbox, true
 
-export default defineConfig({
-  testDir: './tests',
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
-  use: {
-    baseURL: 'http://localhost:4000',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-  },
-  webServer: {
-    command: 'mix phx.server',
-    url: 'http://localhost:4000',
-    reuseExistingServer: !process.env.CI,
-    cwd: '..',
-  },
-});
+config :phoenix_test,
+  otp_app: :storyarn,
+  endpoint: StoryarnWeb.Endpoint,
+  playwright: [
+    browser: :chromium,
+    headless: System.get_env("PLAYWRIGHT_HEADLESS", "true") in ~w(t true 1)
+  ]
 ```
 
 ### Testing Commands
 
 ```bash
 # Unit + Integration tests
-mix test                      # All tests
+mix test                      # All tests (excludes E2E)
 mix test --cover              # With coverage
 mix test test/storyarn/       # Unit tests only
 mix test test/storyarn_web/   # Integration tests only
 
-# E2E tests (Playwright)
-cd e2e && npx playwright test              # All E2E
-cd e2e && npx playwright test --ui         # Visual mode
-cd e2e && npx playwright test --debug      # Debug mode
-cd e2e && npx playwright show-report       # View report
+# E2E tests (PhoenixTest.Playwright)
+mix test.e2e                  # All E2E tests (builds assets first)
+mix test test/e2e/ --include e2e   # Run E2E tests manually
+
+# Run with visible browser (for debugging)
+PLAYWRIGHT_HEADLESS=false mix test.e2e
 
 # Before commit
 mix precommit                 # Compile + format + test
@@ -553,26 +563,25 @@ jobs:
         with:
           elixir-version: '1.15'
           otp-version: '26'
-
-      - run: mix deps.get
-      - run: mix compile --warnings-as-errors
-      - run: mix format --check-formatted
-      - run: mix credo --strict
-      - run: mix test --cover
-
-      # E2E tests
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: cd e2e && npm ci
-      - run: cd e2e && npx playwright install --with-deps
-      - run: cd e2e && npx playwright test
 
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-report
-          path: e2e/playwright-report/
+      # Install dependencies
+      - run: mix deps.get
+      - run: cd assets && npm ci
+      - run: npx playwright install --with-deps
+
+      # Code quality
+      - run: mix compile --warnings-as-errors
+      - run: mix format --check-formatted
+      - run: mix credo --strict
+
+      # Unit + Integration tests
+      - run: mix test --cover
+
+      # E2E tests (PhoenixTest.Playwright)
+      - run: mix test.e2e
 ```
 
 ---

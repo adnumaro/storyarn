@@ -58,9 +58,10 @@ mix ecto.migrate             # Run migrations
 mix ecto.reset               # Drop and recreate DB with seeds
 
 # Testing
-mix test                     # Run all tests
+mix test                     # Run all tests (excludes E2E)
 mix test test/path_test.exs  # Run single test file
 mix test --failed            # Rerun failed tests
+mix test.e2e                 # Run E2E tests (Playwright)
 
 # Code Quality
 mix precommit                # Run before committing: compile, format, credo, test
@@ -154,24 +155,42 @@ lib/
 ### CSS/JS
 
 - Tailwind v4 uses `@import "tailwindcss"` in app.css (no config file)
+- daisyUI is installed via npm (`assets/package.json`), configured via `@plugin "daisyui"` in app.css
 - Never use `@apply` in CSS
 - All JS must be in `assets/js/`, imported via `app.js`
 - No inline `<script>` tags in templates
 - Hooks with managed DOM need `phx-update="ignore"`
+- Native `<dialog>` modals use `JS.dispatch("phx:show-modal")` / `JS.dispatch("phx:hide-modal")` (NOT `JS.exec`)
 
 ## Testing
 
+### Unit & Integration Tests
 - Use `Phoenix.LiveViewTest` with `LazyHTML` for assertions
 - Test element presence with `has_element?(view, "#my-id")`
 - Add unique DOM IDs to forms/buttons for testing
 - Debug with `LazyHTML.filter(document, "selector") |> IO.inspect()`
 
+### E2E Tests (PhoenixTest.Playwright)
+- E2E tests live in `test/e2e/` and use PhoenixTest.Playwright
+- Run with `mix test.e2e` (includes asset build)
+- Tests are tagged with `@moduletag :e2e` and excluded from regular `mix test`
+- Uses Ecto SQL Sandbox for database isolation
+- Set `PLAYWRIGHT_HEADLESS=false` to see browser during tests
+
 ## Implementation Status
 
-The project is in early development (Phase 0). See `IMPLEMENTATION_PLAN.md` for the full roadmap. Planned contexts:
+The project is in active development. See `IMPLEMENTATION_PLAN.md` for the full roadmap.
 
-- `Accounts` - Users, auth, sessions
-- `Projects` - Projects, memberships, roles
+**Completed:**
+- Phase 0: Base Infrastructure
+- Phase 1: Auth & Users (email/password, OAuth, magic links)
+
+**In Progress:**
+- Phase 2: Projects & Teams
+
+**Planned contexts:**
+- `Accounts` - Users, auth, sessions ✓
+- `Projects` - Projects, memberships, roles (in progress)
 - `Entities` - Characters, locations, items, variables
 - `Flows` - Flow graphs, nodes, connections
 - `Collaboration` - Presence, locking
