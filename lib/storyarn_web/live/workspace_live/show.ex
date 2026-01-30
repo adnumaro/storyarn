@@ -195,7 +195,6 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
 
   @impl true
   def handle_event("search", %{"search" => _query}, socket) do
-    # TODO: Implement search
     {:noreply, socket}
   end
 

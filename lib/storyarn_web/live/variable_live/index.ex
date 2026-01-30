@@ -283,37 +283,39 @@ defmodule StoryarnWeb.VariableLive.Index do
   end
 
   def handle_event("save", %{"variable" => params}, socket) do
-    with :ok <- authorize(socket, :edit_content) do
-      case socket.assigns.live_action do
-        :new -> create_variable(socket, params)
-        :edit -> update_variable(socket, params)
-      end
-    else
+    case authorize(socket, :edit_content) do
+      :ok ->
+        case socket.assigns.live_action do
+          :new -> create_variable(socket, params)
+          :edit -> update_variable(socket, params)
+        end
+
       {:error, :unauthorized} ->
         {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("delete", %{"id" => id}, socket) do
-    with :ok <- authorize(socket, :edit_content) do
-      variable = Entities.get_variable!(socket.assigns.project.id, id)
+    case authorize(socket, :edit_content) do
+      :ok ->
+        variable = Entities.get_variable!(socket.assigns.project.id, id)
 
-      case Entities.delete_variable(variable) do
-        {:ok, _} ->
-          variables = Entities.list_variables(socket.assigns.project.id)
-          categories = Entities.list_variable_categories(socket.assigns.project.id)
+        case Entities.delete_variable(variable) do
+          {:ok, _} ->
+            variables = Entities.list_variables(socket.assigns.project.id)
+            categories = Entities.list_variable_categories(socket.assigns.project.id)
 
-          {:noreply,
-           socket
-           |> assign(:variables, variables)
-           |> assign(:grouped_variables, group_by_category(variables))
-           |> assign(:categories, categories)
-           |> put_flash(:info, gettext("Variable deleted successfully."))}
+            {:noreply,
+             socket
+             |> assign(:variables, variables)
+             |> assign(:grouped_variables, group_by_category(variables))
+             |> assign(:categories, categories)
+             |> put_flash(:info, gettext("Variable deleted successfully."))}
 
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not delete variable."))}
-      end
-    else
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not delete variable."))}
+        end
+
       {:error, :unauthorized} ->
         {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end

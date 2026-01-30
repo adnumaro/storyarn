@@ -378,54 +378,57 @@ defmodule StoryarnWeb.TemplateLive.Index do
   end
 
   def handle_event("save", %{"entity_template" => params}, socket) do
-    with :ok <- authorize(socket, :edit_content) do
-      case socket.assigns.live_action do
-        :new -> create_template(socket, params)
-        :edit -> update_template(socket, params)
-      end
-    else
+    case authorize(socket, :edit_content) do
+      :ok ->
+        case socket.assigns.live_action do
+          :new -> create_template(socket, params)
+          :edit -> update_template(socket, params)
+        end
+
       {:error, :unauthorized} ->
         {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("delete", %{"id" => id}, socket) do
-    with :ok <- authorize(socket, :edit_content) do
-      template = Entities.get_template!(socket.assigns.project.id, id)
+    case authorize(socket, :edit_content) do
+      :ok ->
+        template = Entities.get_template!(socket.assigns.project.id, id)
 
-      case Entities.delete_template(template) do
-        {:ok, _} ->
-          templates = Entities.list_templates(socket.assigns.project.id)
+        case Entities.delete_template(template) do
+          {:ok, _} ->
+            templates = Entities.list_templates(socket.assigns.project.id)
 
-          {:noreply,
-           socket
-           |> assign(:templates, templates)
-           |> put_flash(:info, gettext("Template deleted successfully."))}
+            {:noreply,
+             socket
+             |> assign(:templates, templates)
+             |> put_flash(:info, gettext("Template deleted successfully."))}
 
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not delete template."))}
-      end
-    else
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not delete template."))}
+        end
+
       {:error, :unauthorized} ->
         {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("create_defaults", _params, socket) do
-    with :ok <- authorize(socket, :edit_content) do
-      case Entities.create_default_templates(socket.assigns.project) do
-        {:ok, _templates} ->
-          templates = Entities.list_templates(socket.assigns.project.id)
+    case authorize(socket, :edit_content) do
+      :ok ->
+        case Entities.create_default_templates(socket.assigns.project) do
+          {:ok, _templates} ->
+            templates = Entities.list_templates(socket.assigns.project.id)
 
-          {:noreply,
-           socket
-           |> assign(:templates, templates)
-           |> put_flash(:info, gettext("Default templates created successfully."))}
+            {:noreply,
+             socket
+             |> assign(:templates, templates)
+             |> put_flash(:info, gettext("Default templates created successfully."))}
 
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not create default templates."))}
-      end
-    else
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not create default templates."))}
+        end
+
       {:error, :unauthorized} ->
         {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end

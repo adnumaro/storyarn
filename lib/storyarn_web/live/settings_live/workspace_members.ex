@@ -140,41 +140,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
   @impl true
   def handle_event("send_invitation", %{"invite" => invite_params}, socket) do
-    with :ok <- authorize(socket, :manage_workspace_members) do
-      case Workspaces.create_invitation(
-             socket.assigns.workspace,
-             socket.assigns.current_scope.user,
-             invite_params["email"],
-             invite_params["role"]
-           ) do
-        {:ok, _invitation} ->
-          pending_invitations = Workspaces.list_pending_invitations(socket.assigns.workspace.id)
+    case authorize(socket, :manage_workspace_members) do
+      :ok ->
+        do_send_invitation(socket, invite_params)
 
-          socket =
-            socket
-            |> assign(:pending_invitations, pending_invitations)
-            |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
-            |> put_flash(:info, gettext("Invitation sent successfully."))
-
-          {:noreply, socket}
-
-        {:error, :already_member} ->
-          {:noreply,
-           put_flash(socket, :error, gettext("This email is already a member of the workspace."))}
-
-        {:error, :already_invited} ->
-          {:noreply,
-           put_flash(socket, :error, gettext("An invitation has already been sent to this email."))}
-
-        {:error, :rate_limited} ->
-          {:noreply,
-           put_flash(socket, :error, gettext("Too many invitations. Please try again later."))}
-
-        {:error, _changeset} ->
-          {:noreply,
-           put_flash(socket, :error, gettext("Failed to send invitation. Please try again."))}
-      end
-    else
       {:error, :unauthorized} ->
         {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
@@ -182,23 +151,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
   @impl true
   def handle_event("revoke_invitation", %{"id" => id}, socket) do
-    with :ok <- authorize(socket, :manage_workspace_members) do
-      invitation = Enum.find(socket.assigns.pending_invitations, &(to_string(&1.id) == id))
+    case authorize(socket, :manage_workspace_members) do
+      :ok ->
+        do_revoke_invitation(socket, id)
 
-      if invitation do
-        {:ok, _} = Workspaces.revoke_invitation(invitation)
-        pending_invitations = Workspaces.list_pending_invitations(socket.assigns.workspace.id)
-
-        socket =
-          socket
-          |> assign(:pending_invitations, pending_invitations)
-          |> put_flash(:info, gettext("Invitation revoked."))
-
-        {:noreply, socket}
-      else
-        {:noreply, put_flash(socket, :error, gettext("Invitation not found."))}
-      end
-    else
       {:error, :unauthorized} ->
         {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
@@ -206,62 +162,132 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
   @impl true
   def handle_event("change_role", %{"role" => role, "member-id" => member_id}, socket) do
-    # Only owner can change roles
-    if socket.assigns.membership.role == "owner" do
-      member = Enum.find(socket.assigns.members, &(to_string(&1.id) == member_id))
-
-      if member && member.role != "owner" do
-        case Workspaces.update_member_role(member, role) do
-          {:ok, _} ->
-            members = Workspaces.list_workspace_members(socket.assigns.workspace.id)
-
-            socket =
-              socket
-              |> assign(:members, members)
-              |> put_flash(:info, gettext("Role updated successfully."))
-
-            {:noreply, socket}
-
-          {:error, :cannot_change_owner_role} ->
-            {:noreply, put_flash(socket, :error, gettext("Cannot change the owner's role."))}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Failed to update role."))}
-        end
-      else
-        {:noreply, put_flash(socket, :error, gettext("Member not found."))}
-      end
-    else
+    if socket.assigns.membership.role != "owner" do
       {:noreply, put_flash(socket, :error, gettext("Only the workspace owner can change member roles."))}
+    else
+      do_change_role(socket, member_id, role)
     end
   end
 
   @impl true
   def handle_event("remove_member", %{"id" => id}, socket) do
-    # Only owner can remove members
-    if socket.assigns.membership.role == "owner" do
-      member = Enum.find(socket.assigns.members, &(to_string(&1.id) == id))
-
-      if member && member.role != "owner" do
-        case Workspaces.remove_member(member) do
-          {:ok, _} ->
-            members = Workspaces.list_workspace_members(socket.assigns.workspace.id)
-
-            socket =
-              socket
-              |> assign(:members, members)
-              |> put_flash(:info, gettext("Member removed."))
-
-            {:noreply, socket}
-
-          {:error, :cannot_remove_owner} ->
-            {:noreply, put_flash(socket, :error, gettext("Cannot remove the workspace owner."))}
-        end
-      else
-        {:noreply, put_flash(socket, :error, gettext("Member not found."))}
-      end
-    else
+    if socket.assigns.membership.role != "owner" do
       {:noreply, put_flash(socket, :error, gettext("Only the workspace owner can remove members."))}
+    else
+      do_remove_member(socket, id)
+    end
+  end
+
+  # Private helpers
+
+  defp do_send_invitation(socket, invite_params) do
+    case Workspaces.create_invitation(
+           socket.assigns.workspace,
+           socket.assigns.current_scope.user,
+           invite_params["email"],
+           invite_params["role"]
+         ) do
+      {:ok, _invitation} ->
+        pending_invitations = Workspaces.list_pending_invitations(socket.assigns.workspace.id)
+
+        socket =
+          socket
+          |> assign(:pending_invitations, pending_invitations)
+          |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
+          |> put_flash(:info, gettext("Invitation sent successfully."))
+
+        {:noreply, socket}
+
+      {:error, :already_member} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("This email is already a member of the workspace."))}
+
+      {:error, :already_invited} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("An invitation has already been sent to this email."))}
+
+      {:error, :rate_limited} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Too many invitations. Please try again later."))}
+
+      {:error, _changeset} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Failed to send invitation. Please try again."))}
+    end
+  end
+
+  defp do_revoke_invitation(socket, id) do
+    invitation = Enum.find(socket.assigns.pending_invitations, &(to_string(&1.id) == id))
+
+    if invitation do
+      {:ok, _} = Workspaces.revoke_invitation(invitation)
+      pending_invitations = Workspaces.list_pending_invitations(socket.assigns.workspace.id)
+
+      socket =
+        socket
+        |> assign(:pending_invitations, pending_invitations)
+        |> put_flash(:info, gettext("Invitation revoked."))
+
+      {:noreply, socket}
+    else
+      {:noreply, put_flash(socket, :error, gettext("Invitation not found."))}
+    end
+  end
+
+  defp do_change_role(socket, member_id, role) do
+    member = Enum.find(socket.assigns.members, &(to_string(&1.id) == member_id))
+
+    if member && member.role != "owner" do
+      perform_role_update(socket, member, role)
+    else
+      {:noreply, put_flash(socket, :error, gettext("Member not found."))}
+    end
+  end
+
+  defp perform_role_update(socket, member, role) do
+    case Workspaces.update_member_role(member, role) do
+      {:ok, _} ->
+        members = Workspaces.list_workspace_members(socket.assigns.workspace.id)
+
+        socket =
+          socket
+          |> assign(:members, members)
+          |> put_flash(:info, gettext("Role updated successfully."))
+
+        {:noreply, socket}
+
+      {:error, :cannot_change_owner_role} ->
+        {:noreply, put_flash(socket, :error, gettext("Cannot change the owner's role."))}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Failed to update role."))}
+    end
+  end
+
+  defp do_remove_member(socket, id) do
+    member = Enum.find(socket.assigns.members, &(to_string(&1.id) == id))
+
+    if member && member.role != "owner" do
+      perform_member_removal(socket, member)
+    else
+      {:noreply, put_flash(socket, :error, gettext("Member not found."))}
+    end
+  end
+
+  defp perform_member_removal(socket, member) do
+    case Workspaces.remove_member(member) do
+      {:ok, _} ->
+        members = Workspaces.list_workspace_members(socket.assigns.workspace.id)
+
+        socket =
+          socket
+          |> assign(:members, members)
+          |> put_flash(:info, gettext("Member removed."))
+
+        {:noreply, socket}
+
+      {:error, :cannot_remove_owner} ->
+        {:noreply, put_flash(socket, :error, gettext("Cannot remove the workspace owner."))}
     end
   end
 end

@@ -179,18 +179,19 @@ defmodule StoryarnWeb.EntityLive.Show do
 
   @impl true
   def handle_event("delete", _params, socket) do
-    with :ok <- authorize(socket, :edit_content) do
-      case Entities.delete_entity(socket.assigns.entity) do
-        {:ok, _entity} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, gettext("Entity deleted successfully."))
-           |> push_navigate(to: ~p"/projects/#{socket.assigns.project.id}/entities")}
+    case authorize(socket, :edit_content) do
+      :ok ->
+        case Entities.delete_entity(socket.assigns.entity) do
+          {:ok, _entity} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, gettext("Entity deleted successfully."))
+             |> push_navigate(to: ~p"/projects/#{socket.assigns.project.id}/entities")}
 
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not delete entity."))}
-      end
-    else
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not delete entity."))}
+        end
+
       {:error, :unauthorized} ->
         {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
