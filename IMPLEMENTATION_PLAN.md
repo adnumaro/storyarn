@@ -140,14 +140,20 @@ end
 > directly. Once logged in, they can set a new password in the settings page. This approach is
 > simpler, more secure (no password reset tokens to expire), and provides a better UX.
 
-### Phase 2: Projects & Teams (1 week)
-- [x] Project schema
-- [x] Project CRUD
-- [x] Project dashboard
-- [x] Project invitations
-- [x] Roles (owner, editor, viewer)
+### Phase 2: Workspaces & Projects (Complete)
+- [x] Workspace schema and CRUD
+- [x] Workspace memberships (owner, admin, member, viewer roles)
+- [x] Workspace invitations via email
+- [x] Workspace settings (general, members)
+- [x] Default workspace on user registration
+- [x] Project schema and CRUD
+- [x] Projects belong to workspaces
+- [x] Project memberships (owner, editor, viewer roles)
+- [x] Project invitations via email
 - [x] Project settings
-- [x] E2E tests for all project flows
+- [x] Workspace-centric navigation (sidebar with workspaces)
+- [x] Unified settings layout (account + workspace settings)
+- [x] E2E tests for all flows
 
 ### Phase 3: Domain Model - Entities (Complete)
 - [x] Entity templates (schema with type, color, icon, custom fields)
@@ -617,11 +623,22 @@ lib/storyarn/
 ├── accounts/           # Users, auth, sessions
 │   ├── user.ex
 │   ├── user_token.ex
+│   ├── user_identity.ex      # OAuth identities
+│   ├── user_notifier.ex      # Email notifications
 │   └── accounts.ex
 │
-├── projects/           # Projects, memberships
+├── workspaces/         # Workspaces, memberships, invitations
+│   ├── workspace.ex
+│   ├── workspace_membership.ex
+│   ├── workspace_invitation.ex
+│   ├── workspace_notifier.ex
+│   └── workspaces.ex
+│
+├── projects/           # Projects, memberships, invitations
 │   ├── project.ex
-│   ├── membership.ex
+│   ├── project_membership.ex
+│   ├── project_invitation.ex
+│   ├── project_notifier.ex
 │   └── projects.ex
 │
 ├── entities/           # Characters, locations, items, variables
@@ -664,19 +681,36 @@ lib/storyarn/
 ```
 lib/storyarn_web/
 ├── components/         # Reusable components
-├── controllers/        # Auth callbacks, exports
+│   ├── core_components.ex    # UI primitives
+│   ├── layouts.ex            # app, auth, settings layouts
+│   ├── member_components.ex  # Member/invitation display
+│   └── sidebar.ex            # Workspace sidebar
+├── controllers/        # Auth callbacks, OAuth, exports
 ├── channels/           # Real-time collaboration
 │   ├── project_channel.ex
 │   └── user_socket.ex
 ├── live/
-│   ├── auth/           # Login, register, etc
-│   ├── dashboard/      # Project list
-│   ├── project/        # Project settings
-│   ├── editor/         # Main editor
-│   │   ├── flow_editor_live.ex
-│   │   ├── entity_browser_live.ex
-│   │   └── properties_panel_live.ex
-│   └── components/     # LiveComponents
+│   ├── user_*_live.ex        # Auth (login, register, etc.)
+│   ├── settings_live/        # User & workspace settings
+│   │   ├── profile.ex
+│   │   ├── security.ex
+│   │   ├── connections.ex
+│   │   ├── workspace_general.ex
+│   │   └── workspace_members.ex
+│   ├── workspace_live/       # Workspace views
+│   │   ├── index.ex          # Workspace list
+│   │   ├── show.ex           # Workspace dashboard
+│   │   └── invitation.ex     # Accept invitation
+│   ├── project_live/         # Project views
+│   │   ├── show.ex           # Project view
+│   │   ├── settings.ex       # Project settings
+│   │   └── invitation.ex     # Accept invitation
+│   ├── entity_live/          # Entity CRUD
+│   ├── template_live/        # Template CRUD + schema builder
+│   ├── variable_live/        # Variable CRUD
+│   └── editor/               # Flow editor (future)
+├── live_helpers/       # LiveView helpers
+│   └── authorize.ex          # Authorization guards
 └── hooks/              # JS hooks for Rete.js
 ```
 
@@ -713,10 +747,40 @@ lib/storyarn_web/
 - timestamps
 ```
 
+### Workspaces
+```elixir
+# workspaces
+- id: uuid
+- name: string
+- slug: string (unique, URL-friendly)
+- description: text
+- owner_id: uuid -> users
+- banner_url: string
+- timestamps
+
+# workspace_memberships
+- id: uuid
+- workspace_id: uuid
+- user_id: uuid
+- role: enum (owner, admin, member, viewer)
+- timestamps
+
+# workspace_invitations
+- id: uuid
+- workspace_id: uuid
+- email: string
+- role: string
+- token: string (unique)
+- invited_by_id: uuid -> users
+- accepted_at: datetime
+- timestamps
+```
+
 ### Projects
 ```elixir
 # projects
 - id: uuid
+- workspace_id: uuid -> workspaces
 - name: string
 - description: text
 - owner_id: uuid -> users
@@ -728,6 +792,16 @@ lib/storyarn_web/
 - project_id: uuid
 - user_id: uuid
 - role: enum (owner, editor, viewer)
+- timestamps
+
+# project_invitations
+- id: uuid
+- project_id: uuid
+- email: string
+- role: string
+- token: string (unique)
+- invited_by_id: uuid -> users
+- accepted_at: datetime
 - timestamps
 ```
 
@@ -992,12 +1066,10 @@ Deliverables:
 
 ## Immediate Next Steps
 
-1. **Configure Tailwind** properly for the project
-2. **Generate auth with `mix phx.gen.auth`**
-3. **Create migrations** for users, projects, entities, flows
-4. **Setup OAuth** with `ueberauth`
-5. **Create base LiveView** for the editor
-6. **Integrate Rete.js** with basic hook
+1. **Flow Editor Core** - Integrate Rete.js with LiveView
+2. **Flow Schema** - Create flow, node, and connection schemas
+3. **Node Types** - Implement dialogue, hub, condition, instruction, jump nodes
+4. **Canvas Interactions** - Drag, zoom, pan, select, connect
 
 ---
 

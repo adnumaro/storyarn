@@ -98,6 +98,11 @@ open http://localhost:8025
 ```
 lib/
 ├── storyarn/                    # Domain/Business Logic (Contexts)
+│   ├── accounts/                # Users, auth, sessions, identities
+│   ├── workspaces/              # Workspaces, memberships, invitations
+│   ├── projects/                # Projects, memberships, invitations
+│   ├── entities/                # Templates, entities, variables
+│   ├── assets/                  # File uploads (R2/S3)
 │   ├── application.ex           # OTP supervision tree
 │   ├── repo.ex                  # Ecto repository
 │   └── mailer.ex                # Email via Swoosh
@@ -105,9 +110,18 @@ lib/
 ├── storyarn_web/                # Web Layer
 │   ├── components/
 │   │   ├── core_components.ex   # UI components (<.input>, <.button>, <.icon>)
-│   │   └── layouts.ex           # App/root layouts
-│   ├── controllers/             # Non-LiveView routes
+│   │   ├── layouts.ex           # Layouts (app, auth, settings)
+│   │   ├── member_components.ex # Member/invitation display components
+│   │   └── sidebar.ex           # Workspace sidebar
+│   ├── controllers/             # Non-LiveView routes (OAuth, exports)
 │   ├── live/                    # LiveView modules
+│   │   ├── settings_live/       # User & workspace settings
+│   │   ├── workspace_live/      # Workspace views
+│   │   ├── project_live/        # Project views
+│   │   ├── entity_live/         # Entity CRUD
+│   │   ├── template_live/       # Template CRUD
+│   │   └── variable_live/       # Variable CRUD
+│   ├── live_helpers/            # LiveView helpers (authorization)
 │   ├── channels/                # WebSocket channels (real-time)
 │   ├── endpoint.ex              # Plug pipeline
 │   └── router.ex                # Route definitions
@@ -116,11 +130,80 @@ lib/
 └── storyarn_web.ex              # Web macros (:html, :live_view, :controller)
 ```
 
+## Domain Model
+
+### Workspaces & Projects
+
+The app uses a **workspace-centric** navigation model:
+- **Workspaces** are the top-level containers (like organizations)
+- **Projects** belong to a workspace
+- Users can belong to multiple workspaces with different roles
+- Each user gets a default workspace on registration
+
+```
+User
+ └── WorkspaceMembership (role: owner|admin|member|viewer)
+      └── Workspace
+           └── Project
+                └── ProjectMembership (role: owner|editor|viewer)
+                     └── Entities, Templates, Variables, Flows
+```
+
+### Roles & Permissions
+
+**Workspace roles:**
+- `owner` - Full control, can delete workspace, manage all members
+- `admin` - Can manage members, create projects
+- `member` - Can create projects, view workspace
+- `viewer` - Read-only access
+
+**Project roles:**
+- `owner` - Full control, can delete project
+- `editor` - Can edit content (entities, flows, etc.)
+- `viewer` - Read-only access
+
+Use `ProjectMembership.can?(role, action)` or `WorkspaceMembership.can?(role, action)` to check permissions.
+
 ## Key Conventions
+
+### Layouts
+
+Three independent layouts (not nested):
+
+```elixir
+# Main app with workspace sidebar
+<Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
+
+# Auth pages (login, register) - centered, no sidebar
+<Layouts.auth flash={@flash}>
+
+# Settings pages - header + settings nav, no workspace sidebar
+<Layouts.settings flash={@flash} current_scope={@current_scope} workspaces={@workspaces} current_path={@current_path}>
+  <:title>Page Title</:title>
+  <:subtitle>Description</:subtitle>
+```
+
+### LiveView Authorization
+
+Use the authorization helper for protecting `handle_event` callbacks:
+
+```elixir
+use StoryarnWeb.LiveHelpers.Authorize
+
+def handle_event("delete", _params, socket) do
+  with :ok <- authorize(socket, :edit_content) do
+    # perform action
+  else
+    {:error, :unauthorized} ->
+      {:noreply, put_flash(socket, :error, gettext("You don't have permission..."))}
+  end
+end
+```
+
+Available actions: `:edit_content`, `:manage_project`, `:manage_members`, `:manage_workspace`, `:manage_workspace_members`
 
 ### Phoenix 1.8 / LiveView
 
-- Wrap LiveView templates with `<Layouts.app flash={@flash}>...</Layouts.app>`
 - Use `<.icon name="hero-x-mark">` for Heroicons (never import Heroicons directly)
 - Use `<.input field={@form[:field]}>` for form inputs
 - Forms must use `to_form/2`: `assign(socket, form: to_form(changeset))`
@@ -158,9 +241,20 @@ lib/
 - daisyUI is installed via npm (`assets/package.json`), configured via `@plugin "daisyui"` in app.css
 - Never use `@apply` in CSS
 - All JS must be in `assets/js/`, imported via `app.js`
-- No inline `<script>` tags in templates
+- No inline `<script>` tags in templates (except minimal theme init in root.html.heex)
 - Hooks with managed DOM need `phx-update="ignore"`
 - Native `<dialog>` modals use `JS.dispatch("phx:show-modal")` / `JS.dispatch("phx:hide-modal")` (NOT `JS.exec`)
+
+### Shared Components
+
+**MemberComponents** (`import StoryarnWeb.MemberComponents`):
+- `<.user_avatar user={@user} size="md" />` - Avatar with initials fallback
+- `<.member_row member={@member} current_user_id={@id} can_manage={true} on_remove="remove" />` - Member display
+- `<.invitation_row invitation={@inv} on_revoke="revoke" />` - Pending invitation
+
+**CoreComponents** (auto-imported):
+- `<.empty_state icon="hero-folder-open" title="No items">Description</.empty_state>` - Empty list states
+- `<.role_badge role="owner" />` - Role display badge
 
 ## Testing
 
@@ -184,14 +278,19 @@ The project is in active development. See `IMPLEMENTATION_PLAN.md` for the full 
 **Completed:**
 - Phase 0: Base Infrastructure
 - Phase 1: Auth & Users (email/password, OAuth, magic links)
+- Phase 2: Workspaces & Projects (CRUD, invitations, roles, settings)
+- Phase 3: Entities (templates, entities, variables with schema builder)
+- Phase 3.2: Assets System (R2 storage, uploads, thumbnails)
 
 **In Progress:**
-- Phase 2: Projects & Teams
+- Phase 4: Flow Editor
 
-**Planned contexts:**
-- `Accounts` - Users, auth, sessions ✓
-- `Projects` - Projects, memberships, roles (in progress)
-- `Entities` - Characters, locations, items, variables
-- `Flows` - Flow graphs, nodes, connections
-- `Collaboration` - Presence, locking
-- `Exports` - JSON import/export
+**Contexts:**
+- `Accounts` - Users, auth, sessions, OAuth identities ✓
+- `Workspaces` - Workspaces, memberships, invitations ✓
+- `Projects` - Projects, memberships, invitations ✓
+- `Entities` - Templates, entities, variables ✓
+- `Assets` - File uploads (R2/S3) ✓
+- `Flows` - Flow graphs, nodes, connections (next)
+- `Collaboration` - Presence, locking (planned)
+- `Exports` - JSON import/export (planned)
