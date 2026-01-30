@@ -82,8 +82,8 @@ defmodule Storyarn.MixProject do
       {:hackney, "~> 1.20"},
       {:sweet_xml, "~> 0.7"},
 
-      # Image processing
-      {:mogrify, "~> 0.9"},
+      # Image processing (libvips - much safer than ImageMagick)
+      {:image, "~> 0.62"},
 
       # Code quality & security
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

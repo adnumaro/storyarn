@@ -263,7 +263,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
   end
 
   defp process_image_metadata(path, content_type) do
-    if String.starts_with?(content_type, "image/") and ImageProcessor.imagemagick_available?() do
+    if String.starts_with?(content_type, "image/") and ImageProcessor.available?() do
       case ImageProcessor.get_dimensions(path) do
         {:ok, %{width: w, height: h}} ->
           %{"width" => w, "height" => h}
