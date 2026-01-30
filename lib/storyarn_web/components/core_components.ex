@@ -652,4 +652,142 @@ defmodule StoryarnWeb.CoreComponents do
     </div>
     """
   end
+
+  @doc """
+  Renders a keyboard shortcut badge.
+
+  ## Examples
+
+      <.kbd>E</.kbd>
+      <.kbd size="sm">Ctrl+S</.kbd>
+  """
+  attr :size, :string, default: "xs", values: ~w(xs sm md)
+  attr :class, :string, default: nil
+  slot :inner_block, required: true
+
+  def kbd(assigns) do
+    ~H"""
+    <kbd class={["kbd", "kbd-#{@size}", @class]}>
+      {render_slot(@inner_block)}
+    </kbd>
+    """
+  end
+
+  @doc """
+  Renders an empty state placeholder with icon and message.
+
+  ## Examples
+
+      <.empty_state icon="hero-folder-open">
+        No projects yet
+      </.empty_state>
+
+      <.empty_state icon="hero-document-text" title="No documents">
+        Create your first document to get started
+      </.empty_state>
+  """
+  attr :icon, :string, required: true
+  attr :title, :string, default: nil
+  attr :class, :string, default: nil
+  slot :inner_block
+  slot :action
+
+  def empty_state(assigns) do
+    ~H"""
+    <div class={["text-center py-12", @class]}>
+      <.icon name={@icon} class="size-12 mx-auto mb-4 text-base-content/30" />
+      <p :if={@title} class="font-medium text-base-content/70">{@title}</p>
+      <p :if={@inner_block != []} class="text-sm text-base-content/50 mt-1">
+        {render_slot(@inner_block)}
+      </p>
+      <div :if={@action != []} class="mt-4">
+        {render_slot(@action)}
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders a search input with magnifying glass icon.
+
+  ## Examples
+
+      <.search_input placeholder="Search projects..." phx-change="search" />
+      <.search_input value={@query} name="q" size="sm" />
+  """
+  attr :size, :string, default: "sm", values: ~w(xs sm md lg)
+  attr :class, :string, default: nil
+  attr :rest, :global, include: ~w(name value placeholder phx-change phx-debounce disabled form)
+
+  def search_input(assigns) do
+    ~H"""
+    <label class={["input input-bordered input-#{@size} flex items-center gap-2", @class]}>
+      <.icon name="hero-magnifying-glass" class="size-4 opacity-50" />
+      <input type="text" class="grow" {@rest} />
+    </label>
+    """
+  end
+
+  @doc """
+  Renders a group of overlapping avatars.
+
+  ## Examples
+
+      <.avatar_group>
+        <:avatar src="/images/user1.jpg" alt="User 1" />
+        <:avatar src="/images/user2.jpg" alt="User 2" />
+        <:avatar fallback="JD" />
+      </.avatar_group>
+
+      <.avatar_group size="sm" max={3} total={5} />
+  """
+  attr :size, :string, default: "sm", values: ~w(xs sm md lg)
+  attr :max, :integer, default: 4, doc: "Maximum avatars to show before +N"
+  attr :total, :integer, default: nil, doc: "Total count for +N indicator (if greater than slots)"
+  attr :class, :string, default: nil
+  slot :avatar do
+    attr :src, :string
+    attr :alt, :string
+    attr :fallback, :string
+  end
+
+  def avatar_group(assigns) do
+    size_classes = %{
+      "xs" => "w-6",
+      "sm" => "w-8",
+      "md" => "w-10",
+      "lg" => "w-12"
+    }
+
+    assigns = assign(assigns, :size_class, size_classes[assigns.size])
+
+    visible_avatars = Enum.take(assigns.avatar, assigns.max)
+    remaining = max((assigns.total || length(assigns.avatar)) - assigns.max, 0)
+
+    assigns =
+      assigns
+      |> assign(:visible_avatars, visible_avatars)
+      |> assign(:remaining, remaining)
+
+    ~H"""
+    <div class={["avatar-group -space-x-3 rtl:space-x-reverse", @class]}>
+      <div :for={av <- @visible_avatars} class="avatar">
+        <div class={["rounded-full", @size_class]}>
+          <img :if={av[:src]} src={av[:src]} alt={av[:alt] || ""} />
+          <div
+            :if={!av[:src] && av[:fallback]}
+            class="bg-neutral text-neutral-content flex items-center justify-center w-full h-full"
+          >
+            <span class="text-xs">{av[:fallback]}</span>
+          </div>
+        </div>
+      </div>
+      <div :if={@remaining > 0} class="avatar placeholder">
+        <div class={["bg-neutral text-neutral-content rounded-full", @size_class]}>
+          <span class="text-xs">+{@remaining}</span>
+        </div>
+      </div>
+    </div>
+    """
+  end
 end

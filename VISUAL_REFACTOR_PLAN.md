@@ -1049,12 +1049,12 @@ Todos disponibles en Heroicons:
 - [x] Adaptar Entity/Template/Variable pages (usan Layouts.app con sidebar)
 - [x] Adaptar Project Invitation (usa Layouts.app con sidebar)
 
-### Fase 6: Componentes adicionales
+### Fase 6: Componentes adicionales ✅
 - [x] `member_avatar/1` - ✅ en sidebar.ex
-- [ ] `avatar_group/1`
-- [ ] `empty_state/1` (ya existe inline en varios lugares)
-- [ ] `search_input/1`
-- [ ] `kbd/1` (keyboard shortcut badge) - parcialmente implementado
+- [x] `avatar_group/1` - ✅ en core_components.ex
+- [x] `empty_state/1` - ✅ en core_components.ex
+- [x] `search_input/1` - ✅ en core_components.ex
+- [x] `kbd/1` - ✅ en core_components.ex
 - [x] Keyboard shortcuts en JS (root.html.heex)
 - [x] Theme toggle en JS (root.html.heex)
 - [x] Sidebar responsive con drawer (daisyUI drawer)
