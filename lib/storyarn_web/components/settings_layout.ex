@@ -115,6 +115,7 @@ defmodule StoryarnWeb.Components.SettingsLayout do
         ]
       }
     ]
+
     # Workspace settings section can be added later when routes are implemented
   end
 end
