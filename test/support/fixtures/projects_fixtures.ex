@@ -7,6 +7,7 @@ defmodule Storyarn.ProjectsFixtures do
   alias Storyarn.AccountsFixtures
   alias Storyarn.Projects
   alias Storyarn.Projects.ProjectInvitation
+  alias Storyarn.WorkspacesFixtures
 
   def unique_project_name, do: "Project #{System.unique_integer([:positive])}"
 
@@ -19,14 +20,19 @@ defmodule Storyarn.ProjectsFixtures do
 
   @doc """
   Creates a project with the given user as owner.
+  Also creates a workspace for the project if not provided.
   """
   def project_fixture(user \\ nil, attrs \\ %{}) do
     user = user || AccountsFixtures.user_fixture()
     scope = AccountsFixtures.user_scope_fixture(user)
 
+    # Get or create a workspace for the project
+    workspace = attrs[:workspace] || WorkspacesFixtures.workspace_fixture(user)
+
     {:ok, project} =
       attrs
       |> valid_project_attributes()
+      |> Map.put(:workspace_id, workspace.id)
       |> then(&Projects.create_project(scope, &1))
 
     project

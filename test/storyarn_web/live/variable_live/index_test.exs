@@ -73,7 +73,7 @@ defmodule StoryarnWeb.VariableLive.IndexTest do
       {:error, {:redirect, %{to: path, flash: flash}}} =
         live(conn, ~p"/projects/#{project.id}/variables")
 
-      assert path == "/projects"
+      assert path == "/workspaces"
       assert flash["error"] =~ "access"
     end
   end

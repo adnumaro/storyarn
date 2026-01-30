@@ -2,13 +2,21 @@ defmodule StoryarnWeb.ProjectLive.Show do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Projects
+  alias Storyarn.Repo
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
+    <Layouts.app
+      flash={@flash}
+      current_scope={@current_scope}
+      workspaces={@workspaces}
+      current_workspace={@current_workspace}
+    >
       <div class="mb-8">
-        <.back navigate={~p"/projects"}>{gettext("Back to projects")}</.back>
+        <.back navigate={~p"/workspaces/#{@project.workspace.slug}"}>
+          {gettext("Back to %{workspace}", workspace: @project.workspace.name)}
+        </.back>
       </div>
 
       <div class="text-center mb-8">
@@ -39,11 +47,13 @@ defmodule StoryarnWeb.ProjectLive.Show do
   def mount(%{"id" => id}, _session, socket) do
     case Projects.get_project(socket.assigns.current_scope, id) do
       {:ok, project, membership} ->
+        project = Repo.preload(project, :workspace)
         can_manage = Projects.ProjectMembership.can?(membership.role, :manage_project)
 
         socket =
           socket
           |> assign(:project, project)
+          |> assign(:current_workspace, project.workspace)
           |> assign(:membership, membership)
           |> assign(:can_manage, can_manage)
 
@@ -53,7 +63,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
         {:ok,
          socket
          |> put_flash(:error, gettext("Project not found."))
-         |> redirect(to: ~p"/projects")}
+         |> redirect(to: ~p"/workspaces")}
     end
   end
 end

@@ -32,7 +32,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
                   <.button variant="primary" class="w-full" phx-click="accept">
                     {gettext("Accept Invitation")}
                   </.button>
-                  <.link navigate={~p"/projects"} class="btn btn-ghost w-full">
+                  <.link navigate={~p"/workspaces"} class="btn btn-ghost w-full">
                     {gettext("Decline")}
                   </.link>
                 </div>

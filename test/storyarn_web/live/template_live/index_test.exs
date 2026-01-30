@@ -65,7 +65,7 @@ defmodule StoryarnWeb.TemplateLive.IndexTest do
       {:error, {:redirect, %{to: path, flash: flash}}} =
         live(conn, ~p"/projects/#{project.id}/templates")
 
-      assert path == "/projects"
+      assert path == "/workspaces"
       assert flash["error"] =~ "access"
     end
   end

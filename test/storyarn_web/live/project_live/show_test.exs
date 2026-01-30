@@ -57,16 +57,17 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
       {:error, {:redirect, %{to: path, flash: flash}}} =
         live(conn, ~p"/projects/#{project.id}")
 
-      assert path == "/projects"
+      assert path == "/workspaces"
       assert flash["error"] =~ "not found"
     end
 
-    test "shows back to projects link", %{conn: conn, user: user} do
+    test "shows back to workspace link", %{conn: conn, user: user} do
       project = project_fixture(user)
+      project = Storyarn.Repo.preload(project, :workspace)
 
       {:ok, _view, html} = live(conn, ~p"/projects/#{project.id}")
 
-      assert html =~ "Back to projects"
+      assert html =~ "Back to #{project.workspace.name}"
     end
   end
 end

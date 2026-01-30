@@ -27,7 +27,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       {:error, {:redirect, %{to: path, flash: flash}}} =
         live(conn, ~p"/projects/#{project.id}/settings")
 
-      assert path == "/projects"
+      assert path == "/workspaces"
       assert flash["error"] =~ "permission"
     end
 
@@ -121,6 +121,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
     test "deletes project", %{conn: conn, user: user} do
       project = project_fixture(user)
+      project = Storyarn.Repo.preload(project, :workspace)
 
       {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}/settings")
 
@@ -129,7 +130,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       |> render_click()
 
       {path, flash} = assert_redirect(view)
-      assert path == "/projects"
+      assert path == "/workspaces/#{project.workspace.slug}"
       assert flash["info"] =~ "deleted"
     end
   end

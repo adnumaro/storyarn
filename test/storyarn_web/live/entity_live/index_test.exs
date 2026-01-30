@@ -86,7 +86,7 @@ defmodule StoryarnWeb.EntityLive.IndexTest do
       {:error, {:redirect, %{to: path, flash: flash}}} =
         live(conn, ~p"/projects/#{project.id}/entities")
 
-      assert path == "/projects"
+      assert path == "/workspaces"
       assert flash["error"] =~ "access"
     end
   end

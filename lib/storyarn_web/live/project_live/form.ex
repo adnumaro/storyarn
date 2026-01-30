@@ -78,6 +78,14 @@ defmodule StoryarnWeb.ProjectLive.Form do
   end
 
   defp create_project(socket, project_params) do
+    # Add workspace_id if workspace is provided
+    project_params =
+      if workspace = socket.assigns[:workspace] do
+        Map.put(project_params, "workspace_id", workspace.id)
+      else
+        project_params
+      end
+
     case Projects.create_project(socket.assigns.current_scope, project_params) do
       {:ok, project} ->
         notify_parent({:saved, project})

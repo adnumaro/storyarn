@@ -33,6 +33,19 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   end
 
   @impl true
+  def handle_params(params, _url, socket) do
+    {:noreply, apply_action(socket, socket.assigns.live_action, params)}
+  end
+
+  defp apply_action(socket, :show, _params) do
+    socket
+  end
+
+  defp apply_action(socket, :new_project, _params) do
+    socket
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <Layouts.app
@@ -66,7 +79,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
               </div>
               <.link
                 :if={@membership.role in ["owner", "admin"]}
-                navigate={~p"/workspaces/#{@workspace.slug}/settings"}
+                navigate={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
                 class="btn btn-ghost btn-sm"
               >
                 <.icon name="hero-cog-6-tooth" class="size-4" />
@@ -92,7 +105,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
 
           <.link
             :if={@membership.role in ["owner", "admin", "member"]}
-            navigate={~p"/projects/new?workspace=#{@workspace.slug}"}
+            patch={~p"/workspaces/#{@workspace.slug}/projects/new"}
             class="btn btn-primary btn-sm"
           >
             <.icon name="hero-plus" class="size-4" />
@@ -109,13 +122,32 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
             <.project_card :for={project_data <- @projects} project={project_data.project} />
           </div>
 
-          <div :if={@projects == []} class="text-center py-12 text-base-content/50">
-            <.icon name="hero-folder-open" class="size-12 mx-auto mb-4" />
-            <p>{gettext("No projects yet")}</p>
-            <p class="text-sm">{gettext("Create your first project to get started")}</p>
-          </div>
+          <.empty_state
+            :if={@projects == []}
+            icon="hero-folder-open"
+            title={gettext("No projects yet")}
+          >
+            {gettext("Create your first project to get started")}
+          </.empty_state>
         </div>
       </div>
+
+      <.modal
+        :if={@live_action == :new_project}
+        id="new-project-modal"
+        show
+        on_cancel={JS.patch(~p"/workspaces/#{@workspace.slug}")}
+      >
+        <.live_component
+          module={StoryarnWeb.ProjectLive.Form}
+          id="new-project-form"
+          current_scope={@current_scope}
+          workspace={@workspace}
+          title={gettext("New Project")}
+          action={:new}
+          navigate={~p"/workspaces/#{@workspace.slug}"}
+        />
+      </.modal>
     </Layouts.app>
     """
   end
@@ -164,6 +196,16 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   @impl true
   def handle_event("search", %{"search" => _query}, socket) do
     # TODO: Implement search
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({StoryarnWeb.ProjectLive.Form, {:saved, project}}, socket) do
+    socket =
+      socket
+      |> put_flash(:info, gettext("Project created successfully."))
+      |> push_navigate(to: ~p"/projects/#{project.id}")
+
     {:noreply, socket}
   end
 end

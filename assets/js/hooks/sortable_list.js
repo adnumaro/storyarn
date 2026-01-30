@@ -24,10 +24,8 @@ export const SortableList = {
       ghostClass: "sortable-ghost",
       chosenClass: "sortable-chosen",
       dragClass: "sortable-drag",
-      onEnd: (event) => {
-        const ids = Array.from(this.el.children).map(
-          (item) => item.dataset.id
-        );
+      onEnd: (_event) => {
+        const ids = Array.from(this.el.children).map((item) => item.dataset.id);
         this.pushEvent("reorder", { ids: ids, group: group });
       },
     });

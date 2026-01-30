@@ -117,8 +117,32 @@ defmodule StoryarnWeb.EntityLive.ShowTest do
       {:error, {:redirect, %{to: path, flash: flash}}} =
         live(conn, ~p"/projects/#{project.id}/entities/#{entity.id}")
 
-      assert path == "/projects"
+      assert path == "/workspaces"
       assert flash["error"] =~ "access"
+    end
+  end
+
+  describe "authorization bypass protection" do
+    setup :register_and_log_in_user
+
+    test "viewer cannot delete entity via direct event", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner)
+      template = template_fixture(project)
+      entity = entity_fixture(project, template)
+      _membership = membership_fixture(project, user, "viewer")
+
+      {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}/entities/#{entity.id}")
+
+      # Send delete event directly (bypassing UI which hides the button)
+      render_click(view, "delete")
+
+      # Should show error flash
+      html = render(view)
+      assert html =~ "permission"
+
+      # Entity should still exist
+      assert Storyarn.Entities.get_entity(project.id, entity.id) != nil
     end
   end
 end
