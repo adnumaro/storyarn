@@ -20,6 +20,7 @@ defmodule StoryarnWeb.TemplateLive.SchemaBuilder do
           </p>
         </div>
         <button
+          :if={@can_edit}
           type="button"
           class="btn btn-primary btn-sm"
           phx-click="add_field"
@@ -71,7 +72,7 @@ defmodule StoryarnWeb.TemplateLive.SchemaBuilder do
               <span :if={field["description"]} class="truncate">{field["description"]}</span>
             </div>
           </div>
-          <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div :if={@can_edit} class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               type="button"
               class="btn btn-ghost btn-xs"
@@ -225,9 +226,13 @@ defmodule StoryarnWeb.TemplateLive.SchemaBuilder do
 
   @impl true
   def update(%{template: template} = assigns, socket) do
+    # Default can_edit to false if not provided
+    can_edit = Map.get(assigns, :can_edit, false)
+
     socket =
       socket
       |> assign(assigns)
+      |> assign(:can_edit, can_edit)
       |> assign(:schema, template.schema || [])
       |> assign(:show_field_modal, false)
       |> assign(:editing_field, nil)
@@ -238,15 +243,19 @@ defmodule StoryarnWeb.TemplateLive.SchemaBuilder do
 
   @impl true
   def handle_event("add_field", _params, socket) do
-    form = build_field_form(%{})
+    if socket.assigns.can_edit do
+      form = build_field_form(%{})
 
-    socket =
-      socket
-      |> assign(:show_field_modal, true)
-      |> assign(:editing_field, nil)
-      |> assign(:field_form, form)
+      socket =
+        socket
+        |> assign(:show_field_modal, true)
+        |> assign(:editing_field, nil)
+        |> assign(:field_form, form)
 
-    {:noreply, socket}
+      {:noreply, socket}
+    else
+      {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
   end
 
   def handle_event("edit_field", %{"name" => name}, socket) do
@@ -282,76 +291,88 @@ defmodule StoryarnWeb.TemplateLive.SchemaBuilder do
   end
 
   def handle_event("save_field", %{"field" => params}, socket) do
-    # Convert options_text to options list
-    field_attrs = params_to_field_attrs(params)
+    if socket.assigns.can_edit do
+      # Convert options_text to options list
+      field_attrs = params_to_field_attrs(params)
 
-    result =
-      if socket.assigns.editing_field do
-        Entities.update_schema_field(
-          socket.assigns.template,
-          socket.assigns.editing_field,
-          field_attrs
-        )
-      else
-        Entities.add_schema_field(socket.assigns.template, field_attrs)
+      result =
+        if socket.assigns.editing_field do
+          Entities.update_schema_field(
+            socket.assigns.template,
+            socket.assigns.editing_field,
+            field_attrs
+          )
+        else
+          Entities.add_schema_field(socket.assigns.template, field_attrs)
+        end
+
+      case result do
+        {:ok, updated_template} ->
+          notify_parent({:schema_changed, updated_template})
+
+          socket =
+            socket
+            |> assign(:template, updated_template)
+            |> assign(:schema, updated_template.schema)
+            |> assign(:show_field_modal, false)
+            |> assign(:editing_field, nil)
+            |> assign(:field_form, nil)
+
+          {:noreply, socket}
+
+        {:error, reason} when is_binary(reason) ->
+          {:noreply, put_flash(socket, :error, reason)}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not save field."))}
       end
-
-    case result do
-      {:ok, updated_template} ->
-        notify_parent({:schema_changed, updated_template})
-
-        socket =
-          socket
-          |> assign(:template, updated_template)
-          |> assign(:schema, updated_template.schema)
-          |> assign(:show_field_modal, false)
-          |> assign(:editing_field, nil)
-          |> assign(:field_form, nil)
-
-        {:noreply, socket}
-
-      {:error, reason} when is_binary(reason) ->
-        {:noreply, put_flash(socket, :error, reason)}
-
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not save field."))}
+    else
+      {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("delete_field", %{"name" => name}, socket) do
-    case Entities.remove_schema_field(socket.assigns.template, name) do
-      {:ok, updated_template} ->
-        notify_parent({:schema_changed, updated_template})
+    if socket.assigns.can_edit do
+      case Entities.remove_schema_field(socket.assigns.template, name) do
+        {:ok, updated_template} ->
+          notify_parent({:schema_changed, updated_template})
 
-        socket =
-          socket
-          |> assign(:template, updated_template)
-          |> assign(:schema, updated_template.schema)
+          socket =
+            socket
+            |> assign(:template, updated_template)
+            |> assign(:schema, updated_template.schema)
 
-        {:noreply, socket}
+          {:noreply, socket}
 
-      {:error, reason} when is_binary(reason) ->
-        {:noreply, put_flash(socket, :error, reason)}
+        {:error, reason} when is_binary(reason) ->
+          {:noreply, put_flash(socket, :error, reason)}
 
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete field."))}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not delete field."))}
+      end
+    else
+      {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("reorder", %{"ids" => ids}, socket) do
-    case Entities.reorder_schema_fields(socket.assigns.template, ids) do
-      {:ok, updated_template} ->
-        notify_parent({:schema_changed, updated_template})
+    if socket.assigns.can_edit do
+      case Entities.reorder_schema_fields(socket.assigns.template, ids) do
+        {:ok, updated_template} ->
+          notify_parent({:schema_changed, updated_template})
 
-        socket =
-          socket
-          |> assign(:template, updated_template)
-          |> assign(:schema, updated_template.schema)
+          socket =
+            socket
+            |> assign(:template, updated_template)
+            |> assign(:schema, updated_template.schema)
 
-        {:noreply, socket}
+          {:noreply, socket}
 
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not reorder fields."))}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not reorder fields."))}
+      end
+    else
+      {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 

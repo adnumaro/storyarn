@@ -192,10 +192,14 @@ defmodule StoryarnWeb.EntityLive.Form do
     entity = Map.get(assigns, :entity, %Entity{})
     changeset = Entities.change_entity(entity)
 
+    # Default can_edit to true for backwards compatibility, but parent should pass it
+    can_edit = Map.get(assigns, :can_edit, true)
+
     socket =
       socket
       |> assign(assigns)
       |> assign(:entity, entity)
+      |> assign(:can_edit, can_edit)
       |> assign(:form, to_form(changeset))
 
     {:ok, socket}
@@ -214,11 +218,17 @@ defmodule StoryarnWeb.EntityLive.Form do
   end
 
   def handle_event("save", %{"entity" => entity_params}, socket) do
-    entity_params = merge_data_params(entity_params)
+    if socket.assigns.can_edit do
+      entity_params = merge_data_params(entity_params)
 
-    case socket.assigns.action do
-      :new -> create_entity(socket, entity_params)
-      :edit -> update_entity(socket, entity_params)
+      case socket.assigns.action do
+        :new -> create_entity(socket, entity_params)
+        :edit -> update_entity(socket, entity_params)
+      end
+    else
+      {:noreply,
+       socket
+       |> Phoenix.LiveView.put_flash(:error, gettext("You don't have permission to perform this action."))}
     end
   end
 

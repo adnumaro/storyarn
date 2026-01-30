@@ -1,5 +1,6 @@
 defmodule StoryarnWeb.EntityLive.Show do
   use StoryarnWeb, :live_view
+  use StoryarnWeb.LiveHelpers.Authorize
 
   alias Storyarn.Entities
   alias Storyarn.Projects
@@ -94,6 +95,7 @@ defmodule StoryarnWeb.EntityLive.Show do
           entity={@entity}
           title={gettext("Edit Entity")}
           action={:edit}
+          can_edit={@can_edit}
           navigate={~p"/projects/#{@project.id}/entities/#{@entity.id}"}
         />
       </.modal>
@@ -155,6 +157,7 @@ defmodule StoryarnWeb.EntityLive.Show do
             socket =
               socket
               |> assign(:project, project)
+              |> assign(:membership, membership)
               |> assign(:entity, entity)
               |> assign(:can_edit, can_edit)
 
@@ -165,7 +168,7 @@ defmodule StoryarnWeb.EntityLive.Show do
         {:ok,
          socket
          |> put_flash(:error, gettext("You don't have access to this project."))
-         |> redirect(to: ~p"/projects")}
+         |> redirect(to: ~p"/workspaces")}
     end
   end
 
@@ -176,15 +179,20 @@ defmodule StoryarnWeb.EntityLive.Show do
 
   @impl true
   def handle_event("delete", _params, socket) do
-    case Entities.delete_entity(socket.assigns.entity) do
-      {:ok, _entity} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, gettext("Entity deleted successfully."))
-         |> push_navigate(to: ~p"/projects/#{socket.assigns.project.id}/entities")}
+    with :ok <- authorize(socket, :edit_content) do
+      case Entities.delete_entity(socket.assigns.entity) do
+        {:ok, _entity} ->
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("Entity deleted successfully."))
+           |> push_navigate(to: ~p"/projects/#{socket.assigns.project.id}/entities")}
 
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete entity."))}
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not delete entity."))}
+      end
+    else
+      {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
