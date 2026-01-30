@@ -23,6 +23,44 @@
 | **Mox**       | Mocking (behaviours-based)              | Used in tests        |
 | **Faker**     | Random test data generation             | Used in tests        |
 
+### Code Conventions (Credo)
+
+The project follows strict Credo rules (`mix credo --strict`):
+
+| Rule | Description |
+|------|-------------|
+| **with → case** | Single-clause `with` statements should use `case` instead |
+| **Nesting depth** | Maximum nesting depth is 2 - extract to private functions |
+| **@moduledoc** | All modules must have `@moduledoc` (use `false` for internal modules) |
+| **Function grouping** | Group all clauses of same function together |
+| **Alphabetical aliases** | `alias Storyarn.{Accounts, Projects, Workspaces}` |
+
+```elixir
+# ❌ Wrong
+with :ok <- authorize(socket, :edit) do
+  perform_action()
+else
+  {:error, :unauthorized} -> handle_error()
+end
+
+# ✅ Correct
+case authorize(socket, :edit) do
+  :ok -> perform_action()
+  {:error, :unauthorized} -> handle_error()
+end
+```
+
+### Image Processing
+
+The project uses **Image** library (libvips bindings) instead of Mogrify/ImageMagick for security reasons:
+- ImageMagick: 638 CVEs historically
+- libvips: 8 CVEs historically
+
+```elixir
+# lib/storyarn/assets/image_processor.ex
+Image.thumbnail!(path, max_width, fit: :contain)
+```
+
 ### Dialyzer Notes
 
 First run builds a PLT (Persistent Lookup Table) and takes several minutes. Subsequent runs are fast.
@@ -182,10 +220,18 @@ end
 - [x] Cloudflare R2 integration (S3-compatible storage)
 - [x] Asset schema and context (CRUD, filters, storage key generation)
 - [x] Storage abstraction (Local for dev, R2 for production)
-- [x] Image processing (thumbnails, resize with Mogrify)
+- [x] Image processing (thumbnails, resize with Image/libvips - migrated from Mogrify for security)
 - [x] Asset upload LiveComponent (drag-and-drop, progress, preview)
 - [x] Unit tests (29 tests)
 - [ ] asset_reference field type integration (deferred to Phase 4)
+
+#### Part 3: Code Quality Refactoring (Complete)
+- [x] Split Accounts context into submodules (facade pattern with defdelegate)
+- [x] Split Workspaces context into submodules
+- [x] Split Projects context into submodules
+- [x] Split Entities context into submodules
+- [x] Fix Credo issues (with→case, nesting depth, @moduledoc)
+- [x] Migrate image processing from Mogrify/ImageMagick to Image/libvips
 
 ### Phase 4: Flow Editor - Core (3 weeks)
 - [ ] Flow schema
@@ -618,39 +664,58 @@ jobs:
 
 ## Phoenix Context Architecture
 
+> **Pattern:** Large contexts use the **facade pattern with `defdelegate`** - the main context file
+> delegates to focused submodules. See CLAUDE.md for details.
+
 ```
 lib/storyarn/
-├── accounts/           # Users, auth, sessions
-│   ├── user.ex
-│   ├── user_token.ex
-│   ├── user_identity.ex      # OAuth identities
-│   ├── user_notifier.ex      # Email notifications
-│   └── accounts.ex
+├── accounts.ex              # Facade (public API with @doc)
+├── accounts/                # Submodules (@moduledoc false)
+│   ├── user.ex              # Schema
+│   ├── user_token.ex        # Schema
+│   ├── user_identity.ex     # Schema (OAuth)
+│   ├── user_notifier.ex     # Email notifications
+│   ├── users.ex             # User lookups
+│   ├── registration.ex      # User registration
+│   ├── oauth.ex             # OAuth identity management
+│   ├── sessions.ex          # Session tokens
+│   ├── magic_links.ex       # Magic link auth
+│   ├── emails.ex            # Email changes
+│   ├── passwords.ex         # Password management
+│   └── profiles.ex          # Profile and sudo mode
 │
-├── workspaces/         # Workspaces, memberships, invitations
-│   ├── workspace.ex
+├── workspaces.ex            # Facade
+├── workspaces/
+│   ├── workspace.ex         # Schema
 │   ├── workspace_membership.ex
 │   ├── workspace_invitation.ex
 │   ├── workspace_notifier.ex
-│   └── workspaces.ex
+│   ├── workspace_crud.ex    # CRUD operations
+│   ├── memberships.ex       # Member management
+│   ├── invitations.ex       # Invitation management
+│   └── slug_generator.ex    # Unique slug generation
 │
-├── projects/           # Projects, memberships, invitations
-│   ├── project.ex
+├── projects.ex              # Facade
+├── projects/
+│   ├── project.ex           # Schema
 │   ├── project_membership.ex
 │   ├── project_invitation.ex
 │   ├── project_notifier.ex
-│   └── projects.ex
+│   ├── project_crud.ex      # CRUD operations
+│   ├── memberships.ex       # Member management
+│   └── invitations.ex       # Invitation management
 │
-├── entities/           # Characters, locations, items, variables
-│   ├── entity.ex
-│   ├── template.ex
-│   ├── character.ex
-│   ├── location.ex
-│   ├── item.ex
-│   ├── variable.ex
-│   └── entities.ex
+├── entities.ex              # Facade
+├── entities/
+│   ├── entity.ex            # Schema
+│   ├── entity_template.ex   # Schema
+│   ├── variable.ex          # Schema
+│   ├── templates.ex         # Template CRUD
+│   ├── template_schema.ex   # Schema field management
+│   ├── entity_crud.ex       # Entity CRUD
+│   └── variables.ex         # Variable CRUD
 │
-├── flows/              # Flows, nodes, connections
+├── flows/                   # Flows, nodes, connections (future)
 │   ├── flow.ex
 │   ├── node.ex
 │   ├── connection.ex
@@ -662,19 +727,21 @@ lib/storyarn/
 │   │   └── jump.ex
 │   └── flows.ex
 │
-├── collaboration/      # Presence, locking
+├── collaboration/           # Presence, locking (future)
 │   ├── presence.ex
 │   ├── lock.ex
 │   └── collaboration.ex
 │
-├── exports/            # Export/import logic
+├── exports/                 # Export/import logic (future)
 │   ├── json_exporter.ex
 │   ├── articy_exporter.ex
 │   ├── importer.ex
 │   └── exports.ex
 │
-└── assets/             # File uploads
+└── assets/                  # File uploads
     ├── asset.ex
+    ├── storage.ex           # Storage abstraction (Local/R2)
+    ├── image_processor.ex   # Image processing (libvips)
     └── assets.ex
 ```
 
