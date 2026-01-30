@@ -89,6 +89,7 @@ defmodule Storyarn.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:mix_unused, "~> 0.4", only: :dev, runtime: false},
 
       # Testing utilities
       {:ex_machina, "~> 2.8", only: :test},
