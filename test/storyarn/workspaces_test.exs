@@ -13,7 +13,7 @@ defmodule Storyarn.WorkspacesTest do
 
       # User should have a default workspace created on registration
       result = Workspaces.list_workspaces(scope)
-      assert length(result) >= 1
+      assert result != []
       assert hd(result).role == "owner"
     end
 
@@ -36,7 +36,7 @@ defmodule Storyarn.WorkspacesTest do
 
       workspaces = Workspaces.list_workspaces_for_user(user)
       # User should have at least the default workspace
-      assert length(workspaces) >= 1
+      assert workspaces != []
     end
 
     test "get_default_workspace/1 returns user's default workspace" do

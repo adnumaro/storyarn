@@ -93,15 +93,17 @@ defmodule StoryarnWeb.Router do
       live "/users/settings/connections", SettingsLive.Connections, :edit
       live "/users/settings/confirm-email/:token", SettingsLive.Profile, :confirm_email
 
+      # Workspace Settings (in unified settings)
+      live "/users/settings/workspaces/:slug/general", SettingsLive.WorkspaceGeneral, :edit
+      live "/users/settings/workspaces/:slug/members", SettingsLive.WorkspaceMembers, :edit
+
       # Workspaces
       live "/workspaces", WorkspaceLive.Index, :index
       live "/workspaces/new", WorkspaceLive.New, :new
       live "/workspaces/:slug", WorkspaceLive.Show, :show
-      live "/workspaces/:slug/settings", WorkspaceLive.Settings, :edit
+      live "/workspaces/:slug/projects/new", WorkspaceLive.Show, :new_project
 
-      # Projects (legacy routes - keep for backwards compatibility)
-      live "/projects", ProjectLive.Dashboard, :index
-      live "/projects/new", ProjectLive.Dashboard, :new
+      # Projects (accessed via workspace, but individual project views use ID)
       live "/projects/:id", ProjectLive.Show, :show
       live "/projects/:id/settings", ProjectLive.Settings, :edit
 
@@ -140,6 +142,9 @@ defmodule StoryarnWeb.Router do
 
       # Project invitations (accessible with or without auth)
       live "/projects/invitations/:token", ProjectLive.Invitation, :show
+
+      # Workspace invitations (accessible with or without auth)
+      live "/workspaces/invitations/:token", WorkspaceLive.Invitation, :show
     end
 
     post "/users/log-in", UserSessionController, :create
