@@ -60,3 +60,6 @@ npm-debug.log
 
 # Local overrides
 *.local
+
+# Claude Code local settings
+.claude/settings.local.json
