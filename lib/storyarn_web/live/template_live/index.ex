@@ -1,5 +1,6 @@
 defmodule StoryarnWeb.TemplateLive.Index do
   use StoryarnWeb, :live_view
+  use StoryarnWeb.LiveHelpers.Authorize
 
   alias Storyarn.Entities
   alias Storyarn.Entities.EntityTemplate
@@ -59,20 +60,14 @@ defmodule StoryarnWeb.TemplateLive.Index do
         </.header>
       </div>
 
-      <div :if={@templates == []} class="text-center py-12">
-        <.icon name="hero-document-duplicate" class="size-12 mx-auto text-base-content/30 mb-4" />
-        <p class="text-base-content/70 mb-4">
-          {gettext("No templates yet.")}
-        </p>
-        <button
-          :if={@can_edit}
-          type="button"
-          class="btn btn-outline"
-          phx-click="create_defaults"
-        >
-          {gettext("Create Default Templates")}
-        </button>
-      </div>
+      <.empty_state :if={@templates == []} icon="hero-document-duplicate">
+        {gettext("No templates yet.")}
+        <:action :if={@can_edit}>
+          <button type="button" class="btn btn-outline" phx-click="create_defaults">
+            {gettext("Create Default Templates")}
+          </button>
+        </:action>
+      </.empty_state>
 
       <div :if={@templates != []} class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <.template_card
@@ -305,6 +300,7 @@ defmodule StoryarnWeb.TemplateLive.Index do
         socket =
           socket
           |> assign(:project, project)
+          |> assign(:membership, membership)
           |> assign(:templates, templates)
           |> assign(:entity_counts, entity_counts)
           |> assign(:can_edit, can_edit)
@@ -317,7 +313,7 @@ defmodule StoryarnWeb.TemplateLive.Index do
         {:ok,
          socket
          |> put_flash(:error, gettext("You don't have access to this project."))
-         |> redirect(to: ~p"/projects")}
+         |> redirect(to: ~p"/workspaces")}
     end
   end
 
@@ -382,41 +378,56 @@ defmodule StoryarnWeb.TemplateLive.Index do
   end
 
   def handle_event("save", %{"entity_template" => params}, socket) do
-    case socket.assigns.live_action do
-      :new -> create_template(socket, params)
-      :edit -> update_template(socket, params)
+    with :ok <- authorize(socket, :edit_content) do
+      case socket.assigns.live_action do
+        :new -> create_template(socket, params)
+        :edit -> update_template(socket, params)
+      end
+    else
+      {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("delete", %{"id" => id}, socket) do
-    template = Entities.get_template!(socket.assigns.project.id, id)
+    with :ok <- authorize(socket, :edit_content) do
+      template = Entities.get_template!(socket.assigns.project.id, id)
 
-    case Entities.delete_template(template) do
-      {:ok, _} ->
-        templates = Entities.list_templates(socket.assigns.project.id)
+      case Entities.delete_template(template) do
+        {:ok, _} ->
+          templates = Entities.list_templates(socket.assigns.project.id)
 
-        {:noreply,
-         socket
-         |> assign(:templates, templates)
-         |> put_flash(:info, gettext("Template deleted successfully."))}
+          {:noreply,
+           socket
+           |> assign(:templates, templates)
+           |> put_flash(:info, gettext("Template deleted successfully."))}
 
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete template."))}
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not delete template."))}
+      end
+    else
+      {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("create_defaults", _params, socket) do
-    case Entities.create_default_templates(socket.assigns.project) do
-      {:ok, _templates} ->
-        templates = Entities.list_templates(socket.assigns.project.id)
+    with :ok <- authorize(socket, :edit_content) do
+      case Entities.create_default_templates(socket.assigns.project) do
+        {:ok, _templates} ->
+          templates = Entities.list_templates(socket.assigns.project.id)
 
-        {:noreply,
-         socket
-         |> assign(:templates, templates)
-         |> put_flash(:info, gettext("Default templates created successfully."))}
+          {:noreply,
+           socket
+           |> assign(:templates, templates)
+           |> put_flash(:info, gettext("Default templates created successfully."))}
 
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not create default templates."))}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not create default templates."))}
+      end
+    else
+      {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 

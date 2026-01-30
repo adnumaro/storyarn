@@ -18,7 +18,7 @@ defmodule StoryarnWeb.EntityLive.Index do
           <:subtitle>
             {gettext("Manage characters, locations, items, and custom entities")}
           </:subtitle>
-          <:actions>
+          <:actions :if={@can_edit}>
             <div class="dropdown dropdown-end">
               <div tabindex="0" role="button" class="btn btn-primary">
                 <.icon name="hero-plus" class="size-4 mr-2" />
@@ -76,12 +76,9 @@ defmodule StoryarnWeb.EntityLive.Index do
         </select>
       </div>
 
-      <div :if={@entities == []} class="text-center py-12">
-        <.icon name="hero-cube-transparent" class="size-12 mx-auto text-base-content/30 mb-4" />
-        <p class="text-base-content/70">
-          {gettext("No entities yet. Create your first entity to get started.")}
-        </p>
-      </div>
+      <.empty_state :if={@entities == []} icon="hero-cube-transparent">
+        {gettext("No entities yet. Create your first entity to get started.")}
+      </.empty_state>
 
       <div :if={@entities != []} class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <.entity_card
@@ -104,6 +101,7 @@ defmodule StoryarnWeb.EntityLive.Index do
           template={@selected_template}
           title={gettext("New Entity")}
           action={:new}
+          can_edit={@can_edit}
           navigate={~p"/projects/#{@project.id}/entities"}
         />
       </.modal>
@@ -146,13 +144,16 @@ defmodule StoryarnWeb.EntityLive.Index do
   @impl true
   def mount(%{"project_id" => project_id}, _session, socket) do
     case Projects.authorize(socket.assigns.current_scope, project_id, :view) do
-      {:ok, project, _membership} ->
+      {:ok, project, membership} ->
         templates = Entities.list_templates(project.id)
         entities = Entities.list_entities(project.id)
+        can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
 
         socket =
           socket
           |> assign(:project, project)
+          |> assign(:membership, membership)
+          |> assign(:can_edit, can_edit)
           |> assign(:templates, templates)
           |> assign(:entities, entities)
           |> assign(:search, "")
@@ -165,7 +166,7 @@ defmodule StoryarnWeb.EntityLive.Index do
         {:ok,
          socket
          |> put_flash(:error, gettext("You don't have access to this project."))
-         |> redirect(to: ~p"/projects")}
+         |> redirect(to: ~p"/workspaces")}
     end
   end
 

@@ -1,5 +1,6 @@
 defmodule StoryarnWeb.VariableLive.Index do
   use StoryarnWeb, :live_view
+  use StoryarnWeb.LiveHelpers.Authorize
 
   alias Storyarn.Entities
   alias Storyarn.Entities.Variable
@@ -28,12 +29,9 @@ defmodule StoryarnWeb.VariableLive.Index do
         </.header>
       </div>
 
-      <div :if={@variables == []} class="text-center py-12">
-        <.icon name="hero-variable" class="size-12 mx-auto text-base-content/30 mb-4" />
-        <p class="text-base-content/70">
-          {gettext("No variables yet. Create your first variable to track game state.")}
-        </p>
-      </div>
+      <.empty_state :if={@variables == []} icon="hero-variable">
+        {gettext("No variables yet. Create your first variable to track game state.")}
+      </.empty_state>
 
       <div :if={@variables != []}>
         <div :for={{category, vars} <- @grouped_variables} class="mb-6">
@@ -214,6 +212,7 @@ defmodule StoryarnWeb.VariableLive.Index do
         socket =
           socket
           |> assign(:project, project)
+          |> assign(:membership, membership)
           |> assign(:variables, variables)
           |> assign(:grouped_variables, group_by_category(variables))
           |> assign(:categories, categories)
@@ -227,7 +226,7 @@ defmodule StoryarnWeb.VariableLive.Index do
         {:ok,
          socket
          |> put_flash(:error, gettext("You don't have access to this project."))
-         |> redirect(to: ~p"/projects")}
+         |> redirect(to: ~p"/workspaces")}
     end
   end
 
@@ -284,29 +283,39 @@ defmodule StoryarnWeb.VariableLive.Index do
   end
 
   def handle_event("save", %{"variable" => params}, socket) do
-    case socket.assigns.live_action do
-      :new -> create_variable(socket, params)
-      :edit -> update_variable(socket, params)
+    with :ok <- authorize(socket, :edit_content) do
+      case socket.assigns.live_action do
+        :new -> create_variable(socket, params)
+        :edit -> update_variable(socket, params)
+      end
+    else
+      {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("delete", %{"id" => id}, socket) do
-    variable = Entities.get_variable!(socket.assigns.project.id, id)
+    with :ok <- authorize(socket, :edit_content) do
+      variable = Entities.get_variable!(socket.assigns.project.id, id)
 
-    case Entities.delete_variable(variable) do
-      {:ok, _} ->
-        variables = Entities.list_variables(socket.assigns.project.id)
-        categories = Entities.list_variable_categories(socket.assigns.project.id)
+      case Entities.delete_variable(variable) do
+        {:ok, _} ->
+          variables = Entities.list_variables(socket.assigns.project.id)
+          categories = Entities.list_variable_categories(socket.assigns.project.id)
 
-        {:noreply,
-         socket
-         |> assign(:variables, variables)
-         |> assign(:grouped_variables, group_by_category(variables))
-         |> assign(:categories, categories)
-         |> put_flash(:info, gettext("Variable deleted successfully."))}
+          {:noreply,
+           socket
+           |> assign(:variables, variables)
+           |> assign(:grouped_variables, group_by_category(variables))
+           |> assign(:categories, categories)
+           |> put_flash(:info, gettext("Variable deleted successfully."))}
 
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete variable."))}
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not delete variable."))}
+      end
+    else
+      {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 

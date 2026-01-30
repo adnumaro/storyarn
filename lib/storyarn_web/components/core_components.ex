@@ -577,6 +577,8 @@ defmodule StoryarnWeb.CoreComponents do
       <.role_badge role="owner" />
       <.role_badge role="editor" />
       <.role_badge role="viewer" />
+      <.role_badge role="admin" />
+      <.role_badge role="member" />
   """
   attr :role, :string, required: true
 
@@ -585,7 +587,9 @@ defmodule StoryarnWeb.CoreComponents do
     <span class={[
       "badge badge-sm",
       @role == "owner" && "badge-primary",
+      @role == "admin" && "badge-secondary",
       @role == "editor" && "badge-secondary",
+      @role == "member" && "badge-accent",
       @role == "viewer" && "badge-ghost"
     ]}>
       {@role}
@@ -745,6 +749,7 @@ defmodule StoryarnWeb.CoreComponents do
   attr :max, :integer, default: 4, doc: "Maximum avatars to show before +N"
   attr :total, :integer, default: nil, doc: "Total count for +N indicator (if greater than slots)"
   attr :class, :string, default: nil
+
   slot :avatar do
     attr :src, :string
     attr :alt, :string
