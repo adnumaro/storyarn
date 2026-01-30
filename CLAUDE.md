@@ -98,10 +98,33 @@ open http://localhost:8025
 ```
 lib/
 ├── storyarn/                    # Domain/Business Logic (Contexts)
-│   ├── accounts/                # Users, auth, sessions, identities
-│   ├── workspaces/              # Workspaces, memberships, invitations
-│   ├── projects/                # Projects, memberships, invitations
-│   ├── entities/                # Templates, entities, variables
+│   ├── accounts.ex              # Facade → accounts/*.ex submodules
+│   ├── accounts/
+│   │   ├── users.ex             # User lookups
+│   │   ├── registration.ex      # User registration
+│   │   ├── oauth.ex             # OAuth identity management
+│   │   ├── sessions.ex          # Session tokens
+│   │   ├── magic_links.ex       # Magic link auth
+│   │   ├── emails.ex            # Email changes
+│   │   ├── passwords.ex         # Password management
+│   │   └── profiles.ex          # Profile and sudo mode
+│   ├── workspaces.ex            # Facade → workspaces/*.ex submodules
+│   ├── workspaces/
+│   │   ├── workspace_crud.ex    # CRUD operations
+│   │   ├── memberships.ex       # Member management
+│   │   ├── invitations.ex       # Invitation management
+│   │   └── slug_generator.ex    # Unique slug generation
+│   ├── projects.ex              # Facade → projects/*.ex submodules
+│   ├── projects/
+│   │   ├── project_crud.ex      # CRUD operations
+│   │   ├── memberships.ex       # Member management
+│   │   └── invitations.ex       # Invitation management
+│   ├── entities.ex              # Facade → entities/*.ex submodules
+│   ├── entities/
+│   │   ├── templates.ex         # Template CRUD
+│   │   ├── template_schema.ex   # Schema field management
+│   │   ├── entity_crud.ex       # Entity CRUD
+│   │   └── variables.ex         # Variable CRUD
 │   ├── assets/                  # File uploads (R2/S3)
 │   ├── application.ex           # OTP supervision tree
 │   ├── repo.ex                  # Ecto repository
@@ -166,6 +189,89 @@ Use `ProjectMembership.can?(role, action)` or `WorkspaceMembership.can?(role, ac
 
 ## Key Conventions
 
+### Context Organization (Facade Pattern)
+
+Large contexts are split into focused submodules using the **facade pattern with `defdelegate`**:
+
+```elixir
+# Main context file (facade) - lib/storyarn/projects.ex
+defmodule Storyarn.Projects do
+  @moduledoc """
+  The Projects context. Delegates to specialized submodules.
+  """
+
+  alias Storyarn.Projects.{Invitations, Memberships, ProjectCrud}
+
+  # Delegations with full documentation
+  @doc "Lists all projects the user has access to."
+  defdelegate list_projects(scope), to: ProjectCrud
+
+  @doc "Creates an invitation and sends the invitation email."
+  defdelegate create_invitation(project, invited_by, email, role \\ "editor"), to: Invitations
+end
+
+# Submodule - lib/storyarn/projects/project_crud.ex
+defmodule Storyarn.Projects.ProjectCrud do
+  @moduledoc false  # Internal module, docs in facade
+
+  def list_projects(scope), do: # implementation
+end
+```
+
+**Guidelines:**
+- Contexts should be **< 200-300 lines** - split if larger
+- Main context file is the **public API** with `@doc` for each function
+- Submodules use `@moduledoc false` (internal implementation)
+- Group related functions in submodules (CRUD, memberships, invitations, etc.)
+
+### Credo Conventions
+
+Follow these Credo rules (enforced by `mix credo --strict`):
+
+```elixir
+# ❌ Wrong - single-clause `with` should use `case`
+with :ok <- authorize(socket, :edit) do
+  perform_action()
+else
+  {:error, :unauthorized} -> handle_error()
+end
+
+# ✅ Correct - use `case` for single conditions
+case authorize(socket, :edit) do
+  :ok -> perform_action()
+  {:error, :unauthorized} -> handle_error()
+end
+
+# ❌ Wrong - nesting depth > 2
+def handle_event("action", _, socket) do
+  if condition1 do
+    if condition2 do
+      case result do  # Too deep!
+        :ok -> ...
+      end
+    end
+  end
+end
+
+# ✅ Correct - extract to private functions
+def handle_event("action", _, socket) do
+  if condition1 do
+    do_action(socket)
+  end
+end
+
+defp do_action(socket) do
+  if condition2 do
+    perform_action(socket)
+  end
+end
+```
+
+**Additional rules:**
+- All modules must have `@moduledoc` (use `@moduledoc false` for internal modules)
+- Group all clauses of same function together (no private functions in between)
+- Alphabetize alias lists: `alias Storyarn.{Accounts, Projects, Workspaces}`
+
 ### Layouts
 
 Three independent layouts (not nested):
@@ -191,9 +297,11 @@ Use the authorization helper for protecting `handle_event` callbacks:
 use StoryarnWeb.LiveHelpers.Authorize
 
 def handle_event("delete", _params, socket) do
-  with :ok <- authorize(socket, :edit_content) do
-    # perform action
-  else
+  case authorize(socket, :edit_content) do
+    :ok ->
+      # perform action
+      {:noreply, socket}
+
     {:error, :unauthorized} ->
       {:noreply, put_flash(socket, :error, gettext("You don't have permission..."))}
   end
