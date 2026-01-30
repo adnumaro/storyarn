@@ -9,7 +9,7 @@ defmodule StoryarnWeb.UserLive.LoginTest do
       {:ok, _lv, html} = live(conn, ~p"/users/log-in")
 
       assert html =~ "Log in"
-      assert html =~ "Register"
+      assert html =~ "Sign up"
       assert html =~ "Log in with email"
     end
   end
@@ -56,7 +56,8 @@ defmodule StoryarnWeb.UserLive.LoginTest do
 
       conn = submit_form(form, conn)
 
-      assert redirected_to(conn) == ~p"/"
+      # User is redirected to their default workspace
+      assert redirected_to(conn) =~ "/workspaces/"
     end
 
     test "redirects to login page with a flash error if credentials are invalid", %{

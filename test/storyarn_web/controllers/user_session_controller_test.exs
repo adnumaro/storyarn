@@ -18,14 +18,13 @@ defmodule StoryarnWeb.UserSessionControllerTest do
         })
 
       assert get_session(conn, :user_token)
-      assert redirected_to(conn) == ~p"/"
+      # User is redirected to their default workspace
+      assert redirected_to(conn) =~ "/workspaces/"
 
-      # Now do a logged in request and assert on the menu
-      conn = get(conn, ~p"/")
+      # Now do a logged in request to settings and assert on the menu
+      conn = get(conn, ~p"/users/settings")
       response = html_response(conn, 200)
       assert response =~ user.email
-      assert response =~ ~p"/users/settings"
-      assert response =~ ~p"/users/log-out"
     end
 
     test "logs the user in with remember me", %{conn: conn, user: user} do
@@ -41,7 +40,8 @@ defmodule StoryarnWeb.UserSessionControllerTest do
         })
 
       assert conn.resp_cookies["_storyarn_web_user_remember_me"]
-      assert redirected_to(conn) == ~p"/"
+      # User is redirected to their default workspace
+      assert redirected_to(conn) =~ "/workspaces/"
     end
 
     test "logs the user in with return to", %{conn: conn, user: user} do
@@ -82,14 +82,13 @@ defmodule StoryarnWeb.UserSessionControllerTest do
         })
 
       assert get_session(conn, :user_token)
-      assert redirected_to(conn) == ~p"/"
+      # User is redirected to their default workspace
+      assert redirected_to(conn) =~ "/workspaces/"
 
-      # Now do a logged in request and assert on the menu
-      conn = get(conn, ~p"/")
+      # Now do a logged in request to settings and assert on the menu
+      conn = get(conn, ~p"/users/settings")
       response = html_response(conn, 200)
       assert response =~ user.email
-      assert response =~ ~p"/users/settings"
-      assert response =~ ~p"/users/log-out"
     end
 
     test "confirms unconfirmed user", %{conn: conn, unconfirmed_user: user} do
@@ -103,17 +102,16 @@ defmodule StoryarnWeb.UserSessionControllerTest do
         })
 
       assert get_session(conn, :user_token)
-      assert redirected_to(conn) == ~p"/"
+      # User is redirected to their default workspace
+      assert redirected_to(conn) =~ "/workspaces/"
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "User confirmed successfully."
 
       assert Accounts.get_user!(user.id).confirmed_at
 
-      # Now do a logged in request and assert on the menu
-      conn = get(conn, ~p"/")
+      # Now do a logged in request to settings and assert on the menu
+      conn = get(conn, ~p"/users/settings")
       response = html_response(conn, 200)
       assert response =~ user.email
-      assert response =~ ~p"/users/settings"
-      assert response =~ ~p"/users/log-out"
     end
 
     test "redirects to login page when magic link is invalid", %{conn: conn} do

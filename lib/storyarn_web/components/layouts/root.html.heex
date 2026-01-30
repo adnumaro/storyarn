@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="Storyarn" suffix=" · Phoenix Framework">
+    <.live_title default="Storyarn" suffix=" · Storyarn">
       {assigns[:page_title]}
     </.live_title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
@@ -12,45 +12,68 @@
     </script>
     <script>
       (() => {
+        const getPreferredTheme = () => {
+          const stored = localStorage.getItem("phx:theme");
+          if (stored) return stored;
+          return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        };
+
         const setTheme = (theme) => {
           if (theme === "system") {
             localStorage.removeItem("phx:theme");
-            document.documentElement.removeAttribute("data-theme");
+            document.documentElement.setAttribute("data-theme", getPreferredTheme());
+          } else if (theme === "toggle") {
+            // Toggle between light and dark
+            const current = document.documentElement.getAttribute("data-theme") || getPreferredTheme();
+            const newTheme = current === "dark" ? "light" : "dark";
+            localStorage.setItem("phx:theme", newTheme);
+            document.documentElement.setAttribute("data-theme", newTheme);
           } else {
             localStorage.setItem("phx:theme", theme);
             document.documentElement.setAttribute("data-theme", theme);
           }
         };
+
+        // Apply theme on page load
         if (!document.documentElement.hasAttribute("data-theme")) {
           setTheme(localStorage.getItem("phx:theme") || "system");
         }
-        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
-        
-        window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+
+        // Listen for storage changes (sync across tabs)
+        window.addEventListener("storage", (e) => {
+          if (e.key === "phx:theme") {
+            setTheme(e.newValue || "system");
+          }
+        });
+
+        // Listen for theme toggle events
+        window.addEventListener("phx:set-theme", (e) => {
+          setTheme(e.target.dataset.phxTheme);
+        });
+
+        // Global keyboard shortcuts
+        document.addEventListener("keydown", (e) => {
+          // Ignore if typing in an input or textarea
+          if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) {
+            return;
+          }
+
+          // D - Toggle dark mode
+          if (e.key === "d" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+            e.preventDefault();
+            setTheme("toggle");
+          }
+
+          // E - Go to preferences/settings
+          if (e.key === "e" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+            e.preventDefault();
+            window.location.href = "/users/settings";
+          }
+        });
       })();
     </script>
   </head>
-  <body>
-    <ul class="menu menu-horizontal w-full relative z-10 flex items-center gap-4 px-4 sm:px-6 lg:px-8 justify-end">
-      <%= if @current_scope do %>
-        <li>
-          {@current_scope.user.email}
-        </li>
-        <li>
-          <.link href={~p"/users/settings"}>Settings</.link>
-        </li>
-        <li>
-          <.link href={~p"/users/log-out"} method="delete">Log out</.link>
-        </li>
-      <% else %>
-        <li>
-          <.link href={~p"/users/register"}>Register</.link>
-        </li>
-        <li>
-          <.link href={~p"/users/log-in"}>Log in</.link>
-        </li>
-      <% end %>
-    </ul>
+  <body class="bg-base-100 antialiased">
     {@inner_content}
   </body>
 </html>

@@ -6,7 +6,7 @@ defmodule StoryarnWeb.UserLive.Confirmation do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.auth flash={@flash} current_scope={@current_scope}>
       <div class="mx-auto max-w-sm">
         <div class="text-center">
           <.header>{gettext("Welcome %{email}", email: @user.email)}</.header>
@@ -74,7 +74,7 @@ defmodule StoryarnWeb.UserLive.Confirmation do
           {gettext("Tip: If you prefer passwords, you can enable them in the user settings.")}
         </p>
       </div>
-    </Layouts.app>
+    </Layouts.auth>
     """
   end
 

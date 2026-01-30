@@ -6,7 +6,7 @@ defmodule StoryarnWeb.ProjectLive.Dashboard do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
       <div class="text-center mb-8">
         <.header>
           {gettext("Projects")}

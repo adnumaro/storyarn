@@ -800,3 +800,8 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "as"
 msgstr ""
+
+#: lib/storyarn/accounts.ex
+#, elixir-autogen, elixir-format
+msgid "%{name}'s workspace"
+msgstr "Workspace de %{name}"

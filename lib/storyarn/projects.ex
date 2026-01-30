@@ -28,6 +28,35 @@ defmodule Storyarn.Projects do
   end
 
   @doc """
+  Lists all projects in a workspace that the user has access to.
+
+  Access is determined by:
+  1. Direct project membership, OR
+  2. Workspace membership (inherited access)
+  """
+  def list_projects_for_workspace(workspace_id, %Scope{user: user}) do
+    # Get projects where user has either:
+    # - Direct project membership
+    # - Workspace membership
+    Project
+    |> where([p], p.workspace_id == ^workspace_id)
+    |> join(:left, [p], pm in ProjectMembership,
+      on: pm.project_id == p.id and pm.user_id == ^user.id
+    )
+    |> join(:left, [p, pm], wm in Storyarn.Workspaces.WorkspaceMembership,
+      on: wm.workspace_id == p.workspace_id and wm.user_id == ^user.id
+    )
+    |> where([p, pm, wm], not is_nil(pm.id) or not is_nil(wm.id))
+    |> select([p, pm, wm], %{
+      project: p,
+      project_role: pm.role,
+      workspace_role: wm.role
+    })
+    |> order_by([p], desc: p.updated_at)
+    |> Repo.all()
+  end
+
+  @doc """
   Gets a single project by ID with authorization check.
 
   Returns `{:ok, project, membership}` if the user has access,

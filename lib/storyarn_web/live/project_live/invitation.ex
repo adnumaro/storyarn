@@ -6,7 +6,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
       <div class="max-w-lg mx-auto text-center py-12">
         <%= if @invitation do %>
           <.icon name="hero-envelope-open" class="size-16 mx-auto text-primary mb-6" />

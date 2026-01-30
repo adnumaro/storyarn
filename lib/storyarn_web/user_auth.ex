@@ -10,6 +10,7 @@ defmodule StoryarnWeb.UserAuth do
 
   alias Storyarn.Accounts
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Workspaces
 
   # Make the remember me cookie valid for 14 days. This should match
   # the session validity setting in UserToken.
@@ -41,7 +42,7 @@ defmodule StoryarnWeb.UserAuth do
 
     conn
     |> create_or_extend_session(user, params)
-    |> redirect(to: user_return_to || signed_in_path(conn))
+    |> redirect(to: user_return_to || signed_in_path(user))
   end
 
   @doc """
@@ -252,6 +253,14 @@ defmodule StoryarnWeb.UserAuth do
     end
   end
 
+  # Loads workspaces for the current user into socket assigns.
+  # This is used to populate the sidebar with the user's workspaces.
+  # Should be called after mount_current_scope.
+  def on_mount(:load_workspaces, _params, _session, socket) do
+    socket = load_workspaces(socket)
+    {:cont, socket}
+  end
+
   defp mount_current_scope(socket, session) do
     Phoenix.Component.assign_new(socket, :current_scope, fn ->
       {user, _} =
@@ -263,10 +272,30 @@ defmodule StoryarnWeb.UserAuth do
     end)
   end
 
+  defp load_workspaces(socket) do
+    if socket.assigns[:current_scope] && socket.assigns.current_scope.user do
+      workspaces = Workspaces.list_workspaces_for_user(socket.assigns.current_scope.user)
+
+      socket
+      |> Phoenix.Component.assign(:workspaces, workspaces)
+      |> Phoenix.Component.assign_new(:current_workspace, fn -> nil end)
+    else
+      socket
+      |> Phoenix.Component.assign(:workspaces, [])
+      |> Phoenix.Component.assign_new(:current_workspace, fn -> nil end)
+    end
+  end
+
   @doc "Returns the path to redirect to after log in."
-  # the user was already logged in, redirect to settings
-  def signed_in_path(%Plug.Conn{assigns: %{current_scope: %Scope{user: %Accounts.User{}}}}) do
-    ~p"/users/settings"
+  def signed_in_path(%Accounts.User{} = user) do
+    case Workspaces.get_default_workspace(user) do
+      %Workspaces.Workspace{slug: slug} -> ~p"/workspaces/#{slug}"
+      nil -> ~p"/workspaces/new"
+    end
+  end
+
+  def signed_in_path(%Plug.Conn{assigns: %{current_scope: %Scope{user: %Accounts.User{} = user}}}) do
+    signed_in_path(user)
   end
 
   def signed_in_path(_), do: ~p"/"

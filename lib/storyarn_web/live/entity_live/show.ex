@@ -7,7 +7,7 @@ defmodule StoryarnWeb.EntityLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
       <div class="mb-8">
         <.back navigate={~p"/projects/#{@project.id}/entities"}>{gettext("Back to entities")}</.back>
       </div>

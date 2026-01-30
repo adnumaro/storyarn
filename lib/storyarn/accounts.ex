@@ -4,9 +4,11 @@ defmodule Storyarn.Accounts do
   """
 
   import Ecto.Query, warn: false
-  alias Storyarn.Repo
+  use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Accounts.{User, UserIdentity, UserNotifier, UserToken}
+  alias Storyarn.Repo
+  alias Storyarn.Workspaces
 
   ## Database getters
 
@@ -63,7 +65,9 @@ defmodule Storyarn.Accounts do
   ## User registration
 
   @doc """
-  Registers a user.
+  Registers a user and creates a default workspace.
+
+  The default workspace is named "{name}'s workspace" (localized).
 
   ## Examples
 
@@ -75,9 +79,40 @@ defmodule Storyarn.Accounts do
 
   """
   def register_user(attrs) do
+    Repo.transact(fn ->
+      with {:ok, user} <- insert_user(attrs),
+           {:ok, _workspace} <- create_default_workspace(user) do
+        {:ok, user}
+      end
+    end)
+  end
+
+  defp insert_user(attrs) do
     %User{}
     |> User.email_changeset(attrs)
     |> Repo.insert()
+  end
+
+  defp create_default_workspace(user) do
+    name = default_workspace_name(user)
+    slug = Workspaces.generate_slug(name)
+
+    Workspaces.create_workspace_with_owner(user, %{
+      name: name,
+      slug: slug
+    })
+  end
+
+  defp default_workspace_name(user) do
+    display_name = user.display_name || extract_name_from_email(user.email)
+    gettext("%{name}'s workspace", name: display_name)
+  end
+
+  defp extract_name_from_email(email) do
+    email
+    |> String.split("@")
+    |> List.first()
+    |> String.capitalize()
   end
 
   ## OAuth

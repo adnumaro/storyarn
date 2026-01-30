@@ -78,11 +78,20 @@ defmodule StoryarnWeb.Router do
     pipe_through [:browser, :require_authenticated_user]
 
     live_session :require_authenticated_user,
-      on_mount: [{StoryarnWeb.UserAuth, :require_authenticated}] do
+      on_mount: [
+        {StoryarnWeb.UserAuth, :require_authenticated},
+        {StoryarnWeb.UserAuth, :load_workspaces}
+      ] do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
 
-      # Projects
+      # Workspaces
+      live "/workspaces", WorkspaceLive.Index, :index
+      live "/workspaces/new", WorkspaceLive.New, :new
+      live "/workspaces/:slug", WorkspaceLive.Show, :show
+      live "/workspaces/:slug/settings", WorkspaceLive.Settings, :edit
+
+      # Projects (legacy routes - keep for backwards compatibility)
       live "/projects", ProjectLive.Dashboard, :index
       live "/projects/new", ProjectLive.Dashboard, :new
       live "/projects/:id", ProjectLive.Show, :show
@@ -113,7 +122,10 @@ defmodule StoryarnWeb.Router do
     pipe_through [:browser]
 
     live_session :current_user,
-      on_mount: [{StoryarnWeb.UserAuth, :mount_current_scope}] do
+      on_mount: [
+        {StoryarnWeb.UserAuth, :mount_current_scope},
+        {StoryarnWeb.UserAuth, :load_workspaces}
+      ] do
       live "/users/register", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
       live "/users/log-in/:token", UserLive.Confirmation, :new

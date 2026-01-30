@@ -6,7 +6,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
       <div class="mb-8">
         <.back navigate={~p"/projects"}>{gettext("Back to projects")}</.back>
       </div>

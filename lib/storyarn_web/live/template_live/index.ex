@@ -9,7 +9,7 @@ defmodule StoryarnWeb.TemplateLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
       <%= if @live_action == :schema do %>
         <.schema_view
           template={@template}
