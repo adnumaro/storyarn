@@ -1,4 +1,6 @@
 defmodule StoryarnWeb.ProjectLive.Invitation do
+  @moduledoc false
+
   use StoryarnWeb, :live_view
 
   alias Storyarn.Projects

@@ -1,4 +1,6 @@
 defmodule StoryarnWeb.UserLive.Confirmation do
+  @moduledoc false
+
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts

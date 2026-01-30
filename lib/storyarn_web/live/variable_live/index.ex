@@ -1,4 +1,6 @@
 defmodule StoryarnWeb.VariableLive.Index do
+  @moduledoc false
+
   use StoryarnWeb, :live_view
   use StoryarnWeb.LiveHelpers.Authorize
 

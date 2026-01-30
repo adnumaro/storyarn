@@ -1,4 +1,6 @@
 defmodule StoryarnWeb.EntityLive.Index do
+  @moduledoc false
+
   use StoryarnWeb, :live_view
 
   alias Storyarn.Entities

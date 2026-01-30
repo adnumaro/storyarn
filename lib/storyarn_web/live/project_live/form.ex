@@ -1,4 +1,6 @@
 defmodule StoryarnWeb.ProjectLive.Form do
+  @moduledoc false
+
   use StoryarnWeb, :live_component
 
   alias Storyarn.Projects
