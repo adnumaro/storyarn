@@ -1,12 +1,21 @@
 defmodule StoryarnWeb.ProjectLive.Settings do
   use StoryarnWeb, :live_view
+  use StoryarnWeb.LiveHelpers.Authorize
+
+  import StoryarnWeb.MemberComponents
 
   alias Storyarn.Projects
+  alias Storyarn.Repo
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
+    <Layouts.app
+      flash={@flash}
+      current_scope={@current_scope}
+      workspaces={@workspaces}
+      current_workspace={@current_workspace}
+    >
       <div class="mb-8">
         <.back navigate={~p"/projects/#{@project.id}"}>{gettext("Back to project")}</.back>
       </div>
@@ -58,6 +67,8 @@ defmodule StoryarnWeb.ProjectLive.Settings do
               :for={member <- @members}
               member={member}
               current_user_id={@current_scope.user.id}
+              can_manage={true}
+              on_remove="remove_member"
             />
           </div>
 
@@ -98,7 +109,11 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         <section :if={@pending_invitations != []}>
           <h3 class="text-lg font-semibold mb-4">{gettext("Pending Invitations")}</h3>
           <div class="space-y-2">
-            <.invitation_row :for={invitation <- @pending_invitations} invitation={invitation} />
+            <.invitation_row
+              :for={invitation <- @pending_invitations}
+              invitation={invitation}
+              on_revoke="revoke_invitation"
+            />
           </div>
         </section>
 
@@ -127,83 +142,11 @@ defmodule StoryarnWeb.ProjectLive.Settings do
     """
   end
 
-  attr :member, :map, required: true
-  attr :current_user_id, :integer, required: true
-
-  defp member_row(assigns) do
-    ~H"""
-    <div class="flex items-center justify-between p-3 rounded-lg border border-base-300">
-      <div class="flex items-center gap-3">
-        <div class="avatar placeholder">
-          <div class="bg-neutral text-neutral-content rounded-full size-10">
-            <span class="text-sm">{get_initials(@member.user)}</span>
-          </div>
-        </div>
-        <div>
-          <p class="font-medium">{@member.user.display_name || @member.user.email}</p>
-          <p :if={@member.user.display_name} class="text-sm text-base-content/70">
-            {@member.user.email}
-          </p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <.role_badge role={@member.role} />
-        <%= if @member.role != "owner" and @member.user.id != @current_user_id do %>
-          <.link
-            phx-click="remove_member"
-            phx-value-id={@member.id}
-            class="btn btn-ghost btn-sm text-error"
-            data-confirm={gettext("Are you sure you want to remove this member?")}
-          >
-            <.icon name="hero-x-mark" class="size-4" />
-          </.link>
-        <% end %>
-      </div>
-    </div>
-    """
-  end
-
-  attr :invitation, :map, required: true
-
-  defp invitation_row(assigns) do
-    ~H"""
-    <div class="flex items-center justify-between p-3 rounded-lg border border-base-300 bg-base-200/50">
-      <div>
-        <p class="font-medium">{@invitation.email}</p>
-        <p class="text-xs text-base-content/50">
-          {gettext("Invited by")} {@invitation.invited_by.display_name || @invitation.invited_by.email}
-        </p>
-      </div>
-      <div class="flex items-center gap-2">
-        <.role_badge role={@invitation.role} />
-        <span class="badge badge-ghost badge-sm">{gettext("Pending")}</span>
-        <.link
-          phx-click="revoke_invitation"
-          phx-value-id={@invitation.id}
-          class="btn btn-ghost btn-sm text-error"
-          data-confirm={gettext("Are you sure you want to revoke this invitation?")}
-        >
-          <.icon name="hero-x-mark" class="size-4" />
-        </.link>
-      </div>
-    </div>
-    """
-  end
-
-  defp get_initials(user) do
-    name = user.display_name || user.email
-
-    name
-    |> String.split(~r/[@\s]/)
-    |> Enum.take(2)
-    |> Enum.map_join(&String.first/1)
-    |> String.upcase()
-  end
-
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     case Projects.authorize(socket.assigns.current_scope, id, :manage_project) do
-      {:ok, project, _membership} ->
+      {:ok, project, membership} ->
+        project = Repo.preload(project, :workspace)
         members = Projects.list_project_members(id)
         pending_invitations = Projects.list_pending_invitations(id)
 
@@ -213,6 +156,8 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         socket =
           socket
           |> assign(:project, project)
+          |> assign(:membership, membership)
+          |> assign(:current_workspace, project.workspace)
           |> assign(:members, members)
           |> assign(:pending_invitations, pending_invitations)
           |> assign(:project_form, to_form(project_changeset))
@@ -224,13 +169,13 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         {:ok,
          socket
          |> put_flash(:error, gettext("Project not found."))
-         |> redirect(to: ~p"/projects")}
+         |> redirect(to: ~p"/workspaces")}
 
       {:error, :unauthorized} ->
         {:ok,
          socket
          |> put_flash(:error, gettext("You don't have permission to manage this project."))
-         |> redirect(to: ~p"/projects")}
+         |> redirect(to: ~p"/workspaces")}
     end
   end
 
@@ -254,112 +199,139 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   end
 
   def handle_event("update_project", %{"project" => project_params}, socket) do
-    case Projects.update_project(socket.assigns.project, project_params) do
-      {:ok, project} ->
-        project_changeset = Projects.change_project(project)
+    with :ok <- authorize(socket, :manage_project) do
+      case Projects.update_project(socket.assigns.project, project_params) do
+        {:ok, project} ->
+          project_changeset = Projects.change_project(project)
 
-        socket =
-          socket
-          |> assign(:project, project)
-          |> assign(:project_form, to_form(project_changeset))
-          |> put_flash(:info, gettext("Project updated successfully."))
+          socket =
+            socket
+            |> assign(:project, project)
+            |> assign(:project_form, to_form(project_changeset))
+            |> put_flash(:info, gettext("Project updated successfully."))
 
-        {:noreply, socket}
+          {:noreply, socket}
 
-      {:error, changeset} ->
-        {:noreply, assign(socket, :project_form, to_form(changeset))}
+        {:error, changeset} ->
+          {:noreply, assign(socket, :project_form, to_form(changeset))}
+      end
+    else
+      {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("send_invitation", %{"invite" => invite_params}, socket) do
-    case Projects.create_invitation(
-           socket.assigns.project,
-           socket.assigns.current_scope.user,
-           invite_params["email"],
-           invite_params["role"]
-         ) do
-      {:ok, _invitation} ->
+    with :ok <- authorize(socket, :manage_members) do
+      case Projects.create_invitation(
+             socket.assigns.project,
+             socket.assigns.current_scope.user,
+             invite_params["email"],
+             invite_params["role"]
+           ) do
+        {:ok, _invitation} ->
+          pending_invitations = Projects.list_pending_invitations(socket.assigns.project.id)
+
+          socket =
+            socket
+            |> assign(:pending_invitations, pending_invitations)
+            |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
+            |> put_flash(:info, gettext("Invitation sent successfully."))
+
+          {:noreply, socket}
+
+        {:error, :already_member} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("This email is already a member of the project."))}
+
+        {:error, :already_invited} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("An invitation has already been sent to this email."))}
+
+        {:error, :rate_limited} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Too many invitations. Please try again later."))}
+
+        {:error, _changeset} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Failed to send invitation. Please try again."))}
+      end
+    else
+      {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  def handle_event("revoke_invitation", %{"id" => id}, socket) do
+    with :ok <- authorize(socket, :manage_members) do
+      invitation = Enum.find(socket.assigns.pending_invitations, &(to_string(&1.id) == id))
+
+      if invitation do
+        {:ok, _} = Projects.revoke_invitation(invitation)
         pending_invitations = Projects.list_pending_invitations(socket.assigns.project.id)
 
         socket =
           socket
           |> assign(:pending_invitations, pending_invitations)
-          |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
-          |> put_flash(:info, gettext("Invitation sent successfully."))
+          |> put_flash(:info, gettext("Invitation revoked."))
 
         {:noreply, socket}
-
-      {:error, :already_member} ->
-        {:noreply,
-         put_flash(socket, :error, gettext("This email is already a member of the project."))}
-
-      {:error, :already_invited} ->
-        {:noreply,
-         put_flash(socket, :error, gettext("An invitation has already been sent to this email."))}
-
-      {:error, :rate_limited} ->
-        {:noreply,
-         put_flash(socket, :error, gettext("Too many invitations. Please try again later."))}
-
-      {:error, _changeset} ->
-        {:noreply,
-         put_flash(socket, :error, gettext("Failed to send invitation. Please try again."))}
-    end
-  end
-
-  def handle_event("revoke_invitation", %{"id" => id}, socket) do
-    invitation = Enum.find(socket.assigns.pending_invitations, &(to_string(&1.id) == id))
-
-    if invitation do
-      {:ok, _} = Projects.revoke_invitation(invitation)
-      pending_invitations = Projects.list_pending_invitations(socket.assigns.project.id)
-
-      socket =
-        socket
-        |> assign(:pending_invitations, pending_invitations)
-        |> put_flash(:info, gettext("Invitation revoked."))
-
-      {:noreply, socket}
+      else
+        {:noreply, put_flash(socket, :error, gettext("Invitation not found."))}
+      end
     else
-      {:noreply, put_flash(socket, :error, gettext("Invitation not found."))}
+      {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("remove_member", %{"id" => id}, socket) do
-    member = Enum.find(socket.assigns.members, &(to_string(&1.id) == id))
+    with :ok <- authorize(socket, :manage_members) do
+      member = Enum.find(socket.assigns.members, &(to_string(&1.id) == id))
 
-    if member && member.role != "owner" do
-      case Projects.remove_member(member) do
-        {:ok, _} ->
-          members = Projects.list_project_members(socket.assigns.project.id)
+      if member && member.role != "owner" do
+        case Projects.remove_member(member) do
+          {:ok, _} ->
+            members = Projects.list_project_members(socket.assigns.project.id)
 
-          socket =
-            socket
-            |> assign(:members, members)
-            |> put_flash(:info, gettext("Member removed."))
+            socket =
+              socket
+              |> assign(:members, members)
+              |> put_flash(:info, gettext("Member removed."))
 
-          {:noreply, socket}
+            {:noreply, socket}
 
-        {:error, :cannot_remove_owner} ->
-          {:noreply, put_flash(socket, :error, gettext("Cannot remove the project owner."))}
+          {:error, :cannot_remove_owner} ->
+            {:noreply, put_flash(socket, :error, gettext("Cannot remove the project owner."))}
+        end
+      else
+        {:noreply, put_flash(socket, :error, gettext("Member not found."))}
       end
     else
-      {:noreply, put_flash(socket, :error, gettext("Member not found."))}
+      {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("delete_project", _params, socket) do
-    case Projects.delete_project(socket.assigns.project) do
-      {:ok, _} ->
-        socket =
-          socket
-          |> put_flash(:info, gettext("Project deleted."))
-          |> push_navigate(to: ~p"/projects")
+    with :ok <- authorize(socket, :manage_project) do
+      workspace = socket.assigns.current_workspace
 
-        {:noreply, socket}
+      case Projects.delete_project(socket.assigns.project) do
+        {:ok, _} ->
+          socket =
+            socket
+            |> put_flash(:info, gettext("Project deleted."))
+            |> push_navigate(to: ~p"/workspaces/#{workspace.slug}")
 
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Failed to delete project."))}
+          {:noreply, socket}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Failed to delete project."))}
+      end
+    else
+      {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 end
