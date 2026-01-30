@@ -33,7 +33,9 @@ config :storyarn, StoryarnWeb.Endpoint,
     layout: false
   ],
   pubsub_server: Storyarn.PubSub,
-  live_view: [signing_salt: "ox8oI2KY"]
+  live_view: [signing_salt: "ox8oI2KY"],
+  # Session cookie signing salt - override in production via SESSION_SIGNING_SALT env var
+  session_signing_salt: "Fnke9Hmj"
 
 # Configures the mailer
 # Development uses Mailpit (SMTP on localhost:1025, UI on localhost:8025)
