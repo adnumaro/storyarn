@@ -1062,8 +1062,8 @@ Todos disponibles en Heroicons:
 ### QA
 - [ ] Test manual de navegación completa
 - [x] Verificar responsive (mobile sidebar collapse) - implementado con daisyUI drawer
-- [ ] Actualizar E2E tests
-- [ ] Verificar i18n en nuevos componentes
+- [x] Actualizar E2E tests - No se requieren cambios (tests existentes son de project settings)
+- [x] Verificar i18n en nuevos componentes - Todos los strings usan gettext()
 
 ---
 
