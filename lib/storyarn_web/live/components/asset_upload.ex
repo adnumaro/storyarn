@@ -86,7 +86,11 @@ defmodule StoryarnWeb.Components.AssetUpload do
           >
             {gettext("Cancel")}
           </button>
-          <button type="submit" class="btn btn-primary btn-sm" disabled={not upload_valid?(@uploads.asset)}>
+          <button
+            type="submit"
+            class="btn btn-primary btn-sm"
+            disabled={not upload_valid?(@uploads.asset)}
+          >
             {gettext("Upload")}
           </button>
         </div>
@@ -136,7 +140,10 @@ defmodule StoryarnWeb.Components.AssetUpload do
         <div class="mt-1">
           <progress class="progress progress-primary w-full h-1" value={@entry.progress} max="100" />
         </div>
-        <p :for={err <- Phoenix.Component.upload_errors(@uploads, @entry)} class="text-xs text-error mt-1">
+        <p
+          :for={err <- Phoenix.Component.upload_errors(@uploads, @entry)}
+          class="text-xs text-error mt-1"
+        >
           {error_to_string(err)}
         </p>
       </div>
@@ -274,7 +281,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
   end
 
   defp upload_valid?(upload) do
-    upload.entries != [] and Enum.all?(upload.entries, &(&1.valid?))
+    upload.entries != [] and Enum.all?(upload.entries, & &1.valid?)
   end
 
   defp format_size(bytes) when bytes < 1024, do: "#{bytes} B"

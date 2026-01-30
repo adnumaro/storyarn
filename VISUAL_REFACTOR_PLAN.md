@@ -1013,17 +1013,19 @@ Todos disponibles en Heroicons:
 - [x] Crear `WorkspaceLive.Settings`
 - [x] Crear `WorkspaceLive.Index` (redirect to default)
 
-### Fase 2.5: Settings (estilo Linear)
-- [ ] Crear componente `settings_layout/1`
-- [ ] Crear `SettingsLive.Profile`
-- [ ] Crear `SettingsLive.Preferences`
-- [ ] Crear `SettingsLive.Notifications`
-- [ ] Crear `SettingsLive.Security`
-- [ ] Crear `SettingsLive.ConnectedAccounts`
-- [ ] Crear `SettingsLive.Workspace` (general settings)
-- [ ] Crear `SettingsLive.WorkspaceMembers`
+### Fase 2.5: Settings (estilo Linear) ✅
+- [x] Crear componente `settings_layout/1`
+- [x] Crear `SettingsLive.Profile` (display name, email)
+- [ ] Crear `SettingsLive.Preferences` (futuro: theme, language)
+- [ ] Crear `SettingsLive.Notifications` (futuro: email preferences)
+- [x] Crear `SettingsLive.Security` (password management)
+- [x] Crear `SettingsLive.Connections` (OAuth: GitHub, Google, Discord)
+- [ ] Crear `SettingsLive.Workspace` (futuro: general settings, admin only)
+- [ ] Crear `SettingsLive.WorkspaceMembers` (futuro: members, admin only)
 - [x] Implementar keyboard shortcuts (E, D) - ✅ Implementado en root.html.heex
-- [ ] Migrar funcionalidad de User Settings actual
+- [x] Migrar funcionalidad de User Settings actual
+- [x] Eliminar old UserLive.Settings (single-page)
+- [x] Actualizar tests para multi-page structure
 
 ### Fase 3: Tema ✅
 - [x] Configurar soporte light/dark mode (ya existía, mejorado)

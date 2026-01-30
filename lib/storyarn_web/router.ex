@@ -82,8 +82,11 @@ defmodule StoryarnWeb.Router do
         {StoryarnWeb.UserAuth, :require_authenticated},
         {StoryarnWeb.UserAuth, :load_workspaces}
       ] do
-      live "/users/settings", UserLive.Settings, :edit
-      live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
+      # User Settings (Linear-style)
+      live "/users/settings", SettingsLive.Profile, :edit
+      live "/users/settings/security", SettingsLive.Security, :edit
+      live "/users/settings/connections", SettingsLive.Connections, :edit
+      live "/users/settings/confirm-email/:token", SettingsLive.Profile, :confirm_email
 
       # Workspaces
       live "/workspaces", WorkspaceLive.Index, :index

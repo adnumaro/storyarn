@@ -5,15 +5,15 @@ defmodule StoryarnWeb.UserLive.SettingsTest do
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
 
-  describe "Settings page" do
-    test "renders settings page", %{conn: conn} do
+  describe "Profile settings page" do
+    test "renders profile settings page", %{conn: conn} do
       {:ok, _lv, html} =
         conn
         |> log_in_user(user_fixture())
         |> live(~p"/users/settings")
 
-      assert html =~ "Change Email"
-      assert html =~ "Save Password"
+      assert html =~ "Profile"
+      assert html =~ "Email Address"
     end
 
     test "redirects if user is not logged in", %{conn: conn} do
@@ -34,6 +34,48 @@ defmodule StoryarnWeb.UserLive.SettingsTest do
         |> follow_redirect(conn, ~p"/users/log-in")
 
       assert conn.resp_body =~ "You must re-authenticate to access this page."
+    end
+  end
+
+  describe "Security settings page" do
+    test "renders security settings page", %{conn: conn} do
+      {:ok, _lv, html} =
+        conn
+        |> log_in_user(user_fixture())
+        |> live(~p"/users/settings/security")
+
+      assert html =~ "Security"
+      assert html =~ "Change Password"
+    end
+
+    test "redirects if user is not logged in", %{conn: conn} do
+      assert {:error, redirect} = live(conn, ~p"/users/settings/security")
+
+      assert {:redirect, %{to: path, flash: flash}} = redirect
+      assert path == ~p"/users/log-in"
+      assert %{"error" => "You must log in to access this page."} = flash
+    end
+  end
+
+  describe "Connections settings page" do
+    test "renders connections settings page", %{conn: conn} do
+      {:ok, _lv, html} =
+        conn
+        |> log_in_user(user_fixture())
+        |> live(~p"/users/settings/connections")
+
+      assert html =~ "Connected Accounts"
+      assert html =~ "GitHub"
+      assert html =~ "Google"
+      assert html =~ "Discord"
+    end
+
+    test "redirects if user is not logged in", %{conn: conn} do
+      assert {:error, redirect} = live(conn, ~p"/users/settings/connections")
+
+      assert {:redirect, %{to: path, flash: flash}} = redirect
+      assert path == ~p"/users/log-in"
+      assert %{"error" => "You must log in to access this page."} = flash
     end
   end
 
@@ -70,7 +112,7 @@ defmodule StoryarnWeb.UserLive.SettingsTest do
           "user" => %{"email" => "with spaces"}
         })
 
-      assert result =~ "Change Email"
+      assert result =~ "Email Address"
       assert result =~ "must have the @ sign and no spaces"
     end
 
@@ -84,7 +126,7 @@ defmodule StoryarnWeb.UserLive.SettingsTest do
         })
         |> render_submit()
 
-      assert result =~ "Change Email"
+      assert result =~ "Email Address"
       assert result =~ "did not change"
     end
   end
@@ -98,7 +140,7 @@ defmodule StoryarnWeb.UserLive.SettingsTest do
     test "updates the user password", %{conn: conn, user: user} do
       new_password = valid_user_password()
 
-      {:ok, lv, _html} = live(conn, ~p"/users/settings")
+      {:ok, lv, _html} = live(conn, ~p"/users/settings/security")
 
       form =
         form(lv, "#password_form", %{
@@ -113,7 +155,7 @@ defmodule StoryarnWeb.UserLive.SettingsTest do
 
       new_password_conn = follow_trigger_action(form, conn)
 
-      assert redirected_to(new_password_conn) == ~p"/users/settings"
+      assert redirected_to(new_password_conn) == ~p"/users/settings/security"
 
       assert get_session(new_password_conn, :user_token) != get_session(conn, :user_token)
 
@@ -124,7 +166,7 @@ defmodule StoryarnWeb.UserLive.SettingsTest do
     end
 
     test "renders errors with invalid data (phx-change)", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, ~p"/users/settings")
+      {:ok, lv, _html} = live(conn, ~p"/users/settings/security")
 
       result =
         lv
@@ -136,13 +178,13 @@ defmodule StoryarnWeb.UserLive.SettingsTest do
           }
         })
 
-      assert result =~ "Save Password"
+      assert result =~ "Update Password"
       assert result =~ "should be at least 12 character(s)"
       assert result =~ "does not match password"
     end
 
     test "renders errors with invalid data (phx-submit)", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, ~p"/users/settings")
+      {:ok, lv, _html} = live(conn, ~p"/users/settings/security")
 
       result =
         lv
@@ -154,7 +196,7 @@ defmodule StoryarnWeb.UserLive.SettingsTest do
         })
         |> render_submit()
 
-      assert result =~ "Save Password"
+      assert result =~ "Update Password"
       assert result =~ "should be at least 12 character(s)"
       assert result =~ "does not match password"
     end
