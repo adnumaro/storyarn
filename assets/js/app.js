@@ -28,6 +28,9 @@ import topbar from "topbar";
 // Custom hooks
 import { SortableList } from "./hooks/sortable_list";
 
+// Theme management (keyboard shortcuts, cross-tab sync)
+import "./theme";
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,

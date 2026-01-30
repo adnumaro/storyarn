@@ -3,14 +3,19 @@ defmodule StoryarnWeb.Router do
 
   import StoryarnWeb.UserAuth
 
-  # Content Security Policy - adjust as needed for external resources
+  # Content Security Policy
+  # Uses hash for the minimal inline theme script to avoid FOUC
+  # 'unsafe-inline' kept for styles (Tailwind dynamic classes)
+  @csp_theme_hash "sha256-6CXaPRQcvY3uuxgDq5301jz8AUYHWysV03bGOw7axQk="
   @csp_policy "default-src 'self'; " <>
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " <>
+                "script-src 'self' '#{@csp_theme_hash}'; " <>
                 "style-src 'self' 'unsafe-inline'; " <>
-                "img-src 'self' data: blob:; " <>
+                "img-src 'self' data: blob: https:; " <>
                 "font-src 'self' data:; " <>
                 "connect-src 'self' ws: wss:; " <>
-                "frame-ancestors 'self'"
+                "frame-ancestors 'self'; " <>
+                "base-uri 'self'; " <>
+                "form-action 'self'"
 
   pipeline :browser do
     plug :accepts, ["html"]
