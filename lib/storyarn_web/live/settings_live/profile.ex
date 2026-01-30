@@ -4,8 +4,6 @@ defmodule StoryarnWeb.SettingsLive.Profile do
   """
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.Components.SettingsLayout
-
   alias Storyarn.Accounts
 
   on_mount {StoryarnWeb.UserAuth, :require_sudo_mode}
@@ -44,68 +42,71 @@ defmodule StoryarnWeb.SettingsLive.Profile do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
-      <.settings_layout current_path={@current_path} current_scope={@current_scope}>
-        <:title>{gettext("Profile")}</:title>
-        <:subtitle>{gettext("Manage your personal information and email address")}</:subtitle>
+    <Layouts.settings
+      flash={@flash}
+      current_scope={@current_scope}
+      workspaces={@workspaces}
+      current_path={@current_path}
+    >
+      <:title>{gettext("Profile")}</:title>
+      <:subtitle>{gettext("Manage your personal information and email address")}</:subtitle>
 
-        <div class="space-y-8">
-          <%!-- Profile Section --%>
-          <section>
-            <h3 class="text-lg font-semibold mb-4">{gettext("Personal Information")}</h3>
-            <.form
-              for={@profile_form}
-              id="profile_form"
-              phx-submit="update_profile"
-              phx-change="validate_profile"
-              class="space-y-4"
-            >
-              <.input
-                field={@profile_form[:display_name]}
-                type="text"
-                label={gettext("Display Name")}
-                placeholder={gettext("How you want to be called")}
-              />
-              <div class="flex justify-end">
-                <.button variant="primary" phx-disable-with={gettext("Saving...")}>
-                  {gettext("Save Profile")}
-                </.button>
-              </div>
-            </.form>
-          </section>
+      <div class="space-y-8">
+        <%!-- Profile Section --%>
+        <section>
+          <h3 class="text-lg font-semibold mb-4">{gettext("Personal Information")}</h3>
+          <.form
+            for={@profile_form}
+            id="profile_form"
+            phx-submit="update_profile"
+            phx-change="validate_profile"
+            class="space-y-4"
+          >
+            <.input
+              field={@profile_form[:display_name]}
+              type="text"
+              label={gettext("Display Name")}
+              placeholder={gettext("How you want to be called")}
+            />
+            <div class="flex justify-end">
+              <.button variant="primary" phx-disable-with={gettext("Saving...")}>
+                {gettext("Save Profile")}
+              </.button>
+            </div>
+          </.form>
+        </section>
 
-          <div class="divider" />
+        <div class="divider" />
 
-          <%!-- Email Section --%>
-          <section>
-            <h3 class="text-lg font-semibold mb-4">{gettext("Email Address")}</h3>
-            <p class="text-sm text-base-content/70 mb-4">
-              {gettext("Your email is used for login and notifications.")}
-            </p>
-            <.form
-              for={@email_form}
-              id="email_form"
-              phx-submit="update_email"
-              phx-change="validate_email"
-              class="space-y-4"
-            >
-              <.input
-                field={@email_form[:email]}
-                type="email"
-                label={gettext("Email")}
-                autocomplete="username"
-                required
-              />
-              <div class="flex justify-end">
-                <.button variant="primary" phx-disable-with={gettext("Changing...")}>
-                  {gettext("Change Email")}
-                </.button>
-              </div>
-            </.form>
-          </section>
-        </div>
-      </.settings_layout>
-    </Layouts.app>
+        <%!-- Email Section --%>
+        <section>
+          <h3 class="text-lg font-semibold mb-4">{gettext("Email Address")}</h3>
+          <p class="text-sm text-base-content/70 mb-4">
+            {gettext("Your email is used for login and notifications.")}
+          </p>
+          <.form
+            for={@email_form}
+            id="email_form"
+            phx-submit="update_email"
+            phx-change="validate_email"
+            class="space-y-4"
+          >
+            <.input
+              field={@email_form[:email]}
+              type="email"
+              label={gettext("Email")}
+              autocomplete="username"
+              required
+            />
+            <div class="flex justify-end">
+              <.button variant="primary" phx-disable-with={gettext("Changing...")}>
+                {gettext("Change Email")}
+              </.button>
+            </div>
+          </.form>
+        </section>
+      </div>
+    </Layouts.settings>
     """
   end
 

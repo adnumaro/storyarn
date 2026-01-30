@@ -4,8 +4,6 @@ defmodule StoryarnWeb.SettingsLive.Connections do
   """
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.Components.SettingsLayout
-
   alias Storyarn.Accounts
 
   on_mount {StoryarnWeb.UserAuth, :require_sudo_mode}
@@ -28,45 +26,48 @@ defmodule StoryarnWeb.SettingsLive.Connections do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
-      <.settings_layout current_path={@current_path} current_scope={@current_scope}>
-        <:title>{gettext("Connected Accounts")}</:title>
-        <:subtitle>{gettext("Link your social accounts for easier sign-in")}</:subtitle>
+    <Layouts.settings
+      flash={@flash}
+      current_scope={@current_scope}
+      workspaces={@workspaces}
+      current_path={@current_path}
+    >
+      <:title>{gettext("Connected Accounts")}</:title>
+      <:subtitle>{gettext("Link your social accounts for easier sign-in")}</:subtitle>
 
-        <div class="space-y-4">
-          <.oauth_provider_row
-            provider="github"
-            label="GitHub"
-            identity={find_identity(@identities, "github")}
-            has_password={@has_password}
-            identities_count={length(@identities)}
-          />
-          <.oauth_provider_row
-            provider="google"
-            label="Google"
-            identity={find_identity(@identities, "google")}
-            has_password={@has_password}
-            identities_count={length(@identities)}
-          />
-          <.oauth_provider_row
-            provider="discord"
-            label="Discord"
-            identity={find_identity(@identities, "discord")}
-            has_password={@has_password}
-            identities_count={length(@identities)}
-          />
-        </div>
+      <div class="space-y-4">
+        <.oauth_provider_row
+          provider="github"
+          label="GitHub"
+          identity={find_identity(@identities, "github")}
+          has_password={@has_password}
+          identities_count={length(@identities)}
+        />
+        <.oauth_provider_row
+          provider="google"
+          label="Google"
+          identity={find_identity(@identities, "google")}
+          has_password={@has_password}
+          identities_count={length(@identities)}
+        />
+        <.oauth_provider_row
+          provider="discord"
+          label="Discord"
+          identity={find_identity(@identities, "discord")}
+          has_password={@has_password}
+          identities_count={length(@identities)}
+        />
+      </div>
 
-        <div class="mt-8 p-4 rounded-lg bg-base-200">
-          <h4 class="font-medium mb-2">{gettext("Why connect accounts?")}</h4>
-          <ul class="text-sm text-base-content/70 space-y-1">
-            <li>• {gettext("Sign in faster without typing your password")}</li>
-            <li>• {gettext("Access your account even if you forget your password")}</li>
-            <li>• {gettext("Keep your account secure with multiple authentication methods")}</li>
-          </ul>
-        </div>
-      </.settings_layout>
-    </Layouts.app>
+      <div class="mt-8 p-4 rounded-lg bg-base-200">
+        <h4 class="font-medium mb-2">{gettext("Why connect accounts?")}</h4>
+        <ul class="text-sm text-base-content/70 space-y-1">
+          <li>• {gettext("Sign in faster without typing your password")}</li>
+          <li>• {gettext("Access your account even if you forget your password")}</li>
+          <li>• {gettext("Keep your account secure with multiple authentication methods")}</li>
+        </ul>
+      </div>
+    </Layouts.settings>
     """
   end
 

@@ -182,6 +182,153 @@ defmodule StoryarnWeb.Layouts do
   end
 
   @doc """
+  Renders a standalone settings layout without the workspace sidebar.
+
+  This layout has its own navigation sidebar for settings pages only.
+
+  ## Examples
+
+      <Layouts.settings
+        flash={@flash}
+        current_scope={@current_scope}
+        workspaces={@workspaces}
+        current_path={@current_path}
+      >
+        <:title>Profile</:title>
+        <:subtitle>Manage your profile</:subtitle>
+        <p>Content here</p>
+      </Layouts.settings>
+
+  """
+  attr :flash, :map, required: true, doc: "the map of flash messages"
+  attr :current_scope, :map, required: true, doc: "the current scope"
+  attr :workspaces, :list, default: [], doc: "list of workspaces for settings nav"
+  attr :current_path, :string, required: true, doc: "current settings path for nav highlighting"
+
+  slot :title, required: true
+  slot :subtitle
+  slot :inner_block, required: true
+
+  def settings(assigns) do
+    ~H"""
+    <div class="min-h-screen flex flex-col">
+      <%!-- Header --%>
+      <header class="navbar px-4 sm:px-6 lg:px-8 border-b border-base-300">
+        <div class="flex-1">
+          <.link navigate="/" class="flex items-center gap-2">
+            <img src={~p"/images/logo.svg"} alt="Storyarn" class="w-8 h-8" />
+            <span class="text-lg font-bold">Storyarn</span>
+          </.link>
+        </div>
+        <div class="flex-none">
+          <.theme_toggle />
+        </div>
+      </header>
+
+      <%!-- Main content with settings nav --%>
+      <div class="flex-1 flex">
+        <%!-- Settings navigation sidebar --%>
+        <aside class="w-64 border-r border-base-300 p-4 hidden lg:block overflow-y-auto">
+          <.link
+            navigate={~p"/workspaces"}
+            class="flex items-center gap-2 text-sm text-base-content/70 hover:text-base-content mb-6"
+          >
+            <.icon name="hero-chevron-left" class="size-4" />
+            {gettext("Back to app")}
+          </.link>
+
+          <nav class="space-y-6">
+            <div :for={section <- settings_sections(@workspaces)}>
+              <h3 class="text-xs font-semibold uppercase text-base-content/50 px-2 mb-2">
+                {section.label}
+              </h3>
+              <ul class="space-y-1">
+                <li :for={item <- section.items}>
+                  <.link
+                    navigate={item.path}
+                    class={[
+                      "flex items-center gap-2 px-2 py-1.5 rounded text-sm",
+                      @current_path == item.path && "bg-primary/10 text-primary",
+                      @current_path != item.path && "hover:bg-base-200"
+                    ]}
+                  >
+                    <.icon name={item.icon} class="size-4" />
+                    {item.label}
+                  </.link>
+                </li>
+              </ul>
+            </div>
+          </nav>
+        </aside>
+
+        <%!-- Settings content --%>
+        <main class="flex-1 p-8 overflow-y-auto">
+          <div class="max-w-3xl mx-auto">
+            <%!-- Mobile back link --%>
+            <.link
+              navigate={~p"/workspaces"}
+              class="flex items-center gap-2 text-sm text-base-content/70 hover:text-base-content mb-6 lg:hidden"
+            >
+              <.icon name="hero-chevron-left" class="size-4" />
+              {gettext("Back to app")}
+            </.link>
+
+            <.header>
+              {render_slot(@title)}
+              <:subtitle :if={@subtitle != []}>
+                {render_slot(@subtitle)}
+              </:subtitle>
+            </.header>
+
+            <div class="mt-8">
+              {render_slot(@inner_block)}
+            </div>
+          </div>
+        </main>
+      </div>
+
+      <.flash_group flash={@flash} />
+    </div>
+    """
+  end
+
+  defp settings_sections(workspaces) do
+    account_section = %{
+      label: gettext("Account"),
+      items: [
+        %{label: gettext("Profile"), path: ~p"/users/settings", icon: "hero-user"},
+        %{label: gettext("Security"), path: ~p"/users/settings/security", icon: "hero-shield-check"},
+        %{
+          label: gettext("Connected accounts"),
+          path: ~p"/users/settings/connections",
+          icon: "hero-link"
+        }
+      ]
+    }
+
+    workspace_sections =
+      Enum.map(workspaces, fn workspace ->
+        %{
+          label: workspace.name,
+          items: [
+            %{
+              label: gettext("General"),
+              path: ~p"/users/settings/workspaces/#{workspace.slug}/general",
+              icon: "hero-cog-6-tooth"
+            },
+            %{
+              label: gettext("Members"),
+              path: ~p"/users/settings/workspaces/#{workspace.slug}/members",
+              icon: "hero-user-group"
+            }
+          ]
+        }
+      end)
+
+    [account_section | workspace_sections]
+  end
+
+  @doc """
   Shows the flash group with standard titles and content.
 
   ## Examples
