@@ -23,8 +23,8 @@ defmodule StoryarnWeb.PageLive.Show do
     >
       <%!-- Breadcrumb --%>
       <nav class="text-sm mb-4">
-        <ol class="flex items-center gap-1 text-base-content/70">
-          <li :for={{ancestor, idx} <- Enum.with_index(@ancestors)}>
+        <ol class="flex flex-wrap items-center gap-1 text-base-content/70">
+          <li :for={{ancestor, idx} <- Enum.with_index(@ancestors)} class="flex items-center">
             <.link
               navigate={
                 ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{ancestor.id}"
