@@ -15,6 +15,13 @@
   themes: light --default, dark --prefersdark;
 }
 
+/* Override daisyUI radius */
+:root,
+[data-theme="light"],
+[data-theme="dark"] {
+  --radius-field: 0.5rem;
+}
+
 
 /* Add variants based on LiveView classes */
 @custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
@@ -124,7 +131,7 @@
 .block-input {
   border-width: 1px;
   border-color: color-mix(in oklch, var(--color-base-content) 20%, transparent);
-  border-radius: var(--rounded-btn, 0.5rem);
+  border-radius: var(--radius-field, 0.5rem);
   background-color: var(--color-base-100);
 }
 
@@ -145,7 +152,7 @@
 .tiptap-content .ProseMirror {
   border-width: 1px;
   border-color: color-mix(in oklch, var(--color-base-content) 20%, transparent);
-  border-radius: var(--rounded-btn, 0.5rem);
+  border-radius: var(--radius-field, 0.5rem);
   background-color: var(--color-base-100);
   padding: 0.75rem;
   min-height: 100px;
@@ -167,7 +174,7 @@
 .tiptap-toolbar {
   border-width: 1px;
   border-color: color-mix(in oklch, var(--color-base-content) 20%, transparent);
-  border-radius: var(--rounded-btn, 0.5rem);
+  border-radius: var(--radius-field, 0.5rem);
   background-color: var(--color-base-100);
 }
 
