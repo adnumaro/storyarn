@@ -3,24 +3,21 @@ defmodule StoryarnWeb.ProjectLive.Show do
 
   use StoryarnWeb, :live_view
 
+  alias Storyarn.Pages
   alias Storyarn.Projects
   alias Storyarn.Repo
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app
+    <Layouts.project
       flash={@flash}
       current_scope={@current_scope}
-      workspaces={@workspaces}
-      current_workspace={@current_workspace}
+      project={@project}
+      workspace={@workspace}
+      pages_tree={@pages_tree}
+      current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
     >
-      <div class="mb-8">
-        <.back navigate={~p"/workspaces/#{@project.workspace.slug}"}>
-          {gettext("Back to %{workspace}", workspace: @project.workspace.name)}
-        </.back>
-      </div>
-
       <div class="text-center mb-8">
         <.header>
           {@project.name}
@@ -28,7 +25,10 @@ defmodule StoryarnWeb.ProjectLive.Show do
             {@project.description}
           </:subtitle>
           <:actions :if={@can_manage}>
-            <.link navigate={~p"/projects/#{@project.id}/settings"} class="btn btn-ghost btn-sm">
+            <.link
+              navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings"}
+              class="btn btn-ghost btn-sm"
+            >
               <.icon name="hero-cog-6-tooth" class="size-4 mr-1" />
               {gettext("Settings")}
             </.link>
@@ -41,23 +41,26 @@ defmodule StoryarnWeb.ProjectLive.Show do
         <p>{gettext("Project workspace coming soon!")}</p>
         <p class="text-sm mt-2">{gettext("This is where you'll design your narrative flows.")}</p>
       </div>
-    </Layouts.app>
+    </Layouts.project>
     """
   end
 
   @impl true
-  def mount(%{"id" => id}, _session, socket) do
-    case Projects.get_project(socket.assigns.current_scope, id) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
+    case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
       {:ok, project, membership} ->
         project = Repo.preload(project, :workspace)
         can_manage = Projects.ProjectMembership.can?(membership.role, :manage_project)
+        pages_tree = Pages.list_pages_tree(project.id)
 
         socket =
           socket
           |> assign(:project, project)
+          |> assign(:workspace, project.workspace)
           |> assign(:current_workspace, project.workspace)
           |> assign(:membership, membership)
           |> assign(:can_manage, can_manage)
+          |> assign(:pages_tree, pages_tree)
 
         {:ok, socket}
 

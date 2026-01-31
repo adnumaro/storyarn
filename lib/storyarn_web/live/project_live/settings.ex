@@ -6,22 +6,21 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
   import StoryarnWeb.MemberComponents
 
+  alias Storyarn.Pages
   alias Storyarn.Projects
   alias Storyarn.Repo
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app
+    <Layouts.project
       flash={@flash}
       current_scope={@current_scope}
-      workspaces={@workspaces}
-      current_workspace={@current_workspace}
+      project={@project}
+      workspace={@workspace}
+      pages_tree={@pages_tree}
+      current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings"}
     >
-      <div class="mb-8">
-        <.back navigate={~p"/projects/#{@project.id}"}>{gettext("Back to project")}</.back>
-      </div>
-
       <div class="text-center mb-8">
         <.header>
           {gettext("Project Settings")}
@@ -140,43 +139,55 @@ defmodule StoryarnWeb.ProjectLive.Settings do
           </div>
         </section>
       </div>
-    </Layouts.app>
+    </Layouts.project>
     """
   end
 
   @impl true
-  def mount(%{"id" => id}, _session, socket) do
-    case Projects.authorize(socket.assigns.current_scope, id, :manage_project) do
+  def mount(
+        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
+        _session,
+        socket
+      ) do
+    case Projects.get_project_by_slugs(
+           socket.assigns.current_scope,
+           workspace_slug,
+           project_slug
+         ) do
       {:ok, project, membership} ->
-        project = Repo.preload(project, :workspace)
-        members = Projects.list_project_members(id)
-        pending_invitations = Projects.list_pending_invitations(id)
+        if Projects.ProjectMembership.can?(membership.role, :manage_project) do
+          project = Repo.preload(project, :workspace)
+          members = Projects.list_project_members(project.id)
+          pending_invitations = Projects.list_pending_invitations(project.id)
+          pages_tree = Pages.list_pages_tree(project.id)
 
-        project_changeset = Projects.change_project(project)
-        invite_changeset = invite_changeset(%{})
+          project_changeset = Projects.change_project(project)
+          invite_changeset = invite_changeset(%{})
 
-        socket =
-          socket
-          |> assign(:project, project)
-          |> assign(:membership, membership)
-          |> assign(:current_workspace, project.workspace)
-          |> assign(:members, members)
-          |> assign(:pending_invitations, pending_invitations)
-          |> assign(:project_form, to_form(project_changeset))
-          |> assign(:invite_form, to_form(invite_changeset, as: "invite"))
+          socket =
+            socket
+            |> assign(:project, project)
+            |> assign(:workspace, project.workspace)
+            |> assign(:membership, membership)
+            |> assign(:current_workspace, project.workspace)
+            |> assign(:pages_tree, pages_tree)
+            |> assign(:members, members)
+            |> assign(:pending_invitations, pending_invitations)
+            |> assign(:project_form, to_form(project_changeset))
+            |> assign(:invite_form, to_form(invite_changeset, as: "invite"))
 
-        {:ok, socket}
+          {:ok, socket}
+        else
+          {:ok,
+           socket
+           |> put_flash(:error, gettext("You don't have permission to manage this project."))
+           |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}")}
+        end
 
       {:error, :not_found} ->
         {:ok,
          socket
          |> put_flash(:error, gettext("Project not found."))
-         |> redirect(to: ~p"/workspaces")}
-
-      {:error, :unauthorized} ->
-        {:ok,
-         socket
-         |> put_flash(:error, gettext("You don't have permission to manage this project."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -220,7 +231,8 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         end
 
       {:error, :unauthorized} ->
-        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
@@ -230,7 +242,8 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         do_send_invitation(socket, invite_params)
 
       {:error, :unauthorized} ->
-        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
@@ -240,7 +253,8 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         do_revoke_invitation(socket, id)
 
       {:error, :unauthorized} ->
-        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
@@ -250,14 +264,15 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         do_remove_member(socket, id)
 
       {:error, :unauthorized} ->
-        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("delete_project", _params, socket) do
     case authorize(socket, :manage_project) do
       :ok ->
-        workspace = socket.assigns.current_workspace
+        workspace = socket.assigns.workspace
 
         case Projects.delete_project(socket.assigns.project) do
           {:ok, _} ->
@@ -273,7 +288,8 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         end
 
       {:error, :unauthorized} ->
-        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 

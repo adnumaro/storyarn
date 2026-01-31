@@ -100,29 +100,19 @@ defmodule StoryarnWeb.Router do
       # Workspaces
       live "/workspaces", WorkspaceLive.Index, :index
       live "/workspaces/new", WorkspaceLive.New, :new
-      live "/workspaces/:slug", WorkspaceLive.Show, :show
-      live "/workspaces/:slug/projects/new", WorkspaceLive.Show, :new_project
+      live "/workspaces/:workspace_slug", WorkspaceLive.Show, :show
+      live "/workspaces/:workspace_slug/projects/new", WorkspaceLive.Show, :new_project
 
-      # Projects (accessed via workspace, but individual project views use ID)
-      live "/projects/:id", ProjectLive.Show, :show
-      live "/projects/:id/settings", ProjectLive.Settings, :edit
+      # Projects (nested under workspaces)
+      live "/workspaces/:workspace_slug/projects/:project_slug", ProjectLive.Show, :show
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings", ProjectLive.Settings, :edit
 
-      # Entities
-      live "/projects/:project_id/entities", EntityLive.Index, :index
-      live "/projects/:project_id/entities/new", EntityLive.Index, :new
-      live "/projects/:project_id/entities/:id", EntityLive.Show, :show
-      live "/projects/:project_id/entities/:id/edit", EntityLive.Show, :edit
+      # Pages (wiki-style content)
+      live "/workspaces/:workspace_slug/projects/:project_slug/pages", PageLive.Index, :index
+      live "/workspaces/:workspace_slug/projects/:project_slug/pages/new", PageLive.Index, :new
+      live "/workspaces/:workspace_slug/projects/:project_slug/pages/:id", PageLive.Show, :show
+      live "/workspaces/:workspace_slug/projects/:project_slug/pages/:id/edit", PageLive.Show, :edit
 
-      # Templates
-      live "/projects/:project_id/templates", TemplateLive.Index, :index
-      live "/projects/:project_id/templates/new", TemplateLive.Index, :new
-      live "/projects/:project_id/templates/:id/edit", TemplateLive.Index, :edit
-      live "/projects/:project_id/templates/:id/schema", TemplateLive.Index, :schema
-
-      # Variables
-      live "/projects/:project_id/variables", VariableLive.Index, :index
-      live "/projects/:project_id/variables/new", VariableLive.Index, :new
-      live "/projects/:project_id/variables/:id/edit", VariableLive.Index, :edit
     end
 
     post "/users/update-password", UserSessionController, :update_password

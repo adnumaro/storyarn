@@ -9,10 +9,10 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   alias Storyarn.Workspaces
 
   @impl true
-  def mount(%{"slug" => slug}, _session, socket) do
+  def mount(%{"workspace_slug" => workspace_slug}, _session, socket) do
     scope = socket.assigns.current_scope
 
-    case Workspaces.get_workspace_by_slug(scope, slug) do
+    case Workspaces.get_workspace_by_slug(scope, workspace_slug) do
       {:ok, workspace, membership} ->
         projects = Projects.list_projects_for_workspace(workspace.id, scope)
 
@@ -119,7 +119,11 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
             :if={@projects != []}
             class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           >
-            <.project_card :for={project_data <- @projects} project={project_data.project} />
+            <.project_card
+            :for={project_data <- @projects}
+            project={project_data.project}
+            workspace={@workspace}
+          />
           </div>
 
           <.empty_state
@@ -152,10 +156,13 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     """
   end
 
+  attr :project, :map, required: true
+  attr :workspace, :map, required: true
+
   defp project_card(assigns) do
     ~H"""
     <.link
-      navigate={~p"/projects/#{@project.id}"}
+      navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
       class="card bg-base-200 hover:bg-base-300 transition-colors cursor-pointer"
     >
       <div class="card-body p-4">
@@ -203,7 +210,9 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     socket =
       socket
       |> put_flash(:info, gettext("Project created successfully."))
-      |> push_navigate(to: ~p"/projects/#{project.id}")
+      |> push_navigate(
+        to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}"
+      )
 
     {:noreply, socket}
   end

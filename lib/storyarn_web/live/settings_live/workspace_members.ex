@@ -145,7 +145,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         do_send_invitation(socket, invite_params)
 
       {:error, :unauthorized} ->
-        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
@@ -156,14 +157,16 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         do_revoke_invitation(socket, id)
 
       {:error, :unauthorized} ->
-        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
   @impl true
   def handle_event("change_role", %{"role" => role, "member-id" => member_id}, socket) do
     if socket.assigns.membership.role != "owner" do
-      {:noreply, put_flash(socket, :error, gettext("Only the workspace owner can change member roles."))}
+      {:noreply,
+       put_flash(socket, :error, gettext("Only the workspace owner can change member roles."))}
     else
       do_change_role(socket, member_id, role)
     end
@@ -172,7 +175,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   @impl true
   def handle_event("remove_member", %{"id" => id}, socket) do
     if socket.assigns.membership.role != "owner" do
-      {:noreply, put_flash(socket, :error, gettext("Only the workspace owner can remove members."))}
+      {:noreply,
+       put_flash(socket, :error, gettext("Only the workspace owner can remove members."))}
     else
       do_remove_member(socket, id)
     end

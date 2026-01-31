@@ -122,12 +122,15 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
     invitation = socket.assigns.invitation
     user = socket.assigns.current_scope.user
 
+    project = invitation.project
+    workspace = project.workspace
+
     case Projects.accept_invitation(invitation, user) do
       {:ok, _membership} ->
         socket =
           socket
           |> put_flash(:info, gettext("Welcome to the project!"))
-          |> push_navigate(to: ~p"/projects/#{invitation.project_id}")
+          |> push_navigate(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}")
 
         {:noreply, socket}
 
@@ -138,7 +141,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
         socket =
           socket
           |> put_flash(:info, gettext("You're already a member of this project."))
-          |> push_navigate(to: ~p"/projects/#{invitation.project_id}")
+          |> push_navigate(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}")
 
         {:noreply, socket}
 
@@ -146,7 +149,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
         socket =
           socket
           |> put_flash(:info, gettext("This invitation has already been accepted."))
-          |> push_navigate(to: ~p"/projects/#{invitation.project_id}")
+          |> push_navigate(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}")
 
         {:noreply, socket}
 

@@ -140,7 +140,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         end
 
       {:error, :unauthorized} ->
-        {:noreply, put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
   end
 
@@ -159,7 +160,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
           {:noreply, put_flash(socket, :error, gettext("Failed to delete workspace."))}
       end
     else
-      {:noreply, put_flash(socket, :error, gettext("Only the workspace owner can delete the workspace."))}
+      {:noreply,
+       put_flash(socket, :error, gettext("Only the workspace owner can delete the workspace."))}
     end
   end
 end
