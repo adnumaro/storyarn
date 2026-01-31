@@ -91,7 +91,9 @@ defmodule Storyarn.ProjectsTest do
       scope = user_scope_fixture(user)
       workspace = workspace_fixture(user)
 
-      assert {:error, changeset} = Projects.create_project(scope, %{name: "", workspace_id: workspace.id})
+      assert {:error, changeset} =
+               Projects.create_project(scope, %{name: "", workspace_id: workspace.id})
+
       assert "can't be blank" in errors_on(changeset).name
     end
 

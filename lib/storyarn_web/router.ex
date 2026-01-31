@@ -105,14 +105,19 @@ defmodule StoryarnWeb.Router do
 
       # Projects (nested under workspaces)
       live "/workspaces/:workspace_slug/projects/:project_slug", ProjectLive.Show, :show
-      live "/workspaces/:workspace_slug/projects/:project_slug/settings", ProjectLive.Settings, :edit
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings",
+           ProjectLive.Settings,
+           :edit
 
       # Pages (wiki-style content)
       live "/workspaces/:workspace_slug/projects/:project_slug/pages", PageLive.Index, :index
       live "/workspaces/:workspace_slug/projects/:project_slug/pages/new", PageLive.Index, :new
       live "/workspaces/:workspace_slug/projects/:project_slug/pages/:id", PageLive.Show, :show
-      live "/workspaces/:workspace_slug/projects/:project_slug/pages/:id/edit", PageLive.Show, :edit
 
+      live "/workspaces/:workspace_slug/projects/:project_slug/pages/:id/edit",
+           PageLive.Show,
+           :edit
     end
 
     post "/users/update-password", UserSessionController, :update_password

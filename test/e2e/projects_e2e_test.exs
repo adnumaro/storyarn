@@ -207,7 +207,9 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
     test "authenticated user can accept invitation", %{conn: conn} do
       owner = user_fixture()
       invitee = user_fixture(%{email: "invitee@example.com"})
-      project = project_fixture(owner, %{name: "Collaborative Project"}) |> Repo.preload(:workspace)
+
+      project =
+        project_fixture(owner, %{name: "Collaborative Project"}) |> Repo.preload(:workspace)
 
       {token, _invitation} =
         create_invitation_with_token(project, owner, "invitee@example.com", "editor")

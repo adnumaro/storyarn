@@ -120,10 +120,10 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
             class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           >
             <.project_card
-            :for={project_data <- @projects}
-            project={project_data.project}
-            workspace={@workspace}
-          />
+              :for={project_data <- @projects}
+              project={project_data.project}
+              workspace={@workspace}
+            />
           </div>
 
           <.empty_state
