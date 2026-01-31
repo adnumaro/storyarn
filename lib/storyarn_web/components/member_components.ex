@@ -135,7 +135,7 @@ defmodule StoryarnWeb.MemberComponents do
           class="btn btn-ghost btn-sm text-error"
           data-confirm={gettext("Are you sure you want to remove this member?")}
         >
-          <.icon name="hero-x-mark" class="size-4" />
+          <.icon name="x" class="size-4" />
         </.link>
       </div>
     </div>
@@ -183,7 +183,7 @@ defmodule StoryarnWeb.MemberComponents do
           class="btn btn-ghost btn-sm text-error"
           data-confirm={gettext("Are you sure you want to revoke this invitation?")}
         >
-          <.icon name="hero-x-mark" class="size-4" />
+          <.icon name="x" class="size-4" />
         </.link>
       </div>
     </div>

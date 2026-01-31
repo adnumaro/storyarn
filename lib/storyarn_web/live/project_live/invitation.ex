@@ -11,7 +11,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
     <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
       <div class="max-w-lg mx-auto text-center py-12">
         <%= if @invitation do %>
-          <.icon name="hero-envelope-open" class="size-16 mx-auto text-primary mb-6" />
+          <.icon name="mail-open" class="size-16 mx-auto text-primary mb-6" />
           <.header>
             {gettext("You've been invited!")}
             <:subtitle>
@@ -40,7 +40,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
                 </div>
               <% else %>
                 <div class="alert alert-warning">
-                  <.icon name="hero-exclamation-triangle" class="size-5" />
+                  <.icon name="triangle-alert" class="size-5" />
                   <span>
                     {gettext("This invitation was sent to")} <strong>{@invitation.email}</strong>. {gettext(
                       "You're logged in as"
@@ -64,7 +64,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
             <% end %>
           </div>
         <% else %>
-          <.icon name="hero-x-circle" class="size-16 mx-auto text-error mb-6" />
+          <.icon name="x-circle" class="size-16 mx-auto text-error mb-6" />
           <.header>
             {gettext("Invalid Invitation")}
             <:subtitle>

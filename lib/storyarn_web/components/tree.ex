@@ -16,7 +16,7 @@ defmodule StoryarnWeb.TreeComponents do
       <.tree_node
         id="characters"
         label="Characters"
-        icon="hero-user"
+        icon="user"
         color="#3b82f6"
         badge={3}
         expanded={true}
@@ -66,7 +66,7 @@ defmodule StoryarnWeb.TreeComponents do
             ]}
             data-chevron
           >
-            <.icon name="hero-chevron-right" class="size-3" />
+            <.icon name="chevron-right" class="size-3" />
           </span>
         </button>
         <span :if={!@has_children} class="w-5 shrink-0"></span>
@@ -183,7 +183,7 @@ defmodule StoryarnWeb.TreeComponents do
       <% @icon -> %>
         <.icon name={@icon} class="size-4 shrink-0" style={@color && "color: #{@color}"} />
       <% true -> %>
-        <.icon name="hero-document" class="size-4 shrink-0 opacity-60" />
+        <.icon name="file" class="size-4 shrink-0 opacity-60" />
     <% end %>
     """
   end
@@ -217,7 +217,7 @@ defmodule StoryarnWeb.TreeComponents do
       <.tree_link
         label="Settings"
         href={~p"/projects/1/settings"}
-        icon="hero-cog-6-tooth"
+        icon="settings"
         active={true}
       />
   """

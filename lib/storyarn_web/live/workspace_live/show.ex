@@ -82,7 +82,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
                 navigate={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
                 class="btn btn-ghost btn-sm"
               >
-                <.icon name="hero-cog-6-tooth" class="size-4" />
+                <.icon name="settings" class="size-4" />
               </.link>
             </div>
           </div>
@@ -108,7 +108,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
             patch={~p"/workspaces/#{@workspace.slug}/projects/new"}
             class="btn btn-primary btn-sm"
           >
-            <.icon name="hero-plus" class="size-4" />
+            <.icon name="plus" class="size-4" />
             {gettext("New Project")}
           </.link>
         </div>
@@ -128,7 +128,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
 
           <.empty_state
             :if={@projects == []}
-            icon="hero-folder-open"
+            icon="folder-open"
             title={gettext("No projects yet")}
           >
             {gettext("Create your first project to get started")}

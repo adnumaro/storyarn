@@ -90,7 +90,7 @@ defmodule StoryarnWeb.SettingsLive.Security do
             {gettext("You are currently logged in on this device.")}
           </p>
           <div class="alert alert-info">
-            <.icon name="hero-information-circle" class="size-5" />
+            <.icon name="info" class="size-5" />
             <span>{gettext("Session management coming soon.")}</span>
           </div>
         </section>

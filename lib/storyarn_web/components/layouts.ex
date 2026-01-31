@@ -48,7 +48,7 @@ defmodule StoryarnWeb.Layouts do
         <header class="navbar bg-base-100 border-b border-base-300 lg:hidden">
           <div class="flex-none">
             <label for="sidebar-drawer" class="btn btn-square btn-ghost">
-              <.icon name="hero-bars-3" class="size-6" />
+              <.icon name="menu" class="size-6" />
             </label>
           </div>
           <div class="flex-1">
@@ -136,7 +136,7 @@ defmodule StoryarnWeb.Layouts do
         <header class="navbar bg-base-100 border-b border-base-300 lg:hidden">
           <div class="flex-none">
             <label for="project-sidebar-drawer" class="btn btn-square btn-ghost">
-              <.icon name="hero-bars-3" class="size-6" />
+              <.icon name="menu" class="size-6" />
             </label>
           </div>
           <div class="flex-1">
@@ -144,7 +144,7 @@ defmodule StoryarnWeb.Layouts do
               navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
               class="flex items-center gap-2"
             >
-              <.icon name="hero-folder" class="size-5" />
+              <.icon name="folder" class="size-5" />
               <span class="font-bold truncate">{@project.name}</span>
             </.link>
           </div>
@@ -327,7 +327,7 @@ defmodule StoryarnWeb.Layouts do
             navigate={~p"/workspaces"}
             class="flex items-center gap-2 text-sm text-base-content/70 hover:text-base-content mb-6"
           >
-            <.icon name="hero-chevron-left" class="size-4" />
+            <.icon name="chevron-left" class="size-4" />
             {gettext("Back to app")}
           </.link>
 
@@ -363,7 +363,7 @@ defmodule StoryarnWeb.Layouts do
               navigate={~p"/workspaces"}
               class="flex items-center gap-2 text-sm text-base-content/70 hover:text-base-content mb-6 lg:hidden"
             >
-              <.icon name="hero-chevron-left" class="size-4" />
+              <.icon name="chevron-left" class="size-4" />
               {gettext("Back to app")}
             </.link>
 
@@ -390,16 +390,16 @@ defmodule StoryarnWeb.Layouts do
     account_section = %{
       label: gettext("Account"),
       items: [
-        %{label: gettext("Profile"), path: ~p"/users/settings", icon: "hero-user"},
+        %{label: gettext("Profile"), path: ~p"/users/settings", icon: "user"},
         %{
           label: gettext("Security"),
           path: ~p"/users/settings/security",
-          icon: "hero-shield-check"
+          icon: "shield-check"
         },
         %{
           label: gettext("Connected accounts"),
           path: ~p"/users/settings/connections",
-          icon: "hero-link"
+          icon: "link"
         }
       ]
     }
@@ -412,12 +412,12 @@ defmodule StoryarnWeb.Layouts do
             %{
               label: gettext("General"),
               path: ~p"/users/settings/workspaces/#{workspace.slug}/general",
-              icon: "hero-cog-6-tooth"
+              icon: "settings"
             },
             %{
               label: gettext("Members"),
               path: ~p"/users/settings/workspaces/#{workspace.slug}/members",
-              icon: "hero-user-group"
+              icon: "users"
             }
           ]
         }
@@ -451,7 +451,7 @@ defmodule StoryarnWeb.Layouts do
         hidden
       >
         {gettext("Attempting to reconnect")}
-        <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
+        <.icon name="refresh-cw" class="ml-1 size-3 motion-safe:animate-spin" />
       </.flash>
 
       <.flash
@@ -463,7 +463,7 @@ defmodule StoryarnWeb.Layouts do
         hidden
       >
         {gettext("Attempting to reconnect")}
-        <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
+        <.icon name="refresh-cw" class="ml-1 size-3 motion-safe:animate-spin" />
       </.flash>
     </div>
     """
@@ -484,7 +484,7 @@ defmodule StoryarnWeb.Layouts do
         phx-click={JS.dispatch("phx:set-theme")}
         data-phx-theme="system"
       >
-        <.icon name="hero-computer-desktop-micro" class="size-4 opacity-75 hover:opacity-100" />
+        <.icon name="monitor" class="size-4 opacity-75 hover:opacity-100" />
       </button>
 
       <button
@@ -492,7 +492,7 @@ defmodule StoryarnWeb.Layouts do
         phx-click={JS.dispatch("phx:set-theme")}
         data-phx-theme="light"
       >
-        <.icon name="hero-sun-micro" class="size-4 opacity-75 hover:opacity-100" />
+        <.icon name="sun" class="size-4 opacity-75 hover:opacity-100" />
       </button>
 
       <button
@@ -500,7 +500,7 @@ defmodule StoryarnWeb.Layouts do
         phx-click={JS.dispatch("phx:set-theme")}
         data-phx-theme="dark"
       >
-        <.icon name="hero-moon-micro" class="size-4 opacity-75 hover:opacity-100" />
+        <.icon name="moon" class="size-4 opacity-75 hover:opacity-100" />
       </button>
     </div>
     """

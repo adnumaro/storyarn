@@ -99,7 +99,7 @@ defmodule StoryarnWeb.PageLive.Show do
               class="flex items-center gap-2 py-2 text-base-content/50 hover:text-base-content cursor-pointer group"
               phx-click="show_block_menu"
             >
-              <.icon name="hero-plus" class="size-4 opacity-0 group-hover:opacity-100" />
+              <.icon name="plus" class="size-4 opacity-0 group-hover:opacity-100" />
               <span class="text-sm">{gettext("Type / to add a block")}</span>
             </div>
 
@@ -146,7 +146,7 @@ defmodule StoryarnWeb.PageLive.Show do
           class="drag-handle btn btn-ghost btn-xs cursor-grab active:cursor-grabbing"
           title={gettext("Drag to reorder")}
         >
-          <.icon name="hero-bars-2" class="size-3" />
+          <.icon name="menu" class="size-3" />
         </button>
         <button
           :if={@can_edit}
@@ -155,7 +155,7 @@ defmodule StoryarnWeb.PageLive.Show do
           phx-click="delete_block"
           phx-value-id={@block.id}
         >
-          <.icon name="hero-trash" class="size-3" />
+          <.icon name="trash-2" class="size-3" />
         </button>
       </div>
 
@@ -345,7 +345,7 @@ defmodule StoryarnWeb.PageLive.Show do
             phx-value-id={@block.id}
             phx-value-key={opt.key}
           >
-            <.icon name="hero-x-mark" class="size-3" />
+            <.icon name="x" class="size-3" />
           </button>
         </span>
         <%!-- Input for adding new tags --%>
@@ -460,7 +460,7 @@ defmodule StoryarnWeb.PageLive.Show do
         phx-click="add_block"
         phx-value-type="select"
       >
-        <.icon name="hero-chevron-down" class="size-4" />
+        <.icon name="chevron-down" class="size-4" />
         <span>{gettext("Select")}</span>
       </button>
       <button
@@ -469,7 +469,7 @@ defmodule StoryarnWeb.PageLive.Show do
         phx-click="add_block"
         phx-value-type="multi_select"
       >
-        <.icon name="hero-check" class="size-4" />
+        <.icon name="check" class="size-4" />
         <span>{gettext("Multi Select")}</span>
       </button>
       <button
@@ -478,7 +478,7 @@ defmodule StoryarnWeb.PageLive.Show do
         phx-click="add_block"
         phx-value-type="date"
       >
-        <.icon name="hero-calendar" class="size-4" />
+        <.icon name="calendar" class="size-4" />
         <span>{gettext("Date")}</span>
       </button>
 
@@ -489,7 +489,7 @@ defmodule StoryarnWeb.PageLive.Show do
         phx-click="add_block"
         phx-value-type="divider"
       >
-        <.icon name="hero-minus" class="size-4" />
+        <.icon name="minus" class="size-4" />
         <span>{gettext("Divider")}</span>
       </button>
 
@@ -528,7 +528,7 @@ defmodule StoryarnWeb.PageLive.Show do
 
     ~H"""
     <span :if={@is_emoji} class={@text_size}>{@icon}</span>
-    <.icon :if={!@is_emoji} name="hero-document" class={"#{@size_class} opacity-60"} />
+    <.icon :if={!@is_emoji} name="file" class={"#{@size_class} opacity-60"} />
     """
   end
 
@@ -546,7 +546,7 @@ defmodule StoryarnWeb.PageLive.Show do
         @status == :saved && "bg-success/10 text-success"
       ]}>
         <span :if={@status == :saving} class="loading loading-spinner loading-xs"></span>
-        <.icon :if={@status == :saved} name="hero-check" class="size-4" />
+        <.icon :if={@status == :saved} name="check" class="size-4" />
         <span :if={@status == :saving}>{gettext("Saving...")}</span>
         <span :if={@status == :saved}>{gettext("Saved")}</span>
       </div>

@@ -53,7 +53,7 @@ defmodule StoryarnWeb.Components.Sidebar do
       <%!-- New workspace button --%>
       <div class="p-2 border-t border-base-300">
         <.link navigate={~p"/workspaces/new"} class="btn btn-ghost btn-sm w-full justify-start gap-2">
-          <.icon name="hero-plus" class="size-4" />
+          <.icon name="plus" class="size-4" />
           {gettext("New workspace")}
         </.link>
       </div>
@@ -80,7 +80,7 @@ defmodule StoryarnWeb.Components.Sidebar do
         <span class="text-sm truncate flex-1">
           {@current_user.display_name || @current_user.email}
         </span>
-        <.icon name="hero-ellipsis-vertical" class="size-4 opacity-50" />
+        <.icon name="more-vertical" class="size-4 opacity-50" />
       </div>
       <ul
         tabindex="0"
@@ -88,14 +88,14 @@ defmodule StoryarnWeb.Components.Sidebar do
       >
         <li>
           <.link navigate={~p"/users/settings"} class="gap-2">
-            <.icon name="hero-user" class="size-4" />
+            <.icon name="user" class="size-4" />
             {gettext("Profile")}
           </.link>
         </li>
         <li>
           <.link navigate={~p"/users/settings"} class="gap-2 justify-between">
             <span class="flex items-center gap-2">
-              <.icon name="hero-cog-6-tooth" class="size-4" />
+              <.icon name="settings" class="size-4" />
               {gettext("Preferences")}
             </span>
             <kbd class="kbd kbd-xs">E</kbd>
@@ -108,8 +108,8 @@ defmodule StoryarnWeb.Components.Sidebar do
             class="gap-2 justify-between"
           >
             <span class="flex items-center gap-2">
-              <.icon name="hero-moon" class="size-4 dark:hidden" />
-              <.icon name="hero-sun" class="size-4 hidden dark:block" />
+              <.icon name="moon" class="size-4 dark:hidden" />
+              <.icon name="sun" class="size-4 hidden dark:block" />
               {gettext("Dark mode")}
             </span>
             <kbd class="kbd kbd-xs">D</kbd>
@@ -118,7 +118,7 @@ defmodule StoryarnWeb.Components.Sidebar do
         <div class="divider my-1"></div>
         <li>
           <.link href={~p"/users/log-out"} method="delete" class="gap-2">
-            <.icon name="hero-arrow-right-on-rectangle" class="size-4" />
+            <.icon name="log-out" class="size-4" />
             {gettext("Log out")}
           </.link>
         </li>

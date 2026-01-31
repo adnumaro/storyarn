@@ -6,9 +6,6 @@
 @source "../js";
 @source "../../lib/storyarn_web";
 
-/* A Tailwind plugin that makes "hero-#{ICON}" classes available.
-   The heroicons installation itself is managed by your mix.exs */
-@plugin "../vendor/heroicons";
 
 /* daisyUI from npm - configured with light/dark themes */
 @plugin "daisyui" {

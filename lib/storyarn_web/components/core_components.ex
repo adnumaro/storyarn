@@ -19,7 +19,7 @@ defmodule StoryarnWeb.CoreComponents do
       we build on. You will use it for layout, sizing, flexbox, grid, and
       spacing.
 
-    * [Heroicons](https://heroicons.com) - see `icon/1` for usage.
+    * [Lucide Icons](https://lucide.dev) - see `icon/1` for usage.
 
     * [Phoenix.Component](https://hexdocs.pm/phoenix_live_view/Phoenix.Component.html) -
       the component system used by Phoenix. Some components, such as `<.link>`
@@ -64,15 +64,15 @@ defmodule StoryarnWeb.CoreComponents do
         @kind == :info && "alert-info",
         @kind == :error && "alert-error"
       ]}>
-        <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
-        <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
+        <.icon :if={@kind == :info} name="info" class="size-5 shrink-0" />
+        <.icon :if={@kind == :error} name="alert-circle" class="size-5 shrink-0" />
         <div>
           <p :if={@title} class="font-semibold">{@title}</p>
           <p>{msg}</p>
         </div>
         <div class="flex-1" />
         <button type="button" class="group self-start cursor-pointer" aria-label={gettext("close")}>
-          <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
+          <.icon name="x" class="size-5 opacity-40 group-hover:opacity-70" />
         </button>
       </div>
     </div>
@@ -277,7 +277,7 @@ defmodule StoryarnWeb.CoreComponents do
   defp error(assigns) do
     ~H"""
     <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
-      <.icon name="hero-exclamation-circle" class="size-5" />
+      <.icon name="alert-circle" class="size-5" />
       {render_slot(@inner_block)}
     </p>
     """
@@ -397,31 +397,40 @@ defmodule StoryarnWeb.CoreComponents do
   end
 
   @doc """
-  Renders a [Heroicon](https://heroicons.com).
-
-  Heroicons come in three styles – outline, solid, and mini.
-  By default, the outline style is used, but solid and mini may
-  be applied by using the `-solid` and `-mini` suffix.
+  Renders a [Lucide icon](https://lucide.dev).
 
   You can customize the size and colors of the icons by setting
   width, height, and background color classes.
 
-  Icons are extracted from the `deps/heroicons` directory and bundled within
-  your compiled app.css by the plugin in `assets/vendor/heroicons.js`.
-
   ## Examples
 
-      <.icon name="hero-x-mark" />
-      <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
+      <.icon name="x" />
+      <.icon name="loader-circle" class="ml-1 size-3 motion-safe:animate-spin" />
   """
   attr :name, :string, required: true
   attr :class, :string, default: "size-4"
   attr :style, :string, default: nil
+  attr :rest, :global
 
-  def icon(%{name: "hero-" <> _} = assigns) do
-    ~H"""
-    <span class={[@name, @class]} style={@style} />
-    """
+  def icon(assigns) do
+    icon_name =
+      assigns.name
+      |> String.replace("-", "_")
+      |> String.to_atom()
+
+    # Build assigns map compatible with Phoenix.Component
+    icon_assigns =
+      %{
+        __changed__: %{},
+        class: assigns[:class],
+        style: assigns[:style]
+      }
+      |> Map.merge(assigns[:rest] || %{})
+      |> Enum.reject(fn {_, v} -> is_nil(v) end)
+      |> Map.new()
+      |> Map.put(:__changed__, %{})
+
+    apply(Lucideicons, icon_name, [icon_assigns])
   end
 
   @doc """
@@ -441,7 +450,7 @@ defmodule StoryarnWeb.CoreComponents do
         navigate={@navigate}
         class="text-sm font-semibold leading-6 text-base-content/70 hover:text-base-content inline-flex items-center gap-1"
       >
-        <.icon name="hero-arrow-left" class="size-3" />
+        <.icon name="arrow-left" class="size-3" />
         {render_slot(@inner_block)}
       </.link>
     </div>
@@ -495,7 +504,7 @@ defmodule StoryarnWeb.CoreComponents do
           aria-label={gettext("close")}
           phx-click={@on_cancel |> hide_modal(@id)}
         >
-          <.icon name="hero-x-mark" class="size-5" />
+          <.icon name="x" class="size-5" />
         </button>
         {render_slot(@inner_block)}
       </div>
@@ -682,11 +691,11 @@ defmodule StoryarnWeb.CoreComponents do
 
   ## Examples
 
-      <.empty_state icon="hero-folder-open">
+      <.empty_state icon="folder-open">
         No projects yet
       </.empty_state>
 
-      <.empty_state icon="hero-document-text" title="No documents">
+      <.empty_state icon="file-text" title="No documents">
         Create your first document to get started
       </.empty_state>
   """
@@ -726,7 +735,7 @@ defmodule StoryarnWeb.CoreComponents do
   def search_input(assigns) do
     ~H"""
     <label class={["input input-bordered input-#{@size} flex items-center gap-2", @class]}>
-      <.icon name="hero-magnifying-glass" class="size-4 opacity-50" />
+      <.icon name="search" class="size-4 opacity-50" />
       <input type="text" class="grow" {@rest} />
     </label>
     """

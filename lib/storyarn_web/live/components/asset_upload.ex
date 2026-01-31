@@ -55,7 +55,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
           <.live_file_input upload={@uploads.asset} class="hidden" />
 
           <div :if={@uploads.asset.entries == []}>
-            <.icon name="hero-cloud-arrow-up" class="size-12 mx-auto text-base-content/30 mb-2" />
+            <.icon name="cloud-upload" class="size-12 mx-auto text-base-content/30 mb-2" />
             <p class="text-base-content/70 mb-2">
               {gettext("Drag and drop files here, or")}
             </p>
@@ -110,7 +110,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
               class="w-full h-full object-cover"
             />
             <div :if={not Asset.image?(asset)} class="flex items-center justify-center h-full">
-              <.icon name="hero-document" class="size-8 text-base-content/50" />
+              <.icon name="file" class="size-8 text-base-content/50" />
             </div>
           </div>
         </div>
@@ -129,7 +129,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
       <div class="relative w-16 h-16 flex-shrink-0 bg-base-300 rounded overflow-hidden">
         <.live_img_preview :if={image?(@entry)} entry={@entry} class="w-full h-full object-cover" />
         <div :if={not image?(@entry)} class="flex items-center justify-center h-full">
-          <.icon name="hero-document" class="size-6 text-base-content/50" />
+          <.icon name="file" class="size-6 text-base-content/50" />
         </div>
       </div>
       <div class="flex-1 min-w-0">
@@ -154,7 +154,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
         phx-value-ref={@entry.ref}
         phx-target={@myself}
       >
-        <.icon name="hero-x-mark" class="size-4" />
+        <.icon name="x" class="size-4" />
       </button>
     </div>
     """

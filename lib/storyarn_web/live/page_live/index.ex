@@ -31,14 +31,14 @@ defmodule StoryarnWeb.PageLive.Index do
               class="btn btn-primary"
               phx-click={show_modal("new-page-modal")}
             >
-              <.icon name="hero-plus" class="size-4 mr-2" />
+              <.icon name="plus" class="size-4 mr-2" />
               {gettext("New Page")}
             </button>
           </:actions>
         </.header>
       </div>
 
-      <.empty_state :if={@pages_tree == []} icon="hero-document-text">
+      <.empty_state :if={@pages_tree == []} icon="file-text">
         {gettext("No pages yet. Create your first page to get started.")}
       </.empty_state>
 
@@ -146,7 +146,7 @@ defmodule StoryarnWeb.PageLive.Index do
     <%= if @is_emoji do %>
       <span class="text-2xl">{@icon}</span>
     <% else %>
-      <.icon name="hero-document" class="size-6 opacity-60" />
+      <.icon name="file" class="size-6 opacity-60" />
     <% end %>
     """
   end

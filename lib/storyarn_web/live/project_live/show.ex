@@ -29,7 +29,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
               navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings"}
               class="btn btn-ghost btn-sm"
             >
-              <.icon name="hero-cog-6-tooth" class="size-4 mr-1" />
+              <.icon name="settings" class="size-4 mr-1" />
               {gettext("Settings")}
             </.link>
           </:actions>
@@ -37,7 +37,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
       </div>
 
       <div class="text-center py-12 text-base-content/70">
-        <.icon name="hero-document-text" class="size-12 mx-auto mb-4 text-base-content/30" />
+        <.icon name="file-text" class="size-12 mx-auto mb-4 text-base-content/30" />
         <p>{gettext("Project workspace coming soon!")}</p>
         <p class="text-sm mt-2">{gettext("This is where you'll design your narrative flows.")}</p>
       </div>

@@ -25,7 +25,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
           navigate={~p"/workspaces/#{@workspace.slug}"}
           class="flex items-center gap-2 text-sm text-base-content/70 hover:text-base-content"
         >
-          <.icon name="hero-chevron-left" class="size-4" />
+          <.icon name="chevron-left" class="size-4" />
           {gettext("Back to Workspace")}
         </.link>
       </div>
@@ -36,7 +36,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
           navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
           class="flex items-center gap-2 font-semibold hover:text-primary truncate"
         >
-          <.icon name="hero-folder" class="size-5 shrink-0" />
+          <.icon name="folder" class="size-5 shrink-0" />
           <span class="truncate">{@project.name}</span>
         </.link>
       </div>
@@ -52,7 +52,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
               class="btn btn-ghost btn-xs"
               title={gettext("New Page")}
             >
-              <.icon name="hero-plus" class="size-3" />
+              <.icon name="plus" class="size-3" />
             </.link>
           </div>
 
@@ -101,7 +101,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
           <.tree_link
             label={gettext("Flows")}
             href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
-            icon="hero-arrows-pointing-out"
+            icon="maximize-2"
             active={false}
           />
         </div>
@@ -112,7 +112,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
         <.tree_link
           label={gettext("Settings")}
           href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings"}
-          icon="hero-cog-6-tooth"
+          icon="settings"
           active={settings_page?(@current_path, @workspace.slug, @project.slug)}
         />
       </div>
@@ -164,7 +164,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
             title={gettext("Add child page")}
             onclick="event.preventDefault(); event.stopPropagation();"
           >
-            <.icon name="hero-plus" class="size-3" />
+            <.icon name="plus" class="size-3" />
           </button>
         </:actions>
         <:menu :if={@can_edit}>
@@ -198,7 +198,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
             title={gettext("Add child page")}
             onclick="event.preventDefault(); event.stopPropagation();"
           >
-            <.icon name="hero-plus" class="size-3" />
+            <.icon name="plus" class="size-3" />
           </button>
         </:actions>
         <:menu :if={@can_edit}>
@@ -218,7 +218,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
         class="btn btn-ghost btn-xs btn-square"
         onclick="event.preventDefault(); event.stopPropagation();"
       >
-        <.icon name="hero-ellipsis-horizontal" class="size-4" />
+        <.icon name="more-horizontal" class="size-4" />
       </button>
       <ul
         tabindex="0"
@@ -233,7 +233,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
             data-confirm={gettext("Are you sure you want to delete this page?")}
             onclick="event.stopPropagation();"
           >
-            <.icon name="hero-trash" class="size-4" />
+            <.icon name="trash-2" class="size-4" />
             {gettext("Delete")}
           </button>
         </li>
