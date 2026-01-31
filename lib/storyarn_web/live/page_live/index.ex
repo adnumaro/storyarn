@@ -1,0 +1,223 @@
+defmodule StoryarnWeb.PageLive.Index do
+  @moduledoc false
+
+  use StoryarnWeb, :live_view
+
+  alias Storyarn.Pages
+  alias Storyarn.Projects
+  alias Storyarn.Repo
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <Layouts.project
+      flash={@flash}
+      current_scope={@current_scope}
+      project={@project}
+      workspace={@workspace}
+      pages_tree={@pages_tree}
+      current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages"}
+    >
+      <div class="text-center mb-8">
+        <.header>
+          {gettext("Pages")}
+          <:subtitle>
+            {gettext("Create and organize your project's content")}
+          </:subtitle>
+          <:actions :if={@can_edit}>
+            <button
+              type="button"
+              class="btn btn-primary"
+              phx-click={show_modal("new-page-modal")}
+            >
+              <.icon name="hero-plus" class="size-4 mr-2" />
+              {gettext("New Page")}
+            </button>
+          </:actions>
+        </.header>
+      </div>
+
+      <.empty_state :if={@pages_tree == []} icon="hero-document-text">
+        {gettext("No pages yet. Create your first page to get started.")}
+      </.empty_state>
+
+      <div :if={@pages_tree != []} class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <.page_card
+          :for={page <- @pages_tree}
+          page={page}
+          project={@project}
+          workspace={@workspace}
+        />
+      </div>
+
+      <.modal
+        :if={@live_action == :new}
+        id="new-page-modal"
+        show
+        on_cancel={JS.patch(~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages")}
+      >
+        <.header>
+          {gettext("New Page")}
+        </.header>
+
+        <.form
+          for={@form}
+          id="new-page-form"
+          phx-change="validate"
+          phx-submit="save"
+        >
+          <.input
+            field={@form[:name]}
+            type="text"
+            label={gettext("Name")}
+            placeholder={gettext("My Page")}
+            required
+            autofocus
+          />
+          <.input
+            field={@form[:icon]}
+            type="text"
+            label={gettext("Icon")}
+            placeholder="page"
+          />
+          <.input
+            :if={@pages_tree != []}
+            field={@form[:parent_id]}
+            type="select"
+            label={gettext("Parent")}
+            options={parent_options(@pages_tree)}
+            prompt={gettext("No parent (root level)")}
+          />
+
+          <div class="modal-action">
+            <.link
+              patch={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages"}
+              class="btn btn-ghost"
+            >
+              {gettext("Cancel")}
+            </.link>
+            <.button variant="primary" phx-disable-with={gettext("Creating...")}>
+              {gettext("Create Page")}
+            </.button>
+          </div>
+        </.form>
+      </.modal>
+    </Layouts.project>
+    """
+  end
+
+  attr :page, :map, required: true
+  attr :project, :map, required: true
+  attr :workspace, :map, required: true
+
+  defp page_card(assigns) do
+    children_count = length(Map.get(assigns.page, :children, []))
+
+    assigns = assign(assigns, :children_count, children_count)
+
+    ~H"""
+    <.link
+      navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{@page.id}"}
+      class="card bg-base-100 border border-base-300 shadow-sm hover:shadow-md transition-shadow"
+    >
+      <div class="card-body">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">{@page.icon || "page"}</span>
+          <div>
+            <h3 class="card-title text-lg">{@page.name}</h3>
+            <p :if={@children_count > 0} class="text-sm text-base-content/50">
+              {ngettext("%{count} subpage", "%{count} subpages", @children_count)}
+            </p>
+          </div>
+        </div>
+      </div>
+    </.link>
+    """
+  end
+
+  defp parent_options(pages_tree) do
+    flatten_pages(pages_tree, [], 0)
+  end
+
+  defp flatten_pages(pages, acc, depth) do
+    Enum.reduce(pages, acc, fn page, acc ->
+      prefix = String.duplicate("  ", depth)
+      children = Map.get(page, :children, [])
+
+      acc
+      |> Kernel.++([{prefix <> page.name, page.id}])
+      |> flatten_pages(children, depth + 1)
+    end)
+  end
+
+  @impl true
+  def mount(
+        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
+        _session,
+        socket
+      ) do
+    case Projects.get_project_by_slugs(
+           socket.assigns.current_scope,
+           workspace_slug,
+           project_slug
+         ) do
+      {:ok, project, membership} ->
+        project = Repo.preload(project, :workspace)
+        pages_tree = Pages.list_pages_tree(project.id)
+        can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+
+        socket =
+          socket
+          |> assign(:project, project)
+          |> assign(:workspace, project.workspace)
+          |> assign(:membership, membership)
+          |> assign(:can_edit, can_edit)
+          |> assign(:pages_tree, pages_tree)
+          |> assign(:form, to_form(Pages.change_page(%Pages.Page{})))
+
+        {:ok, socket}
+
+      {:error, _reason} ->
+        {:ok,
+         socket
+         |> put_flash(:error, gettext("You don't have access to this project."))
+         |> redirect(to: ~p"/workspaces")}
+    end
+  end
+
+  @impl true
+  def handle_params(_params, _url, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("validate", %{"page" => page_params}, socket) do
+    changeset =
+      %Pages.Page{}
+      |> Pages.change_page(page_params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, :form, to_form(changeset))}
+  end
+
+  def handle_event("save", %{"page" => page_params}, socket) do
+    if socket.assigns.can_edit do
+      case Pages.create_page(socket.assigns.project, page_params) do
+        {:ok, page} ->
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("Page created successfully."))
+           |> push_navigate(
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages/#{page.id}"
+           )}
+
+        {:error, changeset} ->
+          {:noreply, assign(socket, :form, to_form(changeset))}
+      end
+    else
+      {:noreply,
+       put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+end
