@@ -14,6 +14,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
   attr :pages_tree, :list, default: []
   attr :current_path, :string, required: true
   attr :selected_page_id, :string, default: nil
+  attr :can_edit, :boolean, default: false
 
   def project_sidebar(assigns) do
     ~H"""
@@ -63,6 +64,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
             workspace={@workspace}
             project={@project}
             selected_page_id={@selected_page_id}
+            can_edit={@can_edit}
           />
         </div>
 
@@ -96,6 +98,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
   attr :workspace, :map, required: true
   attr :project, :map, required: true
   attr :selected_page_id, :string, default: nil
+  attr :can_edit, :boolean, default: false
 
   defp page_tree_items(assigns) do
     has_children = has_children?(assigns.page)
@@ -120,12 +123,16 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
         has_children={true}
         href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{@page.id}"}
       >
+        <:menu :if={@can_edit}>
+          <.page_menu page_id={@page.id} />
+        </:menu>
         <.page_tree_items
           :for={child <- @page.children}
           page={child}
           workspace={@workspace}
           project={@project}
           selected_page_id={@selected_page_id}
+          can_edit={@can_edit}
         />
       </.tree_node>
     <% else %>
@@ -134,8 +141,45 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
         icon_text={@page.icon || "page"}
         href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{@page.id}"}
         active={@is_selected}
-      />
+      >
+        <:menu :if={@can_edit}>
+          <.page_menu page_id={@page.id} />
+        </:menu>
+      </.tree_leaf>
     <% end %>
+    """
+  end
+
+  defp page_menu(assigns) do
+    ~H"""
+    <div class="dropdown dropdown-end">
+      <button
+        type="button"
+        tabindex="0"
+        class="btn btn-ghost btn-xs btn-square"
+        onclick="event.preventDefault(); event.stopPropagation();"
+      >
+        <.icon name="hero-ellipsis-horizontal" class="size-4" />
+      </button>
+      <ul
+        tabindex="0"
+        class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-40 z-50"
+      >
+        <li>
+          <button
+            type="button"
+            class="text-error"
+            phx-click="delete_page"
+            phx-value-id={@page_id}
+            data-confirm={gettext("Are you sure you want to delete this page?")}
+            onclick="event.stopPropagation();"
+          >
+            <.icon name="hero-trash" class="size-4" />
+            {gettext("Delete")}
+          </button>
+        </li>
+      </ul>
+    </div>
     """
   end
 

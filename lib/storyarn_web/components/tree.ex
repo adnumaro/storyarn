@@ -35,11 +35,12 @@ defmodule StoryarnWeb.TreeComponents do
   attr :has_children, :boolean, default: false
   attr :class, :string, default: ""
   slot :inner_block
+  slot :menu
 
   def tree_node(assigns) do
     ~H"""
-    <div class={["tree-node", @class]}>
-      <div class="flex items-center">
+    <div class={["tree-node group", @class]}>
+      <div class="relative flex items-center">
         <%!-- Expand/collapse toggle --%>
         <button
           :if={@has_children}
@@ -67,29 +68,25 @@ defmodule StoryarnWeb.TreeComponents do
             navigate={@href}
             class="flex-1 flex items-center gap-2 px-2 py-1 rounded hover:bg-base-300 text-sm truncate"
           >
-            <span :if={@icon_text} class="shrink-0">{@icon_text}</span>
-            <.icon
-              :if={@icon && !@icon_text}
-              name={@icon}
-              class="size-4 shrink-0"
-              style={@color && "color: #{@color}"}
-            />
+            <.tree_icon icon={@icon} icon_text={@icon_text} color={@color} />
             <span class="truncate">{@label}</span>
             <span :if={@badge} class="badge badge-xs badge-ghost ml-auto shrink-0">{@badge}</span>
           </.link>
         <% else %>
           <div class="flex-1 flex items-center gap-2 px-2 py-1 text-sm truncate">
-            <span :if={@icon_text} class="shrink-0">{@icon_text}</span>
-            <.icon
-              :if={@icon && !@icon_text}
-              name={@icon}
-              class="size-4 shrink-0"
-              style={@color && "color: #{@color}"}
-            />
+            <.tree_icon icon={@icon} icon_text={@icon_text} color={@color} />
             <span class="truncate">{@label}</span>
             <span :if={@badge} class="badge badge-xs badge-ghost ml-auto shrink-0">{@badge}</span>
           </div>
         <% end %>
+
+        <%!-- Menu slot --%>
+        <div
+          :if={@menu != []}
+          class="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          {render_slot(@menu)}
+        </div>
       </div>
 
       <%!-- Children container --%>
@@ -122,30 +119,46 @@ defmodule StoryarnWeb.TreeComponents do
   attr :icon_text, :string, default: nil
   attr :color, :string, default: nil
   attr :class, :string, default: ""
+  slot :menu
 
   def tree_leaf(assigns) do
     ~H"""
-    <.link
-      navigate={@href}
-      class={[
-        "flex items-center gap-2 px-2 py-1 rounded text-sm truncate ml-5",
-        @active && "bg-base-300 font-medium",
-        !@active && "hover:bg-base-300",
-        @class
-      ]}
-    >
-      <span :if={@icon_text} class="shrink-0">{@icon_text}</span>
-      <.icon
-        :if={@icon && !@icon_text}
-        name={@icon}
-        class="size-4 shrink-0"
-        style={@color && "color: #{@color}"}
-      />
-      <span :if={!@icon && !@icon_text} class="w-4 h-4 flex items-center justify-center shrink-0">
-        <span class="w-1.5 h-1.5 rounded-full bg-base-content/30"></span>
-      </span>
-      <span class="truncate">{@label}</span>
-    </.link>
+    <div class={["group relative flex items-center ml-5", @class]}>
+      <.link
+        navigate={@href}
+        class={[
+          "flex-1 flex items-center gap-2 px-2 py-1 rounded text-sm truncate",
+          @active && "bg-base-300 font-medium",
+          !@active && "hover:bg-base-300"
+        ]}
+      >
+        <.tree_icon icon={@icon} icon_text={@icon_text} color={@color} />
+        <span class="truncate">{@label}</span>
+      </.link>
+      <div
+        :if={@menu != []}
+        class="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        {render_slot(@menu)}
+      </div>
+    </div>
+    """
+  end
+
+  attr :icon, :string, default: nil
+  attr :icon_text, :string, default: nil
+  attr :color, :string, default: nil
+
+  defp tree_icon(assigns) do
+    ~H"""
+    <%= cond do %>
+      <% @icon_text && @icon_text not in [nil, "", "page"] -> %>
+        <span class="shrink-0">{@icon_text}</span>
+      <% @icon -> %>
+        <.icon name={@icon} class="size-4 shrink-0" style={@color && "color: #{@color}"} />
+      <% true -> %>
+        <.icon name="hero-document" class="size-4 shrink-0 opacity-60" />
+    <% end %>
     """
   end
 

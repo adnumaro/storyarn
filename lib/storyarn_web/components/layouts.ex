@@ -122,6 +122,8 @@ defmodule StoryarnWeb.Layouts do
     default: nil,
     doc: "currently selected page ID for tree highlighting"
 
+  attr :can_edit, :boolean, default: false, doc: "whether the user can edit pages"
+
   slot :inner_block, required: true
 
   def project(assigns) do
@@ -168,6 +170,7 @@ defmodule StoryarnWeb.Layouts do
           pages_tree={@pages_tree}
           current_path={@current_path}
           selected_page_id={@selected_page_id}
+          can_edit={@can_edit}
         />
       </div>
     </div>

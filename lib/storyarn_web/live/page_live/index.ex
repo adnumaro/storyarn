@@ -17,6 +17,7 @@ defmodule StoryarnWeb.PageLive.Index do
       workspace={@workspace}
       pages_tree={@pages_tree}
       current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages"}
+      can_edit={@can_edit}
     >
       <div class="text-center mb-8">
         <.header>
@@ -122,7 +123,7 @@ defmodule StoryarnWeb.PageLive.Index do
     >
       <div class="card-body">
         <div class="flex items-center gap-3">
-          <span class="text-2xl">{@page.icon || "page"}</span>
+          <.page_icon icon={@page.icon} />
           <div>
             <h3 class="card-title text-lg">{@page.name}</h3>
             <p :if={@children_count > 0} class="text-sm text-base-content/50">
@@ -132,6 +133,21 @@ defmodule StoryarnWeb.PageLive.Index do
         </div>
       </div>
     </.link>
+    """
+  end
+
+  attr :icon, :string, default: nil
+
+  defp page_icon(assigns) do
+    is_emoji = assigns.icon && assigns.icon not in [nil, "", "page"]
+    assigns = assign(assigns, :is_emoji, is_emoji)
+
+    ~H"""
+    <%= if @is_emoji do %>
+      <span class="text-2xl">{@icon}</span>
+    <% else %>
+      <.icon name="hero-document" class="size-6 opacity-60" />
+    <% end %>
     """
   end
 
@@ -214,6 +230,28 @@ defmodule StoryarnWeb.PageLive.Index do
 
         {:error, changeset} ->
           {:noreply, assign(socket, :form, to_form(changeset))}
+      end
+    else
+      {:noreply,
+       put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  def handle_event("delete_page", %{"id" => page_id}, socket) do
+    if socket.assigns.can_edit do
+      page = Pages.get_page!(socket.assigns.project.id, page_id)
+
+      case Pages.delete_page(page) do
+        {:ok, _} ->
+          pages_tree = Pages.list_pages_tree(socket.assigns.project.id)
+
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("Page deleted successfully."))
+           |> assign(:pages_tree, pages_tree)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not delete page."))}
       end
     else
       {:noreply,

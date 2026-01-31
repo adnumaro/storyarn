@@ -19,6 +19,7 @@ defmodule StoryarnWeb.PageLive.Show do
       pages_tree={@pages_tree}
       current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{@page.id}"}
       selected_page_id={to_string(@page.id)}
+      can_edit={@can_edit}
     >
       <%!-- Breadcrumb --%>
       <nav class="text-sm mb-4">
@@ -26,9 +27,9 @@ defmodule StoryarnWeb.PageLive.Show do
           <li :for={{ancestor, idx} <- Enum.with_index(@ancestors)}>
             <.link
               navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{ancestor.id}"}
-              class="hover:text-primary"
+              class="hover:text-primary flex items-center gap-1"
             >
-              <span class="mr-1">{ancestor.icon || "page"}</span>
+              <.page_icon icon={ancestor.icon} size="sm" />
               {ancestor.name}
             </.link>
             <span :if={idx < length(@ancestors) - 1} class="mx-1 text-base-content/50">/</span>
@@ -37,44 +38,37 @@ defmodule StoryarnWeb.PageLive.Show do
       </nav>
 
       <%!-- Page Header --%>
-      <div class="max-w-3xl mx-auto">
-        <div class="flex items-start gap-4 mb-8">
-          <span class="text-5xl">{@page.icon || "page"}</span>
-          <div class="flex-1">
-            <h1
-              :if={!@editing_name}
-              class="text-3xl font-bold cursor-pointer hover:bg-base-200 rounded px-2 -mx-2 py-1"
-              phx-click="edit_name"
-            >
-              {@page.name}
-            </h1>
-            <form :if={@editing_name} phx-submit="save_name" phx-click-away="cancel_edit_name">
-              <input
-                type="text"
-                name="name"
-                value={@page.name}
-                class="input input-bordered text-3xl font-bold w-full"
-                autofocus
-                phx-key="escape"
-                phx-keydown="cancel_edit_name"
-              />
-            </form>
-
-            <div class="flex items-center gap-2 mt-2">
-              <button
-                :if={@can_edit}
-                type="button"
-                class="btn btn-ghost btn-xs"
-                phx-click="delete"
-                data-confirm={gettext("Are you sure you want to delete this page?")}
+      <div class="relative">
+        <div class="max-w-3xl mx-auto">
+          <div class="flex items-start gap-4 mb-8">
+            <.page_icon icon={@page.icon} size="xl" />
+            <div class="flex-1">
+              <h1
+                :if={!@editing_name}
+                class="text-3xl font-bold cursor-pointer hover:bg-base-200 rounded px-2 -mx-2 py-1"
+                phx-click="edit_name"
               >
-                <.icon name="hero-trash" class="size-4" />
-                {gettext("Delete")}
-              </button>
+                {@page.name}
+              </h1>
+              <form :if={@editing_name} phx-submit="save_name" phx-click-away="cancel_edit_name">
+                <input
+                  type="text"
+                  name="name"
+                  value={@page.name}
+                  class="input input-bordered text-3xl font-bold w-full"
+                  autofocus
+                  phx-key="escape"
+                  phx-keydown="cancel_edit_name"
+                />
+              </form>
             </div>
           </div>
         </div>
+        <%!-- Save indicator (positioned at header level) --%>
+        <.save_indicator status={@save_status} />
+      </div>
 
+      <div class="max-w-3xl mx-auto">
         <%!-- Blocks --%>
         <div
           id="blocks-container"
@@ -120,7 +114,7 @@ defmodule StoryarnWeb.PageLive.Show do
               navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{child.id}"}
               class="flex items-center gap-2 p-2 rounded hover:bg-base-200"
             >
-              <span>{child.icon || "page"}</span>
+              <.page_icon icon={child.icon} size="md" />
               <span>{child.name}</span>
             </.link>
           </div>
@@ -409,6 +403,54 @@ defmodule StoryarnWeb.PageLive.Show do
     """
   end
 
+  @page_icon_sizes %{
+    "sm" => {"size-4", "text-sm"},
+    "md" => {"size-5", "text-base"},
+    "lg" => {"size-6", "text-lg"},
+    "xl" => {"size-10", "text-5xl"}
+  }
+
+  attr :icon, :string, default: nil
+  attr :size, :string, values: ["sm", "md", "lg", "xl"], default: "md"
+
+  defp page_icon(assigns) do
+    {size_class, text_size} = Map.get(@page_icon_sizes, assigns.size, {"size-5", "text-base"})
+    is_emoji = assigns.icon && assigns.icon not in [nil, "", "page"]
+
+    assigns =
+      assigns
+      |> assign(:size_class, size_class)
+      |> assign(:text_size, text_size)
+      |> assign(:is_emoji, is_emoji)
+
+    ~H"""
+    <span :if={@is_emoji} class={@text_size}>{@icon}</span>
+    <.icon :if={!@is_emoji} name="hero-document" class={"#{@size_class} opacity-60"} />
+    """
+  end
+
+  attr :status, :atom, required: true
+
+  defp save_indicator(assigns) do
+    ~H"""
+    <div
+      :if={@status != :idle}
+      class="absolute top-2 right-0 z-10 animate-in fade-in duration-300"
+    >
+      <div class={[
+        "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium",
+        @status == :saving && "bg-base-200 text-base-content",
+        @status == :saved && "bg-success/10 text-success"
+      ]}>
+        <span :if={@status == :saving} class="loading loading-spinner loading-xs"></span>
+        <.icon :if={@status == :saved} name="hero-check" class="size-4" />
+        <span :if={@status == :saving}>{gettext("Saving...")}</span>
+        <span :if={@status == :saved}>{gettext("Saved")}</span>
+      </div>
+    </div>
+    """
+  end
+
   @impl true
   def mount(
         %{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => page_id},
@@ -450,6 +492,7 @@ defmodule StoryarnWeb.PageLive.Show do
               |> assign(:editing_name, false)
               |> assign(:editing_block_id, nil)
               |> assign(:show_block_menu, false)
+              |> assign(:save_status, :idle)
 
             {:ok, socket}
         end
@@ -503,19 +546,11 @@ defmodule StoryarnWeb.PageLive.Show do
     end
   end
 
-  def handle_event("delete", _params, socket) do
+  def handle_event("delete_page", %{"id" => page_id}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        case Pages.delete_page(socket.assigns.page) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, gettext("Page deleted successfully."))
-             |> push_navigate(to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages")}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not delete page."))}
-        end
+        page = Pages.get_page!(socket.assigns.project.id, page_id)
+        do_delete_page(socket, page)
 
       {:error, :unauthorized} ->
         {:noreply,
@@ -564,7 +599,12 @@ defmodule StoryarnWeb.PageLive.Show do
         case Pages.update_block_value(block, %{"content" => value}) do
           {:ok, _block} ->
             blocks = Pages.list_blocks(socket.assigns.page.id)
-            {:noreply, assign(socket, :blocks, blocks)}
+            schedule_save_status_reset()
+
+            {:noreply,
+             socket
+             |> assign(:blocks, blocks)
+             |> assign(:save_status, :saved)}
 
           {:error, _} ->
             {:noreply, socket}
@@ -591,7 +631,12 @@ defmodule StoryarnWeb.PageLive.Show do
         case Pages.update_block_value(block, %{"content" => new_content}) do
           {:ok, _block} ->
             blocks = Pages.list_blocks(socket.assigns.page.id)
-            {:noreply, assign(socket, :blocks, blocks)}
+            schedule_save_status_reset()
+
+            {:noreply,
+             socket
+             |> assign(:blocks, blocks)
+             |> assign(:save_status, :saved)}
 
           {:error, _} ->
             {:noreply, socket}
@@ -630,7 +675,8 @@ defmodule StoryarnWeb.PageLive.Show do
         case Pages.update_block_value(block, %{"content" => content}) do
           {:ok, _block} ->
             # Don't reload blocks to avoid disrupting the editor
-            {:noreply, socket}
+            schedule_save_status_reset()
+            {:noreply, assign(socket, :save_status, :saved)}
 
           {:error, _} ->
             {:noreply, socket}
@@ -655,6 +701,39 @@ defmodule StoryarnWeb.PageLive.Show do
       {:error, :unauthorized} ->
         {:noreply,
          put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  @impl true
+  def handle_info(:reset_save_status, socket) do
+    {:noreply, assign(socket, :save_status, :idle)}
+  end
+
+  defp schedule_save_status_reset do
+    Process.send_after(self(), :reset_save_status, 4000)
+  end
+
+  defp do_delete_page(socket, page) do
+    case Pages.delete_page(page) do
+      {:ok, _} ->
+        handle_page_deleted(socket, page)
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not delete page."))}
+    end
+  end
+
+  defp handle_page_deleted(socket, deleted_page) do
+    socket = put_flash(socket, :info, gettext("Page deleted successfully."))
+
+    if deleted_page.id == socket.assigns.page.id do
+      {:noreply,
+       push_navigate(socket,
+         to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages"
+       )}
+    else
+      pages_tree = Pages.list_pages_tree(socket.assigns.project.id)
+      {:noreply, assign(socket, :pages_tree, pages_tree)}
     end
   end
 end
