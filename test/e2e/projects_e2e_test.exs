@@ -12,6 +12,8 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Repo
+
   @moduletag :e2e
 
   # Helper to authenticate via magic link
@@ -27,56 +29,59 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
   end
 
   describe "unauthenticated access" do
-    test "redirects to login when accessing projects", %{conn: conn} do
+    test "redirects to login when accessing workspaces", %{conn: conn} do
       conn
-      |> visit("/projects")
+      |> visit("/workspaces")
       |> assert_path("/users/log-in")
     end
 
     test "redirects to login when accessing project settings", %{conn: conn} do
       conn
-      |> visit("/projects/1/settings")
+      |> visit("/workspaces/some-workspace/projects/some-project/settings")
       |> assert_path("/users/log-in")
     end
   end
 
-  describe "project dashboard (authenticated)" do
-    test "shows empty state when user has no projects", %{conn: conn} do
+  describe "workspace dashboard (authenticated)" do
+    test "shows empty state when user has no projects in workspace", %{conn: conn} do
       user = user_fixture()
+      workspace = Storyarn.Workspaces.get_default_workspace(user)
 
       conn
       |> authenticate_user(user)
-      |> visit("/projects")
-      |> assert_has("h1", text: "Projects")
+      |> visit("/workspaces/#{workspace.slug}")
+      |> assert_has("h1", text: workspace.name)
       |> assert_has("p", text: "No projects yet")
     end
 
     test "shows project list when user has projects", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user, %{name: "My Narrative Project"})
+      project = project_fixture(user, %{name: "My Narrative Project"}) |> Repo.preload(:workspace)
 
       conn
       |> authenticate_user(user)
-      |> visit("/projects")
+      |> visit("/workspaces/#{project.workspace.slug}")
       |> assert_has("h3", text: project.name)
     end
 
     test "can open new project modal", %{conn: conn} do
       user = user_fixture()
+      workspace = Storyarn.Workspaces.get_default_workspace(user)
 
       conn
       |> authenticate_user(user)
-      |> visit("/projects")
+      |> visit("/workspaces/#{workspace.slug}")
       |> click_link("New Project")
       |> assert_has("h1", text: "New Project")
     end
 
     test "can create a new project", %{conn: conn} do
       user = user_fixture()
+      workspace = Storyarn.Workspaces.get_default_workspace(user)
 
       conn
       |> authenticate_user(user)
-      |> visit("/projects/new")
+      |> visit("/workspaces/#{workspace.slug}/projects/new")
       |> fill_in("Project Name", with: "My New Story")
       |> fill_in("Description", with: "A narrative adventure")
       |> click_button("Create Project")
@@ -87,21 +92,24 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
   describe "project show page (authenticated)" do
     test "displays project details", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user, %{name: "Epic Tale", description: "An epic story"})
+
+      project =
+        project_fixture(user, %{name: "Epic Tale", description: "An epic story"})
+        |> Repo.preload(:workspace)
 
       conn
       |> authenticate_user(user)
-      |> visit("/projects/#{project.id}")
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
       |> assert_has("h1", text: "Epic Tale")
     end
 
     test "shows settings link for owner", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user)
+      project = project_fixture(user) |> Repo.preload(:workspace)
 
       conn
       |> authenticate_user(user)
-      |> visit("/projects/#{project.id}")
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
       |> assert_has("a", text: "Settings")
     end
   end
@@ -109,22 +117,22 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
   describe "project settings (authenticated)" do
     test "owner can access settings page", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user, %{name: "Settings Test"})
+      project = project_fixture(user, %{name: "Settings Test"}) |> Repo.preload(:workspace)
 
       conn
       |> authenticate_user(user)
-      |> visit("/projects/#{project.id}/settings")
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
       |> assert_has("h1", text: "Project Settings")
       |> assert_has("h3", text: "Project Details")
     end
 
     test "owner can update project name", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user, %{name: "Old Name"})
+      project = project_fixture(user, %{name: "Old Name"}) |> Repo.preload(:workspace)
 
       conn
       |> authenticate_user(user)
-      |> visit("/projects/#{project.id}/settings")
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
       |> fill_in("Project Name", with: "New Name")
       |> click_button("Save Changes")
       |> assert_has("p", text: "Project updated successfully")
@@ -132,21 +140,21 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
 
     test "shows team members section", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user)
+      project = project_fixture(user) |> Repo.preload(:workspace)
 
       conn
       |> authenticate_user(user)
-      |> visit("/projects/#{project.id}/settings")
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
       |> assert_has("h3", text: "Team Members")
     end
 
     test "shows invite form", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user)
+      project = project_fixture(user) |> Repo.preload(:workspace)
 
       conn
       |> authenticate_user(user)
-      |> visit("/projects/#{project.id}/settings")
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
       |> assert_has("h4", text: "Invite a new member")
       |> assert_has("input[type=email]")
     end
@@ -154,13 +162,13 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
     test "non-owner cannot access settings", %{conn: conn} do
       owner = user_fixture()
       viewer = user_fixture()
-      project = project_fixture(owner)
+      project = project_fixture(owner) |> Repo.preload(:workspace)
       membership_fixture(project, viewer, "viewer")
 
       conn
       |> authenticate_user(viewer)
-      |> visit("/projects/#{project.id}/settings")
-      |> assert_path("/projects")
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
+      |> assert_path("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
     end
   end
 
@@ -199,7 +207,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
     test "authenticated user can accept invitation", %{conn: conn} do
       owner = user_fixture()
       invitee = user_fixture(%{email: "invitee@example.com"})
-      project = project_fixture(owner, %{name: "Collaborative Project"})
+      project = project_fixture(owner, %{name: "Collaborative Project"}) |> Repo.preload(:workspace)
 
       {token, _invitation} =
         create_invitation_with_token(project, owner, "invitee@example.com", "editor")
@@ -209,7 +217,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       |> visit("/projects/invitations/#{token}")
       |> assert_has("button", text: "Accept Invitation")
       |> click_button("Accept Invitation")
-      |> assert_path("/projects/#{project.id}")
+      |> assert_path("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
     end
 
     test "shows email mismatch warning when logged in with different email", %{conn: conn} do

@@ -5,13 +5,16 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Repo
+
   describe "Settings" do
     setup :register_and_log_in_user
 
     test "renders project settings for owner", %{conn: conn, user: user} do
-      project = project_fixture(user, %{name: "My Project"})
+      project = project_fixture(user, %{name: "My Project"}) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} = live(conn, ~p"/projects/#{project.id}/settings")
+      {:ok, _view, html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
 
       assert html =~ "Project Settings"
       assert html =~ "My Project"
@@ -21,20 +24,21 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
     test "redirects non-owner", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner)
+      project = project_fixture(owner) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
-        live(conn, ~p"/projects/#{project.id}/settings")
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
 
-      assert path == "/workspaces"
+      assert path =~ "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
       assert flash["error"] =~ "permission"
     end
 
     test "updates project details", %{conn: conn, user: user} do
-      project = project_fixture(user, %{name: "Old Name"})
+      project = project_fixture(user, %{name: "Old Name"}) |> Repo.preload(:workspace)
 
-      {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}/settings")
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
 
       html =
         view
@@ -47,11 +51,12 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     end
 
     test "lists team members", %{conn: conn, user: user} do
-      project = project_fixture(user)
+      project = project_fixture(user) |> Repo.preload(:workspace)
       member = user_fixture(%{email: "member@example.com"})
       _membership = membership_fixture(project, member, "editor")
 
-      {:ok, _view, html} = live(conn, ~p"/projects/#{project.id}/settings")
+      {:ok, _view, html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
 
       assert html =~ user.email
       assert html =~ "member@example.com"
@@ -60,9 +65,10 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     end
 
     test "sends invitation", %{conn: conn, user: user} do
-      project = project_fixture(user)
+      project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}/settings")
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
 
       view
       |> form("#invite-form", invite: %{email: "newmember@example.com", role: "editor"})
@@ -74,10 +80,11 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     end
 
     test "shows error for duplicate invitation", %{conn: conn, user: user} do
-      project = project_fixture(user)
+      project = project_fixture(user) |> Repo.preload(:workspace)
       _invitation = invitation_fixture(project, user, "existing@example.com")
 
-      {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}/settings")
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
 
       view
       |> form("#invite-form", invite: %{email: "existing@example.com", role: "editor"})
@@ -87,10 +94,11 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     end
 
     test "revokes invitation", %{conn: conn, user: user} do
-      project = project_fixture(user)
+      project = project_fixture(user) |> Repo.preload(:workspace)
       invitation = invitation_fixture(project, user, "pending@example.com")
 
-      {:ok, view, html} = live(conn, ~p"/projects/#{project.id}/settings")
+      {:ok, view, html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
 
       assert html =~ "pending@example.com"
 
@@ -103,11 +111,12 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     end
 
     test "removes member", %{conn: conn, user: user} do
-      project = project_fixture(user)
+      project = project_fixture(user) |> Repo.preload(:workspace)
       member = user_fixture(%{email: "removeme@example.com"})
       membership = membership_fixture(project, member, "editor")
 
-      {:ok, view, html} = live(conn, ~p"/projects/#{project.id}/settings")
+      {:ok, view, html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
 
       assert html =~ "removeme@example.com"
 
@@ -120,10 +129,10 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     end
 
     test "deletes project", %{conn: conn, user: user} do
-      project = project_fixture(user)
-      project = Storyarn.Repo.preload(project, :workspace)
+      project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}/settings")
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
 
       view
       |> element("button", "Delete Project")

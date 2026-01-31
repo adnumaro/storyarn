@@ -6,6 +6,7 @@ defmodule Storyarn.ProjectsTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.WorkspacesFixtures
 
   describe "projects" do
     test "list_projects/1 returns projects user has access to" do
@@ -71,12 +72,14 @@ defmodule Storyarn.ProjectsTest do
     test "create_project/2 creates project with owner membership" do
       user = user_fixture()
       scope = user_scope_fixture(user)
+      workspace = workspace_fixture(user)
 
-      attrs = %{name: "Test Project", description: "A test"}
+      attrs = %{name: "Test Project", description: "A test", workspace_id: workspace.id}
       assert {:ok, project} = Projects.create_project(scope, attrs)
       assert project.name == "Test Project"
       assert project.description == "A test"
       assert project.owner_id == user.id
+      assert project.slug != nil
 
       # Check owner membership was created
       membership = Projects.get_membership(project.id, user.id)
@@ -86,8 +89,9 @@ defmodule Storyarn.ProjectsTest do
     test "create_project/2 with invalid data returns error" do
       user = user_fixture()
       scope = user_scope_fixture(user)
+      workspace = workspace_fixture(user)
 
-      assert {:error, changeset} = Projects.create_project(scope, %{name: ""})
+      assert {:error, changeset} = Projects.create_project(scope, %{name: "", workspace_id: workspace.id})
       assert "can't be blank" in errors_on(changeset).name
     end
 

@@ -109,7 +109,9 @@ defmodule Storyarn.Assets.ImageProcessorTest do
   describe "process_image/2" do
     test "creates thumbnail and extracts metadata" do
       thumb = Path.join(@test_output_dir, "process_thumb.jpg")
-      assert {:ok, result} = ImageProcessor.process_image(@test_image_path, thumbnail_output: thumb)
+
+      assert {:ok, result} =
+               ImageProcessor.process_image(@test_image_path, thumbnail_output: thumb)
 
       assert result.thumbnail_path == thumb
       assert is_integer(result.metadata["width"])

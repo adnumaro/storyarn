@@ -5,6 +5,8 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Repo
+
   describe "Invitation" do
     test "renders invitation page for unauthenticated user", %{conn: conn} do
       owner = user_fixture()
@@ -52,7 +54,7 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
 
     test "accepts invitation", %{conn: conn} do
       owner = user_fixture()
-      project = project_fixture(owner, %{name: "Cool Project"})
+      project = project_fixture(owner, %{name: "Cool Project"}) |> Repo.preload(:workspace)
       invitee = user_fixture()
 
       {token, _invitation} = create_invitation_with_token(project, owner, invitee.email, "editor")
@@ -65,7 +67,7 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
       |> render_click()
 
       {path, flash} = assert_redirect(view)
-      assert path == "/projects/#{project.id}"
+      assert path == "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
       assert flash["info"] =~ "Welcome"
     end
 
