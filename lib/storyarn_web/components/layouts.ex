@@ -154,7 +154,7 @@ defmodule StoryarnWeb.Layouts do
         </header>
 
         <%!-- Main content area --%>
-        <main class="flex-1 overflow-y-auto bg-base-100 p-6 lg:p-8">
+        <main class="flex-1 overflow-y-auto bg-base-100 py-6 lg:py-8 px-12 lg:px-8">
           {render_slot(@inner_block)}
         </main>
 

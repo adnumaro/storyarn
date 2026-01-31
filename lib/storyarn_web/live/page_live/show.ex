@@ -74,14 +74,14 @@ defmodule StoryarnWeb.PageLive.Show do
         <%!-- Blocks --%>
         <div
           id="blocks-container"
-          class="space-y-2 min-h-[200px]"
+          class="flex flex-col gap-2 -mx-2 sm:-mx-8 md:-mx-16"
           phx-hook={if @can_edit, do: "SortableList", else: nil}
           data-group="blocks"
           data-handle=".drag-handle"
         >
           <div
             :for={block <- @blocks}
-            class="group relative"
+            class="group relative w-full px-2 sm:px-8 md:px-16"
             id={"block-#{block.id}"}
             data-id={block.id}
           >
@@ -91,20 +91,20 @@ defmodule StoryarnWeb.PageLive.Show do
               editing_block_id={@editing_block_id}
             />
           </div>
+        </div>
 
-          <%!-- Add block button / slash command --%>
-          <div :if={@can_edit} class="relative">
-            <div
-              :if={!@show_block_menu}
-              class="flex items-center gap-2 py-2 text-base-content/50 hover:text-base-content cursor-pointer group"
-              phx-click="show_block_menu"
-            >
-              <.icon name="plus" class="size-4 opacity-0 group-hover:opacity-100" />
-              <span class="text-sm">{gettext("Type / to add a block")}</span>
-            </div>
-
-            <.block_menu :if={@show_block_menu} />
+        <%!-- Add block button / slash command (outside sortable container) --%>
+        <div :if={@can_edit} class="relative mt-2">
+          <div
+            :if={!@show_block_menu}
+            class="flex items-center gap-2 py-2 text-base-content/50 hover:text-base-content cursor-pointer group"
+            phx-click="show_block_menu"
+          >
+            <.icon name="plus" class="size-4 opacity-0 group-hover:opacity-100" />
+            <span class="text-sm">{gettext("Type / to add a block")}</span>
           </div>
+
+          <.block_menu :if={@show_block_menu} />
         </div>
 
         <%!-- Children pages --%>
@@ -137,48 +137,49 @@ defmodule StoryarnWeb.PageLive.Show do
     assigns = assign(assigns, :is_editing, is_editing)
 
     ~H"""
-    <div class="flex items-start gap-2">
-      <%!-- Drag handle and menu --%>
-      <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 pt-2">
+    <div class="flex items-start gap-2 lg:relative lg:block w-full">
+      <%!-- Drag handle and delete - inline on mobile, absolute on lg --%>
+      <div
+        :if={@can_edit}
+        class="flex items-center pt-2 lg:absolute lg:-left-14 lg:top-2 lg:opacity-0 lg:group-hover:opacity-100"
+      >
         <button
-          :if={@can_edit}
           type="button"
-          class="drag-handle btn btn-ghost btn-xs cursor-grab active:cursor-grabbing"
+          class="drag-handle p-1 cursor-grab active:cursor-grabbing text-base-content/50 hover:text-base-content"
           title={gettext("Drag to reorder")}
         >
-          <.icon name="menu" class="size-3" />
+          <.icon name="grip-vertical" class="size-4" />
         </button>
         <button
-          :if={@can_edit}
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="p-1 text-base-content/50 hover:text-base-content"
           phx-click="delete_block"
           phx-value-id={@block.id}
         >
-          <.icon name="trash-2" class="size-3" />
+          <.icon name="trash-2" class="size-4" />
         </button>
       </div>
 
       <%!-- Block content --%>
-      <div class="flex-1">
+      <div class="flex-1 lg:flex-none">
         <%= case @block.type do %>
-          <% "text" -> %>
-            <.text_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
-          <% "rich_text" -> %>
-            <.rich_text_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
-          <% "number" -> %>
-            <.number_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
-          <% "select" -> %>
-            <.select_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
-          <% "multi_select" -> %>
-            <.multi_select_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
-          <% "divider" -> %>
-            <.divider_block />
-          <% "date" -> %>
-            <.date_block block={@block} can_edit={@can_edit} />
-          <% _ -> %>
-            <div class="text-base-content/50">{gettext("Unknown block type")}</div>
-        <% end %>
+        <% "text" -> %>
+          <.text_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
+        <% "rich_text" -> %>
+          <.rich_text_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
+        <% "number" -> %>
+          <.number_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
+        <% "select" -> %>
+          <.select_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
+        <% "multi_select" -> %>
+          <.multi_select_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
+        <% "divider" -> %>
+          <.divider_block />
+        <% "date" -> %>
+          <.date_block block={@block} can_edit={@can_edit} />
+        <% _ -> %>
+          <div class="text-base-content/50">{gettext("Unknown block type")}</div>
+      <% end %>
       </div>
     </div>
     """

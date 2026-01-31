@@ -21,11 +21,19 @@ export const SortableList = {
     this.sortable = new Sortable(this.el, {
       animation: 150,
       handle: handle,
+      draggable: "[data-id]",
+      direction: "vertical",
+      forceFallback: true,
+      fallbackOnBody: true,
+      swapThreshold: 0.65,
+      invertSwap: true,
       ghostClass: "sortable-ghost",
       chosenClass: "sortable-chosen",
       dragClass: "sortable-drag",
-      onEnd: (_event) => {
-        const ids = Array.from(this.el.children).map((item) => item.dataset.id);
+      onEnd: (_evt) => {
+        const ids = Array.from(this.el.querySelectorAll("[data-id]")).map(
+          (item) => item.dataset.id,
+        );
         this.pushEvent("reorder", { ids: ids, group: group });
       },
     });
