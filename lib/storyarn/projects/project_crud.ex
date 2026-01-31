@@ -4,8 +4,9 @@ defmodule Storyarn.Projects.ProjectCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Projects.{Project, ProjectMembership}
+  alias Storyarn.Projects.{Project, ProjectMembership, SlugGenerator}
   alias Storyarn.Repo
+  alias Storyarn.Workspaces.Workspace
 
   @doc """
   Lists all projects the user has access to (owned or as a member).
@@ -60,6 +61,25 @@ defmodule Storyarn.Projects.ProjectCrud do
   def get_project!(id), do: Repo.get!(Project, id)
 
   @doc """
+  Gets a project by workspace slug and project slug with authorization check.
+  """
+  def get_project_by_slugs(%Scope{user: user}, workspace_slug, project_slug) do
+    query =
+      from p in Project,
+        join: w in Workspace,
+        on: w.id == p.workspace_id,
+        where: w.slug == ^workspace_slug and p.slug == ^project_slug,
+        select: p
+
+    with %Project{} = project <- Repo.one(query),
+         %ProjectMembership{} = membership <- get_membership(project.id, user.id) do
+      {:ok, project, membership}
+    else
+      nil -> {:error, :not_found}
+    end
+  end
+
+  @doc """
   Creates a project and sets up the owner membership.
   """
   def create_project(%Scope{user: user}, attrs) do
@@ -97,8 +117,12 @@ defmodule Storyarn.Projects.ProjectCrud do
   # Private helpers
 
   defp insert_project(user, attrs) do
+    workspace_id = attrs[:workspace_id] || attrs["workspace_id"]
+    name = attrs[:name] || attrs["name"] || "untitled"
+    slug = SlugGenerator.generate_slug(workspace_id, name)
+
     %Project{owner_id: user.id}
-    |> Project.create_changeset(attrs)
+    |> Project.create_changeset(Map.put(attrs, :slug, slug))
     |> Repo.insert()
   end
 

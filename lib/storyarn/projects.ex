@@ -46,6 +46,14 @@ defmodule Storyarn.Projects do
   defdelegate get_project!(id), to: ProjectCrud
 
   @doc """
+  Gets a project by workspace slug and project slug with authorization check.
+
+  Returns `{:ok, project, membership}` if the user has access,
+  `{:error, :not_found}` if the project doesn't exist or user doesn't have access.
+  """
+  defdelegate get_project_by_slugs(scope, workspace_slug, project_slug), to: ProjectCrud
+
+  @doc """
   Creates a project and sets up the owner membership.
 
   The creating user becomes the owner of the project.

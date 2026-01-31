@@ -3,7 +3,14 @@ defmodule Storyarn.Projects.Invitations do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Projects.{Memberships, Project, ProjectInvitation, ProjectMembership, ProjectNotifier}
+  alias Storyarn.Projects.{
+    Memberships,
+    Project,
+    ProjectInvitation,
+    ProjectMembership,
+    ProjectNotifier
+  }
+
   alias Storyarn.Repo
 
   # Maximum invitations per user per project per hour

@@ -86,7 +86,7 @@ defmodule Storyarn.Projects.ProjectInvitation do
             where: i.token == ^hashed_token,
             where: i.expires_at > ^DateTime.utc_now(),
             where: is_nil(i.accepted_at),
-            preload: [:project, :invited_by]
+            preload: [[project: :workspace], :invited_by]
           )
 
         {:ok, query}

@@ -14,6 +14,7 @@ defmodule Storyarn.Projects.Project do
 
   schema "projects" do
     field :name, :string
+    field :slug, :string
     field :description, :string
     field :settings, :map, default: %{}
 
@@ -31,11 +32,21 @@ defmodule Storyarn.Projects.Project do
   """
   def create_changeset(project, attrs) do
     project
-    |> cast(attrs, [:name, :description, :settings, :workspace_id])
-    |> validate_required([:name])
+    |> cast(attrs, [:name, :slug, :description, :settings, :workspace_id])
+    |> validate_required([:name, :slug])
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:description, max: 1000)
+    |> validate_slug()
     |> foreign_key_constraint(:workspace_id)
+    |> unique_constraint([:workspace_id, :slug])
+  end
+
+  defp validate_slug(changeset) do
+    changeset
+    |> validate_length(:slug, min: 1, max: 100)
+    |> validate_format(:slug, ~r/^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      message: "must be lowercase alphanumeric with hyphens"
+    )
   end
 
   @doc """
