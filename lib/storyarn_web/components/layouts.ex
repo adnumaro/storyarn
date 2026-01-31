@@ -6,6 +6,7 @@ defmodule StoryarnWeb.Layouts do
   use StoryarnWeb, :html
   use Gettext, backend: StoryarnWeb.Gettext
 
+  import StoryarnWeb.Components.ProjectSidebar
   import StoryarnWeb.Components.Sidebar
 
   # Embed all files in layouts/* within this module.
@@ -77,6 +78,96 @@ defmodule StoryarnWeb.Layouts do
           current_user={@current_scope.user}
           workspaces={@workspaces}
           current_workspace={@current_workspace}
+        />
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders a project layout with pages tree sidebar.
+
+  This layout is used for project-specific pages that show the page navigation tree.
+
+  ## Examples
+
+      <Layouts.project
+        flash={@flash}
+        current_scope={@current_scope}
+        project={@project}
+        workspace={@workspace}
+        pages_tree={@pages_tree}
+        current_path={@current_path}
+      >
+        <h1>Content</h1>
+      </Layouts.project>
+
+  """
+  attr :flash, :map, required: true, doc: "the map of flash messages"
+
+  attr :current_scope, :map,
+    default: nil,
+    doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
+
+  attr :project, :map, required: true, doc: "the current project"
+  attr :workspace, :map, required: true, doc: "the workspace the project belongs to"
+
+  attr :pages_tree, :list,
+    default: [],
+    doc: "pages with preloaded children for the tree"
+
+  attr :current_path, :string, default: "", doc: "current path for navigation highlighting"
+
+  attr :selected_page_id, :string,
+    default: nil,
+    doc: "currently selected page ID for tree highlighting"
+
+  slot :inner_block, required: true
+
+  def project(assigns) do
+    ~H"""
+    <div class="drawer lg:drawer-open">
+      <input id="project-sidebar-drawer" type="checkbox" class="drawer-toggle" />
+
+      <div class="drawer-content flex flex-col min-h-screen">
+        <%!-- Mobile header with hamburger --%>
+        <header class="navbar bg-base-100 border-b border-base-300 lg:hidden">
+          <div class="flex-none">
+            <label for="project-sidebar-drawer" class="btn btn-square btn-ghost">
+              <.icon name="hero-bars-3" class="size-6" />
+            </label>
+          </div>
+          <div class="flex-1">
+            <.link
+              navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
+              class="flex items-center gap-2"
+            >
+              <.icon name="hero-folder" class="size-5" />
+              <span class="font-bold truncate">{@project.name}</span>
+            </.link>
+          </div>
+          <div class="flex-none">
+            <.theme_toggle />
+          </div>
+        </header>
+
+        <%!-- Main content area --%>
+        <main class="flex-1 overflow-y-auto bg-base-100 p-6 lg:p-8">
+          {render_slot(@inner_block)}
+        </main>
+
+        <.flash_group flash={@flash} />
+      </div>
+
+      <%!-- Sidebar drawer --%>
+      <div class="drawer-side z-40">
+        <label for="project-sidebar-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+        <.project_sidebar
+          project={@project}
+          workspace={@workspace}
+          pages_tree={@pages_tree}
+          current_path={@current_path}
+          selected_page_id={@selected_page_id}
         />
       </div>
     </div>
@@ -297,7 +388,11 @@ defmodule StoryarnWeb.Layouts do
       label: gettext("Account"),
       items: [
         %{label: gettext("Profile"), path: ~p"/users/settings", icon: "hero-user"},
-        %{label: gettext("Security"), path: ~p"/users/settings/security", icon: "hero-shield-check"},
+        %{
+          label: gettext("Security"),
+          path: ~p"/users/settings/security",
+          icon: "hero-shield-check"
+        },
         %{
           label: gettext("Connected accounts"),
           path: ~p"/users/settings/connections",

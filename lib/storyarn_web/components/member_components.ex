@@ -89,7 +89,9 @@ defmodule StoryarnWeb.MemberComponents do
     is_owner = assigns.member.role == "owner"
     is_self = assigns.member.user.id == assigns.current_user_id
     can_remove = assigns.can_manage && !is_owner && !is_self && assigns.on_remove
-    can_change_role = assigns.can_manage && !is_owner && assigns.on_role_change && assigns.role_options != []
+
+    can_change_role =
+      assigns.can_manage && !is_owner && assigns.on_role_change && assigns.role_options != []
 
     assigns =
       assigns
@@ -147,12 +149,17 @@ defmodule StoryarnWeb.MemberComponents do
 
       <.invitation_row invitation={@invitation} on_revoke="revoke_invitation" />
   """
-  attr :invitation, :map, required: true, doc: "Invitation struct with :email, :role, :invited_by, :id"
+  attr :invitation, :map,
+    required: true,
+    doc: "Invitation struct with :email, :role, :invited_by, :id"
+
   attr :on_revoke, :string, default: nil, doc: "Event name for revoking invitation"
   attr :can_revoke, :boolean, default: true, doc: "Whether to show revoke button"
 
   def invitation_row(assigns) do
-    inviter_name = assigns.invitation.invited_by.display_name || assigns.invitation.invited_by.email
+    inviter_name =
+      assigns.invitation.invited_by.display_name || assigns.invitation.invited_by.email
+
     assigns = assign(assigns, :inviter_name, inviter_name)
 
     ~H"""

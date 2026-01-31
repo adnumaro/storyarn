@@ -14,7 +14,16 @@ defmodule Storyarn.Accounts do
   - `Profiles` - User profile and sudo mode
   """
 
-  alias Storyarn.Accounts.{Emails, MagicLinks, OAuth, Passwords, Profiles, Registration, Sessions, Users}
+  alias Storyarn.Accounts.{
+    Emails,
+    MagicLinks,
+    OAuth,
+    Passwords,
+    Profiles,
+    Registration,
+    Sessions,
+    Users
+  }
 
   # =============================================================================
   # Users
