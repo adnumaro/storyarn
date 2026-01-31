@@ -5,12 +5,21 @@
  */
 export const TreeToggle = {
   mounted() {
-    const nodeId = this.el.dataset.nodeId;
-    const content = document.getElementById(`tree-content-${nodeId}`);
+    this.nodeId = this.el.dataset.nodeId;
+    this.restoreState();
+    this.setupClickHandler();
+  },
+
+  updated() {
+    // Restore state after LiveView updates the DOM
+    this.restoreState();
+  },
+
+  restoreState() {
+    const content = document.getElementById(`tree-content-${this.nodeId}`);
     const chevron = this.el.querySelector("[data-chevron]");
 
-    // Restore state from localStorage
-    const savedState = localStorage.getItem(`tree-${nodeId}`);
+    const savedState = localStorage.getItem(`tree-${this.nodeId}`);
     if (savedState !== null) {
       const expanded = savedState === "true";
       if (content) {
@@ -20,11 +29,15 @@ export const TreeToggle = {
         chevron.classList.toggle("rotate-90", expanded);
       }
     }
+  },
 
-    // Handle click events
+  setupClickHandler() {
     this.el.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+
+      const content = document.getElementById(`tree-content-${this.nodeId}`);
+      const chevron = this.el.querySelector("[data-chevron]");
 
       if (content) {
         content.classList.toggle("hidden");
@@ -35,7 +48,7 @@ export const TreeToggle = {
         }
 
         // Save state to localStorage
-        localStorage.setItem(`tree-${nodeId}`, expanded);
+        localStorage.setItem(`tree-${this.nodeId}`, expanded);
       }
     });
   },

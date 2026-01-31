@@ -26,7 +26,9 @@ defmodule StoryarnWeb.PageLive.Show do
         <ol class="flex items-center gap-1 text-base-content/70">
           <li :for={{ancestor, idx} <- Enum.with_index(@ancestors)}>
             <.link
-              navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{ancestor.id}"}
+              navigate={
+                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{ancestor.id}"
+              }
               class="hover:text-primary flex items-center gap-1"
             >
               <.page_icon icon={ancestor.icon} size="sm" />
@@ -111,7 +113,9 @@ defmodule StoryarnWeb.PageLive.Show do
           <div class="space-y-2">
             <.link
               :for={child <- @children}
-              navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{child.id}"}
+              navigate={
+                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{child.id}"
+              }
               class="flex items-center gap-2 p-2 rounded hover:bg-base-200"
             >
               <.page_icon icon={child.icon} size="md" />
@@ -704,6 +708,62 @@ defmodule StoryarnWeb.PageLive.Show do
     end
   end
 
+  def handle_event(
+        "move_page",
+        %{"page_id" => page_id, "parent_id" => parent_id, "position" => position},
+        socket
+      ) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        page = Pages.get_page!(socket.assigns.project.id, page_id)
+        parent_id = normalize_parent_id(parent_id)
+
+        case Pages.move_page_to_position(page, parent_id, position) do
+          {:ok, _page} ->
+            pages_tree = Pages.list_pages_tree(socket.assigns.project.id)
+            {:noreply, assign(socket, :pages_tree, pages_tree)}
+
+          {:error, :would_create_cycle} ->
+            {:noreply,
+             put_flash(socket, :error, gettext("Cannot move a page into its own children."))}
+
+          {:error, _reason} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not move page."))}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  def handle_event("create_child_page", %{"parent-id" => parent_id}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        attrs = %{name: gettext("New Page"), parent_id: parent_id}
+
+        case Pages.create_page(socket.assigns.project, attrs) do
+          {:ok, new_page} ->
+            pages_tree = Pages.list_pages_tree(socket.assigns.project.id)
+
+            {:noreply,
+             socket
+             |> assign(:pages_tree, pages_tree)
+             |> push_navigate(
+               to:
+                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages/#{new_page.id}"
+             )}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not create page."))}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
   @impl true
   def handle_info(:reset_save_status, socket) do
     {:noreply, assign(socket, :save_status, :idle)}
@@ -729,11 +789,16 @@ defmodule StoryarnWeb.PageLive.Show do
     if deleted_page.id == socket.assigns.page.id do
       {:noreply,
        push_navigate(socket,
-         to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages"
+         to:
+           ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages"
        )}
     else
       pages_tree = Pages.list_pages_tree(socket.assigns.project.id)
       {:noreply, assign(socket, :pages_tree, pages_tree)}
     end
   end
+
+  defp normalize_parent_id(""), do: nil
+  defp normalize_parent_id(nil), do: nil
+  defp normalize_parent_id(parent_id), do: parent_id
 end

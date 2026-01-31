@@ -55,17 +55,44 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
               <.icon name="hero-plus" class="size-3" />
             </.link>
           </div>
+
+          <%!-- Search input --%>
+          <div
+            :if={@pages_tree != []}
+            id="pages-tree-search"
+            phx-hook="TreeSearch"
+            data-tree-id="pages-tree-container"
+            class="mb-2"
+          >
+            <input
+              type="text"
+              data-tree-search-input
+              placeholder={gettext("Filter pages...")}
+              class="input input-xs input-bordered w-full"
+            />
+          </div>
+
           <div :if={@pages_tree == []} class="text-sm text-base-content/50 px-4 py-2">
             {gettext("No pages yet")}
           </div>
-          <.page_tree_items
-            :for={page <- @pages_tree}
-            page={page}
-            workspace={@workspace}
-            project={@project}
-            selected_page_id={@selected_page_id}
-            can_edit={@can_edit}
-          />
+
+          <%!-- Tree container with sortable support --%>
+          <div
+            :if={@pages_tree != []}
+            id="pages-tree-container"
+            phx-hook={if @can_edit, do: "SortableTree", else: nil}
+          >
+            <div data-sortable-container data-parent-id="">
+              <.page_tree_items
+                :for={page <- @pages_tree}
+                page={page}
+                workspace={@workspace}
+                project={@project}
+                selected_page_id={@selected_page_id}
+                can_edit={@can_edit}
+              />
+            </div>
+          </div>
         </div>
 
         <%!-- Project tools section --%>
@@ -105,13 +132,15 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
     is_selected = assigns.selected_page_id == to_string(assigns.page.id)
 
     is_expanded =
-      has_children and has_selected_page_recursive?(assigns.page.children, assigns.selected_page_id)
+      has_children and
+        has_selected_page_recursive?(assigns.page.children, assigns.selected_page_id)
 
     assigns =
       assigns
       |> assign(:has_children, has_children)
       |> assign(:is_selected, is_selected)
       |> assign(:is_expanded, is_expanded)
+      |> assign(:page_id, to_string(assigns.page.id))
 
     ~H"""
     <%= if @has_children do %>
@@ -122,7 +151,22 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
         expanded={@is_expanded}
         has_children={true}
         href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{@page.id}"}
+        page_id={@page_id}
+        page_name={@page.name}
+        can_drag={@can_edit}
       >
+        <:actions :if={@can_edit}>
+          <button
+            type="button"
+            phx-click="create_child_page"
+            phx-value-parent-id={@page.id}
+            class="btn btn-ghost btn-xs btn-square"
+            title={gettext("Add child page")}
+            onclick="event.preventDefault(); event.stopPropagation();"
+          >
+            <.icon name="hero-plus" class="size-3" />
+          </button>
+        </:actions>
         <:menu :if={@can_edit}>
           <.page_menu page_id={@page.id} />
         </:menu>
@@ -141,7 +185,22 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
         icon_text={@page.icon || "page"}
         href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{@page.id}"}
         active={@is_selected}
+        page_id={@page_id}
+        page_name={@page.name}
+        can_drag={@can_edit}
       >
+        <:actions :if={@can_edit}>
+          <button
+            type="button"
+            phx-click="create_child_page"
+            phx-value-parent-id={@page.id}
+            class="btn btn-ghost btn-xs btn-square"
+            title={gettext("Add child page")}
+            onclick="event.preventDefault(); event.stopPropagation();"
+          >
+            <.icon name="hero-plus" class="size-3" />
+          </button>
+        </:actions>
         <:menu :if={@can_edit}>
           <.page_menu page_id={@page.id} />
         </:menu>

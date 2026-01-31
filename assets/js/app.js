@@ -27,7 +27,9 @@ import topbar from "topbar";
 
 // Custom hooks
 import { SortableList } from "./hooks/sortable_list";
+import { SortableTree } from "./hooks/sortable_tree";
 import { TreeToggle } from "./hooks/tree";
+import { TreeSearch } from "./hooks/tree_search";
 import { TiptapEditor } from "./hooks/tiptap_editor";
 
 // Theme management (keyboard shortcuts, cross-tab sync)
@@ -37,7 +39,7 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: { _csrf_token: csrfToken },
-  hooks: { ...colocatedHooks, SortableList, TreeToggle, TiptapEditor },
+  hooks: { ...colocatedHooks, SortableList, SortableTree, TreeToggle, TreeSearch, TiptapEditor },
 });
 
 // Show progress bar on live navigation and form submits

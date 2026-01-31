@@ -4,6 +4,7 @@ defmodule StoryarnWeb.TreeComponents do
   """
   use Phoenix.Component
   use StoryarnWeb, :verified_routes
+  use Gettext, backend: StoryarnWeb.Gettext
 
   import StoryarnWeb.CoreComponents
 
@@ -34,12 +35,20 @@ defmodule StoryarnWeb.TreeComponents do
   attr :expanded, :boolean, default: false
   attr :has_children, :boolean, default: false
   attr :class, :string, default: ""
+  attr :page_id, :string, default: nil
+  attr :page_name, :string, default: nil
+  attr :can_drag, :boolean, default: false
   slot :inner_block
   slot :menu
+  slot :actions
 
   def tree_node(assigns) do
     ~H"""
-    <div class={["tree-node group", @class]}>
+    <div
+      class={["tree-node group", @can_drag && "cursor-grab active:cursor-grabbing", @class]}
+      data-page-id={@page_id}
+      data-page-name={@page_name}
+    >
       <div class="relative flex items-center">
         <%!-- Expand/collapse toggle --%>
         <button
@@ -80,11 +89,12 @@ defmodule StoryarnWeb.TreeComponents do
           </div>
         <% end %>
 
-        <%!-- Menu slot --%>
+        <%!-- Actions slot (+ button and menu) --%>
         <div
-          :if={@menu != []}
-          class="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          :if={@actions != [] || @menu != []}
+          class="absolute right-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
         >
+          {render_slot(@actions)}
           {render_slot(@menu)}
         </div>
       </div>
@@ -94,6 +104,8 @@ defmodule StoryarnWeb.TreeComponents do
         :if={@has_children}
         id={"tree-content-#{@id}"}
         class={["pl-5", !@expanded && "hidden"]}
+        data-sortable-container
+        data-parent-id={@page_id}
       >
         {render_slot(@inner_block)}
       </div>
@@ -119,27 +131,41 @@ defmodule StoryarnWeb.TreeComponents do
   attr :icon_text, :string, default: nil
   attr :color, :string, default: nil
   attr :class, :string, default: ""
+  attr :page_id, :string, default: nil
+  attr :page_name, :string, default: nil
+  attr :can_drag, :boolean, default: false
   slot :menu
+  slot :actions
 
   def tree_leaf(assigns) do
     ~H"""
-    <div class={["group relative flex items-center ml-5", @class]}>
-      <.link
-        navigate={@href}
-        class={[
-          "flex-1 flex items-center gap-2 px-2 py-1 rounded text-sm truncate",
-          @active && "bg-base-300 font-medium",
-          !@active && "hover:bg-base-300"
-        ]}
-      >
-        <.tree_icon icon={@icon} icon_text={@icon_text} color={@color} />
-        <span class="truncate">{@label}</span>
-      </.link>
-      <div
-        :if={@menu != []}
-        class="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        {render_slot(@menu)}
+    <div
+      class={["tree-leaf group", @can_drag && "cursor-grab active:cursor-grabbing", @class]}
+      data-page-id={@page_id}
+      data-page-name={@page_name}
+    >
+      <div class="relative flex items-center">
+        <%!-- Spacer to align with tree_node (expand/collapse area) --%>
+        <span class="w-5 shrink-0"></span>
+
+        <.link
+          navigate={@href}
+          class={[
+            "flex-1 flex items-center gap-2 px-2 py-1 rounded text-sm truncate",
+            @active && "bg-base-300 font-medium",
+            !@active && "hover:bg-base-300"
+          ]}
+        >
+          <.tree_icon icon={@icon} icon_text={@icon_text} color={@color} />
+          <span class="truncate">{@label}</span>
+        </.link>
+        <div
+          :if={@actions != [] || @menu != []}
+          class="absolute right-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          {render_slot(@actions)}
+          {render_slot(@menu)}
+        </div>
       </div>
     </div>
     """

@@ -8,9 +8,33 @@ defmodule Storyarn.Pages do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Pages.{Block, Page}
+  alias Storyarn.Pages.{Block, Page, PageOperations}
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
+
+  # =============================================================================
+  # Delegations
+  # =============================================================================
+
+  @doc """
+  Reorders pages within a parent container.
+
+  Takes a project_id, parent_id (nil for root level), and a list of page IDs
+  in the desired order. Updates all positions in a single transaction.
+  """
+  defdelegate reorder_pages(project_id, parent_id, page_ids), to: PageOperations
+
+  @doc """
+  Moves a page to a new parent at a specific position, reordering siblings as needed.
+
+  This function handles both same-parent reordering and cross-parent moves.
+  It validates the parent to prevent cycles, then updates positions for all affected containers.
+  """
+  def move_page_to_position(%Page{} = page, new_parent_id, new_position) do
+    with :ok <- validate_parent(page, new_parent_id) do
+      PageOperations.move_page_to_position(page, new_parent_id, new_position)
+    end
+  end
 
   # =============================================================================
   # Pages - Tree Operations
