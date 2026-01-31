@@ -19,8 +19,7 @@ export const TiptapEditor = {
       editable: editable,
       editorProps: {
         attributes: {
-          class:
-            "min-h-[100px] p-3 border border-base-300 rounded-lg focus:outline-none focus:border-primary",
+          class: "", // Styles handled by CSS .tiptap-content .ProseMirror
         },
       },
       onUpdate: ({ editor }) => {
@@ -58,7 +57,7 @@ export const TiptapEditor = {
   createToolbar() {
     const toolbar = document.createElement("div");
     toolbar.className =
-      "flex items-center gap-1 mb-2 p-1 border border-base-300 rounded-lg bg-base-100";
+      "tiptap-toolbar flex items-center gap-1 mb-2 p-1";
 
     const buttons = [
       {

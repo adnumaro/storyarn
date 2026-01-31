@@ -44,7 +44,7 @@ defmodule Storyarn.Pages.Block do
 
   alias Storyarn.Pages.Page
 
-  @block_types ~w(text rich_text number select multi_select)
+  @block_types ~w(text rich_text number select multi_select divider date)
 
   schema "blocks" do
     field :type, :string
@@ -143,6 +143,8 @@ defmodule Storyarn.Pages.Block do
       "number" -> %{"label" => "", "placeholder" => "0"}
       "select" -> %{"label" => "", "placeholder" => "Select...", "options" => []}
       "multi_select" -> %{"label" => "", "placeholder" => "Select...", "options" => []}
+      "divider" -> %{}
+      "date" -> %{"label" => ""}
       _ -> %{}
     end
   end
@@ -157,6 +159,8 @@ defmodule Storyarn.Pages.Block do
       "number" -> %{"content" => nil}
       "select" -> %{"content" => nil}
       "multi_select" -> %{"content" => []}
+      "divider" -> %{}
+      "date" -> %{"content" => nil}
       _ -> %{}
     end
   end

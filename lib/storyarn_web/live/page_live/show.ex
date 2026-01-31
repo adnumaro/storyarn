@@ -172,6 +172,10 @@ defmodule StoryarnWeb.PageLive.Show do
             <.select_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
           <% "multi_select" -> %>
             <.multi_select_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
+          <% "divider" -> %>
+            <.divider_block />
+          <% "date" -> %>
+            <.date_block block={@block} can_edit={@can_edit} />
           <% _ -> %>
             <div class="text-base-content/50">{gettext("Unknown block type")}</div>
         <% end %>
@@ -192,7 +196,7 @@ defmodule StoryarnWeb.PageLive.Show do
       |> assign(:content, content)
 
     ~H"""
-    <div>
+    <div class="py-1">
       <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
       <input
         :if={@can_edit}
@@ -203,7 +207,9 @@ defmodule StoryarnWeb.PageLive.Show do
         phx-blur="update_block_value"
         phx-value-id={@block.id}
       />
-      <div :if={!@can_edit} class="py-2">{@content}</div>
+      <div :if={!@can_edit} class={["py-2 min-h-10", @content == "" && "text-base-content/40"]}>
+        {if @content == "", do: "-", else: @content}
+      </div>
     </div>
     """
   end
@@ -218,7 +224,7 @@ defmodule StoryarnWeb.PageLive.Show do
       |> assign(:content, content)
 
     ~H"""
-    <div>
+    <div class="py-1">
       <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
       <div
         id={"tiptap-#{@block.id}"}
@@ -245,18 +251,20 @@ defmodule StoryarnWeb.PageLive.Show do
       |> assign(:content, content)
 
     ~H"""
-    <div>
+    <div class="py-1">
       <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
       <input
         :if={@can_edit}
         type="number"
         value={@content}
         placeholder={@placeholder}
-        class="input input-bordered w-full"
+        class="input input-bordered w-full max-w-xs"
         phx-blur="update_block_value"
         phx-value-id={@block.id}
       />
-      <div :if={!@can_edit} class="py-2">{@content || "-"}</div>
+      <div :if={!@can_edit} class={["py-2 min-h-10", @content == nil && "text-base-content/40"]}>
+        {@content || "-"}
+      </div>
     </div>
     """
   end
@@ -266,6 +274,7 @@ defmodule StoryarnWeb.PageLive.Show do
     placeholder = get_in(assigns.block.config, ["placeholder"]) || gettext("Select...")
     options = get_in(assigns.block.config, ["options"]) || []
     content = get_in(assigns.block.value, ["content"])
+    display_value = find_option_label(options, content)
 
     assigns =
       assigns
@@ -273,13 +282,14 @@ defmodule StoryarnWeb.PageLive.Show do
       |> assign(:placeholder, placeholder)
       |> assign(:options, options)
       |> assign(:content, content)
+      |> assign(:display_value, display_value)
 
     ~H"""
-    <div>
+    <div class="py-1">
       <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
       <select
         :if={@can_edit}
-        class="select select-bordered w-full"
+        class="select select-bordered w-full max-w-xs"
         phx-change="update_block_value"
         phx-value-id={@block.id}
       >
@@ -292,8 +302,8 @@ defmodule StoryarnWeb.PageLive.Show do
           {opt["value"]}
         </option>
       </select>
-      <div :if={!@can_edit} class="py-2">
-        {find_option_label(@options, @content) || "-"}
+      <div :if={!@can_edit} class={["py-2 min-h-10", @display_value == nil && "text-base-content/40"]}>
+        {@display_value || "-"}
       </div>
     </div>
     """
@@ -304,40 +314,109 @@ defmodule StoryarnWeb.PageLive.Show do
     options = get_in(assigns.block.config, ["options"]) || []
     content = get_in(assigns.block.value, ["content"]) || []
 
+    # Get selected options with their labels
+    selected_options =
+      Enum.map(content, fn key ->
+        option = Enum.find(options, fn opt -> opt["key"] == key end)
+        %{key: key, label: (option && option["value"]) || key}
+      end)
+
     assigns =
       assigns
       |> assign(:label, label)
       |> assign(:options, options)
       |> assign(:content, content)
+      |> assign(:selected_options, selected_options)
 
     ~H"""
-    <div>
+    <div class="py-1">
       <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
-      <div :if={@can_edit} class="flex flex-wrap gap-2">
-        <label :for={opt <- @options} class="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            class="checkbox checkbox-sm"
-            value={opt["key"]}
-            checked={opt["key"] in @content}
+      <div
+        :if={@can_edit}
+        class="block-input w-full min-h-12 py-2 flex flex-wrap items-center gap-1.5 px-4"
+      >
+        <%!-- Selected tags --%>
+        <span :for={opt <- @selected_options} class="badge badge-primary gap-1">
+          {opt.label}
+          <button
+            type="button"
+            class="hover:opacity-70"
             phx-click="toggle_multi_select"
             phx-value-id={@block.id}
-            phx-value-key={opt["key"]}
-          />
-          <span class="text-sm">{opt["value"]}</span>
-        </label>
-      </div>
-      <div :if={!@can_edit} class="flex flex-wrap gap-1 py-2">
-        <span
-          :for={key <- @content}
-          class="badge badge-sm"
-        >
-          {find_option_label(@options, key)}
+            phx-value-key={opt.key}
+          >
+            <.icon name="hero-x-mark" class="size-3" />
+          </button>
         </span>
-        <span :if={@content == []} class="text-base-content/50">-</span>
+        <%!-- Input for adding new tags --%>
+        <input
+          type="text"
+          class="flex-1 min-w-24 bg-transparent border-none outline-none text-sm"
+          placeholder={if @selected_options == [], do: gettext("Type and press Enter to add..."), else: gettext("Add more...")}
+          phx-keydown="multi_select_keydown"
+          phx-value-id={@block.id}
+        />
+      </div>
+      <div :if={!@can_edit} class="py-2 min-h-10">
+        <div :if={@content != []} class="flex flex-wrap gap-1">
+          <span :for={opt <- @selected_options} class="badge badge-sm badge-primary">
+            {opt.label}
+          </span>
+        </div>
+        <span :if={@content == []} class="text-base-content/40">-</span>
       </div>
     </div>
     """
+  end
+
+  defp divider_block(assigns) do
+    ~H"""
+    <div class="py-3">
+      <hr class="border-base-content/20" />
+    </div>
+    """
+  end
+
+  attr :block, :map, required: true
+  attr :can_edit, :boolean, default: false
+
+  defp date_block(assigns) do
+    label = get_in(assigns.block.config, ["label"]) || ""
+    content = get_in(assigns.block.value, ["content"])
+    formatted = format_date(content)
+
+    assigns =
+      assigns
+      |> assign(:label, label)
+      |> assign(:content, content)
+      |> assign(:formatted, formatted)
+
+    ~H"""
+    <div class="py-1">
+      <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
+      <input
+        :if={@can_edit}
+        type="date"
+        value={@content}
+        class="input input-bordered w-full max-w-xs"
+        phx-blur="update_block_value"
+        phx-value-id={@block.id}
+      />
+      <div :if={!@can_edit} class={["py-2 min-h-10", @content in [nil, ""] && "text-base-content/40"]}>
+        {@formatted}
+      </div>
+    </div>
+    """
+  end
+
+  defp format_date(nil), do: "-"
+  defp format_date(""), do: "-"
+
+  defp format_date(date_string) do
+    case Date.from_iso8601(date_string) do
+      {:ok, date} -> Calendar.strftime(date, "%B %d, %Y")
+      _ -> date_string
+    end
   end
 
   defp find_option_label(options, key) do
@@ -392,6 +471,26 @@ defmodule StoryarnWeb.PageLive.Show do
       >
         <.icon name="hero-check" class="size-4" />
         <span>{gettext("Multi Select")}</span>
+      </button>
+      <button
+        type="button"
+        class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
+        phx-click="add_block"
+        phx-value-type="date"
+      >
+        <.icon name="hero-calendar" class="size-4" />
+        <span>{gettext("Date")}</span>
+      </button>
+
+      <div class="text-xs text-base-content/50 px-2 py-1 uppercase mt-2">{gettext("Layout")}</div>
+      <button
+        type="button"
+        class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
+        phx-click="add_block"
+        phx-value-type="divider"
+      >
+        <.icon name="hero-minus" class="size-4" />
+        <span>{gettext("Divider")}</span>
       </button>
 
       <div class="border-t border-base-300 mt-2 pt-2">
@@ -651,6 +750,26 @@ defmodule StoryarnWeb.PageLive.Show do
     end
   end
 
+  def handle_event("multi_select_keydown", %{"key" => "Enter", "value" => value, "id" => block_id}, socket) do
+    value = String.trim(value)
+
+    if value == "" do
+      {:noreply, socket}
+    else
+      case authorize(socket, :edit_content) do
+        :ok ->
+          add_multi_select_option(socket, block_id, value)
+
+        {:error, :unauthorized} ->
+          {:noreply, socket}
+      end
+    end
+  end
+
+  def handle_event("multi_select_keydown", _params, socket) do
+    {:noreply, socket}
+  end
+
   def handle_event("delete_block", %{"id" => block_id}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
@@ -771,6 +890,78 @@ defmodule StoryarnWeb.PageLive.Show do
 
   defp schedule_save_status_reset do
     Process.send_after(self(), :reset_save_status, 4000)
+  end
+
+  defp add_multi_select_option(socket, block_id, value) do
+    block = Pages.get_block!(block_id)
+
+    # Generate a unique key from the value
+    key = generate_option_key(value)
+
+    # Get current options and content
+    current_options = get_in(block.config, ["options"]) || []
+    current_content = get_in(block.value, ["content"]) || []
+
+    # Check if option already exists (by key or value)
+    existing = Enum.find(current_options, fn opt ->
+      opt["key"] == key || String.downcase(opt["value"] || "") == String.downcase(value)
+    end)
+
+    if existing do
+      # Option exists - just select it if not already selected
+      if existing["key"] in current_content do
+        {:noreply, socket}
+      else
+        new_content = [existing["key"] | current_content]
+        update_multi_select_content(socket, block, new_content)
+      end
+    else
+      # Create new option and select it
+      new_option = %{"key" => key, "value" => value}
+      new_options = current_options ++ [new_option]
+      new_content = [key | current_content]
+
+      # Update both config and value
+      with {:ok, _} <- Pages.update_block_config(block, %{"options" => new_options, "label" => block.config["label"] || ""}),
+           block <- Pages.get_block!(block_id),
+           {:ok, _} <- Pages.update_block_value(block, %{"content" => new_content}) do
+        blocks = Pages.list_blocks(socket.assigns.page.id)
+        schedule_save_status_reset()
+
+        {:noreply,
+         socket
+         |> assign(:blocks, blocks)
+         |> assign(:save_status, :saved)}
+      else
+        _ -> {:noreply, socket}
+      end
+    end
+  end
+
+  defp update_multi_select_content(socket, block, new_content) do
+    case Pages.update_block_value(block, %{"content" => new_content}) do
+      {:ok, _} ->
+        blocks = Pages.list_blocks(socket.assigns.page.id)
+        schedule_save_status_reset()
+
+        {:noreply,
+         socket
+         |> assign(:blocks, blocks)
+         |> assign(:save_status, :saved)}
+
+      {:error, _} ->
+        {:noreply, socket}
+    end
+  end
+
+  defp generate_option_key(value) do
+    value
+    |> String.downcase()
+    |> String.replace(~r/[^a-z0-9]+/, "-")
+    |> String.trim("-")
+    |> then(fn key ->
+      if key == "", do: "option-#{:rand.uniform(9999)}", else: key
+    end)
   end
 
   defp do_delete_page(socket, page) do
