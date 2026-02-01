@@ -124,7 +124,221 @@ defmodule StoryarnWeb.PageLive.Show do
           </div>
         </div>
       </div>
+
+      <%!-- Configuration Panel (Right Sidebar) --%>
+      <.config_panel :if={@configuring_block} block={@configuring_block} />
     </Layouts.project>
+    """
+  end
+
+  attr :block, :map, required: true
+
+  defp config_panel(assigns) do
+    config = assigns.block.config || %{}
+
+    assigns =
+      assigns
+      |> assign(:label, config["label"] || "")
+      |> assign(:placeholder, config["placeholder"] || "")
+      |> assign(:options, config["options"] || [])
+      |> assign(:max_length, config["max_length"])
+      |> assign(:min, config["min"])
+      |> assign(:max, config["max"])
+      |> assign(:max_options, config["max_options"])
+      |> assign(:min_date, config["min_date"])
+      |> assign(:max_date, config["max_date"])
+
+    ~H"""
+    <div class="fixed inset-y-0 right-0 w-80 bg-base-200 shadow-xl z-50 flex flex-col">
+      <%!-- Header --%>
+      <div class="flex items-center justify-between p-4 border-b border-base-300">
+        <h3 class="font-semibold">{gettext("Configure Block")}</h3>
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm btn-square"
+          phx-click="close_config_panel"
+        >
+          <.icon name="x" class="size-5" />
+        </button>
+      </div>
+
+      <%!-- Content --%>
+      <div class="flex-1 overflow-y-auto p-4">
+        <form phx-change="save_block_config" class="space-y-4">
+          <%!-- Block Type (read-only) --%>
+          <div>
+            <label class="label">
+              <span class="label-text">{gettext("Type")}</span>
+            </label>
+            <div class="badge badge-neutral">{@block.type}</div>
+          </div>
+
+          <%!-- Label field (for all types except divider) --%>
+          <div :if={@block.type != "divider"}>
+            <label class="label">
+              <span class="label-text">{gettext("Label")}</span>
+            </label>
+            <input
+              type="text"
+              name="config[label]"
+              value={@label}
+              class="input input-bordered w-full"
+              placeholder={gettext("Enter label...")}
+            />
+          </div>
+
+          <%!-- Placeholder field --%>
+          <div :if={@block.type in ["text", "number", "select", "rich_text", "multi_select"]}>
+            <label class="label">
+              <span class="label-text">{gettext("Placeholder")}</span>
+            </label>
+            <input
+              type="text"
+              name="config[placeholder]"
+              value={@placeholder}
+              class="input input-bordered w-full"
+              placeholder={gettext("Enter placeholder...")}
+            />
+          </div>
+
+          <%!-- Max Length (for text and rich_text) --%>
+          <div :if={@block.type in ["text", "rich_text"]}>
+            <label class="label">
+              <span class="label-text">{gettext("Max Length")}</span>
+            </label>
+            <input
+              type="number"
+              name="config[max_length]"
+              value={@max_length}
+              class="input input-bordered w-full"
+              placeholder={gettext("No limit")}
+              min="1"
+            />
+          </div>
+
+          <%!-- Min/Max (for number) --%>
+          <div :if={@block.type == "number"} class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="label">
+                <span class="label-text">{gettext("Min")}</span>
+              </label>
+              <input
+                type="number"
+                name="config[min]"
+                value={@min}
+                class="input input-bordered w-full"
+                placeholder={gettext("No min")}
+              />
+            </div>
+            <div>
+              <label class="label">
+                <span class="label-text">{gettext("Max")}</span>
+              </label>
+              <input
+                type="number"
+                name="config[max]"
+                value={@max}
+                class="input input-bordered w-full"
+                placeholder={gettext("No max")}
+              />
+            </div>
+          </div>
+
+          <%!-- Date Range (for date) --%>
+          <div :if={@block.type == "date"} class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="label">
+                <span class="label-text">{gettext("Min Date")}</span>
+              </label>
+              <input
+                type="date"
+                name="config[min_date]"
+                value={@min_date}
+                class="input input-bordered w-full"
+              />
+            </div>
+            <div>
+              <label class="label">
+                <span class="label-text">{gettext("Max Date")}</span>
+              </label>
+              <input
+                type="date"
+                name="config[max_date]"
+                value={@max_date}
+                class="input input-bordered w-full"
+              />
+            </div>
+          </div>
+
+          <%!-- Max Options (for multi_select) --%>
+          <div :if={@block.type == "multi_select"}>
+            <label class="label">
+              <span class="label-text">{gettext("Max Selections")}</span>
+            </label>
+            <input
+              type="number"
+              name="config[max_options]"
+              value={@max_options}
+              class="input input-bordered w-full"
+              placeholder={gettext("No limit")}
+              min="1"
+            />
+          </div>
+        </form>
+
+        <%!-- Options (for select and multi_select) - Outside form to avoid nested form issues --%>
+        <div :if={@block.type in ["select", "multi_select"]} class="mt-4">
+          <label class="label">
+            <span class="label-text">{gettext("Options")}</span>
+          </label>
+          <div class="space-y-2">
+            <div
+              :for={{opt, idx} <- Enum.with_index(@options)}
+              class="flex items-center gap-2"
+            >
+              <form phx-change="update_select_option" phx-value-index={idx} class="flex items-center gap-2 flex-1">
+                <input
+                  type="text"
+                  name="key"
+                  value={opt["key"]}
+                  class="input input-bordered input-sm w-20"
+                  placeholder={gettext("Key")}
+                />
+                <input
+                  type="text"
+                  name="value"
+                  value={opt["value"]}
+                  class="input input-bordered input-sm flex-1"
+                  placeholder={gettext("Label")}
+                />
+              </form>
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm btn-square text-error"
+                phx-click="remove_select_option"
+                phx-value-index={idx}
+              >
+                <.icon name="x" class="size-4" />
+              </button>
+            </div>
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm"
+              phx-click="add_select_option"
+            >
+              <.icon name="plus" class="size-4" />
+              {gettext("Add option")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <%!-- Backdrop --%>
+    <div
+      class="fixed inset-0 bg-black/20 z-40"
+      phx-click="close_config_panel"
+    >
+    </div>
     """
   end
 
@@ -150,14 +364,37 @@ defmodule StoryarnWeb.PageLive.Show do
         >
           <.icon name="grip-vertical" class="size-4" />
         </button>
-        <button
-          type="button"
-          class="p-1 text-base-content/50 hover:text-base-content"
-          phx-click="delete_block"
-          phx-value-id={@block.id}
-        >
-          <.icon name="trash-2" class="size-4" />
-        </button>
+        <div class="dropdown dropdown-end">
+          <button
+            type="button"
+            tabindex="0"
+            class="p-1 text-base-content/50 hover:text-base-content"
+          >
+            <.icon name="ellipsis-vertical" class="size-4" />
+          </button>
+          <ul
+            tabindex="0"
+            class="dropdown-content menu bg-base-200 rounded-box z-50 w-40 p-2 shadow-lg"
+          >
+            <li>
+              <button type="button" phx-click="configure_block" phx-value-id={@block.id}>
+                <.icon name="settings" class="size-4" />
+                {gettext("Configure")}
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="text-error"
+                phx-click="delete_block"
+                phx-value-id={@block.id}
+              >
+                <.icon name="trash-2" class="size-4" />
+                {gettext("Delete")}
+              </button>
+            </li>
+          </ul>
+        </div>
       </div>
 
       <%!-- Block content --%>
@@ -259,7 +496,7 @@ defmodule StoryarnWeb.PageLive.Show do
         type="number"
         value={@content}
         placeholder={@placeholder}
-        class="input input-bordered w-full max-w-xs"
+        class="input input-bordered w-full"
         phx-blur="update_block_value"
         phx-value-id={@block.id}
       />
@@ -290,7 +527,7 @@ defmodule StoryarnWeb.PageLive.Show do
       <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
       <select
         :if={@can_edit}
-        class="select select-bordered w-full max-w-xs"
+        class="select select-bordered w-full"
         phx-change="update_block_value"
         phx-value-id={@block.id}
       >
@@ -312,6 +549,7 @@ defmodule StoryarnWeb.PageLive.Show do
 
   defp multi_select_block(assigns) do
     label = get_in(assigns.block.config, ["label"]) || ""
+    placeholder = get_in(assigns.block.config, ["placeholder"]) || ""
     options = get_in(assigns.block.config, ["options"]) || []
     content = get_in(assigns.block.value, ["content"]) || []
 
@@ -322,9 +560,18 @@ defmodule StoryarnWeb.PageLive.Show do
         %{key: key, label: (option && option["value"]) || key}
       end)
 
+    # Use configured placeholder or default
+    default_placeholder =
+      if selected_options == [],
+        do: gettext("Type and press Enter to add..."),
+        else: gettext("Add more...")
+
+    display_placeholder = if placeholder != "", do: placeholder, else: default_placeholder
+
     assigns =
       assigns
       |> assign(:label, label)
+      |> assign(:placeholder, display_placeholder)
       |> assign(:options, options)
       |> assign(:content, content)
       |> assign(:selected_options, selected_options)
@@ -353,7 +600,7 @@ defmodule StoryarnWeb.PageLive.Show do
         <input
           type="text"
           class="flex-1 min-w-24 bg-transparent border-none outline-none text-sm"
-          placeholder={if @selected_options == [], do: gettext("Type and press Enter to add..."), else: gettext("Add more...")}
+          placeholder={@placeholder}
           phx-keydown="multi_select_keydown"
           phx-value-id={@block.id}
         />
@@ -399,7 +646,7 @@ defmodule StoryarnWeb.PageLive.Show do
         :if={@can_edit}
         type="date"
         value={@content}
-        class="input input-bordered w-full max-w-xs"
+        class="input input-bordered w-full"
         phx-blur="update_block_value"
         phx-value-id={@block.id}
       />
@@ -597,6 +844,7 @@ defmodule StoryarnWeb.PageLive.Show do
               |> assign(:editing_block_id, nil)
               |> assign(:show_block_menu, false)
               |> assign(:save_status, :idle)
+              |> assign(:configuring_block, nil)
 
             {:ok, socket}
         end
@@ -779,7 +1027,13 @@ defmodule StoryarnWeb.PageLive.Show do
         case Pages.delete_block(block) do
           {:ok, _} ->
             blocks = Pages.list_blocks(socket.assigns.page.id)
-            {:noreply, assign(socket, :blocks, blocks)}
+
+            socket =
+              socket
+              |> assign(:blocks, blocks)
+              |> assign(:configuring_block, nil)
+
+            {:noreply, socket}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, gettext("Could not delete block."))}
@@ -788,6 +1042,134 @@ defmodule StoryarnWeb.PageLive.Show do
       {:error, :unauthorized} ->
         {:noreply,
          put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  def handle_event("configure_block", %{"id" => block_id}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        block = Pages.get_block!(block_id)
+        {:noreply, assign(socket, :configuring_block, block)}
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  def handle_event("close_config_panel", _params, socket) do
+    {:noreply, assign(socket, :configuring_block, nil)}
+  end
+
+  def handle_event("save_block_config", %{"config" => config_params}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        block = socket.assigns.configuring_block
+
+        # Convert options from indexed map to list
+        config_params = normalize_config_params(config_params)
+
+        case Pages.update_block_config(block, config_params) do
+          {:ok, updated_block} ->
+            blocks = Pages.list_blocks(socket.assigns.page.id)
+            schedule_save_status_reset()
+
+            {:noreply,
+             socket
+             |> assign(:blocks, blocks)
+             |> assign(:configuring_block, updated_block)
+             |> assign(:save_status, :saved)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not save configuration."))}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  defp normalize_config_params(params) do
+    case Map.get(params, "options") do
+      nil ->
+        params
+
+      options when is_map(options) ->
+        # Convert indexed map to list, sorted by index
+        options_list =
+          options
+          |> Enum.sort_by(fn {idx, _} -> String.to_integer(idx) end)
+          |> Enum.map(fn {_, opt} -> opt end)
+
+        Map.put(params, "options", options_list)
+
+      _ ->
+        params
+    end
+  end
+
+  def handle_event("add_select_option", _params, socket) do
+    block = socket.assigns.configuring_block
+    options = get_in(block.config, ["options"]) || []
+    new_option = %{"key" => "option-#{length(options) + 1}", "value" => ""}
+    new_options = options ++ [new_option]
+
+    case Pages.update_block_config(block, %{"options" => new_options}) do
+      {:ok, updated_block} ->
+        blocks = Pages.list_blocks(socket.assigns.page.id)
+
+        {:noreply,
+         socket
+         |> assign(:blocks, blocks)
+         |> assign(:configuring_block, updated_block)}
+
+      {:error, _} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("remove_select_option", %{"index" => index}, socket) do
+    block = socket.assigns.configuring_block
+    options = get_in(block.config, ["options"]) || []
+    index = String.to_integer(index)
+    new_options = List.delete_at(options, index)
+
+    case Pages.update_block_config(block, %{"options" => new_options}) do
+      {:ok, updated_block} ->
+        blocks = Pages.list_blocks(socket.assigns.page.id)
+
+        {:noreply,
+         socket
+         |> assign(:blocks, blocks)
+         |> assign(:configuring_block, updated_block)}
+
+      {:error, _} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("update_select_option", %{"index" => index, "key" => key, "value" => value}, socket) do
+    block = socket.assigns.configuring_block
+    options = get_in(block.config, ["options"]) || []
+    index = String.to_integer(index)
+
+    new_options =
+      List.update_at(options, index, fn _opt ->
+        %{"key" => key, "value" => value}
+      end)
+
+    case Pages.update_block_config(block, %{"options" => new_options}) do
+      {:ok, updated_block} ->
+        blocks = Pages.list_blocks(socket.assigns.page.id)
+
+        {:noreply,
+         socket
+         |> assign(:blocks, blocks)
+         |> assign(:configuring_block, updated_block)}
+
+      {:error, _} ->
+        {:noreply, socket}
     end
   end
 
