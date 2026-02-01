@@ -289,14 +289,14 @@ Current `assets/package.json`:
 
 Current hooks in `assets/js/hooks/`:
 
-| Hook | Purpose |
-|------|---------|
+| Hook               | Purpose                                |
+|--------------------|----------------------------------------|
 | `sortable_list.js` | Generic drag & drop for lists (blocks) |
-| `sortable_tree.js` | Tree structure drag & drop (pages) |
-| `tiptap_editor.js` | Rich text WYSIWYG editor |
-| `tree.js` | Tree UI interactions (expand/collapse) |
-| `tree_search.js` | Search filtering in tree |
-| `theme.js` | Dark/light theme switching |
+| `sortable_tree.js` | Tree structure drag & drop (pages)     |
+| `tiptap_editor.js` | Rich text WYSIWYG editor               |
+| `tree.js`          | Tree UI interactions (expand/collapse) |
+| `tree_search.js`   | Search filtering in tree               |
+| `theme.js`         | Dark/light theme switching             |
 
 ---
 
@@ -541,18 +541,18 @@ export const FlowCanvas = {
 
 ## Recent Commits History
 
-| Commit | Description |
-|--------|-------------|
-| 76b73f4 | refactor: Extract components into focused modules |
-| f446bdd | feat: Add block configuration panel with extended options |
-| 75191a4 | fix: Fix block drag and drop to work in all positions |
-| 17ddace | feat: Migrate from Heroicons to Lucide icons |
-| 7529c06 | fix: Update CSS to use daisyUI v5 variable names |
-| 7d262b5 | feat: Add divider/date blocks, fix multi_select |
-| 2707e78 | feat: Add page tree features (drag & drop, create child, search) |
-| 39a18b5 | feat: Add page editor improvements |
-| a510885 | refactor: Remove old Entities system |
-| 006416d | feat: Add Page LiveViews |
+| Commit  | Description                                                         |
+|---------|---------------------------------------------------------------------|
+| 458efe1 | chore: Remove obsolete planning documents                           |
+| db993e7 | chore: Consolidate migrations into clean creation-only files        |
+| 6ac6912 | feat: Add Cloak encryption for OAuth tokens at rest                 |
+| d856696 | refactor: Extract BlockComponents into focused submodules           |
+| 82b8993 | refactor: Extract Pages context into facade pattern with submodules |
+| 00eb607 | fix: Validate string inputs with Integer.parse/1                    |
+| 76b73f4 | refactor: Extract components into focused modules                   |
+| f446bdd | feat: Add block configuration panel with extended options           |
+| 75191a4 | fix: Fix block drag and drop to work in all positions               |
+| 17ddace | feat: Migrate from Heroicons to Lucide icons                        |
 
 ---
 
@@ -560,14 +560,14 @@ export const FlowCanvas = {
 
 See `REFACTORING_PLAN.md` for detailed implementation steps:
 
-| Priority | Task | Status |
-|----------|------|--------|
-| Alta | Dividir `pages.ex` (patrón facade) | Pendiente |
-| Alta | Encriptar tokens OAuth con cloak_ecto | Pendiente |
-| Media | Dividir `block_components.ex` | Pendiente |
-| Media | Añadir `@spec` a contextos | Pendiente |
-| Media | Configurar Redis para rate limiting | Pendiente |
-| Media | Validar inputs con `Integer.parse/1` | Pendiente |
+| Priority | Task                                | Status   |
+|----------|-------------------------------------|----------|
+| High     | Split `pages.ex` (facade pattern)   | ✅ Done   |
+| High     | Encrypt OAuth tokens with Cloak     | ✅ Done   |
+| Medium   | Split `block_components.ex`         | ✅ Done   |
+| Medium   | Add `@spec` to contexts             | Pending  |
+| Medium   | Configure Redis for rate limiting   | Pending  |
+| Medium   | Validate inputs with Integer.parse  | ✅ Done   |
 
 ---
 
