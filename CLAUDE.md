@@ -93,6 +93,22 @@ docker compose up -d mailpit
 open http://localhost:8025
 ```
 
+## Rate Limiting
+
+Auth endpoints are protected by rate limiting via `Storyarn.RateLimiter`:
+
+| Endpoint       | Limit              | Key           |
+|----------------|--------------------|--------------|
+| Login          | 5/min              | IP address    |
+| Magic link     | 3/min              | Email         |
+| Registration   | 3/min              | IP address    |
+| Invitations    | 10/hour/workspace  | User + target |
+
+**Configuration:**
+- Development/Test: ETS backend (in-memory)
+- Production: Redis backend (configure `REDIS_URL`)
+- Disabled in tests via `config :storyarn, Storyarn.RateLimiter, enabled: false`
+
 ## Architecture
 
 ```
@@ -126,6 +142,7 @@ lib/
 │   │   ├── entity_crud.ex       # Entity CRUD
 │   │   └── variables.ex         # Variable CRUD
 │   ├── assets/                  # File uploads (R2/S3)
+│   ├── rate_limiter.ex          # Rate limiting for auth endpoints
 │   ├── application.ex           # OTP supervision tree
 │   ├── repo.ex                  # Ecto repository
 │   └── mailer.ex                # Email via Swoosh
