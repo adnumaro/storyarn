@@ -3,6 +3,7 @@ defmodule Storyarn.Accounts.UserIdentity do
   Schema for storing OAuth identities linked to users.
 
   Each user can have multiple identities (GitHub, Google, Discord).
+  OAuth tokens are encrypted at rest using Cloak.
   """
   use Ecto.Schema
   import Ecto.Changeset
@@ -17,9 +18,15 @@ defmodule Storyarn.Accounts.UserIdentity do
     field :provider_email, :string
     field :provider_name, :string
     field :provider_avatar, :string
-    field :provider_token, :string, redact: true
-    field :provider_refresh_token, :string, redact: true
     field :provider_meta, :map, default: %{}
+
+    # Encrypted token storage
+    field :provider_token_encrypted, Storyarn.Encrypted.Binary
+    field :provider_refresh_token_encrypted, Storyarn.Encrypted.Binary
+
+    # Virtual fields for API compatibility (input only)
+    field :provider_token, :string, virtual: true, redact: true
+    field :provider_refresh_token, :string, virtual: true, redact: true
 
     belongs_to :user, User
 
@@ -40,6 +47,7 @@ defmodule Storyarn.Accounts.UserIdentity do
       :provider_meta,
       :user_id
     ])
+    |> encrypt_tokens()
     |> validate_required([:provider, :provider_id, :user_id])
     |> validate_inclusion(:provider, @providers)
     |> unique_constraint([:provider, :provider_id],
@@ -52,6 +60,34 @@ defmodule Storyarn.Accounts.UserIdentity do
     )
     |> foreign_key_constraint(:user_id)
   end
+
+  # Encrypts virtual token fields into encrypted columns
+  defp encrypt_tokens(changeset) do
+    changeset
+    |> maybe_encrypt_field(:provider_token, :provider_token_encrypted)
+    |> maybe_encrypt_field(:provider_refresh_token, :provider_refresh_token_encrypted)
+  end
+
+  defp maybe_encrypt_field(changeset, virtual_field, encrypted_field) do
+    case get_change(changeset, virtual_field) do
+      nil -> changeset
+      value -> put_change(changeset, encrypted_field, value)
+    end
+  end
+
+  @doc """
+  Returns the decrypted provider token.
+  """
+  def get_provider_token(%__MODULE__{provider_token_encrypted: nil}), do: nil
+  def get_provider_token(%__MODULE__{provider_token_encrypted: token}), do: token
+
+  @doc """
+  Returns the decrypted provider refresh token.
+  """
+  def get_provider_refresh_token(%__MODULE__{provider_refresh_token_encrypted: nil}), do: nil
+
+  def get_provider_refresh_token(%__MODULE__{provider_refresh_token_encrypted: token}),
+    do: token
 
   @doc """
   Returns the list of supported OAuth providers.

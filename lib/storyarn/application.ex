@@ -10,6 +10,7 @@ defmodule Storyarn.Application do
     children = [
       StoryarnWeb.Telemetry,
       Storyarn.Repo,
+      Storyarn.Vault,
       {DNSCluster, query: Application.get_env(:storyarn, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Storyarn.PubSub},
       # Start a worker by calling: Storyarn.Worker.start_link(arg)

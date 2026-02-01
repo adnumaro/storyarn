@@ -120,6 +120,20 @@ config :ueberauth, Ueberauth.Strategy.Discord.OAuth,
   client_id: System.get_env("DISCORD_CLIENT_ID"),
   client_secret: System.get_env("DISCORD_CLIENT_SECRET")
 
+# Cloak encryption configuration
+# Development key - NEVER use in production!
+# Generate production key with: 32 |> :crypto.strong_rand_bytes() |> Base.encode64()
+config :storyarn, Storyarn.Vault,
+  ciphers: [
+    default: {
+      Cloak.Ciphers.AES.GCM,
+      # This is a development-only key, override in production via CLOAK_KEY env var
+      tag: "AES.GCM.V1",
+      key: Base.decode64!("dGhpc2lzYWRldmVsb3BtZW50a2V5b25seTMyYnl0ZXM="),
+      iv_length: 12
+    }
+  ]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

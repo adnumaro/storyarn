@@ -42,6 +42,10 @@ defmodule Storyarn.MixProject do
     [
       {:bcrypt_elixir, "~> 3.0"},
 
+      # Encryption for sensitive data
+      {:cloak, "~> 1.1"},
+      {:cloak_ecto, "~> 1.3"},
+
       # OAuth
       {:ueberauth, "~> 0.10"},
       {:ueberauth_github, "~> 0.8"},
@@ -67,6 +71,7 @@ defmodule Storyarn.MixProject do
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
       {:hammer, "~> 6.2"},
+      {:hammer_backend_redis, "~> 6.1"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
 

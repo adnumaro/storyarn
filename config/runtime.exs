@@ -20,7 +20,38 @@ if System.get_env("PHX_SERVER") do
   config :storyarn, StoryarnWeb.Endpoint, server: true
 end
 
+# Rate limiting with Redis for production (multi-node support)
+# Development and test use ETS backend (configured in config.exs)
 if config_env() == :prod do
+  if redis_url = System.get_env("REDIS_URL") do
+    config :hammer,
+      backend:
+        {Hammer.Backend.Redis,
+         [
+           expiry_ms: 60_000 * 60,
+           redix_config: [url: redis_url],
+           pool_size: 4,
+           pool_max_overflow: 2
+         ]}
+  end
+
+  # Cloak encryption key for OAuth tokens
+  # Generate with: 32 |> :crypto.strong_rand_bytes() |> Base.encode64()
+  cloak_key =
+    System.get_env("CLOAK_KEY") ||
+      raise """
+      environment variable CLOAK_KEY is missing.
+      Generate one with: 32 |> :crypto.strong_rand_bytes() |> Base.encode64()
+      """
+
+  config :storyarn, Storyarn.Vault,
+    ciphers: [
+      default: {
+        Cloak.Ciphers.AES.GCM,
+        tag: "AES.GCM.V1", key: Base.decode64!(cloak_key), iv_length: 12
+      }
+    ]
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """
