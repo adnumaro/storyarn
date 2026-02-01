@@ -353,7 +353,11 @@ defmodule StoryarnWeb.PageLive.Show do
     end
   end
 
-  def handle_event("multi_select_keydown", %{"key" => "Enter", "value" => value, "id" => block_id}, socket) do
+  def handle_event(
+        "multi_select_keydown",
+        %{"key" => "Enter", "value" => value, "id" => block_id},
+        socket
+      ) do
     value = String.trim(value)
 
     if value == "" do
@@ -465,45 +469,59 @@ defmodule StoryarnWeb.PageLive.Show do
   end
 
   def handle_event("remove_select_option", %{"index" => index}, socket) do
-    block = socket.assigns.configuring_block
-    options = get_in(block.config, ["options"]) || []
-    index = String.to_integer(index)
-    new_options = List.delete_at(options, index)
+    case parse_index(index) do
+      {:ok, idx} ->
+        block = socket.assigns.configuring_block
+        options = get_in(block.config, ["options"]) || []
+        new_options = List.delete_at(options, idx)
 
-    case Pages.update_block_config(block, %{"options" => new_options}) do
-      {:ok, updated_block} ->
-        blocks = Pages.list_blocks(socket.assigns.page.id)
+        case Pages.update_block_config(block, %{"options" => new_options}) do
+          {:ok, updated_block} ->
+            blocks = Pages.list_blocks(socket.assigns.page.id)
 
-        {:noreply,
-         socket
-         |> assign(:blocks, blocks)
-         |> assign(:configuring_block, updated_block)}
+            {:noreply,
+             socket
+             |> assign(:blocks, blocks)
+             |> assign(:configuring_block, updated_block)}
 
-      {:error, _} ->
+          {:error, _} ->
+            {:noreply, socket}
+        end
+
+      :error ->
         {:noreply, socket}
     end
   end
 
-  def handle_event("update_select_option", %{"index" => index, "key" => key, "value" => value}, socket) do
-    block = socket.assigns.configuring_block
-    options = get_in(block.config, ["options"]) || []
-    index = String.to_integer(index)
+  def handle_event(
+        "update_select_option",
+        %{"index" => index, "key" => key, "value" => value},
+        socket
+      ) do
+    case parse_index(index) do
+      {:ok, idx} ->
+        block = socket.assigns.configuring_block
+        options = get_in(block.config, ["options"]) || []
 
-    new_options =
-      List.update_at(options, index, fn _opt ->
-        %{"key" => key, "value" => value}
-      end)
+        new_options =
+          List.update_at(options, idx, fn _opt ->
+            %{"key" => key, "value" => value}
+          end)
 
-    case Pages.update_block_config(block, %{"options" => new_options}) do
-      {:ok, updated_block} ->
-        blocks = Pages.list_blocks(socket.assigns.page.id)
+        case Pages.update_block_config(block, %{"options" => new_options}) do
+          {:ok, updated_block} ->
+            blocks = Pages.list_blocks(socket.assigns.page.id)
 
-        {:noreply,
-         socket
-         |> assign(:blocks, blocks)
-         |> assign(:configuring_block, updated_block)}
+            {:noreply,
+             socket
+             |> assign(:blocks, blocks)
+             |> assign(:configuring_block, updated_block)}
 
-      {:error, _} ->
+          {:error, _} ->
+            {:noreply, socket}
+        end
+
+      :error ->
         {:noreply, socket}
     end
   end
@@ -621,9 +639,10 @@ defmodule StoryarnWeb.PageLive.Show do
     current_content = get_in(block.value, ["content"]) || []
 
     # Check if option already exists (by key or value)
-    existing = Enum.find(current_options, fn opt ->
-      opt["key"] == key || String.downcase(opt["value"] || "") == String.downcase(value)
-    end)
+    existing =
+      Enum.find(current_options, fn opt ->
+        opt["key"] == key || String.downcase(opt["value"] || "") == String.downcase(value)
+      end)
 
     if existing do
       # Option exists - just select it if not already selected
@@ -640,7 +659,11 @@ defmodule StoryarnWeb.PageLive.Show do
       new_content = [key | current_content]
 
       # Update both config and value
-      with {:ok, _} <- Pages.update_block_config(block, %{"options" => new_options, "label" => block.config["label"] || ""}),
+      with {:ok, _} <-
+             Pages.update_block_config(block, %{
+               "options" => new_options,
+               "label" => block.config["label"] || ""
+             }),
            block <- Pages.get_block!(block_id),
            {:ok, _} <- Pages.update_block_value(block, %{"content" => new_content}) do
         blocks = Pages.list_blocks(socket.assigns.page.id)
@@ -713,16 +736,34 @@ defmodule StoryarnWeb.PageLive.Show do
         params
 
       options when is_map(options) ->
-        # Convert indexed map to list, sorted by index
-        options_list =
-          options
-          |> Enum.sort_by(fn {idx, _} -> String.to_integer(idx) end)
-          |> Enum.map(fn {_, opt} -> opt end)
-
-        Map.put(params, "options", options_list)
+        Map.put(params, "options", options_map_to_list(options))
 
       _ ->
         params
     end
   end
+
+  defp options_map_to_list(options) do
+    options
+    |> Enum.map(&parse_option_with_index/1)
+    |> Enum.sort_by(fn {idx, _} -> idx end)
+    |> Enum.map(fn {_, opt} -> opt end)
+  end
+
+  defp parse_option_with_index({idx, opt}) do
+    case parse_index(idx) do
+      {:ok, int} -> {int, opt}
+      :error -> {0, opt}
+    end
+  end
+
+  defp parse_index(index) when is_binary(index) do
+    case Integer.parse(index) do
+      {int, ""} -> {:ok, int}
+      _ -> :error
+    end
+  end
+
+  defp parse_index(index) when is_integer(index), do: {:ok, index}
+  defp parse_index(_), do: :error
 end
