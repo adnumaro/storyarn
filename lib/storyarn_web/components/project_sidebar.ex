@@ -100,9 +100,9 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
           <.tree_section label={gettext("Tools")} />
           <.tree_link
             label={gettext("Flows")}
-            href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
-            icon="maximize-2"
-            active={false}
+            href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows"}
+            icon="git-branch"
+            active={flows_page?(@current_path, @workspace.slug, @project.slug)}
           />
         </div>
       </nav>
@@ -262,5 +262,9 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
 
   defp settings_page?(path, workspace_slug, project_slug) do
     String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/settings")
+  end
+
+  defp flows_page?(path, workspace_slug, project_slug) do
+    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows")
   end
 end

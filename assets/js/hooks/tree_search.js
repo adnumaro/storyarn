@@ -55,17 +55,17 @@ export const TreeSearch = {
     const ancestorIds = new Set();
 
     // Find matching nodes and their ancestors
-    allNodes.forEach((node) => {
+    for (const node of allNodes) {
       const pageName = (node.dataset.pageName || "").toLowerCase();
       if (pageName.includes(query)) {
         matchingIds.add(node.dataset.pageId);
         // Walk up to find all ancestors
         this.collectAncestors(node, ancestorIds);
       }
-    });
+    }
 
     // Show/hide nodes based on match or ancestor status
-    allNodes.forEach((node) => {
+    for (const node of allNodes) {
       const pageId = node.dataset.pageId;
       const isMatch = matchingIds.has(pageId);
       const isAncestor = ancestorIds.has(pageId);
@@ -84,7 +84,7 @@ export const TreeSearch = {
       if (isAncestor || isMatch) {
         this.expandNode(node);
       }
-    });
+    }
   },
 
   collectAncestors(node, ancestorIds) {
@@ -105,9 +105,7 @@ export const TreeSearch = {
     // Find the expand/collapse content for this node
     const nodeId = node.dataset.pageId;
     const content = document.getElementById(`tree-content-page-${nodeId}`);
-    const chevron = document.querySelector(
-      `#tree-toggle-page-${nodeId} [data-chevron]`
-    );
+    const chevron = document.querySelector(`#tree-toggle-page-${nodeId} [data-chevron]`);
 
     if (content) {
       content.classList.remove("hidden");
@@ -120,10 +118,10 @@ export const TreeSearch = {
   saveExpandState(tree) {
     this.savedExpandState.clear();
     const contents = tree.querySelectorAll("[id^='tree-content-']");
-    contents.forEach((content) => {
+    for (const content of contents) {
       const nodeId = content.id.replace("tree-content-page-", "");
       this.savedExpandState.set(nodeId, !content.classList.contains("hidden"));
-    });
+    }
   },
 
   clearFilter() {
@@ -133,18 +131,16 @@ export const TreeSearch = {
     const allNodes = tree.querySelectorAll("[data-page-id]");
 
     // Show all nodes and remove highlights
-    allNodes.forEach((node) => {
+    for (const node of allNodes) {
       node.style.display = "";
       node.classList.remove("bg-primary/10");
-    });
+    }
 
     // Restore previous expand state
     if (this.isFiltering) {
-      this.savedExpandState.forEach((wasExpanded, nodeId) => {
+      for (const [nodeId, wasExpanded] of this.savedExpandState) {
         const content = document.getElementById(`tree-content-page-${nodeId}`);
-        const chevron = document.querySelector(
-          `#tree-toggle-page-${nodeId} [data-chevron]`
-        );
+        const chevron = document.querySelector(`#tree-toggle-page-${nodeId} [data-chevron]`);
 
         if (content) {
           content.classList.toggle("hidden", !wasExpanded);
@@ -152,7 +148,7 @@ export const TreeSearch = {
         if (chevron) {
           chevron.classList.toggle("rotate-90", wasExpanded);
         }
-      });
+      }
       this.isFiltering = false;
     }
   },

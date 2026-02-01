@@ -38,7 +38,7 @@ export const SortableTree = {
   initializeSortables() {
     const containers = this.el.querySelectorAll("[data-sortable-container]");
 
-    containers.forEach((container) => {
+    for (const container of containers) {
       const sortable = new Sortable(container, {
         group: "pages-tree",
         animation: 150,
@@ -61,9 +61,7 @@ export const SortableTree = {
           const newParentId = event.to.dataset.parentId || null;
 
           // Calculate position based on sibling elements with data-page-id
-          const siblings = Array.from(event.to.children).filter(
-            (el) => el.dataset.pageId
-          );
+          const siblings = Array.from(event.to.children).filter((el) => el.dataset.pageId);
           const newPosition = siblings.indexOf(event.item);
 
           this.pushEvent("move_page", {
@@ -75,15 +73,15 @@ export const SortableTree = {
       });
 
       this.sortables.push(sortable);
-    });
+    }
   },
 
   destroySortables() {
-    this.sortables.forEach((sortable) => {
+    for (const sortable of this.sortables) {
       if (sortable) {
         sortable.destroy();
       }
-    });
+    }
     this.sortables = [];
   },
 };

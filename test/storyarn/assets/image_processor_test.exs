@@ -119,11 +119,4 @@ defmodule Storyarn.Assets.ImageProcessorTest do
       assert File.exists?(thumb)
     end
   end
-
-  describe "backward compatibility" do
-    test "imagemagick_available?/0 is deprecated but works" do
-      # Should work but emit a deprecation warning in compilation
-      assert ImageProcessor.imagemagick_available?() == ImageProcessor.available?()
-    end
-  end
 end

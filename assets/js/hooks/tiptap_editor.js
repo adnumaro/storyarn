@@ -56,8 +56,7 @@ export const TiptapEditor = {
 
   createToolbar() {
     const toolbar = document.createElement("div");
-    toolbar.className =
-      "tiptap-toolbar flex items-center gap-1 mb-2 p-1";
+    toolbar.className = "tiptap-toolbar flex items-center gap-1 mb-2 p-1";
 
     const buttons = [
       {
@@ -82,22 +81,19 @@ export const TiptapEditor = {
       {
         icon: "H1",
         title: "Heading 1",
-        action: () =>
-          this.editor.chain().focus().toggleHeading({ level: 1 }).run(),
+        action: () => this.editor.chain().focus().toggleHeading({ level: 1 }).run(),
         isActive: () => this.editor.isActive("heading", { level: 1 }),
       },
       {
         icon: "H2",
         title: "Heading 2",
-        action: () =>
-          this.editor.chain().focus().toggleHeading({ level: 2 }).run(),
+        action: () => this.editor.chain().focus().toggleHeading({ level: 2 }).run(),
         isActive: () => this.editor.isActive("heading", { level: 2 }),
       },
       {
         icon: "H3",
         title: "Heading 3",
-        action: () =>
-          this.editor.chain().focus().toggleHeading({ level: 3 }).run(),
+        action: () => this.editor.chain().focus().toggleHeading({ level: 3 }).run(),
         isActive: () => this.editor.isActive("heading", { level: 3 }),
       },
       { type: "divider" },
@@ -128,7 +124,7 @@ export const TiptapEditor = {
       },
     ];
 
-    buttons.forEach((btn) => {
+    for (const btn of buttons) {
       if (btn.type === "divider") {
         const divider = document.createElement("div");
         divider.className = "w-px h-5 bg-base-300";
@@ -136,8 +132,7 @@ export const TiptapEditor = {
       } else {
         const button = document.createElement("button");
         button.type = "button";
-        button.className =
-          "btn btn-ghost btn-xs font-mono text-xs px-2 min-h-0 h-7";
+        button.className = "btn btn-ghost btn-xs font-mono text-xs px-2 min-h-0 h-7";
         button.title = btn.title;
         button.textContent = btn.icon;
         button.addEventListener("click", (e) => {
@@ -147,7 +142,7 @@ export const TiptapEditor = {
         });
         toolbar.appendChild(button);
       }
-    });
+    }
 
     // Insert toolbar before editor
     this.el.insertBefore(toolbar, this.el.firstChild);
@@ -165,13 +160,12 @@ export const TiptapEditor = {
 
   updateToolbarState(buttons, toolbar) {
     let buttonIndex = 0;
-    toolbar.childNodes.forEach((node) => {
+    for (const node of toolbar.childNodes) {
       if (node.tagName === "BUTTON") {
-        const btn = buttons[buttonIndex];
         while (buttons[buttonIndex]?.type === "divider") {
           buttonIndex++;
         }
-        if (buttons[buttonIndex] && buttons[buttonIndex].isActive) {
+        if (buttons[buttonIndex]?.isActive) {
           if (buttons[buttonIndex].isActive()) {
             node.classList.add("btn-active");
           } else {
@@ -182,7 +176,7 @@ export const TiptapEditor = {
       } else {
         buttonIndex++;
       }
-    });
+    }
   },
 
   updated() {

@@ -178,11 +178,6 @@ defmodule Storyarn.Assets.ImageProcessor do
     _ -> false
   end
 
-  # Backward compatibility alias
-  @doc false
-  @deprecated "Use available?/0 instead"
-  def imagemagick_available?, do: available?()
-
   # Private helpers
 
   defp thumbnail_path(source_path) do
