@@ -1,5 +1,5 @@
 import { LitPlugin, Presets as LitPresets } from "@retejs/lit-plugin";
-import { LitElement, html } from "lit";
+import { LitElement, css, html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { ArrowRight, GitBranch, GitMerge, MessageSquare, Zap, createElement } from "lucide";
 import { ClassicPreset, NodeEditor } from "rete";
@@ -7,56 +7,57 @@ import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
 import { ConnectionPlugin, Presets as ConnectionPresets } from "rete-connection-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
 
+// Helper to create Lucide icon SVG string
+function createIconSvg(icon) {
+  const el = createElement(icon, {
+    width: 16,
+    height: 16,
+    stroke: "currentColor",
+    "stroke-width": 2,
+  });
+  return el.outerHTML;
+}
+
 // Node type configurations
 const NODE_CONFIGS = {
   dialogue: {
     label: "Dialogue",
     color: "#3b82f6",
-    colorClass: "bg-blue-500",
-    borderClass: "border-blue-500/25",
-    icon: MessageSquare,
+    icon: createIconSvg(MessageSquare),
     inputs: ["input"],
     outputs: ["output"],
   },
   hub: {
     label: "Hub",
     color: "#8b5cf6",
-    colorClass: "bg-violet-500",
-    borderClass: "border-violet-500/25",
-    icon: GitMerge,
+    icon: createIconSvg(GitMerge),
     inputs: ["input"],
     outputs: ["out1", "out2", "out3", "out4"],
   },
   condition: {
     label: "Condition",
     color: "#f59e0b",
-    colorClass: "bg-amber-500",
-    borderClass: "border-amber-500/25",
-    icon: GitBranch,
+    icon: createIconSvg(GitBranch),
     inputs: ["input"],
     outputs: ["true", "false"],
   },
   instruction: {
     label: "Instruction",
     color: "#10b981",
-    colorClass: "bg-emerald-500",
-    borderClass: "border-emerald-500/25",
-    icon: Zap,
+    icon: createIconSvg(Zap),
     inputs: ["input"],
     outputs: ["output"],
   },
   jump: {
     label: "Jump",
     color: "#ef4444",
-    colorClass: "bg-red-500",
-    borderClass: "border-red-500/25",
-    icon: ArrowRight,
+    icon: createIconSvg(ArrowRight),
     inputs: ["input"],
     outputs: [],
   },
 };
 
-// Custom styled node component (Light DOM for Tailwind support)
+// Custom styled node component (Shadow DOM for socket slots to work)
 class StoryarnNode extends LitElement {
   static get properties() {
     return {
@@ -65,13 +66,94 @@ class StoryarnNode extends LitElement {
     };
   }
 
-  // Use Light DOM instead of Shadow DOM for Tailwind support
-  createRenderRoot() {
-    return this;
-  }
+  // Shadow DOM styles using daisyUI CSS variables (they pierce Shadow DOM)
+  static styles = css`
+    :host {
+      display: block;
+    }
+
+    .node {
+      background: oklch(var(--b1, 0.2 0 0));
+      border-radius: 8px;
+      min-width: 180px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      border: 1.5px solid var(--node-border-color, transparent);
+      transition: box-shadow 0.2s;
+    }
+
+    .node:hover {
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+
+    .node.selected {
+      box-shadow: 0 0 0 3px oklch(var(--p, 0.6 0.2 250) / 0.5), 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+
+    .header {
+      padding: 8px 12px;
+      border-radius: 6px 6px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: white;
+      font-weight: 500;
+      font-size: 13px;
+    }
+
+    .icon {
+      display: flex;
+      align-items: center;
+    }
+
+    .content {
+      padding: 8px 0;
+    }
+
+    .socket-row {
+      display: flex;
+      align-items: center;
+      padding: 4px 0;
+      font-size: 11px;
+      color: oklch(var(--bc, 0.8 0 0) / 0.7);
+    }
+
+    .socket-row.input {
+      justify-content: flex-start;
+      padding-left: 0;
+    }
+
+    .socket-row.output {
+      justify-content: flex-end;
+      padding-right: 0;
+    }
+
+    .socket-row .label {
+      padding: 0 8px;
+    }
+
+    .input-socket {
+      margin-left: -10px;
+    }
+
+    .output-socket {
+      margin-right: -10px;
+    }
+
+    .node-data {
+      font-size: 11px;
+      color: oklch(var(--bc, 0.8 0 0) / 0.6);
+      padding: 4px 12px 8px;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  `;
 
   render() {
     const node = this.data;
+    if (!node) return html``;
+
     const config = NODE_CONFIGS[node.nodeType] || NODE_CONFIGS.dialogue;
     const nodeData = node.nodeData || {};
 
@@ -89,51 +171,144 @@ class StoryarnNode extends LitElement {
       preview = nodeData.target_flow || "";
     }
 
-    // Create lucide icon element and get SVG string
-    const iconElement = createElement(config.icon, { class: "size-4" });
-    const iconSvg = iconElement.outerHTML;
-
-    const selectedClass = node.selected
-      ? "ring-2 ring-primary ring-offset-2 ring-offset-base-100"
-      : "";
+    // Calculate border color with opacity
+    const borderColor = `${config.color}40`;
 
     return html`
-      <div class="flow-node bg-base-100 rounded-lg min-w-[180px] shadow-md border-[1.5px] ${config.borderClass} ${selectedClass} transition-shadow hover:shadow-lg">
-        <div class="flow-node-header ${config.colorClass} px-3 py-2 rounded-t-md flex items-center gap-2 text-white font-medium text-sm">
-          <span class="flex items-center">${unsafeSVG(iconSvg)}</span>
+      <div
+        class="node ${node.selected ? "selected" : ""}"
+        style="--node-border-color: ${borderColor}"
+      >
+        <div class="header" style="background-color: ${config.color}">
+          <span class="icon">${unsafeSVG(config.icon)}</span>
           <span>${config.label}</span>
         </div>
-        <div class="flow-node-content px-3 py-2">
-          <div class="flex flex-col gap-1">
-            ${Object.keys(node.inputs || {}).map(
-              (key) => html`
-                <div class="flex items-center gap-2 text-xs text-base-content/70">
-                  <slot name="input-socket-${key}"></slot>
-                  <span>${key}</span>
-                </div>
-              `,
-            )}
-            ${Object.keys(node.outputs || {}).map(
-              (key) => html`
-                <div class="flex items-center gap-2 text-xs text-base-content/70 justify-end">
-                  <span>${key}</span>
-                  <slot name="output-socket-${key}"></slot>
-                </div>
-              `,
-            )}
-          </div>
+        <div class="content">
+          ${Object.entries(node.inputs || {}).map(
+            ([key, input]) => html`
+              <div class="socket-row input">
+                <rete-ref
+                  class="input-socket"
+                  .data=${{
+                    type: "socket",
+                    side: "input",
+                    key,
+                    nodeId: node.id,
+                    payload: input.socket,
+                  }}
+                  .emit=${this.emit}
+                ></rete-ref>
+                <span class="label">${key}</span>
+              </div>
+            `,
+          )}
+          ${Object.entries(node.outputs || {}).map(
+            ([key, output]) => html`
+              <div class="socket-row output">
+                <span class="label">${key}</span>
+                <rete-ref
+                  class="output-socket"
+                  .data=${{
+                    type: "socket",
+                    side: "output",
+                    key,
+                    nodeId: node.id,
+                    payload: output.socket,
+                  }}
+                  .emit=${this.emit}
+                ></rete-ref>
+              </div>
+            `,
+          )}
         </div>
-        ${
-          preview
-            ? html`<div class="text-xs text-base-content/60 px-3 pb-2 max-w-[160px] truncate">${preview}</div>`
-            : ""
-        }
+        ${preview ? html`<div class="node-data">${preview}</div>` : ""}
       </div>
     `;
   }
 }
 
 customElements.define("storyarn-node", StoryarnNode);
+
+// Custom socket component - smaller and subtle
+class StoryarnSocket extends LitElement {
+  static get properties() {
+    return {
+      data: { type: Object },
+    };
+  }
+
+  static styles = css`
+    :host {
+      display: inline-block;
+    }
+
+    .socket {
+      width: 10px;
+      height: 10px;
+      background: oklch(var(--bc, 0.7 0 0) / 0.25);
+      border: 2px solid oklch(var(--bc, 0.7 0 0) / 0.5);
+      border-radius: 50%;
+      cursor: crosshair;
+      transition: all 0.15s ease;
+    }
+
+    .socket:hover {
+      background: oklch(var(--p, 0.6 0.2 250));
+      border-color: oklch(var(--p, 0.6 0.2 250));
+      transform: scale(1.3);
+    }
+  `;
+
+  render() {
+    return html`<div class="socket" title="${this.data?.name || ""}"></div>`;
+  }
+}
+
+customElements.define("storyarn-socket", StoryarnSocket);
+
+// Custom connection component - thinner lines
+class StoryarnConnection extends LitElement {
+  static get properties() {
+    return {
+      path: { type: String },
+      start: { type: Object },
+      end: { type: Object },
+    };
+  }
+
+  static styles = css`
+    svg {
+      overflow: visible;
+      position: absolute;
+      pointer-events: none;
+      width: 9999px;
+      height: 9999px;
+    }
+
+    path {
+      fill: none;
+      stroke: oklch(var(--bc, 0.7 0 0) / 0.4);
+      stroke-width: 2px;
+      pointer-events: auto;
+      transition: stroke 0.15s ease, stroke-width 0.15s ease;
+    }
+
+    path:hover {
+      stroke: oklch(var(--p, 0.6 0.2 250));
+      stroke-width: 3px;
+    }
+  `;
+
+  render() {
+    return html`
+      <svg data-testid="connection">
+        <path d="${this.path}"></path>
+      </svg>
+    `;
+  }
+}
+
+customElements.define("storyarn-connection", StoryarnConnection);
 
 // Custom node class
 class FlowNode extends ClassicPreset.Node {
@@ -178,7 +353,7 @@ export const FlowCanvas = {
     // Configure connection plugin
     this.connection.addPreset(ConnectionPresets.classic.setup());
 
-    // Configure Lit render plugin with custom node component
+    // Configure Lit render plugin with custom components
     this.render.addPreset(
       LitPresets.classic.setup({
         customize: {
@@ -188,6 +363,16 @@ export const FlowCanvas = {
                 .data=${context.payload}
                 .emit=${emit}
               ></storyarn-node>
+            `;
+          },
+          socket(context) {
+            return () => html`
+              <storyarn-socket .data=${context.payload}></storyarn-socket>
+            `;
+          },
+          connection() {
+            return ({ path }) => html`
+              <storyarn-connection .path=${path}></storyarn-connection>
             `;
           },
         },
@@ -430,29 +615,42 @@ export const FlowCanvas = {
   },
 };
 
-// Inject minimap styles (Rete.js specific classes)
-const minimapStyles = document.createElement("style");
-minimapStyles.textContent = `
+// Inject global styles for canvas and minimap
+const reteStyles = document.createElement("style");
+reteStyles.textContent = `
+  /* Canvas background with subtle dot grid */
+  #flow-canvas {
+    background-color: oklch(var(--b2, 0.2 0 0));
+    background-image:
+      radial-gradient(circle at center, oklch(var(--bc, 0.8 0 0) / 0.08) 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
+  }
+
+  /* Minimap styling */
   .rete-minimap {
     position: absolute;
     right: 16px;
     bottom: 16px;
-    width: 200px;
-    height: 150px;
-    background: oklch(var(--b1));
-    border: 1px solid oklch(var(--bc) / 0.2);
+    width: 180px;
+    height: 120px;
+    background: oklch(var(--b1, 0.25 0 0) / 0.9);
+    border: 1px solid oklch(var(--bc, 0.8 0 0) / 0.2);
     border-radius: 8px;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
     overflow: hidden;
     z-index: 10;
+    backdrop-filter: blur(8px);
   }
+
   .rete-minimap .mini-node {
     border-radius: 2px;
+    opacity: 0.8;
   }
+
   .rete-minimap .mini-viewport {
-    border: 2px solid oklch(var(--p));
-    background: oklch(var(--p) / 0.1);
-    border-radius: 4px;
+    border: 2px solid oklch(var(--p, 0.6 0.2 250));
+    background: oklch(var(--p, 0.6 0.2 250) / 0.1);
+    border-radius: 3px;
   }
 `;
-document.head.appendChild(minimapStyles);
+document.head.appendChild(reteStyles);
