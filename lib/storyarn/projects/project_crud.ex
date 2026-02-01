@@ -122,7 +122,8 @@ defmodule Storyarn.Projects.ProjectCrud do
     slug = SlugGenerator.generate_slug(workspace_id, name)
 
     # Use same key type as input attrs (atom if attrs has atom keys, string otherwise)
-    slug_key = if Map.has_key?(attrs, :name) or Map.has_key?(attrs, :workspace_id), do: :slug, else: "slug"
+    slug_key =
+      if Map.has_key?(attrs, :name) or Map.has_key?(attrs, :workspace_id), do: :slug, else: "slug"
 
     %Project{owner_id: user.id}
     |> Project.create_changeset(Map.put(attrs, slug_key, slug))

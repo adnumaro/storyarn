@@ -20,9 +20,11 @@
     "@tiptap/starter-kit": "^3.18.0",
     "daisyui": "^5.5.14",
     "lit": "^3.3.2",
+    "lucide": "^0.563.0",
     "rete": "^2.0.3",
     "rete-area-plugin": "^2.0.3",
     "rete-connection-plugin": "^2.0.3",
+    "rete-minimap-plugin": "^2.0.3",
     "rete-render-utils": "^2.0.2",
     "sortablejs": "^1.15.6",
     "topbar": "^3.0.0"
