@@ -13,6 +13,17 @@ defmodule Storyarn.Projects.ProjectMembership do
 
   @roles ~w(owner editor viewer)
 
+  @type t :: %__MODULE__{
+          id: integer() | nil,
+          role: String.t() | nil,
+          project_id: integer() | nil,
+          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          user_id: integer() | nil,
+          user: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
   schema "project_memberships" do
     field :role, :string
 

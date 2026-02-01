@@ -11,6 +11,21 @@ defmodule Storyarn.Pages.Page do
   alias Storyarn.Pages.Block
   alias Storyarn.Projects.Project
 
+  @type t :: %__MODULE__{
+          id: integer() | nil,
+          name: String.t() | nil,
+          icon: String.t() | nil,
+          position: integer() | nil,
+          project_id: integer() | nil,
+          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          parent_id: integer() | nil,
+          parent: t() | Ecto.Association.NotLoaded.t() | nil,
+          children: [t()] | Ecto.Association.NotLoaded.t(),
+          blocks: [Block.t()] | Ecto.Association.NotLoaded.t(),
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
   schema "pages" do
     field :name, :string
     field :icon, :string, default: "page"

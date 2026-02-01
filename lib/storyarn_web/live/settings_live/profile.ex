@@ -15,7 +15,7 @@ defmodule StoryarnWeb.SettingsLive.Profile do
         {:ok, _user} ->
           put_flash(socket, :info, gettext("Email changed successfully."))
 
-        {:error, _} ->
+        {:error, :transaction_aborted} ->
           put_flash(socket, :error, gettext("Email change link is invalid or it has expired."))
       end
 

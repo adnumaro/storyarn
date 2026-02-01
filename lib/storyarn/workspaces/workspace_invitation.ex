@@ -15,6 +15,21 @@ defmodule Storyarn.Workspaces.WorkspaceInvitation do
   @rand_size 32
   @invitation_validity_in_days 7
 
+  @type t :: %__MODULE__{
+          id: integer() | nil,
+          email: String.t() | nil,
+          token: binary() | nil,
+          role: String.t() | nil,
+          expires_at: DateTime.t() | nil,
+          accepted_at: DateTime.t() | nil,
+          workspace_id: integer() | nil,
+          workspace: Workspace.t() | Ecto.Association.NotLoaded.t() | nil,
+          invited_by_id: integer() | nil,
+          invited_by: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
   schema "workspace_invitations" do
     field :email, :string
     field :token, :binary

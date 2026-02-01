@@ -156,7 +156,7 @@ defmodule Storyarn.Workspaces do
   Cannot change the owner's role.
   """
   @spec update_member_role(membership(), role()) ::
-          {:ok, membership()} | {:error, changeset() | :cannot_change_owner}
+          {:ok, membership()} | {:error, changeset() | :cannot_change_owner_role}
   defdelegate update_member_role(membership, role), to: Memberships
 
   @doc """
@@ -217,7 +217,8 @@ defmodule Storyarn.Workspaces do
   Returns `{:error, :rate_limited}` if too many invitations have been sent.
   """
   @spec create_invitation(workspace(), user(), String.t(), role()) ::
-          {:ok, invitation()} | {:error, :already_member | :already_invited | :rate_limited}
+          {:ok, invitation()}
+          | {:error, :already_member | :already_invited | :rate_limited | changeset()}
   defdelegate create_invitation(workspace, invited_by, email, role \\ "member"), to: Invitations
 
   @doc """
@@ -239,7 +240,8 @@ defmodule Storyarn.Workspaces do
   """
   @spec accept_invitation(invitation(), user()) ::
           {:ok, membership()}
-          | {:error, :email_mismatch | :already_member | :already_accepted | :expired}
+          | {:error,
+             :email_mismatch | :already_member | :already_accepted | :expired | changeset()}
   defdelegate accept_invitation(invitation, user), to: Invitations
 
   @doc """

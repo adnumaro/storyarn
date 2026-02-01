@@ -141,7 +141,7 @@ defmodule Storyarn.Accounts do
   (no password and only one identity).
   """
   @spec unlink_oauth_identity(user(), String.t()) ::
-          {:ok, user_identity()} | {:error, :only_auth_method}
+          {:ok, user_identity()} | {:error, :not_found | :cannot_unlink_only_auth_method}
   defdelegate unlink_oauth_identity(user, provider), to: OAuth
 
   # =============================================================================
@@ -181,7 +181,8 @@ defmodule Storyarn.Accounts do
   @doc """
   Logs the user in by magic link.
   """
-  @spec login_user_by_magic_link(String.t()) :: {:ok, user()} | :error
+  @spec login_user_by_magic_link(String.t()) ::
+          {:ok, {user(), [user_token()]}} | {:error, :not_found}
   defdelegate login_user_by_magic_link(token), to: MagicLinks
 
   @doc """
@@ -205,7 +206,7 @@ defmodule Storyarn.Accounts do
 
   If the token matches, the user email is updated and the token is deleted.
   """
-  @spec update_user_email(user(), String.t()) :: :ok | :error
+  @spec update_user_email(user(), String.t()) :: {:ok, user()} | {:error, :transaction_aborted}
   defdelegate update_user_email(user, token), to: Emails
 
   @doc ~S"""
@@ -232,7 +233,7 @@ defmodule Storyarn.Accounts do
   Returns a tuple with the updated user, as well as a list of expired tokens.
   """
   @spec update_user_password(user(), attrs()) ::
-          {:ok, user(), [user_token()]} | {:error, changeset()}
+          {:ok, {user(), [user_token()]}} | {:error, changeset()}
   defdelegate update_user_password(user, attrs), to: Passwords
 
   # =============================================================================

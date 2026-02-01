@@ -28,11 +28,6 @@ defmodule StoryarnWeb.OAuthController do
         conn
         |> put_flash(:error, gettext("Could not authenticate: %{errors}", errors: errors))
         |> redirect(to: ~p"/users/log-in")
-
-      {:error, reason} ->
-        conn
-        |> put_flash(:error, gettext("Authentication failed: %{reason}", reason: inspect(reason)))
-        |> redirect(to: ~p"/users/log-in")
     end
   end
 

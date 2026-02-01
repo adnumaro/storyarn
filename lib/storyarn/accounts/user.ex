@@ -5,6 +5,20 @@ defmodule Storyarn.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @type t :: %__MODULE__{
+          id: integer() | nil,
+          email: String.t() | nil,
+          password: String.t() | nil,
+          hashed_password: String.t() | nil,
+          confirmed_at: DateTime.t() | nil,
+          authenticated_at: DateTime.t() | nil,
+          display_name: String.t() | nil,
+          avatar_url: String.t() | nil,
+          identities: [Storyarn.Accounts.UserIdentity.t()] | Ecto.Association.NotLoaded.t(),
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
   schema "users" do
     field :email, :string
     field :password, :string, virtual: true, redact: true

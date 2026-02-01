@@ -3,12 +3,9 @@ defmodule Storyarn.Workspaces.Invitations do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.RateLimiter
   alias Storyarn.Repo
   alias Storyarn.Workspaces.{Memberships, Workspace, WorkspaceInvitation, WorkspaceNotifier}
-
-  # Maximum invitations per user per workspace per hour
-  @invitation_rate_limit 10
-  @invitation_rate_limit_ms 60_000 * 60
 
   @doc """
   Lists pending invitations for a workspace.
@@ -102,12 +99,7 @@ defmodule Storyarn.Workspaces.Invitations do
   # Private helpers
 
   defp check_invitation_rate_limit(workspace_id, user_id) do
-    key = "workspace_invitation:#{workspace_id}:#{user_id}"
-
-    case Hammer.check_rate(key, @invitation_rate_limit_ms, @invitation_rate_limit) do
-      {:allow, _count} -> :ok
-      {:deny, _limit} -> {:error, :rate_limited}
-    end
+    RateLimiter.check_invitation("workspace", workspace_id, user_id)
   end
 
   defp member_exists?(workspace_id, email) do

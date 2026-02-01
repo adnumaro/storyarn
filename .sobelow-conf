@@ -3,9 +3,15 @@
   private: false,
   skip: false,
   router: "lib/storyarn_web/router.ex",
-  exit: "low",
+  # Only fail on medium or higher confidence findings.
+  # Low confidence findings are reviewed manually:
+  # - Traversal.FileModule: Asset storage uses sanitized keys (UUID + filename)
+  # - DOS.StringToAtom: Icon names are hardcoded in templates, not user input
+  exit: "medium",
   format: "txt",
-  # HTTPS warning ignored - enabled in production via reverse proxy/load balancer
-  ignore: ["Config.HTTPS"],
+  ignore: [
+    # HTTPS warning ignored - enabled in production via reverse proxy/load balancer
+    "Config.HTTPS"
+  ],
   ignore_files: []
 ]

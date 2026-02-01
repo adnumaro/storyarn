@@ -11,7 +11,12 @@ defmodule Storyarn.MixProject do
       aliases: aliases(),
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      dialyzer: [
+        # Ignore known false positive with Gettext plural handling
+        ignore_warnings: ".dialyzer_ignore.exs",
+        plt_add_apps: [:mix]
+      ]
     ]
   end
 

@@ -12,6 +12,24 @@ defmodule Storyarn.Accounts.UserIdentity do
 
   @providers ~w(github google discord)
 
+  @type t :: %__MODULE__{
+          id: integer() | nil,
+          provider: String.t() | nil,
+          provider_id: String.t() | nil,
+          provider_email: String.t() | nil,
+          provider_name: String.t() | nil,
+          provider_avatar: String.t() | nil,
+          provider_meta: map() | nil,
+          provider_token_encrypted: binary() | nil,
+          provider_refresh_token_encrypted: binary() | nil,
+          provider_token: String.t() | nil,
+          provider_refresh_token: String.t() | nil,
+          user_id: integer() | nil,
+          user: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
   schema "user_identities" do
     field :provider, :string
     field :provider_id, :string

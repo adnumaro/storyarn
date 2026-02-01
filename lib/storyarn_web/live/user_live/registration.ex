@@ -5,6 +5,7 @@ defmodule StoryarnWeb.UserLive.Registration do
 
   alias Storyarn.Accounts
   alias Storyarn.Accounts.User
+  alias Storyarn.RateLimiter
 
   @impl true
   def render(assigns) do
@@ -55,12 +56,34 @@ defmodule StoryarnWeb.UserLive.Registration do
 
   def mount(_params, _session, socket) do
     changeset = Accounts.change_user_email(%User{}, %{}, validate_unique: false)
+    ip_address = get_client_ip(socket)
 
-    {:ok, assign_form(socket, changeset), temporary_assigns: [form: nil]}
+    {:ok, socket |> assign(:ip_address, ip_address) |> assign_form(changeset),
+     temporary_assigns: [form: nil]}
   end
 
   @impl true
   def handle_event("save", %{"user" => user_params}, socket) do
+    case RateLimiter.check_registration(socket.assigns.ip_address) do
+      :ok ->
+        do_register(socket, user_params)
+
+      {:error, :rate_limited} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, gettext("Too many registration attempts. Please try again later."))
+         |> push_navigate(to: ~p"/users/register")}
+    end
+  end
+
+  def handle_event("validate", %{"user" => user_params}, socket) do
+    changeset = Accounts.change_user_email(%User{}, user_params, validate_unique: false)
+    {:noreply, assign_form(socket, Map.put(changeset, :action, :validate))}
+  end
+
+  # Private helpers
+
+  defp do_register(socket, user_params) do
     case Accounts.register_user(user_params) do
       {:ok, user} ->
         {:ok, _} =
@@ -84,9 +107,24 @@ defmodule StoryarnWeb.UserLive.Registration do
     end
   end
 
-  def handle_event("validate", %{"user" => user_params}, socket) do
-    changeset = Accounts.change_user_email(%User{}, user_params, validate_unique: false)
-    {:noreply, assign_form(socket, Map.put(changeset, :action, :validate))}
+  defp get_client_ip(socket) do
+    # Check for X-Forwarded-For header first (common with reverse proxies)
+    x_headers = get_connect_info(socket, :x_headers) || []
+
+    case List.keyfind(x_headers, "x-forwarded-for", 0) do
+      {"x-forwarded-for", forwarded} ->
+        forwarded
+        |> String.split(",")
+        |> List.first()
+        |> String.trim()
+
+      nil ->
+        # Fall back to peer_data
+        case get_connect_info(socket, :peer_data) do
+          %{address: ip} when is_tuple(ip) -> ip |> :inet.ntoa() |> to_string()
+          _ -> "unknown"
+        end
+    end
   end
 
   defp assign_form(socket, %Ecto.Changeset{} = changeset) do

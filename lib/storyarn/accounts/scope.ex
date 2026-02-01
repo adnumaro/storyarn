@@ -18,6 +18,10 @@ defmodule Storyarn.Accounts.Scope do
 
   alias Storyarn.Accounts.User
 
+  @type t :: %__MODULE__{
+          user: User.t() | nil
+        }
+
   defstruct user: nil
 
   @doc """

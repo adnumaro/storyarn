@@ -40,6 +40,22 @@ defmodule Storyarn.Assets.Asset do
     application/pdf
   )
 
+  @type t :: %__MODULE__{
+          id: integer() | nil,
+          filename: String.t() | nil,
+          content_type: String.t() | nil,
+          size: integer() | nil,
+          key: String.t() | nil,
+          url: String.t() | nil,
+          metadata: map() | nil,
+          project_id: integer() | nil,
+          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          uploaded_by_id: integer() | nil,
+          uploaded_by: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
   schema "assets" do
     field :filename, :string
     field :content_type, :string

@@ -12,6 +12,22 @@ defmodule Storyarn.Workspaces.Workspace do
   alias Storyarn.Projects.Project
   alias Storyarn.Workspaces.WorkspaceMembership
 
+  @type t :: %__MODULE__{
+          id: integer() | nil,
+          name: String.t() | nil,
+          description: String.t() | nil,
+          slug: String.t() | nil,
+          banner_url: String.t() | nil,
+          color: String.t() | nil,
+          owner_id: integer() | nil,
+          owner: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          memberships: [WorkspaceMembership.t()] | Ecto.Association.NotLoaded.t(),
+          members: [User.t()] | Ecto.Association.NotLoaded.t(),
+          projects: [Project.t()] | Ecto.Association.NotLoaded.t(),
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
   schema "workspaces" do
     field :name, :string
     field :description, :string

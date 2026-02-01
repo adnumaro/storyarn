@@ -564,15 +564,14 @@ export const FlowCanvas = {
 | High     | Encrypt OAuth tokens with Cloak     | ✅ Done  |
 | Medium   | Split `block_components.ex`         | ✅ Done  |
 | Medium   | Add `@spec` to contexts             | ✅ Done  |
-| Medium   | Configure Redis for rate limiting   | Pending |
+| Medium   | Configure Redis for rate limiting   | ✅ Done  |
 | Medium   | Validate inputs with Integer.parse  | ✅ Done  |
 
 ---
 
 ## Immediate Next Steps
 
-1. **Complete refactoring tasks**
-2. **Phase 4: Flow Editor Core**
+1. **Phase 4: Flow Editor Core**
    - Install Rete.js dependencies
    - Create Flow/Node/Connection schemas
    - Build LiveView for flow editor

@@ -46,6 +46,18 @@ defmodule Storyarn.Pages.Block do
 
   @block_types ~w(text rich_text number select multi_select divider date)
 
+  @type t :: %__MODULE__{
+          id: integer() | nil,
+          type: String.t() | nil,
+          position: integer() | nil,
+          config: map() | nil,
+          value: map() | nil,
+          page_id: integer() | nil,
+          page: Page.t() | Ecto.Association.NotLoaded.t() | nil,
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
   schema "blocks" do
     field :type, :string
     field :position, :integer, default: 0

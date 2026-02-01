@@ -19,6 +19,17 @@ defmodule Storyarn.Workspaces.WorkspaceMembership do
 
   @roles ~w(owner admin member viewer)
 
+  @type t :: %__MODULE__{
+          id: integer() | nil,
+          role: String.t() | nil,
+          workspace_id: integer() | nil,
+          workspace: Workspace.t() | Ecto.Association.NotLoaded.t() | nil,
+          user_id: integer() | nil,
+          user: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          inserted_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
   schema "workspace_memberships" do
     field :role, :string
 

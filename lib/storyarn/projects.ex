@@ -189,7 +189,8 @@ defmodule Storyarn.Projects do
   Returns `{:error, :rate_limited}` if too many invitations have been sent.
   """
   @spec create_invitation(project(), user(), String.t(), role()) ::
-          {:ok, invitation()} | {:error, :already_member | :already_invited | :rate_limited}
+          {:ok, invitation()}
+          | {:error, :already_member | :already_invited | :rate_limited | changeset()}
   defdelegate create_invitation(project, invited_by, email, role \\ "editor"), to: Invitations
 
   @doc """
@@ -211,7 +212,8 @@ defmodule Storyarn.Projects do
   """
   @spec accept_invitation(invitation(), user()) ::
           {:ok, membership()}
-          | {:error, :email_mismatch | :already_member | :already_accepted | :expired}
+          | {:error,
+             :email_mismatch | :already_member | :already_accepted | :expired | changeset()}
   defdelegate accept_invitation(invitation, user), to: Invitations
 
   @doc """

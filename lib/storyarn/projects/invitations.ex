@@ -11,11 +11,8 @@ defmodule Storyarn.Projects.Invitations do
     ProjectNotifier
   }
 
+  alias Storyarn.RateLimiter
   alias Storyarn.Repo
-
-  # Maximum invitations per user per project per hour
-  @invitation_rate_limit 10
-  @invitation_rate_limit_ms 60_000 * 60
 
   @doc """
   Lists pending invitations for a project.
@@ -98,12 +95,7 @@ defmodule Storyarn.Projects.Invitations do
   # Private helpers
 
   defp check_invitation_rate_limit(project_id, user_id) do
-    key = "invitation:#{project_id}:#{user_id}"
-
-    case Hammer.check_rate(key, @invitation_rate_limit_ms, @invitation_rate_limit) do
-      {:allow, _count} -> :ok
-      {:deny, _limit} -> {:error, :rate_limited}
-    end
+    RateLimiter.check_invitation("project", project_id, user_id)
   end
 
   defp member_exists?(project_id, email) do
