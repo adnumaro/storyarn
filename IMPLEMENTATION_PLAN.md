@@ -66,7 +66,10 @@ users ← user_identities (OAuth providers)
                 ├→ project_invitations
                 ├→ pages (hierarchical tree with parent_id)
                 │   └→ blocks (text, rich_text, number, select, multi_select, date, divider)
-                └→ assets (file uploads)
+                ├→ assets (file uploads)
+                └→ flows
+                    ├→ flow_nodes (dialogue, hub, condition, instruction, jump)
+                    └→ flow_connections
 ```
 
 ### Context Organization (Facade Pattern)
@@ -113,6 +116,15 @@ lib/storyarn/
 │   ├── storage/r2.ex        # Cloudflare R2
 │   └── image_processor.ex   # libvips processing
 │
+├── flows.ex                 # Facade (NEW)
+├── flows/
+│   ├── flow.ex              # Schema
+│   ├── flow_node.ex         # Schema (5 node types)
+│   ├── flow_connection.ex   # Schema
+│   ├── flow_crud.ex         # Flow CRUD operations
+│   ├── node_crud.ex         # Node CRUD operations
+│   └── connection_crud.ex   # Connection CRUD operations
+│
 └── authorization.ex         # Central authorization (role-based permissions)
 ```
 
@@ -142,6 +154,7 @@ lib/storyarn/
 - [x] Profile settings (display name, avatar)
 - [x] Connected accounts management (link/unlink OAuth)
 - [x] Sudo mode for sensitive operations
+- [x] Rate limiting (ETS for dev, Redis for production)
 
 > **Note on Password Reset:** Instead of a traditional "forgot password" flow, we use magic links.
 > Users who forgot their password can request a magic link via the login page, which logs them in
@@ -210,19 +223,24 @@ lib/storyarn/
 - [x] Migrate from Heroicons to Lucide icons
 - [x] Update to daisyUI v5 CSS variables
 
-### ⏳ Phase 4: Flow Editor - Core (Next Up)
+### ⏳ Phase 4: Flow Editor - Core (In Progress)
 
-- [ ] Flow schema and context
-- [ ] Node schema (types: dialogue, hub, condition, instruction, jump)
-- [ ] Connection schema (source_node, target_node, pins, conditions)
-- [ ] Install Rete.js: `npm install rete rete-area-plugin rete-connection-plugin`
-- [ ] Rete.js integration with LiveView (JS hook)
-- [ ] Node rendering with type-specific visuals
-- [ ] Node drag & drop on canvas
-- [ ] Node connections with visual lines
-- [ ] Node properties panel (sidebar)
-- [ ] Canvas zoom & pan
+- [x] Flow schema and context (facade pattern with submodules)
+- [x] Node schema (types: dialogue, hub, condition, instruction, jump)
+- [x] Connection schema (source_node, target_node, pins, conditions)
+- [x] Rete.js v2 with @retejs/lit-plugin for rendering
+- [x] Rete.js integration with LiveView (FlowCanvas hook)
+- [x] Node rendering with Lit web components
+- [x] Node drag & drop on canvas
+- [x] Node connections with visual lines
+- [x] Node properties panel (sidebar)
+- [x] Canvas zoom & pan
+- [x] Server sync with duplicate event prevention
+- [x] FlowLive.Index with LiveComponent form (stable modal pattern)
+- [x] FlowLive.Show with full canvas editor
 - [ ] Mini-map navigation
+- [ ] Node-specific styling (colors per type)
+- [ ] Connection labels and conditions UI
 
 ### ⏳ Phase 5: Flow Editor - Dialogue
 
@@ -254,7 +272,6 @@ lib/storyarn/
 - [ ] UX refinements based on testing
 - [ ] Production deployment setup (fly.io or similar)
 - [ ] Monitoring & logging (Sentry, AppSignal)
-- [ ] Rate limiting with Redis backend
 
 ---
 
@@ -264,22 +281,18 @@ Current `assets/package.json`:
 
 ```json
 {
+  "@retejs/lit-plugin": "^2.0.x",
   "@tiptap/core": "^3.18.0",
   "@tiptap/pm": "^3.18.0",
   "@tiptap/starter-kit": "^3.18.0",
   "daisyui": "^5.5.14",
+  "lit": "^3.x",
+  "rete": "^2.0.3",
+  "rete-area-plugin": "^2.0.3",
+  "rete-connection-plugin": "^2.0.3",
+  "rete-render-utils": "^2.0.2",
   "sortablejs": "^1.15.6",
   "topbar": "^3.0.0"
-}
-```
-
-**To be added for Phase 4:**
-```json
-{
-  "rete": "^2.0.0",
-  "rete-area-plugin": "^2.0.0",
-  "rete-connection-plugin": "^2.0.0",
-  "rete-render-utils": "^2.0.0"
 }
 ```
 
@@ -289,14 +302,15 @@ Current `assets/package.json`:
 
 Current hooks in `assets/js/hooks/`:
 
-| Hook               | Purpose                                |
-|--------------------|----------------------------------------|
-| `sortable_list.js` | Generic drag & drop for lists (blocks) |
-| `sortable_tree.js` | Tree structure drag & drop (pages)     |
-| `tiptap_editor.js` | Rich text WYSIWYG editor               |
-| `tree.js`          | Tree UI interactions (expand/collapse) |
-| `tree_search.js`   | Search filtering in tree               |
-| `theme.js`         | Dark/light theme switching             |
+| Hook               | Purpose                                      |
+|--------------------|----------------------------------------------|
+| `flow_canvas.js`   | Rete.js flow editor canvas (NEW)             |
+| `sortable_list.js` | Generic drag & drop for lists (blocks)       |
+| `sortable_tree.js` | Tree structure drag & drop (pages)           |
+| `tiptap_editor.js` | Rich text WYSIWYG editor                     |
+| `tree.js`          | Tree UI interactions (expand/collapse)       |
+| `tree_search.js`   | Search filtering in tree                     |
+| `theme.js`         | Dark/light theme switching                   |
 
 ---
 
@@ -343,6 +357,7 @@ test/
 │   ├── projects_test.exs
 │   ├── pages_test.exs
 │   ├── assets_test.exs
+│   ├── flows_test.exs              # NEW
 │   ├── authorization_test.exs
 │   └── assets/image_processor_test.exs
 ├── storyarn_web/
@@ -351,6 +366,7 @@ test/
 │   │   ├── user_live/
 │   │   ├── project_live/
 │   │   ├── page_live/
+│   │   ├── flow_live/              # NEW
 │   │   └── settings_live/
 │   └── user_auth_test.exs
 └── e2e/
@@ -399,27 +415,18 @@ blocks (id, page_id, type, position, config, value, timestamps)
 
 -- Assets
 assets (id, project_id, filename, size, content_type, key, timestamps)
-```
 
-### Planned Tables (Phase 4)
-
-```sql
--- Flows
+-- Flows (NEW)
 flows (id, project_id, name, description, is_main, settings, timestamps)
-
--- Nodes
 flow_nodes (id, flow_id, type, position_x, position_y, data, timestamps)
--- types: dialogue, hub, condition, instruction, jump
-
--- Connections
 flow_connections (id, flow_id, source_node_id, source_pin, target_node_id, target_pin, label, condition, timestamps)
 ```
 
 ---
 
-## Rete.js + LiveView Integration (Phase 4)
+## Rete.js + LiveView Integration
 
-### Hybrid Strategy
+### Architecture
 
 1. **LiveView** handles:
    - Flow state (nodes, connections)
@@ -428,7 +435,7 @@ flow_connections (id, flow_id, source_node_id, source_pin, target_node_id, targe
    - Properties panel
 
 2. **Rete.js (JS Hook)** handles:
-   - Canvas rendering
+   - Canvas rendering (via @retejs/lit-plugin)
    - Drag & drop
    - Zoom/pan
    - Visual interactions
@@ -439,37 +446,21 @@ flow_connections (id, flow_id, source_node_id, source_pin, target_node_id, targe
                     pushEvent/handleEvent
    ```
 
-### Basic Hook Structure
+### Hook Implementation
+
+The FlowCanvas hook (`assets/js/hooks/flow_canvas.js`) implements:
+- Rete.js v2 with Lit render plugin
+- `isLoadingFromServer` flag to prevent duplicate events
+- Event handlers for node/connection CRUD
+- Debounced position updates
 
 ```javascript
-// assets/js/hooks/flow_canvas.js
-export const FlowCanvas = {
-  mounted() {
-    const initialData = JSON.parse(this.el.dataset.flowData)
-
-    this.editor = createEditor(this.el, {
-      nodes: initialData.nodes,
-      connections: initialData.connections,
-
-      onNodeMoved: (nodeId, x, y) => {
-        this.pushEvent("node_moved", { id: nodeId, x, y })
-      },
-      onNodeSelected: (nodeId) => {
-        this.pushEvent("node_selected", { id: nodeId })
-      },
-      onConnectionCreated: (source, target) => {
-        this.pushEvent("connection_created", { source, target })
-      }
-    })
-
-    // Events from LiveView (other users)
-    this.handleEvent("node_updated", (node) => this.editor.updateNode(node))
-    this.handleEvent("node_added", (node) => this.editor.addNode(node))
-  },
-
-  destroyed() {
-    this.editor.destroy()
-  }
+// Key pattern: prevent duplicate events when syncing from server
+this.isLoadingFromServer = true;
+try {
+  await this.addConnectionToEditor(data);
+} finally {
+  this.isLoadingFromServer = false;
 }
 ```
 
@@ -482,11 +473,8 @@ export const FlowCanvas = {
 %{
   type: :dialogue,
   data: %{
-    speaker_id: "page-uuid",         # Reference to a page (character)
-    text: "Hello, traveler!",
-    menu_text: "Greet",              # Short text for options
-    stage_directions: "smiling",
-    features: %{emotion: "happy"}
+    speaker: "",              # Speaker name or reference
+    text: "Hello, traveler!"  # Dialogue text
   }
 }
 ```
@@ -496,8 +484,8 @@ export const FlowCanvas = {
 %{
   type: :hub,
   data: %{
-    display_name: "Quest Start"
-    # No narrative content, just a connection point
+    label: "Quest Start"
+    # Connection point with multiple outputs
   }
 }
 ```
@@ -507,8 +495,8 @@ export const FlowCanvas = {
 %{
   type: :condition,
   data: %{
-    expression: "player_gold >= 100 and quest_accepted"
-    # Outputs: true_pin, false_pin
+    expression: "player_gold >= 100"
+    # Outputs: true, false
   }
 }
 ```
@@ -518,10 +506,7 @@ export const FlowCanvas = {
 %{
   type: :instruction,
   data: %{
-    instructions: [
-      %{action: "set_variable", variable: "quest_started", value: true},
-      %{action: "add_item", item_id: "page-uuid", quantity: 1}
-    ]
+    code: "set_variable('quest_started', true)"
   }
 }
 ```
@@ -531,8 +516,8 @@ export const FlowCanvas = {
 %{
   type: :jump,
   data: %{
-    target_flow_id: "flow-uuid",
-    target_node_id: "node-uuid"  # optional
+    target_flow_id: nil,    # Optional target flow
+    target_node_id: nil     # Optional target node
   }
 }
 ```
@@ -543,15 +528,13 @@ export const FlowCanvas = {
 
 | Commit  | Description                                                         |
 |---------|---------------------------------------------------------------------|
+| c748f36 | feat: Add Flow Editor with visual node-based editing                |
+| 87ac8a3 | docs: Add rate limiting documentation to CLAUDE.md                  |
+| 9820386 | feat: Add rate limiting and fix static analysis warnings            |
+| 33ddac1 | docs: Add @spec type annotations to context modules                 |
+| b3148f7 | docs: Update IMPLEMENTATION_PLAN.md with current status             |
 | 458efe1 | chore: Remove obsolete planning documents                           |
-| db993e7 | chore: Consolidate migrations into clean creation-only files        |
 | 6ac6912 | feat: Add Cloak encryption for OAuth tokens at rest                 |
-| d856696 | refactor: Extract BlockComponents into focused submodules           |
-| 82b8993 | refactor: Extract Pages context into facade pattern with submodules |
-| 00eb607 | fix: Validate string inputs with Integer.parse/1                    |
-| 76b73f4 | refactor: Extract components into focused modules                   |
-| f446bdd | feat: Add block configuration panel with extended options           |
-| 75191a4 | fix: Fix block drag and drop to work in all positions               |
 | 17ddace | feat: Migrate from Heroicons to Lucide icons                        |
 
 ---
@@ -571,11 +554,16 @@ export const FlowCanvas = {
 
 ## Immediate Next Steps
 
-1. **Phase 4: Flow Editor Core**
-   - Install Rete.js dependencies
-   - Create Flow/Node/Connection schemas
-   - Build LiveView for flow editor
-   - Create Rete.js hook for canvas
+1. **Phase 4: Flow Editor - Remaining Items**
+   - Add mini-map navigation for large flows
+   - Style nodes by type (colors, icons)
+   - Connection labels and conditions UI
+   - Keyboard shortcuts (delete, duplicate)
+
+2. **Phase 5: Flow Editor - Dialogue**
+   - Speaker selector linked to Pages
+   - Rich text in dialogue nodes
+   - Response branches UI
 
 ---
 
