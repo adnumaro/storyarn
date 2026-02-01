@@ -86,6 +86,8 @@ defmodule StoryarnWeb do
       import Phoenix.HTML
       # Core UI components
       import StoryarnWeb.CoreComponents
+      # Custom UI components
+      import StoryarnWeb.UIComponents
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS

@@ -3,6 +3,8 @@ defmodule StoryarnWeb.PageLive.Index do
 
   use StoryarnWeb, :live_view
 
+  import StoryarnWeb.Components.PageComponents
+
   alias Storyarn.Pages
   alias Storyarn.Projects
   alias Storyarn.Repo
@@ -123,7 +125,7 @@ defmodule StoryarnWeb.PageLive.Index do
     >
       <div class="card-body">
         <div class="flex items-center gap-3">
-          <.page_icon icon={@page.icon} />
+          <.page_icon icon={@page.icon} size="lg" />
           <div>
             <h3 class="card-title text-lg">{@page.name}</h3>
             <p :if={@children_count > 0} class="text-sm text-base-content/50">
@@ -133,21 +135,6 @@ defmodule StoryarnWeb.PageLive.Index do
         </div>
       </div>
     </.link>
-    """
-  end
-
-  attr :icon, :string, default: nil
-
-  defp page_icon(assigns) do
-    is_emoji = assigns.icon && assigns.icon not in [nil, "", "page"]
-    assigns = assign(assigns, :is_emoji, is_emoji)
-
-    ~H"""
-    <%= if @is_emoji do %>
-      <span class="text-2xl">{@icon}</span>
-    <% else %>
-      <.icon name="file" class="size-6 opacity-60" />
-    <% end %>
     """
   end
 
@@ -311,7 +298,4 @@ defmodule StoryarnWeb.PageLive.Index do
     end
   end
 
-  defp normalize_parent_id(""), do: nil
-  defp normalize_parent_id(nil), do: nil
-  defp normalize_parent_id(parent_id), do: parent_id
 end

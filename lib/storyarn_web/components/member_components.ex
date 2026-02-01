@@ -8,6 +8,7 @@ defmodule StoryarnWeb.MemberComponents do
   use Gettext, backend: StoryarnWeb.Gettext
 
   import StoryarnWeb.CoreComponents
+  import StoryarnWeb.UIComponents
 
   @doc """
   Renders a user avatar with initials fallback.
