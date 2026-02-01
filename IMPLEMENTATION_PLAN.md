@@ -230,7 +230,10 @@ lib/storyarn/
 - [x] Connection schema (source_node, target_node, pins, conditions)
 - [x] Rete.js v2 with @retejs/lit-plugin for rendering
 - [x] Rete.js integration with LiveView (FlowCanvas hook)
-- [x] Node rendering with Lit web components (Light DOM for Tailwind/daisyUI theming)
+- [x] Custom Lit components (Shadow DOM + daisyUI CSS variables for theming)
+  - StoryarnNode: colored headers, Lucide icons
+  - StoryarnSocket: 10px subtle pins
+  - StoryarnConnection: 2px smooth curves
 - [x] Node drag & drop on canvas
 - [x] Node connections with visual lines
 - [x] Node properties panel (sidebar)
@@ -239,7 +242,7 @@ lib/storyarn/
 - [x] FlowLive.Index with LiveComponent form (stable modal pattern)
 - [x] FlowLive.Show with full canvas editor
 - [x] Mini-map navigation (rete-minimap-plugin)
-- [x] Node-specific styling (colors per type, Lucide icons)
+- [x] Dot grid canvas background
 - [ ] Connection labels and conditions UI
 
 ### ⏳ Phase 5: Flow Editor - Dialogue
