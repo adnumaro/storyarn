@@ -9,7 +9,6 @@ defmodule Storyarn.Repo.Migrations.CreateAssets do
       add :key, :string, null: false
       add :url, :string
       add :metadata, :map, default: %{}
-
       add :project_id, references(:projects, on_delete: :delete_all), null: false
       add :uploaded_by_id, references(:users, on_delete: :nilify_all)
 

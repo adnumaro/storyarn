@@ -8,8 +8,8 @@ defmodule Storyarn.Repo.Migrations.CreateUserIdentities do
       add :provider_email, :string
       add :provider_name, :string
       add :provider_avatar, :string
-      add :provider_token, :text
-      add :provider_refresh_token, :text
+      add :provider_token_encrypted, :binary
+      add :provider_refresh_token_encrypted, :binary
       add :provider_meta, :map, default: %{}
       add :user_id, references(:users, on_delete: :delete_all), null: false
 
