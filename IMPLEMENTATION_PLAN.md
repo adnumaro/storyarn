@@ -1,16 +1,19 @@
 # Storyarn - Implementation Plan
 
 > **Goal:** Build an "articy killer" - a web-based narrative design platform with real-time collaboration
+>
+> **Last Updated:** February 2026
 
 ## Confirmed Stack
 
-- **Backend:** Elixir + Phoenix 1.8 + LiveView
-- **Frontend:** LiveView + Rete.js (flow editor)
+- **Backend:** Elixir 1.15+ / Phoenix 1.8 / LiveView 1.1
+- **Frontend:** LiveView + Rete.js (flow editor) + TailwindCSS v4 + daisyUI v5
 - **Database:** PostgreSQL + Redis
-- **Auth:** Email/password + OAuth (GitHub, Google, Discord)
+- **Auth:** Email/password + OAuth (GitHub, Google, Discord) + Magic Links
+- **Storage:** Cloudflare R2 (S3-compatible) / Local for dev
 - **Collaboration:** Optimistic locking (evolve to CRDT later)
-- **i18n:** Gettext (included with Phoenix)
-- **Rust:** Deferred until there's a real performance need
+- **i18n:** Gettext (en, es)
+- **Email:** Resend (production) / Mailpit (development)
 
 ## Development Tools
 
@@ -22,33 +25,19 @@
 | **ExMachina** | Test factories                          | Used in tests        |
 | **Mox**       | Mocking (behaviours-based)              | Used in tests        |
 | **Faker**     | Random test data generation             | Used in tests        |
+| **Biome**     | JS linting & formatting                 | `npm run check`      |
 
 ### Code Conventions (Credo)
 
 The project follows strict Credo rules (`mix credo --strict`):
 
-| Rule | Description |
-|------|-------------|
-| **with → case** | Single-clause `with` statements should use `case` instead |
-| **Nesting depth** | Maximum nesting depth is 2 - extract to private functions |
-| **@moduledoc** | All modules must have `@moduledoc` (use `false` for internal modules) |
-| **Function grouping** | Group all clauses of same function together |
-| **Alphabetical aliases** | `alias Storyarn.{Accounts, Projects, Workspaces}` |
-
-```elixir
-# ❌ Wrong
-with :ok <- authorize(socket, :edit) do
-  perform_action()
-else
-  {:error, :unauthorized} -> handle_error()
-end
-
-# ✅ Correct
-case authorize(socket, :edit) do
-  :ok -> perform_action()
-  {:error, :unauthorized} -> handle_error()
-end
-```
+| Rule                     | Description                                                           |
+|--------------------------|-----------------------------------------------------------------------|
+| **with → case**          | Single-clause `with` statements should use `case` instead             |
+| **Nesting depth**        | Maximum nesting depth is 2 - extract to private functions             |
+| **@moduledoc**           | All modules must have `@moduledoc` (use `false` for internal modules) |
+| **Function grouping**    | Group all clauses of same function together                           |
+| **Alphabetical aliases** | `alias Storyarn.{Accounts, Projects, Workspaces}`                     |
 
 ### Image Processing
 
@@ -61,622 +50,38 @@ The project uses **Image** library (libvips bindings) instead of Mogrify/ImageMa
 Image.thumbnail!(path, max_width, fit: :contain)
 ```
 
-### Dialyzer Notes
-
-First run builds a PLT (Persistent Lookup Table) and takes several minutes. Subsequent runs are fast.
-
-```bash
-# First time setup (slow, ~5 min)
-mix dialyzer
-
-# Subsequent runs (fast)
-mix dialyzer --format short
-```
-
-Add `@spec` annotations to functions for better type checking:
-
-```elixir
-@spec create_project(User.t(), map()) :: {:ok, Project.t()} | {:error, Ecto.Changeset.t()}
-def create_project(user, attrs) do
-  # ...
-end
-```
-
-### Test Factories (ExMachina)
-
-```elixir
-# test/support/factory.ex
-defmodule Storyarn.Factory do
-  use ExMachina.Ecto, repo: Storyarn.Repo
-
-  def user_factory do
-    %Storyarn.Accounts.User{
-      email: sequence(:email, &"user#{&1}@example.com"),
-      display_name: Faker.Person.name(),
-      hashed_password: Bcrypt.hash_pwd_salt("password123")
-    }
-  end
-
-  def project_factory do
-    %Storyarn.Projects.Project{
-      name: Faker.Company.name(),
-      description: Faker.Lorem.paragraph(),
-      owner: build(:user)
-    }
-  end
-end
-```
-
-Usage in tests:
-
-```elixir
-# Build (in-memory)
-user = build(:user)
-
-# Insert (persisted to DB)
-user = insert(:user)
-
-# With overrides
-admin = insert(:user, role: :admin)
-
-# With associations
-project = insert(:project, owner: insert(:user))
-```
-
-### Mocking with Mox
-
-For external services (OAuth, emails, APIs):
-
-```elixir
-# test/support/mocks.ex
-Mox.defmock(Storyarn.HTTPClientMock, for: Storyarn.HTTPClient.Behaviour)
-Mox.defmock(Storyarn.MailerMock, for: Storyarn.Mailer.Behaviour)
-
-# In test
-import Mox
-
-setup :verify_on_exit!
-
-test "sends welcome email" do
-  expect(Storyarn.MailerMock, :deliver, fn email ->
-    assert email.to == "user@example.com"
-    {:ok, %{}}
-  end)
-
-  # ... test code
-end
-```
-
 ---
 
-## MVP Phases
+## Current Architecture
 
-### Phase 0: Base Infrastructure (Complete)
-- [x] Phoenix project created
-- [x] Docker compose (PostgreSQL + Redis)
-- [x] Credo + Sobelow configured
-- [x] Configure TailwindCSS v4 (with daisyUI)
-- [x] Configure Biome for JS (lint + format)
-- [x] Configure Gettext locales (en, es)
-- [x] Basic CI setup (GitHub Actions)
-- [x] Playwright E2E test structure
-
-### Phase 1: Auth & Users (Complete)
-- [x] User schema
-- [x] Registration/login with email + password
-- [x] OAuth with GitHub
-- [x] OAuth with Google
-- [x] OAuth with Discord
-- [x] Email verification (via magic link)
-- [x] Password reset (via magic link - users can login with magic link and set a new password in settings)
-- [x] Session management
-- [x] Profile settings (display name, avatar)
-- [x] Connected accounts management (link/unlink OAuth providers)
-
-> **Note on Password Reset:** Instead of a traditional "forgot password" flow, we use magic links.
-> Users who forgot their password can request a magic link via the login page, which logs them in
-> directly. Once logged in, they can set a new password in the settings page. This approach is
-> simpler, more secure (no password reset tokens to expire), and provides a better UX.
-
-### Phase 2: Workspaces & Projects (Complete)
-- [x] Workspace schema and CRUD
-- [x] Workspace memberships (owner, admin, member, viewer roles)
-- [x] Workspace invitations via email
-- [x] Workspace settings (general, members)
-- [x] Default workspace on user registration
-- [x] Project schema and CRUD
-- [x] Projects belong to workspaces
-- [x] Project memberships (owner, editor, viewer roles)
-- [x] Project invitations via email
-- [x] Project settings
-- [x] Workspace-centric navigation (sidebar with workspaces)
-- [x] Unified settings layout (account + workspace settings)
-- [x] E2E tests for all flows
-
-### Phase 3: Domain Model - Entities (Complete)
-- [x] Entity templates (schema with type, color, icon, custom fields)
-- [x] Entities (characters, locations, items, custom)
-- [x] Variables (boolean, integer, float, string with categories)
-- [x] CRUD for templates, entities, and variables
-- [x] Entity browser (collapsible sidebar component)
-- [x] Search and filtering (by type, by name)
-- [x] Unit tests (52 context tests)
-- [x] LiveView tests (42 tests)
-- [x] E2E tests (ready for Playwright)
-
-### Phase 3.2: Template Builder & Assets
-
-#### Part 1: Visual Template Schema Builder (Complete)
-- [x] Schema migration (map → array format for ordering)
-- [x] SortableJS integration for drag-and-drop
-- [x] Schema field validation (name, type, label, options)
-- [x] Schema management functions (add, update, remove, reorder)
-- [x] SchemaBuilder LiveComponent with field editor modal
-- [x] Support for field types: string, text, integer, boolean, select, asset_reference
-- [x] Entity form updated for array schema and select type
-- [x] Unit tests for schema validation and management
-
-#### Part 2: Assets System (Complete)
-- [x] Cloudflare R2 integration (S3-compatible storage)
-- [x] Asset schema and context (CRUD, filters, storage key generation)
-- [x] Storage abstraction (Local for dev, R2 for production)
-- [x] Image processing (thumbnails, resize with Image/libvips - migrated from Mogrify for security)
-- [x] Asset upload LiveComponent (drag-and-drop, progress, preview)
-- [x] Unit tests (29 tests)
-- [ ] asset_reference field type integration (deferred to Phase 4)
-
-#### Part 3: Code Quality Refactoring (Complete)
-- [x] Split Accounts context into submodules (facade pattern with defdelegate)
-- [x] Split Workspaces context into submodules
-- [x] Split Projects context into submodules
-- [x] Split Entities context into submodules
-- [x] Fix Credo issues (with→case, nesting depth, @moduledoc)
-- [x] Migrate image processing from Mogrify/ImageMagick to Image/libvips
-
-### Phase 4: Flow Editor - Core (3 weeks)
-- [ ] Flow schema
-- [ ] Node schema (types: dialogue, hub, condition, instruction, jump)
-- [ ] Connection schema
-- [ ] Rete.js integration with LiveView
-- [ ] Node rendering
-- [ ] Node drag & drop
-- [ ] Node connections
-- [ ] Node properties panel
-- [ ] Canvas zoom & pan
-- [ ] Mini-map
-
-### Phase 5: Flow Editor - Dialogue (2 weeks)
-- [ ] Dialogue node with speaker selector
-- [ ] Rich text editor for dialogues
-- [ ] Branches/response options
-- [ ] Conditions on branches
-- [ ] Dialogue preview
-- [ ] Variables in text (interpolation)
-
-### Phase 6: Basic Collaboration (1 week)
-- [ ] Phoenix Presence (who's online)
-- [ ] Other users' cursors
-- [ ] Node locking (who's editing)
-- [ ] Visual editing indicators
-- [ ] Change notifications
-
-### Phase 7: Export (1 week)
-- [ ] Export to JSON (custom format)
-- [ ] Export to JSON (articy-compatible format)
-- [ ] Import from JSON
-- [ ] Pre-export validation
-
-### Phase 8: Polish & Production (1 week)
-- [ ] Performance profiling
-- [ ] UX refinements
-- [ ] Production deployment setup
-- [ ] Monitoring & logging
-
----
-
-## 🌍 Internationalization (i18n)
-
-> **Fundamental rule:** All user-facing text MUST be localized. No hardcoded strings in templates or controllers.
-
-### Technology: Gettext (Built-in)
-
-Phoenix includes [Gettext](https://github.com/elixir-gettext/gettext) out of the box. No additional dependencies needed.
-
-### Supported Locales
-
-Initial locales:
-- `en` - English (default)
-- `es` - Spanish
-
-More can be added later via `mix gettext.merge priv/gettext --locale <locale>`.
-
-### File Structure
+### Domain Model
 
 ```
-priv/gettext/
-├── default.pot                    # Template (extracted strings)
-├── errors.pot                     # Ecto/validation errors template
-├── en/
-│   └── LC_MESSAGES/
-│       ├── default.po             # English translations
-│       └── errors.po
-└── es/
-    └── LC_MESSAGES/
-        ├── default.po             # Spanish translations
-        └── errors.po
+users ← user_identities (OAuth providers)
+        └→ workspaces (default workspace on signup)
+            ├→ workspace_memberships (owner, admin, member, viewer)
+            ├→ workspace_invitations
+            └→ projects
+                ├→ project_memberships (owner, editor, viewer)
+                ├→ project_invitations
+                ├→ pages (hierarchical tree with parent_id)
+                │   └→ blocks (text, rich_text, number, select, multi_select, date, divider)
+                └→ assets (file uploads)
 ```
 
-### Usage Patterns
+### Context Organization (Facade Pattern)
 
-#### In Templates (HEEx)
-```heex
-<h1><%= gettext("Welcome to Storyarn") %></h1>
-<p><%= gettext("Create your first project") %></p>
-
-<%!-- With interpolation --%>
-<p><%= gettext("Hello, %{name}!", name: @user.name) %></p>
-
-<%!-- Pluralization --%>
-<p><%= ngettext("1 project", "%{count} projects", @count) %></p>
-```
-
-#### In LiveView/Controllers
-```elixir
-def mount(_params, _session, socket) do
-  {:ok, assign(socket, page_title: gettext("Dashboard"))}
-end
-
-def handle_event("save", params, socket) do
-  case save_project(params) do
-    {:ok, _} ->
-      {:noreply, put_flash(socket, :info, gettext("Project saved successfully"))}
-    {:error, _} ->
-      {:noreply, put_flash(socket, :error, gettext("Failed to save project"))}
-  end
-end
-```
-
-#### In Ecto Changesets
-```elixir
-def changeset(project, attrs) do
-  project
-  |> cast(attrs, [:name, :description])
-  |> validate_required([:name], message: dgettext("errors", "can't be blank"))
-  |> validate_length(:name, min: 3, message: dgettext("errors", "must be at least 3 characters"))
-end
-```
-
-### Locale Detection & Switching
-
-```elixir
-# lib/storyarn_web/plugs/locale.ex
-defmodule StoryarnWeb.Plugs.Locale do
-  import Plug.Conn
-
-  @locales Gettext.known_locales(StoryarnWeb.Gettext)
-
-  def init(default), do: default
-
-  def call(conn, default) do
-    locale =
-      get_locale_from_params(conn) ||
-      get_locale_from_session(conn) ||
-      get_locale_from_header(conn) ||
-      default
-
-    Gettext.put_locale(StoryarnWeb.Gettext, locale)
-    conn |> put_session(:locale, locale)
-  end
-
-  defp get_locale_from_params(conn) do
-    conn.params["locale"] |> validate_locale()
-  end
-
-  defp get_locale_from_session(conn) do
-    get_session(conn, :locale) |> validate_locale()
-  end
-
-  defp get_locale_from_header(conn) do
-    conn
-    |> get_req_header("accept-language")
-    |> List.first()
-    |> parse_accept_language()
-    |> validate_locale()
-  end
-
-  defp validate_locale(locale) when locale in @locales, do: locale
-  defp validate_locale(_), do: nil
-
-  defp parse_accept_language(nil), do: nil
-  defp parse_accept_language(header) do
-    header |> String.split(",") |> List.first() |> String.split("-") |> List.first()
-  end
-end
-```
-
-### LiveView Locale Handling
-
-```elixir
-# lib/storyarn_web/live/live_helpers.ex
-defmodule StoryarnWeb.LiveHelpers do
-  def on_mount(:default, _params, session, socket) do
-    locale = session["locale"] || "en"
-    Gettext.put_locale(StoryarnWeb.Gettext, locale)
-    {:cont, socket}
-  end
-end
-
-# In router.ex
-live_session :authenticated, on_mount: [StoryarnWeb.LiveHelpers] do
-  # ...
-end
-```
-
-### Workflow Commands
-
-```bash
-# Extract all gettext calls from source code
-mix gettext.extract
-
-# Merge extracted strings into locale files
-mix gettext.merge priv/gettext
-
-# Extract and merge in one step
-mix gettext.extract --merge
-
-# Add a new locale
-mix gettext.merge priv/gettext --locale fr
-```
-
-### Configuration
-
-```elixir
-# config/config.exs
-config :storyarn, StoryarnWeb.Gettext,
-  default_locale: "en",
-  locales: ~w(en es)
-
-# config/dev.exs (optional: warn on missing translations)
-config :gettext, :default_locale, "en"
-```
-
-### i18n Rules
-
-1. **Never hardcode user-facing strings** - Always use `gettext/1`, `dgettext/2`, or `ngettext/3`
-2. **Use domains for organization** - `dgettext("errors", ...)`, `dgettext("emails", ...)`
-3. **Keep keys in English** - The English text serves as the key and fallback
-4. **Extract regularly** - Run `mix gettext.extract --merge` after adding new strings
-5. **Test both locales** - Verify UI doesn't break with longer Spanish translations
-
-### UI Language Switcher
-
-Add a language switcher component to the layout:
-
-```heex
-<%!-- lib/storyarn_web/components/layouts/app.html.heex --%>
-<div class="locale-switcher">
-  <.link href={"?locale=en"} class={@locale == "en" && "active"}>EN</.link>
-  <.link href={"?locale=es"} class={@locale == "es" && "active"}>ES</.link>
-</div>
-```
-
----
-
-## 🧪 Testing Strategy
-
-> **Fundamental rule:** All new code MUST have tests. A feature is not considered complete without its corresponding tests.
-
-### Testing Levels
-
-#### 1. Unit Tests (Contexts)
-Tests for pure business logic in each context.
-
-```
-test/storyarn/
-├── accounts_test.exs
-├── projects_test.exs
-├── entities_test.exs
-├── flows_test.exs
-├── collaboration_test.exs
-└── exports_test.exs
-```
-
-**Required coverage:**
-- All public context functions
-- Changeset validations
-- Domain logic
-
-#### 2. Integration Tests (LiveView)
-Integration tests for LiveViews and components.
-
-```
-test/storyarn_web/live/
-├── auth/
-│   ├── login_live_test.exs
-│   ├── register_live_test.exs
-│   └── reset_password_live_test.exs
-├── dashboard_live_test.exs
-├── project/
-│   └── project_settings_live_test.exs
-└── editor/
-    ├── flow_editor_live_test.exs
-    └── entity_browser_live_test.exs
-```
-
-**Required coverage:**
-- Initial render
-- User events (clicks, forms)
-- State updates
-- Navigation
-
-#### 3. E2E Tests (PhoenixTest.Playwright)
-End-to-end tests simulating real users in the browser, integrated with ExUnit.
-
-```
-test/e2e/
-├── projects_e2e_test.exs    # Project flows (CRUD, invitations, settings)
-├── entities_e2e_test.exs    # Entity, template, and variable flows
-└── (future tests...)
-```
-
-**Critical E2E scenarios:**
-- [x] Complete registration/login flow (magic link)
-- [x] Create and configure project
-- [x] Project invitations (send, accept)
-- [x] Project settings (update, team members)
-- [x] Create entities (character, location)
-- [x] Entity templates CRUD
-- [x] Variables CRUD
-- [ ] Flow editor: create nodes, connect, move
-- [ ] Collaboration: two users editing simultaneously
-- [ ] Export/Import project
-
-### PhoenixTest.Playwright Setup
-
-E2E tests use `phoenix_test_playwright` which integrates Playwright with ExUnit and Ecto SQL Sandbox:
-
-```elixir
-# test/e2e/projects_e2e_test.exs
-defmodule StoryarnWeb.E2E.ProjectsTest do
-  use PhoenixTest.Playwright.Case, async: false
-
-  import Storyarn.AccountsFixtures
-  import Storyarn.ProjectsFixtures
-
-  @moduletag :e2e
-
-  # Authentication helper using magic link
-  defp authenticate_user(conn, user) do
-    {token, _db_token} = generate_user_magic_link_token(user)
-
-    conn
-    |> visit("/users/log-in/#{token}")
-    |> click_button("Keep me logged in on this device")
-    |> assert_has("a", text: "Settings")
-  end
-
-  test "can create a new project", %{conn: conn} do
-    user = user_fixture()
-
-    conn
-    |> authenticate_user(user)
-    |> visit("/projects/new")
-    |> fill_in("Project Name", with: "My New Story")
-    |> click_button("Create Project")
-    |> assert_has("h1", text: "My New Story")
-  end
-end
-```
-
-Configuration is in `config/test.exs`:
-```elixir
-config :storyarn, :sql_sandbox, true
-
-config :phoenix_test,
-  otp_app: :storyarn,
-  endpoint: StoryarnWeb.Endpoint,
-  playwright: [
-    browser: :chromium,
-    headless: System.get_env("PLAYWRIGHT_HEADLESS", "true") in ~w(t true 1)
-  ]
-```
-
-### Testing Commands
-
-```bash
-# Unit + Integration tests
-mix test                      # All tests (excludes E2E)
-mix test --cover              # With coverage
-mix test test/storyarn/       # Unit tests only
-mix test test/storyarn_web/   # Integration tests only
-
-# E2E tests (PhoenixTest.Playwright)
-mix test.e2e                  # All E2E tests (builds assets first)
-mix test test/e2e/ --include e2e   # Run E2E tests manually
-
-# Run with visible browser (for debugging)
-PLAYWRIGHT_HEADLESS=false mix test.e2e
-
-# Before commit
-mix precommit                 # Compile + format + test
-```
-
-### Testing Requirements by Phase
-
-| Phase                  | Required Tests                                                      |
-|------------------------|---------------------------------------------------------------------|
-| Phase 1: Auth          | Unit (Accounts) + LiveView (auth flows) + E2E (login/register)      |
-| Phase 2: Projects      | Unit (Projects) + LiveView (dashboard, settings) + E2E (CRUD)       |
-| Phase 3: Entities      | Unit (Entities) + LiveView (browser, forms) + E2E (CRUD)            |
-| Phase 4: Flow Editor   | Unit (Flows) + LiveView (editor) + E2E (canvas interactions)        |
-| Phase 5: Dialogue      | Unit (node types) + LiveView (dialogue panel) + E2E (full dialogue) |
-| Phase 6: Collaboration | Unit (locks) + Channel tests + E2E (multi-user)                     |
-| Phase 7: Export        | Unit (exporters) + E2E (export/import cycle)                        |
-
-### CI Pipeline
-
-```yaml
-# .github/workflows/ci.yml
-name: CI
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports: ['5432:5432']
-      redis:
-        image: redis:7
-        ports: ['6379:6379']
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: erlef/setup-beam@v1
-        with:
-          elixir-version: '1.15'
-          otp-version: '26'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      # Install dependencies
-      - run: mix deps.get
-      - run: cd assets && npm ci
-      - run: npx playwright install --with-deps
-
-      # Code quality
-      - run: mix compile --warnings-as-errors
-      - run: mix format --check-formatted
-      - run: mix credo --strict
-
-      # Unit + Integration tests
-      - run: mix test --cover
-
-      # E2E tests (PhoenixTest.Playwright)
-      - run: mix test.e2e
-```
-
----
-
-## Phoenix Context Architecture
-
-> **Pattern:** Large contexts use the **facade pattern with `defdelegate`** - the main context file
-> delegates to focused submodules. See CLAUDE.md for details.
+Large contexts are split into submodules with the main file as a facade using `defdelegate`:
 
 ```
 lib/storyarn/
-├── accounts.ex              # Facade (public API with @doc)
-├── accounts/                # Submodules (@moduledoc false)
+├── accounts.ex              # Facade (public API)
+├── accounts/
 │   ├── user.ex              # Schema
 │   ├── user_token.ex        # Schema
 │   ├── user_identity.ex     # Schema (OAuth)
-│   ├── user_notifier.ex     # Email notifications
 │   ├── users.ex             # User lookups
-│   ├── registration.ex      # User registration
+│   ├── registration.ex      # Registration
 │   ├── oauth.ex             # OAuth identity management
 │   ├── sessions.ex          # Session tokens
 │   ├── magic_links.ex       # Magic link auth
@@ -686,281 +91,347 @@ lib/storyarn/
 │
 ├── workspaces.ex            # Facade
 ├── workspaces/
-│   ├── workspace.ex         # Schema
-│   ├── workspace_membership.ex
-│   ├── workspace_invitation.ex
-│   ├── workspace_notifier.ex
-│   ├── workspace_crud.ex    # CRUD operations
-│   ├── memberships.ex       # Member management
-│   ├── invitations.ex       # Invitation management
-│   └── slug_generator.ex    # Unique slug generation
+│   ├── workspace.ex, workspace_membership.ex, workspace_invitation.ex
+│   ├── workspace_crud.ex, memberships.ex, invitations.ex, slug_generator.ex
 │
 ├── projects.ex              # Facade
 ├── projects/
-│   ├── project.ex           # Schema
-│   ├── project_membership.ex
-│   ├── project_invitation.ex
-│   ├── project_notifier.ex
-│   ├── project_crud.ex      # CRUD operations
-│   ├── memberships.ex       # Member management
-│   └── invitations.ex       # Invitation management
+│   ├── project.ex, project_membership.ex, project_invitation.ex
+│   ├── project_crud.ex, memberships.ex, invitations.ex, slug_generator.ex
 │
-├── entities.ex              # Facade
-├── entities/
-│   ├── entity.ex            # Schema
-│   ├── entity_template.ex   # Schema
-│   ├── variable.ex          # Schema
-│   ├── templates.ex         # Template CRUD
-│   ├── template_schema.ex   # Schema field management
-│   ├── entity_crud.ex       # Entity CRUD
-│   └── variables.ex         # Variable CRUD
+├── pages.ex                 # Main context (needs refactoring to facade pattern)
+├── pages/
+│   ├── page.ex              # Schema (tree hierarchy)
+│   ├── block.ex             # Schema (dynamic content)
+│   └── page_operations.ex   # Tree reordering
 │
-├── flows/                   # Flows, nodes, connections (future)
-│   ├── flow.ex
-│   ├── node.ex
-│   ├── connection.ex
-│   ├── node_types/
-│   │   ├── dialogue.ex
-│   │   ├── hub.ex
-│   │   ├── condition.ex
-│   │   ├── instruction.ex
-│   │   └── jump.ex
-│   └── flows.ex
+├── assets.ex                # Main context
+├── assets/
+│   ├── asset.ex             # Schema
+│   ├── storage.ex           # Storage interface
+│   ├── storage/local.ex     # Local filesystem
+│   ├── storage/r2.ex        # Cloudflare R2
+│   └── image_processor.ex   # libvips processing
 │
-├── collaboration/           # Presence, locking (future)
-│   ├── presence.ex
-│   ├── lock.ex
-│   └── collaboration.ex
-│
-├── exports/                 # Export/import logic (future)
-│   ├── json_exporter.ex
-│   ├── articy_exporter.ex
-│   ├── importer.ex
-│   └── exports.ex
-│
-└── assets/                  # File uploads
-    ├── asset.ex
-    ├── storage.ex           # Storage abstraction (Local/R2)
-    ├── image_processor.ex   # Image processing (libvips)
-    └── assets.ex
-```
-
-```
-lib/storyarn_web/
-├── components/         # Reusable components
-│   ├── core_components.ex    # UI primitives
-│   ├── layouts.ex            # app, auth, settings layouts
-│   ├── member_components.ex  # Member/invitation display
-│   └── sidebar.ex            # Workspace sidebar
-├── controllers/        # Auth callbacks, OAuth, exports
-├── channels/           # Real-time collaboration
-│   ├── project_channel.ex
-│   └── user_socket.ex
-├── live/
-│   ├── user_*_live.ex        # Auth (login, register, etc.)
-│   ├── settings_live/        # User & workspace settings
-│   │   ├── profile.ex
-│   │   ├── security.ex
-│   │   ├── connections.ex
-│   │   ├── workspace_general.ex
-│   │   └── workspace_members.ex
-│   ├── workspace_live/       # Workspace views
-│   │   ├── index.ex          # Workspace list
-│   │   ├── show.ex           # Workspace dashboard
-│   │   └── invitation.ex     # Accept invitation
-│   ├── project_live/         # Project views
-│   │   ├── show.ex           # Project view
-│   │   ├── settings.ex       # Project settings
-│   │   └── invitation.ex     # Accept invitation
-│   ├── entity_live/          # Entity CRUD
-│   ├── template_live/        # Template CRUD + schema builder
-│   ├── variable_live/        # Variable CRUD
-│   └── editor/               # Flow editor (future)
-├── live_helpers/       # LiveView helpers
-│   └── authorize.ex          # Authorization guards
-└── hooks/              # JS hooks for Rete.js
+└── authorization.ex         # Central authorization (role-based permissions)
 ```
 
 ---
 
-## Database Schema (Initial)
+## MVP Phases
 
-### Users & Auth
-```elixir
-# users
-- id: uuid
-- email: string (unique)
-- hashed_password: string
-- confirmed_at: datetime
-- avatar_url: string
-- display_name: string
-- timestamps
+### ✅ Phase 0: Base Infrastructure (Complete)
 
-# user_tokens
-- id: uuid
-- user_id: uuid
-- token: binary
-- context: string (session, reset_password, confirm)
-- sent_to: string
-- timestamps
+- [x] Phoenix project created
+- [x] Docker compose (PostgreSQL + Redis + Mailpit)
+- [x] Credo + Sobelow configured
+- [x] TailwindCSS v4 with daisyUI v5
+- [x] Biome for JS (lint + format)
+- [x] Gettext locales (en, es)
+- [x] GitHub Actions CI
+- [x] Playwright E2E test structure
 
-# user_identities (OAuth)
-- id: uuid
-- user_id: uuid
-- provider: string (github, google, discord)
-- provider_id: string
-- provider_email: string
-- provider_token: string (encrypted)
-- timestamps
+### ✅ Phase 1: Auth & Users (Complete)
+
+- [x] User schema (email, hashed_password, display_name, avatar_url)
+- [x] Registration/login with email + password
+- [x] OAuth with GitHub, Google, Discord
+- [x] Email verification via magic link
+- [x] Password reset via magic link flow
+- [x] Session management with token reissuing
+- [x] Profile settings (display name, avatar)
+- [x] Connected accounts management (link/unlink OAuth)
+- [x] Sudo mode for sensitive operations
+
+> **Note on Password Reset:** Instead of a traditional "forgot password" flow, we use magic links.
+> Users who forgot their password can request a magic link via the login page, which logs them in
+> directly. Once logged in, they can set a new password in the settings page.
+
+### ✅ Phase 2: Workspaces & Projects (Complete)
+
+- [x] Workspace schema (name, slug, description)
+- [x] Workspace memberships with 4 roles (owner, admin, member, viewer)
+- [x] Workspace invitations via email with role selection
+- [x] Workspace settings (general, members)
+- [x] Default workspace created on user registration
+- [x] Project schema (name, slug, description, workspace_id)
+- [x] Project memberships with 3 roles (owner, editor, viewer)
+- [x] Project invitations via email
+- [x] Project settings
+- [x] Workspace-centric navigation (sidebar with workspaces/projects)
+- [x] Unified settings layout (account + workspace settings)
+- [x] E2E tests for invitation flows
+
+### ✅ Phase 3: Pages & Blocks System (Complete)
+
+> **Architecture Change:** The original "Entities/Templates/Variables" system was redesigned and replaced with a simpler, more flexible "Pages & Blocks" architecture.
+
+#### Phase 3.1: Pages System
+- [x] Page schema with hierarchical tree (parent_id, position)
+- [x] Page CRUD with cycle prevention validation
+- [x] Breadcrumb navigation with ancestor chain
+- [x] Page tree sidebar with expand/collapse
+- [x] Drag & drop page reordering (SortableJS)
+- [x] Drag & drop page moving between parents
+- [x] Child page creation from tree
+- [x] Page search in sidebar
+
+#### Phase 3.2: Blocks System
+- [x] Block schema (type, position, config, value)
+- [x] 8 block types implemented:
+  - `text` - Simple text input
+  - `rich_text` - WYSIWYG editor (Tiptap)
+  - `number` - Numeric input
+  - `select` - Single select dropdown
+  - `multi_select` - Multiple select with tags
+  - `date` - Date picker
+  - `divider` - Visual separator
+  - *(expandable for future types)*
+- [x] Block CRUD operations
+- [x] Block configuration panel (right sidebar)
+- [x] Per-block config (label, placeholder, options for selects)
+- [x] Drag & drop block reordering
+- [x] Save status indicator
+- [x] Inline page name editing
+
+#### Phase 3.3: Assets System
+- [x] Cloudflare R2 integration (S3-compatible storage)
+- [x] Asset schema (filename, size, content_type, key, project_id)
+- [x] Storage abstraction (Local for dev, R2 for production)
+- [x] Image processing with Image/libvips (thumbnails, resize)
+- [x] Asset upload LiveComponent (drag-and-drop, progress, preview)
+- [x] Unit tests
+
+#### Phase 3.4: Code Quality Refactoring
+- [x] Split Accounts context into submodules (facade pattern)
+- [x] Split Workspaces context into submodules
+- [x] Split Projects context into submodules
+- [x] Fix Credo issues (with→case, nesting depth, @moduledoc)
+- [x] Migrate from Heroicons to Lucide icons
+- [x] Update to daisyUI v5 CSS variables
+
+### ⏳ Phase 4: Flow Editor - Core (Next Up)
+
+- [ ] Flow schema and context
+- [ ] Node schema (types: dialogue, hub, condition, instruction, jump)
+- [ ] Connection schema (source_node, target_node, pins, conditions)
+- [ ] Install Rete.js: `npm install rete rete-area-plugin rete-connection-plugin`
+- [ ] Rete.js integration with LiveView (JS hook)
+- [ ] Node rendering with type-specific visuals
+- [ ] Node drag & drop on canvas
+- [ ] Node connections with visual lines
+- [ ] Node properties panel (sidebar)
+- [ ] Canvas zoom & pan
+- [ ] Mini-map navigation
+
+### ⏳ Phase 5: Flow Editor - Dialogue
+
+- [ ] Dialogue node with speaker selector (from pages/entities)
+- [ ] Rich text editor for dialogue content
+- [ ] Branches/response options
+- [ ] Conditions on branches (variable checks)
+- [ ] Dialogue preview mode
+- [ ] Variable interpolation in text (`{player_name}`)
+
+### ⏳ Phase 6: Collaboration
+
+- [ ] Phoenix Presence (who's online in project)
+- [ ] Other users' cursor positions on canvas
+- [ ] Node locking (prevent conflicts)
+- [ ] Visual editing indicators (colored cursors)
+- [ ] Change notifications (toast messages)
+
+### ⏳ Phase 7: Export
+
+- [ ] Export to JSON (custom Storyarn format)
+- [ ] Export to JSON (articy-compatible format)
+- [ ] Import from JSON
+- [ ] Pre-export validation (broken connections, missing data)
+
+### ⏳ Phase 8: Production Polish
+
+- [ ] Performance profiling & optimization
+- [ ] UX refinements based on testing
+- [ ] Production deployment setup (fly.io or similar)
+- [ ] Monitoring & logging (Sentry, AppSignal)
+- [ ] Rate limiting with Redis backend
+
+---
+
+## JavaScript Dependencies
+
+Current `assets/package.json`:
+
+```json
+{
+  "@tiptap/core": "^3.18.0",
+  "@tiptap/pm": "^3.18.0",
+  "@tiptap/starter-kit": "^3.18.0",
+  "daisyui": "^5.5.14",
+  "sortablejs": "^1.15.6",
+  "topbar": "^3.0.0"
+}
 ```
 
-### Workspaces
-```elixir
-# workspaces
-- id: uuid
-- name: string
-- slug: string (unique, URL-friendly)
-- description: text
-- owner_id: uuid -> users
-- banner_url: string
-- timestamps
-
-# workspace_memberships
-- id: uuid
-- workspace_id: uuid
-- user_id: uuid
-- role: enum (owner, admin, member, viewer)
-- timestamps
-
-# workspace_invitations
-- id: uuid
-- workspace_id: uuid
-- email: string
-- role: string
-- token: string (unique)
-- invited_by_id: uuid -> users
-- accepted_at: datetime
-- timestamps
-```
-
-### Projects
-```elixir
-# projects
-- id: uuid
-- workspace_id: uuid -> workspaces
-- name: string
-- description: text
-- owner_id: uuid -> users
-- settings: map (jsonb)
-- timestamps
-
-# project_memberships
-- id: uuid
-- project_id: uuid
-- user_id: uuid
-- role: enum (owner, editor, viewer)
-- timestamps
-
-# project_invitations
-- id: uuid
-- project_id: uuid
-- email: string
-- role: string
-- token: string (unique)
-- invited_by_id: uuid -> users
-- accepted_at: datetime
-- timestamps
-```
-
-### Entities
-```elixir
-# entity_templates
-- id: uuid
-- project_id: uuid
-- name: string
-- type: enum (character, location, item, custom)
-- schema: map (jsonb) # Defines custom fields
-- timestamps
-
-# entities
-- id: uuid
-- project_id: uuid
-- template_id: uuid
-- display_name: string
-- technical_name: string
-- color: string
-- data: map (jsonb) # Fields according to template
-- timestamps
-
-# variables
-- id: uuid
-- project_id: uuid
-- name: string
-- type: enum (boolean, integer, string)
-- default_value: string
-- description: text
-- timestamps
-```
-
-### Flows
-```elixir
-# flows
-- id: uuid
-- project_id: uuid
-- name: string
-- description: text
-- is_main: boolean
-- settings: map
-- timestamps
-
-# flow_nodes
-- id: uuid
-- flow_id: uuid
-- type: enum (dialogue, hub, condition, instruction, jump)
-- position_x: float
-- position_y: float
-- data: map (jsonb) # Content according to type
-- timestamps
-
-# flow_connections
-- id: uuid
-- flow_id: uuid
-- source_node_id: uuid
-- source_pin: string (default, option_1, etc)
-- target_node_id: uuid
-- target_pin: string
-- label: string
-- condition: text
-- timestamps
-```
-
-### Collaboration
-```elixir
-# node_locks
-- id: uuid
-- node_id: uuid
-- user_id: uuid
-- locked_at: datetime
-- expires_at: datetime
+**To be added for Phase 4:**
+```json
+{
+  "rete": "^2.0.0",
+  "rete-area-plugin": "^2.0.0",
+  "rete-connection-plugin": "^2.0.0",
+  "rete-render-utils": "^2.0.0"
+}
 ```
 
 ---
 
-## Rete.js + LiveView Integration
+## JavaScript Hooks
+
+Current hooks in `assets/js/hooks/`:
+
+| Hook | Purpose |
+|------|---------|
+| `sortable_list.js` | Generic drag & drop for lists (blocks) |
+| `sortable_tree.js` | Tree structure drag & drop (pages) |
+| `tiptap_editor.js` | Rich text WYSIWYG editor |
+| `tree.js` | Tree UI interactions (expand/collapse) |
+| `tree_search.js` | Search filtering in tree |
+| `theme.js` | Dark/light theme switching |
+
+---
+
+## 🌍 Internationalization (i18n)
+
+> **Rule:** All user-facing text MUST be localized. No hardcoded strings.
+
+### Supported Locales
+- `en` - English (default)
+- `es` - Spanish
+
+### Usage
+
+```elixir
+# In templates
+<h1>{gettext("Welcome")}</h1>
+<p>{gettext("Hello, %{name}!", name: @user.name)}</p>
+
+# In LiveView
+put_flash(socket, :info, gettext("Project saved"))
+
+# Pluralization
+ngettext("1 page", "%{count} pages", @count)
+```
+
+### Commands
+
+```bash
+mix gettext.extract --merge    # Extract and merge strings
+mix gettext.merge priv/gettext --locale fr  # Add new locale
+```
+
+---
+
+## 🧪 Testing Strategy
+
+### Test Files
+
+```
+test/
+├── storyarn/
+│   ├── accounts_test.exs
+│   ├── workspaces_test.exs
+│   ├── projects_test.exs
+│   ├── pages_test.exs
+│   ├── assets_test.exs
+│   ├── authorization_test.exs
+│   └── assets/image_processor_test.exs
+├── storyarn_web/
+│   ├── controllers/
+│   ├── live/
+│   │   ├── user_live/
+│   │   ├── project_live/
+│   │   ├── page_live/
+│   │   └── settings_live/
+│   └── user_auth_test.exs
+└── e2e/
+    └── projects_e2e_test.exs  # Playwright
+```
+
+### Commands
+
+```bash
+mix test                      # All unit + integration tests
+mix test --cover              # With coverage
+mix test.e2e                  # E2E tests (builds assets first)
+
+# Run with visible browser
+PLAYWRIGHT_HEADLESS=false mix test.e2e
+
+# Before commit
+mix precommit                 # compile + format + credo + test
+```
+
+---
+
+## Database Schema
+
+### Current Tables
+
+```sql
+-- Auth
+users (id, email, hashed_password, display_name, avatar_url, confirmed_at, timestamps)
+user_tokens (id, user_id, token, context, sent_to, timestamps)
+user_identities (id, user_id, provider, provider_id, provider_email, provider_name, provider_avatar, provider_token, provider_refresh_token, timestamps)
+
+-- Workspaces
+workspaces (id, name, slug, description, timestamps)
+workspace_memberships (id, workspace_id, user_id, role, timestamps)
+workspace_invitations (id, workspace_id, email, role, token, invited_by_id, accepted_at, timestamps)
+
+-- Projects
+projects (id, workspace_id, name, slug, description, timestamps)
+project_memberships (id, project_id, user_id, role, timestamps)
+project_invitations (id, project_id, email, role, token, invited_by_id, accepted_at, timestamps)
+
+-- Pages & Blocks
+pages (id, project_id, name, icon, parent_id, position, timestamps)
+blocks (id, page_id, type, position, config, value, timestamps)
+
+-- Assets
+assets (id, project_id, filename, size, content_type, key, timestamps)
+```
+
+### Planned Tables (Phase 4)
+
+```sql
+-- Flows
+flows (id, project_id, name, description, is_main, settings, timestamps)
+
+-- Nodes
+flow_nodes (id, flow_id, type, position_x, position_y, data, timestamps)
+-- types: dialogue, hub, condition, instruction, jump
+
+-- Connections
+flow_connections (id, flow_id, source_node_id, source_pin, target_node_id, target_pin, label, condition, timestamps)
+```
+
+---
+
+## Rete.js + LiveView Integration (Phase 4)
 
 ### Hybrid Strategy
 
 1. **LiveView** handles:
    - Flow state (nodes, connections)
-   - Persistence
-   - Collaboration (change broadcasting)
+   - Persistence to database
+   - Collaboration (change broadcasting via PubSub)
    - Properties panel
 
 2. **Rete.js (JS Hook)** handles:
    - Canvas rendering
    - Drag & drop
    - Zoom/pan
-   - Visual interaction
+   - Visual interactions
 
 3. **Bidirectional communication:**
    ```
@@ -968,11 +439,10 @@ lib/storyarn_web/
                     pushEvent/handleEvent
    ```
 
-### Basic Hook
+### Basic Hook Structure
+
 ```javascript
 // assets/js/hooks/flow_canvas.js
-import { createEditor } from "../flow_editor/editor"
-
 export const FlowCanvas = {
   mounted() {
     const initialData = JSON.parse(this.el.dataset.flowData)
@@ -981,7 +451,6 @@ export const FlowCanvas = {
       nodes: initialData.nodes,
       connections: initialData.connections,
 
-      // Events to LiveView
       onNodeMoved: (nodeId, x, y) => {
         this.pushEvent("node_moved", { id: nodeId, x, y })
       },
@@ -990,28 +459,12 @@ export const FlowCanvas = {
       },
       onConnectionCreated: (source, target) => {
         this.pushEvent("connection_created", { source, target })
-      },
-      onNodeDeleted: (nodeId) => {
-        this.pushEvent("node_deleted", { id: nodeId })
       }
     })
 
     // Events from LiveView (other users)
-    this.handleEvent("node_updated", (node) => {
-      this.editor.updateNode(node)
-    })
-    this.handleEvent("node_added", (node) => {
-      this.editor.addNode(node)
-    })
-    this.handleEvent("node_removed", (nodeId) => {
-      this.editor.removeNode(nodeId)
-    })
-  },
-
-  updated() {
-    // Sync when LiveView updates data
-    const data = JSON.parse(this.el.dataset.flowData)
-    this.editor.sync(data)
+    this.handleEvent("node_updated", (node) => this.editor.updateNode(node))
+    this.handleEvent("node_added", (node) => this.editor.addNode(node))
   },
 
   destroyed() {
@@ -1029,14 +482,11 @@ export const FlowCanvas = {
 %{
   type: :dialogue,
   data: %{
-    speaker_id: "entity-uuid",      # Who speaks
-    text: "Hello, traveler!",       # Dialogue
-    menu_text: "Greet",             # Short text for options
-    stage_directions: "smiling",    # Acting directions
-    features: %{                    # Custom fields
-      emotion: "happy",
-      voice_style: "cheerful"
-    }
+    speaker_id: "page-uuid",         # Reference to a page (character)
+    text: "Hello, traveler!",
+    menu_text: "Greet",              # Short text for options
+    stage_directions: "smiling",
+    features: %{emotion: "happy"}
   }
 }
 ```
@@ -1046,7 +496,7 @@ export const FlowCanvas = {
 %{
   type: :hub,
   data: %{
-    display_name: "Quest Start",
+    display_name: "Quest Start"
     # No narrative content, just a connection point
   }
 }
@@ -1057,7 +507,7 @@ export const FlowCanvas = {
 %{
   type: :condition,
   data: %{
-    expression: "player_gold >= 100 and quest_accepted",
+    expression: "player_gold >= 100 and quest_accepted"
     # Outputs: true_pin, false_pin
   }
 }
@@ -1070,8 +520,7 @@ export const FlowCanvas = {
   data: %{
     instructions: [
       %{action: "set_variable", variable: "quest_started", value: true},
-      %{action: "add_item", item_id: "entity-uuid", quantity: 1},
-      %{action: "trigger_event", event: "cutscene_1"}
+      %{action: "add_item", item_id: "page-uuid", quantity: 1}
     ]
   }
 }
@@ -1083,112 +532,53 @@ export const FlowCanvas = {
   type: :jump,
   data: %{
     target_flow_id: "flow-uuid",
-    target_node_id: "node-uuid"  # optional, flow start if nil
+    target_node_id: "node-uuid"  # optional
   }
 }
 ```
 
 ---
 
-## Milestones
+## Recent Commits History
 
-### Milestone 1: "Hello Flow" (2 weeks)
-**Goal:** Be able to create a project, add a flow, and place basic nodes.
+| Commit | Description |
+|--------|-------------|
+| 76b73f4 | refactor: Extract components into focused modules |
+| f446bdd | feat: Add block configuration panel with extended options |
+| 75191a4 | fix: Fix block drag and drop to work in all positions |
+| 17ddace | feat: Migrate from Heroicons to Lucide icons |
+| 7529c06 | fix: Update CSS to use daisyUI v5 variable names |
+| 7d262b5 | feat: Add divider/date blocks, fix multi_select |
+| 2707e78 | feat: Add page tree features (drag & drop, create child, search) |
+| 39a18b5 | feat: Add page editor improvements |
+| a510885 | refactor: Remove old Entities system |
+| 006416d | feat: Add Page LiveViews |
 
-Deliverables:
-- Working auth (email + GitHub)
-- Project CRUD
-- Basic flow editor with Rete.js
-- Hub-type nodes (no content)
-- Basic connections
+---
 
-### Milestone 2: "First Dialogue" (2 weeks)
-**Goal:** Be able to create a complete dialogue with a character.
+## Pending Refactoring Tasks
 
-Deliverables:
-- Entity CRUD (Characters)
-- Dialogue node with speaker
-- Text editor for dialogues
-- Response options (branches)
+See `REFACTORING_PLAN.md` for detailed implementation steps:
 
-### Milestone 3: "Team Play" (1 week)
-**Goal:** Basic collaboration working.
-
-Deliverables:
-- Invite users to project
-- Presence (see who's online)
-- Node locking
-- Change broadcasting
-
-### Milestone 4: "Ship It" (1 week)
-**Goal:** Be able to export and use the content.
-
-Deliverables:
-- Export to JSON
-- Import from JSON
-- Flow validation
-- Production deploy
+| Priority | Task | Status |
+|----------|------|--------|
+| Alta | Dividir `pages.ex` (patrón facade) | Pendiente |
+| Alta | Encriptar tokens OAuth con cloak_ecto | Pendiente |
+| Media | Dividir `block_components.ex` | Pendiente |
+| Media | Añadir `@spec` a contextos | Pendiente |
+| Media | Configurar Redis para rate limiting | Pendiente |
+| Media | Validar inputs con `Integer.parse/1` | Pendiente |
 
 ---
 
 ## Immediate Next Steps
 
-1. **Flow Editor Core** - Integrate Rete.js with LiveView
-2. **Flow Schema** - Create flow, node, and connection schemas
-3. **Node Types** - Implement dialogue, hub, condition, instruction, jump nodes
-4. **Canvas Interactions** - Drag, zoom, pan, select, connect
-
----
-
-## Dependencies to Add
-
-```elixir
-# mix.exs
-{:ueberauth, "~> 0.10"},
-{:ueberauth_github, "~> 0.8"},
-{:ueberauth_google, "~> 0.12"},
-{:ueberauth_discord, "~> 0.1"},  # or implement custom
-{:argon2_elixir, "~> 4.0"},       # password hashing
-{:redix, "~> 1.3"},               # Redis client
-{:cachex, "~> 3.6"},              # Caching
-{:oban, "~> 2.17"},               # Background jobs
-{:ex_aws, "~> 2.5"},              # S3 uploads
-{:ex_aws_s3, "~> 2.5"},
-{:hackney, "~> 1.20"},            # HTTP client
-```
-
-```javascript
-// package.json (assets/)
-"rete": "^2.0.0",
-"rete-area-plugin": "^2.0.0",
-"rete-connection-plugin": "^2.0.0",
-"rete-render-utils": "^2.0.0",
-"@rete/render-utils": "^2.0.0",
-// Choose renderer: vanilla, react, vue, svelte
-```
-
----
-
-## Technical Notes
-
-### Rete.js 2.0 vs 1.x
-Use Rete.js **v2** which has better architecture:
-- Plugin system
-- Multiple renderers
-- Better TypeScript support
-- More lightweight
-
-### LiveView vs SPA for Editor
-**LiveView is correct** for this case because:
-- Centralized state (easier collaboration)
-- No offline requirement
-- Heavy canvas is in JS anyway
-- Simplifies auth and sessions
-
-### Redis Usage
-- **PubSub:** Broadcasting changes between cluster nodes
-- **Cache:** Active flows, frequently used entities
-- **Locks:** Distributed locks for editing
+1. **Complete refactoring tasks** (see `REFACTORING_PLAN.md`)
+2. **Phase 4: Flow Editor Core**
+   - Install Rete.js dependencies
+   - Create Flow/Node/Connection schemas
+   - Build LiveView for flow editor
+   - Create Rete.js hook for canvas
 
 ---
 
