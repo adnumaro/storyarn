@@ -1,4 +1,4 @@
-defmodule Storyarn.Pages.PageOperations do
+defmodule Storyarn.Pages.TreeOperations do
   @moduledoc false
 
   import Ecto.Query, warn: false
