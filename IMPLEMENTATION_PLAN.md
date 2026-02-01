@@ -223,7 +223,7 @@ lib/storyarn/
 - [x] Migrate from Heroicons to Lucide icons
 - [x] Update to daisyUI v5 CSS variables
 
-### ⏳ Phase 4: Flow Editor - Core (In Progress)
+### ✅ Phase 4: Flow Editor - Core (Complete)
 
 - [x] Flow schema and context (facade pattern with submodules)
 - [x] Node schema (types: dialogue, hub, condition, instruction, jump)
@@ -233,7 +233,7 @@ lib/storyarn/
 - [x] Custom Lit components (Shadow DOM + daisyUI CSS variables for theming)
   - StoryarnNode: colored headers, Lucide icons
   - StoryarnSocket: 10px subtle pins
-  - StoryarnConnection: 2px smooth curves
+  - StoryarnConnection: 2px smooth curves with label support
 - [x] Node drag & drop on canvas
 - [x] Node connections with visual lines
 - [x] Node properties panel (sidebar)
@@ -243,7 +243,8 @@ lib/storyarn/
 - [x] FlowLive.Show with full canvas editor
 - [x] Mini-map navigation (rete-minimap-plugin)
 - [x] Dot grid canvas background
-- [ ] Connection labels and conditions UI
+- [x] Keyboard shortcuts (Delete, Ctrl+D duplicate, Escape deselect)
+- [x] Connection labels and conditions UI (double-click to edit)
 
 ### ⏳ Phase 5: Flow Editor - Dialogue
 

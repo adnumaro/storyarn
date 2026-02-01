@@ -266,17 +266,23 @@ class StoryarnSocket extends LitElement {
 
 customElements.define("storyarn-socket", StoryarnSocket);
 
-// Custom connection component - thinner lines
+// Custom connection component - thinner lines with label support
 class StoryarnConnection extends LitElement {
   static get properties() {
     return {
       path: { type: String },
       start: { type: Object },
       end: { type: Object },
+      data: { type: Object },
+      selected: { type: Boolean },
     };
   }
 
   static styles = css`
+    :host {
+      display: contents;
+    }
+
     svg {
       overflow: visible;
       position: absolute;
@@ -291,20 +297,107 @@ class StoryarnConnection extends LitElement {
       stroke-width: 2px;
       pointer-events: auto;
       transition: stroke 0.15s ease, stroke-width 0.15s ease;
+      cursor: pointer;
     }
 
-    path:hover {
+    path:hover,
+    path.selected {
       stroke: oklch(var(--p, 0.6 0.2 250));
       stroke-width: 3px;
     }
+
+    .label-group {
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    .label-bg {
+      fill: oklch(var(--b1, 0.2 0 0));
+      stroke: oklch(var(--bc, 0.7 0 0) / 0.3);
+      stroke-width: 1px;
+      rx: 3;
+      ry: 3;
+    }
+
+    .label-text {
+      fill: oklch(var(--bc, 0.8 0 0));
+      font-size: 10px;
+      font-family: system-ui, sans-serif;
+      dominant-baseline: middle;
+      text-anchor: middle;
+    }
   `;
 
+  // Calculate midpoint of bezier curve path
+  getMidpoint() {
+    if (!this.path) return null;
+
+    // Parse the path to get control points
+    // Path format: M startX,startY C cp1X,cp1Y cp2X,cp2Y endX,endY
+    const pathMatch = this.path.match(
+      /M\s*([\d.-]+)[,\s]*([\d.-]+)\s*C\s*([\d.-]+)[,\s]*([\d.-]+)\s*([\d.-]+)[,\s]*([\d.-]+)\s*([\d.-]+)[,\s]*([\d.-]+)/,
+    );
+
+    if (!pathMatch) return null;
+
+    const [, x0, y0, x1, y1, x2, y2, x3, y3] = pathMatch.map(Number);
+
+    // Calculate midpoint of cubic bezier at t=0.5
+    const t = 0.5;
+    const mt = 1 - t;
+    const mx = mt ** 3 * x0 + 3 * mt ** 2 * t * x1 + 3 * mt * t ** 2 * x2 + t ** 3 * x3;
+    const my = mt ** 3 * y0 + 3 * mt ** 2 * t * y1 + 3 * mt * t ** 2 * y2 + t ** 3 * y3;
+
+    return { x: mx, y: my };
+  }
+
   render() {
+    const label = this.data?.label;
+    const midpoint = label ? this.getMidpoint() : null;
+    const labelWidth = label ? Math.min(label.length * 6 + 10, 80) : 0;
+
     return html`
       <svg data-testid="connection">
-        <path d="${this.path}"></path>
+        <path
+          d="${this.path}"
+          class="${this.selected ? "selected" : ""}"
+          @dblclick=${this.handleDoubleClick}
+        ></path>
+        ${
+          midpoint && label
+            ? html`
+              <g
+                class="label-group"
+                transform="translate(${midpoint.x}, ${midpoint.y})"
+                @dblclick=${this.handleDoubleClick}
+              >
+                <rect
+                  class="label-bg"
+                  x="${-labelWidth / 2}"
+                  y="-9"
+                  width="${labelWidth}"
+                  height="18"
+                ></rect>
+                <text class="label-text">${label}</text>
+              </g>
+            `
+            : ""
+        }
       </svg>
     `;
+  }
+
+  handleDoubleClick(e) {
+    e.stopPropagation();
+    if (this.data?.id) {
+      this.dispatchEvent(
+        new CustomEvent("connection-dblclick", {
+          detail: { connectionId: this.data.id },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    }
   }
 }
 
@@ -353,6 +446,9 @@ export const FlowCanvas = {
     // Configure connection plugin
     this.connection.addPreset(ConnectionPresets.classic.setup());
 
+    // Track connection data for labels
+    this.connectionDataMap = new Map();
+
     // Configure Lit render plugin with custom components
     this.render.addPreset(
       LitPresets.classic.setup({
@@ -370,10 +466,19 @@ export const FlowCanvas = {
               <storyarn-socket .data=${context.payload}></storyarn-socket>
             `;
           },
-          connection() {
-            return ({ path }) => html`
-              <storyarn-connection .path=${path}></storyarn-connection>
-            `;
+          connection: (context) => {
+            // Store connection data for lookup
+            const conn = context.payload;
+            return ({ path }) => {
+              const connData = this.connectionDataMap.get(conn.id);
+              return html`
+                <storyarn-connection
+                  .path=${path}
+                  .data=${connData}
+                  .selected=${this.selectedConnectionId === connData?.id}
+                ></storyarn-connection>
+              `;
+            };
           },
         },
       }),
@@ -457,11 +562,31 @@ export const FlowCanvas = {
     );
     connection.id = `conn-${connData.id}`;
 
+    // Store connection data for label rendering
+    this.connectionDataMap.set(connection.id, {
+      id: connData.id,
+      label: connData.label,
+      condition: connData.condition,
+    });
+
     await this.editor.addConnection(connection);
     return connection;
   },
 
   setupEventHandlers() {
+    // Track selected node/connection for keyboard shortcuts
+    this.selectedNodeId = null;
+    this.selectedConnectionId = null;
+
+    // Listen for connection double-clicks (bubbles from Shadow DOM)
+    this.el.addEventListener("connection-dblclick", (e) => {
+      const { connectionId } = e.detail;
+      if (connectionId) {
+        this.selectedConnectionId = connectionId;
+        this.pushEvent("connection_selected", { id: connectionId });
+      }
+    });
+
     // Node position changes (drag)
     this.area.addPipe((context) => {
       if (context.type === "nodetranslated") {
@@ -478,11 +603,16 @@ export const FlowCanvas = {
       if (context.type === "nodepicked") {
         const node = this.editor.getNode(context.data.id);
         if (node?.nodeId) {
+          this.selectedNodeId = node.nodeId;
           this.pushEvent("node_selected", { id: node.nodeId });
         }
       }
       return context;
     });
+
+    // Keyboard shortcuts
+    this.keyboardHandler = (e) => this.handleKeyboard(e);
+    document.addEventListener("keydown", this.keyboardHandler);
 
     // Connection created
     this.editor.addPipe((context) => {
@@ -526,6 +656,10 @@ export const FlowCanvas = {
     this.handleEvent("node_removed", (data) => this.handleNodeRemoved(data));
     this.handleEvent("connection_added", (data) => this.handleConnectionAdded(data));
     this.handleEvent("connection_removed", (data) => this.handleConnectionRemoved(data));
+    this.handleEvent("connection_updated", (data) => this.handleConnectionUpdated(data));
+    this.handleEvent("deselect_connection", () => {
+      this.selectedConnectionId = null;
+    });
   },
 
   debounceNodeMoved(nodeId, position) {
@@ -552,6 +686,7 @@ export const FlowCanvas = {
       await this.editor.removeNode(node.id);
     }
     this.nodeMap.clear();
+    this.connectionDataMap.clear();
 
     // Reload flow
     await this.loadFlow(data);
@@ -566,6 +701,11 @@ export const FlowCanvas = {
     if (node) {
       await this.editor.removeNode(node.id);
       this.nodeMap.delete(data.id);
+
+      // Clear selection if the removed node was selected
+      if (this.selectedNodeId === data.id) {
+        this.selectedNodeId = null;
+      }
     }
   },
 
@@ -590,6 +730,7 @@ export const FlowCanvas = {
           sourceNode?.nodeId === data.source_node_id &&
           targetNode?.nodeId === data.target_node_id
         ) {
+          this.connectionDataMap.delete(conn.id);
           await this.editor.removeConnection(conn.id);
           break;
         }
@@ -599,7 +740,62 @@ export const FlowCanvas = {
     }
   },
 
+  handleConnectionUpdated(data) {
+    const connId = `conn-${data.id}`;
+    // Update the connection data map
+    this.connectionDataMap.set(connId, {
+      id: data.id,
+      label: data.label,
+      condition: data.condition,
+    });
+
+    // Force re-render of the connection by triggering area update
+    const conn = this.editor.getConnections().find((c) => c.id === connId);
+    if (conn) {
+      this.area.update("connection", conn.id);
+    }
+  },
+
+  handleKeyboard(e) {
+    // Ignore if focus is in an input field
+    if (
+      e.target.tagName === "INPUT" ||
+      e.target.tagName === "TEXTAREA" ||
+      e.target.isContentEditable
+    ) {
+      return;
+    }
+
+    // Delete/Backspace - delete selected node
+    if ((e.key === "Delete" || e.key === "Backspace") && this.selectedNodeId) {
+      e.preventDefault();
+      this.pushEvent("delete_node", { id: this.selectedNodeId });
+      this.selectedNodeId = null;
+      return;
+    }
+
+    // Ctrl+D / Cmd+D - duplicate selected node
+    if ((e.ctrlKey || e.metaKey) && e.key === "d" && this.selectedNodeId) {
+      e.preventDefault();
+      this.pushEvent("duplicate_node", { id: this.selectedNodeId });
+      return;
+    }
+
+    // Escape - deselect node
+    if (e.key === "Escape" && this.selectedNodeId) {
+      e.preventDefault();
+      this.pushEvent("deselect_node", {});
+      this.selectedNodeId = null;
+      return;
+    }
+  },
+
   destroyed() {
+    // Remove keyboard listener
+    if (this.keyboardHandler) {
+      document.removeEventListener("keydown", this.keyboardHandler);
+    }
+
     // Clear all debounce timers
     for (const timer of Object.values(this.debounceTimers)) {
       clearTimeout(timer);

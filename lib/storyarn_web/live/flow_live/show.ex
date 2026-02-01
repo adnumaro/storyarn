@@ -74,7 +74,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           </div>
         </div>
 
-        <%!-- Properties Panel --%>
+        <%!-- Node Properties Panel --%>
         <aside
           :if={@selected_node}
           class="w-80 bg-base-100 border-l border-base-300 flex flex-col overflow-hidden"
@@ -111,6 +111,58 @@ defmodule StoryarnWeb.FlowLive.Show do
             >
               <.icon name="trash-2" class="size-4 mr-2" />
               {gettext("Delete Node")}
+            </button>
+          </div>
+        </aside>
+
+        <%!-- Connection Properties Panel --%>
+        <aside
+          :if={@selected_connection && !@selected_node}
+          class="w-80 bg-base-100 border-l border-base-300 flex flex-col overflow-hidden"
+        >
+          <div class="p-4 border-b border-base-300 flex items-center justify-between">
+            <h2 class="font-medium flex items-center gap-2">
+              <.icon name="git-commit-horizontal" class="size-4" />
+              {gettext("Connection")}
+            </h2>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs btn-square"
+              phx-click="deselect_connection"
+            >
+              <.icon name="x" class="size-4" />
+            </button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-4">
+            <.form for={@connection_form} phx-change="update_connection_data" phx-debounce="500">
+              <.input
+                field={@connection_form[:label]}
+                type="text"
+                label={gettext("Label")}
+                placeholder={gettext("Optional label")}
+                disabled={!@can_edit}
+              />
+              <.input
+                field={@connection_form[:condition]}
+                type="text"
+                label={gettext("Condition")}
+                placeholder={gettext("e.g., score > 10")}
+                disabled={!@can_edit}
+              />
+            </.form>
+          </div>
+
+          <div :if={@can_edit} class="p-4 border-t border-base-300">
+            <button
+              type="button"
+              class="btn btn-error btn-outline btn-sm w-full"
+              phx-click="delete_connection"
+              phx-value-id={@selected_connection.id}
+              data-confirm={gettext("Are you sure you want to delete this connection?")}
+            >
+              <.icon name="trash-2" class="size-4 mr-2" />
+              {gettext("Delete Connection")}
             </button>
           </div>
         </aside>
@@ -278,6 +330,8 @@ defmodule StoryarnWeb.FlowLive.Show do
               |> assign(:node_types, @node_types)
               |> assign(:selected_node, nil)
               |> assign(:node_form, nil)
+              |> assign(:selected_connection, nil)
+              |> assign(:connection_form, nil)
               |> assign(:save_status, :idle)
 
             {:ok, socket}
@@ -352,6 +406,89 @@ defmodule StoryarnWeb.FlowLive.Show do
      |> assign(:node_form, nil)}
   end
 
+  def handle_event("connection_selected", %{"id" => connection_id}, socket) do
+    connection = Flows.get_connection!(socket.assigns.flow.id, connection_id)
+    form = connection_data_to_form(connection)
+
+    {:noreply,
+     socket
+     |> assign(:selected_node, nil)
+     |> assign(:node_form, nil)
+     |> assign(:selected_connection, connection)
+     |> assign(:connection_form, form)}
+  end
+
+  def handle_event("deselect_connection", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:selected_connection, nil)
+     |> assign(:connection_form, nil)
+     |> push_event("deselect_connection", %{})}
+  end
+
+  def handle_event("update_connection_data", %{"connection" => conn_params}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        connection = socket.assigns.selected_connection
+
+        case Flows.update_connection(connection, conn_params) do
+          {:ok, updated_connection} ->
+            flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+            flow_data = Flows.serialize_for_canvas(flow)
+            schedule_save_status_reset()
+
+            {:noreply,
+             socket
+             |> assign(:flow, flow)
+             |> assign(:flow_data, flow_data)
+             |> assign(:selected_connection, updated_connection)
+             |> assign(:save_status, :saved)
+             |> push_event("connection_updated", %{
+               id: updated_connection.id,
+               label: updated_connection.label,
+               condition: updated_connection.condition
+             })}
+
+          {:error, _} ->
+            {:noreply, socket}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("delete_connection", %{"id" => connection_id}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        connection = Flows.get_connection!(socket.assigns.flow.id, connection_id)
+
+        case Flows.delete_connection(connection) do
+          {:ok, _} ->
+            flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+            flow_data = Flows.serialize_for_canvas(flow)
+
+            {:noreply,
+             socket
+             |> assign(:flow, flow)
+             |> assign(:flow_data, flow_data)
+             |> assign(:selected_connection, nil)
+             |> assign(:connection_form, nil)
+             |> push_event("connection_removed", %{
+               source_node_id: connection.source_node_id,
+               target_node_id: connection.target_node_id
+             })}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not delete connection."))}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
   def handle_event("node_moved", %{"id" => node_id, "position_x" => x, "position_y" => y}, socket) do
     node = Flows.get_node_by_id!(node_id)
 
@@ -412,6 +549,46 @@ defmodule StoryarnWeb.FlowLive.Show do
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, gettext("Could not delete node."))}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  def handle_event("duplicate_node", %{"id" => node_id}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        node = Flows.get_node!(socket.assigns.flow.id, node_id)
+
+        attrs = %{
+          type: node.type,
+          position_x: node.position_x + 50.0,
+          position_y: node.position_y + 50.0,
+          data: node.data
+        }
+
+        case Flows.create_node(socket.assigns.flow, attrs) do
+          {:ok, new_node} ->
+            flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+            flow_data = Flows.serialize_for_canvas(flow)
+
+            node_data = %{
+              id: new_node.id,
+              type: new_node.type,
+              position: %{x: new_node.position_x, y: new_node.position_y},
+              data: new_node.data
+            }
+
+            {:noreply,
+             socket
+             |> assign(:flow, flow)
+             |> assign(:flow_data, flow_data)
+             |> push_event("node_added", node_data)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not duplicate node."))}
         end
 
       {:error, :unauthorized} ->
@@ -501,7 +678,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   defp node_data_to_form(node) do
     data = extract_node_form_data(node.type, node.data)
-    to_form(%{"node" => data}, as: :node)
+    to_form(data, as: :node)
   end
 
   defp extract_node_form_data("dialogue", data) do
@@ -525,4 +702,13 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   defp extract_node_form_data(_type, _data), do: %{}
+
+  defp connection_data_to_form(connection) do
+    data = %{
+      "label" => connection.label || "",
+      "condition" => connection.condition || ""
+    }
+
+    to_form(data, as: :connection)
+  end
 end
