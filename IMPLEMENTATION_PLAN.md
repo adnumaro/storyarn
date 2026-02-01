@@ -558,22 +558,20 @@ export const FlowCanvas = {
 
 ## Pending Refactoring Tasks
 
-See `REFACTORING_PLAN.md` for detailed implementation steps:
-
-| Priority | Task                                | Status   |
-|----------|-------------------------------------|----------|
-| High     | Split `pages.ex` (facade pattern)   | ✅ Done   |
-| High     | Encrypt OAuth tokens with Cloak     | ✅ Done   |
-| Medium   | Split `block_components.ex`         | ✅ Done   |
-| Medium   | Add `@spec` to contexts             | Pending  |
-| Medium   | Configure Redis for rate limiting   | Pending  |
-| Medium   | Validate inputs with Integer.parse  | ✅ Done   |
+| Priority | Task                                | Status  |
+|----------|-------------------------------------|---------|
+| High     | Split `pages.ex` (facade pattern)   | ✅ Done  |
+| High     | Encrypt OAuth tokens with Cloak     | ✅ Done  |
+| Medium   | Split `block_components.ex`         | ✅ Done  |
+| Medium   | Add `@spec` to contexts             | ✅ Done  |
+| Medium   | Configure Redis for rate limiting   | Pending |
+| Medium   | Validate inputs with Integer.parse  | ✅ Done  |
 
 ---
 
 ## Immediate Next Steps
 
-1. **Complete refactoring tasks** (see `REFACTORING_PLAN.md`)
+1. **Complete refactoring tasks**
 2. **Phase 4: Flow Editor Core**
    - Install Rete.js dependencies
    - Create Flow/Node/Connection schemas
