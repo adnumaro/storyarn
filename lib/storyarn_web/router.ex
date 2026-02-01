@@ -118,6 +118,11 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/pages/:id/edit",
            PageLive.Show,
            :edit
+
+      # Flows (visual narrative editor)
+      live "/workspaces/:workspace_slug/projects/:project_slug/flows", FlowLive.Index, :index
+      live "/workspaces/:workspace_slug/projects/:project_slug/flows/new", FlowLive.Index, :new
+      live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id", FlowLive.Show, :show
     end
 
     post "/users/update-password", UserSessionController, :update_password

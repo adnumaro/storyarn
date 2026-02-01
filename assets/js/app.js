@@ -25,12 +25,13 @@ import { hooks as colocatedHooks } from "phoenix-colocated/storyarn";
 import { LiveSocket } from "phoenix_live_view";
 import topbar from "topbar";
 
+import { FlowCanvas } from "./hooks/flow_canvas";
 // Custom hooks
 import { SortableList } from "./hooks/sortable_list";
 import { SortableTree } from "./hooks/sortable_tree";
+import { TiptapEditor } from "./hooks/tiptap_editor";
 import { TreeToggle } from "./hooks/tree";
 import { TreeSearch } from "./hooks/tree_search";
-import { TiptapEditor } from "./hooks/tiptap_editor";
 
 // Theme management (keyboard shortcuts, cross-tab sync)
 import "./theme";
@@ -39,7 +40,15 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: { _csrf_token: csrfToken },
-  hooks: { ...colocatedHooks, SortableList, SortableTree, TreeToggle, TreeSearch, TiptapEditor },
+  hooks: {
+    ...colocatedHooks,
+    SortableList,
+    SortableTree,
+    TreeToggle,
+    TreeSearch,
+    TiptapEditor,
+    FlowCanvas,
+  },
 });
 
 // Show progress bar on live navigation and form submits

@@ -14,10 +14,16 @@
     "playwright": "^1.58.0"
   },
   "dependencies": {
+    "@retejs/lit-plugin": "^2.0.7",
     "@tiptap/core": "^3.18.0",
     "@tiptap/pm": "^3.18.0",
     "@tiptap/starter-kit": "^3.18.0",
     "daisyui": "^5.5.14",
+    "lit": "^3.3.2",
+    "rete": "^2.0.3",
+    "rete-area-plugin": "^2.0.3",
+    "rete-connection-plugin": "^2.0.3",
+    "rete-render-utils": "^2.0.2",
     "sortablejs": "^1.15.6",
     "topbar": "^3.0.0"
   }
