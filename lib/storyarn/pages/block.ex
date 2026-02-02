@@ -12,6 +12,9 @@ defmodule Storyarn.Pages.Block do
   - `number` - Numeric input
   - `select` - Single select dropdown
   - `multi_select` - Multiple select (tags)
+  - `boolean` - Boolean toggle (two-state or tri-state)
+  - `divider` - Visual separator
+  - `date` - Date picker
 
   ## Config Structure
 
@@ -44,7 +47,29 @@ defmodule Storyarn.Pages.Block do
 
   alias Storyarn.Pages.Page
 
-  @block_types ~w(text rich_text number select multi_select divider date)
+  @block_types ~w(text rich_text number select multi_select divider date boolean)
+
+  @default_configs %{
+    "text" => %{"label" => "", "placeholder" => ""},
+    "rich_text" => %{"label" => ""},
+    "number" => %{"label" => "", "placeholder" => "0"},
+    "select" => %{"label" => "", "placeholder" => "Select...", "options" => []},
+    "multi_select" => %{"label" => "", "placeholder" => "Select...", "options" => []},
+    "divider" => %{},
+    "date" => %{"label" => ""},
+    "boolean" => %{"label" => "", "mode" => "two_state"}
+  }
+
+  @default_values %{
+    "text" => %{"content" => ""},
+    "rich_text" => %{"content" => ""},
+    "number" => %{"content" => nil},
+    "select" => %{"content" => nil},
+    "multi_select" => %{"content" => []},
+    "divider" => %{},
+    "date" => %{"content" => nil},
+    "boolean" => %{"content" => false}
+  }
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -148,32 +173,10 @@ defmodule Storyarn.Pages.Block do
   @doc """
   Builds a default config for a block type.
   """
-  def default_config(type) do
-    case type do
-      "text" -> %{"label" => "", "placeholder" => ""}
-      "rich_text" -> %{"label" => ""}
-      "number" -> %{"label" => "", "placeholder" => "0"}
-      "select" -> %{"label" => "", "placeholder" => "Select...", "options" => []}
-      "multi_select" -> %{"label" => "", "placeholder" => "Select...", "options" => []}
-      "divider" -> %{}
-      "date" -> %{"label" => ""}
-      _ -> %{}
-    end
-  end
+  def default_config(type), do: Map.get(@default_configs, type, %{})
 
   @doc """
   Builds a default value for a block type.
   """
-  def default_value(type) do
-    case type do
-      "text" -> %{"content" => ""}
-      "rich_text" -> %{"content" => ""}
-      "number" -> %{"content" => nil}
-      "select" -> %{"content" => nil}
-      "multi_select" -> %{"content" => []}
-      "divider" -> %{}
-      "date" -> %{"content" => nil}
-      _ -> %{}
-    end
-  end
+  def default_value(type), do: Map.get(@default_values, type, %{})
 end

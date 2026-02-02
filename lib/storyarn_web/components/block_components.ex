@@ -18,6 +18,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
   import StoryarnWeb.Components.BlockComponents.TextBlocks
   import StoryarnWeb.Components.BlockComponents.SelectBlocks
   import StoryarnWeb.Components.BlockComponents.LayoutBlocks
+  import StoryarnWeb.Components.BlockComponents.BooleanBlocks
 
   # Re-export public components
   defdelegate block_menu(assigns), to: StoryarnWeb.Components.BlockComponents.BlockMenu
@@ -106,6 +107,8 @@ defmodule StoryarnWeb.Components.BlockComponents do
             <.divider_block />
           <% "date" -> %>
             <.date_block block={@block} can_edit={@can_edit} />
+          <% "boolean" -> %>
+            <.boolean_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
           <% _ -> %>
             <div class="text-base-content/50">{gettext("Unknown block type")}</div>
         <% end %>

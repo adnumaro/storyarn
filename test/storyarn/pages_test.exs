@@ -207,4 +207,94 @@ defmodule Storyarn.PagesTest do
       assert Enum.at(blocks, 2).id == block2.id
     end
   end
+
+  describe "boolean blocks" do
+    test "create_block/2 creates boolean block with two_state default config" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+
+      {:ok, block} = Pages.create_block(page, %{type: "boolean"})
+
+      assert block.type == "boolean"
+      assert block.config["mode"] == "two_state"
+      assert block.config["label"] == ""
+      assert block.value["content"] == false
+    end
+
+    test "create_block/2 creates boolean block with custom config" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+
+      {:ok, block} =
+        Pages.create_block(page, %{
+          type: "boolean",
+          config: %{"label" => "Is Active", "mode" => "tri_state"},
+          value: %{"content" => nil}
+        })
+
+      assert block.type == "boolean"
+      assert block.config["label"] == "Is Active"
+      assert block.config["mode"] == "tri_state"
+      assert block.value["content"] == nil
+    end
+
+    test "update_block_value/2 updates boolean block value to true" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+      {:ok, block} = Pages.create_block(page, %{type: "boolean"})
+
+      {:ok, updated} = Pages.update_block_value(block, %{"content" => true})
+
+      assert updated.value["content"] == true
+    end
+
+    test "update_block_value/2 updates boolean block value to false" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+
+      {:ok, block} =
+        Pages.create_block(page, %{
+          type: "boolean",
+          value: %{"content" => true}
+        })
+
+      {:ok, updated} = Pages.update_block_value(block, %{"content" => false})
+
+      assert updated.value["content"] == false
+    end
+
+    test "update_block_value/2 updates boolean block value to nil (tri-state)" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+
+      {:ok, block} =
+        Pages.create_block(page, %{
+          type: "boolean",
+          config: %{"label" => "", "mode" => "tri_state"},
+          value: %{"content" => true}
+        })
+
+      {:ok, updated} = Pages.update_block_value(block, %{"content" => nil})
+
+      assert updated.value["content"] == nil
+    end
+
+    test "update_block_config/2 changes mode from two_state to tri_state" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+      {:ok, block} = Pages.create_block(page, %{type: "boolean"})
+
+      {:ok, updated} =
+        Pages.update_block_config(block, %{"label" => "Test", "mode" => "tri_state"})
+
+      assert updated.config["mode"] == "tri_state"
+      assert updated.config["label"] == "Test"
+    end
+  end
 end

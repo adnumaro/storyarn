@@ -316,6 +316,26 @@ defmodule StoryarnWeb.PageLive.Show do
     )
   end
 
+  def handle_event(
+        "toggle_boolean_block",
+        %{"id" => block_id, "current" => current, "mode" => mode},
+        socket
+      ) do
+    with_authorization(
+      socket,
+      :edit_content,
+      &BlockHelpers.toggle_boolean_block(&1, block_id, current, mode)
+    )
+  end
+
+  def handle_event("set_boolean_block", %{"id" => block_id, "value" => value}, socket) do
+    with_authorization(
+      socket,
+      :edit_content,
+      &BlockHelpers.set_boolean_block(&1, block_id, value)
+    )
+  end
+
   # ===========================================================================
   # Event Handlers: Configuration Panel
   # ===========================================================================

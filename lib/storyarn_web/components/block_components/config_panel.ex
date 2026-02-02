@@ -29,6 +29,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
       |> assign(:max_options, config["max_options"])
       |> assign(:min_date, config["min_date"])
       |> assign(:max_date, config["max_date"])
+      |> assign(:mode, config["mode"] || "two_state")
 
     ~H"""
     <div class="fixed inset-y-0 right-0 w-80 bg-base-200 shadow-xl z-50 flex flex-col">
@@ -161,6 +162,24 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
               placeholder={gettext("No limit")}
               min="1"
             />
+          </div>
+
+          <%!-- Mode selector (for boolean) --%>
+          <div :if={@block.type == "boolean"}>
+            <label class="label">
+              <span class="label-text">{gettext("Mode")}</span>
+            </label>
+            <select name="config[mode]" class="select select-bordered w-full">
+              <option value="two_state" selected={@mode == "two_state"}>
+                {gettext("Two states (Yes/No)")}
+              </option>
+              <option value="tri_state" selected={@mode == "tri_state"}>
+                {gettext("Three states (Yes/Neutral/No)")}
+              </option>
+            </select>
+            <p class="text-xs text-base-content/50 mt-1">
+              {gettext("Tri-state allows a neutral/unknown value.")}
+            </p>
           </div>
         </form>
 
