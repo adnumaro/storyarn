@@ -125,9 +125,7 @@ defmodule StoryarnWeb.E2E.PagesTest do
 
       conn
       |> authenticate_user(user)
-      |> visit(
-        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/pages/#{child.id}"
-      )
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/pages/#{child.id}")
       |> assert_has("a", text: "Characters")
       |> assert_has("h1", text: "Main Hero")
     end
