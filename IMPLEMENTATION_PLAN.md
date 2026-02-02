@@ -2,7 +2,7 @@
 
 > **Goal:** Build an "articy killer" - a web-based narrative design platform with real-time collaboration
 >
-> **Last Updated:** February 2, 2026
+> **Last Updated:** February 2, 2026 (Phase 6 Complete)
 
 ## Confirmed Stack
 
@@ -116,7 +116,7 @@ lib/storyarn/
 │   ├── storage/r2.ex        # Cloudflare R2
 │   └── image_processor.ex   # libvips processing
 │
-├── flows.ex                 # Facade (NEW)
+├── flows.ex                 # Facade
 ├── flows/
 │   ├── flow.ex              # Schema
 │   ├── flow_node.ex         # Schema (5 node types)
@@ -124,6 +124,13 @@ lib/storyarn/
 │   ├── flow_crud.ex         # Flow CRUD operations
 │   ├── node_crud.ex         # Node CRUD operations
 │   └── connection_crud.ex   # Connection CRUD operations
+│
+├── collaboration.ex         # Facade (real-time collaboration)
+├── collaboration/
+│   ├── presence.ex          # Phoenix.Presence for online users
+│   ├── cursor_tracker.ex    # PubSub cursor broadcasting
+│   ├── locks.ex             # GenServer for node locking
+│   └── colors.ex            # Deterministic user color assignment
 │
 └── authorization.ex         # Central authorization (role-based permissions)
 ```
@@ -256,13 +263,16 @@ lib/storyarn/
 - [x] Response branches UI (add/remove/edit responses)
 - [x] Conditions on response branches (plain text expressions)
 
-### ⏳ Phase 6: Collaboration
+### ✅ Phase 6: Collaboration (Complete)
 
-- [ ] Phoenix Presence (who's online in project)
-- [ ] Other users' cursor positions on canvas
-- [ ] Node locking (prevent conflicts)
-- [ ] Visual editing indicators (colored cursors)
-- [ ] Change notifications (toast messages)
+- [x] Phoenix Presence (who's online in flow)
+- [x] Cursor sharing via PubSub (see other users' cursors)
+- [x] Node locking (GenServer-based, prevents simultaneous edits)
+- [x] Visual editing indicators (deterministic user colors)
+- [x] Collaboration components (online users display, collab toasts)
+- [x] Lock indicators on nodes
+- [x] Change notifications (toast messages for remote changes)
+- [x] User join/leave notifications
 
 ### ⏳ Phase 7: Export
 
@@ -311,12 +321,29 @@ Current hooks in `assets/js/hooks/`:
 
 | Hook               | Purpose                                                    |
 |--------------------|------------------------------------------------------------|
-| `flow_canvas.js`   | Rete.js flow editor canvas with node/connection management |
+| `flow_canvas.js`   | Rete.js flow editor (modularized, see subdirectories)      |
 | `sortable_list.js` | Generic drag & drop for lists (blocks)                     |
 | `sortable_tree.js` | Tree structure drag & drop (pages)                         |
 | `tiptap_editor.js` | Rich text editor (dual-mode: page blocks + flow nodes)     |
 | `tree.js`          | Tree UI interactions (expand/collapse)                     |
 | `tree_search.js`   | Search filtering in tree                                   |
+
+### Flow Canvas Modular Structure (Refactored Sprint 1-3)
+
+```
+flow_canvas/
+├── components/           # Lit custom elements (Shadow DOM)
+│   ├── storyarn_node.js     # Node rendering with colored headers
+│   ├── storyarn_socket.js   # Pin/socket rendering
+│   └── storyarn_connection.js # Connection lines with labels
+├── handlers/             # Event handlers (extracted Sprint 3)
+│   ├── cursor_handler.js    # Collaboration cursor tracking
+│   ├── lock_handler.js      # Node locking UI
+│   ├── keyboard_handler.js  # Shortcuts (Delete, Ctrl+D, Escape)
+│   └── editor_handlers.js   # Node/connection CRUD handlers
+├── flow_node.js          # Rete.js node class
+└── node_config.js        # Node type configurations
+```
 
 ---
 
@@ -423,7 +450,7 @@ blocks (id, page_id, type, position, config, value, timestamps)
 -- Assets
 assets (id, project_id, filename, size, content_type, key, timestamps)
 
--- Flows (NEW)
+-- Flows
 flows (id, project_id, name, description, is_main, settings, timestamps)
 flow_nodes (id, flow_id, type, position_x, position_y, data, timestamps)
 flow_connections (id, flow_id, source_node_id, source_pin, target_node_id, target_pin, label, condition, timestamps)
@@ -535,45 +562,55 @@ try {
 
 | Commit  | Description                                                         |
 |---------|---------------------------------------------------------------------|
+| 0bd2691 | refactor: Standardize component namespacing and add authorization helper |
+| 81ea194 | style: Apply formatter to refactored LiveView modules               |
+| 528e528 | refactor(page): Extract page editor event helpers (Sprint 4)        |
+| 47fd83d | refactor(js): Extract flow canvas handlers (Sprint 3)               |
+| 24a0b47 | test: Clean up pages E2E test                                       |
+| 48ed5e6 | feat(collaboration): Add real-time collaboration system             |
+| 45b0f07 | refactor: Extract flow LiveView helpers and components (Sprint 2)   |
+| 62b84ff | refactor: Extract shared components and modularize flow canvas (Sprint 1) |
 | 392b6ea | test: Add E2E tests for flows and pages                             |
 | 7fb309c | feat(flow): Add dialogue preview component                          |
-| 21fa51d | feat(flow): Enhance flow canvas functionality                       |
-| 9886471 | feat(tiptap): Support node text editing in flow editor              |
-| baa7153 | feat(pages): Add list_leaf_pages delegation to facade               |
-| c748f36 | feat: Add Flow Editor with visual node-based editing                |
-| 87ac8a3 | docs: Add rate limiting documentation to CLAUDE.md                  |
-| 9820386 | feat: Add rate limiting and fix static analysis warnings            |
-| 33ddac1 | docs: Add @spec type annotations to context modules                 |
-| b3148f7 | docs: Update IMPLEMENTATION_PLAN.md with current status             |
 
 ---
 
-## Pending Refactoring Tasks
+## Completed Refactoring (Sprints 1-4)
 
-| Priority | Task                                | Status  |
-|----------|-------------------------------------|---------|
-| High     | Split `pages.ex` (facade pattern)   | ✅ Done  |
-| High     | Encrypt OAuth tokens with Cloak     | ✅ Done  |
-| Medium   | Split `block_components.ex`         | ✅ Done  |
-| Medium   | Add `@spec` to contexts             | ✅ Done  |
-| Medium   | Configure Redis for rate limiting   | ✅ Done  |
-| Medium   | Validate inputs with Integer.parse  | ✅ Done  |
+| Sprint | Task                                                | Status  |
+|--------|-----------------------------------------------------|---------|
+| 1      | Extract shared components, modularize flow canvas   | ✅ Done  |
+| 2      | Extract flow LiveView helpers and components        | ✅ Done  |
+| 3      | Extract flow canvas JS handlers                     | ✅ Done  |
+| 4      | Extract page editor event helpers                   | ✅ Done  |
+| -      | Standardize component namespacing                   | ✅ Done  |
+| -      | Add authorization helper (`LiveHelpers.Authorize`)  | ✅ Done  |
+
+### Previous Refactoring
+| Task                                | Status  |
+|-------------------------------------|---------|
+| Split `pages.ex` (facade pattern)   | ✅ Done  |
+| Encrypt OAuth tokens with Cloak     | ✅ Done  |
+| Split `block_components.ex`         | ✅ Done  |
+| Add `@spec` to contexts             | ✅ Done  |
+| Configure Redis for rate limiting   | ✅ Done  |
+| Validate inputs with Integer.parse  | ✅ Done  |
 
 ---
 
 ## Immediate Next Steps
 
-1. **Phase 6: Collaboration**
-   - Phoenix Presence integration (who's online in project)
-   - User cursor positions on canvas
-   - Node locking mechanism (prevent conflicts)
-   - Visual editing indicators (colored cursors)
-   - Change notifications (toast messages)
-
-2. **Phase 7: Export**
+1. **Phase 7: Export** (Next up)
    - Export to JSON (custom Storyarn format)
+   - Export to JSON (articy-compatible format)
    - Import from JSON
-   - Pre-export validation
+   - Pre-export validation (broken connections, missing data)
+
+2. **Phase 8: Production Polish**
+   - Performance profiling & optimization
+   - UX refinements based on testing
+   - Production deployment setup
+   - Monitoring & logging
 
 ---
 

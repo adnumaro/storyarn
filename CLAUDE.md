@@ -135,12 +135,22 @@ lib/
 │   │   ├── project_crud.ex      # CRUD operations
 │   │   ├── memberships.ex       # Member management
 │   │   └── invitations.ex       # Invitation management
-│   ├── entities.ex              # Facade → entities/*.ex submodules
-│   ├── entities/
-│   │   ├── templates.ex         # Template CRUD
-│   │   ├── template_schema.ex   # Schema field management
-│   │   ├── entity_crud.ex       # Entity CRUD
-│   │   └── variables.ex         # Variable CRUD
+│   ├── pages.ex                 # Facade → pages/*.ex submodules
+│   ├── pages/
+│   │   ├── page_crud.ex         # Page CRUD operations
+│   │   ├── block_crud.ex        # Block CRUD operations
+│   │   └── tree_operations.ex   # Tree reordering
+│   ├── flows.ex                 # Facade → flows/*.ex submodules
+│   ├── flows/
+│   │   ├── flow_crud.ex         # Flow CRUD operations
+│   │   ├── node_crud.ex         # Node CRUD operations
+│   │   └── connection_crud.ex   # Connection CRUD operations
+│   ├── collaboration.ex         # Facade → collaboration/*.ex submodules
+│   ├── collaboration/
+│   │   ├── presence.ex          # Phoenix.Presence for online users
+│   │   ├── cursor_tracker.ex    # PubSub cursor broadcasting
+│   │   ├── locks.ex             # Node locking (GenServer)
+│   │   └── colors.ex            # Deterministic user colors
 │   ├── assets/                  # File uploads (R2/S3)
 │   ├── rate_limiter.ex          # Rate limiting for auth endpoints
 │   ├── application.ex           # OTP supervision tree
@@ -151,16 +161,17 @@ lib/
 │   ├── components/
 │   │   ├── core_components.ex   # UI components (<.input>, <.button>, <.icon>)
 │   │   ├── layouts.ex           # Layouts (app, auth, settings)
-│   │   ├── member_components.ex # Member/invitation display components
+│   │   ├── member_components.ex # Member/invitation display
+│   │   ├── collaboration_components.ex # Online users, lock indicators
+│   │   ├── block_components.ex  # Page block rendering
 │   │   └── sidebar.ex           # Workspace sidebar
 │   ├── controllers/             # Non-LiveView routes (OAuth, exports)
 │   ├── live/                    # LiveView modules
 │   │   ├── settings_live/       # User & workspace settings
 │   │   ├── workspace_live/      # Workspace views
 │   │   ├── project_live/        # Project views
-│   │   ├── entity_live/         # Entity CRUD
-│   │   ├── template_live/       # Template CRUD
-│   │   └── variable_live/       # Variable CRUD
+│   │   ├── page_live/           # Page editor
+│   │   └── flow_live/           # Flow editor
 │   ├── live_helpers/            # LiveView helpers (authorization)
 │   ├── channels/                # WebSocket channels (real-time)
 │   ├── endpoint.ex              # Plug pipeline
@@ -415,18 +426,21 @@ The project is in active development. See `IMPLEMENTATION_PLAN.md` for the full 
 - Phase 0: Base Infrastructure
 - Phase 1: Auth & Users (email/password, OAuth, magic links)
 - Phase 2: Workspaces & Projects (CRUD, invitations, roles, settings)
-- Phase 3: Entities (templates, entities, variables with schema builder)
+- Phase 3: Pages & Blocks (hierarchical pages, 8 block types)
 - Phase 3.2: Assets System (R2 storage, uploads, thumbnails)
+- Phase 4: Flow Editor - Core (Rete.js, 5 node types, canvas)
+- Phase 5: Flow Editor - Dialogue (rich text, preview, speaker selection)
+- Phase 6: Collaboration (presence, cursors, node locking, notifications)
 
-**In Progress:**
-- Phase 4: Flow Editor
+**Next Up:**
+- Phase 7: Export (JSON import/export)
 
 **Contexts:**
 - `Accounts` - Users, auth, sessions, OAuth identities ✓
 - `Workspaces` - Workspaces, memberships, invitations ✓
 - `Projects` - Projects, memberships, invitations ✓
-- `Entities` - Templates, entities, variables ✓
+- `Pages` - Hierarchical pages, blocks ✓
 - `Assets` - File uploads (R2/S3) ✓
-- `Flows` - Flow graphs, nodes, connections (next)
-- `Collaboration` - Presence, locking (planned)
+- `Flows` - Flow graphs, nodes, connections ✓
+- `Collaboration` - Presence, cursors, locking ✓
 - `Exports` - JSON import/export (planned)
