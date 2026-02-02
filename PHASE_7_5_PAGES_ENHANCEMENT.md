@@ -95,13 +95,13 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 - [x] UI: Remove avatar option (fallback to default icon or initials)
 - [x] Integration with existing Assets system (asset picker or direct upload)
 
-#### 7.5.1.3 Page Banner
-- [ ] Add `banner_asset_id` field to `pages` table (FK to assets, nullable)
-- [ ] Preload banner asset in page queries
-- [ ] UI: Banner display at top of page (like Notion)
-- [ ] UI: "Add cover" button when no banner
-- [ ] UI: Change/remove banner options
-- [ ] Integration with existing Assets system (asset picker)
+#### 7.5.1.3 Page Banner ✅ DONE
+- [x] Add `banner_asset_id` field to `pages` table (FK to assets, nullable)
+- [x] Preload banner asset in page queries
+- [x] UI: Banner display at top of page (like Notion)
+- [x] UI: "Add cover" button when no banner
+- [x] UI: Change/remove banner options
+- [x] Integration with existing Assets system (direct upload via BannerUpload hook)
 
 #### 7.5.1.4 Page Tabs System
 - [ ] Refactor PageLive.Show to support tabs
@@ -435,7 +435,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 |-------|------|--------------|------------------|
 | 1 | ✅ Boolean block | None | New block type works |
 | 2 | ✅ Page avatar (replace icon) | Assets system | Avatar upload/display works |
-| 3 | Page banner | Assets system | Banner display works |
+| 3 | ✅ Page banner | Assets system | Banner display works |
 | 4 | Soft delete | None | Trash/restore works |
 | 5 | Block variables (is_variable, variable_name) | None | Variables marked correctly |
 | 6 | Shortcuts (pages) | None | Shortcuts validated/saved |
@@ -495,7 +495,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 - [x] New block types working (boolean) ✅
 - [ ] New block types working (reference)
 - [x] Page avatar working (replaces icon field) ✅
-- [ ] Page banner working
+- [x] Page banner working ✅
 - [ ] Shortcuts can be set on pages and flows
 - [ ] Mentions with `#` work in rich_text blocks
 - [ ] Backlinks show what references a page
