@@ -6,7 +6,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.CoreComponents
+  import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers
 
   @doc """

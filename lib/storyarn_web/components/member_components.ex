@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.MemberComponents do
+defmodule StoryarnWeb.Components.MemberComponents do
   @moduledoc """
   Shared components for displaying team members and invitations.
 
@@ -7,8 +7,8 @@ defmodule StoryarnWeb.MemberComponents do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.CoreComponents
-  import StoryarnWeb.UIComponents
+  import StoryarnWeb.Components.CoreComponents
+  import StoryarnWeb.Components.UIComponents
 
   @doc """
   Renders a user avatar with initials fallback.

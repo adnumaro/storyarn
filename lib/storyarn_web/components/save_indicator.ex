@@ -10,7 +10,7 @@ defmodule StoryarnWeb.Components.SaveIndicator do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.CoreComponents, only: [icon: 1]
+  import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
 
   @doc """
   Renders a save status indicator.

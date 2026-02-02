@@ -4,7 +4,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   use StoryarnWeb, :live_view
   use StoryarnWeb.LiveHelpers.Authorize
 
-  import StoryarnWeb.CollaborationComponents
+  import StoryarnWeb.Components.CollaborationComponents
   import StoryarnWeb.Components.SaveIndicator
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers
   import StoryarnWeb.FlowLive.Components.PropertiesPanels

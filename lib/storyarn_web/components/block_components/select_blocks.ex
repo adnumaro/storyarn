@@ -4,7 +4,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.CoreComponents, only: [icon: 1]
+  import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
 
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false

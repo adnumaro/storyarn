@@ -85,9 +85,9 @@ defmodule StoryarnWeb do
       # HTML escaping functionality
       import Phoenix.HTML
       # Core UI components
-      import StoryarnWeb.CoreComponents
+      import StoryarnWeb.Components.CoreComponents
       # Custom UI components
-      import StoryarnWeb.UIComponents
+      import StoryarnWeb.Components.UIComponents
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS

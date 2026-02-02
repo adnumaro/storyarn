@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.TreeComponents do
+defmodule StoryarnWeb.Components.TreeComponents do
   @moduledoc """
   Tree components for hierarchical navigation (Notion-style).
   """
@@ -6,7 +6,7 @@ defmodule StoryarnWeb.TreeComponents do
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.CoreComponents
+  import StoryarnWeb.Components.CoreComponents
 
   @doc """
   Renders a collapsible tree node with optional children.

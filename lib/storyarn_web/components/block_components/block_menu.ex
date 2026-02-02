@@ -4,7 +4,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.CoreComponents, only: [icon: 1]
+  import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
 
   @doc """
   Renders the block type selection menu.

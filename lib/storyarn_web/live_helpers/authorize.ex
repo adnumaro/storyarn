@@ -36,8 +36,52 @@ defmodule StoryarnWeb.LiveHelpers.Authorize do
 
   defmacro __using__(_opts) do
     quote do
-      import StoryarnWeb.LiveHelpers.Authorize, only: [authorize: 2]
+      import StoryarnWeb.LiveHelpers.Authorize, only: [authorize: 2, with_authorization: 3]
     end
+  end
+
+  @doc """
+  Executes a function if authorized, otherwise returns unauthorized flash.
+
+  This helper reduces boilerplate for handle_event callbacks that need authorization.
+  The function receives the socket and must return `{:noreply, socket}`.
+
+  ## Examples
+
+      def handle_event("delete", %{"id" => id}, socket) do
+        with_authorization(socket, :edit_content, fn socket ->
+          BlockHelpers.delete_block(socket, id)
+        end)
+      end
+
+  Is equivalent to:
+
+      def handle_event("delete", %{"id" => id}, socket) do
+        case authorize(socket, :edit_content) do
+          :ok -> BlockHelpers.delete_block(socket, id)
+          {:error, :unauthorized} ->
+            {:noreply, put_flash(socket, :error, gettext("You don't have permission..."))}
+        end
+      end
+  """
+  @spec with_authorization(
+          Phoenix.LiveView.Socket.t(),
+          atom(),
+          (Phoenix.LiveView.Socket.t() -> {:noreply, Phoenix.LiveView.Socket.t()})
+        ) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  def with_authorization(socket, action, success_fn) do
+    case authorize(socket, action) do
+      :ok ->
+        success_fn.(socket)
+
+      {:error, :unauthorized} ->
+        {:noreply, Phoenix.LiveView.put_flash(socket, :error, unauthorized_message())}
+    end
+  end
+
+  defp unauthorized_message do
+    # Use Gettext directly since we can't use the macro in a function body
+    Gettext.gettext(StoryarnWeb.Gettext, "You don't have permission to perform this action.")
   end
 
   @doc """

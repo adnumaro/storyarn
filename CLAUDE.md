@@ -372,14 +372,25 @@ Available actions: `:edit_content`, `:manage_project`, `:manage_members`, `:mana
 
 ### Shared Components
 
-**MemberComponents** (`import StoryarnWeb.MemberComponents`):
+All components use the `StoryarnWeb.Components.*` namespace:
+
+**MemberComponents** (`import StoryarnWeb.Components.MemberComponents`):
 - `<.user_avatar user={@user} size="md" />` - Avatar with initials fallback
 - `<.member_row member={@member} current_user_id={@id} can_manage={true} on_remove="remove" />` - Member display
 - `<.invitation_row invitation={@inv} on_revoke="revoke" />` - Pending invitation
 
-**CoreComponents** (auto-imported):
+**CoreComponents** (auto-imported via `use StoryarnWeb, :live_view`):
 - `<.empty_state icon="hero-folder-open" title="No items">Description</.empty_state>` - Empty list states
-- `<.role_badge role="owner" />` - Role display badge
+- `<.role_badge role="owner" />` - Role display badge (from UIComponents)
+
+**Other Components:**
+- `StoryarnWeb.Components.UIComponents` - OAuth buttons, role badges, empty states
+- `StoryarnWeb.Components.TreeComponents` - Notion-style tree navigation
+- `StoryarnWeb.Components.CollaborationComponents` - Real-time presence, cursor sharing
+- `StoryarnWeb.Components.Sidebar` - Workspace sidebar navigation
+- `StoryarnWeb.Components.ProjectSidebar` - Project pages tree sidebar
+- `StoryarnWeb.Components.SaveIndicator` - Saving/saved status indicator
+- `StoryarnWeb.Components.BlockComponents` - Page block rendering (text, select, etc.)
 
 ## Testing
 

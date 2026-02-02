@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.CollaborationComponents do
+defmodule StoryarnWeb.Components.CollaborationComponents do
   @moduledoc """
   Components for real-time collaboration features in the Flow Editor.
 

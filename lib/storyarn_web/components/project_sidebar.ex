@@ -6,8 +6,8 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.CoreComponents
-  import StoryarnWeb.TreeComponents
+  import StoryarnWeb.Components.CoreComponents
+  import StoryarnWeb.Components.TreeComponents
 
   attr :project, :map, required: true
   attr :workspace, :map, required: true

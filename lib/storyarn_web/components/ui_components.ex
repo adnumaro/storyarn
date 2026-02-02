@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.UIComponents do
+defmodule StoryarnWeb.Components.UIComponents do
   @moduledoc """
   Custom UI components for the Storyarn application.
 
@@ -11,7 +11,7 @@ defmodule StoryarnWeb.UIComponents do
 
   alias Phoenix.LiveView.JS
 
-  import StoryarnWeb.CoreComponents, only: [icon: 1]
+  import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
 
   @doc """
   Renders a role badge.

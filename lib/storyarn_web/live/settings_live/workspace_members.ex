@@ -5,7 +5,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   use StoryarnWeb, :live_view
   use StoryarnWeb.LiveHelpers.Authorize
 
-  import StoryarnWeb.MemberComponents
+  import StoryarnWeb.Components.MemberComponents
 
   alias Storyarn.Workspaces
 

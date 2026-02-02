@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.CoreComponents do
+defmodule StoryarnWeb.Components.CoreComponents do
   @moduledoc """
   Provides core UI components.
 

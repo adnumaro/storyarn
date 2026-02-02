@@ -4,7 +4,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   use StoryarnWeb, :live_view
   use StoryarnWeb.LiveHelpers.Authorize
 
-  import StoryarnWeb.MemberComponents
+  import StoryarnWeb.Components.MemberComponents
 
   alias Storyarn.Pages
   alias Storyarn.Projects

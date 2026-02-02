@@ -4,7 +4,7 @@ defmodule StoryarnWeb.Components.PageComponents do
   """
   use Phoenix.Component
 
-  import StoryarnWeb.CoreComponents, only: [icon: 1]
+  import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
 
   @doc """
   Normalizes a parent_id value, converting empty strings to nil.

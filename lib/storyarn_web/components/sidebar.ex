@@ -6,7 +6,7 @@ defmodule StoryarnWeb.Components.Sidebar do
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.CoreComponents
+  import StoryarnWeb.Components.CoreComponents
 
   alias Phoenix.LiveView.JS
 

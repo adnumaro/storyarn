@@ -221,10 +221,7 @@ defmodule StoryarnWeb.PageLive.Show do
   end
 
   def handle_event("save_name", %{"name" => name}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> PageTreeHelpers.save_name(socket, name)
-      {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
-    end
+    with_authorization(socket, :edit_content, &PageTreeHelpers.save_name(&1, name))
   end
 
   # ===========================================================================
@@ -232,10 +229,7 @@ defmodule StoryarnWeb.PageLive.Show do
   # ===========================================================================
 
   def handle_event("delete_page", %{"id" => page_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> PageTreeHelpers.delete_page(socket, page_id)
-      {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
-    end
+    with_authorization(socket, :edit_content, &PageTreeHelpers.delete_page(&1, page_id))
   end
 
   def handle_event(
@@ -243,17 +237,15 @@ defmodule StoryarnWeb.PageLive.Show do
         %{"page_id" => page_id, "parent_id" => parent_id, "position" => position},
         socket
       ) do
-    case authorize(socket, :edit_content) do
-      :ok -> PageTreeHelpers.move_page(socket, page_id, parent_id, position)
-      {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
-    end
+    with_authorization(
+      socket,
+      :edit_content,
+      &PageTreeHelpers.move_page(&1, page_id, parent_id, position)
+    )
   end
 
   def handle_event("create_child_page", %{"parent-id" => parent_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> PageTreeHelpers.create_child_page(socket, parent_id)
-      {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
-    end
+    with_authorization(socket, :edit_content, &PageTreeHelpers.create_child_page(&1, parent_id))
   end
 
   # ===========================================================================
@@ -273,38 +265,31 @@ defmodule StoryarnWeb.PageLive.Show do
   # ===========================================================================
 
   def handle_event("add_block", %{"type" => type}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> BlockHelpers.add_block(socket, type)
-      {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
-    end
+    with_authorization(socket, :edit_content, &BlockHelpers.add_block(&1, type))
   end
 
   def handle_event("update_block_value", %{"id" => block_id, "value" => value}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> BlockHelpers.update_block_value(socket, block_id, value)
-      {:error, :unauthorized} -> {:noreply, socket}
-    end
+    with_authorization(
+      socket,
+      :edit_content,
+      &BlockHelpers.update_block_value(&1, block_id, value)
+    )
   end
 
   def handle_event("delete_block", %{"id" => block_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> BlockHelpers.delete_block(socket, block_id)
-      {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
-    end
+    with_authorization(socket, :edit_content, &BlockHelpers.delete_block(&1, block_id))
   end
 
   def handle_event("reorder", %{"ids" => ids, "group" => "blocks"}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> BlockHelpers.reorder_blocks(socket, ids)
-      {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
-    end
+    with_authorization(socket, :edit_content, &BlockHelpers.reorder_blocks(&1, ids))
   end
 
   def handle_event("toggle_multi_select", %{"id" => block_id, "key" => key}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> BlockHelpers.toggle_multi_select(socket, block_id, key)
-      {:error, :unauthorized} -> {:noreply, socket}
-    end
+    with_authorization(
+      socket,
+      :edit_content,
+      &BlockHelpers.toggle_multi_select(&1, block_id, key)
+    )
   end
 
   def handle_event(
@@ -312,10 +297,11 @@ defmodule StoryarnWeb.PageLive.Show do
         %{"key" => "Enter", "value" => value, "id" => block_id},
         socket
       ) do
-    case authorize(socket, :edit_content) do
-      :ok -> BlockHelpers.handle_multi_select_enter(socket, block_id, value)
-      {:error, :unauthorized} -> {:noreply, socket}
-    end
+    with_authorization(
+      socket,
+      :edit_content,
+      &BlockHelpers.handle_multi_select_enter(&1, block_id, value)
+    )
   end
 
   def handle_event("multi_select_keydown", _params, socket) do
@@ -323,10 +309,11 @@ defmodule StoryarnWeb.PageLive.Show do
   end
 
   def handle_event("update_rich_text", %{"id" => block_id, "content" => content}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> BlockHelpers.update_rich_text(socket, block_id, content)
-      {:error, :unauthorized} -> {:noreply, socket}
-    end
+    with_authorization(
+      socket,
+      :edit_content,
+      &BlockHelpers.update_rich_text(&1, block_id, content)
+    )
   end
 
   # ===========================================================================
@@ -334,10 +321,7 @@ defmodule StoryarnWeb.PageLive.Show do
   # ===========================================================================
 
   def handle_event("configure_block", %{"id" => block_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> ConfigHelpers.configure_block(socket, block_id)
-      {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
-    end
+    with_authorization(socket, :edit_content, &ConfigHelpers.configure_block(&1, block_id))
   end
 
   def handle_event("close_config_panel", _params, socket) do
@@ -345,10 +329,7 @@ defmodule StoryarnWeb.PageLive.Show do
   end
 
   def handle_event("save_block_config", %{"config" => config_params}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> ConfigHelpers.save_block_config(socket, config_params)
-      {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
-    end
+    with_authorization(socket, :edit_content, &ConfigHelpers.save_block_config(&1, config_params))
   end
 
   def handle_event("add_select_option", _params, socket) do
@@ -374,13 +355,5 @@ defmodule StoryarnWeb.PageLive.Show do
   @impl true
   def handle_info(:reset_save_status, socket) do
     {:noreply, assign(socket, :save_status, :idle)}
-  end
-
-  # ===========================================================================
-  # Private Helpers
-  # ===========================================================================
-
-  defp unauthorized_flash(socket) do
-    put_flash(socket, :error, gettext("You don't have permission to perform this action."))
   end
 end
