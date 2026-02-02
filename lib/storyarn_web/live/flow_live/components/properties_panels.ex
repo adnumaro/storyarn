@@ -31,7 +31,12 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
       </div>
 
       <div class="flex-1 overflow-y-auto p-4">
-        <.node_properties_form node={@node} form={@form} can_edit={@can_edit} leaf_pages={@leaf_pages} />
+        <.node_properties_form
+          node={@node}
+          form={@form}
+          can_edit={@can_edit}
+          leaf_pages={@leaf_pages}
+        />
       </div>
 
       <div class="p-4 border-t border-base-300 space-y-2">

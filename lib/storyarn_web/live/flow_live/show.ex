@@ -290,7 +290,11 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
-  def handle_event("remove_response", %{"response-id" => response_id, "node-id" => node_id}, socket) do
+  def handle_event(
+        "remove_response",
+        %{"response-id" => response_id, "node-id" => node_id},
+        socket
+      ) do
     case authorize(socket, :edit_content) do
       :ok -> NodeHelpers.remove_response(socket, node_id, response_id)
       {:error, :unauthorized} -> {:noreply, socket}
@@ -353,7 +357,11 @@ defmodule StoryarnWeb.FlowLive.Show do
     ConnectionHelpers.create_connection(socket, params)
   end
 
-  def handle_event("connection_deleted", %{"source_node_id" => source_id, "target_node_id" => target_id}, socket) do
+  def handle_event(
+        "connection_deleted",
+        %{"source_node_id" => source_id, "target_node_id" => target_id},
+        socket
+      ) do
     ConnectionHelpers.delete_connection_by_nodes(socket, source_id, target_id)
   end
 
@@ -403,18 +411,30 @@ defmodule StoryarnWeb.FlowLive.Show do
       {:noreply, socket}
     else
       remote_cursors = Map.put(socket.assigns.remote_cursors, cursor_data.user_id, cursor_data)
-      {:noreply, socket |> assign(:remote_cursors, remote_cursors) |> push_event("cursor_update", cursor_data)}
+
+      {:noreply,
+       socket
+       |> assign(:remote_cursors, remote_cursors)
+       |> push_event("cursor_update", cursor_data)}
     end
   end
 
   def handle_info({:cursor_leave, user_id}, socket) do
     remote_cursors = Map.delete(socket.assigns.remote_cursors, user_id)
-    {:noreply, socket |> assign(:remote_cursors, remote_cursors) |> push_event("cursor_leave", %{user_id: user_id})}
+
+    {:noreply,
+     socket
+     |> assign(:remote_cursors, remote_cursors)
+     |> push_event("cursor_leave", %{user_id: user_id})}
   end
 
   def handle_info({:lock_change, action, payload}, socket) do
     node_locks = Collaboration.list_locks(socket.assigns.flow.id)
-    socket = socket |> assign(:node_locks, node_locks) |> push_event("locks_updated", %{locks: node_locks})
+
+    socket =
+      socket
+      |> assign(:node_locks, node_locks)
+      |> push_event("locks_updated", %{locks: node_locks})
 
     socket =
       if payload.user_id != socket.assigns.current_scope.user.id do
@@ -463,13 +483,18 @@ defmodule StoryarnWeb.FlowLive.Show do
       {:ok, _lock_info} ->
         CollaborationHelpers.broadcast_lock_change(socket, :node_locked, node_id)
         node_locks = Collaboration.list_locks(socket.assigns.flow.id)
-        socket |> assign(:node_locks, node_locks) |> push_event("locks_updated", %{locks: node_locks})
+
+        socket
+        |> assign(:node_locks, node_locks)
+        |> push_event("locks_updated", %{locks: node_locks})
 
       {:error, :already_locked, lock_info} ->
         put_flash(
           socket,
           :info,
-          gettext("This node is being edited by %{user}", user: FormHelpers.get_email_name(lock_info.user_email))
+          gettext("This node is being edited by %{user}",
+            user: FormHelpers.get_email_name(lock_info.user_email)
+          )
         )
     end
   end

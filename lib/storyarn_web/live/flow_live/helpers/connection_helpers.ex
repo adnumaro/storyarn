@@ -147,7 +147,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
          |> reload_flow_data()
          |> assign(:save_status, :saved)
          |> push_event("connection_added", connection_data)
-         |> CollaborationHelpers.broadcast_change(:connection_added, %{connection_data: connection_data})}
+         |> CollaborationHelpers.broadcast_change(:connection_added, %{
+           connection_data: connection_data
+         })}
 
       {:error, _} ->
         {:noreply,

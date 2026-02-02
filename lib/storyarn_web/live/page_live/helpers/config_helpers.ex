@@ -120,7 +120,12 @@ defmodule StoryarnWeb.PageLive.Helpers.ConfigHelpers do
   Updates a select option at a given index.
   Returns {:noreply, socket} tuple.
   """
-  @spec update_select_option(Phoenix.LiveView.Socket.t(), String.t() | integer(), String.t(), String.t()) ::
+  @spec update_select_option(
+          Phoenix.LiveView.Socket.t(),
+          String.t() | integer(),
+          String.t(),
+          String.t()
+        ) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def update_select_option(socket, index, key, value) do
     case parse_index(index) do
