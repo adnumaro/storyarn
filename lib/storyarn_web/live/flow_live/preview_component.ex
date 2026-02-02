@@ -211,43 +211,47 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
   # Private functions
 
   defp load_node(socket, node) do
-    # Skip non-dialogue nodes
-    if node.type != "dialogue" do
-      # Try to follow to next dialogue node
-      connections = Flows.get_outgoing_connections(node.id)
-      next_conn = List.first(connections)
-
-      if next_conn do
-        next_node = Flows.get_node_by_id!(next_conn.target_node_id)
-        load_node(socket, next_node)
-      else
-        assign(socket,
-          current_node: nil,
-          speaker: nil,
-          responses: [],
-          has_next: false
-        )
-      end
+    if node.type == "dialogue" do
+      load_dialogue_node(socket, node)
     else
-      speaker_name = resolve_speaker(socket.assigns, node.data["speaker_page_id"])
-      responses = node.data["responses"] || []
-      connections = Flows.get_outgoing_connections(node.id)
-
-      # Determine if there's a next node
-      has_next =
-        if responses == [] do
-          Enum.any?(connections, fn conn -> conn.source_pin == "output" end)
-        else
-          false
-        end
-
-      assign(socket,
-        current_node: node,
-        speaker: speaker_name,
-        responses: responses,
-        has_next: has_next
-      )
+      skip_to_next_dialogue(socket, node)
     end
+  end
+
+  defp load_dialogue_node(socket, node) do
+    speaker_name = resolve_speaker(socket.assigns, node.data["speaker_page_id"])
+    responses = node.data["responses"] || []
+    connections = Flows.get_outgoing_connections(node.id)
+    has_next = responses == [] && has_output_connection?(connections)
+
+    assign(socket,
+      current_node: node,
+      speaker: speaker_name,
+      responses: responses,
+      has_next: has_next
+    )
+  end
+
+  defp skip_to_next_dialogue(socket, node) do
+    connections = Flows.get_outgoing_connections(node.id)
+
+    case List.first(connections) do
+      nil -> assign_empty_node(socket)
+      next_conn -> load_node(socket, Flows.get_node_by_id!(next_conn.target_node_id))
+    end
+  end
+
+  defp assign_empty_node(socket) do
+    assign(socket,
+      current_node: nil,
+      speaker: nil,
+      responses: [],
+      has_next: false
+    )
+  end
+
+  defp has_output_connection?(connections) do
+    Enum.any?(connections, fn conn -> conn.source_pin == "output" end)
   end
 
   defp resolve_speaker(assigns, speaker_page_id) when is_integer(speaker_page_id) do
@@ -276,8 +280,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
     name
     |> String.split()
     |> Enum.take(2)
-    |> Enum.map(&String.first/1)
-    |> Enum.join()
+    |> Enum.map_join("", &String.first/1)
     |> String.upcase()
   end
 
