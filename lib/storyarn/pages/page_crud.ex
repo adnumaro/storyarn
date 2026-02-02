@@ -56,15 +56,35 @@ defmodule Storyarn.Pages.PageCrud do
     |> Repo.all()
   end
 
+  @doc """
+  Lists all leaf pages (pages with no children) for a project.
+  Useful for speaker selection in dialogue nodes.
+  """
+  def list_leaf_pages(project_id) do
+    # Subquery to find all pages that are parents
+    parent_ids_subquery =
+      from(p in Page,
+        where: p.project_id == ^project_id and not is_nil(p.parent_id),
+        select: p.parent_id
+      )
+
+    from(p in Page,
+      where: p.project_id == ^project_id and p.id not in subquery(parent_ids_subquery),
+      order_by: [asc: p.position, asc: p.name]
+    )
+    |> Repo.all()
+  end
+
   # =============================================================================
   # CRUD Operations
   # =============================================================================
 
   def create_page(%Project{} = project, attrs) do
-    position = attrs[:position] || next_position(project.id, attrs[:parent_id])
+    parent_id = attrs["parent_id"] || attrs[:parent_id]
+    position = attrs["position"] || attrs[:position] || next_position(project.id, parent_id)
 
     %Page{project_id: project.id}
-    |> Page.create_changeset(Map.put(attrs, :position, position))
+    |> Page.create_changeset(Map.put(attrs, "position", position))
     |> Repo.insert()
   end
 

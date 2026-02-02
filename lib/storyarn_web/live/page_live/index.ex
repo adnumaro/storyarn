@@ -28,14 +28,13 @@ defmodule StoryarnWeb.PageLive.Index do
             {gettext("Create and organize your project's content")}
           </:subtitle>
           <:actions :if={@can_edit}>
-            <button
-              type="button"
+            <.link
+              patch={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/new"}
               class="btn btn-primary"
-              phx-click={show_modal("new-page-modal")}
             >
               <.icon name="plus" class="size-4 mr-2" />
               {gettext("New Page")}
-            </button>
+            </.link>
           </:actions>
         </.header>
       </div>
@@ -59,51 +58,14 @@ defmodule StoryarnWeb.PageLive.Index do
         show
         on_cancel={JS.patch(~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages")}
       >
-        <.header>
-          {gettext("New Page")}
-        </.header>
-
-        <.form
-          for={@form}
+        <.live_component
+          module={StoryarnWeb.PageLive.Form}
           id="new-page-form"
-          phx-change="validate"
-          phx-submit="save"
-        >
-          <.input
-            field={@form[:name]}
-            type="text"
-            label={gettext("Name")}
-            placeholder={gettext("My Page")}
-            required
-            autofocus
-          />
-          <.input
-            field={@form[:icon]}
-            type="text"
-            label={gettext("Icon")}
-            placeholder="page"
-          />
-          <.input
-            :if={@pages_tree != []}
-            field={@form[:parent_id]}
-            type="select"
-            label={gettext("Parent")}
-            options={parent_options(@pages_tree)}
-            prompt={gettext("No parent (root level)")}
-          />
-
-          <div class="modal-action">
-            <.link
-              patch={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages"}
-              class="btn btn-ghost"
-            >
-              {gettext("Cancel")}
-            </.link>
-            <.button variant="primary" phx-disable-with={gettext("Creating...")}>
-              {gettext("Create Page")}
-            </.button>
-          </div>
-        </.form>
+          project={@project}
+          title={gettext("New Page")}
+          parent_options={parent_options(@pages_tree)}
+          navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages"}
+        />
       </.modal>
     </Layouts.project>
     """
@@ -176,7 +138,6 @@ defmodule StoryarnWeb.PageLive.Index do
           |> assign(:membership, membership)
           |> assign(:can_edit, can_edit)
           |> assign(:pages_tree, pages_tree)
-          |> assign(:form, to_form(Pages.change_page(%Pages.Page{})))
 
         {:ok, socket}
 
@@ -194,36 +155,17 @@ defmodule StoryarnWeb.PageLive.Index do
   end
 
   @impl true
-  def handle_event("validate", %{"page" => page_params}, socket) do
-    changeset =
-      %Pages.Page{}
-      |> Pages.change_page(page_params)
-      |> Map.put(:action, :validate)
-
-    {:noreply, assign(socket, :form, to_form(changeset))}
+  def handle_info({StoryarnWeb.PageLive.Form, {:saved, page}}, socket) do
+    {:noreply,
+     socket
+     |> put_flash(:info, gettext("Page created successfully."))
+     |> push_navigate(
+       to:
+         ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages/#{page.id}"
+     )}
   end
 
-  def handle_event("save", %{"page" => page_params}, socket) do
-    if socket.assigns.can_edit do
-      case Pages.create_page(socket.assigns.project, page_params) do
-        {:ok, page} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, gettext("Page created successfully."))
-           |> push_navigate(
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages/#{page.id}"
-           )}
-
-        {:error, changeset} ->
-          {:noreply, assign(socket, :form, to_form(changeset))}
-      end
-    else
-      {:noreply,
-       put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
-    end
-  end
-
+  @impl true
   def handle_event("delete_page", %{"id" => page_id}, socket) do
     if socket.assigns.can_edit do
       page = Pages.get_page!(socket.assigns.project.id, page_id)
