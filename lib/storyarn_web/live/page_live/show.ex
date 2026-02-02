@@ -6,6 +6,7 @@ defmodule StoryarnWeb.PageLive.Show do
 
   import StoryarnWeb.Components.BlockComponents
   import StoryarnWeb.Components.PageComponents
+  import StoryarnWeb.Components.SaveIndicator
 
   alias Storyarn.Pages
   alias Storyarn.Projects
@@ -70,7 +71,7 @@ defmodule StoryarnWeb.PageLive.Show do
           </div>
         </div>
         <%!-- Save indicator (positioned at header level) --%>
-        <.save_indicator status={@save_status} />
+        <.save_indicator status={@save_status} variant={:floating} />
       </div>
 
       <div class="max-w-3xl mx-auto">
@@ -134,27 +135,6 @@ defmodule StoryarnWeb.PageLive.Show do
     """
   end
 
-  attr :status, :atom, required: true
-
-  defp save_indicator(assigns) do
-    ~H"""
-    <div
-      :if={@status != :idle}
-      class="absolute top-2 right-0 z-10 animate-in fade-in duration-300"
-    >
-      <div class={[
-        "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium",
-        @status == :saving && "bg-base-200 text-base-content",
-        @status == :saved && "bg-success/10 text-success"
-      ]}>
-        <span :if={@status == :saving} class="loading loading-spinner loading-xs"></span>
-        <.icon :if={@status == :saved} name="check" class="size-4" />
-        <span :if={@status == :saving}>{gettext("Saving...")}</span>
-        <span :if={@status == :saved}>{gettext("Saved")}</span>
-      </div>
-    </div>
-    """
-  end
 
   @impl true
   def mount(

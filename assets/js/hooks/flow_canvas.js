@@ -1,470 +1,19 @@
+/**
+ * FlowCanvas - Phoenix LiveView Hook for the narrative flow editor.
+ *
+ * Uses Rete.js with custom LitElement components for rendering.
+ */
+
 import { LitPlugin, Presets as LitPresets } from "@retejs/lit-plugin";
-import { LitElement, css, html } from "lit";
-import { unsafeSVG } from "lit/directives/unsafe-svg.js";
-import { ArrowRight, GitBranch, GitMerge, MessageSquare, Zap, createElement } from "lucide";
+import { html } from "lit";
 import { ClassicPreset, NodeEditor } from "rete";
 import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
 import { ConnectionPlugin, Presets as ConnectionPresets } from "rete-connection-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
 
-// Helper to create Lucide icon SVG string
-function createIconSvg(icon) {
-  const el = createElement(icon, {
-    width: 16,
-    height: 16,
-    stroke: "currentColor",
-    "stroke-width": 2,
-  });
-  return el.outerHTML;
-}
-
-// Node type configurations
-const NODE_CONFIGS = {
-  dialogue: {
-    label: "Dialogue",
-    color: "#3b82f6",
-    icon: createIconSvg(MessageSquare),
-    inputs: ["input"],
-    outputs: ["output"], // Default single output, overridden by responses if present
-    dynamicOutputs: true, // Signal that this node type can have dynamic outputs
-  },
-  hub: {
-    label: "Hub",
-    color: "#8b5cf6",
-    icon: createIconSvg(GitMerge),
-    inputs: ["input"],
-    outputs: ["out1", "out2", "out3", "out4"],
-  },
-  condition: {
-    label: "Condition",
-    color: "#f59e0b",
-    icon: createIconSvg(GitBranch),
-    inputs: ["input"],
-    outputs: ["true", "false"],
-  },
-  instruction: {
-    label: "Instruction",
-    color: "#10b981",
-    icon: createIconSvg(Zap),
-    inputs: ["input"],
-    outputs: ["output"],
-  },
-  jump: {
-    label: "Jump",
-    color: "#ef4444",
-    icon: createIconSvg(ArrowRight),
-    inputs: ["input"],
-    outputs: [],
-  },
-};
-
-// Custom styled node component (Shadow DOM for socket slots to work)
-class StoryarnNode extends LitElement {
-  static get properties() {
-    return {
-      data: { type: Object },
-      emit: { type: Function },
-      pagesMap: { type: Object },
-    };
-  }
-
-  // Shadow DOM styles using daisyUI CSS variables (they pierce Shadow DOM)
-  static styles = css`
-    :host {
-      display: block;
-    }
-
-    .node {
-      background: oklch(var(--b1, 0.2 0 0));
-      border-radius: 8px;
-      min-width: 180px;
-      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-      border: 1.5px solid var(--node-border-color, transparent);
-      transition: box-shadow 0.2s;
-    }
-
-    .node:hover {
-      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    }
-
-    .node.selected {
-      box-shadow: 0 0 0 3px oklch(var(--p, 0.6 0.2 250) / 0.5), 0 4px 6px -1px rgb(0 0 0 / 0.1);
-    }
-
-    .header {
-      padding: 8px 12px;
-      border-radius: 6px 6px 0 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: white;
-      font-weight: 500;
-      font-size: 13px;
-    }
-
-    .icon {
-      display: flex;
-      align-items: center;
-    }
-
-    .content {
-      padding: 8px 0;
-    }
-
-    .socket-row {
-      display: flex;
-      align-items: center;
-      padding: 4px 0;
-      font-size: 11px;
-      color: oklch(var(--bc, 0.8 0 0) / 0.7);
-    }
-
-    .socket-row.input {
-      justify-content: flex-start;
-      padding-left: 0;
-    }
-
-    .socket-row.output {
-      justify-content: flex-end;
-      padding-right: 0;
-    }
-
-    .socket-row .label {
-      padding: 0 8px;
-    }
-
-    .input-socket {
-      margin-left: -10px;
-    }
-
-    .output-socket {
-      margin-right: -10px;
-    }
-
-    .node-data {
-      font-size: 11px;
-      color: oklch(var(--bc, 0.8 0 0) / 0.6);
-      padding: 4px 12px 8px;
-      max-width: 160px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .condition-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 14px;
-      height: 14px;
-      font-size: 10px;
-      font-weight: bold;
-      background: oklch(var(--wa, 0.8 0.15 80) / 0.2);
-      color: oklch(var(--wa, 0.8 0.15 80));
-      border-radius: 50%;
-      margin-right: 2px;
-    }
-  `;
-
-  render() {
-    const node = this.data;
-    if (!node) return html``;
-
-    const config = NODE_CONFIGS[node.nodeType] || NODE_CONFIGS.dialogue;
-    const nodeData = node.nodeData || {};
-
-    // Get preview text based on node type
-    let preview = "";
-    if (node.nodeType === "dialogue") {
-      // Resolve speaker name from pagesMap
-      const speakerId = nodeData.speaker_page_id;
-      const speakerPage = speakerId ? this.pagesMap?.[String(speakerId)] : null;
-      const speakerName = speakerPage?.name || "";
-      // Strip HTML from text for preview
-      const textContent = nodeData.text
-        ? new DOMParser().parseFromString(nodeData.text, "text/html").body.textContent
-        : "";
-      preview = speakerName || textContent || "";
-    } else if (node.nodeType === "hub") {
-      preview = nodeData.label || "";
-    } else if (node.nodeType === "condition") {
-      preview = nodeData.expression || "";
-    } else if (node.nodeType === "instruction") {
-      preview = nodeData.action || "";
-    } else if (node.nodeType === "jump") {
-      preview = nodeData.target_flow || "";
-    }
-
-    // Calculate border color with opacity
-    const borderColor = `${config.color}40`;
-
-    return html`
-      <div
-        class="node ${node.selected ? "selected" : ""}"
-        style="--node-border-color: ${borderColor}"
-      >
-        <div class="header" style="background-color: ${config.color}">
-          <span class="icon">${unsafeSVG(config.icon)}</span>
-          <span>${config.label}</span>
-        </div>
-        <div class="content">
-          ${Object.entries(node.inputs || {}).map(
-            ([key, input]) => html`
-              <div class="socket-row input">
-                <rete-ref
-                  class="input-socket"
-                  .data=${{
-                    type: "socket",
-                    side: "input",
-                    key,
-                    nodeId: node.id,
-                    payload: input.socket,
-                  }}
-                  .emit=${this.emit}
-                ></rete-ref>
-                <span class="label">${key}</span>
-              </div>
-            `,
-          )}
-          ${Object.entries(node.outputs || {}).map(([key, output]) => {
-            // For dialogue nodes with responses, show response text as label
-            let outputLabel = key;
-            let hasCondition = false;
-            if (node.nodeType === "dialogue" && nodeData.responses?.length > 0) {
-              const response = nodeData.responses.find((r) => r.id === key);
-              outputLabel = response?.text || key;
-              hasCondition = !!response?.condition;
-            }
-            return html`
-              <div class="socket-row output">
-                ${hasCondition ? html`<span class="condition-badge" title="Has condition">?</span>` : ""}
-                <span class="label" title="${outputLabel}">${outputLabel}</span>
-                <rete-ref
-                  class="output-socket"
-                  .data=${{
-                    type: "socket",
-                    side: "output",
-                    key,
-                    nodeId: node.id,
-                    payload: output.socket,
-                  }}
-                  .emit=${this.emit}
-                ></rete-ref>
-              </div>
-            `;
-          })}
-        </div>
-        ${preview ? html`<div class="node-data">${preview}</div>` : ""}
-      </div>
-    `;
-  }
-}
-
-customElements.define("storyarn-node", StoryarnNode);
-
-// Custom socket component - smaller and subtle
-class StoryarnSocket extends LitElement {
-  static get properties() {
-    return {
-      data: { type: Object },
-    };
-  }
-
-  static styles = css`
-    :host {
-      display: inline-block;
-    }
-
-    .socket {
-      width: 10px;
-      height: 10px;
-      background: oklch(var(--bc, 0.7 0 0) / 0.25);
-      border: 2px solid oklch(var(--bc, 0.7 0 0) / 0.5);
-      border-radius: 50%;
-      cursor: crosshair;
-      transition: all 0.15s ease;
-    }
-
-    .socket:hover {
-      background: oklch(var(--p, 0.6 0.2 250));
-      border-color: oklch(var(--p, 0.6 0.2 250));
-      transform: scale(1.3);
-    }
-  `;
-
-  render() {
-    return html`<div class="socket" title="${this.data?.name || ""}"></div>`;
-  }
-}
-
-customElements.define("storyarn-socket", StoryarnSocket);
-
-// Custom connection component - thinner lines with label support
-class StoryarnConnection extends LitElement {
-  static get properties() {
-    return {
-      path: { type: String },
-      start: { type: Object },
-      end: { type: Object },
-      data: { type: Object },
-      selected: { type: Boolean },
-    };
-  }
-
-  static styles = css`
-    :host {
-      display: contents;
-    }
-
-    svg {
-      overflow: visible;
-      position: absolute;
-      pointer-events: none;
-      width: 9999px;
-      height: 9999px;
-    }
-
-    path {
-      fill: none;
-      stroke: oklch(var(--bc, 0.7 0 0) / 0.4);
-      stroke-width: 2px;
-      pointer-events: auto;
-      transition: stroke 0.15s ease, stroke-width 0.15s ease;
-      cursor: pointer;
-    }
-
-    path:hover,
-    path.selected {
-      stroke: oklch(var(--p, 0.6 0.2 250));
-      stroke-width: 3px;
-    }
-
-    .label-group {
-      pointer-events: auto;
-      cursor: pointer;
-    }
-
-    .label-bg {
-      fill: oklch(var(--b1, 0.2 0 0));
-      stroke: oklch(var(--bc, 0.7 0 0) / 0.3);
-      stroke-width: 1px;
-      rx: 3;
-      ry: 3;
-    }
-
-    .label-text {
-      fill: oklch(var(--bc, 0.8 0 0));
-      font-size: 10px;
-      font-family: system-ui, sans-serif;
-      dominant-baseline: middle;
-      text-anchor: middle;
-    }
-  `;
-
-  // Calculate midpoint of bezier curve path
-  getMidpoint() {
-    if (!this.path) return null;
-
-    // Parse the path to get control points
-    // Path format: M startX,startY C cp1X,cp1Y cp2X,cp2Y endX,endY
-    const pathMatch = this.path.match(
-      /M\s*([\d.-]+)[,\s]*([\d.-]+)\s*C\s*([\d.-]+)[,\s]*([\d.-]+)\s*([\d.-]+)[,\s]*([\d.-]+)\s*([\d.-]+)[,\s]*([\d.-]+)/,
-    );
-
-    if (!pathMatch) return null;
-
-    const [, x0, y0, x1, y1, x2, y2, x3, y3] = pathMatch.map(Number);
-
-    // Calculate midpoint of cubic bezier at t=0.5
-    const t = 0.5;
-    const mt = 1 - t;
-    const mx = mt ** 3 * x0 + 3 * mt ** 2 * t * x1 + 3 * mt * t ** 2 * x2 + t ** 3 * x3;
-    const my = mt ** 3 * y0 + 3 * mt ** 2 * t * y1 + 3 * mt * t ** 2 * y2 + t ** 3 * y3;
-
-    return { x: mx, y: my };
-  }
-
-  render() {
-    const label = this.data?.label;
-    const midpoint = label ? this.getMidpoint() : null;
-    const labelWidth = label ? Math.min(label.length * 6 + 10, 80) : 0;
-
-    return html`
-      <svg data-testid="connection">
-        <path
-          d="${this.path}"
-          class="${this.selected ? "selected" : ""}"
-          @dblclick=${this.handleDoubleClick}
-        ></path>
-        ${
-          midpoint && label
-            ? html`
-              <g
-                class="label-group"
-                transform="translate(${midpoint.x}, ${midpoint.y})"
-                @dblclick=${this.handleDoubleClick}
-              >
-                <rect
-                  class="label-bg"
-                  x="${-labelWidth / 2}"
-                  y="-9"
-                  width="${labelWidth}"
-                  height="18"
-                ></rect>
-                <text class="label-text">${label}</text>
-              </g>
-            `
-            : ""
-        }
-      </svg>
-    `;
-  }
-
-  handleDoubleClick(e) {
-    e.stopPropagation();
-    if (this.data?.id) {
-      this.dispatchEvent(
-        new CustomEvent("connection-dblclick", {
-          detail: { connectionId: this.data.id },
-          bubbles: true,
-          composed: true,
-        }),
-      );
-    }
-  }
-}
-
-customElements.define("storyarn-connection", StoryarnConnection);
-
-// Custom node class
-class FlowNode extends ClassicPreset.Node {
-  constructor(type, id, data = {}) {
-    const config = NODE_CONFIGS[type] || NODE_CONFIGS.dialogue;
-    super(config.label);
-
-    this.nodeType = type;
-    this.nodeId = id;
-    this.nodeData = data;
-
-    // Add inputs
-    for (const inputName of config.inputs) {
-      this.addInput(inputName, new ClassicPreset.Input(new ClassicPreset.Socket("flow")));
-    }
-
-    // Add outputs - check for dynamic outputs (responses in dialogue nodes)
-    if (config.dynamicOutputs && type === "dialogue" && data.responses?.length > 0) {
-      // Add one output per response
-      for (const response of data.responses) {
-        this.addOutput(response.id, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
-      }
-    } else {
-      // Add default outputs
-      for (const outputName of config.outputs) {
-        this.addOutput(outputName, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
-      }
-    }
-  }
-}
+// Import our custom components and config
+import "./flow_canvas/components/index.js";
+import { FlowNode } from "./flow_canvas/flow_node.js";
 
 export const FlowCanvas = {
   mounted() {
@@ -475,6 +24,19 @@ export const FlowCanvas = {
     const container = this.el;
     const flowData = JSON.parse(container.dataset.flow || "{}");
     this.pagesMap = JSON.parse(container.dataset.pages || "{}");
+
+    // Collaboration data
+    this.nodeLocks = JSON.parse(container.dataset.locks || "{}");
+    this.currentUserId = Number.parseInt(container.dataset.userId, 10);
+    this.currentUserColor = container.dataset.userColor || "#3b82f6";
+    this.remoteCursors = new Map();
+
+    // Create cursor overlay container
+    this.cursorOverlay = document.createElement("div");
+    this.cursorOverlay.className = "cursor-overlay";
+    this.cursorOverlay.style.cssText =
+      "position: absolute; inset: 0; pointer-events: none; z-index: 100;";
+    container.appendChild(this.cursorOverlay);
 
     // Create the editor
     this.editor = new NodeEditor();
@@ -513,7 +75,6 @@ export const FlowCanvas = {
             `;
           },
           connection: (context) => {
-            // Store connection data for lookup
             const conn = context.payload;
             return ({ path }) => {
               const connData = this.connectionDataMap.get(conn.id);
@@ -539,7 +100,6 @@ export const FlowCanvas = {
     // Track nodes by database ID
     this.nodeMap = new Map();
     this.debounceTimers = {};
-    // Flag to prevent sending events when adding from server
     this.isLoadingFromServer = false;
 
     // Load initial flow data
@@ -556,7 +116,7 @@ export const FlowCanvas = {
     });
 
     // Fit view to content if there are nodes
-    if (flowData.nodes && flowData.nodes.length > 0) {
+    if (flowData.nodes?.length > 0) {
       setTimeout(async () => {
         await AreaExtensions.zoomAt(this.area, this.editor.getNodes());
       }, 100);
@@ -566,12 +126,9 @@ export const FlowCanvas = {
   async loadFlow(flowData) {
     this.isLoadingFromServer = true;
     try {
-      // Create nodes
       for (const nodeData of flowData.nodes || []) {
         await this.addNodeToEditor(nodeData);
       }
-
-      // Create connections
       for (const connData of flowData.connections || []) {
         await this.addConnectionToEditor(connData);
       }
@@ -608,7 +165,6 @@ export const FlowCanvas = {
     );
     connection.id = `conn-${connData.id}`;
 
-    // Store connection data for label rendering
     this.connectionDataMap.set(connection.id, {
       id: connData.id,
       label: connData.label,
@@ -620,11 +176,10 @@ export const FlowCanvas = {
   },
 
   setupEventHandlers() {
-    // Track selected node/connection for keyboard shortcuts
     this.selectedNodeId = null;
     this.selectedConnectionId = null;
 
-    // Listen for connection double-clicks (bubbles from Shadow DOM)
+    // Listen for connection double-clicks
     this.el.addEventListener("connection-dblclick", (e) => {
       const { connectionId } = e.detail;
       if (connectionId) {
@@ -696,6 +251,12 @@ export const FlowCanvas = {
       return context;
     });
 
+    // Cursor tracking
+    this.lastCursorSend = 0;
+    this.cursorThrottleMs = 50;
+    this.mouseMoveHandler = (e) => this.handleMouseMove(e);
+    this.el.addEventListener("mousemove", this.mouseMoveHandler);
+
     // Handle server events
     this.handleEvent("flow_updated", (data) => this.handleFlowUpdated(data));
     this.handleEvent("node_added", (data) => this.handleNodeAdded(data));
@@ -707,7 +268,154 @@ export const FlowCanvas = {
     this.handleEvent("deselect_connection", () => {
       this.selectedConnectionId = null;
     });
+
+    // Collaboration events
+    this.handleEvent("cursor_update", (data) => this.handleCursorUpdate(data));
+    this.handleEvent("cursor_leave", (data) => this.handleCursorLeave(data));
+    this.handleEvent("locks_updated", (data) => this.handleLocksUpdated(data));
   },
+
+  // =============================================================================
+  // Cursor & Collaboration Handlers
+  // =============================================================================
+
+  handleMouseMove(e) {
+    const now = Date.now();
+    if (now - this.lastCursorSend < this.cursorThrottleMs) return;
+    this.lastCursorSend = now;
+
+    const rect = this.el.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const transform = this.area.area.transform;
+    const canvasX = (x - transform.x) / transform.k;
+    const canvasY = (y - transform.y) / transform.k;
+
+    this.pushEvent("cursor_moved", { x: canvasX, y: canvasY });
+  },
+
+  handleCursorUpdate(data) {
+    if (data.user_id === this.currentUserId) return;
+
+    let cursorEl = this.remoteCursors.get(data.user_id);
+    if (!cursorEl) {
+      cursorEl = this.createRemoteCursor(data);
+      this.remoteCursors.set(data.user_id, cursorEl);
+      this.cursorOverlay.appendChild(cursorEl);
+    }
+
+    const transform = this.area.area.transform;
+    const screenX = data.x * transform.k + transform.x;
+    const screenY = data.y * transform.k + transform.y;
+
+    cursorEl.style.transform = `translate(${screenX}px, ${screenY}px)`;
+    cursorEl.style.opacity = "1";
+
+    if (cursorEl._fadeTimer) clearTimeout(cursorEl._fadeTimer);
+    cursorEl._fadeTimer = setTimeout(() => {
+      cursorEl.style.opacity = "0.3";
+    }, 3000);
+  },
+
+  handleCursorLeave(data) {
+    const cursorEl = this.remoteCursors.get(data.user_id);
+    if (cursorEl) {
+      cursorEl.remove();
+      this.remoteCursors.delete(data.user_id);
+    }
+  },
+
+  createRemoteCursor(data) {
+    const cursor = document.createElement("div");
+    cursor.className = "remote-cursor";
+    cursor.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      transition: transform 0.05s linear, opacity 0.3s ease;
+      z-index: 100;
+    `;
+
+    const emailName = data.user_email?.split("@")[0] || "User";
+
+    cursor.innerHTML = `
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
+        <path d="M5.5 3.21V20.8c0 .45.54.67.85.35l4.86-4.86a.5.5 0 0 1 .35-.15h6.87c.48 0 .72-.58.38-.92L6.35 2.86a.5.5 0 0 0-.85.35Z" fill="${data.user_color}" stroke="white" stroke-width="1.5"/>
+      </svg>
+      <span style="
+        position: absolute;
+        top: 20px;
+        left: 12px;
+        background: ${data.user_color};
+        color: white;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        white-space: nowrap;
+        font-family: system-ui, sans-serif;
+      ">${emailName}</span>
+    `;
+
+    return cursor;
+  },
+
+  handleLocksUpdated(data) {
+    this.nodeLocks = data.locks || {};
+    this.updateLockIndicators();
+  },
+
+  updateLockIndicators() {
+    for (const [nodeId, node] of this.nodeMap.entries()) {
+      const lockInfo = this.nodeLocks[nodeId];
+      const nodeEl = this.area.nodeViews.get(node.id)?.element;
+      if (!nodeEl) continue;
+
+      const existingLock = nodeEl.querySelector(".node-lock-indicator");
+      if (existingLock) existingLock.remove();
+
+      if (lockInfo && lockInfo.user_id !== this.currentUserId) {
+        const lockEl = document.createElement("div");
+        lockEl.className = "node-lock-indicator";
+        const emailName = lockInfo.user_email?.split("@")[0] || "User";
+        lockEl.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 20 20" fill="${lockInfo.user_color}">
+            <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z" clip-rule="evenodd"/>
+          </svg>
+          <span>${emailName}</span>
+        `;
+        lockEl.style.cssText = `
+          position: absolute;
+          top: -8px;
+          right: -8px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 6px;
+          background: white;
+          border: 1px solid ${lockInfo.user_color};
+          border-radius: 12px;
+          font-size: 10px;
+          color: ${lockInfo.user_color};
+          font-family: system-ui, sans-serif;
+          z-index: 10;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        `;
+        nodeEl.style.position = "relative";
+        nodeEl.appendChild(lockEl);
+      }
+    }
+  },
+
+  isNodeLocked(nodeId) {
+    const lockInfo = this.nodeLocks[nodeId];
+    return lockInfo && lockInfo.user_id !== this.currentUserId;
+  },
+
+  // =============================================================================
+  // Node & Connection Handlers
+  // =============================================================================
 
   debounceNodeMoved(nodeId, position) {
     if (this.debounceTimers[nodeId]) {
@@ -725,7 +433,6 @@ export const FlowCanvas = {
   },
 
   async handleFlowUpdated(data) {
-    // Clear existing nodes and connections
     for (const conn of this.editor.getConnections()) {
       await this.editor.removeConnection(conn.id);
     }
@@ -734,8 +441,6 @@ export const FlowCanvas = {
     }
     this.nodeMap.clear();
     this.connectionDataMap.clear();
-
-    // Reload flow
     await this.loadFlow(data);
   },
 
@@ -748,8 +453,6 @@ export const FlowCanvas = {
     if (node) {
       await this.editor.removeNode(node.id);
       this.nodeMap.delete(data.id);
-
-      // Clear selection if the removed node was selected
       if (this.selectedNodeId === data.id) {
         this.selectedNodeId = null;
       }
@@ -761,12 +464,10 @@ export const FlowCanvas = {
     const existingNode = this.nodeMap.get(id);
     if (!existingNode) return;
 
-    // For dialogue nodes with changing responses, we need to rebuild the node
-    // because Rete.js doesn't easily support adding/removing outputs dynamically
+    // For dialogue nodes with changing responses, rebuild the node
     if (existingNode.nodeType === "dialogue") {
       const position = await this.area.getNodePosition(existingNode.id);
 
-      // Remove existing connections to/from this node
       this.isLoadingFromServer = true;
       const connections = this.editor.getConnections();
       const affectedConnections = [];
@@ -782,11 +483,9 @@ export const FlowCanvas = {
         }
       }
 
-      // Remove old node
       await this.editor.removeNode(existingNode.id);
       this.nodeMap.delete(id);
 
-      // Create new node with updated data
       const newNode = new FlowNode(existingNode.nodeType, id, nodeData);
       newNode.id = `node-${id}`;
 
@@ -794,12 +493,10 @@ export const FlowCanvas = {
       await this.area.translate(newNode.id, position);
       this.nodeMap.set(id, newNode);
 
-      // Re-add connections that still have valid outputs
       for (const connInfo of affectedConnections) {
         const sourceNode = this.nodeMap.get(connInfo.source);
         const targetNode = this.nodeMap.get(connInfo.target);
         if (sourceNode && targetNode) {
-          // Check if the output still exists
           if (
             sourceNode.outputs[connInfo.sourceOutput] &&
             targetNode.inputs[connInfo.targetInput]
@@ -817,7 +514,6 @@ export const FlowCanvas = {
 
       this.isLoadingFromServer = false;
     } else {
-      // For other node types, just update the data and trigger a re-render
       existingNode.nodeData = nodeData;
       await this.area.update("node", existingNode.id);
     }
@@ -856,22 +552,23 @@ export const FlowCanvas = {
 
   handleConnectionUpdated(data) {
     const connId = `conn-${data.id}`;
-    // Update the connection data map
     this.connectionDataMap.set(connId, {
       id: data.id,
       label: data.label,
       condition: data.condition,
     });
 
-    // Force re-render of the connection by triggering area update
     const conn = this.editor.getConnections().find((c) => c.id === connId);
     if (conn) {
       this.area.update("connection", conn.id);
     }
   },
 
+  // =============================================================================
+  // Keyboard Handler
+  // =============================================================================
+
   handleKeyboard(e) {
-    // Ignore if focus is in an input field
     if (
       e.target.tagName === "INPUT" ||
       e.target.tagName === "TEXTAREA" ||
@@ -883,6 +580,7 @@ export const FlowCanvas = {
     // Delete/Backspace - delete selected node
     if ((e.key === "Delete" || e.key === "Backspace") && this.selectedNodeId) {
       e.preventDefault();
+      if (this.isNodeLocked(this.selectedNodeId)) return;
       this.pushEvent("delete_node", { id: this.selectedNodeId });
       this.selectedNodeId = null;
       return;
@@ -904,30 +602,45 @@ export const FlowCanvas = {
     }
   },
 
+  // =============================================================================
+  // Cleanup
+  // =============================================================================
+
   destroyed() {
-    // Remove keyboard listener
     if (this.keyboardHandler) {
       document.removeEventListener("keydown", this.keyboardHandler);
     }
 
-    // Clear all debounce timers
+    if (this.mouseMoveHandler) {
+      this.el.removeEventListener("mousemove", this.mouseMoveHandler);
+    }
+
     for (const timer of Object.values(this.debounceTimers)) {
       clearTimeout(timer);
     }
 
-    // Remove minimap element from DOM (it doesn't have a destroy method)
+    for (const cursor of this.remoteCursors.values()) {
+      if (cursor._fadeTimer) clearTimeout(cursor._fadeTimer);
+    }
+
+    if (this.cursorOverlay) {
+      this.cursorOverlay.remove();
+    }
+
     if (this.minimap?.element) {
       this.minimap.element.remove();
     }
 
-    // Destroy area plugin
     if (this.area) {
       this.area.destroy();
     }
   },
 };
 
-// Inject global styles for canvas and minimap
+// =============================================================================
+// Global Styles
+// =============================================================================
+
 const reteStyles = document.createElement("style");
 reteStyles.textContent = `
   /* Canvas background with subtle dot grid */

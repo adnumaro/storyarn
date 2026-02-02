@@ -4,8 +4,12 @@ defmodule StoryarnWeb.FlowLive.Show do
   use StoryarnWeb, :live_view
   use StoryarnWeb.LiveHelpers.Authorize
 
+  import StoryarnWeb.CollaborationComponents
+  import StoryarnWeb.Components.SaveIndicator
+  import StoryarnWeb.FlowLive.Components.NodeTypeHelpers
   import StoryarnWeb.Layouts, only: [flash_group: 1]
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Pages
@@ -13,6 +17,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Repo
 
   @node_types FlowNode.node_types()
+  @collab_toast_duration 3000
 
   @impl true
   def render(assigns) do
@@ -39,9 +44,10 @@ defmodule StoryarnWeb.FlowLive.Show do
             {gettext("Main")}
           </span>
         </div>
-        <div :if={@can_edit} class="flex-none flex items-center gap-2">
-          <.save_indicator status={@save_status} />
-          <div class="dropdown dropdown-end">
+        <div class="flex-none flex items-center gap-4">
+          <.online_users users={@online_users} current_user_id={@current_scope.user.id} />
+          <.save_indicator :if={@can_edit} status={@save_status} />
+          <div :if={@can_edit} class="dropdown dropdown-end">
             <button type="button" tabindex="0" class="btn btn-primary btn-sm gap-2">
               <.icon name="plus" class="size-4" />
               {gettext("Add Node")}
@@ -61,6 +67,14 @@ defmodule StoryarnWeb.FlowLive.Show do
         </div>
       </header>
 
+      <%!-- Collaboration Toast --%>
+      <.collab_toast
+        :if={@collab_toast}
+        action={@collab_toast.action}
+        user_email={@collab_toast.user_email}
+        user_color={@collab_toast.user_color}
+      />
+
       <%!-- Main content: Canvas + Properties Panel --%>
       <div class="flex-1 flex overflow-hidden">
         <%!-- Canvas --%>
@@ -72,6 +86,9 @@ defmodule StoryarnWeb.FlowLive.Show do
             class="absolute inset-0"
             data-flow={Jason.encode!(@flow_data)}
             data-pages={Jason.encode!(pages_map(@leaf_pages))}
+            data-locks={Jason.encode!(@node_locks)}
+            data-user-id={@current_scope.user.id}
+            data-user-color={Collaboration.user_color(@current_scope.user.id)}
           >
           </div>
         </div>
@@ -195,50 +212,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       />
     </div>
     """
-  end
-
-  attr :status, :atom, required: true
-
-  defp save_indicator(assigns) do
-    ~H"""
-    <div :if={@status != :idle} class="flex items-center gap-2 text-sm">
-      <span :if={@status == :saving} class="loading loading-spinner loading-xs"></span>
-      <.icon :if={@status == :saved} name="check" class="size-4 text-success" />
-      <span :if={@status == :saving} class="text-base-content/70">{gettext("Saving...")}</span>
-      <span :if={@status == :saved} class="text-success">{gettext("Saved")}</span>
-    </div>
-    """
-  end
-
-  attr :type, :string, required: true
-
-  defp node_type_icon(assigns) do
-    icon =
-      case assigns.type do
-        "dialogue" -> "message-square"
-        "hub" -> "git-merge"
-        "condition" -> "git-branch"
-        "instruction" -> "zap"
-        "jump" -> "arrow-right"
-        _ -> "circle"
-      end
-
-    assigns = assign(assigns, :icon, icon)
-
-    ~H"""
-    <.icon name={@icon} class="size-4" />
-    """
-  end
-
-  defp node_type_label(type) do
-    case type do
-      "dialogue" -> gettext("Dialogue")
-      "hub" -> gettext("Hub")
-      "condition" -> gettext("Condition")
-      "instruction" -> gettext("Instruction")
-      "jump" -> gettext("Jump")
-      _ -> type
-    end
   end
 
   attr :node, :map, required: true
@@ -409,45 +382,77 @@ defmodule StoryarnWeb.FlowLive.Show do
            project_slug
          ) do
       {:ok, project, membership} ->
-        case Flows.get_flow(project.id, flow_id) do
-          nil ->
-            {:ok,
-             socket
-             |> put_flash(:error, gettext("Flow not found."))
-             |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/flows")}
-
-          flow ->
-            project = Repo.preload(project, :workspace)
-            can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
-            flow_data = Flows.serialize_for_canvas(flow)
-            leaf_pages = Pages.list_leaf_pages(project.id)
-
-            socket =
-              socket
-              |> assign(:project, project)
-              |> assign(:workspace, project.workspace)
-              |> assign(:membership, membership)
-              |> assign(:flow, flow)
-              |> assign(:flow_data, flow_data)
-              |> assign(:can_edit, can_edit)
-              |> assign(:node_types, @node_types)
-              |> assign(:leaf_pages, leaf_pages)
-              |> assign(:selected_node, nil)
-              |> assign(:node_form, nil)
-              |> assign(:selected_connection, nil)
-              |> assign(:connection_form, nil)
-              |> assign(:save_status, :idle)
-              |> assign(:preview_show, false)
-              |> assign(:preview_node, nil)
-
-            {:ok, socket}
-        end
+        mount_with_project(socket, workspace_slug, project_slug, flow_id, project, membership)
 
       {:error, _reason} ->
         {:ok,
          socket
          |> put_flash(:error, gettext("You don't have access to this project."))
          |> redirect(to: ~p"/workspaces")}
+    end
+  end
+
+  defp mount_with_project(socket, workspace_slug, project_slug, flow_id, project, membership) do
+    case Flows.get_flow(project.id, flow_id) do
+      nil ->
+        {:ok,
+         socket
+         |> put_flash(:error, gettext("Flow not found."))
+         |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/flows")}
+
+      flow ->
+        {:ok, setup_flow_view(socket, project, membership, flow)}
+    end
+  end
+
+  defp setup_flow_view(socket, project, membership, flow) do
+    project = Repo.preload(project, :workspace)
+    can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+    flow_data = Flows.serialize_for_canvas(flow)
+    leaf_pages = Pages.list_leaf_pages(project.id)
+    user = socket.assigns.current_scope.user
+
+    setup_collaboration(socket, flow, user)
+
+    {online_users, node_locks} = get_initial_collab_state(socket, flow)
+
+    socket
+    |> assign(:project, project)
+    |> assign(:workspace, project.workspace)
+    |> assign(:membership, membership)
+    |> assign(:flow, flow)
+    |> assign(:flow_data, flow_data)
+    |> assign(:can_edit, can_edit)
+    |> assign(:node_types, @node_types)
+    |> assign(:leaf_pages, leaf_pages)
+    |> assign(:selected_node, nil)
+    |> assign(:node_form, nil)
+    |> assign(:selected_connection, nil)
+    |> assign(:connection_form, nil)
+    |> assign(:save_status, :idle)
+    |> assign(:preview_show, false)
+    |> assign(:preview_node, nil)
+    |> assign(:online_users, online_users)
+    |> assign(:node_locks, node_locks)
+    |> assign(:collab_toast, nil)
+    |> assign(:remote_cursors, %{})
+  end
+
+  defp setup_collaboration(socket, flow, user) do
+    if connected?(socket) do
+      Collaboration.subscribe_presence(flow.id)
+      Collaboration.subscribe_cursors(flow.id)
+      Collaboration.subscribe_locks(flow.id)
+      Collaboration.subscribe_changes(flow.id)
+      Collaboration.track_presence(self(), flow.id, user)
+    end
+  end
+
+  defp get_initial_collab_state(socket, flow) do
+    if connected?(socket) do
+      {Collaboration.list_online_users(flow.id), Collaboration.list_locks(flow.id)}
+    else
+      {[], %{}}
     end
   end
 
@@ -483,7 +488,8 @@ defmodule StoryarnWeb.FlowLive.Show do
              socket
              |> assign(:flow, flow)
              |> assign(:flow_data, flow_data)
-             |> push_event("node_added", node_data)}
+             |> push_event("node_added", node_data)
+             |> broadcast_change(:node_added, %{node_data: node_data})}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, gettext("Could not create node."))}
@@ -495,9 +501,41 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
+  def handle_event("cursor_moved", %{"x" => x, "y" => y}, socket) do
+    user = socket.assigns.current_scope.user
+    Collaboration.broadcast_cursor(socket.assigns.flow.id, user, x, y)
+    {:noreply, socket}
+  end
+
   def handle_event("node_selected", %{"id" => node_id}, socket) do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
     form = node_data_to_form(node)
+    user = socket.assigns.current_scope.user
+
+    # Try to acquire lock if user can edit
+    socket =
+      if socket.assigns.can_edit do
+        case Collaboration.acquire_lock(socket.assigns.flow.id, node_id, user) do
+          {:ok, _lock_info} ->
+            broadcast_lock_change(socket, :node_locked, node_id)
+            node_locks = Collaboration.list_locks(socket.assigns.flow.id)
+
+            socket
+            |> assign(:node_locks, node_locks)
+            |> push_event("locks_updated", %{locks: node_locks})
+
+          {:error, :already_locked, lock_info} ->
+            put_flash(
+              socket,
+              :info,
+              gettext("This node is being edited by %{user}",
+                user: get_email_name(lock_info.user_email)
+              )
+            )
+        end
+      else
+        socket
+      end
 
     {:noreply,
      socket
@@ -506,6 +544,22 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("deselect_node", _params, socket) do
+    # Release lock if we have one
+    socket =
+      if socket.assigns.selected_node && socket.assigns.can_edit do
+        node_id = socket.assigns.selected_node.id
+        user_id = socket.assigns.current_scope.user.id
+        Collaboration.release_lock(socket.assigns.flow.id, node_id, user_id)
+        broadcast_lock_change(socket, :node_unlocked, node_id)
+        node_locks = Collaboration.list_locks(socket.assigns.flow.id)
+
+        socket
+        |> assign(:node_locks, node_locks)
+        |> push_event("locks_updated", %{locks: node_locks})
+      else
+        socket
+      end
+
     {:noreply,
      socket
      |> assign(:selected_node, nil)
@@ -553,6 +607,11 @@ defmodule StoryarnWeb.FlowLive.Show do
                id: updated_connection.id,
                label: updated_connection.label,
                condition: updated_connection.condition
+             })
+             |> broadcast_change(:connection_updated, %{
+               connection_id: updated_connection.id,
+               label: updated_connection.label,
+               condition: updated_connection.condition
              })}
 
           {:error, _} ->
@@ -583,6 +642,10 @@ defmodule StoryarnWeb.FlowLive.Show do
              |> push_event("connection_removed", %{
                source_node_id: connection.source_node_id,
                target_node_id: connection.target_node_id
+             })
+             |> broadcast_change(:connection_deleted, %{
+               source_node_id: connection.source_node_id,
+               target_node_id: connection.target_node_id
              })}
 
           {:error, _} ->
@@ -601,7 +664,11 @@ defmodule StoryarnWeb.FlowLive.Show do
     case Flows.update_node_position(node, %{position_x: x, position_y: y}) do
       {:ok, _} ->
         schedule_save_status_reset()
-        {:noreply, assign(socket, :save_status, :saved)}
+
+        {:noreply,
+         socket
+         |> assign(:save_status, :saved)
+         |> broadcast_change(:node_moved, %{node_id: node_id, x: x, y: y})}
 
       {:error, _} ->
         {:noreply, socket}
@@ -638,33 +705,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("update_node_text", %{"id" => node_id, "content" => content}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        node = Flows.get_node!(socket.assigns.flow.id, node_id)
-        updated_data = Map.put(node.data, "text", content)
-
-        case Flows.update_node_data(node, updated_data) do
-          {:ok, updated_node} ->
-            flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
-            flow_data = Flows.serialize_for_canvas(flow)
-            schedule_save_status_reset()
-
-            # Update selected_node if this is the currently selected node
-            socket =
-              if socket.assigns.selected_node && socket.assigns.selected_node.id == node.id do
-                form = node_data_to_form(updated_node)
-                assign(socket, selected_node: updated_node, node_form: form)
-              else
-                socket
-              end
-
-            {:noreply,
-             socket
-             |> assign(:flow, flow)
-             |> assign(:flow_data, flow_data)
-             |> assign(:save_status, :saved)}
-
-          {:error, _} ->
-            {:noreply, socket}
-        end
+        do_update_node_text(socket, node_id, content)
 
       {:error, :unauthorized} ->
         {:noreply, socket}
@@ -709,7 +750,11 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
-  def handle_event("remove_response", %{"response-id" => response_id, "node-id" => node_id}, socket) do
+  def handle_event(
+        "remove_response",
+        %{"response-id" => response_id, "node-id" => node_id},
+        socket
+      ) do
     case authorize(socket, :edit_content) do
       :ok ->
         node = Flows.get_node!(socket.assigns.flow.id, node_id)
@@ -750,35 +795,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       ) do
     case authorize(socket, :edit_content) do
       :ok ->
-        node = Flows.get_node!(socket.assigns.flow.id, node_id)
-        responses = node.data["responses"] || []
-
-        updated_responses =
-          Enum.map(responses, fn r ->
-            if r["id"] == response_id, do: Map.put(r, "text", text), else: r
-          end)
-
-        updated_data = Map.put(node.data, "responses", updated_responses)
-
-        case Flows.update_node_data(node, updated_data) do
-          {:ok, updated_node} ->
-            flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
-            flow_data = Flows.serialize_for_canvas(flow)
-            form = node_data_to_form(updated_node)
-            schedule_save_status_reset()
-
-            {:noreply,
-             socket
-             |> assign(:flow, flow)
-             |> assign(:flow_data, flow_data)
-             |> assign(:selected_node, updated_node)
-             |> assign(:node_form, form)
-             |> assign(:save_status, :saved)
-             |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
-
-          {:error, _} ->
-            {:noreply, socket}
-        end
+        do_update_response_field(socket, node_id, response_id, "text", text)
 
       {:error, :unauthorized} ->
         {:noreply, socket}
@@ -792,40 +809,9 @@ defmodule StoryarnWeb.FlowLive.Show do
       ) do
     case authorize(socket, :edit_content) do
       :ok ->
-        node = Flows.get_node!(socket.assigns.flow.id, node_id)
-        responses = node.data["responses"] || []
-
-        updated_responses =
-          Enum.map(responses, fn r ->
-            if r["id"] == response_id do
-              # Store nil if empty string for cleaner data
-              Map.put(r, "condition", if(condition == "", do: nil, else: condition))
-            else
-              r
-            end
-          end)
-
-        updated_data = Map.put(node.data, "responses", updated_responses)
-
-        case Flows.update_node_data(node, updated_data) do
-          {:ok, updated_node} ->
-            flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
-            flow_data = Flows.serialize_for_canvas(flow)
-            form = node_data_to_form(updated_node)
-            schedule_save_status_reset()
-
-            {:noreply,
-             socket
-             |> assign(:flow, flow)
-             |> assign(:flow_data, flow_data)
-             |> assign(:selected_node, updated_node)
-             |> assign(:node_form, form)
-             |> assign(:save_status, :saved)
-             |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
-
-          {:error, _} ->
-            {:noreply, socket}
-        end
+        # Store nil if empty string for cleaner data
+        value = if condition == "", do: nil, else: condition
+        do_update_response_field(socket, node_id, response_id, "condition", value)
 
       {:error, :unauthorized} ->
         {:noreply, socket}
@@ -835,24 +821,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("delete_node", %{"id" => node_id}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        node = Flows.get_node!(socket.assigns.flow.id, node_id)
-
-        case Flows.delete_node(node) do
-          {:ok, _} ->
-            flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
-            flow_data = Flows.serialize_for_canvas(flow)
-
-            {:noreply,
-             socket
-             |> assign(:flow, flow)
-             |> assign(:flow_data, flow_data)
-             |> assign(:selected_node, nil)
-             |> assign(:node_form, nil)
-             |> push_event("node_removed", %{id: node_id})}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not delete node."))}
-        end
+        do_delete_node(socket, node_id)
 
       {:error, :unauthorized} ->
         {:noreply,
@@ -888,7 +857,8 @@ defmodule StoryarnWeb.FlowLive.Show do
              socket
              |> assign(:flow, flow)
              |> assign(:flow_data, flow_data)
-             |> push_event("node_added", node_data)}
+             |> push_event("node_added", node_data)
+             |> broadcast_change(:node_added, %{node_data: node_data})}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, gettext("Could not duplicate node."))}
@@ -923,18 +893,21 @@ defmodule StoryarnWeb.FlowLive.Show do
         flow_data = Flows.serialize_for_canvas(flow)
         schedule_save_status_reset()
 
+        connection_data = %{
+          id: conn.id,
+          source_node_id: source_id,
+          source_pin: source_pin,
+          target_node_id: target_id,
+          target_pin: target_pin
+        }
+
         {:noreply,
          socket
          |> assign(:flow, flow)
          |> assign(:flow_data, flow_data)
          |> assign(:save_status, :saved)
-         |> push_event("connection_added", %{
-           id: conn.id,
-           source_node_id: source_id,
-           source_pin: source_pin,
-           target_node_id: target_id,
-           target_pin: target_pin
-         })}
+         |> push_event("connection_added", connection_data)
+         |> broadcast_change(:connection_added, %{connection_data: connection_data})}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, gettext("Could not create connection."))}
@@ -956,7 +929,11 @@ defmodule StoryarnWeb.FlowLive.Show do
      socket
      |> assign(:flow, flow)
      |> assign(:flow_data, flow_data)
-     |> assign(:save_status, :saved)}
+     |> assign(:save_status, :saved)
+     |> broadcast_change(:connection_deleted, %{
+       source_node_id: source_id,
+       target_node_id: target_id
+     })}
   end
 
   def handle_event("start_preview", %{"id" => node_id}, socket) do
@@ -977,19 +954,85 @@ defmodule StoryarnWeb.FlowLive.Show do
     {:noreply, assign(socket, preview_show: false, preview_node: nil)}
   end
 
-  defp schedule_save_status_reset do
-    Process.send_after(self(), :reset_save_status, 2000)
+  # Collaboration: Presence diff
+  def handle_info(%{event: "presence_diff", payload: _diff}, socket) do
+    online_users = Collaboration.list_online_users(socket.assigns.flow.id)
+    {:noreply, assign(socket, :online_users, online_users)}
   end
 
-  defp default_node_data(type) do
-    case type do
-      "dialogue" -> %{"speaker_page_id" => nil, "text" => "", "responses" => []}
-      "hub" -> %{"label" => ""}
-      "condition" -> %{"expression" => ""}
-      "instruction" -> %{"action" => "", "parameters" => ""}
-      "jump" -> %{"target_flow" => "", "target_node" => ""}
-      _ -> %{}
+  # Collaboration: Cursor updates from other users
+  def handle_info({:cursor_update, cursor_data}, socket) do
+    # Skip our own cursor updates
+    if cursor_data.user_id == socket.assigns.current_scope.user.id do
+      {:noreply, socket}
+    else
+      remote_cursors = Map.put(socket.assigns.remote_cursors, cursor_data.user_id, cursor_data)
+
+      {:noreply,
+       socket
+       |> assign(:remote_cursors, remote_cursors)
+       |> push_event("cursor_update", cursor_data)}
     end
+  end
+
+  # Collaboration: Cursor leave
+  def handle_info({:cursor_leave, user_id}, socket) do
+    remote_cursors = Map.delete(socket.assigns.remote_cursors, user_id)
+
+    {:noreply,
+     socket
+     |> assign(:remote_cursors, remote_cursors)
+     |> push_event("cursor_leave", %{user_id: user_id})}
+  end
+
+  # Collaboration: Lock state changes
+  def handle_info({:lock_change, action, payload}, socket) do
+    node_locks = Collaboration.list_locks(socket.assigns.flow.id)
+
+    socket =
+      socket
+      |> assign(:node_locks, node_locks)
+      |> push_event("locks_updated", %{locks: node_locks})
+
+    # Show toast if another user locked/unlocked a node
+    socket =
+      if payload.user_id != socket.assigns.current_scope.user.id do
+        show_collab_toast(socket, action, payload)
+      else
+        socket
+      end
+
+    {:noreply, socket}
+  end
+
+  # Collaboration: Remote changes from other users
+  def handle_info({:remote_change, action, payload}, socket) do
+    # Skip our own changes
+    if payload.user_id == socket.assigns.current_scope.user.id do
+      {:noreply, socket}
+    else
+      # Reload flow data
+      flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+      flow_data = Flows.serialize_for_canvas(flow)
+
+      socket =
+        socket
+        |> assign(:flow, flow)
+        |> assign(:flow_data, flow_data)
+        |> push_remote_change_event(action, payload)
+        |> show_collab_toast(action, payload)
+
+      {:noreply, socket}
+    end
+  end
+
+  # Collaboration: Clear toast after timeout
+  def handle_info(:clear_collab_toast, socket) do
+    {:noreply, assign(socket, :collab_toast, nil)}
+  end
+
+  defp schedule_save_status_reset do
+    Process.send_after(self(), :reset_save_status, 2000)
   end
 
   defp node_data_to_form(node) do
@@ -1034,5 +1077,201 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   defp pages_map(leaf_pages) do
     Map.new(leaf_pages, fn page -> {to_string(page.id), %{id: page.id, name: page.name}} end)
+  end
+
+  @spec get_email_name(any()) :: String.t()
+  defp get_email_name(email) when is_binary(email) do
+    email |> String.split("@") |> List.first()
+  end
+
+  defp get_email_name(_), do: "Someone"
+
+  # =============================================================================
+  # Event Handler Helpers
+  # =============================================================================
+
+  defp do_update_node_text(socket, node_id, content) do
+    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+    updated_data = Map.put(node.data, "text", content)
+
+    case Flows.update_node_data(node, updated_data) do
+      {:ok, updated_node} ->
+        flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+        flow_data = Flows.serialize_for_canvas(flow)
+        schedule_save_status_reset()
+
+        socket =
+          socket
+          |> assign(:flow, flow)
+          |> assign(:flow_data, flow_data)
+          |> assign(:save_status, :saved)
+          |> maybe_update_selected_node(node, updated_node)
+
+        {:noreply, socket}
+
+      {:error, _} ->
+        {:noreply, socket}
+    end
+  end
+
+  defp maybe_update_selected_node(socket, original_node, updated_node) do
+    if socket.assigns.selected_node && socket.assigns.selected_node.id == original_node.id do
+      form = node_data_to_form(updated_node)
+      assign(socket, selected_node: updated_node, node_form: form)
+    else
+      socket
+    end
+  end
+
+  defp do_update_response_field(socket, node_id, response_id, field, value) do
+    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+    responses = node.data["responses"] || []
+
+    updated_responses = update_response_in_list(responses, response_id, field, value)
+    updated_data = Map.put(node.data, "responses", updated_responses)
+
+    case Flows.update_node_data(node, updated_data) do
+      {:ok, updated_node} ->
+        flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+        flow_data = Flows.serialize_for_canvas(flow)
+        form = node_data_to_form(updated_node)
+        schedule_save_status_reset()
+
+        {:noreply,
+         socket
+         |> assign(:flow, flow)
+         |> assign(:flow_data, flow_data)
+         |> assign(:selected_node, updated_node)
+         |> assign(:node_form, form)
+         |> assign(:save_status, :saved)
+         |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
+
+      {:error, _} ->
+        {:noreply, socket}
+    end
+  end
+
+  defp update_response_in_list(responses, response_id, field, value) do
+    Enum.map(responses, fn r ->
+      if r["id"] == response_id, do: Map.put(r, field, value), else: r
+    end)
+  end
+
+  defp do_delete_node(socket, node_id) do
+    if node_locked_by_other?(socket, node_id) do
+      {:noreply, put_flash(socket, :error, gettext("This node is being edited by another user."))}
+    else
+      perform_node_deletion(socket, node_id)
+    end
+  end
+
+  defp node_locked_by_other?(socket, node_id) do
+    Collaboration.locked_by_other?(
+      socket.assigns.flow.id,
+      node_id,
+      socket.assigns.current_scope.user.id
+    )
+  end
+
+  defp perform_node_deletion(socket, node_id) do
+    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+
+    case Flows.delete_node(node) do
+      {:ok, _} ->
+        flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+        flow_data = Flows.serialize_for_canvas(flow)
+
+        {:noreply,
+         socket
+         |> assign(:flow, flow)
+         |> assign(:flow_data, flow_data)
+         |> assign(:selected_node, nil)
+         |> assign(:node_form, nil)
+         |> push_event("node_removed", %{id: node_id})
+         |> broadcast_change(:node_deleted, %{node_id: node_id})}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not delete node."))}
+    end
+  end
+
+  # =============================================================================
+  # Collaboration Helpers
+  # =============================================================================
+
+  defp show_collab_toast(socket, action, payload) do
+    toast = %{
+      action: action,
+      user_email: payload[:user_email] || "Unknown",
+      user_color: payload[:user_color] || "#666"
+    }
+
+    Process.send_after(self(), :clear_collab_toast, @collab_toast_duration)
+    assign(socket, :collab_toast, toast)
+  end
+
+  defp push_remote_change_event(socket, :node_added, payload) do
+    push_event(socket, "node_added", payload.node_data)
+  end
+
+  defp push_remote_change_event(socket, :node_deleted, payload) do
+    push_event(socket, "node_removed", %{id: payload.node_id})
+  end
+
+  defp push_remote_change_event(socket, :node_updated, payload) do
+    push_event(socket, "node_updated", %{id: payload.node_id, data: payload.node_data})
+  end
+
+  defp push_remote_change_event(socket, :node_moved, _payload) do
+    # Node position is part of flow_data which is already updated
+    socket
+  end
+
+  defp push_remote_change_event(socket, :connection_added, payload) do
+    push_event(socket, "connection_added", payload.connection_data)
+  end
+
+  defp push_remote_change_event(socket, :connection_deleted, payload) do
+    push_event(socket, "connection_removed", %{
+      source_node_id: payload.source_node_id,
+      target_node_id: payload.target_node_id
+    })
+  end
+
+  defp push_remote_change_event(socket, :connection_updated, payload) do
+    push_event(socket, "connection_updated", %{
+      id: payload.connection_id,
+      label: payload.label,
+      condition: payload.condition
+    })
+  end
+
+  defp push_remote_change_event(socket, _action, _payload), do: socket
+
+  defp broadcast_change(socket, action, payload) do
+    user = socket.assigns.current_scope.user
+
+    full_payload =
+      Map.merge(payload, %{
+        user_id: user.id,
+        user_email: user.email,
+        user_color: Collaboration.user_color(user.id)
+      })
+
+    Collaboration.broadcast_change(socket.assigns.flow.id, action, full_payload)
+    socket
+  end
+
+  defp broadcast_lock_change(socket, action, node_id) do
+    user = socket.assigns.current_scope.user
+
+    payload = %{
+      node_id: node_id,
+      user_id: user.id,
+      user_email: user.email,
+      user_color: Collaboration.user_color(user.id)
+    }
+
+    Collaboration.broadcast_lock_change(socket.assigns.flow.id, action, payload)
   end
 end
