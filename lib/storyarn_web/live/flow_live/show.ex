@@ -8,6 +8,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Pages
   alias Storyarn.Projects
   alias Storyarn.Repo
 
@@ -70,6 +71,7 @@ defmodule StoryarnWeb.FlowLive.Show do
             phx-update="ignore"
             class="absolute inset-0"
             data-flow={Jason.encode!(@flow_data)}
+            data-pages={Jason.encode!(pages_map(@leaf_pages))}
           >
           </div>
         </div>
@@ -98,11 +100,23 @@ defmodule StoryarnWeb.FlowLive.Show do
               node={@selected_node}
               form={@node_form}
               can_edit={@can_edit}
+              leaf_pages={@leaf_pages}
             />
           </div>
 
-          <div :if={@can_edit} class="p-4 border-t border-base-300">
+          <div class="p-4 border-t border-base-300 space-y-2">
             <button
+              :if={@selected_node.type == "dialogue"}
+              type="button"
+              class="btn btn-ghost btn-sm w-full"
+              phx-click="start_preview"
+              phx-value-id={@selected_node.id}
+            >
+              <.icon name="play" class="size-4 mr-2" />
+              {gettext("Preview from here")}
+            </button>
+            <button
+              :if={@can_edit}
               type="button"
               class="btn btn-error btn-outline btn-sm w-full"
               phx-click="delete_node"
@@ -169,6 +183,16 @@ defmodule StoryarnWeb.FlowLive.Show do
       </div>
 
       <.flash_group flash={@flash} />
+
+      <%!-- Preview Modal --%>
+      <.live_component
+        module={StoryarnWeb.FlowLive.PreviewComponent}
+        id="flow-preview"
+        show={@preview_show}
+        start_node={@preview_node}
+        project={@project}
+        pages_map={pages_map(@leaf_pages)}
+      />
     </div>
     """
   end
@@ -220,26 +244,104 @@ defmodule StoryarnWeb.FlowLive.Show do
   attr :node, :map, required: true
   attr :form, :map, required: true
   attr :can_edit, :boolean, default: false
+  attr :leaf_pages, :list, default: []
 
   defp node_properties_form(assigns) do
+    speaker_options =
+      [{"", gettext("Select speaker...")}] ++
+        Enum.map(assigns.leaf_pages, fn page -> {page.id, page.name} end)
+
+    assigns = assign(assigns, :speaker_options, speaker_options)
+
     ~H"""
     <.form for={@form} phx-change="update_node_data" phx-debounce="500">
       <%= case @node.type do %>
         <% "dialogue" -> %>
           <.input
-            field={@form[:speaker]}
-            type="text"
+            field={@form[:speaker_page_id]}
+            type="select"
             label={gettext("Speaker")}
-            placeholder={gettext("Character name")}
+            options={@speaker_options}
             disabled={!@can_edit}
           />
-          <.input
-            field={@form[:text]}
-            type="textarea"
-            label={gettext("Text")}
-            placeholder={gettext("What the character says...")}
-            disabled={!@can_edit}
-          />
+          <div class="form-control mt-4">
+            <label class="label">
+              <span class="label-text">{gettext("Text")}</span>
+            </label>
+            <div
+              id={"dialogue-text-editor-#{@node.id}"}
+              phx-hook="TiptapEditor"
+              phx-update="ignore"
+              data-node-id={@node.id}
+              data-content={@form[:text].value || ""}
+              data-editable={to_string(@can_edit)}
+              class="border border-base-300 rounded-lg bg-base-100 p-2"
+            >
+            </div>
+          </div>
+
+          <%!-- Response Branches --%>
+          <div class="form-control mt-4">
+            <label class="label">
+              <span class="label-text">{gettext("Responses")}</span>
+            </label>
+            <div class="space-y-2">
+              <div
+                :for={response <- @form[:responses].value || []}
+                class="p-2 bg-base-200 rounded-lg space-y-2"
+              >
+                <div class="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={response["text"]}
+                    phx-blur="update_response_text"
+                    phx-value-response-id={response["id"]}
+                    phx-value-node-id={@node.id}
+                    disabled={!@can_edit}
+                    placeholder={gettext("Response text...")}
+                    class="input input-sm input-bordered flex-1"
+                  />
+                  <button
+                    :if={@can_edit}
+                    type="button"
+                    phx-click="remove_response"
+                    phx-value-response-id={response["id"]}
+                    phx-value-node-id={@node.id}
+                    class="btn btn-ghost btn-xs btn-square text-error"
+                    title={gettext("Remove response")}
+                  >
+                    <.icon name="x" class="size-3" />
+                  </button>
+                </div>
+                <div class="flex items-center gap-2">
+                  <.icon name="git-branch" class="size-3 text-base-content/50" />
+                  <input
+                    type="text"
+                    value={response["condition"]}
+                    phx-blur="update_response_condition"
+                    phx-value-response-id={response["id"]}
+                    phx-value-node-id={@node.id}
+                    disabled={!@can_edit}
+                    placeholder={gettext("Condition (optional)")}
+                    class="input input-xs input-bordered flex-1 font-mono text-xs"
+                  />
+                </div>
+              </div>
+              <button
+                :if={@can_edit}
+                type="button"
+                phx-click="add_response"
+                phx-value-node-id={@node.id}
+                class="btn btn-ghost btn-sm gap-1 w-full border border-dashed border-base-300"
+              >
+                <.icon name="plus" class="size-4" />
+                {gettext("Add response")}
+              </button>
+            </div>
+            <p :if={(@form[:responses].value || []) == []} class="text-xs text-base-content/60 mt-1">
+              {gettext("No responses means a simple dialogue with one output.")}
+            </p>
+          </div>
         <% "hub" -> %>
           <.input
             field={@form[:label]}
@@ -318,6 +420,7 @@ defmodule StoryarnWeb.FlowLive.Show do
             project = Repo.preload(project, :workspace)
             can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
             flow_data = Flows.serialize_for_canvas(flow)
+            leaf_pages = Pages.list_leaf_pages(project.id)
 
             socket =
               socket
@@ -328,11 +431,14 @@ defmodule StoryarnWeb.FlowLive.Show do
               |> assign(:flow_data, flow_data)
               |> assign(:can_edit, can_edit)
               |> assign(:node_types, @node_types)
+              |> assign(:leaf_pages, leaf_pages)
               |> assign(:selected_node, nil)
               |> assign(:node_form, nil)
               |> assign(:selected_connection, nil)
               |> assign(:connection_form, nil)
               |> assign(:save_status, :idle)
+              |> assign(:preview_show, false)
+              |> assign(:preview_node, nil)
 
             {:ok, socket}
         end
@@ -529,6 +635,203 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
+  def handle_event("update_node_text", %{"id" => node_id, "content" => content}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        node = Flows.get_node!(socket.assigns.flow.id, node_id)
+        updated_data = Map.put(node.data, "text", content)
+
+        case Flows.update_node_data(node, updated_data) do
+          {:ok, updated_node} ->
+            flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+            flow_data = Flows.serialize_for_canvas(flow)
+            schedule_save_status_reset()
+
+            # Update selected_node if this is the currently selected node
+            socket =
+              if socket.assigns.selected_node && socket.assigns.selected_node.id == node.id do
+                form = node_data_to_form(updated_node)
+                assign(socket, selected_node: updated_node, node_form: form)
+              else
+                socket
+              end
+
+            {:noreply,
+             socket
+             |> assign(:flow, flow)
+             |> assign(:flow_data, flow_data)
+             |> assign(:save_status, :saved)}
+
+          {:error, _} ->
+            {:noreply, socket}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("add_response", %{"node-id" => node_id}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        node = Flows.get_node!(socket.assigns.flow.id, node_id)
+        responses = node.data["responses"] || []
+
+        # Generate a unique ID for the new response
+        new_id = "r#{length(responses) + 1}_#{:erlang.unique_integer([:positive])}"
+        new_response = %{"id" => new_id, "text" => "", "condition" => nil}
+        updated_responses = responses ++ [new_response]
+
+        updated_data = Map.put(node.data, "responses", updated_responses)
+
+        case Flows.update_node_data(node, updated_data) do
+          {:ok, updated_node} ->
+            flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+            flow_data = Flows.serialize_for_canvas(flow)
+            form = node_data_to_form(updated_node)
+            schedule_save_status_reset()
+
+            {:noreply,
+             socket
+             |> assign(:flow, flow)
+             |> assign(:flow_data, flow_data)
+             |> assign(:selected_node, updated_node)
+             |> assign(:node_form, form)
+             |> assign(:save_status, :saved)
+             |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
+
+          {:error, _} ->
+            {:noreply, socket}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("remove_response", %{"response-id" => response_id, "node-id" => node_id}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        node = Flows.get_node!(socket.assigns.flow.id, node_id)
+        responses = node.data["responses"] || []
+
+        updated_responses = Enum.reject(responses, fn r -> r["id"] == response_id end)
+        updated_data = Map.put(node.data, "responses", updated_responses)
+
+        case Flows.update_node_data(node, updated_data) do
+          {:ok, updated_node} ->
+            flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+            flow_data = Flows.serialize_for_canvas(flow)
+            form = node_data_to_form(updated_node)
+            schedule_save_status_reset()
+
+            {:noreply,
+             socket
+             |> assign(:flow, flow)
+             |> assign(:flow_data, flow_data)
+             |> assign(:selected_node, updated_node)
+             |> assign(:node_form, form)
+             |> assign(:save_status, :saved)
+             |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
+
+          {:error, _} ->
+            {:noreply, socket}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event(
+        "update_response_text",
+        %{"response-id" => response_id, "node-id" => node_id, "value" => text},
+        socket
+      ) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        node = Flows.get_node!(socket.assigns.flow.id, node_id)
+        responses = node.data["responses"] || []
+
+        updated_responses =
+          Enum.map(responses, fn r ->
+            if r["id"] == response_id, do: Map.put(r, "text", text), else: r
+          end)
+
+        updated_data = Map.put(node.data, "responses", updated_responses)
+
+        case Flows.update_node_data(node, updated_data) do
+          {:ok, updated_node} ->
+            flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+            flow_data = Flows.serialize_for_canvas(flow)
+            form = node_data_to_form(updated_node)
+            schedule_save_status_reset()
+
+            {:noreply,
+             socket
+             |> assign(:flow, flow)
+             |> assign(:flow_data, flow_data)
+             |> assign(:selected_node, updated_node)
+             |> assign(:node_form, form)
+             |> assign(:save_status, :saved)
+             |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
+
+          {:error, _} ->
+            {:noreply, socket}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event(
+        "update_response_condition",
+        %{"response-id" => response_id, "node-id" => node_id, "value" => condition},
+        socket
+      ) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        node = Flows.get_node!(socket.assigns.flow.id, node_id)
+        responses = node.data["responses"] || []
+
+        updated_responses =
+          Enum.map(responses, fn r ->
+            if r["id"] == response_id do
+              # Store nil if empty string for cleaner data
+              Map.put(r, "condition", if(condition == "", do: nil, else: condition))
+            else
+              r
+            end
+          end)
+
+        updated_data = Map.put(node.data, "responses", updated_responses)
+
+        case Flows.update_node_data(node, updated_data) do
+          {:ok, updated_node} ->
+            flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+            flow_data = Flows.serialize_for_canvas(flow)
+            form = node_data_to_form(updated_node)
+            schedule_save_status_reset()
+
+            {:noreply,
+             socket
+             |> assign(:flow, flow)
+             |> assign(:flow_data, flow_data)
+             |> assign(:selected_node, updated_node)
+             |> assign(:node_form, form)
+             |> assign(:save_status, :saved)
+             |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
+
+          {:error, _} ->
+            {:noreply, socket}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_event("delete_node", %{"id" => node_id}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
@@ -656,9 +959,22 @@ defmodule StoryarnWeb.FlowLive.Show do
      |> assign(:save_status, :saved)}
   end
 
+  def handle_event("start_preview", %{"id" => node_id}, socket) do
+    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+
+    {:noreply,
+     socket
+     |> assign(:preview_show, true)
+     |> assign(:preview_node, node)}
+  end
+
   @impl true
   def handle_info(:reset_save_status, socket) do
     {:noreply, assign(socket, :save_status, :idle)}
+  end
+
+  def handle_info({:close_preview}, socket) do
+    {:noreply, assign(socket, preview_show: false, preview_node: nil)}
   end
 
   defp schedule_save_status_reset do
@@ -667,7 +983,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   defp default_node_data(type) do
     case type do
-      "dialogue" -> %{"speaker" => "", "text" => ""}
+      "dialogue" -> %{"speaker_page_id" => nil, "text" => "", "responses" => []}
       "hub" -> %{"label" => ""}
       "condition" -> %{"expression" => ""}
       "instruction" -> %{"action" => "", "parameters" => ""}
@@ -682,7 +998,11 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   defp extract_node_form_data("dialogue", data) do
-    %{"speaker" => data["speaker"] || "", "text" => data["text"] || ""}
+    %{
+      "speaker_page_id" => data["speaker_page_id"] || "",
+      "text" => data["text"] || "",
+      "responses" => data["responses"] || []
+    }
   end
 
   defp extract_node_form_data("hub", data) do
@@ -710,5 +1030,9 @@ defmodule StoryarnWeb.FlowLive.Show do
     }
 
     to_form(data, as: :connection)
+  end
+
+  defp pages_map(leaf_pages) do
+    Map.new(leaf_pages, fn page -> {to_string(page.id), %{id: page.id, name: page.name}} end)
   end
 end
