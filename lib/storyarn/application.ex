@@ -13,8 +13,8 @@ defmodule Storyarn.Application do
       Storyarn.Vault,
       {DNSCluster, query: Application.get_env(:storyarn, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Storyarn.PubSub},
-      # Start a worker by calling: Storyarn.Worker.start_link(arg)
-      # {Storyarn.Worker, arg},
+      Storyarn.Collaboration.Presence,
+      Storyarn.Collaboration.Locks,
       # Start to serve requests, typically the last entry
       StoryarnWeb.Endpoint
     ]
