@@ -6,11 +6,21 @@ export const TiptapEditor = {
     const content = this.el.dataset.content || "";
     const editable = this.el.dataset.editable === "true";
     const blockId = this.el.dataset.blockId;
+    const nodeId = this.el.dataset.nodeId;
 
     // Create editor container
     const editorEl = document.createElement("div");
     editorEl.className = "tiptap-content prose prose-sm max-w-none";
     this.el.appendChild(editorEl);
+
+    // Determine which event to push based on whether this is a block or node editor
+    const pushUpdate = (html) => {
+      if (nodeId) {
+        this.pushEvent("update_node_text", { id: nodeId, content: html });
+      } else if (blockId) {
+        this.pushEvent("update_rich_text", { id: blockId, content: html });
+      }
+    };
 
     this.editor = new Editor({
       element: editorEl,
@@ -28,11 +38,7 @@ export const TiptapEditor = {
           clearTimeout(this.updateTimeout);
         }
         this.updateTimeout = setTimeout(() => {
-          const html = editor.getHTML();
-          this.pushEvent("update_rich_text", {
-            id: blockId,
-            content: html,
-          });
+          pushUpdate(editor.getHTML());
         }, 500);
       },
       onBlur: ({ editor }) => {
@@ -40,11 +46,7 @@ export const TiptapEditor = {
         if (this.updateTimeout) {
           clearTimeout(this.updateTimeout);
         }
-        const html = editor.getHTML();
-        this.pushEvent("update_rich_text", {
-          id: blockId,
-          content: html,
-        });
+        pushUpdate(editor.getHTML());
       },
     });
 
