@@ -23,14 +23,14 @@ defmodule Storyarn.Pages.PageCrud do
   def get_page(project_id, page_id) do
     Page
     |> where(project_id: ^project_id, id: ^page_id)
-    |> preload(:blocks)
+    |> preload([:blocks, :avatar_asset])
     |> Repo.one()
   end
 
   def get_page!(project_id, page_id) do
     Page
     |> where(project_id: ^project_id, id: ^page_id)
-    |> preload(:blocks)
+    |> preload([:blocks, :avatar_asset])
     |> Repo.one!()
   end
 
@@ -51,7 +51,8 @@ defmodule Storyarn.Pages.PageCrud do
   def get_children(page_id) do
     from(p in Page,
       where: p.parent_id == ^page_id,
-      order_by: [asc: p.position, asc: p.name]
+      order_by: [asc: p.position, asc: p.name],
+      preload: [:avatar_asset]
     )
     |> Repo.all()
   end
@@ -70,7 +71,8 @@ defmodule Storyarn.Pages.PageCrud do
 
     from(p in Page,
       where: p.project_id == ^project_id and p.id not in subquery(parent_ids_subquery),
-      order_by: [asc: p.position, asc: p.name]
+      order_by: [asc: p.position, asc: p.name],
+      preload: [:avatar_asset]
     )
     |> Repo.all()
   end
@@ -144,7 +146,10 @@ defmodule Storyarn.Pages.PageCrud do
   defp build_ancestor_chain(%Page{parent_id: nil}, chain), do: chain
 
   defp build_ancestor_chain(%Page{parent_id: parent_id, project_id: project_id}, chain) do
-    parent = Repo.get!(Page, parent_id)
+    parent =
+      Page
+      |> Repo.get!(parent_id)
+      |> Repo.preload(:avatar_asset)
 
     if parent.project_id == project_id do
       build_ancestor_chain(parent, [parent | chain])
@@ -171,6 +176,8 @@ defmodule Storyarn.Pages.PageCrud do
   end
 
   defp preload_children_recursive(%Page{} = page) do
+    page = Repo.preload(page, :avatar_asset)
+
     children =
       from(p in Page,
         where: p.parent_id == ^page.id,

@@ -87,7 +87,7 @@ defmodule StoryarnWeb.PageLive.Index do
     >
       <div class="card-body">
         <div class="flex items-center gap-3">
-          <.page_icon icon={@page.icon} size="lg" />
+          <.page_avatar avatar_asset={@page.avatar_asset} name={@page.name} size="lg" />
           <div>
             <h3 class="card-title text-lg">{@page.name}</h3>
             <p :if={@children_count > 0} class="text-sm text-base-content/50">

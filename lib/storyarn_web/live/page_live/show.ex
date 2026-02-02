@@ -8,6 +8,7 @@ defmodule StoryarnWeb.PageLive.Show do
   import StoryarnWeb.Components.PageComponents
   import StoryarnWeb.Components.SaveIndicator
 
+  alias Storyarn.Assets
   alias Storyarn.Pages
   alias Storyarn.Projects
   alias Storyarn.Repo
@@ -38,7 +39,7 @@ defmodule StoryarnWeb.PageLive.Show do
               }
               class="hover:text-primary flex items-center gap-1"
             >
-              <.page_icon icon={ancestor.icon} size="sm" />
+              <.page_avatar avatar_asset={ancestor.avatar_asset} name={ancestor.name} size="sm" />
               {ancestor.name}
             </.link>
             <span :if={idx < length(@ancestors) - 1} class="mx-1 text-base-content/50">/</span>
@@ -50,7 +51,48 @@ defmodule StoryarnWeb.PageLive.Show do
       <div class="relative">
         <div class="max-w-3xl mx-auto">
           <div class="flex items-start gap-4 mb-8">
-            <.page_icon icon={@page.icon} size="xl" />
+            <%!-- Avatar with edit options --%>
+            <div :if={@can_edit} class="relative group">
+              <div class="dropdown">
+                <div tabindex="0" role="button" class="cursor-pointer">
+                  <.page_avatar avatar_asset={@page.avatar_asset} name={@page.name} size="xl" />
+                  <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded flex items-center justify-center transition-opacity">
+                    <.icon name="camera" class="size-4 text-white" />
+                  </div>
+                </div>
+                <ul
+                  tabindex="0"
+                  class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-40 z-50"
+                >
+                  <li>
+                    <label class="cursor-pointer">
+                      <.icon name="upload" class="size-4" />
+                      {gettext("Upload avatar")}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        class="hidden"
+                        phx-hook="AvatarUpload"
+                        id="avatar-upload-input"
+                        data-page-id={@page.id}
+                      />
+                    </label>
+                  </li>
+                  <li :if={@page.avatar_asset}>
+                    <button type="button" class="text-error" phx-click="remove_avatar">
+                      <.icon name="trash-2" class="size-4" />
+                      {gettext("Remove")}
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <.page_avatar
+              :if={!@can_edit}
+              avatar_asset={@page.avatar_asset}
+              name={@page.name}
+              size="xl"
+            />
             <div class="flex-1">
               <h1
                 :if={!@editing_name}
@@ -125,7 +167,7 @@ defmodule StoryarnWeb.PageLive.Show do
               }
               class="flex items-center gap-2 p-2 rounded hover:bg-base-200"
             >
-              <.page_icon icon={child.icon} size="md" />
+              <.page_avatar avatar_asset={child.avatar_asset} name={child.name} size="md" />
               <span>{child.name}</span>
             </.link>
           </div>
@@ -225,6 +267,73 @@ defmodule StoryarnWeb.PageLive.Show do
   end
 
   # ===========================================================================
+  # Event Handlers: Avatar
+  # ===========================================================================
+
+  def handle_event("remove_avatar", _params, socket) do
+    with_authorization(socket, :edit_content, fn socket ->
+      page = socket.assigns.page
+
+      case Pages.update_page(page, %{avatar_asset_id: nil}) do
+        {:ok, updated_page} ->
+          updated_page = Repo.preload(updated_page, :avatar_asset)
+          pages_tree = Pages.list_pages_tree(socket.assigns.project.id)
+
+          {:noreply,
+           socket
+           |> assign(:page, updated_page)
+           |> assign(:pages_tree, pages_tree)
+           |> assign(:save_status, :saved)
+           |> schedule_save_status_reset()}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not remove avatar."))}
+      end
+    end)
+  end
+
+  def handle_event("set_avatar", %{"asset_id" => asset_id}, socket) do
+    with_authorization(socket, :edit_content, fn socket ->
+      page = socket.assigns.page
+
+      case Pages.update_page(page, %{avatar_asset_id: asset_id}) do
+        {:ok, updated_page} ->
+          updated_page = Repo.preload(updated_page, :avatar_asset)
+          pages_tree = Pages.list_pages_tree(socket.assigns.project.id)
+
+          {:noreply,
+           socket
+           |> assign(:page, updated_page)
+           |> assign(:pages_tree, pages_tree)
+           |> assign(:save_status, :saved)
+           |> schedule_save_status_reset()}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not set avatar."))}
+      end
+    end)
+  end
+
+  def handle_event(
+        "upload_avatar",
+        %{"filename" => filename, "content_type" => content_type, "data" => data},
+        socket
+      ) do
+    with_authorization(socket, :edit_content, fn socket ->
+      # Extract binary data from base64 data URL
+      [_header, base64_data] = String.split(data, ",", parts: 2)
+
+      case Base.decode64(base64_data) do
+        {:ok, binary_data} ->
+          upload_avatar_file(socket, filename, content_type, binary_data)
+
+        :error ->
+          {:noreply, put_flash(socket, :error, gettext("Invalid file data."))}
+      end
+    end)
+  end
+
+  # ===========================================================================
   # Event Handlers: Page Tree
   # ===========================================================================
 
@@ -316,18 +425,6 @@ defmodule StoryarnWeb.PageLive.Show do
     )
   end
 
-  def handle_event(
-        "toggle_boolean_block",
-        %{"id" => block_id, "current" => current, "mode" => mode},
-        socket
-      ) do
-    with_authorization(
-      socket,
-      :edit_content,
-      &BlockHelpers.toggle_boolean_block(&1, block_id, current, mode)
-    )
-  end
-
   def handle_event("set_boolean_block", %{"id" => block_id, "value" => value}, socket) do
     with_authorization(
       socket,
@@ -375,5 +472,45 @@ defmodule StoryarnWeb.PageLive.Show do
   @impl true
   def handle_info(:reset_save_status, socket) do
     {:noreply, assign(socket, :save_status, :idle)}
+  end
+
+  # ===========================================================================
+  # Private Functions
+  # ===========================================================================
+
+  defp upload_avatar_file(socket, filename, content_type, binary_data) do
+    project = socket.assigns.project
+    user = socket.assigns.current_scope.user
+    page = socket.assigns.page
+    key = Assets.generate_key(project, filename)
+
+    asset_attrs = %{
+      filename: filename,
+      content_type: content_type,
+      size: byte_size(binary_data),
+      key: key
+    }
+
+    with {:ok, url} <- Assets.Storage.upload(key, binary_data, content_type),
+         {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
+         {:ok, updated_page} <- Pages.update_page(page, %{avatar_asset_id: asset.id}) do
+      updated_page = Repo.preload(updated_page, :avatar_asset)
+      pages_tree = Pages.list_pages_tree(project.id)
+
+      {:noreply,
+       socket
+       |> assign(:page, updated_page)
+       |> assign(:pages_tree, pages_tree)
+       |> assign(:save_status, :saved)
+       |> schedule_save_status_reset()}
+    else
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not upload avatar."))}
+    end
+  end
+
+  defp schedule_save_status_reset(socket) do
+    Process.send_after(self(), :reset_save_status, 4000)
+    socket
   end
 end

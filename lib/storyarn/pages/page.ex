@@ -8,14 +8,16 @@ defmodule Storyarn.Pages.Page do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Storyarn.Assets.Asset
   alias Storyarn.Pages.Block
   alias Storyarn.Projects.Project
 
   @type t :: %__MODULE__{
           id: integer() | nil,
           name: String.t() | nil,
-          icon: String.t() | nil,
           position: integer() | nil,
+          avatar_asset_id: integer() | nil,
+          avatar_asset: Asset.t() | Ecto.Association.NotLoaded.t() | nil,
           project_id: integer() | nil,
           project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
           parent_id: integer() | nil,
@@ -28,11 +30,11 @@ defmodule Storyarn.Pages.Page do
 
   schema "pages" do
     field :name, :string
-    field :icon, :string, default: "page"
     field :position, :integer, default: 0
 
     belongs_to :project, Project
     belongs_to :parent, __MODULE__
+    belongs_to :avatar_asset, Asset
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :blocks, Block
 
@@ -44,11 +46,11 @@ defmodule Storyarn.Pages.Page do
   """
   def create_changeset(page, attrs) do
     page
-    |> cast(attrs, [:name, :icon, :parent_id, :position])
+    |> cast(attrs, [:name, :avatar_asset_id, :parent_id, :position])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
-    |> validate_length(:icon, max: 50)
     |> foreign_key_constraint(:parent_id)
+    |> foreign_key_constraint(:avatar_asset_id)
   end
 
   @doc """
@@ -56,11 +58,11 @@ defmodule Storyarn.Pages.Page do
   """
   def update_changeset(page, attrs) do
     page
-    |> cast(attrs, [:name, :icon, :parent_id, :position])
+    |> cast(attrs, [:name, :avatar_asset_id, :parent_id, :position])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
-    |> validate_length(:icon, max: 50)
     |> foreign_key_constraint(:parent_id)
+    |> foreign_key_constraint(:avatar_asset_id)
   end
 
   @doc """

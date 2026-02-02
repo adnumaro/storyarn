@@ -18,7 +18,6 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
   """
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
-  attr :is_editing, :boolean, default: false
 
   def boolean_block(assigns) do
     label = get_in(assigns.block.config, ["label"]) || ""
@@ -50,16 +49,19 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
 
   # Two-state toggle (simple checkbox)
   defp two_state_toggle(assigns) do
+    state_string = if assigns.content == true, do: "true", else: "false"
+    assigns = assign(assigns, :state_string, state_string)
+
     ~H"""
     <label class="flex items-center gap-2 cursor-pointer py-2">
       <input
         type="checkbox"
         checked={@content == true}
         class="checkbox checkbox-primary"
-        phx-click="toggle_boolean_block"
-        phx-value-id={@block.id}
-        phx-value-current={to_string(@content)}
-        phx-value-mode="two_state"
+        phx-hook="TwoStateCheckbox"
+        id={"two-state-#{@block.id}"}
+        data-block-id={@block.id}
+        data-state={@state_string}
       />
       <span class="text-sm text-base-content/70">
         {if @content == true, do: gettext("Yes"), else: gettext("No")}
@@ -68,50 +70,52 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
     """
   end
 
-  # Tri-state toggle (segmented control: Yes / Neutral / No)
+  # Tri-state toggle (checkbox with indeterminate state)
+  # States cycle: true → false → null → true
   defp tri_state_toggle(assigns) do
+    content = assigns.content
+
+    # Label text based on current state
+    label_text =
+      cond do
+        content == true -> gettext("Yes")
+        content == false -> gettext("No")
+        true -> gettext("Neutral")
+      end
+
+    # Determine if indeterminate (nil or any non-boolean value)
+    is_indeterminate = content != true and content != false
+
+    # State string for the hook
+    state_string =
+      cond do
+        content == true -> "true"
+        content == false -> "false"
+        true -> "null"
+      end
+
+    assigns =
+      assigns
+      |> assign(:label_text, label_text)
+      |> assign(:is_indeterminate, is_indeterminate)
+      |> assign(:state_string, state_string)
+
     ~H"""
-    <div class="flex items-center gap-1 py-2">
-      <button
-        type="button"
-        class={[
-          "btn btn-sm",
-          @content == true && "btn-success",
-          @content != true && "btn-ghost"
-        ]}
-        phx-click="set_boolean_block"
-        phx-value-id={@block.id}
-        phx-value-value="true"
-      >
-        {gettext("Yes")}
-      </button>
-      <button
-        type="button"
-        class={[
-          "btn btn-sm",
-          @content == nil && "btn-neutral",
-          @content != nil && "btn-ghost"
-        ]}
-        phx-click="set_boolean_block"
-        phx-value-id={@block.id}
-        phx-value-value="null"
-      >
-        <span class="px-2">—</span>
-      </button>
-      <button
-        type="button"
-        class={[
-          "btn btn-sm",
-          @content == false && "btn-error",
-          @content != false && "btn-ghost"
-        ]}
-        phx-click="set_boolean_block"
-        phx-value-id={@block.id}
-        phx-value-value="false"
-      >
-        {gettext("No")}
-      </button>
-    </div>
+    <label class="flex items-center gap-2 cursor-pointer py-2">
+      <input
+        type="checkbox"
+        checked={@content == true}
+        class="checkbox checkbox-primary"
+        phx-hook="TriStateCheckbox"
+        id={"tri-state-#{@block.id}"}
+        data-indeterminate={to_string(@is_indeterminate)}
+        data-block-id={@block.id}
+        data-state={@state_string}
+      />
+      <span class="text-sm text-base-content/70">
+        {@label_text}
+      </span>
+    </label>
     """
   end
 

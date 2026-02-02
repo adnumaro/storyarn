@@ -30,6 +30,7 @@ defmodule StoryarnWeb.Components.TreeComponents do
   attr :href, :string, default: nil
   attr :icon, :string, default: nil
   attr :icon_text, :string, default: nil
+  attr :avatar_url, :string, default: nil
   attr :color, :string, default: nil
   attr :badge, :any, default: nil
   attr :expanded, :boolean, default: false
@@ -77,13 +78,13 @@ defmodule StoryarnWeb.Components.TreeComponents do
             navigate={@href}
             class="flex-1 flex items-center gap-2 px-2 py-1 rounded hover:bg-base-300 text-sm truncate"
           >
-            <.tree_icon icon={@icon} icon_text={@icon_text} color={@color} />
+            <.tree_icon icon={@icon} icon_text={@icon_text} avatar_url={@avatar_url} color={@color} />
             <span class="truncate">{@label}</span>
             <span :if={@badge} class="badge badge-xs badge-ghost ml-auto shrink-0">{@badge}</span>
           </.link>
         <% else %>
           <div class="flex-1 flex items-center gap-2 px-2 py-1 text-sm truncate">
-            <.tree_icon icon={@icon} icon_text={@icon_text} color={@color} />
+            <.tree_icon icon={@icon} icon_text={@icon_text} avatar_url={@avatar_url} color={@color} />
             <span class="truncate">{@label}</span>
             <span :if={@badge} class="badge badge-xs badge-ghost ml-auto shrink-0">{@badge}</span>
           </div>
@@ -129,6 +130,7 @@ defmodule StoryarnWeb.Components.TreeComponents do
   attr :active, :boolean, default: false
   attr :icon, :string, default: nil
   attr :icon_text, :string, default: nil
+  attr :avatar_url, :string, default: nil
   attr :color, :string, default: nil
   attr :class, :string, default: ""
   attr :page_id, :string, default: nil
@@ -156,7 +158,7 @@ defmodule StoryarnWeb.Components.TreeComponents do
             !@active && "hover:bg-base-300"
           ]}
         >
-          <.tree_icon icon={@icon} icon_text={@icon_text} color={@color} />
+          <.tree_icon icon={@icon} icon_text={@icon_text} avatar_url={@avatar_url} color={@color} />
           <span class="truncate">{@label}</span>
         </.link>
         <div
@@ -173,11 +175,14 @@ defmodule StoryarnWeb.Components.TreeComponents do
 
   attr :icon, :string, default: nil
   attr :icon_text, :string, default: nil
+  attr :avatar_url, :string, default: nil
   attr :color, :string, default: nil
 
   defp tree_icon(assigns) do
     ~H"""
     <%= cond do %>
+      <% @avatar_url -> %>
+        <img src={@avatar_url} alt="" class="size-4 shrink-0 rounded object-cover" />
       <% @icon_text && @icon_text not in [nil, "", "page"] -> %>
         <span class="shrink-0">{@icon_text}</span>
       <% @icon -> %>

@@ -6,6 +6,8 @@ defmodule StoryarnWeb.Components.PageComponents do
 
   import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
 
+  alias Storyarn.Assets.Asset
+
   @doc """
   Normalizes a parent_id value, converting empty strings to nil.
 
@@ -24,38 +26,48 @@ defmodule StoryarnWeb.Components.PageComponents do
   def normalize_parent_id(nil), do: nil
   def normalize_parent_id(parent_id), do: parent_id
 
-  @page_icon_sizes %{
-    "sm" => {"size-4", "text-sm"},
-    "md" => {"size-5", "text-base"},
-    "lg" => {"size-6", "text-lg"},
-    "xl" => {"size-10", "text-5xl"}
+  @avatar_sizes %{
+    "sm" => "size-4",
+    "md" => "size-5",
+    "lg" => "size-6",
+    "xl" => "size-10"
   }
 
   @doc """
-  Renders a page icon, either as an emoji or a default file icon.
+  Renders a page avatar image or falls back to a default file icon.
 
   ## Examples
 
-      <.page_icon icon="📄" />
-      <.page_icon icon={@page.icon} size="lg" />
-      <.page_icon size="xl" />
+      <.page_avatar avatar_asset={@page.avatar_asset} />
+      <.page_avatar avatar_asset={@page.avatar_asset} size="xl" />
+      <.page_avatar avatar_asset={nil} name="Character" />
   """
-  attr :icon, :string, default: nil
+  attr :avatar_asset, :any, default: nil
+  attr :name, :string, default: nil
   attr :size, :string, values: ["sm", "md", "lg", "xl"], default: "md"
 
-  def page_icon(assigns) do
-    {size_class, text_size} = Map.get(@page_icon_sizes, assigns.size, {"size-5", "text-base"})
-    is_emoji = assigns.icon && assigns.icon not in [nil, "", "page"]
+  def page_avatar(assigns) do
+    size_class = Map.get(@avatar_sizes, assigns.size, "size-5")
+    has_avatar = has_avatar?(assigns.avatar_asset)
 
     assigns =
       assigns
       |> assign(:size_class, size_class)
-      |> assign(:text_size, text_size)
-      |> assign(:is_emoji, is_emoji)
+      |> assign(:has_avatar, has_avatar)
 
     ~H"""
-    <span :if={@is_emoji} class={@text_size}>{@icon}</span>
-    <.icon :if={!@is_emoji} name="file" class={"#{@size_class} opacity-60"} />
+    <img
+      :if={@has_avatar}
+      src={@avatar_asset.url}
+      alt={@name || "Page avatar"}
+      class={["rounded object-cover", @size_class]}
+    />
+    <.icon :if={!@has_avatar} name="file" class={"#{@size_class} opacity-60"} />
     """
   end
+
+  defp has_avatar?(nil), do: false
+  defp has_avatar?(%Ecto.Association.NotLoaded{}), do: false
+  defp has_avatar?(%Asset{} = asset), do: Asset.image?(asset)
+  defp has_avatar?(_), do: false
 end

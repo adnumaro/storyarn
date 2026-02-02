@@ -4,8 +4,66 @@ defmodule Storyarn.PagesTest do
   alias Storyarn.Pages
 
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.PagesFixtures
   import Storyarn.ProjectsFixtures
+
+  describe "page avatar" do
+    test "create_page/2 with avatar_asset_id sets the avatar" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = image_asset_fixture(project, user)
+
+      {:ok, page} = Pages.create_page(project, %{name: "Test Page", avatar_asset_id: asset.id})
+
+      assert page.avatar_asset_id == asset.id
+    end
+
+    test "update_page/2 can set avatar_asset_id" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+      asset = image_asset_fixture(project, user)
+
+      {:ok, updated} = Pages.update_page(page, %{avatar_asset_id: asset.id})
+
+      assert updated.avatar_asset_id == asset.id
+    end
+
+    test "update_page/2 can remove avatar_asset_id" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = image_asset_fixture(project, user)
+      {:ok, page} = Pages.create_page(project, %{name: "Test Page", avatar_asset_id: asset.id})
+
+      {:ok, updated} = Pages.update_page(page, %{avatar_asset_id: nil})
+
+      assert updated.avatar_asset_id == nil
+    end
+
+    test "get_page/2 preloads avatar_asset" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = image_asset_fixture(project, user)
+      {:ok, page} = Pages.create_page(project, %{name: "Test Page", avatar_asset_id: asset.id})
+
+      loaded_page = Pages.get_page(project.id, page.id)
+
+      assert loaded_page.avatar_asset.id == asset.id
+      assert loaded_page.avatar_asset.url == asset.url
+    end
+
+    test "list_pages_tree/1 preloads avatar_asset for all pages" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = image_asset_fixture(project, user)
+      {:ok, _page} = Pages.create_page(project, %{name: "Test Page", avatar_asset_id: asset.id})
+
+      [page] = Pages.list_pages_tree(project.id)
+
+      assert page.avatar_asset.id == asset.id
+    end
+  end
 
   describe "pages tree operations" do
     test "list_pages_tree/1 returns root pages with children preloaded" do

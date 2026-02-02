@@ -1,0 +1,44 @@
+/**
+ * AvatarUpload hook for handling page avatar file selection
+ *
+ * Reads the selected file and sends it as base64 to the server.
+ */
+export const AvatarUpload = {
+  mounted() {
+    this.el.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        alert("Please select an image file.");
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        alert("Image must be less than 5MB.");
+        return;
+      }
+
+      // Read file as base64
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target.result;
+        const pageId = this.el.dataset.pageId;
+
+        this.pushEvent("upload_avatar", {
+          page_id: pageId,
+          filename: file.name,
+          content_type: file.type,
+          data: base64,
+        });
+      };
+      reader.readAsDataURL(file);
+
+      // Reset input so same file can be selected again
+      e.target.value = "";
+    });
+  },
+};

@@ -216,13 +216,14 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
       |> assign(:is_selected, is_selected)
       |> assign(:is_expanded, is_expanded)
       |> assign(:page_id, to_string(assigns.page.id))
+      |> assign(:avatar_url, get_avatar_url(assigns.page))
 
     ~H"""
     <%= if @has_children do %>
       <.tree_node
         id={"page-#{@page.id}"}
         label={@page.name}
-        icon_text={@page.icon || "page"}
+        avatar_url={@avatar_url}
         expanded={@is_expanded}
         has_children={true}
         href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{@page.id}"}
@@ -257,7 +258,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
     <% else %>
       <.tree_leaf
         label={@page.name}
-        icon_text={@page.icon || "page"}
+        avatar_url={@avatar_url}
         href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{@page.id}"}
         active={@is_selected}
         page_id={@page_id}
@@ -334,6 +335,9 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
   end
 
   defp has_selected_page_recursive?(_pages, _selected_id), do: false
+
+  defp get_avatar_url(%{avatar_asset: %{url: url}}) when is_binary(url), do: url
+  defp get_avatar_url(_page), do: nil
 
   defp settings_page?(path, workspace_slug, project_slug) do
     String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/settings")

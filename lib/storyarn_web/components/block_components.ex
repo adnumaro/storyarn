@@ -108,7 +108,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
           <% "date" -> %>
             <.date_block block={@block} can_edit={@can_edit} />
           <% "boolean" -> %>
-            <.boolean_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
+            <.boolean_block block={@block} can_edit={@can_edit} />
           <% _ -> %>
             <div class="text-base-content/50">{gettext("Unknown block type")}</div>
         <% end %>

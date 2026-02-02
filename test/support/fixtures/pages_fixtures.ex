@@ -11,8 +11,7 @@ defmodule Storyarn.PagesFixtures do
 
   def valid_page_attributes(attrs \\ %{}) do
     Enum.into(attrs, %{
-      name: unique_page_name(),
-      icon: "page"
+      name: unique_page_name()
     })
   end
 

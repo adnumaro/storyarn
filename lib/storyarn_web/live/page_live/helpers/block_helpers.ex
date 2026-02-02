@@ -166,32 +166,8 @@ defmodule StoryarnWeb.PageLive.Helpers.BlockHelpers do
   end
 
   @doc """
-  Toggles a boolean block value (for two-state mode).
-  Returns {:noreply, socket} tuple.
-  """
-  @spec toggle_boolean_block(Phoenix.LiveView.Socket.t(), any(), String.t(), String.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
-  def toggle_boolean_block(socket, block_id, current, _mode) do
-    block = Pages.get_block!(block_id)
-    new_value = current != "true"
-
-    case Pages.update_block_value(block, %{"content" => new_value}) do
-      {:ok, _block} ->
-        blocks = Pages.list_blocks(socket.assigns.page.id)
-        schedule_save_status_reset()
-
-        {:noreply,
-         socket
-         |> assign(:blocks, blocks)
-         |> assign(:save_status, :saved)}
-
-      {:error, _} ->
-        {:noreply, socket}
-    end
-  end
-
-  @doc """
-  Sets a boolean block to a specific value (for tri-state mode).
+  Sets a boolean block to a specific value.
+  Used by both two-state and tri-state modes.
   Returns {:noreply, socket} tuple.
   """
   @spec set_boolean_block(Phoenix.LiveView.Socket.t(), any(), String.t()) ::
