@@ -93,11 +93,10 @@ defmodule StoryarnWeb.PageLive.Helpers.PageTreeHelpers do
         {:noreply,
          socket
          |> assign(:page, page)
-         |> assign(:pages_tree, pages_tree)
-         |> assign(:editing_name, false)}
+         |> assign(:pages_tree, pages_tree)}
 
       {:error, _changeset} ->
-        {:noreply, assign(socket, :editing_name, false)}
+        {:noreply, socket}
     end
   end
 

@@ -29,6 +29,8 @@ defmodule Storyarn.PagesFixtures do
     page
   end
 
+  def unique_block_label, do: "Field #{System.unique_integer([:positive])}"
+
   @doc """
   Creates a block within a page.
   """
@@ -36,7 +38,7 @@ defmodule Storyarn.PagesFixtures do
     attrs =
       Enum.into(attrs, %{
         type: "text",
-        config: %{"label" => "Test Field", "placeholder" => "Enter text..."},
+        config: %{"label" => unique_block_label(), "placeholder" => "Enter text..."},
         value: %{"content" => ""}
       })
 

@@ -276,7 +276,7 @@ defmodule Storyarn.PagesTest do
 
       assert block.type == "boolean"
       assert block.config["mode"] == "two_state"
-      assert block.config["label"] == ""
+      assert block.config["label"] == "Label"
       assert block.value["content"] == false
     end
 
@@ -333,7 +333,7 @@ defmodule Storyarn.PagesTest do
       {:ok, block} =
         Pages.create_block(page, %{
           type: "boolean",
-          config: %{"label" => "", "mode" => "tri_state"},
+          config: %{"label" => "Tri-state Field", "mode" => "tri_state"},
           value: %{"content" => true}
         })
 

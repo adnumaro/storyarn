@@ -28,13 +28,10 @@ defmodule StoryarnWeb.PageLive.Index do
             {gettext("Create and organize your project's content")}
           </:subtitle>
           <:actions :if={@can_edit}>
-            <.link
-              patch={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/new"}
-              class="btn btn-primary"
-            >
+            <button type="button" class="btn btn-primary" phx-click="create_page">
               <.icon name="plus" class="size-4 mr-2" />
               {gettext("New Page")}
-            </.link>
+            </button>
           </:actions>
         </.header>
       </div>
@@ -51,22 +48,6 @@ defmodule StoryarnWeb.PageLive.Index do
           workspace={@workspace}
         />
       </div>
-
-      <.modal
-        :if={@live_action == :new}
-        id="new-page-modal"
-        show
-        on_cancel={JS.patch(~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages")}
-      >
-        <.live_component
-          module={StoryarnWeb.PageLive.Form}
-          id="new-page-form"
-          project={@project}
-          title={gettext("New Page")}
-          parent_options={parent_options(@pages_tree)}
-          navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages"}
-        />
-      </.modal>
     </Layouts.project>
     """
   end
@@ -98,21 +79,6 @@ defmodule StoryarnWeb.PageLive.Index do
       </div>
     </.link>
     """
-  end
-
-  defp parent_options(pages_tree) do
-    flatten_pages(pages_tree, [], 0)
-  end
-
-  defp flatten_pages(pages, acc, depth) do
-    Enum.reduce(pages, acc, fn page, acc ->
-      prefix = String.duplicate("  ", depth)
-      children = Map.get(page, :children, [])
-
-      acc
-      |> Kernel.++([{prefix <> page.name, page.id}])
-      |> flatten_pages(children, depth + 1)
-    end)
   end
 
   @impl true
@@ -155,17 +121,27 @@ defmodule StoryarnWeb.PageLive.Index do
   end
 
   @impl true
-  def handle_info({StoryarnWeb.PageLive.Form, {:saved, page}}, socket) do
-    {:noreply,
-     socket
-     |> put_flash(:info, gettext("Page created successfully."))
-     |> push_navigate(
-       to:
-         ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages/#{page.id}"
-     )}
+  def handle_event("create_page", _params, socket) do
+    if socket.assigns.can_edit do
+      attrs = %{name: gettext("Untitled")}
+
+      case Pages.create_page(socket.assigns.project, attrs) do
+        {:ok, new_page} ->
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages/#{new_page.id}"
+           )}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not create page."))}
+      end
+    else
+      {:noreply,
+       put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
   end
 
-  @impl true
   def handle_event("delete_page", %{"id" => page_id}, socket) do
     if socket.assigns.can_edit do
       page = Pages.get_page!(socket.assigns.project.id, page_id)

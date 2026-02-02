@@ -33,6 +33,9 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
       |> assign(:true_label, config["true_label"] || "")
       |> assign(:false_label, config["false_label"] || "")
       |> assign(:neutral_label, config["neutral_label"] || "")
+      |> assign(:is_constant, assigns.block.is_constant || false)
+      |> assign(:variable_name, assigns.block.variable_name)
+      |> assign(:can_be_variable, Storyarn.Pages.Block.can_be_variable?(assigns.block.type))
 
     ~H"""
     <div class="fixed inset-y-0 right-0 w-80 bg-base-200 shadow-xl z-50 flex flex-col">
@@ -55,6 +58,24 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
             <div class="badge badge-neutral">{@block.type}</div>
           </div>
 
+          <%!-- Use as constant toggle (first after Type) --%>
+          <div :if={@can_be_variable} class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input
+                type="checkbox"
+                name="is_constant"
+                value="true"
+                checked={@is_constant}
+                class="toggle toggle-sm"
+                phx-click="toggle_constant"
+              />
+              <span class="label-text">{gettext("Use as constant")}</span>
+            </label>
+            <p class="text-xs text-base-content/50 ml-12">
+              {gettext("Constants are not accessible as variables in flow scripts.")}
+            </p>
+          </div>
+
           <%!-- Label field (for all types except divider) --%>
           <div :if={@block.type != "divider"}>
             <label class="label">
@@ -66,7 +87,23 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
               value={@label}
               class="input input-bordered w-full"
               placeholder={gettext("Enter label...")}
+              required
             />
+          </div>
+
+          <%!-- Variable name (below label, derived from it) --%>
+          <div :if={@can_be_variable and not @is_constant}>
+            <label class="label">
+              <span class="label-text text-xs">{gettext("Variable Name")}</span>
+            </label>
+            <div class="flex items-center gap-2">
+              <code class="flex-1 px-3 py-2 bg-base-300 rounded text-sm font-mono">
+                {if @variable_name, do: @variable_name, else: gettext("(derived from label)")}
+              </code>
+            </div>
+            <p class="text-xs text-base-content/50 mt-1">
+              {gettext("Use this name to reference the value in flows.")}
+            </p>
           </div>
 
           <%!-- Placeholder field --%>

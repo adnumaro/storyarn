@@ -50,14 +50,14 @@ defmodule Storyarn.Pages.Block do
   @block_types ~w(text rich_text number select multi_select divider date boolean)
 
   @default_configs %{
-    "text" => %{"label" => "", "placeholder" => ""},
-    "rich_text" => %{"label" => ""},
-    "number" => %{"label" => "", "placeholder" => "0"},
-    "select" => %{"label" => "", "placeholder" => "Select...", "options" => []},
-    "multi_select" => %{"label" => "", "placeholder" => "Select...", "options" => []},
+    "text" => %{"label" => "Label", "placeholder" => ""},
+    "rich_text" => %{"label" => "Label"},
+    "number" => %{"label" => "Label", "placeholder" => "0"},
+    "select" => %{"label" => "Label", "placeholder" => "Select...", "options" => []},
+    "multi_select" => %{"label" => "Label", "placeholder" => "Select...", "options" => []},
     "divider" => %{},
-    "date" => %{"label" => ""},
-    "boolean" => %{"label" => "", "mode" => "two_state"}
+    "date" => %{"label" => "Label"},
+    "boolean" => %{"label" => "Label", "mode" => "two_state"}
   }
 
   @default_values %{
@@ -71,12 +71,17 @@ defmodule Storyarn.Pages.Block do
     "boolean" => %{"content" => false}
   }
 
+  # Block types that cannot be variables (no meaningful value to expose)
+  @non_variable_types ~w(divider)
+
   @type t :: %__MODULE__{
           id: integer() | nil,
           type: String.t() | nil,
           position: integer() | nil,
           config: map() | nil,
           value: map() | nil,
+          is_constant: boolean(),
+          variable_name: String.t() | nil,
           page_id: integer() | nil,
           page: Page.t() | Ecto.Association.NotLoaded.t() | nil,
           deleted_at: DateTime.t() | nil,
@@ -89,6 +94,8 @@ defmodule Storyarn.Pages.Block do
     field :position, :integer, default: 0
     field :config, :map, default: %{}
     field :value, :map, default: %{}
+    field :is_constant, :boolean, default: false
+    field :variable_name, :string
     field :deleted_at, :utc_datetime
 
     belongs_to :page, Page
@@ -106,10 +113,11 @@ defmodule Storyarn.Pages.Block do
   """
   def create_changeset(block, attrs) do
     block
-    |> cast(attrs, [:type, :position, :config, :value])
+    |> cast(attrs, [:type, :position, :config, :value, :is_constant, :variable_name])
     |> validate_required([:type])
     |> validate_inclusion(:type, @block_types)
     |> validate_config()
+    |> maybe_generate_variable_name()
   end
 
   @doc """
@@ -117,10 +125,11 @@ defmodule Storyarn.Pages.Block do
   """
   def update_changeset(block, attrs) do
     block
-    |> cast(attrs, [:type, :position, :config, :value])
+    |> cast(attrs, [:type, :position, :config, :value, :is_constant, :variable_name])
     |> validate_required([:type])
     |> validate_inclusion(:type, @block_types)
     |> validate_config()
+    |> maybe_generate_variable_name()
   end
 
   @doc """
@@ -138,6 +147,15 @@ defmodule Storyarn.Pages.Block do
     block
     |> cast(attrs, [:config])
     |> validate_config()
+    |> maybe_generate_variable_name()
+  end
+
+  @doc """
+  Changeset for updating variable settings.
+  """
+  def variable_changeset(block, attrs) do
+    block
+    |> cast(attrs, [:is_constant, :variable_name])
   end
 
   @doc """
@@ -153,16 +171,25 @@ defmodule Storyarn.Pages.Block do
     type = get_field(changeset, :type)
     config = get_field(changeset, :config) || %{}
 
-    case type do
-      t when t in ["select", "multi_select"] ->
-        validate_select_config(changeset, config)
+    changeset
+    |> validate_label(type, config)
+    |> validate_select_options(type, config)
+  end
 
-      _ ->
-        changeset
+  # All blocks except divider require a non-empty label
+  defp validate_label(changeset, "divider", _config), do: changeset
+
+  defp validate_label(changeset, _type, config) do
+    label = Map.get(config, "label")
+
+    if is_nil(label) or label == "" do
+      add_error(changeset, :config, "label is required")
+    else
+      changeset
     end
   end
 
-  defp validate_select_config(changeset, config) do
+  defp validate_select_options(changeset, type, config) when type in ["select", "multi_select"] do
     options = Map.get(config, "options", [])
 
     if is_list(options) do
@@ -171,6 +198,8 @@ defmodule Storyarn.Pages.Block do
       add_error(changeset, :config, "options must be a list for select types")
     end
   end
+
+  defp validate_select_options(changeset, _type, _config), do: changeset
 
   @doc """
   Builds a default config for a block type.
@@ -202,4 +231,58 @@ defmodule Storyarn.Pages.Block do
   Returns true if the block is soft-deleted.
   """
   def deleted?(%__MODULE__{deleted_at: deleted_at}), do: not is_nil(deleted_at)
+
+  @doc """
+  Returns true if the block type can be a variable.
+  Dividers cannot be variables as they have no meaningful value.
+  """
+  def can_be_variable?(type), do: type not in @non_variable_types
+
+  @doc """
+  Returns true if the block is exposed as a variable.
+  A block is a variable if it's not marked as constant and its type supports variables.
+  """
+  def variable?(%__MODULE__{type: type, is_constant: is_constant}) do
+    can_be_variable?(type) and not is_constant
+  end
+
+  @doc """
+  Generates a variable name from a label string.
+  Converts "Health Points" to "health_points".
+  """
+  def slugify(nil), do: nil
+  def slugify(""), do: nil
+
+  def slugify(label) when is_binary(label) do
+    label
+    |> String.downcase()
+    |> String.replace(~r/[^\w\s-]/u, "")
+    |> String.replace(~r/[\s-]+/, "_")
+    |> String.replace(~r/^_+|_+$/, "")
+    |> case do
+      "" -> nil
+      slug -> slug
+    end
+  end
+
+  # Generates variable_name from label in config.
+  # Always regenerates to keep variable_name in sync with label.
+  defp maybe_generate_variable_name(changeset) do
+    type = get_field(changeset, :type)
+
+    if can_be_variable?(type) do
+      config = get_field(changeset, :config) || %{}
+      label = Map.get(config, "label")
+
+      # Always regenerate variable_name from label
+      if label do
+        put_change(changeset, :variable_name, slugify(label))
+      else
+        changeset
+      end
+    else
+      # Non-variable types should have nil variable_name
+      put_change(changeset, :variable_name, nil)
+    end
+  end
 end

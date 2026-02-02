@@ -29,10 +29,28 @@ defmodule StoryarnWeb.PageLive.Show do
       selected_page_id={to_string(@page.id)}
       can_edit={@can_edit}
     >
+      <%!-- Breadcrumb (above banner) --%>
+      <nav class="text-sm mb-4">
+        <ol class="flex flex-wrap items-center gap-1 text-base-content/70">
+          <li :for={{ancestor, idx} <- Enum.with_index(@ancestors)} class="flex items-center">
+            <.link
+              navigate={
+                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{ancestor.id}"
+              }
+              class="hover:text-primary flex items-center gap-1"
+            >
+              <.page_avatar avatar_asset={ancestor.avatar_asset} name={ancestor.name} size="sm" />
+              {ancestor.name}
+            </.link>
+            <span :if={idx < length(@ancestors) - 1} class="mx-1 text-base-content/50">/</span>
+          </li>
+        </ol>
+      </nav>
+
       <%!-- Banner --%>
-      <div class={["-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 mb-6", !@page.banner_asset && "hidden lg:block"]}>
+      <div class={[!@page.banner_asset && !@can_edit && "hidden"]}>
         <%= if @page.banner_asset do %>
-          <div class="relative group h-48 sm:h-56 lg:h-64 overflow-hidden">
+          <div class="relative group h-48 sm:h-56 lg:h-64 overflow-hidden rounded-2xl mb-6">
             <img
               src={@page.banner_asset.url}
               alt=""
@@ -67,7 +85,7 @@ defmodule StoryarnWeb.PageLive.Show do
             </div>
           </div>
         <% else %>
-          <div :if={@can_edit} class="h-12 flex items-center justify-center">
+          <div :if={@can_edit} class="flex items-center mb-4">
             <label class="btn btn-ghost btn-sm text-base-content/50 hover:text-base-content">
               <.icon name="image" class="size-4" />
               {gettext("Add cover")}
@@ -83,24 +101,6 @@ defmodule StoryarnWeb.PageLive.Show do
           </div>
         <% end %>
       </div>
-
-      <%!-- Breadcrumb --%>
-      <nav class="text-sm mb-4">
-        <ol class="flex flex-wrap items-center gap-1 text-base-content/70">
-          <li :for={{ancestor, idx} <- Enum.with_index(@ancestors)} class="flex items-center">
-            <.link
-              navigate={
-                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{ancestor.id}"
-              }
-              class="hover:text-primary flex items-center gap-1"
-            >
-              <.page_avatar avatar_asset={ancestor.avatar_asset} name={ancestor.name} size="sm" />
-              {ancestor.name}
-            </.link>
-            <span :if={idx < length(@ancestors) - 1} class="mx-1 text-base-content/50">/</span>
-          </li>
-        </ol>
-      </nav>
 
       <%!-- Page Header --%>
       <div class="relative">
@@ -150,23 +150,20 @@ defmodule StoryarnWeb.PageLive.Show do
             />
             <div class="flex-1">
               <h1
-                :if={!@editing_name}
-                class="text-3xl font-bold cursor-pointer hover:bg-base-200 rounded px-2 -mx-2 py-1"
-                phx-click="edit_name"
+                :if={@can_edit}
+                id="page-title"
+                class="text-3xl font-bold outline-none rounded px-2 -mx-2 py-1 empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
+                contenteditable="true"
+                phx-hook="EditableTitle"
+                phx-update="ignore"
+                data-placeholder={gettext("Untitled")}
+                data-name={@page.name}
               >
                 {@page.name}
               </h1>
-              <form :if={@editing_name} phx-submit="save_name" phx-click-away="cancel_edit_name">
-                <input
-                  type="text"
-                  name="name"
-                  value={@page.name}
-                  class="input input-bordered text-3xl font-bold w-full"
-                  autofocus
-                  phx-key="escape"
-                  phx-keydown="cancel_edit_name"
-                />
-              </form>
+              <h1 :if={!@can_edit} class="text-3xl font-bold px-2 -mx-2 py-1">
+                {@page.name}
+              </h1>
             </div>
           </div>
         </div>
@@ -288,7 +285,6 @@ defmodule StoryarnWeb.PageLive.Show do
     |> assign(:children, children)
     |> assign(:blocks, blocks)
     |> assign(:can_edit, can_edit)
-    |> assign(:editing_name, false)
     |> assign(:editing_block_id, nil)
     |> assign(:show_block_menu, false)
     |> assign(:save_status, :idle)
@@ -305,18 +301,6 @@ defmodule StoryarnWeb.PageLive.Show do
   # ===========================================================================
 
   @impl true
-  def handle_event("edit_name", _params, socket) do
-    if socket.assigns.can_edit do
-      {:noreply, assign(socket, :editing_name, true)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event("cancel_edit_name", _params, socket) do
-    {:noreply, assign(socket, :editing_name, false)}
-  end
-
   def handle_event("save_name", %{"name" => name}, socket) do
     with_authorization(socket, :edit_content, &PageTreeHelpers.save_name(&1, name))
   end
@@ -545,6 +529,10 @@ defmodule StoryarnWeb.PageLive.Show do
 
   def handle_event("save_block_config", %{"config" => config_params}, socket) do
     with_authorization(socket, :edit_content, &ConfigHelpers.save_block_config(&1, config_params))
+  end
+
+  def handle_event("toggle_constant", _params, socket) do
+    with_authorization(socket, :edit_content, &ConfigHelpers.toggle_constant/1)
   end
 
   def handle_event("add_select_option", _params, socket) do

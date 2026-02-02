@@ -117,6 +117,30 @@ defmodule StoryarnWeb.PageLive.Helpers.ConfigHelpers do
   end
 
   @doc """
+  Toggles the is_constant flag for the block being configured.
+  Returns {:noreply, socket} tuple.
+  """
+  @spec toggle_constant(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def toggle_constant(socket) do
+    block = socket.assigns.configuring_block
+    new_value = not (block.is_constant || false)
+
+    case Pages.update_block(block, %{is_constant: new_value}) do
+      {:ok, updated_block} ->
+        blocks = Pages.list_blocks(socket.assigns.page.id)
+
+        {:noreply,
+         socket
+         |> assign(:blocks, blocks)
+         |> assign(:configuring_block, updated_block)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not update block."))}
+    end
+  end
+
+  @doc """
   Updates a select option at a given index.
   Returns {:noreply, socket} tuple.
   """

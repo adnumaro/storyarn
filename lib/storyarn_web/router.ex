@@ -112,7 +112,6 @@ defmodule StoryarnWeb.Router do
 
       # Pages (wiki-style content)
       live "/workspaces/:workspace_slug/projects/:project_slug/pages", PageLive.Index, :index
-      live "/workspaces/:workspace_slug/projects/:project_slug/pages/new", PageLive.Index, :new
       live "/workspaces/:workspace_slug/projects/:project_slug/pages/:id", PageLive.Show, :show
 
       live "/workspaces/:workspace_slug/projects/:project_slug/pages/:id/edit",
