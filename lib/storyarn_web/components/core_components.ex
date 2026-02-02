@@ -446,15 +446,15 @@ defmodule StoryarnWeb.Components.CoreComponents do
 
   def block_label(assigns) do
     ~H"""
-    <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 flex items-center justify-between">
-      <span>{@label}</span>
+    <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 flex items-center gap-1">
       <span
         :if={@is_constant}
-        class="text-error tooltip tooltip-left"
+        class="text-error tooltip tooltip-right"
         data-tip={gettext("Constant")}
       >
         <.icon name="lock" class="size-3" />
       </span>
+      <span>{@label}</span>
     </label>
     """
   end
