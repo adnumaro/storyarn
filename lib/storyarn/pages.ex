@@ -74,6 +74,13 @@ defmodule Storyarn.Pages do
   @spec get_children(uuid()) :: [page()]
   defdelegate get_children(page_id), to: PageCrud
 
+  @doc """
+  Lists all leaf pages (pages with no children) for a project.
+  Useful for speaker selection in dialogue nodes.
+  """
+  @spec list_leaf_pages(uuid()) :: [page()]
+  defdelegate list_leaf_pages(project_id), to: PageCrud
+
   # =============================================================================
   # Pages - CRUD Operations
   # =============================================================================
