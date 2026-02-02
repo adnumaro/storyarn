@@ -57,7 +57,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
         >
           <.icon name="grip-vertical" class="size-4" />
         </button>
-        <div class="dropdown dropdown-end">
+        <div class="dropdown">
           <button
             type="button"
             tabindex="0"
