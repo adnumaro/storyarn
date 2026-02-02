@@ -115,18 +115,18 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 ### 7.5.2 Block Variables
 
 #### 7.5.2.1 Variable Fields
-- [ ] Add `is_variable` field to `blocks` table (boolean, default: false)
-- [ ] Add `variable_name` field to `blocks` table (string, nullable)
-- [ ] Auto-generate `variable_name` from label when `is_variable` is set to true
-- [ ] Slugify function: "Health Points" → "health_points"
-- [ ] Ensure unique `variable_name` within page
-- [ ] Handle name collisions: "health", "health_2", "health_3"
+- [x] Add `is_constant` field to `blocks` table (boolean, default: false) - inverted logic
+- [x] Add `variable_name` field to `blocks` table (string, nullable)
+- [x] Auto-generate `variable_name` from label on block create/update
+- [x] Slugify function: "Health Points" → "health_points"
+- [x] Ensure unique `variable_name` within page (DB constraint)
+- [x] Handle name collisions: "health", "health_2", "health_3"
 
 #### 7.5.2.2 Variable Configuration UI
-- [ ] Add "Use as variable" toggle in block config panel
-- [ ] Show generated variable name (read-only display)
+- [x] Add "Use as constant" toggle in block config panel (is_constant)
+- [x] Show generated variable name (read-only display)
 - [ ] Show full path: `#shortcut.variable_name` or `#pages.path.variable_name`
-- [ ] Visual indicator on blocks that are variables (small icon/badge)
+- [x] Visual indicator on constant blocks (green lock icon with tooltip)
 
 #### 7.5.2.3 Variable Access Path Resolution
 - [ ] Function to resolve variable path: `#mc.jaime.health` → block value
@@ -438,7 +438,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 | 2 | ✅ Page avatar (replace icon) | Assets system | Avatar upload/display works |
 | 3 | ✅ Page banner | Assets system | Banner display works |
 | 4 | ✅ Soft delete | None | Trash/restore works |
-| 5 | Block variables (is_variable, variable_name) | None | Variables marked correctly |
+| 5 | ✅ Block variables (is_constant, variable_name) | None | Variables marked correctly |
 | 6 | Shortcuts (pages) | None | Shortcuts validated/saved |
 | 7 | Shortcuts (flows) | None | Flow shortcuts work |
 | 8 | Page tabs UI | None | Tab navigation works |

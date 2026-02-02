@@ -4,6 +4,8 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
+  import StoryarnWeb.Components.CoreComponents, only: [block_label: 1]
+
   @doc """
   Renders a boolean block with support for two-state (true/false) or tri-state (true/null/false).
 
@@ -24,6 +26,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
     label = config["label"] || ""
     mode = config["mode"] || "two_state"
     content = get_in(assigns.block.value, ["content"])
+    is_constant = assigns.block.is_constant || false
 
     # Custom labels with defaults
     true_label = non_empty_or_default(config["true_label"], gettext("Yes"))
@@ -38,10 +41,11 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
       |> assign(:true_label, true_label)
       |> assign(:false_label, false_label)
       |> assign(:neutral_label, neutral_label)
+      |> assign(:is_constant, is_constant)
 
     ~H"""
     <div class="py-1">
-      <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
+      <.block_label label={@label} is_constant={@is_constant} />
 
       <%= if @can_edit do %>
         <%= if @mode == "two_state" do %>

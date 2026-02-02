@@ -4,6 +4,8 @@ defmodule StoryarnWeb.Components.BlockComponents.LayoutBlocks do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
+  import StoryarnWeb.Components.CoreComponents, only: [block_label: 1]
+
   def divider_block(assigns) do
     ~H"""
     <div class="py-3">
@@ -19,16 +21,18 @@ defmodule StoryarnWeb.Components.BlockComponents.LayoutBlocks do
     label = get_in(assigns.block.config, ["label"]) || ""
     content = get_in(assigns.block.value, ["content"])
     formatted = format_date(content)
+    is_constant = assigns.block.is_constant || false
 
     assigns =
       assigns
       |> assign(:label, label)
       |> assign(:content, content)
       |> assign(:formatted, formatted)
+      |> assign(:is_constant, is_constant)
 
     ~H"""
     <div class="py-1">
-      <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
+      <.block_label label={@label} is_constant={@is_constant} />
       <input
         :if={@can_edit}
         type="date"

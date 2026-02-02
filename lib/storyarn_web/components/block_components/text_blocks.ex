@@ -4,6 +4,8 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
+  import StoryarnWeb.Components.CoreComponents, only: [block_label: 1]
+
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :is_editing, :boolean, default: false
@@ -12,16 +14,18 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
     label = get_in(assigns.block.config, ["label"]) || ""
     placeholder = get_in(assigns.block.config, ["placeholder"]) || ""
     content = get_in(assigns.block.value, ["content"]) || ""
+    is_constant = assigns.block.is_constant || false
 
     assigns =
       assigns
       |> assign(:label, label)
       |> assign(:placeholder, placeholder)
       |> assign(:content, content)
+      |> assign(:is_constant, is_constant)
 
     ~H"""
     <div class="py-1">
-      <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
+      <.block_label label={@label} is_constant={@is_constant} />
       <input
         :if={@can_edit}
         type="text"
@@ -45,15 +49,17 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
   def rich_text_block(assigns) do
     label = get_in(assigns.block.config, ["label"]) || ""
     content = get_in(assigns.block.value, ["content"]) || ""
+    is_constant = assigns.block.is_constant || false
 
     assigns =
       assigns
       |> assign(:label, label)
       |> assign(:content, content)
+      |> assign(:is_constant, is_constant)
 
     ~H"""
     <div class="py-1">
-      <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
+      <.block_label label={@label} is_constant={@is_constant} />
       <div
         id={"tiptap-#{@block.id}"}
         phx-hook="TiptapEditor"
@@ -75,16 +81,18 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
     label = get_in(assigns.block.config, ["label"]) || ""
     placeholder = get_in(assigns.block.config, ["placeholder"]) || "0"
     content = get_in(assigns.block.value, ["content"])
+    is_constant = assigns.block.is_constant || false
 
     assigns =
       assigns
       |> assign(:label, label)
       |> assign(:placeholder, placeholder)
       |> assign(:content, content)
+      |> assign(:is_constant, is_constant)
 
     ~H"""
     <div class="py-1">
-      <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
+      <.block_label label={@label} is_constant={@is_constant} />
       <input
         :if={@can_edit}
         type="number"

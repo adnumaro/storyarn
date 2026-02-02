@@ -4,7 +4,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
+  import StoryarnWeb.Components.CoreComponents, only: [block_label: 1, icon: 1]
 
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
@@ -16,6 +16,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
     options = get_in(assigns.block.config, ["options"]) || []
     content = get_in(assigns.block.value, ["content"])
     display_value = find_option_label(options, content)
+    is_constant = assigns.block.is_constant || false
 
     assigns =
       assigns
@@ -24,10 +25,11 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
       |> assign(:options, options)
       |> assign(:content, content)
       |> assign(:display_value, display_value)
+      |> assign(:is_constant, is_constant)
 
     ~H"""
     <div class="py-1">
-      <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
+      <.block_label label={@label} is_constant={@is_constant} />
       <select
         :if={@can_edit}
         class="select select-bordered w-full"
@@ -58,6 +60,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
     placeholder = get_in(assigns.block.config, ["placeholder"]) || ""
     options = get_in(assigns.block.config, ["options"]) || []
     content = get_in(assigns.block.value, ["content"]) || []
+    is_constant = assigns.block.is_constant || false
 
     # Get selected options with their labels
     selected_options =
@@ -81,10 +84,11 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
       |> assign(:options, options)
       |> assign(:content, content)
       |> assign(:selected_options, selected_options)
+      |> assign(:is_constant, is_constant)
 
     ~H"""
     <div class="py-1">
-      <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 block">{@label}</label>
+      <.block_label label={@label} is_constant={@is_constant} />
       <div
         :if={@can_edit}
         class="block-input w-full min-h-12 py-2 flex flex-wrap items-center gap-1.5 px-4"

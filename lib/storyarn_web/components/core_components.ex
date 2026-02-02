@@ -434,6 +434,32 @@ defmodule StoryarnWeb.Components.CoreComponents do
   end
 
   @doc """
+  Renders a block label with optional constant indicator.
+
+  ## Examples
+
+      <.block_label label="Health" is_constant={false} />
+      <.block_label label="Max HP" is_constant={true} />
+  """
+  attr :label, :string, required: true
+  attr :is_constant, :boolean, default: false
+
+  def block_label(assigns) do
+    ~H"""
+    <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 flex items-center justify-between">
+      <span>{@label}</span>
+      <span
+        :if={@is_constant}
+        class="text-error tooltip tooltip-left"
+        data-tip={gettext("Constant")}
+      >
+        <.icon name="lock" class="size-3" />
+      </span>
+    </label>
+    """
+  end
+
+  @doc """
   Renders a back navigation link.
 
   ## Examples
