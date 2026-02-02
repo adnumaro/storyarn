@@ -98,11 +98,44 @@ defmodule Storyarn.Pages do
   defdelegate update_page(page, attrs), to: PageCrud
 
   @doc """
-  Deletes a page and all its blocks.
-  Children pages will have their parent_id set to nil (become root pages).
+  Soft deletes a page (moves to trash).
+  Also soft deletes all descendant pages.
   """
   @spec delete_page(page()) :: {:ok, page()} | {:error, changeset()}
   defdelegate delete_page(page), to: PageCrud
+
+  @doc """
+  Soft deletes a page and all its descendants (moves to trash).
+  Alias for `delete_page/1`.
+  """
+  @spec trash_page(page()) :: {:ok, page()} | {:error, changeset()}
+  defdelegate trash_page(page), to: PageCrud
+
+  @doc """
+  Restores a soft-deleted page from trash.
+  Note: Does not automatically restore descendants.
+  """
+  @spec restore_page(page()) :: {:ok, page()} | {:error, changeset()}
+  defdelegate restore_page(page), to: PageCrud
+
+  @doc """
+  Permanently deletes a page and all its descendants.
+  Use with caution - this cannot be undone.
+  """
+  @spec permanently_delete_page(page()) :: {:ok, page()} | {:error, changeset()}
+  defdelegate permanently_delete_page(page), to: PageCrud
+
+  @doc """
+  Lists all trashed (soft-deleted) pages for a project.
+  """
+  @spec list_trashed_pages(id()) :: [page()]
+  defdelegate list_trashed_pages(project_id), to: PageCrud
+
+  @doc """
+  Gets a trashed page by ID.
+  """
+  @spec get_trashed_page(id(), id()) :: page() | nil
+  defdelegate get_trashed_page(project_id, page_id), to: PageCrud
 
   @doc """
   Moves a page to a new parent.

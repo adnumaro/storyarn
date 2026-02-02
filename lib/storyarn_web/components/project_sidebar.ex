@@ -80,8 +80,14 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
         <% end %>
       </nav>
 
-      <%!-- Settings footer --%>
+      <%!-- Footer links --%>
       <div class="p-2 border-t border-base-300">
+        <.tree_link
+          label={gettext("Trash")}
+          href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/trash"}
+          icon="trash-2"
+          active={trash_page?(@current_path, @workspace.slug, @project.slug)}
+        />
         <.tree_link
           label={gettext("Settings")}
           href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings"}
@@ -306,11 +312,10 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
             class="text-error"
             phx-click="delete_page"
             phx-value-id={@page_id}
-            data-confirm={gettext("Are you sure you want to delete this page?")}
             onclick="event.stopPropagation();"
           >
             <.icon name="trash-2" class="size-4" />
-            {gettext("Delete")}
+            {gettext("Move to Trash")}
           </button>
         </li>
       </ul>
@@ -341,6 +346,10 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
 
   defp settings_page?(path, workspace_slug, project_slug) do
     String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/settings")
+  end
+
+  defp trash_page?(path, workspace_slug, project_slug) do
+    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/trash")
   end
 
   defp flows_page?(path, workspace_slug, project_slug) do

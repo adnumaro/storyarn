@@ -242,14 +242,15 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 ### 7.5.6 Soft Delete (Trash)
 
 #### 7.5.6.1 Pages Soft Delete
-- [ ] Add `deleted_at` field to `pages` table
-- [ ] Update queries to exclude deleted pages by default
-- [ ] "Move to trash" instead of hard delete
-- [ ] Trash view: list deleted pages with restore/permanent delete options
-- [ ] Auto-purge after 30 days
+- [x] Add `deleted_at` field to `pages` table
+- [x] Update queries to exclude deleted pages by default
+- [x] "Move to trash" instead of hard delete (context functions)
+- [x] Trash view: list deleted pages with restore/permanent delete options
+- [ ] Auto-purge after 30 days (background job)
 
 #### 7.5.6.2 Blocks Soft Delete
-- [ ] Add `deleted_at` field to `blocks` table
+- [x] Add `deleted_at` field to `blocks` table
+- [x] Update block queries to exclude deleted blocks
 - [ ] Track deleted blocks in page version history
 - [ ] Option to restore individual blocks from version history
 
@@ -436,7 +437,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 | 1 | ✅ Boolean block | None | New block type works |
 | 2 | ✅ Page avatar (replace icon) | Assets system | Avatar upload/display works |
 | 3 | ✅ Page banner | Assets system | Banner display works |
-| 4 | Soft delete | None | Trash/restore works |
+| 4 | ✅ Soft delete | None | Trash/restore works |
 | 5 | Block variables (is_variable, variable_name) | None | Variables marked correctly |
 | 6 | Shortcuts (pages) | None | Shortcuts validated/saved |
 | 7 | Shortcuts (flows) | None | Flow shortcuts work |

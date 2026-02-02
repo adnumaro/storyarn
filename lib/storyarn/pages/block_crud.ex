@@ -12,18 +12,24 @@ defmodule Storyarn.Pages.BlockCrud do
 
   def list_blocks(page_id) do
     from(b in Block,
-      where: b.page_id == ^page_id,
+      where: b.page_id == ^page_id and is_nil(b.deleted_at),
       order_by: [asc: b.position]
     )
     |> Repo.all()
   end
 
   def get_block(block_id) do
-    Repo.get(Block, block_id)
+    Block
+    |> where(id: ^block_id)
+    |> where([b], is_nil(b.deleted_at))
+    |> Repo.one()
   end
 
   def get_block!(block_id) do
-    Repo.get!(Block, block_id)
+    Block
+    |> where(id: ^block_id)
+    |> where([b], is_nil(b.deleted_at))
+    |> Repo.one!()
   end
 
   # =============================================================================
@@ -83,7 +89,7 @@ defmodule Storyarn.Pages.BlockCrud do
       |> Enum.with_index()
       |> Enum.each(fn {block_id, index} ->
         from(b in Block,
-          where: b.id == ^block_id and b.page_id == ^page_id
+          where: b.id == ^block_id and b.page_id == ^page_id and is_nil(b.deleted_at)
         )
         |> Repo.update_all(set: [position: index])
       end)
@@ -99,7 +105,7 @@ defmodule Storyarn.Pages.BlockCrud do
   defp next_block_position(page_id) do
     query =
       from(b in Block,
-        where: b.page_id == ^page_id,
+        where: b.page_id == ^page_id and is_nil(b.deleted_at),
         select: max(b.position)
       )
 

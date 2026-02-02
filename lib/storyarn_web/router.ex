@@ -119,6 +119,11 @@ defmodule StoryarnWeb.Router do
            PageLive.Show,
            :edit
 
+      # Trash
+      live "/workspaces/:workspace_slug/projects/:project_slug/trash",
+           ProjectLive.Trash,
+           :index
+
       # Flows (visual narrative editor)
       live "/workspaces/:workspace_slug/projects/:project_slug/flows", FlowLive.Index, :index
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/new", FlowLive.Index, :new

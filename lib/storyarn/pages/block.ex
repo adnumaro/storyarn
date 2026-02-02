@@ -79,6 +79,7 @@ defmodule Storyarn.Pages.Block do
           value: map() | nil,
           page_id: integer() | nil,
           page: Page.t() | Ecto.Association.NotLoaded.t() | nil,
+          deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -88,6 +89,7 @@ defmodule Storyarn.Pages.Block do
     field :position, :integer, default: 0
     field :config, :map, default: %{}
     field :value, :map, default: %{}
+    field :deleted_at, :utc_datetime
 
     belongs_to :page, Page
 
@@ -179,4 +181,25 @@ defmodule Storyarn.Pages.Block do
   Builds a default value for a block type.
   """
   def default_value(type), do: Map.get(@default_values, type, %{})
+
+  @doc """
+  Changeset for soft deleting a block.
+  """
+  def delete_changeset(block) do
+    block
+    |> change(%{deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)})
+  end
+
+  @doc """
+  Changeset for restoring a soft-deleted block.
+  """
+  def restore_changeset(block) do
+    block
+    |> change(%{deleted_at: nil})
+  end
+
+  @doc """
+  Returns true if the block is soft-deleted.
+  """
+  def deleted?(%__MODULE__{deleted_at: deleted_at}), do: not is_nil(deleted_at)
 end

@@ -13,7 +13,7 @@ defmodule Storyarn.Pages.PageCrud do
 
   def list_pages_tree(project_id) do
     from(p in Page,
-      where: p.project_id == ^project_id and is_nil(p.parent_id),
+      where: p.project_id == ^project_id and is_nil(p.parent_id) and is_nil(p.deleted_at),
       order_by: [asc: p.position, asc: p.name]
     )
     |> Repo.all()
@@ -23,6 +23,7 @@ defmodule Storyarn.Pages.PageCrud do
   def get_page(project_id, page_id) do
     Page
     |> where(project_id: ^project_id, id: ^page_id)
+    |> where([p], is_nil(p.deleted_at))
     |> preload([:blocks, :avatar_asset, :banner_asset])
     |> Repo.one()
   end
@@ -30,6 +31,7 @@ defmodule Storyarn.Pages.PageCrud do
   def get_page!(project_id, page_id) do
     Page
     |> where(project_id: ^project_id, id: ^page_id)
+    |> where([p], is_nil(p.deleted_at))
     |> preload([:blocks, :avatar_asset, :banner_asset])
     |> Repo.one!()
   end
@@ -50,7 +52,7 @@ defmodule Storyarn.Pages.PageCrud do
 
   def get_children(page_id) do
     from(p in Page,
-      where: p.parent_id == ^page_id,
+      where: p.parent_id == ^page_id and is_nil(p.deleted_at),
       order_by: [asc: p.position, asc: p.name],
       preload: [:avatar_asset]
     )
@@ -62,15 +64,17 @@ defmodule Storyarn.Pages.PageCrud do
   Useful for speaker selection in dialogue nodes.
   """
   def list_leaf_pages(project_id) do
-    # Subquery to find all pages that are parents
+    # Subquery to find all pages that are parents (excluding deleted children)
     parent_ids_subquery =
       from(p in Page,
-        where: p.project_id == ^project_id and not is_nil(p.parent_id),
+        where: p.project_id == ^project_id and not is_nil(p.parent_id) and is_nil(p.deleted_at),
         select: p.parent_id
       )
 
     from(p in Page,
-      where: p.project_id == ^project_id and p.id not in subquery(parent_ids_subquery),
+      where:
+        p.project_id == ^project_id and p.id not in subquery(parent_ids_subquery) and
+          is_nil(p.deleted_at),
       order_by: [asc: p.position, asc: p.name],
       preload: [:avatar_asset]
     )
@@ -98,8 +102,76 @@ defmodule Storyarn.Pages.PageCrud do
     |> Repo.update()
   end
 
+  @doc """
+  Soft deletes a page (moves to trash).
+  Also soft deletes all descendant pages.
+  """
   def delete_page(%Page{} = page) do
+    trash_page(page)
+  end
+
+  @doc """
+  Soft deletes a page and all its descendants (moves to trash).
+  """
+  def trash_page(%Page{} = page) do
+    Repo.transaction(fn ->
+      # Get all descendant IDs before deleting
+      descendant_ids = get_descendant_ids(page.id)
+
+      # Soft delete all descendants
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+      if descendant_ids != [] do
+        from(p in Page, where: p.id in ^descendant_ids)
+        |> Repo.update_all(set: [deleted_at: now])
+      end
+
+      # Soft delete the page itself
+      page
+      |> Page.delete_changeset()
+      |> Repo.update!()
+    end)
+  end
+
+  @doc """
+  Restores a soft-deleted page from trash.
+  Note: Does not automatically restore descendants.
+  """
+  def restore_page(%Page{} = page) do
+    page
+    |> Page.restore_changeset()
+    |> Repo.update()
+  end
+
+  @doc """
+  Permanently deletes a page and all its descendants.
+  Use with caution - this cannot be undone.
+  """
+  def permanently_delete_page(%Page{} = page) do
     Repo.delete(page)
+  end
+
+  @doc """
+  Lists all trashed (soft-deleted) pages for a project.
+  """
+  def list_trashed_pages(project_id) do
+    from(p in Page,
+      where: p.project_id == ^project_id and not is_nil(p.deleted_at),
+      order_by: [desc: p.deleted_at],
+      preload: [:avatar_asset]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Gets a trashed page by ID.
+  """
+  def get_trashed_page(project_id, page_id) do
+    Page
+    |> where(project_id: ^project_id, id: ^page_id)
+    |> where([p], not is_nil(p.deleted_at))
+    |> preload([:avatar_asset])
+    |> Repo.one()
   end
 
   def move_page(%Page{} = page, parent_id, position \\ nil) do
@@ -180,7 +252,7 @@ defmodule Storyarn.Pages.PageCrud do
 
     children =
       from(p in Page,
-        where: p.parent_id == ^page.id,
+        where: p.parent_id == ^page.id and is_nil(p.deleted_at),
         order_by: [asc: p.position, asc: p.name]
       )
       |> Repo.all()
@@ -192,7 +264,7 @@ defmodule Storyarn.Pages.PageCrud do
   defp get_descendant_ids(page_id) do
     direct_children_ids =
       from(p in Page,
-        where: p.parent_id == ^page_id,
+        where: p.parent_id == ^page_id and is_nil(p.deleted_at),
         select: p.id
       )
       |> Repo.all()
@@ -210,7 +282,7 @@ defmodule Storyarn.Pages.PageCrud do
   defp next_position(project_id, parent_id) do
     query =
       from(p in Page,
-        where: p.project_id == ^project_id,
+        where: p.project_id == ^project_id and is_nil(p.deleted_at),
         select: max(p.position)
       )
 

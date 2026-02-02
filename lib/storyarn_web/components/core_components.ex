@@ -515,6 +515,78 @@ defmodule StoryarnWeb.Components.CoreComponents do
     """
   end
 
+  @doc """
+  Renders a confirmation modal dialog.
+
+  ## Examples
+
+      <.confirm_modal
+        id="delete-confirm"
+        title="Delete item?"
+        message="This action cannot be undone."
+        confirm_text="Delete"
+        confirm_variant="error"
+        on_confirm={JS.push("delete")}
+      />
+
+  To show the modal, use `show_modal("delete-confirm")`.
+  """
+  attr :id, :string, required: true
+  attr :title, :string, required: true
+  attr :message, :string, default: nil
+  attr :confirm_text, :string, default: "Confirm"
+  attr :cancel_text, :string, default: "Cancel"
+  attr :confirm_variant, :string, values: ~w(primary error), default: "primary"
+  attr :on_confirm, JS, required: true
+  attr :on_cancel, JS, default: %JS{}
+  attr :icon, :string, default: nil
+  attr :icon_class, :string, default: "text-error"
+
+  def confirm_modal(assigns) do
+    ~H"""
+    <dialog
+      id={@id}
+      class="modal"
+      phx-remove={hide_modal(@id)}
+    >
+      <div
+        id={"#{@id}-container"}
+        class="modal-box max-w-sm"
+        phx-click-away={@on_cancel |> hide_modal(@id)}
+        phx-key="escape"
+        phx-window-keydown={@on_cancel |> hide_modal(@id)}
+      >
+        <div class="flex items-center gap-3 mb-2">
+          <div :if={@icon} class={@icon_class}>
+            <.icon name={@icon} class="size-8" />
+          </div>
+          <h3 class="font-bold text-lg">{@title}</h3>
+        </div>
+        <p :if={@message} class="text-base-content/70 mb-6">{@message}</p>
+        <div class="modal-action justify-end gap-2">
+          <button
+            type="button"
+            class="btn btn-ghost"
+            phx-click={@on_cancel |> hide_modal(@id)}
+          >
+            {@cancel_text}
+          </button>
+          <button
+            type="button"
+            class={["btn", @confirm_variant == "error" && "btn-error", @confirm_variant == "primary" && "btn-primary"]}
+            phx-click={@on_confirm |> hide_modal(@id)}
+          >
+            {@confirm_text}
+          </button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button type="button" phx-click={@on_cancel |> hide_modal(@id)}>close</button>
+      </form>
+    </dialog>
+    """
+  end
+
   ## JS Commands
 
   def show(js \\ %JS{}, selector) do
