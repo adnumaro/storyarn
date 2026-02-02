@@ -159,7 +159,7 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 - [x] UI (two_state): Toggle or checkbox (true/false)
 - [x] UI (tri_state): Three-way toggle (true/neutral/false) with indeterminate state
 - [x] Config panel: Mode selector (2 states vs 3 states)
-- [ ] Config panel: Custom labels for states (optional, for display) - DEFERRED
+- [x] Config panel: Custom labels for states (true_label, false_label, neutral_label)
 
 **Tri-state UI options:**
 ```
