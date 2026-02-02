@@ -2,7 +2,7 @@
 
 > **Goal:** Build an "articy killer" - a web-based narrative design platform with real-time collaboration
 >
-> **Last Updated:** February 2026
+> **Last Updated:** February 2, 2026
 
 ## Confirmed Stack
 
@@ -246,14 +246,15 @@ lib/storyarn/
 - [x] Keyboard shortcuts (Delete, Ctrl+D duplicate, Escape deselect)
 - [x] Connection labels and conditions UI (double-click to edit)
 
-### ⏳ Phase 5: Flow Editor - Dialogue
+### ✅ Phase 5: Flow Editor - Dialogue (Complete)
 
-- [ ] Dialogue node with speaker selector (from pages/entities)
-- [ ] Rich text editor for dialogue content
-- [ ] Branches/response options
-- [ ] Conditions on branches (variable checks)
-- [ ] Dialogue preview mode
-- [ ] Variable interpolation in text (`{player_name}`)
+- [x] Rich text editor for dialogue content (TipTap integration)
+- [x] Dialogue preview mode (walk through connected nodes)
+- [x] Variable interpolation in text (`{player_name}`)
+- [x] Leaf pages API for speaker selection
+- [x] Speaker selector UI in dialogue node properties panel
+- [x] Response branches UI (add/remove/edit responses)
+- [x] Conditions on response branches (plain text expressions)
 
 ### ⏳ Phase 6: Collaboration
 
@@ -285,15 +286,17 @@ Current `assets/package.json`:
 
 ```json
 {
-  "@retejs/lit-plugin": "^2.0.x",
+  "@retejs/lit-plugin": "^2.0.7",
   "@tiptap/core": "^3.18.0",
   "@tiptap/pm": "^3.18.0",
   "@tiptap/starter-kit": "^3.18.0",
   "daisyui": "^5.5.14",
-  "lit": "^3.x",
+  "lit": "^3.3.2",
+  "lucide": "^0.563.0",
   "rete": "^2.0.3",
   "rete-area-plugin": "^2.0.3",
   "rete-connection-plugin": "^2.0.3",
+  "rete-minimap-plugin": "^2.0.3",
   "rete-render-utils": "^2.0.2",
   "sortablejs": "^1.15.6",
   "topbar": "^3.0.0"
@@ -306,15 +309,14 @@ Current `assets/package.json`:
 
 Current hooks in `assets/js/hooks/`:
 
-| Hook               | Purpose                                      |
-|--------------------|----------------------------------------------|
-| `flow_canvas.js`   | Rete.js flow editor canvas (NEW)             |
-| `sortable_list.js` | Generic drag & drop for lists (blocks)       |
-| `sortable_tree.js` | Tree structure drag & drop (pages)           |
-| `tiptap_editor.js` | Rich text WYSIWYG editor                     |
-| `tree.js`          | Tree UI interactions (expand/collapse)       |
-| `tree_search.js`   | Search filtering in tree                     |
-| `theme.js`         | Dark/light theme switching                   |
+| Hook               | Purpose                                                    |
+|--------------------|------------------------------------------------------------|
+| `flow_canvas.js`   | Rete.js flow editor canvas with node/connection management |
+| `sortable_list.js` | Generic drag & drop for lists (blocks)                     |
+| `sortable_tree.js` | Tree structure drag & drop (pages)                         |
+| `tiptap_editor.js` | Rich text editor (dual-mode: page blocks + flow nodes)     |
+| `tree.js`          | Tree UI interactions (expand/collapse)                     |
+| `tree_search.js`   | Search filtering in tree                                   |
 
 ---
 
@@ -361,7 +363,7 @@ test/
 │   ├── projects_test.exs
 │   ├── pages_test.exs
 │   ├── assets_test.exs
-│   ├── flows_test.exs              # NEW
+│   ├── flows_test.exs
 │   ├── authorization_test.exs
 │   └── assets/image_processor_test.exs
 ├── storyarn_web/
@@ -370,11 +372,12 @@ test/
 │   │   ├── user_live/
 │   │   ├── project_live/
 │   │   ├── page_live/
-│   │   ├── flow_live/              # NEW
+│   │   ├── flow_live/
 │   │   └── settings_live/
 │   └── user_auth_test.exs
 └── e2e/
-    └── projects_e2e_test.exs  # Playwright
+    ├── flows_e2e_test.exs     # Playwright - flow editor
+    └── pages_e2e_test.exs     # Playwright - pages system
 ```
 
 ### Commands
@@ -532,14 +535,16 @@ try {
 
 | Commit  | Description                                                         |
 |---------|---------------------------------------------------------------------|
+| 392b6ea | test: Add E2E tests for flows and pages                             |
+| 7fb309c | feat(flow): Add dialogue preview component                          |
+| 21fa51d | feat(flow): Enhance flow canvas functionality                       |
+| 9886471 | feat(tiptap): Support node text editing in flow editor              |
+| baa7153 | feat(pages): Add list_leaf_pages delegation to facade               |
 | c748f36 | feat: Add Flow Editor with visual node-based editing                |
 | 87ac8a3 | docs: Add rate limiting documentation to CLAUDE.md                  |
 | 9820386 | feat: Add rate limiting and fix static analysis warnings            |
 | 33ddac1 | docs: Add @spec type annotations to context modules                 |
 | b3148f7 | docs: Update IMPLEMENTATION_PLAN.md with current status             |
-| 458efe1 | chore: Remove obsolete planning documents                           |
-| 6ac6912 | feat: Add Cloak encryption for OAuth tokens at rest                 |
-| 17ddace | feat: Migrate from Heroicons to Lucide icons                        |
 
 ---
 
@@ -558,16 +563,17 @@ try {
 
 ## Immediate Next Steps
 
-1. **Phase 4: Flow Editor - Remaining Items**
-   - Add mini-map navigation for large flows
-   - Style nodes by type (colors, icons)
-   - Connection labels and conditions UI
-   - Keyboard shortcuts (delete, duplicate)
+1. **Phase 6: Collaboration**
+   - Phoenix Presence integration (who's online in project)
+   - User cursor positions on canvas
+   - Node locking mechanism (prevent conflicts)
+   - Visual editing indicators (colored cursors)
+   - Change notifications (toast messages)
 
-2. **Phase 5: Flow Editor - Dialogue**
-   - Speaker selector linked to Pages
-   - Rich text in dialogue nodes
-   - Response branches UI
+2. **Phase 7: Export**
+   - Export to JSON (custom Storyarn format)
+   - Import from JSON
+   - Pre-export validation
 
 ---
 
