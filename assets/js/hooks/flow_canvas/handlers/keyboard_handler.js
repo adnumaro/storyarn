@@ -14,8 +14,8 @@ export function createKeyboardHandler(hook, lockHandler) {
      * Initializes keyboard event listener.
      */
     init() {
-      hook.keyboardHandler = (e) => this.handleKeyboard(e);
-      document.addEventListener("keydown", hook.keyboardHandler);
+      this._keydownListener = (e) => this.handleKeyboard(e);
+      document.addEventListener("keydown", this._keydownListener);
     },
 
     /**
@@ -61,8 +61,8 @@ export function createKeyboardHandler(hook, lockHandler) {
      * Cleans up keyboard event listener.
      */
     destroy() {
-      if (hook.keyboardHandler) {
-        document.removeEventListener("keydown", hook.keyboardHandler);
+      if (this._keydownListener) {
+        document.removeEventListener("keydown", this._keydownListener);
       }
     },
   };
