@@ -23,14 +23,14 @@ defmodule Storyarn.Pages.PageCrud do
   def get_page(project_id, page_id) do
     Page
     |> where(project_id: ^project_id, id: ^page_id)
-    |> preload([:blocks, :avatar_asset])
+    |> preload([:blocks, :avatar_asset, :banner_asset])
     |> Repo.one()
   end
 
   def get_page!(project_id, page_id) do
     Page
     |> where(project_id: ^project_id, id: ^page_id)
-    |> preload([:blocks, :avatar_asset])
+    |> preload([:blocks, :avatar_asset, :banner_asset])
     |> Repo.one!()
   end
 

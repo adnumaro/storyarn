@@ -26,6 +26,7 @@ import { LiveSocket } from "phoenix_live_view";
 import topbar from "topbar";
 
 import { AvatarUpload } from "./hooks/avatar_upload";
+import { BannerUpload } from "./hooks/banner_upload";
 import { FlowCanvas } from "./hooks/flow_canvas";
 // Custom hooks
 import { SortableList } from "./hooks/sortable_list";
@@ -46,6 +47,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
   hooks: {
     ...colocatedHooks,
     AvatarUpload,
+    BannerUpload,
     SortableList,
     SortableTree,
     TreeToggle,
