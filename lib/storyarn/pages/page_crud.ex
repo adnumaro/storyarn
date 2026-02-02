@@ -80,8 +80,10 @@ defmodule Storyarn.Pages.PageCrud do
   # =============================================================================
 
   def create_page(%Project{} = project, attrs) do
-    parent_id = attrs["parent_id"] || attrs[:parent_id]
-    position = attrs["position"] || attrs[:position] || next_position(project.id, parent_id)
+    # Normalize keys to strings for changeset
+    attrs = stringify_keys(attrs)
+    parent_id = attrs["parent_id"]
+    position = attrs["position"] || next_position(project.id, parent_id)
 
     %Page{project_id: project.id}
     |> Page.create_changeset(Map.put(attrs, "position", position))
@@ -213,5 +215,12 @@ defmodule Storyarn.Pages.PageCrud do
       end
 
     (Repo.one(query) || -1) + 1
+  end
+
+  defp stringify_keys(map) when is_map(map) do
+    Map.new(map, fn
+      {k, v} when is_atom(k) -> {Atom.to_string(k), v}
+      {k, v} -> {k, v}
+    end)
   end
 end
