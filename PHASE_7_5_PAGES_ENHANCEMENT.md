@@ -85,15 +85,15 @@ Valid:   mc.jaime, loc.tavern, items.sword, quest-1
 Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 ```
 
-#### 7.5.1.2 Page Avatar (replaces icon)
-- [ ] Add `avatar_asset_id` field to `pages` table (FK to assets, nullable)
-- [ ] Remove/deprecate `icon` field (migration to drop or keep for backwards compat)
-- [ ] Preload avatar asset in page queries
-- [ ] UI: Avatar display in page header (circular/rounded image)
-- [ ] UI: Avatar display in sidebar tree (small thumbnail)
-- [ ] UI: Click to upload/change avatar
-- [ ] UI: Remove avatar option (fallback to default icon or initials)
-- [ ] Integration with existing Assets system (asset picker or direct upload)
+#### 7.5.1.2 Page Avatar (replaces icon) ✅ DONE
+- [x] Add `avatar_asset_id` field to `pages` table (FK to assets, nullable)
+- [x] Remove/deprecate `icon` field (migration to drop or keep for backwards compat)
+- [x] Preload avatar asset in page queries
+- [x] UI: Avatar display in page header (circular/rounded image)
+- [x] UI: Avatar display in sidebar tree (small thumbnail)
+- [x] UI: Click to upload/change avatar
+- [x] UI: Remove avatar option (fallback to default icon or initials)
+- [x] Integration with existing Assets system (asset picker or direct upload)
 
 #### 7.5.1.3 Page Banner
 - [ ] Add `banner_asset_id` field to `pages` table (FK to assets, nullable)
@@ -151,15 +151,15 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 
 ### 7.5.3 New Block Types
 
-#### 7.5.3.1 Boolean Block
-- [ ] Add "boolean" to block types enum
-- [ ] Schema: config `{label, mode}` where mode is "two_state" or "tri_state"
-- [ ] Schema: value `{content}` where content is `true`, `false`, or `null`
-- [ ] Default config: `{label: "Enabled", mode: "two_state"}`
-- [ ] UI (two_state): Toggle or checkbox (true/false)
-- [ ] UI (tri_state): Three-way toggle (true/neutral/false)
-- [ ] Config panel: Mode selector (2 states vs 3 states)
-- [ ] Config panel: Custom labels for states (optional, for display)
+#### 7.5.3.1 Boolean Block ✅ DONE
+- [x] Add "boolean" to block types enum
+- [x] Schema: config `{label, mode}` where mode is "two_state" or "tri_state"
+- [x] Schema: value `{content}` where content is `true`, `false`, or `null`
+- [x] Default config: `{label: "", mode: "two_state"}`
+- [x] UI (two_state): Toggle or checkbox (true/false)
+- [x] UI (tri_state): Three-way toggle (true/neutral/false) with indeterminate state
+- [x] Config panel: Mode selector (2 states vs 3 states)
+- [ ] Config panel: Custom labels for states (optional, for display) - DEFERRED
 
 **Tri-state UI options:**
 ```
@@ -433,8 +433,8 @@ Recommended order to minimize dependencies and allow incremental testing:
 
 | Order | Task | Dependencies | Testable Outcome |
 |-------|------|--------------|------------------|
-| 1 | Boolean block | None | New block type works |
-| 2 | Page avatar (replace icon) | Assets system | Avatar upload/display works |
+| 1 | ✅ Boolean block | None | New block type works |
+| 2 | ✅ Page avatar (replace icon) | Assets system | Avatar upload/display works |
 | 3 | Page banner | Assets system | Banner display works |
 | 4 | Soft delete | None | Trash/restore works |
 | 5 | Block variables (is_variable, variable_name) | None | Variables marked correctly |
@@ -492,8 +492,9 @@ Recommended order to minimize dependencies and allow incremental testing:
 
 ## Success Criteria
 
-- [ ] New block types working (boolean, reference)
-- [ ] Page avatar working (replaces icon field)
+- [x] New block types working (boolean) ✅
+- [ ] New block types working (reference)
+- [x] Page avatar working (replaces icon field) ✅
 - [ ] Page banner working
 - [ ] Shortcuts can be set on pages and flows
 - [ ] Mentions with `#` work in rich_text blocks
