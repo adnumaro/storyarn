@@ -20,15 +20,24 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
   attr :can_edit, :boolean, default: false
 
   def boolean_block(assigns) do
-    label = get_in(assigns.block.config, ["label"]) || ""
-    mode = get_in(assigns.block.config, ["mode"]) || "two_state"
+    config = assigns.block.config || %{}
+    label = config["label"] || ""
+    mode = config["mode"] || "two_state"
     content = get_in(assigns.block.value, ["content"])
+
+    # Custom labels with defaults
+    true_label = non_empty_or_default(config["true_label"], gettext("Yes"))
+    false_label = non_empty_or_default(config["false_label"], gettext("No"))
+    neutral_label = non_empty_or_default(config["neutral_label"], gettext("Neutral"))
 
     assigns =
       assigns
       |> assign(:label, label)
       |> assign(:mode, mode)
       |> assign(:content, content)
+      |> assign(:true_label, true_label)
+      |> assign(:false_label, false_label)
+      |> assign(:neutral_label, neutral_label)
 
     ~H"""
     <div class="py-1">
@@ -36,21 +45,47 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
 
       <%= if @can_edit do %>
         <%= if @mode == "two_state" do %>
-          <.two_state_toggle block={@block} content={@content} />
+          <.two_state_toggle
+            block={@block}
+            content={@content}
+            true_label={@true_label}
+            false_label={@false_label}
+          />
         <% else %>
-          <.tri_state_toggle block={@block} content={@content} />
+          <.tri_state_toggle
+            block={@block}
+            content={@content}
+            true_label={@true_label}
+            false_label={@false_label}
+            neutral_label={@neutral_label}
+          />
         <% end %>
       <% else %>
-        <.boolean_display content={@content} mode={@mode} />
+        <.boolean_display
+          content={@content}
+          mode={@mode}
+          true_label={@true_label}
+          false_label={@false_label}
+          neutral_label={@neutral_label}
+        />
       <% end %>
     </div>
     """
   end
 
+  defp non_empty_or_default(nil, default), do: default
+  defp non_empty_or_default("", default), do: default
+  defp non_empty_or_default(value, _default), do: value
+
   # Two-state toggle (simple checkbox)
   defp two_state_toggle(assigns) do
     state_string = if assigns.content == true, do: "true", else: "false"
-    assigns = assign(assigns, :state_string, state_string)
+    label_text = if assigns.content == true, do: assigns.true_label, else: assigns.false_label
+
+    assigns =
+      assigns
+      |> assign(:state_string, state_string)
+      |> assign(:label_text, label_text)
 
     ~H"""
     <label class="flex items-center gap-2 cursor-pointer py-2">
@@ -64,7 +99,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
         data-state={@state_string}
       />
       <span class="text-sm text-base-content/70">
-        {if @content == true, do: gettext("Yes"), else: gettext("No")}
+        {@label_text}
       </span>
     </label>
     """
@@ -75,12 +110,12 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
   defp tri_state_toggle(assigns) do
     content = assigns.content
 
-    # Label text based on current state
+    # Label text based on current state using custom labels
     label_text =
       cond do
-        content == true -> gettext("Yes")
-        content == false -> gettext("No")
-        true -> gettext("Neutral")
+        content == true -> assigns.true_label
+        content == false -> assigns.false_label
+        true -> assigns.neutral_label
       end
 
     # Determine if indeterminate (nil or any non-boolean value)
@@ -140,7 +175,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
                 d="M5 13l4 4L19 7"
               />
             </svg>
-            {gettext("Yes")}
+            {@true_label}
           </span>
         <% false -> %>
           <span class="badge badge-error gap-1">
@@ -158,11 +193,11 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
                 d="M6 18L18 6M6 6l12 12"
               />
             </svg>
-            {gettext("No")}
+            {@false_label}
           </span>
         <% nil -> %>
           <%= if @mode == "tri_state" do %>
-            <span class="badge badge-neutral">{gettext("Neutral")}</span>
+            <span class="badge badge-neutral">{@neutral_label}</span>
           <% else %>
             <span class="text-base-content/40">—</span>
           <% end %>

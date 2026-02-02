@@ -30,6 +30,9 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
       |> assign(:min_date, config["min_date"])
       |> assign(:max_date, config["max_date"])
       |> assign(:mode, config["mode"] || "two_state")
+      |> assign(:true_label, config["true_label"] || "")
+      |> assign(:false_label, config["false_label"] || "")
+      |> assign(:neutral_label, config["neutral_label"] || "")
 
     ~H"""
     <div class="fixed inset-y-0 right-0 w-80 bg-base-200 shadow-xl z-50 flex flex-col">
@@ -179,6 +182,48 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
             </select>
             <p class="text-xs text-base-content/50 mt-1">
               {gettext("Tri-state allows a neutral/unknown value.")}
+            </p>
+          </div>
+
+          <%!-- Custom labels (for boolean) --%>
+          <div :if={@block.type == "boolean"} class="space-y-2">
+            <label class="label">
+              <span class="label-text">{gettext("Custom Labels")}</span>
+            </label>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <input
+                  type="text"
+                  name="config[true_label]"
+                  value={@true_label}
+                  class="input input-bordered input-sm w-full"
+                  placeholder={gettext("Yes")}
+                />
+                <span class="text-xs text-base-content/50">{gettext("True")}</span>
+              </div>
+              <div>
+                <input
+                  type="text"
+                  name="config[false_label]"
+                  value={@false_label}
+                  class="input input-bordered input-sm w-full"
+                  placeholder={gettext("No")}
+                />
+                <span class="text-xs text-base-content/50">{gettext("False")}</span>
+              </div>
+            </div>
+            <div :if={@mode == "tri_state"}>
+              <input
+                type="text"
+                name="config[neutral_label]"
+                value={@neutral_label}
+                class="input input-bordered input-sm w-full"
+                placeholder={gettext("Neutral")}
+              />
+              <span class="text-xs text-base-content/50">{gettext("Neutral/Unknown")}</span>
+            </div>
+            <p class="text-xs text-base-content/50">
+              {gettext("Leave empty to use defaults.")}
             </p>
           </div>
         </form>
