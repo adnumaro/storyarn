@@ -116,11 +116,19 @@ defmodule StoryarnWeb.Layouts do
     default: [],
     doc: "pages with preloaded children for the tree"
 
+  attr :flows, :list, default: [], doc: "flows list for sidebar"
+
+  attr :active_tool, :atom, default: :pages, doc: "active tool (:pages or :flows)"
+
   attr :current_path, :string, default: "", doc: "current path for navigation highlighting"
 
   attr :selected_page_id, :string,
     default: nil,
     doc: "currently selected page ID for tree highlighting"
+
+  attr :selected_flow_id, :string,
+    default: nil,
+    doc: "currently selected flow ID for sidebar highlighting"
 
   attr :can_edit, :boolean, default: false, doc: "whether the user can edit pages"
 
@@ -168,8 +176,11 @@ defmodule StoryarnWeb.Layouts do
           project={@project}
           workspace={@workspace}
           pages_tree={@pages_tree}
+          flows={@flows}
+          active_tool={@active_tool}
           current_path={@current_path}
           selected_page_id={@selected_page_id}
+          selected_flow_id={@selected_flow_id}
           can_edit={@can_edit}
         />
       </div>

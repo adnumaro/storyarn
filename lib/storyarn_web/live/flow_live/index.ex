@@ -16,7 +16,8 @@ defmodule StoryarnWeb.FlowLive.Index do
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      pages_tree={[]}
+      flows={@flows}
+      active_tool={:flows}
       current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows"}
       can_edit={@can_edit}
     >

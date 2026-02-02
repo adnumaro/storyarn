@@ -12,8 +12,11 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
   attr :project, :map, required: true
   attr :workspace, :map, required: true
   attr :pages_tree, :list, default: []
+  attr :flows, :list, default: []
+  attr :active_tool, :atom, default: :pages
   attr :current_path, :string, required: true
   attr :selected_page_id, :string, default: nil
+  attr :selected_flow_id, :string, default: nil
   attr :can_edit, :boolean, default: false
 
   def project_sidebar(assigns) do
@@ -32,69 +35,14 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
 
       <%!-- Project header --%>
       <div class="p-3 border-b border-base-300">
-        <.link
-          navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
-          class="flex items-center gap-2 font-semibold hover:text-primary truncate"
-        >
+        <div class="flex items-center gap-2 font-semibold truncate">
           <.icon name="folder" class="size-5 shrink-0" />
           <span class="truncate">{@project.name}</span>
-        </.link>
+        </div>
       </div>
 
       <%!-- Main navigation --%>
       <nav class="flex-1 overflow-y-auto p-2 space-y-4">
-        <%!-- Pages section with tree --%>
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <.tree_section label={gettext("Pages")} />
-            <.link
-              navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/new"}
-              class="btn btn-ghost btn-xs"
-              title={gettext("New Page")}
-            >
-              <.icon name="plus" class="size-3" />
-            </.link>
-          </div>
-
-          <%!-- Search input --%>
-          <div
-            :if={@pages_tree != []}
-            id="pages-tree-search"
-            phx-hook="TreeSearch"
-            data-tree-id="pages-tree-container"
-            class="mb-2"
-          >
-            <input
-              type="text"
-              data-tree-search-input
-              placeholder={gettext("Filter pages...")}
-              class="input input-xs input-bordered w-full"
-            />
-          </div>
-
-          <div :if={@pages_tree == []} class="text-sm text-base-content/50 px-4 py-2">
-            {gettext("No pages yet")}
-          </div>
-
-          <%!-- Tree container with sortable support --%>
-          <div
-            :if={@pages_tree != []}
-            id="pages-tree-container"
-            phx-hook={if @can_edit, do: "SortableTree", else: nil}
-          >
-            <div data-sortable-container data-parent-id="">
-              <.page_tree_items
-                :for={page <- @pages_tree}
-                page={page}
-                workspace={@workspace}
-                project={@project}
-                selected_page_id={@selected_page_id}
-                can_edit={@can_edit}
-              />
-            </div>
-          </div>
-        </div>
-
         <%!-- Project tools section --%>
         <div>
           <.tree_section label={gettext("Tools")} />
@@ -104,7 +52,32 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
             icon="git-branch"
             active={flows_page?(@current_path, @workspace.slug, @project.slug)}
           />
+          <.tree_link
+            label={gettext("Pages")}
+            href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages"}
+            icon="file-text"
+            active={pages_tool_page?(@current_path, @workspace.slug, @project.slug)}
+          />
         </div>
+
+        <%!-- Dynamic content section based on active tool --%>
+        <%= if @active_tool == :flows do %>
+          <.flows_section
+            flows={@flows}
+            workspace={@workspace}
+            project={@project}
+            selected_flow_id={@selected_flow_id}
+            can_edit={@can_edit}
+          />
+        <% else %>
+          <.pages_section
+            pages_tree={@pages_tree}
+            workspace={@workspace}
+            project={@project}
+            selected_page_id={@selected_page_id}
+            can_edit={@can_edit}
+          />
+        <% end %>
       </nav>
 
       <%!-- Settings footer --%>
@@ -117,6 +90,108 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
         />
       </div>
     </aside>
+    """
+  end
+
+  # Pages section component
+  attr :pages_tree, :list, required: true
+  attr :workspace, :map, required: true
+  attr :project, :map, required: true
+  attr :selected_page_id, :string, default: nil
+  attr :can_edit, :boolean, default: false
+
+  defp pages_section(assigns) do
+    ~H"""
+    <div>
+      <div class="flex items-center justify-between mb-1">
+        <.tree_section label={gettext("Pages")} />
+        <.link
+          :if={@can_edit}
+          navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/new"}
+          class="btn btn-ghost btn-xs"
+          title={gettext("New Page")}
+        >
+          <.icon name="plus" class="size-3" />
+        </.link>
+      </div>
+
+      <%!-- Search input --%>
+      <div
+        :if={@pages_tree != []}
+        id="pages-tree-search"
+        phx-hook="TreeSearch"
+        data-tree-id="pages-tree-container"
+        class="mb-2"
+      >
+        <input
+          type="text"
+          data-tree-search-input
+          placeholder={gettext("Filter pages...")}
+          class="input input-xs input-bordered w-full"
+        />
+      </div>
+
+      <div :if={@pages_tree == []} class="text-sm text-base-content/50 px-4 py-2">
+        {gettext("No pages yet")}
+      </div>
+
+      <%!-- Tree container with sortable support --%>
+      <div
+        :if={@pages_tree != []}
+        id="pages-tree-container"
+        phx-hook={if @can_edit, do: "SortableTree", else: nil}
+      >
+        <div data-sortable-container data-parent-id="">
+          <.page_tree_items
+            :for={page <- @pages_tree}
+            page={page}
+            workspace={@workspace}
+            project={@project}
+            selected_page_id={@selected_page_id}
+            can_edit={@can_edit}
+          />
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  # Flows section component
+  attr :flows, :list, required: true
+  attr :workspace, :map, required: true
+  attr :project, :map, required: true
+  attr :selected_flow_id, :string, default: nil
+  attr :can_edit, :boolean, default: false
+
+  defp flows_section(assigns) do
+    ~H"""
+    <div>
+      <div class="flex items-center justify-between mb-1">
+        <.tree_section label={gettext("Flows")} />
+        <.link
+          :if={@can_edit}
+          navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/new"}
+          class="btn btn-ghost btn-xs"
+          title={gettext("New Flow")}
+        >
+          <.icon name="plus" class="size-3" />
+        </.link>
+      </div>
+
+      <div :if={@flows == []} class="text-sm text-base-content/50 px-4 py-2">
+        {gettext("No flows yet")}
+      </div>
+
+      <div :if={@flows != []}>
+        <.tree_leaf
+          :for={flow <- @flows}
+          label={flow.name}
+          icon="git-branch"
+          href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{flow.id}"}
+          active={@selected_flow_id == to_string(flow.id)}
+        />
+      </div>
+    </div>
     """
   end
 
@@ -266,5 +341,9 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
 
   defp flows_page?(path, workspace_slug, project_slug) do
     String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows")
+  end
+
+  defp pages_tool_page?(path, workspace_slug, project_slug) do
+    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/pages")
   end
 end
