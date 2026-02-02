@@ -25,7 +25,8 @@ const NODE_CONFIGS = {
     color: "#3b82f6",
     icon: createIconSvg(MessageSquare),
     inputs: ["input"],
-    outputs: ["output"],
+    outputs: ["output"], // Default single output, overridden by responses if present
+    dynamicOutputs: true, // Signal that this node type can have dynamic outputs
   },
   hub: {
     label: "Hub",
@@ -63,6 +64,7 @@ class StoryarnNode extends LitElement {
     return {
       data: { type: Object },
       emit: { type: Function },
+      pagesMap: { type: Object },
     };
   }
 
@@ -148,6 +150,20 @@ class StoryarnNode extends LitElement {
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+
+    .condition-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      font-size: 10px;
+      font-weight: bold;
+      background: oklch(var(--wa, 0.8 0.15 80) / 0.2);
+      color: oklch(var(--wa, 0.8 0.15 80));
+      border-radius: 50%;
+      margin-right: 2px;
+    }
   `;
 
   render() {
@@ -160,7 +176,15 @@ class StoryarnNode extends LitElement {
     // Get preview text based on node type
     let preview = "";
     if (node.nodeType === "dialogue") {
-      preview = nodeData.speaker || nodeData.text || "";
+      // Resolve speaker name from pagesMap
+      const speakerId = nodeData.speaker_page_id;
+      const speakerPage = speakerId ? this.pagesMap?.[String(speakerId)] : null;
+      const speakerName = speakerPage?.name || "";
+      // Strip HTML from text for preview
+      const textContent = nodeData.text
+        ? new DOMParser().parseFromString(nodeData.text, "text/html").body.textContent
+        : "";
+      preview = speakerName || textContent || "";
     } else if (node.nodeType === "hub") {
       preview = nodeData.label || "";
     } else if (node.nodeType === "condition") {
@@ -202,10 +226,19 @@ class StoryarnNode extends LitElement {
               </div>
             `,
           )}
-          ${Object.entries(node.outputs || {}).map(
-            ([key, output]) => html`
+          ${Object.entries(node.outputs || {}).map(([key, output]) => {
+            // For dialogue nodes with responses, show response text as label
+            let outputLabel = key;
+            let hasCondition = false;
+            if (node.nodeType === "dialogue" && nodeData.responses?.length > 0) {
+              const response = nodeData.responses.find((r) => r.id === key);
+              outputLabel = response?.text || key;
+              hasCondition = !!response?.condition;
+            }
+            return html`
               <div class="socket-row output">
-                <span class="label">${key}</span>
+                ${hasCondition ? html`<span class="condition-badge" title="Has condition">?</span>` : ""}
+                <span class="label" title="${outputLabel}">${outputLabel}</span>
                 <rete-ref
                   class="output-socket"
                   .data=${{
@@ -218,8 +251,8 @@ class StoryarnNode extends LitElement {
                   .emit=${this.emit}
                 ></rete-ref>
               </div>
-            `,
-          )}
+            `;
+          })}
         </div>
         ${preview ? html`<div class="node-data">${preview}</div>` : ""}
       </div>
@@ -418,9 +451,17 @@ class FlowNode extends ClassicPreset.Node {
       this.addInput(inputName, new ClassicPreset.Input(new ClassicPreset.Socket("flow")));
     }
 
-    // Add outputs
-    for (const outputName of config.outputs) {
-      this.addOutput(outputName, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
+    // Add outputs - check for dynamic outputs (responses in dialogue nodes)
+    if (config.dynamicOutputs && type === "dialogue" && data.responses?.length > 0) {
+      // Add one output per response
+      for (const response of data.responses) {
+        this.addOutput(response.id, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
+      }
+    } else {
+      // Add default outputs
+      for (const outputName of config.outputs) {
+        this.addOutput(outputName, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
+      }
     }
   }
 }
@@ -433,6 +474,7 @@ export const FlowCanvas = {
   async initEditor() {
     const container = this.el;
     const flowData = JSON.parse(container.dataset.flow || "{}");
+    this.pagesMap = JSON.parse(container.dataset.pages || "{}");
 
     // Create the editor
     this.editor = new NodeEditor();
@@ -449,6 +491,9 @@ export const FlowCanvas = {
     // Track connection data for labels
     this.connectionDataMap = new Map();
 
+    // Store reference for use in customizers
+    const self = this;
+
     // Configure Lit render plugin with custom components
     this.render.addPreset(
       LitPresets.classic.setup({
@@ -458,6 +503,7 @@ export const FlowCanvas = {
               <storyarn-node
                 .data=${context.payload}
                 .emit=${emit}
+                .pagesMap=${self.pagesMap}
               ></storyarn-node>
             `;
           },
@@ -654,6 +700,7 @@ export const FlowCanvas = {
     this.handleEvent("flow_updated", (data) => this.handleFlowUpdated(data));
     this.handleEvent("node_added", (data) => this.handleNodeAdded(data));
     this.handleEvent("node_removed", (data) => this.handleNodeRemoved(data));
+    this.handleEvent("node_updated", (data) => this.handleNodeUpdated(data));
     this.handleEvent("connection_added", (data) => this.handleConnectionAdded(data));
     this.handleEvent("connection_removed", (data) => this.handleConnectionRemoved(data));
     this.handleEvent("connection_updated", (data) => this.handleConnectionUpdated(data));
@@ -706,6 +753,73 @@ export const FlowCanvas = {
       if (this.selectedNodeId === data.id) {
         this.selectedNodeId = null;
       }
+    }
+  },
+
+  async handleNodeUpdated(data) {
+    const { id, data: nodeData } = data;
+    const existingNode = this.nodeMap.get(id);
+    if (!existingNode) return;
+
+    // For dialogue nodes with changing responses, we need to rebuild the node
+    // because Rete.js doesn't easily support adding/removing outputs dynamically
+    if (existingNode.nodeType === "dialogue") {
+      const position = await this.area.getNodePosition(existingNode.id);
+
+      // Remove existing connections to/from this node
+      this.isLoadingFromServer = true;
+      const connections = this.editor.getConnections();
+      const affectedConnections = [];
+      for (const conn of connections) {
+        if (conn.source === existingNode.id || conn.target === existingNode.id) {
+          affectedConnections.push({
+            source: this.editor.getNode(conn.source)?.nodeId,
+            sourceOutput: conn.sourceOutput,
+            target: this.editor.getNode(conn.target)?.nodeId,
+            targetInput: conn.targetInput,
+          });
+          await this.editor.removeConnection(conn.id);
+        }
+      }
+
+      // Remove old node
+      await this.editor.removeNode(existingNode.id);
+      this.nodeMap.delete(id);
+
+      // Create new node with updated data
+      const newNode = new FlowNode(existingNode.nodeType, id, nodeData);
+      newNode.id = `node-${id}`;
+
+      await this.editor.addNode(newNode);
+      await this.area.translate(newNode.id, position);
+      this.nodeMap.set(id, newNode);
+
+      // Re-add connections that still have valid outputs
+      for (const connInfo of affectedConnections) {
+        const sourceNode = this.nodeMap.get(connInfo.source);
+        const targetNode = this.nodeMap.get(connInfo.target);
+        if (sourceNode && targetNode) {
+          // Check if the output still exists
+          if (
+            sourceNode.outputs[connInfo.sourceOutput] &&
+            targetNode.inputs[connInfo.targetInput]
+          ) {
+            const connection = new ClassicPreset.Connection(
+              sourceNode,
+              connInfo.sourceOutput,
+              targetNode,
+              connInfo.targetInput,
+            );
+            await this.editor.addConnection(connection);
+          }
+        }
+      }
+
+      this.isLoadingFromServer = false;
+    } else {
+      // For other node types, just update the data and trigger a re-render
+      existingNode.nodeData = nodeData;
+      await this.area.update("node", existingNode.id);
     }
   },
 
@@ -801,10 +915,12 @@ export const FlowCanvas = {
       clearTimeout(timer);
     }
 
-    // Destroy plugins
-    if (this.minimap) {
-      this.minimap.destroy();
+    // Remove minimap element from DOM (it doesn't have a destroy method)
+    if (this.minimap?.element) {
+      this.minimap.element.remove();
     }
+
+    // Destroy area plugin
     if (this.area) {
       this.area.destroy();
     }
