@@ -20,7 +20,7 @@ defmodule Storyarn.Pages do
 
   @type page :: Page.t()
   @type block :: Block.t()
-  @type uuid :: Ecto.UUID.t()
+  @type id :: integer()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
 
@@ -38,47 +38,47 @@ defmodule Storyarn.Pages do
   Lists all pages for a project as a tree structure.
   Returns root pages (no parent) with children preloaded recursively.
   """
-  @spec list_pages_tree(uuid()) :: [page()]
+  @spec list_pages_tree(id()) :: [page()]
   defdelegate list_pages_tree(project_id), to: PageCrud
 
   @doc """
   Gets a single page by ID within a project.
   Returns `nil` if the page doesn't exist or doesn't belong to the project.
   """
-  @spec get_page(uuid(), uuid()) :: page() | nil
+  @spec get_page(id(), id()) :: page() | nil
   defdelegate get_page(project_id, page_id), to: PageCrud
 
   @doc """
   Gets a single page by ID within a project.
   Raises `Ecto.NoResultsError` if not found.
   """
-  @spec get_page!(uuid(), uuid()) :: page()
+  @spec get_page!(id(), id()) :: page()
   defdelegate get_page!(project_id, page_id), to: PageCrud
 
   @doc """
   Gets a page with all its ancestors for breadcrumb.
   Returns a list starting from the root and ending with the page itself.
   """
-  @spec get_page_with_ancestors(uuid(), uuid()) :: [page()] | nil
+  @spec get_page_with_ancestors(id(), id()) :: [page()] | nil
   defdelegate get_page_with_ancestors(project_id, page_id), to: PageCrud
 
   @doc """
   Gets a page with all descendants loaded recursively.
   """
-  @spec get_page_with_descendants(uuid(), uuid()) :: page() | nil
+  @spec get_page_with_descendants(id(), id()) :: page() | nil
   defdelegate get_page_with_descendants(project_id, page_id), to: PageCrud
 
   @doc """
   Gets the children of a page.
   """
-  @spec get_children(uuid()) :: [page()]
+  @spec get_children(id()) :: [page()]
   defdelegate get_children(page_id), to: PageCrud
 
   @doc """
   Lists all leaf pages (pages with no children) for a project.
   Useful for speaker selection in dialogue nodes.
   """
-  @spec list_leaf_pages(uuid()) :: [page()]
+  @spec list_leaf_pages(id()) :: [page()]
   defdelegate list_leaf_pages(project_id), to: PageCrud
 
   # =============================================================================
@@ -108,7 +108,7 @@ defmodule Storyarn.Pages do
   Moves a page to a new parent.
   Returns `{:ok, page}` or `{:error, reason}`.
   """
-  @spec move_page(page(), uuid() | nil, integer() | nil) ::
+  @spec move_page(page(), id() | nil, integer() | nil) ::
           {:ok, page()} | {:error, validation_error() | changeset()}
   defdelegate move_page(page, parent_id, position \\ nil), to: PageCrud
 
@@ -122,7 +122,7 @@ defmodule Storyarn.Pages do
   Validates if a parent_id is valid for a page.
   Returns `:ok` if valid, `{:error, reason}` if invalid.
   """
-  @spec validate_parent(page(), uuid() | nil) :: :ok | {:error, validation_error()}
+  @spec validate_parent(page(), id() | nil) :: :ok | {:error, validation_error()}
   defdelegate validate_parent(page, parent_id), to: PageCrud
 
   # =============================================================================
@@ -132,13 +132,13 @@ defmodule Storyarn.Pages do
   @doc """
   Reorders pages within a parent container.
   """
-  @spec reorder_pages(uuid(), uuid() | nil, [uuid()]) :: {:ok, [page()]} | {:error, term()}
+  @spec reorder_pages(id(), id() | nil, [id()]) :: {:ok, [page()]} | {:error, term()}
   defdelegate reorder_pages(project_id, parent_id, page_ids), to: TreeOperations
 
   @doc """
   Moves a page to a new parent at a specific position, reordering siblings as needed.
   """
-  @spec move_page_to_position(page(), uuid() | nil, integer()) ::
+  @spec move_page_to_position(page(), id() | nil, integer()) ::
           {:ok, page()} | {:error, validation_error() | term()}
   def move_page_to_position(%Page{} = page, new_parent_id, new_position) do
     with :ok <- PageCrud.validate_parent(page, new_parent_id) do
@@ -153,20 +153,20 @@ defmodule Storyarn.Pages do
   @doc """
   Lists all blocks for a page, ordered by position.
   """
-  @spec list_blocks(uuid()) :: [block()]
+  @spec list_blocks(id()) :: [block()]
   defdelegate list_blocks(page_id), to: BlockCrud
 
   @doc """
   Gets a single block by ID.
   """
-  @spec get_block(uuid()) :: block() | nil
+  @spec get_block(id()) :: block() | nil
   defdelegate get_block(block_id), to: BlockCrud
 
   @doc """
   Gets a single block by ID.
   Raises `Ecto.NoResultsError` if not found.
   """
-  @spec get_block!(uuid()) :: block()
+  @spec get_block!(id()) :: block()
   defdelegate get_block!(block_id), to: BlockCrud
 
   @doc """
@@ -203,7 +203,7 @@ defmodule Storyarn.Pages do
   Reorders blocks within a page.
   Takes a list of block IDs in the desired order.
   """
-  @spec reorder_blocks(uuid(), [uuid()]) :: {:ok, [block()]} | {:error, term()}
+  @spec reorder_blocks(id(), [id()]) :: {:ok, [block()]} | {:error, term()}
   defdelegate reorder_blocks(page_id, block_ids), to: BlockCrud
 
   @doc """
