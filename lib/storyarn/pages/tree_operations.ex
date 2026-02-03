@@ -75,7 +75,7 @@ defmodule Storyarn.Pages.TreeOperations do
   defp update_page_position({page_id, index}, project_id, parent_id) do
     query =
       from(p in Page,
-        where: p.id == ^page_id and p.project_id == ^project_id
+        where: p.id == ^page_id and p.project_id == ^project_id and is_nil(p.deleted_at)
       )
 
     query = add_parent_filter(query, parent_id)
@@ -83,7 +83,7 @@ defmodule Storyarn.Pages.TreeOperations do
   end
 
   defp update_position_only(page_id, position) do
-    from(p in Page, where: p.id == ^page_id)
+    from(p in Page, where: p.id == ^page_id and is_nil(p.deleted_at))
     |> Repo.update_all(set: [position: position])
   end
 
@@ -100,7 +100,7 @@ defmodule Storyarn.Pages.TreeOperations do
 
   defp list_pages_by_parent(project_id, parent_id) do
     from(p in Page,
-      where: p.project_id == ^project_id,
+      where: p.project_id == ^project_id and is_nil(p.deleted_at),
       order_by: [asc: p.position, asc: p.name]
     )
     |> add_parent_filter(parent_id)
