@@ -193,12 +193,29 @@ defmodule Storyarn.Pages.PageCrud do
 
   @doc """
   Restores a soft-deleted page from trash.
-  Note: Does not automatically restore descendants.
+  Also restores all soft-deleted blocks for this page.
+  Note: Does not automatically restore descendant pages.
   """
   def restore_page(%Page{} = page) do
-    page
-    |> Page.restore_changeset()
-    |> Repo.update()
+    alias Storyarn.Pages.Block
+
+    Ecto.Multi.new()
+    |> Ecto.Multi.update(:page, Page.restore_changeset(page))
+    |> Ecto.Multi.run(:restore_blocks, fn repo, _changes ->
+      # Restore all soft-deleted blocks for this page
+      {count, _} =
+        from(b in Block,
+          where: b.page_id == ^page.id and not is_nil(b.deleted_at)
+        )
+        |> repo.update_all(set: [deleted_at: nil])
+
+      {:ok, count}
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{page: page}} -> {:ok, page}
+      {:error, _op, changeset, _changes} -> {:error, changeset}
+    end
   end
 
   @doc """

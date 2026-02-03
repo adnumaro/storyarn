@@ -1,12 +1,30 @@
 defmodule Storyarn.Pages.ReferenceTracker do
   @moduledoc """
-  Tracks entity references for building backlinks.
+  Tracks entity references between pages, flows, and blocks.
 
   This module provides functions to:
   - Extract references from rich_text content (mentions)
   - Extract references from reference blocks
   - Update references atomically when content changes
   - Query backlinks for a given target
+
+  ## Reference Lifecycle
+
+  - References are created when blocks are saved (reference blocks, rich_text with mentions)
+  - References are updated atomically when block content changes
+  - References are deleted when source blocks are deleted
+
+  ## Edge Cases
+
+  - **Deleted sources**: References from soft-deleted blocks/pages are excluded from backlinks
+  - **Deleted targets**: References to deleted targets show "not found" in UI
+  - **Orphaned references**: Use `cleanup_orphaned_references/0` to remove stale data
+  - **Cross-project**: References are always scoped to a single project
+
+  ## Performance
+
+  - Backlinks query is optimized with JOINs (no N+1)
+  - Indexes exist on (source_type, source_id) and (target_type, target_id)
   """
 
   import Ecto.Query
@@ -135,8 +153,8 @@ defmodule Storyarn.Pages.ReferenceTracker do
   """
   @spec get_backlinks_with_sources(String.t(), any(), integer()) :: [map()]
   def get_backlinks_with_sources(target_type, target_id, project_id) do
-    alias Storyarn.Pages.{Block, Page}
     alias Storyarn.Flows.{Flow, FlowNode}
+    alias Storyarn.Pages.{Block, Page}
 
     # Single query for block references with JOINs
     block_refs =
@@ -260,9 +278,8 @@ defmodule Storyarn.Pages.ReferenceTracker do
   """
   @spec cleanup_orphaned_references() :: :ok
   def cleanup_orphaned_references do
-    alias Storyarn.Pages.Block
-    alias Storyarn.Pages.Page
     alias Storyarn.Flows.Flow
+    alias Storyarn.Pages.{Block, Page}
 
     # Clean up references where source block no longer exists
     from(r in EntityReference,
@@ -331,17 +348,29 @@ defmodule Storyarn.Pages.ReferenceTracker do
   end
 
   defp extract_mentions_from_html(content) when is_binary(content) do
-    # Extract mentions from HTML: <span class="mention" data-type="page" data-id="123" data-label="name">
-    Regex.scan(
-      ~r/<span[^>]*class="mention"[^>]*data-type="([^"]+)"[^>]*data-id="([^"]+)"/,
-      content
-    )
-    |> Enum.map(fn [_, type, id] ->
-      %{type: type, id: id, context: "content"}
-    end)
+    # Use Floki for robust HTML parsing instead of regex
+    case Floki.parse_fragment(content) do
+      {:ok, document} ->
+        document
+        |> Floki.find("span.mention")
+        |> Enum.map(&mention_element_to_ref/1)
+        |> Enum.reject(&is_nil/1)
+
+      {:error, _} ->
+        []
+    end
   end
 
   defp extract_mentions_from_html(_), do: []
+
+  defp mention_element_to_ref(element) do
+    type = Floki.attribute(element, "data-type") |> List.first()
+    id = Floki.attribute(element, "data-id") |> List.first()
+
+    if type && id do
+      %{type: type, id: id, context: "content"}
+    end
+  end
 
   defp extract_flow_node_refs(data) do
     refs = []

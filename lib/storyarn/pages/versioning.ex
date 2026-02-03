@@ -64,14 +64,21 @@ defmodule Storyarn.Pages.Versioning do
 
   @doc """
   Lists all versions for a page, ordered by version number descending.
+
+  ## Options
+
+  - `:limit` - Maximum number of versions to return (default: 50)
+  - `:offset` - Number of versions to skip (default: 0)
   """
   def list_versions(page_id, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
+    offset = Keyword.get(opts, :offset, 0)
 
     from(v in PageVersion,
       where: v.page_id == ^page_id,
       order_by: [desc: v.version_number],
       limit: ^limit,
+      offset: ^offset,
       preload: [:changed_by]
     )
     |> Repo.all()
@@ -262,8 +269,9 @@ defmodule Storyarn.Pages.Versioning do
   end
 
   defp block_to_snapshot(%Block{} = block) do
+    # Note: We intentionally exclude block.id from snapshots because
+    # IDs become invalid after restore (new blocks are created with new IDs)
     %{
-      "id" => block.id,
       "type" => block.type,
       "position" => block.position,
       "config" => block.config,
@@ -296,101 +304,82 @@ defmodule Storyarn.Pages.Versioning do
   end
 
   defp diff_snapshots(old_snapshot, new_snapshot) do
-    changes = []
-
-    # Check name change
     changes =
-      if old_snapshot["name"] != new_snapshot["name"] do
-        [gettext("Renamed page") | changes]
-      else
-        changes
-      end
+      []
+      |> check_field_change(old_snapshot, new_snapshot, "name", gettext("Renamed page"))
+      |> check_field_change(old_snapshot, new_snapshot, "shortcut", gettext("Changed shortcut"))
+      |> check_field_change(
+        old_snapshot,
+        new_snapshot,
+        "avatar_asset_id",
+        gettext("Changed avatar")
+      )
+      |> check_field_change(
+        old_snapshot,
+        new_snapshot,
+        "banner_asset_id",
+        gettext("Changed banner")
+      )
+      |> append_block_changes(old_snapshot["blocks"] || [], new_snapshot["blocks"] || [])
 
-    # Check shortcut change
-    changes =
-      if old_snapshot["shortcut"] != new_snapshot["shortcut"] do
-        [gettext("Changed shortcut") | changes]
-      else
-        changes
-      end
+    format_change_summary(changes)
+  end
 
-    # Check avatar change
-    changes =
-      if old_snapshot["avatar_asset_id"] != new_snapshot["avatar_asset_id"] do
-        [gettext("Changed avatar") | changes]
-      else
-        changes
-      end
-
-    # Check banner change
-    changes =
-      if old_snapshot["banner_asset_id"] != new_snapshot["banner_asset_id"] do
-        [gettext("Changed banner") | changes]
-      else
-        changes
-      end
-
-    # Check blocks changes
-    old_blocks = old_snapshot["blocks"] || []
-    new_blocks = new_snapshot["blocks"] || []
-
-    old_block_ids = MapSet.new(old_blocks, & &1["id"])
-    new_block_ids = MapSet.new(new_blocks, & &1["id"])
-
-    added_count = MapSet.difference(new_block_ids, old_block_ids) |> MapSet.size()
-    removed_count = MapSet.difference(old_block_ids, new_block_ids) |> MapSet.size()
-
-    # Check for modified blocks (same id, different content)
-    common_ids = MapSet.intersection(old_block_ids, new_block_ids)
-    old_blocks_map = Map.new(old_blocks, &{&1["id"], &1})
-    new_blocks_map = Map.new(new_blocks, &{&1["id"], &1})
-
-    modified_count =
-      Enum.count(common_ids, fn id ->
-        old_blocks_map[id] != new_blocks_map[id]
-      end)
-
-    changes =
-      if added_count > 0 do
-        [
-          ngettext("Added %{count} block", "Added %{count} blocks", added_count,
-            count: added_count
-          )
-          | changes
-        ]
-      else
-        changes
-      end
-
-    changes =
-      if removed_count > 0 do
-        [
-          ngettext("Removed %{count} block", "Removed %{count} blocks", removed_count,
-            count: removed_count
-          )
-          | changes
-        ]
-      else
-        changes
-      end
-
-    changes =
-      if modified_count > 0 do
-        [
-          ngettext("Modified %{count} block", "Modified %{count} blocks", modified_count,
-            count: modified_count
-          )
-          | changes
-        ]
-      else
-        changes
-      end
-
-    case changes do
-      [] -> gettext("No changes detected")
-      _ -> Enum.reverse(changes) |> Enum.join(", ")
+  defp check_field_change(changes, old_snapshot, new_snapshot, field, message) do
+    if old_snapshot[field] != new_snapshot[field] do
+      [message | changes]
+    else
+      changes
     end
   end
+
+  defp append_block_changes(changes, old_blocks, new_blocks) do
+    old_positions = MapSet.new(old_blocks, & &1["position"])
+    new_positions = MapSet.new(new_blocks, & &1["position"])
+
+    added_count = MapSet.difference(new_positions, old_positions) |> MapSet.size()
+    removed_count = MapSet.difference(old_positions, new_positions) |> MapSet.size()
+    modified_count = count_modified_blocks(old_blocks, new_blocks, old_positions, new_positions)
+
+    changes
+    |> maybe_add_added_blocks(added_count)
+    |> maybe_add_removed_blocks(removed_count)
+    |> maybe_add_modified_blocks(modified_count)
+  end
+
+  defp count_modified_blocks(old_blocks, new_blocks, old_positions, new_positions) do
+    common_positions = MapSet.intersection(old_positions, new_positions)
+    old_blocks_map = Map.new(old_blocks, &{&1["position"], &1})
+    new_blocks_map = Map.new(new_blocks, &{&1["position"], &1})
+
+    Enum.count(common_positions, fn pos ->
+      old_blocks_map[pos] != new_blocks_map[pos]
+    end)
+  end
+
+  defp maybe_add_added_blocks(changes, 0), do: changes
+
+  defp maybe_add_added_blocks(changes, count) do
+    [ngettext("Added %{count} block", "Added %{count} blocks", count, count: count) | changes]
+  end
+
+  defp maybe_add_removed_blocks(changes, 0), do: changes
+
+  defp maybe_add_removed_blocks(changes, count) do
+    [ngettext("Removed %{count} block", "Removed %{count} blocks", count, count: count) | changes]
+  end
+
+  defp maybe_add_modified_blocks(changes, 0), do: changes
+
+  defp maybe_add_modified_blocks(changes, count) do
+    [
+      ngettext("Modified %{count} block", "Modified %{count} blocks", count, count: count)
+      | changes
+    ]
+  end
+
+  defp format_change_summary([]), do: gettext("No changes detected")
+  defp format_change_summary(changes), do: changes |> Enum.reverse() |> Enum.join(", ")
 
   # ===========================================================================
   # Helpers

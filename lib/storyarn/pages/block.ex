@@ -69,7 +69,7 @@ defmodule Storyarn.Pages.Block do
     "multi_select" => %{"content" => []},
     "divider" => %{},
     "date" => %{"content" => nil},
-    "boolean" => %{"content" => false},
+    "boolean" => %{"content" => nil},
     "reference" => %{"target_type" => nil, "target_id" => nil}
   }
 

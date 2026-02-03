@@ -75,6 +75,7 @@ defmodule Storyarn.Shortcuts do
     |> String.replace(~r/[\s_]+/, "-")
     |> String.replace(~r/[^a-z0-9.\-]/, "")
     |> String.replace(~r/-+/, "-")
+    |> String.replace(~r/\.+/, ".")
     |> String.replace(~r/^[.\-]+/, "")
     |> String.replace(~r/[.\-]+$/, "")
   end

@@ -86,22 +86,20 @@ defmodule Storyarn.Pages.BlockCrud do
   end
 
   def update_block_value(%Block{} = block, value) do
-    result =
-      block
-      |> Block.value_changeset(%{value: value})
-      |> Repo.update()
+    Ecto.Multi.new()
+    |> Ecto.Multi.update(:block, Block.value_changeset(block, %{value: value}))
+    |> Ecto.Multi.run(:update_references, fn _repo, %{block: updated_block} ->
+      if updated_block.type in ["reference", "rich_text"] do
+        ReferenceTracker.update_block_references(updated_block)
+      end
 
-    # Track references after successful update
-    case result do
-      {:ok, updated_block} ->
-        if updated_block.type in ["reference", "rich_text"] do
-          ReferenceTracker.update_block_references(updated_block)
-        end
-
-        result
-
-      _ ->
-        result
+      {:ok, :done}
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{block: block}} -> {:ok, block}
+      {:error, :block, changeset, _} -> {:error, changeset}
+      {:error, _, reason, _} -> {:error, reason}
     end
   end
 
