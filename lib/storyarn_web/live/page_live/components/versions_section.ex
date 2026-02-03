@@ -1,0 +1,452 @@
+defmodule StoryarnWeb.PageLive.Components.VersionsSection do
+  @moduledoc """
+  LiveComponent for version history management.
+  Handles listing, creating, restoring, and deleting versions.
+  """
+
+  use StoryarnWeb, :live_component
+
+  alias Storyarn.Pages
+  alias Storyarn.Repo
+
+  @versions_per_page 20
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold flex items-center gap-2">
+          <.icon name="history" class="size-5" />
+          {gettext("Version History")}
+        </h2>
+        <button
+          :if={@can_edit}
+          type="button"
+          class="btn btn-sm btn-primary"
+          phx-click="show_create_version_modal"
+          phx-target={@myself}
+        >
+          <.icon name="plus" class="size-4" />
+          {gettext("Create Version")}
+        </button>
+      </div>
+
+      <%= if is_nil(@versions) do %>
+        <.loading_placeholder />
+      <% else %>
+        <%= if @versions == [] do %>
+          <.empty_versions_state />
+        <% else %>
+          <div class="space-y-2">
+            <.version_row
+              :for={version <- @versions}
+              version={version}
+              is_current={version.id == @page.current_version_id}
+              can_edit={@can_edit}
+              target={@myself}
+            />
+          </div>
+          <button
+            :if={@has_more_versions}
+            type="button"
+            class="btn btn-ghost btn-sm w-full mt-4"
+            phx-click="load_more_versions"
+            phx-target={@myself}
+          >
+            <.icon name="chevron-down" class="size-4" />
+            {gettext("Load more")}
+          </button>
+        <% end %>
+      <% end %>
+
+      <%!-- Create Version Modal --%>
+      <.create_version_modal :if={@show_create_version_modal} target={@myself} />
+    </section>
+    """
+  end
+
+  @impl true
+  def update(assigns, socket) do
+    socket =
+      socket
+      |> assign(assigns)
+      |> assign_new(:versions, fn -> nil end)
+      |> assign_new(:versions_page, fn -> 1 end)
+      |> assign_new(:has_more_versions, fn -> false end)
+      |> assign_new(:show_create_version_modal, fn -> false end)
+
+    socket =
+      if is_nil(socket.assigns.versions) do
+        load_versions(socket, 1)
+      else
+        socket
+      end
+
+    {:ok, socket}
+  end
+
+  # ===========================================================================
+  # Event Handlers
+  # ===========================================================================
+
+  @impl true
+  def handle_event("show_create_version_modal", _params, socket) do
+    {:noreply, assign(socket, :show_create_version_modal, true)}
+  end
+
+  def handle_event("hide_create_version_modal", _params, socket) do
+    {:noreply, assign(socket, :show_create_version_modal, false)}
+  end
+
+  def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
+    with_authorization(socket, fn socket ->
+      create_version(socket, title, description)
+    end)
+  end
+
+  def handle_event("restore_version", %{"version" => version_number}, socket) do
+    with_authorization(socket, fn socket ->
+      restore_version(socket, version_number)
+    end)
+  end
+
+  def handle_event("delete_version", %{"version" => version_number}, socket) do
+    with_authorization(socket, fn socket ->
+      delete_version(socket, version_number)
+    end)
+  end
+
+  def handle_event("load_more_versions", _params, socket) do
+    next_page = socket.assigns.versions_page + 1
+    {:noreply, load_versions(socket, next_page)}
+  end
+
+  # ===========================================================================
+  # Private: Authorization
+  # ===========================================================================
+
+  defp with_authorization(socket, fun) do
+    if socket.assigns.can_edit do
+      fun.(socket)
+    else
+      {:noreply, put_flash(socket, :error, gettext("You don't have permission to edit."))}
+    end
+  end
+
+  # ===========================================================================
+  # Private: Version Operations
+  # ===========================================================================
+
+  defp create_version(socket, title, description) do
+    page = Repo.preload(socket.assigns.page, :blocks)
+    user_id = socket.assigns.current_user_id
+
+    title = if title == "", do: nil, else: title
+    description = if description == "", do: nil, else: description
+
+    case Pages.create_version(page, user_id, title: title, description: description) do
+      {:ok, version} ->
+        {:ok, updated_page} = Pages.set_current_version(page, version)
+
+        updated_page =
+          Repo.preload(updated_page, [:avatar_asset, :banner_asset, :blocks, :current_version])
+
+        socket =
+          socket
+          |> assign(:page, updated_page)
+          |> load_versions(1)
+          |> assign(:show_create_version_modal, false)
+
+        notify_parent(:page_updated, updated_page)
+        notify_parent(:saved)
+        {:noreply, put_flash(socket, :info, gettext("Version created."))}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not create version."))}
+    end
+  end
+
+  defp restore_version(socket, version_number) do
+    version_number = String.to_integer(version_number)
+
+    case Pages.get_version(socket.assigns.page.id, version_number) do
+      nil ->
+        {:noreply, put_flash(socket, :error, gettext("Version not found."))}
+
+      version ->
+        restore_from_version(socket, version)
+    end
+  end
+
+  defp restore_from_version(socket, version) do
+    page = socket.assigns.page
+
+    case Pages.restore_version(page, version) do
+      {:ok, updated_page} ->
+        updated_page =
+          Repo.preload(updated_page, [:avatar_asset, :banner_asset, :blocks, :current_version])
+
+        socket =
+          socket
+          |> assign(:page, updated_page)
+          |> load_versions(1)
+
+        notify_parent(:version_restored, %{
+          page: updated_page,
+          version_number: version.version_number
+        })
+
+        {:noreply,
+         socket
+         |> push_event("restore_page_content", %{
+           name: updated_page.name,
+           shortcut: updated_page.shortcut || ""
+         })
+         |> put_flash(
+           :info,
+           gettext("Restored to version %{number}", number: version.version_number)
+         )}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not restore version."))}
+    end
+  end
+
+  defp delete_version(socket, version_number) do
+    version_number = String.to_integer(version_number)
+
+    case Pages.get_version(socket.assigns.page.id, version_number) do
+      nil ->
+        {:noreply, put_flash(socket, :error, gettext("Version not found."))}
+
+      version ->
+        do_delete_version(socket, version)
+    end
+  end
+
+  defp do_delete_version(socket, version) do
+    case Pages.delete_version(version) do
+      {:ok, _} ->
+        page = Pages.get_page!(socket.assigns.project.id, socket.assigns.page.id)
+        page = Repo.preload(page, [:avatar_asset, :banner_asset, :blocks, :current_version])
+
+        socket =
+          socket
+          |> assign(:page, page)
+          |> load_versions(1)
+
+        notify_parent(:page_updated, page)
+        {:noreply, put_flash(socket, :info, gettext("Version deleted."))}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not delete version."))}
+    end
+  end
+
+  # ===========================================================================
+  # Private: Data Loading
+  # ===========================================================================
+
+  defp load_versions(socket, page_number) do
+    offset = (page_number - 1) * @versions_per_page
+
+    versions =
+      Pages.list_versions(
+        socket.assigns.page.id,
+        limit: @versions_per_page + 1,
+        offset: offset
+      )
+
+    has_more = length(versions) > @versions_per_page
+    versions = Enum.take(versions, @versions_per_page)
+
+    versions =
+      if page_number > 1 and not is_nil(socket.assigns.versions) do
+        socket.assigns.versions ++ versions
+      else
+        versions
+      end
+
+    socket
+    |> assign(:versions, versions)
+    |> assign(:versions_page, page_number)
+    |> assign(:has_more_versions, has_more)
+  end
+
+  # ===========================================================================
+  # Private: Parent Notifications
+  # ===========================================================================
+
+  defp notify_parent(:saved) do
+    send(self(), {:versions_section, :saved})
+  end
+
+  defp notify_parent(:page_updated, page) do
+    send(self(), {:versions_section, :page_updated, page})
+  end
+
+  defp notify_parent(:version_restored, data) do
+    send(self(), {:versions_section, :version_restored, data})
+  end
+
+  # ===========================================================================
+  # Function Components
+  # ===========================================================================
+
+  defp loading_placeholder(assigns) do
+    ~H"""
+    <div class="flex items-center justify-center p-8">
+      <span class="loading loading-spinner loading-md"></span>
+    </div>
+    """
+  end
+
+  defp empty_versions_state(assigns) do
+    ~H"""
+    <div class="bg-base-200/50 rounded-lg p-8 text-center">
+      <.icon name="clock" class="size-12 mx-auto text-base-content/30 mb-4" />
+      <p class="text-base-content/70 mb-2">{gettext("No versions yet")}</p>
+      <p class="text-sm text-base-content/50">
+        {gettext("Create a version to save the current state of this page.")}
+      </p>
+    </div>
+    """
+  end
+
+  attr :version, :map, required: true
+  attr :is_current, :boolean, default: false
+  attr :can_edit, :boolean, default: false
+  attr :target, :any, default: nil
+
+  defp version_row(assigns) do
+    ~H"""
+    <div class={[
+      "flex items-center gap-4 p-3 rounded-lg group",
+      @is_current && "bg-primary/10 border border-primary/30",
+      !@is_current && "hover:bg-base-200/50"
+    ]}>
+      <div class={[
+        "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium",
+        @is_current && "bg-primary text-primary-content",
+        !@is_current && "bg-base-300"
+      ]}>
+        v{@version.version_number}
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium">
+            {@version.title || @version.change_summary || gettext("No summary")}
+          </span>
+          <span :if={@is_current} class="badge badge-primary badge-sm">
+            {gettext("Current")}
+          </span>
+        </div>
+        <p :if={@version.description} class="text-sm text-base-content/70 mt-0.5">
+          {@version.description}
+        </p>
+        <div class="flex items-center gap-2 text-xs text-base-content/60 mt-0.5">
+          <span>{format_version_date(@version.inserted_at)}</span>
+          <span :if={@version.changed_by}>
+            · {gettext("by")} {@version.changed_by.display_name || @version.changed_by.email}
+          </span>
+        </div>
+      </div>
+      <div
+        :if={@can_edit}
+        class="flex-shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <button
+          :if={!@is_current}
+          type="button"
+          class="btn btn-ghost btn-xs tooltip"
+          data-tip={gettext("Restore this version")}
+          phx-click="restore_version"
+          phx-value-version={@version.version_number}
+          phx-target={@target}
+        >
+          <.icon name="rotate-ccw" class="size-4" />
+        </button>
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs tooltip text-error"
+          data-tip={gettext("Delete version")}
+          phx-click="delete_version"
+          phx-value-version={@version.version_number}
+          phx-target={@target}
+          data-confirm={gettext("Are you sure you want to delete this version?")}
+        >
+          <.icon name="trash-2" class="size-4" />
+        </button>
+      </div>
+    </div>
+    """
+  end
+
+  attr :target, :any, default: nil
+
+  defp create_version_modal(assigns) do
+    ~H"""
+    <dialog
+      id="create-version-modal"
+      class="modal modal-open"
+      phx-click-away="hide_create_version_modal"
+      phx-target={@target}
+    >
+      <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">{gettext("Create Version")}</h3>
+        <form phx-submit="create_version" phx-target={@target}>
+          <div class="mb-4">
+            <label class="label" for="version-title">
+              <span class="label-text">{gettext("Title")}</span>
+            </label>
+            <input
+              type="text"
+              name="title"
+              id="version-title"
+              class="input input-bordered w-full"
+              placeholder={gettext("e.g., Before major refactor")}
+              autofocus
+            />
+          </div>
+          <div class="mb-4">
+            <label class="label" for="version-description">
+              <span class="label-text">{gettext("Description")} ({gettext("optional")})</span>
+            </label>
+            <textarea
+              name="description"
+              id="version-description"
+              class="textarea textarea-bordered w-full"
+              rows="3"
+              placeholder={gettext("Describe what this version captures...")}
+            ></textarea>
+          </div>
+          <div class="modal-action">
+            <button
+              type="button"
+              class="btn btn-ghost"
+              phx-click="hide_create_version_modal"
+              phx-target={@target}
+            >
+              {gettext("Cancel")}
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <.icon name="save" class="size-4" />
+              {gettext("Create Version")}
+            </button>
+          </div>
+        </form>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button type="button" phx-click="hide_create_version_modal" phx-target={@target}>
+          close
+        </button>
+      </form>
+    </dialog>
+    """
+  end
+
+  defp format_version_date(datetime) do
+    Calendar.strftime(datetime, "%b %d, %Y at %H:%M")
+  end
+end
