@@ -164,6 +164,24 @@ defmodule StoryarnWeb.PageLive.Show do
               <h1 :if={!@can_edit} class="text-3xl font-bold px-2 -mx-2 py-1">
                 {@page.name}
               </h1>
+              <%!-- Shortcut --%>
+              <div :if={@can_edit} class="flex items-center gap-1 px-2 -mx-2 mt-1">
+                <span class="text-base-content/50">#</span>
+                <span
+                  id="page-shortcut"
+                  class="text-sm text-base-content/50 outline-none hover:text-base-content empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
+                  contenteditable="true"
+                  phx-hook="EditableShortcut"
+                  phx-update="ignore"
+                  data-placeholder={gettext("add-shortcut")}
+                  data-shortcut={@page.shortcut || ""}
+                >
+                  {@page.shortcut}
+                </span>
+              </div>
+              <div :if={!@can_edit && @page.shortcut} class="text-sm text-base-content/50 px-2 -mx-2 mt-1">
+                #{@page.shortcut}
+              </div>
             </div>
           </div>
         </div>
@@ -303,6 +321,29 @@ defmodule StoryarnWeb.PageLive.Show do
   @impl true
   def handle_event("save_name", %{"name" => name}, socket) do
     with_authorization(socket, :edit_content, &PageTreeHelpers.save_name(&1, name))
+  end
+
+  def handle_event("save_shortcut", %{"shortcut" => shortcut}, socket) do
+    with_authorization(socket, :edit_content, fn socket ->
+      page = socket.assigns.page
+      # Convert empty string to nil
+      shortcut = if shortcut == "", do: nil, else: shortcut
+
+      case Pages.update_page(page, %{shortcut: shortcut}) do
+        {:ok, updated_page} ->
+          updated_page = Repo.preload(updated_page, [:avatar_asset, :banner_asset])
+
+          {:noreply,
+           socket
+           |> assign(:page, updated_page)
+           |> assign(:save_status, :saved)
+           |> schedule_save_status_reset()}
+
+        {:error, changeset} ->
+          error_msg = format_shortcut_error(changeset)
+          {:noreply, put_flash(socket, :error, error_msg)}
+      end
+    end)
   end
 
   # ===========================================================================
@@ -621,6 +662,13 @@ defmodule StoryarnWeb.PageLive.Show do
     else
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, gettext("Could not upload banner."))}
+    end
+  end
+
+  defp format_shortcut_error(changeset) do
+    case changeset.errors[:shortcut] do
+      {msg, _opts} -> gettext("Shortcut %{error}", error: msg)
+      nil -> gettext("Could not save shortcut.")
     end
   end
 

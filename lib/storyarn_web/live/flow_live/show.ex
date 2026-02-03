@@ -39,7 +39,26 @@ defmodule StoryarnWeb.FlowLive.Show do
           </.link>
         </div>
         <div class="flex-1 flex items-center gap-3 ml-4">
-          <h1 class="text-lg font-medium">{@flow.name}</h1>
+          <div>
+            <h1 class="text-lg font-medium">{@flow.name}</h1>
+            <div :if={@can_edit} class="flex items-center gap-1 text-xs">
+              <span class="text-base-content/50">#</span>
+              <span
+                id="flow-shortcut"
+                class="text-base-content/50 outline-none hover:text-base-content empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
+                contenteditable="true"
+                phx-hook="EditableShortcut"
+                phx-update="ignore"
+                data-placeholder={gettext("add-shortcut")}
+                data-shortcut={@flow.shortcut || ""}
+              >
+                {@flow.shortcut}
+              </span>
+            </div>
+            <div :if={!@can_edit && @flow.shortcut} class="text-xs text-base-content/50">
+              #{@flow.shortcut}
+            </div>
+          </div>
           <span :if={@flow.is_main} class="badge badge-primary badge-sm" title={gettext("Main flow")}>
             {gettext("Main")}
           </span>
@@ -205,6 +224,31 @@ defmodule StoryarnWeb.FlowLive.Show do
     case authorize(socket, :edit_content) do
       :ok -> NodeHelpers.add_node(socket, type)
       {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
+    end
+  end
+
+  def handle_event("save_shortcut", %{"shortcut" => shortcut}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        flow = socket.assigns.flow
+        shortcut = if shortcut == "", do: nil, else: shortcut
+
+        case Flows.update_flow(flow, %{shortcut: shortcut}) do
+          {:ok, updated_flow} ->
+            schedule_save_status_reset()
+
+            {:noreply,
+             socket
+             |> assign(:flow, updated_flow)
+             |> assign(:save_status, :saved)}
+
+          {:error, changeset} ->
+            error_msg = format_shortcut_error(changeset)
+            {:noreply, put_flash(socket, :error, error_msg)}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply, unauthorized_flash(socket)}
     end
   end
 
@@ -470,6 +514,13 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   defp schedule_save_status_reset do
     Process.send_after(self(), :reset_save_status, 2000)
+  end
+
+  defp format_shortcut_error(changeset) do
+    case changeset.errors[:shortcut] do
+      {msg, _opts} -> gettext("Shortcut %{error}", error: msg)
+      nil -> gettext("Could not save shortcut.")
+    end
   end
 
   defp unauthorized_flash(socket) do

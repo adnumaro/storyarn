@@ -12,9 +12,14 @@ defmodule Storyarn.Pages.Page do
   alias Storyarn.Pages.Block
   alias Storyarn.Projects.Project
 
+  # Shortcut format: lowercase, alphanumeric, dots and hyphens allowed, no spaces
+  # Examples: mc.jaime, loc.tavern, items.sword, quest-1
+  @shortcut_format ~r/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$|^[a-z0-9]$/
+
   @type t :: %__MODULE__{
           id: integer() | nil,
           name: String.t() | nil,
+          shortcut: String.t() | nil,
           position: integer() | nil,
           avatar_asset_id: integer() | nil,
           avatar_asset: Asset.t() | Ecto.Association.NotLoaded.t() | nil,
@@ -33,6 +38,7 @@ defmodule Storyarn.Pages.Page do
 
   schema "pages" do
     field :name, :string
+    field :shortcut, :string
     field :position, :integer, default: 0
     field :deleted_at, :utc_datetime
 
@@ -51,9 +57,10 @@ defmodule Storyarn.Pages.Page do
   """
   def create_changeset(page, attrs) do
     page
-    |> cast(attrs, [:name, :avatar_asset_id, :banner_asset_id, :parent_id, :position])
+    |> cast(attrs, [:name, :shortcut, :avatar_asset_id, :banner_asset_id, :parent_id, :position])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
+    |> validate_shortcut()
     |> foreign_key_constraint(:parent_id)
     |> foreign_key_constraint(:avatar_asset_id)
     |> foreign_key_constraint(:banner_asset_id)
@@ -64,9 +71,10 @@ defmodule Storyarn.Pages.Page do
   """
   def update_changeset(page, attrs) do
     page
-    |> cast(attrs, [:name, :avatar_asset_id, :banner_asset_id, :parent_id, :position])
+    |> cast(attrs, [:name, :shortcut, :avatar_asset_id, :banner_asset_id, :parent_id, :position])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
+    |> validate_shortcut()
     |> foreign_key_constraint(:parent_id)
     |> foreign_key_constraint(:avatar_asset_id)
     |> foreign_key_constraint(:banner_asset_id)
@@ -101,4 +109,18 @@ defmodule Storyarn.Pages.Page do
   Returns true if the page is soft-deleted.
   """
   def deleted?(%__MODULE__{deleted_at: deleted_at}), do: not is_nil(deleted_at)
+
+  # Private functions
+
+  defp validate_shortcut(changeset) do
+    changeset
+    |> validate_length(:shortcut, min: 1, max: 50)
+    |> validate_format(:shortcut, @shortcut_format,
+      message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., mc.jaime)"
+    )
+    |> unique_constraint(:shortcut,
+      name: :pages_project_shortcut_unique,
+      message: "is already taken in this project"
+    )
+  end
 end

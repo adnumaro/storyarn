@@ -69,15 +69,15 @@ flows
 
 ### 7.5.1 Infrastructure Base
 
-#### 7.5.1.1 Shortcut System
-- [ ] Add `shortcut` field to `pages` table (string, nullable)
-- [ ] Add `shortcut` field to `flows` table (string, nullable)
-- [ ] Add unique index on `(project_id, shortcut)` for both tables
-- [ ] Validation: shortcut format (lowercase, alphanumeric, dots allowed, no spaces)
-- [ ] Validation: unique across pages AND flows within project
-- [ ] Context functions: `Pages.validate_shortcut/2`, `Flows.validate_shortcut/2`
-- [ ] UI: Shortcut field in page settings (config panel or dedicated section)
-- [ ] UI: Shortcut field in flow settings
+#### 7.5.1.1 Shortcut System ✅ DONE
+- [x] Add `shortcut` field to `pages` table (string, nullable)
+- [x] Add `shortcut` field to `flows` table (string, nullable)
+- [x] Add unique index on `(project_id, shortcut)` for both tables
+- [x] Validation: shortcut format (lowercase, alphanumeric, dots allowed, no spaces)
+- [x] Validation: unique within each table per project
+- [x] Schema validation in Page and Flow modules
+- [x] UI: Shortcut field in page header (inline editable with #prefix)
+- [x] UI: Shortcut field in flow header (inline editable with #prefix)
 
 **Shortcut Format:**
 ```
@@ -432,22 +432,22 @@ create index(:blocks, [:deleted_at])
 
 Recommended order to minimize dependencies and allow incremental testing:
 
-| Order | Task | Dependencies | Testable Outcome |
-|-------|------|--------------|------------------|
-| 1 | ✅ Boolean block | None | New block type works |
-| 2 | ✅ Page avatar (replace icon) | Assets system | Avatar upload/display works |
-| 3 | ✅ Page banner | Assets system | Banner display works |
-| 4 | ✅ Soft delete | None | Trash/restore works |
-| 5 | ✅ Block variables (is_constant, variable_name) | None | Variables marked correctly |
-| 6 | Shortcuts (pages) | None | Shortcuts validated/saved |
-| 7 | Shortcuts (flows) | None | Flow shortcuts work |
-| 8 | Page tabs UI | None | Tab navigation works |
-| 9 | Page versions | None | Versions created/listed |
-| 10 | Version history UI | Page versions | History tab works |
-| 11 | Reference block | Shortcuts | Can reference pages/flows |
-| 12 | Mentions (Tiptap) | Shortcuts | # mentions work in rich_text |
-| 13 | Entity references table | Mentions, Reference block | References tracked |
-| 14 | Backlinks UI | Entity references | Backlinks displayed |
+| Order | Task                                           | Dependencies              | Testable Outcome             |
+|-------|------------------------------------------------|---------------------------|------------------------------|
+| 1     | ✅ Boolean block                                | None                      | New block type works         |
+| 2     | ✅ Page avatar (replace icon)                   | Assets system             | Avatar upload/display works  |
+| 3     | ✅ Page banner                                  | Assets system             | Banner display works         |
+| 4     | ✅ Soft delete                                  | None                      | Trash/restore works          |
+| 5     | ✅ Block variables (is_constant, variable_name) | None                      | Variables marked correctly   |
+| 6     | ✅ Shortcuts (pages)                            | None                      | Shortcuts validated/saved    |
+| 7     | ✅ Shortcuts (flows)                            | None                      | Flow shortcuts work          |
+| 8     | Page tabs UI                                   | None                      | Tab navigation works         |
+| 9     | Page versions                                  | None                      | Versions created/listed      |
+| 10    | Version history UI                             | Page versions             | History tab works            |
+| 11    | Reference block                                | Shortcuts                 | Can reference pages/flows    |
+| 12    | Mentions (Tiptap)                              | Shortcuts                 | # mentions work in rich_text |
+| 13    | Entity references table                        | Mentions, Reference block | References tracked           |
+| 14    | Backlinks UI                                   | Entity references         | Backlinks displayed          |
 
 ---
 
@@ -497,7 +497,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 - [ ] New block types working (reference)
 - [x] Page avatar working (replaces icon field) ✅
 - [x] Page banner working ✅
-- [ ] Shortcuts can be set on pages and flows
+- [x] Shortcuts can be set on pages and flows ✅
 - [ ] Mentions with `#` work in rich_text blocks
 - [ ] Backlinks show what references a page
 - [ ] Version history accessible in References tab

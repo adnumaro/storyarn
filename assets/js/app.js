@@ -27,6 +27,7 @@ import topbar from "topbar";
 
 import { AvatarUpload } from "./hooks/avatar_upload";
 import { BannerUpload } from "./hooks/banner_upload";
+import { EditableShortcut } from "./hooks/editable_shortcut";
 import { EditableTitle } from "./hooks/editable_title";
 import { FlowCanvas } from "./hooks/flow_canvas";
 // Custom hooks
@@ -49,6 +50,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ...colocatedHooks,
     AvatarUpload,
     BannerUpload,
+    EditableShortcut,
     EditableTitle,
     SortableList,
     SortableTree,

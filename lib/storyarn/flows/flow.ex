@@ -11,9 +11,14 @@ defmodule Storyarn.Flows.Flow do
   alias Storyarn.Flows.{FlowConnection, FlowNode}
   alias Storyarn.Projects.Project
 
+  # Shortcut format: lowercase, alphanumeric, dots and hyphens allowed, no spaces
+  # Examples: chapter-1, quest.main, dialogue.intro
+  @shortcut_format ~r/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$|^[a-z0-9]$/
+
   @type t :: %__MODULE__{
           id: integer() | nil,
           name: String.t() | nil,
+          shortcut: String.t() | nil,
           description: String.t() | nil,
           is_main: boolean(),
           settings: map(),
@@ -27,6 +32,7 @@ defmodule Storyarn.Flows.Flow do
 
   schema "flows" do
     field :name, :string
+    field :shortcut, :string
     field :description, :string
     field :is_main, :boolean, default: false
     field :settings, :map, default: %{}
@@ -43,10 +49,11 @@ defmodule Storyarn.Flows.Flow do
   """
   def create_changeset(flow, attrs) do
     flow
-    |> cast(attrs, [:name, :description, :is_main, :settings])
+    |> cast(attrs, [:name, :shortcut, :description, :is_main, :settings])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
     |> validate_length(:description, max: 2000)
+    |> validate_shortcut()
   end
 
   @doc """
@@ -54,9 +61,24 @@ defmodule Storyarn.Flows.Flow do
   """
   def update_changeset(flow, attrs) do
     flow
-    |> cast(attrs, [:name, :description, :is_main, :settings])
+    |> cast(attrs, [:name, :shortcut, :description, :is_main, :settings])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
     |> validate_length(:description, max: 2000)
+    |> validate_shortcut()
+  end
+
+  # Private functions
+
+  defp validate_shortcut(changeset) do
+    changeset
+    |> validate_length(:shortcut, min: 1, max: 50)
+    |> validate_format(:shortcut, @shortcut_format,
+      message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., chapter-1)"
+    )
+    |> unique_constraint(:shortcut,
+      name: :flows_project_shortcut_unique,
+      message: "is already taken in this project"
+    )
   end
 end
