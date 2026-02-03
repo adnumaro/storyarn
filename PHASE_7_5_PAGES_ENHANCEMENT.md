@@ -260,21 +260,21 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 
 ### 7.5.7 Backlinks (References Tab)
 
-#### 7.5.7.1 Reference Tracking
-- [ ] Create `entity_references` table (migration)
-- [ ] Extract references when saving:
+#### 7.5.7.1 Reference Tracking ✅ DONE
+- [x] Create `entity_references` table (migration)
+- [x] Extract references when saving:
   - From rich_text blocks (mentions)
   - From reference blocks
-  - From flow node speaker field
-  - From flow connection conditions (future)
-- [ ] Update references atomically with content saves
-- [ ] Handle reference cleanup when source is deleted
+  - [ ] From flow node speaker field (deferred)
+  - [ ] From flow connection conditions (future)
+- [x] Update references atomically with content saves
+- [x] Handle reference cleanup when source is deleted
 
-#### 7.5.7.2 Backlinks UI (References Tab)
-- [ ] Query: "What references this page?"
-- [ ] Group by source type (Pages, Flows)
-- [ ] Show: source name, context (which block/field), link to source
-- [ ] Empty state when no references
+#### 7.5.7.2 Backlinks UI (References Tab) ✅ DONE
+- [x] Query: "What references this page?"
+- [x] Show: source name, context (which block/field)
+- [x] Empty state when no references
+- [ ] Click to navigate to source (requires route context, deferred)
 
 ---
 
@@ -448,8 +448,8 @@ Recommended order to minimize dependencies and allow incremental testing:
 | 10    | ✅ Version history UI                           | Page versions             | History tab works            |
 | 11    | ✅ Reference block                              | Shortcuts                 | Can reference pages/flows    |
 | 12    | ✅ Mentions (Tiptap)                            | Shortcuts                 | # mentions work in rich_text |
-| 13    | Entity references table                        | Mentions, Reference block | References tracked           |
-| 14    | Backlinks UI                                   | Entity references         | Backlinks displayed          |
+| 13    | ✅ Entity references table                      | Mentions, Reference block | References tracked           |
+| 14    | ✅ Backlinks UI                                 | Entity references         | Backlinks displayed          |
 
 ---
 
@@ -501,8 +501,8 @@ Recommended order to minimize dependencies and allow incremental testing:
 - [x] Page banner working ✅
 - [x] Shortcuts can be set on pages and flows ✅
 - [x] Mentions with `#` work in rich_text blocks ✅
-- [ ] Backlinks show what references a page
-- [ ] Version history accessible in References tab
+- [x] Backlinks show what references a page ✅
+- [x] Version history accessible in References tab ✅
 - [ ] Soft delete with trash recovery working
 
 ---

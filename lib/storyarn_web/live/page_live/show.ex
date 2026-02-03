@@ -277,6 +277,7 @@ defmodule StoryarnWeb.PageLive.Show do
             versions={@versions}
             current_version_id={@page.current_version_id}
             can_edit={@can_edit}
+            backlinks={@backlinks}
           />
         </div>
       </div>
@@ -350,6 +351,7 @@ defmodule StoryarnWeb.PageLive.Show do
     |> assign(:configuring_block, nil)
     |> assign(:current_tab, "content")
     |> assign(:versions, nil)
+    |> assign(:backlinks, nil)
     |> assign(:show_create_version_modal, false)
   end
 
@@ -366,11 +368,29 @@ defmodule StoryarnWeb.PageLive.Show do
   def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in ["content", "references"] do
     socket = assign(socket, :current_tab, tab)
 
-    # Load versions when switching to references tab (lazy loading)
+    # Load versions and backlinks when switching to references tab (lazy loading)
     socket =
-      if tab == "references" && is_nil(socket.assigns.versions) do
-        versions = Pages.list_versions(socket.assigns.page.id, limit: 20)
-        assign(socket, :versions, versions)
+      if tab == "references" do
+        socket =
+          if is_nil(socket.assigns.versions) do
+            versions = Pages.list_versions(socket.assigns.page.id, limit: 20)
+            assign(socket, :versions, versions)
+          else
+            socket
+          end
+
+        if is_nil(socket.assigns.backlinks) do
+          backlinks =
+            Pages.get_backlinks_with_sources(
+              "page",
+              socket.assigns.page.id,
+              socket.assigns.project.id
+            )
+
+          assign(socket, :backlinks, backlinks)
+        else
+          socket
+        end
       else
         socket
       end
@@ -969,6 +989,7 @@ defmodule StoryarnWeb.PageLive.Show do
   attr :versions, :list, default: nil
   attr :current_version_id, :integer, default: nil
   attr :can_edit, :boolean, default: false
+  attr :backlinks, :list, default: nil
 
   defp references_tab(assigns) do
     ~H"""
@@ -978,14 +999,30 @@ defmodule StoryarnWeb.PageLive.Show do
         <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
           <.icon name="arrow-left" class="size-5" />
           {gettext("Backlinks")}
+          <%= if @backlinks && length(@backlinks) > 0 do %>
+            <span class="badge badge-sm">{length(@backlinks)}</span>
+          <% end %>
         </h2>
-        <div class="bg-base-200/50 rounded-lg p-8 text-center">
-          <.icon name="link" class="size-12 mx-auto text-base-content/30 mb-4" />
-          <p class="text-base-content/70 mb-2">{gettext("No backlinks yet")}</p>
-          <p class="text-sm text-base-content/50">
-            {gettext("Pages and flows that reference this page will appear here.")}
-          </p>
-        </div>
+
+        <%= if is_nil(@backlinks) do %>
+          <div class="flex items-center justify-center p-8">
+            <span class="loading loading-spinner loading-md"></span>
+          </div>
+        <% else %>
+          <%= if @backlinks == [] do %>
+            <div class="bg-base-200/50 rounded-lg p-8 text-center">
+              <.icon name="link" class="size-12 mx-auto text-base-content/30 mb-4" />
+              <p class="text-base-content/70 mb-2">{gettext("No backlinks yet")}</p>
+              <p class="text-sm text-base-content/50">
+                {gettext("Pages and flows that reference this page will appear here.")}
+              </p>
+            </div>
+          <% else %>
+            <div class="space-y-2">
+              <.backlink_row :for={backlink <- @backlinks} backlink={backlink} />
+            </div>
+          <% end %>
+        <% end %>
       </section>
 
       <%!-- Version History Section --%>
@@ -1031,6 +1068,66 @@ defmodule StoryarnWeb.PageLive.Show do
           <% end %>
         <% end %>
       </section>
+    </div>
+    """
+  end
+
+  attr :backlink, :map, required: true
+
+  defp backlink_row(assigns) do
+    source_info = assigns.backlink.source_info
+
+    assigns =
+      assigns
+      |> assign(:source_info, source_info)
+      |> assign(:is_page, source_info[:type] == "page")
+      |> assign(:is_flow, source_info[:type] == "flow")
+
+    ~H"""
+    <div class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-200/50 group">
+      <%!-- Source type icon --%>
+      <div class={[
+        "flex-shrink-0 size-8 rounded flex items-center justify-center",
+        @is_page && "bg-primary/20 text-primary",
+        @is_flow && "bg-secondary/20 text-secondary"
+      ]}>
+        <.icon :if={@is_page} name="file-text" class="size-4" />
+        <.icon :if={@is_flow} name="git-branch" class="size-4" />
+      </div>
+
+      <div class="flex-1 min-w-0">
+        <%!-- Source name --%>
+        <div class="flex items-center gap-2">
+          <span :if={@is_page} class="font-medium truncate">
+            {@source_info.page_name}
+          </span>
+          <span :if={@is_flow} class="font-medium truncate">
+            {@source_info.flow_name}
+          </span>
+          <%= if @is_page && @source_info.page_shortcut do %>
+            <span class="text-xs text-base-content/50">#{@source_info.page_shortcut}</span>
+          <% end %>
+          <%= if @is_flow && @source_info.flow_shortcut do %>
+            <span class="text-xs text-base-content/50">#{@source_info.flow_shortcut}</span>
+          <% end %>
+        </div>
+
+        <%!-- Context (block/field info) --%>
+        <div class="text-sm text-base-content/60">
+          <%= if @is_page do %>
+            <span class="badge badge-xs badge-ghost mr-1">{@source_info.block_type}</span>
+            <span>{@source_info.block_label}</span>
+          <% end %>
+          <%= if @is_flow do %>
+            <span class="badge badge-xs badge-ghost mr-1">{@source_info.node_type}</span>
+          <% end %>
+        </div>
+      </div>
+
+      <%!-- Timestamp --%>
+      <div class="text-xs text-base-content/40">
+        {Calendar.strftime(@backlink.inserted_at, "%b %d")}
+      </div>
     </div>
     """
   end

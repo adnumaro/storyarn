@@ -387,4 +387,36 @@ defmodule Storyarn.Pages do
       flow -> %{type: "flow", id: flow.id, name: flow.name, shortcut: flow.shortcut}
     end
   end
+
+  # =============================================================================
+  # Reference Tracking (Backlinks)
+  # =============================================================================
+
+  alias Storyarn.Pages.ReferenceTracker
+
+  @doc """
+  Updates references from a block.
+  Called after block content is saved to track mentions and references.
+  """
+  @spec update_block_references(block()) :: :ok
+  defdelegate update_block_references(block), to: ReferenceTracker
+
+  @doc """
+  Deletes all references from a block.
+  Called when a block is deleted.
+  """
+  @spec delete_block_references(id()) :: {integer(), nil}
+  defdelegate delete_block_references(block_id), to: ReferenceTracker
+
+  @doc """
+  Gets backlinks for a target with resolved source information.
+  """
+  @spec get_backlinks_with_sources(String.t(), id(), id()) :: [map()]
+  defdelegate get_backlinks_with_sources(target_type, target_id, project_id), to: ReferenceTracker
+
+  @doc """
+  Counts backlinks for a target.
+  """
+  @spec count_backlinks(String.t(), id()) :: integer()
+  defdelegate count_backlinks(target_type, target_id), to: ReferenceTracker
 end

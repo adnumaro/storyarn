@@ -3,7 +3,7 @@ defmodule Storyarn.Pages.BlockCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Pages.{Block, Page}
+  alias Storyarn.Pages.{Block, Page, ReferenceTracker}
   alias Storyarn.Repo
 
   # =============================================================================
@@ -61,9 +61,23 @@ defmodule Storyarn.Pages.BlockCrud do
   end
 
   def update_block_value(%Block{} = block, value) do
-    block
-    |> Block.value_changeset(%{value: value})
-    |> Repo.update()
+    result =
+      block
+      |> Block.value_changeset(%{value: value})
+      |> Repo.update()
+
+    # Track references after successful update
+    case result do
+      {:ok, updated_block} ->
+        if updated_block.type in ["reference", "rich_text"] do
+          ReferenceTracker.update_block_references(updated_block)
+        end
+
+        result
+
+      _ ->
+        result
+    end
   end
 
   def update_block_config(%Block{} = block, config) do
@@ -74,6 +88,8 @@ defmodule Storyarn.Pages.BlockCrud do
   end
 
   def delete_block(%Block{} = block) do
+    # Clean up references before deleting
+    ReferenceTracker.delete_block_references(block.id)
     Repo.delete(block)
   end
 
