@@ -618,6 +618,24 @@ defmodule StoryarnWeb.PageLive.Show do
     )
   end
 
+  def handle_event("mention_suggestions", %{"query" => query}, socket) do
+    project_id = socket.assigns.project.id
+    results = Pages.search_referenceable(project_id, query, ["page", "flow"])
+
+    items =
+      Enum.map(results, fn result ->
+        %{
+          id: result.id,
+          type: result.type,
+          name: result.name,
+          shortcut: result.shortcut,
+          label: result.shortcut || result.name
+        }
+      end)
+
+    {:noreply, push_event(socket, "mention_suggestions_result", %{items: items})}
+  end
+
   def handle_event("set_boolean_block", %{"id" => block_id, "value" => value}, socket) do
     with_authorization(
       socket,

@@ -183,26 +183,25 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 
 ### 7.5.4 Mentions System (`#`)
 
-#### 7.5.4.1 Tiptap Mention Extension
-- [ ] Install/configure @tiptap/extension-mention
-- [ ] Custom trigger character: `#` (not `@`)
-- [ ] Suggestion list component (dropdown with search)
-- [ ] Fetch suggestions from server (pages + flows with shortcuts)
-- [ ] Search by: shortcut, name, path
-- [ ] Show: icon + name + shortcut (if exists)
-- [ ] Insert mention as custom node with target info
+#### 7.5.4.1 Tiptap Mention Extension ✅ DONE
+- [x] Install/configure @tiptap/extension-mention
+- [x] Custom trigger character: `#` (not `@`)
+- [x] Suggestion list component (dropdown with search)
+- [x] Fetch suggestions from server (pages + flows with shortcuts)
+- [x] Search by: shortcut, name
+- [x] Show: icon + name + shortcut (if exists)
+- [x] Insert mention as custom node with target info
 
-#### 7.5.4.2 Mention Rendering
-- [ ] Render mentions as styled inline elements (chip/badge style)
-- [ ] Click to navigate to referenced entity
+#### 7.5.4.2 Mention Rendering ✅ DONE
+- [x] Render mentions as styled inline elements (chip/badge style)
+- [ ] Click to navigate to referenced entity (deferred)
 - [ ] Hover to show preview (optional, can defer)
-- [ ] Handle broken references (target deleted)
+- [ ] Handle broken references (target deleted) (deferred)
 
-#### 7.5.4.3 Server Integration
-- [ ] API endpoint for mention suggestions: `GET /api/projects/:id/mentions?q=search`
-- [ ] Returns: `[{type, id, name, shortcut, path}]`
-- [ ] LiveView event handler for Tiptap to fetch suggestions
-- [ ] Extract mentions from saved content for backlinks tracking
+#### 7.5.4.3 Server Integration ✅ DONE
+- [x] LiveView event handler for Tiptap to fetch suggestions (mention_suggestions)
+- [x] Returns: `[{type, id, name, shortcut, label}]`
+- [ ] Extract mentions from saved content for backlinks tracking (deferred to Task 13)
 
 ---
 
@@ -448,7 +447,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 | 9     | ✅ Page versions                                | None                      | Versions created/listed      |
 | 10    | ✅ Version history UI                           | Page versions             | History tab works            |
 | 11    | ✅ Reference block                              | Shortcuts                 | Can reference pages/flows    |
-| 12    | Mentions (Tiptap)                              | Shortcuts                 | # mentions work in rich_text |
+| 12    | ✅ Mentions (Tiptap)                            | Shortcuts                 | # mentions work in rich_text |
 | 13    | Entity references table                        | Mentions, Reference block | References tracked           |
 | 14    | Backlinks UI                                   | Entity references         | Backlinks displayed          |
 
@@ -501,7 +500,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 - [x] Page avatar working (replaces icon field) ✅
 - [x] Page banner working ✅
 - [x] Shortcuts can be set on pages and flows ✅
-- [ ] Mentions with `#` work in rich_text blocks
+- [x] Mentions with `#` work in rich_text blocks ✅
 - [ ] Backlinks show what references a page
 - [ ] Version history accessible in References tab
 - [ ] Soft delete with trash recovery working
