@@ -11,7 +11,7 @@ defmodule Storyarn.Pages do
   - `TreeOperations` - Tree reordering and movement operations
   """
 
-  alias Storyarn.Pages.{Block, BlockCrud, Page, PageCrud, TreeOperations}
+  alias Storyarn.Pages.{Block, BlockCrud, Page, PageCrud, PageVersion, TreeOperations, Versioning}
   alias Storyarn.Projects.Project
 
   # =============================================================================
@@ -244,4 +244,42 @@ defmodule Storyarn.Pages do
   """
   @spec change_block(block(), attrs()) :: changeset()
   defdelegate change_block(block, attrs \\ %{}), to: BlockCrud
+
+  # =============================================================================
+  # Versioning
+  # =============================================================================
+
+  @type version :: PageVersion.t()
+
+  @doc """
+  Creates a new version snapshot of the given page.
+  The snapshot includes page metadata and all blocks.
+  """
+  @spec create_version(page(), Storyarn.Accounts.User.t() | integer() | nil) ::
+          {:ok, version()} | {:error, changeset()}
+  defdelegate create_version(page, user_or_id), to: Versioning
+
+  @doc """
+  Lists all versions for a page, ordered by version number descending.
+  """
+  @spec list_versions(id(), keyword()) :: [version()]
+  defdelegate list_versions(page_id, opts \\ []), to: Versioning
+
+  @doc """
+  Gets a specific version by page_id and version_number.
+  """
+  @spec get_version(id(), integer()) :: version() | nil
+  defdelegate get_version(page_id, version_number), to: Versioning
+
+  @doc """
+  Gets the latest version for a page.
+  """
+  @spec get_latest_version(id()) :: version() | nil
+  defdelegate get_latest_version(page_id), to: Versioning
+
+  @doc """
+  Returns the total number of versions for a page.
+  """
+  @spec count_versions(id()) :: integer()
+  defdelegate count_versions(page_id), to: Versioning
 end

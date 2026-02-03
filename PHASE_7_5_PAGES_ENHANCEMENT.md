@@ -207,14 +207,16 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 
 ### 7.5.5 Version Control
 
-#### 7.5.5.1 Database Schema
-- [ ] Create `page_versions` table (migration)
-- [ ] Indexes on `(page_id, version_number)` and `(page_id, created_at)`
+#### 7.5.5.1 Database Schema ✅ DONE
+- [x] Create `page_versions` table (migration)
+- [x] Indexes on `(page_id, version_number)` and `(page_id, inserted_at)`
+- [x] Unique constraint on `(page_id, version_number)`
 
-#### 7.5.5.2 Snapshot Creation
-- [ ] Function: `Pages.create_version/2` - creates snapshot of current page state
-- [ ] Auto-generate change summary by diffing with previous version
-- [ ] Snapshot includes: name, avatar, shortcut, banner, all blocks with values
+#### 7.5.5.2 Snapshot Creation ✅ DONE
+- [x] Function: `Pages.create_version/2` - creates snapshot of current page state
+- [x] Auto-generate change summary by diffing with previous version
+- [x] Snapshot includes: name, avatar, shortcut, banner, all blocks with values
+- [x] Functions: `list_versions/2`, `get_version/2`, `get_latest_version/1`, `count_versions/1`
 
 #### 7.5.5.3 Automatic Versioning Triggers
 - [ ] Create version after 60 seconds of inactivity (debounced)
@@ -442,7 +444,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 | 6     | ✅ Shortcuts (pages)                            | None                      | Shortcuts validated/saved    |
 | 7     | ✅ Shortcuts (flows)                            | None                      | Flow shortcuts work          |
 | 8     | ✅ Page tabs UI                                 | None                      | Tab navigation works         |
-| 9     | Page versions                                  | None                      | Versions created/listed      |
+| 9     | ✅ Page versions                                | None                      | Versions created/listed      |
 | 10    | Version history UI                             | Page versions             | History tab works            |
 | 11    | Reference block                                | Shortcuts                 | Can reference pages/flows    |
 | 12    | Mentions (Tiptap)                              | Shortcuts                 | # mentions work in rich_text |
