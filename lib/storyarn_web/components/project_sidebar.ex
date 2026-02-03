@@ -111,14 +111,15 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
     <div>
       <div class="flex items-center justify-between mb-1">
         <.tree_section label={gettext("Pages")} />
-        <.link
+        <button
           :if={@can_edit}
-          navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/new"}
+          type="button"
+          phx-click="create_page"
           class="btn btn-ghost btn-xs"
           title={gettext("New Page")}
         >
           <.icon name="plus" class="size-3" />
-        </.link>
+        </button>
       </div>
 
       <%!-- Search input --%>

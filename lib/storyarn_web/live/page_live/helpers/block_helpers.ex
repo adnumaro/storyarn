@@ -46,7 +46,7 @@ defmodule StoryarnWeb.PageLive.Helpers.BlockHelpers do
   @spec update_block_value(Phoenix.LiveView.Socket.t(), any(), any()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def update_block_value(socket, block_id, value) do
-    block = Pages.get_block!(block_id)
+    block = Pages.get_block_in_project!(block_id, socket.assigns.project.id)
 
     case Pages.update_block_value(block, %{"content" => value}) do
       {:ok, _block} ->
@@ -70,7 +70,7 @@ defmodule StoryarnWeb.PageLive.Helpers.BlockHelpers do
   @spec delete_block(Phoenix.LiveView.Socket.t(), any()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def delete_block(socket, block_id) do
-    block = Pages.get_block!(block_id)
+    block = Pages.get_block_in_project!(block_id, socket.assigns.project.id)
 
     case Pages.delete_block(block) do
       {:ok, _} ->
@@ -114,7 +114,7 @@ defmodule StoryarnWeb.PageLive.Helpers.BlockHelpers do
   @spec toggle_multi_select(Phoenix.LiveView.Socket.t(), any(), String.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def toggle_multi_select(socket, block_id, key) do
-    block = Pages.get_block!(block_id)
+    block = Pages.get_block_in_project!(block_id, socket.assigns.project.id)
     current = get_in(block.value, ["content"]) || []
 
     new_content =
@@ -162,7 +162,7 @@ defmodule StoryarnWeb.PageLive.Helpers.BlockHelpers do
   @spec update_rich_text(Phoenix.LiveView.Socket.t(), any(), String.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def update_rich_text(socket, block_id, content) do
-    block = Pages.get_block!(block_id)
+    block = Pages.get_block_in_project!(block_id, socket.assigns.project.id)
 
     case Pages.update_block_value(block, %{"content" => content}) do
       {:ok, _block} ->
@@ -183,7 +183,7 @@ defmodule StoryarnWeb.PageLive.Helpers.BlockHelpers do
   @spec set_boolean_block(Phoenix.LiveView.Socket.t(), any(), String.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def set_boolean_block(socket, block_id, value_string) do
-    block = Pages.get_block!(block_id)
+    block = Pages.get_block_in_project!(block_id, socket.assigns.project.id)
 
     new_value =
       case value_string do
@@ -211,7 +211,8 @@ defmodule StoryarnWeb.PageLive.Helpers.BlockHelpers do
   # Private functions
 
   defp add_multi_select_option(socket, block_id, value) do
-    block = Pages.get_block!(block_id)
+    project_id = socket.assigns.project.id
+    block = Pages.get_block_in_project!(block_id, project_id)
 
     # Generate a unique key from the value
     key = generate_option_key(value)
@@ -246,7 +247,7 @@ defmodule StoryarnWeb.PageLive.Helpers.BlockHelpers do
                "options" => new_options,
                "label" => block.config["label"] || ""
              }),
-           block <- Pages.get_block!(block_id),
+           block <- Pages.get_block_in_project!(block_id, project_id),
            {:ok, _} <- Pages.update_block_value(block, %{"content" => new_content}) do
         blocks = Pages.list_blocks(socket.assigns.page.id)
         schedule_save_status_reset()

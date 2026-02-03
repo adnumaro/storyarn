@@ -203,6 +203,19 @@ defmodule Storyarn.Pages do
   defdelegate get_block!(block_id), to: BlockCrud
 
   @doc """
+  Gets a block by ID, ensuring it belongs to the specified project.
+  Returns nil if not found or not in project.
+  """
+  @spec get_block_in_project(id(), id()) :: block() | nil
+  defdelegate get_block_in_project(block_id, project_id), to: BlockCrud
+
+  @doc """
+  Gets a block by ID with project validation. Raises if not found.
+  """
+  @spec get_block_in_project!(id(), id()) :: block()
+  defdelegate get_block_in_project!(block_id, project_id), to: BlockCrud
+
+  @doc """
   Creates a new block in a page.
   """
   @spec create_block(page(), attrs()) :: {:ok, block()} | {:error, changeset()}

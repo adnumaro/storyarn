@@ -32,6 +32,31 @@ defmodule Storyarn.Pages.BlockCrud do
     |> Repo.one!()
   end
 
+  @doc """
+  Gets a block by ID, ensuring it belongs to the specified project.
+  Returns nil if not found or not in project.
+  """
+  def get_block_in_project(block_id, project_id) do
+    from(b in Block,
+      join: p in Page,
+      on: b.page_id == p.id,
+      where: b.id == ^block_id and p.project_id == ^project_id,
+      where: is_nil(b.deleted_at) and is_nil(p.deleted_at),
+      select: b
+    )
+    |> Repo.one()
+  end
+
+  @doc """
+  Gets a block by ID with project validation. Raises if not found.
+  """
+  def get_block_in_project!(block_id, project_id) do
+    case get_block_in_project(block_id, project_id) do
+      nil -> raise Ecto.NoResultsError, queryable: Block
+      block -> block
+    end
+  end
+
   # =============================================================================
   # CRUD Operations
   # =============================================================================

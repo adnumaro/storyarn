@@ -28,9 +28,9 @@ defmodule Storyarn.Pages.EntityReference do
 
   schema "entity_references" do
     field :source_type, :string
-    field :source_id, Ecto.UUID
+    field :source_id, :integer
     field :target_type, :string
-    field :target_id, Ecto.UUID
+    field :target_id, :integer
     field :context, :string
 
     timestamps()

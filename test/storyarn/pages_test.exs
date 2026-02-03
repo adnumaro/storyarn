@@ -5,6 +5,7 @@ defmodule Storyarn.PagesTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.PagesFixtures
   import Storyarn.ProjectsFixtures
 
@@ -263,6 +264,419 @@ defmodule Storyarn.PagesTest do
       assert Enum.at(blocks, 0).id == block3.id
       assert Enum.at(blocks, 1).id == block1.id
       assert Enum.at(blocks, 2).id == block2.id
+    end
+  end
+
+  describe "get_block_in_project/2" do
+    test "returns block when in correct project" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+      {:ok, block} = Pages.create_block(page, %{type: "text"})
+
+      result = Pages.get_block_in_project(block.id, project.id)
+
+      assert result.id == block.id
+      assert result.type == "text"
+    end
+
+    test "returns nil when block is in different project" do
+      user = user_fixture()
+      project1 = project_fixture(user)
+      project2 = project_fixture(user)
+      page = page_fixture(project1)
+      {:ok, block} = Pages.create_block(page, %{type: "text"})
+
+      # Try to get block from project1 using project2's ID
+      result = Pages.get_block_in_project(block.id, project2.id)
+
+      assert result == nil
+    end
+
+    test "returns nil for deleted blocks" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+      {:ok, block} = Pages.create_block(page, %{type: "text"})
+
+      # Soft delete the block
+      {:ok, _} = Pages.delete_block(block)
+
+      result = Pages.get_block_in_project(block.id, project.id)
+
+      assert result == nil
+    end
+
+    test "returns nil for blocks on deleted pages" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+      {:ok, block} = Pages.create_block(page, %{type: "text"})
+
+      # Soft delete the page
+      {:ok, _} = Pages.delete_page(page)
+
+      result = Pages.get_block_in_project(block.id, project.id)
+
+      assert result == nil
+    end
+
+    test "returns nil for non-existent block" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      result = Pages.get_block_in_project(-1, project.id)
+
+      assert result == nil
+    end
+  end
+
+  describe "get_block_in_project!/2" do
+    test "returns block when in correct project" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+      {:ok, block} = Pages.create_block(page, %{type: "text"})
+
+      result = Pages.get_block_in_project!(block.id, project.id)
+
+      assert result.id == block.id
+    end
+
+    test "raises when block is in different project" do
+      user = user_fixture()
+      project1 = project_fixture(user)
+      project2 = project_fixture(user)
+      page = page_fixture(project1)
+      {:ok, block} = Pages.create_block(page, %{type: "text"})
+
+      assert_raise Ecto.NoResultsError, fn ->
+        Pages.get_block_in_project!(block.id, project2.id)
+      end
+    end
+
+    test "raises for deleted blocks" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+      {:ok, block} = Pages.create_block(page, %{type: "text"})
+
+      {:ok, _} = Pages.delete_block(block)
+
+      assert_raise Ecto.NoResultsError, fn ->
+        Pages.get_block_in_project!(block.id, project.id)
+      end
+    end
+  end
+
+  describe "reference blocks" do
+    test "create_block/2 creates reference block with default config" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+
+      {:ok, block} = Pages.create_block(page, %{type: "reference"})
+
+      assert block.type == "reference"
+      assert block.config["label"] == "Label"
+      assert block.config["allowed_types"] == ["page", "flow"]
+      assert block.value["target_type"] == nil
+      assert block.value["target_id"] == nil
+    end
+
+    test "create_block/2 creates reference block with custom allowed_types" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+
+      {:ok, block} =
+        Pages.create_block(page, %{
+          type: "reference",
+          config: %{"label" => "Location", "allowed_types" => ["page"]}
+        })
+
+      assert block.config["label"] == "Location"
+      assert block.config["allowed_types"] == ["page"]
+    end
+
+    test "update_block_value/2 sets reference target" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+      target_page = page_fixture(project, %{name: "Target Page"})
+      {:ok, block} = Pages.create_block(page, %{type: "reference"})
+
+      {:ok, updated} =
+        Pages.update_block_value(block, %{
+          "target_type" => "page",
+          "target_id" => target_page.id
+        })
+
+      assert updated.value["target_type"] == "page"
+      assert updated.value["target_id"] == target_page.id
+    end
+
+    test "update_block_value/2 clears reference target" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project)
+      target_page = page_fixture(project)
+
+      {:ok, block} =
+        Pages.create_block(page, %{
+          type: "reference",
+          value: %{"target_type" => "page", "target_id" => target_page.id}
+        })
+
+      {:ok, updated} =
+        Pages.update_block_value(block, %{"target_type" => nil, "target_id" => nil})
+
+      assert updated.value["target_type"] == nil
+      assert updated.value["target_id"] == nil
+    end
+  end
+
+  describe "search functions" do
+    test "search_pages/2 finds pages by name" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _page1 = page_fixture(project, %{name: "Character Jaime"})
+      _page2 = page_fixture(project, %{name: "Location Tavern"})
+
+      results = Pages.PageCrud.search_pages(project.id, "Jaime")
+
+      assert length(results) == 1
+      assert Enum.at(results, 0).name == "Character Jaime"
+    end
+
+    test "search_pages/2 finds pages by shortcut" do
+      user = user_fixture()
+      project = project_fixture(user)
+      {:ok, page1} = Pages.create_page(project, %{name: "Jaime", shortcut: "mc.jaime"})
+      _page2 = page_fixture(project, %{name: "Tavern"})
+
+      results = Pages.PageCrud.search_pages(project.id, "mc")
+
+      assert length(results) == 1
+      assert Enum.at(results, 0).id == page1.id
+    end
+
+    test "search_pages/2 returns recent pages when query is empty" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _page1 = page_fixture(project, %{name: "Page 1"})
+      _page2 = page_fixture(project, %{name: "Page 2"})
+
+      results = Pages.PageCrud.search_pages(project.id, "")
+
+      assert length(results) == 2
+    end
+
+    test "search_referenceable/3 returns pages and flows" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project, %{name: "Test Page"})
+      flow = flow_fixture(project, %{name: "Test Flow"})
+
+      results = Pages.search_referenceable(project.id, "Test", ["page", "flow"])
+
+      assert length(results) == 2
+      assert Enum.any?(results, &(&1.type == "page" && &1.id == page.id))
+      assert Enum.any?(results, &(&1.type == "flow" && &1.id == flow.id))
+    end
+
+    test "search_referenceable/3 filters by allowed_types" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _page = page_fixture(project, %{name: "Test Page"})
+      _flow = flow_fixture(project, %{name: "Test Flow"})
+
+      results = Pages.search_referenceable(project.id, "Test", ["page"])
+
+      assert length(results) == 1
+      assert Enum.at(results, 0).type == "page"
+    end
+
+    test "get_reference_target/3 returns page info" do
+      user = user_fixture()
+      project = project_fixture(user)
+      {:ok, page} = Pages.create_page(project, %{name: "Target", shortcut: "target"})
+
+      result = Pages.get_reference_target("page", page.id, project.id)
+
+      assert result.type == "page"
+      assert result.id == page.id
+      assert result.name == "Target"
+      assert result.shortcut == "target"
+    end
+
+    test "get_reference_target/3 returns flow info" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Target Flow"})
+
+      result = Pages.get_reference_target("flow", flow.id, project.id)
+
+      assert result.type == "flow"
+      assert result.id == flow.id
+      assert result.name == "Target Flow"
+    end
+
+    test "get_reference_target/3 returns nil for non-existent target" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert Pages.get_reference_target("page", -1, project.id) == nil
+    end
+
+    test "get_reference_target/3 returns nil for nil inputs" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert Pages.get_reference_target(nil, 1, project.id) == nil
+      assert Pages.get_reference_target("page", nil, project.id) == nil
+    end
+  end
+
+  describe "reference tracking" do
+    alias Storyarn.Pages.ReferenceTracker
+
+    test "update_block_references/1 creates reference for reference block" do
+      user = user_fixture()
+      project = project_fixture(user)
+      source_page = page_fixture(project, %{name: "Source Page"})
+      target_page = page_fixture(project, %{name: "Target Page"})
+
+      {:ok, block} =
+        Pages.create_block(source_page, %{
+          type: "reference",
+          value: %{"target_type" => "page", "target_id" => target_page.id}
+        })
+
+      ReferenceTracker.update_block_references(block)
+
+      backlinks = ReferenceTracker.get_backlinks("page", target_page.id)
+      assert length(backlinks) == 1
+      assert Enum.at(backlinks, 0).source_id == block.id
+      assert Enum.at(backlinks, 0).target_id == target_page.id
+    end
+
+    test "update_block_references/1 creates reference for rich_text mention" do
+      user = user_fixture()
+      project = project_fixture(user)
+      source_page = page_fixture(project, %{name: "Source Page"})
+      target_page = page_fixture(project, %{name: "Target Page"})
+
+      mention_html = """
+      <p>See <span class="mention" data-type="page" data-id="#{target_page.id}" data-label="target">#target</span></p>
+      """
+
+      {:ok, block} =
+        Pages.create_block(source_page, %{
+          type: "rich_text",
+          value: %{"content" => mention_html}
+        })
+
+      ReferenceTracker.update_block_references(block)
+
+      backlinks = ReferenceTracker.get_backlinks("page", target_page.id)
+      assert length(backlinks) == 1
+    end
+
+    test "update_block_references/1 replaces existing references" do
+      user = user_fixture()
+      project = project_fixture(user)
+      source_page = page_fixture(project, %{name: "Source Page"})
+      target1 = page_fixture(project, %{name: "Target 1"})
+      target2 = page_fixture(project, %{name: "Target 2"})
+
+      {:ok, block} =
+        Pages.create_block(source_page, %{
+          type: "reference",
+          value: %{"target_type" => "page", "target_id" => target1.id}
+        })
+
+      ReferenceTracker.update_block_references(block)
+
+      # Update to point to target2
+      {:ok, updated_block} =
+        Pages.update_block_value(block, %{"target_type" => "page", "target_id" => target2.id})
+
+      ReferenceTracker.update_block_references(updated_block)
+
+      # Old reference should be removed
+      assert ReferenceTracker.get_backlinks("page", target1.id) == []
+      # New reference should exist
+      assert length(ReferenceTracker.get_backlinks("page", target2.id)) == 1
+    end
+
+    test "delete_block_references/1 removes all references from block" do
+      user = user_fixture()
+      project = project_fixture(user)
+      source_page = page_fixture(project, %{name: "Source Page"})
+      target_page = page_fixture(project, %{name: "Target Page"})
+
+      {:ok, block} =
+        Pages.create_block(source_page, %{
+          type: "reference",
+          value: %{"target_type" => "page", "target_id" => target_page.id}
+        })
+
+      ReferenceTracker.update_block_references(block)
+      assert length(ReferenceTracker.get_backlinks("page", target_page.id)) == 1
+
+      ReferenceTracker.delete_block_references(block.id)
+      assert ReferenceTracker.get_backlinks("page", target_page.id) == []
+    end
+
+    test "count_backlinks/2 returns correct count" do
+      user = user_fixture()
+      project = project_fixture(user)
+      source_page1 = page_fixture(project, %{name: "Source 1"})
+      source_page2 = page_fixture(project, %{name: "Source 2"})
+      target_page = page_fixture(project, %{name: "Target Page"})
+
+      {:ok, block1} =
+        Pages.create_block(source_page1, %{
+          type: "reference",
+          value: %{"target_type" => "page", "target_id" => target_page.id}
+        })
+
+      {:ok, block2} =
+        Pages.create_block(source_page2, %{
+          type: "reference",
+          value: %{"target_type" => "page", "target_id" => target_page.id}
+        })
+
+      ReferenceTracker.update_block_references(block1)
+      ReferenceTracker.update_block_references(block2)
+
+      assert Pages.count_backlinks("page", target_page.id) == 2
+    end
+
+    test "get_backlinks_with_sources/3 returns source info" do
+      user = user_fixture()
+      project = project_fixture(user)
+      source_page = page_fixture(project, %{name: "Source Page"})
+      target_page = page_fixture(project, %{name: "Target Page"})
+
+      {:ok, block} =
+        Pages.create_block(source_page, %{
+          type: "reference",
+          config: %{"label" => "Location Reference"},
+          value: %{"target_type" => "page", "target_id" => target_page.id}
+        })
+
+      ReferenceTracker.update_block_references(block)
+
+      backlinks = Pages.get_backlinks_with_sources("page", target_page.id, project.id)
+
+      assert length(backlinks) == 1
+      backlink = Enum.at(backlinks, 0)
+      assert backlink.source_type == "block"
+      assert backlink.source_info.page_name == "Source Page"
+      assert backlink.source_info.block_label == "Location Reference"
+      assert backlink.source_info.block_type == "reference"
     end
   end
 

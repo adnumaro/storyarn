@@ -4,9 +4,9 @@ defmodule Storyarn.Repo.Migrations.CreateEntityReferences do
   def change do
     create table(:entity_references) do
       add :source_type, :string, null: false
-      add :source_id, :binary_id, null: false
+      add :source_id, :bigint, null: false
       add :target_type, :string, null: false
-      add :target_id, :binary_id, null: false
+      add :target_id, :bigint, null: false
       add :context, :string
 
       timestamps()

@@ -21,7 +21,7 @@ defmodule Storyarn.Pages.ReferenceTracker do
   """
   @spec update_block_references(map()) :: :ok
   def update_block_references(block) do
-    block_id = block.id |> to_string()
+    block_id = block.id
 
     # Delete existing references from this block
     from(r in EntityReference,
@@ -33,15 +33,19 @@ defmodule Storyarn.Pages.ReferenceTracker do
     references = extract_block_references(block)
 
     for ref <- references do
-      %EntityReference{}
-      |> EntityReference.changeset(%{
-        source_type: "block",
-        source_id: block_id,
-        target_type: ref.type,
-        target_id: ref.id |> to_string(),
-        context: ref.context
-      })
-      |> Repo.insert(on_conflict: :nothing)
+      target_id = parse_id(ref.id)
+
+      if target_id do
+        %EntityReference{}
+        |> EntityReference.changeset(%{
+          source_type: "block",
+          source_id: block_id,
+          target_type: ref.type,
+          target_id: target_id,
+          context: ref.context
+        })
+        |> Repo.insert(on_conflict: :nothing)
+      end
     end
 
     :ok
@@ -53,8 +57,6 @@ defmodule Storyarn.Pages.ReferenceTracker do
   """
   @spec delete_block_references(any()) :: {integer(), nil}
   def delete_block_references(block_id) do
-    block_id = block_id |> to_string()
-
     from(r in EntityReference,
       where: r.source_type == "block" and r.source_id == ^block_id
     )
@@ -68,8 +70,6 @@ defmodule Storyarn.Pages.ReferenceTracker do
   """
   @spec get_backlinks(String.t(), any()) :: [map()]
   def get_backlinks(target_type, target_id) do
-    target_id = target_id |> to_string()
-
     from(r in EntityReference,
       where: r.target_type == ^target_type and r.target_id == ^target_id,
       order_by: [desc: r.inserted_at]
@@ -89,8 +89,6 @@ defmodule Storyarn.Pages.ReferenceTracker do
   """
   @spec get_backlinks_with_sources(String.t(), any(), integer()) :: [map()]
   def get_backlinks_with_sources(target_type, target_id, project_id) do
-    target_id = target_id |> to_string()
-
     references =
       from(r in EntityReference,
         where: r.target_type == ^target_type and r.target_id == ^target_id,
@@ -119,8 +117,6 @@ defmodule Storyarn.Pages.ReferenceTracker do
   """
   @spec count_backlinks(String.t(), any()) :: integer()
   def count_backlinks(target_type, target_id) do
-    target_id = target_id |> to_string()
-
     from(r in EntityReference,
       where: r.target_type == ^target_type and r.target_id == ^target_id,
       select: count(r.id)
@@ -129,6 +125,17 @@ defmodule Storyarn.Pages.ReferenceTracker do
   end
 
   # Private functions
+
+  defp parse_id(id) when is_integer(id), do: id
+
+  defp parse_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {int, ""} -> int
+      _ -> nil
+    end
+  end
+
+  defp parse_id(_), do: nil
 
   defp extract_block_references(block) do
     case block.type do
@@ -171,37 +178,30 @@ defmodule Storyarn.Pages.ReferenceTracker do
     alias Storyarn.Pages.Block
     alias Storyarn.Pages.Page
 
-    # Try to parse UUID
-    case Ecto.UUID.cast(source_id) do
-      {:ok, uuid} ->
-        block =
-          from(b in Block,
-            join: p in Page,
-            on: b.page_id == p.id,
-            where: b.id == ^uuid and p.project_id == ^project_id and is_nil(p.deleted_at),
-            select: {b, p}
-          )
-          |> Repo.one()
+    block =
+      from(b in Block,
+        join: p in Page,
+        on: b.page_id == p.id,
+        where: b.id == ^source_id and p.project_id == ^project_id and is_nil(p.deleted_at),
+        select: {b, p}
+      )
+      |> Repo.one()
 
-        case block do
-          {block, page} ->
-            label = get_in(block.config, ["label"]) || block.type
+    case block do
+      {block, page} ->
+        label = get_in(block.config, ["label"]) || block.type
 
-            %{
-              type: "page",
-              page_id: page.id,
-              page_name: page.name,
-              page_shortcut: page.shortcut,
-              block_id: block.id,
-              block_label: label,
-              block_type: block.type
-            }
+        %{
+          type: "page",
+          page_id: page.id,
+          page_name: page.name,
+          page_shortcut: page.shortcut,
+          block_id: block.id,
+          block_label: label,
+          block_type: block.type
+        }
 
-          nil ->
-            nil
-        end
-
-      :error ->
+      nil ->
         nil
     end
   end
@@ -209,33 +209,27 @@ defmodule Storyarn.Pages.ReferenceTracker do
   defp resolve_source_info(%{source_type: "flow_node", source_id: source_id}, project_id) do
     alias Storyarn.Flows.{Flow, FlowNode}
 
-    case Ecto.UUID.cast(source_id) do
-      {:ok, uuid} ->
-        node =
-          from(n in FlowNode,
-            join: f in Flow,
-            on: n.flow_id == f.id,
-            where: n.id == ^uuid and f.project_id == ^project_id,
-            select: {n, f}
-          )
-          |> Repo.one()
+    node =
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where: n.id == ^source_id and f.project_id == ^project_id,
+        select: {n, f}
+      )
+      |> Repo.one()
 
-        case node do
-          {node, flow} ->
-            %{
-              type: "flow",
-              flow_id: flow.id,
-              flow_name: flow.name,
-              flow_shortcut: flow.shortcut,
-              node_id: node.id,
-              node_type: node.type
-            }
+    case node do
+      {node, flow} ->
+        %{
+          type: "flow",
+          flow_id: flow.id,
+          flow_name: flow.name,
+          flow_shortcut: flow.shortcut,
+          node_id: node.id,
+          node_type: node.type
+        }
 
-          nil ->
-            nil
-        end
-
-      :error ->
+      nil ->
         nil
     end
   end

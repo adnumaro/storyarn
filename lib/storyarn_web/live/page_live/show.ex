@@ -570,6 +570,24 @@ defmodule StoryarnWeb.PageLive.Show do
     with_authorization(socket, :edit_content, &PageTreeHelpers.create_child_page(&1, parent_id))
   end
 
+  def handle_event("create_page", _params, socket) do
+    with_authorization(socket, :edit_content, fn socket ->
+      attrs = %{name: gettext("Untitled")}
+
+      case Pages.create_page(socket.assigns.project, attrs) do
+        {:ok, new_page} ->
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages/#{new_page.id}"
+           )}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not create page."))}
+      end
+    end)
+  end
+
   # ===========================================================================
   # Event Handlers: Block Menu
   # ===========================================================================
@@ -705,7 +723,7 @@ defmodule StoryarnWeb.PageLive.Show do
   # ===========================================================================
 
   def handle_event("search_references", %{"value" => query, "block-id" => block_id}, socket) do
-    block = Pages.get_block!(block_id)
+    block = Pages.get_block_in_project!(block_id, socket.assigns.project.id)
     allowed_types = get_in(block.config, ["allowed_types"]) || ["page", "flow"]
 
     results = Pages.search_referenceable(socket.assigns.project.id, query, allowed_types)
@@ -724,7 +742,7 @@ defmodule StoryarnWeb.PageLive.Show do
         socket
       ) do
     with_authorization(socket, :edit_content, fn socket ->
-      block = Pages.get_block!(block_id)
+      block = Pages.get_block_in_project!(block_id, socket.assigns.project.id)
       target_id = String.to_integer(target_id)
 
       case Pages.update_block_value(block, %{
@@ -748,7 +766,7 @@ defmodule StoryarnWeb.PageLive.Show do
 
   def handle_event("clear_reference", %{"block-id" => block_id}, socket) do
     with_authorization(socket, :edit_content, fn socket ->
-      block = Pages.get_block!(block_id)
+      block = Pages.get_block_in_project!(block_id, socket.assigns.project.id)
 
       case Pages.update_block_value(block, %{"target_type" => nil, "target_id" => nil}) do
         {:ok, _block} ->

@@ -101,6 +101,42 @@ defmodule Storyarn.FlowsTest do
       updated_flow1 = Flows.get_flow(project.id, flow1.id)
       assert updated_flow1.is_main == false
     end
+
+    test "search_flows/2 finds flows by name" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _flow1 = flow_fixture(project, %{name: "Main Story"})
+      _flow2 = flow_fixture(project, %{name: "Side Quest"})
+
+      results = Flows.search_flows(project.id, "Main")
+
+      assert length(results) == 1
+      assert Enum.at(results, 0).name == "Main Story"
+    end
+
+    test "search_flows/2 finds flows by shortcut" do
+      user = user_fixture()
+      project = project_fixture(user)
+      {:ok, flow1} = Flows.create_flow(project, %{name: "Story Flow", shortcut: "story.main"})
+      _flow2 = flow_fixture(project, %{name: "Other Flow"})
+
+      # Search by shortcut prefix
+      results = Flows.search_flows(project.id, "story.main")
+
+      assert length(results) == 1
+      assert Enum.at(results, 0).id == flow1.id
+    end
+
+    test "search_flows/2 returns recent flows when query is empty" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _flow1 = flow_fixture(project, %{name: "Flow 1"})
+      _flow2 = flow_fixture(project, %{name: "Flow 2"})
+
+      results = Flows.search_flows(project.id, "")
+
+      assert length(results) == 2
+    end
   end
 
   describe "nodes" do

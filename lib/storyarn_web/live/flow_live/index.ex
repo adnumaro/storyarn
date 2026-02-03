@@ -5,6 +5,7 @@ defmodule StoryarnWeb.FlowLive.Index do
   use StoryarnWeb.LiveHelpers.Authorize
 
   alias Storyarn.Flows
+  alias Storyarn.Pages
   alias Storyarn.Projects
   alias Storyarn.Repo
 
@@ -240,6 +241,27 @@ defmodule StoryarnWeb.FlowLive.Index do
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, gettext("Could not set main flow."))}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  def handle_event("create_page", _params, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        case Pages.create_page(socket.assigns.project, %{name: gettext("Untitled")}) do
+          {:ok, new_page} ->
+            {:noreply,
+             push_navigate(socket,
+               to:
+                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages/#{new_page.id}"
+             )}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not create page."))}
         end
 
       {:error, :unauthorized} ->

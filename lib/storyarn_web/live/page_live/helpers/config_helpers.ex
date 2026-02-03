@@ -17,7 +17,7 @@ defmodule StoryarnWeb.PageLive.Helpers.ConfigHelpers do
   @spec configure_block(Phoenix.LiveView.Socket.t(), any()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def configure_block(socket, block_id) do
-    block = Pages.get_block!(block_id)
+    block = Pages.get_block_in_project!(block_id, socket.assigns.project.id)
     {:noreply, assign(socket, :configuring_block, block)}
   end
 
