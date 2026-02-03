@@ -599,7 +599,11 @@ defmodule StoryarnWeb.Components.CoreComponents do
           </button>
           <button
             type="button"
-            class={["btn", @confirm_variant == "error" && "btn-error", @confirm_variant == "primary" && "btn-primary"]}
+            class={[
+              "btn",
+              @confirm_variant == "error" && "btn-error",
+              @confirm_variant == "primary" && "btn-primary"
+            ]}
             phx-click={@on_confirm |> hide_modal(@id)}
           >
             {@confirm_text}

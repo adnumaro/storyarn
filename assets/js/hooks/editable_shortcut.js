@@ -7,6 +7,13 @@ export const EditableShortcut = {
     this.originalShortcut = this.el.dataset.shortcut || "";
     this.debounceTimer = null;
 
+    // Listen for restore events from server
+    this.handleEvent("restore_page_content", ({ shortcut }) => {
+      this.el.textContent = shortcut || "";
+      this.originalShortcut = shortcut || "";
+      this.el.dataset.shortcut = shortcut || "";
+    });
+
     // Save on input with debounce
     this.el.addEventListener("input", () => {
       // Sanitize input: lowercase, remove invalid chars

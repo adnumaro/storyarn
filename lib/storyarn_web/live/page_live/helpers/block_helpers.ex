@@ -21,6 +21,11 @@ defmodule StoryarnWeb.PageLive.Helpers.BlockHelpers do
       {:ok, _block} ->
         blocks = Pages.list_blocks(socket.assigns.page.id)
 
+        # Create version for significant change (block added)
+        page = Storyarn.Repo.preload(socket.assigns.page, :blocks)
+        user_id = socket.assigns.current_scope.user.id
+        Pages.maybe_create_version(page, user_id)
+
         {:noreply,
          socket
          |> assign(:blocks, blocks)
@@ -70,6 +75,11 @@ defmodule StoryarnWeb.PageLive.Helpers.BlockHelpers do
     case Pages.delete_block(block) do
       {:ok, _} ->
         blocks = Pages.list_blocks(socket.assigns.page.id)
+
+        # Create version for significant change (block deleted)
+        page = Storyarn.Repo.preload(socket.assigns.page, :blocks)
+        user_id = socket.assigns.current_scope.user.id
+        Pages.maybe_create_version(page, user_id)
 
         {:noreply,
          socket

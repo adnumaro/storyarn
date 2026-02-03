@@ -14,6 +14,8 @@ defmodule Storyarn.Pages.PageVersion do
   @type t :: %__MODULE__{
           id: integer() | nil,
           version_number: integer(),
+          title: String.t() | nil,
+          description: String.t() | nil,
           snapshot: map(),
           change_summary: String.t() | nil,
           page_id: integer() | nil,
@@ -25,6 +27,8 @@ defmodule Storyarn.Pages.PageVersion do
 
   schema "page_versions" do
     field :version_number, :integer
+    field :title, :string
+    field :description, :string
     field :snapshot, :map
     field :change_summary, :string
 
@@ -39,8 +43,17 @@ defmodule Storyarn.Pages.PageVersion do
   """
   def changeset(version, attrs) do
     version
-    |> cast(attrs, [:version_number, :snapshot, :change_summary, :page_id, :changed_by_id])
+    |> cast(attrs, [
+      :version_number,
+      :title,
+      :description,
+      :snapshot,
+      :change_summary,
+      :page_id,
+      :changed_by_id
+    ])
     |> validate_required([:version_number, :snapshot, :page_id])
+    |> validate_length(:title, max: 255)
     |> foreign_key_constraint(:page_id)
     |> foreign_key_constraint(:changed_by_id)
     |> unique_constraint([:page_id, :version_number], name: :page_versions_page_version_unique)

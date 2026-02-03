@@ -179,7 +179,10 @@ defmodule StoryarnWeb.PageLive.Show do
                   {@page.shortcut}
                 </span>
               </div>
-              <div :if={!@can_edit && @page.shortcut} class="text-sm text-base-content/50 px-2 -mx-2 mt-1">
+              <div
+                :if={!@can_edit && @page.shortcut}
+                class="text-sm text-base-content/50 px-2 -mx-2 mt-1"
+              >
                 #{@page.shortcut}
               </div>
             </div>
@@ -270,12 +273,19 @@ defmodule StoryarnWeb.PageLive.Show do
 
         <%!-- Tab Content: References --%>
         <div :if={@current_tab == "references"}>
-          <.references_tab versions={@versions} />
+          <.references_tab
+            versions={@versions}
+            current_version_id={@page.current_version_id}
+            can_edit={@can_edit}
+          />
         </div>
       </div>
 
       <%!-- Configuration Panel (Right Sidebar) --%>
       <.config_panel :if={@configuring_block} block={@configuring_block} />
+
+      <%!-- Create Version Modal --%>
+      <.create_version_modal :if={@show_create_version_modal} />
     </Layouts.project>
     """
   end
@@ -317,6 +327,7 @@ defmodule StoryarnWeb.PageLive.Show do
 
   defp setup_page_view(socket, project, membership, page) do
     project = Repo.preload(project, :workspace)
+    page = Repo.preload(page, [:avatar_asset, :banner_asset, :current_version])
     pages_tree = Pages.list_pages_tree(project.id)
     ancestors = Pages.get_page_with_ancestors(project.id, page.id) || [page]
     children = Pages.get_children(page.id)
@@ -339,6 +350,7 @@ defmodule StoryarnWeb.PageLive.Show do
     |> assign(:configuring_block, nil)
     |> assign(:current_tab, "content")
     |> assign(:versions, nil)
+    |> assign(:show_create_version_modal, false)
   end
 
   @impl true
@@ -377,12 +389,19 @@ defmodule StoryarnWeb.PageLive.Show do
   def handle_event("save_shortcut", %{"shortcut" => shortcut}, socket) do
     with_authorization(socket, :edit_content, fn socket ->
       page = socket.assigns.page
+      old_shortcut = page.shortcut
       # Convert empty string to nil
       shortcut = if shortcut == "", do: nil, else: shortcut
 
       case Pages.update_page(page, %{shortcut: shortcut}) do
         {:ok, updated_page} ->
-          updated_page = Repo.preload(updated_page, [:avatar_asset, :banner_asset])
+          updated_page = Repo.preload(updated_page, [:avatar_asset, :banner_asset, :blocks])
+
+          # Create version if shortcut actually changed
+          if shortcut != old_shortcut do
+            user_id = socket.assigns.current_scope.user.id
+            Pages.maybe_create_version(updated_page, user_id)
+          end
 
           {:noreply,
            socket
@@ -661,6 +680,73 @@ defmodule StoryarnWeb.PageLive.Show do
     end)
   end
 
+  def handle_event("delete_version", %{"version" => version_number}, socket) do
+    with_authorization(socket, :edit_content, fn socket ->
+      version_number = String.to_integer(version_number)
+
+      case Pages.get_version(socket.assigns.page.id, version_number) do
+        nil ->
+          {:noreply, put_flash(socket, :error, gettext("Version not found."))}
+
+        version ->
+          case Pages.delete_version(version) do
+            {:ok, _} ->
+              versions = Pages.list_versions(socket.assigns.page.id, limit: 20)
+              # Reload page in case current_version was cleared
+              page = Pages.get_page!(socket.assigns.project.id, socket.assigns.page.id)
+              page = Repo.preload(page, [:avatar_asset, :banner_asset, :blocks, :current_version])
+
+              {:noreply,
+               socket
+               |> assign(:page, page)
+               |> assign(:versions, versions)
+               |> put_flash(:info, gettext("Version deleted."))}
+
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, gettext("Could not delete version."))}
+          end
+      end
+    end)
+  end
+
+  def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
+    with_authorization(socket, :edit_content, fn socket ->
+      page = Repo.preload(socket.assigns.page, :blocks)
+      user_id = socket.assigns.current_scope.user.id
+
+      title = if title == "", do: nil, else: title
+      description = if description == "", do: nil, else: description
+
+      case Pages.create_version(page, user_id, title: title, description: description) do
+        {:ok, version} ->
+          versions = Pages.list_versions(page.id, limit: 20)
+          # Set as current version
+          {:ok, updated_page} = Pages.set_current_version(page, version)
+
+          updated_page =
+            Repo.preload(updated_page, [:avatar_asset, :banner_asset, :blocks, :current_version])
+
+          {:noreply,
+           socket
+           |> assign(:page, updated_page)
+           |> assign(:versions, versions)
+           |> assign(:show_create_version_modal, false)
+           |> put_flash(:info, gettext("Version created."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not create version."))}
+      end
+    end)
+  end
+
+  def handle_event("show_create_version_modal", _params, socket) do
+    {:noreply, assign(socket, :show_create_version_modal, true)}
+  end
+
+  def handle_event("hide_create_version_modal", _params, socket) do
+    {:noreply, assign(socket, :show_create_version_modal, false)}
+  end
+
   # ===========================================================================
   # Handle Info
   # ===========================================================================
@@ -736,37 +822,31 @@ defmodule StoryarnWeb.PageLive.Show do
 
   defp restore_from_version(socket, version) do
     page = socket.assigns.page
-    user = socket.assigns.current_scope.user
-    snapshot = version.snapshot
 
-    # Restore page metadata from snapshot
-    attrs = %{
-      name: snapshot["name"],
-      shortcut: snapshot["shortcut"],
-      avatar_asset_id: snapshot["avatar_asset_id"],
-      banner_asset_id: snapshot["banner_asset_id"]
-    }
-
-    case Pages.update_page(page, attrs) do
+    case Pages.restore_version(page, version) do
       {:ok, updated_page} ->
-        # Create a new version recording the restore
-        Pages.create_version(updated_page, user)
-
-        # Reload page with preloads
-        updated_page = Repo.preload(updated_page, [:avatar_asset, :banner_asset, :blocks])
         pages_tree = Pages.list_pages_tree(socket.assigns.project.id)
         versions = Pages.list_versions(updated_page.id, limit: 20)
+        blocks = Pages.list_blocks(updated_page.id)
 
         {:noreply,
          socket
          |> assign(:page, updated_page)
+         |> assign(:blocks, blocks)
          |> assign(:pages_tree, pages_tree)
          |> assign(:versions, versions)
          |> assign(:save_status, :saved)
          |> schedule_save_status_reset()
-         |> put_flash(:info, gettext("Restored to version %{number}", number: version.version_number))}
+         |> push_event("restore_page_content", %{
+           name: updated_page.name,
+           shortcut: updated_page.shortcut || ""
+         })
+         |> put_flash(
+           :info,
+           gettext("Restored to version %{number}", number: version.version_number)
+         )}
 
-      {:error, _changeset} ->
+      {:error, _reason} ->
         {:noreply, put_flash(socket, :error, gettext("Could not restore version."))}
     end
   end
@@ -788,6 +868,8 @@ defmodule StoryarnWeb.PageLive.Show do
   # ===========================================================================
 
   attr :versions, :list, default: nil
+  attr :current_version_id, :integer, default: nil
+  attr :can_edit, :boolean, default: false
 
   defp references_tab(assigns) do
     ~H"""
@@ -809,10 +891,21 @@ defmodule StoryarnWeb.PageLive.Show do
 
       <%!-- Version History Section --%>
       <section>
-        <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-          <.icon name="history" class="size-5" />
-          {gettext("Version History")}
-        </h2>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold flex items-center gap-2">
+            <.icon name="history" class="size-5" />
+            {gettext("Version History")}
+          </h2>
+          <button
+            :if={@can_edit}
+            type="button"
+            class="btn btn-sm btn-primary"
+            phx-click="show_create_version_modal"
+          >
+            <.icon name="plus" class="size-4" />
+            {gettext("Create Version")}
+          </button>
+        </div>
 
         <%= if is_nil(@versions) do %>
           <div class="flex items-center justify-center p-8">
@@ -824,12 +917,17 @@ defmodule StoryarnWeb.PageLive.Show do
               <.icon name="clock" class="size-12 mx-auto text-base-content/30 mb-4" />
               <p class="text-base-content/70 mb-2">{gettext("No versions yet")}</p>
               <p class="text-sm text-base-content/50">
-                {gettext("Page versions will be recorded automatically as you make changes.")}
+                {gettext("Create a version to save the current state of this page.")}
               </p>
             </div>
           <% else %>
             <div class="space-y-2">
-              <.version_row :for={version <- @versions} version={version} />
+              <.version_row
+                :for={version <- @versions}
+                version={version}
+                is_current={version.id == @current_version_id}
+                can_edit={@can_edit}
+              />
             </div>
           <% end %>
         <% end %>
@@ -839,17 +937,35 @@ defmodule StoryarnWeb.PageLive.Show do
   end
 
   attr :version, :map, required: true
+  attr :is_current, :boolean, default: false
+  attr :can_edit, :boolean, default: false
 
   defp version_row(assigns) do
     ~H"""
-    <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-base-200/50 group">
-      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-base-300 flex items-center justify-center text-sm font-medium">
+    <div class={[
+      "flex items-center gap-4 p-3 rounded-lg group",
+      @is_current && "bg-primary/10 border border-primary/30",
+      !@is_current && "hover:bg-base-200/50"
+    ]}>
+      <div class={[
+        "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium",
+        @is_current && "bg-primary text-primary-content",
+        !@is_current && "bg-base-300"
+      ]}>
         v{@version.version_number}
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
-          <span class="text-sm font-medium">{@version.change_summary || gettext("No summary")}</span>
+          <span class="text-sm font-medium">
+            {@version.title || @version.change_summary || gettext("No summary")}
+          </span>
+          <span :if={@is_current} class="badge badge-primary badge-sm">
+            {gettext("Current")}
+          </span>
         </div>
+        <p :if={@version.description} class="text-sm text-base-content/70 mt-0.5">
+          {@version.description}
+        </p>
         <div class="flex items-center gap-2 text-xs text-base-content/60 mt-0.5">
           <span>{format_version_date(@version.inserted_at)}</span>
           <span :if={@version.changed_by}>
@@ -857,8 +973,12 @@ defmodule StoryarnWeb.PageLive.Show do
           </span>
         </div>
       </div>
-      <div class="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div
+        :if={@can_edit}
+        class="flex-shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
         <button
+          :if={!@is_current}
           type="button"
           class="btn btn-ghost btn-xs tooltip"
           data-tip={gettext("Restore this version")}
@@ -867,8 +987,71 @@ defmodule StoryarnWeb.PageLive.Show do
         >
           <.icon name="rotate-ccw" class="size-4" />
         </button>
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs tooltip text-error"
+          data-tip={gettext("Delete version")}
+          phx-click="delete_version"
+          phx-value-version={@version.version_number}
+          data-confirm={gettext("Are you sure you want to delete this version?")}
+        >
+          <.icon name="trash-2" class="size-4" />
+        </button>
       </div>
     </div>
+    """
+  end
+
+  defp create_version_modal(assigns) do
+    ~H"""
+    <dialog
+      id="create-version-modal"
+      class="modal modal-open"
+      phx-click-away="hide_create_version_modal"
+    >
+      <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">{gettext("Create Version")}</h3>
+        <form phx-submit="create_version">
+          <div class="mb-4">
+            <label class="label" for="version-title">
+              <span class="label-text">{gettext("Title")}</span>
+            </label>
+            <input
+              type="text"
+              name="title"
+              id="version-title"
+              class="input input-bordered w-full"
+              placeholder={gettext("e.g., Before major refactor")}
+              autofocus
+            />
+          </div>
+          <div class="mb-4">
+            <label class="label" for="version-description">
+              <span class="label-text">{gettext("Description")} ({gettext("optional")})</span>
+            </label>
+            <textarea
+              name="description"
+              id="version-description"
+              class="textarea textarea-bordered w-full"
+              rows="3"
+              placeholder={gettext("Describe what this version captures...")}
+            ></textarea>
+          </div>
+          <div class="modal-action">
+            <button type="button" class="btn btn-ghost" phx-click="hide_create_version_modal">
+              {gettext("Cancel")}
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <.icon name="save" class="size-4" />
+              {gettext("Create Version")}
+            </button>
+          </div>
+        </form>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button type="button" phx-click="hide_create_version_modal">close</button>
+      </form>
+    </dialog>
     """
   end
 

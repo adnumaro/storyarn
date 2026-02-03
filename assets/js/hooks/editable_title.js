@@ -7,6 +7,13 @@ export const EditableTitle = {
     this.originalName = this.el.dataset.name;
     this.debounceTimer = null;
 
+    // Listen for restore events from server
+    this.handleEvent("restore_page_content", ({ name }) => {
+      this.el.textContent = name;
+      this.originalName = name;
+      this.el.dataset.name = name;
+    });
+
     // Save on input with debounce
     this.el.addEventListener("input", () => {
       this.debounceSave();

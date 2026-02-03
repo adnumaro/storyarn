@@ -254,10 +254,14 @@ defmodule Storyarn.Pages do
   @doc """
   Creates a new version snapshot of the given page.
   The snapshot includes page metadata and all blocks.
+
+  ## Options
+  - `:title` - Custom title for the version (for manual versions)
+  - `:description` - Optional description of changes
   """
-  @spec create_version(page(), Storyarn.Accounts.User.t() | integer() | nil) ::
+  @spec create_version(page(), Storyarn.Accounts.User.t() | integer() | nil, keyword()) ::
           {:ok, version()} | {:error, changeset()}
-  defdelegate create_version(page, user_or_id), to: Versioning
+  defdelegate create_version(page, user_or_id, opts \\ []), to: Versioning
 
   @doc """
   Lists all versions for a page, ordered by version number descending.
@@ -282,4 +286,34 @@ defmodule Storyarn.Pages do
   """
   @spec count_versions(id()) :: integer()
   defdelegate count_versions(page_id), to: Versioning
+
+  @doc """
+  Creates a version if enough time has passed since the last version (rate limited).
+  Returns `{:ok, version}`, `{:skipped, :too_recent}`, or `{:error, changeset}`.
+  """
+  @spec maybe_create_version(page(), Storyarn.Accounts.User.t() | integer() | nil, keyword()) ::
+          {:ok, version()} | {:skipped, :too_recent} | {:error, changeset()}
+  defdelegate maybe_create_version(page, user_or_id, opts \\ []), to: Versioning
+
+  @doc """
+  Deletes a version.
+  If the deleted version is the current_version of its page, clears the reference.
+  """
+  @spec delete_version(version()) :: {:ok, version()} | {:error, changeset()}
+  defdelegate delete_version(version), to: Versioning
+
+  @doc """
+  Sets the current version for a page.
+  This marks the version as "active" without modifying page content.
+  """
+  @spec set_current_version(page(), version() | nil) :: {:ok, page()} | {:error, changeset()}
+  defdelegate set_current_version(page, version), to: Versioning
+
+  @doc """
+  Restores a page to a specific version.
+  Applies the snapshot (metadata and blocks) and sets as current version.
+  Does NOT create a new version.
+  """
+  @spec restore_version(page(), version()) :: {:ok, page()} | {:error, term()}
+  defdelegate restore_version(page, version), to: Versioning
 end

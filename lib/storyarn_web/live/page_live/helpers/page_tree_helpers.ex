@@ -86,9 +86,18 @@ defmodule StoryarnWeb.PageLive.Helpers.PageTreeHelpers do
   @spec save_name(Phoenix.LiveView.Socket.t(), String.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def save_name(socket, name) do
+    old_name = socket.assigns.page.name
+
     case Pages.update_page(socket.assigns.page, %{name: name}) do
       {:ok, page} ->
         pages_tree = Pages.list_pages_tree(socket.assigns.project.id)
+
+        # Create version if name actually changed
+        if name != old_name do
+          page_with_blocks = Storyarn.Repo.preload(page, :blocks)
+          user_id = socket.assigns.current_scope.user.id
+          Pages.maybe_create_version(page_with_blocks, user_id)
+        end
 
         {:noreply,
          socket

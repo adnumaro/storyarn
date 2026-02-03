@@ -9,7 +9,7 @@ defmodule Storyarn.Pages.Page do
   import Ecto.Changeset
 
   alias Storyarn.Assets.Asset
-  alias Storyarn.Pages.Block
+  alias Storyarn.Pages.{Block, PageVersion}
   alias Storyarn.Projects.Project
 
   # Shortcut format: lowercase, alphanumeric, dots and hyphens allowed, no spaces
@@ -25,6 +25,8 @@ defmodule Storyarn.Pages.Page do
           avatar_asset: Asset.t() | Ecto.Association.NotLoaded.t() | nil,
           banner_asset_id: integer() | nil,
           banner_asset: Asset.t() | Ecto.Association.NotLoaded.t() | nil,
+          current_version_id: integer() | nil,
+          current_version: PageVersion.t() | Ecto.Association.NotLoaded.t() | nil,
           project_id: integer() | nil,
           project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
           parent_id: integer() | nil,
@@ -46,8 +48,10 @@ defmodule Storyarn.Pages.Page do
     belongs_to :parent, __MODULE__
     belongs_to :avatar_asset, Asset
     belongs_to :banner_asset, Asset
+    belongs_to :current_version, PageVersion
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :blocks, Block
+    has_many :versions, PageVersion
 
     timestamps(type: :utc_datetime)
   end
@@ -103,6 +107,15 @@ defmodule Storyarn.Pages.Page do
   def restore_changeset(page) do
     page
     |> change(%{deleted_at: nil})
+  end
+
+  @doc """
+  Changeset for updating the current version pointer.
+  """
+  def version_changeset(page, attrs) do
+    page
+    |> cast(attrs, [:current_version_id])
+    |> foreign_key_constraint(:current_version_id)
   end
 
   @doc """
