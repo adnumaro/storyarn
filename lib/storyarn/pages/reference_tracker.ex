@@ -130,30 +130,104 @@ defmodule Storyarn.Pages.ReferenceTracker do
   - context
   - source_name (resolved name of the source)
   - source_parent (page/flow that contains the source)
+
+  Optimized to use JOINs instead of N+1 queries.
   """
   @spec get_backlinks_with_sources(String.t(), any(), integer()) :: [map()]
   def get_backlinks_with_sources(target_type, target_id, project_id) do
-    references =
+    alias Storyarn.Pages.{Block, Page}
+    alias Storyarn.Flows.{Flow, FlowNode}
+
+    # Single query for block references with JOINs
+    block_refs =
       from(r in EntityReference,
+        join: b in Block,
+        on: r.source_type == "block" and r.source_id == b.id,
+        join: p in Page,
+        on: b.page_id == p.id,
         where: r.target_type == ^target_type and r.target_id == ^target_id,
+        where: p.project_id == ^project_id and is_nil(p.deleted_at) and is_nil(b.deleted_at),
+        select: %{
+          id: r.id,
+          source_type: r.source_type,
+          source_id: r.source_id,
+          context: r.context,
+          inserted_at: r.inserted_at,
+          block_type: b.type,
+          block_label: fragment("?->>'label'", b.config),
+          page_id: p.id,
+          page_name: p.name,
+          page_shortcut: p.shortcut
+        },
         order_by: [desc: r.inserted_at]
       )
       |> Repo.all()
 
-    # Resolve source information for each reference
-    Enum.map(references, fn ref ->
-      source_info = resolve_source_info(ref, project_id)
+    # Single query for flow node references with JOINs
+    flow_node_refs =
+      from(r in EntityReference,
+        join: n in FlowNode,
+        on: r.source_type == "flow_node" and r.source_id == n.id,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where: r.target_type == ^target_type and r.target_id == ^target_id,
+        where: f.project_id == ^project_id,
+        select: %{
+          id: r.id,
+          source_type: r.source_type,
+          source_id: r.source_id,
+          context: r.context,
+          inserted_at: r.inserted_at,
+          node_type: n.type,
+          flow_id: f.id,
+          flow_name: f.name,
+          flow_shortcut: f.shortcut
+        },
+        order_by: [desc: r.inserted_at]
+      )
+      |> Repo.all()
 
-      %{
-        id: ref.id,
-        source_type: ref.source_type,
-        source_id: ref.source_id,
-        context: ref.context,
-        inserted_at: ref.inserted_at,
-        source_info: source_info
-      }
-    end)
-    |> Enum.filter(fn ref -> ref.source_info != nil end)
+    # Transform to expected format
+    block_backlinks =
+      Enum.map(block_refs, fn ref ->
+        %{
+          id: ref.id,
+          source_type: "block",
+          source_id: ref.source_id,
+          context: ref.context,
+          inserted_at: ref.inserted_at,
+          source_info: %{
+            type: :page,
+            page_id: ref.page_id,
+            page_name: ref.page_name,
+            page_shortcut: ref.page_shortcut,
+            block_type: ref.block_type,
+            block_label: ref.block_label
+          }
+        }
+      end)
+
+    flow_backlinks =
+      Enum.map(flow_node_refs, fn ref ->
+        %{
+          id: ref.id,
+          source_type: "flow_node",
+          source_id: ref.source_id,
+          context: ref.context,
+          inserted_at: ref.inserted_at,
+          source_info: %{
+            type: :flow,
+            flow_id: ref.flow_id,
+            flow_name: ref.flow_name,
+            flow_shortcut: ref.flow_shortcut,
+            node_type: ref.node_type
+          }
+        }
+      end)
+
+    # Combine and sort by inserted_at desc
+    (block_backlinks ++ flow_backlinks)
+    |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
   end
 
   @doc """
@@ -292,65 +366,5 @@ defmodule Storyarn.Pages.ReferenceTracker do
       end
 
     refs
-  end
-
-  defp resolve_source_info(%{source_type: "block", source_id: source_id}, project_id) do
-    alias Storyarn.Pages.Block
-    alias Storyarn.Pages.Page
-
-    block =
-      from(b in Block,
-        join: p in Page,
-        on: b.page_id == p.id,
-        where: b.id == ^source_id and p.project_id == ^project_id and is_nil(p.deleted_at),
-        select: {b, p}
-      )
-      |> Repo.one()
-
-    case block do
-      {block, page} ->
-        label = get_in(block.config, ["label"]) || block.type
-
-        %{
-          type: "page",
-          page_id: page.id,
-          page_name: page.name,
-          page_shortcut: page.shortcut,
-          block_id: block.id,
-          block_label: label,
-          block_type: block.type
-        }
-
-      nil ->
-        nil
-    end
-  end
-
-  defp resolve_source_info(%{source_type: "flow_node", source_id: source_id}, project_id) do
-    alias Storyarn.Flows.{Flow, FlowNode}
-
-    node =
-      from(n in FlowNode,
-        join: f in Flow,
-        on: n.flow_id == f.id,
-        where: n.id == ^source_id and f.project_id == ^project_id,
-        select: {n, f}
-      )
-      |> Repo.one()
-
-    case node do
-      {node, flow} ->
-        %{
-          type: "flow",
-          flow_id: flow.id,
-          flow_name: flow.name,
-          flow_shortcut: flow.shortcut,
-          node_id: node.id,
-          node_type: node.type
-        }
-
-      nil ->
-        nil
-    end
   end
 end
