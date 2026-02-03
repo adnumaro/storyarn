@@ -80,6 +80,15 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
         <.icon name="toggle-left" class="size-4" />
         <span>{gettext("Boolean")}</span>
       </button>
+      <button
+        type="button"
+        class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
+        phx-click="add_block"
+        phx-value-type="reference"
+      >
+        <.icon name="link" class="size-4" />
+        <span>{gettext("Reference")}</span>
+      </button>
 
       <div class="text-xs text-base-content/50 px-2 py-1 uppercase mt-2">{gettext("Layout")}</div>
       <button

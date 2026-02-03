@@ -45,7 +45,7 @@ defmodule StoryarnWeb.PageLive.Helpers.ConfigHelpers do
 
     case Pages.update_block_config(block, config_params) do
       {:ok, updated_block} ->
-        blocks = Pages.list_blocks(socket.assigns.page.id)
+        blocks = load_blocks_with_references(socket.assigns.page.id, socket.assigns.project.id)
         schedule_save_status_reset()
 
         {:noreply,
@@ -73,7 +73,7 @@ defmodule StoryarnWeb.PageLive.Helpers.ConfigHelpers do
 
     case Pages.update_block_config(block, %{"options" => new_options}) do
       {:ok, updated_block} ->
-        blocks = Pages.list_blocks(socket.assigns.page.id)
+        blocks = load_blocks_with_references(socket.assigns.page.id, socket.assigns.project.id)
 
         {:noreply,
          socket
@@ -100,7 +100,8 @@ defmodule StoryarnWeb.PageLive.Helpers.ConfigHelpers do
 
         case Pages.update_block_config(block, %{"options" => new_options}) do
           {:ok, updated_block} ->
-            blocks = Pages.list_blocks(socket.assigns.page.id)
+            blocks =
+              load_blocks_with_references(socket.assigns.page.id, socket.assigns.project.id)
 
             {:noreply,
              socket
@@ -128,7 +129,7 @@ defmodule StoryarnWeb.PageLive.Helpers.ConfigHelpers do
 
     case Pages.update_block(block, %{is_constant: new_value}) do
       {:ok, updated_block} ->
-        blocks = Pages.list_blocks(socket.assigns.page.id)
+        blocks = load_blocks_with_references(socket.assigns.page.id, socket.assigns.project.id)
 
         {:noreply,
          socket
@@ -164,7 +165,8 @@ defmodule StoryarnWeb.PageLive.Helpers.ConfigHelpers do
 
         case Pages.update_block_config(block, %{"options" => new_options}) do
           {:ok, updated_block} ->
-            blocks = Pages.list_blocks(socket.assigns.page.id)
+            blocks =
+              load_blocks_with_references(socket.assigns.page.id, socket.assigns.project.id)
 
             {:noreply,
              socket
@@ -183,12 +185,33 @@ defmodule StoryarnWeb.PageLive.Helpers.ConfigHelpers do
   # Private functions
 
   defp normalize_config_params(params) do
+    params
+    |> normalize_options()
+    |> normalize_allowed_types()
+  end
+
+  defp normalize_options(params) do
     case Map.get(params, "options") do
       nil ->
         params
 
       options when is_map(options) ->
         Map.put(params, "options", options_map_to_list(options))
+
+      _ ->
+        params
+    end
+  end
+
+  defp normalize_allowed_types(params) do
+    case Map.get(params, "allowed_types") do
+      nil ->
+        params
+
+      types when is_list(types) ->
+        # Filter out empty strings from hidden field
+        filtered = Enum.filter(types, &(&1 != ""))
+        Map.put(params, "allowed_types", filtered)
 
       _ ->
         params
@@ -221,5 +244,20 @@ defmodule StoryarnWeb.PageLive.Helpers.ConfigHelpers do
 
   defp schedule_save_status_reset do
     Process.send_after(self(), :reset_save_status, 4000)
+  end
+
+  defp load_blocks_with_references(page_id, project_id) do
+    blocks = Pages.list_blocks(page_id)
+
+    Enum.map(blocks, fn block ->
+      if block.type == "reference" do
+        target_type = get_in(block.value, ["target_type"])
+        target_id = get_in(block.value, ["target_id"])
+        reference_target = Pages.get_reference_target(target_type, target_id, project_id)
+        Map.put(block, :reference_target, reference_target)
+      else
+        Map.put(block, :reference_target, nil)
+      end
+    end)
   end
 end

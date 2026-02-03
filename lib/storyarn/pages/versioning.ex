@@ -286,7 +286,9 @@ defmodule Storyarn.Pages.Versioning do
         ngettext(
           "Initial version with %{count} block",
           "Initial version with %{count} blocks",
-          block_count, count: block_count)
+          block_count,
+          count: block_count
+        )
 
       previous ->
         diff_snapshots(previous.snapshot, current_snapshot)

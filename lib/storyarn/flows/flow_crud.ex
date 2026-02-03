@@ -16,6 +16,34 @@ defmodule Storyarn.Flows.FlowCrud do
     |> Repo.all()
   end
 
+  @doc """
+  Searches flows by name or shortcut for reference selection.
+  Returns flows matching the query, limited to 10 results.
+  """
+  def search_flows(project_id, query) when is_binary(query) do
+    query = String.trim(query)
+
+    if query == "" do
+      # Return recent flows if no query
+      from(f in Flow,
+        where: f.project_id == ^project_id,
+        order_by: [desc: f.updated_at],
+        limit: 10
+      )
+      |> Repo.all()
+    else
+      search_term = "%#{query}%"
+
+      from(f in Flow,
+        where: f.project_id == ^project_id,
+        where: ilike(f.name, ^search_term) or ilike(f.shortcut, ^search_term),
+        order_by: [asc: f.name],
+        limit: 10
+      )
+      |> Repo.all()
+    end
+  end
+
   def get_flow(project_id, flow_id) do
     Flow
     |> where(project_id: ^project_id, id: ^flow_id)

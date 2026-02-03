@@ -36,6 +36,13 @@ defmodule Storyarn.Flows do
   defdelegate list_flows(project_id), to: FlowCrud
 
   @doc """
+  Searches flows by name or shortcut for reference selection.
+  Returns flows matching the query, limited to 10 results.
+  """
+  @spec search_flows(integer(), String.t()) :: [flow()]
+  defdelegate search_flows(project_id, query), to: FlowCrud
+
+  @doc """
   Gets a single flow by ID within a project.
   Returns `nil` if the flow doesn't exist or doesn't belong to the project.
   """

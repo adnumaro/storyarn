@@ -4,7 +4,7 @@
 >
 > **Priority:** Before Phase 7 (Export) - this defines the data model that will be exported
 >
-> **Last Updated:** February 2, 2026
+> **Last Updated:** February 3, 2026
 
 ## Overview
 
@@ -168,15 +168,16 @@ Option B: Toggle with neutral: ○ ◐ ●
 Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 ```
 
-#### 7.5.3.2 Reference Block
-- [ ] Add "reference" to block types enum
-- [ ] Schema: config `{label, allowed_types}` where allowed_types is ["page", "flow"] or subset
-- [ ] Schema: value `{target_type, target_id}`
-- [ ] UI: Select with search (combobox pattern)
-- [ ] Search by: name, shortcut, path
-- [ ] Display: Show target name + type icon + shortcut if exists
-- [ ] Validation: Target must exist and be in same project
-- [ ] Handle deleted targets gracefully (show "Deleted reference" state)
+#### 7.5.3.2 Reference Block ✅ DONE
+- [x] Add "reference" to block types enum
+- [x] Schema: config `{label, allowed_types}` where allowed_types is ["page", "flow"] or subset
+- [x] Schema: value `{target_type, target_id}`
+- [x] UI: Select with search (combobox pattern)
+- [x] Search by: name, shortcut
+- [x] Display: Show target name + type icon + shortcut if exists
+- [x] Validation: Target must exist and be in same project
+- [x] Handle deleted targets gracefully (show "Deleted reference" state)
+- [x] Config panel: Allowed types selection (checkboxes for pages/flows)
 
 ---
 
@@ -446,7 +447,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 | 8     | ✅ Page tabs UI                                 | None                      | Tab navigation works         |
 | 9     | ✅ Page versions                                | None                      | Versions created/listed      |
 | 10    | ✅ Version history UI                           | Page versions             | History tab works            |
-| 11    | Reference block                                | Shortcuts                 | Can reference pages/flows    |
+| 11    | ✅ Reference block                              | Shortcuts                 | Can reference pages/flows    |
 | 12    | Mentions (Tiptap)                              | Shortcuts                 | # mentions work in rich_text |
 | 13    | Entity references table                        | Mentions, Reference block | References tracked           |
 | 14    | Backlinks UI                                   | Entity references         | Backlinks displayed          |
@@ -496,7 +497,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 ## Success Criteria
 
 - [x] New block types working (boolean) ✅
-- [ ] New block types working (reference)
+- [x] New block types working (reference) ✅
 - [x] Page avatar working (replaces icon field) ✅
 - [x] Page banner working ✅
 - [x] Shortcuts can be set on pages and flows ✅
@@ -508,3 +509,4 @@ Recommended order to minimize dependencies and allow incremental testing:
 ---
 
 *This plan will be incorporated into IMPLEMENTATION_PLAN.md once approved and implementation begins.*
+sog

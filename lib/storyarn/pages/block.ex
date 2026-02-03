@@ -47,7 +47,7 @@ defmodule Storyarn.Pages.Block do
 
   alias Storyarn.Pages.Page
 
-  @block_types ~w(text rich_text number select multi_select divider date boolean)
+  @block_types ~w(text rich_text number select multi_select divider date boolean reference)
 
   @default_configs %{
     "text" => %{"label" => "Label", "placeholder" => ""},
@@ -57,7 +57,8 @@ defmodule Storyarn.Pages.Block do
     "multi_select" => %{"label" => "Label", "placeholder" => "Select...", "options" => []},
     "divider" => %{},
     "date" => %{"label" => "Label"},
-    "boolean" => %{"label" => "Label", "mode" => "two_state"}
+    "boolean" => %{"label" => "Label", "mode" => "two_state"},
+    "reference" => %{"label" => "Label", "allowed_types" => ["page", "flow"]}
   }
 
   @default_values %{
@@ -68,11 +69,12 @@ defmodule Storyarn.Pages.Block do
     "multi_select" => %{"content" => []},
     "divider" => %{},
     "date" => %{"content" => nil},
-    "boolean" => %{"content" => false}
+    "boolean" => %{"content" => false},
+    "reference" => %{"target_type" => nil, "target_id" => nil}
   }
 
   # Block types that cannot be variables (no meaningful value to expose)
-  @non_variable_types ~w(divider)
+  @non_variable_types ~w(divider reference)
 
   @type t :: %__MODULE__{
           id: integer() | nil,

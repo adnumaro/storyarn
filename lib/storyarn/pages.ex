@@ -316,4 +316,75 @@ defmodule Storyarn.Pages do
   """
   @spec restore_version(page(), version()) :: {:ok, page()} | {:error, term()}
   defdelegate restore_version(page, version), to: Versioning
+
+  # =============================================================================
+  # Reference Search
+  # =============================================================================
+
+  @doc """
+  Searches for pages and flows that can be referenced.
+
+  Returns a list of maps with :type, :id, :name, :shortcut keys.
+  """
+  @spec search_referenceable(id(), String.t(), [String.t()]) :: [map()]
+  def search_referenceable(project_id, query, allowed_types \\ ["page", "flow"]) do
+    query = String.trim(query)
+
+    results = []
+
+    results =
+      if "page" in allowed_types do
+        pages = PageCrud.search_pages(project_id, query)
+
+        page_results =
+          Enum.map(pages, fn page ->
+            %{type: "page", id: page.id, name: page.name, shortcut: page.shortcut}
+          end)
+
+        results ++ page_results
+      else
+        results
+      end
+
+    results =
+      if "flow" in allowed_types do
+        flows = Storyarn.Flows.search_flows(project_id, query)
+
+        flow_results =
+          Enum.map(flows, fn flow ->
+            %{type: "flow", id: flow.id, name: flow.name, shortcut: flow.shortcut}
+          end)
+
+        results ++ flow_results
+      else
+        results
+      end
+
+    # Sort by name and limit to 20 results
+    results
+    |> Enum.sort_by(& &1.name)
+    |> Enum.take(20)
+  end
+
+  @doc """
+  Gets the reference target (page or flow) for display.
+  Returns nil if not found.
+  """
+  @spec get_reference_target(String.t() | nil, id() | nil, id()) :: map() | nil
+  def get_reference_target(nil, _target_id, _project_id), do: nil
+  def get_reference_target(_target_type, nil, _project_id), do: nil
+
+  def get_reference_target("page", target_id, project_id) do
+    case PageCrud.get_page(project_id, target_id) do
+      nil -> nil
+      page -> %{type: "page", id: page.id, name: page.name, shortcut: page.shortcut}
+    end
+  end
+
+  def get_reference_target("flow", target_id, project_id) do
+    case Storyarn.Flows.get_flow(project_id, target_id) do
+      nil -> nil
+      flow -> %{type: "flow", id: flow.id, name: flow.name, shortcut: flow.shortcut}
+    end
+  end
 end

@@ -38,6 +38,7 @@ import { TreeToggle } from "./hooks/tree";
 import { TreeSearch } from "./hooks/tree_search";
 import { TriStateCheckbox } from "./hooks/tri_state_checkbox";
 import { TwoStateCheckbox } from "./hooks/two_state_checkbox";
+import { ReferenceSearch } from "./hooks/reference_search";
 
 // Theme management (keyboard shortcuts, cross-tab sync)
 import "./theme";
@@ -60,6 +61,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     TriStateCheckbox,
     TwoStateCheckbox,
     FlowCanvas,
+    ReferenceSearch,
   },
 });
 

@@ -33,6 +33,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
       |> assign(:true_label, config["true_label"] || "")
       |> assign(:false_label, config["false_label"] || "")
       |> assign(:neutral_label, config["neutral_label"] || "")
+      |> assign(:allowed_types, config["allowed_types"] || ["page", "flow"])
       |> assign(:is_constant, assigns.block.is_constant || false)
       |> assign(:variable_name, assigns.block.variable_name)
       |> assign(:can_be_variable, Storyarn.Pages.Block.can_be_variable?(assigns.block.type))
@@ -219,6 +220,40 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
             </select>
             <p class="text-xs text-base-content/50 mt-1">
               {gettext("Tri-state allows a neutral/unknown value.")}
+            </p>
+          </div>
+
+          <%!-- Allowed reference types (for reference) --%>
+          <div :if={@block.type == "reference"} class="space-y-2">
+            <label class="label">
+              <span class="label-text">{gettext("Allowed Types")}</span>
+            </label>
+            <%!-- Hidden field to ensure key is always present --%>
+            <input type="hidden" name="config[allowed_types][]" value="" />
+            <div class="flex flex-col gap-2">
+              <label class="label cursor-pointer justify-start gap-3">
+                <input
+                  type="checkbox"
+                  name="config[allowed_types][]"
+                  value="page"
+                  checked={"page" in @allowed_types}
+                  class="checkbox checkbox-sm"
+                />
+                <span class="label-text">{gettext("Pages")}</span>
+              </label>
+              <label class="label cursor-pointer justify-start gap-3">
+                <input
+                  type="checkbox"
+                  name="config[allowed_types][]"
+                  value="flow"
+                  checked={"flow" in @allowed_types}
+                  class="checkbox checkbox-sm"
+                />
+                <span class="label-text">{gettext("Flows")}</span>
+              </label>
+            </div>
+            <p class="text-xs text-base-content/50">
+              {gettext("Select which types can be referenced.")}
             </p>
           </div>
 

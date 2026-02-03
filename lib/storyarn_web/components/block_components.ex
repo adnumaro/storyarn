@@ -19,6 +19,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
   import StoryarnWeb.Components.BlockComponents.SelectBlocks
   import StoryarnWeb.Components.BlockComponents.LayoutBlocks
   import StoryarnWeb.Components.BlockComponents.BooleanBlocks
+  import StoryarnWeb.Components.BlockComponents.ReferenceBlocks
 
   # Re-export public components
   defdelegate block_menu(assigns), to: StoryarnWeb.Components.BlockComponents.BlockMenu
@@ -109,6 +110,12 @@ defmodule StoryarnWeb.Components.BlockComponents do
             <.date_block block={@block} can_edit={@can_edit} />
           <% "boolean" -> %>
             <.boolean_block block={@block} can_edit={@can_edit} />
+          <% "reference" -> %>
+            <.reference_block
+              block={@block}
+              can_edit={@can_edit}
+              reference_target={@block.reference_target}
+            />
           <% _ -> %>
             <div class="text-base-content/50">{gettext("Unknown block type")}</div>
         <% end %>

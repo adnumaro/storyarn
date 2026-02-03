@@ -331,7 +331,7 @@ defmodule StoryarnWeb.PageLive.Show do
     pages_tree = Pages.list_pages_tree(project.id)
     ancestors = Pages.get_page_with_ancestors(project.id, page.id) || [page]
     children = Pages.get_children(page.id)
-    blocks = Pages.list_blocks(page.id)
+    blocks = load_blocks_with_references(page.id, project.id)
     can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
 
     socket
@@ -663,6 +663,72 @@ defmodule StoryarnWeb.PageLive.Show do
   end
 
   # ===========================================================================
+  # Event Handlers: Reference Blocks
+  # ===========================================================================
+
+  def handle_event("search_references", %{"value" => query, "block-id" => block_id}, socket) do
+    block = Pages.get_block!(block_id)
+    allowed_types = get_in(block.config, ["allowed_types"]) || ["page", "flow"]
+
+    results = Pages.search_referenceable(socket.assigns.project.id, query, allowed_types)
+
+    # Send results to client via push_event
+    {:noreply,
+     push_event(socket, "reference_results", %{
+       block_id: block_id,
+       results: results
+     })}
+  end
+
+  def handle_event(
+        "select_reference",
+        %{"block-id" => block_id, "type" => target_type, "id" => target_id},
+        socket
+      ) do
+    with_authorization(socket, :edit_content, fn socket ->
+      block = Pages.get_block!(block_id)
+      target_id = String.to_integer(target_id)
+
+      case Pages.update_block_value(block, %{
+             "target_type" => target_type,
+             "target_id" => target_id
+           }) do
+        {:ok, _block} ->
+          blocks = load_blocks_with_references(socket.assigns.page.id, socket.assigns.project.id)
+
+          {:noreply,
+           socket
+           |> assign(:blocks, blocks)
+           |> assign(:save_status, :saved)
+           |> schedule_save_status_reset()}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not set reference."))}
+      end
+    end)
+  end
+
+  def handle_event("clear_reference", %{"block-id" => block_id}, socket) do
+    with_authorization(socket, :edit_content, fn socket ->
+      block = Pages.get_block!(block_id)
+
+      case Pages.update_block_value(block, %{"target_type" => nil, "target_id" => nil}) do
+        {:ok, _block} ->
+          blocks = load_blocks_with_references(socket.assigns.page.id, socket.assigns.project.id)
+
+          {:noreply,
+           socket
+           |> assign(:blocks, blocks)
+           |> assign(:save_status, :saved)
+           |> schedule_save_status_reset()}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not clear reference."))}
+      end
+    end)
+  end
+
+  # ===========================================================================
   # Event Handlers: Versioning
   # ===========================================================================
 
@@ -827,7 +893,7 @@ defmodule StoryarnWeb.PageLive.Show do
       {:ok, updated_page} ->
         pages_tree = Pages.list_pages_tree(socket.assigns.project.id)
         versions = Pages.list_versions(updated_page.id, limit: 20)
-        blocks = Pages.list_blocks(updated_page.id)
+        blocks = load_blocks_with_references(updated_page.id, socket.assigns.project.id)
 
         {:noreply,
          socket
@@ -861,6 +927,21 @@ defmodule StoryarnWeb.PageLive.Show do
   defp schedule_save_status_reset(socket) do
     Process.send_after(self(), :reset_save_status, 4000)
     socket
+  end
+
+  defp load_blocks_with_references(page_id, project_id) do
+    blocks = Pages.list_blocks(page_id)
+
+    Enum.map(blocks, fn block ->
+      if block.type == "reference" do
+        target_type = get_in(block.value, ["target_type"])
+        target_id = get_in(block.value, ["target_id"])
+        reference_target = Pages.get_reference_target(target_type, target_id, project_id)
+        Map.put(block, :reference_target, reference_target)
+      else
+        Map.put(block, :reference_target, nil)
+      end
+    end)
   end
 
   # ===========================================================================

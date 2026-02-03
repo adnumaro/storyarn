@@ -82,6 +82,34 @@ defmodule Storyarn.Pages.PageCrud do
     |> Repo.all()
   end
 
+  @doc """
+  Searches pages by name or shortcut for reference selection.
+  Returns pages matching the query, limited to 10 results.
+  """
+  def search_pages(project_id, query) when is_binary(query) do
+    query = String.trim(query)
+
+    if query == "" do
+      # Return recent pages if no query
+      from(p in Page,
+        where: p.project_id == ^project_id and is_nil(p.deleted_at),
+        order_by: [desc: p.updated_at],
+        limit: 10
+      )
+      |> Repo.all()
+    else
+      search_term = "%#{query}%"
+
+      from(p in Page,
+        where: p.project_id == ^project_id and is_nil(p.deleted_at),
+        where: ilike(p.name, ^search_term) or ilike(p.shortcut, ^search_term),
+        order_by: [asc: p.name],
+        limit: 10
+      )
+      |> Repo.all()
+    end
+  end
+
   # =============================================================================
   # CRUD Operations
   # =============================================================================
