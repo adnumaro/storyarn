@@ -503,7 +503,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 - [x] Mentions with `#` work in rich_text blocks ✅
 - [x] Backlinks show what references a page ✅
 - [x] Version history accessible in References tab ✅
-- [ ] Soft delete with trash recovery working
+- [x] Soft delete with trash recovery working ✅
 
 ---
 
