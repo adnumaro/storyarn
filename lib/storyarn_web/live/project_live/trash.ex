@@ -72,7 +72,9 @@ defmodule StoryarnWeb.ProjectLive.Trash do
       <.confirm_modal
         id="empty-trash-confirm"
         title={gettext("Empty trash?")}
-        message={gettext("All items in trash will be permanently deleted. This action cannot be undone.")}
+        message={
+          gettext("All items in trash will be permanently deleted. This action cannot be undone.")
+        }
         confirm_text={gettext("Empty Trash")}
         cancel_text={gettext("Cancel")}
         confirm_variant="error"
@@ -124,7 +126,10 @@ defmodule StoryarnWeb.ProjectLive.Trash do
         <button
           type="button"
           class="btn btn-ghost btn-sm text-error hover:bg-error/10"
-          phx-click={JS.push("show_delete_confirm", value: %{id: @page.id}) |> show_modal("delete-page-confirm")}
+          phx-click={
+            JS.push("show_delete_confirm", value: %{id: @page.id})
+            |> show_modal("delete-page-confirm")
+          }
         >
           <.icon name="trash-2" class="size-4 mr-1" />
           {gettext("Delete")}

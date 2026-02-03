@@ -11,8 +11,8 @@ defmodule Storyarn.Repo.Migrations.AddVariableFieldsToBlocks do
 
     # Ensure unique variable names within a page
     create unique_index(:blocks, [:page_id, :variable_name],
-      where: "variable_name IS NOT NULL AND deleted_at IS NULL",
-      name: :blocks_page_variable_unique
-    )
+             where: "variable_name IS NOT NULL AND deleted_at IS NULL",
+             name: :blocks_page_variable_unique
+           )
   end
 end

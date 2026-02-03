@@ -218,14 +218,14 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 - [x] Snapshot includes: name, avatar, shortcut, banner, all blocks with values
 - [x] Functions: `list_versions/2`, `get_version/2`, `get_latest_version/1`, `count_versions/1`
 
-#### 7.5.5.3 Automatic Versioning Triggers
-- [ ] Create version after 60 seconds of inactivity (debounced)
-- [ ] Create version on significant changes:
+#### 7.5.5.3 Automatic Versioning Triggers ✅ DONE
+- [ ] Create version after 60 seconds of inactivity (debounced) - deferred
+- [x] Create version on significant changes:
   - Block added or deleted
   - Page name changed
   - Shortcut changed
-- [ ] Rate limit: max 1 version per 5 minutes per page
-- [ ] GenServer or Process to handle debouncing per page
+- [x] Rate limit: max 1 version per 5 minutes per page
+- [ ] GenServer or Process to handle debouncing per page - deferred (using simple rate limit instead)
 
 #### 7.5.5.4 Version History UI (References Tab) ✅ DONE
 - [x] List of versions with: version number, date, author, summary

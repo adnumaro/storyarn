@@ -14,6 +14,9 @@ defmodule Storyarn.Repo.Migrations.CreatePageVersions do
 
     create index(:page_versions, [:page_id, :version_number])
     create index(:page_versions, [:page_id, :inserted_at])
-    create unique_index(:page_versions, [:page_id, :version_number], name: :page_versions_page_version_unique)
+
+    create unique_index(:page_versions, [:page_id, :version_number],
+             name: :page_versions_page_version_unique
+           )
   end
 end

@@ -18,8 +18,8 @@ defmodule Storyarn.Repo.Migrations.AddSoftDeleteToPagesAndBlocks do
 
     # Partial index for listing deleted pages (trash view)
     create index(:pages, [:project_id, :deleted_at],
-      where: "deleted_at IS NOT NULL",
-      name: :pages_trash_index
-    )
+             where: "deleted_at IS NOT NULL",
+             name: :pages_trash_index
+           )
   end
 end
