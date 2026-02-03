@@ -190,57 +190,87 @@ defmodule StoryarnWeb.PageLive.Show do
       </div>
 
       <div class="max-w-3xl mx-auto">
-        <%!-- Blocks --%>
-        <div
-          id="blocks-container"
-          class="flex flex-col gap-2 -mx-2 sm:-mx-8 md:-mx-16"
-          phx-hook={if @can_edit, do: "SortableList", else: nil}
-          data-group="blocks"
-          data-handle=".drag-handle"
-        >
-          <div
-            :for={block <- @blocks}
-            class="group relative w-full px-2 sm:px-8 md:px-16"
-            id={"block-#{block.id}"}
-            data-id={block.id}
+        <%!-- Tabs Navigation --%>
+        <div role="tablist" class="tabs tabs-border mb-6">
+          <button
+            role="tab"
+            class={["tab", @current_tab == "content" && "tab-active"]}
+            phx-click="switch_tab"
+            phx-value-tab="content"
           >
-            <.block_component
-              block={block}
-              can_edit={@can_edit}
-              editing_block_id={@editing_block_id}
-            />
-          </div>
+            <.icon name="file-text" class="size-4 mr-2" />
+            {gettext("Content")}
+          </button>
+          <button
+            role="tab"
+            class={["tab", @current_tab == "references" && "tab-active"]}
+            phx-click="switch_tab"
+            phx-value-tab="references"
+          >
+            <.icon name="link" class="size-4 mr-2" />
+            {gettext("References")}
+          </button>
         </div>
 
-        <%!-- Add block button / slash command (outside sortable container) --%>
-        <div :if={@can_edit} class="relative mt-2">
+        <%!-- Tab Content: Content --%>
+        <div :if={@current_tab == "content"}>
+          <%!-- Blocks --%>
           <div
-            :if={!@show_block_menu}
-            class="flex items-center gap-2 py-2 text-base-content/50 hover:text-base-content cursor-pointer group"
-            phx-click="show_block_menu"
+            id="blocks-container"
+            class="flex flex-col gap-2 -mx-2 sm:-mx-8 md:-mx-16"
+            phx-hook={if @can_edit, do: "SortableList", else: nil}
+            data-group="blocks"
+            data-handle=".drag-handle"
           >
-            <.icon name="plus" class="size-4 opacity-0 group-hover:opacity-100" />
-            <span class="text-sm">{gettext("Type / to add a block")}</span>
-          </div>
-
-          <.block_menu :if={@show_block_menu} />
-        </div>
-
-        <%!-- Children pages --%>
-        <div :if={@children != []} class="mt-12 pt-8 border-t border-base-300">
-          <h2 class="text-lg font-semibold mb-4">{gettext("Subpages")}</h2>
-          <div class="space-y-2">
-            <.link
-              :for={child <- @children}
-              navigate={
-                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{child.id}"
-              }
-              class="flex items-center gap-2 p-2 rounded hover:bg-base-200"
+            <div
+              :for={block <- @blocks}
+              class="group relative w-full px-2 sm:px-8 md:px-16"
+              id={"block-#{block.id}"}
+              data-id={block.id}
             >
-              <.page_avatar avatar_asset={child.avatar_asset} name={child.name} size="md" />
-              <span>{child.name}</span>
-            </.link>
+              <.block_component
+                block={block}
+                can_edit={@can_edit}
+                editing_block_id={@editing_block_id}
+              />
+            </div>
           </div>
+
+          <%!-- Add block button / slash command (outside sortable container) --%>
+          <div :if={@can_edit} class="relative mt-2">
+            <div
+              :if={!@show_block_menu}
+              class="flex items-center gap-2 py-2 text-base-content/50 hover:text-base-content cursor-pointer group"
+              phx-click="show_block_menu"
+            >
+              <.icon name="plus" class="size-4 opacity-0 group-hover:opacity-100" />
+              <span class="text-sm">{gettext("Type / to add a block")}</span>
+            </div>
+
+            <.block_menu :if={@show_block_menu} />
+          </div>
+
+          <%!-- Children pages --%>
+          <div :if={@children != []} class="mt-12 pt-8 border-t border-base-300">
+            <h2 class="text-lg font-semibold mb-4">{gettext("Subpages")}</h2>
+            <div class="space-y-2">
+              <.link
+                :for={child <- @children}
+                navigate={
+                  ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages/#{child.id}"
+                }
+                class="flex items-center gap-2 p-2 rounded hover:bg-base-200"
+              >
+                <.page_avatar avatar_asset={child.avatar_asset} name={child.name} size="md" />
+                <span>{child.name}</span>
+              </.link>
+            </div>
+          </div>
+        </div>
+
+        <%!-- Tab Content: References --%>
+        <div :if={@current_tab == "references"}>
+          <.references_tab_placeholder />
         </div>
       </div>
 
@@ -307,6 +337,7 @@ defmodule StoryarnWeb.PageLive.Show do
     |> assign(:show_block_menu, false)
     |> assign(:save_status, :idle)
     |> assign(:configuring_block, nil)
+    |> assign(:current_tab, "content")
   end
 
   @impl true
@@ -315,10 +346,18 @@ defmodule StoryarnWeb.PageLive.Show do
   end
 
   # ===========================================================================
-  # Event Handlers: Name Editing
+  # Event Handlers: Tabs
   # ===========================================================================
 
   @impl true
+  def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in ["content", "references"] do
+    {:noreply, assign(socket, :current_tab, tab)}
+  end
+
+  # ===========================================================================
+  # Event Handlers: Name Editing
+  # ===========================================================================
+
   def handle_event("save_name", %{"name" => name}, socket) do
     with_authorization(socket, :edit_content, &PageTreeHelpers.save_name(&1, name))
   end
@@ -675,5 +714,45 @@ defmodule StoryarnWeb.PageLive.Show do
   defp schedule_save_status_reset(socket) do
     Process.send_after(self(), :reset_save_status, 4000)
     socket
+  end
+
+  # ===========================================================================
+  # Components
+  # ===========================================================================
+
+  defp references_tab_placeholder(assigns) do
+    ~H"""
+    <div class="space-y-8">
+      <%!-- Backlinks Section --%>
+      <section>
+        <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+          <.icon name="arrow-left" class="size-5" />
+          {gettext("Backlinks")}
+        </h2>
+        <div class="bg-base-200/50 rounded-lg p-8 text-center">
+          <.icon name="link" class="size-12 mx-auto text-base-content/30 mb-4" />
+          <p class="text-base-content/70 mb-2">{gettext("No backlinks yet")}</p>
+          <p class="text-sm text-base-content/50">
+            {gettext("Pages and flows that reference this page will appear here.")}
+          </p>
+        </div>
+      </section>
+
+      <%!-- Version History Section --%>
+      <section>
+        <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+          <.icon name="history" class="size-5" />
+          {gettext("Version History")}
+        </h2>
+        <div class="bg-base-200/50 rounded-lg p-8 text-center">
+          <.icon name="clock" class="size-12 mx-auto text-base-content/30 mb-4" />
+          <p class="text-base-content/70 mb-2">{gettext("No versions yet")}</p>
+          <p class="text-sm text-base-content/50">
+            {gettext("Page versions will be recorded automatically as you make changes.")}
+          </p>
+        </div>
+      </section>
+    </div>
+    """
   end
 end

@@ -103,12 +103,12 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 - [x] UI: Change/remove banner options
 - [x] Integration with existing Assets system (direct upload via BannerUpload hook)
 
-#### 7.5.1.4 Page Tabs System
-- [ ] Refactor PageLive.Show to support tabs
-- [ ] Tab 1: **Content** - Current block editor view (default)
-- [ ] Tab 2: **References** - Backlinks + version history
-- [ ] Tab navigation component
-- [ ] URL preservation (tab state in URL or socket assigns)
+#### 7.5.1.4 Page Tabs System ✅ DONE
+- [x] Refactor PageLive.Show to support tabs
+- [x] Tab 1: **Content** - Current block editor view (default)
+- [x] Tab 2: **References** - Backlinks + version history (placeholder)
+- [x] Tab navigation component (daisyUI tabs)
+- [x] Tab state in socket assigns (URL preservation can be added later)
 
 ---
 
@@ -441,7 +441,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 | 5     | ✅ Block variables (is_constant, variable_name) | None                      | Variables marked correctly   |
 | 6     | ✅ Shortcuts (pages)                            | None                      | Shortcuts validated/saved    |
 | 7     | ✅ Shortcuts (flows)                            | None                      | Flow shortcuts work          |
-| 8     | Page tabs UI                                   | None                      | Tab navigation works         |
+| 8     | ✅ Page tabs UI                                 | None                      | Tab navigation works         |
 | 9     | Page versions                                  | None                      | Versions created/listed      |
 | 10    | Version history UI                             | Page versions             | History tab works            |
 | 11    | Reference block                                | Shortcuts                 | Can reference pages/flows    |
