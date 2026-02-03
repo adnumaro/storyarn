@@ -703,11 +703,13 @@ defmodule StoryarnWeb.PageLive.Show do
   end
 
   def handle_event("add_select_option", _params, socket) do
-    ConfigHelpers.add_select_option(socket)
+    with_authorization(socket, :edit_content, &ConfigHelpers.add_select_option/1)
   end
 
   def handle_event("remove_select_option", %{"index" => index}, socket) do
-    ConfigHelpers.remove_select_option(socket, index)
+    with_authorization(socket, :edit_content, fn socket ->
+      ConfigHelpers.remove_select_option(socket, index)
+    end)
   end
 
   def handle_event(
@@ -715,7 +717,9 @@ defmodule StoryarnWeb.PageLive.Show do
         %{"index" => index, "key" => key, "value" => value},
         socket
       ) do
-    ConfigHelpers.update_select_option(socket, index, key, value)
+    with_authorization(socket, :edit_content, fn socket ->
+      ConfigHelpers.update_select_option(socket, index, key, value)
+    end)
   end
 
   # ===========================================================================
