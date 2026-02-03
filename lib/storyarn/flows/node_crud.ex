@@ -51,12 +51,27 @@ defmodule Storyarn.Flows.NodeCrud do
   end
 
   def update_node_data(%FlowNode{} = node, data) do
-    node
-    |> FlowNode.data_changeset(%{data: data})
-    |> Repo.update()
+    result =
+      node
+      |> FlowNode.data_changeset(%{data: data})
+      |> Repo.update()
+
+    case result do
+      {:ok, updated_node} ->
+        # Track references in node data (dialogue mentions, speaker references)
+        alias Storyarn.Pages.ReferenceTracker
+        ReferenceTracker.update_flow_node_references(updated_node)
+        {:ok, updated_node}
+
+      error ->
+        error
+    end
   end
 
   def delete_node(%FlowNode{} = node) do
+    # Clean up references before deleting
+    alias Storyarn.Pages.ReferenceTracker
+    ReferenceTracker.delete_flow_node_references(node.id)
     Repo.delete(node)
   end
 

@@ -64,6 +64,50 @@ defmodule Storyarn.Pages.ReferenceTracker do
   end
 
   @doc """
+  Updates references for a flow node based on its data.
+  Extracts mentions from rich text fields and speaker references.
+  """
+  @spec update_flow_node_references(map()) :: :ok
+  def update_flow_node_references(%{id: node_id, data: data}) when is_map(data) do
+    # Delete existing references from this node
+    delete_flow_node_references(node_id)
+
+    references = extract_flow_node_refs(data)
+
+    for ref <- references do
+      target_id = parse_id(ref.id)
+
+      if target_id do
+        %EntityReference{}
+        |> EntityReference.changeset(%{
+          source_type: "flow_node",
+          source_id: node_id,
+          target_type: ref.type,
+          target_id: target_id,
+          context: ref.context
+        })
+        |> Repo.insert(on_conflict: :nothing)
+      end
+    end
+
+    :ok
+  end
+
+  def update_flow_node_references(_node), do: :ok
+
+  @doc """
+  Deletes all references from a flow node.
+  Called when a node is deleted.
+  """
+  @spec delete_flow_node_references(any()) :: {integer(), nil}
+  def delete_flow_node_references(node_id) do
+    from(r in EntityReference,
+      where: r.source_type == "flow_node" and r.source_id == ^node_id
+    )
+    |> Repo.delete_all()
+  end
+
+  @doc """
   Gets all references pointing to a target (backlinks).
 
   Returns references grouped by source type with additional context.
@@ -209,7 +253,10 @@ defmodule Storyarn.Pages.ReferenceTracker do
 
   defp extract_rich_text_refs(block) do
     content = get_in(block.value, ["content"]) || ""
+    extract_mentions_from_html(content)
+  end
 
+  defp extract_mentions_from_html(content) when is_binary(content) do
     # Extract mentions from HTML: <span class="mention" data-type="page" data-id="123" data-label="name">
     Regex.scan(
       ~r/<span[^>]*class="mention"[^>]*data-type="([^"]+)"[^>]*data-id="([^"]+)"/,
@@ -218,6 +265,33 @@ defmodule Storyarn.Pages.ReferenceTracker do
     |> Enum.map(fn [_, type, id] ->
       %{type: type, id: id, context: "content"}
     end)
+  end
+
+  defp extract_mentions_from_html(_), do: []
+
+  defp extract_flow_node_refs(data) do
+    refs = []
+
+    # Extract speaker reference (speaker can be a map with id, or just a string name)
+    refs =
+      case data["speaker"] do
+        %{"id" => speaker_id} when not is_nil(speaker_id) ->
+          [%{type: "page", id: speaker_id, context: "speaker"} | refs]
+
+        _ ->
+          refs
+      end
+
+    # Extract mentions from dialogue text
+    refs =
+      if text = data["text"] do
+        mentions = extract_mentions_from_html(text)
+        Enum.map(mentions, fn m -> Map.put(m, :context, "dialogue") end) ++ refs
+      else
+        refs
+      end
+
+    refs
   end
 
   defp resolve_source_info(%{source_type: "block", source_id: source_id}, project_id) do
