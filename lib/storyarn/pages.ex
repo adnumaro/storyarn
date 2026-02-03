@@ -240,10 +240,22 @@ defmodule Storyarn.Pages do
   defdelegate update_block_config(block, config), to: BlockCrud
 
   @doc """
-  Deletes a block.
+  Soft-deletes a block by setting deleted_at timestamp.
   """
   @spec delete_block(block()) :: {:ok, block()} | {:error, changeset()}
   defdelegate delete_block(block), to: BlockCrud
+
+  @doc """
+  Permanently deletes a block from the database.
+  """
+  @spec permanently_delete_block(block()) :: {:ok, block()} | {:error, changeset()}
+  defdelegate permanently_delete_block(block), to: BlockCrud
+
+  @doc """
+  Restores a soft-deleted block.
+  """
+  @spec restore_block(block()) :: {:ok, block()} | {:error, changeset()}
+  defdelegate restore_block(block), to: BlockCrud
 
   @doc """
   Reorders blocks within a page.

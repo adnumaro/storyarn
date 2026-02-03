@@ -112,10 +112,33 @@ defmodule Storyarn.Pages.BlockCrud do
     |> Repo.update()
   end
 
+  @doc """
+  Soft-deletes a block by setting deleted_at timestamp.
+  """
   def delete_block(%Block{} = block) do
-    # Clean up references before deleting
+    # Clean up references before soft-deleting
+    ReferenceTracker.delete_block_references(block.id)
+
+    block
+    |> Block.delete_changeset()
+    |> Repo.update()
+  end
+
+  @doc """
+  Permanently deletes a block from the database.
+  """
+  def permanently_delete_block(%Block{} = block) do
     ReferenceTracker.delete_block_references(block.id)
     Repo.delete(block)
+  end
+
+  @doc """
+  Restores a soft-deleted block.
+  """
+  def restore_block(%Block{} = block) do
+    block
+    |> Block.restore_changeset()
+    |> Repo.update()
   end
 
   def change_block(%Block{} = block, attrs \\ %{}) do
