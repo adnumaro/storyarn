@@ -28,20 +28,37 @@ function createMentionExtension(hook) {
     suggestion: {
       char: "#",
       allowSpaces: false,
-      // Fetch suggestions from server
+      // Fetch suggestions from server with debouncing
       items: async ({ query }) => {
         return new Promise((resolve) => {
-          // Store the resolve function to be called when server responds
-          hook.mentionResolve = resolve;
-          hook.pushEvent("mention_suggestions", { query });
+          // Clear previous debounce timeout
+          if (hook.mentionDebounce) {
+            clearTimeout(hook.mentionDebounce);
+          }
+          // Resolve any pending request with empty results
+          if (hook.mentionResolve) {
+            hook.mentionResolve([]);
+          }
 
-          // Timeout after 2 seconds
-          setTimeout(() => {
-            if (hook.mentionResolve === resolve) {
-              hook.mentionResolve = null;
-              resolve([]);
+          hook.mentionResolve = resolve;
+
+          // Debounce: wait 300ms before making request
+          hook.mentionDebounce = setTimeout(() => {
+            const target = hook.el.dataset.phxTarget;
+            if (target) {
+              hook.pushEventTo(target, "mention_suggestions", { query });
+            } else {
+              hook.pushEvent("mention_suggestions", { query });
             }
-          }, 2000);
+
+            // Timeout after 2 seconds
+            setTimeout(() => {
+              if (hook.mentionResolve === resolve) {
+                hook.mentionResolve = null;
+                resolve([]);
+              }
+            }, 2000);
+          }, 300);
         });
       },
       render: () => {
@@ -226,11 +243,16 @@ export const TiptapEditor = {
     this.el.appendChild(editorEl);
 
     // Determine which event to push based on whether this is a block or node editor
+    const target = this.el.dataset.phxTarget;
     const pushUpdate = (html) => {
       if (nodeId) {
         this.pushEvent("update_node_text", { id: nodeId, content: html });
       } else if (blockId) {
-        this.pushEvent("update_rich_text", { id: blockId, content: html });
+        if (target) {
+          this.pushEventTo(target, "update_rich_text", { id: blockId, content: html });
+        } else {
+          this.pushEvent("update_rich_text", { id: blockId, content: html });
+        }
       }
     };
 
@@ -415,6 +437,9 @@ export const TiptapEditor = {
   destroyed() {
     if (this.updateTimeout) {
       clearTimeout(this.updateTimeout);
+    }
+    if (this.mentionDebounce) {
+      clearTimeout(this.mentionDebounce);
     }
     if (this.editor) {
       this.editor.destroy();

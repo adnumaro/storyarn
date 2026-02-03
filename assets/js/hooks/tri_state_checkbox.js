@@ -26,7 +26,12 @@ export const TriStateCheckbox = {
         nextValue = "true";
       }
 
-      this.pushEvent("set_boolean_block", { id: blockId, value: nextValue });
+      const target = this.el.dataset.phxTarget;
+      if (target) {
+        this.pushEventTo(target, "set_boolean_block", { id: blockId, value: nextValue });
+      } else {
+        this.pushEvent("set_boolean_block", { id: blockId, value: nextValue });
+      }
     };
 
     this.el.addEventListener("click", this.handleClick);

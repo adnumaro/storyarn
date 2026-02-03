@@ -27,13 +27,20 @@ export const AvatarUpload = {
       reader.onload = (event) => {
         const base64 = event.target.result;
         const pageId = this.el.dataset.pageId;
+        const target = this.el.dataset.target;
 
-        this.pushEvent("upload_avatar", {
+        const payload = {
           page_id: pageId,
           filename: file.name,
           content_type: file.type,
           data: base64,
-        });
+        };
+
+        if (target) {
+          this.pushEventTo(target, "upload_avatar", payload);
+        } else {
+          this.pushEvent("upload_avatar", payload);
+        }
       };
       reader.readAsDataURL(file);
 

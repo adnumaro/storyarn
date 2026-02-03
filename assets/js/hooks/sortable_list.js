@@ -34,7 +34,12 @@ export const SortableList = {
         const ids = Array.from(this.el.querySelectorAll("[data-id]")).map(
           (item) => item.dataset.id,
         );
-        this.pushEvent("reorder", { ids: ids, group: group });
+        const target = this.el.dataset.phxTarget;
+        if (target) {
+          this.pushEventTo(target, "reorder", { ids: ids, group: group });
+        } else {
+          this.pushEvent("reorder", { ids: ids, group: group });
+        }
       },
     });
   },

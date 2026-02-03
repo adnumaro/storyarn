@@ -59,7 +59,14 @@ export const EditableTitle = {
     // Only save if changed and not empty
     if (name && name !== this.originalName) {
       this.originalName = name;
-      this.pushEvent("save_name", { name: name });
+      const target = this.el.dataset.target;
+      const payload = { name: name };
+
+      if (target) {
+        this.pushEventTo(target, "save_name", payload);
+      } else {
+        this.pushEvent("save_name", payload);
+      }
     } else if (!name) {
       // Revert to original if empty
       this.el.textContent = this.originalName;

@@ -72,10 +72,12 @@ export const EditableShortcut = {
   },
 
   sanitize(text) {
-    // Lowercase, only alphanumeric, dots, and hyphens
+    // Lowercase, convert spaces/underscores to hyphens, only alphanumeric, dots, and hyphens
     return text
       .toLowerCase()
-      .replace(/[^a-z0-9.\-]/g, "")
+      .replace(/[\s_]+/g, "-") // Convert spaces/underscores to hyphens
+      .replace(/[^a-z0-9.\-]/g, "") // Remove invalid characters
+      .replace(/-+/g, "-") // Collapse multiple hyphens
       .replace(/^[.\-]+/, "") // Remove leading dots/hyphens
       .replace(/[.\-]+$/, ""); // Remove trailing dots/hyphens
   },
@@ -94,7 +96,14 @@ export const EditableShortcut = {
     // Only save if changed
     if (shortcut !== this.originalShortcut) {
       this.originalShortcut = shortcut;
-      this.pushEvent("save_shortcut", { shortcut: shortcut || null });
+      const target = this.el.dataset.target;
+      const payload = { shortcut: shortcut || null };
+
+      if (target) {
+        this.pushEventTo(target, "save_shortcut", payload);
+      } else {
+        this.pushEvent("save_shortcut", payload);
+      }
     }
   },
 
