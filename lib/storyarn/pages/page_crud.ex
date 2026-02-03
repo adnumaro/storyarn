@@ -206,6 +206,16 @@ defmodule Storyarn.Pages.PageCrud do
   Use with caution - this cannot be undone.
   """
   def permanently_delete_page(%Page{} = page) do
+    alias Storyarn.Pages.{PageVersion, ReferenceTracker}
+
+    # Delete all versions first
+    from(v in PageVersion, where: v.page_id == ^page.id)
+    |> Repo.delete_all()
+
+    # Delete references where this page is the target
+    ReferenceTracker.delete_target_references("page", page.id)
+
+    # Delete the page (blocks cascade via FK)
     Repo.delete(page)
   end
 

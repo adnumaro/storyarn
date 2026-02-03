@@ -124,6 +124,52 @@ defmodule Storyarn.Pages.ReferenceTracker do
     |> Repo.one()
   end
 
+  @doc """
+  Deletes all references pointing to a specific target.
+  Called when permanently deleting a page or flow.
+  """
+  @spec delete_target_references(String.t(), any()) :: {integer(), nil}
+  def delete_target_references(target_type, target_id) do
+    from(r in EntityReference,
+      where: r.target_type == ^target_type and r.target_id == ^target_id
+    )
+    |> Repo.delete_all()
+  end
+
+  @doc """
+  Cleans up orphaned references where source or target no longer exists.
+  Should be called periodically or after bulk deletions.
+  """
+  @spec cleanup_orphaned_references() :: :ok
+  def cleanup_orphaned_references do
+    alias Storyarn.Pages.Block
+    alias Storyarn.Pages.Page
+    alias Storyarn.Flows.Flow
+
+    # Clean up references where source block no longer exists
+    from(r in EntityReference,
+      where: r.source_type == "block",
+      where: fragment("NOT EXISTS (SELECT 1 FROM blocks WHERE id = ?)", r.source_id)
+    )
+    |> Repo.delete_all()
+
+    # Clean up references where target page no longer exists (hard deleted)
+    from(r in EntityReference,
+      where: r.target_type == "page",
+      where: fragment("NOT EXISTS (SELECT 1 FROM pages WHERE id = ?)", r.target_id)
+    )
+    |> Repo.delete_all()
+
+    # Clean up references where target flow no longer exists
+    from(r in EntityReference,
+      where: r.target_type == "flow",
+      where: fragment("NOT EXISTS (SELECT 1 FROM flows WHERE id = ?)", r.target_id)
+    )
+    |> Repo.delete_all()
+
+    :ok
+  end
+
   # Private functions
 
   defp parse_id(id) when is_integer(id), do: id
