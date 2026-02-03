@@ -6,6 +6,7 @@ defmodule Storyarn.Pages.PageCrud do
   alias Storyarn.Pages.Page
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
+  alias Storyarn.Shortcuts
 
   # =============================================================================
   # Tree Operations
@@ -91,12 +92,18 @@ defmodule Storyarn.Pages.PageCrud do
     parent_id = attrs["parent_id"]
     position = attrs["position"] || next_position(project.id, parent_id)
 
+    # Auto-generate shortcut from name if not provided
+    attrs = maybe_generate_shortcut(attrs, project.id, nil)
+
     %Page{project_id: project.id}
     |> Page.create_changeset(Map.put(attrs, "position", position))
     |> Repo.insert()
   end
 
   def update_page(%Page{} = page, attrs) do
+    # Auto-generate shortcut if page has no shortcut and name is being updated
+    attrs = maybe_generate_shortcut_on_update(page, attrs)
+
     page
     |> Page.update_changeset(attrs)
     |> Repo.update()
@@ -301,5 +308,49 @@ defmodule Storyarn.Pages.PageCrud do
       {k, v} when is_atom(k) -> {Atom.to_string(k), v}
       {k, v} -> {k, v}
     end)
+  end
+
+  defp maybe_generate_shortcut(attrs, project_id, exclude_page_id) do
+    # Only generate if shortcut is not provided and name is available
+    has_shortcut = Map.has_key?(attrs, "shortcut") || Map.has_key?(attrs, :shortcut)
+    name = attrs["name"] || attrs[:name]
+
+    if has_shortcut || is_nil(name) || name == "" do
+      attrs
+    else
+      shortcut = Shortcuts.generate_page_shortcut(name, project_id, exclude_page_id)
+      Map.put(attrs, "shortcut", shortcut)
+    end
+  end
+
+  defp maybe_generate_shortcut_on_update(%Page{} = page, attrs) do
+    attrs = stringify_keys(attrs)
+
+    # If attrs explicitly set shortcut, use that
+    if Map.has_key?(attrs, "shortcut") do
+      attrs
+    else
+      # If name is changing, regenerate shortcut from new name
+      new_name = attrs["name"]
+
+      if new_name && new_name != "" && new_name != page.name do
+        shortcut = Shortcuts.generate_page_shortcut(new_name, page.project_id, page.id)
+        Map.put(attrs, "shortcut", shortcut)
+      else
+        # If page has no shortcut yet, generate one from current name
+        if is_nil(page.shortcut) || page.shortcut == "" do
+          name = page.name
+
+          if name && name != "" do
+            shortcut = Shortcuts.generate_page_shortcut(name, page.project_id, page.id)
+            Map.put(attrs, "shortcut", shortcut)
+          else
+            attrs
+          end
+        else
+          attrs
+        end
+      end
+    end
   end
 end

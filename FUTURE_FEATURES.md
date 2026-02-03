@@ -441,6 +441,45 @@ Instead of formal Features, use tags and smart defaults:
 
 ---
 
+## Technical Considerations
+
+### Shortcut Auto-Update vs Page Versioning
+
+> **Status:** Needs evaluation before implementing versioning (Phase 7.5.5)
+
+**Current Behavior:**
+- When a page/flow is renamed, its shortcut auto-updates to match the new name
+- References are stored by ID (stable), so the actual shortcut text change is transparent
+- When rendering a reference, the current shortcut is resolved from the ID
+
+**Versioning Impact:**
+When page versioning is implemented, consider how shortcut changes should be recorded:
+
+1. **Version snapshots:** Should the shortcut at the time of snapshot be preserved?
+   - Pro: Historical accuracy - "what was the shortcut when this version was created?"
+   - Con: Adds complexity to version restoration
+
+2. **Restoring versions:** If a user restores version N, should the shortcut also revert?
+   - Option A: Yes, restore shortcut too (full restoration)
+   - Option B: No, keep current shortcut (partial restoration)
+   - Option C: Ask user which to use
+
+3. **Reference resolution in historical versions:**
+   - When viewing version N, should references show current names or names-at-version-time?
+   - This affects both mentions in rich_text and reference blocks
+
+4. **Conflict handling:**
+   - What if restoring a version would create a shortcut conflict?
+   - Example: Version 1 had shortcut "hero", current page "hero-2" exists
+
+**Recommendation:**
+Evaluate these scenarios before implementing versioning. The simplest approach may be:
+- Store shortcut in version snapshot (for record)
+- On restore, regenerate shortcut from name (avoid conflicts)
+- References always resolve to current state (simpler UX)
+
+---
+
 ## Other Ideas (Not Yet Planned)
 
 ### Search & Query System
