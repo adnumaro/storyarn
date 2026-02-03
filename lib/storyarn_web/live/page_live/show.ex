@@ -270,7 +270,7 @@ defmodule StoryarnWeb.PageLive.Show do
 
         <%!-- Tab Content: References --%>
         <div :if={@current_tab == "references"}>
-          <.references_tab_placeholder />
+          <.references_tab versions={@versions} />
         </div>
       </div>
 
@@ -338,6 +338,7 @@ defmodule StoryarnWeb.PageLive.Show do
     |> assign(:save_status, :idle)
     |> assign(:configuring_block, nil)
     |> assign(:current_tab, "content")
+    |> assign(:versions, nil)
   end
 
   @impl true
@@ -351,7 +352,18 @@ defmodule StoryarnWeb.PageLive.Show do
 
   @impl true
   def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in ["content", "references"] do
-    {:noreply, assign(socket, :current_tab, tab)}
+    socket = assign(socket, :current_tab, tab)
+
+    # Load versions when switching to references tab (lazy loading)
+    socket =
+      if tab == "references" && is_nil(socket.assigns.versions) do
+        versions = Pages.list_versions(socket.assigns.page.id, limit: 20)
+        assign(socket, :versions, versions)
+      else
+        socket
+      end
+
+    {:noreply, socket}
   end
 
   # ===========================================================================
@@ -632,6 +644,24 @@ defmodule StoryarnWeb.PageLive.Show do
   end
 
   # ===========================================================================
+  # Event Handlers: Versioning
+  # ===========================================================================
+
+  def handle_event("restore_version", %{"version" => version_number}, socket) do
+    with_authorization(socket, :edit_content, fn socket ->
+      version_number = String.to_integer(version_number)
+
+      case Pages.get_version(socket.assigns.page.id, version_number) do
+        nil ->
+          {:noreply, put_flash(socket, :error, gettext("Version not found."))}
+
+        version ->
+          restore_from_version(socket, version)
+      end
+    end)
+  end
+
+  # ===========================================================================
   # Handle Info
   # ===========================================================================
 
@@ -704,6 +734,43 @@ defmodule StoryarnWeb.PageLive.Show do
     end
   end
 
+  defp restore_from_version(socket, version) do
+    page = socket.assigns.page
+    user = socket.assigns.current_scope.user
+    snapshot = version.snapshot
+
+    # Restore page metadata from snapshot
+    attrs = %{
+      name: snapshot["name"],
+      shortcut: snapshot["shortcut"],
+      avatar_asset_id: snapshot["avatar_asset_id"],
+      banner_asset_id: snapshot["banner_asset_id"]
+    }
+
+    case Pages.update_page(page, attrs) do
+      {:ok, updated_page} ->
+        # Create a new version recording the restore
+        Pages.create_version(updated_page, user)
+
+        # Reload page with preloads
+        updated_page = Repo.preload(updated_page, [:avatar_asset, :banner_asset, :blocks])
+        pages_tree = Pages.list_pages_tree(socket.assigns.project.id)
+        versions = Pages.list_versions(updated_page.id, limit: 20)
+
+        {:noreply,
+         socket
+         |> assign(:page, updated_page)
+         |> assign(:pages_tree, pages_tree)
+         |> assign(:versions, versions)
+         |> assign(:save_status, :saved)
+         |> schedule_save_status_reset()
+         |> put_flash(:info, gettext("Restored to version %{number}", number: version.version_number))}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not restore version."))}
+    end
+  end
+
   defp format_shortcut_error(changeset) do
     case changeset.errors[:shortcut] do
       {msg, _opts} -> gettext("Shortcut %{error}", error: msg)
@@ -720,7 +787,9 @@ defmodule StoryarnWeb.PageLive.Show do
   # Components
   # ===========================================================================
 
-  defp references_tab_placeholder(assigns) do
+  attr :versions, :list, default: nil
+
+  defp references_tab(assigns) do
     ~H"""
     <div class="space-y-8">
       <%!-- Backlinks Section --%>
@@ -744,15 +813,66 @@ defmodule StoryarnWeb.PageLive.Show do
           <.icon name="history" class="size-5" />
           {gettext("Version History")}
         </h2>
-        <div class="bg-base-200/50 rounded-lg p-8 text-center">
-          <.icon name="clock" class="size-12 mx-auto text-base-content/30 mb-4" />
-          <p class="text-base-content/70 mb-2">{gettext("No versions yet")}</p>
-          <p class="text-sm text-base-content/50">
-            {gettext("Page versions will be recorded automatically as you make changes.")}
-          </p>
-        </div>
+
+        <%= if is_nil(@versions) do %>
+          <div class="flex items-center justify-center p-8">
+            <span class="loading loading-spinner loading-md"></span>
+          </div>
+        <% else %>
+          <%= if @versions == [] do %>
+            <div class="bg-base-200/50 rounded-lg p-8 text-center">
+              <.icon name="clock" class="size-12 mx-auto text-base-content/30 mb-4" />
+              <p class="text-base-content/70 mb-2">{gettext("No versions yet")}</p>
+              <p class="text-sm text-base-content/50">
+                {gettext("Page versions will be recorded automatically as you make changes.")}
+              </p>
+            </div>
+          <% else %>
+            <div class="space-y-2">
+              <.version_row :for={version <- @versions} version={version} />
+            </div>
+          <% end %>
+        <% end %>
       </section>
     </div>
     """
+  end
+
+  attr :version, :map, required: true
+
+  defp version_row(assigns) do
+    ~H"""
+    <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-base-200/50 group">
+      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-base-300 flex items-center justify-center text-sm font-medium">
+        v{@version.version_number}
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium">{@version.change_summary || gettext("No summary")}</span>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-base-content/60 mt-0.5">
+          <span>{format_version_date(@version.inserted_at)}</span>
+          <span :if={@version.changed_by}>
+            · {gettext("by")} {@version.changed_by.display_name || @version.changed_by.email}
+          </span>
+        </div>
+      </div>
+      <div class="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs tooltip"
+          data-tip={gettext("Restore this version")}
+          phx-click="restore_version"
+          phx-value-version={@version.version_number}
+        >
+          <.icon name="rotate-ccw" class="size-4" />
+        </button>
+      </div>
+    </div>
+    """
+  end
+
+  defp format_version_date(datetime) do
+    Calendar.strftime(datetime, "%b %d, %Y at %H:%M")
   end
 end

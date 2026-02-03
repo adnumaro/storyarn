@@ -227,11 +227,11 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 - [ ] Rate limit: max 1 version per 5 minutes per page
 - [ ] GenServer or Process to handle debouncing per page
 
-#### 7.5.5.4 Version History UI (References Tab)
-- [ ] List of versions with: version number, date, author, summary
-- [ ] Click to view version (read-only page view)
-- [ ] Compare two versions (diff view) - optional, can defer
-- [ ] Restore version button (creates new version with old content)
+#### 7.5.5.4 Version History UI (References Tab) ✅ DONE
+- [x] List of versions with: version number, date, author, summary
+- [ ] Click to view version (read-only page view) - deferred
+- [ ] Compare two versions (diff view) - deferred
+- [x] Restore version button (restores page metadata, creates new version)
 
 #### 7.5.5.5 Retention Policy
 - [ ] Config: max versions per page (default: 50)
@@ -445,7 +445,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 | 7     | ✅ Shortcuts (flows)                            | None                      | Flow shortcuts work          |
 | 8     | ✅ Page tabs UI                                 | None                      | Tab navigation works         |
 | 9     | ✅ Page versions                                | None                      | Versions created/listed      |
-| 10    | Version history UI                             | Page versions             | History tab works            |
+| 10    | ✅ Version history UI                           | Page versions             | History tab works            |
 | 11    | Reference block                                | Shortcuts                 | Can reference pages/flows    |
 | 12    | Mentions (Tiptap)                              | Shortcuts                 | # mentions work in rich_text |
 | 13    | Entity references table                        | Mentions, Reference block | References tracked           |
