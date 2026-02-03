@@ -110,22 +110,17 @@ defmodule StoryarnWeb.LiveHelpers.Authorize do
   def authorize(socket, action)
 
   # Project content editing actions
+  # Always check membership role directly to avoid stale cached permissions
   def authorize(%{assigns: assigns}, :edit_content) do
-    cond do
-      # Fast path: check cached @can_edit assign (set at mount)
-      Map.get(assigns, :can_edit) == true ->
-        :ok
-
-      # Fallback: check membership role directly
-      membership = Map.get(assigns, :membership) ->
-        if ProjectMembership.can?(membership.role, :edit_content) do
+    case Map.get(assigns, :membership) do
+      %{role: role} when is_binary(role) ->
+        if ProjectMembership.can?(role, :edit_content) do
           :ok
         else
           {:error, :unauthorized}
         end
 
-      # No authorization context available
-      true ->
+      _ ->
         {:error, :unauthorized}
     end
   end
