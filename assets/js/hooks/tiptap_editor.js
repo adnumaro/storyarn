@@ -3,6 +3,20 @@ import Mention from "@tiptap/extension-mention";
 import StarterKit from "@tiptap/starter-kit";
 
 /**
+ * Escape HTML attribute values to prevent XSS.
+ * Used for data attributes in rendered mention nodes.
+ */
+function escapeAttr(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/**
  * Creates a custom mention extension with # as trigger character.
  * Fetches suggestions from the server via LiveView events.
  */
@@ -99,12 +113,12 @@ function createMentionExtension(hook) {
         {
           class:
             "mention inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium cursor-pointer hover:bg-primary/30",
-          "data-type": attrs.type || "page",
-          "data-id": attrs.id,
-          "data-label": attrs.label,
+          "data-type": escapeAttr(attrs.type || "page"),
+          "data-id": escapeAttr(attrs.id),
+          "data-label": escapeAttr(attrs.label),
           contenteditable: "false",
         },
-        `#${attrs.label}`,
+        `#${escapeAttr(attrs.label || "")}`,
       ];
     },
     // Parse mentions from existing HTML
