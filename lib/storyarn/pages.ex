@@ -331,8 +331,16 @@ defmodule Storyarn.Pages do
   defdelegate restore_version(page, version), to: Versioning
 
   # =============================================================================
-  # Reference Search
+  # Reference Search & Validation
   # =============================================================================
+
+  @doc """
+  Validates that a reference target exists and belongs to the project.
+  Returns {:ok, target} or {:error, reason}.
+  """
+  @spec validate_reference_target(String.t(), id(), id()) ::
+          {:ok, Page.t() | Storyarn.Flows.Flow.t()} | {:error, :not_found | :invalid_type}
+  defdelegate validate_reference_target(target_type, target_id, project_id), to: PageCrud
 
   @doc """
   Searches for pages and flows that can be referenced.

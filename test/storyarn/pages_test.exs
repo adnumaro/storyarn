@@ -538,6 +538,68 @@ defmodule Storyarn.PagesTest do
     end
   end
 
+  describe "validate_reference_target/3" do
+    test "returns {:ok, page} for valid page in project" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project, %{name: "Target Page"})
+
+      assert {:ok, result} = Pages.validate_reference_target("page", page.id, project.id)
+      assert result.id == page.id
+    end
+
+    test "returns {:ok, flow} for valid flow in project" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Target Flow"})
+
+      assert {:ok, result} = Pages.validate_reference_target("flow", flow.id, project.id)
+      assert result.id == flow.id
+    end
+
+    test "returns {:error, :not_found} for page in different project" do
+      user = user_fixture()
+      project1 = project_fixture(user)
+      project2 = project_fixture(user)
+      page = page_fixture(project1, %{name: "Target Page"})
+
+      assert {:error, :not_found} = Pages.validate_reference_target("page", page.id, project2.id)
+    end
+
+    test "returns {:error, :not_found} for flow in different project" do
+      user = user_fixture()
+      project1 = project_fixture(user)
+      project2 = project_fixture(user)
+      flow = flow_fixture(project1, %{name: "Target Flow"})
+
+      assert {:error, :not_found} = Pages.validate_reference_target("flow", flow.id, project2.id)
+    end
+
+    test "returns {:error, :not_found} for deleted page" do
+      user = user_fixture()
+      project = project_fixture(user)
+      page = page_fixture(project, %{name: "Target Page"})
+
+      {:ok, _} = Pages.delete_page(page)
+
+      assert {:error, :not_found} = Pages.validate_reference_target("page", page.id, project.id)
+    end
+
+    test "returns {:error, :not_found} for non-existent target" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert {:error, :not_found} = Pages.validate_reference_target("page", -1, project.id)
+    end
+
+    test "returns {:error, :invalid_type} for unknown type" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert {:error, :invalid_type} = Pages.validate_reference_target("unknown", 1, project.id)
+    end
+  end
+
   describe "reference tracking" do
     alias Storyarn.Pages.ReferenceTracker
 

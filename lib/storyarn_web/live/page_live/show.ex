@@ -742,24 +742,41 @@ defmodule StoryarnWeb.PageLive.Show do
         socket
       ) do
     with_authorization(socket, :edit_content, fn socket ->
-      block = Pages.get_block_in_project!(block_id, socket.assigns.project.id)
-      target_id = String.to_integer(target_id)
+      project_id = socket.assigns.project.id
+      block = Pages.get_block_in_project!(block_id, project_id)
 
-      case Pages.update_block_value(block, %{
-             "target_type" => target_type,
-             "target_id" => target_id
-           }) do
-        {:ok, _block} ->
-          blocks = load_blocks_with_references(socket.assigns.page.id, socket.assigns.project.id)
+      case Integer.parse(target_id) do
+        {target_id_int, ""} ->
+          # Validate target belongs to this project
+          case Pages.validate_reference_target(target_type, target_id_int, project_id) do
+            {:ok, _target} ->
+              case Pages.update_block_value(block, %{
+                     "target_type" => target_type,
+                     "target_id" => target_id_int
+                   }) do
+                {:ok, _block} ->
+                  blocks =
+                    load_blocks_with_references(socket.assigns.page.id, project_id)
 
-          {:noreply,
-           socket
-           |> assign(:blocks, blocks)
-           |> assign(:save_status, :saved)
-           |> schedule_save_status_reset()}
+                  {:noreply,
+                   socket
+                   |> assign(:blocks, blocks)
+                   |> assign(:save_status, :saved)
+                   |> schedule_save_status_reset()}
 
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not set reference."))}
+                {:error, _} ->
+                  {:noreply, put_flash(socket, :error, gettext("Could not set reference."))}
+              end
+
+            {:error, :not_found} ->
+              {:noreply, put_flash(socket, :error, gettext("Reference target not found."))}
+
+            {:error, :invalid_type} ->
+              {:noreply, put_flash(socket, :error, gettext("Invalid reference type."))}
+          end
+
+        _ ->
+          {:noreply, put_flash(socket, :error, gettext("Invalid reference ID."))}
       end
     end)
   end

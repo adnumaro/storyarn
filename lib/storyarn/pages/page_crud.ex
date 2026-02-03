@@ -110,6 +110,29 @@ defmodule Storyarn.Pages.PageCrud do
     end
   end
 
+  @doc """
+  Validates that a reference target exists and belongs to the project.
+  Returns {:ok, target} or {:error, reason}.
+  """
+  def validate_reference_target(target_type, target_id, project_id) do
+    case target_type do
+      "page" ->
+        case get_page(project_id, target_id) do
+          nil -> {:error, :not_found}
+          page -> {:ok, page}
+        end
+
+      "flow" ->
+        case Storyarn.Flows.get_flow(project_id, target_id) do
+          nil -> {:error, :not_found}
+          flow -> {:ok, flow}
+        end
+
+      _ ->
+        {:error, :invalid_type}
+    end
+  end
+
   # =============================================================================
   # CRUD Operations
   # =============================================================================
