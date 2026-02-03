@@ -20,6 +20,13 @@ if System.get_env("PHX_SERVER") do
   config :storyarn, StoryarnWeb.Endpoint, server: true
 end
 
+# Trust X-Forwarded-For header when behind a reverse proxy (CloudFlare, AWS ELB, etc.)
+# Only enable this in production when you're certain you're behind a trusted proxy
+# Without this, rate limiting uses the direct connection IP (more secure default)
+if System.get_env("TRUST_PROXY") in ~w(true 1) do
+  config :storyarn, trust_proxy: true
+end
+
 # Rate limiting with Redis for production (multi-node support)
 # Development and test use ETS backend (configured in config.exs)
 if config_env() == :prod do

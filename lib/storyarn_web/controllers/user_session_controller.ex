@@ -58,32 +58,57 @@ defmodule StoryarnWeb.UserSessionController do
   end
 
   defp get_client_ip(conn) do
-    # Check for X-Forwarded-For header (common with reverse proxies)
-    case Plug.Conn.get_req_header(conn, "x-forwarded-for") do
-      [forwarded | _] ->
-        forwarded
-        |> String.split(",")
-        |> List.first()
-        |> String.trim()
+    # Only trust X-Forwarded-For if explicitly configured (e.g., behind CloudFlare, AWS ELB)
+    # Without this, attackers can spoof IPs to bypass rate limiting
+    if trust_proxy?() do
+      case Plug.Conn.get_req_header(conn, "x-forwarded-for") do
+        [forwarded | _] ->
+          forwarded
+          |> String.split(",")
+          |> List.first()
+          |> String.trim()
 
-      [] ->
-        conn.remote_ip
-        |> :inet.ntoa()
-        |> to_string()
+        [] ->
+          format_remote_ip(conn)
+      end
+    else
+      format_remote_ip(conn)
     end
+  end
+
+  defp format_remote_ip(conn) do
+    conn.remote_ip
+    |> :inet.ntoa()
+    |> to_string()
+  end
+
+  defp trust_proxy? do
+    Application.get_env(:storyarn, :trust_proxy, false)
   end
 
   def update_password(conn, %{"user" => user_params} = params) do
     user = conn.assigns.current_scope.user
-    true = Accounts.sudo_mode?(user)
-    {:ok, {_user, expired_tokens}} = Accounts.update_user_password(user, user_params)
 
-    # disconnect all existing LiveViews with old sessions
-    UserAuth.disconnect_sessions(expired_tokens)
+    if Accounts.sudo_mode?(user) do
+      case Accounts.update_user_password(user, user_params) do
+        {:ok, {_user, expired_tokens}} ->
+          # disconnect all existing LiveViews with old sessions
+          UserAuth.disconnect_sessions(expired_tokens)
 
-    conn
-    |> put_session(:user_return_to, ~p"/users/settings/security")
-    |> create(params, gettext("Password updated successfully!"))
+          conn
+          |> put_session(:user_return_to, ~p"/users/settings/security")
+          |> create(params, gettext("Password updated successfully!"))
+
+        {:error, changeset} ->
+          conn
+          |> put_flash(:error, gettext("Failed to update password."))
+          |> render(:new, changeset: changeset)
+      end
+    else
+      conn
+      |> put_flash(:error, gettext("Please re-authenticate to change your password."))
+      |> redirect(to: ~p"/users/settings/security")
+    end
   end
 
   def delete(conn, _params) do
