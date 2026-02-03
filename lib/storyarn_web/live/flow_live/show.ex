@@ -300,18 +300,24 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("node_moved", %{"id" => node_id, "position_x" => x, "position_y" => y}, socket) do
-    node = Flows.get_node_by_id!(node_id)
+    case authorize(socket, :edit_content) do
+      :ok ->
+        node = Flows.get_node_by_id!(node_id)
 
-    case Flows.update_node_position(node, %{position_x: x, position_y: y}) do
-      {:ok, _} ->
-        schedule_save_status_reset()
+        case Flows.update_node_position(node, %{position_x: x, position_y: y}) do
+          {:ok, _} ->
+            schedule_save_status_reset()
 
-        {:noreply,
-         socket
-         |> assign(:save_status, :saved)
-         |> CollaborationHelpers.broadcast_change(:node_moved, %{node_id: node_id, x: x, y: y})}
+            {:noreply,
+             socket
+             |> assign(:save_status, :saved)
+             |> CollaborationHelpers.broadcast_change(:node_moved, %{node_id: node_id, x: x, y: y})}
 
-      {:error, _} ->
+          {:error, _} ->
+            {:noreply, socket}
+        end
+
+      {:error, :unauthorized} ->
         {:noreply, socket}
     end
   end
