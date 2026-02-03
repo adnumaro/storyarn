@@ -9,6 +9,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :is_editing, :boolean, default: false
+  attr :target, :any, default: nil
 
   def text_block(assigns) do
     label = get_in(assigns.block.config, ["label"]) || ""
@@ -34,6 +35,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
         class="input input-bordered w-full"
         phx-blur="update_block_value"
         phx-value-id={@block.id}
+        phx-target={@target}
       />
       <div :if={!@can_edit} class={["py-2 min-h-10", @content == "" && "text-base-content/40"]}>
         {if @content == "", do: "-", else: @content}
@@ -45,17 +47,22 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :is_editing, :boolean, default: false
+  attr :target, :any, default: nil
 
   def rich_text_block(assigns) do
     label = get_in(assigns.block.config, ["label"]) || ""
     content = get_in(assigns.block.value, ["content"]) || ""
     is_constant = assigns.block.is_constant || false
 
+    # Convert target to a CSS selector for the JS hook
+    target_selector = if assigns.target, do: "#content-tab", else: nil
+
     assigns =
       assigns
       |> assign(:label, label)
       |> assign(:content, content)
       |> assign(:is_constant, is_constant)
+      |> assign(:target_selector, target_selector)
 
     ~H"""
     <div class="py-1">
@@ -67,6 +74,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
         data-content={@content}
         data-editable={to_string(@can_edit)}
         data-block-id={@block.id}
+        data-phx-target={@target_selector}
       >
       </div>
     </div>
@@ -76,6 +84,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :is_editing, :boolean, default: false
+  attr :target, :any, default: nil
 
   def number_block(assigns) do
     label = get_in(assigns.block.config, ["label"]) || ""
@@ -101,6 +110,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
         class="input input-bordered w-full"
         phx-blur="update_block_value"
         phx-value-id={@block.id}
+        phx-target={@target}
       />
       <div :if={!@can_edit} class={["py-2 min-h-10", @content == nil && "text-base-content/40"]}>
         {@content || "-"}

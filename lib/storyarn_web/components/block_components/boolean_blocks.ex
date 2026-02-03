@@ -16,10 +16,11 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
 
   ## Examples
 
-      <.boolean_block block={@block} can_edit={true} />
+      <.boolean_block block={@block} can_edit={true} target={@myself} />
   """
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
+  attr :target, :any, default: nil
 
   def boolean_block(assigns) do
     config = assigns.block.config || %{}
@@ -33,6 +34,9 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
     false_label = non_empty_or_default(config["false_label"], gettext("No"))
     neutral_label = non_empty_or_default(config["neutral_label"], gettext("Neutral"))
 
+    # Convert target to a CSS selector for the JS hook
+    target_selector = if assigns.target, do: "#content-tab", else: nil
+
     assigns =
       assigns
       |> assign(:label, label)
@@ -42,6 +46,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
       |> assign(:false_label, false_label)
       |> assign(:neutral_label, neutral_label)
       |> assign(:is_constant, is_constant)
+      |> assign(:target_selector, target_selector)
 
     ~H"""
     <div class="py-1">
@@ -54,6 +59,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
             content={@content}
             true_label={@true_label}
             false_label={@false_label}
+            target_selector={@target_selector}
           />
         <% else %>
           <.tri_state_toggle
@@ -62,6 +68,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
             true_label={@true_label}
             false_label={@false_label}
             neutral_label={@neutral_label}
+            target_selector={@target_selector}
           />
         <% end %>
       <% else %>
@@ -101,6 +108,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
         id={"two-state-#{@block.id}"}
         data-block-id={@block.id}
         data-state={@state_string}
+        data-phx-target={@target_selector}
       />
       <span class="text-sm text-base-content/70">
         {@label_text}
@@ -150,6 +158,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
         data-indeterminate={to_string(@is_indeterminate)}
         data-block-id={@block.id}
         data-state={@state_string}
+        data-phx-target={@target_selector}
       />
       <span class="text-sm text-base-content/70">
         {@label_text}

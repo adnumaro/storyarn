@@ -16,6 +16,7 @@ defmodule StoryarnWeb.Components.BlockComponents.LayoutBlocks do
 
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
+  attr :target, :any, default: nil
 
   def date_block(assigns) do
     label = get_in(assigns.block.config, ["label"]) || ""
@@ -40,6 +41,7 @@ defmodule StoryarnWeb.Components.BlockComponents.LayoutBlocks do
         class="input input-bordered w-full"
         phx-blur="update_block_value"
         phx-value-id={@block.id}
+        phx-target={@target}
       />
       <div
         :if={!@can_edit}

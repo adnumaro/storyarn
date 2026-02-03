@@ -11,8 +11,10 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
 
   ## Examples
 
-      <.block_menu />
+      <.block_menu target={@myself} />
   """
+  attr :target, :any, default: nil
+
   def block_menu(assigns) do
     ~H"""
     <div class="absolute z-10 bg-base-100 border border-base-300 rounded-lg shadow-lg p-2 w-64">
@@ -22,6 +24,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
         class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
         phx-click="add_block"
         phx-value-type="text"
+        phx-target={@target}
       >
         <span class="text-lg">T</span>
         <span>{gettext("Text")}</span>
@@ -31,6 +34,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
         class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
         phx-click="add_block"
         phx-value-type="rich_text"
+        phx-target={@target}
       >
         <span class="text-lg">T</span>
         <span>{gettext("Rich Text")}</span>
@@ -40,6 +44,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
         class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
         phx-click="add_block"
         phx-value-type="number"
+        phx-target={@target}
       >
         <span class="text-lg">#</span>
         <span>{gettext("Number")}</span>
@@ -49,6 +54,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
         class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
         phx-click="add_block"
         phx-value-type="select"
+        phx-target={@target}
       >
         <.icon name="chevron-down" class="size-4" />
         <span>{gettext("Select")}</span>
@@ -58,6 +64,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
         class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
         phx-click="add_block"
         phx-value-type="multi_select"
+        phx-target={@target}
       >
         <.icon name="check" class="size-4" />
         <span>{gettext("Multi Select")}</span>
@@ -67,6 +74,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
         class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
         phx-click="add_block"
         phx-value-type="date"
+        phx-target={@target}
       >
         <.icon name="calendar" class="size-4" />
         <span>{gettext("Date")}</span>
@@ -76,6 +84,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
         class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
         phx-click="add_block"
         phx-value-type="boolean"
+        phx-target={@target}
       >
         <.icon name="toggle-left" class="size-4" />
         <span>{gettext("Boolean")}</span>
@@ -85,6 +94,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
         class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
         phx-click="add_block"
         phx-value-type="reference"
+        phx-target={@target}
       >
         <.icon name="link" class="size-4" />
         <span>{gettext("Reference")}</span>
@@ -96,6 +106,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
         class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
         phx-click="add_block"
         phx-value-type="divider"
+        phx-target={@target}
       >
         <.icon name="minus" class="size-4" />
         <span>{gettext("Divider")}</span>
@@ -106,6 +117,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
           type="button"
           class="w-full text-left px-2 py-1 text-sm text-base-content/50 hover:text-base-content"
           phx-click="hide_block_menu"
+          phx-target={@target}
         >
           {gettext("Cancel")}
         </button>

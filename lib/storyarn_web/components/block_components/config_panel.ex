@@ -14,6 +14,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
       <.config_panel :if={@configuring_block} block={@configuring_block} />
   """
   attr :block, :map, required: true
+  attr :target, :any, default: nil
 
   def config_panel(assigns) do
     config = assigns.block.config || %{}
@@ -43,14 +44,19 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
       <%!-- Header --%>
       <div class="flex items-center justify-between p-4 border-b border-base-300">
         <h3 class="font-semibold">{gettext("Configure Block")}</h3>
-        <button type="button" class="btn btn-ghost btn-sm btn-square" phx-click="close_config_panel">
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm btn-square"
+          phx-click="close_config_panel"
+          phx-target={@target}
+        >
           <.icon name="x" class="size-5" />
         </button>
       </div>
 
       <%!-- Content --%>
       <div class="flex-1 overflow-y-auto p-4">
-        <form phx-change="save_block_config" class="space-y-4">
+        <form phx-change="save_block_config" phx-target={@target} class="space-y-4">
           <%!-- Block Type (read-only) --%>
           <div>
             <label class="label">
@@ -69,6 +75,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                 checked={@is_constant}
                 class="toggle toggle-sm"
                 phx-click="toggle_constant"
+                phx-target={@target}
               />
               <span class="label-text">{gettext("Use as constant")}</span>
             </label>
@@ -310,6 +317,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
               <form
                 phx-change="update_select_option"
                 phx-value-index={idx}
+                phx-target={@target}
                 class="flex items-center gap-2 flex-1"
               >
                 <input
@@ -332,11 +340,17 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                 class="btn btn-ghost btn-sm btn-square text-error"
                 phx-click="remove_select_option"
                 phx-value-index={idx}
+                phx-target={@target}
               >
                 <.icon name="x" class="size-4" />
               </button>
             </div>
-            <button type="button" class="btn btn-ghost btn-sm" phx-click="add_select_option">
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm"
+              phx-click="add_select_option"
+              phx-target={@target}
+            >
               <.icon name="plus" class="size-4" />
               {gettext("Add option")}
             </button>
@@ -345,7 +359,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
       </div>
     </div>
     <%!-- Backdrop --%>
-    <div class="fixed inset-0 bg-black/20 z-40" phx-click="close_config_panel"></div>
+    <div class="fixed inset-0 bg-black/20 z-40" phx-click="close_config_panel" phx-target={@target}></div>
     """
   end
 end

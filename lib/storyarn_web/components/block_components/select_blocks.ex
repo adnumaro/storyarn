@@ -9,6 +9,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :is_editing, :boolean, default: false
+  attr :target, :any, default: nil
 
   def select_block(assigns) do
     label = get_in(assigns.block.config, ["label"]) || ""
@@ -35,6 +36,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
         class="select select-bordered w-full"
         phx-change="update_block_value"
         phx-value-id={@block.id}
+        phx-target={@target}
       >
         <option value="">{@placeholder}</option>
         <option :for={opt <- @options} value={opt["key"]} selected={@content == opt["key"]}>
@@ -54,6 +56,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :is_editing, :boolean, default: false
+  attr :target, :any, default: nil
 
   def multi_select_block(assigns) do
     label = get_in(assigns.block.config, ["label"]) || ""
@@ -102,6 +105,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
             phx-click="toggle_multi_select"
             phx-value-id={@block.id}
             phx-value-key={opt.key}
+            phx-target={@target}
           >
             <.icon name="x" class="size-3" />
           </button>
@@ -113,6 +117,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
           placeholder={@placeholder}
           phx-keydown="multi_select_keydown"
           phx-value-id={@block.id}
+          phx-target={@target}
         />
       </div>
       <div :if={!@can_edit} class="py-2 min-h-10">

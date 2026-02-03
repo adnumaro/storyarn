@@ -39,6 +39,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :editing_block_id, :any, default: nil
+  attr :target, :any, default: nil
 
   def block_component(assigns) do
     is_editing = assigns.editing_block_id == assigns.block.id
@@ -71,7 +72,12 @@ defmodule StoryarnWeb.Components.BlockComponents do
             class="dropdown-content menu bg-base-200 rounded-box z-50 w-40 p-2 shadow-lg"
           >
             <li>
-              <button type="button" phx-click="configure_block" phx-value-id={@block.id}>
+              <button
+                type="button"
+                phx-click="configure_block"
+                phx-value-id={@block.id}
+                phx-target={@target}
+              >
                 <.icon name="settings" class="size-4" />
                 {gettext("Configure")}
               </button>
@@ -82,6 +88,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
                 class="text-error"
                 phx-click="delete_block"
                 phx-value-id={@block.id}
+                phx-target={@target}
               >
                 <.icon name="trash-2" class="size-4" />
                 {gettext("Delete")}
@@ -95,26 +102,27 @@ defmodule StoryarnWeb.Components.BlockComponents do
       <div class="flex-1 lg:flex-none">
         <%= case @block.type do %>
           <% "text" -> %>
-            <.text_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
+            <.text_block block={@block} can_edit={@can_edit} is_editing={@is_editing} target={@target} />
           <% "rich_text" -> %>
-            <.rich_text_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
+            <.rich_text_block block={@block} can_edit={@can_edit} is_editing={@is_editing} target={@target} />
           <% "number" -> %>
-            <.number_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
+            <.number_block block={@block} can_edit={@can_edit} is_editing={@is_editing} target={@target} />
           <% "select" -> %>
-            <.select_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
+            <.select_block block={@block} can_edit={@can_edit} is_editing={@is_editing} target={@target} />
           <% "multi_select" -> %>
-            <.multi_select_block block={@block} can_edit={@can_edit} is_editing={@is_editing} />
+            <.multi_select_block block={@block} can_edit={@can_edit} is_editing={@is_editing} target={@target} />
           <% "divider" -> %>
             <.divider_block />
           <% "date" -> %>
-            <.date_block block={@block} can_edit={@can_edit} />
+            <.date_block block={@block} can_edit={@can_edit} target={@target} />
           <% "boolean" -> %>
-            <.boolean_block block={@block} can_edit={@can_edit} />
+            <.boolean_block block={@block} can_edit={@can_edit} target={@target} />
           <% "reference" -> %>
             <.reference_block
               block={@block}
               can_edit={@can_edit}
               reference_target={@block.reference_target}
+              target={@target}
             />
           <% _ -> %>
             <div class="text-base-content/50">{gettext("Unknown block type")}</div>

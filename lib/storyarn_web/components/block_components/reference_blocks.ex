@@ -9,6 +9,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :reference_target, :map, default: nil
+  attr :target, :any, default: nil
 
   def reference_block(assigns) do
     label = get_in(assigns.block.config, ["label"]) || ""
@@ -53,6 +54,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
               allowed_types={@allowed_types}
               target_type={@target_type}
               target_id={@target_id}
+              target={@target}
             />
           </div>
         </div>
@@ -101,6 +103,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
   attr :allowed_types, :list, required: true
   attr :target_type, :string, default: nil
   attr :target_id, :integer, default: nil
+  attr :target, :any, default: nil
 
   defp reference_search(assigns) do
     ~H"""
@@ -112,6 +115,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
         phx-keyup="search_references"
         phx-value-block-id={@block_id}
         phx-debounce="300"
+        phx-target={@target}
         id={"reference-search-#{@block_id}"}
       />
       <div
@@ -131,6 +135,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
             class="btn btn-ghost btn-sm btn-block text-error"
             phx-click="clear_reference"
             phx-value-block-id={@block_id}
+            phx-target={@target}
           >
             <.icon name="x" class="size-4" />
             {gettext("Clear reference")}
@@ -148,6 +153,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
   attr :result, :map, required: true
   attr :block_id, :integer, required: true
   attr :is_selected, :boolean, default: false
+  attr :target, :any, default: nil
 
   def reference_result(assigns) do
     ~H"""
@@ -161,6 +167,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
       phx-value-block-id={@block_id}
       phx-value-type={@result.type}
       phx-value-id={@result.id}
+      phx-target={@target}
     >
       <span class={[
         "flex-shrink-0 size-6 rounded flex items-center justify-center text-xs",
