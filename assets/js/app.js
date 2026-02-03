@@ -30,6 +30,7 @@ import { BannerUpload } from "./hooks/banner_upload";
 import { EditableShortcut } from "./hooks/editable_shortcut";
 import { EditableTitle } from "./hooks/editable_title";
 import { FlowCanvas } from "./hooks/flow_canvas";
+import { ReferenceSearch } from "./hooks/reference_search";
 // Custom hooks
 import { SortableList } from "./hooks/sortable_list";
 import { SortableTree } from "./hooks/sortable_tree";
@@ -38,7 +39,6 @@ import { TreeToggle } from "./hooks/tree";
 import { TreeSearch } from "./hooks/tree_search";
 import { TriStateCheckbox } from "./hooks/tri_state_checkbox";
 import { TwoStateCheckbox } from "./hooks/two_state_checkbox";
-import { ReferenceSearch } from "./hooks/reference_search";
 
 // Theme management (keyboard shortcuts, cross-tab sync)
 import "./theme";

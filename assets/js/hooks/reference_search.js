@@ -36,9 +36,7 @@ export const ReferenceSearch = {
           phx-value-id="${result.id}"
         >
           <span class="flex-shrink-0 size-6 rounded flex items-center justify-center text-xs ${
-            result.type === "page"
-              ? "bg-primary/20 text-primary"
-              : "bg-secondary/20 text-secondary"
+            result.type === "page" ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
           }">
             <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               ${
@@ -55,7 +53,7 @@ export const ReferenceSearch = {
               : ""
           }
         </button>
-      `
+      `,
       )
       .join("");
 
