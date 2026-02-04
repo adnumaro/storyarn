@@ -98,6 +98,31 @@ export class StoryarnNode extends LitElement {
       white-space: nowrap;
     }
 
+    .stage-directions {
+      font-style: italic;
+      color: oklch(var(--bc, 0.8 0 0) / 0.5);
+      font-size: 10px;
+      padding: 2px 12px 4px;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .speaker-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .speaker-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .condition-badge {
       display: inline-flex;
       align-items: center;
@@ -111,6 +136,19 @@ export class StoryarnNode extends LitElement {
       border-radius: 50%;
       margin-right: 2px;
     }
+
+    .audio-indicator {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: auto;
+      opacity: 0.8;
+    }
+
+    .audio-indicator svg {
+      width: 12px;
+      height: 12px;
+    }
   `;
 
   render() {
@@ -120,11 +158,32 @@ export class StoryarnNode extends LitElement {
     const config = NODE_CONFIGS[node.nodeType] || NODE_CONFIGS.dialogue;
     const nodeData = node.nodeData || {};
 
-    // Get preview text based on node type
+    // Get preview text based on node type (not used for dialogue with speaker)
     const preview = this.getPreviewText(node.nodeType, nodeData);
+    const stageDirections = nodeData.stage_directions || "";
 
     // Calculate border color with opacity
     const borderColor = `${config.color}40`;
+
+    // For dialogue nodes, check if there's a speaker
+    const isDialogue = node.nodeType === "dialogue";
+    const speakerId = nodeData.speaker_page_id;
+    const speakerPage = speakerId ? this.pagesMap?.[String(speakerId)] : null;
+    const hasAudio = isDialogue && nodeData.audio_asset_id;
+
+    // Debug logging
+    if (isDialogue) {
+      console.log("[StoryarnNode] Rendering dialogue:", {
+        nodeId: node.nodeId,
+        speakerId,
+        speakerPage,
+        hasAudio,
+        pagesMapKeys: Object.keys(this.pagesMap || {}),
+      });
+    }
+
+    // Audio icon SVG
+    const audioIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
 
     return html`
       <div
@@ -132,9 +191,29 @@ export class StoryarnNode extends LitElement {
         style="--node-border-color: ${borderColor}"
       >
         <div class="header" style="background-color: ${config.color}">
-          <span class="icon">${unsafeSVG(config.icon)}</span>
-          <span>${config.label}</span>
+          ${
+            isDialogue && speakerPage
+              ? html`
+                ${
+                  speakerPage.avatar_url
+                    ? html`<img src="${speakerPage.avatar_url}" class="speaker-avatar" alt="" />`
+                    : html`<span class="icon">${unsafeSVG(config.icon)}</span>`
+                }
+                <span class="speaker-name">${speakerPage.name}</span>
+                ${hasAudio ? html`<span class="audio-indicator" title="Has audio">${unsafeSVG(audioIcon)}</span>` : ""}
+              `
+              : html`
+                <span class="icon">${unsafeSVG(config.icon)}</span>
+                <span>${config.label}</span>
+                ${hasAudio ? html`<span class="audio-indicator" title="Has audio">${unsafeSVG(audioIcon)}</span>` : ""}
+              `
+          }
         </div>
+        ${
+          isDialogue && stageDirections
+            ? html`<div class="stage-directions">${stageDirections}</div>`
+            : ""
+        }
         <div class="content">
           ${Object.entries(node.inputs || {}).map(
             ([key, input]) => html`
@@ -190,24 +269,22 @@ export class StoryarnNode extends LitElement {
   getPreviewText(nodeType, nodeData) {
     switch (nodeType) {
       case "dialogue": {
-        // Resolve speaker name from pagesMap
-        const speakerId = nodeData.speaker_page_id;
-        const speakerPage = speakerId ? this.pagesMap?.[String(speakerId)] : null;
-        const speakerName = speakerPage?.name || "";
-        // Strip HTML from text for preview
+        // Strip HTML from text for preview (speaker name is now shown in header)
         const textContent = nodeData.text
           ? new DOMParser().parseFromString(nodeData.text, "text/html").body.textContent
           : "";
-        return speakerName || textContent || "";
+        return textContent || "";
       }
       case "hub":
-        return nodeData.label || "";
+        return nodeData.hub_id || "";
       case "condition":
         return nodeData.expression || "";
       case "instruction":
         return nodeData.action || "";
       case "jump":
-        return nodeData.target_flow || "";
+        return nodeData.target_hub_id ? `→ ${nodeData.target_hub_id}` : "";
+      case "exit":
+        return nodeData.label || "";
       default:
         return "";
     }

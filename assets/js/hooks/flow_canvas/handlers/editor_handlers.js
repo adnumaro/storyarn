@@ -85,13 +85,28 @@ export function createEditorHandlers(hook) {
      */
     async handleNodeUpdated(data) {
       const { id, data: nodeData } = data;
+      console.log("[FlowCanvas] node_updated received:", { id, nodeData });
+
       const existingNode = hook.nodeMap.get(id);
-      if (!existingNode) return;
+      if (!existingNode) {
+        console.log("[FlowCanvas] Node not found in nodeMap:", id);
+        return;
+      }
+
+      // Check if responses changed (need full rebuild to update outputs)
+      const oldResponses = existingNode.nodeData?.responses || [];
+      const newResponses = nodeData.responses || [];
+      const responsesChanged =
+        oldResponses.length !== newResponses.length ||
+        oldResponses.some((r, i) => r.id !== newResponses[i]?.id);
 
       // For dialogue nodes with changing responses, rebuild the node
-      if (existingNode.nodeType === "dialogue") {
+      if (existingNode.nodeType === "dialogue" && responsesChanged) {
+        console.log("[FlowCanvas] Rebuilding dialogue node (responses changed):", id);
         await this.rebuildDialogueNode(id, existingNode, nodeData);
       } else {
+        // Just update the data and refresh the view
+        console.log("[FlowCanvas] Updating node data:", id);
         existingNode.nodeData = nodeData;
         await hook.area.update("node", existingNode.id);
       }
@@ -129,10 +144,19 @@ export function createEditorHandlers(hook) {
 
       const newNode = new FlowNode(existingNode.nodeType, id, nodeData);
       newNode.id = `node-${id}`;
+      console.log("[FlowCanvas] Created new FlowNode:", {
+        id: newNode.id,
+        nodeType: newNode.nodeType,
+        nodeData: newNode.nodeData,
+      });
 
       await hook.editor.addNode(newNode);
       await hook.area.translate(newNode.id, position);
       hook.nodeMap.set(id, newNode);
+
+      // Force re-render to update visual (speaker name, etc.)
+      await hook.area.update("node", newNode.id);
+      console.log("[FlowCanvas] Node rebuilt and updated");
 
       // Restore connections
       for (const connInfo of affectedConnections) {
