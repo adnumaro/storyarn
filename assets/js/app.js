@@ -31,6 +31,7 @@ import { EditableShortcut } from "./hooks/editable_shortcut";
 import { EditableTitle } from "./hooks/editable_title";
 import { FlowCanvas } from "./hooks/flow_canvas";
 import { ReferenceSearch } from "./hooks/reference_search";
+import { ScreenplayEditor } from "./hooks/screenplay_editor";
 // Custom hooks
 import { SortableList } from "./hooks/sortable_list";
 import { SortableTree } from "./hooks/sortable_tree";
@@ -62,6 +63,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     TwoStateCheckbox,
     FlowCanvas,
     ReferenceSearch,
+    ScreenplayEditor,
   },
 });
 

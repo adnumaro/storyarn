@@ -480,6 +480,103 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
 
 ---
 
+## Dialogue Node Enhancements (Deferred)
+
+> **Related:** See DIALOGUE_NODE_ENHANCEMENT.md for current implementation plan
+
+### Configurable Node Header Style
+
+**Context:** When a speaker is selected for a dialogue node, the node header displays the speaker's avatar and name. Currently, the header keeps the default dialogue node color.
+
+**Feature Request:** Enhance header customization with options:
+- **Default mode** (current): Keep dialogue node color, show avatar + name
+- **Banner mode**: Use `Page.banner_asset_id` as header background
+- **Color mode**: Use speaker's custom color (requires adding color field to Page)
+
+**Implementation Options:**
+
+1. **Per-Page Setting:**
+   ```elixir
+   # Add to pages table
+   :header_display_mode  # "banner" | "color"
+   :header_color         # hex color when mode is "color"
+   ```
+
+2. **Per-Node Override:**
+   ```elixir
+   # In dialogue node data
+   "header_mode" => "auto"  # "auto" | "banner" | "color"
+   "header_color" => nil    # Override color
+   ```
+
+**UI:**
+- Page settings: "Header display: [Default ▼] / [Banner ▼] / [Color ▼]"
+- Dialogue node (optional): "Override header: [Use page default ▼]"
+
+**Design Considerations:**
+- Banner backgrounds may cause readability issues with avatar + title
+- Need text shadow or overlay for contrast when using banners
+- Consider aspect ratio constraints for banner in small node headers
+
+**Priority:** Low - Current default color approach works well for MVP
+
+---
+
+### AI-Generated Menu Text
+
+**Context:** Menu text is a short version of dialogue for space-constrained UI (choice wheels, mobile). Writing both full text and menu text manually is tedious.
+
+**Feature:** Auto-generate menu text from full dialogue using AI.
+
+**User Flow:**
+```
+┌─────────────────────────────────────┐
+│ Text: "I've been waiting for you   │
+│        for three long days..."     │
+│                                     │
+│ Menu Text: [                    ]  │
+│            [✨ Generate with AI]   │  ← Click to auto-generate
+│                                     │
+│ Generated: "I've been waiting"     │
+│            [Accept] [Regenerate]   │
+└─────────────────────────────────────┘
+```
+
+**Implementation:**
+
+1. **Prompt Template:**
+   ```
+   Summarize this dialogue line into a short phrase (max 6 words)
+   suitable for a dialogue choice menu. Keep the essence and tone.
+
+   Full text: "{text}"
+   Short version:
+   ```
+
+2. **Backend:**
+   ```elixir
+   def generate_menu_text(full_text) do
+     AI.complete(prompt: build_prompt(full_text), max_tokens: 20)
+   end
+   ```
+
+3. **Batch Generation:**
+   - "Generate all menu texts" button for entire flow
+   - Only generates for nodes with empty menu_text
+
+**Cost Considerations:**
+- Very short completions (~20 tokens output)
+- Could use cheaper/faster model (e.g., Claude Haiku)
+- Rate limit: X generations per project per day
+
+**Dependencies:**
+- AI provider integration (OpenAI, Anthropic, etc.)
+- Credits/billing system if usage-based
+
+**Priority:** Medium - Nice productivity boost for dialogue-heavy projects
+
+---
+
 ## Other Ideas (Not Yet Planned)
 
 ### Search & Query System
