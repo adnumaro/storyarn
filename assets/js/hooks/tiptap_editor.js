@@ -236,17 +236,25 @@ export const TiptapEditor = {
     const editable = this.el.dataset.editable === "true";
     const blockId = this.el.dataset.blockId;
     const nodeId = this.el.dataset.nodeId;
+    const mode = this.el.dataset.mode || "default"; // "default" or "screenplay"
 
     // Create editor container
     const editorEl = document.createElement("div");
-    editorEl.className = "tiptap-content prose prose-sm max-w-none";
+    editorEl.className =
+      mode === "screenplay"
+        ? "tiptap-content tiptap-screenplay prose prose-lg max-w-none"
+        : "tiptap-content prose prose-sm max-w-none";
     this.el.appendChild(editorEl);
 
     // Determine which event to push based on whether this is a block or node editor
     const target = this.el.dataset.phxTarget;
     const pushUpdate = (html) => {
       if (nodeId) {
-        this.pushEvent("update_node_text", { id: nodeId, content: html });
+        if (target) {
+          this.pushEventTo(target, "update_node_text", { id: nodeId, content: html });
+        } else {
+          this.pushEvent("update_node_text", { id: nodeId, content: html });
+        }
       } else if (blockId) {
         if (target) {
           this.pushEventTo(target, "update_rich_text", { id: blockId, content: html });
@@ -292,8 +300,8 @@ export const TiptapEditor = {
       },
     });
 
-    // Create toolbar if editable
-    if (editable) {
+    // Create toolbar if editable and not in screenplay mode
+    if (editable && mode !== "screenplay") {
       this.createToolbar();
     }
   },

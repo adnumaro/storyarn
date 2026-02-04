@@ -175,3 +175,46 @@
   background-color: var(--color-base-100);
 }
 
+/* Screenplay Editor Styles - Document/Paper feel */
+.tiptap-screenplay .ProseMirror {
+  border: none;
+  border-radius: 0;
+  background-color: transparent;
+  padding: 0;
+  min-height: 200px;
+  font-size: 1.125rem;
+  line-height: 1.75;
+}
+
+.tiptap-screenplay .ProseMirror:hover,
+.tiptap-screenplay .ProseMirror:focus {
+  border: none;
+  outline: none;
+}
+
+.tiptap-screenplay .ProseMirror p.is-editor-empty:first-child::before {
+  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Screenplay speaker selector - invisible border, shows name */
+.screenplay-speaker-select {
+  min-width: 200px;
+  padding: 0.5rem 1rem;
+  font-size: 1.125rem;
+  letter-spacing: 0.1em;
+}
+
+.screenplay-speaker-select:hover {
+  color: var(--color-primary);
+}
+
+/* Screenplay input - no visible borders */
+.screenplay-input {
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+

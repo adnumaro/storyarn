@@ -59,15 +59,21 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   def update_node_data(socket, node_params) do
     node = socket.assigns.selected_node
 
-    case Flows.update_node_data(node, node_params) do
+    # Merge new params with existing data to preserve other fields
+    merged_data = Map.merge(node.data || %{}, node_params)
+
+    case Flows.update_node_data(node, merged_data) do
       {:ok, updated_node} ->
+        form = FormHelpers.node_data_to_form(updated_node)
         schedule_save_status_reset()
 
         {:noreply,
          socket
          |> reload_flow_data()
          |> assign(:selected_node, updated_node)
-         |> assign(:save_status, :saved)}
+         |> assign(:node_form, form)
+         |> assign(:save_status, :saved)
+         |> push_event("node_updated", %{id: node.id, data: updated_node.data})}
 
       {:error, _} ->
         {:noreply, socket}
@@ -310,10 +316,12 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   defp reload_flow_data(socket) do
     flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
     flow_data = Flows.serialize_for_canvas(flow)
+    flow_hubs = Flows.list_hubs(flow.id)
 
     socket
     |> assign(:flow, flow)
     |> assign(:flow_data, flow_data)
+    |> assign(:flow_hubs, flow_hubs)
   end
 
   defp schedule_save_status_reset do
