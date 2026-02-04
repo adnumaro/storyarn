@@ -215,12 +215,12 @@ return html`<span>${unsafeSVG(iconSvg)}</span>`;
 
 ### Why It Works
 
-| Aspect | Works in Shadow DOM? | Reason |
-|--------|---------------------|--------|
-| SVG element | ✅ Yes | Self-contained, no external deps |
-| `width`/`height` attrs | ✅ Yes | Native SVG attributes |
-| `stroke: currentColor` | ✅ Yes | `color` is inherited CSS property |
-| Tailwind classes | ❌ No | External styles don't penetrate |
+| Aspect                 | Works in Shadow DOM?   | Reason                            |
+|------------------------|------------------------|-----------------------------------|
+| SVG element            | ✅ Yes                  | Self-contained, no external deps  |
+| `width`/`height` attrs | ✅ Yes                  | Native SVG attributes             |
+| `stroke: currentColor` | ✅ Yes                  | `color` is inherited CSS property |
+| Tailwind classes       | ❌ No                   | External styles don't penetrate   |
 
 ### Key Difference from Light DOM
 
