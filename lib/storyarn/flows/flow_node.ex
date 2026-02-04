@@ -8,6 +8,8 @@ defmodule Storyarn.Flows.FlowNode do
 
   ## Node Types
 
+  - `entry` - Entry point of the flow (exactly one per flow, output only)
+  - `exit` - Exit point of the flow (multiple allowed, input only)
   - `dialogue` - A dialogue block with speaker, text, and optional choices
   - `hub` - A central point connecting multiple paths
   - `condition` - A branching point based on game state or variables
@@ -19,9 +21,9 @@ defmodule Storyarn.Flows.FlowNode do
 
   alias Storyarn.Flows.{Flow, FlowConnection}
 
-  @node_types ~w(dialogue hub condition instruction jump)
+  @node_types ~w(dialogue hub condition instruction jump entry exit)
 
-  @type node_type :: :dialogue | :hub | :condition | :instruction | :jump
+  @type node_type :: :dialogue | :hub | :condition | :instruction | :jump | :entry | :exit
   @type t :: %__MODULE__{
           id: integer() | nil,
           type: String.t() | nil,

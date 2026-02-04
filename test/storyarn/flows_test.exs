@@ -31,8 +31,9 @@ defmodule Storyarn.FlowsTest do
       result = Flows.get_flow(project.id, flow.id)
 
       assert result.id == flow.id
-      assert length(result.nodes) == 1
-      assert Enum.at(result.nodes, 0).id == node.id
+      # Flow auto-creates an entry node + we added one more manually
+      assert length(result.nodes) == 2
+      assert Enum.any?(result.nodes, &(&1.id == node.id))
     end
 
     test "get_flow/2 returns nil for non-existent flow" do
@@ -72,7 +73,7 @@ defmodule Storyarn.FlowsTest do
       assert updated.name == "Updated Name"
     end
 
-    test "delete_flow/1 deletes flow and cascades to nodes and connections" do
+    test "delete_flow/1 soft-deletes flow (nodes and connections preserved for restore)" do
       user = user_fixture()
       project = project_fixture(user)
       flow = flow_fixture(project)
@@ -80,11 +81,49 @@ defmodule Storyarn.FlowsTest do
       node2 = node_fixture(flow)
       _connection = connection_fixture(flow, node1, node2)
 
+      {:ok, deleted_flow} = Flows.delete_flow(flow)
+
+      # Flow should not appear in normal queries
+      assert Flows.get_flow(project.id, flow.id) == nil
+      assert flow.id not in Enum.map(Flows.list_flows(project.id), & &1.id)
+
+      # But nodes and connections are preserved (for restore)
+      # Flow has auto-created entry node + 2 manually created nodes = 3 total
+      assert length(Flows.list_nodes(flow.id)) == 3
+      assert length(Flows.list_connections(flow.id)) == 1
+
+      # Flow appears in deleted list
+      assert deleted_flow.id in Enum.map(Flows.list_deleted_flows(project.id), & &1.id)
+    end
+
+    test "restore_flow/1 restores a soft-deleted flow" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+      _node = node_fixture(flow)
+
       {:ok, _} = Flows.delete_flow(flow)
+      assert Flows.get_flow(project.id, flow.id) == nil
+
+      # Restore the flow
+      deleted_flow = Enum.find(Flows.list_deleted_flows(project.id), &(&1.id == flow.id))
+      {:ok, restored} = Flows.restore_flow(deleted_flow)
+
+      assert restored.deleted_at == nil
+      assert Flows.get_flow(project.id, flow.id) != nil
+    end
+
+    test "hard_delete_flow/1 permanently deletes flow and cascades to nodes" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+      _node1 = node_fixture(flow)
+      _node2 = node_fixture(flow)
+
+      {:ok, _} = Flows.hard_delete_flow(flow)
 
       assert Flows.get_flow(project.id, flow.id) == nil
       assert Flows.list_nodes(flow.id) == []
-      assert Flows.list_connections(flow.id) == []
     end
 
     test "set_main_flow/1 sets flow as main and unsets previous main" do
@@ -150,9 +189,11 @@ defmodule Storyarn.FlowsTest do
 
       nodes = Flows.list_nodes(flow.id)
 
-      assert length(nodes) == 2
+      # Flow has auto-created entry node + 2 manually created nodes = 3 total
+      assert length(nodes) == 3
       assert Enum.any?(nodes, &(&1.id == node1.id))
       assert Enum.any?(nodes, &(&1.id == node2.id))
+      assert Enum.any?(nodes, &(&1.type == "entry"))
     end
 
     test "create_node/2 creates a node" do
@@ -182,6 +223,282 @@ defmodule Storyarn.FlowsTest do
       {:error, changeset} = Flows.create_node(flow, %{type: "invalid_type"})
 
       assert "is invalid" in errors_on(changeset).type
+    end
+
+    test "flow auto-creates entry node on creation" do
+      user = user_fixture()
+      project = project_fixture(user)
+      {:ok, flow} = Flows.create_flow(project, %{name: "Test Flow"})
+
+      nodes = Flows.list_nodes(flow.id)
+      entry_node = Enum.find(nodes, &(&1.type == "entry"))
+
+      assert entry_node != nil
+      assert entry_node.position_x == 100.0
+      assert entry_node.position_y == 300.0
+    end
+
+    test "cannot create duplicate entry node" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      # Try to create another entry node (should fail)
+      result = Flows.create_node(flow, %{type: "entry", position_x: 200.0, position_y: 200.0})
+
+      assert result == {:error, :entry_node_exists}
+    end
+
+    test "cannot delete entry node" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      entry_node = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+
+      result = Flows.delete_node(entry_node)
+
+      assert result == {:error, :cannot_delete_entry_node}
+    end
+
+    test "can create multiple exit nodes" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      {:ok, exit1} =
+        Flows.create_node(flow, %{
+          type: "exit",
+          position_x: 500.0,
+          position_y: 200.0,
+          data: %{"label" => "Victory"}
+        })
+
+      {:ok, exit2} =
+        Flows.create_node(flow, %{
+          type: "exit",
+          position_x: 500.0,
+          position_y: 400.0,
+          data: %{"label" => "Defeat"}
+        })
+
+      assert exit1.type == "exit"
+      assert exit1.data["label"] == "Victory"
+      assert exit2.type == "exit"
+      assert exit2.data["label"] == "Defeat"
+
+      # Verify both exist
+      nodes = Flows.list_nodes(flow.id)
+      exit_nodes = Enum.filter(nodes, &(&1.type == "exit"))
+      assert length(exit_nodes) == 2
+    end
+
+    test "can delete exit nodes" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      {:ok, exit_node} =
+        Flows.create_node(flow, %{
+          type: "exit",
+          position_x: 500.0,
+          position_y: 200.0,
+          data: %{"label" => "End"}
+        })
+
+      {:ok, deleted} = Flows.delete_node(exit_node)
+
+      assert deleted.id == exit_node.id
+    end
+
+    test "hub node with unique hub_id" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      {:ok, hub} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          position_x: 300.0,
+          position_y: 200.0,
+          data: %{"hub_id" => "merchant_done", "color" => "blue"}
+        })
+
+      assert hub.type == "hub"
+      assert hub.data["hub_id"] == "merchant_done"
+      assert hub.data["color"] == "blue"
+    end
+
+    test "cannot create duplicate hub_id in same flow" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      # Create first hub
+      {:ok, _hub1} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          position_x: 300.0,
+          position_y: 200.0,
+          data: %{"hub_id" => "my_hub", "color" => "purple"}
+        })
+
+      # Try to create second hub with same hub_id
+      result =
+        Flows.create_node(flow, %{
+          type: "hub",
+          position_x: 500.0,
+          position_y: 200.0,
+          data: %{"hub_id" => "my_hub", "color" => "blue"}
+        })
+
+      assert result == {:error, :hub_id_not_unique}
+    end
+
+    test "can have same hub_id in different flows" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow1 = flow_fixture(project, %{name: "Flow 1"})
+      flow2 = flow_fixture(project, %{name: "Flow 2"})
+
+      {:ok, hub1} =
+        Flows.create_node(flow1, %{
+          type: "hub",
+          position_x: 300.0,
+          position_y: 200.0,
+          data: %{"hub_id" => "shared_name"}
+        })
+
+      {:ok, hub2} =
+        Flows.create_node(flow2, %{
+          type: "hub",
+          position_x: 300.0,
+          position_y: 200.0,
+          data: %{"hub_id" => "shared_name"}
+        })
+
+      assert hub1.data["hub_id"] == "shared_name"
+      assert hub2.data["hub_id"] == "shared_name"
+    end
+
+    test "cannot update hub_id to duplicate value" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      # Create two hubs with different hub_ids
+      {:ok, _hub1} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          position_x: 300.0,
+          position_y: 200.0,
+          data: %{"hub_id" => "hub_a"}
+        })
+
+      {:ok, hub2} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          position_x: 500.0,
+          position_y: 200.0,
+          data: %{"hub_id" => "hub_b"}
+        })
+
+      # Try to update hub2's hub_id to match hub1's
+      result = Flows.update_node_data(hub2, %{"hub_id" => "hub_a"})
+
+      assert result == {:error, :hub_id_not_unique}
+    end
+
+    test "list_hubs returns all hubs in a flow" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      {:ok, _hub1} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          position_x: 300.0,
+          position_y: 200.0,
+          data: %{"hub_id" => "alpha"}
+        })
+
+      {:ok, _hub2} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          position_x: 500.0,
+          position_y: 200.0,
+          data: %{"hub_id" => "beta"}
+        })
+
+      hubs = Flows.list_hubs(flow.id)
+
+      assert length(hubs) == 2
+      assert Enum.any?(hubs, &(&1.hub_id == "alpha"))
+      assert Enum.any?(hubs, &(&1.hub_id == "beta"))
+    end
+
+    test "jump node can be created with target_hub_id" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      # Create a hub first
+      {:ok, _hub} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          position_x: 300.0,
+          position_y: 200.0,
+          data: %{"hub_id" => "meeting_point", "color" => "blue"}
+        })
+
+      # Create a jump node targeting the hub
+      {:ok, jump} =
+        Flows.create_node(flow, %{
+          type: "jump",
+          position_x: 500.0,
+          position_y: 200.0,
+          data: %{"target_hub_id" => "meeting_point"}
+        })
+
+      assert jump.type == "jump"
+      assert jump.data["target_hub_id"] == "meeting_point"
+    end
+
+    test "jump node can update target_hub_id" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      # Create two hubs
+      {:ok, _hub1} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          position_x: 300.0,
+          position_y: 200.0,
+          data: %{"hub_id" => "hub_a"}
+        })
+
+      {:ok, _hub2} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          position_x: 400.0,
+          position_y: 200.0,
+          data: %{"hub_id" => "hub_b"}
+        })
+
+      # Create a jump node
+      {:ok, jump} =
+        Flows.create_node(flow, %{
+          type: "jump",
+          position_x: 500.0,
+          position_y: 200.0,
+          data: %{"target_hub_id" => "hub_a"}
+        })
+
+      # Update to target different hub
+      {:ok, updated_jump} = Flows.update_node_data(jump, %{"target_hub_id" => "hub_b"})
+
+      assert updated_jump.data["target_hub_id"] == "hub_b"
     end
 
     test "update_node_position/2 updates only position" do
@@ -363,7 +680,8 @@ defmodule Storyarn.FlowsTest do
 
       assert serialized.id == flow.id
       assert serialized.name == "Test Flow"
-      assert length(serialized.nodes) == 2
+      # Flow has auto-created entry node + 2 manually created nodes = 3 total
+      assert length(serialized.nodes) == 3
       assert length(serialized.connections) == 1
 
       first_node = Enum.find(serialized.nodes, &(&1.id == node1.id))
@@ -373,6 +691,136 @@ defmodule Storyarn.FlowsTest do
       first_connection = Enum.at(serialized.connections, 0)
       assert first_connection.source_node_id == node1.id
       assert first_connection.target_node_id == node2.id
+    end
+  end
+
+  describe "tree operations" do
+    test "create_flow/2 auto-assigns position" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, flow1} = Flows.create_flow(project, %{name: "First"})
+      {:ok, flow2} = Flows.create_flow(project, %{name: "Second"})
+      {:ok, flow3} = Flows.create_flow(project, %{name: "Third"})
+
+      assert flow1.position == 0
+      assert flow2.position == 1
+      assert flow3.position == 2
+    end
+
+    test "create_flow/2 with parent_id creates nested flow" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, parent} = Flows.create_flow(project, %{name: "Act 1"})
+      {:ok, child} = Flows.create_flow(project, %{name: "Scene 1", parent_id: parent.id})
+
+      assert child.parent_id == parent.id
+      assert child.position == 0
+    end
+
+    test "list_flows_tree/1 returns hierarchical structure" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, parent} = Flows.create_flow(project, %{name: "Act 1"})
+      {:ok, _child1} = Flows.create_flow(project, %{name: "Scene 1", parent_id: parent.id})
+      {:ok, _child2} = Flows.create_flow(project, %{name: "Scene 2", parent_id: parent.id})
+      {:ok, _root_flow} = Flows.create_flow(project, %{name: "Prologue"})
+
+      tree = Flows.list_flows_tree(project.id)
+
+      # Root level should have Act 1 and Prologue
+      assert length(tree) == 2
+
+      parent_in_tree = Enum.find(tree, &(&1.name == "Act 1"))
+      assert parent_in_tree != nil
+      assert length(parent_in_tree.children) == 2
+    end
+
+    test "list_flows_by_parent/2 lists flows at specific level" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, parent} = Flows.create_flow(project, %{name: "Act 1"})
+      {:ok, child1} = Flows.create_flow(project, %{name: "Scene 1", parent_id: parent.id})
+      {:ok, child2} = Flows.create_flow(project, %{name: "Scene 2", parent_id: parent.id})
+
+      # List children of parent
+      children = Flows.list_flows_by_parent(project.id, parent.id)
+      assert length(children) == 2
+      assert Enum.any?(children, &(&1.id == child1.id))
+      assert Enum.any?(children, &(&1.id == child2.id))
+
+      # List root level
+      root = Flows.list_flows_by_parent(project.id, nil)
+      assert length(root) == 1
+      assert Enum.at(root, 0).id == parent.id
+    end
+
+    test "reorder_flows/3 reorders flows within parent" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, flow1} = Flows.create_flow(project, %{name: "First"})
+      {:ok, flow2} = Flows.create_flow(project, %{name: "Second"})
+      {:ok, flow3} = Flows.create_flow(project, %{name: "Third"})
+
+      # Reorder: Third, First, Second
+      {:ok, reordered} = Flows.reorder_flows(project.id, nil, [flow3.id, flow1.id, flow2.id])
+
+      positions = Enum.map(reordered, &{&1.id, &1.position})
+      assert {flow3.id, 0} in positions
+      assert {flow1.id, 1} in positions
+      assert {flow2.id, 2} in positions
+    end
+
+    test "move_flow_to_position/3 moves flow to new parent" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, parent} = Flows.create_flow(project, %{name: "Act 1"})
+      {:ok, flow} = Flows.create_flow(project, %{name: "Scene"})
+
+      # Move flow into parent
+      {:ok, moved} = Flows.move_flow_to_position(flow, parent.id, 0)
+
+      assert moved.parent_id == parent.id
+      assert moved.position == 0
+    end
+
+    test "delete_flow/1 cascades soft delete to children" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, parent} = Flows.create_flow(project, %{name: "Act 1"})
+      {:ok, child} = Flows.create_flow(project, %{name: "Scene 1", parent_id: parent.id})
+
+      {:ok, _} = Flows.delete_flow(parent)
+
+      # Both parent and child should be soft-deleted
+      assert Flows.get_flow(project.id, parent.id) == nil
+      assert Flows.get_flow(project.id, child.id) == nil
+
+      # Both should appear in deleted list
+      deleted = Flows.list_deleted_flows(project.id)
+      deleted_ids = Enum.map(deleted, & &1.id)
+      assert parent.id in deleted_ids
+      assert child.id in deleted_ids
+    end
+
+    test "search_flows/2 finds all flows including those with children" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, parent} = Flows.create_flow(project, %{name: "Test Parent"})
+      {:ok, _child} = Flows.create_flow(project, %{name: "Test Child", parent_id: parent.id})
+
+      results = Flows.search_flows(project.id, "Test")
+
+      # Both flows should be returned (any flow can have children AND content)
+      assert length(results) == 2
+      assert Enum.any?(results, &(&1.id == parent.id))
     end
   end
 end

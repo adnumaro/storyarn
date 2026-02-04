@@ -11,7 +11,16 @@ defmodule Storyarn.Flows do
   - `ConnectionCrud` - CRUD operations for connections
   """
 
-  alias Storyarn.Flows.{ConnectionCrud, Flow, FlowConnection, FlowCrud, FlowNode, NodeCrud}
+  alias Storyarn.Flows.{
+    ConnectionCrud,
+    Flow,
+    FlowConnection,
+    FlowCrud,
+    FlowNode,
+    NodeCrud,
+    TreeOperations
+  }
+
   alias Storyarn.Projects.Project
 
   # =============================================================================
@@ -29,11 +38,25 @@ defmodule Storyarn.Flows do
   # =============================================================================
 
   @doc """
-  Lists all flows for a project.
+  Lists all non-deleted flows for a project.
   Returns flows ordered by is_main (descending) then name.
   """
   @spec list_flows(integer()) :: [flow()]
   defdelegate list_flows(project_id), to: FlowCrud
+
+  @doc """
+  Lists flows as a tree structure.
+  Returns root-level flows with their children preloaded recursively.
+  """
+  @spec list_flows_tree(integer()) :: [flow()]
+  defdelegate list_flows_tree(project_id), to: FlowCrud
+
+  @doc """
+  Lists flows by parent (for tree navigation).
+  Use parent_id = nil for root level flows.
+  """
+  @spec list_flows_by_parent(integer(), integer() | nil) :: [flow()]
+  defdelegate list_flows_by_parent(project_id, parent_id), to: FlowCrud
 
   @doc """
   Searches flows by name or shortcut for reference selection.
@@ -58,6 +81,7 @@ defmodule Storyarn.Flows do
 
   @doc """
   Creates a new flow in a project.
+  Any flow can have children AND content (nodes). Use parent_id to create nested flows.
   """
   @spec create_flow(Project.t(), attrs()) :: {:ok, flow()} | {:error, changeset()}
   defdelegate create_flow(project, attrs), to: FlowCrud
@@ -69,10 +93,30 @@ defmodule Storyarn.Flows do
   defdelegate update_flow(flow, attrs), to: FlowCrud
 
   @doc """
-  Deletes a flow and all its nodes and connections.
+  Soft-deletes a flow by setting deleted_at.
+  Also soft-deletes all children if it's a folder.
   """
-  @spec delete_flow(flow()) :: {:ok, flow()} | {:error, changeset()}
+  @spec delete_flow(flow()) :: {:ok, flow()} | {:error, term()}
   defdelegate delete_flow(flow), to: FlowCrud
+
+  @doc """
+  Permanently deletes a flow from the database.
+  Use with caution - this cannot be undone.
+  """
+  @spec hard_delete_flow(flow()) :: {:ok, flow()} | {:error, changeset()}
+  defdelegate hard_delete_flow(flow), to: FlowCrud
+
+  @doc """
+  Restores a soft-deleted flow.
+  """
+  @spec restore_flow(flow()) :: {:ok, flow()} | {:error, changeset()}
+  defdelegate restore_flow(flow), to: FlowCrud
+
+  @doc """
+  Lists all soft-deleted flows for a project (trash).
+  """
+  @spec list_deleted_flows(integer()) :: [flow()]
+  defdelegate list_deleted_flows(project_id), to: FlowCrud
 
   @doc """
   Returns a changeset for tracking flow changes.
@@ -92,6 +136,26 @@ defmodule Storyarn.Flows do
   """
   @spec set_main_flow(flow()) :: {:ok, flow()} | {:error, term()}
   defdelegate set_main_flow(flow), to: FlowCrud
+
+  # =============================================================================
+  # Tree Operations
+  # =============================================================================
+
+  @doc """
+  Reorders flows within a parent container.
+  Takes a project_id, parent_id (nil for root level), and a list of flow IDs
+  in the desired order.
+  """
+  @spec reorder_flows(integer(), integer() | nil, [integer()]) ::
+          {:ok, [flow()]} | {:error, term()}
+  defdelegate reorder_flows(project_id, parent_id, flow_ids), to: TreeOperations
+
+  @doc """
+  Moves a flow to a new parent at a specific position.
+  """
+  @spec move_flow_to_position(flow(), integer() | nil, integer()) ::
+          {:ok, flow()} | {:error, term()}
+  defdelegate move_flow_to_position(flow, new_parent_id, new_position), to: TreeOperations
 
   # =============================================================================
   # Nodes - CRUD Operations
@@ -165,6 +229,13 @@ defmodule Storyarn.Flows do
   """
   @spec count_nodes_by_type(integer()) :: map()
   defdelegate count_nodes_by_type(flow_id), to: NodeCrud
+
+  @doc """
+  Lists all hub nodes in a flow with their hub_ids.
+  Useful for populating Jump node target dropdown.
+  """
+  @spec list_hubs(integer()) :: [map()]
+  defdelegate list_hubs(flow_id), to: NodeCrud
 
   # =============================================================================
   # Connections - CRUD Operations
