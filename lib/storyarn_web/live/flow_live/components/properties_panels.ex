@@ -124,6 +124,16 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
             placeholder={gettext("e.g., score > 10")}
             disabled={!@can_edit}
           />
+          <.input
+            field={@form[:condition_order]}
+            type="number"
+            label={gettext("Priority")}
+            disabled={!@can_edit}
+            min="0"
+          />
+          <p class="text-xs text-base-content/60 mt-1">
+            {gettext("Lower numbers are evaluated first when multiple connections have conditions.")}
+          </p>
         </.form>
       </div>
 
@@ -284,6 +294,50 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
               </p>
             </div>
           </details>
+          <details class="collapse collapse-arrow bg-base-200 mt-2" open={Map.get(@panel_sections, "logic", has_logic_fields?(@form))}>
+            <summary class="collapse-title text-sm font-medium flex items-center gap-2 cursor-pointer" phx-click="toggle_panel_section" phx-value-section="logic" onclick="event.preventDefault()">
+              <.icon name="zap" class="size-4" />
+              {gettext("Logic")}
+              <span :if={has_logic_fields?(@form)} class="badge badge-warning badge-xs">⚡</span>
+            </summary>
+            <div class="collapse-content space-y-3">
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text text-xs">{gettext("Input Condition")}</span>
+                </label>
+                <input
+                  type="text"
+                  name="input_condition"
+                  value={@form[:input_condition].value || ""}
+                  phx-blur="update_node_field"
+                  phx-value-field="input_condition"
+                  disabled={!@can_edit}
+                  placeholder={gettext("e.g., reputation > 50")}
+                  class="input input-sm input-bordered font-mono text-xs"
+                />
+                <p class="text-xs text-base-content/60 mt-1">
+                  {gettext("Node is only reachable when this condition is true.")}
+                </p>
+              </div>
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text text-xs">{gettext("Output Instruction")}</span>
+                </label>
+                <textarea
+                  name="output_instruction"
+                  phx-blur="update_node_field"
+                  phx-value-field="output_instruction"
+                  disabled={!@can_edit}
+                  placeholder={gettext("e.g., set(\"talked_to_merchant\", true)")}
+                  rows={2}
+                  class="textarea textarea-sm textarea-bordered font-mono text-xs"
+                >{@form[:output_instruction].value || ""}</textarea>
+                <p class="text-xs text-base-content/60 mt-1">
+                  {gettext("Executed when leaving this node (any response).")}
+                </p>
+              </div>
+            </div>
+          </details>
           <details class="collapse collapse-arrow bg-base-200 mt-2" open={Map.get(@panel_sections, "technical", false)}>
             <summary class="collapse-title text-sm font-medium flex items-center gap-2 cursor-pointer" phx-click="toggle_panel_section" phx-value-section="technical" onclick="event.preventDefault()">
               <.icon name="hash" class="size-4" />
@@ -380,10 +434,14 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           <.input
             field={@form[:expression]}
             type="text"
-            label={gettext("Condition")}
-            placeholder={gettext("e.g., score > 10")}
+            label={gettext("Expression")}
+            placeholder={gettext("e.g., player_class")}
             disabled={!@can_edit}
           />
+          <p class="text-xs text-base-content/60 mt-1 mb-4">
+            {gettext("The expression to evaluate. Each case below matches against this value.")}
+          </p>
+          <.condition_cases_form form={@form} node={@node} can_edit={@can_edit} />
         <% "instruction" -> %>
           <.input
             field={@form[:action]}
@@ -466,19 +524,39 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
               <.icon name="x" class="size-3" />
             </button>
           </div>
-          <div class="flex items-center gap-2">
-            <.icon name="git-branch" class="size-3 text-base-content/50" />
-            <input
-              type="text"
-              value={response["condition"]}
-              phx-blur="update_response_condition"
-              phx-value-response-id={response["id"]}
-              phx-value-node-id={@node.id}
-              disabled={!@can_edit}
-              placeholder={gettext("Condition (optional)")}
-              class="input input-xs input-bordered flex-1 font-mono text-xs"
-            />
-          </div>
+          <details class="collapse collapse-arrow bg-base-100">
+            <summary class="collapse-title text-xs py-1 min-h-0 cursor-pointer">
+              {gettext("Advanced")}
+            </summary>
+            <div class="collapse-content space-y-2 pt-2">
+              <div class="flex items-center gap-2">
+                <.icon name="git-branch" class="size-3 text-base-content/50 flex-shrink-0" />
+                <input
+                  type="text"
+                  value={response["condition"]}
+                  phx-blur="update_response_condition"
+                  phx-value-response-id={response["id"]}
+                  phx-value-node-id={@node.id}
+                  disabled={!@can_edit}
+                  placeholder={gettext("Condition (optional)")}
+                  class="input input-xs input-bordered flex-1 font-mono text-xs"
+                />
+              </div>
+              <div class="flex items-center gap-2">
+                <.icon name="zap" class="size-3 text-base-content/50 flex-shrink-0" />
+                <input
+                  type="text"
+                  value={response["instruction"]}
+                  phx-blur="update_response_instruction"
+                  phx-value-response-id={response["id"]}
+                  phx-value-node-id={@node.id}
+                  disabled={!@can_edit}
+                  placeholder={gettext("Instruction (optional)")}
+                  class="input input-xs input-bordered flex-1 font-mono text-xs"
+                />
+              </div>
+            </div>
+          </details>
         </div>
         <button
           :if={@can_edit}
@@ -498,6 +576,79 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
     """
   end
 
+  @doc """
+  Renders the condition cases form section.
+  """
+  attr :form, :map, required: true
+  attr :node, :map, required: true
+  attr :can_edit, :boolean, default: false
+
+  def condition_cases_form(assigns) do
+    ~H"""
+    <div class="form-control">
+      <label class="label">
+        <span class="label-text">{gettext("Cases")}</span>
+      </label>
+      <div class="space-y-2">
+        <div
+          :for={case_item <- @form[:cases].value || []}
+          class="p-2 bg-base-200 rounded-lg"
+        >
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              value={case_item["label"]}
+              phx-blur="update_case_label"
+              phx-value-case-id={case_item["id"]}
+              phx-value-node-id={@node.id}
+              disabled={!@can_edit}
+              placeholder={gettext("Label")}
+              class="input input-sm input-bordered flex-1 text-xs"
+            />
+            <input
+              type="text"
+              value={case_item["value"]}
+              phx-blur="update_case_value"
+              phx-value-case-id={case_item["id"]}
+              phx-value-node-id={@node.id}
+              disabled={!@can_edit}
+              placeholder={gettext("Value (e.g., \"w\")")}
+              class="input input-sm input-bordered w-24 font-mono text-xs"
+            />
+            <button
+              :if={@can_edit && length(@form[:cases].value || []) > 1}
+              type="button"
+              phx-click="remove_case"
+              phx-value-case-id={case_item["id"]}
+              phx-value-node-id={@node.id}
+              class="btn btn-ghost btn-xs btn-square text-error"
+              title={gettext("Remove case")}
+            >
+              <.icon name="x" class="size-3" />
+            </button>
+          </div>
+          <p :if={case_item["value"] == ""} class="text-xs text-base-content/50 mt-1 italic">
+            {gettext("Empty value = default case")}
+          </p>
+        </div>
+        <button
+          :if={@can_edit}
+          type="button"
+          phx-click="add_case"
+          phx-value-node-id={@node.id}
+          class="btn btn-ghost btn-sm gap-1 w-full border border-dashed border-base-300"
+        >
+          <.icon name="plus" class="size-4" />
+          {gettext("Add case")}
+        </button>
+      </div>
+      <p class="text-xs text-base-content/60 mt-2">
+        {gettext("Each case creates an output. Leave value empty for a default/fallback case.")}
+      </p>
+    </div>
+    """
+  end
+
   # Hub color options for the color picker
   defp hub_color_options do
     [
@@ -510,5 +661,14 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
       {"orange", gettext("Orange")},
       {"cyan", gettext("Cyan")}
     ]
+  end
+
+  # Check if dialogue node has any logic fields set
+  defp has_logic_fields?(form) do
+    input_condition = form[:input_condition] && form[:input_condition].value
+    output_instruction = form[:output_instruction] && form[:output_instruction].value
+
+    (input_condition && input_condition != "") ||
+      (output_instruction && output_instruction != "")
   end
 end

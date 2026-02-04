@@ -536,6 +536,65 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
+  def handle_event(
+        "update_response_instruction",
+        %{"response-id" => response_id, "node-id" => node_id, "value" => instruction},
+        socket
+      ) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        value = if instruction == "", do: nil, else: instruction
+        NodeHelpers.update_response_field(socket, node_id, response_id, "instruction", value)
+
+      {:error, :unauthorized} ->
+        {:noreply, socket}
+    end
+  end
+
+  # ===========================================================================
+  # Event Handlers: Condition Cases
+  # ===========================================================================
+
+  def handle_event("add_case", %{"node-id" => node_id}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok -> add_condition_case(socket, node_id)
+      {:error, :unauthorized} -> {:noreply, socket}
+    end
+  end
+
+  def handle_event(
+        "remove_case",
+        %{"case-id" => case_id, "node-id" => node_id},
+        socket
+      ) do
+    case authorize(socket, :edit_content) do
+      :ok -> remove_condition_case(socket, node_id, case_id)
+      {:error, :unauthorized} -> {:noreply, socket}
+    end
+  end
+
+  def handle_event(
+        "update_case_value",
+        %{"case-id" => case_id, "node-id" => node_id, "value" => value},
+        socket
+      ) do
+    case authorize(socket, :edit_content) do
+      :ok -> update_condition_case_field(socket, node_id, case_id, "value", value)
+      {:error, :unauthorized} -> {:noreply, socket}
+    end
+  end
+
+  def handle_event(
+        "update_case_label",
+        %{"case-id" => case_id, "node-id" => node_id, "value" => label},
+        socket
+      ) do
+    case authorize(socket, :edit_content) do
+      :ok -> update_condition_case_field(socket, node_id, case_id, "label", label)
+      {:error, :unauthorized} -> {:noreply, socket}
+    end
+  end
+
   # ===========================================================================
   # Event Handlers: Panel UI
   # ===========================================================================
@@ -805,6 +864,92 @@ defmodule StoryarnWeb.FlowLive.Show do
     case Enum.find_index(same_speaker_nodes, &(&1.id == current_node_id)) do
       nil -> length(same_speaker_nodes) + 1
       index -> index + 1
+    end
+  end
+
+  # ===========================================================================
+  # Condition Case Helpers
+  # ===========================================================================
+
+  defp add_condition_case(socket, node_id) do
+    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+    cases = node.data["cases"] || []
+
+    new_id = "case_#{:erlang.unique_integer([:positive])}"
+    new_case = %{"id" => new_id, "value" => "", "label" => ""}
+    updated_data = Map.put(node.data, "cases", cases ++ [new_case])
+
+    case Flows.update_node_data(node, updated_data) do
+      {:ok, updated_node} ->
+        form = FormHelpers.node_data_to_form(updated_node)
+
+        {:noreply,
+         socket
+         |> reload_flow_data()
+         |> assign(:selected_node, updated_node)
+         |> assign(:node_form, form)
+         |> assign(:save_status, :saved)
+         |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
+
+      {:error, _} ->
+        {:noreply, socket}
+    end
+  end
+
+  defp remove_condition_case(socket, node_id, case_id) do
+    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+    cases = node.data["cases"] || []
+
+    # Don't allow removing if only one case remains
+    if length(cases) <= 1 do
+      {:noreply, socket}
+    else
+      updated_cases = Enum.reject(cases, fn c -> c["id"] == case_id end)
+      updated_data = Map.put(node.data, "cases", updated_cases)
+
+      case Flows.update_node_data(node, updated_data) do
+        {:ok, updated_node} ->
+          form = FormHelpers.node_data_to_form(updated_node)
+
+          {:noreply,
+           socket
+           |> reload_flow_data()
+           |> assign(:selected_node, updated_node)
+           |> assign(:node_form, form)
+           |> assign(:save_status, :saved)
+           |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
+
+        {:error, _} ->
+          {:noreply, socket}
+      end
+    end
+  end
+
+  defp update_condition_case_field(socket, node_id, case_id, field, value) do
+    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+    cases = node.data["cases"] || []
+
+    updated_cases =
+      Enum.map(cases, fn c ->
+        if c["id"] == case_id, do: Map.put(c, field, value), else: c
+      end)
+
+    updated_data = Map.put(node.data, "cases", updated_cases)
+
+    case Flows.update_node_data(node, updated_data) do
+      {:ok, updated_node} ->
+        form = FormHelpers.node_data_to_form(updated_node)
+
+        {:noreply,
+         socket
+         |> reload_flow_data()
+         |> assign(:selected_node, updated_node)
+         |> assign(:node_form, form)
+         |> assign(:save_status, :saved)
+         |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
+
+      {:error, _} ->
+        {:noreply, socket}
     end
   end
 end
