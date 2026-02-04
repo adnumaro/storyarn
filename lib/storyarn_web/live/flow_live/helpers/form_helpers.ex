@@ -21,7 +21,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   def connection_data_to_form(connection) do
     data = %{
       "label" => connection.label || "",
-      "condition" => connection.condition || ""
+      "condition" => connection.condition || "",
+      "condition_order" => connection.condition_order || 0
     }
 
     to_form(data, as: :connection)
@@ -40,6 +41,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
       "audio_asset_id" => data["audio_asset_id"],
       "technical_id" => data["technical_id"] || "",
       "localization_id" => data["localization_id"] || "",
+      "input_condition" => data["input_condition"] || "",
+      "output_instruction" => data["output_instruction"] || "",
       "responses" => data["responses"] || []
     }
   end
@@ -49,7 +52,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   end
 
   def extract_node_form_data("condition", data) do
-    %{"expression" => data["expression"] || ""}
+    %{
+      "expression" => data["expression"] || "",
+      "cases" => data["cases"] || []
+    }
   end
 
   def extract_node_form_data("instruction", data) do

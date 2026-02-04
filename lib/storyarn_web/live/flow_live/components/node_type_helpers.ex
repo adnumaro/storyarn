@@ -90,6 +90,9 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
           "audio_asset_id" => nil,
           "technical_id" => "",
           "localization_id" => generate_localization_id(),
+          # Logic fields (Phase 4)
+          "input_condition" => "",
+          "output_instruction" => "",
           "responses" => []
         }
 
@@ -97,7 +100,13 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
         %{"hub_id" => "", "color" => "purple"}
 
       "condition" ->
-        %{"expression" => ""}
+        %{
+          "expression" => "",
+          "cases" => [
+            %{"id" => "case_true", "value" => "true", "label" => "True"},
+            %{"id" => "case_false", "value" => "false", "label" => "False"}
+          ]
+        }
 
       "instruction" ->
         %{"action" => "", "parameters" => ""}

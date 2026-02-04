@@ -132,7 +132,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     responses = node.data["responses"] || []
 
     new_id = "r#{length(responses) + 1}_#{:erlang.unique_integer([:positive])}"
-    new_response = %{"id" => new_id, "text" => "", "condition" => nil}
+    new_response = %{"id" => new_id, "text" => "", "condition" => nil, "instruction" => nil}
     updated_data = Map.put(node.data, "responses", responses ++ [new_response])
 
     case Flows.update_node_data(node, updated_data) do
