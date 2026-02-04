@@ -66,7 +66,8 @@ export const NODE_CONFIGS = {
     color: "#f59e0b",
     icon: createIconSvg(GitBranch),
     inputs: ["input"],
-    outputs: ["true", "false"],
+    outputs: ["true", "false"], // Default fallback, overridden by cases if present
+    dynamicOutputs: true, // Signal that this node type can have dynamic outputs from cases
   },
   instruction: {
     label: "Instruction",

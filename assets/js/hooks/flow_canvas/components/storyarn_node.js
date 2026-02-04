@@ -149,6 +149,29 @@ export class StoryarnNode extends LitElement {
       width: 12px;
       height: 12px;
     }
+
+    .header-indicators {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: auto;
+    }
+
+    .logic-indicator {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      opacity: 0.9;
+    }
+
+    .logic-indicator.input-condition {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .logic-indicator.output-instruction {
+      color: rgba(255, 255, 255, 0.9);
+    }
   `;
 
   render() {
@@ -171,6 +194,10 @@ export class StoryarnNode extends LitElement {
     const speakerPage = speakerId ? this.pagesMap?.[String(speakerId)] : null;
     const hasAudio = isDialogue && nodeData.audio_asset_id;
 
+    // Logic indicators for dialogue nodes
+    const hasInputCondition = isDialogue && nodeData.input_condition;
+    const hasOutputInstruction = isDialogue && nodeData.output_instruction;
+
     // Debug logging
     if (isDialogue) {
       console.log("[StoryarnNode] Rendering dialogue:", {
@@ -178,12 +205,17 @@ export class StoryarnNode extends LitElement {
         speakerId,
         speakerPage,
         hasAudio,
+        hasInputCondition,
+        hasOutputInstruction,
         pagesMapKeys: Object.keys(this.pagesMap || {}),
       });
     }
 
     // Audio icon SVG
     const audioIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+
+    // Check if we need to show any header indicators
+    const showIndicators = hasAudio || hasInputCondition || hasOutputInstruction;
 
     return html`
       <div
@@ -200,14 +232,19 @@ export class StoryarnNode extends LitElement {
                     : html`<span class="icon">${unsafeSVG(config.icon)}</span>`
                 }
                 <span class="speaker-name">${speakerPage.name}</span>
-                ${hasAudio ? html`<span class="audio-indicator" title="Has audio">${unsafeSVG(audioIcon)}</span>` : ""}
               `
               : html`
                 <span class="icon">${unsafeSVG(config.icon)}</span>
                 <span>${config.label}</span>
-                ${hasAudio ? html`<span class="audio-indicator" title="Has audio">${unsafeSVG(audioIcon)}</span>` : ""}
               `
           }
+          ${showIndicators ? html`
+            <span class="header-indicators">
+              ${hasInputCondition ? html`<span class="logic-indicator input-condition" title="Has input condition">🔒</span>` : ""}
+              ${hasOutputInstruction ? html`<span class="logic-indicator output-instruction" title="Has output instruction">⚡</span>` : ""}
+              ${hasAudio ? html`<span class="audio-indicator" title="Has audio">${unsafeSVG(audioIcon)}</span>` : ""}
+            </span>
+          ` : ""}
         </div>
         ${
           isDialogue && stageDirections
@@ -241,6 +278,11 @@ export class StoryarnNode extends LitElement {
               const response = nodeData.responses.find((r) => r.id === key);
               outputLabel = response?.text || key;
               hasCondition = !!response?.condition;
+            }
+            // For condition nodes with cases, show case label
+            if (node.nodeType === "condition" && nodeData.cases?.length > 0) {
+              const caseItem = nodeData.cases.find((c) => c.id === key);
+              outputLabel = caseItem?.label || caseItem?.value || key;
             }
             return html`
               <div class="socket-row output">

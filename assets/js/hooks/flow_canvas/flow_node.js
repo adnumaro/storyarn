@@ -28,11 +28,16 @@ export class FlowNode extends ClassicPreset.Node {
       this.addInput(inputName, new ClassicPreset.Input(new ClassicPreset.Socket("flow")));
     }
 
-    // Add outputs - check for dynamic outputs (responses in dialogue nodes)
+    // Add outputs - check for dynamic outputs
     if (config.dynamicOutputs && type === "dialogue" && data.responses?.length > 0) {
-      // Add one output per response
+      // Dialogue: Add one output per response
       for (const response of data.responses) {
         this.addOutput(response.id, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
+      }
+    } else if (config.dynamicOutputs && type === "condition" && data.cases?.length > 0) {
+      // Condition: Add one output per case
+      for (const caseItem of data.cases) {
+        this.addOutput(caseItem.id, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
       }
     } else {
       // Add default outputs
