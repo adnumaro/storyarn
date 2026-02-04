@@ -17,6 +17,7 @@ defmodule Storyarn.Flows.FlowConnection do
           target_pin: String.t() | nil,
           label: String.t() | nil,
           condition: String.t() | nil,
+          condition_order: integer() | nil,
           flow_id: integer() | nil,
           flow: Flow.t() | Ecto.Association.NotLoaded.t() | nil,
           source_node_id: integer() | nil,
@@ -32,6 +33,7 @@ defmodule Storyarn.Flows.FlowConnection do
     field :target_pin, :string
     field :label, :string
     field :condition, :string
+    field :condition_order, :integer, default: 0
 
     belongs_to :flow, Flow
     belongs_to :source_node, FlowNode
@@ -50,6 +52,7 @@ defmodule Storyarn.Flows.FlowConnection do
       :target_pin,
       :label,
       :condition,
+      :condition_order,
       :source_node_id,
       :target_node_id
     ])
@@ -58,6 +61,7 @@ defmodule Storyarn.Flows.FlowConnection do
     |> validate_length(:target_pin, max: 100)
     |> validate_length(:label, max: 200)
     |> validate_length(:condition, max: 1000)
+    |> validate_number(:condition_order, greater_than_or_equal_to: 0)
     |> validate_not_self_connection()
     |> foreign_key_constraint(:source_node_id)
     |> foreign_key_constraint(:target_node_id)
@@ -71,9 +75,10 @@ defmodule Storyarn.Flows.FlowConnection do
   """
   def update_changeset(connection, attrs) do
     connection
-    |> cast(attrs, [:label, :condition])
+    |> cast(attrs, [:label, :condition, :condition_order])
     |> validate_length(:label, max: 200)
     |> validate_length(:condition, max: 1000)
+    |> validate_number(:condition_order, greater_than_or_equal_to: 0)
   end
 
   defp validate_not_self_connection(changeset) do
