@@ -10,6 +10,9 @@ defmodule StoryarnWeb.FlowLive.Show do
   import StoryarnWeb.FlowLive.Components.PropertiesPanels
   import StoryarnWeb.Layouts, only: [flash_group: 1]
 
+  alias StoryarnWeb.FlowLive.Components.ScreenplayEditor
+
+  alias Storyarn.Assets
   alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
@@ -21,7 +24,8 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
-  @node_types FlowNode.node_types()
+  # Filter out entry from user-addable node types (entry is auto-created with flow)
+  @node_types FlowNode.node_types() |> Enum.reject(&(&1 == "entry"))
 
   @impl true
   def render(assigns) do
@@ -112,13 +116,15 @@ defmodule StoryarnWeb.FlowLive.Show do
           </div>
         </div>
 
-        <%!-- Node Properties Panel --%>
+        <%!-- Node Properties Panel (Sidebar mode) --%>
         <.node_properties_panel
-          :if={@selected_node}
+          :if={@selected_node && @editing_mode == :sidebar}
           node={@selected_node}
           form={@node_form}
           can_edit={@can_edit}
           leaf_pages={@leaf_pages}
+          flow_hubs={@flow_hubs}
+          audio_assets={@audio_assets}
         />
 
         <%!-- Connection Properties Panel --%>
@@ -131,6 +137,18 @@ defmodule StoryarnWeb.FlowLive.Show do
       </div>
 
       <.flash_group flash={@flash} />
+
+      <%!-- Screenplay Editor (fullscreen overlay) --%>
+      <.live_component
+        :if={@selected_node && @editing_mode == :screenplay}
+        module={ScreenplayEditor}
+        id={"screenplay-editor-#{@selected_node.id}"}
+        node={@selected_node}
+        can_edit={@can_edit}
+        leaf_pages={@leaf_pages}
+        on_close={JS.push("close_editor")}
+        on_open_sidebar={JS.push("open_sidebar")}
+      />
 
       <%!-- Preview Modal --%>
       <.live_component
@@ -185,6 +203,8 @@ defmodule StoryarnWeb.FlowLive.Show do
     can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
     flow_data = Flows.serialize_for_canvas(flow)
     leaf_pages = Pages.list_leaf_pages(project.id)
+    flow_hubs = Flows.list_hubs(flow.id)
+    audio_assets = Assets.list_assets(project.id, content_type: "audio/")
     user = socket.assigns.current_scope.user
 
     CollaborationHelpers.setup_collaboration(socket, flow, user)
@@ -199,8 +219,11 @@ defmodule StoryarnWeb.FlowLive.Show do
     |> assign(:can_edit, can_edit)
     |> assign(:node_types, @node_types)
     |> assign(:leaf_pages, leaf_pages)
+    |> assign(:flow_hubs, flow_hubs)
+    |> assign(:audio_assets, audio_assets)
     |> assign(:selected_node, nil)
     |> assign(:node_form, nil)
+    |> assign(:editing_mode, nil)
     |> assign(:selected_connection, nil)
     |> assign(:connection_form, nil)
     |> assign(:save_status, :idle)
@@ -264,7 +287,60 @@ defmodule StoryarnWeb.FlowLive.Show do
         socket
       end
 
-    {:noreply, socket |> assign(:selected_node, node) |> assign(:node_form, form)}
+    {:noreply,
+     socket
+     |> assign(:selected_node, node)
+     |> assign(:node_form, form)
+     |> assign(:editing_mode, :sidebar)}
+  end
+
+  def handle_event("node_double_clicked", %{"id" => node_id}, socket) do
+    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+    form = FormHelpers.node_data_to_form(node)
+    user = socket.assigns.current_scope.user
+
+    # Only dialogue nodes support screenplay mode
+    editing_mode = if node.type == "dialogue", do: :screenplay, else: :sidebar
+
+    socket =
+      if socket.assigns.can_edit do
+        handle_node_lock_acquisition(socket, node_id, user)
+      else
+        socket
+      end
+
+    {:noreply,
+     socket
+     |> assign(:selected_node, node)
+     |> assign(:node_form, form)
+     |> assign(:editing_mode, editing_mode)}
+  end
+
+  def handle_event("open_screenplay", _params, socket) do
+    if socket.assigns.selected_node && socket.assigns.selected_node.type == "dialogue" do
+      {:noreply, assign(socket, :editing_mode, :screenplay)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("open_sidebar", _params, socket) do
+    {:noreply, assign(socket, :editing_mode, :sidebar)}
+  end
+
+  def handle_event("close_editor", _params, socket) do
+    socket =
+      if socket.assigns.selected_node && socket.assigns.can_edit do
+        release_node_lock(socket, socket.assigns.selected_node.id)
+      else
+        socket
+      end
+
+    {:noreply,
+     socket
+     |> assign(:selected_node, nil)
+     |> assign(:node_form, nil)
+     |> assign(:editing_mode, nil)}
   end
 
   def handle_event("deselect_node", _params, socket) do
@@ -275,7 +351,11 @@ defmodule StoryarnWeb.FlowLive.Show do
         socket
       end
 
-    {:noreply, socket |> assign(:selected_node, nil) |> assign(:node_form, nil)}
+    {:noreply,
+     socket
+     |> assign(:selected_node, nil)
+     |> assign(:node_form, nil)
+     |> assign(:editing_mode, nil)}
   end
 
   def handle_event("create_page", _params, socket) do
@@ -478,8 +558,41 @@ defmodule StoryarnWeb.FlowLive.Show do
     {:noreply, assign(socket, :save_status, :idle)}
   end
 
+  # Handle node updates from ScreenplayEditor LiveComponent
+  def handle_info({:node_updated, updated_node}, socket) do
+    form = FormHelpers.node_data_to_form(updated_node)
+    schedule_save_status_reset()
+
+    {:noreply,
+     socket
+     |> reload_flow_data()
+     |> assign(:selected_node, updated_node)
+     |> assign(:node_form, form)
+     |> assign(:save_status, :saved)
+     |> push_event("node_updated", %{id: updated_node.id, data: updated_node.data})}
+  end
+
   def handle_info({:close_preview}, socket) do
     {:noreply, assign(socket, preview_show: false, preview_node: nil)}
+  end
+
+  # Handle mention suggestions from ScreenplayEditor LiveComponent
+  def handle_info({:mention_suggestions, query, component_cid}, socket) do
+    project_id = socket.assigns.project.id
+    results = Pages.search_referenceable(project_id, query, ["page", "flow"])
+
+    items =
+      Enum.map(results, fn result ->
+        %{
+          id: result.id,
+          type: result.type,
+          name: result.name,
+          shortcut: result.shortcut,
+          label: result.shortcut || result.name
+        }
+      end)
+
+    {:noreply, push_event(socket, "mention_suggestions_result", %{items: items, target: component_cid})}
   end
 
   def handle_info(:clear_collab_toast, socket) do
@@ -601,5 +714,16 @@ defmodule StoryarnWeb.FlowLive.Show do
     CollaborationHelpers.broadcast_lock_change(socket, :node_unlocked, node_id)
     node_locks = Collaboration.list_locks(socket.assigns.flow.id)
     socket |> assign(:node_locks, node_locks) |> push_event("locks_updated", %{locks: node_locks})
+  end
+
+  defp reload_flow_data(socket) do
+    flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+    flow_data = Flows.serialize_for_canvas(flow)
+    flow_hubs = Flows.list_hubs(flow.id)
+
+    socket
+    |> assign(:flow, flow)
+    |> assign(:flow_data, flow_data)
+    |> assign(:flow_hubs, flow_hubs)
   end
 end

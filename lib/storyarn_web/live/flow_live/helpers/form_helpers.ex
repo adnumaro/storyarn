@@ -35,12 +35,15 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
     %{
       "speaker_page_id" => data["speaker_page_id"] || "",
       "text" => data["text"] || "",
+      "stage_directions" => data["stage_directions"] || "",
+      "menu_text" => data["menu_text"] || "",
+      "audio_asset_id" => data["audio_asset_id"],
       "responses" => data["responses"] || []
     }
   end
 
   def extract_node_form_data("hub", data) do
-    %{"label" => data["label"] || ""}
+    %{"hub_id" => data["hub_id"] || "", "color" => data["color"] || "purple"}
   end
 
   def extract_node_form_data("condition", data) do
@@ -52,7 +55,11 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   end
 
   def extract_node_form_data("jump", data) do
-    %{"target_flow" => data["target_flow"] || "", "target_node" => data["target_node"] || ""}
+    %{"target_hub_id" => data["target_hub_id"] || ""}
+  end
+
+  def extract_node_form_data("exit", data) do
+    %{"label" => data["label"] || ""}
   end
 
   def extract_node_form_data(_type, _data), do: %{}
@@ -62,7 +69,15 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   """
   @spec pages_map(list()) :: map()
   def pages_map(leaf_pages) do
-    Map.new(leaf_pages, fn page -> {to_string(page.id), %{id: page.id, name: page.name}} end)
+    Map.new(leaf_pages, fn page ->
+      avatar_url =
+        case page.avatar_asset do
+          %{url: url} when is_binary(url) -> url
+          _ -> nil
+        end
+
+      {to_string(page.id), %{id: page.id, name: page.name, avatar_url: avatar_url}}
+    end)
   end
 
   @doc """

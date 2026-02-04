@@ -25,11 +25,13 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
   def node_type_icon(assigns) do
     icon =
       case assigns.type do
+        "entry" -> "play"
+        "exit" -> "square"
         "dialogue" -> "message-square"
         "hub" -> "git-merge"
         "condition" -> "git-branch"
         "instruction" -> "zap"
-        "jump" -> "arrow-right"
+        "jump" -> "arrow-down-right"
         _ -> "circle"
       end
 
@@ -51,6 +53,8 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
   @spec node_type_label(String.t()) :: String.t()
   def node_type_label(type) do
     case type do
+      "entry" -> gettext("Entry")
+      "exit" -> gettext("Exit")
       "dialogue" -> gettext("Dialogue")
       "hub" -> gettext("Hub")
       "condition" -> gettext("Condition")
@@ -71,12 +75,36 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
   @spec default_node_data(String.t()) :: map()
   def default_node_data(type) do
     case type do
-      "dialogue" -> %{"speaker_page_id" => nil, "text" => "", "responses" => []}
-      "hub" -> %{"label" => ""}
-      "condition" -> %{"expression" => ""}
-      "instruction" -> %{"action" => "", "parameters" => ""}
-      "jump" -> %{"target_flow" => "", "target_node" => ""}
-      _ -> %{}
+      "entry" ->
+        %{}
+
+      "exit" ->
+        %{"label" => ""}
+
+      "dialogue" ->
+        %{
+          "speaker_page_id" => nil,
+          "text" => "",
+          "stage_directions" => "",
+          "menu_text" => "",
+          "audio_asset_id" => nil,
+          "responses" => []
+        }
+
+      "hub" ->
+        %{"hub_id" => "", "color" => "purple"}
+
+      "condition" ->
+        %{"expression" => ""}
+
+      "instruction" ->
+        %{"action" => "", "parameters" => ""}
+
+      "jump" ->
+        %{"target_hub_id" => ""}
+
+      _ ->
+        %{}
     end
   end
 end
