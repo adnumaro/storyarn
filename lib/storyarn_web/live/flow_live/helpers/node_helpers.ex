@@ -233,6 +233,34 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   end
 
   @doc """
+  Updates a single field in a node's data map.
+  Returns {:noreply, socket} tuple.
+  """
+  @spec update_node_field(Phoenix.LiveView.Socket.t(), any(), String.t(), any()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def update_node_field(socket, node_id, field, value) do
+    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+    updated_data = Map.put(node.data, field, value)
+
+    case Flows.update_node_data(node, updated_data) do
+      {:ok, updated_node} ->
+        form = FormHelpers.node_data_to_form(updated_node)
+        schedule_save_status_reset()
+
+        {:noreply,
+         socket
+         |> reload_flow_data()
+         |> assign(:selected_node, updated_node)
+         |> assign(:node_form, form)
+         |> assign(:save_status, :saved)
+         |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
+
+      {:error, _} ->
+        {:noreply, socket}
+    end
+  end
+
+  @doc """
   Updates a response field (text or condition) in a dialogue node.
   Returns {:noreply, socket} tuple.
   """

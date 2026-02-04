@@ -31,7 +31,7 @@
 
   # === TECHNICAL ===
   "technical_id" => "",               # Export identifier (auto-generated or custom)
-  "external_id" => "",                # Localization tool ID
+  "localization_id" => "",                # Localization tool ID
 
   # === LOGIC ===
   "input_condition" => "",            # Condition to enter this node
@@ -464,7 +464,7 @@ Attach audio Assets (VO, ambient sound) to dialogue nodes.
 
 ---
 
-### Phase 3: Technical Identifiers
+### Phase 3: Technical Identifiers ✅ COMPLETED
 **Priority: Important | Effort: Low**
 
 Add IDs for export and localization workflows.
@@ -486,7 +486,7 @@ end
 
 **Properties Panel**: Text input with "Generate" button.
 
-#### 3.2 External ID
+#### 3.2 Localization ID
 
 Free-form text for localization tool integration (e.g., Crowdin, Lokalise).
 
@@ -499,11 +499,11 @@ Show word count for text fields (useful for VO budgeting).
 **Properties Panel**: Small badge showing word count for each text field.
 
 #### Tasks
-- [ ] Add technical_id field with auto-generation
-- [ ] Add external_id field
-- [ ] Create ID generator helper function
-- [ ] Add word count display component
-- [ ] Add copy-to-clipboard for IDs
+- [x] Add technical_id field with auto-generation
+- [x] Add localization_id field
+- [x] Create ID generator helper function
+- [x] Add word count display component
+- [x] Add copy-to-clipboard for IDs
 
 ---
 
@@ -863,7 +863,7 @@ Update JSON export to include all new fields:
         },
         "technical": {
           "id": "merchant_greeting_01",
-          "external_id": "dlg_merchant_001"
+          "localization_id": "dlg_merchant_001"
         },
         "logic": {
           "input_condition": "reputation > 50",
@@ -937,11 +937,11 @@ Update JSON export to include all new fields:
 - [ ] Audio preview plays
 
 ### Phase 3
-- [ ] Technical ID auto-generates correctly
-- [ ] Technical ID can be manually edited
-- [ ] External ID saves correctly
-- [ ] Copy buttons work
-- [ ] Word count displays accurately
+- [x] Technical ID auto-generates correctly
+- [x] Technical ID can be manually edited
+- [x] Localization ID saves correctly
+- [x] Copy buttons work
+- [x] Word count displays accurately
 
 ### Phase 4
 - [ ] Input condition saves

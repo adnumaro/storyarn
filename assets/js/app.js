@@ -85,6 +85,27 @@ window.addEventListener("phx:hide-modal", (event) => {
   }
 });
 
+// Handle copy to clipboard via click events
+window.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-copy-text]");
+  if (button) {
+    const text = button.dataset.copyText || "";
+    if (text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        // Visual feedback: briefly change icon
+        const icon = button.querySelector("svg");
+        if (icon) {
+          icon.classList.add("text-success");
+          setTimeout(() => icon.classList.remove("text-success"), 1000);
+        }
+      } catch (err) {
+        console.error("Failed to copy to clipboard:", err);
+      }
+    }
+  }
+});
+
 // connect if there are any LiveViews on the page
 liveSocket.connect();
 

@@ -38,6 +38,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
       "stage_directions" => data["stage_directions"] || "",
       "menu_text" => data["menu_text"] || "",
       "audio_asset_id" => data["audio_asset_id"],
+      "technical_id" => data["technical_id"] || "",
+      "localization_id" => data["localization_id"] || "",
       "responses" => data["responses"] || []
     }
   end

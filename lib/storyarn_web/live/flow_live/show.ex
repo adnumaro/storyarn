@@ -125,6 +125,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           leaf_pages={@leaf_pages}
           flow_hubs={@flow_hubs}
           audio_assets={@audio_assets}
+          panel_sections={@panel_sections}
         />
 
         <%!-- Connection Properties Panel --%>
@@ -233,6 +234,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     |> assign(:node_locks, node_locks)
     |> assign(:collab_toast, nil)
     |> assign(:remote_cursors, %{})
+    |> assign(:panel_sections, %{})
   end
 
   @impl true
@@ -448,6 +450,44 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
+  def handle_event("generate_technical_id", _params, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        node = socket.assigns.selected_node
+
+        if node && node.type == "dialogue" do
+          flow = socket.assigns.flow
+          speaker_page_id = node.data["speaker_page_id"]
+          speaker_name = get_speaker_name(socket, speaker_page_id)
+          speaker_count = count_speaker_in_flow(flow, speaker_page_id, node.id)
+          technical_id = generate_technical_id(flow.shortcut, speaker_name, speaker_count)
+
+          NodeHelpers.update_node_field(socket, node.id, "technical_id", technical_id)
+        else
+          {:noreply, socket}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("update_node_field", %{"field" => field, "value" => value}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        node = socket.assigns.selected_node
+
+        if node do
+          NodeHelpers.update_node_field(socket, node.id, field, value)
+        else
+          {:noreply, socket}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply, socket}
+    end
+  end
+
   # ===========================================================================
   # Event Handlers: Responses
   # ===========================================================================
@@ -494,6 +534,18 @@ defmodule StoryarnWeb.FlowLive.Show do
       {:error, :unauthorized} ->
         {:noreply, socket}
     end
+  end
+
+  # ===========================================================================
+  # Event Handlers: Panel UI
+  # ===========================================================================
+
+  def handle_event("toggle_panel_section", %{"section" => section}, socket) do
+    panel_sections = socket.assigns.panel_sections
+    current_state = Map.get(panel_sections, section, false)
+    updated_sections = Map.put(panel_sections, section, !current_state)
+
+    {:noreply, assign(socket, :panel_sections, updated_sections)}
   end
 
   # ===========================================================================
@@ -725,5 +777,34 @@ defmodule StoryarnWeb.FlowLive.Show do
     |> assign(:flow, flow)
     |> assign(:flow_data, flow_data)
     |> assign(:flow_hubs, flow_hubs)
+  end
+
+  defp get_speaker_name(_socket, nil), do: nil
+
+  defp get_speaker_name(socket, speaker_page_id) do
+    Enum.find_value(socket.assigns.leaf_pages, fn page ->
+      if to_string(page.id) == to_string(speaker_page_id), do: page.name
+    end)
+  end
+
+  # Counts how many dialogue nodes with the same speaker exist in the flow
+  # Returns the position of the current node (1-indexed)
+  defp count_speaker_in_flow(flow, speaker_page_id, current_node_id) do
+    flow = Repo.preload(flow, :nodes)
+
+    # Get all dialogue nodes with same speaker, ordered by creation
+    same_speaker_nodes =
+      flow.nodes
+      |> Enum.filter(fn node ->
+        node.type == "dialogue" &&
+          to_string(node.data["speaker_page_id"]) == to_string(speaker_page_id)
+      end)
+      |> Enum.sort_by(& &1.inserted_at)
+
+    # Find position of current node (1-indexed)
+    case Enum.find_index(same_speaker_nodes, &(&1.id == current_node_id)) do
+      nil -> length(same_speaker_nodes) + 1
+      index -> index + 1
+    end
   end
 end

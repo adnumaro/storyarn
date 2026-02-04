@@ -18,6 +18,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :leaf_pages, :list, default: []
   attr :flow_hubs, :list, default: []
   attr :audio_assets, :list, default: []
+  attr :panel_sections, :map, default: %{}
 
   def node_properties_panel(assigns) do
     ~H"""
@@ -40,6 +41,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           leaf_pages={@leaf_pages}
           flow_hubs={@flow_hubs}
           audio_assets={@audio_assets}
+          panel_sections={@panel_sections}
         />
       </div>
 
@@ -150,6 +152,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :leaf_pages, :list, default: []
   attr :flow_hubs, :list, default: []
   attr :audio_assets, :list, default: []
+  attr :panel_sections, :map, default: %{}
 
   def node_properties_form(assigns) do
     speaker_options =
@@ -238,11 +241,10 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
             </div>
           </div>
           <.dialogue_responses_form form={@form} node={@node} can_edit={@can_edit} />
-          <div class="collapse collapse-arrow bg-base-200 mt-4">
-            <input type="checkbox" />
-            <div class="collapse-title text-sm font-medium">
+          <details class="collapse collapse-arrow bg-base-200 mt-4" open={Map.get(@panel_sections, "menu_text", false)}>
+            <summary class="collapse-title text-sm font-medium cursor-pointer" phx-click="toggle_panel_section" phx-value-section="menu_text" onclick="event.preventDefault()">
               {gettext("Menu Text")}
-            </div>
+            </summary>
             <div class="collapse-content">
               <.input
                 field={@form[:menu_text]}
@@ -254,14 +256,13 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
                 {gettext("Optional shorter text to display in dialogue choice menus.")}
               </p>
             </div>
-          </div>
-          <div class="collapse collapse-arrow bg-base-200 mt-2">
-            <input type="checkbox" checked={@selected_audio != nil} />
-            <div class="collapse-title text-sm font-medium flex items-center gap-2">
+          </details>
+          <details class="collapse collapse-arrow bg-base-200 mt-2" open={Map.get(@panel_sections, "audio", @selected_audio != nil)}>
+            <summary class="collapse-title text-sm font-medium flex items-center gap-2 cursor-pointer" phx-click="toggle_panel_section" phx-value-section="audio" onclick="event.preventDefault()">
               <.icon name="volume-2" class="size-4" />
               {gettext("Audio")}
               <span :if={@selected_audio} class="badge badge-primary badge-xs">1</span>
-            </div>
+            </summary>
             <div class="collapse-content">
               <.input
                 field={@form[:audio_asset_id]}
@@ -282,7 +283,81 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
                 {gettext("Attach voice-over or ambient audio to this dialogue.")}
               </p>
             </div>
-          </div>
+          </details>
+          <details class="collapse collapse-arrow bg-base-200 mt-2" open={Map.get(@panel_sections, "technical", false)}>
+            <summary class="collapse-title text-sm font-medium flex items-center gap-2 cursor-pointer" phx-click="toggle_panel_section" phx-value-section="technical" onclick="event.preventDefault()">
+              <.icon name="hash" class="size-4" />
+              {gettext("Technical")}
+            </summary>
+            <div class="collapse-content space-y-3">
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text text-xs">{gettext("Technical ID")}</span>
+                </label>
+                <div class="join w-full">
+                  <input
+                    type="text"
+                    name="technical_id"
+                    value={@form[:technical_id].value || ""}
+                    phx-blur="update_node_field"
+                    phx-value-field="technical_id"
+                    disabled={!@can_edit}
+                    placeholder={gettext("auto_generated_id")}
+                    class="input input-sm input-bordered join-item flex-1 font-mono text-xs"
+                  />
+                  <button
+                    :if={@can_edit}
+                    type="button"
+                    phx-click="generate_technical_id"
+                    onclick="event.stopPropagation()"
+                    class="btn btn-sm btn-ghost join-item"
+                    title={gettext("Generate ID")}
+                  >
+                    <.icon name="refresh-cw" class="size-3" />
+                  </button>
+                </div>
+                <p class="text-xs text-base-content/60 mt-1">
+                  {gettext("Unique identifier for export and game integration.")}
+                </p>
+              </div>
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text text-xs">{gettext("Localization ID")}</span>
+                </label>
+                <div class="join w-full">
+                  <input
+                    type="text"
+                    name="localization_id"
+                    value={@form[:localization_id].value || ""}
+                    phx-blur="update_node_field"
+                    phx-value-field="localization_id"
+                    disabled={!@can_edit}
+                    placeholder={gettext("dlg_001")}
+                    class="input input-sm input-bordered join-item flex-1 font-mono text-xs"
+                  />
+                  <button
+                    type="button"
+                    data-copy-text={@form[:localization_id].value || ""}
+                    onclick="event.stopPropagation()"
+                    class="btn btn-sm btn-ghost join-item"
+                    title={gettext("Copy to clipboard")}
+                  >
+                    <.icon name="copy" class="size-3" />
+                  </button>
+                </div>
+                <p class="text-xs text-base-content/60 mt-1">
+                  {gettext("ID for localization tools (Crowdin, Lokalise).")}
+                </p>
+              </div>
+              <div class="divider my-1"></div>
+              <div class="flex items-center justify-between text-xs text-base-content/70">
+                <span>{gettext("Word count")}</span>
+                <span class="font-mono badge badge-ghost badge-sm">
+                  {word_count(@form[:text].value)}
+                </span>
+              </div>
+            </div>
+          </details>
         <% "hub" -> %>
           <.input
             field={@form[:hub_id]}
