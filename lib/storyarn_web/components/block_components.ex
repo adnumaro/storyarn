@@ -102,15 +102,40 @@ defmodule StoryarnWeb.Components.BlockComponents do
       <div class="flex-1 lg:flex-none">
         <%= case @block.type do %>
           <% "text" -> %>
-            <.text_block block={@block} can_edit={@can_edit} is_editing={@is_editing} target={@target} />
+            <.text_block
+              block={@block}
+              can_edit={@can_edit}
+              is_editing={@is_editing}
+              target={@target}
+            />
           <% "rich_text" -> %>
-            <.rich_text_block block={@block} can_edit={@can_edit} is_editing={@is_editing} target={@target} />
+            <.rich_text_block
+              block={@block}
+              can_edit={@can_edit}
+              is_editing={@is_editing}
+              target={@target}
+            />
           <% "number" -> %>
-            <.number_block block={@block} can_edit={@can_edit} is_editing={@is_editing} target={@target} />
+            <.number_block
+              block={@block}
+              can_edit={@can_edit}
+              is_editing={@is_editing}
+              target={@target}
+            />
           <% "select" -> %>
-            <.select_block block={@block} can_edit={@can_edit} is_editing={@is_editing} target={@target} />
+            <.select_block
+              block={@block}
+              can_edit={@can_edit}
+              is_editing={@is_editing}
+              target={@target}
+            />
           <% "multi_select" -> %>
-            <.multi_select_block block={@block} can_edit={@can_edit} is_editing={@is_editing} target={@target} />
+            <.multi_select_block
+              block={@block}
+              can_edit={@can_edit}
+              is_editing={@is_editing}
+              target={@target}
+            />
           <% "divider" -> %>
             <.divider_block />
           <% "date" -> %>

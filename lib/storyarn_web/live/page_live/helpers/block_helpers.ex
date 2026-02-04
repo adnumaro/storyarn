@@ -335,10 +335,12 @@ defmodule StoryarnWeb.PageLive.Helpers.BlockHelpers do
     value = String.trim(value)
 
     if value == "" do
-      blocks = ReferenceHelpers.load_blocks_with_references(
-        socket.assigns.page.id,
-        socket.assigns.project.id
-      )
+      blocks =
+        ReferenceHelpers.load_blocks_with_references(
+          socket.assigns.page.id,
+          socket.assigns.project.id
+        )
+
       {:ok, blocks}
     else
       add_multi_select_option_value(socket, block_id, value)

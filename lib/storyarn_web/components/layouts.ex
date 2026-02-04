@@ -116,7 +116,7 @@ defmodule StoryarnWeb.Layouts do
     default: [],
     doc: "pages with preloaded children for the tree"
 
-  attr :flows, :list, default: [], doc: "flows list for sidebar"
+  attr :flows_tree, :list, default: [], doc: "flows with preloaded children for the tree"
 
   attr :active_tool, :atom, default: :pages, doc: "active tool (:pages or :flows)"
 
@@ -176,7 +176,7 @@ defmodule StoryarnWeb.Layouts do
           project={@project}
           workspace={@workspace}
           pages_tree={@pages_tree}
-          flows={@flows}
+          flows_tree={@flows_tree}
           active_tool={@active_tool}
           current_path={@current_path}
           selected_page_id={@selected_page_id}

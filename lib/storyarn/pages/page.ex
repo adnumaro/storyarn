@@ -4,6 +4,15 @@ defmodule Storyarn.Pages.Page do
 
   A page is a node in the project's content tree, similar to a Notion page.
   Pages can contain blocks (dynamic content fields) and can have child pages.
+
+  Any page can have children AND content (blocks). The UI adapts based on what
+  the page contains. This matches the Flows model for consistency.
+
+  Fields:
+  - `description` - Rich text for annotations (constant, not referenceable)
+  - `parent_id` - FK to parent page (nil for root level)
+  - `position` - Order among siblings
+  - `deleted_at` - Soft delete support
   """
   use Ecto.Schema
   import Ecto.Changeset
@@ -20,6 +29,7 @@ defmodule Storyarn.Pages.Page do
           id: integer() | nil,
           name: String.t() | nil,
           shortcut: String.t() | nil,
+          description: String.t() | nil,
           position: integer() | nil,
           avatar_asset_id: integer() | nil,
           avatar_asset: Asset.t() | Ecto.Association.NotLoaded.t() | nil,
@@ -41,6 +51,7 @@ defmodule Storyarn.Pages.Page do
   schema "pages" do
     field :name, :string
     field :shortcut, :string
+    field :description, :string
     field :position, :integer, default: 0
     field :deleted_at, :utc_datetime
 
@@ -61,7 +72,15 @@ defmodule Storyarn.Pages.Page do
   """
   def create_changeset(page, attrs) do
     page
-    |> cast(attrs, [:name, :shortcut, :avatar_asset_id, :banner_asset_id, :parent_id, :position])
+    |> cast(attrs, [
+      :name,
+      :shortcut,
+      :description,
+      :avatar_asset_id,
+      :banner_asset_id,
+      :parent_id,
+      :position
+    ])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
     |> validate_shortcut()
@@ -75,7 +94,15 @@ defmodule Storyarn.Pages.Page do
   """
   def update_changeset(page, attrs) do
     page
-    |> cast(attrs, [:name, :shortcut, :avatar_asset_id, :banner_asset_id, :parent_id, :position])
+    |> cast(attrs, [
+      :name,
+      :shortcut,
+      :description,
+      :avatar_asset_id,
+      :banner_asset_id,
+      :parent_id,
+      :position
+    ])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
     |> validate_shortcut()

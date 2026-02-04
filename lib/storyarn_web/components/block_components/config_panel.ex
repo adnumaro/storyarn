@@ -359,7 +359,8 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
       </div>
     </div>
     <%!-- Backdrop --%>
-    <div class="fixed inset-0 bg-black/20 z-40" phx-click="close_config_panel" phx-target={@target}></div>
+    <div class="fixed inset-0 bg-black/20 z-40" phx-click="close_config_panel" phx-target={@target}>
+    </div>
     """
   end
 end

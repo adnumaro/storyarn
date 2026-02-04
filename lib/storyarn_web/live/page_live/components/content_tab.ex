@@ -133,7 +133,9 @@ defmodule StoryarnWeb.PageLive.Components.ContentTab do
       # Wrap raw value in %{"content" => value} structure expected by the schema
       case Pages.update_block_value(block, %{"content" => value}) do
         {:ok, _updated} ->
-          blocks = ReferenceHelpers.load_blocks_with_references(socket.assigns.page.id, project_id)
+          blocks =
+            ReferenceHelpers.load_blocks_with_references(socket.assigns.page.id, project_id)
+
           maybe_create_version(socket)
           notify_parent(socket, :saved)
           {:noreply, assign(socket, :blocks, blocks)}
@@ -152,7 +154,9 @@ defmodule StoryarnWeb.PageLive.Components.ContentTab do
 
       case Pages.delete_block(block) do
         {:ok, _} ->
-          blocks = ReferenceHelpers.load_blocks_with_references(socket.assigns.page.id, project_id)
+          blocks =
+            ReferenceHelpers.load_blocks_with_references(socket.assigns.page.id, project_id)
+
           maybe_create_version(socket)
           notify_parent(socket, :saved)
           {:noreply, assign(socket, :blocks, blocks)}
