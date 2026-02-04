@@ -1,7 +1,7 @@
 import Sortable from "sortablejs";
 
 /**
- * SortableTree hook for nested drag-and-drop in page trees.
+ * SortableTree hook for nested drag-and-drop in page/flow trees.
  *
  * Usage:
  * <div id="pages-tree" phx-hook="SortableTree">
@@ -15,13 +15,19 @@ import Sortable from "sortablejs";
  *   </div>
  * </div>
  *
+ * For flows, add data-tree-type="flows" to the container:
+ * <div id="flows-tree" phx-hook="SortableTree" data-tree-type="flows">
+ *   ...
+ * </div>
+ *
  * Events:
- * - Pushes "move_page" event to LiveView with:
- *   { page_id: "1", parent_id: "2" | null, position: 0 }
+ * - For pages: Pushes "move_page" event with { page_id, parent_id, position }
+ * - For flows: Pushes "move_to_parent" event with { item_id, new_parent_id, position }
  */
 export const SortableTree = {
   mounted() {
     this.sortables = [];
+    this.treeType = this.el.dataset.treeType || "pages";
     this.initializeSortables();
   },
 
@@ -37,14 +43,15 @@ export const SortableTree = {
 
   initializeSortables() {
     const containers = this.el.querySelectorAll("[data-sortable-container]");
+    const groupName = this.treeType === "flows" ? "flows-tree" : "pages-tree";
 
     for (const container of containers) {
       const sortable = new Sortable(container, {
-        group: "pages-tree",
+        group: groupName,
         animation: 150,
         fallbackOnBody: true,
         swapThreshold: 0.65,
-        draggable: "[data-page-id]", // Only elements with data-page-id are draggable
+        draggable: "[data-page-id]", // Uses data-page-id for both pages and flows
         ghostClass: "sortable-ghost",
         chosenClass: "sortable-chosen",
         dragClass: "sortable-drag",
@@ -57,18 +64,26 @@ export const SortableTree = {
             return;
           }
 
-          const pageId = event.item.dataset.pageId;
+          const itemId = event.item.dataset.pageId;
           const newParentId = event.to.dataset.parentId || null;
 
           // Calculate position based on sibling elements with data-page-id
           const siblings = Array.from(event.to.children).filter((el) => el.dataset.pageId);
           const newPosition = siblings.indexOf(event.item);
 
-          this.pushEvent("move_page", {
-            page_id: pageId,
-            parent_id: newParentId,
-            position: newPosition >= 0 ? newPosition : 0,
-          });
+          if (this.treeType === "flows") {
+            this.pushEvent("move_to_parent", {
+              item_id: itemId,
+              new_parent_id: newParentId,
+              position: String(newPosition >= 0 ? newPosition : 0),
+            });
+          } else {
+            this.pushEvent("move_page", {
+              page_id: itemId,
+              parent_id: newParentId,
+              position: newPosition >= 0 ? newPosition : 0,
+            });
+          }
         },
       });
 

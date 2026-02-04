@@ -2,7 +2,16 @@
  * Node type configurations and icon helpers for the flow canvas.
  */
 
-import { ArrowRight, GitBranch, GitMerge, MessageSquare, Zap, createElement } from "lucide";
+import {
+  ArrowDownRight,
+  GitBranch,
+  GitMerge,
+  MessageSquare,
+  Play,
+  Square,
+  Zap,
+  createElement,
+} from "lucide";
 
 /**
  * Creates an SVG string from a Lucide icon.
@@ -23,6 +32,20 @@ export function createIconSvg(icon) {
  * Configuration for each node type including styling and socket definitions.
  */
 export const NODE_CONFIGS = {
+  entry: {
+    label: "Entry",
+    color: "#22c55e", // green-500
+    icon: createIconSvg(Play),
+    inputs: [], // No inputs - this is the starting point
+    outputs: ["output"],
+  },
+  exit: {
+    label: "Exit",
+    color: "#ef4444", // red-500
+    icon: createIconSvg(Square),
+    inputs: ["input"], // Only inputs - this is an ending point
+    outputs: [],
+  },
   dialogue: {
     label: "Dialogue",
     color: "#3b82f6",
@@ -33,10 +56,10 @@ export const NODE_CONFIGS = {
   },
   hub: {
     label: "Hub",
-    color: "#8b5cf6",
+    color: "#8b5cf6", // Default purple, can be customized via node data
     icon: createIconSvg(GitMerge),
-    inputs: ["input"],
-    outputs: ["out1", "out2", "out3", "out4"],
+    inputs: ["input"], // Multiple connections can target this single input (convergence)
+    outputs: ["output"], // Single output after convergence
   },
   condition: {
     label: "Condition",
@@ -54,9 +77,9 @@ export const NODE_CONFIGS = {
   },
   jump: {
     label: "Jump",
-    color: "#ef4444",
-    icon: createIconSvg(ArrowRight),
+    color: "#a855f7", // purple-500, same family as Hub
+    icon: createIconSvg(ArrowDownRight),
     inputs: ["input"],
-    outputs: [],
+    outputs: [], // No outputs - execution teleports to target Hub
   },
 };

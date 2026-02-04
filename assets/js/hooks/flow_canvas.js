@@ -69,9 +69,15 @@ export const FlowCanvas = {
       LitPresets.classic.setup({
         customize: {
           node(context) {
+            // Create a new object with spread to ensure Lit detects changes
+            const nodeData = {
+              ...context.payload,
+              nodeData: { ...context.payload.nodeData },
+              _updateTs: Date.now(), // Force new reference for re-renders
+            };
             return ({ emit }) => html`
               <storyarn-node
-                .data=${context.payload}
+                .data=${nodeData}
                 .emit=${emit}
                 .pagesMap=${self.pagesMap}
               ></storyarn-node>
@@ -189,6 +195,8 @@ export const FlowCanvas = {
   setupEventHandlers() {
     this.selectedNodeId = null;
     this.selectedConnectionId = null;
+    this.lastNodeClickTime = 0;
+    this.lastClickedNodeId = null;
 
     // Listen for connection double-clicks
     this.el.addEventListener("connection-dblclick", (e) => {
@@ -210,13 +218,26 @@ export const FlowCanvas = {
       return context;
     });
 
-    // Node selection
+    // Node selection with double-click detection
     this.area.addPipe((context) => {
       if (context.type === "nodepicked") {
         const node = this.editor.getNode(context.data.id);
         if (node?.nodeId) {
+          const now = Date.now();
+          const isDoubleClick =
+            this.lastClickedNodeId === node.nodeId && now - this.lastNodeClickTime < 300;
+
+          this.lastNodeClickTime = now;
+          this.lastClickedNodeId = node.nodeId;
           this.selectedNodeId = node.nodeId;
-          this.pushEvent("node_selected", { id: node.nodeId });
+
+          if (isDoubleClick && node.nodeType === "dialogue") {
+            // Double-click on dialogue node -> screenplay mode
+            this.pushEvent("node_double_clicked", { id: node.nodeId });
+          } else {
+            // Single click -> sidebar mode
+            this.pushEvent("node_selected", { id: node.nodeId });
+          }
         }
       }
       return context;

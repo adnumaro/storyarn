@@ -17,7 +17,7 @@ defmodule StoryarnWeb.FlowLive.Index do
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      flows={@flows}
+      flows_tree={@flows_tree}
       active_tool={:flows}
       current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows"}
       can_edit={@can_edit}
@@ -164,6 +164,7 @@ defmodule StoryarnWeb.FlowLive.Index do
       {:ok, project, membership} ->
         project = Repo.preload(project, :workspace)
         flows = Flows.list_flows(project.id)
+        flows_tree = Flows.list_flows_tree(project.id)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
 
         socket =
@@ -173,6 +174,7 @@ defmodule StoryarnWeb.FlowLive.Index do
           |> assign(:membership, membership)
           |> assign(:can_edit, can_edit)
           |> assign(:flows, flows)
+          |> assign(:flows_tree, flows_tree)
 
         {:ok, socket}
 
@@ -208,12 +210,10 @@ defmodule StoryarnWeb.FlowLive.Index do
 
         case Flows.delete_flow(flow) do
           {:ok, _} ->
-            flows = Flows.list_flows(socket.assigns.project.id)
-
             {:noreply,
              socket
-             |> put_flash(:info, gettext("Flow deleted successfully."))
-             |> assign(:flows, flows)}
+             |> put_flash(:info, gettext("Flow moved to trash."))
+             |> reload_flows()}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, gettext("Could not delete flow."))}
@@ -225,6 +225,10 @@ defmodule StoryarnWeb.FlowLive.Index do
     end
   end
 
+  def handle_event("delete_flow", %{"id" => flow_id}, socket) do
+    handle_event("delete", %{"id" => flow_id}, socket)
+  end
+
   def handle_event("set_main", %{"id" => flow_id}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
@@ -232,15 +236,106 @@ defmodule StoryarnWeb.FlowLive.Index do
 
         case Flows.set_main_flow(flow) do
           {:ok, _} ->
-            flows = Flows.list_flows(socket.assigns.project.id)
-
             {:noreply,
              socket
              |> put_flash(:info, gettext("Flow set as main."))
-             |> assign(:flows, flows)}
+             |> reload_flows()}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, gettext("Could not set main flow."))}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  def handle_event("set_main_flow", %{"id" => flow_id}, socket) do
+    handle_event("set_main", %{"id" => flow_id}, socket)
+  end
+
+  def handle_event("create_flow", _params, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        case Flows.create_flow(socket.assigns.project, %{name: gettext("Untitled")}) do
+          {:ok, new_flow} ->
+            {:noreply,
+             push_navigate(socket,
+               to:
+                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
+             )}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not create flow."))}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  def handle_event("create_child_flow", %{"parent-id" => parent_id}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        attrs = %{name: gettext("Untitled"), parent_id: parent_id}
+
+        case Flows.create_flow(socket.assigns.project, attrs) do
+          {:ok, new_flow} ->
+            {:noreply,
+             push_navigate(socket,
+               to:
+                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
+             )}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not create flow."))}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  def handle_event("reorder_tree", %{"order" => order, "parent_id" => parent_id}, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        parent_id = if parent_id == "", do: nil, else: String.to_integer(parent_id)
+        flow_ids = Enum.map(order, &String.to_integer/1)
+
+        case Flows.reorder_flows(socket.assigns.project.id, parent_id, flow_ids) do
+          {:ok, _} ->
+            {:noreply, reload_flows(socket)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not reorder flows."))}
+        end
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  def handle_event(
+        "move_to_parent",
+        %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
+        socket
+      ) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        flow = Flows.get_flow!(socket.assigns.project.id, item_id)
+        new_parent_id = if new_parent_id == "", do: nil, else: String.to_integer(new_parent_id)
+        position = String.to_integer(position)
+
+        case Flows.move_flow_to_position(flow, new_parent_id, position) do
+          {:ok, _} ->
+            {:noreply, reload_flows(socket)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not move flow."))}
         end
 
       {:error, :unauthorized} ->
@@ -268,5 +363,14 @@ defmodule StoryarnWeb.FlowLive.Index do
         {:noreply,
          put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
     end
+  end
+
+  # Helper to reload flows after changes
+  defp reload_flows(socket) do
+    project_id = socket.assigns.project.id
+
+    socket
+    |> assign(:flows, Flows.list_flows(project_id))
+    |> assign(:flows_tree, Flows.list_flows_tree(project_id))
   end
 end
