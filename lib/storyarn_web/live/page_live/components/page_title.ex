@@ -94,7 +94,7 @@ defmodule StoryarnWeb.PageLive.Components.PageTitle do
 
     case Pages.update_page(page, %{shortcut: shortcut}) do
       {:ok, updated_page} ->
-        updated_page = Repo.preload(updated_page, [:avatar_asset, :banner_asset, :blocks])
+        updated_page = Repo.preload(updated_page, [:avatar_asset, :banner_asset, :blocks], force: true)
 
         if shortcut != old_shortcut do
           user_id = socket.assigns.current_user_id

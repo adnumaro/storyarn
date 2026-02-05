@@ -80,7 +80,7 @@ defmodule StoryarnWeb.PageLive.Components.PageAvatar do
 
     case Pages.update_page(page, %{avatar_asset_id: nil}) do
       {:ok, updated_page} ->
-        updated_page = Repo.preload(updated_page, :avatar_asset)
+        updated_page = Repo.preload(updated_page, :avatar_asset, force: true)
         pages_tree = Pages.list_pages_tree(socket.assigns.project.id)
         send(self(), {:page_avatar, :page_updated, updated_page, pages_tree})
         {:noreply, assign(socket, :page, updated_page)}
@@ -130,7 +130,7 @@ defmodule StoryarnWeb.PageLive.Components.PageAvatar do
     with {:ok, url} <- Assets.Storage.upload(key, binary_data, content_type),
          {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
          {:ok, updated_page} <- Pages.update_page(page, %{avatar_asset_id: asset.id}) do
-      updated_page = Repo.preload(updated_page, :avatar_asset)
+      updated_page = Repo.preload(updated_page, :avatar_asset, force: true)
       pages_tree = Pages.list_pages_tree(project.id)
       send(self(), {:page_avatar, :page_updated, updated_page, pages_tree})
       {:noreply, assign(socket, :page, updated_page)}

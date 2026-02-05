@@ -136,16 +136,14 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
     case Flows.update_node_data(node, updated_data) do
       {:ok, updated_node} ->
-        flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
-        flow_data = Flows.serialize_for_canvas(flow)
         schedule_save_status_reset()
 
         socket =
           socket
-          |> assign(:flow, flow)
-          |> assign(:flow_data, flow_data)
+          |> reload_flow_data()
           |> assign(:save_status, :saved)
           |> maybe_update_selected_node(node, updated_node)
+          |> push_event("node_updated", %{id: node.id, data: updated_node.data})
 
         {:noreply, socket}
 

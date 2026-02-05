@@ -87,7 +87,7 @@ defmodule StoryarnWeb.PageLive.Components.Banner do
 
     case Pages.update_page(page, %{banner_asset_id: nil}) do
       {:ok, updated_page} ->
-        updated_page = Repo.preload(updated_page, [:avatar_asset, :banner_asset])
+        updated_page = Repo.preload(updated_page, [:avatar_asset, :banner_asset], force: true)
         send(self(), {:banner, :page_updated, updated_page})
         {:noreply, assign(socket, :page, updated_page)}
 
@@ -136,7 +136,7 @@ defmodule StoryarnWeb.PageLive.Components.Banner do
     with {:ok, url} <- Assets.Storage.upload(key, binary_data, content_type),
          {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
          {:ok, updated_page} <- Pages.update_page(page, %{banner_asset_id: asset.id}) do
-      updated_page = Repo.preload(updated_page, [:avatar_asset, :banner_asset])
+      updated_page = Repo.preload(updated_page, [:avatar_asset, :banner_asset], force: true)
       send(self(), {:banner, :page_updated, updated_page})
       {:noreply, assign(socket, :page, updated_page)}
     else
