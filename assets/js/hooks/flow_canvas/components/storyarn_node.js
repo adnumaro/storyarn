@@ -148,9 +148,10 @@ export class StoryarnNode extends LitElement {
       background: oklch(var(--er, 0.65 0.25 25) / 0.2);
       color: oklch(var(--er, 0.65 0.25 25));
       border-radius: 50%;
-      margin-right: 2px;
+      margin-left: 4px;
       cursor: help;
     }
+
 
     .audio-indicator {
       display: inline-flex;
@@ -313,9 +314,9 @@ export class StoryarnNode extends LitElement {
             }
             return html`
               <div class="socket-row output">
-                ${hasError ? html`<span class="error-badge" title="${errorMessage}">⚠</span>` : ""}
                 ${hasCondition ? html`<span class="condition-badge" title="Has condition">?</span>` : ""}
                 <span class="label" title="${outputLabel}">${outputLabel}</span>
+                ${hasError ? html`<span class="error-badge" title="${errorMessage}">⚠</span>` : ""}
                 <rete-ref
                   class="output-socket"
                   .data=${{
