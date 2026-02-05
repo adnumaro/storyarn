@@ -48,7 +48,19 @@ defmodule StoryarnWeb.FlowLive.Show do
         </div>
         <div class="flex-1 flex items-center gap-3 ml-4">
           <div>
-            <h1 class="text-lg font-medium">{@flow.name}</h1>
+            <h1
+              :if={@can_edit}
+              id="flow-title"
+              class="text-lg font-medium outline-none rounded px-1 -mx-1 empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
+              contenteditable="true"
+              phx-hook="EditableTitle"
+              phx-update="ignore"
+              data-placeholder={gettext("Untitled")}
+              data-name={@flow.name}
+            >
+              {@flow.name}
+            </h1>
+            <h1 :if={!@can_edit} class="text-lg font-medium">{@flow.name}</h1>
             <div :if={@can_edit} class="flex items-center gap-1 text-xs">
               <span class="text-base-content/50">#</span>
               <span
@@ -244,6 +256,12 @@ defmodule StoryarnWeb.FlowLive.Show do
   @impl true
   def handle_event("add_node", params, socket) do
     with_auth(:edit_content, socket, fn -> NodeEventHandlers.handle_add_node(params, socket) end)
+  end
+
+  def handle_event("save_name", params, socket) do
+    with_auth(:edit_content, socket, fn ->
+      NodeEventHandlers.handle_save_name(params, socket)
+    end)
   end
 
   def handle_event("save_shortcut", params, socket) do

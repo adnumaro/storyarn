@@ -29,6 +29,24 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
     NodeHelpers.add_node(socket, type)
   end
 
+  @spec handle_save_name(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_save_name(%{"name" => name}, socket) do
+    flow = socket.assigns.flow
+
+    case Flows.update_flow(flow, %{name: name}) do
+      {:ok, updated_flow} ->
+        schedule_save_status_reset()
+
+        {:noreply,
+         socket
+         |> assign(:flow, updated_flow)
+         |> assign(:save_status, :saved)}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not save flow name."))}
+    end
+  end
+
   @spec handle_save_shortcut(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_save_shortcut(%{"shortcut" => shortcut}, socket) do
     flow = socket.assigns.flow
