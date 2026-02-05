@@ -233,7 +233,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
   def input(%{type: "textarea"} = assigns) do
     ~H"""
     <div class="fieldset mb-2">
-      <label>
+      <label class="flex flex-col">
         <span :if={@label} class="label mb-1">{@label}</span>
         <textarea
           id={@id}

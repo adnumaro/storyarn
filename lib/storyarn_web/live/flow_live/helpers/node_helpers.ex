@@ -11,6 +11,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
 
+  import StoryarnWeb.FlowLive.Helpers.SocketHelpers
+
   @doc """
   Adds a new node to the flow.
   Returns {:noreply, socket} tuple.
@@ -121,67 +123,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     end
   end
 
-  @doc """
-  Adds a response to a dialogue node.
-  Returns {:noreply, socket} tuple.
-  """
-  @spec add_response(Phoenix.LiveView.Socket.t(), any()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
-  def add_response(socket, node_id) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-    responses = node.data["responses"] || []
-
-    new_id = "r#{length(responses) + 1}_#{:erlang.unique_integer([:positive])}"
-    new_response = %{"id" => new_id, "text" => "", "condition" => nil, "instruction" => nil}
-    updated_data = Map.put(node.data, "responses", responses ++ [new_response])
-
-    case Flows.update_node_data(node, updated_data) do
-      {:ok, updated_node} ->
-        form = FormHelpers.node_data_to_form(updated_node)
-        schedule_save_status_reset()
-
-        {:noreply,
-         socket
-         |> reload_flow_data()
-         |> assign(:selected_node, updated_node)
-         |> assign(:node_form, form)
-         |> assign(:save_status, :saved)
-         |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
-
-      {:error, _} ->
-        {:noreply, socket}
-    end
-  end
-
-  @doc """
-  Removes a response from a dialogue node.
-  Returns {:noreply, socket} tuple.
-  """
-  @spec remove_response(Phoenix.LiveView.Socket.t(), any(), String.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
-  def remove_response(socket, node_id, response_id) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-    responses = node.data["responses"] || []
-    updated_responses = Enum.reject(responses, fn r -> r["id"] == response_id end)
-    updated_data = Map.put(node.data, "responses", updated_responses)
-
-    case Flows.update_node_data(node, updated_data) do
-      {:ok, updated_node} ->
-        form = FormHelpers.node_data_to_form(updated_node)
-        schedule_save_status_reset()
-
-        {:noreply,
-         socket
-         |> reload_flow_data()
-         |> assign(:selected_node, updated_node)
-         |> assign(:node_form, form)
-         |> assign(:save_status, :saved)
-         |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
-
-      {:error, _} ->
-        {:noreply, socket}
-    end
-  end
 
   @doc """
   Updates a node's text content (from TipTap editor).
@@ -260,39 +201,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     end
   end
 
-  @doc """
-  Updates a response field (text or condition) in a dialogue node.
-  Returns {:noreply, socket} tuple.
-  """
-  @spec update_response_field(Phoenix.LiveView.Socket.t(), any(), String.t(), String.t(), any()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
-  def update_response_field(socket, node_id, response_id, field, value) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-    responses = node.data["responses"] || []
-
-    updated_responses = update_response_in_list(responses, response_id, field, value)
-    updated_data = Map.put(node.data, "responses", updated_responses)
-
-    case Flows.update_node_data(node, updated_data) do
-      {:ok, updated_node} ->
-        flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
-        flow_data = Flows.serialize_for_canvas(flow)
-        form = FormHelpers.node_data_to_form(updated_node)
-        schedule_save_status_reset()
-
-        {:noreply,
-         socket
-         |> assign(:flow, flow)
-         |> assign(:flow_data, flow_data)
-         |> assign(:selected_node, updated_node)
-         |> assign(:node_form, form)
-         |> assign(:save_status, :saved)
-         |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
-
-      {:error, _} ->
-        {:noreply, socket}
-    end
-  end
 
   # Private functions
 
@@ -333,26 +241,5 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
            Gettext.gettext(StoryarnWeb.Gettext, "Could not delete node.")
          )}
     end
-  end
-
-  defp update_response_in_list(responses, response_id, field, value) do
-    Enum.map(responses, fn r ->
-      if r["id"] == response_id, do: Map.put(r, field, value), else: r
-    end)
-  end
-
-  defp reload_flow_data(socket) do
-    flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
-    flow_data = Flows.serialize_for_canvas(flow)
-    flow_hubs = Flows.list_hubs(flow.id)
-
-    socket
-    |> assign(:flow, flow)
-    |> assign(:flow_data, flow_data)
-    |> assign(:flow_hubs, flow_hubs)
-  end
-
-  defp schedule_save_status_reset do
-    Process.send_after(self(), :reset_save_status, 2000)
   end
 end

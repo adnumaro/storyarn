@@ -11,7 +11,7 @@ defmodule Storyarn.Pages do
   - `TreeOperations` - Tree reordering and movement operations
   """
 
-  alias Storyarn.Pages.{Block, BlockCrud, Page, PageCrud, PageVersion, TreeOperations, Versioning}
+  alias Storyarn.Pages.{Block, BlockCrud, Page, PageCrud, PageQueries, PageVersion, TreeOperations, Versioning}
   alias Storyarn.Projects.Project
 
   # =============================================================================
@@ -39,61 +39,61 @@ defmodule Storyarn.Pages do
   Returns root pages (no parent) with children preloaded recursively.
   """
   @spec list_pages_tree(id()) :: [page()]
-  defdelegate list_pages_tree(project_id), to: PageCrud
+  defdelegate list_pages_tree(project_id), to: PageQueries
 
   @doc """
   Gets a single page by ID within a project.
   Returns `nil` if the page doesn't exist or doesn't belong to the project.
   """
   @spec get_page(id(), id()) :: page() | nil
-  defdelegate get_page(project_id, page_id), to: PageCrud
+  defdelegate get_page(project_id, page_id), to: PageQueries
 
   @doc """
   Gets a single page by ID within a project.
   Raises `Ecto.NoResultsError` if not found.
   """
   @spec get_page!(id(), id()) :: page()
-  defdelegate get_page!(project_id, page_id), to: PageCrud
+  defdelegate get_page!(project_id, page_id), to: PageQueries
 
   @doc """
   Gets a page with all its ancestors for breadcrumb.
   Returns a list starting from the root and ending with the page itself.
   """
   @spec get_page_with_ancestors(id(), id()) :: [page()] | nil
-  defdelegate get_page_with_ancestors(project_id, page_id), to: PageCrud
+  defdelegate get_page_with_ancestors(project_id, page_id), to: PageQueries
 
   @doc """
   Gets a page with all descendants loaded recursively.
   """
   @spec get_page_with_descendants(id(), id()) :: page() | nil
-  defdelegate get_page_with_descendants(project_id, page_id), to: PageCrud
+  defdelegate get_page_with_descendants(project_id, page_id), to: PageQueries
 
   @doc """
   Gets the children of a page.
   """
   @spec get_children(id()) :: [page()]
-  defdelegate get_children(page_id), to: PageCrud
+  defdelegate get_children(page_id), to: PageQueries
 
   @doc """
   Lists all leaf pages (pages with no children) for a project.
   Useful for speaker selection in dialogue nodes.
   """
   @spec list_leaf_pages(id()) :: [page()]
-  defdelegate list_leaf_pages(project_id), to: PageCrud
+  defdelegate list_leaf_pages(project_id), to: PageQueries
 
   @doc """
   Gets a page by its shortcut within a project.
   Returns nil if not found.
   """
   @spec get_page_by_shortcut(id(), String.t()) :: page() | nil
-  defdelegate get_page_by_shortcut(project_id, shortcut), to: PageCrud
+  defdelegate get_page_by_shortcut(project_id, shortcut), to: PageQueries
 
   @doc """
   Lists all variables (blocks that can be variables) across all pages in a project.
   Used for the condition builder to list available variables.
   """
   @spec list_project_variables(id()) :: [map()]
-  defdelegate list_project_variables(project_id), to: PageCrud
+  defdelegate list_project_variables(project_id), to: PageQueries
 
   # =============================================================================
   # Pages - CRUD Operations
@@ -143,13 +143,13 @@ defmodule Storyarn.Pages do
   Lists all trashed (soft-deleted) pages for a project.
   """
   @spec list_trashed_pages(id()) :: [page()]
-  defdelegate list_trashed_pages(project_id), to: PageCrud
+  defdelegate list_trashed_pages(project_id), to: PageQueries
 
   @doc """
   Gets a trashed page by ID.
   """
   @spec get_trashed_page(id(), id()) :: page() | nil
-  defdelegate get_trashed_page(project_id, page_id), to: PageCrud
+  defdelegate get_trashed_page(project_id, page_id), to: PageQueries
 
   @doc """
   Moves a page to a new parent.
@@ -366,7 +366,7 @@ defmodule Storyarn.Pages do
   """
   @spec validate_reference_target(String.t(), id(), id()) ::
           {:ok, Page.t() | Storyarn.Flows.Flow.t()} | {:error, :not_found | :invalid_type}
-  defdelegate validate_reference_target(target_type, target_id, project_id), to: PageCrud
+  defdelegate validate_reference_target(target_type, target_id, project_id), to: PageQueries
 
   @doc """
   Searches for pages and flows that can be referenced.
@@ -381,7 +381,7 @@ defmodule Storyarn.Pages do
 
     results =
       if "page" in allowed_types do
-        pages = PageCrud.search_pages(project_id, query)
+        pages = PageQueries.search_pages(project_id, query)
 
         page_results =
           Enum.map(pages, fn page ->
@@ -422,7 +422,7 @@ defmodule Storyarn.Pages do
   def get_reference_target(_target_type, nil, _project_id), do: nil
 
   def get_reference_target("page", target_id, project_id) do
-    case PageCrud.get_page(project_id, target_id) do
+    case PageQueries.get_page(project_id, target_id) do
       nil -> nil
       page -> %{type: "page", id: page.id, name: page.name, shortcut: page.shortcut}
     end

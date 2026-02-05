@@ -1,21 +1,16 @@
 /**
  * FlowCanvas - Phoenix LiveView Hook for the narrative flow editor.
  *
- * Uses Rete.js with custom LitElement components for rendering.
+ * Orchestrator: delegates plugin setup to setup.js, event wiring to event_bindings.js,
+ * and CRUD operations to handler modules.
  */
 
-import { LitPlugin, Presets as LitPresets } from "@retejs/lit-plugin";
-import { html } from "lit";
-import { ClassicPreset, NodeEditor } from "rete";
-import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
-import { ConnectionPlugin, Presets as ConnectionPresets } from "rete-connection-plugin";
-import { MinimapPlugin } from "rete-minimap-plugin";
+import { ClassicPreset } from "rete";
 
-// Import our custom components and config
 import "./flow_canvas/components/index.js";
 import { FlowNode } from "./flow_canvas/flow_node.js";
-
-// Import handlers
+import { createPlugins, finalizeSetup } from "./flow_canvas/setup.js";
+import { setupEventHandlers } from "./flow_canvas/event_bindings.js";
 import {
   createCursorHandler,
   createEditorHandlers,
@@ -46,73 +41,17 @@ export const FlowCanvas = {
     this.lockHandler.init();
     this.editorHandlers.init();
 
-    // Create the editor
-    this.editor = new NodeEditor();
-    this.area = new AreaPlugin(container);
-    this.connection = new ConnectionPlugin();
-    this.minimap = new MinimapPlugin();
-
-    // Create render plugin with Lit
-    this.render = new LitPlugin();
-
-    // Configure connection plugin
-    this.connection.addPreset(ConnectionPresets.classic.setup());
-
-    // Track connection data for labels
+    // Create and configure plugins
     this.connectionDataMap = new Map();
-
-    // Store reference for use in customizers
-    const self = this;
-
-    // Configure Lit render plugin with custom components
-    this.render.addPreset(
-      LitPresets.classic.setup({
-        customize: {
-          node(context) {
-            // Create a new object with spread to ensure Lit detects changes
-            const nodeData = {
-              ...context.payload,
-              nodeData: { ...context.payload.nodeData },
-              _updateTs: Date.now(), // Force new reference for re-renders
-            };
-            return ({ emit }) => html`
-              <storyarn-node
-                .data=${nodeData}
-                .emit=${emit}
-                .pagesMap=${self.pagesMap}
-              ></storyarn-node>
-            `;
-          },
-          socket(context) {
-            return () => html`
-              <storyarn-socket .data=${context.payload}></storyarn-socket>
-            `;
-          },
-          connection: (context) => {
-            const conn = context.payload;
-            return ({ path }) => {
-              const connData = this.connectionDataMap.get(conn.id);
-              return html`
-                <storyarn-connection
-                  .path=${path}
-                  .data=${connData}
-                ></storyarn-connection>
-              `;
-            };
-          },
-        },
-      }),
-    );
-
-    // Register plugins
-    this.editor.use(this.area);
-    this.area.use(this.connection);
-    this.area.use(this.render);
-    this.area.use(this.minimap);
-
-    // Track nodes by database ID
     this.nodeMap = new Map();
     this.isLoadingFromServer = false;
+
+    const plugins = createPlugins(container, this);
+    this.editor = plugins.editor;
+    this.area = plugins.area;
+    this.connection = plugins.connection;
+    this.minimap = plugins.minimap;
+    this.render = plugins.render;
 
     // Load initial flow data
     if (flowData.nodes) {
@@ -120,23 +59,14 @@ export const FlowCanvas = {
     }
 
     // Set up event handlers
-    this.setupEventHandlers();
+    setupEventHandlers(this);
 
     // Initialize keyboard handler after editor is ready
     this.keyboardHandler = createKeyboardHandler(this, this.lockHandler);
     this.keyboardHandler.init();
 
-    // Enable zoom and pan
-    AreaExtensions.selectableNodes(this.area, AreaExtensions.selector(), {
-      accumulating: AreaExtensions.accumulateOnCtrl(),
-    });
-
-    // Fit view to content if there are nodes
-    if (flowData.nodes?.length > 0) {
-      setTimeout(async () => {
-        await AreaExtensions.zoomAt(this.area, this.editor.getNodes());
-      }, 100);
-    }
+    // Enable zoom, pan, fit view
+    await finalizeSetup(this.area, this.editor, flowData.nodes?.length > 0);
   },
 
   async loadFlow(flowData) {
@@ -191,159 +121,28 @@ export const FlowCanvas = {
     return connection;
   },
 
-  setupEventHandlers() {
-    this.selectedNodeId = null;
-    this.lastNodeClickTime = 0;
-    this.lastClickedNodeId = null;
+  disconnected() {
+    this.cursorHandler?.pause();
+    this.el.classList.add("opacity-50", "pointer-events-none");
+  },
 
-    // Node position changes (drag)
-    this.area.addPipe((context) => {
-      if (context.type === "nodetranslated") {
-        const node = this.editor.getNode(context.data.id);
-        if (node?.nodeId) {
-          this.editorHandlers.debounceNodeMoved(node.nodeId, context.data.position);
-        }
-      }
-      return context;
-    });
-
-    // Node selection with double-click detection
-    this.area.addPipe((context) => {
-      if (context.type === "nodepicked") {
-        const node = this.editor.getNode(context.data.id);
-        if (node?.nodeId) {
-          const now = Date.now();
-          const isDoubleClick =
-            this.lastClickedNodeId === node.nodeId && now - this.lastNodeClickTime < 300;
-
-          this.lastNodeClickTime = now;
-          this.lastClickedNodeId = node.nodeId;
-          this.selectedNodeId = node.nodeId;
-
-          if (isDoubleClick && node.nodeType === "dialogue") {
-            // Double-click on dialogue node -> screenplay mode
-            this.pushEvent("node_double_clicked", { id: node.nodeId });
-          } else {
-            // Single click -> sidebar mode
-            this.pushEvent("node_selected", { id: node.nodeId });
-          }
-        }
-      }
-      return context;
-    });
-
-    // Connection created
-    this.editor.addPipe((context) => {
-      if (context.type === "connectioncreate" && !this.isLoadingFromServer) {
-        const conn = context.data;
-        const sourceNode = this.editor.getNode(conn.source);
-        const targetNode = this.editor.getNode(conn.target);
-
-        if (sourceNode?.nodeId && targetNode?.nodeId) {
-          this.pushEvent("connection_created", {
-            source_node_id: sourceNode.nodeId,
-            source_pin: conn.sourceOutput,
-            target_node_id: targetNode.nodeId,
-            target_pin: conn.targetInput,
-          });
-        }
-      }
-      return context;
-    });
-
-    // Connection deleted
-    this.editor.addPipe((context) => {
-      if (context.type === "connectionremove" && !this.isLoadingFromServer) {
-        const conn = context.data;
-        const sourceNode = this.editor.getNode(conn.source);
-        const targetNode = this.editor.getNode(conn.target);
-
-        if (sourceNode?.nodeId && targetNode?.nodeId) {
-          this.pushEvent("connection_deleted", {
-            source_node_id: sourceNode.nodeId,
-            target_node_id: targetNode.nodeId,
-          });
-        }
-      }
-      return context;
-    });
-
-    // Handle server events - Editor
-    this.handleEvent("flow_updated", (data) => this.editorHandlers.handleFlowUpdated(data));
-    this.handleEvent("node_added", (data) => this.editorHandlers.handleNodeAdded(data));
-    this.handleEvent("node_removed", (data) => this.editorHandlers.handleNodeRemoved(data));
-    this.handleEvent("node_updated", (data) => this.editorHandlers.handleNodeUpdated(data));
-    this.handleEvent("connection_added", (data) => this.editorHandlers.handleConnectionAdded(data));
-    this.handleEvent("connection_removed", (data) =>
-      this.editorHandlers.handleConnectionRemoved(data),
-    );
-    this.handleEvent("connection_updated", (data) =>
-      this.editorHandlers.handleConnectionUpdated(data),
-    );
-
-    // Handle server events - Collaboration
-    this.handleEvent("cursor_update", (data) => this.cursorHandler.handleCursorUpdate(data));
-    this.handleEvent("cursor_leave", (data) => this.cursorHandler.handleCursorLeave(data));
-    this.handleEvent("locks_updated", (data) => this.lockHandler.handleLocksUpdated(data));
+  reconnected() {
+    this.el.classList.remove("opacity-50", "pointer-events-none");
+    this.cursorHandler?.resume();
+    this.pushEvent("request_flow_refresh", {});
   },
 
   destroyed() {
-    // Cleanup handlers
     this.cursorHandler?.destroy();
     this.keyboardHandler?.destroy();
     this.editorHandlers?.destroy();
 
-    // Cleanup minimap
     if (this.minimap?.element) {
       this.minimap.element.remove();
     }
 
-    // Cleanup area
     if (this.area) {
       this.area.destroy();
     }
   },
 };
-
-// =============================================================================
-// Global Styles
-// =============================================================================
-
-const reteStyles = document.createElement("style");
-reteStyles.textContent = `
-  /* Canvas background with subtle dot grid */
-  #flow-canvas {
-    background-color: oklch(var(--b2, 0.2 0 0));
-    background-image:
-      radial-gradient(circle at center, oklch(var(--bc, 0.8 0 0) / 0.08) 1.5px, transparent 1.5px);
-    background-size: 24px 24px;
-  }
-
-  /* Minimap styling */
-  .rete-minimap {
-    position: absolute;
-    right: 16px;
-    bottom: 16px;
-    width: 180px;
-    height: 120px;
-    background: oklch(var(--b1, 0.25 0 0) / 0.9);
-    border: 1px solid oklch(var(--bc, 0.8 0 0) / 0.2);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
-    overflow: hidden;
-    z-index: 10;
-    backdrop-filter: blur(8px);
-  }
-
-  .rete-minimap .mini-node {
-    border-radius: 2px;
-    opacity: 0.8;
-  }
-
-  .rete-minimap .mini-viewport {
-    border: 2px solid oklch(var(--p, 0.6 0.2 250));
-    background: oklch(var(--p, 0.6 0.2 250) / 0.1);
-    border-radius: 3px;
-  }
-`;
-document.head.appendChild(reteStyles);

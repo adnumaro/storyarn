@@ -102,7 +102,9 @@ export function createEditorHandlers(hook) {
       if (existingNode.nodeType === "dialogue" && responsesChanged) {
         await this.rebuildDialogueNode(id, existingNode, nodeData);
       } else {
-        existingNode.nodeData = nodeData;
+        // Update nodeData with new reference to trigger Lit re-render
+        existingNode.nodeData = { ...nodeData };
+        existingNode._updateTs = Date.now();
         await hook.area.update("node", existingNode.id);
       }
     },

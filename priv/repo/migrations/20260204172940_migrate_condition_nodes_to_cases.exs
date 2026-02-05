@@ -13,9 +13,10 @@ defmodule Storyarn.Repo.Migrations.MigrateConditionNodesToCases do
   def up do
     # Find all condition nodes that don't have a "cases" key in their data
     query =
-      from n in "flow_nodes",
+      from(n in "flow_nodes",
         where: n.type == "condition",
         select: {n.id, n.data}
+      )
 
     # Fetch and update each node
     for {id, data} <- repo().all(query) do
@@ -38,9 +39,10 @@ defmodule Storyarn.Repo.Migrations.MigrateConditionNodesToCases do
   def down do
     # Remove the "cases" key from condition nodes (revert to old format)
     query =
-      from n in "flow_nodes",
+      from(n in "flow_nodes",
         where: n.type == "condition",
         select: {n.id, n.data}
+      )
 
     for {id, data} <- repo().all(query) do
       if Map.has_key?(data, "cases") do

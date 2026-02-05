@@ -13,6 +13,7 @@ defmodule StoryarnWeb.PageLive.Show do
   alias StoryarnWeb.PageLive.Components.Banner
   alias StoryarnWeb.PageLive.Components.ContentTab
   alias StoryarnWeb.PageLive.Components.PageAvatar
+  alias StoryarnWeb.PageLive.Components.PageColor
   alias StoryarnWeb.PageLive.Components.PageTitle
   alias StoryarnWeb.PageLive.Components.ReferencesTab
   alias StoryarnWeb.PageLive.Helpers.PageTreeHelpers
@@ -72,14 +73,22 @@ defmodule StoryarnWeb.PageLive.Show do
               current_user={@current_scope.user}
               can_edit={@can_edit}
             />
-            <.live_component
-              module={PageTitle}
-              id="page-title"
-              page={@page}
-              project={@project}
-              current_user_id={@current_scope.user.id}
-              can_edit={@can_edit}
-            />
+            <div class="flex-1">
+              <.live_component
+                module={PageTitle}
+                id="page-title"
+                page={@page}
+                project={@project}
+                current_user_id={@current_scope.user.id}
+                can_edit={@can_edit}
+              />
+              <.live_component
+                module={PageColor}
+                id="page-color"
+                page={@page}
+                can_edit={@can_edit}
+              />
+            </div>
           </div>
         </div>
         <%!-- Save indicator (positioned at header level) --%>
@@ -341,6 +350,19 @@ defmodule StoryarnWeb.PageLive.Show do
   end
 
   def handle_info({:page_title, :error, message}, socket) do
+    {:noreply, put_flash(socket, :error, message)}
+  end
+
+  # Handle messages from PageColor LiveComponent
+  def handle_info({:page_color, :page_updated, page}, socket) do
+    {:noreply,
+     socket
+     |> assign(:page, page)
+     |> assign(:save_status, :saved)
+     |> schedule_save_status_reset()}
+  end
+
+  def handle_info({:page_color, :error, message}, socket) do
     {:noreply, put_flash(socket, :error, message)}
   end
 

@@ -9,201 +9,6 @@ defmodule Storyarn.Pages.PageCrud do
   alias Storyarn.Shortcuts
 
   # =============================================================================
-  # Tree Operations
-  # =============================================================================
-
-  def list_pages_tree(project_id) do
-    from(p in Page,
-      where: p.project_id == ^project_id and is_nil(p.parent_id) and is_nil(p.deleted_at),
-      order_by: [asc: p.position, asc: p.name]
-    )
-    |> Repo.all()
-    |> preload_children_recursive()
-  end
-
-  def get_page(project_id, page_id) do
-    Page
-    |> where(project_id: ^project_id, id: ^page_id)
-    |> where([p], is_nil(p.deleted_at))
-    |> preload([:blocks, :avatar_asset, :banner_asset])
-    |> Repo.one()
-  end
-
-  def get_page!(project_id, page_id) do
-    Page
-    |> where(project_id: ^project_id, id: ^page_id)
-    |> where([p], is_nil(p.deleted_at))
-    |> preload([:blocks, :avatar_asset, :banner_asset])
-    |> Repo.one!()
-  end
-
-  def get_page_with_ancestors(project_id, page_id) do
-    case get_page(project_id, page_id) do
-      nil -> nil
-      page -> build_ancestor_chain(page, [page])
-    end
-  end
-
-  def get_page_with_descendants(project_id, page_id) do
-    case get_page(project_id, page_id) do
-      nil -> nil
-      page -> page |> preload_children_recursive() |> List.wrap() |> List.first()
-    end
-  end
-
-  def get_children(page_id) do
-    from(p in Page,
-      where: p.parent_id == ^page_id and is_nil(p.deleted_at),
-      order_by: [asc: p.position, asc: p.name],
-      preload: [:avatar_asset]
-    )
-    |> Repo.all()
-  end
-
-  @doc """
-  Lists all leaf pages (pages with no children) for a project.
-  Useful for speaker selection in dialogue nodes.
-  """
-  def list_leaf_pages(project_id) do
-    # Subquery to find all pages that are parents (excluding deleted children)
-    parent_ids_subquery =
-      from(p in Page,
-        where: p.project_id == ^project_id and not is_nil(p.parent_id) and is_nil(p.deleted_at),
-        select: p.parent_id
-      )
-
-    from(p in Page,
-      where:
-        p.project_id == ^project_id and p.id not in subquery(parent_ids_subquery) and
-          is_nil(p.deleted_at),
-      order_by: [asc: p.position, asc: p.name],
-      preload: [:avatar_asset]
-    )
-    |> Repo.all()
-  end
-
-  @doc """
-  Searches pages by name or shortcut for reference selection.
-  Returns pages matching the query, limited to 10 results.
-  """
-  def search_pages(project_id, query) when is_binary(query) do
-    query = String.trim(query)
-
-    if query == "" do
-      # Return recent pages if no query
-      from(p in Page,
-        where: p.project_id == ^project_id and is_nil(p.deleted_at),
-        order_by: [desc: p.updated_at],
-        limit: 10
-      )
-      |> Repo.all()
-    else
-      search_term = "%#{query}%"
-
-      from(p in Page,
-        where: p.project_id == ^project_id and is_nil(p.deleted_at),
-        where: ilike(p.name, ^search_term) or ilike(p.shortcut, ^search_term),
-        order_by: [asc: p.name],
-        limit: 10
-      )
-      |> Repo.all()
-    end
-  end
-
-  @doc """
-  Gets a page by its shortcut within a project.
-  Returns nil if not found.
-  """
-  def get_page_by_shortcut(project_id, shortcut) when is_binary(shortcut) do
-    from(p in Page,
-      where: p.project_id == ^project_id and p.shortcut == ^shortcut and is_nil(p.deleted_at),
-      preload: [:blocks, :avatar_asset]
-    )
-    |> Repo.one()
-  end
-
-  def get_page_by_shortcut(_project_id, _shortcut), do: nil
-
-  @doc """
-  Lists all variables (blocks that can be variables) across all pages in a project.
-
-  Returns a list of maps with:
-  - page_id, page_name, page_shortcut
-  - block_id, variable_name, block_type
-  - options (for select/multi_select types)
-
-  Used for the condition builder to list available variables.
-  """
-  def list_project_variables(project_id) do
-    alias Storyarn.Pages.Block
-
-    # Non-variable types (divider, reference) are excluded
-    variable_types = ~w(text rich_text number select multi_select boolean date)
-
-    from(b in Block,
-      join: p in Page,
-      on: b.page_id == p.id,
-      where:
-        p.project_id == ^project_id and
-          is_nil(p.deleted_at) and
-          is_nil(b.deleted_at) and
-          b.type in ^variable_types and
-          not is_nil(b.variable_name) and
-          b.variable_name != "" and
-          b.is_constant == false,
-      select: %{
-        page_id: p.id,
-        page_name: p.name,
-        page_shortcut: coalesce(p.shortcut, fragment("CAST(? AS TEXT)", p.id)),
-        block_id: b.id,
-        variable_name: b.variable_name,
-        block_type: b.type,
-        config: b.config
-      },
-      order_by: [asc: p.name, asc: b.position]
-    )
-    |> Repo.all()
-    |> Enum.map(fn var ->
-      # Extract options for select types
-      options =
-        case var.block_type do
-          type when type in ["select", "multi_select"] ->
-            var.config["options"] || []
-
-          _ ->
-            nil
-        end
-
-      var
-      |> Map.put(:options, options)
-      |> Map.delete(:config)
-    end)
-  end
-
-  @doc """
-  Validates that a reference target exists and belongs to the project.
-  Returns {:ok, target} or {:error, reason}.
-  """
-  def validate_reference_target(target_type, target_id, project_id) do
-    case target_type do
-      "page" ->
-        case get_page(project_id, target_id) do
-          nil -> {:error, :not_found}
-          page -> {:ok, page}
-        end
-
-      "flow" ->
-        case Storyarn.Flows.get_flow(project_id, target_id) do
-          nil -> {:error, :not_found}
-          flow -> {:ok, flow}
-        end
-
-      _ ->
-        {:error, :invalid_type}
-    end
-  end
-
-  # =============================================================================
   # CRUD Operations
   # =============================================================================
 
@@ -306,29 +111,6 @@ defmodule Storyarn.Pages.PageCrud do
     Repo.delete(page)
   end
 
-  @doc """
-  Lists all trashed (soft-deleted) pages for a project.
-  """
-  def list_trashed_pages(project_id) do
-    from(p in Page,
-      where: p.project_id == ^project_id and not is_nil(p.deleted_at),
-      order_by: [desc: p.deleted_at],
-      preload: [:avatar_asset]
-    )
-    |> Repo.all()
-  end
-
-  @doc """
-  Gets a trashed page by ID.
-  """
-  def get_trashed_page(project_id, page_id) do
-    Page
-    |> where(project_id: ^project_id, id: ^page_id)
-    |> where([p], not is_nil(p.deleted_at))
-    |> preload([:avatar_asset])
-    |> Repo.one()
-  end
-
   def move_page(%Page{} = page, parent_id, position \\ nil) do
     with :ok <- validate_parent(page, parent_id) do
       position = position || next_position(page.project_id, parent_id)
@@ -370,21 +152,6 @@ defmodule Storyarn.Pages.PageCrud do
   # Private Helpers
   # =============================================================================
 
-  defp build_ancestor_chain(%Page{parent_id: nil}, chain), do: chain
-
-  defp build_ancestor_chain(%Page{parent_id: parent_id, project_id: project_id}, chain) do
-    parent =
-      Page
-      |> Repo.get!(parent_id)
-      |> Repo.preload(:avatar_asset)
-
-    if parent.project_id == project_id do
-      build_ancestor_chain(parent, [parent | chain])
-    else
-      chain
-    end
-  end
-
   defp validate_parent_page(page, parent) do
     cond do
       parent.project_id != page.project_id ->
@@ -396,24 +163,6 @@ defmodule Storyarn.Pages.PageCrud do
       true ->
         :ok
     end
-  end
-
-  defp preload_children_recursive(pages) when is_list(pages) do
-    Enum.map(pages, &preload_children_recursive/1)
-  end
-
-  defp preload_children_recursive(%Page{} = page) do
-    page = Repo.preload(page, :avatar_asset)
-
-    children =
-      from(p in Page,
-        where: p.parent_id == ^page.id and is_nil(p.deleted_at),
-        order_by: [asc: p.position, asc: p.name]
-      )
-      |> Repo.all()
-      |> preload_children_recursive()
-
-    %{page | children: children}
   end
 
   defp get_descendant_ids(page_id) do

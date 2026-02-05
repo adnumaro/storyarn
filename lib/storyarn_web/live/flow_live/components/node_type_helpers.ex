@@ -2,10 +2,8 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
   @moduledoc """
   Helper functions and components for flow node types.
 
-  Provides:
-  - `node_type_icon/1` - Component to render the appropriate icon for a node type
-  - `node_type_label/1` - Returns the translated label for a node type
-  - `default_node_data/1` - Returns the default data structure for a node type
+  Type metadata (icons, labels, defaults) is delegated to `NodeTypeRegistry`.
+  This module provides Phoenix components and utility functions.
   """
 
   use Phoenix.Component
@@ -13,110 +11,32 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
 
   import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
 
+  alias StoryarnWeb.FlowLive.NodeTypeRegistry
+
   @doc """
   Renders an icon for the given node type.
 
   ## Attributes
 
-  * `:type` - Required. The node type string ("dialogue", "hub", "condition", "instruction", "jump")
+  * `:type` - Required. The node type string
   """
   attr :type, :string, required: true
 
   def node_type_icon(assigns) do
-    icon =
-      case assigns.type do
-        "entry" -> "play"
-        "exit" -> "square"
-        "dialogue" -> "message-square"
-        "hub" -> "git-merge"
-        "condition" -> "git-branch"
-        "instruction" -> "zap"
-        "jump" -> "arrow-down-right"
-        _ -> "circle"
-      end
-
-    assigns = assign(assigns, :icon, icon)
+    assigns = assign(assigns, :icon, NodeTypeRegistry.icon_name(assigns.type))
 
     ~H"""
     <.icon name={@icon} class="size-4" />
     """
   end
 
-  @doc """
-  Returns the translated label for a node type.
-
-  ## Examples
-
-      iex> node_type_label("dialogue")
-      "Dialogue"
-  """
+  @doc "Returns the translated label for a node type."
   @spec node_type_label(String.t()) :: String.t()
-  def node_type_label(type) do
-    case type do
-      "entry" -> gettext("Entry")
-      "exit" -> gettext("Exit")
-      "dialogue" -> gettext("Dialogue")
-      "hub" -> gettext("Hub")
-      "condition" -> gettext("Condition")
-      "instruction" -> gettext("Instruction")
-      "jump" -> gettext("Jump")
-      _ -> type
-    end
-  end
+  defdelegate node_type_label(type), to: NodeTypeRegistry, as: :label
 
-  @doc """
-  Returns the default data map for a given node type.
-
-  ## Examples
-
-      iex> default_node_data("dialogue")
-      %{"speaker_page_id" => nil, "text" => "", "responses" => []}
-  """
+  @doc "Returns the default data map for a given node type."
   @spec default_node_data(String.t()) :: map()
-  def default_node_data(type) do
-    case type do
-      "entry" ->
-        %{}
-
-      "exit" ->
-        %{"label" => ""}
-
-      "dialogue" ->
-        %{
-          "speaker_page_id" => nil,
-          "text" => "",
-          "stage_directions" => "",
-          "menu_text" => "",
-          "audio_asset_id" => nil,
-          "technical_id" => "",
-          "localization_id" => generate_localization_id(),
-          # Logic fields (Phase 4)
-          "input_condition" => "",
-          "output_instruction" => "",
-          "responses" => []
-        }
-
-      "hub" ->
-        %{"hub_id" => "", "color" => "purple"}
-
-      "condition" ->
-        %{
-          # Condition (visual builder)
-          "condition" => %{"logic" => "all", "rules" => []},
-          # Switch mode: each rule becomes an output
-          "switch_mode" => false
-        }
-
-      "instruction" ->
-        %{"action" => "", "parameters" => ""}
-
-      "jump" ->
-        %{"target_hub_id" => ""}
-
-      _ ->
-        %{}
-    end
-  end
+  defdelegate default_node_data(type), to: NodeTypeRegistry, as: :default_data
 
   @doc """
   Generates a technical ID with format: {flow_slug}_{speaker}_{speaker_count}
@@ -158,7 +78,6 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
     end
   end
 
-  # Generates a short unique suffix (6 chars hex)
   defp unique_suffix do
     :erlang.unique_integer([:positive])
     |> Integer.to_string(16)
@@ -180,7 +99,6 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
     |> length()
   end
 
-  # Normalizes a string for use in an ID (lowercase, alphanumeric + underscores)
   defp normalize_for_id(text) when is_binary(text) do
     text
     |> String.downcase()
@@ -190,7 +108,6 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
 
   defp normalize_for_id(_), do: ""
 
-  # Strips HTML tags from text
   defp strip_html(text) when is_binary(text) do
     text
     |> String.replace(~r/<[^>]+>/, " ")
@@ -199,5 +116,4 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
   end
 
   defp strip_html(_), do: ""
-
 end

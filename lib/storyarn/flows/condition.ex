@@ -99,8 +99,9 @@ defmodule Storyarn.Flows.Condition do
   Returns true if the operator requires a value input.
   """
   @spec operator_requires_value?(String.t()) :: boolean()
-  def operator_requires_value?(operator) when operator in ["is_empty", "is_true", "is_false", "is_nil"],
-    do: false
+  def operator_requires_value?(operator)
+      when operator in ["is_empty", "is_true", "is_false", "is_nil"],
+      do: false
 
   def operator_requires_value?(_operator), do: true
 
@@ -115,7 +116,8 @@ defmodule Storyarn.Flows.Condition do
 
   def parse(condition_string) when is_binary(condition_string) do
     case Jason.decode(condition_string) do
-      {:ok, %{"logic" => logic, "rules" => rules}} when logic in @logic_types and is_list(rules) ->
+      {:ok, %{"logic" => logic, "rules" => rules}}
+      when logic in @logic_types and is_list(rules) ->
         %{
           "logic" => logic,
           "rules" => Enum.map(rules, &normalize_rule/1)

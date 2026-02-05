@@ -130,6 +130,24 @@ export function createCursorHandler(hook) {
     },
 
     /**
+     * Pauses cursor tracking (on disconnect).
+     */
+    pause() {
+      if (hook.mouseMoveHandler) {
+        hook.el.removeEventListener("mousemove", hook.mouseMoveHandler);
+      }
+    },
+
+    /**
+     * Resumes cursor tracking (on reconnect).
+     */
+    resume() {
+      if (hook.mouseMoveHandler) {
+        hook.el.addEventListener("mousemove", hook.mouseMoveHandler);
+      }
+    },
+
+    /**
      * Cleans up cursor resources.
      */
     destroy() {

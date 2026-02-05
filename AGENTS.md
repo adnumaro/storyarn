@@ -401,3 +401,94 @@ And **never** do this:
 <!-- phoenix:liveview-end -->
 
 <!-- usage-rules-end -->
+
+---
+
+## Storyarn-Specific: Event Contracts
+
+### Elixir → JS (pushEvent / handleEvent)
+
+| Event Name | Direction | Payload | Source (Elixir) | Handler (JS) |
+|---|---|---|---|---|
+| `node_added` | Server→Client | `%{id, type, position: %{x, y}, data}` | `node_helpers.ex`, `show.ex` | `editor_handlers.js` |
+| `node_removed` | Server→Client | `%{id}` | `node_helpers.ex` | `editor_handlers.js` |
+| `node_updated` | Server→Client | `%{id, data}` | `show.ex`, `node_helpers.ex` | `editor_handlers.js` |
+| `connection_added` | Server→Client | `%{id, source_node_id, source_pin, target_node_id, target_pin}` | `connection_helpers.ex` | `editor_handlers.js` |
+| `connection_removed` | Server→Client | `%{source_node_id, target_node_id}` | `connection_helpers.ex` | `editor_handlers.js` |
+| `connection_updated` | Server→Client | `%{id, label, condition}` | `collaboration_helpers.ex` | `editor_handlers.js` |
+| `cursor_update` | Server→Client | `%{user_id, x, y, color, email}` | `show.ex` | `cursor_handler.js` |
+| `cursor_leave` | Server→Client | `%{user_id}` | `show.ex` | `cursor_handler.js` |
+| `locks_updated` | Server→Client | `%{locks: map}` | `show.ex` | `lock_handler.js` |
+| `flow_updated` | Server→Client | full flow data | `show.ex` | `editor_handlers.js` |
+| `mention_suggestions_result` | Server→Client | `%{items: list}` | `show.ex` | `tiptap_editor.js` |
+
+### JS → Elixir (pushEvent)
+
+| Event Name | Direction | Payload | Source (JS) | Handler (Elixir) |
+|---|---|---|---|---|
+| `add_node` | Client→Server | `%{type}` | dropdown button | `show.ex` |
+| `node_selected` | Client→Server | `%{id}` | `flow_canvas.js` | `show.ex` |
+| `node_double_clicked` | Client→Server | `%{id}` | `flow_canvas.js` | `show.ex` |
+| `node_moved` | Client→Server | `%{id, position_x, position_y}` | `editor_handlers.js` | `show.ex` |
+| `delete_node` | Client→Server | `%{id}` | `keyboard_handler.js` | `show.ex` |
+| `duplicate_node` | Client→Server | `%{id}` | `keyboard_handler.js` | `show.ex` |
+| `connection_created` | Client→Server | `%{source_node_id, source_pin, target_node_id, target_pin}` | `flow_canvas.js` | `show.ex` |
+| `connection_deleted` | Client→Server | `%{source_node_id, target_node_id}` | `flow_canvas.js` | `show.ex` |
+| `cursor_moved` | Client→Server | `%{x, y}` | `cursor_handler.js` | `show.ex` |
+| `update_node_data` | Client→Server | `%{node: params}` | form phx-change | `show.ex` |
+| `update_node_text` | Client→Server | `%{id, content}` | `tiptap_editor.js` | `show.ex` |
+| `update_node_field` | Client→Server | `%{field, value}` | phx-blur inputs | `show.ex` |
+| `mention_suggestions` | Client→Server | `%{query}` | `tiptap_editor.js` | `show.ex` |
+| `update_condition_builder` | Client→Server | condition params | `condition_builder.ex` | `show.ex` |
+| `update_response_condition_builder` | Client→Server | condition + response params | `condition_builder.ex` | `show.ex` |
+| `toggle_switch_mode` | Client→Server | `%{}` | checkbox | `show.ex` |
+
+### Hook Data Attributes
+
+| Attribute | Set By (Elixir) | Read By (JS) | Purpose |
+|---|---|---|---|
+| `data-flow` | `show.ex` render | `flow_canvas.js` mounted | Initial flow JSON |
+| `data-pages` | `show.ex` render | `flow_canvas.js` mounted | Pages map JSON |
+| `data-locks` | `show.ex` render | `flow_canvas.js` mounted | Initial lock state |
+| `data-user-id` | `show.ex` render | `flow_canvas.js` mounted | Current user ID |
+| `data-user-color` | `show.ex` render | `flow_canvas.js` mounted | User collaboration color |
+| `data-node-id` | `properties_panels.ex` | `tiptap_editor.js` mounted | Node ID for text updates |
+| `data-content` | `properties_panels.ex` | `tiptap_editor.js` mounted | Initial editor content |
+| `data-editable` | `properties_panels.ex` | `tiptap_editor.js` mounted | Edit permission flag |
+| `data-shortcut` | `show.ex` render | `editable_shortcut` hook | Current shortcut value |
+
+### Node Data Shape by Type
+
+| Type | Fields | Consumed By |
+|---|---|---|
+| `entry` | `%{}` | `node_type_helpers.ex`, `storyarn_node.js` |
+| `exit` | `%{label}` | `properties_panels.ex`, `storyarn_node.js` |
+| `dialogue` | `%{speaker_page_id, text, stage_directions, menu_text, audio_asset_id, technical_id, localization_id, input_condition, output_instruction, responses: [%{id, text, condition, instruction}]}` | `properties_panels.ex`, `storyarn_node.js`, `node_helpers.ex`, `form_helpers.ex` |
+| `hub` | `%{hub_id, color}` | `properties_panels.ex`, `storyarn_node.js` |
+| `condition` | `%{condition: %{logic, rules: [%{id, page, variable, operator, value, label}]}, switch_mode}` | `properties_panels.ex`, `storyarn_node.js`, `condition_builder.ex` |
+| `instruction` | `%{action, parameters}` | `properties_panels.ex`, `storyarn_node.js` |
+| `jump` | `%{target_hub_id}` | `properties_panels.ex`, `storyarn_node.js` |
+
+### File Size Limits
+
+| Type | Max Lines |
+|------|-----------|
+| LiveView module | 300 |
+| Function component | 200 |
+| Helper module | 200 |
+| Context facade | 100 |
+| Context submodule | 250 |
+| JS Hook (orchestrator) | 100 |
+| JS Handler | 150 |
+| JS LitElement (excl CSS) | 200 |
+
+### AI Agent Checklist
+
+Before making changes to the flow editor:
+
+1. **Check event contracts** - Is the event you're adding/modifying documented above?
+2. **Check data shapes** - Does your change affect a node data shape?
+3. **Check file size limits** - Will your change push a file over the limit?
+4. **Run `mix compile --warnings-as-errors`** after changes
+5. **Run `mix test`** after changes
+6. **Check both Elixir AND JS** - Most events have handlers on both sides

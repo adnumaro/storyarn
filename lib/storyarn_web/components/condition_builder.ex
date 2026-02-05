@@ -69,7 +69,13 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
 
     ~H"""
     <%= if @wrap_in_form do %>
-      <form id={@id} phx-change={@on_change} phx-target={@target} onsubmit="return false" class="space-y-3">
+      <form
+        id={@id}
+        phx-change={@on_change}
+        phx-target={@target}
+        onsubmit="return false"
+        class="space-y-3"
+      >
         <.context_hidden_inputs context={@context} />
         <.condition_builder_content
           parsed_condition={@parsed_condition}
@@ -164,7 +170,10 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
     <%!-- Visual builder mode --%>
     <div :if={!@expression_mode} class="space-y-3">
       <%!-- Logic toggle (only show when 2+ rules AND not in switch mode) --%>
-      <div :if={length(@parsed_condition["rules"]) >= 2 && !@switch_mode} class="flex items-center gap-2 text-xs">
+      <div
+        :if={length(@parsed_condition["rules"]) >= 2 && !@switch_mode}
+        class="flex items-center gap-2 text-xs"
+      >
         <span class="text-base-content/60">{gettext("Match")}</span>
         <div class="join">
           <button
@@ -254,7 +263,8 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
 
   defp condition_rule(assigns) do
     # Find the selected variable to get its type and options
-    selected_var = find_variable(assigns.variables, assigns.rule["page"], assigns.rule["variable"])
+    selected_var =
+      find_variable(assigns.variables, assigns.rule["page"], assigns.rule["variable"])
 
     # Get operators for the variable type
     var_type = if selected_var, do: selected_var.block_type, else: "text"

@@ -9,6 +9,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
 
+  import StoryarnWeb.FlowLive.Helpers.SocketHelpers
+
   # Note: FormHelpers import removed - connection forms no longer need condition fields
 
   @doc """
@@ -84,15 +86,4 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
      })}
   end
 
-  # Private functions
-
-  defp reload_flow_data(socket) do
-    flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
-    flow_data = Flows.serialize_for_canvas(flow)
-    socket |> assign(:flow, flow) |> assign(:flow_data, flow_data)
-  end
-
-  defp schedule_save_status_reset do
-    Process.send_after(self(), :reset_save_status, 2000)
-  end
 end

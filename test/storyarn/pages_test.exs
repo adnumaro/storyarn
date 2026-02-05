@@ -443,7 +443,7 @@ defmodule Storyarn.PagesTest do
       _page1 = page_fixture(project, %{name: "Character Jaime"})
       _page2 = page_fixture(project, %{name: "Location Tavern"})
 
-      results = Pages.PageCrud.search_pages(project.id, "Jaime")
+      results = Pages.PageQueries.search_pages(project.id, "Jaime")
 
       assert length(results) == 1
       assert Enum.at(results, 0).name == "Character Jaime"
@@ -455,7 +455,7 @@ defmodule Storyarn.PagesTest do
       {:ok, page1} = Pages.create_page(project, %{name: "Jaime", shortcut: "mc.jaime"})
       _page2 = page_fixture(project, %{name: "Tavern"})
 
-      results = Pages.PageCrud.search_pages(project.id, "mc")
+      results = Pages.PageQueries.search_pages(project.id, "mc")
 
       assert length(results) == 1
       assert Enum.at(results, 0).id == page1.id
@@ -467,7 +467,7 @@ defmodule Storyarn.PagesTest do
       _page1 = page_fixture(project, %{name: "Page 1"})
       _page2 = page_fixture(project, %{name: "Page 2"})
 
-      results = Pages.PageCrud.search_pages(project.id, "")
+      results = Pages.PageQueries.search_pages(project.id, "")
 
       assert length(results) == 2
     end
@@ -1055,7 +1055,7 @@ defmodule Storyarn.PagesTest do
 
       {:ok, _} = Pages.trash_page(page2)
 
-      results = Pages.PageCrud.search_pages(project.id, "Character")
+      results = Pages.PageQueries.search_pages(project.id, "Character")
 
       assert length(results) == 1
       assert Enum.at(results, 0).name == "Active Character"

@@ -25,11 +25,15 @@ defmodule Storyarn.Pages.Page do
   # Examples: mc.jaime, loc.tavern, items.sword, quest-1
   @shortcut_format ~r/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$|^[a-z0-9]$/
 
+  # Color format: hex color with 3, 6, or 8 characters (e.g., #fff, #3b82f6, #3b82f680)
+  @color_format ~r/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
+
   @type t :: %__MODULE__{
           id: integer() | nil,
           name: String.t() | nil,
           shortcut: String.t() | nil,
           description: String.t() | nil,
+          color: String.t() | nil,
           position: integer() | nil,
           avatar_asset_id: integer() | nil,
           avatar_asset: Asset.t() | Ecto.Association.NotLoaded.t() | nil,
@@ -52,6 +56,7 @@ defmodule Storyarn.Pages.Page do
     field :name, :string
     field :shortcut, :string
     field :description, :string
+    field :color, :string
     field :position, :integer, default: 0
     field :deleted_at, :utc_datetime
 
@@ -76,6 +81,7 @@ defmodule Storyarn.Pages.Page do
       :name,
       :shortcut,
       :description,
+      :color,
       :avatar_asset_id,
       :banner_asset_id,
       :parent_id,
@@ -84,6 +90,7 @@ defmodule Storyarn.Pages.Page do
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
     |> validate_shortcut()
+    |> validate_color()
     |> foreign_key_constraint(:parent_id)
     |> foreign_key_constraint(:avatar_asset_id)
     |> foreign_key_constraint(:banner_asset_id)
@@ -98,6 +105,7 @@ defmodule Storyarn.Pages.Page do
       :name,
       :shortcut,
       :description,
+      :color,
       :avatar_asset_id,
       :banner_asset_id,
       :parent_id,
@@ -106,6 +114,7 @@ defmodule Storyarn.Pages.Page do
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
     |> validate_shortcut()
+    |> validate_color()
     |> foreign_key_constraint(:parent_id)
     |> foreign_key_constraint(:avatar_asset_id)
     |> foreign_key_constraint(:banner_asset_id)
@@ -162,5 +171,17 @@ defmodule Storyarn.Pages.Page do
       name: :pages_project_shortcut_unique,
       message: "is already taken in this project"
     )
+  end
+
+  defp validate_color(changeset) do
+    case get_change(changeset, :color) do
+      nil ->
+        changeset
+
+      _color ->
+        validate_format(changeset, :color, @color_format,
+          message: "must be a valid hex color (e.g., #3b82f6)"
+        )
+    end
   end
 end
