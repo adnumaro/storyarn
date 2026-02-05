@@ -200,15 +200,6 @@ export class StoryarnNode extends LitElement {
 
     // Debug logging
     if (isDialogue) {
-      console.log("[StoryarnNode] Rendering dialogue:", {
-        nodeId: node.nodeId,
-        speakerId,
-        speakerPage,
-        hasAudio,
-        hasInputCondition,
-        hasOutputInstruction,
-        pagesMapKeys: Object.keys(this.pagesMap || {}),
-      });
     }
 
     // Audio icon SVG
@@ -238,13 +229,17 @@ export class StoryarnNode extends LitElement {
                 <span>${config.label}</span>
               `
           }
-          ${showIndicators ? html`
+          ${
+            showIndicators
+              ? html`
             <span class="header-indicators">
               ${hasInputCondition ? html`<span class="logic-indicator input-condition" title="Has input condition">🔒</span>` : ""}
               ${hasOutputInstruction ? html`<span class="logic-indicator output-instruction" title="Has output instruction">⚡</span>` : ""}
               ${hasAudio ? html`<span class="audio-indicator" title="Has audio">${unsafeSVG(audioIcon)}</span>` : ""}
             </span>
-          ` : ""}
+          `
+              : ""
+          }
         </div>
         ${
           isDialogue && stageDirections

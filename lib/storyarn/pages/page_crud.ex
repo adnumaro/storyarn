@@ -111,6 +111,76 @@ defmodule Storyarn.Pages.PageCrud do
   end
 
   @doc """
+  Gets a page by its shortcut within a project.
+  Returns nil if not found.
+  """
+  def get_page_by_shortcut(project_id, shortcut) when is_binary(shortcut) do
+    from(p in Page,
+      where: p.project_id == ^project_id and p.shortcut == ^shortcut and is_nil(p.deleted_at),
+      preload: [:blocks, :avatar_asset]
+    )
+    |> Repo.one()
+  end
+
+  def get_page_by_shortcut(_project_id, _shortcut), do: nil
+
+  @doc """
+  Lists all variables (blocks that can be variables) across all pages in a project.
+
+  Returns a list of maps with:
+  - page_id, page_name, page_shortcut
+  - block_id, variable_name, block_type
+  - options (for select/multi_select types)
+
+  Used for the condition builder to list available variables.
+  """
+  def list_project_variables(project_id) do
+    alias Storyarn.Pages.Block
+
+    # Non-variable types (divider, reference) are excluded
+    variable_types = ~w(text rich_text number select multi_select boolean date)
+
+    from(b in Block,
+      join: p in Page,
+      on: b.page_id == p.id,
+      where:
+        p.project_id == ^project_id and
+          is_nil(p.deleted_at) and
+          is_nil(b.deleted_at) and
+          b.type in ^variable_types and
+          not is_nil(b.variable_name) and
+          b.variable_name != "" and
+          b.is_constant == false,
+      select: %{
+        page_id: p.id,
+        page_name: p.name,
+        page_shortcut: coalesce(p.shortcut, fragment("CAST(? AS TEXT)", p.id)),
+        block_id: b.id,
+        variable_name: b.variable_name,
+        block_type: b.type,
+        config: b.config
+      },
+      order_by: [asc: p.name, asc: b.position]
+    )
+    |> Repo.all()
+    |> Enum.map(fn var ->
+      # Extract options for select types
+      options =
+        case var.block_type do
+          type when type in ["select", "multi_select"] ->
+            var.config["options"] || []
+
+          _ ->
+            nil
+        end
+
+      var
+      |> Map.put(:options, options)
+      |> Map.delete(:config)
+    end)
+  end
+
+  @doc """
   Validates that a reference target exists and belongs to the project.
   Returns {:ok, target} or {:error, reason}.
   """

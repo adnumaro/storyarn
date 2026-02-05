@@ -1,6 +1,6 @@
 defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   @moduledoc """
-  Form building helpers for flow nodes and connections.
+  Form building helpers for flow nodes.
   """
 
   import Phoenix.Component, only: [to_form: 2]
@@ -12,20 +12,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   def node_data_to_form(node) do
     data = extract_node_form_data(node.type, node.data)
     to_form(data, as: :node)
-  end
-
-  @doc """
-  Builds a form from connection data for the properties panel.
-  """
-  @spec connection_data_to_form(map()) :: Phoenix.HTML.Form.t()
-  def connection_data_to_form(connection) do
-    data = %{
-      "label" => connection.label || "",
-      "condition" => connection.condition || "",
-      "condition_order" => connection.condition_order || 0
-    }
-
-    to_form(data, as: :connection)
   end
 
   @doc """

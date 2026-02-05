@@ -15,6 +15,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Assets
   alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Flows.Condition
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Pages
   alias Storyarn.Projects
@@ -126,14 +127,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           flow_hubs={@flow_hubs}
           audio_assets={@audio_assets}
           panel_sections={@panel_sections}
-        />
-
-        <%!-- Connection Properties Panel --%>
-        <.connection_properties_panel
-          :if={@selected_connection && !@selected_node}
-          connection={@selected_connection}
-          form={@connection_form}
-          can_edit={@can_edit}
+          project_variables={@project_variables}
         />
       </div>
 
@@ -206,6 +200,10 @@ defmodule StoryarnWeb.FlowLive.Show do
     leaf_pages = Pages.list_leaf_pages(project.id)
     flow_hubs = Flows.list_hubs(flow.id)
     audio_assets = Assets.list_assets(project.id, content_type: "audio/")
+    project_variables = Pages.list_project_variables(project.id)
+
+    # DEBUG: Log project variables
+    IO.inspect(project_variables, label: "PROJECT VARIABLES loaded")
     user = socket.assigns.current_scope.user
 
     CollaborationHelpers.setup_collaboration(socket, flow, user)
@@ -222,11 +220,10 @@ defmodule StoryarnWeb.FlowLive.Show do
     |> assign(:leaf_pages, leaf_pages)
     |> assign(:flow_hubs, flow_hubs)
     |> assign(:audio_assets, audio_assets)
+    |> assign(:project_variables, project_variables)
     |> assign(:selected_node, nil)
     |> assign(:node_form, nil)
     |> assign(:editing_mode, nil)
-    |> assign(:selected_connection, nil)
-    |> assign(:connection_form, nil)
     |> assign(:save_status, :idle)
     |> assign(:preview_show, false)
     |> assign(:preview_node, nil)
@@ -611,28 +608,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   # Event Handlers: Connections
   # ===========================================================================
 
-  def handle_event("connection_selected", %{"id" => connection_id}, socket) do
-    ConnectionHelpers.select_connection(socket, connection_id)
-  end
-
-  def handle_event("deselect_connection", _params, socket) do
-    ConnectionHelpers.deselect_connection(socket)
-  end
-
-  def handle_event("update_connection_data", %{"connection" => conn_params}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> ConnectionHelpers.update_connection_data(socket, conn_params)
-      {:error, :unauthorized} -> {:noreply, socket}
-    end
-  end
-
-  def handle_event("delete_connection", %{"id" => connection_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> ConnectionHelpers.delete_connection(socket, connection_id)
-      {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
-    end
-  end
-
   def handle_event("connection_created", params, socket) do
     ConnectionHelpers.create_connection(socket, params)
   end
@@ -643,6 +618,20 @@ defmodule StoryarnWeb.FlowLive.Show do
         socket
       ) do
     ConnectionHelpers.delete_connection_by_nodes(socket, source_id, target_id)
+  end
+
+  # ===========================================================================
+  # Event Handlers: Response Condition Builder
+  # ===========================================================================
+
+  def handle_event("update_response_condition_builder", params, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        handle_response_condition_update(socket, params)
+
+      {:error, :unauthorized} ->
+        {:noreply, socket}
+    end
   end
 
   # ===========================================================================
@@ -794,6 +783,83 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   defp unauthorized_flash(socket) do
     put_flash(socket, :error, gettext("You don't have permission to perform this action."))
+  end
+
+
+  # Response condition builder helpers
+
+  defp handle_response_condition_update(socket, params) do
+    response_id = params["response-id"]
+    node_id = params["node-id"]
+
+    case get_response_for_update(socket, node_id, response_id) do
+      {:ok, response} ->
+        current_condition = parse_response_condition(response)
+        updated_condition = apply_condition_update(current_condition, params)
+        new_condition_string = Condition.to_json(updated_condition)
+        NodeHelpers.update_response_field(socket, node_id, response_id, "condition", new_condition_string)
+
+      :error ->
+        {:noreply, socket}
+    end
+  end
+
+  defp get_response_for_update(_socket, nil, _response_id), do: :error
+  defp get_response_for_update(_socket, _node_id, nil), do: :error
+
+  defp get_response_for_update(socket, node_id, response_id) do
+    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+    responses = node.data["responses"] || []
+
+    case Enum.find(responses, fn r -> r["id"] == response_id end) do
+      nil -> :error
+      response -> {:ok, response}
+    end
+  end
+
+  defp parse_response_condition(response) do
+    raw_condition = response["condition"] || ""
+
+    case Condition.parse(raw_condition) do
+      :legacy -> Condition.new()
+      nil -> Condition.new()
+      cond -> cond
+    end
+  end
+
+  defp apply_condition_update(current_condition, params) do
+    cond do
+      Map.has_key?(params, "logic") ->
+        Condition.set_logic(current_condition, params["logic"])
+
+      params["action"] == "add_rule" ->
+        Condition.add_rule(current_condition)
+
+      params["action"] == "remove_rule" ->
+        Condition.remove_rule(current_condition, params["rule-id"])
+
+      true ->
+        apply_rule_field_update(current_condition, params)
+    end
+  end
+
+  defp apply_rule_field_update(current_condition, params) do
+    rule_update =
+      Enum.find_value(params, fn
+        {"rule_page_" <> rule_id, value} -> {:page, rule_id, value}
+        {"rule_variable_" <> rule_id, value} -> {:variable, rule_id, value}
+        {"rule_operator_" <> rule_id, value} -> {:operator, rule_id, value}
+        {"rule_value_" <> rule_id, value} -> {:value, rule_id, value}
+        _ -> nil
+      end)
+
+    case rule_update do
+      {field, rule_id, value} ->
+        Condition.update_rule(current_condition, rule_id, Atom.to_string(field), value)
+
+      nil ->
+        current_condition
+    end
   end
 
   # Node locking

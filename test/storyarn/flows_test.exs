@@ -612,10 +612,9 @@ defmodule Storyarn.FlowsTest do
       connection = connection_fixture(flow, source, target)
 
       {:ok, updated} =
-        Flows.update_connection(connection, %{label: "Choice 1", condition: "score > 10"})
+        Flows.update_connection(connection, %{label: "Choice 1"})
 
       assert updated.label == "Choice 1"
-      assert updated.condition == "score > 10"
     end
 
     test "delete_connection_by_nodes/3 deletes connections between nodes" do

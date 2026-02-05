@@ -352,9 +352,7 @@ defmodule Storyarn.Flows do
             source_pin: conn.source_pin,
             target_node_id: conn.target_node_id,
             target_pin: conn.target_pin,
-            label: conn.label,
-            condition: conn.condition,
-            condition_order: conn.condition_order
+            label: conn.label
           }
         end)
     }

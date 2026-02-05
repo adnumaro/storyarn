@@ -96,7 +96,6 @@ export const FlowCanvas = {
                 <storyarn-connection
                   .path=${path}
                   .data=${connData}
-                  .selected=${this.selectedConnectionId === connData?.id}
                 ></storyarn-connection>
               `;
             };
@@ -192,42 +191,10 @@ export const FlowCanvas = {
     return connection;
   },
 
-  /**
-   * Updates connection views to reflect selection state changes.
-   * @param {number|null} previousId - Previously selected connection ID
-   * @param {number|null} newId - Newly selected connection ID
-   */
-  async updateConnectionViews(previousId, newId) {
-    // Find and update affected connections
-    for (const conn of this.editor.getConnections()) {
-      const connData = this.connectionDataMap.get(conn.id);
-      if (connData && (connData.id === previousId || connData.id === newId)) {
-        await this.area.update("connection", conn.id);
-      }
-    }
-  },
-
   setupEventHandlers() {
     this.selectedNodeId = null;
-    this.selectedConnectionId = null;
     this.lastNodeClickTime = 0;
     this.lastClickedNodeId = null;
-
-    // Listen for connection clicks
-    this.el.addEventListener("connection-click", (e) => {
-      const { connectionId } = e.detail;
-      if (connectionId) {
-        // Clear node selection when selecting a connection
-        this.selectedNodeId = null;
-
-        const previousSelectedId = this.selectedConnectionId;
-        this.selectedConnectionId = connectionId;
-        this.pushEvent("connection_selected", { id: connectionId });
-
-        // Force re-render connections to update selection state
-        this.updateConnectionViews(previousSelectedId, connectionId);
-      }
-    });
 
     // Node position changes (drag)
     this.area.addPipe((context) => {
@@ -252,13 +219,6 @@ export const FlowCanvas = {
           this.lastNodeClickTime = now;
           this.lastClickedNodeId = node.nodeId;
           this.selectedNodeId = node.nodeId;
-
-          // Clear connection selection when selecting a node
-          if (this.selectedConnectionId) {
-            const previousConnectionId = this.selectedConnectionId;
-            this.selectedConnectionId = null;
-            this.updateConnectionViews(previousConnectionId, null);
-          }
 
           if (isDoubleClick && node.nodeType === "dialogue") {
             // Double-click on dialogue node -> screenplay mode
@@ -320,14 +280,6 @@ export const FlowCanvas = {
     this.handleEvent("connection_updated", (data) =>
       this.editorHandlers.handleConnectionUpdated(data),
     );
-    this.handleEvent("deselect_connection", () => {
-      const previousSelectedId = this.selectedConnectionId;
-      this.selectedConnectionId = null;
-      // Force re-render to clear selection state
-      if (previousSelectedId) {
-        this.updateConnectionViews(previousSelectedId, null);
-      }
-    });
 
     // Handle server events - Collaboration
     this.handleEvent("cursor_update", (data) => this.cursorHandler.handleCursorUpdate(data));

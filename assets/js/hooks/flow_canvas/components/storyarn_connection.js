@@ -1,5 +1,8 @@
 /**
  * StoryarnConnection - Custom LitElement component for rendering connections between nodes.
+ *
+ * Note: Condition rendering was removed based on research findings.
+ * See docs/research/DIALOGUE_CONDITIONS_RESEARCH.md for details.
  */
 
 import { LitElement, css, html } from "lit";
@@ -11,7 +14,6 @@ export class StoryarnConnection extends LitElement {
       start: { type: Object },
       end: { type: Object },
       data: { type: Object },
-      selected: { type: Boolean },
     };
   }
 
@@ -28,13 +30,12 @@ export class StoryarnConnection extends LitElement {
       height: 9999px;
     }
 
-    /* Invisible hit area for easier clicking */
+    /* Invisible hit area for hover detection */
     path.hit-area {
       fill: none;
       stroke: transparent;
       stroke-width: 20px;
       pointer-events: auto;
-      cursor: pointer;
     }
 
     /* Visible connection line */
@@ -46,27 +47,14 @@ export class StoryarnConnection extends LitElement {
       transition: stroke 0.15s ease, stroke-width 0.15s ease;
     }
 
-    path.visible.conditional {
-      stroke: oklch(var(--wa, 0.8 0.15 80) / 0.6);
-      stroke-dasharray: 6 4;
-    }
-
-    /* Hover/selected states - triggered by hit-area hover */
-    path.hit-area:hover + path.visible,
-    path.visible.selected {
+    /* Hover state */
+    path.hit-area:hover + path.visible {
       stroke: oklch(var(--p, 0.6 0.2 250));
       stroke-width: 3px;
     }
 
-    path.hit-area:hover + path.visible.conditional,
-    path.visible.conditional.selected {
-      stroke: oklch(var(--wa, 0.8 0.15 80));
-      stroke-width: 3px;
-    }
-
     .label-group {
-      pointer-events: auto;
-      cursor: pointer;
+      pointer-events: none;
     }
 
     .label-bg {
@@ -81,27 +69,6 @@ export class StoryarnConnection extends LitElement {
       fill: oklch(var(--bc, 0.8 0 0));
       font-size: 10px;
       font-family: system-ui, sans-serif;
-      dominant-baseline: middle;
-      text-anchor: middle;
-    }
-
-    .condition-badge {
-      pointer-events: auto;
-      cursor: pointer;
-    }
-
-    .condition-bg {
-      fill: oklch(var(--wa, 0.8 0.15 80) / 0.15);
-      stroke: oklch(var(--wa, 0.8 0.15 80) / 0.5);
-      stroke-width: 1px;
-      rx: 3;
-      ry: 3;
-    }
-
-    .condition-text {
-      fill: oklch(var(--wa, 0.8 0.15 80));
-      font-size: 9px;
-      font-family: ui-monospace, monospace;
       dominant-baseline: middle;
       text-anchor: middle;
     }
@@ -135,97 +102,31 @@ export class StoryarnConnection extends LitElement {
 
   render() {
     const label = this.data?.label;
-    const condition = this.data?.condition;
-    const hasCondition = condition && condition.trim() !== "";
 
-    // Get midpoint for label/badge positioning
-    const needsMidpoint = label || hasCondition;
-    const midpoint = needsMidpoint ? this.getMidpoint() : null;
+    // Get midpoint for label positioning
+    const midpoint = label ? this.getMidpoint() : null;
 
     // Calculate label dimensions
     const labelWidth = label ? Math.min(label.length * 6 + 10, 80) : 0;
 
-    // For condition, show abbreviated text
-    const conditionDisplay = hasCondition
-      ? condition.length > 15
-        ? `${condition.slice(0, 12)}...`
-        : condition
-      : "";
-    const conditionWidth = conditionDisplay ? Math.min(conditionDisplay.length * 5.5 + 12, 100) : 0;
-
-    // Build visible path classes
-    const visibleClasses = ["visible", this.selected ? "selected" : "", hasCondition ? "conditional" : ""]
-      .filter(Boolean)
-      .join(" ");
-
     return html`
       <svg data-testid="connection">
-        <!-- Invisible wider hit area for easier clicking -->
-        <path
-          d="${this.path}"
-          class="hit-area"
-          @click=${this.handleClick}
-        ></path>
+        <!-- Invisible wider hit area for hover detection -->
+        <path d="${this.path}" class="hit-area"></path>
         <!-- Visible connection line -->
-        <path
-          d="${this.path}"
-          class="${visibleClasses}"
-        ></path>
+        <path d="${this.path}" class="visible"></path>
         ${
           midpoint && label
             ? html`
-              <g
-                class="label-group"
-                transform="translate(${midpoint.x}, ${midpoint.y - (hasCondition ? 12 : 0)})"
-                @click=${this.handleClick}
-              >
-                <rect
-                  class="label-bg"
-                  x="${-labelWidth / 2}"
-                  y="-9"
-                  width="${labelWidth}"
-                  height="18"
-                ></rect>
+              <g class="label-group" transform="translate(${midpoint.x}, ${midpoint.y})">
+                <rect class="label-bg" x="${-labelWidth / 2}" y="-9" width="${labelWidth}" height="18"></rect>
                 <text class="label-text">${label}</text>
-              </g>
-            `
-            : ""
-        }
-        ${
-          midpoint && hasCondition
-            ? html`
-              <g
-                class="condition-badge"
-                transform="translate(${midpoint.x}, ${midpoint.y + (label ? 12 : 0)})"
-                @click=${this.handleClick}
-              >
-                <rect
-                  class="condition-bg"
-                  x="${-conditionWidth / 2}"
-                  y="-8"
-                  width="${conditionWidth}"
-                  height="16"
-                ></rect>
-                <text class="condition-text" title="${condition}">${conditionDisplay}</text>
               </g>
             `
             : ""
         }
       </svg>
     `;
-  }
-
-  handleClick(e) {
-    e.stopPropagation();
-    if (this.data?.id) {
-      this.dispatchEvent(
-        new CustomEvent("connection-click", {
-          detail: { connectionId: this.data.id },
-          bubbles: true,
-          composed: true,
-        }),
-      );
-    }
   }
 }
 

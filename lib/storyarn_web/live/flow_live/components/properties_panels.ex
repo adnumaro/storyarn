@@ -6,8 +6,11 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
+  import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers
+
+  alias Storyarn.Flows.Condition
 
   @doc """
   Renders the node properties panel.
@@ -19,6 +22,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :flow_hubs, :list, default: []
   attr :audio_assets, :list, default: []
   attr :panel_sections, :map, default: %{}
+  attr :project_variables, :list, default: []
 
   def node_properties_panel(assigns) do
     ~H"""
@@ -42,6 +46,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           flow_hubs={@flow_hubs}
           audio_assets={@audio_assets}
           panel_sections={@panel_sections}
+          project_variables={@project_variables}
         />
       </div>
 
@@ -84,74 +89,6 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
     """
   end
 
-  @doc """
-  Renders the connection properties panel.
-  """
-  attr :connection, :map, required: true
-  attr :form, :map, required: true
-  attr :can_edit, :boolean, default: false
-
-  def connection_properties_panel(assigns) do
-    ~H"""
-    <aside class="w-80 bg-base-100 border-l border-base-300 flex flex-col overflow-hidden">
-      <div class="p-4 border-b border-base-300 flex items-center justify-between">
-        <h2 class="font-medium flex items-center gap-2">
-          <.icon name="git-commit-horizontal" class="size-4" />
-          {gettext("Connection")}
-        </h2>
-        <button
-          type="button"
-          class="btn btn-ghost btn-xs btn-square"
-          phx-click="deselect_connection"
-        >
-          <.icon name="x" class="size-4" />
-        </button>
-      </div>
-
-      <div class="flex-1 overflow-y-auto p-4">
-        <.form for={@form} phx-change="update_connection_data" phx-debounce="500">
-          <.input
-            field={@form[:label]}
-            type="text"
-            label={gettext("Label")}
-            placeholder={gettext("Optional label")}
-            disabled={!@can_edit}
-          />
-          <.input
-            field={@form[:condition]}
-            type="text"
-            label={gettext("Condition")}
-            placeholder={gettext("e.g., score > 10")}
-            disabled={!@can_edit}
-          />
-          <.input
-            field={@form[:condition_order]}
-            type="number"
-            label={gettext("Priority")}
-            disabled={!@can_edit}
-            min="0"
-          />
-          <p class="text-xs text-base-content/60 mt-1">
-            {gettext("Lower numbers are evaluated first when multiple connections have conditions.")}
-          </p>
-        </.form>
-      </div>
-
-      <div :if={@can_edit} class="p-4 border-t border-base-300">
-        <button
-          type="button"
-          class="btn btn-error btn-outline btn-sm w-full"
-          phx-click="delete_connection"
-          phx-value-id={@connection.id}
-          data-confirm={gettext("Are you sure you want to delete this connection?")}
-        >
-          <.icon name="trash-2" class="size-4 mr-2" />
-          {gettext("Delete Connection")}
-        </button>
-      </div>
-    </aside>
-    """
-  end
 
   @doc """
   Renders the node properties form based on node type.
@@ -163,6 +100,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :flow_hubs, :list, default: []
   attr :audio_assets, :list, default: []
   attr :panel_sections, :map, default: %{}
+  attr :project_variables, :list, default: []
 
   def node_properties_form(assigns) do
     speaker_options =
@@ -250,7 +188,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
             >
             </div>
           </div>
-          <.dialogue_responses_form form={@form} node={@node} can_edit={@can_edit} />
+          <.dialogue_responses_form form={@form} node={@node} can_edit={@can_edit} project_variables={@project_variables} />
           <details class="collapse collapse-arrow bg-base-200 mt-4" open={Map.get(@panel_sections, "menu_text", false)}>
             <summary class="collapse-title text-sm font-medium cursor-pointer" phx-click="toggle_panel_section" phx-value-section="menu_text" onclick="event.preventDefault()">
               {gettext("Menu Text")}
@@ -489,6 +427,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :form, :map, required: true
   attr :node, :map, required: true
   attr :can_edit, :boolean, default: false
+  attr :project_variables, :list, default: []
 
   def dialogue_responses_form(assigns) do
     ~H"""
@@ -497,67 +436,13 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
         <span class="label-text">{gettext("Responses")}</span>
       </label>
       <div class="space-y-2">
-        <div
+        <.response_item
           :for={response <- @form[:responses].value || []}
-          class="p-2 bg-base-200 rounded-lg space-y-2"
-        >
-          <div class="flex items-center gap-2">
-            <input
-              type="text"
-              value={response["text"]}
-              phx-blur="update_response_text"
-              phx-value-response-id={response["id"]}
-              phx-value-node-id={@node.id}
-              disabled={!@can_edit}
-              placeholder={gettext("Response text...")}
-              class="input input-sm input-bordered flex-1"
-            />
-            <button
-              :if={@can_edit}
-              type="button"
-              phx-click="remove_response"
-              phx-value-response-id={response["id"]}
-              phx-value-node-id={@node.id}
-              class="btn btn-ghost btn-xs btn-square text-error"
-              title={gettext("Remove response")}
-            >
-              <.icon name="x" class="size-3" />
-            </button>
-          </div>
-          <details class="collapse collapse-arrow bg-base-100">
-            <summary class="collapse-title text-xs py-1 min-h-0 cursor-pointer">
-              {gettext("Advanced")}
-            </summary>
-            <div class="collapse-content space-y-2 pt-2">
-              <div class="flex items-center gap-2">
-                <.icon name="git-branch" class="size-3 text-base-content/50 flex-shrink-0" />
-                <input
-                  type="text"
-                  value={response["condition"]}
-                  phx-blur="update_response_condition"
-                  phx-value-response-id={response["id"]}
-                  phx-value-node-id={@node.id}
-                  disabled={!@can_edit}
-                  placeholder={gettext("Condition (optional)")}
-                  class="input input-xs input-bordered flex-1 font-mono text-xs"
-                />
-              </div>
-              <div class="flex items-center gap-2">
-                <.icon name="zap" class="size-3 text-base-content/50 flex-shrink-0" />
-                <input
-                  type="text"
-                  value={response["instruction"]}
-                  phx-blur="update_response_instruction"
-                  phx-value-response-id={response["id"]}
-                  phx-value-node-id={@node.id}
-                  disabled={!@can_edit}
-                  placeholder={gettext("Instruction (optional)")}
-                  class="input input-xs input-bordered flex-1 font-mono text-xs"
-                />
-              </div>
-            </div>
-          </details>
-        </div>
+          response={response}
+          node={@node}
+          can_edit={@can_edit}
+          project_variables={@project_variables}
+        />
         <button
           :if={@can_edit}
           type="button"
@@ -574,6 +459,113 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
       </p>
     </div>
     """
+  end
+
+  attr :response, :map, required: true
+  attr :node, :map, required: true
+  attr :can_edit, :boolean, default: false
+  attr :project_variables, :list, default: []
+
+  defp response_item(assigns) do
+    # Parse condition for the response
+    raw_condition = assigns.response["condition"] || ""
+
+    condition_data =
+      case Condition.parse(raw_condition) do
+        :legacy -> Condition.new()
+        nil -> Condition.new()
+        cond -> cond
+      end
+
+    assigns = assign(assigns, :parsed_condition, condition_data)
+
+    ~H"""
+    <div class="p-2 bg-base-200 rounded-lg space-y-2">
+      <div class="flex items-center gap-2">
+        <input
+          type="text"
+          value={@response["text"]}
+          phx-blur="update_response_text"
+          phx-value-response-id={@response["id"]}
+          phx-value-node-id={@node.id}
+          disabled={!@can_edit}
+          placeholder={gettext("Response text...")}
+          class="input input-sm input-bordered flex-1"
+        />
+        <button
+          :if={@can_edit}
+          type="button"
+          phx-click="remove_response"
+          phx-value-response-id={@response["id"]}
+          phx-value-node-id={@node.id}
+          class="btn btn-ghost btn-xs btn-square text-error"
+          title={gettext("Remove response")}
+        >
+          <.icon name="x" class="size-3" />
+        </button>
+      </div>
+      <details class="collapse collapse-arrow bg-base-100">
+        <summary class="collapse-title text-xs py-1 min-h-0 cursor-pointer">
+          {gettext("Advanced")}
+          <span :if={has_advanced_settings?(@response)} class="badge badge-warning badge-xs ml-1">
+            ⚡
+          </span>
+        </summary>
+        <div class="collapse-content space-y-3 pt-2">
+          <%!-- Condition Builder --%>
+          <div class="space-y-1">
+            <div class="flex items-center gap-1 text-xs text-base-content/60">
+              <.icon name="git-branch" class="size-3" />
+              <span>{gettext("Condition")}</span>
+            </div>
+            <.condition_builder
+              id={"response-condition-#{@response["id"]}"}
+              condition={@parsed_condition}
+              variables={@project_variables}
+              on_change="update_response_condition_builder"
+              can_edit={@can_edit}
+              show_expression_toggle={false}
+              expression_mode={false}
+              raw_expression=""
+            />
+            <input
+              type="hidden"
+              name="response-id"
+              value={@response["id"]}
+            />
+            <input
+              type="hidden"
+              name="node-id"
+              value={@node.id}
+            />
+          </div>
+
+          <%!-- Instruction --%>
+          <div class="flex items-center gap-2">
+            <.icon name="zap" class="size-3 text-base-content/50 flex-shrink-0" />
+            <input
+              type="text"
+              value={@response["instruction"]}
+              phx-blur="update_response_instruction"
+              phx-value-response-id={@response["id"]}
+              phx-value-node-id={@node.id}
+              disabled={!@can_edit}
+              placeholder={gettext("Instruction (optional)")}
+              class="input input-xs input-bordered flex-1 font-mono text-xs"
+            />
+          </div>
+        </div>
+      </details>
+    </div>
+    """
+  end
+
+  defp has_advanced_settings?(response) do
+    condition = response["condition"]
+    instruction = response["instruction"]
+
+    (condition != nil and condition != "") or
+      (instruction != nil and instruction != "")
   end
 
   @doc """

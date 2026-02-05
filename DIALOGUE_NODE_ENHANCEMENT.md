@@ -2,6 +2,10 @@
 
 > **Objective**: Enhance Storyarn's dialogue node to match the feature set of articy:draft and Arcweave, the industry-leading narrative design tools.
 
+> **Related Documents**:
+> - [Research: Condition Placement](./docs/research/DIALOGUE_CONDITIONS_RESEARCH.md)
+> - [Recommendations: Condition Model](./docs/DIALOGUE_CONDITIONS_RECOMMENDATIONS.md)
+
 ## Current State vs Target State
 
 ### Current Implementation
@@ -510,56 +514,25 @@ Show word count for text fields (useful for VO budgeting).
 ### Phase 4: Logic & Conditions
 **Priority: Important | Effort: Medium-High**
 
-Sistema híbrido de lógica inspirado en articy:draft + Arcweave, con mejoras propias.
+Node-centric logic system aligned with industry standards (articy:draft, Arcweave, Chat Mapper).
 
-> **Filosofía**: Condiciones en conexiones para bifurcaciones simples, nodo Condition mejorado para lógica compleja, y guardias/instrucciones en nodos de contenido.
+> **Philosophy**: All routing logic goes in dedicated Condition nodes (high visibility). Dialogue nodes have input conditions (availability guards) and output instructions (side effects). Connections are simple visual links with no hidden logic.
+>
+> See [Research](./docs/research/DIALOGUE_CONDITIONS_RESEARCH.md) and [Recommendations](./docs/DIALOGUE_CONDITIONS_RECOMMENDATIONS.md) for the rationale behind this decision.
 
 ---
 
-#### 4.1 Conditions on Connections (Arcweave-style)
+#### ~~4.1 Conditions on Connections~~ — REMOVED
 
-Cualquier conexión puede tener una condición opcional. Si la condición es falsa, la conexión no se sigue.
-
-**Casos de uso**:
-```
-[Diálogo] ──(gold >= 100)──→ [Comprar]
-     └─────(else)──────────→ [No puedes pagar]
-
-[Hub] ──(has_item("key"))──→ [Abrir puerta]
-  └────(else)──────────────→ [Puerta cerrada]
-```
-
-**Ventajas sobre nodos Condition binarios**:
-- Visual más limpio, menos nodos
-- Flujo más intuitivo de leer
-- Ideal para bifurcaciones simples (if/else)
-
-**Data structure** (en FlowConnection):
-```elixir
-# Nuevo campo en flow_connections
-schema "flow_connections" do
-  # ... campos existentes ...
-  field :condition, :string        # Expresión condicional (opcional)
-  field :condition_order, :integer # Orden de evaluación (menor = primero)
-end
-```
-
-**UI para editar condiciones en conexiones**:
-- Click en una conexión → panel lateral muestra campos de la conexión
-- Campo "Condition" con editor de código (monospace)
-- Campo "Priority" (orden de evaluación cuando hay múltiples salidas)
-- Indicador visual en la conexión cuando tiene condición (línea punteada o icono)
-
-**Rendering en canvas**:
-```
-Conexión normal:      ────────────→
-Conexión condicional: ----[?]----→  (línea punteada + badge)
-```
-
-**Evaluación**:
-- Las conexiones se evalúan en orden de `condition_order`
-- La primera conexión cuya condición sea `true` (o vacía) se sigue
-- Si ninguna condición es true, no se avanza (o se sigue la marcada como "else")
+> **Decision**: After [research](./docs/research/DIALOGUE_CONDITIONS_RESEARCH.md) into industry tools (articy:draft, Arcweave, Chat Mapper, Ink, Yarn Spinner), we decided to **not implement conditions on connections**.
+>
+> **Reasons**:
+> - No major tool uses edge-based conditions for routing
+> - Low visibility (logic hidden on thin lines)
+> - Creates visual spaghetti as projects grow
+> - Duplicates Condition node functionality
+>
+> **Alternative**: Use Condition nodes (switch/case) for all routing logic.
 
 ---
 
@@ -661,9 +634,9 @@ end
 
 Condición que determina si un nodo de diálogo está **disponible/visible**.
 
-> **Diferencia clave con condiciones en conexiones**:
-> - Conexión condition = "¿Qué camino tomar?" (routing)
-> - Input condition = "¿Este contenido está disponible?" (filtering)
+> **Semantic meaning** (like articy:draft input pins):
+> - Condition node = "Which path to take?" (routing)
+> - Input condition = "Is this content available?" (filtering/visibility)
 
 **Casos de uso**:
 - `has_item("key")` - Solo mostrar si el jugador tiene un ítem
@@ -852,16 +825,12 @@ reputation += 5
 └─────────────────────────────────┘
 ```
 
-**Indicadores en conexiones**:
+**Conexiones** (simple lines, no conditions):
 ```
-Normal:        ─────────────────→
-
-Con condición: ╌╌╌╌[gold>100]╌╌→  (punteada + label)
-
-Else/default:  ════[else]════→   (doble línea)
+All connections:  ─────────────────→
 ```
 
-**Nodo Condition multi-salida**:
+**Nodo Condition multi-salida** (for all routing logic):
 ```
 ┌─────────────────────────────────┐
 │ ⑂ player_class                  │
@@ -877,20 +846,13 @@ Else/default:  ════[else]════→   (doble línea)
 
 #### 4.8 Files to Modify
 
-**Database (Migrations)**:
-
-| File                                                     | Changes                                                |
-|----------------------------------------------------------|--------------------------------------------------------|
-| `priv/repo/migrations/xxx_add_connection_conditions.exs` | Add `condition`, `condition_order` to flow_connections |
-
 **Backend (Elixir)**:
 
 | File                                                              | Changes                                                 |
 |-------------------------------------------------------------------|---------------------------------------------------------|
-| `lib/storyarn/flows/flow_connection.ex`                           | Add condition fields to schema                          |
 | `lib/storyarn_web/live/flow_live/components/node_type_helpers.ex` | Update condition node default data, add dialogue fields |
-| `lib/storyarn_web/live/flow_live/components/properties_panels.ex` | Add Logic section, connection panel                     |
-| `lib/storyarn_web/live/flow_live/show.ex`                         | Handle connection selection, condition editing          |
+| `lib/storyarn_web/live/flow_live/components/properties_panels.ex` | Add Logic section to dialogue panel                     |
+| `lib/storyarn_web/live/flow_live/show.ex`                         | Handle dialogue logic field updates                     |
 
 **Frontend (JavaScript)**:
 
@@ -898,26 +860,28 @@ Else/default:  ════[else]════→   (doble línea)
 |-----------------------------------------------------------------|-----------------------------------------------------|
 | `assets/js/hooks/flow_canvas/node_config.js`                    | Update condition node to dynamic outputs            |
 | `assets/js/hooks/flow_canvas/components/storyarn_node.js`       | Render condition indicators, multi-output condition |
-| `assets/js/hooks/flow_canvas/components/connection_renderer.js` | Render conditional connection styles                |
-| `assets/js/hooks/flow_canvas.js`                                | Handle connection click/selection                   |
 
 **Styles (CSS)**:
 
-| File                 | Changes                                         |
-|----------------------|-------------------------------------------------|
-| `assets/css/app.css` | Conditional connection styles, logic indicators |
+| File                 | Changes                 |
+|----------------------|-------------------------|
+| `assets/css/app.css` | Logic indicators styles |
 
 ---
 
 #### 4.9 Tasks
 
-**4.9.1 Conditions on Connections**: ✅ COMPLETED
-- [x] Create migration adding `condition` and `condition_order` to flow_connections
-- [x] Update FlowConnection schema and changeset
-- [x] Add connection selection in canvas (click on connection)
-- [x] Create connection properties panel
-- [x] Render conditional connections with visual indicator (dashed + badge)
-- [ ] Implement "else" connection marking (deferred - low priority)
+**4.9.1 Conditions on Connections**: ✅ CLEANUP COMPLETED
+> **Decision**: Feature removed based on [research findings](./docs/research/DIALOGUE_CONDITIONS_RESEARCH.md).
+> See [recommendations](./docs/DIALOGUE_CONDITIONS_RECOMMENDATIONS.md) for migration path.
+>
+> Cleanup completed:
+> - [x] Remove `condition` and `condition_order` fields from flow_connections schema
+> - [x] Remove connection properties panel
+> - [x] Remove dashed connection rendering
+> - [x] Remove connection click selection (kept hover styles for future use)
+> - [x] Remove `connection_data_to_form` helper function
+> - [x] Remove debug console.log statements
 
 **4.9.2 Multi-Output Condition Node**: ✅ COMPLETED
 - [x] Update condition node default_data with `cases` array
@@ -941,13 +905,11 @@ Else/default:  ════[else]════→   (doble línea)
 - [x] Ensure tab navigation works between code fields
 
 **4.9.5 Export**: (Deferred to Phase 7 - Export System)
-- [ ] Update JSON export to include connection conditions
 - [ ] Update JSON export to include dialogue logic fields
 - [ ] Update JSON export for multi-output condition nodes
 - [ ] Document expression syntax in export format
 
 **4.9.6 Testing**: ✅ COMPLETED
-- [x] Test connection conditions save and load correctly
 - [x] Test condition node migration (binary → multi-output)
 - [x] Test dialogue input_condition persistence
 - [x] Test dialogue output_instruction persistence
@@ -1344,14 +1306,11 @@ Update JSON export to include all new fields:
 - [x] Copy buttons work
 - [x] Word count displays accurately
 
-### Phase 4 ✅ COMPLETED
-**Conditions on Connections:**
-- [x] Connection condition field saves to database
-- [x] Connection condition_order saves to database
-- [x] Clicking a connection opens connection properties panel
-- [x] Conditional connections render with dashed style
-- [x] Condition label shows on connection
-- [ ] "Else" connections render with distinct style (deferred)
+### Phase 4 ✅ COMPLETED (with revision)
+
+**~~Conditions on Connections~~:** ✅ CLEANUP COMPLETED
+> Feature removed based on [research](./docs/research/DIALOGUE_CONDITIONS_RESEARCH.md). See [recommendations](./docs/DIALOGUE_CONDITIONS_RECOMMENDATIONS.md).
+> All connection condition code, UI, and database fields have been removed.
 
 **Multi-Output Condition Node:**
 - [x] New condition nodes have `cases` array structure
@@ -1370,7 +1329,6 @@ Update JSON export to include all new fields:
 - [x] [?] badge shows on responses with conditions
 
 **Export:** (Deferred to Phase 7)
-- [ ] Connection conditions included in JSON export
 - [ ] Multi-output condition cases included in export
 - [ ] Dialogue logic fields included in export
 
@@ -1397,9 +1355,16 @@ Update JSON export to include all new fields:
 
 ## References
 
+**Internal Documentation:**
+- [Research: Condition Placement in Dialogue Systems](./docs/research/DIALOGUE_CONDITIONS_RESEARCH.md)
+- [Recommendations: Dialogue Conditions Model](./docs/DIALOGUE_CONDITIONS_RECOMMENDATIONS.md)
+
+**External References:**
 - [articy:draft Dialogue Fragments](https://www.articy.com/help/adx/Flow_Objects_DialogFragment.html)
 - [articy:draft Dialogues](https://www.articy.com/help/adx/Flow_Dialog.html)
+- [articy:draft Conditions & Instructions](https://www.articy.com/help/adx/Scripting_Conditions_Instructions.html)
 - [articy:draft Tutorial L06](https://www.articy.com/en/articydraft-first-steps-tutorial-series-l06-creating-a-dialogue/)
+- [Arcweave Branches](https://arcweave.com/docs/1.0/branches)
 - [Arcweave Elements](https://docs.arcweave.com/project-items/elements)
 - [Arcweave Components](https://docs.arcweave.com/project-items/components)
-- [Arcweave Hology Integration](https://docs.hology.app/integrations/arcweave)
+- [Chat Mapper Tutorial - Scripting](https://www.chatmapper.com/media/game-design-scripting-class-part1of2/)

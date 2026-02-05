@@ -81,6 +81,20 @@ defmodule Storyarn.Pages do
   @spec list_leaf_pages(id()) :: [page()]
   defdelegate list_leaf_pages(project_id), to: PageCrud
 
+  @doc """
+  Gets a page by its shortcut within a project.
+  Returns nil if not found.
+  """
+  @spec get_page_by_shortcut(id(), String.t()) :: page() | nil
+  defdelegate get_page_by_shortcut(project_id, shortcut), to: PageCrud
+
+  @doc """
+  Lists all variables (blocks that can be variables) across all pages in a project.
+  Used for the condition builder to list available variables.
+  """
+  @spec list_project_variables(id()) :: [map()]
+  defdelegate list_project_variables(project_id), to: PageCrud
+
   # =============================================================================
   # Pages - CRUD Operations
   # =============================================================================
