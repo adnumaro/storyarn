@@ -101,11 +101,10 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
 
       "condition" ->
         %{
-          "expression" => "",
-          "cases" => [
-            %{"id" => "case_true", "value" => "true", "label" => "True"},
-            %{"id" => "case_false", "value" => "false", "label" => "False"}
-          ]
+          # Condition (visual builder)
+          "condition" => %{"logic" => "all", "rules" => []},
+          # Switch mode: each rule becomes an output
+          "switch_mode" => false
         }
 
       "instruction" ->
@@ -200,4 +199,5 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
   end
 
   defp strip_html(_), do: ""
+
 end

@@ -274,10 +274,20 @@ export class StoryarnNode extends LitElement {
               outputLabel = response?.text || key;
               hasCondition = !!response?.condition;
             }
-            // For condition nodes with cases, show case label
-            if (node.nodeType === "condition" && nodeData.cases?.length > 0) {
-              const caseItem = nodeData.cases.find((c) => c.id === key);
-              outputLabel = caseItem?.label || caseItem?.value || key;
+            // For condition nodes, show appropriate labels
+            if (node.nodeType === "condition") {
+              if (nodeData.switch_mode && nodeData.condition?.rules?.length > 0) {
+                // Switch mode: labels from rules
+                if (key === "default") {
+                  outputLabel = "Default";
+                } else {
+                  const rule = nodeData.condition.rules.find((r) => r.id === key);
+                  outputLabel = rule?.label || this.formatRuleShort(rule) || key;
+                }
+              } else {
+                // Normal mode: True/False
+                outputLabel = key === "true" ? "True" : key === "false" ? "False" : key;
+              }
             }
             return html`
               <div class="socket-row output">
@@ -315,7 +325,7 @@ export class StoryarnNode extends LitElement {
       case "hub":
         return nodeData.hub_id || "";
       case "condition":
-        return nodeData.expression || "";
+        return this.getConditionSummary(nodeData);
       case "instruction":
         return nodeData.action || "";
       case "jump":
@@ -325,6 +335,102 @@ export class StoryarnNode extends LitElement {
       default:
         return "";
     }
+  }
+
+  /**
+   * Returns a human-readable summary of the condition.
+   */
+  getConditionSummary(nodeData) {
+    const condition = nodeData.condition;
+    const switchMode = nodeData.switch_mode;
+
+    // If no condition structure or empty rules, show placeholder
+    if (!condition || !condition.rules || condition.rules.length === 0) {
+      return switchMode ? "No conditions" : "No condition";
+    }
+
+    const rules = condition.rules;
+
+    if (switchMode) {
+      // Switch mode: show number of outputs
+      return `${rules.length} output${rules.length > 1 ? "s" : ""} + default`;
+    }
+
+    // Normal mode
+    const logic = condition.logic === "all" ? "AND" : "OR";
+
+    // Single rule: show it directly
+    if (rules.length === 1) {
+      return this.formatRule(rules[0]);
+    }
+
+    // Multiple rules: show count and logic
+    return `${rules.length} rules (${logic})`;
+  }
+
+  /**
+   * Formats a single rule for display.
+   */
+  formatRule(rule) {
+    if (!rule.page || !rule.variable) {
+      return "Incomplete rule";
+    }
+
+    const operatorSymbol = this.getOperatorSymbol(rule.operator);
+    const value = rule.value !== null && rule.value !== undefined ? rule.value : "";
+
+    // For operators that don't need value
+    if (["is_empty", "is_true", "is_false", "is_nil"].includes(rule.operator)) {
+      return `${rule.page}.${rule.variable} ${operatorSymbol}`;
+    }
+
+    return `${rule.page}.${rule.variable} ${operatorSymbol} ${value}`;
+  }
+
+  /**
+   * Formats a rule for short display (used when no label is set).
+   */
+  formatRuleShort(rule) {
+    if (!rule || !rule.variable) {
+      return null;
+    }
+
+    const operatorSymbol = this.getOperatorSymbol(rule.operator);
+    const value = rule.value !== null && rule.value !== undefined ? rule.value : "";
+
+    // For operators that don't need value
+    if (["is_empty", "is_true", "is_false", "is_nil"].includes(rule.operator)) {
+      return `${rule.variable} ${operatorSymbol}`;
+    }
+
+    // Truncate value if too long
+    const truncatedValue = value.length > 10 ? value.substring(0, 10) + "…" : value;
+    return `${rule.variable} ${operatorSymbol} ${truncatedValue}`;
+  }
+
+  /**
+   * Returns a symbol for the operator.
+   */
+  getOperatorSymbol(operator) {
+    const symbols = {
+      equals: "=",
+      not_equals: "≠",
+      greater_than: ">",
+      greater_than_or_equal: ">=",
+      less_than: "<",
+      less_than_or_equal: "<=",
+      contains: "∋",
+      starts_with: "^=",
+      ends_with: "$=",
+      is_empty: "is empty",
+      is_true: "is true",
+      is_false: "is false",
+      is_nil: "is nil",
+      not_contains: "∌",
+      before: "<",
+      after: ">",
+    };
+    return symbols[operator] || operator;
   }
 }
 

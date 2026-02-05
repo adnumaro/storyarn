@@ -133,6 +133,15 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
       |> assign(:selected_audio, selected_audio)
 
     ~H"""
+    <%!-- Condition type gets special handling (ConditionBuilder outside form) --%>
+    <%= if @node.type == "condition" do %>
+      <.condition_node_form
+        form={@form}
+        node={@node}
+        can_edit={@can_edit}
+        project_variables={@project_variables}
+      />
+    <% else %>
     <.form for={@form} phx-change="update_node_data" phx-debounce="500">
       <%= case @node.type do %>
         <% "entry" -> %>
@@ -368,18 +377,6 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
             options={hub_color_options()}
             disabled={!@can_edit}
           />
-        <% "condition" -> %>
-          <.input
-            field={@form[:expression]}
-            type="text"
-            label={gettext("Expression")}
-            placeholder={gettext("e.g., player_class")}
-            disabled={!@can_edit}
-          />
-          <p class="text-xs text-base-content/60 mt-1 mb-4">
-            {gettext("The expression to evaluate. Each case below matches against this value.")}
-          </p>
-          <.condition_cases_form form={@form} node={@node} can_edit={@can_edit} />
         <% "instruction" -> %>
           <.input
             field={@form[:action]}
@@ -418,6 +415,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           </p>
       <% end %>
     </.form>
+    <% end %>
     """
   end
 
@@ -527,16 +525,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
               show_expression_toggle={false}
               expression_mode={false}
               raw_expression=""
-            />
-            <input
-              type="hidden"
-              name="response-id"
-              value={@response["id"]}
-            />
-            <input
-              type="hidden"
-              name="node-id"
-              value={@node.id}
+              context={%{"response-id" => @response["id"], "node-id" => @node.id}}
             />
           </div>
 
@@ -569,74 +558,101 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   end
 
   @doc """
-  Renders the condition cases form section.
+  Renders the condition node form with condition builder and cases.
   """
   attr :form, :map, required: true
   attr :node, :map, required: true
   attr :can_edit, :boolean, default: false
+  attr :project_variables, :list, default: []
 
-  def condition_cases_form(assigns) do
+  def condition_node_form(assigns) do
+    # Parse condition from node data
+    raw_condition = assigns.node.data["condition"]
+
+    condition_data =
+      case raw_condition do
+        nil -> Condition.new()
+        %{"logic" => _, "rules" => _} = cond -> cond
+        _ -> Condition.new()
+      end
+
+    switch_mode = assigns.node.data["switch_mode"] || false
+    assigns = assigns |> assign(:condition_data, condition_data) |> assign(:switch_mode, switch_mode)
+
     ~H"""
-    <div class="form-control">
-      <label class="label">
-        <span class="label-text">{gettext("Cases")}</span>
-      </label>
-      <div class="space-y-2">
-        <div
-          :for={case_item <- @form[:cases].value || []}
-          class="p-2 bg-base-200 rounded-lg"
-        >
-          <div class="flex items-center gap-2">
-            <input
-              type="text"
-              value={case_item["label"]}
-              phx-blur="update_case_label"
-              phx-value-case-id={case_item["id"]}
-              phx-value-node-id={@node.id}
-              disabled={!@can_edit}
-              placeholder={gettext("Label")}
-              class="input input-sm input-bordered flex-1 text-xs"
-            />
-            <input
-              type="text"
-              value={case_item["value"]}
-              phx-blur="update_case_value"
-              phx-value-case-id={case_item["id"]}
-              phx-value-node-id={@node.id}
-              disabled={!@can_edit}
-              placeholder={gettext("Value (e.g., \"w\")")}
-              class="input input-sm input-bordered w-24 font-mono text-xs"
-            />
-            <button
-              :if={@can_edit && length(@form[:cases].value || []) > 1}
-              type="button"
-              phx-click="remove_case"
-              phx-value-case-id={case_item["id"]}
-              phx-value-node-id={@node.id}
-              class="btn btn-ghost btn-xs btn-square text-error"
-              title={gettext("Remove case")}
-            >
-              <.icon name="x" class="size-3" />
-            </button>
-          </div>
-          <p :if={case_item["value"] == ""} class="text-xs text-base-content/50 mt-1 italic">
-            {gettext("Empty value = default case")}
-          </p>
-        </div>
-        <button
-          :if={@can_edit}
-          type="button"
-          phx-click="add_case"
-          phx-value-node-id={@node.id}
-          class="btn btn-ghost btn-sm gap-1 w-full border border-dashed border-base-300"
-        >
-          <.icon name="plus" class="size-4" />
-          {gettext("Add case")}
-        </button>
+    <div class="space-y-4">
+      <%!-- Switch mode toggle --%>
+      <div class="form-control">
+        <label class="label cursor-pointer justify-start gap-3">
+          <input
+            type="checkbox"
+            class="toggle toggle-sm toggle-primary"
+            checked={@switch_mode}
+            phx-click="toggle_switch_mode"
+            disabled={!@can_edit}
+          />
+          <span class="label-text">{gettext("Switch mode")}</span>
+        </label>
+        <p class="text-xs text-base-content/50 ml-12">
+          <%= if @switch_mode do %>
+            {gettext("Each condition creates an output. First match wins.")}
+          <% else %>
+            {gettext("Evaluates all conditions → True or False.")}
+          <% end %>
+        </p>
       </div>
-      <p class="text-xs text-base-content/60 mt-2">
-        {gettext("Each case creates an output. Leave value empty for a default/fallback case.")}
-      </p>
+
+      <%!-- Visual condition builder --%>
+      <div class="space-y-3">
+        <label class="label">
+          <span class="label-text text-xs">
+            <%= if @switch_mode do %>
+              {gettext("Conditions (each = output)")}
+            <% else %>
+              {gettext("Condition")}
+            <% end %>
+          </span>
+        </label>
+        <.condition_builder
+          id={"condition-builder-#{@node.id}"}
+          condition={@condition_data}
+          variables={@project_variables}
+          on_change="update_condition_builder"
+          can_edit={@can_edit}
+          show_expression_toggle={false}
+          expression_mode={false}
+          raw_expression=""
+          wrap_in_form={true}
+          switch_mode={@switch_mode}
+        />
+        <p :if={@condition_data["rules"] == [] && !@switch_mode} class="text-xs text-base-content/50">
+          {gettext("Add rules to define when to route to True/False.")}
+        </p>
+        <p :if={@condition_data["rules"] == [] && @switch_mode} class="text-xs text-base-content/50">
+          {gettext("Add conditions. Each one creates a separate output.")}
+        </p>
+      </div>
+
+      <%!-- Output info --%>
+      <div class="bg-base-200 rounded-lg p-3 text-xs">
+        <p class="font-medium mb-1">{gettext("Outputs:")}</p>
+        <%= if @switch_mode do %>
+          <ul class="list-disc list-inside text-base-content/70 space-y-1">
+            <li :for={rule <- @condition_data["rules"]}>
+              {rule["label"] || gettext("(no label)")}
+            </li>
+            <li class="text-base-content/50 italic">{gettext("Default (no match)")}</li>
+          </ul>
+          <p :if={@condition_data["rules"] == []} class="text-base-content/50 italic">
+            {gettext("Default (no match)")}
+          </p>
+        <% else %>
+          <ul class="list-disc list-inside text-base-content/70">
+            <li>{gettext("True")}</li>
+            <li>{gettext("False")}</li>
+          </ul>
+        <% end %>
+      </div>
     </div>
     """
   end

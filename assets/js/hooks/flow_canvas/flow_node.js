@@ -34,10 +34,19 @@ export class FlowNode extends ClassicPreset.Node {
       for (const response of data.responses) {
         this.addOutput(response.id, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
       }
-    } else if (config.dynamicOutputs && type === "condition" && data.cases?.length > 0) {
-      // Condition: Add one output per case
-      for (const caseItem of data.cases) {
-        this.addOutput(caseItem.id, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
+    } else if (config.dynamicOutputs && type === "condition") {
+      // Condition: outputs depend on switch_mode
+      if (data.switch_mode && data.condition?.rules?.length > 0) {
+        // Switch mode: one output per rule + default
+        for (const rule of data.condition.rules) {
+          this.addOutput(rule.id, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
+        }
+        // Always add default output for switch mode
+        this.addOutput("default", new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
+      } else {
+        // Normal mode: True/False outputs
+        this.addOutput("true", new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
+        this.addOutput("false", new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
       }
     } else {
       // Add default outputs

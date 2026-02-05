@@ -201,9 +201,6 @@ defmodule StoryarnWeb.FlowLive.Show do
     flow_hubs = Flows.list_hubs(flow.id)
     audio_assets = Assets.list_assets(project.id, content_type: "audio/")
     project_variables = Pages.list_project_variables(project.id)
-
-    # DEBUG: Log project variables
-    IO.inspect(project_variables, label: "PROJECT VARIABLES loaded")
     user = socket.assigns.current_scope.user
 
     CollaborationHelpers.setup_collaboration(socket, flow, user)
@@ -408,6 +405,33 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
+  # Handle condition builder fields coming from the dialogue form
+  # (when condition builder is inside the form without wrap_in_form)
+  def handle_event("update_node_data", params, socket) when is_map(params) do
+    # Check if this contains condition builder fields for a response
+    has_response_condition_fields =
+      Map.has_key?(params, "response-id") and Map.has_key?(params, "node-id")
+
+    has_rule_fields =
+      Enum.any?(params, fn {key, _} ->
+        String.starts_with?(key, "rule_page_") or
+        String.starts_with?(key, "rule_variable_") or
+        String.starts_with?(key, "rule_operator_") or
+        String.starts_with?(key, "rule_value_")
+      end)
+
+    if has_response_condition_fields and has_rule_fields do
+      # Route to response condition builder handler
+      case authorize(socket, :edit_content) do
+        :ok -> handle_response_condition_update(socket, params)
+        {:error, :unauthorized} -> {:noreply, socket}
+      end
+    else
+      # Ignore other events without node params
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("update_node_text", %{"id" => node_id, "content" => content}, socket) do
     case authorize(socket, :edit_content) do
       :ok -> NodeHelpers.update_node_text(socket, node_id, content)
@@ -549,50 +573,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   # ===========================================================================
-  # Event Handlers: Condition Cases
-  # ===========================================================================
-
-  def handle_event("add_case", %{"node-id" => node_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok -> add_condition_case(socket, node_id)
-      {:error, :unauthorized} -> {:noreply, socket}
-    end
-  end
-
-  def handle_event(
-        "remove_case",
-        %{"case-id" => case_id, "node-id" => node_id},
-        socket
-      ) do
-    case authorize(socket, :edit_content) do
-      :ok -> remove_condition_case(socket, node_id, case_id)
-      {:error, :unauthorized} -> {:noreply, socket}
-    end
-  end
-
-  def handle_event(
-        "update_case_value",
-        %{"case-id" => case_id, "node-id" => node_id, "value" => value},
-        socket
-      ) do
-    case authorize(socket, :edit_content) do
-      :ok -> update_condition_case_field(socket, node_id, case_id, "value", value)
-      {:error, :unauthorized} -> {:noreply, socket}
-    end
-  end
-
-  def handle_event(
-        "update_case_label",
-        %{"case-id" => case_id, "node-id" => node_id, "value" => label},
-        socket
-      ) do
-    case authorize(socket, :edit_content) do
-      :ok -> update_condition_case_field(socket, node_id, case_id, "label", label)
-      {:error, :unauthorized} -> {:noreply, socket}
-    end
-  end
-
-  # ===========================================================================
   # Event Handlers: Panel UI
   # ===========================================================================
 
@@ -628,6 +608,75 @@ defmodule StoryarnWeb.FlowLive.Show do
     case authorize(socket, :edit_content) do
       :ok ->
         handle_response_condition_update(socket, params)
+
+      {:error, :unauthorized} ->
+        {:noreply, socket}
+    end
+  end
+
+  # ===========================================================================
+  # Event Handlers: Condition Node Builder
+  # ===========================================================================
+
+  def handle_event("update_condition_builder", params, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        handle_condition_node_update(socket, params)
+
+      {:error, :unauthorized} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("toggle_switch_mode", _params, socket) do
+    case authorize(socket, :edit_content) do
+      :ok ->
+        node = socket.assigns.selected_node
+
+        if node && node.type == "condition" do
+          current_switch_mode = node.data["switch_mode"] || false
+          new_switch_mode = !current_switch_mode
+
+          # When switching to switch mode, add labels to existing rules
+          updated_condition =
+            if new_switch_mode do
+              condition = node.data["condition"] || Condition.new()
+              rules = condition["rules"] || []
+
+              updated_rules =
+                Enum.map(rules, fn rule ->
+                  Map.put_new(rule, "label", "")
+                end)
+
+              Map.put(condition, "rules", updated_rules)
+            else
+              node.data["condition"]
+            end
+
+          updated_data =
+            node.data
+            |> Map.put("switch_mode", new_switch_mode)
+            |> Map.put("condition", updated_condition)
+
+          case Flows.update_node_data(node, updated_data) do
+            {:ok, updated_node} ->
+              form = FormHelpers.node_data_to_form(updated_node)
+              schedule_save_status_reset()
+
+              {:noreply,
+               socket
+               |> reload_flow_data()
+               |> assign(:selected_node, updated_node)
+               |> assign(:node_form, form)
+               |> assign(:save_status, :saved)
+               |> push_event("node_updated", %{id: node.id, data: updated_node.data})}
+
+            {:error, _} ->
+              {:noreply, socket}
+          end
+        else
+          {:noreply, socket}
+        end
 
       {:error, :unauthorized} ->
         {:noreply, socket}
@@ -786,6 +835,39 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
 
+  # Condition node builder helpers
+
+  defp handle_condition_node_update(socket, params) do
+    node = socket.assigns.selected_node
+
+    if node && node.type == "condition" do
+      current_condition = node.data["condition"] || Condition.new()
+      updated_condition = apply_condition_update(current_condition, params)
+
+      # Update the node data with the new condition
+      updated_data = Map.put(node.data, "condition", updated_condition)
+
+      case Flows.update_node_data(node, updated_data) do
+        {:ok, updated_node} ->
+          form = FormHelpers.node_data_to_form(updated_node)
+          schedule_save_status_reset()
+
+          {:noreply,
+           socket
+           |> reload_flow_data()
+           |> assign(:selected_node, updated_node)
+           |> assign(:node_form, form)
+           |> assign(:save_status, :saved)
+           |> push_event("node_updated", %{id: node.id, data: updated_node.data})}
+
+        {:error, _} ->
+          {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
   # Response condition builder helpers
 
   defp handle_response_condition_update(socket, params) do
@@ -833,7 +915,9 @@ defmodule StoryarnWeb.FlowLive.Show do
         Condition.set_logic(current_condition, params["logic"])
 
       params["action"] == "add_rule" ->
-        Condition.add_rule(current_condition)
+        # Check if switch mode is enabled
+        with_label = params["switch-mode"] == "true"
+        Condition.add_rule(current_condition, with_label: with_label)
 
       params["action"] == "remove_rule" ->
         Condition.remove_rule(current_condition, params["rule-id"])
@@ -844,14 +928,44 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   defp apply_rule_field_update(current_condition, params) do
+    # Use _target from phx-change to identify which field was changed
+    target = params["_target"] || []
+    target_field = List.first(target)
+
     rule_update =
-      Enum.find_value(params, fn
-        {"rule_page_" <> rule_id, value} -> {:page, rule_id, value}
-        {"rule_variable_" <> rule_id, value} -> {:variable, rule_id, value}
-        {"rule_operator_" <> rule_id, value} -> {:operator, rule_id, value}
-        {"rule_value_" <> rule_id, value} -> {:value, rule_id, value}
-        _ -> nil
-      end)
+      cond do
+        # If we have a target, only process that specific field
+        target_field && String.starts_with?(target_field, "rule_page_") ->
+          rule_id = String.replace_prefix(target_field, "rule_page_", "")
+          {:page, rule_id, params[target_field]}
+
+        target_field && String.starts_with?(target_field, "rule_variable_") ->
+          rule_id = String.replace_prefix(target_field, "rule_variable_", "")
+          {:variable, rule_id, params[target_field]}
+
+        target_field && String.starts_with?(target_field, "rule_operator_") ->
+          rule_id = String.replace_prefix(target_field, "rule_operator_", "")
+          {:operator, rule_id, params[target_field]}
+
+        target_field && String.starts_with?(target_field, "rule_value_") ->
+          rule_id = String.replace_prefix(target_field, "rule_value_", "")
+          {:value, rule_id, params[target_field]}
+
+        target_field && String.starts_with?(target_field, "rule_label_") ->
+          rule_id = String.replace_prefix(target_field, "rule_label_", "")
+          {:label, rule_id, params[target_field]}
+
+        # Fallback: find any rule field (for non-form events)
+        true ->
+          Enum.find_value(params, fn
+            {"rule_page_" <> rule_id, value} -> {:page, rule_id, value}
+            {"rule_variable_" <> rule_id, value} -> {:variable, rule_id, value}
+            {"rule_operator_" <> rule_id, value} -> {:operator, rule_id, value}
+            {"rule_value_" <> rule_id, value} -> {:value, rule_id, value}
+            {"rule_label_" <> rule_id, value} -> {:label, rule_id, value}
+            _ -> nil
+          end)
+      end
 
     case rule_update do
       {field, rule_id, value} ->
@@ -933,89 +1047,4 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
-  # ===========================================================================
-  # Condition Case Helpers
-  # ===========================================================================
-
-  defp add_condition_case(socket, node_id) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-    cases = node.data["cases"] || []
-
-    new_id = "case_#{:erlang.unique_integer([:positive])}"
-    new_case = %{"id" => new_id, "value" => "", "label" => ""}
-    updated_data = Map.put(node.data, "cases", cases ++ [new_case])
-
-    case Flows.update_node_data(node, updated_data) do
-      {:ok, updated_node} ->
-        form = FormHelpers.node_data_to_form(updated_node)
-
-        {:noreply,
-         socket
-         |> reload_flow_data()
-         |> assign(:selected_node, updated_node)
-         |> assign(:node_form, form)
-         |> assign(:save_status, :saved)
-         |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
-
-      {:error, _} ->
-        {:noreply, socket}
-    end
-  end
-
-  defp remove_condition_case(socket, node_id, case_id) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-    cases = node.data["cases"] || []
-
-    # Don't allow removing if only one case remains
-    if length(cases) <= 1 do
-      {:noreply, socket}
-    else
-      updated_cases = Enum.reject(cases, fn c -> c["id"] == case_id end)
-      updated_data = Map.put(node.data, "cases", updated_cases)
-
-      case Flows.update_node_data(node, updated_data) do
-        {:ok, updated_node} ->
-          form = FormHelpers.node_data_to_form(updated_node)
-
-          {:noreply,
-           socket
-           |> reload_flow_data()
-           |> assign(:selected_node, updated_node)
-           |> assign(:node_form, form)
-           |> assign(:save_status, :saved)
-           |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
-
-        {:error, _} ->
-          {:noreply, socket}
-      end
-    end
-  end
-
-  defp update_condition_case_field(socket, node_id, case_id, field, value) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-    cases = node.data["cases"] || []
-
-    updated_cases =
-      Enum.map(cases, fn c ->
-        if c["id"] == case_id, do: Map.put(c, field, value), else: c
-      end)
-
-    updated_data = Map.put(node.data, "cases", updated_cases)
-
-    case Flows.update_node_data(node, updated_data) do
-      {:ok, updated_node} ->
-        form = FormHelpers.node_data_to_form(updated_node)
-
-        {:noreply,
-         socket
-         |> reload_flow_data()
-         |> assign(:selected_node, updated_node)
-         |> assign(:node_form, form)
-         |> assign(:save_status, :saved)
-         |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
-
-      {:error, _} ->
-        {:noreply, socket}
-    end
-  end
 end

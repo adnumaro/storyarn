@@ -45,6 +45,9 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   attr :show_expression_toggle, :boolean, default: true
   attr :expression_mode, :boolean, default: false
   attr :raw_expression, :string, default: ""
+  attr :wrap_in_form, :boolean, default: false
+  attr :context, :map, default: %{}
+  attr :switch_mode, :boolean, default: false
 
   def condition_builder(assigns) do
     # Parse condition if it's a string
@@ -65,93 +68,173 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
       |> assign(:pages_with_variables, pages_with_variables)
 
     ~H"""
-    <div id={@id} class="space-y-3">
-      <%!-- Expression mode toggle --%>
-      <div :if={@show_expression_toggle && @can_edit} class="flex items-center justify-end">
-        <label class="flex items-center gap-2 cursor-pointer text-xs text-base-content/60">
-          <input
-            type="checkbox"
-            class="toggle toggle-xs"
-            checked={@expression_mode}
-            phx-click={@on_change}
-            phx-value-action="toggle_expression_mode"
-            phx-target={@target}
-          />
-          <span>{gettext("Expression mode")}</span>
-        </label>
-      </div>
-
-      <%!-- Expression mode: raw text input --%>
-      <div :if={@expression_mode}>
-        <input
-          type="text"
-          value={@raw_expression}
-          phx-blur={@on_change}
-          phx-value-action="set_expression"
-          phx-target={@target}
-          disabled={!@can_edit}
-          placeholder={gettext("e.g., player.level > 5")}
-          class="input input-sm input-bordered w-full font-mono text-xs"
+    <%= if @wrap_in_form do %>
+      <form id={@id} phx-change={@on_change} phx-target={@target} onsubmit="return false" class="space-y-3">
+        <.context_hidden_inputs context={@context} />
+        <.condition_builder_content
+          parsed_condition={@parsed_condition}
+          pages_with_variables={@pages_with_variables}
+          variables={@variables}
+          on_change={@on_change}
+          target={@target}
+          can_edit={@can_edit}
+          show_expression_toggle={@show_expression_toggle}
+          expression_mode={@expression_mode}
+          raw_expression={@raw_expression}
+          context={@context}
+          switch_mode={@switch_mode}
         />
-        <p class="text-xs text-base-content/50 mt-1">
-          {gettext("Advanced: enter a raw condition expression.")}
-        </p>
+      </form>
+    <% else %>
+      <div id={@id} class="space-y-3">
+        <.context_hidden_inputs context={@context} />
+        <.condition_builder_content
+          parsed_condition={@parsed_condition}
+          pages_with_variables={@pages_with_variables}
+          variables={@variables}
+          on_change={@on_change}
+          target={@target}
+          can_edit={@can_edit}
+          show_expression_toggle={@show_expression_toggle}
+          expression_mode={@expression_mode}
+          raw_expression={@raw_expression}
+          context={@context}
+          switch_mode={@switch_mode}
+        />
+      </div>
+    <% end %>
+    """
+  end
+
+  # Renders hidden inputs for context data (e.g., response_id, node_id)
+  attr :context, :map, default: %{}
+
+  defp context_hidden_inputs(assigns) do
+    ~H"""
+    <input :for={{key, value} <- @context} type="hidden" name={key} value={value} />
+    """
+  end
+
+  # Inner component to avoid duplication
+  attr :parsed_condition, :map, required: true
+  attr :pages_with_variables, :list, default: []
+  attr :variables, :list, default: []
+  attr :on_change, :string, required: true
+  attr :target, :any, default: nil
+  attr :can_edit, :boolean, default: true
+  attr :show_expression_toggle, :boolean, default: true
+  attr :expression_mode, :boolean, default: false
+  attr :raw_expression, :string, default: ""
+  attr :context, :map, default: %{}
+  attr :switch_mode, :boolean, default: false
+
+  defp condition_builder_content(assigns) do
+    ~H"""
+    <%!-- Expression mode toggle --%>
+    <div :if={@show_expression_toggle && @can_edit} class="flex items-center justify-end">
+      <label class="flex items-center gap-2 cursor-pointer text-xs text-base-content/60">
+        <input
+          type="checkbox"
+          class="toggle toggle-xs"
+          checked={@expression_mode}
+          phx-click={@on_change}
+          phx-value-action="toggle_expression_mode"
+          phx-target={@target}
+        />
+        <span>{gettext("Expression mode")}</span>
+      </label>
+    </div>
+
+    <%!-- Expression mode: raw text input --%>
+    <div :if={@expression_mode}>
+      <input
+        type="text"
+        name="raw_expression"
+        value={@raw_expression}
+        disabled={!@can_edit}
+        placeholder={gettext("e.g., player.level > 5")}
+        class="input input-sm input-bordered w-full font-mono text-xs"
+      />
+      <input type="hidden" name="action" value="set_expression" />
+      <p class="text-xs text-base-content/50 mt-1">
+        {gettext("Advanced: enter a raw condition expression.")}
+      </p>
+    </div>
+
+    <%!-- Visual builder mode --%>
+    <div :if={!@expression_mode} class="space-y-3">
+      <%!-- Logic toggle (only show when 2+ rules AND not in switch mode) --%>
+      <div :if={length(@parsed_condition["rules"]) >= 2 && !@switch_mode} class="flex items-center gap-2 text-xs">
+        <span class="text-base-content/60">{gettext("Match")}</span>
+        <div class="join">
+          <button
+            type="button"
+            class={["join-item btn btn-xs", @parsed_condition["logic"] == "all" && "btn-active"]}
+            phx-click={@on_change}
+            phx-value-logic="all"
+            {context_phx_values(@context)}
+            phx-target={@target}
+            disabled={!@can_edit}
+          >
+            {gettext("all")}
+          </button>
+          <button
+            type="button"
+            class={["join-item btn btn-xs", @parsed_condition["logic"] == "any" && "btn-active"]}
+            phx-click={@on_change}
+            phx-value-logic="any"
+            {context_phx_values(@context)}
+            phx-target={@target}
+            disabled={!@can_edit}
+          >
+            {gettext("any")}
+          </button>
+        </div>
+        <span class="text-base-content/60">{gettext("of the rules")}</span>
       </div>
 
-      <%!-- Visual builder mode - wrapped in form for phx-change to work --%>
-      <form :if={!@expression_mode} phx-change={@on_change} phx-target={@target} class="space-y-3">
-        <%!-- Logic toggle --%>
-        <div class="flex items-center gap-2 text-sm">
-          <span class="text-base-content/70">{gettext("Match")}</span>
-          <select
-            class="select select-xs select-bordered"
-            name="logic"
-            disabled={!@can_edit || length(@parsed_condition["rules"]) < 2}
-          >
-            <option value="all" selected={@parsed_condition["logic"] == "all"}>
-              {gettext("all")}
-            </option>
-            <option value="any" selected={@parsed_condition["logic"] == "any"}>
-              {gettext("any")}
-            </option>
-          </select>
-          <span class="text-base-content/70">{gettext("of the following:")}</span>
-        </div>
+      <%!-- Switch mode info --%>
+      <p :if={@switch_mode && @parsed_condition["rules"] != []} class="text-xs text-base-content/60">
+        {gettext("Each condition creates an output. First match wins.")}
+      </p>
 
-        <%!-- Rules --%>
-        <div class="space-y-2">
-          <.condition_rule
-            :for={rule <- @parsed_condition["rules"]}
-            rule={rule}
-            pages_with_variables={@pages_with_variables}
-            variables={@variables}
-            on_change={@on_change}
-            target={@target}
-            can_edit={@can_edit}
-          />
-        </div>
+      <%!-- Rules --%>
+      <div class="space-y-2">
+        <.condition_rule
+          :for={rule <- @parsed_condition["rules"]}
+          rule={rule}
+          pages_with_variables={@pages_with_variables}
+          variables={@variables}
+          on_change={@on_change}
+          target={@target}
+          can_edit={@can_edit}
+          context={@context}
+          switch_mode={@switch_mode}
+        />
+      </div>
 
-        <%!-- Add rule button --%>
-        <button
-          :if={@can_edit}
-          type="button"
-          phx-click={@on_change}
-          phx-value-action="add_rule"
-          phx-target={@target}
-          class="btn btn-ghost btn-xs gap-1 border border-dashed border-base-300"
-        >
-          <.icon name="plus" class="size-3" />
-          {gettext("Add condition")}
-        </button>
+      <%!-- Add rule button --%>
+      <button
+        :if={@can_edit}
+        type="button"
+        phx-click={@on_change}
+        phx-value-action="add_rule"
+        phx-value-switch-mode={to_string(@switch_mode)}
+        {context_phx_values(@context)}
+        phx-target={@target}
+        class="btn btn-ghost btn-xs gap-1 border border-dashed border-base-300"
+      >
+        <.icon name="plus" class="size-3" />
+        {gettext("Add condition")}
+      </button>
 
-        <%!-- Empty state --%>
-        <p
-          :if={@parsed_condition["rules"] == [] && !@can_edit}
-          class="text-xs text-base-content/50 italic"
-        >
-          {gettext("No conditions set")}
-        </p>
-      </form>
+      <%!-- Empty state --%>
+      <p
+        :if={@parsed_condition["rules"] == [] && !@can_edit}
+        class="text-xs text-base-content/50 italic"
+      >
+        {gettext("No conditions set")}
+      </p>
     </div>
     """
   end
@@ -166,6 +249,8 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   attr :on_change, :string, required: true
   attr :target, :any, default: nil
   attr :can_edit, :boolean, default: true
+  attr :context, :map, default: %{}
+  attr :switch_mode, :boolean, default: false
 
   defp condition_rule(assigns) do
     # Find the selected variable to get its type and options
@@ -190,66 +275,78 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
       |> assign(:show_value, show_value)
 
     ~H"""
-    <div class="flex items-start gap-2 p-2 bg-base-200 rounded-lg">
-      <div class="flex-1 grid grid-cols-2 gap-2">
-        <%!-- Page selector --%>
-        <select
-          class="select select-xs select-bordered w-full"
-          name={"rule_page_#{@rule["id"]}"}
-          disabled={!@can_edit}
-        >
-          <option value="">{gettext("Select page...")}</option>
-          <option
-            :for={{page_shortcut, page_name, _vars} <- @pages_with_variables}
-            value={page_shortcut}
-            selected={@rule["page"] == page_shortcut}
+    <div class="flex items-start gap-2 p-3 bg-base-200 rounded-lg">
+      <input type="hidden" name="rule_id" value={@rule["id"]} />
+      <div class="flex-1 space-y-2">
+        <%!-- Row 0: Output label (switch mode only) --%>
+        <div :if={@switch_mode} class="flex items-center gap-2">
+          <span class="text-xs text-base-content/60">→</span>
+          <input
+            type="text"
+            name={"rule_label_#{@rule["id"]}"}
+            value={@rule["label"] || ""}
+            disabled={!@can_edit}
+            placeholder={gettext("Output label...")}
+            class="input input-sm input-bordered flex-1 text-xs font-medium"
+          />
+        </div>
+        <%!-- Row 1: Page + Variable --%>
+        <div class="grid grid-cols-2 gap-2">
+          <select
+            class="select select-sm select-bordered w-full text-xs"
+            name={"rule_page_#{@rule["id"]}"}
+            disabled={!@can_edit}
           >
-            {page_name} ({page_shortcut})
-          </option>
-        </select>
-
-        <%!-- Variable selector --%>
-        <select
-          class="select select-xs select-bordered w-full"
-          name={"rule_variable_#{@rule["id"]}"}
-          disabled={!@can_edit || is_nil(@rule["page"]) || @rule["page"] == ""}
-        >
-          <option value="">{gettext("Select variable...")}</option>
-          <%= for {page_shortcut, _page_name, vars} <- @pages_with_variables,
-                  page_shortcut == @rule["page"],
-                  var <- vars do %>
-            <option value={var.variable_name} selected={@rule["variable"] == var.variable_name}>
-              {var.variable_name} ({variable_type_label(var.block_type)})
+            <option value="">{gettext("Page...")}</option>
+            <option
+              :for={{page_shortcut, page_name, _vars} <- @pages_with_variables}
+              value={page_shortcut}
+              selected={@rule["page"] == page_shortcut}
+            >
+              {page_name}
             </option>
-          <% end %>
-        </select>
-
-        <%!-- Operator selector --%>
-        <select
-          class="select select-xs select-bordered"
-          name={"rule_operator_#{@rule["id"]}"}
-          disabled={!@can_edit || is_nil(@rule["variable"]) || @rule["variable"] == ""}
-        >
-          <option
-            :for={op <- @operators}
-            value={op}
-            selected={@rule["operator"] == op}
+          </select>
+          <select
+            class="select select-sm select-bordered w-full text-xs"
+            name={"rule_variable_#{@rule["id"]}"}
+            disabled={!@can_edit || is_nil(@rule["page"]) || @rule["page"] == ""}
           >
-            {Condition.operator_label(op)}
-          </option>
-        </select>
-
-        <%!-- Value input (type-aware) --%>
-        <.value_input
-          :if={@show_value}
-          rule={@rule}
-          var_type={@var_type}
-          select_options={@select_options}
-          on_change={@on_change}
-          target={@target}
-          can_edit={@can_edit}
-        />
-        <div :if={!@show_value} class="h-6"></div>
+            <option value="">{gettext("Variable...")}</option>
+            <%= for {page_shortcut, _page_name, vars} <- @pages_with_variables,
+                    page_shortcut == @rule["page"],
+                    var <- vars do %>
+              <option value={var.variable_name} selected={@rule["variable"] == var.variable_name}>
+                {var.variable_name}
+              </option>
+            <% end %>
+          </select>
+        </div>
+        <%!-- Row 2: Operator + Value --%>
+        <div class="grid grid-cols-2 gap-2">
+          <select
+            class="select select-sm select-bordered w-full text-xs"
+            name={"rule_operator_#{@rule["id"]}"}
+            disabled={!@can_edit || is_nil(@rule["variable"]) || @rule["variable"] == ""}
+          >
+            <option
+              :for={op <- @operators}
+              value={op}
+              selected={@rule["operator"] == op}
+            >
+              {Condition.operator_label(op)}
+            </option>
+          </select>
+          <.value_input
+            :if={@show_value}
+            rule={@rule}
+            var_type={@var_type}
+            select_options={@select_options}
+            on_change={@on_change}
+            target={@target}
+            can_edit={@can_edit}
+          />
+          <div :if={!@show_value}></div>
+        </div>
       </div>
 
       <%!-- Remove button --%>
@@ -259,8 +356,9 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
         phx-click={@on_change}
         phx-value-action="remove_rule"
         phx-value-rule-id={@rule["id"]}
+        {context_phx_values(@context)}
         phx-target={@target}
-        class="btn btn-ghost btn-xs btn-square text-error flex-shrink-0"
+        class="btn btn-ghost btn-xs btn-square text-error flex-shrink-0 mt-1"
         title={gettext("Remove condition")}
       >
         <.icon name="x" class="size-3" />
@@ -279,11 +377,11 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   defp value_input(%{var_type: "select"} = assigns) do
     ~H"""
     <select
-      class="select select-xs select-bordered w-full"
+      class="select select-sm select-bordered w-full text-xs"
       name={"rule_value_#{@rule["id"]}"}
       disabled={!@can_edit}
     >
-      <option value="">{gettext("Select value...")}</option>
+      <option value="">{gettext("Value...")}</option>
       <option
         :for={opt <- @select_options}
         value={opt["key"]}
@@ -298,11 +396,11 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   defp value_input(%{var_type: "multi_select"} = assigns) do
     ~H"""
     <select
-      class="select select-xs select-bordered w-full"
+      class="select select-sm select-bordered w-full text-xs"
       name={"rule_value_#{@rule["id"]}"}
       disabled={!@can_edit}
     >
-      <option value="">{gettext("Select value...")}</option>
+      <option value="">{gettext("Value...")}</option>
       <option
         :for={opt <- @select_options}
         value={opt["key"]}
@@ -322,7 +420,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
       name={"rule_value_#{@rule["id"]}"}
       disabled={!@can_edit}
       placeholder="0"
-      class="input input-xs input-bordered w-full"
+      class="input input-sm input-bordered w-full text-xs"
     />
     """
   end
@@ -330,7 +428,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   defp value_input(%{var_type: "boolean"} = assigns) do
     ~H"""
     <select
-      class="select select-xs select-bordered w-full"
+      class="select select-sm select-bordered w-full text-xs"
       name={"rule_value_#{@rule["id"]}"}
       disabled={!@can_edit}
     >
@@ -351,7 +449,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
       value={@rule["value"]}
       name={"rule_value_#{@rule["id"]}"}
       disabled={!@can_edit}
-      class="input input-xs input-bordered w-full"
+      class="input input-sm input-bordered w-full text-xs"
     />
     """
   end
@@ -365,7 +463,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
       name={"rule_value_#{@rule["id"]}"}
       disabled={!@can_edit}
       placeholder={gettext("value")}
-      class="input input-xs input-bordered w-full"
+      class="input input-sm input-bordered w-full text-xs"
     />
     """
   end
@@ -399,12 +497,14 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
 
   def find_variable(_variables, _page_shortcut, _variable_name), do: nil
 
-  defp variable_type_label("text"), do: "text"
-  defp variable_type_label("rich_text"), do: "text"
-  defp variable_type_label("number"), do: "num"
-  defp variable_type_label("boolean"), do: "bool"
-  defp variable_type_label("select"), do: "select"
-  defp variable_type_label("multi_select"), do: "multi"
-  defp variable_type_label("date"), do: "date"
-  defp variable_type_label(type), do: type
+  # Converts context map to phx-value-* attributes for use in HEEx templates
+  defp context_phx_values(context) when is_map(context) do
+    context
+    |> Enum.map(fn {key, value} ->
+      # Convert key like "response-id" to "phx-value-response-id"
+      {String.to_atom("phx-value-#{key}"), value}
+    end)
+  end
+
+  defp context_phx_values(_), do: []
 end

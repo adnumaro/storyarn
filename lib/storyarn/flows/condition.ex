@@ -159,9 +159,13 @@ defmodule Storyarn.Flows.Condition do
 
   @doc """
   Adds a new rule to a condition.
+  Options:
+  - :with_label - include a label field (for switch mode)
   """
-  @spec add_rule(map()) :: map()
-  def add_rule(%{"logic" => logic, "rules" => rules}) do
+  @spec add_rule(map(), keyword()) :: map()
+  def add_rule(condition, opts \\ [])
+
+  def add_rule(%{"logic" => logic, "rules" => rules}, opts) do
     new_rule = %{
       "id" => generate_rule_id(),
       "page" => nil,
@@ -169,6 +173,14 @@ defmodule Storyarn.Flows.Condition do
       "operator" => "equals",
       "value" => nil
     }
+
+    # Add label field if requested (for switch mode)
+    new_rule =
+      if Keyword.get(opts, :with_label, false) do
+        Map.put(new_rule, "label", "")
+      else
+        new_rule
+      end
 
     %{"logic" => logic, "rules" => rules ++ [new_rule]}
   end
@@ -236,13 +248,20 @@ defmodule Storyarn.Flows.Condition do
   # =============================================================================
 
   defp normalize_rule(rule) when is_map(rule) do
-    %{
+    base = %{
       "id" => rule["id"] || generate_rule_id(),
       "page" => rule["page"],
       "variable" => rule["variable"],
       "operator" => normalize_operator(rule["operator"]),
       "value" => rule["value"]
     }
+
+    # Preserve label field if present (for switch mode)
+    if Map.has_key?(rule, "label") do
+      Map.put(base, "label", rule["label"])
+    else
+      base
+    end
   end
 
   defp normalize_rule(_), do: nil
