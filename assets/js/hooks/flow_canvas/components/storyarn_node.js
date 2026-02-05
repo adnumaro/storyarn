@@ -137,6 +137,21 @@ export class StoryarnNode extends LitElement {
       margin-right: 2px;
     }
 
+    .error-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      font-size: 10px;
+      font-weight: bold;
+      background: oklch(var(--er, 0.65 0.25 25) / 0.2);
+      color: oklch(var(--er, 0.65 0.25 25));
+      border-radius: 50%;
+      margin-right: 2px;
+      cursor: help;
+    }
+
     .audio-indicator {
       display: inline-flex;
       align-items: center;
@@ -274,7 +289,9 @@ export class StoryarnNode extends LitElement {
               outputLabel = response?.text || key;
               hasCondition = !!response?.condition;
             }
-            // For condition nodes, show appropriate labels
+            // For condition nodes, show appropriate labels and check for errors
+            let hasError = false;
+            let errorMessage = "";
             if (node.nodeType === "condition") {
               if (nodeData.switch_mode && nodeData.condition?.rules?.length > 0) {
                 // Switch mode: labels from rules
@@ -283,6 +300,11 @@ export class StoryarnNode extends LitElement {
                 } else {
                   const rule = nodeData.condition.rules.find((r) => r.id === key);
                   outputLabel = rule?.label || this.formatRuleShort(rule) || key;
+                  // Check if rule is incomplete
+                  if (rule && !this.isRuleComplete(rule)) {
+                    hasError = true;
+                    errorMessage = this.getRuleErrorMessage(rule);
+                  }
                 }
               } else {
                 // Normal mode: True/False
@@ -291,6 +313,7 @@ export class StoryarnNode extends LitElement {
             }
             return html`
               <div class="socket-row output">
+                ${hasError ? html`<span class="error-badge" title="${errorMessage}">⚠</span>` : ""}
                 ${hasCondition ? html`<span class="condition-badge" title="Has condition">?</span>` : ""}
                 <span class="label" title="${outputLabel}">${outputLabel}</span>
                 <rete-ref
@@ -406,6 +429,55 @@ export class StoryarnNode extends LitElement {
     // Truncate value if too long
     const truncatedValue = value.length > 10 ? value.substring(0, 10) + "…" : value;
     return `${rule.variable} ${operatorSymbol} ${truncatedValue}`;
+  }
+
+  /**
+   * Checks if a rule is complete (has all required fields).
+   */
+  isRuleComplete(rule) {
+    if (!rule) return false;
+
+    const hasPage = rule.page && rule.page !== "";
+    const hasVariable = rule.variable && rule.variable !== "";
+    const hasOperator = rule.operator && rule.operator !== "";
+
+    // Operators that don't require a value
+    const noValueOperators = ["is_empty", "is_true", "is_false", "is_nil"];
+    const needsValue = !noValueOperators.includes(rule.operator);
+    const hasValue = !needsValue || (rule.value !== null && rule.value !== undefined && rule.value !== "");
+
+    return hasPage && hasVariable && hasOperator && hasValue;
+  }
+
+  /**
+   * Returns an error message for an incomplete rule.
+   */
+  getRuleErrorMessage(rule) {
+    if (!rule) return "Invalid rule";
+
+    const missing = [];
+
+    if (!rule.page || rule.page === "") {
+      missing.push("page");
+    }
+    if (!rule.variable || rule.variable === "") {
+      missing.push("variable");
+    }
+    if (!rule.operator || rule.operator === "") {
+      missing.push("operator");
+    }
+
+    // Check value for operators that require it
+    const noValueOperators = ["is_empty", "is_true", "is_false", "is_nil"];
+    if (!noValueOperators.includes(rule.operator)) {
+      if (rule.value === null || rule.value === undefined || rule.value === "") {
+        missing.push("value");
+      }
+    }
+
+    if (missing.length === 0) return "";
+
+    return `Incomplete: missing ${missing.join(", ")}`;
   }
 
   /**
