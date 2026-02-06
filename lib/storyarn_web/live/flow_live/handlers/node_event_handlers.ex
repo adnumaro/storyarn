@@ -84,10 +84,18 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
         socket
       end
 
+    referencing_jumps =
+      if node.type == "hub" do
+        Flows.list_referencing_jumps(socket.assigns.flow.id, node.data["hub_id"] || "")
+      else
+        []
+      end
+
     {:noreply,
      socket
      |> assign(:selected_node, node)
      |> assign(:node_form, form)
+     |> assign(:referencing_jumps, referencing_jumps)
      |> assign(:editing_mode, :sidebar)}
   end
 

@@ -496,7 +496,7 @@ defmodule Storyarn.FlowsTest do
         })
 
       # Update to target different hub
-      {:ok, updated_jump} = Flows.update_node_data(jump, %{"target_hub_id" => "hub_b"})
+      {:ok, updated_jump, _meta} = Flows.update_node_data(jump, %{"target_hub_id" => "hub_b"})
 
       assert updated_jump.data["target_hub_id"] == "hub_b"
     end
@@ -519,7 +519,7 @@ defmodule Storyarn.FlowsTest do
       flow = flow_fixture(project)
       node = node_fixture(flow)
 
-      {:ok, updated} = Flows.update_node_data(node, %{"speaker" => "Hero", "text" => "Hi!"})
+      {:ok, updated, _meta} = Flows.update_node_data(node, %{"speaker" => "Hero", "text" => "Hi!"})
 
       assert updated.data["speaker"] == "Hero"
       assert updated.data["text"] == "Hi!"

@@ -65,17 +65,51 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     merged_data = Map.merge(node.data || %{}, node_params)
 
     case Flows.update_node_data(node, merged_data) do
-      {:ok, updated_node} ->
+      {:ok, updated_node, %{renamed_jumps: renamed_count}} ->
         form = FormHelpers.node_data_to_form(updated_node)
         schedule_save_status_reset()
 
-        {:noreply,
-         socket
-         |> reload_flow_data()
-         |> assign(:selected_node, updated_node)
-         |> assign(:node_form, form)
-         |> assign(:save_status, :saved)
-         |> push_event("node_updated", %{id: node.id, data: canvas_data(updated_node)})}
+        socket =
+          socket
+          |> reload_flow_data()
+          |> assign(:selected_node, updated_node)
+          |> assign(:node_form, form)
+          |> assign(:save_status, :saved)
+
+        # Refresh referencing_jumps for hub nodes
+        socket =
+          if updated_node.type == "hub" do
+            jumps =
+              Flows.list_referencing_jumps(
+                socket.assigns.flow.id,
+                updated_node.data["hub_id"] || ""
+              )
+
+            assign(socket, :referencing_jumps, jumps)
+          else
+            socket
+          end
+
+        # Full reload when cascade happened, otherwise single node update
+        socket =
+          if renamed_count > 0 do
+            socket
+            |> put_flash(
+              :info,
+              Gettext.ngettext(
+                StoryarnWeb.Gettext,
+                "%{count} Jump node updated.",
+                "%{count} Jump nodes updated.",
+                renamed_count,
+                count: renamed_count
+              )
+            )
+            |> push_event("flow_updated", socket.assigns.flow_data)
+          else
+            push_event(socket, "node_updated", %{id: node.id, data: canvas_data(updated_node)})
+          end
+
+        {:noreply, socket}
 
       {:error, :hub_id_required} ->
         {:noreply,
@@ -158,7 +192,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     updated_data = Map.put(node.data, "text", content)
 
     case Flows.update_node_data(node, updated_data) do
-      {:ok, updated_node} ->
+      {:ok, updated_node, _meta} ->
         schedule_save_status_reset()
 
         socket =
@@ -205,7 +239,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     updated_data = Map.put(node.data, field, value)
 
     case Flows.update_node_data(node, updated_data) do
-      {:ok, updated_node} ->
+      {:ok, updated_node, _meta} ->
         form = FormHelpers.node_data_to_form(updated_node)
         schedule_save_status_reset()
 
@@ -264,7 +298,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
            )
          )
          |> push_event("flow_updated", flow_data)
-         |> CollaborationHelpers.broadcast_change(:node_deleted, %{node_id: node_id})}
+         |> CollaborationHelpers.broadcast_change(:flow_refresh, %{node_id: node_id})}
 
       {:ok, _, _meta} ->
         socket = reload_flow_data(socket)

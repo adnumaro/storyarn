@@ -210,7 +210,8 @@ defmodule Storyarn.Flows do
   @doc """
   Updates only the data of a node.
   """
-  @spec update_node_data(flow_node(), map()) :: {:ok, flow_node()} | {:error, changeset()}
+  @spec update_node_data(flow_node(), map()) ::
+          {:ok, flow_node(), map()} | {:error, atom() | changeset()}
   defdelegate update_node_data(node, data), to: NodeCrud
 
   @doc """
@@ -244,6 +245,12 @@ defmodule Storyarn.Flows do
   """
   @spec get_hub_by_hub_id(integer(), String.t()) :: flow_node() | nil
   defdelegate get_hub_by_hub_id(flow_id, hub_id), to: NodeCrud
+
+  @doc """
+  Lists jump nodes that reference a given hub_id within a flow.
+  """
+  @spec list_referencing_jumps(integer(), String.t()) :: [map()]
+  defdelegate list_referencing_jumps(flow_id, hub_id), to: NodeCrud
 
   # =============================================================================
   # Connections - CRUD Operations

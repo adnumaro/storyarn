@@ -53,7 +53,7 @@ export function createEditorHandlers(hook) {
       hook.nodeMap.clear();
       hook.connectionDataMap.clear();
       await hook.loadFlow(data);
-      hook.rebuildHubsMap();
+      await hook.rebuildHubsMap();
     },
 
     /**
@@ -62,7 +62,7 @@ export function createEditorHandlers(hook) {
      */
     async handleNodeAdded(data) {
       await hook.addNodeToEditor(data);
-      if (data.type === "hub") hook.rebuildHubsMap();
+      if (data.type === "hub" || data.type === "jump") await hook.rebuildHubsMap();
     },
 
     /**
@@ -72,13 +72,13 @@ export function createEditorHandlers(hook) {
     async handleNodeRemoved(data) {
       const node = hook.nodeMap.get(data.id);
       if (node) {
-        const wasHub = node.nodeType === "hub";
+        const needsRebuild = node.nodeType === "hub" || node.nodeType === "jump";
         await hook.editor.removeNode(node.id);
         hook.nodeMap.delete(data.id);
         if (hook.selectedNodeId === data.id) {
           hook.selectedNodeId = null;
         }
-        if (wasHub) hook.rebuildHubsMap();
+        if (needsRebuild) await hook.rebuildHubsMap();
       }
     },
 
@@ -112,7 +112,8 @@ export function createEditorHandlers(hook) {
         await hook.area.update("node", existingNode.id);
       }
 
-      if (existingNode.nodeType === "hub") hook.rebuildHubsMap();
+      if (existingNode.nodeType === "hub" || existingNode.nodeType === "jump")
+        await hook.rebuildHubsMap();
     },
 
     /**

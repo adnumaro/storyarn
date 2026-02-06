@@ -143,6 +143,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           audio_assets={@audio_assets}
           panel_sections={@panel_sections}
           project_variables={@project_variables}
+          referencing_jumps={@referencing_jumps}
         />
       </div>
 
@@ -235,6 +236,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     |> assign(:project_variables, project_variables)
     |> assign(:selected_node, nil)
     |> assign(:node_form, nil)
+    |> assign(:referencing_jumps, [])
     |> assign(:editing_mode, nil)
     |> assign(:save_status, :idle)
     |> assign(:preview_show, false)
@@ -452,6 +454,10 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("navigate_to_hub", %{"id" => node_id}, socket) do
     {:noreply, push_event(socket, "navigate_to_hub", %{jump_db_id: String.to_integer(node_id)})}
+  end
+
+  def handle_event("navigate_to_node", %{"id" => node_id}, socket) do
+    {:noreply, push_event(socket, "navigate_to_node", %{node_db_id: String.to_integer(node_id)})}
   end
 
   def handle_event("navigate_to_jumps", %{"id" => node_id}, socket) do

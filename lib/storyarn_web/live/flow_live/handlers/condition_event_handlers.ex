@@ -70,7 +70,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ConditionEventHandlers do
         |> Map.put("condition", updated_condition)
 
       case Flows.update_node_data(node, updated_data) do
-        {:ok, updated_node} ->
+        {:ok, updated_node, _meta} ->
           form = FormHelpers.node_data_to_form(updated_node)
           schedule_save_status_reset()
 
@@ -102,7 +102,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ConditionEventHandlers do
       updated_data = Map.put(node.data, "condition", updated_condition)
 
       case Flows.update_node_data(node, updated_data) do
-        {:ok, updated_node} ->
+        {:ok, updated_node, _meta} ->
           form = FormHelpers.node_data_to_form(updated_node)
           schedule_save_status_reset()
 

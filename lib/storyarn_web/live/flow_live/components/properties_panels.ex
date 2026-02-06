@@ -22,6 +22,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :audio_assets, :list, default: []
   attr :panel_sections, :map, default: %{}
   attr :project_variables, :list, default: []
+  attr :referencing_jumps, :list, default: []
 
   def node_properties_panel(assigns) do
     ~H"""
@@ -46,6 +47,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           audio_assets={@audio_assets}
           panel_sections={@panel_sections}
           project_variables={@project_variables}
+          referencing_jumps={@referencing_jumps}
         />
       </div>
 
@@ -96,6 +98,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :audio_assets, :list, default: []
   attr :panel_sections, :map, default: %{}
   attr :project_variables, :list, default: []
+  attr :referencing_jumps, :list, default: []
 
   def node_properties_form(assigns) do
     speaker_options =
@@ -161,6 +164,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
               form={@form}
               can_edit={@can_edit}
               hub_options={@hub_options}
+              referencing_jumps={@referencing_jumps}
             />
         <% end %>
       </.form>

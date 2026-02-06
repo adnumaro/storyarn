@@ -63,6 +63,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
     push_event(socket, "node_added", payload.node_data)
   end
 
+  def push_remote_change_event(socket, :flow_refresh, _payload) do
+    push_event(socket, "flow_updated", socket.assigns.flow_data)
+  end
+
   def push_remote_change_event(socket, :node_deleted, payload) do
     push_event(socket, "node_removed", %{id: payload.node_id})
   end

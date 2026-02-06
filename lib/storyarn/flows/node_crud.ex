@@ -155,7 +155,6 @@ defmodule Storyarn.Flows.NodeCrud do
   end
 
   def update_node_data(%FlowNode{} = node, data) do
-    # Validate hub_id uniqueness for hub nodes
     if node.type == "hub" do
       hub_id = data["hub_id"]
 
@@ -167,10 +166,26 @@ defmodule Storyarn.Flows.NodeCrud do
           {:error, :hub_id_not_unique}
 
         true ->
-          do_update_node_data(node, data)
+          old_hub_id = node.data["hub_id"]
+
+          case do_update_node_data(node, data) do
+            {:ok, updated_node} ->
+              renamed_count =
+                if old_hub_id != hub_id,
+                  do: cascade_hub_id_rename(node.flow_id, old_hub_id, hub_id),
+                  else: 0
+
+              {:ok, updated_node, %{renamed_jumps: renamed_count}}
+
+            error ->
+              error
+          end
       end
     else
-      do_update_node_data(node, data)
+      case do_update_node_data(node, data) do
+        {:ok, updated_node} -> {:ok, updated_node, %{renamed_jumps: 0}}
+        error -> error
+      end
     end
   end
 
@@ -191,36 +206,66 @@ defmodule Storyarn.Flows.NodeCrud do
   end
 
   def delete_node(%FlowNode{} = node) do
-    # Prevent deletion of entry nodes
     if node.type == "entry" do
       {:error, :cannot_delete_entry_node}
     else
-      # Clean up orphaned jump nodes when deleting a hub
-      orphaned_count =
-        if node.type == "hub" do
-          clear_orphaned_jumps(node.flow_id, node.data["hub_id"])
-        else
-          0
+      Repo.transaction(fn ->
+        orphaned_count =
+          if node.type == "hub" do
+            clear_orphaned_jumps(node.flow_id, node.data["hub_id"])
+          else
+            0
+          end
+
+        ReferenceTracker.delete_flow_node_references(node.id)
+
+        case Repo.delete(node) do
+          {:ok, deleted_node} -> {deleted_node, %{orphaned_jumps: orphaned_count}}
+          {:error, changeset} -> Repo.rollback(changeset)
         end
-
-      ReferenceTracker.delete_flow_node_references(node.id)
-
-      case Repo.delete(node) do
-        {:ok, deleted_node} ->
-          {:ok, deleted_node, %{orphaned_jumps: orphaned_count}}
-
-        error ->
-          error
+      end)
+      |> case do
+        {:ok, {deleted_node, meta}} -> {:ok, deleted_node, meta}
+        {:error, reason} -> {:error, reason}
       end
     end
   end
 
+  defp cascade_hub_id_rename(flow_id, old_hub_id, new_hub_id)
+       when is_binary(old_hub_id) and old_hub_id != "" do
+    now = DateTime.utc_now()
+
+    query =
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and n.type == "jump",
+        where: fragment("?->>'target_hub_id' = ?", n.data, ^old_hub_id),
+        update: [
+          set: [
+            data: fragment("jsonb_set(?, '{target_hub_id}', to_jsonb(?::text))", n.data, ^new_hub_id),
+            updated_at: ^now
+          ]
+        ]
+      )
+
+    {count, _} = Repo.update_all(query, [])
+    count
+  end
+
+  defp cascade_hub_id_rename(_, _, _), do: 0
+
   defp clear_orphaned_jumps(flow_id, hub_id) when is_binary(hub_id) and hub_id != "" do
+    now = DateTime.utc_now()
+
     query =
       from(n in FlowNode,
         where: n.flow_id == ^flow_id and n.type == "jump",
         where: fragment("?->>'target_hub_id' = ?", n.data, ^hub_id),
-        update: [set: [data: fragment("jsonb_set(?, '{target_hub_id}', '\"\"'::jsonb)", n.data)]]
+        update: [
+          set: [
+            data: fragment("jsonb_set(?, '{target_hub_id}', '\"\"'::jsonb)", n.data),
+            updated_at: ^now
+          ]
+        ]
       )
 
     {count, _} = Repo.update_all(query, [])
@@ -233,6 +278,22 @@ defmodule Storyarn.Flows.NodeCrud do
   def change_node(%FlowNode{} = node, attrs \\ %{}) do
     FlowNode.update_changeset(node, attrs)
   end
+
+  @doc """
+  Lists jump nodes that reference a given hub_id within a flow.
+  Returns a list of maps with :id and :label (or position info).
+  """
+  def list_referencing_jumps(flow_id, hub_id) when is_binary(hub_id) and hub_id != "" do
+    from(n in FlowNode,
+      where: n.flow_id == ^flow_id and n.type == "jump",
+      where: fragment("?->>'target_hub_id' = ?", n.data, ^hub_id),
+      order_by: [asc: n.position_y, asc: n.position_x],
+      select: %{id: n.id, position_x: n.position_x, position_y: n.position_y}
+    )
+    |> Repo.all()
+  end
+
+  def list_referencing_jumps(_flow_id, _hub_id), do: []
 
   def count_nodes_by_type(flow_id) do
     from(n in FlowNode,

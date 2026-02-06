@@ -16,6 +16,7 @@ defmodule StoryarnWeb.FlowLive.Components.Panels.SimplePanels do
   attr :form, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :hub_options, :list, default: []
+  attr :referencing_jumps, :list, default: []
 
   def simple_properties(assigns) do
     ~H"""
@@ -66,15 +67,40 @@ defmodule StoryarnWeb.FlowLive.Components.Panels.SimplePanels do
           options={hub_color_options()}
           disabled={!@can_edit}
         />
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm w-full mt-4"
-          phx-click="navigate_to_jumps"
-          phx-value-id={@node.id}
-        >
-          <.icon name="search" class="size-4 mr-2" />
-          {gettext("Locate Jump nodes")}
-        </button>
+        <div class="mt-6">
+          <h3 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">
+            {gettext("Referencing Jumps")}
+            <span class="text-base-content/40 ml-1">({length(@referencing_jumps)})</span>
+          </h3>
+          <%= if @referencing_jumps == [] do %>
+            <p class="text-xs text-base-content/40 italic">
+              {gettext("No Jump nodes target this Hub yet.")}
+            </p>
+          <% else %>
+            <div class="space-y-1">
+              <button
+                :for={jump <- @referencing_jumps}
+                type="button"
+                class="btn btn-ghost btn-xs w-full justify-start gap-2 font-normal"
+                phx-click="navigate_to_node"
+                phx-value-id={jump.id}
+              >
+                <.icon name="log-out" class="size-3 opacity-60" />
+                <span class="truncate">Jump #{jump.id}</span>
+                <.icon name="crosshair" class="size-3 opacity-40 ml-auto" />
+              </button>
+            </div>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs w-full mt-2"
+              phx-click="navigate_to_jumps"
+              phx-value-id={@node.id}
+            >
+              <.icon name="search" class="size-3 mr-1" />
+              {gettext("Locate all")}
+            </button>
+          <% end %>
+        </div>
       <% "instruction" -> %>
         <.input
           field={@form[:action]}

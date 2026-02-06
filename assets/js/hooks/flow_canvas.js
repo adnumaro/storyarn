@@ -60,7 +60,6 @@ export const FlowCanvas = {
     this.hubsMap = {};
     if (flowData.nodes) {
       await this.loadFlow(flowData);
-      this.rebuildHubsMap();
     }
 
     // Set up event handlers
@@ -72,6 +71,11 @@ export const FlowCanvas = {
 
     // Enable zoom, pan, fit view
     await finalizeSetup(this.area, this.editor, flowData.nodes?.length > 0);
+
+    // Single rebuild AFTER area is fully ready
+    if (flowData.nodes?.length > 0) {
+      await this.rebuildHubsMap();
+    }
   },
 
   async loadFlow(flowData) {
@@ -126,17 +130,39 @@ export const FlowCanvas = {
     return connection;
   },
 
-  rebuildHubsMap() {
+  async rebuildHubsMap() {
     const map = {};
     for (const [, node] of this.nodeMap) {
       if (node.nodeType === "hub" && node.nodeData?.hub_id) {
         map[node.nodeData.hub_id] = {
           color_hex: node.nodeData.color_hex || null,
           label: node.nodeData.label || "",
+          jumpCount: 0,
         };
       }
     }
+    for (const [, node] of this.nodeMap) {
+      if (node.nodeType === "jump" && node.nodeData?.target_hub_id) {
+        const entry = map[node.nodeData.target_hub_id];
+        if (entry) entry.jumpCount++;
+      }
+    }
     this.hubsMap = map;
+
+    // Rete's area.update only propagates .data/.emit to Lit components,
+    // not custom props like .hubsMap. Set it directly on DOM elements.
+    for (const el of this.el.querySelectorAll("storyarn-node")) {
+      el.hubsMap = map;
+    }
+
+    // Also trigger area.update for layout recalculation
+    const ts = Date.now();
+    for (const [, node] of this.nodeMap) {
+      if (node.nodeType === "hub" || node.nodeType === "jump") {
+        node._updateTs = ts;
+        await this.area.update("node", node.id);
+      }
+    }
   },
 
   disconnected() {

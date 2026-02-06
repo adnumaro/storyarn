@@ -46,6 +46,7 @@ export class StoryarnNode extends LitElement {
 
     const isHub = node.nodeType === "hub";
     const isJump = node.nodeType === "jump";
+    const hubEntry = isHub ? this.hubsMap?.[nodeData.hub_id] : null;
     const targetHub = isJump && nodeData.target_hub_id ? this.hubsMap?.[nodeData.target_hub_id] : null;
 
     // Enrich jump preview with target hub label
@@ -146,7 +147,7 @@ export class StoryarnNode extends LitElement {
                     }),
                   );
                 }}
-              >↗ jumps</div>`
+              >↗ ${hubEntry?.jumpCount || 0} jumps</div>`
             : ""
         }
         <div class="content">

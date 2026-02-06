@@ -100,6 +100,9 @@ export function setupEventHandlers(hook) {
   hook.handleEvent("navigate_to_hub", (data) => {
     hook.navigationHandler.navigateToHub(data.jump_db_id);
   });
+  hook.handleEvent("navigate_to_node", (data) => {
+    hook.navigationHandler.navigateToNode(data.node_db_id);
+  });
   hook.handleEvent("navigate_to_jumps", (data) => {
     hook.navigationHandler.navigateToJumps(data.hub_db_id);
   });

@@ -239,7 +239,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
     updated_data = Map.put(node.data, field, value)
 
     case Flows.update_node_data(node, updated_data) do
-      {:ok, updated_node} ->
+      {:ok, updated_node, _meta} ->
         send(self(), {:node_updated, updated_node})
 
         socket =

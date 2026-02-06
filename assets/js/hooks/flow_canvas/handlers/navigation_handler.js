@@ -91,6 +91,22 @@ export function createNavigationHandler(hook) {
     },
 
     /**
+     * Navigates to a specific node by its database ID.
+     * Zooms to the node, highlights it, and selects it.
+     * @param {number} nodeDbId - Database ID of the target node
+     */
+    navigateToNode(nodeDbId) {
+      const node = hook.nodeMap.get(nodeDbId);
+      if (!node) return;
+
+      const color = node.nodeData?.color_hex || "#8b5cf6";
+
+      AreaExtensions.zoomAt(hook.area, [node]);
+      this.highlightNodes([node.id], color);
+      hook.pushEvent("node_selected", { id: nodeDbId });
+    },
+
+    /**
      * Navigates from a hub node to all jump nodes targeting it.
      * Zooms to fit all related nodes and highlights the jumps.
      * @param {number} hubDbId - Database ID of the hub node
