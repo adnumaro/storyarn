@@ -14,6 +14,8 @@
 | `IMPLEMENTATION_PLAN.md`        | Full roadmap and task breakdown                    |
 | `DIALOGUE_NODE_ENHANCEMENT.md`  | Dialogue node features (Phases 1-4 ✓, 5-7 pending) |
 | `CONDITION_NODE_ENHANCEMENT.md` | Condition node variable integration (pending)      |
+| `INSTRUCTION_VARIABLE_SYSTEM_PLAN.md` | Instruction node + variable tracking (pending) |
+| `FLOW_NODES_IMPROVEMENT_PLAN.md` | Flow node fixes and improvements (Phases 1-2 ✓) |
 
 ## Language Policy
 
@@ -171,8 +173,8 @@ Actions: `:edit_content`, `:manage_project`, `:manage_members`, `:manage_workspa
 
 ## Implementation Status
 
-**Completed:** Auth, Workspaces, Projects, Pages/Blocks, Assets, Flow Editor, Collaboration, Dialogue Enhancement (1-4)
+**Completed:** Auth, Workspaces, Projects, Pages/Blocks, Assets, Flow Editor, Collaboration, Dialogue Enhancement (1-4), Flow Node Improvements (Phases 1-2)
 
-**In Progress:** Condition Node Enhancement
+**In Progress:** Instruction Node + Variable System
 
-**Next:** Dialogue Enhancement (5-7), Export system
+**Next:** Dialogue Enhancement (5-7), Connection hardening, Export system
