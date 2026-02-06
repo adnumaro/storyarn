@@ -25,8 +25,11 @@ export function getPreviewText(nodeType, nodeData) {
       return nodeData.action || "";
     case "jump":
       return nodeData.target_hub_id ? `→ ${nodeData.target_hub_id}` : "";
-    case "exit":
-      return nodeData.label || "";
+    case "exit": {
+      const label = nodeData.label || "";
+      const icon = nodeData.is_success === false ? "✕" : "✓";
+      return label ? `${icon} ${label}` : icon;
+    }
     default:
       return "";
   }

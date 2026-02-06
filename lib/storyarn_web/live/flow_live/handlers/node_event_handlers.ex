@@ -256,16 +256,26 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
   def handle_generate_technical_id(socket) do
     node = socket.assigns.selected_node
 
-    if node && node.type == "dialogue" do
-      flow = socket.assigns.flow
-      speaker_page_id = node.data["speaker_page_id"]
-      speaker_name = get_speaker_name(socket, speaker_page_id)
-      speaker_count = count_speaker_in_flow(flow, speaker_page_id, node.id)
-      technical_id = generate_technical_id(flow.shortcut, speaker_name, speaker_count)
+    cond do
+      node && node.type == "dialogue" ->
+        flow = socket.assigns.flow
+        speaker_page_id = node.data["speaker_page_id"]
+        speaker_name = get_speaker_name(socket, speaker_page_id)
+        speaker_count = count_speaker_in_flow(flow, speaker_page_id, node.id)
+        technical_id = generate_technical_id(flow.shortcut, speaker_name, speaker_count)
 
-      NodeHelpers.update_node_field(socket, node.id, "technical_id", technical_id)
-    else
-      {:noreply, socket}
+        NodeHelpers.update_node_field(socket, node.id, "technical_id", technical_id)
+
+      node && node.type == "exit" ->
+        flow = socket.assigns.flow
+        exit_count = count_exit_in_flow(flow, node.id)
+        label = node.data["label"]
+        technical_id = generate_exit_technical_id(flow.shortcut, label, exit_count)
+
+        NodeHelpers.update_node_field(socket, node.id, "technical_id", technical_id)
+
+      true ->
+        {:noreply, socket}
     end
   end
 
@@ -321,6 +331,37 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
       index -> index + 1
     end
   end
+
+  defp count_exit_in_flow(flow, current_node_id) do
+    flow = Repo.preload(flow, :nodes)
+
+    exit_nodes =
+      flow.nodes
+      |> Enum.filter(&(&1.type == "exit"))
+      |> Enum.sort_by(& &1.inserted_at)
+
+    case Enum.find_index(exit_nodes, &(&1.id == current_node_id)) do
+      nil -> length(exit_nodes) + 1
+      index -> index + 1
+    end
+  end
+
+  defp generate_exit_technical_id(flow_slug, label, exit_count) do
+    flow_part = normalize_for_id(flow_slug || "")
+    label_part = normalize_for_id(label || "")
+    flow_part = if flow_part == "", do: "flow", else: flow_part
+    label_part = if label_part == "", do: "exit", else: label_part
+    "#{flow_part}_#{label_part}_#{exit_count}"
+  end
+
+  defp normalize_for_id(text) when is_binary(text) do
+    text
+    |> String.downcase()
+    |> String.replace(~r/[^a-z0-9]+/, "_")
+    |> String.trim("_")
+  end
+
+  defp normalize_for_id(_), do: ""
 
   defp handle_node_lock_acquisition(socket, node_id, user) do
     alias Storyarn.Collaboration

@@ -10,6 +10,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
+  alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
 
@@ -141,12 +142,22 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   def duplicate_node(socket, node_id) do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
 
-    # Clear hub_id when duplicating hub nodes so a new unique one is auto-generated
+    # Clear unique identifiers when duplicating nodes
     data =
-      if node.type == "hub" do
-        Map.put(node.data, "hub_id", "")
-      else
-        node.data
+      cond do
+        node.type == "hub" ->
+          Map.put(node.data, "hub_id", "")
+
+        node.type == "exit" ->
+          Map.put(node.data, "technical_id", "")
+
+        node.type == "dialogue" ->
+          node.data
+          |> Map.put("technical_id", "")
+          |> Map.put("localization_id", NodeTypeRegistry.default_data("dialogue")["localization_id"])
+
+        true ->
+          node.data
       end
 
     attrs = %{
@@ -309,6 +320,22 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          |> assign(:node_form, nil)
          |> push_event("node_removed", %{id: node_id})
          |> CollaborationHelpers.broadcast_change(:node_deleted, %{node_id: node_id})}
+
+      {:error, :cannot_delete_entry_node} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           Gettext.gettext(StoryarnWeb.Gettext, "The Entry node cannot be deleted.")
+         )}
+
+      {:error, :cannot_delete_last_exit} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           Gettext.gettext(StoryarnWeb.Gettext, "A flow must have at least one Exit node.")
+         )}
 
       {:error, _} ->
         {:noreply,

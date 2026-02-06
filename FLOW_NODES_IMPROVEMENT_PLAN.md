@@ -117,6 +117,34 @@ A comprehensive audit identified and fixed the following issues:
 
 ---
 
+## Phase 1.6: Hub + Jump Bug Fixes — COMPLETED
+
+Follow-up fixes discovered after Phase 1.5 audit.
+
+### Backend fixes
+
+| Fix | Description |
+|-----|-------------|
+| Atomic hub deletion | `delete_node/1` wrapped in `Repo.transaction` — orphan cleanup + delete are all-or-nothing |
+| Cascade hub_id rename | Renaming a hub's `hub_id` cascades to all referencing jump nodes via `cascade_hub_id_rename/3` |
+| `updated_at` on bulk updates | `clear_orphaned_jumps` and `cascade_hub_id_rename` now set `updated_at` |
+| 3-tuple return from `update_node_data` | Returns `{:ok, node, %{renamed_jumps: count}}` so callers can react to cascades |
+| Collaboration broadcast | Hub deletion with orphaned jumps broadcasts `:flow_refresh` (full reload) instead of `:node_deleted` (single remove) |
+| Referencing jumps in sidebar | Hub panel shows list of referencing jump nodes with per-jump navigation |
+| `navigate_to_node` event | New generic navigation event for zooming + highlighting any node by ID |
+
+### Frontend fixes
+
+| Fix | Description |
+|-----|-------------|
+| hubsMap not propagating on page reload | Rete LitPlugin's `area.update` only propagates `.data`/`.emit`, not custom props — fixed by setting `.hubsMap` directly on DOM elements via `querySelectorAll` |
+| hubsMap rebuild for jump changes | `handleNodeAdded`, `handleNodeUpdated`, `handleNodeRemoved` now rebuild hubsMap for both hub AND jump node types |
+| Async `rebuildHubsMap` | Made async with awaited `area.update` calls |
+| Double re-render removed | Consolidated initial `rebuildHubsMap` + post-finalize loop into single call after `finalizeSetup` |
+| Jump navigation from hub panel | Individual jump buttons use `navigate_to_node` (zoom + highlight jump) instead of `navigate_to_hub` (which navigated back to the hub) |
+
+---
+
 ## Phase 2: Minor Improvements (Entry + Exit)
 
 ### 2.1 Exit: Auto-create with flow
@@ -355,6 +383,7 @@ Create a migration to remove the `condition` column from `flow_connections`.
 | 4       | 1.4     | Jump orphan detection       | Small   | **DONE**         |
 | 5       | 1.5     | Jump visual indicator       | Small   | **DONE**         |
 | 6       | 1.5+    | Code quality audit fixes    | Medium  | **DONE**         |
+| 6.5     | 1.6     | Hub + Jump bug fixes        | Medium  | **DONE**         |
 | 7       | 2.1     | Exit auto-create            | Trivial | Pending          |
 | 8       | 2.2     | Exit better data            | Small   | Pending          |
 | 9       | 3.*     | Instruction redesign        | Medium  | Pending          |

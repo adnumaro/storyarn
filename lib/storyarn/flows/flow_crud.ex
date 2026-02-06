@@ -135,6 +135,16 @@ defmodule Storyarn.Flows.FlowCrud do
           })
           |> Repo.insert!()
 
+          # Auto-create Exit node at position {500, 300}
+          %FlowNode{flow_id: flow.id}
+          |> FlowNode.create_changeset(%{
+            type: "exit",
+            position_x: 500.0,
+            position_y: 300.0,
+            data: %{"label" => "", "technical_id" => "", "is_success" => true}
+          })
+          |> Repo.insert!()
+
           flow
 
         {:error, changeset} ->

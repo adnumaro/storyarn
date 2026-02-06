@@ -73,6 +73,13 @@ defmodule Storyarn.Flows.NodeCrud do
     |> Repo.exists?()
   end
 
+  defp is_last_exit_node?(node) do
+    from(n in FlowNode,
+      where: n.flow_id == ^node.flow_id and n.type == "exit"
+    )
+    |> Repo.aggregate(:count, :id) <= 1
+  end
+
   @doc """
   Checks if a hub_id already exists in a flow (excluding a specific node).
   """
@@ -206,28 +213,33 @@ defmodule Storyarn.Flows.NodeCrud do
   end
 
   def delete_node(%FlowNode{} = node) do
-    if node.type == "entry" do
-      {:error, :cannot_delete_entry_node}
-    else
-      Repo.transaction(fn ->
-        orphaned_count =
-          if node.type == "hub" do
-            clear_orphaned_jumps(node.flow_id, node.data["hub_id"])
-          else
-            0
+    cond do
+      node.type == "entry" ->
+        {:error, :cannot_delete_entry_node}
+
+      node.type == "exit" && is_last_exit_node?(node) ->
+        {:error, :cannot_delete_last_exit}
+
+      true ->
+        Repo.transaction(fn ->
+          orphaned_count =
+            if node.type == "hub" do
+              clear_orphaned_jumps(node.flow_id, node.data["hub_id"])
+            else
+              0
+            end
+
+          ReferenceTracker.delete_flow_node_references(node.id)
+
+          case Repo.delete(node) do
+            {:ok, deleted_node} -> {deleted_node, %{orphaned_jumps: orphaned_count}}
+            {:error, changeset} -> Repo.rollback(changeset)
           end
-
-        ReferenceTracker.delete_flow_node_references(node.id)
-
-        case Repo.delete(node) do
-          {:ok, deleted_node} -> {deleted_node, %{orphaned_jumps: orphaned_count}}
-          {:error, changeset} -> Repo.rollback(changeset)
+        end)
+        |> case do
+          {:ok, {deleted_node, meta}} -> {:ok, deleted_node, meta}
+          {:error, reason} -> {:error, reason}
         end
-      end)
-      |> case do
-        {:ok, {deleted_node, meta}} -> {:ok, deleted_node, meta}
-        {:error, reason} -> {:error, reason}
-      end
     end
   end
 

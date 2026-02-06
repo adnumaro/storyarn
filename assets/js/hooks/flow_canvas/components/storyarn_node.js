@@ -54,10 +54,14 @@ export class StoryarnNode extends LitElement {
       preview = `→ ${targetHub.label}`;
     }
 
+    const isExit = node.nodeType === "exit";
+
     const nodeColor =
       (isDialogue && speakerPage?.color) ||
       (isHub && nodeData.color_hex) ||
       (isJump && targetHub?.color_hex) ||
+      (isExit && nodeData.is_success === false ? "#ef4444" : null) ||
+      (isExit && nodeData.is_success !== false ? "#22c55e" : null) ||
       config.color;
     const borderColor = `${nodeColor}40`;
 

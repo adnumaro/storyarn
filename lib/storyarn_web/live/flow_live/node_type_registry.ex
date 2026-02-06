@@ -47,7 +47,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   @doc "Returns the default data map for a given node type."
   @spec default_data(String.t()) :: map()
   def default_data("entry"), do: %{}
-  def default_data("exit"), do: %{"label" => ""}
+  def default_data("exit"), do: %{"label" => "", "technical_id" => "", "is_success" => true}
 
   def default_data("dialogue") do
     %{
@@ -118,7 +118,11 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   end
 
   def extract_form_data("exit", data) do
-    %{"label" => data["label"] || ""}
+    %{
+      "label" => data["label"] || "",
+      "technical_id" => data["technical_id"] || "",
+      "is_success" => data["is_success"] != false
+    }
   end
 
   def extract_form_data(_type, _data), do: %{}

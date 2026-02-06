@@ -39,9 +39,45 @@ defmodule StoryarnWeb.FlowLive.Components.Panels.SimplePanels do
           placeholder={gettext("e.g., Victory, Defeat")}
           disabled={!@can_edit}
         />
-        <p class="text-xs text-base-content/60 mt-2">
-          {gettext("Use labels to identify different endings.")}
+        <.input
+          field={@form[:is_success]}
+          type="checkbox"
+          label={gettext("Success ending")}
+          disabled={!@can_edit}
+        />
+        <p class="text-xs text-base-content/60 mt-1">
+          {gettext("Uncheck for failure/game-over endings.")}
         </p>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-xs">{gettext("Technical ID")}</span>
+          </label>
+          <div class="join w-full">
+            <input
+              type="text"
+              name="technical_id"
+              value={@form[:technical_id].value || ""}
+              phx-blur="update_node_field"
+              phx-value-field="technical_id"
+              disabled={!@can_edit}
+              placeholder={gettext("e.g., victory_ending_1")}
+              class="input input-sm input-bordered join-item flex-1 font-mono text-xs"
+            />
+            <button
+              :if={@can_edit}
+              type="button"
+              phx-click="generate_technical_id"
+              onclick="event.stopPropagation()"
+              class="btn btn-sm btn-ghost join-item"
+              title={gettext("Generate ID")}
+            >
+              <.icon name="refresh-cw" class="size-3" />
+            </button>
+          </div>
+          <p class="text-xs text-base-content/60 mt-1">
+            {gettext("Unique identifier for export and game integration.")}
+          </p>
+        </div>
       <% "hub" -> %>
         <.input
           field={@form[:label]}

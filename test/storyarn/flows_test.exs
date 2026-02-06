@@ -31,8 +31,8 @@ defmodule Storyarn.FlowsTest do
       result = Flows.get_flow(project.id, flow.id)
 
       assert result.id == flow.id
-      # Flow auto-creates an entry node + we added one more manually
-      assert length(result.nodes) == 2
+      # Flow auto-creates entry + exit nodes + we added one more manually
+      assert length(result.nodes) == 3
       assert Enum.any?(result.nodes, &(&1.id == node.id))
     end
 
@@ -88,8 +88,8 @@ defmodule Storyarn.FlowsTest do
       assert flow.id not in Enum.map(Flows.list_flows(project.id), & &1.id)
 
       # But nodes and connections are preserved (for restore)
-      # Flow has auto-created entry node + 2 manually created nodes = 3 total
-      assert length(Flows.list_nodes(flow.id)) == 3
+      # Flow has auto-created entry + exit nodes + 2 manually created nodes = 4 total
+      assert length(Flows.list_nodes(flow.id)) == 4
       assert length(Flows.list_connections(flow.id)) == 1
 
       # Flow appears in deleted list
@@ -189,11 +189,12 @@ defmodule Storyarn.FlowsTest do
 
       nodes = Flows.list_nodes(flow.id)
 
-      # Flow has auto-created entry node + 2 manually created nodes = 3 total
-      assert length(nodes) == 3
+      # Flow has auto-created entry + exit nodes + 2 manually created nodes = 4 total
+      assert length(nodes) == 4
       assert Enum.any?(nodes, &(&1.id == node1.id))
       assert Enum.any?(nodes, &(&1.id == node2.id))
       assert Enum.any?(nodes, &(&1.type == "entry"))
+      assert Enum.any?(nodes, &(&1.type == "exit"))
     end
 
     test "create_node/2 creates a node" do
@@ -225,17 +226,25 @@ defmodule Storyarn.FlowsTest do
       assert "is invalid" in errors_on(changeset).type
     end
 
-    test "flow auto-creates entry node on creation" do
+    test "flow auto-creates entry and exit nodes on creation" do
       user = user_fixture()
       project = project_fixture(user)
       {:ok, flow} = Flows.create_flow(project, %{name: "Test Flow"})
 
       nodes = Flows.list_nodes(flow.id)
-      entry_node = Enum.find(nodes, &(&1.type == "entry"))
+      assert length(nodes) == 2
 
+      entry_node = Enum.find(nodes, &(&1.type == "entry"))
       assert entry_node != nil
       assert entry_node.position_x == 100.0
       assert entry_node.position_y == 300.0
+
+      exit_node = Enum.find(nodes, &(&1.type == "exit"))
+      assert exit_node != nil
+      assert exit_node.position_x == 500.0
+      assert exit_node.position_y == 300.0
+      assert exit_node.data["is_success"] == true
+      assert exit_node.data["technical_id"] == ""
     end
 
     test "cannot create duplicate entry node" do
@@ -290,10 +299,11 @@ defmodule Storyarn.FlowsTest do
       # Verify both exist
       nodes = Flows.list_nodes(flow.id)
       exit_nodes = Enum.filter(nodes, &(&1.type == "exit"))
-      assert length(exit_nodes) == 2
+      # 1 auto-created + 2 manually created = 3 total
+      assert length(exit_nodes) == 3
     end
 
-    test "can delete exit nodes" do
+    test "can delete exit node when multiple exits exist" do
       user = user_fixture()
       project = project_fixture(user)
       flow = flow_fixture(project)
@@ -309,6 +319,38 @@ defmodule Storyarn.FlowsTest do
       {:ok, deleted, _meta} = Flows.delete_node(exit_node)
 
       assert deleted.id == exit_node.id
+    end
+
+    test "cannot delete the last exit node" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      exit_node = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "exit"))
+      assert exit_node != nil
+
+      result = Flows.delete_node(exit_node)
+      assert result == {:error, :cannot_delete_last_exit}
+    end
+
+    test "can delete exit then last remaining exit is protected" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      {:ok, exit2} =
+        Flows.create_node(flow, %{
+          type: "exit",
+          position_x: 500.0,
+          position_y: 400.0,
+          data: %{"label" => "Alternate"}
+        })
+
+      assert {:ok, _, _} = Flows.delete_node(exit2)
+
+      remaining_exit = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "exit"))
+      assert remaining_exit != nil
+      assert {:error, :cannot_delete_last_exit} = Flows.delete_node(remaining_exit)
     end
 
     test "hub node with unique hub_id" do
@@ -679,8 +721,8 @@ defmodule Storyarn.FlowsTest do
 
       assert serialized.id == flow.id
       assert serialized.name == "Test Flow"
-      # Flow has auto-created entry node + 2 manually created nodes = 3 total
-      assert length(serialized.nodes) == 3
+      # Flow has auto-created entry + exit nodes + 2 manually created nodes = 4 total
+      assert length(serialized.nodes) == 4
       assert length(serialized.connections) == 1
 
       first_node = Enum.find(serialized.nodes, &(&1.id == node1.id))
