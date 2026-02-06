@@ -104,7 +104,16 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
 
     hub_options =
       [{"", gettext("Select target hub...")}] ++
-        Enum.map(assigns.flow_hubs, fn hub -> {hub.hub_id, hub.hub_id} end)
+        Enum.map(assigns.flow_hubs, fn hub ->
+          display =
+            if hub.label && hub.label != "" do
+              "#{hub.label} (#{hub.hub_id})"
+            else
+              hub.hub_id
+            end
+
+          {display, hub.hub_id}
+        end)
 
     audio_options =
       [{"", gettext("No audio")}] ++

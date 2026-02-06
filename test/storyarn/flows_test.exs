@@ -306,7 +306,7 @@ defmodule Storyarn.FlowsTest do
           data: %{"label" => "End"}
         })
 
-      {:ok, deleted} = Flows.delete_node(exit_node)
+      {:ok, deleted, _meta} = Flows.delete_node(exit_node)
 
       assert deleted.id == exit_node.id
     end
@@ -533,7 +533,7 @@ defmodule Storyarn.FlowsTest do
       node2 = node_fixture(flow)
       _connection = connection_fixture(flow, node1, node2)
 
-      {:ok, _} = Flows.delete_node(node1)
+      {:ok, _, _meta} = Flows.delete_node(node1)
 
       assert Flows.get_node(flow.id, node1.id) == nil
       assert Flows.list_connections(flow.id) == []

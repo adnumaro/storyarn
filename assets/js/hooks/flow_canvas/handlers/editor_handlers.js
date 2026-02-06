@@ -53,6 +53,7 @@ export function createEditorHandlers(hook) {
       hook.nodeMap.clear();
       hook.connectionDataMap.clear();
       await hook.loadFlow(data);
+      hook.rebuildHubsMap();
     },
 
     /**
@@ -61,6 +62,7 @@ export function createEditorHandlers(hook) {
      */
     async handleNodeAdded(data) {
       await hook.addNodeToEditor(data);
+      if (data.type === "hub") hook.rebuildHubsMap();
     },
 
     /**
@@ -70,11 +72,13 @@ export function createEditorHandlers(hook) {
     async handleNodeRemoved(data) {
       const node = hook.nodeMap.get(data.id);
       if (node) {
+        const wasHub = node.nodeType === "hub";
         await hook.editor.removeNode(node.id);
         hook.nodeMap.delete(data.id);
         if (hook.selectedNodeId === data.id) {
           hook.selectedNodeId = null;
         }
+        if (wasHub) hook.rebuildHubsMap();
       }
     },
 
@@ -107,6 +111,8 @@ export function createEditorHandlers(hook) {
         existingNode._updateTs = Date.now();
         await hook.area.update("node", existingNode.id);
       }
+
+      if (existingNode.nodeType === "hub") hook.rebuildHubsMap();
     },
 
     /**
@@ -119,57 +125,66 @@ export function createEditorHandlers(hook) {
       const position = await hook.area.getNodePosition(existingNode.id);
 
       hook.isLoadingFromServer = true;
-      const connections = hook.editor.getConnections();
-      const affectedConnections = [];
+      try {
+        const connections = hook.editor.getConnections();
+        const affectedConnections = [];
 
-      // Save and remove affected connections
-      for (const conn of connections) {
-        if (conn.source === existingNode.id || conn.target === existingNode.id) {
-          affectedConnections.push({
-            source: hook.editor.getNode(conn.source)?.nodeId,
-            sourceOutput: conn.sourceOutput,
-            target: hook.editor.getNode(conn.target)?.nodeId,
-            targetInput: conn.targetInput,
-          });
-          await hook.editor.removeConnection(conn.id);
-        }
-      }
-
-      // Remove and recreate the node
-      await hook.editor.removeNode(existingNode.id);
-      hook.nodeMap.delete(id);
-
-      const newNode = new FlowNode(existingNode.nodeType, id, nodeData);
-      newNode.id = `node-${id}`;
-
-      await hook.editor.addNode(newNode);
-      await hook.area.translate(newNode.id, position);
-      hook.nodeMap.set(id, newNode);
-
-      // Force re-render to update visual (speaker name, etc.)
-      await hook.area.update("node", newNode.id);
-
-      // Restore connections
-      for (const connInfo of affectedConnections) {
-        const sourceNode = hook.nodeMap.get(connInfo.source);
-        const targetNode = hook.nodeMap.get(connInfo.target);
-        if (sourceNode && targetNode) {
-          if (
-            sourceNode.outputs[connInfo.sourceOutput] &&
-            targetNode.inputs[connInfo.targetInput]
-          ) {
-            const connection = new ClassicPreset.Connection(
-              sourceNode,
-              connInfo.sourceOutput,
-              targetNode,
-              connInfo.targetInput,
-            );
-            await hook.editor.addConnection(connection);
+        // Save and remove affected connections (including their metadata)
+        for (const conn of connections) {
+          if (conn.source === existingNode.id || conn.target === existingNode.id) {
+            affectedConnections.push({
+              source: hook.editor.getNode(conn.source)?.nodeId,
+              sourceOutput: conn.sourceOutput,
+              target: hook.editor.getNode(conn.target)?.nodeId,
+              targetInput: conn.targetInput,
+              connData: hook.connectionDataMap.get(conn.id),
+            });
+            hook.connectionDataMap.delete(conn.id);
+            await hook.editor.removeConnection(conn.id);
           }
         }
-      }
 
-      hook.isLoadingFromServer = false;
+        // Remove and recreate the node
+        await hook.editor.removeNode(existingNode.id);
+        hook.nodeMap.delete(id);
+
+        const newNode = new FlowNode(existingNode.nodeType, id, nodeData);
+        newNode.id = `node-${id}`;
+
+        await hook.editor.addNode(newNode);
+        await hook.area.translate(newNode.id, position);
+        hook.nodeMap.set(id, newNode);
+
+        // Force re-render to update visual (speaker name, etc.)
+        await hook.area.update("node", newNode.id);
+
+        // Restore connections with their metadata
+        for (const connInfo of affectedConnections) {
+          const sourceNode = hook.nodeMap.get(connInfo.source);
+          const targetNode = hook.nodeMap.get(connInfo.target);
+          if (sourceNode && targetNode) {
+            if (
+              sourceNode.outputs[connInfo.sourceOutput] &&
+              targetNode.inputs[connInfo.targetInput]
+            ) {
+              const connection = new ClassicPreset.Connection(
+                sourceNode,
+                connInfo.sourceOutput,
+                targetNode,
+                connInfo.targetInput,
+              );
+              await hook.editor.addConnection(connection);
+
+              // Restore connection metadata (labels, conditions)
+              if (connInfo.connData) {
+                hook.connectionDataMap.set(connection.id, connInfo.connData);
+              }
+            }
+          }
+        }
+      } finally {
+        hook.isLoadingFromServer = false;
+      }
     },
 
     /**
@@ -220,6 +235,7 @@ export function createEditorHandlers(hook) {
       hook.connectionDataMap.set(connId, {
         id: data.id,
         label: data.label,
+        condition: data.condition,
       });
 
       const conn = hook.editor.getConnections().find((c) => c.id === connId);

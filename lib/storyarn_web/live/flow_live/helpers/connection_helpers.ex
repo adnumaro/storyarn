@@ -85,5 +85,4 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
        target_node_id: target_id
      })}
   end
-
 end

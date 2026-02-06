@@ -35,13 +35,14 @@ export function createPlugins(container, hook) {
             const nodeData = {
               ...node,
               nodeData: { ...node.nodeData },
-              _updateTs: node._updateTs || Date.now(),
+              _updateTs: node._updateTs || 0,
             };
             return html`
               <storyarn-node
                 .data=${nodeData}
                 .emit=${emit}
                 .pagesMap=${hook.pagesMap}
+                .hubsMap=${hook.hubsMap}
               ></storyarn-node>
             `;
           };

@@ -11,7 +11,17 @@ defmodule Storyarn.Pages do
   - `TreeOperations` - Tree reordering and movement operations
   """
 
-  alias Storyarn.Pages.{Block, BlockCrud, Page, PageCrud, PageQueries, PageVersion, TreeOperations, Versioning}
+  alias Storyarn.Pages.{
+    Block,
+    BlockCrud,
+    Page,
+    PageCrud,
+    PageQueries,
+    PageVersion,
+    TreeOperations,
+    Versioning
+  }
+
   alias Storyarn.Projects.Project
 
   # =============================================================================

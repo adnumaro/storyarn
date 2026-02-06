@@ -33,7 +33,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
           id: node.id,
           type: node.type,
           position: %{x: node.position_x, y: node.position_y},
-          data: node.data
+          data: canvas_data(node)
         }
 
         {:noreply,
@@ -75,7 +75,23 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          |> assign(:selected_node, updated_node)
          |> assign(:node_form, form)
          |> assign(:save_status, :saved)
-         |> push_event("node_updated", %{id: node.id, data: updated_node.data})}
+         |> push_event("node_updated", %{id: node.id, data: canvas_data(updated_node)})}
+
+      {:error, :hub_id_required} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           Gettext.gettext(StoryarnWeb.Gettext, "Hub ID is required.")
+         )}
+
+      {:error, :hub_id_not_unique} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           Gettext.gettext(StoryarnWeb.Gettext, "Hub ID already exists in this flow.")
+         )}
 
       {:error, _} ->
         {:noreply, socket}
@@ -91,11 +107,19 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   def duplicate_node(socket, node_id) do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
 
+    # Clear hub_id when duplicating hub nodes so a new unique one is auto-generated
+    data =
+      if node.type == "hub" do
+        Map.put(node.data, "hub_id", "")
+      else
+        node.data
+      end
+
     attrs = %{
       type: node.type,
       position_x: node.position_x + 50.0,
       position_y: node.position_y + 50.0,
-      data: node.data
+      data: data
     }
 
     case Flows.create_node(socket.assigns.flow, attrs) do
@@ -104,7 +128,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
           id: new_node.id,
           type: new_node.type,
           position: %{x: new_node.position_x, y: new_node.position_y},
-          data: new_node.data
+          data: canvas_data(new_node)
         }
 
         {:noreply,
@@ -122,7 +146,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          )}
     end
   end
-
 
   @doc """
   Updates a node's text content (from TipTap editor).
@@ -143,7 +166,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
           |> reload_flow_data()
           |> assign(:save_status, :saved)
           |> maybe_update_selected_node(node, updated_node)
-          |> push_event("node_updated", %{id: node.id, data: updated_node.data})
+          |> push_event("node_updated", %{id: node.id, data: canvas_data(updated_node)})
 
         {:noreply, socket}
 
@@ -192,15 +215,19 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          |> assign(:selected_node, updated_node)
          |> assign(:node_form, form)
          |> assign(:save_status, :saved)
-         |> push_event("node_updated", %{id: node_id, data: updated_node.data})}
+         |> push_event("node_updated", %{id: node_id, data: canvas_data(updated_node)})}
 
       {:error, _} ->
         {:noreply, socket}
     end
   end
 
-
   # Private functions
+
+  # Resolves node data for canvas events (e.g., hub color name → hex).
+  defp canvas_data(node) do
+    Flows.resolve_node_colors(node.type, node.data)
+  end
 
   defp maybe_update_selected_node(socket, original_node, updated_node) do
     if socket.assigns.selected_node && socket.assigns.selected_node.id == original_node.id do
@@ -218,14 +245,32 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
 
     case Flows.delete_node(node) do
-      {:ok, _} ->
-        flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
-        flow_data = Flows.serialize_for_canvas(flow)
+      {:ok, _, %{orphaned_jumps: count}} when count > 0 ->
+        socket = reload_flow_data(socket)
+        flow_data = socket.assigns.flow_data
 
         {:noreply,
          socket
-         |> assign(:flow, flow)
-         |> assign(:flow_data, flow_data)
+         |> assign(:selected_node, nil)
+         |> assign(:node_form, nil)
+         |> put_flash(
+           :warning,
+           Gettext.ngettext(
+             StoryarnWeb.Gettext,
+             "%{count} Jump node lost its target.",
+             "%{count} Jump nodes lost their target.",
+             count,
+             count: count
+           )
+         )
+         |> push_event("flow_updated", flow_data)
+         |> CollaborationHelpers.broadcast_change(:node_deleted, %{node_id: node_id})}
+
+      {:ok, _, _meta} ->
+        socket = reload_flow_data(socket)
+
+        {:noreply,
+         socket
          |> assign(:selected_node, nil)
          |> assign(:node_form, nil)
          |> push_event("node_removed", %{id: node_id})
@@ -233,7 +278,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
       {:error, _} ->
         {:noreply,
-         Phoenix.LiveView.put_flash(
+         put_flash(
            socket,
            :error,
            Gettext.gettext(StoryarnWeb.Gettext, "Could not delete node.")

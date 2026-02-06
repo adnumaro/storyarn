@@ -13,8 +13,12 @@ export function getPreviewText(nodeType, nodeData) {
         : "";
       return textContent || "";
     }
-    case "hub":
-      return nodeData.hub_id || "";
+    case "hub": {
+      const label = nodeData.label || "";
+      const hubId = nodeData.hub_id || "";
+      if (label && hubId) return `${label} (${hubId})`;
+      return label || hubId;
+    }
     case "condition":
       return getConditionSummary(nodeData);
     case "instruction":
@@ -87,7 +91,8 @@ export function formatRuleShort(rule) {
     return `${rule.variable} ${operatorSymbol}`;
   }
 
-  const truncatedValue = value.length > 10 ? value.substring(0, 10) + "…" : value;
+  const strValue = String(value);
+  const truncatedValue = strValue.length > 10 ? strValue.substring(0, 10) + "…" : strValue;
   return `${rule.variable} ${operatorSymbol} ${truncatedValue}`;
 }
 

@@ -14,20 +14,23 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
 
-  @spec handle_cursor_moved(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_cursor_moved(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_cursor_moved(%{"x" => x, "y" => y}, socket) do
     user = socket.assigns.current_scope.user
     Collaboration.broadcast_cursor(socket.assigns.flow.id, user, x, y)
     {:noreply, socket}
   end
 
-  @spec handle_presence_diff(Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_presence_diff(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_presence_diff(socket) do
     online_users = Collaboration.list_online_users(socket.assigns.flow.id)
     {:noreply, assign(socket, :online_users, online_users)}
   end
 
-  @spec handle_cursor_update(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_cursor_update(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_cursor_update(cursor_data, socket) do
     if cursor_data.user_id == socket.assigns.current_scope.user.id do
       {:noreply, socket}
@@ -41,7 +44,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
     end
   end
 
-  @spec handle_cursor_leave(String.t(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_cursor_leave(String.t(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_cursor_leave(user_id, socket) do
     remote_cursors = Map.delete(socket.assigns.remote_cursors, user_id)
 
@@ -51,7 +55,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
      |> push_event("cursor_leave", %{user_id: user_id})}
   end
 
-  @spec handle_lock_change(atom(), map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_lock_change(atom(), map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_lock_change(action, payload, socket) do
     node_locks = Collaboration.list_locks(socket.assigns.flow.id)
 
@@ -70,7 +75,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
     {:noreply, socket}
   end
 
-  @spec handle_remote_change(atom(), map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_remote_change(atom(), map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_remote_change(action, payload, socket) do
     if payload.user_id == socket.assigns.current_scope.user.id do
       {:noreply, socket}
@@ -89,7 +95,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
     end
   end
 
-  @spec handle_clear_collab_toast(Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_clear_collab_toast(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_clear_collab_toast(socket) do
     {:noreply, assign(socket, :collab_toast, nil)}
   end

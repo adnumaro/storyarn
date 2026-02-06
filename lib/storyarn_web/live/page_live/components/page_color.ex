@@ -87,7 +87,11 @@ defmodule StoryarnWeb.PageLive.Components.PageColor do
 
     case Pages.update_page(page, %{color: color}) do
       {:ok, updated_page} ->
-        updated_page = Repo.preload(updated_page, [:avatar_asset, :banner_asset, :current_version], force: true)
+        updated_page =
+          Repo.preload(updated_page, [:avatar_asset, :banner_asset, :current_version],
+            force: true
+          )
+
         send(self(), {:page_color, :page_updated, updated_page})
         {:noreply, assign(socket, :page, updated_page)}
 

@@ -17,12 +17,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.ConditionEventHandlers do
 
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
 
-  @spec handle_update_condition_builder(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_update_condition_builder(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_update_condition_builder(params, socket) do
     handle_condition_node_update(socket, params)
   end
 
-  @spec handle_update_response_condition_builder(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_update_response_condition_builder(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_update_response_condition_builder(params, socket) do
     handle_response_condition_update(socket, params)
   end
@@ -31,12 +33,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.ConditionEventHandlers do
   Handles the update_node_data event when it contains response condition builder fields.
   Called from show.ex when the event params indicate response condition fields.
   """
-  @spec handle_response_condition_from_form(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_response_condition_from_form(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_response_condition_from_form(params, socket) do
     handle_response_condition_update(socket, params)
   end
 
-  @spec handle_toggle_switch_mode(Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_toggle_switch_mode(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_toggle_switch_mode(socket) do
     node = socket.assigns.selected_node
 
@@ -226,5 +230,4 @@ defmodule StoryarnWeb.FlowLive.Handlers.ConditionEventHandlers do
         current_condition
     end
   end
-
 end

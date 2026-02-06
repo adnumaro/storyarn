@@ -10,6 +10,12 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
   alias Storyarn.Flows
   alias Storyarn.Pages
 
+  # Maximum traversal depth to prevent infinite loops in cyclic flows
+  @max_traversal_depth 50
+
+  # Allowed HTML tags from TipTap rich text editor output
+  @allowed_tags ~w(p br b i em strong u s del a ul ol li h1 h2 h3 h4 h5 h6 blockquote pre code span div)
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -33,7 +39,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
 
           <%!-- Dialogue text --%>
           <div class="prose prose-sm max-w-none bg-base-200 rounded-lg p-4">
-            {raw(interpolate_variables(@current_node.data["text"] || ""))}
+            {raw(sanitize_and_interpolate(@current_node.data["text"] || ""))}
           </div>
 
           <%!-- Response buttons --%>
@@ -48,7 +54,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
                 phx-target={@myself}
                 class="btn btn-outline btn-sm justify-start text-left h-auto py-2"
               >
-                <span class="flex-1">{interpolate_variables(response["text"])}</span>
+                <span class="flex-1">{raw(sanitize_and_interpolate(response["text"] || ""))}</span>
                 <span
                   :if={response["condition"]}
                   class="badge badge-warning badge-xs ml-2"
@@ -214,7 +220,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
     if node.type == "dialogue" do
       load_dialogue_node(socket, node)
     else
-      skip_to_next_dialogue(socket, node)
+      skip_to_next_dialogue(socket, node, MapSet.new(), 0)
     end
   end
 
@@ -232,12 +238,49 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
     )
   end
 
-  defp skip_to_next_dialogue(socket, node) do
-    connections = Flows.get_outgoing_connections(node.id)
+  defp skip_to_next_dialogue(socket, _node, _visited, depth)
+       when depth >= @max_traversal_depth do
+    assign_empty_node(socket)
+  end
 
-    case List.first(connections) do
-      nil -> assign_empty_node(socket)
-      next_conn -> load_node(socket, Flows.get_node_by_id!(next_conn.target_node_id))
+  defp skip_to_next_dialogue(socket, %{type: "jump"} = node, visited, depth) do
+    if MapSet.member?(visited, node.id) do
+      assign_empty_node(socket)
+    else
+      visited = MapSet.put(visited, node.id)
+      target_hub_id = node.data["target_hub_id"]
+
+      if target_hub_id && target_hub_id != "" do
+        case Flows.get_hub_by_hub_id(node.flow_id, target_hub_id) do
+          nil -> assign_empty_node(socket)
+          hub -> skip_to_next_dialogue(socket, hub, visited, depth + 1)
+        end
+      else
+        assign_empty_node(socket)
+      end
+    end
+  end
+
+  defp skip_to_next_dialogue(socket, node, visited, depth) do
+    if MapSet.member?(visited, node.id) do
+      assign_empty_node(socket)
+    else
+      visited = MapSet.put(visited, node.id)
+      connections = Flows.get_outgoing_connections(node.id)
+
+      case List.first(connections) do
+        nil ->
+          assign_empty_node(socket)
+
+        next_conn ->
+          next_node = Flows.get_node_by_id!(next_conn.target_node_id)
+
+          if next_node.type == "dialogue" do
+            load_dialogue_node(socket, next_node)
+          else
+            skip_to_next_dialogue(socket, next_node, visited, depth + 1)
+          end
+      end
     end
   end
 
@@ -254,20 +297,33 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
     Enum.any?(connections, fn conn -> conn.source_pin == "output" end)
   end
 
-  defp resolve_speaker(assigns, speaker_page_id) when is_integer(speaker_page_id) do
-    # Try to get from pages_map first
-    pages_map = Map.get(assigns, :pages_map, %{})
-    page_info = Map.get(pages_map, to_string(speaker_page_id))
+  defp resolve_speaker(assigns, speaker_page_id)
+       when is_integer(speaker_page_id) or is_binary(speaker_page_id) do
+    page_id =
+      if is_binary(speaker_page_id) do
+        case Integer.parse(speaker_page_id) do
+          {id, ""} -> id
+          _ -> nil
+        end
+      else
+        speaker_page_id
+      end
 
-    if page_info do
-      page_info.name
-    else
-      # Fallback to database lookup
-      project_id = assigns.project.id
+    if page_id do
+      # Try to get from pages_map first
+      pages_map = Map.get(assigns, :pages_map, %{})
+      page_info = Map.get(pages_map, to_string(page_id))
 
-      case Pages.get_page(project_id, speaker_page_id) do
-        nil -> nil
-        page -> page.name
+      if page_info do
+        page_info.name
+      else
+        # Fallback to database lookup
+        project_id = assigns.project.id
+
+        case Pages.get_page(project_id, page_id) do
+          nil -> nil
+          page -> page.name
+        end
       end
     end
   end
@@ -284,10 +340,56 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
     |> String.upcase()
   end
 
-  defp interpolate_variables(nil), do: ""
+  defp sanitize_and_interpolate(""), do: ""
+
+  defp sanitize_and_interpolate(text) when is_binary(text) do
+    text
+    |> sanitize_html()
+    |> interpolate_variables()
+  end
+
+  defp sanitize_html(html) when is_binary(html) do
+    case Floki.parse_document(html) do
+      {:ok, tree} ->
+        tree
+        |> strip_unsafe_nodes()
+        |> Floki.raw_html()
+
+      _ ->
+        Phoenix.HTML.html_escape(html) |> Phoenix.HTML.safe_to_string()
+    end
+  end
+
+  defp strip_unsafe_nodes(nodes) when is_list(nodes) do
+    Enum.flat_map(nodes, &strip_unsafe_node/1)
+  end
+
+  defp strip_unsafe_node({tag, attrs, children}) do
+    if tag in @allowed_tags do
+      safe_attrs = Enum.reject(attrs, fn {k, v} -> unsafe_attr?(k, v) end)
+      [{tag, safe_attrs, strip_unsafe_nodes(children)}]
+    else
+      # Drop the tag but keep safe children (e.g., <script> is dropped, text inside kept for <div>)
+      strip_unsafe_nodes(children)
+    end
+  end
+
+  defp strip_unsafe_node(text) when is_binary(text), do: [text]
+  defp strip_unsafe_node({:comment, _}), do: []
+  defp strip_unsafe_node(_), do: []
+
+  defp unsafe_attr?(name, _value) when is_binary(name) do
+    downcased = String.downcase(name)
+    String.starts_with?(downcased, "on") || downcased in ~w(srcdoc formaction)
+  end
+
+  defp unsafe_attr?(_name, value) when is_binary(value) do
+    String.contains?(String.downcase(value), "javascript:")
+  end
+
+  defp unsafe_attr?(_name, _value), do: false
 
   defp interpolate_variables(text) when is_binary(text) do
-    # Replace {var_name} with [var_name] placeholder
     Regex.replace(~r/\{(\w+)\}/, text, fn _, var_name ->
       "<span class=\"badge badge-ghost badge-sm font-mono\">[#{var_name}]</span>"
     end)

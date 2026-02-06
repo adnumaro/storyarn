@@ -4,6 +4,7 @@ defmodule Storyarn.Flows.NodeCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.{Flow, FlowNode}
+  alias Storyarn.Pages.ReferenceTracker
   alias Storyarn.Repo
 
   def list_nodes(flow_id) do
@@ -35,51 +36,41 @@ defmodule Storyarn.Flows.NodeCrud do
   def create_node(%Flow{} = flow, attrs) do
     attrs = stringify_keys(attrs)
 
-    changeset =
-      %FlowNode{flow_id: flow.id}
-      |> FlowNode.create_changeset(attrs)
-
-    # Validate special node types
     case attrs["type"] do
       "entry" ->
         if has_entry_node?(flow.id) do
           {:error, :entry_node_exists}
         else
-          Repo.insert(changeset)
+          insert_node(flow, attrs)
         end
 
       "hub" ->
         hub_id = get_in(attrs, ["data", "hub_id"])
+        hub_id = if hub_id == nil || hub_id == "", do: generate_hub_id(flow.id), else: hub_id
 
-        if hub_id && hub_id != "" && hub_id_exists?(flow.id, hub_id, nil) do
+        if hub_id_exists?(flow.id, hub_id, nil) do
           {:error, :hub_id_not_unique}
         else
-          Repo.insert(changeset)
+          updated_data = Map.put(attrs["data"] || %{}, "hub_id", hub_id)
+          insert_node(flow, Map.put(attrs, "data", updated_data))
         end
 
       _ ->
-        Repo.insert(changeset)
+        insert_node(flow, attrs)
     end
   end
 
-  @doc """
-  Checks if a flow already has an entry node.
-  """
-  def has_entry_node?(flow_id) do
+  defp insert_node(%Flow{} = flow, attrs) do
+    %FlowNode{flow_id: flow.id}
+    |> FlowNode.create_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  defp has_entry_node?(flow_id) do
     from(n in FlowNode,
       where: n.flow_id == ^flow_id and n.type == "entry"
     )
     |> Repo.exists?()
-  end
-
-  @doc """
-  Gets the entry node for a flow.
-  """
-  def get_entry_node(flow_id) do
-    from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.type == "entry"
-    )
-    |> Repo.one()
   end
 
   @doc """
@@ -109,10 +100,39 @@ defmodule Storyarn.Flows.NodeCrud do
   def list_hubs(flow_id) do
     from(n in FlowNode,
       where: n.flow_id == ^flow_id and n.type == "hub",
-      select: %{id: n.id, hub_id: fragment("?->>'hub_id'", n.data)},
+      select: %{
+        id: n.id,
+        hub_id: fragment("?->>'hub_id'", n.data),
+        label: fragment("?->>'label'", n.data)
+      },
       order_by: [asc: fragment("?->>'hub_id'", n.data)]
     )
     |> Repo.all()
+  end
+
+  @doc """
+  Finds a hub node in a flow by its hub_id.
+  Returns nil if not found.
+  """
+  def get_hub_by_hub_id(flow_id, hub_id) do
+    from(n in FlowNode,
+      where: n.flow_id == ^flow_id and n.type == "hub",
+      where: fragment("?->>'hub_id' = ?", n.data, ^hub_id)
+    )
+    |> Repo.one()
+  end
+
+  defp generate_hub_id(flow_id) do
+    max_suffix =
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and n.type == "hub",
+        where: fragment("?->>'hub_id' ~ '^hub_[0-9]+$'", n.data),
+        select:
+          fragment("max(cast(substring(?->>'hub_id' from 'hub_([0-9]+)') as integer))", n.data)
+      )
+      |> Repo.one()
+
+    "hub_#{(max_suffix || 0) + 1}"
   end
 
   defp stringify_keys(map) when is_map(map) do
@@ -139,10 +159,15 @@ defmodule Storyarn.Flows.NodeCrud do
     if node.type == "hub" do
       hub_id = data["hub_id"]
 
-      if hub_id && hub_id != "" && hub_id_exists?(node.flow_id, hub_id, node.id) do
-        {:error, :hub_id_not_unique}
-      else
-        do_update_node_data(node, data)
+      cond do
+        hub_id == nil || hub_id == "" ->
+          {:error, :hub_id_required}
+
+        hub_id_exists?(node.flow_id, hub_id, node.id) ->
+          {:error, :hub_id_not_unique}
+
+        true ->
+          do_update_node_data(node, data)
       end
     else
       do_update_node_data(node, data)
@@ -157,8 +182,6 @@ defmodule Storyarn.Flows.NodeCrud do
 
     case result do
       {:ok, updated_node} ->
-        # Track references in node data (dialogue mentions, speaker references)
-        alias Storyarn.Pages.ReferenceTracker
         ReferenceTracker.update_flow_node_references(updated_node)
         {:ok, updated_node}
 
@@ -172,12 +195,40 @@ defmodule Storyarn.Flows.NodeCrud do
     if node.type == "entry" do
       {:error, :cannot_delete_entry_node}
     else
-      # Clean up references before deleting
-      alias Storyarn.Pages.ReferenceTracker
+      # Clean up orphaned jump nodes when deleting a hub
+      orphaned_count =
+        if node.type == "hub" do
+          clear_orphaned_jumps(node.flow_id, node.data["hub_id"])
+        else
+          0
+        end
+
       ReferenceTracker.delete_flow_node_references(node.id)
-      Repo.delete(node)
+
+      case Repo.delete(node) do
+        {:ok, deleted_node} ->
+          {:ok, deleted_node, %{orphaned_jumps: orphaned_count}}
+
+        error ->
+          error
+      end
     end
   end
+
+  defp clear_orphaned_jumps(flow_id, hub_id) when is_binary(hub_id) and hub_id != "" do
+    query =
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and n.type == "jump",
+        where: fragment("?->>'target_hub_id' = ?", n.data, ^hub_id),
+        update: [set: [data: fragment("jsonb_set(?, '{target_hub_id}', '\"\"'::jsonb)", n.data)]]
+      )
+
+    {count, _} = Repo.update_all(query, [])
+
+    count
+  end
+
+  defp clear_orphaned_jumps(_flow_id, _hub_id), do: 0
 
   def change_node(%FlowNode{} = node, attrs \\ %{}) do
     FlowNode.update_changeset(node, attrs)

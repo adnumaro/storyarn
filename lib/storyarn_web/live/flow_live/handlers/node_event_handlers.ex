@@ -24,12 +24,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers, only: [generate_technical_id: 3]
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
 
-  @spec handle_add_node(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_add_node(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_add_node(%{"type" => type}, socket) do
     NodeHelpers.add_node(socket, type)
   end
 
-  @spec handle_save_name(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_save_name(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_save_name(%{"name" => name}, socket) do
     flow = socket.assigns.flow
 
@@ -47,7 +49,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
     end
   end
 
-  @spec handle_save_shortcut(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_save_shortcut(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_save_shortcut(%{"shortcut" => shortcut}, socket) do
     flow = socket.assigns.flow
     shortcut = if shortcut == "", do: nil, else: shortcut
@@ -67,7 +70,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
     end
   end
 
-  @spec handle_node_selected(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_node_selected(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_node_selected(%{"id" => node_id}, socket) do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
     form = FormHelpers.node_data_to_form(node)
@@ -87,7 +91,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
      |> assign(:editing_mode, :sidebar)}
   end
 
-  @spec handle_node_double_clicked(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_node_double_clicked(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_node_double_clicked(%{"id" => node_id}, socket) do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
     form = FormHelpers.node_data_to_form(node)
@@ -110,7 +115,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
      |> assign(:editing_mode, editing_mode)}
   end
 
-  @spec handle_open_screenplay(Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_open_screenplay(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_open_screenplay(socket) do
     if socket.assigns.selected_node && socket.assigns.selected_node.type == "dialogue" do
       {:noreply, assign(socket, :editing_mode, :screenplay)}
@@ -119,12 +125,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
     end
   end
 
-  @spec handle_open_sidebar(Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_open_sidebar(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_open_sidebar(socket) do
     {:noreply, assign(socket, :editing_mode, :sidebar)}
   end
 
-  @spec handle_close_editor(Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_close_editor(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_close_editor(socket) do
     socket =
       if socket.assigns.selected_node && socket.assigns.can_edit do
@@ -140,7 +148,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
      |> assign(:editing_mode, nil)}
   end
 
-  @spec handle_deselect_node(Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_deselect_node(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_deselect_node(socket) do
     socket =
       if socket.assigns.selected_node && socket.assigns.can_edit do
@@ -171,7 +180,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
     end
   end
 
-  @spec handle_node_moved(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_node_moved(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_node_moved(%{"id" => node_id, "position_x" => x, "position_y" => y}, socket) do
     node = Flows.get_node_by_id!(node_id)
 
@@ -189,17 +199,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
     end
   end
 
-  @spec handle_update_node_data(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_update_node_data(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_update_node_data(%{"node" => node_params}, socket) do
     NodeHelpers.update_node_data(socket, node_params)
   end
 
-  @spec handle_update_node_text(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_update_node_text(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_update_node_text(%{"id" => node_id, "content" => content}, socket) do
     NodeHelpers.update_node_text(socket, node_id, content)
   end
 
-  @spec handle_mention_suggestions(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_mention_suggestions(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_mention_suggestions(%{"query" => query}, socket) do
     project_id = socket.assigns.project.id
     results = Pages.search_referenceable(project_id, query, ["page", "flow"])
@@ -218,17 +231,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
     {:noreply, push_event(socket, "mention_suggestions_result", %{items: items})}
   end
 
-  @spec handle_delete_node(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_delete_node(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_delete_node(%{"id" => node_id}, socket) do
     NodeHelpers.delete_node(socket, node_id)
   end
 
-  @spec handle_duplicate_node(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_duplicate_node(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_duplicate_node(%{"id" => node_id}, socket) do
     NodeHelpers.duplicate_node(socket, node_id)
   end
 
-  @spec handle_generate_technical_id(Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_generate_technical_id(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_generate_technical_id(socket) do
     node = socket.assigns.selected_node
 
@@ -245,7 +261,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
     end
   end
 
-  @spec handle_update_node_field(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_update_node_field(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_update_node_field(%{"field" => field, "value" => value}, socket) do
     node = socket.assigns.selected_node
 
@@ -256,7 +273,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
     end
   end
 
-  @spec handle_start_preview(map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_start_preview(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_start_preview(%{"id" => node_id}, socket) do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
     {:noreply, socket |> assign(:preview_show, true) |> assign(:preview_node, node)}

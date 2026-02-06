@@ -17,6 +17,7 @@ defmodule Storyarn.Flows do
     FlowConnection,
     FlowCrud,
     FlowNode,
+    HubColors,
     NodeCrud,
     TreeOperations
   }
@@ -215,7 +216,7 @@ defmodule Storyarn.Flows do
   @doc """
   Deletes a node and all its connections.
   """
-  @spec delete_node(flow_node()) :: {:ok, flow_node()} | {:error, changeset()}
+  @spec delete_node(flow_node()) :: {:ok, flow_node(), map()} | {:error, atom() | changeset()}
   defdelegate delete_node(node), to: NodeCrud
 
   @doc """
@@ -236,6 +237,13 @@ defmodule Storyarn.Flows do
   """
   @spec list_hubs(integer()) :: [map()]
   defdelegate list_hubs(flow_id), to: NodeCrud
+
+  @doc """
+  Finds a hub node in a flow by its hub_id string.
+  Returns nil if not found.
+  """
+  @spec get_hub_by_hub_id(integer(), String.t()) :: flow_node() | nil
+  defdelegate get_hub_by_hub_id(flow_id, hub_id), to: NodeCrud
 
   # =============================================================================
   # Connections - CRUD Operations
@@ -341,7 +349,7 @@ defmodule Storyarn.Flows do
             id: node.id,
             type: node.type,
             position: %{x: node.position_x, y: node.position_y},
-            data: node.data
+            data: resolve_node_colors(node.type, node.data)
           }
         end),
       connections:
@@ -357,4 +365,19 @@ defmodule Storyarn.Flows do
         end)
     }
   end
+
+  @doc """
+  Enriches node data with resolved values for the canvas.
+  Currently resolves hub color names to hex values.
+  """
+  @spec resolve_node_colors(String.t(), map()) :: map()
+  def resolve_node_colors("hub", data) do
+    Map.put(
+      data,
+      "color_hex",
+      HubColors.to_hex(data["color"] || "purple", HubColors.default_hex())
+    )
+  end
+
+  def resolve_node_colors(_type, data), do: data
 end
