@@ -673,6 +673,88 @@ defmodule Storyarn.FlowsTest do
       assert Flows.list_connections(flow.id) == []
     end
 
+    test "delete_connection_by_pins/5 deletes only the matching pin pair" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+      source = node_fixture(flow)
+      target = node_fixture(flow)
+
+      _conn1 = connection_fixture(flow, source, target, %{source_pin: "out1", target_pin: "in"})
+      _conn2 = connection_fixture(flow, source, target, %{source_pin: "out2", target_pin: "in"})
+
+      {count, _} = Flows.delete_connection_by_pins(flow.id, source.id, "out1", target.id, "in")
+
+      assert count == 1
+      remaining = Flows.list_connections(flow.id)
+      assert length(remaining) == 1
+      assert hd(remaining).source_pin == "out2"
+    end
+
+    test "cannot create connection from exit node" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      exit_node = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "exit"))
+      target = node_fixture(flow)
+
+      result =
+        Flows.create_connection_with_attrs(flow, %{
+          source_node_id: exit_node.id,
+          target_node_id: target.id,
+          source_pin: "output",
+          target_pin: "input"
+        })
+
+      assert result == {:error, :exit_has_no_outputs}
+    end
+
+    test "cannot create connection to entry node" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      entry_node = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      source = node_fixture(flow)
+
+      result =
+        Flows.create_connection_with_attrs(flow, %{
+          source_node_id: source.id,
+          target_node_id: entry_node.id,
+          source_pin: "output",
+          target_pin: "input"
+        })
+
+      assert result == {:error, :entry_has_no_inputs}
+    end
+
+    test "cannot create connection from jump node" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      {:ok, jump} =
+        Flows.create_node(flow, %{
+          type: "jump",
+          position_x: 300.0,
+          position_y: 200.0,
+          data: %{"target_hub_id" => ""}
+        })
+
+      target = node_fixture(flow)
+
+      result =
+        Flows.create_connection_with_attrs(flow, %{
+          source_node_id: jump.id,
+          target_node_id: target.id,
+          source_pin: "output",
+          target_pin: "input"
+        })
+
+      assert result == {:error, :jump_has_no_outputs}
+    end
+
     test "get_outgoing_connections/1 returns connections from a node" do
       user = user_fixture()
       project = project_fixture(user)

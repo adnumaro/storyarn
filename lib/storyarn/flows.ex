@@ -319,6 +319,22 @@ defmodule Storyarn.Flows do
     to: ConnectionCrud
 
   @doc """
+  Deletes a specific connection by node IDs and pin names.
+  More precise than `delete_connection_by_nodes/3` for cases where
+  multiple connections exist between the same node pair (e.g., dialogue responses).
+  """
+  @spec delete_connection_by_pins(integer(), integer(), String.t(), integer(), String.t()) ::
+          {integer(), nil | term()}
+  defdelegate delete_connection_by_pins(
+                flow_id,
+                source_node_id,
+                source_pin,
+                target_node_id,
+                target_pin
+              ),
+              to: ConnectionCrud
+
+  @doc """
   Returns a changeset for tracking connection changes.
   """
   @spec change_connection(connection(), attrs()) :: changeset()

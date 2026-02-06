@@ -50,9 +50,18 @@ defmodule Storyarn.Flows.ConnectionCrud do
   end
 
   def create_connection(%Flow{} = flow, attrs) do
-    %FlowConnection{flow_id: flow.id}
-    |> FlowConnection.create_changeset(attrs)
-    |> Repo.insert()
+    source_node = Repo.get(FlowNode, attrs[:source_node_id] || attrs["source_node_id"])
+    target_node = Repo.get(FlowNode, attrs[:target_node_id] || attrs["target_node_id"])
+
+    case validate_connection_rules(source_node, target_node) do
+      :ok ->
+        %FlowConnection{flow_id: flow.id}
+        |> FlowConnection.create_changeset(attrs)
+        |> Repo.insert()
+
+      {:error, _reason} = error ->
+        error
+    end
   end
 
   def update_connection(%FlowConnection{} = connection, attrs) do
@@ -73,6 +82,30 @@ defmodule Storyarn.Flows.ConnectionCrud do
           c.target_node_id == ^target_node_id
     )
     |> Repo.delete_all()
+  end
+
+  def delete_connection_by_pins(flow_id, source_node_id, source_pin, target_node_id, target_pin) do
+    from(c in FlowConnection,
+      where:
+        c.flow_id == ^flow_id and
+          c.source_node_id == ^source_node_id and
+          c.source_pin == ^source_pin and
+          c.target_node_id == ^target_node_id and
+          c.target_pin == ^target_pin
+    )
+    |> Repo.delete_all()
+  end
+
+  defp validate_connection_rules(nil, _), do: {:error, :source_node_not_found}
+  defp validate_connection_rules(_, nil), do: {:error, :target_node_not_found}
+
+  defp validate_connection_rules(source_node, target_node) do
+    cond do
+      source_node.type == "exit" -> {:error, :exit_has_no_outputs}
+      source_node.type == "jump" -> {:error, :jump_has_no_outputs}
+      target_node.type == "entry" -> {:error, :entry_has_no_inputs}
+      true -> :ok
+    end
   end
 
   def change_connection(%FlowConnection{} = connection, attrs \\ %{}) do
