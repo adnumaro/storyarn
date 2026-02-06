@@ -3,9 +3,9 @@
  */
 
 import {
-  ArrowDownRight,
   GitBranch,
-  GitMerge,
+  LogIn,
+  LogOut,
   MessageSquare,
   Play,
   Square,
@@ -57,7 +57,7 @@ export const NODE_CONFIGS = {
   hub: {
     label: "Hub",
     color: "#8b5cf6", // Default purple, can be customized via node data
-    icon: createIconSvg(GitMerge),
+    icon: createIconSvg(LogIn),
     inputs: ["input"], // Multiple connections can target this single input (convergence)
     outputs: ["output"], // Single output after convergence
   },
@@ -79,7 +79,7 @@ export const NODE_CONFIGS = {
   jump: {
     label: "Jump",
     color: "#a855f7", // purple-500, same family as Hub
-    icon: createIconSvg(ArrowDownRight),
+    icon: createIconSvg(LogOut),
     inputs: ["input"],
     outputs: [], // No outputs - execution teleports to target Hub
   },

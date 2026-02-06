@@ -20,6 +20,7 @@ export class StoryarnNode extends LitElement {
       data: { type: Object },
       emit: { type: Function },
       pagesMap: { type: Object },
+      hubsMap: { type: Object },
     };
   }
 
@@ -32,7 +33,7 @@ export class StoryarnNode extends LitElement {
     const config = NODE_CONFIGS[node.nodeType] || NODE_CONFIGS.dialogue;
     const nodeData = node.nodeData || {};
 
-    const preview = getPreviewText(node.nodeType, nodeData);
+    let preview = getPreviewText(node.nodeType, nodeData);
     const stageDirections = nodeData.stage_directions || "";
 
     const isDialogue = node.nodeType === "dialogue";
@@ -43,7 +44,20 @@ export class StoryarnNode extends LitElement {
     const hasInputCondition = isDialogue && nodeData.input_condition;
     const hasOutputInstruction = isDialogue && nodeData.output_instruction;
 
-    const nodeColor = (isDialogue && speakerPage?.color) || config.color;
+    const isHub = node.nodeType === "hub";
+    const isJump = node.nodeType === "jump";
+    const targetHub = isJump && nodeData.target_hub_id ? this.hubsMap?.[nodeData.target_hub_id] : null;
+
+    // Enrich jump preview with target hub label
+    if (isJump && targetHub?.label) {
+      preview = `→ ${targetHub.label}`;
+    }
+
+    const nodeColor =
+      (isDialogue && speakerPage?.color) ||
+      (isHub && nodeData.color_hex) ||
+      (isJump && targetHub?.color_hex) ||
+      config.color;
     const borderColor = `${nodeColor}40`;
 
     const audioIconEl = createElement(Volume2);
@@ -56,7 +70,9 @@ export class StoryarnNode extends LitElement {
     alertIconEl.setAttribute("height", "10");
     const alertIcon = alertIconEl.outerHTML;
 
-    const showIndicators = hasAudio || hasInputCondition || hasOutputInstruction;
+    const isOrphanJump = isJump && !nodeData.target_hub_id;
+
+    const showIndicators = hasAudio || hasInputCondition || hasOutputInstruction || isOrphanJump;
 
     return html`
       <div
@@ -86,6 +102,7 @@ export class StoryarnNode extends LitElement {
               ${hasInputCondition ? html`<span class="logic-indicator input-condition" title="Has input condition">🔒</span>` : ""}
               ${hasOutputInstruction ? html`<span class="logic-indicator output-instruction" title="Has output instruction">⚡</span>` : ""}
               ${hasAudio ? html`<span class="audio-indicator" title="Has audio">${unsafeSVG(audioIcon)}</span>` : ""}
+              ${isOrphanJump ? html`<span class="error-badge" title="No target hub">${unsafeSVG(alertIcon)}</span>` : ""}
             </span>
           `
               : ""
@@ -96,7 +113,42 @@ export class StoryarnNode extends LitElement {
             ? html`<div class="stage-directions">${stageDirections}</div>`
             : ""
         }
-        ${preview ? html`<div class="node-data"><div class="node-data-text">${preview}</div></div>` : ""}
+        ${
+          isJump && nodeData.target_hub_id && preview
+            ? html`<div class="node-data"><div
+                class="node-data-text nav-link"
+                @pointerdown=${(e) => {
+                  e.stopPropagation();
+                  this.dispatchEvent(
+                    new CustomEvent("navigate-to-hub", {
+                      bubbles: true,
+                      composed: true,
+                      detail: { jumpDbId: node.nodeId },
+                    }),
+                  );
+                }}
+              >${preview}</div></div>`
+            : preview
+              ? html`<div class="node-data"><div class="node-data-text">${preview}</div></div>`
+              : ""
+        }
+        ${
+          isHub
+            ? html`<div
+                class="nav-jumps-link"
+                @pointerdown=${(e) => {
+                  e.stopPropagation();
+                  this.dispatchEvent(
+                    new CustomEvent("navigate-to-jumps", {
+                      bubbles: true,
+                      composed: true,
+                      detail: { hubDbId: node.nodeId },
+                    }),
+                  );
+                }}
+              >↗ jumps</div>`
+            : ""
+        }
         <div class="content">
           ${this.renderSockets(node, nodeData, alertIcon)}
         </div>

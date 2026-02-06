@@ -10,6 +10,8 @@ defmodule StoryarnWeb.FlowLive.Components.Panels.SimplePanels do
 
   import StoryarnWeb.Components.CoreComponents
 
+  alias Storyarn.Flows.HubColors
+
   attr :node, :map, required: true
   attr :form, :map, required: true
   attr :can_edit, :boolean, default: false
@@ -41,14 +43,21 @@ defmodule StoryarnWeb.FlowLive.Components.Panels.SimplePanels do
         </p>
       <% "hub" -> %>
         <.input
+          field={@form[:label]}
+          type="text"
+          label={gettext("Label")}
+          placeholder={gettext("e.g., Merchant conversation")}
+          disabled={!@can_edit}
+        />
+        <.input
           field={@form[:hub_id]}
           type="text"
-          label={gettext("Hub ID")}
+          label={gettext("Hub ID") <> " *"}
           placeholder={gettext("e.g., merchant_done")}
           disabled={!@can_edit}
         />
         <p class="text-xs text-base-content/60 mt-1 mb-4">
-          {gettext("Unique identifier for Jump nodes to target this Hub.")}
+          {gettext("Required. Unique identifier for Jump nodes to target this Hub.")}
         </p>
         <.input
           field={@form[:color]}
@@ -57,6 +66,15 @@ defmodule StoryarnWeb.FlowLive.Components.Panels.SimplePanels do
           options={hub_color_options()}
           disabled={!@can_edit}
         />
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm w-full mt-4"
+          phx-click="navigate_to_jumps"
+          phx-value-id={@node.id}
+        >
+          <.icon name="search" class="size-4 mr-2" />
+          {gettext("Locate Jump nodes")}
+        </button>
       <% "instruction" -> %>
         <.input
           field={@form[:action]}
@@ -83,7 +101,17 @@ defmodule StoryarnWeb.FlowLive.Components.Panels.SimplePanels do
         <p class="text-xs text-base-content/60 mt-1 mb-4">
           {gettext("Select a Hub node to jump to within this flow.")}
         </p>
-        <%= if @hub_options == [{"", gettext("Select target hub...")}] do %>
+        <button
+          :if={@form[:target_hub_id].value && @form[:target_hub_id].value != ""}
+          type="button"
+          class="btn btn-ghost btn-sm w-full"
+          phx-click="navigate_to_hub"
+          phx-value-id={@node.id}
+        >
+          <.icon name="search" class="size-4 mr-2" />
+          {gettext("Locate target Hub")}
+        </button>
+        <%= if length(@hub_options) <= 1 do %>
           <div class="alert alert-warning text-sm">
             <.icon name="alert-triangle" class="size-4" />
             <span>{gettext("No Hub nodes in this flow. Create a Hub first.")}</span>
@@ -98,15 +126,19 @@ defmodule StoryarnWeb.FlowLive.Components.Panels.SimplePanels do
   end
 
   defp hub_color_options do
-    [
-      {"purple", gettext("Purple")},
-      {"blue", gettext("Blue")},
-      {"green", gettext("Green")},
-      {"yellow", gettext("Yellow")},
-      {"red", gettext("Red")},
-      {"pink", gettext("Pink")},
-      {"orange", gettext("Orange")},
-      {"cyan", gettext("Cyan")}
-    ]
+    color_labels = %{
+      "purple" => gettext("Purple"),
+      "blue" => gettext("Blue"),
+      "green" => gettext("Green"),
+      "yellow" => gettext("Yellow"),
+      "red" => gettext("Red"),
+      "pink" => gettext("Pink"),
+      "orange" => gettext("Orange"),
+      "cyan" => gettext("Cyan")
+    }
+
+    Enum.map(HubColors.names(), fn name ->
+      {Map.get(color_labels, name, name), name}
+    end)
   end
 end

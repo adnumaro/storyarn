@@ -16,6 +16,7 @@ import {
   createEditorHandlers,
   createKeyboardHandler,
   createLockHandler,
+  createNavigationHandler,
 } from "./flow_canvas/handlers/index.js";
 
 export const FlowCanvas = {
@@ -37,6 +38,8 @@ export const FlowCanvas = {
     this.lockHandler = createLockHandler(this);
     this.editorHandlers = createEditorHandlers(this);
 
+    this.navigationHandler = createNavigationHandler(this);
+
     this.cursorHandler.init();
     this.lockHandler.init();
     this.editorHandlers.init();
@@ -54,8 +57,10 @@ export const FlowCanvas = {
     this.render = plugins.render;
 
     // Load initial flow data
+    this.hubsMap = {};
     if (flowData.nodes) {
       await this.loadFlow(flowData);
+      this.rebuildHubsMap();
     }
 
     // Set up event handlers
@@ -121,6 +126,19 @@ export const FlowCanvas = {
     return connection;
   },
 
+  rebuildHubsMap() {
+    const map = {};
+    for (const [, node] of this.nodeMap) {
+      if (node.nodeType === "hub" && node.nodeData?.hub_id) {
+        map[node.nodeData.hub_id] = {
+          color_hex: node.nodeData.color_hex || null,
+          label: node.nodeData.label || "",
+        };
+      }
+    }
+    this.hubsMap = map;
+  },
+
   disconnected() {
     this.cursorHandler?.pause();
     this.el.classList.add("opacity-50", "pointer-events-none");
@@ -136,6 +154,7 @@ export const FlowCanvas = {
     this.cursorHandler?.destroy();
     this.keyboardHandler?.destroy();
     this.editorHandlers?.destroy();
+    this.navigationHandler?.destroy();
 
     if (this.minimap?.element) {
       this.minimap.element.remove();

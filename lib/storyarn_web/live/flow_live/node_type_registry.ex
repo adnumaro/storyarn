@@ -27,10 +27,10 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   def icon_name("entry"), do: "play"
   def icon_name("exit"), do: "square"
   def icon_name("dialogue"), do: "message-square"
-  def icon_name("hub"), do: "git-merge"
+  def icon_name("hub"), do: "log-in"
   def icon_name("condition"), do: "git-branch"
   def icon_name("instruction"), do: "zap"
-  def icon_name("jump"), do: "arrow-down-right"
+  def icon_name("jump"), do: "log-out"
   def icon_name(_), do: "circle"
 
   @doc "Returns the translated label for a node type."
@@ -64,7 +64,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
     }
   end
 
-  def default_data("hub"), do: %{"hub_id" => "", "color" => "purple"}
+  def default_data("hub"), do: %{"hub_id" => "", "label" => "", "color" => "purple"}
 
   def default_data("condition") do
     %{
@@ -95,13 +95,17 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   end
 
   def extract_form_data("hub", data) do
-    %{"hub_id" => data["hub_id"] || "", "color" => data["color"] || "purple"}
+    %{
+      "hub_id" => data["hub_id"] || "",
+      "label" => data["label"] || "",
+      "color" => data["color"] || "purple"
+    }
   end
 
   def extract_form_data("condition", data) do
     %{
-      "expression" => data["expression"] || "",
-      "cases" => data["cases"] || []
+      "condition" => data["condition"] || %{"logic" => "all", "rules" => []},
+      "switch_mode" => data["switch_mode"] || false
     }
   end
 

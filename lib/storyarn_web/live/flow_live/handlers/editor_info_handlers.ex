@@ -15,12 +15,22 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
 
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
 
-  @spec handle_reset_save_status(Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_reset_save_status(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_reset_save_status(socket) do
     {:noreply, assign(socket, :save_status, :idle)}
   end
 
-  @spec handle_node_updated(Storyarn.Flows.FlowNode.t(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_flow_refresh(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_flow_refresh(socket) do
+    socket = reload_flow_data(socket)
+
+    {:noreply, push_event(socket, "flow_updated", socket.assigns.flow_data)}
+  end
+
+  @spec handle_node_updated(Storyarn.Flows.FlowNode.t(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_node_updated(updated_node, socket) do
     form = FormHelpers.node_data_to_form(updated_node)
     schedule_save_status_reset()
@@ -34,12 +44,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
      |> push_event("node_updated", %{id: updated_node.id, data: updated_node.data})}
   end
 
-  @spec handle_close_preview(Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_close_preview(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_close_preview(socket) do
     {:noreply, assign(socket, preview_show: false, preview_node: nil)}
   end
 
-  @spec handle_mention_suggestions(String.t(), any(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_mention_suggestions(String.t(), any(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_mention_suggestions(query, component_cid, socket) do
     project_id = socket.assigns.project.id
     results = Pages.search_referenceable(project_id, query, ["page", "flow"])
@@ -58,5 +70,4 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
     {:noreply,
      push_event(socket, "mention_suggestions_result", %{items: items, target: component_cid})}
   end
-
 end

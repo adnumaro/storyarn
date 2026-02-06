@@ -212,4 +212,40 @@ export const storyarnNodeStyles = css`
   .logic-indicator.output-instruction {
     color: rgba(255, 255, 255, 0.9);
   }
+
+  :host(.nav-highlight) .node {
+    animation: nav-pulse 0.6s ease-in-out 4;
+  }
+
+  @keyframes nav-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 3px var(--highlight-color), 0 0 12px 2px var(--highlight-color);
+    }
+    50% {
+      box-shadow: 0 0 0 6px color-mix(in srgb, var(--highlight-color) 50%, transparent),
+                  0 0 20px 4px color-mix(in srgb, var(--highlight-color) 30%, transparent);
+    }
+  }
+
+  .nav-link {
+    cursor: pointer;
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+  }
+
+  .nav-link:hover {
+    color: oklch(var(--p));
+  }
+
+  .nav-jumps-link {
+    font-size: 10px;
+    opacity: 0.5;
+    cursor: pointer;
+    padding: 2px 12px 4px;
+  }
+
+  .nav-jumps-link:hover {
+    opacity: 1;
+    color: oklch(var(--p));
+  }
 `;

@@ -343,7 +343,9 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("delete_node", params, socket) do
-    with_auth(:edit_content, socket, fn -> NodeEventHandlers.handle_delete_node(params, socket) end)
+    with_auth(:edit_content, socket, fn ->
+      NodeEventHandlers.handle_delete_node(params, socket)
+    end)
   end
 
   def handle_event("duplicate_node", params, socket) do
@@ -408,7 +410,11 @@ defmodule StoryarnWeb.FlowLive.Show do
     ConnectionHelpers.create_connection(socket, params)
   end
 
-  def handle_event("connection_deleted", %{"source_node_id" => source_id, "target_node_id" => target_id}, socket) do
+  def handle_event(
+        "connection_deleted",
+        %{"source_node_id" => source_id, "target_node_id" => target_id},
+        socket
+      ) do
     ConnectionHelpers.delete_connection_by_nodes(socket, source_id, target_id)
   end
 
@@ -438,6 +444,18 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("start_preview", params, socket) do
     NodeEventHandlers.handle_start_preview(params, socket)
+  end
+
+  def handle_event("request_flow_refresh", _params, socket) do
+    EditorInfoHandlers.handle_flow_refresh(socket)
+  end
+
+  def handle_event("navigate_to_hub", %{"id" => node_id}, socket) do
+    {:noreply, push_event(socket, "navigate_to_hub", %{jump_db_id: String.to_integer(node_id)})}
+  end
+
+  def handle_event("navigate_to_jumps", %{"id" => node_id}, socket) do
+    {:noreply, push_event(socket, "navigate_to_jumps", %{hub_db_id: String.to_integer(node_id)})}
   end
 
   # ===========================================================================

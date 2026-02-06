@@ -96,6 +96,23 @@ export function setupEventHandlers(hook) {
     hook.editorHandlers.handleConnectionUpdated(data),
   );
 
+  // Handle server events - Navigation (from panel buttons)
+  hook.handleEvent("navigate_to_hub", (data) => {
+    hook.navigationHandler.navigateToHub(data.jump_db_id);
+  });
+  hook.handleEvent("navigate_to_jumps", (data) => {
+    hook.navigationHandler.navigateToJumps(data.hub_db_id);
+  });
+
+  // Navigation events (composed from storyarn-node Shadow DOM)
+  hook.el.addEventListener("navigate-to-hub", (e) => {
+    hook.navigationHandler.navigateToHub(e.detail.jumpDbId);
+  });
+
+  hook.el.addEventListener("navigate-to-jumps", (e) => {
+    hook.navigationHandler.navigateToJumps(e.detail.hubDbId);
+  });
+
   // Handle server events - Collaboration
   hook.handleEvent("cursor_update", (data) => hook.cursorHandler.handleCursorUpdate(data));
   hook.handleEvent("cursor_leave", (data) => hook.cursorHandler.handleCursorLeave(data));
