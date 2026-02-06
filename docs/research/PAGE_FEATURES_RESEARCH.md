@@ -1,7 +1,11 @@
 # Page Features Research: Media, References, Version Control, Collaboration
 
-> **Date:** February 2024
+> **Date:** February 2026 (Updated)
 > **Scope:** Analysis of how creative tools handle media management, reference tracking, version control, history, and collaboration features.
+
+> **Changelog:**
+> - **February 2026:** Major update across all sections. Added Automerge 3.0, Loro, Eg-walker algorithm, local-first movement coverage. Updated articy:draft (macOS, ElevenLabs VO Extension), Arcweave (Version History beta), Notion (3.0/3.2, offline, agents), Figma (Config 2025, Eg-walker). Added Blueberry AI, P4 DAM, P4 One, StoryFlow Editor, Velt SDK. Updated comparison tables and references throughout.
+> - **February 2024:** Initial research document.
 
 ---
 
@@ -39,6 +43,7 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Creates copies stored in project folder
 - Maintains link to original source files
 - Source location visible in property sheet
+- Now available on macOS (April 2025) — enabling cross-platform asset management
 
 **Asset Types Supported:**
 - Images
@@ -69,6 +74,12 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Export spoken lines, filenames to Excel
 - New ElevenLabs integration for voice synthesis preview
 
+**VO Extension Plugin with ElevenLabs Integration (August 2025):**
+- Synthesized voiceovers directly within articy:draft projects
+- Tone and pacing fine-tuning controls for generated speech
+- Voice library management with persistent voice profiles
+- Enables rapid VO prototyping without external recording setup
+
 ### 1.3 Arcweave Media Support
 
 - Asset lists as attribute type
@@ -81,6 +92,7 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Embed images, music, sound effects in articles
 - Storage limits on free tiers
 - No integrated asset management system
+- New Image Selector (May 2025)
 
 ### 1.5 DAM Best Practices
 
@@ -97,6 +109,33 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Connect with game engines (Unreal, Unity, Blender)
 - REST APIs for automation
 - Approval workflows for asset production
+
+### 1.6 New DAM Tools for Game Development
+
+**Blueberry AI:**
+- AI-powered DAM designed specifically for game development
+- AI-driven search cuts asset retrieval time by 53%
+- Support for 100+ 3D format viewing directly in browser
+- Trusted by studios including ByteDance, FunPlus, and Perfect World
+- Pricing starts at $9.99/seat/month
+- Focuses on reducing time wasted searching for and managing game assets
+
+**P4 DAM (formerly Helix DAM):**
+- Part of the rebranded P4 Platform by Perforce
+- Sketch and annotate directly on 3D models within the DAM interface
+- P4 Search optimization for fast asset discovery across large repositories
+- AI-powered tagging for automatic metadata generation
+- Native USD (Universal Scene Description) support for modern 3D pipelines
+- Integrates tightly with Perforce version control (Helix Core / P4)
+
+### 1.7 AI-Powered Asset Management Trends
+
+The 2025-2026 DAM landscape has seen a significant shift toward AI-assisted workflows:
+
+- **AI metadata tagging** is now standard in modern DAMs — tools like Blueberry AI, P4 DAM, and others automatically classify and tag assets upon upload
+- **Auto-generated descriptions** reduce manual cataloguing effort, using computer vision and NLP to describe asset content
+- **Intelligent search** across asset libraries uses semantic understanding rather than just keyword matching, enabling searches like "dark forest environment with fog" to surface relevant assets regardless of file naming conventions
+- These trends reduce the 15-20% budget waste figure cited in industry studies by automating the most error-prone parts of asset management
 
 ---
 
@@ -145,6 +184,7 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - System automatically tracks all incoming references
 - Shows both explicit links and unlinked mentions
 - Uses [[wikilink]] syntax
+- Now 1.5M+ active monthly users (22% YoY growth as of late 2025)
 
 **Bidirectional Linking:**
 - Link page A to page B → Obsidian creates backlink on B to A
@@ -163,22 +203,29 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 **Plugins:**
 - Auto Keyword Linker: converts keywords to wiki-style links
 - AutoMOC: imports backlinks into current note
+- 96 plugin updates recorded in a single week (late 2025), showing continued vibrant ecosystem
 
 **Search & Filter:**
 - Backlinks use same syntax as Search plugin
 - Complex filtering (e.g., tag:#meeting -task)
+
+**Collaboration:**
+- Collaboration features now on the official Obsidian roadmap (planned, not yet shipped)
 
 ### 2.3 Arcweave References
 
 - References panel shows all usages of component
 - @mentions create navigable links in rich text
 - Component lists allow referencing other components
+- Localization features (beta) interact with reference systems, enabling cross-language reference tracking
 
 ### 2.4 Notion Backlinks
 
-- Automatic backlinks exist but are hidden/less visible
-- Relations between databases
-- No automatic bidirectional linking
+- Backlinks are now more visible and functional — when pages are mentioned via `@page` references, backlinks appear prominently on the referenced page
+- Relations between databases provide structured cross-referencing
+- Notion now supports backlinks when pages are mentioned, offering functional bidirectional navigation
+- Suggested Edits mode (tracked changes like Google Docs) enables collaborative reference review
+- Notion Agent reads comments and version history, providing AI-powered context around linked content
 
 ---
 
@@ -194,11 +241,18 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 
 **Key Tools in Game Development:**
 
-| Tool                    | Pros                                               | Cons                                |
-|-------------------------|----------------------------------------------------|-------------------------------------|
-| **Git**                 | Industry standard, free, GitHub/GitLab ecosystem   | Challenging for non-technical users |
-| **Perforce Helix Core** | Handles large binary files, trusted by AAA studios | Complex, expensive at scale         |
-| **Snowtrack**           | Designed for creative assets, visual diffing       | Less established                    |
+| Tool                        | Pros                                                            | Cons                                |
+|-----------------------------|-----------------------------------------------------------------|-------------------------------------|
+| **Git**                     | Industry standard, free, GitHub/GitLab ecosystem                | Challenging for non-technical users |
+| **Perforce Helix Core**     | Handles large binary files, trusted by AAA studios              | Complex, expensive at scale         |
+| **P4 One (formerly Snowtrack)** | Free version control for artists/designers, local versioning 10x faster than Git | Acquired by Perforce March 2025, still maturing |
+
+**Perforce Rebrand (2025):**
+- Perforce has rebranded its suite as the "P4 Platform"
+- P4 One: free version control for non-technical creatives (formerly Snowtrack)
+- P4 DAM: digital asset management (formerly Helix DAM)
+- P4 MCP Server: model context protocol integration
+- P4 REST API: programmatic access to version control
 
 **Game-Specific Considerations:**
 - Not just source code: images, audio, video
@@ -226,7 +280,7 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 **Named Versions:**
 - Up to 40 named versions per document
 - Examples: "Initial Draft", "Final Review"
-- Click ⋮ → "Name this version"
+- Click ... → "Name this version"
 
 **Collaboration:**
 - Viewer: read only
@@ -257,6 +311,11 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Share specific version with developer
 - Starting point for further iteration
 
+**Config 2025 Updates:**
+- Four new products announced: Make (AI prompt-to-app), Sites (publish as websites), Buzz (brand assets with GenAI), Draw (vector/illustration)
+- Adopted the Eg-walker algorithm for Code Layers (June 2025) — a new approach to collaborative editing with significantly lower memory usage
+- Version history extends to the new product areas (Sites, Make, etc.)
+
 ### 3.4 Notion Version History
 
 **Availability:**
@@ -278,6 +337,11 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Paid feature only
 - Limited retention period (30 days on some plans)
 
+**Recent Updates:**
+- Offline mode launched August 2025 — changes made offline merge automatically on reconnect, with conflict resolution prompts when needed
+- Notion Agent can read version history when answering questions about document evolution
+- Performance improvements: pages load 27% faster on Windows, 11% faster on Mac
+
 ### 3.5 World Anvil History
 
 **Status:**
@@ -286,6 +350,7 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
   - Complex interconnected data (not flat files)
   - Immutable history impractical
   - Storage costs "extremely expensive"
+- Still no version history (confirmed as of early 2026)
 
 **Current State:**
 - Limited versioning discussed for 5-10 minute backtrack
@@ -296,14 +361,21 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Data backed up on 8 servers multiple times daily
 - Export available for guild members
 
-### 3.6 Arcweave History (MAJOR PROBLEM)
+**Recent Improvements (2025-2026):**
+- New Articles & Categories Manager (October 2025) with improved organization
+- Folders for organization of world content
+- New World Dashboard for overview and navigation
+- Manual Save Button returned (January 2026) — addressing user requests for explicit save control
+- Inline Article Creation (January 2026) — create new articles without leaving current context
 
-**User-Reported Issues:**
+### 3.6 Arcweave History — Significant Improvements
+
+**Historical User-Reported Issues:**
 - "No official Undo and Redo"
 - CTRL+Z/CTRL+Y work "a few times" then "limit reached"
 - "Seems rather buggy"
 
-**Loss of Work:**
+**Loss of Work (Historical):**
 - Users accidentally delete elements full of information
 - "Very frustrating to have to start over"
 - Refresh page → lose all undo history
@@ -313,14 +385,20 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Import/Export for "snapshots"
 - Similar to Google Docs local copies
 
-**Team Response:**
-- 50 action undo limit exists
+**Team Response & Progress:**
+- 50 action undo limit still exists
 - Interest in "timeline mechanism" for 30-day change log
 - Git-style project branches discussed
 
-**Recent Updates (v1.0):**
-- "Faster undo/redo"
+**Recent Updates (Gamescom 2025 and beyond):**
+- Version History now in beta — users can see previous project changes and revert to earlier states
+- "Faster undo/redo" improvements from v1.0
 - Bugfixes for clipboard/undo issues
+- Embedded Play Mode for testing narratives directly
+- Localization features in beta
+- AI Drama Manager exploration announced
+
+**Status:** Improving — the addition of Version History beta addresses the most critical user complaint, though the 50-action undo limit remains a constraint.
 
 ---
 
@@ -344,22 +422,61 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Two types: state-based and operation-based
 - Works peer-to-peer with end-to-end encryption
 
+**Automerge 3.0 (2025):**
+- Major rewrite achieving 10x reduction in memory usage (100x in some cases)
+- Benchmark: Moby Dick editing trace document went from 700MB → 1.3MB in memory
+- Load time for the same document: 17 hours → 9 seconds
+- Uses compressed columnar format at runtime instead of expanding full object graph
+- Automerge Repo 2.0 (May 2025): batteries-included toolkit providing networking, storage, and sync out of the box
+- Makes CRDTs practical for production use at scales previously considered infeasible
+
+**Loro:**
+- High-performance CRDT library built in Rust with JavaScript and Swift API bindings
+- Implements the Fugue algorithm to reduce text editing interleaving anomalies (a long-standing CRDT pain point)
+- v1.10.5 (January 2026) — actively maintained with regular releases
+- Optimized specifically for memory, CPU, and loading speed
+- Designed for rich text, tree structures, and complex document types
+
+**Eg-walker Algorithm:**
+- Adopted by Figma for Code Layers (June 2025)
+- Represents edits as a directed acyclic causal event graph
+- Temporarily builds a CRDT structure during merging, then discards it — keeping memory low at rest
+- Achieves 1-2 orders of magnitude less memory usage than best traditional CRDTs
+- Hybrid approach between OT and CRDTs: gets the consistency guarantees of CRDTs without the persistent memory overhead
+- Particularly well-suited for text editing where memory efficiency matters
+
+**Local-First Software Movement:**
+- FOSDEM 2026: first dedicated devroom for Local First, CRDTs, and sync protocols — signaling mainstream acceptance
+- Apps like Linear, Figma, and Notion demonstrate the "0ms latency" premium UX that local-first enables
+- Open Local First organization (openlocalfirst.org) established to coordinate standards and tooling
+- Apple Notes and Jupyter Notebooks now integrate CRDTs for offline-first editing
+- Growing ecosystem of sync engines (ElectricSQL, PowerSync, Liveblocks) making local-first architecture accessible
+
 **Key Differences:**
 
-| Aspect              | OT                        | CRDT                                  |
-|---------------------|---------------------------|---------------------------------------|
-| Server dependency   | Required for coordination | Can work peer-to-peer                 |
-| Complex structures  | Requires custom work      | Supports nested data natively         |
-| Performance         | Faster for low conflict   | More resilient under messy conditions |
-| Network reliability | Needs stable connection   | Handles unreliable networks           |
+| Aspect              | OT                        | CRDT                                  | Eg-walker                              |
+|---------------------|---------------------------|---------------------------------------|----------------------------------------|
+| Server dependency   | Required for coordination | Can work peer-to-peer                 | Optional (works with or without server)|
+| Memory usage        | Low                       | High (historically, improving with Automerge 3.0/Loro) | Very low                              |
+| Complex structures  | Requires custom work      | Supports nested data natively         | Event graph representation             |
+| Performance         | Faster for low conflict   | More resilient under messy conditions | Best of both worlds                    |
+| Network reliability | Needs stable connection   | Handles unreliable networks           | Handles unreliable networks            |
 
 **Real-World Implementations:**
 - Google Docs: OT
-- Figma: Server-authoritative, per-property last-writer-wins (CRDT-like)
+- Figma: Server-authoritative, per-property last-writer-wins (CRDT-like); Eg-walker for Code Layers
 - Notion: Hybrid (OT for performance, CRDT for sync)
-- Teletype for Atom: CRDT
 - Apple Notes: CRDT for offline sync
-- Yjs: Popular CRDT library
+- Yjs: Popular CRDT library (used by many collaborative editors)
+- Automerge 3.0: Production-ready CRDT with dramatically improved performance
+- Loro: High-performance Rust-based CRDT library
+- Eg-walker: Adopted by Figma for Code Layers (June 2025)
+
+**Sync Engines & Collaboration SDKs:**
+- ElectricSQL: Postgres-based sync engine for local-first apps
+- PowerSync: Sync layer for offline-first mobile and web apps
+- Liveblocks: Real-time collaboration infrastructure with rooms, presence, and storage
+- Velt: Y Combinator-backed collaboration SDK with 25+ pre-built features (comments, presence, cursors, notifications) using Yjs/CRDTs under the hood
 
 ### 4.2 Figma Real-Time Collaboration
 
@@ -374,12 +491,38 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Live cursor tracking (see each other's cursors)
 - Instant updates across all collaborators
 
+**Config 2025 Updates:**
+- Figma Make: AI prompt-to-app prototyping
+- Figma Sites: Publish designs as live websites
+- Figma Buzz: Brand asset management with GenAI capabilities
+- Figma Draw: Vector illustration and drawing tool
+- Eg-walker adoption for Code Layers — enabling collaborative code editing with minimal memory overhead
+- Unified Seats Model (March 2025): one seat per user covers all Figma products, simplifying licensing
+- Code Connect: links Figma components directly to production code, bridging design-dev collaboration
+
 ### 4.3 Notion Collaboration
 
 - Real-time editing
 - User presence visible
 - Comments and mentions
 - Permission levels (viewer, commenter, editor)
+
+**Notion 3.0 (September 2025):**
+- AI Agents capable of up to 20 minutes of autonomous work per task
+- Custom Agents: scheduled or event-triggered AI workers that can edit, organize, and respond to changes
+- Deeper integration of AI into collaborative workflows
+
+**Notion 3.2 (January 2026):**
+- Mobile AI parity — full agent capabilities available on mobile devices
+
+**Offline Mode (August 2025):**
+- View, edit, and create pages while offline
+- Auto-download of top 20 most-visited pages for offline access
+- Changes merge automatically on reconnect with conflict resolution prompts
+
+**Suggested Edits:**
+- Tracked changes mode similar to Google Docs
+- Collaborators can propose edits that others review and accept/reject
 
 ### 4.4 Arcweave Collaboration
 
@@ -394,6 +537,9 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Network configuration needed
 - Version control system integration
 - Conflict handling for same object edits
+- Now available on macOS (April 2025), enabling cross-platform project compatibility
+- SSO for Perforce (August 2025) — simplified authentication for teams using Perforce infrastructure
+- articy:server (the collaboration server component) still Windows-only
 
 ### 4.6 World Anvil Collaboration
 
@@ -450,6 +596,8 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 **AI Integration:**
 - Notion Agent reads comments when answering questions
 - Can "implement Holly's feedback" automatically
+- Agent can implement edits from comments autonomously, taking action based on comment content
+- Simplified comment review view with grouped notifications for easier triage
 
 **Best Practices:**
 - Define roles (editing, commenting, viewing)
@@ -466,13 +614,18 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 
 ### 5.5 Popular Feedback Tools
 
-| Tool           | Best For                                        |
-|----------------|-------------------------------------------------|
-| **StreamWork** | Marketing teams, agencies, workflow integration |
-| **Markup.io**  | Simple annotation on images, PDFs, websites     |
-| **Frame.io**   | Video, frame-accurate commenting                |
-| **Filestage**  | Agencies, approval workflows                    |
-| **Ruttl**      | Live website feedback                           |
+| Tool              | Best For                                        |
+|-------------------|-------------------------------------------------|
+| **StreamWork**    | Marketing teams, agencies, workflow integration |
+| **Markup.io**     | Simple annotation on images, PDFs, websites     |
+| **Frame.io**      | Video, frame-accurate commenting                |
+| **Filestage**     | Agencies, approval workflows                    |
+| **Ruttl**         | Live website feedback                           |
+| **ReviewStudio**  | Creative review with markup and approval flows  |
+| **BugHerd**       | Visual bug tracking pinned to website elements  |
+| **Evercast**      | Real-time streaming review for remote teams     |
+
+**Emerging Trend:** AI transcription and summarization are becoming standard in feedback tools — automatically converting voice/video feedback into actionable text summaries and categorized action items.
 
 ---
 
@@ -533,75 +686,85 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Some platforms: 1 year automatic retention
 - Export for longer retention needs
 
+### 6.5 AI-Powered Audit Trends (2025-2026)
+
+AI-powered audit anomaly detection is emerging as a significant trend in 2025-2026. Tools are beginning to use machine learning to flag unusual patterns in audit logs — such as bulk deletions, access from unusual locations, or changes outside normal working hours — reducing the manual review burden and catching issues that human reviewers might miss.
+
 ---
 
 ## 7. Tool-by-Tool Analysis
 
 ### 7.1 articy:draft
 
-| Feature          | Status      | Notes                                 |
-|------------------|-------------|---------------------------------------|
-| Asset Management | ✅ Excellent | Slots, strips, re-import, VO plugin   |
-| References       | ✅ Excellent | Automatic tracking, calculated strips |
-| Version Control  | ⚠️ Complex  | Requires external VCS (Git, SVN)      |
-| Collaboration    | ⚠️ Complex  | Network setup required                |
-| Comments         | ❌ None      | No native comment system              |
-| Audit Log        | ⚠️ Limited  | Through VCS only                      |
+| Feature          | Status      | Notes                                                     |
+|------------------|-------------|-----------------------------------------------------------|
+| Asset Management | ✅ Excellent | Slots, strips, re-import, VO plugin, ElevenLabs VO, macOS support |
+| References       | ✅ Excellent | Automatic tracking, calculated strips                     |
+| Version Control  | ⚠️ Complex  | Requires external VCS (Git, SVN)                          |
+| Collaboration    | ⚠️ Complex  | Network setup required, SSO for Perforce, macOS support   |
+| Comments         | ❌ None      | No native comment system                                  |
+| Audit Log        | ⚠️ Limited  | Through VCS only                                          |
 
 ### 7.2 Arcweave
 
-| Feature          | Status      | Notes                       |
-|------------------|-------------|-----------------------------|
-| Asset Management | ✅ Good      | Asset lists, cover images   |
-| References       | ✅ Good      | @mentions, references panel |
-| Version Control  | ❌ Poor      | Limited undo, no history    |
-| Collaboration    | ✅ Excellent | Real-time, cloud-based      |
-| Comments         | ✅ Good      | Commenter role              |
-| Audit Log        | ❌ None      | No change tracking          |
+| Feature          | Status         | Notes                                               |
+|------------------|----------------|------------------------------------------------------|
+| Asset Management | ✅ Good         | Asset lists, cover images                            |
+| References       | ✅ Good         | @mentions, references panel                          |
+| Version Control  | ⚠️ Improving   | 50-action undo, Version History in beta              |
+| Collaboration    | ✅ Excellent    | Real-time, cloud-based                               |
+| Comments         | ✅ Good         | Commenter role                                       |
+| Audit Log        | ❌ None         | No change tracking                                   |
+
+Additional: Embedded Play Mode, localization beta
 
 ### 7.3 Notion
 
-| Feature          | Status      | Notes                       |
-|------------------|-------------|-----------------------------|
-| Asset Management | ⚠️ Basic    | File embeds, no DAM         |
-| References       | ⚠️ Basic    | Backlinks hidden, relations |
-| Version Control  | ✅ Good      | Full history (paid only)    |
-| Collaboration    | ✅ Excellent | Real-time, presence         |
-| Comments         | ✅ Excellent | Inline, threads, mentions   |
-| Audit Log        | ⚠️ Limited  | Edit history only           |
+| Feature          | Status      | Notes                                                     |
+|------------------|-------------|-----------------------------------------------------------|
+| Asset Management | ⚠️ Basic    | File embeds, no DAM                                       |
+| References       | ⚠️ Improved | Backlinks now more visible and functional, relations       |
+| Version Control  | ✅ Good      | Full history (paid only)                                  |
+| Collaboration    | ✅ Excellent | Real-time, presence, offline mode                         |
+| Comments         | ✅ Excellent | Inline, threads, mentions, AI agent integration           |
+| Audit Log        | ⚠️ Limited  | Edit history only                                         |
+
+Additional: Notion 3.0/3.2 AI agents, offline mode (August 2025), Suggested Edits
 
 ### 7.4 Figma
 
-| Feature          | Status      | Notes                      |
-|------------------|-------------|----------------------------|
-| Asset Management | ✅ Excellent | Components, libraries      |
-| References       | ⚠️ Basic    | Component usage tracking   |
-| Version Control  | ✅ Excellent | Named versions, restore    |
-| Collaboration    | ✅ Excellent | Industry-leading real-time |
-| Comments         | ✅ Excellent | Contextual, resolvable     |
-| Audit Log        | ⚠️ Limited  | Version history only       |
+| Feature          | Status      | Notes                                                  |
+|------------------|-------------|--------------------------------------------------------|
+| Asset Management | ✅ Excellent | Components, libraries                                  |
+| References       | ⚠️ Basic    | Component usage tracking, Code Connect                 |
+| Version Control  | ✅ Excellent | Named versions, restore, Eg-walker for Code Layers     |
+| Collaboration    | ✅ Excellent | Industry-leading real-time                             |
+| Comments         | ✅ Excellent | Contextual, resolvable                                 |
+| Audit Log        | ⚠️ Limited  | Version history only                                   |
+
+Additional: Config 2025 (Make, Sites, Buzz, Draw), Unified Seats Model
 
 ### 7.5 World Anvil
 
-| Feature          | Status     | Notes                      |
-|------------------|------------|----------------------------|
-| Asset Management | ⚠️ Basic   | Embed only, storage limits |
-| References       | ✅ Good     | Cross-linking articles     |
-| Version Control  | ❌ None     | Request declined           |
-| Collaboration    | ⚠️ Limited | Share-focused, not co-edit |
-| Comments         | ⚠️ Limited | Discussion boards          |
-| Audit Log        | ❌ None     | Backups only               |
+| Feature          | Status     | Notes                                          |
+|------------------|------------|-------------------------------------------------|
+| Asset Management | ⚠️ Basic   | Embed only, storage limits, New Image Selector (May 2025) |
+| References       | ✅ Good     | Cross-linking articles                          |
+| Version Control  | ❌ None     | Request declined                                |
+| Collaboration    | ⚠️ Limited | Share-focused, not co-edit                      |
+| Comments         | ⚠️ Limited | Discussion boards                               |
+| Audit Log        | ❌ None     | Backups only                                    |
 
 ### 7.6 Obsidian
 
-| Feature          | Status      | Notes                         |
-|------------------|-------------|-------------------------------|
-| Asset Management | ⚠️ Basic    | Local files only              |
-| References       | ✅ Excellent | Backlinks, graph view         |
-| Version Control  | ⚠️ External | Git plugins available         |
-| Collaboration    | ❌ None      | Local-first, no native collab |
-| Comments         | ❌ None      | Plugins only                  |
-| Audit Log        | ❌ None      | Git only                      |
+| Feature          | Status      | Notes                                   |
+|------------------|-------------|-----------------------------------------|
+| Asset Management | ⚠️ Basic    | Local files only                        |
+| References       | ✅ Excellent | Backlinks, graph view                   |
+| Version Control  | ⚠️ External | Git plugins available                   |
+| Collaboration    | ⚠️ Planned  | On official roadmap, not yet shipped    |
+| Comments         | ❌ None      | Plugins only                            |
+| Audit Log        | ❌ None      | Git only                                |
 
 ### 7.7 Google Docs
 
@@ -614,6 +777,17 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 | Comments         | ✅ Excellent | Inline, suggestions       |
 | Audit Log        | ✅ Good      | Edit history with authors |
 
+### 7.8 StoryFlow Editor
+
+| Feature          | Status     | Notes                        |
+|------------------|------------|------------------------------|
+| Asset Management | ⚠️ Basic   | Content Browser              |
+| References       | ⚠️ Basic   | Variable references          |
+| Version Control  | ⚠️ Local   | Local-first, offline         |
+| Collaboration    | ❌ None     | Not available                |
+| Comments         | ❌ None     | Not available                |
+| Audit Log        | ❌ None     | Not available                |
+
 ---
 
 ## 8. User Pain Points
@@ -625,6 +799,8 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 
 > "I accidentally deleted a fairly large Element... it never came back"
 
+*Note: These quotes are from earlier forum posts. The situation has improved with the Version History beta announced at Gamescom 2025, though the 50-action undo limit remains.*
+
 **World Anvil Users:**
 - Requested revision history → DECLINED
 - "Immutable history impractical" for complex data
@@ -635,6 +811,7 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Requires version control knowledge
 - Local network setup
 - Complex for non-technical users
+- Cross-platform complexity reduced by macOS support (April 2025)
 
 **World Anvil:**
 - "Collaboration features can be difficult to set up"
@@ -654,7 +831,7 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - Must use Calculated Strips for custom views
 
 **Notion:**
-- Backlinks exist but are "hidden/less visible"
+- Backlinks previously "hidden/less visible" — now improved with more prominent display
 
 ### 8.5 Comments
 
@@ -671,9 +848,12 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - [articy:draft Linking Assets](https://www.articy.com/help/adx/Assets_Linking.html)
 - [articy:draft Managing Assets](https://www.articy.com/help/adx/Assets_Managing.html)
 - [articy:draft Basics Assets](https://www.articy.com/en/adx_basics_assets/)
+- [articy:draft macOS](https://www.articy.com/en/articydraft-x-now-on-mac-os/)
 - [DAM in Game Development - Blueberry](https://www.blueberry-ai.com/blog/game-development-digital-asset-management)
 - [DAM for Game Developers - PicaJet](https://picajet.com/articles/digital-asset-management-for-game-developers/)
 - [DAM in Game Development - Scaleflex](https://blog.scaleflex.com/digital-asset-management-for-gaming-industry/)
+- [Blueberry AI DAM](https://www.blueberry-ai.com/gaming)
+- [P4 DAM Updates](https://www.perforce.com/products/helix-dam/whats-new-helix-dam)
 
 ### References & Backlinks
 
@@ -691,6 +871,10 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - [Google Docs Version History](https://edu.gcfglobal.org/en/googledocuments/version-history/1/)
 - [Figma Version History](https://help.figma.com/hc/en-us/articles/360038006754-View-a-file-s-version-history)
 - [Notion Version Control Guide](https://ones.com/blog/mastering-version-control-notion-guide/)
+- [Perforce P4 One](https://www.perforce.com/press-releases/announcing-p4-one)
+- [Arcweave Gamescom 2025](https://blog.arcweave.com/arcweave-goes-to-devcom-gamescom-2025)
+- [World Anvil Oct 2025](https://blog.worldanvil.com/worldanvil/dev-news/world-anvil-just-got-even-better/)
+- [World Anvil Feb 2026](https://blog.worldanvil.com/newsletter/world-anvil-news-february-2026/)
 
 ### Collaboration Technology
 
@@ -698,6 +882,23 @@ Digital Asset Management (DAM) systems are indispensable tools in the game devel
 - [OT vs CRDT - TinyMCE](https://www.tiny.cloud/blog/real-time-collaboration-ot-vs-crdt/)
 - [CRDTs vs OT Guide - HackerNoon](https://hackernoon.com/crdts-vs-operational-transformation-a-practical-guide-to-real-time-collaboration)
 - [CRDT Wikipedia](https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type)
+- [Automerge 3.0](https://automerge.org/blog/automerge-3/)
+- [Automerge Repo 2.0](https://automerge.org/blog/2025/05/13/automerge-repo-2/)
+- [Loro CRDT Library](https://loro.dev/)
+- [Eg-walker Paper](https://arxiv.org/html/2409.14252v1)
+- [Figma Code Layers / Eg-walker](https://www.figma.com/blog/building-figmas-code-layers/)
+- [Figma Config 2025](https://www.figma.com/blog/config-2025-recap/)
+- [Notion 3.0 Agents](https://www.notion.com/releases/2025-09-18)
+- [Notion 3.2 Mobile AI](https://www.notion.com/releases/2026-01-20)
+- [Notion Offline Mode](https://www.notion.com/releases/2025-08-19)
+- [FOSDEM 2026 Local-First](https://fosdem.org/2026/schedule/track/local-first/)
+- [Open Local First](https://openlocalfirst.org/)
+- [Liveblocks](https://liveblocks.io/)
+- [Velt Collaboration SDK](https://velt.dev/)
+- [ElectricSQL](https://electric-sql.com/)
+- [PowerSync](https://www.powersync.com)
+- [Smashing Magazine Shadow DOM 2025](https://www.smashingmagazine.com/2025/07/web-components-working-with-shadow-dom/)
+- [StoryFlow Editor](https://storyflow-editor.com/)
 
 ### Comments & Feedback
 

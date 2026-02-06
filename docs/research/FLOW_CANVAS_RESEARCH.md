@@ -1,6 +1,12 @@
 # Flow Canvas Research: Shadow DOM vs Light DOM
 
+> **Date:** February 2026 (Updated)
+>
+> **Changelog:** Updated with production learnings, Tailwind v4 / daisyUI 5 compatibility notes, corrected design specs to match actual implementation, and added current dependency versions.
+
 > **Context:** Custom node rendering for Rete.js flow editor with Tailwind/daisyUI theming.
+
+> **Implementation Status:** The recommendation in this document (Option 1: Shadow DOM + CSS Custom Properties) was adopted and is working in production with Rete.js v2 + Lit 3.x + daisyUI.
 
 ## Problem Statement
 
@@ -26,6 +32,7 @@ We need to render custom nodes in Rete.js that:
 - **Form integration problems**: Form elements don't associate with parent forms
 - **Debugging complexity**: `document.activeElement` returns host, not focused element
 - **Inherited properties leak**: Some CSS properties still inherit through
+- **Tailwind v4 `@property` issues**: `@property` declarations do NOT work inside Shadow DOM — they must be at document root. Features like `box-shadow`, `ring`, and animation interpolation break silently with Tailwind v4 inside Shadow DOM.
 
 ### Light DOM
 
@@ -125,9 +132,9 @@ class StoryarnNode extends LitElement {
 - Sockets work
 
 **Cons:**
-- Complex setup
+- Complex setup (though browser support is now universal since March 2023)
 - Performance implications
-- May not work with all styles
+- Tailwind v4 `@property` features break inside Shadow DOM even with adopted stylesheets
 
 ### Option 3: Light DOM + Manual Socket Rendering
 
@@ -188,6 +195,21 @@ Implementation approach:
 3. Define Tailwind-equivalent styles using CSS custom properties
 4. Use Lucide icons via `createElement` + `unsafeSVG`
 
+## Tailwind v4 / daisyUI 5 Compatibility Warning
+
+**Tailwind v4 `@property` Limitation:**
+Tailwind CSS v4 relies heavily on CSS `@property` declarations for initial values (animations, box-shadow compositing, etc.). These declarations do NOT work inside Shadow DOM — they must be declared at the document root level.
+
+**Workaround in Storyarn:** Since our LitElement components use raw `oklch(var(--b1))` CSS custom properties rather than Tailwind utility classes, this largely sidesteps the issue. Node styles use `rgb()` directly for box-shadows rather than Tailwind shadow utilities.
+
+**daisyUI 5 Variable Names:**
+daisyUI 5 renamed CSS variables (e.g., `--b1` → `--color-base-100`, `--p` → `--color-primary`). The current code still uses the older naming convention. daisyUI 5 with Tailwind v4 includes `:host` in CSS rules, meaning variables are available inside Shadow DOM via the `root: ":host"` config option.
+
+**Sources:**
+- [Tailwind v4 @property Shadow DOM - GitHub Discussion #16772](https://github.com/tailwindlabs/tailwindcss/discussions/16772)
+- [Tailwind v4 @property custom elements - GitHub #17104](https://github.com/tailwindlabs/tailwindcss/issues/17104)
+- [Web Components and Tailwind CSS (KINTO Tech)](https://blog.kinto-technologies.com/posts/2025-07-14-web-components-and-tailwind-css-dont-mix-en/)
+
 ## Icons in Shadow DOM
 
 **Lucide icons work perfectly in Shadow DOM** because SVG is self-contained.
@@ -217,10 +239,10 @@ return html`<span>${unsafeSVG(iconSvg)}</span>`;
 
 | Aspect                 | Works in Shadow DOM?   | Reason                            |
 |------------------------|------------------------|-----------------------------------|
-| SVG element            | ✅ Yes                  | Self-contained, no external deps  |
-| `width`/`height` attrs | ✅ Yes                  | Native SVG attributes             |
-| `stroke: currentColor` | ✅ Yes                  | `color` is inherited CSS property |
-| Tailwind classes       | ❌ No                   | External styles don't penetrate   |
+| SVG element            | Yes                    | Self-contained, no external deps  |
+| `width`/`height` attrs | Yes                    | Native SVG attributes             |
+| `stroke: currentColor` | Yes                    | `color` is inherited CSS property |
+| Tailwind classes       | No                     | External styles don't penetrate   |
 
 ### Key Difference from Light DOM
 
@@ -235,7 +257,7 @@ createElement(Icon, { width: 16, height: 16, stroke: "currentColor" })
 ## Design Decisions (Based on articy:draft & Arcweave)
 
 ### Sockets/Pins
-- **Size**: 12px diameter (small, subtle circles)
+- **Size**: 10px diameter (small, subtle circles) (Adjusted from original spec during implementation)
 - **Color**: Muted, matches theme (`oklch(var(--bc) / 0.3)`)
 - **Border**: 2px solid, slightly more visible
 - **Hover**: Highlights with primary color, slight scale up
@@ -247,7 +269,7 @@ createElement(Icon, { width: 16, height: 16, stroke: "currentColor" })
 
 ### Background
 - **Color**: `oklch(var(--b2))` - slightly darker than nodes
-- **Grid**: Subtle dot pattern (20px spacing)
+- **Grid**: Subtle dot pattern (24px spacing) (Adjusted from original spec during implementation)
 
 ### Nodes
 - **Background**: `oklch(var(--b1))` - base color
@@ -260,6 +282,16 @@ createElement(Icon, { width: 16, height: 16, stroke: "currentColor" })
 - **Size**: 180x120px
 - **Background**: Semi-transparent with blur
 
+## Current Dependency Versions (February 2026)
+
+| Package | Version | Status |
+|---------|---------|--------|
+| rete | ^2.0.3 (latest: 2.0.6) | Stable, actively maintained |
+| @retejs/lit-plugin | ^2.0.7 | Up to date |
+| lit | ^3.3.2 | Up to date |
+| daisyui | 5.5.14 | Latest |
+| lucide | 0.563.0 | Latest |
+
 ## Sources
 
 - [Shadow DOM Pros and Cons - Manuel Matuzovic](https://www.matuzo.at/blog/2023/pros-and-cons-of-shadow-dom/)
@@ -269,3 +301,6 @@ createElement(Icon, { width: 16, height: 16, stroke: "currentColor" })
 - [Lit Component Composition](https://lit.dev/docs/composition/component-composition/)
 - [Lit Shadow DOM Documentation](https://lit.dev/docs/components/shadow-dom/)
 - [rete-render-utils npm](https://www.npmjs.com/package/rete-render-utils)
+- [Smashing Magazine - Shadow DOM Best Practices 2025](https://www.smashingmagazine.com/2025/07/web-components-working-with-shadow-dom/)
+- [adoptedStyleSheets - MDN](https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/adoptedStyleSheets)
+- [Composable Adopted Stylesheets](https://dbushell.com/2025/08/02/composable-adopted-stylesheets/)

@@ -1,8 +1,15 @@
 # Research: Efficient Page-Level Version Control at Scale
 
-> **Date:** February 2026
+> **Date:** February 2026 (Updated)
 > **Status:** Research
 > **Goal:** Maximum functionality with minimum cost for 10,000+ pages per project
+
+### Changelog
+
+| Date | Changes |
+|------|---------|
+| February 2026 (Updated) | Added OTP 28 native zstd, updated Dolt/TerminusDB sections, fixed Elixir code sketch API errors, added Elixir-specific alternatives (Part 9), added S3 retrieval cost note, verified Jsonpatch library |
+| February 2026 | Initial research document |
 
 ---
 
@@ -81,6 +88,8 @@ Perfect for Storyarn since pages are stored as JSON/JSONB.
 
 **Elixir library:** [Jsonpatch](https://elixirforum.com/t/jsonpatch-pure-elixir-implementation-of-rfc-6902/32007)
 
+**Elixir library verified:** [Jsonpatch](https://hex.pm/packages/jsonpatch) v2.3.1 (August 2025) — actively maintained, pure Elixir implementation. API: `Jsonpatch.diff/2` for generating patches, `Jsonpatch.apply_patch/2` for applying them.
+
 **Sources:**
 - [RFC 6902 Specification](https://datatracker.ietf.org/doc/html/rfc6902)
 - [jsondiffpatch](https://github.com/benjamine/jsondiffpatch)
@@ -148,6 +157,26 @@ PostgreSQL 14+ supports LZ4 compression for TOAST (large values).
 - [PostgreSQL TOAST Performance Tests](https://www.credativ.de/en/blog/postgresql-en/toasted-jsonb-data-in-postgresql-performance-tests-of-different-compression-algorithms/)
 - [5mins of Postgres: JSONB and TOAST](https://pganalyze.com/blog/5mins-postgres-jsonb-toast)
 
+### 2.3 Erlang/OTP 28 Native zstd (NEW — May 2025)
+
+Erlang/OTP 28 (released May 2025) includes a **native `zstd` module in stdlib**, potentially replacing the `ezstd` NIF package:
+
+```elixir
+# Native OTP 28 zstd (no NIF dependency)
+compressed = :zstd.compress(data)
+decompressed = :zstd.decompress(compressed)
+
+# With dictionary support
+dict = :zstd.dict(:compression, dictionary_data, level)
+compressed = :zstd.compress(data, %{dict: dict})
+```
+
+**Benefits:** No NIF compilation, no external C dependency, maintained as part of OTP, streaming support built-in. Requires Elixir 1.19+ and OTP 28+.
+
+**Sources:**
+- [Erlang/OTP 28.0 Release Notes](https://www.erlang.org/news/180)
+- [zstd stdlib documentation](https://www.erlang.org/doc/apps/stdlib/zstd.html)
+
 ---
 
 ## Part 3: Specialized Databases
@@ -156,7 +185,9 @@ PostgreSQL 14+ supports LZ4 compression for TOAST (large values).
 
 SQL database with Git-like version control built-in.
 
-**Performance:**
+**Performance (updated December 2025):** Dolt has achieved **MySQL parity** on sysbench benchmarks (read/write mean multiplier: 0.96x). The 1.8x and 4.5x figures cited below are from 2024 and are now outdated. **DoltgreSQL** (PostgreSQL flavor) is in Beta as of October 2025, with 1.0 targeted around April 2026.
+
+**Historical performance (2024):**
 - 1.8x slower than MySQL on sysbench
 - 4.5x slower on TPC-C (heavy writes)
 - Gap is "unnoticeable in most applications"
@@ -173,6 +204,8 @@ SQL database with Git-like version control built-in.
 **Sources:**
 - [Dolt GitHub](https://github.com/dolthub/dolt)
 - [State of Dolt 2024](https://www.dolthub.com/blog/2024-04-03-state-of-dolt/)
+- [Dolt is as Fast as MySQL (Dec 2025)](https://www.dolthub.com/blog/2025-12-04-dolt-is-as-fast-as-mysql/)
+- [State of Doltgres (Oct 2025)](https://www.dolthub.com/blog/2025-10-16-state-of-doltgres/)
 
 ### 3.2 TerminusDB
 
@@ -183,6 +216,8 @@ Immutable database with Git-like semantics, designed for JSON documents.
 - Time-travel queries to any commit
 - Push/pull/clone operations
 - Apache 2.0 license
+
+**Update (2025):** TerminusDB 12 released December 2025. Maintainership transferred to DFRNT in 2025. Key improvements include 5x faster JSON parsing, arbitrary precision decimals, and auto-optimizer.
 
 **Good fit for Storyarn because:**
 - Native JSON document support
@@ -197,6 +232,7 @@ Immutable database with Git-like semantics, designed for JSON documents.
 **Sources:**
 - [TerminusDB GitHub](https://github.com/terminusdb/terminusdb)
 - [TerminusDB Official](https://terminusdb.org/)
+- [TerminusDB 12 Release](https://terminusdb.org/blog/2025-12-08-terminusdb-12-release/)
 
 ### 3.3 EventStoreDB
 
@@ -367,8 +403,14 @@ defmodule Storyarn.Versions do
     # Compute delta using RFC 6902
     patch = Jsonpatch.diff(current_content, new_content)
 
-    # Compress with zstd
-    compressed = :ezstd.compress(Jason.encode!(patch), get_dictionary(page.project_id))
+    # Compress with zstd (dictionary compression)
+    # Correct ezstd API for dictionary compression:
+    cdict = :ezstd.create_cdict(get_dictionary(page.project_id), 3)
+    compressed = :ezstd.compress_using_cdict(Jason.encode!(patch), cdict)
+
+    # Or with OTP 28 native :zstd:
+    # dict = :zstd.dict(:compression, get_dictionary(page.project_id), 3)
+    # compressed = :zstd.compress(Jason.encode!(patch), %{dict: dict})
 
     # Determine if we need a snapshot
     version_number = get_next_version(page.id)
@@ -395,7 +437,7 @@ defmodule Storyarn.Versions do
     patches = get_patches_range(page_id, snapshot.version_number + 1, target_version)
 
     Enum.reduce(patches, content, fn patch, acc ->
-      Jsonpatch.apply!(acc, decompress_patch(patch))
+      Jsonpatch.apply_patch!(acc, decompress_patch(patch))
     end)
   end
 end
@@ -425,6 +467,8 @@ end
 **Cost (1,000 projects):**
 - PostgreSQL (RDS): Part of existing infrastructure
 - S3 Glacier Deep Archive: 5 GB × $0.001 = **$0.005/month**
+
+> **Note on retrieval costs (not included above):** Glacier Flexible Retrieval charges $0.01/GB (standard) or $0.0025/GB (bulk). Deep Archive charges $0.02/GB (standard) or $0.0025/GB (bulk). For occasional version lookups, these costs are negligible but should be factored into SLA planning.
 
 **Comparison with original strategy:**
 
@@ -511,8 +555,8 @@ end
 ### 8.2 Use Dolt for Version-Controlled Tables
 
 **Pros:** SQL + Git semantics out of the box
-**Cons:** 2-4x slower writes, less mature than PostgreSQL
-**Verdict:** Interesting but risky for production
+**Cons:** Historical 2-4x slower writes (now at MySQL parity as of Dec 2025), less mature than PostgreSQL
+**Verdict:** Significantly more viable since December 2025 MySQL parity achievement. DoltgreSQL approaching 1.0.
 
 ### 8.3 Event Sourcing with EventStoreDB
 
@@ -525,6 +569,32 @@ end
 **Pros:** Extreme compression, fast analytics
 **Cons:** Not designed for transactional workloads, complex setup
 **Verdict:** Use only for activity logs, not page content
+
+---
+
+## Part 9: Elixir-Specific Alternatives
+
+### 9.1 Commanded / EventStore (Elixir CQRS/ES)
+
+The Elixir ecosystem has native event sourcing:
+
+- [Commanded](https://hex.pm/packages/commanded) (v1.4.9, September 2025) — Full CQRS/ES framework
+- [EventStore](https://hex.pm/packages/eventstore) — PostgreSQL-backed event store
+
+**Good fit because:** Uses PostgreSQL (already in stack), Elixir-native, built-in snapshotting, integrates with Phoenix/LiveView.
+
+**Verdict:** Consider for a future iteration if event-sourcing semantics become valuable.
+
+### 9.2 Ecto Audit Trail Libraries
+
+- [PaperTrail](https://hex.pm/packages/paper_trail) (v1.1.2) — Tracks all Ecto changes as JSONB versions, supports revert
+- [ExAudit](https://github.com/ZennerIoT/ex_audit) — Transparent Ecto.Repo change tracking
+
+**Note:** PaperTrail stores full snapshots (not deltas) — the "naive approach" this document argues against. However, it could serve as a Phase 1 quick start before optimizing with delta compression.
+
+### 9.3 pgMemento
+
+[pgMemento](https://github.com/pgMemento/pgMemento) stores only deltas of JSONB changes at the database trigger level, aligning with this document's approach but implementing it in PostgreSQL rather than the application layer.
 
 ---
 
@@ -555,15 +625,21 @@ The implementation complexity is manageable with existing Elixir libraries (`jso
 - [RFC 6902 Specification](https://datatracker.ietf.org/doc/html/rfc6902)
 - [jsondiffpatch Library](https://github.com/benjamine/jsondiffpatch)
 - [Elixir Jsonpatch](https://elixirforum.com/t/jsonpatch-pure-elixir-implementation-of-rfc-6902/32007)
+- [Jsonpatch on Hex.pm](https://hex.pm/packages/jsonpatch)
 
 ### Compression
 - [Daniel Lemire: Compressing JSON](https://lemire.me/blog/2021/06/30/compressing-json-gzip-vs-zstd/)
 - [Zstandard Official](http://facebook.github.io/zstd/)
 - [PostgreSQL TOAST Compression Tests](https://www.credativ.de/en/blog/postgresql-en/toasted-jsonb-data-in-postgresql-performance-tests-of-different-compression-algorithms/)
+- [Erlang/OTP 28.0 Release Notes](https://www.erlang.org/news/180)
+- [zstd stdlib documentation](https://www.erlang.org/doc/apps/stdlib/zstd.html)
 
 ### Specialized Databases
 - [Dolt: Git for Data](https://github.com/dolthub/dolt)
+- [Dolt is as Fast as MySQL (Dec 2025)](https://www.dolthub.com/blog/2025-12-04-dolt-is-as-fast-as-mysql/)
+- [State of Doltgres (Oct 2025)](https://www.dolthub.com/blog/2025-10-16-state-of-doltgres/)
 - [TerminusDB](https://terminusdb.org/)
+- [TerminusDB 12 Release](https://terminusdb.org/blog/2025-12-08-terminusdb-12-release/)
 - [EventStoreDB](https://github.com/EventStore/EventStore)
 - [ClickHouse Log Compression](https://clickhouse.com/blog/log-compression-170x)
 
@@ -574,3 +650,10 @@ The implementation complexity is manageable with existing Elixir libraries (`jso
 ### Event Sourcing
 - [Event Sourcing Pattern (Microsoft)](https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing)
 - [AWS Event Sourcing with DynamoDB](https://aws.amazon.com/blogs/database/build-a-cqrs-event-store-with-amazon-dynamodb/)
+
+### Elixir Ecosystem
+- [Commanded (CQRS/ES)](https://hex.pm/packages/commanded)
+- [EventStore (Elixir)](https://hex.pm/packages/eventstore)
+- [PaperTrail](https://hex.pm/packages/paper_trail)
+- [ExAudit](https://github.com/ZennerIoT/ex_audit)
+- [pgMemento](https://github.com/pgMemento/pgMemento)

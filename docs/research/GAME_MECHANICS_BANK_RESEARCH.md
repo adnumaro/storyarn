@@ -1,8 +1,12 @@
 # Research: Video Game Mechanics Bank - Feasibility Analysis
 
-> **Date:** February 2026
+> **Date:** February 2026 (updated 2026-02-06)
 > **Status:** Research
 > **Goal:** Understand why no comprehensive game mechanics database exists and evaluate feasibility
+
+> **Changelog:**
+> - **2026-02-06:** Updated patent table (Section 2.3) with verified patent numbers. Added Sections 2.4 (Nintendo/Palworld saga), 2.5 (Monolith closure), 3.6 (new entrants). Updated API status for USPTO and PatentsView. Added Federal Circuit statistics and Alice standard notes. Fixed dialogue wheel patent expiration date. Added 2025-2026 sources.
+> - **2026-02-04:** Initial research document.
 
 ---
 
@@ -107,6 +111,11 @@ Academic frameworks like MDA are great for analysis but not for practical "I nee
 
 **This is why clones exist:** You can legally make a "match-3 puzzle game" or a "battle royale" because the mechanic itself isn't copyrightable.
 
+**Alice Corp. v. CLS Bank (2014)** made software patents harder:
+> "U.S. courts may reject patents deemed too abstract under the Abstract Idea Doctrine."
+
+As of 2024-2025, the Alice standard has become **more stringent**, not less. The Federal Circuit's 95.5% invalidity rate on appeal shows increasing hostility to abstract software patents.
+
 **Sources:**
 - [Columbia Law: Should Game Mechanics Be Copyrightable?](https://journals.library.columbia.edu/index.php/lawandarts/announcement/view/553)
 - [Wikipedia: IP Protection of Video Games](https://en.wikipedia.org/wiki/Intellectual_property_protection_of_video_games)
@@ -124,6 +133,8 @@ Academic frameworks like MDA are great for analysis but not for practical "I nee
 | Duration                   | 20 years from filing                  |
 | Enforcement                | Expensive litigation required         |
 
+Note: The 6% figure comes from a 2022 MTTLR analysis and may not reflect current rates. However, the general point — that game patents face high rejection rates — remains valid. In 2024, the Federal Circuit found claims eligible in only 1 of 22 cases on Section 101 grounds (95.5% invalidity rate).
+
 **Alice Corp. v. CLS Bank (2014)** made software patents harder:
 > "U.S. courts may reject patents deemed too abstract under the Abstract Idea Doctrine."
 
@@ -136,15 +147,15 @@ Academic frameworks like MDA are great for analysis but not for practical "I nee
 
 ### 2.3 Notable Patented Mechanics
 
-| Mechanic                   | Owner        | Patent #        | Expires          |
-|----------------------------|--------------|-----------------|------------------|
-| Nemesis System             | Warner Bros. | US20160279522A1 | 2036             |
-| Pokémon Capture/Storage    | Nintendo     | (2021 filing)   | 2041             |
-| Mass Effect Dialogue Wheel | BioWare/EA   | Multiple        | Various          |
-| Sanity Effects             | Nintendo     | US6935954B2     | Expired          |
-| Loading Screen Minigames   | Namco        | US5718632       | **Expired 2015** |
-| Crazy Taxi Arrow           | Sega         | US6200138       | **Expired 2018** |
-| Active Time Battle         | Square       | Multiple        | **Expired 2012** |
+| Mechanic                   | Owner        | Patent #                    | Expires                  |
+|----------------------------|--------------|-----------------------------|--------------------------|
+| Nemesis System             | Warner Bros. | US10926179B2                | 2036                     |
+| Pokemon Capture/Storage    | Nintendo     | Multiple (2021-2024 filings)| Various (contested)      |
+| Mass Effect Dialogue Wheel | BioWare Corp.| US8082499B2                 | October 2029             |
+| Sanity Effects             | Nintendo     | US6935954B2                 | Expired (2021)           |
+| Loading Screen Minigames   | Namco        | US5718632                   | Expired (2015)           |
+| Crazy Taxi Arrow           | Sega         | US6200138                   | Expired (2018)           |
+| Active Time Battle         | Square       | US5390937A                  | Expired (~2012)          |
 
 **Key insight:** Most iconic mechanics are NOT patented, and many patents have expired.
 
@@ -152,7 +163,23 @@ Academic frameworks like MDA are great for analysis but not for practical "I nee
 - [GamesRadar: 9 Video Game Patents](https://www.gamesradar.com/video-game-patents-that-might-surprise-you/)
 - [PC Gamer: 5 Legally Protected Mechanics](https://www.pcgamer.com/5-game-mechanics-legally-protected-by-the-companies-that-made-them/)
 
-### 2.4 Why Companies Don't Patent More
+### 2.4 Nintendo/Palworld Patent Saga (2025)
+
+The most significant game IP development since this document was written:
+
+- **September 2025:** USPTO granted two new Nintendo patents (US12,409,387 and US12,403,397) via Track One prioritized examination, related to the Palworld lawsuit filed September 2024.
+- **October 2025:** Japan Patent Office **rejected** Nintendo's patent application 2024-031879, citing prior art from Ark, Craftopia, Monster Hunter 4, and Pokemon GO.
+- **November 2025:** USPTO Director John Squires personally ordered re-examination of US12,403,397, citing failure to consider prior art — an extremely rare action.
+- IP lawyers called the granted patents "an embarrassing failure of the US patent system."
+- The Palworld lawsuit continues into 2026 with no trial date scheduled.
+
+This saga reinforces the document's themes about the difficulty and controversy of game mechanic patents.
+
+### 2.5 Monolith Productions Closure (February 2025)
+
+Warner Bros. Discovery shut down Monolith Productions (creator of the Nemesis System) and cancelled the Wonder Woman game. The Nemesis System patent (US10926179B2) persists despite the studio's closure, creating a "zombie patent" scenario — an active patent with no product utilizing it. Warner Bros. could still license it.
+
+### 2.6 Why Companies Don't Patent More
 
 1. **High rejection rate** (94% for games)
 2. **Expensive and slow** ($10K+ and years)
@@ -252,6 +279,14 @@ Community wiki attempting to catalog mechanics.
 
 **Problem:** None are designed for practical game development.
 
+### 3.6 New Entrants (2025-2026)
+
+**katnamag Game Mechanic Database** (itch.io): An open-source, interactive, browser-based game mechanic database built in Godot. Each mechanic has description, controls, and adjustable parameters. MIT-licensed with GitHub repository. A direct competitor to what Storyarn proposes.
+
+**Ludo.ai**: AI-powered game design research platform with a database of "millions of games," market analysis, concept generation, and "Idea Pathfinder" for core mechanic selection. Commercially significant.
+
+**Future of Gaming** (futureofgaming.com): Publishes quarterly reports on gaming patents with detailed analysis. Relevant to the patent-tracking aspect.
+
 ---
 
 ## Part 4: Patent Search APIs
@@ -264,6 +299,8 @@ Community wiki attempting to catalog mechanics.
 Base URL: https://data.uspto.gov/
 API Catalog: https://developer.uspto.gov/api-catalog
 ```
+
+**Migration in progress (2025-2026):** The old developer hub (developer.uspto.gov) is being retired. Several legacy APIs were decommissioned in January 2026 (PTAB API v2, Office Action Citations, Enriched Citation). New replacement APIs exist on the ODP platform.
 
 **Capabilities:**
 - Search patents by keyword
@@ -280,15 +317,16 @@ API Catalog: https://developer.uspto.gov/api-catalog
 
 **Research-focused patent API.**
 
+**Status update:** The Legacy PatentsView API was discontinued on May 1, 2025. It has been replaced by the **PatentSearch API** (v2.3.2), which requires an API key via the service desk. Data is current through March 2025.
+
 ```
-URL: https://patentsview.org/apis/purpose
+URL: https://search.patentsview.org/
 ```
 
 **Features:**
 - 7 query endpoints
 - Inventor disambiguation
 - Company/assignee data
-- Updated through September 2025
 
 **Use case:** Find all patents owned by Nintendo, Warner Bros., etc.
 
@@ -301,7 +339,7 @@ URL: https://patents.google.com/
 ```
 
 **Example:** Nemesis System patent:
-https://patents.google.com/patent/US20160279522A1/en
+https://patents.google.com/patent/US10926179B2/en
 
 ### 4.4 European Patent Office (EPO)
 
@@ -452,15 +490,15 @@ System maps to: US Patent claims mentioning "radial menu",
   "patent_status": {
     "known_patents": [
       {
-        "holder": "EA/BioWare",
-        "patent_number": "US...",
+        "holder": "BioWare Corp.",
+        "patent_number": "US8082499B2",
         "status": "active",
-        "expires": "2027-XX-XX",
+        "expires": "2029-10-29",
         "scope": "Specific radial implementation with position-based tone"
       }
     ],
     "safe_to_use": "General concept is not patentable. Specific implementation details may be. Avoid exact replication of patented interfaces.",
-    "last_checked": "2026-02-04"
+    "last_checked": "2026-02-06"
   },
 
   "storyarn_template": {
@@ -519,6 +557,7 @@ System maps to: US Patent claims mentioning "radial menu",
 - Community voting on accuracy
 - Staff verification for patent claims
 - Regular review cycles
+- Track Nintendo/Palworld and other ongoing patent disputes
 
 **Monetization:**
 - Free: Browse mechanics, basic info
@@ -605,7 +644,7 @@ System maps to: US Patent claims mentioning "radial menu",
 
 ### Patent Databases
 - [USPTO Open Data Portal](https://data.uspto.gov/)
-- [PatentsView API](https://patentsview.org/apis/purpose)
+- [PatentsView API](https://search.patentsview.org/)
 - [Google Patents](https://patents.google.com/)
 
 ### Mechanics Resources
@@ -622,3 +661,11 @@ System maps to: US Patent claims mentioning "radial menu",
 ### Patent Examples
 - [GamesRadar: 9 Video Game Patents](https://www.gamesradar.com/video-game-patents-that-might-surprise-you/)
 - [Workinman: 5 Game Patents Ending Soon](https://workinman.com/5-video-game-patents/)
+
+### Patent Developments (2025-2026)
+- [Baker Botts: Patenting Play (Dec 2025)](https://www.bakerbotts.com/thought-leadership/publications/2025/december/patenting-play)
+- [Nintendo Patents Challenged at USPTO](https://www.gamesindustry.biz/nintendos-palworld-patents-challenged)
+- [Future of Gaming Patent Reports](https://futureofgaming.com/)
+- [katnamag Game Mechanic Database](https://katnamag.itch.io/)
+- [Ludo.ai](https://ludo.ai/)
+- [Dolt MySQL Parity (Dec 2025)](https://www.dolthub.com/blog/2025-12-04-dolt-is-as-fast-as-mysql/)

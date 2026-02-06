@@ -1,8 +1,11 @@
 # Research: Condition Placement in Dialogue Systems
 
-> **Date**: February 2026
+> **Date**: February 2026 (updated February 6, 2026)
 > **Scope**: Investigation of how professional narrative design tools handle conditions and branching logic
-> **Tools analyzed**: articy:draft, Arcweave, Chat Mapper, Ink, Yarn Spinner, Twine, Dialogic
+> **Tools analyzed**: articy:draft, Arcweave, Chat Mapper, Ink, Yarn Spinner, Twine, Dialogic, NarrativeFlow, StoryFlow Editor, Homer, Arrow
+
+**Changelog:**
+- **2026-02-06**: Added new tools (NarrativeFlow, StoryFlow Editor, Homer, Arrow). Updated Yarn Spinner section for v3/v3.1 features. Added articy:draft v4.1-4.2 notes. Updated Arcweave source URL and recent updates. Added Chat Mapper current status. Added Ink v1.2.0 and Dink notes. Added Twine 2.11.1 and Dialogic 2.0 Alpha 19 status. Added ZA/UM developments and BG3 comparative case study. Updated sources index.
 
 ---
 
@@ -25,6 +28,10 @@
 
 **Notable users**: Disco Elysium, Suzerain, Saint Kotar, SpellForce III, Hogwarts Legacy
 
+**Recent Updates (v4.1-4.2):**
+- Version 4.1 added new scripting keywords: `seen`, `unseen`, and `fallback()` — convenience keywords for modeling choice points where options disappear after being visited or a fallback path activates when all other branches are invalid.
+- Version 4.2 (August 2025): VO Extension plugin, searchable dropdowns, macOS support — no changes to core condition system.
+
 ---
 
 ### 1.2 Arcweave
@@ -40,7 +47,9 @@
 >
 > "Branches are a friendly, visual way to implement logic in your story."
 
-**Source**: [Arcweave Docs - Branches](https://arcweave.com/docs/1.0/branches)
+**Source**: [Arcweave Docs - Branches](https://docs.arcweave.com/project-items/branches)
+
+**Recent Updates:** Localization (beta) and Version History (beta) announced at Gamescom 2025. Core branch/condition system unchanged.
 
 ---
 
@@ -59,6 +68,8 @@
 > "Now we have a little pink dot on the node and that shows we have a script attached. Blue dots indicate conditions. So by looking at the tree we can easily see which nodes have conditions."
 
 **Source**: [Chat Mapper Tutorial - Scripting](https://www.chatmapper.com/media/game-design-scripting-class-part1of2/)
+
+**Current Status (2026):** Latest version 1.9.1. Website still online as "Chat Mapper AI" (acquired by LearnBrite 2015). The "What's New" page has not been updated since 2016, suggesting the tool is in maintenance mode for game development. Core condition/script system described above remains accurate.
 
 ---
 
@@ -79,21 +90,26 @@
 
 **Notable users**: 80 Days, Heaven's Vault, Sorcery! series
 
+**Recent Updates:** Version 1.2.0 "Highland release." Development activity continues (ink-unity-integration updated January 2026). **Dink** (December 2025) — a new third-party dialogue pipeline by Ian Thomas for voice-over production, with export to HTML/PDF/Word Doc. Condition system unchanged.
+
 ---
 
 ### 1.5 Yarn Spinner
 
-**How conditions work:**
-- Script-based with conditional jumps
+**How conditions work (updated for v3.1):**
+- Script-based with `<<if>>`/`<<elseif>>`/`<<else>>`/`<<endif>>` syntax (unchanged)
 - Variables and conditional logic in the script
-- Halfway between Ink's scripting and visual tools
+- **NEW in v3: `when:` headers** — Nodes can have a `when:` header specifying conditions for availability. Yarn Spinner filters out nodes whose conditions fail.
+- **NEW in v3: Node Groups (Storylets)** — Collections of nodes sharing the same name. Yarn Spinner chooses one using a "saliency strategy" (most specific conditions win).
+- **NEW in v3: Line Groups** — Items beginning with `=>` where only one line runs, filtered by conditions.
+- **NEW in v3.1: Option Fallthrough** — When all dialogue options become unavailable due to unmet conditions, the system can skip options entirely and continue the narrative, preventing soft-locks.
 
-**Characteristics:**
-> "Its support for variables and conditional logic makes the tool incredibly versatile."
->
-> "It uses a simple scripting language called Yarn, inspired by formats like film or theater scripts."
+**2026 plans:** Visual Novel Kit, rebuilt VS Code extension, native Unreal Engine support, Godot development, Story Solver narrative debugging tool (automated theorem provers).
 
-**Source**: [NarrativeFlow Comparison](https://narrativeflow.dev/blog/twine-vs-yarn-spinner-vs-ink-vs-narrativeflow-which-branching-dialogue-tool-is-right-for-your-game/)
+**Sources:**
+- [Yarn Spinner 3.1 Release](https://www.yarnspinner.dev/blog/yarn-spinner-3-1-release/)
+- [Yarn Spinner in 2026](https://yarnspinner.dev/blog/yarn-spinner-in-2026/)
+- [Yarn Spinner Flow Control Docs](https://docs.yarnspinner.dev/write-yarn-scripts/scripting-fundamentals/flow-control)
 
 **Notable users**: Night in the Woods, A Short Hike, DREDGE, Frog Detective
 
@@ -112,6 +128,8 @@
 
 **Source**: [Twine Cookbook](https://twinery.org/cookbook/)
 
+Latest version: Twine 2.11.1 (November 8, 2025). Harlowe 4.0 is in development. Core condition mechanics unchanged.
+
 ---
 
 ### 1.7 Dialogic (Godot)
@@ -128,6 +146,35 @@
 
 **Source**: [Dialogic GitHub Issue #2081](https://github.com/dialogic-godot/dialogic/issues/2081)
 
+**Current Status (2026):** Latest release Dialogic 2.0 Alpha 19 (January 2025), requiring Godot 4.3+. Issue #2081 (node graph view) remains **OPEN** — a community member developed a proof-of-concept read-only visualization but no production-ready node graph editor has shipped. The maintainer noted Godot's built-in `arrange_nodes()` produces poor results.
+
+---
+
+### 1.8 New Tools (2025-2026)
+
+**NarrativeFlow:**
+- Browser-based, node-based visual editor with conditional nodes for diverging paths
+- Variables tracked visually (`[GuardRespect]`, `[PlayerReputation]`)
+- Real-time error detection for missing links and logic errors
+- Follows "conditions on nodes" pattern
+
+**StoryFlow Editor:**
+- 56 node types including Logic Gates (AND, OR, NOT, comparisons, random)
+- Variable system: booleans, integers, floats, strings with global/local scope
+- Game engine plugins for Unity, Unreal, Godot (January 2026)
+- Follows "conditions on nodes via logic gate nodes" pattern
+
+**Homer:**
+- Free web-based tool by Open Lab with Text, Choices, and Conditional nodes
+- Conditional nodes have connections for each condition plus a "failed" connection
+- Integrates with Unity, Web
+
+**Arrow v3:**
+- Free, open-source (MIT), built on Godot v4
+- Non-binary branching gates comparing character tags against patterns
+
+**All new tools reinforce the document's central finding: conditions belong on nodes, not edges.**
+
 ---
 
 ## 2. Comparison Table
@@ -138,7 +185,7 @@
 | Arcweave | Branch nodes | if/elseif/else in Branch | Code in labels | Branch node icon |
 | Chat Mapper | Node properties | Group nodes | Script on nodes | Blue/pink dots |
 | Ink | Inline in text | Conditional markup | Inline | N/A (text-based) |
-| Yarn Spinner | Script in node | Conditional jumps | Commands in node | N/A (text-based) |
+| Yarn Spinner | Script in node | Conditional jumps + `when:` headers + node groups | Commands in node | N/A (text-based) |
 | Twine | Passages | (if:) in passage | Setter links | N/A |
 | Dialogic | Timeline events | Condition events | Events | Block colors |
 
@@ -240,6 +287,21 @@
 
 **Source**: [Game Developer - Disco Elysium Analysis](https://www.gamedeveloper.com/business/understanding-the-meaningless-micro-reactive-and-marvellous-writing-of-i-disco-elysium-i-)
 
+### 4.2 ZA/UM Developments (2022-2025)
+
+- Lead designer/writer Robert Kurvitz, art director Aleksander Rostov, and writer Helen Hindpere were ousted from ZA/UM in late 2022
+- Legal disputes resolved July 2025
+- **Zero Parades** revealed at Gamescom 2025 — espionage CRPG for PC/PS5, launching 2026
+- At least 5 studios with DE veterans working on successor projects
+- The technical analysis of articy:draft usage and micro-reactivity remains valid regardless of corporate changes
+
+### 4.3 Baldur's Gate 3 (Comparative Case Study)
+
+- 236+ hours of recorded dialogue using proprietary internal tools (not articy:draft)
+- Writers mapped dialogue options using complex systems "that looked like a whole brain"
+- Vladimir Gaidenko's "scripting the unscriptable" talk detailed their condition-handling approach
+- Conditions evaluated on nodes in Obsidian's OEI dialogue editor (used by Obsidian Entertainment for 8+ years)
+
 ---
 
 ## 5. Best Practices from Industry
@@ -316,6 +378,7 @@ This suggests checking conditions on the **destination node**, not on the edge i
 - No major tool uses conditions primarily on edges/connections for routing
 - No user feedback praising edge-based conditions
 - No documentation recommending edge-based conditions as best practice
+- All new tools discovered in 2025-2026 (NarrativeFlow, StoryFlow Editor, Homer, Arrow) also place conditions on nodes. Yarn Spinner v3's `when:` headers further reinforce this pattern.
 
 ### Visual indicators pattern:
 
@@ -330,7 +393,7 @@ This suggests checking conditions on the **destination node**, not on the edge i
 
 1. [articy Help - Conditions & Instructions](https://www.articy.com/help/adx/Scripting_Conditions_Instructions.html)
 2. [articy Help - Pins and Connections](https://www.articy.com/help/adx/Flow_PinsConnections.html)
-3. [Arcweave Docs - Branches](https://arcweave.com/docs/1.0/branches)
+3. [Arcweave Docs - Branches](https://docs.arcweave.com/project-items/branches)
 4. [Arcweave Docs - Connections](https://arcweave.com/docs/1.0/connections)
 5. [Chat Mapper Tutorial - Scripting](https://www.chatmapper.com/media/game-design-scripting-class-part1of2/)
 6. [Ink Documentation](https://github.com/inkle/ink/blob/master/Documentation/WritingWithInk.md)
@@ -346,3 +409,14 @@ This suggests checking conditions on the **destination node**, not on the edge i
 16. [Data-Aware Dialogues](https://philipphagenlocher.de/post/data-aware-dialogues-for-video-games/)
 17. [Adam Mirkowski - Branching Narrative](https://adammirkowski.substack.com/p/how-to-write-a-branching-narrative)
 18. [Medium - Spaghetti Pattern](https://medium.com/@simon.nordon/unity-architecture-spaghetti-pattern-7e995648c7c8)
+19. [articy:draft X What's New](https://www.articy.com/en/whats-new-in-articydraft-x/)
+20. [Arcweave Docs - Branches (new URL)](https://docs.arcweave.com/project-items/branches)
+21. [Yarn Spinner 3.1 Release](https://www.yarnspinner.dev/blog/yarn-spinner-3-1-release/)
+22. [Yarn Spinner in 2026](https://yarnspinner.dev/blog/yarn-spinner-in-2026/)
+23. [Dink Pipeline for Ink](https://wildwinter.medium.com/dink-a-dialogue-pipeline-for-ink-5020894752ee)
+24. [StoryFlow Editor](https://storyflow-editor.com/)
+25. [Homer](https://homer.open-lab.com/site/)
+26. [Arrow](https://mhgolkar.github.io/Arrow/)
+27. [NarrativeFlow](https://narrativeflow.dev/)
+28. [ZA/UM Zero Parades](https://gameinformer.com/gamescom-2025/2025/08/19/disco-elysium-studio-zaum-reveals-follow-up-crpg-zero-parades)
+29. [BG3 Narrative Design](https://www.gamereactor.eu/vladimir-gaidenko-gives-a-masterclass-on-larian-studios-narrative-design-in-baldurs-gate-3-scripting-the-unscriptable-1505593)
