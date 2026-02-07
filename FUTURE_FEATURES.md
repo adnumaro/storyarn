@@ -2,7 +2,7 @@
 
 > **Purpose:** Document planned features that are not in the current implementation scope
 >
-> **Last Updated:** February 2, 2026
+> **Last Updated:** February 6, 2026
 
 ---
 
@@ -162,6 +162,171 @@ Start with **Option B (Flow State Inspector)** as it's:
 - Most immediately useful for debugging
 - Scoped to single flow (simpler calculation)
 - Doesn't require solving branching complexity initially
+
+---
+
+## Expression Text Mode (Power User Mode)
+
+> **Dependency:** Requires Instruction Node (Phase A) shipped and tested
+> **Priority:** P1 — first feature after visual builder ships
+
+### Concept
+
+An alternative text-based input mode for instruction and condition nodes, where experienced users can type expressions directly instead of using the visual sentence-flow builder.
+
+### Syntax Example
+
+```
+mc.jaime.health += 10
+mc.zelda.hasMasterSword = true
+mc.link.health = mc.link.health + items.potion.value
+```
+
+### Why Defer
+
+The visual sentence-flow builder is Storyarn's core UX differentiator. Adding a text mode before it's polished would split focus. However, competitive research shows that power users of articy:draft, Ink, and Yarn Spinner are consistently faster with text input for bulk operations.
+
+### When to Revisit
+
+After the visual builder (Phase A) has shipped and received user feedback. If users with programming backgrounds report the builder as slow for bulk operations, this becomes high priority.
+
+### Implementation Sketch
+
+- Toggle button on the instruction panel: "Visual" / "Expression"
+- Expression mode: single textarea with autocomplete (like articy:expresso)
+- Autocomplete triggers on typing page shortcuts or variable names
+- Syntax highlighting: page shortcuts in blue, variable names in green, operators in orange
+- On save, parse the expression into the same `assignments` data structure
+- Both modes read/write the same underlying data — switching is lossless
+
+### Competitive Reference
+
+articy:draft's expresso language (C#-like syntax with autocomplete and syntax highlighting). Dialogue System for Unity's Lua editor with wizard-generated code.
+
+---
+
+## Slash Commands in Value Input
+
+> **Dependency:** Requires Instruction Node (Phase A)
+> **Priority:** P3 — only if user demand emerges
+
+### Concept
+
+Typing `/page` in a value input field switches it to a page variable selector. Typing `/value` switches back to literal value input.
+
+### Example Flow
+
+1. User is in a value input field (expects a number)
+2. Types `/page` → field transforms into a page+variable combobox
+3. Selects `global.quests.masterSwordDone` → value is set as variable reference
+4. To go back: types `/value` → field transforms back to literal input
+
+### Why Defer
+
+The `123`/`{x}` toggle button in the visual builder achieves the same functionality with better discoverability. Slash commands require memorization and are invisible to new users. No competing narrative design tool implements this pattern.
+
+### When to Revisit
+
+If user testing reveals that the toggle button interrupts flow for keyboard-centric users who never want to touch the mouse. Could be implemented as a keyboard shortcut (e.g., `Ctrl+Shift+V` to toggle value type) instead of slash syntax.
+
+### Competitive Reference
+
+Inspired by Notion's `/` command palette and VS Code's command palette, but those operate at document/editor level, not inside individual form fields. No narrative design tool uses this pattern.
+
+---
+
+## Conditional Assignments ("When...Change...To")
+
+> **Dependency:** Requires Instruction Node (Phase A) + Condition Builder
+> **Priority:** P2 — lightweight "only if" version first
+
+### Concept
+
+A single instruction row that combines a condition check with a variable assignment, reading like natural language:
+
+```
+When  [mc.zelda]·[hasMasterSword]  is  [true]  then  Set  [mc.link]·[health]  to  [+50]
+```
+
+### Why Defer
+
+This merges two distinct concepts (condition + instruction) into one unit. articy:draft explicitly separates these into input pins (conditions) and output pins (instructions), and this separation is considered one of their best design decisions. The flow editor already supports this pattern naturally: Condition Node → Connection → Instruction Node.
+
+Problems with merging:
+- Complicates the data model (each assignment optionally contains a full condition)
+- Confuses the mental model ("is this a condition or an instruction?")
+- Doubles the complexity of the variable reference tracker
+- Makes the sentence-flow UI significantly more complex
+
+### When to Revisit
+
+If users consistently create simple one-condition → one-assignment flows and report that creating two separate nodes feels like overhead.
+
+### Lightweight Alternative
+
+A simpler version that adds an "only if" toggle on each assignment row:
+
+```
+Set  [mc.link]·[health]  to  [+50]   only if [mc.zelda]·[hasMasterSword] is [true]
+```
+
+This adds a collapsible "only if" clause to individual assignments without creating a full condition builder inside the instruction node.
+
+### Competitive Reference
+
+No mainstream narrative tool merges conditions and instructions this way. Ink uses inline conditions in choices (`* { hasKey } [Use key]`) but these gate choices, not variable assignments.
+
+---
+
+## Competitive Analysis: Instruction/Variable Systems
+
+> **Date:** February 6, 2026
+> **Purpose:** Informs UX decisions for Storyarn's instruction builder
+
+### Market Landscape
+
+| Tool | Approach | Visual Builder? | Non-Programmer Friendly? |
+|---|---|---|---|
+| **articy:draft** | C#-like text with autocomplete | No | Medium — C# syntax is barrier |
+| **Twine (Harlowe)** | Functional macros `(set: $v to x)` | No | Easy for basics, steep for logic |
+| **Ink (Inkle)** | Custom syntax (`~ x = 2`) | No | Writer-friendly but still code |
+| **Yarn Spinner** | Tag-based `<<set $v to x>>` | No | Screenplay-like, accessible |
+| **Chat Mapper** | Lua + dropdowns | Partial | Lua quirks frustrate users |
+| **Dialogue System Unity** | Lua + **full dropdown wizard** | **Yes** | **Most accessible** for complex logic |
+| **Fungus** | 100% visual blocks | **Yes** | Most accessible but tedious at scale |
+
+### Key Findings
+
+1. **No standalone narrative design tool** has a first-class visual instruction builder. Dialogue System for Unity has the closest equivalent, but it's a Unity plugin.
+
+2. **The #1 pain point** across all tools is **remembering variable names**. Tools with autocomplete/dropdowns win.
+
+3. **Visual builders become tedious at scale** (Fungus). Keyboard-driven flow mitigates this.
+
+4. **Text editors exclude non-programmers** (articy, Ink). Sentence-flow UI bridges the gap.
+
+5. **Writers prefer inline variable syntax** over separate GUI panels.
+
+6. **Academic finding:** A Journal of Creative Technologies study found providing **multiple representations** (visual AND text) is the winning approach.
+
+### Storyarn's Position
+
+Storyarn occupies an **unserved niche**: a standalone narrative design tool with a visual instruction builder that feels like writing.
+
+| Segment | Competition | Storyarn Advantage |
+|---|---|---|
+| Text scripting | articy, Ink, Yarn Spinner | Accessible to non-programmers |
+| Pure visual blocks | Fungus | Scales better, less tedious |
+| Hybrid wizard + code | Dialogue System for Unity | Standalone (not engine-locked), modern UX |
+
+### What Ships Commercial Games
+
+- **articy:draft** → Pillars of Eternity, Broken Age
+- **Ink** → 80 Days, Heaven's Vault, Sable, Citizen Sleeper
+- **Yarn Spinner** → Night in the Woods, A Short Hike
+- **Dialogue System for Unity** → Widely used in Unity indie/AA
+
+All use text-based or hybrid approaches. No commercial game of note uses a pure visual block system for complex narrative logic.
 
 ---
 

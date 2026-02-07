@@ -1,6 +1,6 @@
 # Instruction Node + Variable Reference System
 
-> **Status**: Pending
+> **Status**: Phase A complete, Phases B-D pending
 > **Date**: February 6, 2026
 > **Scope**: Instruction node visual builder, variable write/read tracking, variable usage UI on pages
 
@@ -104,6 +104,9 @@ defmodule Storyarn.Flows.Instruction do
   @select_operators ~w(set)
   @date_operators ~w(set)
 
+  # Value types for assignment values
+  @value_types ~w(literal variable_ref)
+
   # Public API — mirror Condition's interface:
 
   @spec operators_for_type(String.t()) :: [String.t()]
@@ -127,23 +130,38 @@ defmodule Storyarn.Flows.Instruction do
   # false for: set_true, set_false, toggle, clear
   # true for everything else
 
+  @spec valid_value_type?(String.t()) :: boolean()
+  # true for "literal" and "variable_ref"
+
   @spec new() :: list()
   # Returns [] (empty assignments list)
 
   @spec add_assignment(list()) :: list()
-  # Appends %{"id" => "assign_#{unique_int}", "page" => nil, "variable" => nil, "operator" => "set", "value" => nil}
+  # Appends %{"id" => "assign_#{unique_int}", "page" => nil, "variable" => nil,
+  #           "operator" => "set", "value" => nil, "value_type" => "literal", "value_page" => nil}
 
   @spec remove_assignment(list(), String.t()) :: list()
   # Filters out assignment with matching id
 
   @spec update_assignment(list(), String.t(), String.t(), any()) :: list()
   # Updates a single field of an assignment by its id
-  # Fields: "page", "variable", "operator", "value"
+  # Fields: "page", "variable", "operator", "value", "value_type", "value_page"
+  # When "value_type" changes to "literal" → clear "value_page"
+  # When "value_type" changes to "variable_ref" → clear "value" (will be set via value_page + value dropdowns)
 
   @spec format_assignment_short(map()) :: String.t()
   # Returns human-readable string, e.g.:
-  # %{"page" => "mc.jaime", "variable" => "health", "operator" => "add", "value" => "10"}
+  #
+  # Literal value:
+  # %{"page" => "mc.jaime", "variable" => "health", "operator" => "add", "value" => "10", "value_type" => "literal"}
   # → "mc.jaime.health += 10"
+  #
+  # Variable reference:
+  # %{"page" => "mc.link", "variable" => "hasMasterSword", "operator" => "set",
+  #   "value_type" => "variable_ref", "value_page" => "global.quests", "value" => "masterSwordDone"}
+  # → "mc.link.hasMasterSword = global.quests.masterSwordDone"
+  #
+  # No-value operators:
   # %{"page" => "mc.jaime", "variable" => "alive", "operator" => "set_true"}
   # → "mc.jaime.alive = true"
 end
@@ -152,26 +170,52 @@ end
 **Assignment data structure:**
 
 ```elixir
+# Literal value assignment
 %{
   "id" => "assign_12345",        # unique, auto-generated
-  "page" => "mc.jaime",          # page shortcut (string)
-  "variable" => "health",        # variable_name (string)
+  "page" => "mc.jaime",          # target page shortcut (string)
+  "variable" => "health",        # target variable_name (string)
   "operator" => "add",           # write operator
-  "value" => "10"                # value (string, parsed by game engine)
+  "value" => "10",               # literal value (string, parsed by game engine)
+  "value_type" => "literal",     # "literal" (default) | "variable_ref"
+  "value_page" => nil             # only used when value_type == "variable_ref"
+}
+
+# Variable reference assignment
+%{
+  "id" => "assign_67890",
+  "page" => "mc.link",                         # target page shortcut
+  "variable" => "hasMasterSword",              # target variable_name
+  "operator" => "set",                         # write operator
+  "value" => "questToGetMasterSwordFinished",  # source variable_name
+  "value_type" => "variable_ref",              # referencing another variable
+  "value_page" => "pages.globalVariables"      # source page shortcut
 }
 ```
 
-**Operator labels for UI:**
+**Operator sentence templates for UI:**
 
-| Operator | Label | Example |
-|----------|-------|---------|
-| `set` | `=` | `health = 100` |
-| `add` | `+=` | `health += 10` |
-| `subtract` | `-=` | `health -= 20` |
-| `set_true` | `= true` | `alive = true` |
-| `set_false` | `= false` | `alive = false` |
-| `toggle` | `toggle` | `toggle alive` |
-| `clear` | `clear` | `clear name` |
+Each operator defines a sentence template. Static words are rendered as plain text, `[slots]` are inline combobox inputs. The sentence structure changes based on the operator:
+
+| Operator | Sentence Template | Example Render |
+|----------|-------------------|----------------|
+| `set` | `Set [page]·[variable] to [value]` | `Set mc.jaime · health to 100` |
+| `add` | `Add [value] to [page]·[variable]` | `Add 10 to mc.jaime · health` |
+| `subtract` | `Subtract [value] from [page]·[variable]` | `Subtract 20 from mc.jaime · health` |
+| `set_true` | `Set [page]·[variable] to true` | `Set mc.zelda · hasMasterSword to true` |
+| `set_false` | `Set [page]·[variable] to false` | `Set mc.jaime · isAlive to false` |
+| `toggle` | `Toggle [page]·[variable]` | `Toggle mc.jaime · isAlive` |
+| `clear` | `Clear [page]·[variable]` | `Clear mc.jaime · name` |
+
+When `value_type == "variable_ref"`, the value slot becomes a page·variable combobox:
+
+| Operator | Sentence Template (variable_ref) | Example Render |
+|----------|----------------------------------|----------------|
+| `set` | `Set [page]·[variable] to [src_page]·[src_variable]` | `Set mc.link · hasMasterSword to global.quests · masterSwordDone` |
+| `add` | `Add [src_page]·[src_variable] to [page]·[variable]` | `Add items.potion · value to mc.jaime · health` |
+| `subtract` | `Subtract [src_page]·[src_variable] from [page]·[variable]` | `Subtract enemy.boss · damage from mc.jaime · health` |
+
+**Note:** Operators that don't require a value (`set_true`, `set_false`, `toggle`, `clear`) ignore `value_type` entirely — the toggle between literal/variable_ref is hidden for these operators.
 
 ---
 
@@ -201,82 +245,308 @@ end
 
 ---
 
-### A3. Builder Component
+### A3. Sentence-Flow Builder (JS Component)
 
-**New file:** `lib/storyarn_web/components/instruction_builder.ex`
+> **Architecture decision:** The builder is a **JS-driven component** (LiveView hook) rather than server-rendered HEEx. This provides a more fluid UX: search-as-you-type comboboxes, auto-advance between inputs, and inline borderless styling — all without roundtrips per keystroke. Communication with LiveView is limited to: (1) receiving initial data + variables on mount, and (2) pushing the final `assignments` array back on change.
 
-Mirror `lib/storyarn_web/components/condition_builder.ex` structure. This is a reusable component (could later be used for dialogue `output_instruction`).
+**New files:**
+- `assets/js/hooks/instruction_builder/instruction_builder_hook.js` — LiveView hook (entry point)
+- `assets/js/hooks/instruction_builder/assignment_row.js` — One sentence-flow row
+- `assets/js/hooks/instruction_builder/combobox.js` — Searchable combobox widget
+- `assets/js/hooks/instruction_builder/sentence_templates.js` — Operator → sentence template mapping
+- `lib/storyarn_web/components/instruction_builder.ex` — Thin HEEx wrapper that renders the hook container
+
+**Thin HEEx wrapper** (`instruction_builder.ex`):
 
 ```elixir
 defmodule StoryarnWeb.Components.InstructionBuilder do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
-
-  alias Storyarn.Flows.Instruction
-
-  # Reuse the grouping helper from ConditionBuilder
-  import StoryarnWeb.Components.ConditionBuilder,
-    only: [group_variables_by_page: 1, find_variable: 3]
-
-  # Main component
   attr :id, :string, required: true
   attr :assignments, :list, default: []
   attr :variables, :list, default: []
-  attr :on_change, :string, required: true
   attr :can_edit, :boolean, default: true
-  def instruction_builder(assigns)
 
-  # Sub-components (private):
-  # assignment_row/1 — one row per assignment
-  # value_input/1 — typed input (same pattern as condition_builder)
+  def instruction_builder(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      phx-hook="InstructionBuilder"
+      data-assignments={Jason.encode!(@assignments)}
+      data-variables={Jason.encode!(@variables)}
+      data-can-edit={Jason.encode!(@can_edit)}
+      class="instruction-builder"
+    >
+      <%!-- JS renders content here --%>
+    </div>
+    """
+  end
 end
 ```
 
-**Component layout:**
+#### Visual Design: Sentence-Flow UI
+
+Each assignment row reads like a sentence. Inputs are **inline, borderless, with only a bottom border** — they feel like blanks in a sentence, not form fields. The user types as if writing text, but is actually moving between searchable comboboxes.
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│  Assignment 1:                                                    │
-│  ┌─────────────────────┐  ┌─────────────────────┐               │
-│  │ [Page dropdown ▼]   │  │ [Variable dropdown ▼]│               │
-│  └─────────────────────┘  └─────────────────────┘               │
-│  ┌─────────────────────┐  ┌─────────────────────┐  ┌───┐       │
-│  │ [Operator dropdown ▼]│  │ [Value input]       │  │ ✕ │       │
-│  └─────────────────────┘  └─────────────────────┘  └───┘       │
-├──────────────────────────────────────────────────────────────────┤
-│  Assignment 2: ...                                               │
-├──────────────────────────────────────────────────────────────────┤
-│  [+ Add assignment]                                              │
-└──────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                                                                       │
+│  Set  mc.jaime · health  to  100                              [✕]   │
+│       ‾‾‾‾‾‾‾‾   ‾‾‾‾‾‾      ‾‾‾                                  │
+│       combobox    combobox     combobox/input                        │
+│                                                                       │
+│  Add  10  to  mc.jaime · gold                                 [✕]   │
+│       ‾‾                ‾‾‾‾                                        │
+│                                                                       │
+│  Set  mc.link · hasMasterSword  to  global.quests · swordDone [✕]   │
+│       ‾‾‾‾‾‾‾   ‾‾‾‾‾‾‾‾‾‾‾‾      ‾‾‾‾‾‾‾‾‾‾‾‾‾  ‾‾‾‾‾‾‾‾      │
+│       combobox   combobox           combobox         combobox        │
+│                                     (value_type = variable_ref)      │
+│                                                                       │
+│  Toggle  mc.jaime · isAlive                                   [✕]   │
+│                                                                       │
+│  [+ Add assignment]                                                   │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Event dispatch pattern** — same as condition_builder:
+**Key visual principles:**
+- Static words ("Set", "to", "Add", "from") are plain text, styled as `text-base-content/50`
+- Combobox inputs have no visible border — only a subtle `border-bottom` (1px dashed) when empty, solid when filled
+- Input width auto-adjusts to content (JS measures text width + padding)
+- The entire row has a single bottom divider separating it from the next row
+- On hover, the row gets a subtle background highlight
+- The `[✕]` button is only visible on row hover
 
-| Action | Dispatch | Key params |
-|--------|----------|------------|
-| Add assignment | `phx-click={@on_change}` + `phx-value-action="add_assignment"` | `action: "add_assignment"` |
-| Remove assignment | `phx-click={@on_change}` + `phx-value-action="remove_assignment"` + `phx-value-assignment-id={id}` | `action: "remove_assignment", assignment-id: "assign_123"` |
-| Change field | `phx-change={@on_change}` on wrapping form | Input names: `assign_page_{id}`, `assign_variable_{id}`, `assign_operator_{id}`, `assign_value_{id}` |
+#### Combobox Widget
 
-**Value input** — same typed pattern as condition_builder's `value_input/1`:
-- `select` / `multi_select` → dropdown from variable options
-- `number` → `<input type="number">`
-- `boolean` → dropdown `["true", "false"]`
-- `date` → `<input type="date">`
-- `text` (default) → `<input type="text">`
-- Hidden for value-less operators (`set_true`, `set_false`, `toggle`, `clear`)
+A reusable searchable combobox for page, variable, and value selection.
 
-**Reuse from condition_builder:** Import `group_variables_by_page/1` and `find_variable/3` directly from `StoryarnWeb.Components.ConditionBuilder` — they are public functions. This avoids code duplication.
+**Behavior:**
+1. **Click or Tab into** → Shows full dropdown of options (grouped by page for variables)
+2. **Type any characters** → Filters options in real-time (matches against label, slug, and shortcut)
+3. **Arrow keys** → Navigate filtered options
+4. **Enter** → Select highlighted option AND **auto-advance to next input in the row**
+5. **Escape** → Close dropdown, keep current value
+6. **Tab** → Close dropdown, keep current value, advance to next input
+
+**Filtering logic:**
+- Case-insensitive substring match against multiple fields
+- For pages: matches `title` and `shortcut` (e.g., typing "zel" matches "Zelda" and "mc.zelda")
+- For variables: matches `variable_name` and `block label` (e.g., typing "hea" matches "health" and "Health Points")
+- Results grouped by page with sticky page headers in the dropdown
+
+**Dropdown rendering:**
+```
+┌───────────────────────────────┐
+│ 🔍 zel                        │  ← input with current search text
+├───────────────────────────────┤
+│ mc.zelda                      │  ← page group header (sticky)
+│   health (number)             │
+│   hasMasterSword (boolean)    │
+│   questProgress (number)      │
+│                               │
+│ global.zelda_quests           │  ← another page group
+│   zeldaApproval (number)      │
+└───────────────────────────────┘
+```
+
+**Implementation notes:**
+- Pure JS (no external library) — small enough to not need one
+- Positioned absolutely below the input, flips up if near viewport bottom
+- Max height with scroll for long lists
+- Highlighted option follows arrow keys with scroll-into-view
+- All options provided client-side on mount (avoids roundtrips for filtering)
+
+#### Sentence Templates (`sentence_templates.js`)
+
+```javascript
+// Each template defines the order of elements in a row.
+// "slot" entries are interactive (combobox/input), "text" entries are static labels.
+
+export const SENTENCE_TEMPLATES = {
+  set: [
+    { type: "text", value: "Set" },
+    { type: "slot", key: "page", placeholder: "page" },
+    { type: "text", value: "·" },
+    { type: "slot", key: "variable", placeholder: "variable" },
+    { type: "text", value: "to" },
+    { type: "slot", key: "value", placeholder: "value" },
+  ],
+  add: [
+    { type: "text", value: "Add" },
+    { type: "slot", key: "value", placeholder: "value" },
+    { type: "text", value: "to" },
+    { type: "slot", key: "page", placeholder: "page" },
+    { type: "text", value: "·" },
+    { type: "slot", key: "variable", placeholder: "variable" },
+  ],
+  subtract: [
+    { type: "text", value: "Subtract" },
+    { type: "slot", key: "value", placeholder: "value" },
+    { type: "text", value: "from" },
+    { type: "slot", key: "page", placeholder: "page" },
+    { type: "text", value: "·" },
+    { type: "slot", key: "variable", placeholder: "variable" },
+  ],
+  set_true: [
+    { type: "text", value: "Set" },
+    { type: "slot", key: "page", placeholder: "page" },
+    { type: "text", value: "·" },
+    { type: "slot", key: "variable", placeholder: "variable" },
+    { type: "text", value: "to true" },
+  ],
+  set_false: [
+    { type: "text", value: "Set" },
+    { type: "slot", key: "page", placeholder: "page" },
+    { type: "text", value: "·" },
+    { type: "slot", key: "variable", placeholder: "variable" },
+    { type: "text", value: "to false" },
+  ],
+  toggle: [
+    { type: "text", value: "Toggle" },
+    { type: "slot", key: "page", placeholder: "page" },
+    { type: "text", value: "·" },
+    { type: "slot", key: "variable", placeholder: "variable" },
+  ],
+  clear: [
+    { type: "text", value: "Clear" },
+    { type: "slot", key: "page", placeholder: "page" },
+    { type: "text", value: "·" },
+    { type: "slot", key: "variable", placeholder: "variable" },
+  ],
+};
+
+// When value_type == "variable_ref", the "value" slot is replaced by two slots:
+// { type: "slot", key: "value_page", placeholder: "page" }
+// { type: "text", value: "·" }
+// { type: "slot", key: "value", placeholder: "variable" }
+```
+
+#### Value Type Toggle
+
+Within the sentence flow, the value slot has a small toggle icon inline:
+
+```
+Set  mc.jaime · health  to  [123] 100       ← literal mode (default)
+Set  mc.jaime · health  to  [{x}] global.quests · swordDone  ← variable_ref mode
+```
+
+- `[123]` / `[{x}]` is a tiny clickable icon (12x12px) that appears before the value slot
+- Only visible when the operator requires a value
+- Clicking toggles between literal and variable_ref, clearing the current value
+- The icon uses `text-base-content/30` and becomes `text-primary` on hover
+
+#### Auto-Advance Logic
+
+When a combobox selection is made (Enter or click):
+1. Determine the next slot in the current sentence template
+2. If next slot exists → focus it and open its dropdown
+3. If no next slot (end of sentence) → focus the `[+ Add assignment]` button
+4. If the operator changes → re-render the sentence template (the slots may reorder)
+
+**Special case: operator change.** When the user selects a variable, the builder detects its type and auto-selects the first available operator. This may change the sentence template. The builder re-renders the row and focuses the next unfilled slot.
+
+#### Hook Lifecycle (`instruction_builder_hook.js`)
+
+```javascript
+export const InstructionBuilder = {
+  mounted() {
+    this.assignments = JSON.parse(this.el.dataset.assignments);
+    this.variables = JSON.parse(this.el.dataset.variables);
+    this.canEdit = JSON.parse(this.el.dataset.canEdit);
+    this.render();
+  },
+
+  updated() {
+    // LiveView pushed new data (e.g., after another user's edit in collaboration)
+    const newAssignments = JSON.parse(this.el.dataset.assignments);
+    if (JSON.stringify(newAssignments) !== JSON.stringify(this.assignments)) {
+      this.assignments = newAssignments;
+      this.render();
+    }
+  },
+
+  // Push changes back to LiveView
+  pushAssignments() {
+    this.pushEvent("update_instruction_builder", {
+      action: "replace_all",
+      assignments: this.assignments
+    });
+  },
+
+  render() {
+    // Render assignment rows + "Add" button into this.el
+    // Each row is an AssignmentRow instance
+  }
+};
+```
+
+**Key architecture point:** The JS component owns the `assignments` array locally and pushes the entire array to LiveView on every meaningful change (add, remove, field change). This avoids the field-by-field event pattern and gives instant UI feedback. LiveView receives the full state and persists it.
+
+#### CSS (Tailwind v4)
+
+```css
+/* In assets/css/app.css or a component-specific file */
+
+.instruction-builder .assignment-row {
+  @apply flex flex-wrap items-baseline gap-1 py-2 border-b border-base-300/30;
+}
+
+.instruction-builder .sentence-text {
+  @apply text-sm text-base-content/50 select-none;
+}
+
+.instruction-builder .sentence-slot {
+  @apply text-sm text-base-content font-medium bg-transparent
+         border-0 border-b border-dashed border-base-content/20
+         outline-none min-w-[3ch] px-0.5;
+  /* Auto-width: set by JS based on content */
+}
+
+.instruction-builder .sentence-slot:focus {
+  @apply border-solid border-primary;
+}
+
+.instruction-builder .sentence-slot.filled {
+  @apply border-solid border-base-content/10;
+}
+
+.instruction-builder .sentence-slot::placeholder {
+  @apply text-base-content/25 font-normal italic;
+}
+
+.instruction-builder .combobox-dropdown {
+  @apply absolute z-50 mt-1 w-64 max-h-48 overflow-y-auto
+         bg-base-100 border border-base-300 rounded-lg shadow-lg;
+}
+
+.instruction-builder .combobox-option {
+  @apply px-3 py-1.5 text-sm cursor-pointer hover:bg-base-200;
+}
+
+.instruction-builder .combobox-option.highlighted {
+  @apply bg-primary/10 text-primary;
+}
+
+.instruction-builder .combobox-group-header {
+  @apply px-3 py-1 text-xs font-semibold text-base-content/40
+         sticky top-0 bg-base-100;
+}
+
+.instruction-builder .value-type-toggle {
+  @apply inline-flex items-center justify-center w-4 h-4 rounded
+         text-[10px] text-base-content/30 hover:text-primary
+         cursor-pointer select-none;
+}
+```
 
 ---
 
 ### A4. Panel Component
 
 **New file:** `lib/storyarn_web/live/flow_live/components/panels/instruction_panel.ex`
-
-Mirror `condition_panel.ex`:
 
 ```elixir
 defmodule StoryarnWeb.FlowLive.Components.Panels.InstructionPanel do
@@ -306,26 +576,27 @@ end
 │ Assignments                                  │
 │ ┌──────────────────────────────────────────┐ │
 │ │ <.instruction_builder                    │ │
-│ │   assignments={node.data["assignments"]} │ │
+│ │   id={"instruction-builder-#{@node.id}"} │ │
+│ │   assignments={@node.data["assignments"]}│ │
 │ │   variables={@project_variables}         │ │
-│ │   on_change="update_instruction_builder" │ │
 │ │   can_edit={@can_edit}                   │ │
 │ │ />                                       │ │
 │ └──────────────────────────────────────────┘ │
 └─────────────────────────────────────────────┘
 ```
 
-**Key detail:** The description field uses the standard `<.form>` with `phx-change="update_node_data"`. The assignments use their own event `"update_instruction_builder"` (same pattern as condition: builder events are separate from form events).
-
-Actually, simpler approach: put the description field INSIDE the instruction_builder's wrapper, or handle it separately via `update_node_field` with `phx-blur`. Use the same pattern as the exit node's `technical_id` field (plain input with `phx-blur="update_node_field"` + `phx-value-field="description"`).
+**Key details:**
+- The description field uses `phx-blur="update_node_field"` + `phx-value-field="description"` (same pattern as exit node's `technical_id`).
+- The `<.instruction_builder>` renders a `phx-hook="InstructionBuilder"` div. No `on_change` attr needed — the hook pushes events directly via `this.pushEvent()`.
+- No `<.form>` wrapper for assignments — the JS component owns its own state and communicates via hook events.
 
 ---
 
-### A5. Event Handlers
+### A5. Event Handler
 
 **New file:** `lib/storyarn_web/live/flow_live/handlers/instruction_event_handlers.ex`
 
-Mirror `condition_event_handlers.ex`:
+Since the JS component owns the assignments array client-side and pushes the full state on each change, the server-side handler is simpler than the condition builder's field-by-field approach:
 
 ```elixir
 defmodule StoryarnWeb.FlowLive.Handlers.InstructionEventHandlers do
@@ -333,88 +604,46 @@ defmodule StoryarnWeb.FlowLive.Handlers.InstructionEventHandlers do
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.Instruction
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
 
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
 
   @spec handle_update_instruction_builder(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_update_instruction_builder(params, socket)
-end
-```
+  def handle_update_instruction_builder(%{"assignments" => assignments}, socket) do
+    node = socket.assigns.selected_node
 
-**Core dispatch logic** (mirrors `apply_condition_update/2`):
+    # Sanitize: only keep known keys per assignment
+    sanitized =
+      Enum.map(assignments, fn assign ->
+        Map.take(assign, ~w(id page variable operator value value_type value_page))
+      end)
 
-```elixir
-defp apply_assignment_update(current_assignments, params) do
-  cond do
-    params["action"] == "add_assignment" ->
-      Instruction.add_assignment(current_assignments)
+    updated_data = Map.put(node.data, "assignments", sanitized)
 
-    params["action"] == "remove_assignment" ->
-      Instruction.remove_assignment(current_assignments, params["assignment-id"])
+    case Flows.update_node_data(node, updated_data) do
+      {:ok, updated_node, _meta} ->
+        form = FormHelpers.node_data_to_form(updated_node)
+        schedule_save_status_reset()
 
-    true ->
-      apply_assignment_field_update(current_assignments, params)
-  end
-end
-```
+        {:noreply,
+         socket
+         |> reload_flow_data()
+         |> assign(:selected_node, updated_node)
+         |> assign(:node_form, form)
+         |> assign(:save_status, :saved)
+         |> push_event("node_updated", %{id: node.id, data: updated_node.data})}
 
-**Field update logic** — same `_target` pattern as condition:
-
-```elixir
-defp apply_assignment_field_update(assignments, params) do
-  target = List.first(params["_target"] || [])
-
-  {field, assignment_id} =
-    cond do
-      match?("assign_page_" <> _, target) ->
-        {"page", String.replace_prefix(target, "assign_page_", "")}
-      match?("assign_variable_" <> _, target) ->
-        {"variable", String.replace_prefix(target, "assign_variable_", "")}
-      match?("assign_operator_" <> _, target) ->
-        {"operator", String.replace_prefix(target, "assign_operator_", "")}
-      match?("assign_value_" <> _, target) ->
-        {"value", String.replace_prefix(target, "assign_value_", "")}
-      true ->
-        {nil, nil}
+      {:error, _} ->
+        {:noreply, socket}
     end
-
-  if field && assignment_id do
-    value = params[target]
-    Instruction.update_assignment(assignments, assignment_id, field, value)
-  else
-    assignments
   end
 end
 ```
 
-**Save flow** — same pattern as condition handler:
+**Key difference from condition builder:** No dispatch logic, no field-level parsing. The JS hook pushes the complete `assignments` array, and the handler sanitizes and persists it. All add/remove/update logic lives in JS.
 
-```elixir
-defp handle_instruction_node_update(socket, updated_assignments) do
-  node = socket.assigns.selected_node
-  updated_data = Map.put(node.data, "assignments", updated_assignments)
-
-  case Flows.update_node_data(node, updated_data) do
-    {:ok, updated_node, _meta} ->
-      form = FormHelpers.node_data_to_form(updated_node)
-      schedule_save_status_reset()
-
-      {:noreply,
-       socket
-       |> reload_flow_data()
-       |> assign(:selected_node, updated_node)
-       |> assign(:node_form, form)
-       |> assign(:save_status, :saved)
-       |> push_event("node_updated", %{id: node.id, data: updated_node.data})}
-
-    {:error, _} ->
-      {:noreply, socket}
-  end
-end
-```
+**Sanitization is important:** Since the data comes from the client, `Map.take/2` ensures only known keys are stored. This prevents injection of unexpected fields into node data.
 
 ---
 
@@ -446,7 +675,7 @@ alias StoryarnWeb.FlowLive.Components.Panels.InstructionPanel
 <% end %>
 ```
 
-**Key:** Instruction panel, like condition panel, renders OUTSIDE the `<.form>` wrapper because the builder uses its own `phx-change` event targeting `"update_instruction_builder"`.
+**Key:** Instruction panel, like condition panel, renders OUTSIDE the `<.form>` wrapper because the builder uses its own hook-based event system (`this.pushEvent`).
 
 **Modify:** `lib/storyarn_web/live/flow_live/show.ex`
 
@@ -469,6 +698,8 @@ Add alias: `alias StoryarnWeb.FlowLive.Handlers.InstructionEventHandlers`
 
 **Modify:** `assets/js/hooks/flow_canvas/components/node_formatters.js`
 
+The canvas preview uses the same sentence-style format as the builder, but as plain text (no interactive inputs). Import `SENTENCE_TEMPLATES` from the shared module or duplicate the formatting logic.
+
 Update `getPreviewText`:
 
 ```javascript
@@ -476,7 +707,7 @@ case "instruction": {
   const assignments = nodeData.assignments || [];
   if (assignments.length === 0) return "";
   return assignments
-    .slice(0, 3)  // max 3 lines
+    .slice(0, 3)  // max 3 lines on canvas
     .map(a => formatAssignment(a))
     .filter(Boolean)
     .join("\n");
@@ -489,16 +720,30 @@ Add helper:
 function formatAssignment(assignment) {
   if (!assignment.page || !assignment.variable) return null;
   const ref = `${assignment.page}.${assignment.variable}`;
-  const opLabels = {
-    set: "=", add: "+=", subtract: "-=",
-    set_true: "= true", set_false: "= false",
-    toggle: "⟲", clear: "∅"
-  };
-  const op = opLabels[assignment.operator] || "=";
-  if (["set_true", "set_false", "toggle", "clear"].includes(assignment.operator)) {
-    return `${ref} ${op}`;
+
+  // Sentence-style format matching the builder UI
+  const op = assignment.operator || "set";
+
+  // Value-less operators
+  if (op === "set_true") return `Set ${ref} to true`;
+  if (op === "set_false") return `Set ${ref} to false`;
+  if (op === "toggle") return `Toggle ${ref}`;
+  if (op === "clear") return `Clear ${ref}`;
+
+  // Determine value display
+  let valueDisplay;
+  if (assignment.value_type === "variable_ref" && assignment.value_page && assignment.value) {
+    valueDisplay = `${assignment.value_page}.${assignment.value}`;
+  } else {
+    valueDisplay = assignment.value || "?";
   }
-  return `${ref} ${op} ${assignment.value || "?"}`;
+
+  // Sentence templates
+  if (op === "set") return `Set ${ref} to ${valueDisplay}`;
+  if (op === "add") return `Add ${valueDisplay} to ${ref}`;
+  if (op === "subtract") return `Subtract ${valueDisplay} from ${ref}`;
+
+  return `Set ${ref} to ${valueDisplay}`;
 }
 ```
 
@@ -542,12 +787,16 @@ end
 ```elixir
 describe "Instruction" do
   test "new/0 returns empty list"
-  test "add_assignment/1 appends with generated id"
+  test "add_assignment/1 appends with generated id and value_type literal"
   test "remove_assignment/2 removes by id"
   test "update_assignment/4 updates a field"
+  test "update_assignment/4 clears value and value_page when toggling value_type"
   test "operators_for_type/1 returns correct operators per type"
   test "operator_requires_value?/1"
-  test "format_assignment_short/1 formats correctly"
+  test "valid_value_type?/1 accepts literal and variable_ref"
+  test "format_assignment_short/1 formats literal value correctly"
+  test "format_assignment_short/1 formats variable_ref as page.variable"
+  test "format_assignment_short/1 formats no-value operators"
 end
 ```
 
@@ -710,10 +959,25 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     assignments = node.data["assignments"] || []
 
     Enum.flat_map(assignments, fn assign ->
-      case resolve_block(node.flow_id, assign["page"], assign["variable"]) do
-        nil -> []
-        block_id -> [%{block_id: block_id, kind: "write"}]
-      end
+      # Write ref for target variable
+      write_ref =
+        case resolve_block(node.flow_id, assign["page"], assign["variable"]) do
+          nil -> []
+          block_id -> [%{block_id: block_id, kind: "write"}]
+        end
+
+      # Read ref for source variable (when value_type == "variable_ref")
+      read_ref =
+        if assign["value_type"] == "variable_ref" do
+          case resolve_block(node.flow_id, assign["value_page"], assign["value"]) do
+            nil -> []
+            block_id -> [%{block_id: block_id, kind: "read"}]
+          end
+        else
+          []
+        end
+
+      write_ref ++ read_ref
     end)
   end
 
@@ -848,11 +1112,13 @@ defdelegate count_variable_usage(block_id),
 ```elixir
 describe "VariableReferenceTracker" do
   test "instruction node creates write references"
+  test "instruction node with variable_ref creates write AND read references"
   test "condition node creates read references"
   test "updating node replaces old references"
   test "deleting node cascades reference deletion"
   test "deleting block cascades reference deletion"
   test "unresolvable variable creates no reference"
+  test "unresolvable variable_ref source creates write ref but no read ref"
   test "get_variable_usage returns reads and writes with flow info"
   test "count_variable_usage returns grouped counts"
   test "references from deleted flows are excluded from usage"
@@ -1081,8 +1347,18 @@ def check_stale_references(block_id, project_id) do
           "instruction" ->
             assignments = ref.node_data["assignments"] || []
             not Enum.any?(assignments, fn a ->
-              a["page"] == block_info.page_shortcut and
-                a["variable"] == block_info.variable_name
+              # Check target variable match
+              target_match =
+                a["page"] == block_info.page_shortcut and
+                  a["variable"] == block_info.variable_name
+
+              # Check source variable match (for variable_ref assignments)
+              source_match =
+                a["value_type"] == "variable_ref" and
+                  a["value_page"] == block_info.page_shortcut and
+                  a["value"] == block_info.variable_name
+
+              target_match or source_match
             end)
 
           "condition" ->
@@ -1134,14 +1410,18 @@ When a flow node has stale variable references, show a warning indicator on the 
 
 ## File Summary
 
-### New Files (8)
+### New Files (11)
 
 | File | Phase | Purpose |
 |------|-------|---------|
 | `lib/storyarn/flows/instruction.ex` | A | Domain logic |
-| `lib/storyarn_web/components/instruction_builder.ex` | A | Reusable builder component |
+| `lib/storyarn_web/components/instruction_builder.ex` | A | Thin HEEx wrapper (renders hook container) |
+| `assets/js/hooks/instruction_builder/instruction_builder_hook.js` | A | LiveView hook (entry point, state management) |
+| `assets/js/hooks/instruction_builder/assignment_row.js` | A | Sentence-flow row rendering |
+| `assets/js/hooks/instruction_builder/combobox.js` | A | Searchable combobox widget |
+| `assets/js/hooks/instruction_builder/sentence_templates.js` | A | Operator → sentence template mapping |
 | `lib/storyarn_web/live/flow_live/components/panels/instruction_panel.ex` | A | Panel UI |
-| `lib/storyarn_web/live/flow_live/handlers/instruction_event_handlers.ex` | A | Event handlers |
+| `lib/storyarn_web/live/flow_live/handlers/instruction_event_handlers.ex` | A | Event handler (receives full state from JS) |
 | `priv/repo/migrations/XXXXXXXX_create_variable_references.exs` | B | DB migration |
 | `lib/storyarn/flows/variable_reference.ex` | B | Ecto schema |
 | `lib/storyarn/flows/variable_reference_tracker.ex` | B | Tracking logic |
@@ -1155,8 +1435,10 @@ When a flow node has stale variable references, show a warning indicator on the 
 | `lib/storyarn_web/live/flow_live/components/panels/simple_panels.ex` | A | Remove instruction case |
 | `lib/storyarn_web/live/flow_live/components/properties_panels.ex` | A | Route to InstructionPanel |
 | `lib/storyarn_web/live/flow_live/show.ex` | A+C | New event + node query param |
-| `assets/js/hooks/flow_canvas/components/node_formatters.js` | A | Instruction preview |
+| `assets/js/hooks/flow_canvas/components/node_formatters.js` | A | Sentence-style instruction preview |
 | `assets/js/hooks/flow_canvas/components/storyarn_node.js` | A | Instruction rendering (if needed) |
+| `assets/js/hooks/index.js` | A | Register InstructionBuilder hook |
+| `assets/css/app.css` | A | Instruction builder styles |
 | `lib/storyarn/flows/node_crud.ex` | B | Integrate variable tracker |
 | `lib/storyarn/flows.ex` | B | Facade delegates |
 | `lib/storyarn_web/live/page_live/components/references_tab.ex` | C | Add variable usage |
@@ -1188,21 +1470,34 @@ Each phase should be committed separately.
 
 ## Verification Checklist
 
-### Phase A
-- [ ] `mix test` — all tests pass
-- [ ] Create instruction node → panel shows assignment builder
-- [ ] Add assignment → page dropdown populated with project variables
-- [ ] Select page → variable dropdown filters to that page's variables
-- [ ] Select variable → operator dropdown shows type-appropriate operators
-- [ ] Boolean variable → shows set_true/set_false/toggle (no value input)
-- [ ] Number variable → shows set/add/subtract with number input
-- [ ] Canvas shows assignment preview: `mc.jaime.health += 10`
-- [ ] Description field saves via blur
-- [ ] Duplicate instruction node preserves assignments
+### Phase A ✅
+- [x] `mix test` — all tests pass (576 tests, 0 failures + 35 new instruction tests)
+- [x] Create instruction node → panel shows sentence-flow assignment builder
+- [x] Builder renders as inline sentence: "Set _page_ · _variable_ to _value_"
+- [x] All inputs are borderless with bottom border only (sentence-flow style)
+- [x] Input width auto-adjusts to content
+- [x] **Combobox search:** Type in page input → filters pages by title and shortcut
+- [x] **Combobox search:** Type in variable input → filters variables by name and label
+- [x] **Combobox dropdown:** Options grouped by page with sticky headers
+- [x] **Auto-advance:** Selecting a page → auto-focuses variable combobox
+- [x] **Auto-advance:** Selecting a variable → auto-selects operator and focuses value input
+- [x] **Auto-advance:** Completing last input → focuses "+ Add assignment" button
+- [x] Select variable → sentence template changes based on variable type (operator auto-selected)
+- [x] Boolean variable → sentence reads "Set _page_ · _variable_ to true" (no value input, no toggle)
+- [x] Number variable → shows set/add/subtract; "Add _value_ to _page_ · _variable_"
+- [x] Value type toggle `[123]`/`[{x}]` visible for operators that require a value
+- [x] Toggle to `{x}` → value slot becomes two comboboxes (source page + source variable)
+- [x] Toggle back to `123` → clears source and shows typed value input
+- [x] Canvas preview uses sentence format: "Set mc.link.hasMasterSword to global.quests.masterSwordDone"
+- [x] Canvas preview for literal: "Add 10 to mc.jaime.health"
+- [x] Description field saves via blur
+- [x] Duplicate instruction node preserves assignments (including value_type)
+- [x] Collaboration: external update via `handleEvent("node_updated")` refreshes builder
 
 ### Phase B
 - [ ] `mix ecto.migrate` — migration runs
-- [ ] Save instruction node → variable_references table has write entries
+- [ ] Save instruction node (literal) → variable_references table has write entry
+- [ ] Save instruction node (variable_ref) → variable_references table has write entry AND read entry (for source variable)
 - [ ] Save condition node → variable_references table has read entries
 - [ ] Delete node → references cascade deleted
 - [ ] Delete block → references cascade deleted
@@ -1224,10 +1519,13 @@ Each phase should be committed separately.
 
 ## Future Work (Out of Scope)
 
-These are NOT part of this plan but should be noted:
+These are NOT part of this plan but should be noted. See `FUTURE_FEATURES.md` for detailed design docs on items marked with *.
 
-1. **Dialogue `output_instruction` → structured builder** — Currently plain text. When converted to structured data, reuse `instruction_builder` and add write tracking.
+1. **Dialogue `output_instruction` → structured builder** — Currently plain text. When converted to structured data, reuse `instruction_builder` hook and add write tracking.
 2. **Dialogue `input_condition` → structured builder** — Currently plain text. When converted, reuse `condition_builder` and add read tracking.
 3. **Cross-flow variable analysis** — "Show me all flows that touch this variable" as a project-level view.
 4. **Variable rename propagation** — When a page shortcut or variable name changes, auto-update all referencing node data (not just the reference table).
 5. **Export integration** — Include variable reference graph in export format.
+6. ***Expression text mode** — Alternative text input for power users (articy:expresso-like). See FUTURE_FEATURES.md.
+7. ***Conditional assignments ("When...change...to")** — Inline conditions on assignments. See FUTURE_FEATURES.md.
+8. ***Slash commands in value input** — `/page` to switch to variable selector. See FUTURE_FEATURES.md.

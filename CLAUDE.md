@@ -16,6 +16,7 @@
 | `CONDITION_NODE_ENHANCEMENT.md` | Condition node variable integration (pending)      |
 | `INSTRUCTION_VARIABLE_SYSTEM_PLAN.md` | Instruction node + variable tracking (pending) |
 | `FLOW_NODES_IMPROVEMENT_PLAN.md` | Flow node fixes and improvements (Phases 1-2 ✓) |
+| `FUTURE_FEATURES.md`           | Deferred features + competitive analysis           |
 
 ## Language Policy
 
@@ -138,11 +139,71 @@ Pages.list_project_variables(project_id)
 
 **Visual indicators:** 🔒 (input_condition) | ⚡ (output_instruction) | 🔊 (audio) | [?] (response condition)
 
-**Key files:**
-- `lib/storyarn_web/live/flow_live/show.ex` - Main LiveView
-- `lib/storyarn_web/live/flow_live/components/properties_panels.ex` - Node panels
-- `lib/storyarn_web/live/flow_live/components/node_type_helpers.ex` - Default data
-- `assets/js/hooks/flow_canvas/components/storyarn_node.js` - Canvas rendering
+**Key files (per-node-type architecture):**
+```
+lib/storyarn_web/live/flow_live/
+├── show.ex                              # Main LiveView (thin dispatcher)
+├── node_type_registry.ex                # Module lookup map → per-type modules
+├── nodes/
+│   ├── dialogue/
+│   │   ├── node.ex                      # Metadata + handlers (responses, tech_id, screenplay)
+│   │   └── config_sidebar.ex            # Sidebar panel HTML
+│   ├── condition/
+│   │   ├── node.ex                      # Metadata + handlers (condition builder, switch mode)
+│   │   └── config_sidebar.ex
+│   ├── instruction/
+│   │   ├── node.ex                      # Metadata + handlers (instruction builder)
+│   │   └── config_sidebar.ex
+│   ├── hub/
+│   │   ├── node.ex                      # Metadata + on_select (load referencing_jumps)
+│   │   └── config_sidebar.ex
+│   ├── jump/
+│   │   ├── node.ex                      # Metadata only
+│   │   └── config_sidebar.ex
+│   ├── entry/
+│   │   ├── node.ex                      # Metadata only
+│   │   └── config_sidebar.ex
+│   └── exit/
+│       ├── node.ex                      # Metadata + handlers (generate_technical_id)
+│       └── config_sidebar.ex
+├── components/
+│   ├── properties_panels.ex             # Shared frame, delegates to per-type sidebar
+│   ├── node_type_helpers.ex             # Shared icon component + word_count
+│   └── screenplay_editor.ex             # Dialogue full-screen editor
+├── handlers/
+│   ├── generic_node_handlers.ex         # Generic ops (select, move, delete, duplicate, etc.)
+│   ├── editor_info_handlers.ex          # UI state updates
+│   └── collaboration_event_handlers.ex  # Presence, locking
+└── helpers/
+    ├── node_helpers.ex                  # persist_node_update + shared utils
+    ├── form_helpers.ex                  # Form building
+    ├── connection_helpers.ex            # Connection validation
+    ├── socket_helpers.ex                # Socket utilities
+    └── collaboration_helpers.ex         # Presence helpers
+
+assets/js/hooks/flow_canvas/
+├── nodes/
+│   ├── index.js                         # Registry: type → module lookup
+│   ├── dialogue.js                      # Config, pins, rendering, formatting, rebuild check
+│   ├── condition.js                     # Config, dynamic outputs, formatting
+│   ├── instruction.js                   # Config, preview formatting
+│   ├── hub.js                           # Config, nav links, color
+│   ├── jump.js                          # Config, nav links, indicators
+│   ├── entry.js                         # Config only
+│   └── exit.js                          # Config, color logic
+├── node_config.js                       # Thin re-export from nodes/index.js + createIconSvg
+├── flow_node.js                         # Delegates pin creation to per-type createOutputs
+├── components/
+│   ├── storyarn_node.js                 # Delegates rendering to per-type functions
+│   ├── node_formatters.js              # Shared formatting utilities (condition/instruction)
+│   └── (others stay)
+├── handlers/
+│   ├── editor_handlers.js              # Generic rebuildNode, per-type needsRebuild
+│   └── (others stay)
+└── (setup.js, event_bindings.js stay)
+```
+
+**Per-type architecture principle:** Each `nodes/{type}/` directory tells you everything that node type does — read 2 files to understand the full behavior.
 
 ## Storyarn-Specific Patterns
 
