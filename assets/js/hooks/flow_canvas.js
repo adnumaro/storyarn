@@ -7,17 +7,17 @@
 
 import { ClassicPreset } from "rete";
 
-import "./flow_canvas/components/index.js";
-import { FlowNode } from "./flow_canvas/flow_node.js";
-import { createPlugins, finalizeSetup } from "./flow_canvas/setup.js";
-import { setupEventHandlers } from "./flow_canvas/event_bindings.js";
+import "../flow_canvas/components/index.js";
+import { FlowNode } from "../flow_canvas/flow_node.js";
+import { createPlugins, finalizeSetup } from "../flow_canvas/setup.js";
+import { setupEventHandlers } from "../flow_canvas/event_bindings.js";
 import {
   createCursorHandler,
   createEditorHandlers,
   createKeyboardHandler,
   createLockHandler,
   createNavigationHandler,
-} from "./flow_canvas/handlers/index.js";
+} from "../flow_canvas/handlers/index.js";
 
 export const FlowCanvas = {
   mounted() {

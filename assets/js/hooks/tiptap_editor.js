@@ -1,6 +1,6 @@
 import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import { createMentionExtension } from "./tiptap/mention_extension.js";
+import { createMentionExtension } from "../tiptap/mention_extension.js";
 
 export const TiptapEditor = {
   mounted() {

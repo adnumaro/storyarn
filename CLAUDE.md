@@ -181,26 +181,37 @@ lib/storyarn_web/live/flow_live/
     ├── socket_helpers.ex                # Socket utilities
     └── collaboration_helpers.ex         # Presence helpers
 
-assets/js/hooks/flow_canvas/
-├── nodes/
-│   ├── index.js                         # Registry: type → module lookup
-│   ├── dialogue.js                      # Config, pins, rendering, formatting, rebuild check
-│   ├── condition.js                     # Config, dynamic outputs, formatting
-│   ├── instruction.js                   # Config, preview formatting
-│   ├── hub.js                           # Config, nav links, color
-│   ├── jump.js                          # Config, nav links, indicators
-│   ├── entry.js                         # Config only
-│   └── exit.js                          # Config, color logic
-├── node_config.js                       # Thin re-export from nodes/index.js + createIconSvg
-├── flow_node.js                         # Delegates pin creation to per-type createOutputs
-├── components/
-│   ├── storyarn_node.js                 # Delegates rendering to per-type functions
-│   ├── node_formatters.js              # Shared formatting utilities (condition/instruction)
-│   └── (others stay)
-├── handlers/
-│   ├── editor_handlers.js              # Generic rebuildNode, per-type needsRebuild
-│   └── (others stay)
-└── (setup.js, event_bindings.js stay)
+assets/js/
+├── hooks/                               # ONLY Phoenix LiveView hooks (flat)
+│   ├── flow_canvas.js                   # Flow editor hook (orchestrator)
+│   ├── instruction_builder.js           # Instruction builder hook
+│   ├── tiptap_editor.js                # Rich text editor hook
+│   └── ...                              # 12 more hooks (all flat, no subdirs)
+├── flow_canvas/                         # Flow editor utilities (non-hooks)
+│   ├── nodes/
+│   │   ├── index.js                     # Registry: type → module lookup
+│   │   ├── dialogue.js                  # Config, pins, rendering, formatting, rebuild check
+│   │   ├── condition.js                 # Config, dynamic outputs, formatting
+│   │   ├── instruction.js               # Config, preview formatting
+│   │   ├── hub.js                       # Config, nav links, color
+│   │   ├── jump.js                      # Config, nav links, indicators
+│   │   ├── entry.js                     # Config only
+│   │   └── exit.js                      # Config, color logic
+│   ├── node_config.js                   # Thin re-export from nodes/index.js + createIconSvg
+│   ├── flow_node.js                     # Delegates pin creation to per-type createOutputs
+│   ├── components/
+│   │   ├── storyarn_node.js             # Delegates rendering to per-type functions
+│   │   └── ...
+│   ├── handlers/
+│   │   ├── editor_handlers.js           # Generic rebuildNode, per-type needsRebuild
+│   │   └── ...
+│   └── (setup.js, event_bindings.js)
+├── instruction_builder/                 # Instruction builder utilities (non-hooks)
+│   ├── assignment_row.js
+│   ├── combobox.js
+│   └── sentence_templates.js
+└── tiptap/                              # Tiptap extensions (non-hooks)
+    └── mention_extension.js
 ```
 
 **Per-type architecture principle:** Each `nodes/{type}/` directory tells you everything that node type does — read 2 files to understand the full behavior.

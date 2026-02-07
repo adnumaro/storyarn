@@ -13,7 +13,7 @@
  * JS-rendered children on re-render.
  */
 
-import { createAssignmentRow } from "./assignment_row";
+import { createAssignmentRow } from "../instruction_builder/assignment_row";
 
 export const InstructionBuilder = {
   mounted() {
