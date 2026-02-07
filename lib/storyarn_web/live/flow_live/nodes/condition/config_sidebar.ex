@@ -75,12 +75,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.ConfigSidebar do
           id={"condition-builder-#{@node.id}"}
           condition={@condition_data}
           variables={@project_variables}
-          on_change="update_condition_builder"
           can_edit={@can_edit}
-          show_expression_toggle={false}
-          expression_mode={false}
-          raw_expression=""
-          wrap_in_form={true}
           switch_mode={@switch_mode}
         />
         <p :if={@condition_data["rules"] == [] && !@switch_mode} class="text-xs text-base-content/50">

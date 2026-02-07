@@ -68,7 +68,12 @@ export function createCombobox(opts) {
 
   input.addEventListener("focus", () => {
     if (disabled || freeText) return;
-    openDropdown();
+    // Select text so typing replaces it; show all options unfiltered
+    input.select();
+    isOpen = true;
+    filterOptions("");
+    dropdown.classList.remove("hidden");
+    positionDropdown();
   });
 
   input.addEventListener("blur", () => {

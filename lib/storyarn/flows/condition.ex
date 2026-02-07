@@ -221,6 +221,31 @@ defmodule Storyarn.Flows.Condition do
     %{"logic" => logic, "rules" => rules}
   end
 
+  @known_keys ~w(id sheet variable operator value label)
+
+  @doc """
+  Sanitizes a condition map received from the JS hook.
+  Keeps only known keys, normalizes rules, and validates logic.
+  """
+  @spec sanitize(map()) :: map()
+  def sanitize(%{"logic" => logic, "rules" => rules}) when is_list(rules) do
+    sanitized_logic = if logic in @logic_types, do: logic, else: "all"
+
+    sanitized_rules =
+      rules
+      |> Enum.filter(&is_map/1)
+      |> Enum.map(fn rule ->
+        rule
+        |> Map.take(@known_keys)
+        |> normalize_rule()
+      end)
+      |> Enum.reject(&is_nil/1)
+
+    %{"logic" => sanitized_logic, "rules" => sanitized_rules}
+  end
+
+  def sanitize(_), do: %{"logic" => "all", "rules" => []}
+
   @doc """
   Validates that a condition structure is valid.
   Returns {:ok, condition} or {:error, reason}.

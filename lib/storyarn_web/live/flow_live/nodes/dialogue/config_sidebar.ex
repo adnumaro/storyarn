@@ -381,11 +381,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
               id={"response-condition-#{@response["id"]}"}
               condition={@parsed_condition}
               variables={@project_variables}
-              on_change="update_response_condition_builder"
               can_edit={@can_edit}
-              show_expression_toggle={false}
-              expression_mode={false}
-              raw_expression=""
               context={%{"response-id" => @response["id"], "node-id" => @node.id}}
             />
           </div>

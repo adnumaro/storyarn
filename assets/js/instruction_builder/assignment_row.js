@@ -28,6 +28,7 @@ import {
  * @param {boolean} opts.canEdit - Whether editing is allowed
  * @param {Function} opts.onChange - Callback when assignment changes: (updatedAssignment) => void
  * @param {Function} opts.onRemove - Callback to remove this row: () => void
+ * @param {Object} opts.translations - Translated strings from backend
  * @param {Function} opts.onAdvance - Callback to advance to next row or add button: () => void
  */
 export function createAssignmentRow(opts) {
@@ -37,6 +38,7 @@ export function createAssignmentRow(opts) {
     variables,
     sheetsWithVariables,
     canEdit,
+    translations: t,
     onChange,
     onRemove,
     onAdvance,
@@ -94,20 +96,24 @@ export function createAssignmentRow(opts) {
         } else {
           const span = document.createElement("span");
           span.className = "sentence-text";
-          span.textContent = item.value;
+          // Use translated verb if available
+          const verbKey = currentAssignment.operator || "set";
+          span.textContent = t?.operator_verbs?.[verbKey] || item.value;
           sentenceWrap.appendChild(span);
         }
       } else if (item.type === "text") {
         const span = document.createElement("span");
         span.className = "sentence-text";
-        span.textContent = item.value;
+        span.textContent = t?.sentence_texts?.[item.value] || item.value;
         sentenceWrap.appendChild(span);
       } else if (item.type === "slot") {
         const slotContainer = document.createElement("span");
         slotContainer.className = "inline-block relative";
+        const placeholderKey = `placeholder_${item.key}`;
+        const placeholder = t?.[placeholderKey] || item.placeholder;
         const combobox = createSlotCombobox(
           item.key,
-          item.placeholder,
+          placeholder,
           slotContainer,
           slotKeys,
         );
@@ -341,7 +347,7 @@ export function createAssignmentRow(opts) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "operator-selector";
-    btn.textContent = OPERATOR_VERBS[currentOp] || currentOp;
+    btn.textContent = t?.operator_verbs?.[currentOp] || OPERATOR_VERBS[currentOp] || currentOp;
     btn.title = "Change operator";
 
     const dropdown = document.createElement("div");
@@ -351,7 +357,7 @@ export function createAssignmentRow(opts) {
       const optEl = document.createElement("div");
       optEl.className = "operator-option";
       if (op === currentOp) optEl.classList.add("active");
-      optEl.textContent = OPERATOR_DROPDOWN_LABELS[op] || op;
+      optEl.textContent = t?.operator_dropdown_labels?.[op] || OPERATOR_DROPDOWN_LABELS[op] || op;
       optEl.addEventListener("mousedown", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -401,8 +407,8 @@ export function createAssignmentRow(opts) {
     toggle.className = "value-type-toggle";
     toggle.textContent = isRef ? "{x}" : "123";
     toggle.title = isRef
-      ? "Switch to literal value"
-      : "Switch to variable reference";
+      ? (t?.switch_to_literal || "Switch to literal value")
+      : (t?.switch_to_variable_ref || "Switch to variable reference");
 
     toggle.addEventListener("click", (e) => {
       e.preventDefault();

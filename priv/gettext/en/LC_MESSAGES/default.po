@@ -872,7 +872,7 @@ msgstr ""
 msgid "(empty response)"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:100
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:95
 #, elixir-autogen, elixir-format
 msgid "(no label)"
 msgstr ""
@@ -924,12 +924,12 @@ msgstr ""
 msgid "Add child sheet"
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:237
+#: lib/storyarn_web/components/condition_builder.ex:84
 #, elixir-autogen, elixir-format
 msgid "Add condition"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:90
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:85
 #, elixir-autogen, elixir-format
 msgid "Add conditions. Each one creates a separate output."
 msgstr ""
@@ -954,7 +954,7 @@ msgstr ""
 msgid "Add response"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:87
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:82
 #, elixir-autogen, elixir-format
 msgid "Add rules to define when to route to True/False."
 msgstr ""
@@ -975,11 +975,6 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:369
 #, elixir-autogen, elixir-format
 msgid "Advanced"
-msgstr ""
-
-#: lib/storyarn_web/components/condition_builder.ex:166
-#, elixir-autogen, elixir-format
-msgid "Advanced: enter a raw condition expression."
 msgstr ""
 
 #: lib/storyarn_web/live/project_live/trash.ex:76
@@ -1458,8 +1453,8 @@ msgstr ""
 msgid "Date"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:102
-#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:105
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:97
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:100
 #, elixir-autogen, elixir-format
 msgid "Default (no match)"
 msgstr ""
@@ -1537,7 +1532,7 @@ msgstr ""
 msgid "Drag to reorder"
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:207
+#: lib/storyarn_web/components/condition_builder.ex:83
 #: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:56
 #, elixir-autogen, elixir-format
 msgid "Each condition creates an output. First match wins."
@@ -1604,11 +1599,6 @@ msgstr ""
 msgid "Exit"
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:150
-#, elixir-autogen, elixir-format
-msgid "Expression mode"
-msgstr ""
-
 #: lib/storyarn_web/live/project_live/trash.ex:287
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Failed to delete sheet."
@@ -1645,7 +1635,7 @@ msgid "Failed to upload files."
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/config_panel.ex:291
-#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:110
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:105
 #, elixir-autogen, elixir-format
 msgid "False"
 msgstr ""
@@ -1758,7 +1748,7 @@ msgstr ""
 msgid "Instruction"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:403
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:399
 #, elixir-autogen, elixir-format
 msgid "Instruction (optional)"
 msgstr ""
@@ -1893,7 +1883,7 @@ msgstr ""
 msgid "Manage your personal information and email address"
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:177
+#: lib/storyarn_web/components/condition_builder.ex:79
 #, elixir-autogen, elixir-format
 msgid "Match"
 msgstr ""
@@ -2060,7 +2050,7 @@ msgstr ""
 msgid "No changes detected"
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:245
+#: lib/storyarn_web/components/condition_builder.ex:85
 #, elixir-autogen, elixir-format
 msgid "No conditions set"
 msgstr ""
@@ -2211,12 +2201,7 @@ msgstr ""
 msgid "Output Instruction"
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:299
-#, elixir-autogen, elixir-format
-msgid "Output label..."
-msgstr ""
-
-#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:96
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:91
 #, elixir-autogen, elixir-format
 msgid "Outputs:"
 msgstr ""
@@ -2316,11 +2301,6 @@ msgstr ""
 #: lib/storyarn_web/live/sheet_live/components/sheet_color.ex:51
 #, elixir-autogen, elixir-format
 msgid "Remove color"
-msgstr ""
-
-#: lib/storyarn_web/components/condition_builder.ex:372
-#, elixir-autogen, elixir-format
-msgid "Remove condition"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:362
@@ -2505,11 +2485,6 @@ msgstr ""
 msgid "Sheet restored successfully."
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:310
-#, elixir-autogen, elixir-format
-msgid "Sheet..."
-msgstr ""
-
 #: lib/storyarn_web/components/block_components/config_panel.ex:249
 #: lib/storyarn_web/components/project_sidebar.ex:61
 #: lib/storyarn_web/components/sidebar/sheet_tree.ex:25
@@ -2673,7 +2648,7 @@ msgid "Tri-state allows a neutral/unknown value."
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/config_panel.ex:281
-#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:109
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:104
 #, elixir-autogen, elixir-format
 msgid "True"
 msgstr ""
@@ -2761,12 +2736,6 @@ msgstr ""
 msgid "Use this name to reference the value in flows."
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:394
-#: lib/storyarn_web/components/condition_builder.ex:413
-#, elixir-autogen, elixir-format
-msgid "Value..."
-msgstr ""
-
 #: lib/storyarn_web/components/block_components/config_panel.ex:105
 #, elixir-autogen, elixir-format
 msgid "Variable Name"
@@ -2775,11 +2744,6 @@ msgstr ""
 #: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:18
 #, elixir-autogen, elixir-format
 msgid "Variable Usage"
-msgstr ""
-
-#: lib/storyarn_web/components/condition_builder.ex:324
-#, elixir-autogen, elixir-format
-msgid "Variable..."
 msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/components/versions_section.ex:21
@@ -2975,12 +2939,12 @@ msgstr ""
 msgid "added a node"
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:188
+#: lib/storyarn_web/components/condition_builder.ex:80
 #, elixir-autogen, elixir-format
 msgid "all"
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:199
+#: lib/storyarn_web/components/condition_builder.ex:81
 #, elixir-autogen, elixir-format
 msgid "any"
 msgstr ""
@@ -3035,11 +2999,6 @@ msgstr ""
 msgid "e.g., merchant_done"
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:161
-#, elixir-autogen, elixir-format
-msgid "e.g., player.level > 5"
-msgstr ""
-
 #: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:178
 #, elixir-autogen, elixir-format
 msgid "e.g., reputation > 50"
@@ -3053,11 +3012,6 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/nodes/exit/config_sidebar.ex:50
 #, elixir-autogen, elixir-format
 msgid "e.g., victory_ending_1"
-msgstr ""
-
-#: lib/storyarn_web/components/condition_builder.ex:449
-#, elixir-autogen, elixir-format
-msgid "false"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:146
@@ -3091,7 +3045,7 @@ msgstr ""
 msgid "moved a node"
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:202
+#: lib/storyarn_web/components/condition_builder.ex:82
 #, elixir-autogen, elixir-format
 msgid "of the rules"
 msgstr ""
@@ -3111,11 +3065,6 @@ msgstr ""
 msgid "to close"
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:446
-#, elixir-autogen, elixir-format
-msgid "true"
-msgstr ""
-
 #: lib/storyarn_web/components/collaboration_components.ex:146
 #, elixir-autogen, elixir-format
 msgid "updated a connection"
@@ -3126,7 +3075,204 @@ msgstr ""
 msgid "updated a node"
 msgstr ""
 
-#: lib/storyarn_web/components/condition_builder.ex:475
+#: lib/storyarn_web/components/condition_builder.ex:89
+#: lib/storyarn_web/components/instruction_builder.ex:68
 #, elixir-autogen, elixir-format
 msgid "value"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:42
+#, elixir-autogen, elixir-format
+msgid "Add"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:64
+#, elixir-autogen, elixir-format
+msgid "Add assignment"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:51
+#, elixir-autogen, elixir-format
+msgid "Add … to"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:47
+#: lib/storyarn_web/components/instruction_builder.ex:56
+#, elixir-autogen, elixir-format
+msgid "Clear"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:65
+#, elixir-autogen, elixir-format
+msgid "No assignments"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:41
+#: lib/storyarn_web/components/instruction_builder.ex:44
+#: lib/storyarn_web/components/instruction_builder.ex:45
+#, elixir-autogen, elixir-format
+msgid "Set"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:50
+#, elixir-autogen, elixir-format
+msgid "Set … to"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:54
+#, elixir-autogen, elixir-format
+msgid "Set … to false"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:53
+#, elixir-autogen, elixir-format
+msgid "Set … to true"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:43
+#, elixir-autogen, elixir-format
+msgid "Subtract"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:52
+#, elixir-autogen, elixir-format
+msgid "Subtract … from"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:69
+#, elixir-autogen, elixir-format
+msgid "Switch to literal value"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:70
+#, elixir-autogen, elixir-format
+msgid "Switch to variable reference"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:46
+#: lib/storyarn_web/components/instruction_builder.ex:55
+#, elixir-autogen, elixir-format
+msgid "Toggle"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:77
+#, elixir-autogen, elixir-format
+msgid "after"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:76
+#, elixir-autogen, elixir-format
+msgid "before"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:64
+#, elixir-autogen, elixir-format
+msgid "contains"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:75
+#, elixir-autogen, elixir-format
+msgid "does not contain"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:66
+#, elixir-autogen, elixir-format
+msgid "ends with"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:62
+#, elixir-autogen, elixir-format
+msgid "equals"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:60
+#, elixir-autogen, elixir-format
+msgid "from"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:68
+#, elixir-autogen, elixir-format
+msgid "greater than"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:69
+#, elixir-autogen, elixir-format
+msgid "greater than or equal"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:67
+#, elixir-autogen, elixir-format
+msgid "is empty"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:73
+#, elixir-autogen, elixir-format
+msgid "is false"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:74
+#, elixir-autogen, elixir-format
+msgid "is not set"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:72
+#, elixir-autogen, elixir-format
+msgid "is true"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:90
+#, elixir-autogen, elixir-format
+msgid "label"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:70
+#, elixir-autogen, elixir-format
+msgid "less than"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:71
+#, elixir-autogen, elixir-format
+msgid "less than or equal"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:63
+#, elixir-autogen, elixir-format
+msgid "not equals"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:88
+#, elixir-autogen, elixir-format
+msgid "op"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:86
+#: lib/storyarn_web/components/instruction_builder.ex:66
+#, elixir-autogen, elixir-format
+msgid "sheet"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:65
+#, elixir-autogen, elixir-format
+msgid "starts with"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:59
+#, elixir-autogen, elixir-format
+msgid "to"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:62
+#, elixir-autogen, elixir-format
+msgid "to false"
+msgstr ""
+
+#: lib/storyarn_web/components/instruction_builder.ex:61
+#, elixir-autogen, elixir-format
+msgid "to true"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:87
+#: lib/storyarn_web/components/instruction_builder.ex:67
+#, elixir-autogen, elixir-format
+msgid "variable"
 msgstr ""

@@ -14,19 +14,19 @@ msgstr ""
 #: lib/storyarn/projects/project_notifier.ex:44
 #, elixir-autogen, elixir-format
 msgid "\n==============================\n\nHi,\n\n%{inviter} has invited you to join \"%{project}\" on Storyarn as %{role}.\n\nYou can accept this invitation by visiting the URL below:\n\n%{url}\n\nThis invitation will expire in %{days} days.\n\nIf you don't want to join this project, you can ignore this email.\n\n==============================\n"
-msgstr ""
+msgstr "\n==============================\n\nHola,\n\n%{inviter} te ha invitado a unirte a \"%{project}\" en Storyarn como %{role}.\n\nPuedes aceptar esta invitación visitando el siguiente enlace:\n\n%{url}\n\nEsta invitación expirará en %{days} días.\n\nSi no quieres unirte a este proyecto, puedes ignorar este email.\n\n==============================\n"
 
 #: lib/storyarn/projects/project_notifier.ex:41
 #, elixir-autogen, elixir-format
 msgid "You've been invited to %{project}"
-msgstr ""
+msgstr "Has sido invitado a %{project}"
 
 #: lib/storyarn/workspaces/workspace_notifier.ex:44
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "\n==============================\n\nHi,\n\n%{inviter} has invited you to join \"%{workspace}\" workspace on Storyarn as %{role}.\n\nYou can accept this invitation by visiting the URL below:\n\n%{url}\n\nThis invitation will expire in %{days} days.\n\nIf you don't want to join this workspace, you can ignore this email.\n\n==============================\n"
-msgstr ""
+msgstr "\n==============================\n\nHola,\n\n%{inviter} te ha invitado a unirte al espacio de trabajo \"%{workspace}\" en Storyarn como %{role}.\n\nPuedes aceptar esta invitación visitando el siguiente enlace:\n\n%{url}\n\nEsta invitación expirará en %{days} días.\n\nSi no quieres unirte a este espacio de trabajo, puedes ignorar este email.\n\n==============================\n"
 
 #: lib/storyarn/workspaces/workspace_notifier.ex:41
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "You've been invited to %{workspace}"
-msgstr ""
+msgstr "Has sido invitado a %{workspace}"

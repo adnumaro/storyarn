@@ -371,3 +371,47 @@
   color: var(--color-primary);
 }
 
+/* Condition Builder - Sentence-Flow UI (mirrors instruction builder) */
+.condition-builder .condition-rule-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-base-300) 30%, transparent);
+}
+
+.condition-builder .sentence-text {
+  font-size: 0.875rem;
+  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.condition-builder .sentence-slot {
+  font-size: 0.875rem;
+  color: var(--color-base-content);
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed color-mix(in oklch, var(--color-base-content) 20%, transparent);
+  outline: none;
+  min-width: 3ch;
+  padding: 0 0.125rem;
+}
+
+.condition-builder .sentence-slot:focus {
+  border-bottom-style: solid;
+  border-bottom-color: var(--color-primary);
+}
+
+.condition-builder .sentence-slot.filled {
+  border-bottom-style: solid;
+  border-bottom-color: color-mix(in oklch, var(--color-base-content) 10%, transparent);
+}
+
+.condition-builder .sentence-slot::placeholder {
+  color: color-mix(in oklch, var(--color-base-content) 25%, transparent);
+  font-weight: 400;
+  font-style: italic;
+}
+
