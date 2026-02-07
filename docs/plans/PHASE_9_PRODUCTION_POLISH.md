@@ -168,7 +168,7 @@ config :storyarn, Oban,
 ```elixir
 # In mount
 socket = socket
-|> stream(:pages, Pages.list_pages(project))
+|> stream(:sheets, Sheets.list_sheets(project))
 |> stream(:flows, Flows.list_flows(project))
 
 # In template

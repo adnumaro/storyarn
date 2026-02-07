@@ -27,7 +27,7 @@ export const InstructionBuilder = {
     const idMatch = this.el.id.match(/instruction-builder-(\d+)/);
     if (idMatch) this.nodeId = parseInt(idMatch[1], 10);
 
-    this.pagesWithVariables = groupVariablesByPage(this.variables);
+    this.sheetsWithVariables = groupVariablesBySheet(this.variables);
     this.rows = [];
     this.render();
 
@@ -88,7 +88,7 @@ export const InstructionBuilder = {
         container: rowEl,
         assignment,
         variables: this.variables,
-        pagesWithVariables: this.pagesWithVariables,
+        sheetsWithVariables: this.sheetsWithVariables,
         canEdit: this.canEdit,
         onChange: (updatedAssignment) => {
           this.assignments[index] = updatedAssignment;
@@ -123,12 +123,12 @@ export const InstructionBuilder = {
       addBtn.addEventListener("click", () => {
         const newAssignment = {
           id: `assign_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-          page: null,
+          sheet: null,
           variable: null,
           operator: "set",
           value: null,
           value_type: "literal",
-          value_page: null,
+          value_sheet: null,
         };
         this.assignments.push(newAssignment);
         this.pushAssignments();
@@ -155,28 +155,28 @@ export const InstructionBuilder = {
 };
 
 /**
- * Groups flat variable list into pages with their variables.
+ * Groups flat variable list into sheets with their variables.
  */
-function groupVariablesByPage(variables) {
-  const pageMap = new Map();
+function groupVariablesBySheet(variables) {
+  const sheetMap = new Map();
 
   for (const v of variables) {
-    const key = v.page_shortcut;
-    if (!pageMap.has(key)) {
-      pageMap.set(key, {
-        shortcut: v.page_shortcut,
-        name: v.page_name || v.page_shortcut,
+    const key = v.sheet_shortcut;
+    if (!sheetMap.has(key)) {
+      sheetMap.set(key, {
+        shortcut: v.sheet_shortcut,
+        name: v.sheet_name || v.sheet_shortcut,
         vars: [],
       });
     }
-    pageMap.get(key).vars.push({
+    sheetMap.get(key).vars.push({
       variable_name: v.variable_name,
       block_type: v.block_type,
       options: v.options,
     });
   }
 
-  return Array.from(pageMap.values()).sort((a, b) =>
+  return Array.from(sheetMap.values()).sort((a, b) =>
     a.name.localeCompare(b.name),
   );
 }

@@ -1,6 +1,6 @@
 defmodule StoryarnWeb.Components.BlockComponents do
   @moduledoc """
-  Components for rendering page blocks (text, rich_text, number, select, etc.).
+  Components for rendering sheet blocks (text, rich_text, number, select, etc.).
 
   This module serves as a facade, delegating to specialized submodules:
   - `TextBlocks` - text, rich_text, number blocks

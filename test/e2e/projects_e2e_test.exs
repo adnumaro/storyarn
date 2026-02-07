@@ -17,7 +17,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
   @moduletag :e2e
 
   # Helper to authenticate via magic link
-  # The magic link page shows a form that requires clicking to complete login
+  # The magic link sheet shows a form that requires clicking to complete login
   # We verify login completed by checking for "Settings" link before returning
   defp authenticate_user(conn, user) do
     {token, _db_token} = generate_user_magic_link_token(user)
@@ -89,7 +89,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
     end
   end
 
-  describe "project show page (authenticated)" do
+  describe "project show sheet (authenticated)" do
     test "displays project details", %{conn: conn} do
       user = user_fixture()
 
@@ -115,7 +115,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
   end
 
   describe "project settings (authenticated)" do
-    test "owner can access settings page", %{conn: conn} do
+    test "owner can access settings sheet", %{conn: conn} do
       user = user_fixture()
       project = project_fixture(user, %{name: "Settings Test"}) |> Repo.preload(:workspace)
 
@@ -172,7 +172,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
     end
   end
 
-  describe "project invitation page" do
+  describe "project invitation sheet" do
     test "shows invalid invitation message for bad token", %{conn: conn} do
       conn
       |> visit("/projects/invitations/invalid-token-12345")
@@ -237,8 +237,8 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
     end
   end
 
-  describe "home page" do
-    test "renders landing page with login link", %{conn: conn} do
+  describe "home sheet" do
+    test "renders landing sheet with login link", %{conn: conn} do
       conn
       |> visit("/")
       |> assert_has("a", text: "Log in")

@@ -17,18 +17,18 @@ defmodule Storyarn.Flows.Instruction do
 
       %{
         "id" => "assign_12345",
-        "page" => "mc.jaime",
+        "sheet" => "mc.jaime",
         "variable" => "health",
         "operator" => "add",
         "value" => "10",
         "value_type" => "literal",
-        "value_page" => nil
+        "value_sheet" => nil
       }
 
   ## Value Types
 
   - `"literal"` (default) — typed value (string, parsed by game engine)
-  - `"variable_ref"` — references another variable via `value_page` + `value`
+  - `"variable_ref"` — references another variable via `value_sheet` + `value`
   """
 
   @number_operators ~w(set add subtract)
@@ -47,7 +47,7 @@ defmodule Storyarn.Flows.Instruction do
 
   @value_types ~w(literal variable_ref)
 
-  @known_keys ~w(id page variable operator value value_type value_page)
+  @known_keys ~w(id sheet variable operator value value_type value_sheet)
 
   # =============================================================================
   # Public API
@@ -128,12 +128,12 @@ defmodule Storyarn.Flows.Instruction do
   def add_assignment(assignments) when is_list(assignments) do
     new_assignment = %{
       "id" => generate_assignment_id(),
-      "page" => nil,
+      "sheet" => nil,
       "variable" => nil,
       "operator" => "set",
       "value" => nil,
       "value_type" => "literal",
-      "value_page" => nil
+      "value_sheet" => nil
     }
 
     assignments ++ [new_assignment]
@@ -151,7 +151,7 @@ defmodule Storyarn.Flows.Instruction do
   Updates a single field of an assignment by its ID.
 
   Special behavior:
-  - When `value_type` changes to `"literal"` → clears `value_page`
+  - When `value_type` changes to `"literal"` → clears `value_sheet`
   - When `value_type` changes to `"variable_ref"` → clears `value`
   """
   @spec update_assignment(list(), String.t(), String.t(), any()) :: list()
@@ -172,20 +172,20 @@ defmodule Storyarn.Flows.Instruction do
 
   ## Examples
 
-      iex> format_assignment_short(%{"page" => "mc.jaime", "variable" => "health", "operator" => "add", "value" => "10", "value_type" => "literal"})
+      iex> format_assignment_short(%{"sheet" => "mc.jaime", "variable" => "health", "operator" => "add", "value" => "10", "value_type" => "literal"})
       "mc.jaime.health += 10"
 
-      iex> format_assignment_short(%{"page" => "mc.link", "variable" => "hasMasterSword", "operator" => "set", "value_type" => "variable_ref", "value_page" => "global.quests", "value" => "swordDone"})
+      iex> format_assignment_short(%{"sheet" => "mc.link", "variable" => "hasMasterSword", "operator" => "set", "value_type" => "variable_ref", "value_sheet" => "global.quests", "value" => "swordDone"})
       "mc.link.hasMasterSword = global.quests.swordDone"
 
-      iex> format_assignment_short(%{"page" => "mc.jaime", "variable" => "alive", "operator" => "set_true"})
+      iex> format_assignment_short(%{"sheet" => "mc.jaime", "variable" => "alive", "operator" => "set_true"})
       "mc.jaime.alive = true"
   """
   # Keep in sync with assets/js/hooks/flow_canvas/components/node_formatters.js:formatAssignment
   @spec format_assignment_short(map()) :: String.t()
-  def format_assignment_short(%{"page" => page, "variable" => variable} = assignment)
-      when is_binary(page) and page != "" and is_binary(variable) and variable != "" do
-    ref = "#{page}.#{variable}"
+  def format_assignment_short(%{"sheet" => sheet, "variable" => variable} = assignment)
+      when is_binary(sheet) and sheet != "" and is_binary(variable) and variable != "" do
+    ref = "#{sheet}.#{variable}"
     operator = assignment["operator"] || "set"
 
     case operator do
@@ -214,12 +214,12 @@ defmodule Storyarn.Flows.Instruction do
   """
   @spec complete_assignment?(map()) :: boolean()
   def complete_assignment?(assignment) when is_map(assignment) do
-    page = assignment["page"]
+    sheet = assignment["sheet"]
     variable = assignment["variable"]
     operator = assignment["operator"]
 
     has_target =
-      is_binary(page) and page != "" and
+      is_binary(sheet) and sheet != "" and
         is_binary(variable) and variable != "" and
         is_binary(operator) and operator in @all_operators
 
@@ -262,7 +262,7 @@ defmodule Storyarn.Flows.Instruction do
   # Private Helpers
   # =============================================================================
 
-  defp format_value(%{"value_type" => "variable_ref", "value_page" => vp, "value" => v})
+  defp format_value(%{"value_type" => "variable_ref", "value_sheet" => vp, "value" => v})
        when is_binary(vp) and vp != "" and is_binary(v) and v != "" do
     "#{vp}.#{v}"
   end
@@ -271,7 +271,7 @@ defmodule Storyarn.Flows.Instruction do
   defp format_value(_), do: "?"
 
   defp has_value?(%{"value_type" => "variable_ref"} = assignment) do
-    vp = assignment["value_page"]
+    vp = assignment["value_sheet"]
     v = assignment["value"]
     is_binary(vp) and vp != "" and is_binary(v) and v != ""
   end
@@ -284,7 +284,7 @@ defmodule Storyarn.Flows.Instruction do
   defp has_value?(_), do: false
 
   defp maybe_clear_on_value_type_change(assignment, "value_type", "literal") do
-    Map.put(assignment, "value_page", nil)
+    Map.put(assignment, "value_sheet", nil)
   end
 
   defp maybe_clear_on_value_type_change(assignment, "value_type", "variable_ref") do
@@ -298,7 +298,7 @@ defmodule Storyarn.Flows.Instruction do
     |> Map.put_new("id", generate_assignment_id())
     |> Map.put_new("operator", "set")
     |> Map.put_new("value_type", "literal")
-    |> Map.put_new("value_page", nil)
+    |> Map.put_new("value_sheet", nil)
   end
 
   defp generate_assignment_id do

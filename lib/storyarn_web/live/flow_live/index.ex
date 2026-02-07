@@ -2,10 +2,10 @@ defmodule StoryarnWeb.FlowLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.LiveHelpers.Authorize
+  use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Flows
-  alias Storyarn.Pages
+  alias Storyarn.Sheets
   alias Storyarn.Projects
   alias Storyarn.Repo
 
@@ -344,19 +344,19 @@ defmodule StoryarnWeb.FlowLive.Index do
     end
   end
 
-  def handle_event("create_page", _params, socket) do
+  def handle_event("create_sheet", _params, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        case Pages.create_page(socket.assigns.project, %{name: gettext("Untitled")}) do
-          {:ok, new_page} ->
+        case Sheets.create_sheet(socket.assigns.project, %{name: gettext("Untitled")}) do
+          {:ok, new_sheet} ->
             {:noreply,
              push_navigate(socket,
                to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages/#{new_page.id}"
+                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
              )}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create page."))}
+            {:noreply, put_flash(socket, :error, gettext("Could not create sheet."))}
         end
 
       {:error, :unauthorized} ->

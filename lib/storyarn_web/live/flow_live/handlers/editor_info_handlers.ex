@@ -11,7 +11,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Storyarn.Flows
-  alias Storyarn.Pages
+  alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
 
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
@@ -59,7 +59,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_mention_suggestions(query, component_cid, socket) do
     project_id = socket.assigns.project.id
-    results = Pages.search_referenceable(project_id, query, ["page", "flow"])
+    results = Sheets.search_referenceable(project_id, query, ["sheet", "flow"])
 
     items =
       Enum.map(results, fn result ->

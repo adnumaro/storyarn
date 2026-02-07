@@ -20,3 +20,13 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "You've been invited to %{project}"
 msgstr ""
+
+#: lib/storyarn/workspaces/workspace_notifier.ex:44
+#, elixir-autogen, elixir-format, fuzzy
+msgid "\n==============================\n\nHi,\n\n%{inviter} has invited you to join \"%{workspace}\" workspace on Storyarn as %{role}.\n\nYou can accept this invitation by visiting the URL below:\n\n%{url}\n\nThis invitation will expire in %{days} days.\n\nIf you don't want to join this workspace, you can ignore this email.\n\n==============================\n"
+msgstr ""
+
+#: lib/storyarn/workspaces/workspace_notifier.ex:41
+#, elixir-autogen, elixir-format, fuzzy
+msgid "You've been invited to %{workspace}"
+msgstr ""

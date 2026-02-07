@@ -39,7 +39,7 @@ export const FlowCanvas = {
   async initEditor() {
     const container = this.el;
     const flowData = JSON.parse(container.dataset.flow || "{}");
-    this.pagesMap = JSON.parse(container.dataset.pages || "{}");
+    this.sheetsMap = JSON.parse(container.dataset.sheets || "{}");
 
     // Collaboration data
     this.currentUserId = Number.parseInt(container.dataset.userId, 10);

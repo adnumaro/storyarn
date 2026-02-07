@@ -1,5 +1,5 @@
 /**
- * EditableShortcut hook for inline page/flow shortcut editing.
+ * EditableShortcut hook for inline sheet/flow shortcut editing.
  * Similar to EditableTitle but with format validation.
  */
 export const EditableShortcut = {

@@ -2,9 +2,9 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.LiveHelpers.Authorize
+  use StoryarnWeb.Helpers.Authorize
 
-  alias Storyarn.Pages
+  alias Storyarn.Sheets
   alias Storyarn.Projects
   alias Storyarn.Repo
 
@@ -16,18 +16,18 @@ defmodule StoryarnWeb.ProjectLive.Trash do
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      pages_tree={@pages_tree}
+      sheets_tree={@sheets_tree}
       current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/trash"}
     >
       <div class="max-w-3xl mx-auto">
         <.header>
           {gettext("Trash")}
           <:subtitle>
-            {gettext("Deleted pages are kept for 30 days before being permanently removed.")}
+            {gettext("Deleted sheets are kept for 30 days before being permanently removed.")}
           </:subtitle>
           <:actions>
             <.button
-              :if={@can_manage && @trashed_pages != []}
+              :if={@can_manage && @trashed_sheets != []}
               variant="error"
               phx-click={show_modal("empty-trash-confirm")}
             >
@@ -38,18 +38,18 @@ defmodule StoryarnWeb.ProjectLive.Trash do
         </.header>
 
         <div class="mt-8">
-          <%= if @trashed_pages == [] do %>
+          <%= if @trashed_sheets == [] do %>
             <.empty_state
               icon="trash-2"
               title={gettext("Trash is empty")}
             >
-              {gettext("Deleted pages will appear here.")}
+              {gettext("Deleted sheets will appear here.")}
             </.empty_state>
           <% else %>
             <div class="space-y-2">
               <.trash_item
-                :for={page <- @trashed_pages}
-                page={page}
+                :for={sheet <- @trashed_sheets}
+                sheet={sheet}
                 can_manage={@can_manage}
               />
             </div>
@@ -59,9 +59,9 @@ defmodule StoryarnWeb.ProjectLive.Trash do
 
       <%!-- Confirmation modals --%>
       <.confirm_modal
-        id="delete-page-confirm"
+        id="delete-sheet-confirm"
         title={gettext("Delete permanently?")}
-        message={gettext("This page will be permanently deleted. This action cannot be undone.")}
+        message={gettext("This sheet will be permanently deleted. This action cannot be undone.")}
         confirm_text={gettext("Delete")}
         cancel_text={gettext("Cancel")}
         confirm_variant="error"
@@ -85,7 +85,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
     """
   end
 
-  attr :page, :map, required: true
+  attr :sheet, :map, required: true
   attr :can_manage, :boolean, default: false
 
   defp trash_item(assigns) do
@@ -93,9 +93,9 @@ defmodule StoryarnWeb.ProjectLive.Trash do
     <div class="flex items-center justify-between p-4 bg-base-200 rounded-lg">
       <div class="flex items-center gap-3 min-w-0">
         <div class="flex-shrink-0">
-          <%= if @page.avatar_asset do %>
+          <%= if @sheet.avatar_asset do %>
             <img
-              src={@page.avatar_asset.url}
+              src={@sheet.avatar_asset.url}
               alt=""
               class="size-10 rounded object-cover"
             />
@@ -106,9 +106,9 @@ defmodule StoryarnWeb.ProjectLive.Trash do
           <% end %>
         </div>
         <div class="min-w-0">
-          <p class="font-medium truncate">{@page.name}</p>
+          <p class="font-medium truncate">{@sheet.name}</p>
           <p class="text-sm text-base-content/60">
-            {gettext("Deleted %{time_ago}", time_ago: format_time_ago(@page.deleted_at))}
+            {gettext("Deleted %{time_ago}", time_ago: format_time_ago(@sheet.deleted_at))}
           </p>
         </div>
       </div>
@@ -117,8 +117,8 @@ defmodule StoryarnWeb.ProjectLive.Trash do
         <button
           type="button"
           class="btn btn-ghost btn-sm"
-          phx-click="restore_page"
-          phx-value-id={@page.id}
+          phx-click="restore_sheet"
+          phx-value-id={@sheet.id}
         >
           <.icon name="undo-2" class="size-4 mr-1" />
           {gettext("Restore")}
@@ -127,8 +127,8 @@ defmodule StoryarnWeb.ProjectLive.Trash do
           type="button"
           class="btn btn-ghost btn-sm text-error hover:bg-error/10"
           phx-click={
-            JS.push("show_delete_confirm", value: %{id: @page.id})
-            |> show_modal("delete-page-confirm")
+            JS.push("show_delete_confirm", value: %{id: @sheet.id})
+            |> show_modal("delete-sheet-confirm")
           }
         >
           <.icon name="trash-2" class="size-4 mr-1" />
@@ -175,8 +175,8 @@ defmodule StoryarnWeb.ProjectLive.Trash do
          ) do
       {:ok, project, membership} ->
         project = Repo.preload(project, :workspace)
-        pages_tree = Pages.list_pages_tree(project.id)
-        trashed_pages = Pages.list_trashed_pages(project.id)
+        sheets_tree = Sheets.list_sheets_tree(project.id)
+        trashed_sheets = Sheets.list_trashed_sheets(project.id)
         can_manage = Projects.ProjectMembership.can?(membership.role, :edit_content)
 
         socket =
@@ -185,10 +185,10 @@ defmodule StoryarnWeb.ProjectLive.Trash do
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
           |> assign(:current_workspace, project.workspace)
-          |> assign(:pages_tree, pages_tree)
-          |> assign(:trashed_pages, trashed_pages)
+          |> assign(:sheets_tree, sheets_tree)
+          |> assign(:trashed_sheets, trashed_sheets)
           |> assign(:can_manage, can_manage)
-          |> assign(:page_to_delete, nil)
+          |> assign(:sheet_to_delete, nil)
 
         {:ok, socket}
 
@@ -201,10 +201,10 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   end
 
   @impl true
-  def handle_event("restore_page", %{"id" => id}, socket) do
+  def handle_event("restore_sheet", %{"id" => id}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        do_restore_page(socket, id)
+        do_restore_sheet(socket, id)
 
       {:error, :unauthorized} ->
         {:noreply,
@@ -213,14 +213,14 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   end
 
   def handle_event("show_delete_confirm", %{"id" => id}, socket) do
-    {:noreply, assign(socket, :page_to_delete, id)}
+    {:noreply, assign(socket, :sheet_to_delete, id)}
   end
 
   def handle_event("confirm_delete_permanently", _params, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        if socket.assigns.page_to_delete do
-          do_delete_permanently(socket, socket.assigns.page_to_delete)
+        if socket.assigns.sheet_to_delete do
+          do_delete_permanently(socket, socket.assigns.sheet_to_delete)
         else
           {:noreply, socket}
         end
@@ -242,62 +242,62 @@ defmodule StoryarnWeb.ProjectLive.Trash do
     end
   end
 
-  defp do_restore_page(socket, id) do
-    page = Pages.get_trashed_page(socket.assigns.project.id, id)
+  defp do_restore_sheet(socket, id) do
+    sheet = Sheets.get_trashed_sheet(socket.assigns.project.id, id)
 
-    if page do
-      case Pages.restore_page(page) do
-        {:ok, _page} ->
-          trashed_pages = Pages.list_trashed_pages(socket.assigns.project.id)
-          pages_tree = Pages.list_pages_tree(socket.assigns.project.id)
+    if sheet do
+      case Sheets.restore_sheet(sheet) do
+        {:ok, _sheet} ->
+          trashed_sheets = Sheets.list_trashed_sheets(socket.assigns.project.id)
+          sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
 
           socket =
             socket
-            |> assign(:trashed_pages, trashed_pages)
-            |> assign(:pages_tree, pages_tree)
-            |> put_flash(:info, gettext("Page restored successfully."))
+            |> assign(:trashed_sheets, trashed_sheets)
+            |> assign(:sheets_tree, sheets_tree)
+            |> put_flash(:info, gettext("Sheet restored successfully."))
 
           {:noreply, socket}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Failed to restore page."))}
+          {:noreply, put_flash(socket, :error, gettext("Failed to restore sheet."))}
       end
     else
-      {:noreply, put_flash(socket, :error, gettext("Page not found."))}
+      {:noreply, put_flash(socket, :error, gettext("Sheet not found."))}
     end
   end
 
   defp do_delete_permanently(socket, id) do
-    page = Pages.get_trashed_page(socket.assigns.project.id, id)
+    sheet = Sheets.get_trashed_sheet(socket.assigns.project.id, id)
 
-    if page do
-      case Pages.permanently_delete_page(page) do
-        {:ok, _page} ->
-          trashed_pages = Pages.list_trashed_pages(socket.assigns.project.id)
+    if sheet do
+      case Sheets.permanently_delete_sheet(sheet) do
+        {:ok, _sheet} ->
+          trashed_sheets = Sheets.list_trashed_sheets(socket.assigns.project.id)
 
           socket =
             socket
-            |> assign(:trashed_pages, trashed_pages)
-            |> assign(:page_to_delete, nil)
-            |> put_flash(:info, gettext("Page permanently deleted."))
+            |> assign(:trashed_sheets, trashed_sheets)
+            |> assign(:sheet_to_delete, nil)
+            |> put_flash(:info, gettext("Sheet permanently deleted."))
 
           {:noreply, socket}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Failed to delete page."))}
+          {:noreply, put_flash(socket, :error, gettext("Failed to delete sheet."))}
       end
     else
-      {:noreply, put_flash(socket, :error, gettext("Page not found."))}
+      {:noreply, put_flash(socket, :error, gettext("Sheet not found."))}
     end
   end
 
   defp do_empty_trash(socket) do
     project_id = socket.assigns.project.id
-    trashed_pages = Pages.list_trashed_pages(project_id)
+    trashed_sheets = Sheets.list_trashed_sheets(project_id)
 
     results =
-      Enum.map(trashed_pages, fn page ->
-        Pages.permanently_delete_page(page)
+      Enum.map(trashed_sheets, fn sheet ->
+        Sheets.permanently_delete_sheet(sheet)
       end)
 
     errors = Enum.count(results, fn result -> match?({:error, _}, result) end)
@@ -305,14 +305,14 @@ defmodule StoryarnWeb.ProjectLive.Trash do
     socket =
       if errors == 0 do
         socket
-        |> assign(:trashed_pages, [])
+        |> assign(:trashed_sheets, [])
         |> put_flash(:info, gettext("Trash emptied successfully."))
       else
-        trashed_pages = Pages.list_trashed_pages(project_id)
+        trashed_sheets = Sheets.list_trashed_sheets(project_id)
 
         socket
-        |> assign(:trashed_pages, trashed_pages)
-        |> put_flash(:error, gettext("Some pages could not be deleted."))
+        |> assign(:trashed_sheets, trashed_sheets)
+        |> put_flash(:error, gettext("Some sheets could not be deleted."))
       end
 
     {:noreply, socket}

@@ -19,7 +19,7 @@ defmodule StoryarnWeb.E2E.FlowsTest do
   @moduletag :e2e
 
   # Helper to authenticate via magic link
-  # After login, we verify by checking we can access the workspaces page
+  # After login, we verify by checking we can access the workspaces sheet
   defp authenticate_user(conn, user) do
     {token, _db_token} = generate_user_magic_link_token(user)
     workspace = Workspaces.get_default_workspace(user)

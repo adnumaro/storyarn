@@ -15,7 +15,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
         module={ScreenplayEditor}
         id="screenplay-editor"
         node={@selected_node}
-        all_pages={@all_pages}
+        all_sheets={@all_sheets}
         can_edit={@can_edit}
         on_close={JS.push("close_editor")}
         on_open_sidebar={JS.push("open_sidebar")}
@@ -59,16 +59,16 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
             <%= if @can_edit do %>
               <.form for={@form} phx-change="update_speaker" phx-target={@myself} class="inline-block">
                 <select
-                  name="speaker_page_id"
+                  name="speaker_sheet_id"
                   class="screenplay-speaker-select text-lg font-bold tracking-widest uppercase text-center bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer appearance-none"
                 >
-                  <option value="" selected={@form[:speaker_page_id].value in [nil, ""]}>
+                  <option value="" selected={@form[:speaker_sheet_id].value in [nil, ""]}>
                     {gettext("SELECT SPEAKER")}
                   </option>
                   <option
                     :for={{name, id} <- @speaker_options}
                     value={id}
-                    selected={to_string(@form[:speaker_page_id].value) == to_string(id)}
+                    selected={to_string(@form[:speaker_sheet_id].value) == to_string(id)}
                   >
                     {String.upcase(name)}
                   </option>
@@ -187,8 +187,8 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
   end
 
   @impl true
-  def handle_event("update_speaker", %{"speaker_page_id" => speaker_page_id}, socket) do
-    update_node_field(socket, "speaker_page_id", speaker_page_id)
+  def handle_event("update_speaker", %{"speaker_sheet_id" => speaker_sheet_id}, socket) do
+    update_node_field(socket, "speaker_sheet_id", speaker_sheet_id)
   end
 
   def handle_event("update_stage_directions", %{"stage_directions" => stage_directions}, socket) do
@@ -209,12 +209,12 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
 
   defp assign_derived(socket) do
     node = socket.assigns.node
-    all_pages = socket.assigns.all_pages
+    all_sheets = socket.assigns.all_sheets
 
     form = build_form(node)
-    speaker_name = get_speaker_name(node, all_pages)
+    speaker_name = get_speaker_name(node, all_sheets)
     word_count = count_words(node.data["text"])
-    speaker_options = build_speaker_options(all_pages)
+    speaker_options = build_speaker_options(all_sheets)
 
     socket
     |> assign(:form, form)
@@ -225,7 +225,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
 
   defp build_form(node) do
     data = %{
-      "speaker_page_id" => node.data["speaker_page_id"] || "",
+      "speaker_sheet_id" => node.data["speaker_sheet_id"] || "",
       "text" => node.data["text"] || "",
       "stage_directions" => node.data["stage_directions"] || "",
       "responses" => node.data["responses"] || []
@@ -254,21 +254,21 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
     end
   end
 
-  defp build_speaker_options(all_pages) do
-    Enum.map(all_pages, fn page -> {page.name, page.id} end)
+  defp build_speaker_options(all_sheets) do
+    Enum.map(all_sheets, fn sheet -> {sheet.name, sheet.id} end)
   end
 
-  defp get_speaker_name(node, all_pages) do
-    speaker_page_id = node.data["speaker_page_id"]
-    find_page_name(speaker_page_id, all_pages)
+  defp get_speaker_name(node, all_sheets) do
+    speaker_sheet_id = node.data["speaker_sheet_id"]
+    find_sheet_name(speaker_sheet_id, all_sheets)
   end
 
-  defp find_page_name(nil, _all_pages), do: nil
+  defp find_sheet_name(nil, _all_sheets), do: nil
 
-  defp find_page_name(speaker_page_id, all_pages) do
-    case Enum.find(all_pages, fn page -> page.id == speaker_page_id end) do
+  defp find_sheet_name(speaker_sheet_id, all_sheets) do
+    case Enum.find(all_sheets, fn sheet -> sheet.id == speaker_sheet_id end) do
       nil -> nil
-      page -> page.name
+      sheet -> sheet.name
     end
   end
 

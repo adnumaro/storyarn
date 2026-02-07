@@ -2,12 +2,12 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.LiveHelpers.Authorize
+  use StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.MemberComponents
 
   alias Storyarn.Flows
-  alias Storyarn.Pages
+  alias Storyarn.Sheets
   alias Storyarn.Projects
   alias Storyarn.Repo
 
@@ -19,7 +19,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      pages_tree={@pages_tree}
+      sheets_tree={@sheets_tree}
       current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings"}
     >
       <div class="text-center mb-8">
@@ -127,7 +127,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
           <div class="card bg-base-200 p-4">
             <p class="text-sm mb-3">
               {gettext(
-                "If you renamed page shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
+                "If you renamed sheet shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
               )}
             </p>
             <.button
@@ -180,7 +180,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
           project = Repo.preload(project, :workspace)
           members = Projects.list_project_members(project.id)
           pending_invitations = Projects.list_pending_invitations(project.id)
-          pages_tree = Pages.list_pages_tree(project.id)
+          sheets_tree = Sheets.list_sheets_tree(project.id)
 
           project_changeset = Projects.change_project(project)
           invite_changeset = invite_changeset(%{})
@@ -191,7 +191,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             |> assign(:workspace, project.workspace)
             |> assign(:membership, membership)
             |> assign(:current_workspace, project.workspace)
-            |> assign(:pages_tree, pages_tree)
+            |> assign(:sheets_tree, sheets_tree)
             |> assign(:members, members)
             |> assign(:pending_invitations, pending_invitations)
             |> assign(:project_form, to_form(project_changeset))

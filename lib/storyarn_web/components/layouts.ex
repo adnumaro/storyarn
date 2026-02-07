@@ -18,7 +18,7 @@ defmodule StoryarnWeb.Layouts do
   @doc """
   Renders the main app layout with sidebar.
 
-  This layout is used for authenticated pages that show workspace navigation.
+  This layout is used for authenticated sheets that show workspace navigation.
 
   ## Examples
 
@@ -85,9 +85,9 @@ defmodule StoryarnWeb.Layouts do
   end
 
   @doc """
-  Renders a project layout with pages tree sidebar.
+  Renders a project layout with sheets tree sidebar.
 
-  This layout is used for project-specific pages that show the page navigation tree.
+  This layout is used for project-specific sheets that show the sheet navigation tree.
 
   ## Examples
 
@@ -96,7 +96,7 @@ defmodule StoryarnWeb.Layouts do
         current_scope={@current_scope}
         project={@project}
         workspace={@workspace}
-        pages_tree={@pages_tree}
+        sheets_tree={@sheets_tree}
         current_path={@current_path}
       >
         <h1>Content</h1>
@@ -112,25 +112,25 @@ defmodule StoryarnWeb.Layouts do
   attr :project, :map, required: true, doc: "the current project"
   attr :workspace, :map, required: true, doc: "the workspace the project belongs to"
 
-  attr :pages_tree, :list,
+  attr :sheets_tree, :list,
     default: [],
-    doc: "pages with preloaded children for the tree"
+    doc: "sheets with preloaded children for the tree"
 
   attr :flows_tree, :list, default: [], doc: "flows with preloaded children for the tree"
 
-  attr :active_tool, :atom, default: :pages, doc: "active tool (:pages or :flows)"
+  attr :active_tool, :atom, default: :sheets, doc: "active tool (:sheets or :flows)"
 
   attr :current_path, :string, default: "", doc: "current path for navigation highlighting"
 
-  attr :selected_page_id, :string,
+  attr :selected_sheet_id, :string,
     default: nil,
-    doc: "currently selected page ID for tree highlighting"
+    doc: "currently selected sheet ID for tree highlighting"
 
   attr :selected_flow_id, :string,
     default: nil,
     doc: "currently selected flow ID for sidebar highlighting"
 
-  attr :can_edit, :boolean, default: false, doc: "whether the user can edit pages"
+  attr :can_edit, :boolean, default: false, doc: "whether the user can edit sheets"
 
   slot :inner_block, required: true
 
@@ -175,11 +175,11 @@ defmodule StoryarnWeb.Layouts do
         <.project_sidebar
           project={@project}
           workspace={@workspace}
-          pages_tree={@pages_tree}
+          sheets_tree={@sheets_tree}
           flows_tree={@flows_tree}
           active_tool={@active_tool}
           current_path={@current_path}
-          selected_page_id={@selected_page_id}
+          selected_sheet_id={@selected_sheet_id}
           selected_flow_id={@selected_flow_id}
           can_edit={@can_edit}
         />
@@ -189,7 +189,7 @@ defmodule StoryarnWeb.Layouts do
   end
 
   @doc """
-  Renders a centered layout without sidebar for auth pages.
+  Renders a centered layout without sidebar for auth sheets.
 
   ## Examples
 
@@ -233,7 +233,7 @@ defmodule StoryarnWeb.Layouts do
   end
 
   @doc """
-  Renders a simple centered layout for public pages.
+  Renders a simple centered layout for public sheets.
 
   ## Examples
 
@@ -289,7 +289,7 @@ defmodule StoryarnWeb.Layouts do
   @doc """
   Renders a standalone settings layout without the workspace sidebar.
 
-  This layout has its own navigation sidebar for settings pages only.
+  This layout has its own navigation sidebar for settings sheets only.
 
   ## Examples
 

@@ -18,12 +18,12 @@ defmodule Storyarn.Flows.InstructionTest do
       [assignment] = result
 
       assert String.starts_with?(assignment["id"], "assign_")
-      assert assignment["page"] == nil
+      assert assignment["sheet"] == nil
       assert assignment["variable"] == nil
       assert assignment["operator"] == "set"
       assert assignment["value"] == nil
       assert assignment["value_type"] == "literal"
-      assert assignment["value_page"] == nil
+      assert assignment["value_sheet"] == nil
     end
 
     test "appends to existing list" do
@@ -65,31 +65,31 @@ defmodule Storyarn.Flows.InstructionTest do
       assignments = Instruction.add_assignment([])
       [assignment] = assignments
 
-      result = Instruction.update_assignment(assignments, assignment["id"], "page", "mc.jaime")
+      result = Instruction.update_assignment(assignments, assignment["id"], "sheet", "mc.jaime")
       [updated] = result
 
-      assert updated["page"] == "mc.jaime"
+      assert updated["sheet"] == "mc.jaime"
       assert updated["id"] == assignment["id"]
     end
 
-    test "clears value_page when value_type changes to literal" do
+    test "clears value_sheet when value_type changes to literal" do
       assignments =
         Instruction.add_assignment([])
         |> then(fn [a] ->
           Instruction.update_assignment([a], a["id"], "value_type", "variable_ref")
         end)
         |> then(fn [a] ->
-          Instruction.update_assignment([a], a["id"], "value_page", "global.quests")
+          Instruction.update_assignment([a], a["id"], "value_sheet", "global.quests")
         end)
 
       [with_ref] = assignments
-      assert with_ref["value_page"] == "global.quests"
+      assert with_ref["value_sheet"] == "global.quests"
 
       result = Instruction.update_assignment(assignments, with_ref["id"], "value_type", "literal")
       [updated] = result
 
       assert updated["value_type"] == "literal"
-      assert updated["value_page"] == nil
+      assert updated["value_sheet"] == nil
     end
 
     test "clears value when value_type changes to variable_ref" do
@@ -172,7 +172,7 @@ defmodule Storyarn.Flows.InstructionTest do
   describe "format_assignment_short/1" do
     test "formats literal value correctly" do
       assignment = %{
-        "page" => "mc.jaime",
+        "sheet" => "mc.jaime",
         "variable" => "health",
         "operator" => "add",
         "value" => "10",
@@ -182,13 +182,13 @@ defmodule Storyarn.Flows.InstructionTest do
       assert Instruction.format_assignment_short(assignment) == "mc.jaime.health += 10"
     end
 
-    test "formats variable_ref as page.variable" do
+    test "formats variable_ref as sheet.variable" do
       assignment = %{
-        "page" => "mc.link",
+        "sheet" => "mc.link",
         "variable" => "hasMasterSword",
         "operator" => "set",
         "value_type" => "variable_ref",
-        "value_page" => "global.quests",
+        "value_sheet" => "global.quests",
         "value" => "swordDone"
       }
 
@@ -198,25 +198,25 @@ defmodule Storyarn.Flows.InstructionTest do
 
     test "formats no-value operators" do
       assert Instruction.format_assignment_short(%{
-               "page" => "mc.jaime",
+               "sheet" => "mc.jaime",
                "variable" => "alive",
                "operator" => "set_true"
              }) == "mc.jaime.alive = true"
 
       assert Instruction.format_assignment_short(%{
-               "page" => "mc.jaime",
+               "sheet" => "mc.jaime",
                "variable" => "alive",
                "operator" => "set_false"
              }) == "mc.jaime.alive = false"
 
       assert Instruction.format_assignment_short(%{
-               "page" => "mc.jaime",
+               "sheet" => "mc.jaime",
                "variable" => "alive",
                "operator" => "toggle"
              }) == "toggle mc.jaime.alive"
 
       assert Instruction.format_assignment_short(%{
-               "page" => "mc.jaime",
+               "sheet" => "mc.jaime",
                "variable" => "name",
                "operator" => "clear"
              }) == "clear mc.jaime.name"
@@ -224,15 +224,15 @@ defmodule Storyarn.Flows.InstructionTest do
 
     test "returns empty string for incomplete assignments" do
       assert Instruction.format_assignment_short(%{}) == ""
-      assert Instruction.format_assignment_short(%{"page" => "mc.jaime"}) == ""
+      assert Instruction.format_assignment_short(%{"sheet" => "mc.jaime"}) == ""
 
-      assert Instruction.format_assignment_short(%{"page" => "", "variable" => "health"}) ==
+      assert Instruction.format_assignment_short(%{"sheet" => "", "variable" => "health"}) ==
                ""
     end
 
     test "formats subtract correctly" do
       assignment = %{
-        "page" => "mc.jaime",
+        "sheet" => "mc.jaime",
         "variable" => "health",
         "operator" => "subtract",
         "value" => "20",
@@ -246,7 +246,7 @@ defmodule Storyarn.Flows.InstructionTest do
   describe "complete_assignment?/1" do
     test "returns true for complete literal assignment" do
       assert Instruction.complete_assignment?(%{
-               "page" => "mc.jaime",
+               "sheet" => "mc.jaime",
                "variable" => "health",
                "operator" => "set",
                "value" => "100",
@@ -256,18 +256,18 @@ defmodule Storyarn.Flows.InstructionTest do
 
     test "returns true for complete variable_ref assignment" do
       assert Instruction.complete_assignment?(%{
-               "page" => "mc.link",
+               "sheet" => "mc.link",
                "variable" => "hasMasterSword",
                "operator" => "set",
                "value_type" => "variable_ref",
-               "value_page" => "global.quests",
+               "value_sheet" => "global.quests",
                "value" => "swordDone"
              })
     end
 
     test "returns true for no-value operators" do
       assert Instruction.complete_assignment?(%{
-               "page" => "mc.jaime",
+               "sheet" => "mc.jaime",
                "variable" => "alive",
                "operator" => "set_true"
              })
@@ -275,7 +275,7 @@ defmodule Storyarn.Flows.InstructionTest do
 
     test "returns false for missing target" do
       refute Instruction.complete_assignment?(%{
-               "page" => nil,
+               "sheet" => nil,
                "variable" => "health",
                "operator" => "set",
                "value" => "100"
@@ -284,7 +284,7 @@ defmodule Storyarn.Flows.InstructionTest do
 
     test "returns false for missing value when required" do
       refute Instruction.complete_assignment?(%{
-               "page" => "mc.jaime",
+               "sheet" => "mc.jaime",
                "variable" => "health",
                "operator" => "set",
                "value" => nil,
@@ -305,7 +305,7 @@ defmodule Storyarn.Flows.InstructionTest do
     test "returns true when has complete assignment" do
       assert Instruction.has_assignments?([
                %{
-                 "page" => "mc.jaime",
+                 "sheet" => "mc.jaime",
                  "variable" => "health",
                  "operator" => "set_true"
                }
@@ -318,12 +318,12 @@ defmodule Storyarn.Flows.InstructionTest do
       input = [
         %{
           "id" => "assign_1",
-          "page" => "mc.jaime",
+          "sheet" => "mc.jaime",
           "variable" => "health",
           "operator" => "set",
           "value" => "100",
           "value_type" => "literal",
-          "value_page" => nil,
+          "value_sheet" => nil,
           "malicious_key" => "should_be_removed"
         }
       ]
@@ -331,12 +331,12 @@ defmodule Storyarn.Flows.InstructionTest do
       [sanitized] = Instruction.sanitize(input)
 
       assert Map.has_key?(sanitized, "id")
-      assert Map.has_key?(sanitized, "page")
+      assert Map.has_key?(sanitized, "sheet")
       refute Map.has_key?(sanitized, "malicious_key")
     end
 
     test "adds defaults for missing keys" do
-      input = [%{"page" => "mc.jaime", "variable" => "health"}]
+      input = [%{"sheet" => "mc.jaime", "variable" => "health"}]
       [sanitized] = Instruction.sanitize(input)
 
       assert sanitized["operator"] == "set"

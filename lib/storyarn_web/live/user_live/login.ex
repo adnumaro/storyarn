@@ -33,7 +33,7 @@ defmodule StoryarnWeb.UserLive.Login do
           <div>
             <p>{gettext("You are running the local mail adapter.")}</p>
             <p>
-              {gettext("To see sent emails, visit")} <.link href="/dev/mailbox" class="underline">{gettext("the mailbox page")}</.link>.
+              {gettext("To see sent emails, visit")} <.link href="/dev/mailbox" class="underline">{gettext("the mailbox sheet")}</.link>.
             </p>
           </div>
         </div>

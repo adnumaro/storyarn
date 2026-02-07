@@ -49,13 +49,13 @@ export function defaultHeader(config, nodeColor, indicators) {
 /**
  * Speaker header with avatar (or icon fallback) + name.
  */
-export function speakerHeader(config, nodeColor, speakerPage, indicators) {
+export function speakerHeader(config, nodeColor, speakerSheet, indicators) {
   return html`
     <div class="header" style="background-color: ${nodeColor}">
-      ${speakerPage.avatar_url
-        ? html`<img src="${speakerPage.avatar_url}" class="speaker-avatar" alt="" />`
+      ${speakerSheet.avatar_url
+        ? html`<img src="${speakerSheet.avatar_url}" class="speaker-avatar" alt="" />`
         : html`<span class="icon">${unsafeSVG(config.icon)}</span>`}
-      <span class="speaker-name">${speakerPage.name}</span>
+      <span class="speaker-name">${speakerSheet.name}</span>
       ${renderIndicators(indicators)}
     </div>
   `;

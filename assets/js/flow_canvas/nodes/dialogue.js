@@ -23,16 +23,16 @@ export default {
   },
 
   render(ctx) {
-    const { node, nodeData, config, selected, emit, pagesMap } = ctx;
-    const color = this.nodeColor(nodeData, config, pagesMap);
+    const { node, nodeData, config, selected, emit, sheetsMap } = ctx;
+    const color = this.nodeColor(nodeData, config, sheetsMap);
     const indicators = this.getIndicators(nodeData);
     const preview = this.getPreviewText(nodeData);
 
-    const speakerId = nodeData.speaker_page_id;
-    const speakerPage = speakerId ? pagesMap?.[String(speakerId)] : null;
+    const speakerId = nodeData.speaker_sheet_id;
+    const speakerSheet = speakerId ? sheetsMap?.[String(speakerId)] : null;
 
-    const headerHtml = speakerPage
-      ? speakerHeader(config, color, speakerPage, indicators)
+    const headerHtml = speakerSheet
+      ? speakerHeader(config, color, speakerSheet, indicators)
       : defaultHeader(config, color, indicators);
 
     return nodeShell(color, selected, html`
@@ -93,10 +93,10 @@ export default {
     return badges;
   },
 
-  nodeColor(data, config, pagesMap) {
-    const speakerId = data.speaker_page_id;
-    const speakerPage = speakerId ? pagesMap?.[String(speakerId)] : null;
-    return speakerPage?.color || config.color;
+  nodeColor(data, config, sheetsMap) {
+    const speakerId = data.speaker_sheet_id;
+    const speakerSheet = speakerId ? sheetsMap?.[String(speakerId)] : null;
+    return speakerSheet?.color || config.color;
   },
 
   needsRebuild(oldData, newData) {

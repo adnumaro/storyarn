@@ -3,7 +3,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   LiveView for workspace general settings.
   """
   use StoryarnWeb, :live_view
-  use StoryarnWeb.LiveHelpers.Authorize
+  use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Workspaces
 

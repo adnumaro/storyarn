@@ -8,7 +8,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
   use StoryarnWeb, :live_component
 
   alias Storyarn.Flows
-  alias Storyarn.Pages
+  alias Storyarn.Sheets
 
   # Maximum traversal depth to prevent infinite loops in cyclic flows
   @max_traversal_depth 50
@@ -225,7 +225,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
   end
 
   defp load_dialogue_node(socket, node) do
-    speaker_name = resolve_speaker(socket.assigns, node.data["speaker_page_id"])
+    speaker_name = resolve_speaker(socket.assigns, node.data["speaker_sheet_id"])
     responses = node.data["responses"] || []
     connections = Flows.get_outgoing_connections(node.id)
     has_next = responses == [] && has_output_connection?(connections)
@@ -297,32 +297,32 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
     Enum.any?(connections, fn conn -> conn.source_pin == "output" end)
   end
 
-  defp resolve_speaker(assigns, speaker_page_id)
-       when is_integer(speaker_page_id) or is_binary(speaker_page_id) do
-    page_id =
-      if is_binary(speaker_page_id) do
-        case Integer.parse(speaker_page_id) do
+  defp resolve_speaker(assigns, speaker_sheet_id)
+       when is_integer(speaker_sheet_id) or is_binary(speaker_sheet_id) do
+    sheet_id =
+      if is_binary(speaker_sheet_id) do
+        case Integer.parse(speaker_sheet_id) do
           {id, ""} -> id
           _ -> nil
         end
       else
-        speaker_page_id
+        speaker_sheet_id
       end
 
-    if page_id do
-      # Try to get from pages_map first
-      pages_map = Map.get(assigns, :pages_map, %{})
-      page_info = Map.get(pages_map, to_string(page_id))
+    if sheet_id do
+      # Try to get from sheets_map first
+      sheets_map = Map.get(assigns, :sheets_map, %{})
+      sheet_info = Map.get(sheets_map, to_string(sheet_id))
 
-      if page_info do
-        page_info.name
+      if sheet_info do
+        sheet_info.name
       else
         # Fallback to database lookup
         project_id = assigns.project.id
 
-        case Pages.get_page(project_id, page_id) do
+        case Sheets.get_sheet(project_id, sheet_id) do
           nil -> nil
-          page -> page.name
+          sheet -> sheet.name
         end
       end
     end

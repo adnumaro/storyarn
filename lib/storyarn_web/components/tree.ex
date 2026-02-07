@@ -36,8 +36,8 @@ defmodule StoryarnWeb.Components.TreeComponents do
   attr :expanded, :boolean, default: false
   attr :has_children, :boolean, default: false
   attr :class, :string, default: ""
-  attr :page_id, :string, default: nil
-  attr :page_name, :string, default: nil
+  attr :sheet_id, :string, default: nil
+  attr :sheet_name, :string, default: nil
   attr :can_drag, :boolean, default: false
   slot :inner_block
   slot :menu
@@ -47,8 +47,8 @@ defmodule StoryarnWeb.Components.TreeComponents do
     ~H"""
     <div
       class={["tree-node group", @can_drag && "cursor-grab active:cursor-grabbing", @class]}
-      data-page-id={@page_id}
-      data-page-name={@page_name}
+      data-sheet-id={@sheet_id}
+      data-sheet-name={@sheet_name}
     >
       <div class="relative flex items-center">
         <%!-- Expand/collapse toggle --%>
@@ -106,7 +106,7 @@ defmodule StoryarnWeb.Components.TreeComponents do
         id={"tree-content-#{@id}"}
         class={["pl-5", !@expanded && "hidden"]}
         data-sortable-container
-        data-parent-id={@page_id}
+        data-parent-id={@sheet_id}
       >
         {render_slot(@inner_block)}
       </div>
@@ -133,8 +133,8 @@ defmodule StoryarnWeb.Components.TreeComponents do
   attr :avatar_url, :string, default: nil
   attr :color, :string, default: nil
   attr :class, :string, default: ""
-  attr :page_id, :string, default: nil
-  attr :page_name, :string, default: nil
+  attr :sheet_id, :string, default: nil
+  attr :sheet_name, :string, default: nil
   attr :can_drag, :boolean, default: false
   slot :menu
   slot :actions
@@ -143,8 +143,8 @@ defmodule StoryarnWeb.Components.TreeComponents do
     ~H"""
     <div
       class={["tree-leaf group", @can_drag && "cursor-grab active:cursor-grabbing", @class]}
-      data-page-id={@page_id}
-      data-page-name={@page_name}
+      data-sheet-id={@sheet_id}
+      data-sheet-name={@sheet_name}
     >
       <div class="relative flex items-center">
         <%!-- Spacer to align with tree_node (expand/collapse area) --%>
@@ -183,7 +183,7 @@ defmodule StoryarnWeb.Components.TreeComponents do
     <%= cond do %>
       <% @avatar_url -> %>
         <img src={@avatar_url} alt="" class="size-4 shrink-0 rounded object-cover" />
-      <% @icon_text && @icon_text not in [nil, "", "page"] -> %>
+      <% @icon_text && @icon_text not in [nil, "", "sheet"] -> %>
         <span class="shrink-0">{@icon_text}</span>
       <% @icon -> %>
         <.icon name={@icon} class="size-4 shrink-0" style={@color && "color: #{@color}"} />

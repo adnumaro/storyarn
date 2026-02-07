@@ -33,15 +33,15 @@ function getOperatorSymbol(operator) {
 }
 
 function formatRule(rule) {
-  if (!rule.page || !rule.variable) {
+  if (!rule.sheet || !rule.variable) {
     return "Incomplete rule";
   }
   const operatorSymbol = getOperatorSymbol(rule.operator);
   const value = rule.value !== null && rule.value !== undefined ? rule.value : "";
   if (["is_empty", "is_true", "is_false", "is_nil"].includes(rule.operator)) {
-    return `${rule.page}.${rule.variable} ${operatorSymbol}`;
+    return `${rule.sheet}.${rule.variable} ${operatorSymbol}`;
   }
-  return `${rule.page}.${rule.variable} ${operatorSymbol} ${value}`;
+  return `${rule.sheet}.${rule.variable} ${operatorSymbol} ${value}`;
 }
 
 function formatRuleShort(rule) {
@@ -60,20 +60,20 @@ function formatRuleShort(rule) {
 
 function isRuleComplete(rule) {
   if (!rule) return false;
-  const hasPage = rule.page && rule.page !== "";
+  const hasSheet = rule.sheet && rule.sheet !== "";
   const hasVariable = rule.variable && rule.variable !== "";
   const hasOperator = rule.operator && rule.operator !== "";
   const noValueOperators = ["is_empty", "is_true", "is_false", "is_nil"];
   const needsValue = !noValueOperators.includes(rule.operator);
   const hasValue =
     !needsValue || (rule.value !== null && rule.value !== undefined && rule.value !== "");
-  return hasPage && hasVariable && hasOperator && hasValue;
+  return hasSheet && hasVariable && hasOperator && hasValue;
 }
 
 function getRuleErrorMessage(rule) {
   if (!rule) return "Invalid rule";
   const missing = [];
-  if (!rule.page || rule.page === "") missing.push("page");
+  if (!rule.sheet || rule.sheet === "") missing.push("sheet");
   if (!rule.variable || rule.variable === "") missing.push("variable");
   if (!rule.operator || rule.operator === "") missing.push("operator");
   const noValueOperators = ["is_empty", "is_true", "is_false", "is_nil"];

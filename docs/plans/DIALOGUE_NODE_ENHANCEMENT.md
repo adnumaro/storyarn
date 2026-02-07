@@ -31,7 +31,7 @@ The dialogue node now has a professional-grade feature set:
 def default_node_data("dialogue") do
   %{
     # === SPEAKER ===
-    "speaker_page_id" => nil,
+    "speaker_sheet_id" => nil,
 
     # === TEXT FIELDS ===
     "text" => "",
@@ -116,7 +116,7 @@ end
 - 🔊 indicator on canvas when audio attached
 
 **Deferred:**
-- Node colors → Will use speaker Page color (FUTURE_FEATURES.md)
+- Node colors → Will use speaker Sheet color (FUTURE_FEATURES.md)
 - Cover image → Nice to have (FUTURE_FEATURES.md)
 
 ### Phase 3: Technical Identifiers ✅
@@ -196,7 +196,7 @@ end
 **Location**: Project Settings > Dialogue Templates
 
 - List of templates with create/edit/delete
-- Property types: String, Number, Boolean, Select, Asset reference, Page reference
+- Property types: String, Number, Boolean, Select, Asset reference, Sheet reference
 - Color picker for template default color
 
 #### 5.3 Template Selection in Dialogue Node
@@ -252,7 +252,7 @@ Allow attaching multiple references to a dialogue:
 %{
   # ... existing fields ...
   "references" => [
-    %{"type" => "page", "id" => "page_123", "label" => "Location"},
+    %{"type" => "sheet", "id" => "sheet_123", "label" => "Location"},
     %{"type" => "asset", "id" => "asset_456", "label" => "Item Image"}
   ]
 }
@@ -261,7 +261,7 @@ Allow attaching multiple references to a dialogue:
 #### 6.3 Properties Panel UI
 
 - Collapsible "References" section
-- Add reference button with type picker (Page/Asset)
+- Add reference button with type picker (Sheet/Asset)
 - List of attached references with remove button
 - Click reference to navigate to it
 
@@ -272,7 +272,7 @@ Allow attaching multiple references to a dialogue:
 
 #### Tasks
 - [ ] Add `references` field to dialogue default data
-- [ ] Create reference picker component (reuse Page/Asset selectors)
+- [ ] Create reference picker component (reuse Sheet/Asset selectors)
 - [ ] Add references section to properties panel
 - [ ] Update node canvas with reference indicator (📎)
 - [ ] Add navigation to referenced items on click
@@ -348,7 +348,7 @@ The JSON export should include all dialogue fields:
       "type": "dialogue",
       "position": {"x": 100, "y": 200},
       "data": {
-        "speaker_page_id": "page_123",
+        "speaker_sheet_id": "sheet_123",
         "text": "<p>I've got something special...</p>",
         "stage_directions": "(leaning forward)",
         "menu_text": "Merchant greeting",
@@ -432,7 +432,7 @@ The JSON export should include all dialogue fields:
 
 ### Phase 6 (References) - Pending
 - [ ] References field exists in dialogue data
-- [ ] References can be added (pages and assets)
+- [ ] References can be added (sheets and assets)
 - [ ] References can be removed
 - [ ] Click navigates to reference
 - [ ] 📎 indicator shows on node canvas

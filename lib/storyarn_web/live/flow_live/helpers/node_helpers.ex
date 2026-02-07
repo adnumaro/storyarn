@@ -263,7 +263,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   @doc false
   def normalize_form_params(params) do
     params
-    |> normalize_empty_to_nil("speaker_page_id")
+    |> normalize_empty_to_nil("speaker_sheet_id")
     |> normalize_empty_to_nil("audio_asset_id")
   end
 

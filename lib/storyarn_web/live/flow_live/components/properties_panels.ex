@@ -15,7 +15,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :node, :map, required: true
   attr :form, :map, required: true
   attr :can_edit, :boolean, default: false
-  attr :all_pages, :list, default: []
+  attr :all_sheets, :list, default: []
   attr :flow_hubs, :list, default: []
   attr :audio_assets, :list, default: []
   attr :panel_sections, :map, default: %{}
@@ -40,7 +40,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           node={@node}
           form={@form}
           can_edit={@can_edit}
-          all_pages={@all_pages}
+          all_sheets={@all_sheets}
           flow_hubs={@flow_hubs}
           audio_assets={@audio_assets}
           panel_sections={@panel_sections}
@@ -91,7 +91,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :node, :map, required: true
   attr :form, :map, required: true
   attr :can_edit, :boolean, default: false
-  attr :all_pages, :list, default: []
+  attr :all_sheets, :list, default: []
   attr :flow_hubs, :list, default: []
   attr :audio_assets, :list, default: []
   attr :panel_sections, :map, default: %{}

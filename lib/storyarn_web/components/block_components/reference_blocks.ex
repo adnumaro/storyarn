@@ -13,7 +13,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
 
   def reference_block(assigns) do
     label = get_in(assigns.block.config, ["label"]) || ""
-    allowed_types = get_in(assigns.block.config, ["allowed_types"]) || ["page", "flow"]
+    allowed_types = get_in(assigns.block.config, ["allowed_types"]) || ["sheet", "flow"]
     target_type = get_in(assigns.block.value, ["target_type"])
     target_id = get_in(assigns.block.value, ["target_id"])
     is_constant = assigns.block.is_constant || false
@@ -86,10 +86,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
     <div class="flex items-center gap-2 min-w-0">
       <span class={[
         "flex-shrink-0 size-6 rounded flex items-center justify-center text-xs",
-        @target.type == "page" && "bg-primary/20 text-primary",
+        @target.type == "sheet" && "bg-primary/20 text-primary",
         @target.type == "flow" && "bg-secondary/20 text-secondary"
       ]}>
-        <.icon name={if @target.type == "page", do: "file-text", else: "git-branch"} class="size-4" />
+        <.icon name={if @target.type == "sheet", do: "file-text", else: "git-branch"} class="size-4" />
       </span>
       <span class="truncate font-medium">{@target.name}</span>
       <span :if={@target.shortcut} class="text-base-content/50 text-sm">
@@ -111,7 +111,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
       <input
         type="text"
         class="input input-bordered input-sm w-full"
-        placeholder={gettext("Search pages and flows...")}
+        placeholder={gettext("Search sheets and flows...")}
         phx-keyup="search_references"
         phx-value-block-id={@block_id}
         phx-debounce="300"
@@ -171,10 +171,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
     >
       <span class={[
         "flex-shrink-0 size-6 rounded flex items-center justify-center text-xs",
-        @result.type == "page" && "bg-primary/20 text-primary",
+        @result.type == "sheet" && "bg-primary/20 text-primary",
         @result.type == "flow" && "bg-secondary/20 text-secondary"
       ]}>
-        <.icon name={if @result.type == "page", do: "file-text", else: "git-branch"} class="size-4" />
+        <.icon name={if @result.type == "sheet", do: "file-text", else: "git-branch"} class="size-4" />
       </span>
       <span class="truncate">{@result.name}</span>
       <span :if={@result.shortcut} class="text-base-content/50 text-sm ml-auto">

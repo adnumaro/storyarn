@@ -6,7 +6,7 @@ defmodule Storyarn.Repo.Migrations.CreateVariableReferences do
       add :flow_node_id, references(:flow_nodes, on_delete: :delete_all), null: false
       add :block_id, references(:blocks, on_delete: :delete_all), null: false
       add :kind, :string, null: false
-      add :source_page, :string, null: false
+      add :source_sheet, :string, null: false
       add :source_variable, :string, null: false
 
       timestamps(type: :utc_datetime)

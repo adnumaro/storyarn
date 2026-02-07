@@ -448,7 +448,7 @@ And **never** do this:
 | Attribute | Set By (Elixir) | Read By (JS) | Purpose |
 |---|---|---|---|
 | `data-flow` | `show.ex` render | `flow_canvas.js` mounted | Initial flow JSON |
-| `data-pages` | `show.ex` render | `flow_canvas.js` mounted | Pages map JSON |
+| `data-sheets` | `show.ex` render | `flow_canvas.js` mounted | Sheets map JSON |
 | `data-locks` | `show.ex` render | `flow_canvas.js` mounted | Initial lock state |
 | `data-user-id` | `show.ex` render | `flow_canvas.js` mounted | Current user ID |
 | `data-user-color` | `show.ex` render | `flow_canvas.js` mounted | User collaboration color |
@@ -463,9 +463,9 @@ And **never** do this:
 |---|---|---|
 | `entry` | `%{}` | `node_type_helpers.ex`, `storyarn_node.js` |
 | `exit` | `%{label}` | `properties_panels.ex`, `storyarn_node.js` |
-| `dialogue` | `%{speaker_page_id, text, stage_directions, menu_text, audio_asset_id, technical_id, localization_id, input_condition, output_instruction, responses: [%{id, text, condition, instruction}]}` | `properties_panels.ex`, `storyarn_node.js`, `node_helpers.ex`, `form_helpers.ex` |
+| `dialogue` | `%{speaker_sheet_id, text, stage_directions, menu_text, audio_asset_id, technical_id, localization_id, input_condition, output_instruction, responses: [%{id, text, condition, instruction}]}` | `properties_panels.ex`, `storyarn_node.js`, `node_helpers.ex`, `form_helpers.ex` |
 | `hub` | `%{hub_id, color}` | `properties_panels.ex`, `storyarn_node.js` |
-| `condition` | `%{condition: %{logic, rules: [%{id, page, variable, operator, value, label}]}, switch_mode}` | `properties_panels.ex`, `storyarn_node.js`, `condition_builder.ex` |
+| `condition` | `%{condition: %{logic, rules: [%{id, sheet, variable, operator, value, label}]}, switch_mode}` | `properties_panels.ex`, `storyarn_node.js`, `condition_builder.ex` |
 | `instruction` | `%{action, parameters}` | `properties_panels.ex`, `storyarn_node.js` |
 | `jump` | `%{target_hub_id}` | `properties_panels.ex`, `storyarn_node.js` |
 

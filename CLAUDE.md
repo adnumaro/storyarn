@@ -47,7 +47,7 @@ lib/storyarn/                    # Domain (Contexts)
 ├── accounts.ex                  # Users, auth, sessions, OAuth
 ├── workspaces.ex                # Workspaces, memberships, invitations
 ├── projects.ex                  # Projects, memberships, invitations
-├── pages.ex                     # Pages, blocks, variables
+├── sheets.ex                    # Sheets, blocks, variables
 ├── flows.ex                     # Flows, nodes, connections
 ├── collaboration.ex             # Presence, cursors, locking
 └── assets/                      # File uploads (R2/S3)
@@ -56,35 +56,35 @@ lib/storyarn_web/
 ├── components/                  # UI components
 ├── live/
 │   ├── flow_live/               # Flow editor ← MAIN WORK AREA
-│   ├── page_live/               # Page editor
+│   ├── sheet_live/              # Sheet editor
 │   └── ...
 └── router.ex
 ```
 
-**Pattern:** Contexts use facade with `defdelegate` → submodules (e.g., `pages.ex` → `pages/page_crud.ex`)
+**Pattern:** Contexts use facade with `defdelegate` → submodules (e.g., `sheets.ex` → `sheets/sheet_crud.ex`)
 
 ## Domain Model
 
 ```
 User → WorkspaceMembership (owner|admin|member|viewer)
          └→ Workspace → Project → ProjectMembership (owner|editor|viewer)
-                                    └→ Pages, Flows, Assets
+                                    └→ Sheets, Flows, Assets
 ```
 
 **Authorization:** `ProjectMembership.can?(role, :edit_content)` / `WorkspaceMembership.can?(role, :manage_members)`
 
 ## Variable System
 
-**Page Blocks = Variables** (unless `is_constant: true`)
+**Sheet Blocks = Variables** (unless `is_constant: true`)
 
 ```
-Page (shortcut: "mc.jaime")
+Sheet (shortcut: "mc.jaime")
 ├── Block "Health" (number)     → Variable: mc.jaime.health
 ├── Block "Class" (select)      → Variable: mc.jaime.class
 └── Block "Name" (is_constant)  → NOT a variable
 ```
 
-**Reference format:** `{page_shortcut}.{variable_name}`
+**Reference format:** `{sheet_shortcut}.{variable_name}`
 
 **Block types → Operators:**
 - `number`: equals, greater_than, less_than, etc.
@@ -95,8 +95,8 @@ Page (shortcut: "mc.jaime")
 
 **API:**
 ```elixir
-Pages.list_project_variables(project_id)
-# → [%{page_shortcut: "mc.jaime", variable_name: "health", block_type: "number", options: nil}, ...]
+Sheets.list_project_variables(project_id)
+# → [%{sheet_shortcut: "mc.jaime", variable_name: "health", block_type: "number", options: nil}, ...]
 ```
 
 **Condition structure:**
@@ -104,7 +104,7 @@ Pages.list_project_variables(project_id)
 %{
   "logic" => "all",  # "all" (AND) | "any" (OR)
   "rules" => [
-    %{"page" => "mc.jaime", "variable" => "health", "operator" => "greater_than", "value" => "50"}
+    %{"sheet" => "mc.jaime", "variable" => "health", "operator" => "greater_than", "value" => "50"}
   ]
 }
 ```
@@ -116,7 +116,7 @@ Pages.list_project_variables(project_id)
 **Dialogue node data:**
 ```elixir
 %{
-  "speaker_page_id" => nil,
+  "speaker_sheet_id" => nil,
   "text" => "",                    # Rich text (HTML)
   "stage_directions" => "",
   "menu_text" => "",
@@ -227,7 +227,7 @@ assets/js/
 
 **LiveView Authorization:**
 ```elixir
-use StoryarnWeb.LiveHelpers.Authorize
+use StoryarnWeb.Helpers.Authorize
 
 case authorize(socket, :edit_content) do
   :ok -> # proceed
@@ -238,14 +238,14 @@ Actions: `:edit_content`, `:manage_project`, `:manage_members`, `:manage_workspa
 
 **Components** (`StoryarnWeb.Components.*`):
 - `MemberComponents` - user_avatar, member_row, invitation_row
-- `BlockComponents` - Page block rendering
+- `BlockComponents` - Sheet block rendering
 - `TreeComponents` - Notion-style navigation
 - `CollaborationComponents` - Presence, cursors
 - `Sidebar`, `ProjectSidebar`, `SaveIndicator`
 
 ## Implementation Status
 
-**Completed:** Auth, Workspaces, Projects, Pages/Blocks, Assets, Flow Editor, Collaboration, Dialogue Enhancement (1-4), Flow Node Improvements (Phases 1-2)
+**Completed:** Auth, Workspaces, Projects, Sheets/Blocks, Assets, Flow Editor, Collaboration, Dialogue Enhancement (1-4), Flow Node Improvements (Phases 1-2)
 
 **In Progress:** Instruction Node + Variable System
 

@@ -34,10 +34,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
       |> assign(:true_label, config["true_label"] || "")
       |> assign(:false_label, config["false_label"] || "")
       |> assign(:neutral_label, config["neutral_label"] || "")
-      |> assign(:allowed_types, config["allowed_types"] || ["page", "flow"])
+      |> assign(:allowed_types, config["allowed_types"] || ["sheet", "flow"])
       |> assign(:is_constant, assigns.block.is_constant || false)
       |> assign(:variable_name, assigns.block.variable_name)
-      |> assign(:can_be_variable, Storyarn.Pages.Block.can_be_variable?(assigns.block.type))
+      |> assign(:can_be_variable, Storyarn.Sheets.Block.can_be_variable?(assigns.block.type))
 
     ~H"""
     <div class="fixed inset-y-0 right-0 w-80 bg-base-200 shadow-xl z-50 flex flex-col">
@@ -242,11 +242,11 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                 <input
                   type="checkbox"
                   name="config[allowed_types][]"
-                  value="page"
-                  checked={"page" in @allowed_types}
+                  value="sheet"
+                  checked={"sheet" in @allowed_types}
                   class="checkbox checkbox-sm"
                 />
-                <span class="label-text">{gettext("Pages")}</span>
+                <span class="label-text">{gettext("Sheets")}</span>
               </label>
               <label class="label cursor-pointer justify-start gap-3">
                 <input

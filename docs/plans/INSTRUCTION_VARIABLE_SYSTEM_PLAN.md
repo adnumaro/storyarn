@@ -2,7 +2,7 @@
 
 > **Status**: Phases A-C complete, Phase D pending
 > **Date**: February 7, 2026
-> **Scope**: Instruction node visual builder, variable write/read tracking, variable usage UI on pages
+> **Scope**: Instruction node visual builder, variable write/read tracking, variable usage UI on sheets
 
 ---
 
@@ -14,7 +14,7 @@ Four phases that build on each other:
 |---------|--------------------------------------------|----------|--------------|----------|
 | **A**   | Instruction Node (visual builder)          | Medium   | Nothing      | ✅ Done   |
 | **B**   | Variable Reference Tracking (DB + tracker) | Medium   | A            | ✅ Done   |
-| **C**   | Variable Usage UI (page editor)            | Small    | B            | ✅ Done   |
+| **C**   | Variable Usage UI (sheet editor)           | Small    | B            | ✅ Done   |
 | **D**   | Robustness (stale refs, repair)            | Small    | C            | Pending  |
 
 **Total new files:** 8
@@ -34,7 +34,7 @@ Four phases that build on each other:
 │  │  (reads vars)     │   │  (writes vars)    │   │  input_condition │ │
 │  │                   │   │                   │   │  (reads vars)    │ │
 │  │  rules: [         │   │  assignments: [   │   │                  │ │
-│  │   {page, var,     │   │   {page, var,     │   │  (plain text     │ │
+│  │   {sheet, var,     │   │   {sheet, var,     │   │  (plain text     │ │
 │  │    op, value}     │   │    op, value}     │   │   for now)       │ │
 │  │  ]                │   │  ]                │   │                  │ │
 │  └────────┬─────────┘   └────────┬─────────┘   └──────────────────┘ │
@@ -46,7 +46,7 @@ Four phases that build on each other:
 │  │                                                                  ││
 │  │  1. Delete old refs for this node                                ││
 │  │  2. Parse rules/assignments from node.data                       ││
-│  │  3. Resolve page_shortcut + variable_name → block_id             ││
+│  │  3. Resolve sheet_shortcut + variable_name → block_id             ││
 │  │  4. INSERT variable_references (node_id, block_id, "read"|"write")│
 │  └──────────────────────────────────┬───────────────────────────────┘│
 └─────────────────────────────────────┼────────────────────────────────┘
@@ -62,7 +62,7 @@ Four phases that build on each other:
                               └───────┬───────┘
                                       │
 ┌─────────────────────────────────────┼────────────────────────────────┐
-│                        PAGE EDITOR  │                                │
+│                        SHEET EDITOR │                                │
 │                                     ▼                                │
 │  ┌──────────────────────────────────────────────────────────────────┐│
 │  │  Variable: health (number)                      Current value: 100│
@@ -137,32 +137,32 @@ defmodule Storyarn.Flows.Instruction do
   # Returns [] (empty assignments list)
 
   @spec add_assignment(list()) :: list()
-  # Appends %{"id" => "assign_#{unique_int}", "page" => nil, "variable" => nil,
-  #           "operator" => "set", "value" => nil, "value_type" => "literal", "value_page" => nil}
+  # Appends %{"id" => "assign_#{unique_int}", "sheet" => nil, "variable" => nil,
+  #           "operator" => "set", "value" => nil, "value_type" => "literal", "value_sheet" => nil}
 
   @spec remove_assignment(list(), String.t()) :: list()
   # Filters out assignment with matching id
 
   @spec update_assignment(list(), String.t(), String.t(), any()) :: list()
   # Updates a single field of an assignment by its id
-  # Fields: "page", "variable", "operator", "value", "value_type", "value_page"
-  # When "value_type" changes to "literal" → clear "value_page"
-  # When "value_type" changes to "variable_ref" → clear "value" (will be set via value_page + value dropdowns)
+  # Fields: "sheet", "variable", "operator", "value", "value_type", "value_sheet"
+  # When "value_type" changes to "literal" → clear "value_sheet"
+  # When "value_type" changes to "variable_ref" → clear "value" (will be set via value_sheet + value dropdowns)
 
   @spec format_assignment_short(map()) :: String.t()
   # Returns human-readable string, e.g.:
   #
   # Literal value:
-  # %{"page" => "mc.jaime", "variable" => "health", "operator" => "add", "value" => "10", "value_type" => "literal"}
+  # %{"sheet" => "mc.jaime", "variable" => "health", "operator" => "add", "value" => "10", "value_type" => "literal"}
   # → "mc.jaime.health += 10"
   #
   # Variable reference:
-  # %{"page" => "mc.link", "variable" => "hasMasterSword", "operator" => "set",
-  #   "value_type" => "variable_ref", "value_page" => "global.quests", "value" => "masterSwordDone"}
+  # %{"sheet" => "mc.link", "variable" => "hasMasterSword", "operator" => "set",
+  #   "value_type" => "variable_ref", "value_sheet" => "global.quests", "value" => "masterSwordDone"}
   # → "mc.link.hasMasterSword = global.quests.masterSwordDone"
   #
   # No-value operators:
-  # %{"page" => "mc.jaime", "variable" => "alive", "operator" => "set_true"}
+  # %{"sheet" => "mc.jaime", "variable" => "alive", "operator" => "set_true"}
   # → "mc.jaime.alive = true"
 end
 ```
@@ -173,23 +173,23 @@ end
 # Literal value assignment
 %{
   "id" => "assign_12345",        # unique, auto-generated
-  "page" => "mc.jaime",          # target page shortcut (string)
+  "sheet" => "mc.jaime",          # target sheet shortcut (string)
   "variable" => "health",        # target variable_name (string)
   "operator" => "add",           # write operator
   "value" => "10",               # literal value (string, parsed by game engine)
   "value_type" => "literal",     # "literal" (default) | "variable_ref"
-  "value_page" => nil             # only used when value_type == "variable_ref"
+  "value_sheet" => nil             # only used when value_type == "variable_ref"
 }
 
 # Variable reference assignment
 %{
   "id" => "assign_67890",
-  "page" => "mc.link",                         # target page shortcut
+  "sheet" => "mc.link",                         # target sheet shortcut
   "variable" => "hasMasterSword",              # target variable_name
   "operator" => "set",                         # write operator
   "value" => "questToGetMasterSwordFinished",  # source variable_name
   "value_type" => "variable_ref",              # referencing another variable
-  "value_page" => "pages.globalVariables"      # source page shortcut
+  "value_sheet" => "sheets.globalVariables"      # source sheet shortcut
 }
 ```
 
@@ -199,21 +199,21 @@ Each operator defines a sentence template. Static words are rendered as plain te
 
 | Operator    | Sentence Template                         | Example Render                          |
 |-------------|-------------------------------------------|-----------------------------------------|
-| `set`       | `Set [page]·[variable] to [value]`        | `Set mc.jaime · health to 100`          |
-| `add`       | `Add [value] to [page]·[variable]`        | `Add 10 to mc.jaime · health`           |
-| `subtract`  | `Subtract [value] from [page]·[variable]` | `Subtract 20 from mc.jaime · health`    |
-| `set_true`  | `Set [page]·[variable] to true`           | `Set mc.zelda · hasMasterSword to true` |
-| `set_false` | `Set [page]·[variable] to false`          | `Set mc.jaime · isAlive to false`       |
-| `toggle`    | `Toggle [page]·[variable]`                | `Toggle mc.jaime · isAlive`             |
-| `clear`     | `Clear [page]·[variable]`                 | `Clear mc.jaime · name`                 |
+| `set`       | `Set [sheet]·[variable] to [value]`        | `Set mc.jaime · health to 100`          |
+| `add`       | `Add [value] to [sheet]·[variable]`        | `Add 10 to mc.jaime · health`           |
+| `subtract`  | `Subtract [value] from [sheet]·[variable]` | `Subtract 20 from mc.jaime · health`    |
+| `set_true`  | `Set [sheet]·[variable] to true`           | `Set mc.zelda · hasMasterSword to true` |
+| `set_false` | `Set [sheet]·[variable] to false`          | `Set mc.jaime · isAlive to false`       |
+| `toggle`    | `Toggle [sheet]·[variable]`                | `Toggle mc.jaime · isAlive`             |
+| `clear`     | `Clear [sheet]·[variable]`                 | `Clear mc.jaime · name`                 |
 
-When `value_type == "variable_ref"`, the value slot becomes a page·variable combobox:
+When `value_type == "variable_ref"`, the value slot becomes a sheet·variable combobox:
 
 | Operator   | Sentence Template (variable_ref)                            | Example Render                                                    |
 |------------|-------------------------------------------------------------|-------------------------------------------------------------------|
-| `set`      | `Set [page]·[variable] to [src_page]·[src_variable]`        | `Set mc.link · hasMasterSword to global.quests · masterSwordDone` |
-| `add`      | `Add [src_page]·[src_variable] to [page]·[variable]`        | `Add items.potion · value to mc.jaime · health`                   |
-| `subtract` | `Subtract [src_page]·[src_variable] from [page]·[variable]` | `Subtract enemy.boss · damage from mc.jaime · health`             |
+| `set`      | `Set [sheet]·[variable] to [src_sheet]·[src_variable]`        | `Set mc.link · hasMasterSword to global.quests · masterSwordDone` |
+| `add`      | `Add [src_sheet]·[src_variable] to [sheet]·[variable]`        | `Add items.potion · value to mc.jaime · health`                   |
+| `subtract` | `Subtract [src_sheet]·[src_variable] from [sheet]·[variable]` | `Subtract enemy.boss · damage from mc.jaime · health`             |
 
 **Note:** Operators that don't require a value (`set_true`, `set_false`, `toggle`, `clear`) ignore `value_type` entirely — the toggle between literal/variable_ref is hidden for these operators.
 
@@ -321,10 +321,10 @@ Each assignment row reads like a sentence. Inputs are **inline, borderless, with
 
 #### Combobox Widget
 
-A reusable searchable combobox for page, variable, and value selection.
+A reusable searchable combobox for sheet, variable, and value selection.
 
 **Behavior:**
-1. **Click or Tab into** → Shows full dropdown of options (grouped by page for variables)
+1. **Click or Tab into** → Shows full dropdown of options (grouped by sheet for variables)
 2. **Type any characters** → Filters options in real-time (matches against label, slug, and shortcut)
 3. **Arrow keys** → Navigate filtered options
 4. **Enter** → Select highlighted option AND **auto-advance to next input in the row**
@@ -333,21 +333,21 @@ A reusable searchable combobox for page, variable, and value selection.
 
 **Filtering logic:**
 - Case-insensitive substring match against multiple fields
-- For pages: matches `title` and `shortcut` (e.g., typing "zel" matches "Zelda" and "mc.zelda")
+- For sheets: matches `title` and `shortcut` (e.g., typing "zel" matches "Zelda" and "mc.zelda")
 - For variables: matches `variable_name` and `block label` (e.g., typing "hea" matches "health" and "Health Points")
-- Results grouped by page with sticky page headers in the dropdown
+- Results grouped by sheet with sticky sheet headers in the dropdown
 
 **Dropdown rendering:**
 ```
 ┌───────────────────────────────┐
 │ 🔍 zel                        │  ← input with current search text
 ├───────────────────────────────┤
-│ mc.zelda                      │  ← page group header (sticky)
+│ mc.zelda                      │  ← sheet group header (sticky)
 │   health (number)             │
 │   hasMasterSword (boolean)    │
 │   questProgress (number)      │
 │                               │
-│ global.zelda_quests           │  ← another page group
+│ global.zelda_quests           │  ← another sheet group
 │   zeldaApproval (number)      │
 └───────────────────────────────┘
 ```
@@ -368,7 +368,7 @@ A reusable searchable combobox for page, variable, and value selection.
 export const SENTENCE_TEMPLATES = {
   set: [
     { type: "text", value: "Set" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "·" },
     { type: "slot", key: "variable", placeholder: "variable" },
     { type: "text", value: "to" },
@@ -378,7 +378,7 @@ export const SENTENCE_TEMPLATES = {
     { type: "text", value: "Add" },
     { type: "slot", key: "value", placeholder: "value" },
     { type: "text", value: "to" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "·" },
     { type: "slot", key: "variable", placeholder: "variable" },
   ],
@@ -386,40 +386,40 @@ export const SENTENCE_TEMPLATES = {
     { type: "text", value: "Subtract" },
     { type: "slot", key: "value", placeholder: "value" },
     { type: "text", value: "from" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "·" },
     { type: "slot", key: "variable", placeholder: "variable" },
   ],
   set_true: [
     { type: "text", value: "Set" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "·" },
     { type: "slot", key: "variable", placeholder: "variable" },
     { type: "text", value: "to true" },
   ],
   set_false: [
     { type: "text", value: "Set" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "·" },
     { type: "slot", key: "variable", placeholder: "variable" },
     { type: "text", value: "to false" },
   ],
   toggle: [
     { type: "text", value: "Toggle" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "·" },
     { type: "slot", key: "variable", placeholder: "variable" },
   ],
   clear: [
     { type: "text", value: "Clear" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "·" },
     { type: "slot", key: "variable", placeholder: "variable" },
   ],
 };
 
 // When value_type == "variable_ref", the "value" slot is replaced by two slots:
-// { type: "slot", key: "value_page", placeholder: "page" }
+// { type: "slot", key: "value_sheet", placeholder: "sheet" }
 // { type: "text", value: "·" }
 // { type: "slot", key: "value", placeholder: "variable" }
 ```
@@ -616,7 +616,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.InstructionEventHandlers do
     # Sanitize: only keep known keys per assignment
     sanitized =
       Enum.map(assignments, fn assign ->
-        Map.take(assign, ~w(id page variable operator value value_type value_page))
+        Map.take(assign, ~w(id sheet variable operator value value_type value_sheet))
       end)
 
     updated_data = Map.put(node.data, "assignments", sanitized)
@@ -718,8 +718,8 @@ Add helper:
 
 ```javascript
 function formatAssignment(assignment) {
-  if (!assignment.page || !assignment.variable) return null;
-  const ref = `${assignment.page}.${assignment.variable}`;
+  if (!assignment.sheet || !assignment.variable) return null;
+  const ref = `${assignment.sheet}.${assignment.variable}`;
 
   // Sentence-style format matching the builder UI
   const op = assignment.operator || "set";
@@ -732,8 +732,8 @@ function formatAssignment(assignment) {
 
   // Determine value display
   let valueDisplay;
-  if (assignment.value_type === "variable_ref" && assignment.value_page && assignment.value) {
-    valueDisplay = `${assignment.value_page}.${assignment.value}`;
+  if (assignment.value_type === "variable_ref" && assignment.value_sheet && assignment.value) {
+    valueDisplay = `${assignment.value_sheet}.${assignment.value}`;
   } else {
     valueDisplay = assignment.value || "?";
   }
@@ -790,12 +790,12 @@ describe "Instruction" do
   test "add_assignment/1 appends with generated id and value_type literal"
   test "remove_assignment/2 removes by id"
   test "update_assignment/4 updates a field"
-  test "update_assignment/4 clears value and value_page when toggling value_type"
+  test "update_assignment/4 clears value and value_sheet when toggling value_type"
   test "operators_for_type/1 returns correct operators per type"
   test "operator_requires_value?/1"
   test "valid_value_type?/1 accepts literal and variable_ref"
   test "format_assignment_short/1 formats literal value correctly"
-  test "format_assignment_short/1 formats variable_ref as page.variable"
+  test "format_assignment_short/1 formats variable_ref as sheet.variable"
   test "format_assignment_short/1 formats no-value operators"
 end
 ```
@@ -833,7 +833,7 @@ end
 - When a block is deleted → refs to it auto-delete (no orphans)
 - No manual cleanup needed for these cases
 
-**Scalability note:** With 10,000 pages × ~5 variables = 50,000 blocks, and ~4,000 referencing nodes × ~2 refs each = ~8,000 rows. The `(block_id, kind)` index handles lookups in microseconds even at 100x this scale.
+**Scalability note:** With 10,000 sheets × ~5 variables = 50,000 blocks, and ~4,000 referencing nodes × ~2 refs each = ~8,000 rows. The `(block_id, kind)` index handles lookups in microseconds even at 100x this scale.
 
 ---
 
@@ -848,7 +848,7 @@ defmodule Storyarn.Flows.VariableReference do
 
   schema "variable_references" do
     belongs_to :flow_node, Storyarn.Flows.FlowNode
-    belongs_to :block, Storyarn.Pages.Block
+    belongs_to :block, Storyarn.Sheets.Block
     field :kind, :string  # "read" | "write"
 
     timestamps()
@@ -882,7 +882,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   import Ecto.Query
   alias Storyarn.Flows.{FlowNode, VariableReference}
-  alias Storyarn.Pages.{Block, Page}
+  alias Storyarn.Sheets.{Block, Sheet}
   alias Storyarn.Repo
 
   @doc """
@@ -914,7 +914,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   @doc """
   Returns all variable references for a block, with flow/node info.
-  Used by the page editor's variable usage section.
+  Used by the sheet editor's variable usage section.
   """
   @spec get_variable_usage(integer(), integer()) :: [map()]
   def get_variable_usage(block_id, project_id) do
@@ -961,7 +961,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     Enum.flat_map(assignments, fn assign ->
       # Write ref for target variable
       write_ref =
-        case resolve_block(node.flow_id, assign["page"], assign["variable"]) do
+        case resolve_block(node.flow_id, assign["sheet"], assign["variable"]) do
           nil -> []
           block_id -> [%{block_id: block_id, kind: "write"}]
         end
@@ -969,7 +969,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       # Read ref for source variable (when value_type == "variable_ref")
       read_ref =
         if assign["value_type"] == "variable_ref" do
-          case resolve_block(node.flow_id, assign["value_page"], assign["value"]) do
+          case resolve_block(node.flow_id, assign["value_sheet"], assign["value"]) do
             nil -> []
             block_id -> [%{block_id: block_id, kind: "read"}]
           end
@@ -985,25 +985,25 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     rules = get_in(node.data, ["condition", "rules"]) || []
 
     Enum.flat_map(rules, fn rule ->
-      case resolve_block(node.flow_id, rule["page"], rule["variable"]) do
+      case resolve_block(node.flow_id, rule["sheet"], rule["variable"]) do
         nil -> []
         block_id -> [%{block_id: block_id, kind: "read"}]
       end
     end)
   end
 
-  defp resolve_block(flow_id, page_shortcut, variable_name)
-       when is_binary(page_shortcut) and page_shortcut != "" and
+  defp resolve_block(flow_id, sheet_shortcut, variable_name)
+       when is_binary(sheet_shortcut) and sheet_shortcut != "" and
             is_binary(variable_name) and variable_name != "" do
     # Get project_id from flow
     flow = Repo.get!(Storyarn.Flows.Flow, flow_id)
 
     from(b in Block,
-      join: p in Page, on: p.id == b.page_id,
-      where: p.project_id == ^flow.project_id,
-      where: p.shortcut == ^page_shortcut,
+      join: s in Sheet, on: s.id == b.sheet_id,
+      where: s.project_id == ^flow.project_id,
+      where: s.shortcut == ^sheet_shortcut,
       where: b.variable_name == ^variable_name,
-      where: is_nil(p.deleted_at),
+      where: is_nil(s.deleted_at),
       where: is_nil(b.deleted_at),
       select: b.id,
       limit: 1
@@ -1131,21 +1131,21 @@ end
 
 ### C1. Variable Usage Component
 
-**New file:** `lib/storyarn_web/live/page_live/components/variable_usage_section.ex`
+**New file:** `lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex`
 
 This is a `Phoenix.LiveComponent` (like `BacklinksSection`) for lazy loading.
 
 ```elixir
-defmodule StoryarnWeb.PageLive.Components.VariableUsageSection do
+defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
   use StoryarnWeb, :live_component
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Flows
 
   # Attrs from parent:
-  # :page — current page
+  # :sheet — current sheet
   # :project — current project
-  # :blocks — list of variable blocks for this page
+  # :blocks — list of variable blocks for this sheet
 
   def update(assigns, socket) do
     socket =
@@ -1194,7 +1194,7 @@ end
 ```heex
 <div :for={block <- @variable_blocks} class="mb-4">
   <h4 class="text-sm font-medium">{block.config["label"] || block.variable_name}</h4>
-  <p class="text-xs text-base-content/50">{@page.shortcut}.{block.variable_name} ({block.type})</p>
+  <p class="text-xs text-base-content/50">{@sheet.shortcut}.{block.variable_name} ({block.type})</p>
 
   <%= if usage = @usage_map[block.id] do %>
     <!-- Writes -->
@@ -1263,9 +1263,9 @@ This reuses the existing `navigate_to_node` JS handler that zooms and highlights
 
 ---
 
-### C3. Page Editor Integration
+### C3. Sheet Editor Integration
 
-**Modify:** `lib/storyarn_web/live/page_live/components/references_tab.ex`
+**Modify:** `lib/storyarn_web/live/sheet_live/components/references_tab.ex`
 
 Add the variable usage section alongside existing backlinks:
 
@@ -1276,7 +1276,7 @@ def render(assigns) do
     <.live_component
       module={VariableUsageSection}
       id="variable-usage"
-      page={@page}
+      sheet={@sheet}
       project={@project}
       blocks={@blocks}
     />
@@ -1284,7 +1284,7 @@ def render(assigns) do
     <.live_component
       module={BacklinksSection}
       id="backlinks"
-      page={@page}
+      sheet={@sheet}
       project={@project}
     />
 
@@ -1297,13 +1297,13 @@ def render(assigns) do
 end
 ```
 
-The `@blocks` assign needs to be passed from `page_live/show.ex`. It should already be available (check the existing assigns). If not, add `blocks: Pages.list_blocks(page.id)` to the tab component.
+The `@blocks` assign needs to be passed from `sheet_live/show.ex`. It should already be available (check the existing assigns). If not, add `blocks: Sheets.list_blocks(sheet.id)` to the tab component.
 
 ---
 
 ### C4. Tests
 
-**Add to:** page live tests or create new test file.
+**Add to:** sheet live tests or create new test file.
 
 ```elixir
 describe "variable usage" do
@@ -1320,19 +1320,19 @@ end
 
 ### D1. Stale Reference Detection
 
-When rendering variable usage, the `variable_references` table has `block_id` (still valid), but the node's JSON might have stale `page` or `variable` strings.
+When rendering variable usage, the `variable_references` table has `block_id` (still valid), but the node's JSON might have stale `sheet` or `variable` strings.
 
 **Add to `VariableReferenceTracker`:**
 
 ```elixir
 @spec check_stale_references(integer(), integer()) :: [map()]
 def check_stale_references(block_id, project_id) do
-  # Get the block's current page shortcut and variable name
+  # Get the block's current sheet shortcut and variable name
   block_info =
     from(b in Block,
-      join: p in Page, on: p.id == b.page_id,
+      join: s in Sheet, on: s.id == b.sheet_id,
       where: b.id == ^block_id,
-      select: %{page_shortcut: p.shortcut, variable_name: b.variable_name}
+      select: %{sheet_shortcut: s.shortcut, variable_name: b.variable_name}
     )
     |> Repo.one()
 
@@ -1349,13 +1349,13 @@ def check_stale_references(block_id, project_id) do
             not Enum.any?(assignments, fn a ->
               # Check target variable match
               target_match =
-                a["page"] == block_info.page_shortcut and
+                a["sheet"] == block_info.sheet_shortcut and
                   a["variable"] == block_info.variable_name
 
               # Check source variable match (for variable_ref assignments)
               source_match =
                 a["value_type"] == "variable_ref" and
-                  a["value_page"] == block_info.page_shortcut and
+                  a["value_sheet"] == block_info.sheet_shortcut and
                   a["value"] == block_info.variable_name
 
               target_match or source_match
@@ -1364,7 +1364,7 @@ def check_stale_references(block_id, project_id) do
           "condition" ->
             rules = get_in(ref.node_data, ["condition", "rules"]) || []
             not Enum.any?(rules, fn r ->
-              r["page"] == block_info.page_shortcut and
+              r["sheet"] == block_info.sheet_shortcut and
                 r["variable"] == block_info.variable_name
             end)
 
@@ -1425,7 +1425,7 @@ When a flow node has stale variable references, show a warning indicator on the 
 | `priv/repo/migrations/XXXXXXXX_create_variable_references.exs`           | B      | DB migration                                  |
 | `lib/storyarn/flows/variable_reference.ex`                               | B      | Ecto schema                                   |
 | `lib/storyarn/flows/variable_reference_tracker.ex`                       | B      | Tracking logic                                |
-| `lib/storyarn_web/live/page_live/components/variable_usage_section.ex`   | C      | Page UI                                       |
+| `lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex`  | C      | Sheet UI                                      |
 
 ### Modified Files (~14)
 
@@ -1441,8 +1441,8 @@ When a flow node has stale variable references, show a warning indicator on the 
 | `assets/css/app.css`                                                 | A      | Instruction builder styles         |
 | `lib/storyarn/flows/node_crud.ex`                                    | B      | Integrate variable tracker         |
 | `lib/storyarn/flows.ex`                                              | B      | Facade delegates                   |
-| `lib/storyarn_web/live/page_live/components/references_tab.ex`       | C      | Add variable usage                 |
-| `lib/storyarn_web/live/page_live/show.ex`                            | C      | Pass blocks to tab                 |
+| `lib/storyarn_web/live/sheet_live/components/references_tab.ex`      | C      | Add variable usage                 |
+| `lib/storyarn_web/live/sheet_live/show.ex`                           | C      | Pass blocks to tab                 |
 | `test/storyarn/flows_test.exs`                                       | A      | Instruction node tests             |
 | New test files                                                       | A+B    | Domain + tracker tests             |
 
@@ -1473,20 +1473,20 @@ Each phase should be committed separately.
 ### Phase A ✅
 - [x] `mix test` — all tests pass (576 tests, 0 failures + 35 new instruction tests)
 - [x] Create instruction node → panel shows sentence-flow assignment builder
-- [x] Builder renders as inline sentence: "Set _page_ · _variable_ to _value_"
+- [x] Builder renders as inline sentence: "Set _sheet_ · _variable_ to _value_"
 - [x] All inputs are borderless with bottom border only (sentence-flow style)
 - [x] Input width auto-adjusts to content
-- [x] **Combobox search:** Type in page input → filters pages by title and shortcut
+- [x] **Combobox search:** Type in sheet input → filters sheets by title and shortcut
 - [x] **Combobox search:** Type in variable input → filters variables by name and label
-- [x] **Combobox dropdown:** Options grouped by page with sticky headers
-- [x] **Auto-advance:** Selecting a page → auto-focuses variable combobox
+- [x] **Combobox dropdown:** Options grouped by sheet with sticky headers
+- [x] **Auto-advance:** Selecting a sheet → auto-focuses variable combobox
 - [x] **Auto-advance:** Selecting a variable → auto-selects operator and focuses value input
 - [x] **Auto-advance:** Completing last input → focuses "+ Add assignment" button
 - [x] Select variable → sentence template changes based on variable type (operator auto-selected)
-- [x] Boolean variable → sentence reads "Set _page_ · _variable_ to true" (no value input, no toggle)
-- [x] Number variable → shows set/add/subtract; "Add _value_ to _page_ · _variable_"
+- [x] Boolean variable → sentence reads "Set _sheet_ · _variable_ to true" (no value input, no toggle)
+- [x] Number variable → shows set/add/subtract; "Add _value_ to _sheet_ · _variable_"
 - [x] Value type toggle `[123]`/`[{x}]` visible for operators that require a value
-- [x] Toggle to `{x}` → value slot becomes two comboboxes (source page + source variable)
+- [x] Toggle to `{x}` → value slot becomes two comboboxes (source sheet + source variable)
 - [x] Toggle back to `123` → clears source and shows typed value input
 - [x] Canvas preview uses sentence format: "Set mc.link.hasMasterSword to global.quests.masterSwordDone"
 - [x] Canvas preview for literal: "Add 10 to mc.jaime.health"
@@ -1505,17 +1505,17 @@ Each phase should be committed separately.
 - [x] `mix test` — 592 tests, 0 failures (15 new tracker tests)
 
 ### Phase C ✅
-- [x] Page editor → References tab → variable usage section visible
+- [x] Sheet editor → References tab → variable usage section visible
 - [x] Shows "Modified by" (warning/yellow) for variables written by instruction nodes
 - [x] Shows "Read by" (info/blue) for variables read by condition nodes
 - [x] Click navigate → opens flow editor zoomed to the node (`?node=X` param)
-- [x] Variables with no usage show "No variables on this page are used in any flow yet."
-- [x] Pages without variables don't show the section at all
+- [x] Variables with no usage show "No variables on this sheet are used in any flow yet."
+- [x] Sheets without variables don't show the section at all
 - [x] Inline detail for write refs shows operator + value (e.g., `+= 10`, `= true`)
 - [x] `mix test` — 597 tests, 0 failures (5 new LiveView tests)
 
 ### Phase D
-- [ ] Rename page shortcut → variable usage still shows (block_id FK intact)
+- [ ] Rename sheet shortcut → variable usage still shows (block_id FK intact)
 - [ ] Node JSON is stale → UI shows warning badge
 - [ ] Repair action updates node JSON to current values
 
@@ -1528,8 +1528,8 @@ These are NOT part of this plan but should be noted. See `FUTURE_FEATURES.md` fo
 1. **Dialogue `output_instruction` → structured builder** — Currently plain text. When converted to structured data, reuse `instruction_builder` hook and add write tracking.
 2. **Dialogue `input_condition` → structured builder** — Currently plain text. When converted, reuse `condition_builder` and add read tracking.
 3. **Cross-flow variable analysis** — "Show me all flows that touch this variable" as a project-level view.
-4. **Variable rename propagation** — When a page shortcut or variable name changes, auto-update all referencing node data (not just the reference table).
+4. **Variable rename propagation** — When a sheet shortcut or variable name changes, auto-update all referencing node data (not just the reference table).
 5. **Export integration** — Include variable reference graph in export format.
 6. **Expression text mode** — Alternative text input for power users (articy:expresso-like). See FUTURE_FEATURES.md.
 7. **Conditional assignments ("When...change...to")** — Inline conditions on assignments. See FUTURE_FEATURES.md.
-8. **Slash commands in value input** — `/page` to switch to variable selector. See FUTURE_FEATURES.md.
+8. **Slash commands in value input** — `/sheet` to switch to variable selector. See FUTURE_FEATURES.md.

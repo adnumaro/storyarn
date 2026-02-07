@@ -15,8 +15,8 @@ import { nodeShell, defaultHeader, renderPreview, renderSockets } from "./render
  * Keep in sync with lib/storyarn/flows/instruction.ex:format_assignment_short/1
  */
 function formatAssignment(assignment) {
-  if (!assignment.page || !assignment.variable) return null;
-  const ref = `${assignment.page}.${assignment.variable}`;
+  if (!assignment.sheet || !assignment.variable) return null;
+  const ref = `${assignment.sheet}.${assignment.variable}`;
   const op = assignment.operator || "set";
 
   if (op === "set_true") return `Set ${ref} to true`;
@@ -27,10 +27,10 @@ function formatAssignment(assignment) {
   let valueDisplay;
   if (
     assignment.value_type === "variable_ref" &&
-    assignment.value_page &&
+    assignment.value_sheet &&
     assignment.value
   ) {
-    valueDisplay = `${assignment.value_page}.${assignment.value}`;
+    valueDisplay = `${assignment.value_sheet}.${assignment.value}`;
   } else {
     valueDisplay = assignment.value || "?";
   }

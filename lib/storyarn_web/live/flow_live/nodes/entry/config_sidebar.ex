@@ -11,7 +11,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Entry.ConfigSidebar do
   attr :node, :map, required: true
   attr :form, :map, required: true
   attr :can_edit, :boolean, default: false
-  attr :all_pages, :list, default: []
+  attr :all_sheets, :list, default: []
   attr :flow_hubs, :list, default: []
   attr :audio_assets, :list, default: []
   attr :panel_sections, :map, default: %{}

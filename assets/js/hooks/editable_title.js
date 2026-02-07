@@ -1,5 +1,5 @@
 /**
- * EditableTitle hook for inline page title editing.
+ * EditableTitle hook for inline sheet title editing.
  * Works like Notion - transparent editing with auto-save.
  */
 export const EditableTitle = {

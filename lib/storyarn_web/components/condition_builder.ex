@@ -5,7 +5,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   Provides a UI to build compound conditions with AND/OR logic:
   - Toggle between ALL (AND) and ANY (OR) logic
   - Add/remove condition rules
-  - Select page, variable, operator, and value for each rule
+  - Select sheet, variable, operator, and value for each rule
   - Type-aware operator and value inputs
 
   ## Usage
@@ -59,13 +59,13 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
         _string -> Condition.new()
       end
 
-    # Group variables by page for the dropdown
-    pages_with_variables = group_variables_by_page(assigns.variables)
+    # Group variables by sheet for the dropdown
+    sheets_with_variables = group_variables_by_sheet(assigns.variables)
 
     assigns =
       assigns
       |> assign(:parsed_condition, parsed_condition)
-      |> assign(:pages_with_variables, pages_with_variables)
+      |> assign(:sheets_with_variables, sheets_with_variables)
 
     ~H"""
     <%= if @wrap_in_form do %>
@@ -79,7 +79,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
         <.context_hidden_inputs context={@context} />
         <.condition_builder_content
           parsed_condition={@parsed_condition}
-          pages_with_variables={@pages_with_variables}
+          sheets_with_variables={@sheets_with_variables}
           variables={@variables}
           on_change={@on_change}
           target={@target}
@@ -96,7 +96,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
         <.context_hidden_inputs context={@context} />
         <.condition_builder_content
           parsed_condition={@parsed_condition}
-          pages_with_variables={@pages_with_variables}
+          sheets_with_variables={@sheets_with_variables}
           variables={@variables}
           on_change={@on_change}
           target={@target}
@@ -123,7 +123,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
 
   # Inner component to avoid duplication
   attr :parsed_condition, :map, required: true
-  attr :pages_with_variables, :list, default: []
+  attr :sheets_with_variables, :list, default: []
   attr :variables, :list, default: []
   attr :on_change, :string, required: true
   attr :target, :any, default: nil
@@ -212,7 +212,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
         <.condition_rule
           :for={rule <- @parsed_condition["rules"]}
           rule={rule}
-          pages_with_variables={@pages_with_variables}
+          sheets_with_variables={@sheets_with_variables}
           variables={@variables}
           on_change={@on_change}
           target={@target}
@@ -253,7 +253,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   # =============================================================================
 
   attr :rule, :map, required: true
-  attr :pages_with_variables, :list, default: []
+  attr :sheets_with_variables, :list, default: []
   attr :variables, :list, default: []
   attr :on_change, :string, required: true
   attr :target, :any, default: nil
@@ -264,7 +264,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   defp condition_rule(assigns) do
     # Find the selected variable to get its type and options
     selected_var =
-      find_variable(assigns.variables, assigns.rule["page"], assigns.rule["variable"])
+      find_variable(assigns.variables, assigns.rule["sheet"], assigns.rule["variable"])
 
     # Get operators for the variable type
     var_type = if selected_var, do: selected_var.block_type, else: "text"
@@ -300,30 +300,30 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
             class="input input-sm input-bordered flex-1 text-xs font-medium"
           />
         </div>
-        <%!-- Row 1: Page + Variable --%>
+        <%!-- Row 1: Sheet + Variable --%>
         <div class="grid grid-cols-2 gap-2">
           <select
             class="select select-sm select-bordered w-full text-xs"
-            name={"rule_page_#{@rule["id"]}"}
+            name={"rule_sheet_#{@rule["id"]}"}
             disabled={!@can_edit}
           >
-            <option value="">{gettext("Page...")}</option>
+            <option value="">{gettext("Sheet...")}</option>
             <option
-              :for={{page_shortcut, page_name, _vars} <- @pages_with_variables}
-              value={page_shortcut}
-              selected={@rule["page"] == page_shortcut}
+              :for={{sheet_shortcut, sheet_name, _vars} <- @sheets_with_variables}
+              value={sheet_shortcut}
+              selected={@rule["sheet"] == sheet_shortcut}
             >
-              {page_name}
+              {sheet_name}
             </option>
           </select>
           <select
             class="select select-sm select-bordered w-full text-xs"
             name={"rule_variable_#{@rule["id"]}"}
-            disabled={!@can_edit || is_nil(@rule["page"]) || @rule["page"] == ""}
+            disabled={!@can_edit || is_nil(@rule["sheet"]) || @rule["sheet"] == ""}
           >
             <option value="">{gettext("Variable...")}</option>
-            <%= for {page_shortcut, _page_name, vars} <- @pages_with_variables,
-                    page_shortcut == @rule["page"],
+            <%= for {sheet_shortcut, _sheet_name, vars} <- @sheets_with_variables,
+                    sheet_shortcut == @rule["sheet"],
                     var <- vars do %>
               <option value={var.variable_name} selected={@rule["variable"] == var.variable_name}>
                 {var.variable_name}
@@ -483,12 +483,12 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   # =============================================================================
 
   @doc """
-  Groups variables by page for the dropdown.
-  Returns a list of {page_shortcut, page_name, [variables]}.
+  Groups variables by sheet for the dropdown.
+  Returns a list of {sheet_shortcut, sheet_name, [variables]}.
   """
-  def group_variables_by_page(variables) do
+  def group_variables_by_sheet(variables) do
     variables
-    |> Enum.group_by(fn var -> {var.page_shortcut, var.page_name} end)
+    |> Enum.group_by(fn var -> {var.sheet_shortcut, var.sheet_name} end)
     |> Enum.map(fn {{shortcut, name}, vars} ->
       {shortcut, name, vars}
     end)
@@ -496,16 +496,16 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   end
 
   @doc """
-  Finds a variable by page shortcut and variable name.
+  Finds a variable by sheet shortcut and variable name.
   """
-  def find_variable(variables, page_shortcut, variable_name)
-      when is_binary(page_shortcut) and is_binary(variable_name) do
+  def find_variable(variables, sheet_shortcut, variable_name)
+      when is_binary(sheet_shortcut) and is_binary(variable_name) do
     Enum.find(variables, fn var ->
-      var.page_shortcut == page_shortcut and var.variable_name == variable_name
+      var.sheet_shortcut == sheet_shortcut and var.variable_name == variable_name
     end)
   end
 
-  def find_variable(_variables, _page_shortcut, _variable_name), do: nil
+  def find_variable(_variables, _sheet_shortcut, _variable_name), do: nil
 
   # Converts context map to phx-value-* attributes for use in HEEx templates
   defp context_phx_values(context) when is_map(context) do

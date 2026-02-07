@@ -3,28 +3,28 @@ defmodule Storyarn.Shortcuts do
   Utilities for generating and managing shortcuts for pages and flows.
 
   Shortcuts are unique identifiers within a project that can be used to
-  reference pages and flows (e.g., #mc.jaime, #chapter-1).
+  reference sheets and flows (e.g., #mc.jaime, #chapter-1).
   """
 
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.Flow
-  alias Storyarn.Pages.Page
+  alias Storyarn.Sheets.Sheet
   alias Storyarn.Repo
 
   @doc """
-  Generates a unique shortcut for a page based on its name.
+  Generates a unique shortcut for a sheet based on its name.
 
   Returns a slugified version of the name, with a numeric suffix if needed
-  to ensure uniqueness within the project (e.g., "page", "page-1", "page-2").
+  to ensure uniqueness within the project (e.g., "sheet", "sheet-1", "sheet-2").
   """
-  def generate_page_shortcut(name, project_id, exclude_page_id \\ nil) do
+  def generate_sheet_shortcut(name, project_id, exclude_sheet_id \\ nil) do
     base_shortcut = slugify(name)
 
     if base_shortcut == "" do
       nil
     else
-      existing = list_page_shortcuts(project_id, exclude_page_id)
+      existing = list_sheet_shortcuts(project_id, exclude_sheet_id)
       find_unique_shortcut(base_shortcut, existing)
     end
   end
@@ -82,19 +82,19 @@ defmodule Storyarn.Shortcuts do
 
   # Private functions
 
-  defp list_page_shortcuts(project_id, exclude_page_id) do
+  defp list_sheet_shortcuts(project_id, exclude_sheet_id) do
     query =
-      from(p in Page,
+      from(s in Sheet,
         where:
-          p.project_id == ^project_id and
-            is_nil(p.deleted_at) and
-            not is_nil(p.shortcut),
-        select: p.shortcut
+          s.project_id == ^project_id and
+            is_nil(s.deleted_at) and
+            not is_nil(s.shortcut),
+        select: s.shortcut
       )
 
     query =
-      if exclude_page_id do
-        where(query, [p], p.id != ^exclude_page_id)
+      if exclude_sheet_id do
+        where(query, [s], s.id != ^exclude_sheet_id)
       else
         query
       end

@@ -3,7 +3,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   LiveView for workspace team management settings.
   """
   use StoryarnWeb, :live_view
-  use StoryarnWeb.LiveHelpers.Authorize
+  use StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.MemberComponents
 

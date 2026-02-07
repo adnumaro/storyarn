@@ -34,14 +34,14 @@ Variable Timeline System
 │   └── Variables resolved at design-time for preview
 │
 ├── State Calculation Engine
-│   ├── Start from page's initial block values
+│   ├── Start from sheet's initial block values
 │   ├── Walk through flow graph (or selected path)
 │   ├── Apply variable modifications at each node
 │   └── Track state at each step
 │
 ├── Timeline Visualization
-│   ├── Option A: On Page (References tab or new "Timeline" tab)
-│   │   └── "This page's variables change in these flows at these nodes"
+│   ├── Option A: On Sheet (References tab or new "Timeline" tab)
+│   │   └── "This sheet's variables change in these flows at these nodes"
 │   │
 │   ├── Option B: On Flow (sidebar panel)
 │   │   └── Select a node → see variable state at that point
@@ -63,7 +63,7 @@ Variable Timeline System
 
 ### UI Concepts
 
-#### Option A: Page Timeline Tab
+#### Option A: Sheet Timeline Tab
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ [Content] [References] [Timeline]                           │
@@ -135,7 +135,7 @@ Variable Timeline System
    - Apply modifications
    - Handle simple branches (show multiple outcomes)
 
-3. **Timeline UI (Page)**
+3. **Timeline UI (Sheet)**
    - Show where variables change
    - Link to flow nodes
 
@@ -194,8 +194,8 @@ After the visual builder (Phase A) has shipped and received user feedback. If us
 
 - Toggle button on the instruction panel: "Visual" / "Expression"
 - Expression mode: single textarea with autocomplete (like articy:expresso)
-- Autocomplete triggers on typing page shortcuts or variable names
-- Syntax highlighting: page shortcuts in blue, variable names in green, operators in orange
+- Autocomplete triggers on typing sheet shortcuts or variable names
+- Syntax highlighting: sheet shortcuts in blue, variable names in green, operators in orange
 - On save, parse the expression into the same `assignments` data structure
 - Both modes read/write the same underlying data — switching is lossless
 
@@ -212,12 +212,12 @@ articy:draft's expresso language (C#-like syntax with autocomplete and syntax hi
 
 ### Concept
 
-Typing `/page` in a value input field switches it to a page variable selector. Typing `/value` switches back to literal value input.
+Typing `/sheet` in a value input field switches it to a sheet variable selector. Typing `/value` switches back to literal value input.
 
 ### Example Flow
 
 1. User is in a value input field (expects a number)
-2. Types `/page` → field transforms into a page+variable combobox
+2. Types `/sheet` → field transforms into a sheet+variable combobox
 3. Selects `global.quests.masterSwordDone` → value is set as variable reference
 4. To go back: types `/value` → field transforms back to literal input
 
@@ -356,7 +356,7 @@ AI Gallery System
 │   └── Max images per gallery (configurable, e.g., 12)
 │
 ├── Context Builder
-│   ├── Collect page blocks as context
+│   ├── Collect sheet blocks as context
 │   │   ├── name, description (text/rich_text blocks)
 │   │   ├── attributes (select, multi_select blocks)
 │   │   └── related entities (reference blocks)
@@ -386,7 +386,7 @@ AI Gallery System
 ### Context Building Example
 
 ```
-Page: Jaime (Character)
+Sheet: Jaime (Character)
 Blocks:
   - name: "Jaime"
   - race: "Human"
@@ -443,7 +443,7 @@ On image hover:
   style_preset: "fantasy_portrait",
   aspect_ratio: "1:1",        # 1:1, 16:9, 9:16, 4:3
   max_images: 12,
-  auto_context: true,         # Use page blocks as context
+  auto_context: true,         # Use sheet blocks as context
   custom_prompt_suffix: "",   # Additional prompt text
   negative_prompt: "blurry, low quality"
 }
@@ -469,7 +469,7 @@ On image hover:
    - Save to Assets
 
 3. **Context Builder**
-   - Collect page blocks
+   - Collect sheet blocks
    - Build prompts automatically
    - Style preset application
 
@@ -489,17 +489,17 @@ On image hover:
 
 ---
 
-## Page Templates
+## Sheet Templates
 
 > **Status:** Discussed but deferred - revisit after Phase 7.5
 
 ### Concept
 
-Reusable page structures with predefined blocks. Create a "Character" template, then create characters from it.
+Reusable sheet structures with predefined blocks. Create a "Character" template, then create characters from it.
 
 ### Briefly Discussed
 
-- Templates would define which blocks a page type has
+- Templates would define which blocks a sheet type has
 - Similar to articy:draft's template system
 - Could include default values
 - Possibly inheritable/extendable
@@ -507,8 +507,8 @@ Reusable page structures with predefined blocks. Create a "Character" template, 
 ### Open Questions
 
 - How do templates relate to shortcuts?
-- Can a page's template be changed after creation?
-- How to handle template updates (sync to existing pages?)
+- Can a sheet's template be changed after creation?
+- How to handle template updates (sync to existing sheets?)
 - Versioning for templates?
 
 *To be fully designed when the feature is prioritized.*
@@ -519,7 +519,7 @@ Reusable page structures with predefined blocks. Create a "Character" template, 
 
 > **Status:** Research needed - Study articy:draft's Feature system
 >
-> **Priority:** Medium - Would enhance Page Templates significantly
+> **Priority:** Medium - Would enhance Sheet Templates significantly
 
 ### Concept
 
@@ -574,18 +574,18 @@ Templates reference Features by ID:
 - "Character" = [feature:basic_info, feature:combat_stats, feature:dialogue_actor]
 ```
 
-**Option B: Features as Page Types**
+**Option B: Features as Sheet Types**
 ```
-Features are special pages that define blocks:
-- Page "/features/combat-stats" with blocks [health, attack, defense]
+Features are special sheets that define blocks:
+- Sheet "/features/combat-stats" with blocks [health, attack, defense]
 
-Templates inherit from multiple feature pages (multiple inheritance)
+Templates inherit from multiple feature sheets (multiple inheritance)
 ```
 
 **Option C: Tags + Smart Defaults**
 ```
 Instead of formal Features, use tags and smart defaults:
-- Tag a page as "combatant" → suggest combat blocks
+- Tag a sheet as "combatant" → suggest combat blocks
 - Less structured but more flexible
 ```
 
@@ -602,23 +602,23 @@ Instead of formal Features, use tags and smart defaults:
 3. Prototype simple Feature composition UI
 4. Decide on data model (Option A/B/C or hybrid)
 
-*This feature significantly impacts Page Templates. Should be researched before finalizing template design.*
+*This feature significantly impacts Sheet Templates. Should be researched before finalizing template design.*
 
 ---
 
 ## Technical Considerations
 
-### Shortcut Auto-Update vs Page Versioning
+### Shortcut Auto-Update vs Sheet Versioning
 
 > **Status:** Needs evaluation before implementing versioning (Phase 7.5.5)
 
 **Current Behavior:**
-- When a page/flow is renamed, its shortcut auto-updates to match the new name
+- When a sheet/flow is renamed, its shortcut auto-updates to match the new name
 - References are stored by ID (stable), so the actual shortcut text change is transparent
 - When rendering a reference, the current shortcut is resolved from the ID
 
 **Versioning Impact:**
-When page versioning is implemented, consider how shortcut changes should be recorded:
+When sheet versioning is implemented, consider how shortcut changes should be recorded:
 
 1. **Version snapshots:** Should the shortcut at the time of snapshot be preserved?
    - Pro: Historical accuracy - "what was the shortcut when this version was created?"
@@ -635,7 +635,7 @@ When page versioning is implemented, consider how shortcut changes should be rec
 
 4. **Conflict handling:**
    - What if restoring a version would create a shortcut conflict?
-   - Example: Version 1 had shortcut "hero", current page "hero-2" exists
+   - Example: Version 1 had shortcut "hero", current sheet "hero-2" exists
 
 **Recommendation:**
 Evaluate these scenarios before implementing versioning. The simplest approach may be:
@@ -655,14 +655,14 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
 
 **Feature Request:** Enhance header customization with options:
 - **Default mode** (current): Keep dialogue node color, show avatar + name
-- **Banner mode**: Use `Page.banner_asset_id` as header background
-- **Color mode**: Use speaker's custom color (requires adding color field to Page)
+- **Banner mode**: Use `Sheet.banner_asset_id` as header background
+- **Color mode**: Use speaker's custom color (requires adding color field to Sheet)
 
 **Implementation Options:**
 
-1. **Per-Page Setting:**
+1. **Per-Sheet Setting:**
    ```elixir
-   # Add to pages table
+   # Add to sheets table
    :header_display_mode  # "banner" | "color"
    :header_color         # hex color when mode is "color"
    ```
@@ -675,8 +675,8 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
    ```
 
 **UI:**
-- Page settings: "Header display: [Default ▼] / [Banner ▼] / [Color ▼]"
-- Dialogue node (optional): "Override header: [Use page default ▼]"
+- Sheet settings: "Header display: [Default ▼] / [Banner ▼] / [Color ▼]"
+- Dialogue node (optional): "Override header: [Use sheet default ▼]"
 
 **Design Considerations:**
 - Banner backgrounds may cause readability issues with avatar + title
@@ -745,17 +745,17 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
 ## Other Ideas (Not Yet Planned)
 
 ### Search & Query System
-- Full-text search across pages and blocks
+- Full-text search across sheets and blocks
 - Advanced query language (like articy)
 - Saved searches/filters
 
 ### Rollups & Aggregations
-- Sum/count/average of numeric blocks across pages
+- Sum/count/average of numeric blocks across sheets
 - "Total gold across all characters"
 - Dashboard views
 
 ### Comments & Annotations
-- Comments on pages/blocks
+- Comments on sheets/blocks
 - @mention team members
 - Resolved/unresolved status
 
@@ -764,7 +764,7 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
 - Webhooks for change notifications
 - Integration with external tools
 
-### Real-time Collaboration on Pages
+### Real-time Collaboration on Sheets
 - Cursor sharing (like flows have now)
 - Block locking
 - Presence indicators
@@ -789,7 +789,7 @@ Inspired by World Anvil's secrets/visibility system, but adapted for game develo
 
 **Open Questions:**
 - How does this relate to workspace/project roles?
-- Per-block visibility or per-page?
+- Per-block visibility or per-sheet?
 - Does this belong in Storyarn or in external documentation tools?
 
 **Note:** The user mentioned having a different approach in mind for visibility features. This section is kept as a reference for the World Anvil pattern, but implementation should follow the user's alternative design when specified.

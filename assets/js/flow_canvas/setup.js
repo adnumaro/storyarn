@@ -12,7 +12,7 @@ import { MinimapPlugin } from "rete-minimap-plugin";
 /**
  * Creates and configures all Rete.js plugins.
  * @param {HTMLElement} container - The DOM container element
- * @param {Object} hook - The FlowCanvas hook instance (for pagesMap + connectionDataMap)
+ * @param {Object} hook - The FlowCanvas hook instance (for sheetsMap + connectionDataMap)
  * @returns {{ editor, area, connection, minimap, render }}
  */
 export function createPlugins(container, hook) {
@@ -41,7 +41,7 @@ export function createPlugins(container, hook) {
               <storyarn-node
                 .data=${nodeData}
                 .emit=${emit}
-                .pagesMap=${hook.pagesMap}
+                .sheetsMap=${hook.sheetsMap}
                 .hubsMap=${hook.hubsMap}
               ></storyarn-node>
             `;

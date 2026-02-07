@@ -2,7 +2,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.LiveHelpers.Authorize
+  use StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.CollaborationComponents
   import StoryarnWeb.Components.SaveIndicator
@@ -16,7 +16,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Pages
+  alias Storyarn.Sheets
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
@@ -126,7 +126,7 @@ defmodule StoryarnWeb.FlowLive.Show do
             phx-update="ignore"
             class="absolute inset-0"
             data-flow={Jason.encode!(@flow_data)}
-            data-pages={Jason.encode!(FormHelpers.pages_map(@all_pages))}
+            data-sheets={Jason.encode!(FormHelpers.sheets_map(@all_sheets))}
             data-locks={Jason.encode!(@node_locks)}
             data-user-id={@current_scope.user.id}
             data-user-color={Collaboration.user_color(@current_scope.user.id)}
@@ -140,7 +140,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           node={@selected_node}
           form={@node_form}
           can_edit={@can_edit}
-          all_pages={@all_pages}
+          all_sheets={@all_sheets}
           flow_hubs={@flow_hubs}
           audio_assets={@audio_assets}
           panel_sections={@panel_sections}
@@ -158,7 +158,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         id={"screenplay-editor-#{@selected_node.id}"}
         node={@selected_node}
         can_edit={@can_edit}
-        all_pages={@all_pages}
+        all_sheets={@all_sheets}
         on_close={JS.push("close_editor")}
         on_open_sidebar={JS.push("open_sidebar")}
       />
@@ -170,7 +170,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         show={@preview_show}
         start_node={@preview_node}
         project={@project}
-        pages_map={FormHelpers.pages_map(@all_pages)}
+        sheets_map={FormHelpers.sheets_map(@all_sheets)}
       />
     </div>
     """
@@ -215,10 +215,10 @@ defmodule StoryarnWeb.FlowLive.Show do
     project = Repo.preload(project, :workspace)
     can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
     flow_data = Flows.serialize_for_canvas(flow)
-    all_pages = Pages.list_all_pages(project.id)
+    all_sheets = Sheets.list_all_sheets(project.id)
     flow_hubs = Flows.list_hubs(flow.id)
     audio_assets = Assets.list_assets(project.id, content_type: "audio/")
-    project_variables = Pages.list_project_variables(project.id)
+    project_variables = Sheets.list_project_variables(project.id)
     user = socket.assigns.current_scope.user
 
     CollaborationHelpers.setup_collaboration(socket, flow, user)
@@ -232,7 +232,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     |> assign(:flow_data, flow_data)
     |> assign(:can_edit, can_edit)
     |> assign(:node_types, @node_types)
-    |> assign(:all_pages, all_pages)
+    |> assign(:all_sheets, all_sheets)
     |> assign(:flow_hubs, flow_hubs)
     |> assign(:audio_assets, audio_assets)
     |> assign(:project_variables, project_variables)
@@ -312,8 +312,8 @@ defmodule StoryarnWeb.FlowLive.Show do
     GenericNodeHandlers.handle_deselect_node(socket)
   end
 
-  def handle_event("create_page", _params, socket) do
-    with_auth(:edit_content, socket, fn -> GenericNodeHandlers.handle_create_page(socket) end)
+  def handle_event("create_sheet", _params, socket) do
+    with_auth(:edit_content, socket, fn -> GenericNodeHandlers.handle_create_sheet(socket) end)
   end
 
   def handle_event("node_moved", params, socket) do

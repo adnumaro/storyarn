@@ -3,7 +3,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Pages
+  alias Storyarn.Sheets
   alias Storyarn.Projects
   alias Storyarn.Repo
 
@@ -15,7 +15,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      pages_tree={@pages_tree}
+      sheets_tree={@sheets_tree}
       current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
     >
       <div class="text-center mb-8">
@@ -55,7 +55,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
       {:ok, project, membership} ->
         project = Repo.preload(project, :workspace)
         can_manage = Projects.ProjectMembership.can?(membership.role, :manage_project)
-        pages_tree = Pages.list_pages_tree(project.id)
+        sheets_tree = Sheets.list_sheets_tree(project.id)
 
         socket =
           socket
@@ -64,7 +64,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
           |> assign(:current_workspace, project.workspace)
           |> assign(:membership, membership)
           |> assign(:can_manage, can_manage)
-          |> assign(:pages_tree, pages_tree)
+          |> assign(:sheets_tree, sheets_tree)
 
         {:ok, socket}
 

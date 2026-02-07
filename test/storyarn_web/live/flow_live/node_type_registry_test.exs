@@ -72,7 +72,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistryTest do
     test "includes all required fields" do
       data = NodeTypeRegistry.default_data("dialogue")
 
-      assert Map.has_key?(data, "speaker_page_id")
+      assert Map.has_key?(data, "speaker_sheet_id")
       assert Map.has_key?(data, "text")
       assert Map.has_key?(data, "stage_directions")
       assert Map.has_key?(data, "menu_text")
@@ -107,14 +107,14 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistryTest do
   describe "dialogue extract_form_data details" do
     test "preserves existing values and defaults missing ones" do
       data = %{
-        "speaker_page_id" => "123",
+        "speaker_sheet_id" => "123",
         "text" => "<p>Hello</p>",
         "responses" => [%{"id" => "r1", "text" => "Hi"}]
       }
 
       result = NodeTypeRegistry.extract_form_data("dialogue", data)
 
-      assert result["speaker_page_id"] == "123"
+      assert result["speaker_sheet_id"] == "123"
       assert result["text"] == "<p>Hello</p>"
       assert result["responses"] == [%{"id" => "r1", "text" => "Hi"}]
       # Missing fields get defaults

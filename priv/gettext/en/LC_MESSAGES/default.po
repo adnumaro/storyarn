@@ -16,120 +16,111 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:99
-#: lib/storyarn_web/components/layouts.ex:111
+#: lib/storyarn_web/components/layouts.ex:464
+#: lib/storyarn_web/components/layouts.ex:476
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:106
+#: lib/storyarn_web/components/layouts.ex:471
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:94
+#: lib/storyarn_web/components/layouts.ex:459
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""
 
 #: lib/storyarn_web/components/core_components.ex:74
-#: lib/storyarn_web/components/core_components.ex:494
+#: lib/storyarn_web/components/core_components.ex:530
 #, elixir-autogen, elixir-format
 msgid "close"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:320
+#: lib/storyarn_web/live/settings_live/profile.ex:158
 #, elixir-autogen, elixir-format
 msgid "A link to confirm your email change has been sent to the new address."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:14
-#, elixir-autogen, elixir-format
-msgid "Account Settings"
-msgstr ""
-
-#: lib/storyarn_web/live/user_live/registration.ex:16
+#: lib/storyarn_web/live/user_live/registration.ex:19
 #, elixir-autogen, elixir-format
 msgid "Already registered?"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:74
+#: lib/storyarn_web/live/user_live/registration.ex:99
 #, elixir-autogen, elixir-format
 msgid "An email was sent to %{email}, please access it to confirm your account."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:169
+#: lib/storyarn_web/live/settings_live/connections.ex:102
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to unlink this account?"
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:34
-#, elixir-autogen, elixir-format
-msgid "Authentication failed: %{reason}"
-msgstr ""
-
-#: lib/storyarn_web/controllers/oauth_controller.ex:120
+#: lib/storyarn_web/controllers/oauth_controller.ex:115
 #, elixir-autogen, elixir-format
 msgid "Cannot unlink your only authentication method. Set a password first."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:95
+#: lib/storyarn_web/live/settings_live/profile.ex:103
 #, elixir-autogen, elixir-format
 msgid "Change Email"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:94
+#: lib/storyarn_web/live/settings_live/profile.ex:102
 #, elixir-autogen, elixir-format
 msgid "Changing..."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:37
+#: lib/storyarn_web/live/user_live/confirmation.ex:39
 #, elixir-autogen, elixir-format
 msgid "Confirm and log in only this time"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:31
+#: lib/storyarn_web/live/user_live/confirmation.ex:33
 #, elixir-autogen, elixir-format
 msgid "Confirm and stay logged in"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:131
+#: lib/storyarn_web/live/settings_live/security.ex:73
 #, elixir-autogen, elixir-format
 msgid "Confirm new password"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:28
-#: lib/storyarn_web/live/user_live/confirmation.ex:34
+#: lib/storyarn_web/live/user_live/confirmation.ex:30
+#: lib/storyarn_web/live/user_live/confirmation.ex:36
 #, elixir-autogen, elixir-format
 msgid "Confirming..."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:183
+#: lib/storyarn_web/live/settings_live/connections.ex:116
 #, elixir-autogen, elixir-format
 msgid "Connect"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:178
+#: lib/storyarn_web/live/settings_live/connections.ex:111
 #, elixir-autogen, elixir-format
 msgid "Connected"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:47
+#: lib/storyarn_web/live/settings_live/connections.ex:18
+#: lib/storyarn_web/live/settings_live/connections.ex:35
 #, elixir-autogen, elixir-format
 msgid "Connected Accounts"
 msgstr ""
 
-#: lib/storyarn_web/components/core_components.ex:649
+#: lib/storyarn_web/components/ui_components.ex:98
 #, elixir-autogen, elixir-format
 msgid "Continue with Discord"
 msgstr ""
 
-#: lib/storyarn_web/components/core_components.ex:616
+#: lib/storyarn_web/components/ui_components.ex:65
 #, elixir-autogen, elixir-format
 msgid "Continue with GitHub"
 msgstr ""
 
-#: lib/storyarn_web/components/core_components.ex:640
+#: lib/storyarn_web/components/ui_components.ex:89
 #, elixir-autogen, elixir-format
 msgid "Continue with Google"
 msgstr ""
@@ -139,198 +130,189 @@ msgstr ""
 msgid "Could not authenticate: %{errors}"
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:80
+#: lib/storyarn_web/controllers/oauth_controller.ex:75
 #, elixir-autogen, elixir-format
 msgid "Could not link account: %{errors}"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:40
+#: lib/storyarn_web/live/user_live/registration.ex:43
 #, elixir-autogen, elixir-format
 msgid "Create an account"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:39
+#: lib/storyarn_web/live/user_live/registration.ex:42
 #, elixir-autogen, elixir-format
 msgid "Creating account..."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:34
+#: lib/storyarn_web/live/settings_live/profile.ex:68
 #, elixir-autogen, elixir-format
 msgid "Display Name"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:18
+#: lib/storyarn_web/live/user_live/login.ex:21
 #, elixir-autogen, elixir-format
 msgid "Don't have an account?"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:53
-#: lib/storyarn_web/live/user_live/login.ex:77
-#: lib/storyarn_web/live/user_live/registration.ex:33
-#: lib/storyarn_web/live/user_live/settings.ex:90
+#: lib/storyarn_web/live/settings_live/profile.ex:97
+#: lib/storyarn_web/live/user_live/login.ex:56
+#: lib/storyarn_web/live/user_live/login.ex:80
+#: lib/storyarn_web/live/user_live/registration.ex:36
 #, elixir-autogen, elixir-format
 msgid "Email"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:80
+#: lib/storyarn_web/live/settings_live/profile.ex:83
 #, elixir-autogen, elixir-format
 msgid "Email Address"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:243
+#: lib/storyarn_web/live/settings_live/profile.ex:19
 #, elixir-autogen, elixir-format
 msgid "Email change link is invalid or it has expired."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:240
+#: lib/storyarn_web/live/settings_live/profile.ex:16
 #, elixir-autogen, elixir-format
 msgid "Email changed successfully."
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:45
+#: lib/storyarn_web/controllers/oauth_controller.ex:40
 #, elixir-autogen, elixir-format
 msgid "Failed to authenticate with %{provider}: %{message}"
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:91
+#: lib/storyarn_web/controllers/oauth_controller.ex:86
 #, elixir-autogen, elixir-format
 msgid "Failed to link %{provider}: %{message}"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:35
+#: lib/storyarn_web/live/settings_live/profile.ex:69
 #, elixir-autogen, elixir-format
 msgid "How you want to be called"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:124
+#: lib/storyarn_web/live/user_live/login.ex:129
 #, elixir-autogen, elixir-format
 msgid "If your email is in our system, you will receive instructions for logging in shortly."
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:44
+#: lib/storyarn_web/controllers/user_session_controller.ex:48
 #, elixir-autogen, elixir-format
 msgid "Invalid email or password"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:62
+#: lib/storyarn_web/live/user_live/confirmation.ex:64
 #, elixir-autogen, elixir-format
 msgid "Keep me logged in on this device"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:49
-#, elixir-autogen, elixir-format
-msgid "Link your social accounts for easier sign-in."
-msgstr ""
-
-#: lib/storyarn_web/live/user_live/confirmation.ex:53
-#: lib/storyarn_web/live/user_live/login.ex:13
-#: lib/storyarn_web/live/user_live/registration.ex:18
+#: lib/storyarn_web/components/layouts.ex:271
+#: lib/storyarn_web/live/user_live/confirmation.ex:55
+#: lib/storyarn_web/live/user_live/login.ex:16
+#: lib/storyarn_web/live/user_live/registration.ex:21
 #, elixir-autogen, elixir-format
 msgid "Log in"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:88
+#: lib/storyarn_web/live/user_live/login.ex:91
 #, elixir-autogen, elixir-format
 msgid "Log in and stay logged in"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:91
+#: lib/storyarn_web/live/user_live/login.ex:94
 #, elixir-autogen, elixir-format
 msgid "Log in only this time"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:59
+#: lib/storyarn_web/live/user_live/login.ex:62
 #, elixir-autogen, elixir-format
 msgid "Log in with email"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:68
+#: lib/storyarn_web/live/user_live/confirmation.ex:70
 #, elixir-autogen, elixir-format
 msgid "Log me in only this time"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:65
+#: lib/storyarn_web/controllers/user_session_controller.ex:116
 #, elixir-autogen, elixir-format
 msgid "Logged out successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:52
-#: lib/storyarn_web/live/user_live/confirmation.ex:59
-#: lib/storyarn_web/live/user_live/confirmation.ex:65
+#: lib/storyarn_web/live/user_live/confirmation.ex:54
+#: lib/storyarn_web/live/user_live/confirmation.ex:61
+#: lib/storyarn_web/live/user_live/confirmation.ex:67
 #, elixir-autogen, elixir-format
 msgid "Logging in..."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:91
+#: lib/storyarn_web/live/user_live/confirmation.ex:93
 #, elixir-autogen, elixir-format
 msgid "Magic link is invalid or it has expired."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:16
-#, elixir-autogen, elixir-format
-msgid "Manage your account profile, email, password, and connected accounts"
-msgstr ""
-
-#: lib/storyarn_web/live/user_live/settings.ex:124
+#: lib/storyarn_web/live/settings_live/security.ex:66
 #, elixir-autogen, elixir-format
 msgid "New password"
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:113
+#: lib/storyarn_web/controllers/oauth_controller.ex:108
 #, elixir-autogen, elixir-format
 msgid "No %{provider} account linked."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:84
-#: lib/storyarn_web/live/user_live/settings.ex:104
+#: lib/storyarn_web/live/user_live/login.ex:87
 #, elixir-autogen, elixir-format
 msgid "Password"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:60
+#: lib/storyarn_web/controllers/user_session_controller.ex:100
 #, elixir-autogen, elixir-format
 msgid "Password updated successfully!"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:24
+#: lib/storyarn_web/components/layouts.ex:404
+#: lib/storyarn_web/components/sidebar.ex:92
+#: lib/storyarn_web/live/settings_live/profile.ex:51
 #, elixir-autogen, elixir-format
 msgid "Profile"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:288
+#: lib/storyarn_web/live/settings_live/profile.ex:129
 #, elixir-autogen, elixir-format
 msgid "Profile updated successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:14
+#: lib/storyarn_web/live/user_live/registration.ex:17
 #, elixir-autogen, elixir-format
 msgid "Register for an account"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:135
-#, elixir-autogen, elixir-format
-msgid "Save Password"
-msgstr ""
-
-#: lib/storyarn_web/live/user_live/settings.ex:38
+#: lib/storyarn_web/live/settings_live/profile.ex:73
 #, elixir-autogen, elixir-format
 msgid "Save Profile"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/form.ex:40
-#: lib/storyarn_web/live/project_live/settings.ex:45
-#: lib/storyarn_web/live/user_live/settings.ex:37
-#: lib/storyarn_web/live/user_live/settings.ex:134
+#: lib/storyarn_web/components/save_indicator.ex:38
+#: lib/storyarn_web/components/save_indicator.ex:53
+#: lib/storyarn_web/live/project_live/form.ex:42
+#: lib/storyarn_web/live/project_live/settings.ex:56
+#: lib/storyarn_web/live/settings_live/profile.ex:72
+#: lib/storyarn_web/live/settings_live/security.ex:77
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:79
 #, elixir-autogen, elixir-format
 msgid "Saving..."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:176
+#: lib/storyarn_web/live/settings_live/connections.ex:109
 #, elixir-autogen, elixir-format
 msgid "Set a password before unlinking"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:22
+#: lib/storyarn_web/components/layouts.ex:274
+#: lib/storyarn_web/live/user_live/login.ex:25
 #, elixir-autogen, elixir-format
 msgid "Sign up"
 msgstr ""
@@ -340,468 +322,2811 @@ msgstr ""
 msgid "Successfully authenticated with %{provider}."
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:72
+#: lib/storyarn_web/controllers/oauth_controller.ex:67
 #, elixir-autogen, elixir-format
 msgid "Successfully linked %{provider} account."
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:107
+#: lib/storyarn_web/controllers/oauth_controller.ex:102
 #, elixir-autogen, elixir-format
 msgid "Successfully unlinked %{provider} account."
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:28
+#: lib/storyarn_web/controllers/user_session_controller.ex:29
 #, elixir-autogen, elixir-format
 msgid "The link is invalid or it has expired."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:74
+#: lib/storyarn_web/live/user_live/confirmation.ex:76
 #, elixir-autogen, elixir-format
 msgid "Tip: If you prefer passwords, you can enable them in the user settings."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:33
+#: lib/storyarn_web/live/user_live/login.ex:36
 #, elixir-autogen, elixir-format
 msgid "To see sent emails, visit"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/settings.ex:171
+#: lib/storyarn_web/live/settings_live/connections.ex:104
 #, elixir-autogen, elixir-format
 msgid "Unlink"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:9
+#: lib/storyarn_web/controllers/user_session_controller.ex:10
 #, elixir-autogen, elixir-format
 msgid "User confirmed successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:12
+#: lib/storyarn_web/live/user_live/confirmation.ex:14
 #, elixir-autogen, elixir-format
 msgid "Welcome %{email}"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:13
+#: lib/storyarn_web/controllers/user_session_controller.ex:14
 #, elixir-autogen, elixir-format
 msgid "Welcome back!"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:31
+#: lib/storyarn_web/live/user_live/login.ex:34
 #, elixir-autogen, elixir-format
 msgid "You are running the local mail adapter."
 msgstr ""
 
-#: lib/storyarn_web/user_auth.ex:230
-#: lib/storyarn_web/user_auth.ex:282
+#: lib/storyarn_web/user_auth.ex:231
+#: lib/storyarn_web/user_auth.ex:311
 #, elixir-autogen, elixir-format
 msgid "You must log in to access this page."
 msgstr ""
 
-#: lib/storyarn_web/user_auth.ex:247
+#: lib/storyarn_web/user_auth.ex:248
 #, elixir-autogen, elixir-format
 msgid "You must re-authenticate to access this page."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:16
+#: lib/storyarn_web/live/user_live/login.ex:19
 #, elixir-autogen, elixir-format
 msgid "You need to reauthenticate to perform sensitive actions on your account."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:22
+#: lib/storyarn_web/live/user_live/login.ex:25
 #, elixir-autogen, elixir-format
 msgid "for an account now."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:63
+#: lib/storyarn_web/live/user_live/login.ex:66
 #, elixir-autogen, elixir-format
 msgid "or"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:40
+#: lib/storyarn_web/live/user_live/login.ex:43
 #, elixir-autogen, elixir-format
 msgid "or continue with email"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:27
+#: lib/storyarn_web/live/user_live/registration.ex:30
 #, elixir-autogen, elixir-format
 msgid "or register with email"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:33
-#, elixir-autogen, elixir-format
-msgid "the mailbox page"
-msgstr ""
-
-#: lib/storyarn_web/live/user_live/registration.ex:20
+#: lib/storyarn_web/live/user_live/registration.ex:23
 #, elixir-autogen, elixir-format
 msgid "to your account now."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/form.ex:33
+#: lib/storyarn_web/live/project_live/form.ex:35
 #, elixir-autogen, elixir-format
 msgid "A brief description of your project"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:33
+#: lib/storyarn_web/live/project_live/invitation.ex:35
+#: lib/storyarn_web/live/workspace_live/invitation.ex:35
 #, elixir-autogen, elixir-format
 msgid "Accept Invitation"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:298
+#: lib/storyarn_web/live/project_live/settings.ex:372
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:211
 #, elixir-autogen, elixir-format
 msgid "An invitation has already been sent to this email."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:118
+#: lib/storyarn_web/live/project_live/settings.ex:155
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to delete this project? This action cannot be undone."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:156
+#: lib/storyarn_web/components/member_components.ex:137
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Are you sure you want to remove this member?"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:184
+#: lib/storyarn_web/components/member_components.ex:185
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Are you sure you want to revoke this invitation?"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:11
-#, elixir-autogen, elixir-format
-msgid "Back to project"
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/show.ex:11
-#, elixir-autogen, elixir-format
-msgid "Back to projects"
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/form.ex:38
+#: lib/storyarn_web/components/block_components/block_menu.ex:122
+#: lib/storyarn_web/live/components/asset_upload.ex:87
+#: lib/storyarn_web/live/flow_live/form.ex:40
+#: lib/storyarn_web/live/project_live/form.ex:40
+#: lib/storyarn_web/live/project_live/trash.ex:66
+#: lib/storyarn_web/live/project_live/trash.ex:79
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:431
+#: lib/storyarn_web/live/workspace_live/new.ex:51
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:344
+#: lib/storyarn_web/live/project_live/settings.ex:418
 #, elixir-autogen, elixir-format
 msgid "Cannot remove the project owner."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/form.ex:41
+#: lib/storyarn_web/live/project_live/form.ex:43
 #, elixir-autogen, elixir-format
 msgid "Create Project"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:109
+#: lib/storyarn_web/live/project_live/settings.ex:146
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:89
 #, elixir-autogen, elixir-format
 msgid "Danger Zone"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:36
+#: lib/storyarn_web/live/project_live/invitation.ex:38
+#: lib/storyarn_web/live/workspace_live/invitation.ex:38
 #, elixir-autogen, elixir-format
 msgid "Decline"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:121
+#: lib/storyarn_web/live/project_live/settings.ex:158
 #, elixir-autogen, elixir-format
 msgid "Delete Project"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/form.ex:32
-#: lib/storyarn_web/live/project_live/settings.ex:42
+#: lib/storyarn_web/live/flow_live/form.ex:34
+#: lib/storyarn_web/live/flow_live/nodes/instruction/config_sidebar.ex:37
+#: lib/storyarn_web/live/project_live/form.ex:34
+#: lib/storyarn_web/live/project_live/settings.ex:53
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:68
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:414
+#: lib/storyarn_web/live/workspace_live/new.ex:45
 #, elixir-autogen, elixir-format
 msgid "Description"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:84
+#: lib/storyarn_web/live/project_live/settings.ex:97
 #, elixir-autogen, elixir-format
 msgid "Editor"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:73
+#: lib/storyarn_web/live/project_live/settings.ex:86
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:100
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Email address"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:157
+#: lib/storyarn_web/live/project_live/invitation.ex:166
+#: lib/storyarn_web/live/workspace_live/invitation.ex:163
 #, elixir-autogen, elixir-format
 msgid "Failed to accept invitation. Please try again."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:362
+#: lib/storyarn_web/live/project_live/settings.ex:337
 #, elixir-autogen, elixir-format
 msgid "Failed to delete project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:306
+#: lib/storyarn_web/live/project_live/settings.ex:380
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:219
 #, elixir-autogen, elixir-format
 msgid "Failed to send invitation. Please try again."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:73
+#: lib/storyarn_web/live/project_live/invitation.ex:75
+#: lib/storyarn_web/live/workspace_live/invitation.ex:75
 #, elixir-autogen, elixir-format
 msgid "Go to Homepage"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:67
+#: lib/storyarn_web/live/project_live/invitation.ex:69
+#: lib/storyarn_web/live/workspace_live/invitation.ex:69
 #, elixir-autogen, elixir-format
 msgid "Invalid Invitation"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:324
+#: lib/storyarn_web/live/project_live/settings.ex:398
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:237
 #, elixir-autogen, elixir-format
 msgid "Invitation not found."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:320
+#: lib/storyarn_web/live/project_live/settings.ex:394
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:233
 #, elixir-autogen, elixir-format
 msgid "Invitation revoked."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:288
+#: lib/storyarn_web/live/project_live/settings.ex:362
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:201
 #, elixir-autogen, elixir-format
 msgid "Invitation sent successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:66
+#: lib/storyarn_web/live/project_live/settings.ex:79
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:93
 #, elixir-autogen, elixir-format
 msgid "Invite a new member"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:23
-#: lib/storyarn_web/live/project_live/settings.ex:174
+#: lib/storyarn_web/components/member_components.ex:173
+#: lib/storyarn_web/live/project_live/invitation.ex:25
+#: lib/storyarn_web/live/workspace_live/invitation.ex:25
 #, elixir-autogen, elixir-format
 msgid "Invited by"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:60
+#: lib/storyarn_web/live/project_live/invitation.ex:62
+#: lib/storyarn_web/live/workspace_live/invitation.ex:62
 #, elixir-autogen, elixir-format
 msgid "Log in to accept"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/dashboard.ex:14
-#, elixir-autogen, elixir-format
-msgid "Manage your narrative projects"
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/settings.ex:18
+#: lib/storyarn_web/live/project_live/settings.ex:29
 #, elixir-autogen, elixir-format
 msgid "Manage your project details and team members"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:347
+#: lib/storyarn_web/live/project_live/settings.ex:421
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:247
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:277
 #, elixir-autogen, elixir-format
 msgid "Member not found."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:339
+#: lib/storyarn_web/live/project_live/settings.ex:413
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:289
 #, elixir-autogen, elixir-format
 msgid "Member removed."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/form.ex:26
+#: lib/storyarn_web/live/project_live/form.ex:28
 #, elixir-autogen, elixir-format
 msgid "My Narrative Project"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/dashboard.ex:19
-#: lib/storyarn_web/live/project_live/dashboard.ex:50
+#: lib/storyarn_web/live/workspace_live/show.ex:112
+#: lib/storyarn_web/live/workspace_live/show.ex:150
 #, elixir-autogen, elixir-format
 msgid "New Project"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/dashboard.ex:77
-#, elixir-autogen, elixir-format
-msgid "No description"
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/dashboard.ex:28
-#, elixir-autogen, elixir-format
-msgid "No projects yet. Create your first project to get started."
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/settings.ex:112
+#: lib/storyarn_web/live/project_live/settings.ex:149
 #, elixir-autogen, elixir-format
 msgid "Once you delete a project, there is no going back. Please be certain."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:179
+#: lib/storyarn_web/components/member_components.ex:179
 #, elixir-autogen, elixir-format
 msgid "Pending"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:99
+#: lib/storyarn_web/live/project_live/settings.ex:112
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:127
 #, elixir-autogen, elixir-format
 msgid "Pending Invitations"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:54
+#: lib/storyarn_web/live/project_live/invitation.ex:56
+#: lib/storyarn_web/live/workspace_live/invitation.ex:56
 #, elixir-autogen, elixir-format
 msgid "Please log in or create an account to accept this invitation."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:49
+#: lib/storyarn_web/live/project_live/invitation.ex:51
+#: lib/storyarn_web/live/workspace_live/invitation.ex:51
 #, elixir-autogen, elixir-format
 msgid "Please log in with the correct email address to accept this invitation."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:26
+#: lib/storyarn_web/live/project_live/settings.ex:37
 #, elixir-autogen, elixir-format
 msgid "Project Details"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/form.ex:25
-#: lib/storyarn_web/live/project_live/settings.ex:36
+#: lib/storyarn_web/live/project_live/form.ex:27
+#: lib/storyarn_web/live/project_live/settings.ex:47
 #, elixir-autogen, elixir-format
 msgid "Project Name"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:16
+#: lib/storyarn_web/live/project_live/settings.ex:27
 #, elixir-autogen, elixir-format
 msgid "Project Settings"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/dashboard.ex:104
+#: lib/storyarn_web/live/workspace_live/show.ex:212
 #, elixir-autogen, elixir-format
 msgid "Project created successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:356
+#: lib/storyarn_web/live/project_live/settings.ex:331
 #, elixir-autogen, elixir-format
 msgid "Project deleted."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:226
-#: lib/storyarn_web/live/project_live/show.ex:55
+#: lib/storyarn_web/live/project_live/settings.ex:211
+#: lib/storyarn_web/live/project_live/show.ex:74
+#: lib/storyarn_web/live/project_live/trash.ex:198
 #, elixir-autogen, elixir-format
 msgid "Project not found."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:265
+#: lib/storyarn_web/live/project_live/settings.ex:246
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Project updated successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/show.ex:31
+#: lib/storyarn_web/live/project_live/show.ex:41
 #, elixir-autogen, elixir-format
 msgid "Project workspace coming soon!"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/dashboard.ex:12
-#, elixir-autogen, elixir-format
-msgid "Projects"
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/settings.ex:82
+#: lib/storyarn_web/live/project_live/settings.ex:95
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:109
 #, elixir-autogen, elixir-format
 msgid "Role"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:46
+#: lib/storyarn_web/live/project_live/settings.ex:57
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:80
 #, elixir-autogen, elixir-format
 msgid "Save Changes"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:90
+#: lib/storyarn_web/live/project_live/settings.ex:103
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:118
 #, elixir-autogen, elixir-format
 msgid "Send Invite"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/show.ex:23
+#: lib/storyarn_web/components/project_sidebar.ex:97
+#: lib/storyarn_web/live/project_live/show.ex:33
 #, elixir-autogen, elixir-format
 msgid "Settings"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:55
+#: lib/storyarn_web/live/project_live/settings.ex:66
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:71
 #, elixir-autogen, elixir-format
 msgid "Team Members"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:294
+#: lib/storyarn_web/live/project_live/settings.ex:368
 #, elixir-autogen, elixir-format
 msgid "This email is already a member of the project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:146
+#: lib/storyarn_web/live/project_live/invitation.ex:151
+#: lib/storyarn_web/live/workspace_live/invitation.ex:148
 #, elixir-autogen, elixir-format
 msgid "This invitation has already been accepted."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:153
+#: lib/storyarn_web/live/project_live/invitation.ex:161
+#: lib/storyarn_web/live/workspace_live/invitation.ex:158
 #, elixir-autogen, elixir-format
 msgid "This invitation has expired. Please request a new one."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:69
+#: lib/storyarn_web/live/project_live/invitation.ex:71
+#: lib/storyarn_web/live/workspace_live/invitation.ex:71
 #, elixir-autogen, elixir-format, fuzzy
 msgid "This invitation link is invalid or has expired."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:43
+#: lib/storyarn_web/live/project_live/invitation.ex:45
+#: lib/storyarn_web/live/workspace_live/invitation.ex:45
 #, elixir-autogen, elixir-format
 msgid "This invitation was sent to"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/show.ex:32
+#: lib/storyarn_web/live/project_live/show.ex:42
 #, elixir-autogen, elixir-format
 msgid "This is where you'll design your narrative flows."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:302
+#: lib/storyarn_web/live/project_live/settings.ex:376
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:215
 #, elixir-autogen, elixir-format
 msgid "Too many invitations. Please try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/dashboard.ex:81
-#, elixir-autogen, elixir-format
-msgid "Updated"
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/settings.ex:85
+#: lib/storyarn_web/live/project_live/settings.ex:98
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:83
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:113
 #, elixir-autogen, elixir-format
 msgid "Viewer"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:127
+#: lib/storyarn_web/live/project_live/invitation.ex:132
 #, elixir-autogen, elixir-format
 msgid "Welcome to the project!"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:232
+#: lib/storyarn_web/live/project_live/settings.ex:204
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:138
+#: lib/storyarn_web/live/project_live/invitation.ex:143
 #, elixir-autogen, elixir-format
 msgid "You're already a member of this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:43
+#: lib/storyarn_web/live/project_live/invitation.ex:45
+#: lib/storyarn_web/live/workspace_live/invitation.ex:45
 #, elixir-autogen, elixir-format
 msgid "You're logged in as"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:16
+#: lib/storyarn_web/live/project_live/invitation.ex:18
 #, elixir-autogen, elixir-format
 msgid "You've been invited to join a project on Storyarn"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:14
+#: lib/storyarn_web/live/project_live/invitation.ex:16
+#: lib/storyarn_web/live/workspace_live/invitation.ex:16
 #, elixir-autogen, elixir-format
 msgid "You've been invited!"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:133
+#: lib/storyarn_web/live/project_live/invitation.ex:138
+#: lib/storyarn_web/live/workspace_live/invitation.ex:135
 #, elixir-autogen, elixir-format
 msgid "Your email doesn't match the invitation."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/invitation.ex:23
+#: lib/storyarn_web/live/project_live/invitation.ex:25
+#: lib/storyarn_web/live/workspace_live/invitation.ex:25
 #, elixir-autogen, elixir-format
 msgid "as"
 msgstr ""
 
-#: lib/storyarn/accounts.ex
+#: lib/storyarn_web/components/collaboration_components.ex:64
+#, elixir-autogen, elixir-format
+msgid "%{count} collaborator"
+msgid_plural "%{count} collaborators"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:161
+#, elixir-autogen, elixir-format
+msgid "%{count} day ago"
+msgid_plural "%{count} days ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/workspace_live/show.ex:199
+#, elixir-autogen, elixir-format
+msgid "%{count} days ago"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:157
+#, elixir-autogen, elixir-format
+msgid "%{count} hour ago"
+msgid_plural "%{count} hours ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/workspace_live/show.ex:198
+#, elixir-autogen, elixir-format
+msgid "%{count} hours ago"
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/show.ex:197
+#, elixir-autogen, elixir-format
+msgid "%{count} min ago"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:153
+#, elixir-autogen, elixir-format
+msgid "%{count} minute ago"
+msgid_plural "%{count} minutes ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/components/collaboration_components.ex:50
+#, elixir-autogen, elixir-format
+msgid "%{count} more user"
+msgid_plural "%{count} more users"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:75
+#, elixir-autogen, elixir-format
+msgid "%{count} subsheet"
+msgid_plural "%{count} subsheets"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:167
+#, elixir-autogen, elixir-format
+msgid "%{count} word"
+msgid_plural "%{count} words"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn/accounts/registration.ex:54
 #, elixir-autogen, elixir-format
 msgid "%{name}'s workspace"
 msgstr "%{name}'s workspace"
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:109
+#, elixir-autogen, elixir-format
+msgid "(derived from label)"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:143
+#, elixir-autogen, elixir-format
+msgid "(empty response)"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:100
+#, elixir-autogen, elixir-format
+msgid "(no label)"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:99
+#, elixir-autogen, elixir-format
+msgid "(stage directions)"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:63
+#, elixir-autogen, elixir-format
+msgid "(whispering)"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/connections.ex:66
+#, elixir-autogen, elixir-format
+msgid "Access your account even if you forget your password"
+msgstr ""
+
+#: lib/storyarn_web/components/layouts.ex:402
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Account"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/security.ex:88
+#, elixir-autogen, elixir-format
+msgid "Active Sessions"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/show.ex:94
+#, elixir-autogen, elixir-format
+msgid "Add Node"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/instruction/config_sidebar.ex:62
+#, elixir-autogen, elixir-format
+msgid "Add assignments to set variable values when this node executes."
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/flow_tree.ex:119
+#: lib/storyarn_web/components/sidebar/flow_tree.ex:153
+#, elixir-autogen, elixir-format
+msgid "Add child flow"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:119
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:153
+#, elixir-autogen, elixir-format
+msgid "Add child sheet"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:237
+#, elixir-autogen, elixir-format
+msgid "Add condition"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:90
+#, elixir-autogen, elixir-format
+msgid "Add conditions. Each one creates a separate output."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/banner.ex:58
+#, elixir-autogen, elixir-format
+msgid "Add cover"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/select_blocks.ex:79
+#, elixir-autogen, elixir-format
+msgid "Add more..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:355
+#, elixir-autogen, elixir-format
+msgid "Add option"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:315
+#, elixir-autogen, elixir-format
+msgid "Add response"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:87
+#, elixir-autogen, elixir-format
+msgid "Add rules to define when to route to True/False."
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:363
+#, elixir-autogen, elixir-format
+msgid "Added %{count} block"
+msgid_plural "Added %{count} blocks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:81
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:111
+#, elixir-autogen, elixir-format
+msgid "Admin"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:369
+#, elixir-autogen, elixir-format
+msgid "Advanced"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:166
+#, elixir-autogen, elixir-format
+msgid "Advanced: enter a raw condition expression."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:76
+#, elixir-autogen, elixir-format
+msgid "All items in trash will be permanently deleted. This action cannot be undone."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:300
+#, elixir-autogen, elixir-format
+msgid "All variable references are up to date."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:236
+#, elixir-autogen, elixir-format
+msgid "Allowed Types"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:138
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Are you sure you want to delete this flow?"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/properties_panels.ex:78
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Are you sure you want to delete this node?"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:377
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Are you sure you want to delete this version?"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:101
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Are you sure you want to delete this workspace? This action cannot be undone."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/instruction/config_sidebar.ex:53
+#, elixir-autogen, elixir-format
+msgid "Assignments"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:150
+#, elixir-autogen, elixir-format
+msgid "Attach voice-over or ambient audio to this dialogue."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:124
+#, elixir-autogen, elixir-format
+msgid "Audio"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/preview_component.ex:100
+#, elixir-autogen, elixir-format
+msgid "Back"
+msgstr ""
+
+#: lib/storyarn_web/components/project_sidebar.ex:37
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Back to Workspace"
+msgstr ""
+
+#: lib/storyarn_web/components/layouts.ex:342
+#: lib/storyarn_web/components/layouts.ex:378
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Back to app"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/backlinks_section.ex:17
+#, elixir-autogen, elixir-format
+msgid "Backlinks"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:74
+#, elixir-autogen, elixir-format
+msgid "Banner URL"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:21
+#, elixir-autogen, elixir-format
+msgid "Basic Blocks"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:93
+#, elixir-autogen, elixir-format
+msgid "Blue"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:90
+#, elixir-autogen, elixir-format
+msgid "Boolean"
+msgstr ""
+
+#: lib/storyarn_web/live/components/asset_upload.ex:63
+#, elixir-autogen, elixir-format
+msgid "Browse Files"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:264
+#, elixir-autogen, elixir-format
+msgid "Cannot change the owner's role."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:49
+#: lib/storyarn_web/live/sheet_live/index.ex:183
+#, elixir-autogen, elixir-format
+msgid "Cannot move a sheet into its own children."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:294
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Cannot remove the workspace owner."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/banner.ex:31
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Change"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/security.ex:42
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Change Password"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:315
+#, elixir-autogen, elixir-format
+msgid "Changed avatar"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:321
+#, elixir-autogen, elixir-format
+msgid "Changed banner"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:310
+#, elixir-autogen, elixir-format
+msgid "Changed shortcut"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/security.ex:44
+#, elixir-autogen, elixir-format
+msgid "Choose a strong password that you don't use elsewhere."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/reference_blocks.ex:141
+#, elixir-autogen, elixir-format
+msgid "Clear reference"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/preview_component.ex:110
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Close"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:46
+#: lib/storyarn_web/live/sheet_live/components/sheet_color.ex:29
+#, elixir-autogen, elixir-format
+msgid "Color"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:70
+#: lib/storyarn_web/live/flow_live/nodes/condition/node.ex:15
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:378
+#, elixir-autogen, elixir-format
+msgid "Condition"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:68
+#, elixir-autogen, elixir-format
+msgid "Conditions (each = output)"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components.ex:82
+#, elixir-autogen, elixir-format
+msgid "Configure"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:46
+#, elixir-autogen, elixir-format
+msgid "Configure Block"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/entry/config_sidebar.ex:29
+#, elixir-autogen, elixir-format
+msgid "Connect this node to the first node in your flow."
+msgstr ""
+
+#: lib/storyarn_web/components/layouts.ex:411
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Connected accounts"
+msgstr ""
+
+#: lib/storyarn_web/components/core_components.ex:453
+#, elixir-autogen, elixir-format
+msgid "Constant"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:83
+#, elixir-autogen, elixir-format
+msgid "Constants are not accessible as variables in flow scripts."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/show.ex:108
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Content"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/preview_component.ex:77
+#, elixir-autogen, elixir-format
+msgid "Continue"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:262
+#, elixir-autogen, elixir-format
+msgid "Copy to clipboard"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/block_helpers.ex:37
+#, elixir-autogen, elixir-format
+msgid "Could not add block."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/block_value_helpers.ex:158
+#, elixir-autogen, elixir-format
+msgid "Could not add option."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:80
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:156
+#, elixir-autogen, elixir-format
+msgid "Could not clear reference."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:122
+#, elixir-autogen, elixir-format
+msgid "Could not create block."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:270
+#: lib/storyarn_web/live/flow_live/index.ex:293
+#, elixir-autogen, elixir-format
+msgid "Could not create flow."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:171
+#: lib/storyarn_web/live/flow_live/index.ex:359
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:78
+#: lib/storyarn_web/live/sheet_live/index.ex:137
+#: lib/storyarn_web/live/sheet_live/index.ex:211
+#: lib/storyarn_web/live/sheet_live/show.ex:260
+#, elixir-autogen, elixir-format
+msgid "Could not create sheet."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:166
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:85
+#, elixir-autogen, elixir-format
+msgid "Could not create version."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:165
+#: lib/storyarn_web/live/sheet_live/helpers/block_helpers.ex:90
+#, elixir-autogen, elixir-format
+msgid "Could not delete block."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:219
+#, elixir-autogen, elixir-format
+msgid "Could not delete flow."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:28
+#: lib/storyarn_web/live/sheet_live/index.ex:159
+#, elixir-autogen, elixir-format
+msgid "Could not delete sheet."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:243
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:53
+#, elixir-autogen, elixir-format
+msgid "Could not delete version."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:338
+#, elixir-autogen, elixir-format
+msgid "Could not move flow."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:52
+#: lib/storyarn_web/live/sheet_live/index.ex:186
+#, elixir-autogen, elixir-format
+msgid "Could not move sheet."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_avatar.ex:89
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:31
+#, elixir-autogen, elixir-format
+msgid "Could not remove avatar."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/banner.ex:95
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:91
+#, elixir-autogen, elixir-format
+msgid "Could not remove banner."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:184
+#: lib/storyarn_web/live/sheet_live/helpers/block_helpers.ex:106
+#, elixir-autogen, elixir-format
+msgid "Could not reorder blocks."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:313
+#, elixir-autogen, elixir-format
+msgid "Could not reorder flows."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:212
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:138
+#, elixir-autogen, elixir-format
+msgid "Could not restore version."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:292
+#: lib/storyarn_web/live/sheet_live/helpers/config_helpers.ex:58
+#, elixir-autogen, elixir-format
+msgid "Could not save configuration."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:48
+#, elixir-autogen, elixir-format
+msgid "Could not save flow name."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:262
+#: lib/storyarn_web/live/sheet_live/components/sheet_title.ex:122
+#, elixir-autogen, elixir-format
+msgid "Could not save shortcut."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:54
+#, elixir-autogen, elixir-format
+msgid "Could not set avatar."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:245
+#, elixir-autogen, elixir-format
+msgid "Could not set main flow."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:59
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:136
+#, elixir-autogen, elixir-format
+msgid "Could not set reference."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:314
+#, elixir-autogen, elixir-format
+msgid "Could not toggle constant."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:144
+#: lib/storyarn_web/live/sheet_live/helpers/config_helpers.ex:140
+#, elixir-autogen, elixir-format
+msgid "Could not update block."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/block_value_helpers.ex:106
+#, elixir-autogen, elixir-format
+msgid "Could not update boolean value."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_color.ex:99
+#, elixir-autogen, elixir-format
+msgid "Could not update color."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/block_value_helpers.ex:78
+#, elixir-autogen, elixir-format
+msgid "Could not update content."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/block_value_helpers.ex:38
+#: lib/storyarn_web/live/sheet_live/helpers/block_value_helpers.ex:140
+#, elixir-autogen, elixir-format
+msgid "Could not update multi-select."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_avatar.ex:139
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:141
+#, elixir-autogen, elixir-format
+msgid "Could not upload avatar."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/banner.ex:144
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:171
+#, elixir-autogen, elixir-format
+msgid "Could not upload banner."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/form.ex:43
+#, elixir-autogen, elixir-format
+msgid "Create Flow"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:31
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:397
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:435
+#, elixir-autogen, elixir-format
+msgid "Create Version"
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/new.ex:54
+#, elixir-autogen, elixir-format
+msgid "Create Workspace"
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/new.ex:27
+#, elixir-autogen, elixir-format
+msgid "Create a new workspace"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:311
+#, elixir-autogen, elixir-format
+msgid "Create a version to save the current state of this sheet."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:28
+#, elixir-autogen, elixir-format
+msgid "Create and organize your project's content"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:29
+#, elixir-autogen, elixir-format
+msgid "Create visual narrative flows and dialogue trees"
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/show.ex:134
+#, elixir-autogen, elixir-format
+msgid "Create your first project to get started"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/form.ex:42
+#: lib/storyarn_web/live/workspace_live/new.ex:53
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Creating..."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:342
+#, elixir-autogen, elixir-format
+msgid "Current"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:270
+#, elixir-autogen, elixir-format
+msgid "Custom Labels"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:99
+#, elixir-autogen, elixir-format
+msgid "Cyan"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar.ex:113
+#, elixir-autogen, elixir-format
+msgid "Dark mode"
+msgstr ""
+
+#: lib/storyarn_web/components/layouts.ex:267
+#, elixir-autogen, elixir-format
+msgid "Dashboard"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:80
+#, elixir-autogen, elixir-format
+msgid "Date"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:102
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:105
+#, elixir-autogen, elixir-format
+msgid "Default (no match)"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components.ex:94
+#: lib/storyarn_web/live/flow_live/index.ex:142
+#: lib/storyarn_web/live/project_live/trash.ex:65
+#: lib/storyarn_web/live/project_live/trash.ex:135
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Delete"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/properties_panels.ex:81
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Delete Node"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:107
+#, elixir-autogen, elixir-format
+msgid "Delete Workspace"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:63
+#, elixir-autogen, elixir-format
+msgid "Delete permanently?"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:373
+#, elixir-autogen, elixir-format
+msgid "Delete version"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:111
+#, elixir-autogen, elixir-format
+msgid "Deleted %{time_ago}"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:26
+#, elixir-autogen, elixir-format
+msgid "Deleted sheets are kept for 30 days before being permanently removed."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:46
+#, elixir-autogen, elixir-format
+msgid "Deleted sheets will appear here."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/form.ex:35
+#, elixir-autogen, elixir-format
+msgid "Describe the purpose of this flow..."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:421
+#, elixir-autogen, elixir-format
+msgid "Describe what this version captures..."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex:26
+#, elixir-autogen, elixir-format
+msgid "Dialogue"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:112
+#, elixir-autogen, elixir-format
+msgid "Divider"
+msgstr ""
+
+#: lib/storyarn_web/live/components/asset_upload.ex:60
+#, elixir-autogen, elixir-format
+msgid "Drag and drop files here, or"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components.ex:58
+#, elixir-autogen, elixir-format
+msgid "Drag to reorder"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:207
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:56
+#, elixir-autogen, elixir-format
+msgid "Each condition creates an output. First match wins."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:152
+#, elixir-autogen, elixir-format
+msgid "Edit responses in the sidebar panel."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:35
+#: lib/storyarn_web/live/project_live/trash.ex:78
+#, elixir-autogen, elixir-format
+msgid "Empty Trash"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:74
+#, elixir-autogen, elixir-format
+msgid "Empty trash?"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/preview_component.ex:86
+#, elixir-autogen, elixir-format
+msgid "End of dialogue branch"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:123
+#, elixir-autogen, elixir-format
+msgid "Enter dialogue text..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:97
+#, elixir-autogen, elixir-format
+msgid "Enter label..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:127
+#, elixir-autogen, elixir-format
+msgid "Enter placeholder..."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/entry/node.ex:13
+#, elixir-autogen, elixir-format
+msgid "Entry"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/properties_panels.ex:84
+#, elixir-autogen, elixir-format
+msgid "Entry nodes cannot be deleted."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:58
+#, elixir-autogen, elixir-format
+msgid "Evaluates all conditions → True or False."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:197
+#, elixir-autogen, elixir-format
+msgid "Executed when leaving this node (any response)."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:15
+#, elixir-autogen, elixir-format
+msgid "Exit"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:150
+#, elixir-autogen, elixir-format
+msgid "Expression mode"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:287
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Failed to delete sheet."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:160
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Failed to delete workspace."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:313
+#, elixir-autogen, elixir-format
+msgid "Failed to repair variable references."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:263
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Failed to restore sheet."
+msgstr ""
+
+#: lib/storyarn_web/controllers/user_session_controller.ex:104
+#, elixir-autogen, elixir-format
+msgid "Failed to update password."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:267
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Failed to update role."
+msgstr ""
+
+#: lib/storyarn_web/live/components/asset_upload.ex:225
+#, elixir-autogen, elixir-format
+msgid "Failed to upload files."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:291
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:110
+#, elixir-autogen, elixir-format
+msgid "False"
+msgstr ""
+
+#: lib/storyarn_web/live/components/asset_upload.ex:291
+#, elixir-autogen, elixir-format
+msgid "File is too large"
+msgstr ""
+
+#: lib/storyarn_web/live/components/asset_upload.ex:293
+#, elixir-autogen, elixir-format
+msgid "File type not accepted"
+msgstr ""
+
+#: lib/storyarn_web/live/components/asset_upload.ex:223
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Files uploaded successfully."
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/flow_tree.ex:48
+#, elixir-autogen, elixir-format
+msgid "Filter flows..."
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:48
+#, elixir-autogen, elixir-format
+msgid "Filter sheets..."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:198
+#, elixir-autogen, elixir-format
+msgid "Flow created successfully."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:215
+#, elixir-autogen, elixir-format
+msgid "Flow moved to trash."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/show.ex:206
+#, elixir-autogen, elixir-format
+msgid "Flow not found."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:241
+#, elixir-autogen, elixir-format
+msgid "Flow set as main."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:259
+#: lib/storyarn_web/components/project_sidebar.ex:55
+#: lib/storyarn_web/components/sidebar/flow_tree.ex:25
+#: lib/storyarn_web/live/flow_live/index.ex:27
+#: lib/storyarn_web/live/flow_live/show.ex:48
+#, elixir-autogen, elixir-format
+msgid "Flows"
+msgstr ""
+
+#: lib/storyarn_web/components/layouts.ex:424
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:50
+#, elixir-autogen, elixir-format
+msgid "General"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:235
+#: lib/storyarn_web/live/flow_live/nodes/exit/config_sidebar.ex:59
+#, elixir-autogen, elixir-format
+msgid "Generate ID"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:94
+#, elixir-autogen, elixir-format
+msgid "Green"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/node.ex:17
+#, elixir-autogen, elixir-format
+msgid "Hub"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:36
+#, elixir-autogen, elixir-format
+msgid "Hub ID"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:268
+#, elixir-autogen, elixir-format
+msgid "ID for localization tools (Crowdin, Lokalise)."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:129
+#, elixir-autogen, elixir-format
+msgid "If you renamed sheet shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:294
+#, elixir-autogen, elixir-format
+msgid "Initial version with %{count} block"
+msgid_plural "Initial version with %{count} blocks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:171
+#, elixir-autogen, elixir-format
+msgid "Input Condition"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/instruction/node.ex:15
+#, elixir-autogen, elixir-format
+msgid "Instruction"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:403
+#, elixir-autogen, elixir-format
+msgid "Instruction (optional)"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/banner.ex:113
+#: lib/storyarn_web/live/sheet_live/components/sheet_avatar.ex:107
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:70
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:107
+#, elixir-autogen, elixir-format
+msgid "Invalid file data."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:50
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:127
+#, elixir-autogen, elixir-format
+msgid "Invalid reference ID."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:56
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:133
+#, elixir-autogen, elixir-format
+msgid "Invalid reference type."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/jump/node.ex:12
+#, elixir-autogen, elixir-format
+msgid "Jump"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/connections.ex:67
+#, elixir-autogen, elixir-format
+msgid "Keep your account secure with multiple authentication methods"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:328
+#, elixir-autogen, elixir-format
+msgid "Key"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:90
+#: lib/storyarn_web/components/block_components/config_panel.ex:335
+#: lib/storyarn_web/live/flow_live/nodes/exit/config_sidebar.ex:27
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:29
+#, elixir-autogen, elixir-format
+msgid "Label"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:103
+#, elixir-autogen, elixir-format
+msgid "Layout"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:305
+#, elixir-autogen, elixir-format
+msgid "Leave empty to use defaults."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/connections.ex:36
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Link your social accounts for easier sign-in"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:58
+#, elixir-autogen, elixir-format
+msgid "Load more"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:246
+#, elixir-autogen, elixir-format
+msgid "Localization ID"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:80
+#, elixir-autogen, elixir-format
+msgid "Locate all"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/jump/config_sidebar.ex:57
+#, elixir-autogen, elixir-format
+msgid "Locate target Hub"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar.ex:122
+#, elixir-autogen, elixir-format
+msgid "Log out"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:165
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Logic"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:100
+#: lib/storyarn_web/live/flow_live/show.ex:85
+#, elixir-autogen, elixir-format
+msgid "Main"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/form.ex:28
+#, elixir-autogen, elixir-format
+msgid "Main Story"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:98
+#: lib/storyarn_web/live/flow_live/show.ex:84
+#, elixir-autogen, elixir-format
+msgid "Main flow"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:126
+#, elixir-autogen, elixir-format
+msgid "Maintenance"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:66
+#, elixir-autogen, elixir-format
+msgid "Manage team members for %{name}"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:52
+#, elixir-autogen, elixir-format
+msgid "Manage workspace details for %{name}"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/security.ex:37
+#, elixir-autogen, elixir-format
+msgid "Manage your password and account security"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/profile.ex:52
+#, elixir-autogen, elixir-format
+msgid "Manage your personal information and email address"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:177
+#, elixir-autogen, elixir-format
+msgid "Match"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:162
+#, elixir-autogen, elixir-format
+msgid "Max"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:189
+#, elixir-autogen, elixir-format
+msgid "Max Date"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:134
+#, elixir-autogen, elixir-format
+msgid "Max Length"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:203
+#, elixir-autogen, elixir-format
+msgid "Max Selections"
+msgstr ""
+
+#: lib/storyarn_web/live/components/asset_upload.ex:66
+#, elixir-autogen, elixir-format
+msgid "Max file size: %{size}MB"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:82
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:112
+#, elixir-autogen, elixir-format
+msgid "Member"
+msgstr ""
+
+#: lib/storyarn_web/components/layouts.ex:429
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:65
+#, elixir-autogen, elixir-format
+msgid "Members"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:99
+#, elixir-autogen, elixir-format
+msgid "Menu Text"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:150
+#, elixir-autogen, elixir-format
+msgid "Min"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:178
+#, elixir-autogen, elixir-format
+msgid "Min Date"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:218
+#, elixir-autogen, elixir-format
+msgid "Mode"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:376
+#, elixir-autogen, elixir-format
+msgid "Modified %{count} block"
+msgid_plural "Modified %{count} blocks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:138
+#, elixir-autogen, elixir-format
+msgid "Modified by"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/flow_tree.ex:202
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:191
+#, elixir-autogen, elixir-format
+msgid "Move to Trash"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:70
+#, elixir-autogen, elixir-format
+msgid "Multi Select"
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/new.ex:38
+#, elixir-autogen, elixir-format
+msgid "My Workspace"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/form.ex:27
+#, elixir-autogen, elixir-format
+msgid "Name"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/preview_component.ex:33
+#, elixir-autogen, elixir-format
+msgid "Narrator"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/boolean_blocks.ex:35
+#: lib/storyarn_web/components/block_components/config_panel.ex:300
+#, elixir-autogen, elixir-format
+msgid "Neutral"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:302
+#, elixir-autogen, elixir-format
+msgid "Neutral/Unknown"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/flow_tree.ex:31
+#: lib/storyarn_web/live/flow_live/index.ex:37
+#: lib/storyarn_web/live/flow_live/index.ex:66
+#, elixir-autogen, elixir-format
+msgid "New Flow"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:31
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:63
+#: lib/storyarn_web/live/sheet_live/index.ex:33
+#: lib/storyarn_web/live/sheet_live/index.ex:196
+#, elixir-autogen, elixir-format
+msgid "New Sheet"
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/new.ex:17
+#, elixir-autogen, elixir-format
+msgid "New Workspace"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar.ex:57
+#, elixir-autogen, elixir-format
+msgid "New workspace"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/boolean_blocks.ex:34
+#: lib/storyarn_web/components/block_components/config_panel.ex:289
+#, elixir-autogen, elixir-format
+msgid "No"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/jump/config_sidebar.ex:62
+#, elixir-autogen, elixir-format
+msgid "No Hub nodes in this flow. Create a Hub first."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:57
+#, elixir-autogen, elixir-format
+msgid "No Jump nodes target this Hub yet."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:34
+#, elixir-autogen, elixir-format
+msgid "No audio"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/backlinks_section.ex:86
+#, elixir-autogen, elixir-format
+msgid "No backlinks yet"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:381
+#, elixir-autogen, elixir-format
+msgid "No changes detected"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:245
+#, elixir-autogen, elixir-format
+msgid "No conditions set"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/flow_tree.ex:54
+#, elixir-autogen, elixir-format
+msgid "No flows yet"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:43
+#, elixir-autogen, elixir-format
+msgid "No flows yet. Create your first flow to get started."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:141
+#: lib/storyarn_web/components/block_components/config_panel.ex:210
+#, elixir-autogen, elixir-format
+msgid "No limit"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:169
+#, elixir-autogen, elixir-format
+msgid "No max"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:157
+#, elixir-autogen, elixir-format
+msgid "No min"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/preview_component.ex:116
+#, elixir-autogen, elixir-format
+msgid "No node selected for preview."
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/show.ex:132
+#, elixir-autogen, elixir-format
+msgid "No projects yet"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/properties_panels.ex:113
+#, elixir-autogen, elixir-format
+msgid "No properties for this node type."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:319
+#, elixir-autogen, elixir-format
+msgid "No responses means a simple dialogue with one output."
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:54
+#, elixir-autogen, elixir-format
+msgid "No sheets yet"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:40
+#, elixir-autogen, elixir-format, fuzzy
+msgid "No sheets yet. Create your first sheet to get started."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:339
+#, elixir-autogen, elixir-format
+msgid "No summary"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:30
+#, elixir-autogen, elixir-format
+msgid "No variables on this sheet are used in any flow yet."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:309
+#, elixir-autogen, elixir-format
+msgid "No versions yet"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/preview_component.ex:35
+#, elixir-autogen, elixir-format
+msgid "Node %{id}"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:182
+#, elixir-autogen, elixir-format
+msgid "Node is only reachable when this condition is true."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/connections.ex:91
+#, elixir-autogen, elixir-format
+msgid "Not connected"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:50
+#, elixir-autogen, elixir-format
+msgid "Number"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:93
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Once you delete a workspace, there is no going back. All projects will be deleted."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:169
+#, elixir-autogen, elixir-format
+msgid "Only the workspace owner can change member roles."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:164
+#, elixir-autogen, elixir-format
+msgid "Only the workspace owner can delete the workspace."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:179
+#, elixir-autogen, elixir-format
+msgid "Only the workspace owner can remove members."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/properties_panels.ex:60
+#, elixir-autogen, elixir-format
+msgid "Open Screenplay"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:47
+#, elixir-autogen, elixir-format
+msgid "Open Sidebar"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:109
+#, elixir-autogen, elixir-format
+msgid "Optional shorter text to display in dialogue choice menus."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:313
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Options"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:98
+#, elixir-autogen, elixir-format
+msgid "Orange"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:197
+#, elixir-autogen, elixir-format
+msgid "Outdated"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:187
+#, elixir-autogen, elixir-format
+msgid "Output Instruction"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:299
+#, elixir-autogen, elixir-format
+msgid "Output label..."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:96
+#, elixir-autogen, elixir-format
+msgid "Outputs:"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/profile.ex:57
+#, elixir-autogen, elixir-format
+msgid "Personal Information"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:97
+#, elixir-autogen, elixir-format
+msgid "Pink"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:120
+#, elixir-autogen, elixir-format
+msgid "Placeholder"
+msgstr ""
+
+#: lib/storyarn_web/controllers/user_session_controller.ex:109
+#, elixir-autogen, elixir-format
+msgid "Please re-authenticate to change your password."
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar.ex:99
+#, elixir-autogen, elixir-format
+msgid "Preferences"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/properties_panels.ex:70
+#, elixir-autogen, elixir-format
+msgid "Preview from here"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:142
+#, elixir-autogen, elixir-format
+msgid "Preview:"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/profile.ex:33
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Profile Settings"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:92
+#, elixir-autogen, elixir-format
+msgid "Purple"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:156
+#, elixir-autogen, elixir-format
+msgid "Read by"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:96
+#, elixir-autogen, elixir-format
+msgid "Red"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:100
+#, elixir-autogen, elixir-format
+msgid "Reference"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:195
+#, elixir-autogen, elixir-format
+msgid "Reference may be outdated"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/reference_blocks.ex:74
+#, elixir-autogen, elixir-format
+msgid "Reference not found (deleted?)"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:53
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:130
+#, elixir-autogen, elixir-format
+msgid "Reference target not found."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/show.ex:117
+#, elixir-autogen, elixir-format
+msgid "References"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:52
+#, elixir-autogen, elixir-format
+msgid "Referencing Jumps"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/banner.ex:49
+#: lib/storyarn_web/live/sheet_live/components/sheet_avatar.ex:55
+#, elixir-autogen, elixir-format
+msgid "Remove"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_color.ex:51
+#, elixir-autogen, elixir-format
+msgid "Remove color"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:372
+#, elixir-autogen, elixir-format
+msgid "Remove condition"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:362
+#, elixir-autogen, elixir-format
+msgid "Remove response"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:369
+#, elixir-autogen, elixir-format
+msgid "Removed %{count} block"
+msgid_plural "Removed %{count} blocks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn/sheets/versioning.ex:309
+#, elixir-autogen, elixir-format
+msgid "Renamed sheet"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:137
+#, elixir-autogen, elixir-format
+msgid "Repair variable references"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:302
+#, elixir-autogen, elixir-format
+msgid "Repaired %{count} node."
+msgid_plural "Repaired %{count} nodes."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:41
+#, elixir-autogen, elixir-format
+msgid "Required. Unique identifier for Jump nodes to target this Hub."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:352
+#, elixir-autogen, elixir-format
+msgid "Response text..."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:133
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:297
+#, elixir-autogen, elixir-format
+msgid "Responses"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/preview_component.ex:47
+#, elixir-autogen, elixir-format
+msgid "Responses:"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:124
+#, elixir-autogen, elixir-format
+msgid "Restore"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:363
+#, elixir-autogen, elixir-format
+msgid "Restore this version"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:208
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:161
+#, elixir-autogen, elixir-format
+msgid "Restored to version %{number}"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:40
+#, elixir-autogen, elixir-format
+msgid "Rich Text"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:259
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Role updated successfully."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:66
+#, elixir-autogen, elixir-format
+msgid "SELECT SPEAKER"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:79
+#, elixir-autogen, elixir-format
+msgid "SPEAKER"
+msgstr ""
+
+#: lib/storyarn_web/components/save_indicator.ex:39
+#: lib/storyarn_web/components/save_indicator.ex:54
+#, elixir-autogen, elixir-format
+msgid "Saved"
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/show.ex:97
+#, elixir-autogen, elixir-format
+msgid "Search projects..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/reference_blocks.ex:114
+#, elixir-autogen, elixir-format
+msgid "Search sheets and flows..."
+msgstr ""
+
+#: lib/storyarn_web/components/layouts.ex:406
+#: lib/storyarn_web/live/settings_live/security.ex:36
+#, elixir-autogen, elixir-format
+msgid "Security"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/security.ex:18
+#, elixir-autogen, elixir-format
+msgid "Security Settings"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:60
+#, elixir-autogen, elixir-format
+msgid "Select"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/jump/config_sidebar.ex:47
+#, elixir-autogen, elixir-format
+msgid "Select a Hub node to jump to within this flow."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/reference_blocks.ex:44
+#, elixir-autogen, elixir-format
+msgid "Select a reference..."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:30
+#, elixir-autogen, elixir-format
+msgid "Select speaker..."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/jump/config_sidebar.ex:23
+#, elixir-autogen, elixir-format
+msgid "Select target hub..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:263
+#, elixir-autogen, elixir-format
+msgid "Select which types can be referenced."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/select_blocks.ex:16
+#, elixir-autogen, elixir-format
+msgid "Select..."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/security.ex:94
+#, elixir-autogen, elixir-format
+msgid "Session management coming soon."
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/flow_tree.ex:190
+#: lib/storyarn_web/live/flow_live/index.ex:129
+#, elixir-autogen, elixir-format
+msgid "Set as main"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:115
+#: lib/storyarn_web/live/sheet_live/index.ex:155
+#, elixir-autogen, elixir-format
+msgid "Sheet deleted successfully."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:266
+#: lib/storyarn_web/live/project_live/trash.ex:290
+#: lib/storyarn_web/live/sheet_live/show.ex:178
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Sheet not found."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:282
+#, elixir-autogen, elixir-format
+msgid "Sheet permanently deleted."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:258
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Sheet restored successfully."
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:310
+#, elixir-autogen, elixir-format
+msgid "Sheet..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:249
+#: lib/storyarn_web/components/project_sidebar.ex:61
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:25
+#: lib/storyarn_web/live/sheet_live/index.ex:26
+#, elixir-autogen, elixir-format
+msgid "Sheets"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/backlinks_section.ex:88
+#, elixir-autogen, elixir-format
+msgid "Sheets and flows that reference this sheet will appear here."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:105
+#, elixir-autogen, elixir-format
+msgid "Short text shown in response menus"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:261
+#: lib/storyarn_web/live/sheet_live/components/sheet_title.ex:121
+#, elixir-autogen, elixir-format
+msgid "Shortcut %{error}"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/connections.ex:65
+#, elixir-autogen, elixir-format
+msgid "Sign in faster without typing your password"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:315
+#, elixir-autogen, elixir-format
+msgid "Some sheets could not be deleted."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:55
+#, elixir-autogen, elixir-format
+msgid "Speaker"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:62
+#, elixir-autogen, elixir-format
+msgid "Stage Directions"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:424
+#, elixir-autogen, elixir-format
+msgid "Subsheets"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/exit/config_sidebar.ex:34
+#, elixir-autogen, elixir-format
+msgid "Success ending"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:52
+#, elixir-autogen, elixir-format
+msgid "Switch mode"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/jump/config_sidebar.ex:42
+#, elixir-autogen, elixir-format
+msgid "Target Hub"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:213
+#, elixir-autogen, elixir-format
+msgid "Technical"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:218
+#: lib/storyarn_web/live/flow_live/nodes/exit/config_sidebar.ex:42
+#, elixir-autogen, elixir-format
+msgid "Technical ID"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:30
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:70
+#, elixir-autogen, elixir-format
+msgid "Text"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:207
+#, elixir-autogen, elixir-format, fuzzy
+msgid "This email is already a member of the workspace."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/entry/config_sidebar.ex:26
+#, elixir-autogen, elixir-format
+msgid "This is the entry point of the flow."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:282
+#, elixir-autogen, elixir-format
+msgid "This node is being edited by %{user}"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:64
+#, elixir-autogen, elixir-format
+msgid "This sheet will be permanently deleted. This action cannot be undone."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:135
+#, elixir-autogen, elixir-format
+msgid "This will update node data across the entire project. Continue?"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:225
+#, elixir-autogen, elixir-format
+msgid "Three states (Yes/Neutral/No)"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:401
+#, elixir-autogen, elixir-format
+msgid "Title"
+msgstr ""
+
+#: lib/storyarn_web/live/components/asset_upload.ex:292
+#, elixir-autogen, elixir-format
+msgid "Too many files"
+msgstr ""
+
+#: lib/storyarn_web/controllers/user_session_controller.ex:55
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Too many login attempts. Please try again later."
+msgstr ""
+
+#: lib/storyarn_web/live/user_live/registration.ex:74
+#, elixir-autogen, elixir-format
+msgid "Too many registration attempts. Please try again later."
+msgstr ""
+
+#: lib/storyarn_web/live/user_live/login.ex:141
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Too many requests. Please try again later."
+msgstr ""
+
+#: lib/storyarn_web/components/project_sidebar.ex:53
+#, elixir-autogen, elixir-format
+msgid "Tools"
+msgstr ""
+
+#: lib/storyarn_web/components/project_sidebar.ex:91
+#: lib/storyarn_web/live/project_live/trash.ex:24
+#, elixir-autogen, elixir-format
+msgid "Trash"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:309
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Trash emptied successfully."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:44
+#, elixir-autogen, elixir-format
+msgid "Trash is empty"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:229
+#, elixir-autogen, elixir-format
+msgid "Tri-state allows a neutral/unknown value."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:281
+#: lib/storyarn_web/live/flow_live/nodes/condition/config_sidebar.ex:109
+#, elixir-autogen, elixir-format
+msgid "True"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:222
+#, elixir-autogen, elixir-format
+msgid "Two states (Yes/No)"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:63
+#, elixir-autogen, elixir-format
+msgid "Type"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:55
+#, elixir-autogen, elixir-format
+msgid "Type / to add a block"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/select_blocks.ex:78
+#, elixir-autogen, elixir-format
+msgid "Type and press Enter to add..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/reference_blocks.ex:128
+#, elixir-autogen, elixir-format
+msgid "Type to search..."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/exit/config_sidebar.ex:38
+#, elixir-autogen, elixir-format
+msgid "Uncheck for failure/game-over endings."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:241
+#: lib/storyarn_web/live/flow_live/nodes/exit/config_sidebar.ex:65
+#, elixir-autogen, elixir-format
+msgid "Unique identifier for export and game integration."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components.ex:153
+#, elixir-autogen, elixir-format
+msgid "Unknown block type"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:162
+#: lib/storyarn_web/live/flow_live/index.ex:261
+#: lib/storyarn_web/live/flow_live/index.ex:282
+#: lib/storyarn_web/live/flow_live/index.ex:350
+#: lib/storyarn_web/live/flow_live/show.ex:60
+#: lib/storyarn_web/live/sheet_live/components/sheet_title.ex:23
+#: lib/storyarn_web/live/sheet_live/index.ex:126
+#: lib/storyarn_web/live/sheet_live/show.ex:249
+#, elixir-autogen, elixir-format
+msgid "Untitled"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/security.ex:78
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Update Password"
+msgstr ""
+
+#: lib/storyarn_web/live/components/asset_upload.ex:94
+#, elixir-autogen, elixir-format
+msgid "Upload"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_avatar.ex:35
+#, elixir-autogen, elixir-format
+msgid "Upload avatar"
+msgstr ""
+
+#: lib/storyarn_web/live/components/asset_upload.ex:100
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Uploaded"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:80
+#, elixir-autogen, elixir-format
+msgid "Use as constant"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:113
+#, elixir-autogen, elixir-format
+msgid "Use this name to reference the value in flows."
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:394
+#: lib/storyarn_web/components/condition_builder.ex:413
+#, elixir-autogen, elixir-format
+msgid "Value..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:105
+#, elixir-autogen, elixir-format
+msgid "Variable Name"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:18
+#, elixir-autogen, elixir-format
+msgid "Variable Usage"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:324
+#, elixir-autogen, elixir-format
+msgid "Variable..."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:21
+#, elixir-autogen, elixir-format
+msgid "Version History"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:163
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:82
+#, elixir-autogen, elixir-format
+msgid "Version created."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:240
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:50
+#, elixir-autogen, elixir-format
+msgid "Version deleted."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:175
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:221
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:21
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:36
+#, elixir-autogen, elixir-format
+msgid "Version not found."
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/invitation.ex:129
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Welcome to the workspace!"
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/new.ex:46
+#, elixir-autogen, elixir-format
+msgid "What is this workspace for?"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/connections.ex:63
+#, elixir-autogen, elixir-format
+msgid "Why connect accounts?"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:273
+#, elixir-autogen, elixir-format
+msgid "Word count"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:25
+#, elixir-autogen, elixir-format
+msgid "Workspace Members"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:21
+#, elixir-autogen, elixir-format
+msgid "Workspace Settings"
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/new.ex:75
+#, elixir-autogen, elixir-format
+msgid "Workspace created successfully."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:156
+#, elixir-autogen, elixir-format
+msgid "Workspace deleted."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:61
+#: lib/storyarn_web/live/workspace_live/new.ex:37
+#, elixir-autogen, elixir-format
+msgid "Workspace name"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:36
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:42
+#: lib/storyarn_web/live/workspace_live/show.ex:30
+#, elixir-autogen, elixir-format
+msgid "Workspace not found."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:136
+#, elixir-autogen, elixir-format
+msgid "Workspace updated successfully."
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar.ex:31
+#, elixir-autogen, elixir-format
+msgid "Workspaces"
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/new.ex:29
+#, elixir-autogen, elixir-format
+msgid "Workspaces help you organize projects for different teams or purposes."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:95
+#, elixir-autogen, elixir-format
+msgid "Yellow"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/boolean_blocks.ex:33
+#: lib/storyarn_web/components/block_components/config_panel.ex:279
+#, elixir-autogen, elixir-format
+msgid "Yes"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/security.ex:90
+#, elixir-autogen, elixir-format
+msgid "You are currently logged in on this device."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:184
+#: lib/storyarn_web/live/flow_live/show.ex:196
+#: lib/storyarn_web/live/sheet_live/index.ex:113
+#: lib/storyarn_web/live/sheet_live/show.ex:168
+#, elixir-autogen, elixir-format, fuzzy
+msgid "You don't have access to this project."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:379
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:133
+#, elixir-autogen, elixir-format, fuzzy
+msgid "You don't have permission to edit."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:29
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:35
+#, elixir-autogen, elixir-format, fuzzy
+msgid "You don't have permission to manage this workspace."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:224
+#: lib/storyarn_web/live/flow_live/index.ex:250
+#: lib/storyarn_web/live/flow_live/index.ex:275
+#: lib/storyarn_web/live/flow_live/index.ex:298
+#: lib/storyarn_web/live/flow_live/index.ex:318
+#: lib/storyarn_web/live/flow_live/index.ex:343
+#: lib/storyarn_web/live/flow_live/index.ex:364
+#: lib/storyarn_web/live/flow_live/show.ex:531
+#: lib/storyarn_web/live/project_live/settings.ex:256
+#: lib/storyarn_web/live/project_live/settings.ex:267
+#: lib/storyarn_web/live/project_live/settings.ex:278
+#: lib/storyarn_web/live/project_live/settings.ex:289
+#: lib/storyarn_web/live/project_live/settings.ex:318
+#: lib/storyarn_web/live/project_live/settings.ex:342
+#: lib/storyarn_web/live/project_live/trash.ex:211
+#: lib/storyarn_web/live/project_live/trash.ex:230
+#: lib/storyarn_web/live/project_live/trash.ex:241
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:144
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:149
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:161
+#: lib/storyarn_web/live/sheet_live/index.ex:141
+#: lib/storyarn_web/live/sheet_live/index.ex:163
+#: lib/storyarn_web/live/sheet_live/index.ex:190
+#: lib/storyarn_web/live/sheet_live/index.ex:215
+#, elixir-autogen, elixir-format, fuzzy
+msgid "You don't have permission to perform this action."
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/invitation.ex:140
+#, elixir-autogen, elixir-format, fuzzy
+msgid "You're already a member of this workspace."
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/invitation.ex:18
+#, elixir-autogen, elixir-format, fuzzy
+msgid "You've been invited to join a workspace on Storyarn"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:146
+#, elixir-autogen, elixir-format
+msgid "Your browser does not support audio playback."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/profile.ex:85
+#, elixir-autogen, elixir-format
+msgid "Your email is used for login and notifications."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/show.ex:74
+#: lib/storyarn_web/live/sheet_live/components/sheet_title.ex:41
+#, elixir-autogen, elixir-format
+msgid "add-shortcut"
+msgstr ""
+
+#: lib/storyarn_web/components/collaboration_components.ex:144
+#, elixir-autogen, elixir-format
+msgid "added a connection"
+msgstr ""
+
+#: lib/storyarn_web/components/collaboration_components.ex:140
+#, elixir-autogen, elixir-format
+msgid "added a node"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:188
+#, elixir-autogen, elixir-format
+msgid "all"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:199
+#, elixir-autogen, elixir-format
+msgid "any"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:226
+#, elixir-autogen, elixir-format
+msgid "auto_generated_id"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:351
+#, elixir-autogen, elixir-format
+msgid "by"
+msgstr ""
+
+#: lib/storyarn_web/components/collaboration_components.ex:145
+#, elixir-autogen, elixir-format
+msgid "deleted a connection"
+msgstr ""
+
+#: lib/storyarn_web/components/collaboration_components.ex:141
+#, elixir-autogen, elixir-format
+msgid "deleted a node"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:254
+#, elixir-autogen, elixir-format
+msgid "dlg_001"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:408
+#, elixir-autogen, elixir-format
+msgid "e.g., Before major refactor"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:30
+#, elixir-autogen, elixir-format
+msgid "e.g., Merchant conversation"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/instruction/config_sidebar.ex:42
+#, elixir-autogen, elixir-format
+msgid "e.g., Reward player for quest completion"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/exit/config_sidebar.ex:28
+#, elixir-autogen, elixir-format
+msgid "e.g., Victory, Defeat"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/hub/config_sidebar.ex:37
+#, elixir-autogen, elixir-format
+msgid "e.g., merchant_done"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:161
+#, elixir-autogen, elixir-format
+msgid "e.g., player.level > 5"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:178
+#, elixir-autogen, elixir-format
+msgid "e.g., reputation > 50"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/dialogue/config_sidebar.ex:192
+#, elixir-autogen, elixir-format
+msgid "e.g., set(\"talked_to_merchant\", true)"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/nodes/exit/config_sidebar.ex:50
+#, elixir-autogen, elixir-format
+msgid "e.g., victory_ending_1"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:449
+#, elixir-autogen, elixir-format
+msgid "false"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:146
+#, elixir-autogen, elixir-format
+msgid "if"
+msgstr ""
+
+#: lib/storyarn_web/components/collaboration_components.ex:147
+#, elixir-autogen, elixir-format
+msgid "joined the flow"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:148
+#: lib/storyarn_web/live/workspace_live/show.ex:196
+#, elixir-autogen, elixir-format
+msgid "just now"
+msgstr ""
+
+#: lib/storyarn_web/components/collaboration_components.ex:148
+#, elixir-autogen, elixir-format
+msgid "left the flow"
+msgstr ""
+
+#: lib/storyarn_web/components/collaboration_components.ex:149
+#, elixir-autogen, elixir-format
+msgid "made a change"
+msgstr ""
+
+#: lib/storyarn_web/components/collaboration_components.ex:143
+#, elixir-autogen, elixir-format
+msgid "moved a node"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:202
+#, elixir-autogen, elixir-format
+msgid "of the rules"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:414
+#, elixir-autogen, elixir-format
+msgid "optional"
+msgstr ""
+
+#: lib/storyarn_web/live/user_live/login.ex:36
+#, elixir-autogen, elixir-format, fuzzy
+msgid "the mailbox sheet"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:172
+#, elixir-autogen, elixir-format
+msgid "to close"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:446
+#, elixir-autogen, elixir-format
+msgid "true"
+msgstr ""
+
+#: lib/storyarn_web/components/collaboration_components.ex:146
+#, elixir-autogen, elixir-format
+msgid "updated a connection"
+msgstr ""
+
+#: lib/storyarn_web/components/collaboration_components.ex:142
+#, elixir-autogen, elixir-format
+msgid "updated a node"
+msgstr ""
+
+#: lib/storyarn_web/components/condition_builder.ex:475
+#, elixir-autogen, elixir-format
+msgid "value"
+msgstr ""

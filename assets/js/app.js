@@ -71,8 +71,8 @@ const liveSocket = new LiveSocket("/live", Socket, {
 
 // Show progress bar on live navigation and form submits
 topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
-window.addEventListener("phx:page-loading-start", (_info) => topbar.show(300));
-window.addEventListener("phx:page-loading-stop", (_info) => topbar.hide());
+window.addEventListener("phx:sheet-loading-start", (_info) => topbar.show(300));
+window.addEventListener("phx:sheet-loading-stop", (_info) => topbar.hide());
 
 // Handle native dialog methods via custom events (used by show_modal/hide_modal in core_components)
 window.addEventListener("phx:show-modal", (event) => {
@@ -108,7 +108,7 @@ window.addEventListener("click", async (event) => {
   }
 });
 
-// connect if there are any LiveViews on the page
+// connect if there are any LiveViews on the sheet
 liveSocket.connect();
 
 // expose liveSocket on window for web console debug logs and latency simulation:

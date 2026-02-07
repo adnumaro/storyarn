@@ -154,9 +154,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
 
     rule_update =
       cond do
-        target_field && String.starts_with?(target_field, "rule_page_") ->
-          rule_id = String.replace_prefix(target_field, "rule_page_", "")
-          {:page, rule_id, params[target_field]}
+        target_field && String.starts_with?(target_field, "rule_sheet_") ->
+          rule_id = String.replace_prefix(target_field, "rule_sheet_", "")
+          {:sheet, rule_id, params[target_field]}
 
         target_field && String.starts_with?(target_field, "rule_variable_") ->
           rule_id = String.replace_prefix(target_field, "rule_variable_", "")
@@ -176,7 +176,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
 
         true ->
           Enum.find_value(params, fn
-            {"rule_page_" <> rule_id, value} -> {:page, rule_id, value}
+            {"rule_sheet_" <> rule_id, value} -> {:sheet, rule_id, value}
             {"rule_variable_" <> rule_id, value} -> {:variable, rule_id, value}
             {"rule_operator_" <> rule_id, value} -> {:operator, rule_id, value}
             {"rule_value_" <> rule_id, value} -> {:value, rule_id, value}

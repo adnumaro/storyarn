@@ -18,7 +18,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
   attr :node, :map, required: true
   attr :form, :map, required: true
   attr :can_edit, :boolean, default: false
-  attr :all_pages, :list, default: []
+  attr :all_sheets, :list, default: []
   attr :flow_hubs, :list, default: []
   attr :audio_assets, :list, default: []
   attr :panel_sections, :map, default: %{}
@@ -28,7 +28,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
   def config_sidebar(assigns) do
     speaker_options =
       [{"", gettext("Select speaker...")}] ++
-        Enum.map(assigns.all_pages, fn page -> {page.name, page.id} end)
+        Enum.map(assigns.all_sheets, fn sheet -> {sheet.name, sheet.id} end)
 
     audio_options =
       [{"", gettext("No audio")}] ++
@@ -50,7 +50,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
     ~H"""
     <.form for={@form} phx-change="update_node_data" phx-debounce="500">
       <.input
-        field={@form[:speaker_page_id]}
+        field={@form[:speaker_sheet_id]}
         type="select"
         label={gettext("Speaker")}
         options={@speaker_options}

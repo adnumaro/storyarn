@@ -213,15 +213,15 @@ Add "Audio" tab to Pages showing character voice assets.
 
 ```elixir
 # In Assets context, add:
-def list_assets_for_speaker(project_id, page_id) do
-  # Find all audio assets used in dialogue nodes where speaker_page_id = page_id
+def list_assets_for_speaker(project_id, sheet_id) do
+  # Find all audio assets used in dialogue nodes where speaker_sheet_id = sheet_id
   from(a in Asset,
     join: n in "flow_nodes",
     on: fragment("(?->>'audio_asset_id')::integer = ?", n.data, a.id),
     join: f in "flows",
     on: n.flow_id == f.id,
     where: a.project_id == ^project_id,
-    where: fragment("(?->>'speaker_page_id')::integer = ?", n.data, ^page_id),
+    where: fragment("(?->>'speaker_sheet_id')::integer = ?", n.data, ^sheet_id),
     where: ilike(a.content_type, "audio/%"),
     select: %{
       asset: a,
@@ -240,8 +240,8 @@ end
 
 | File | Action | Description |
 |------|--------|-------------|
-| `lib/storyarn_web/live/page_live/components/audio_tab.ex` | CREATE | New tab component |
-| `lib/storyarn_web/live/page_live/show.ex` | MODIFY | Add Audio tab |
+| `lib/storyarn_web/live/sheet_live/components/audio_tab.ex` | CREATE | New tab component |
+| `lib/storyarn_web/live/sheet_live/show.ex` | MODIFY | Add Audio tab |
 | `lib/storyarn/assets.ex` | MODIFY | Add list_assets_for_speaker/2 |
 
 #### 3.4 Tasks
@@ -319,14 +319,14 @@ defp list_dialogue_nodes_using_asset(asset_id) do
   from(n in "flow_nodes",
     join: f in "flows",
     on: n.flow_id == f.id,
-    join: p in "pages",
-    on: fragment("(?->>'speaker_page_id')::integer = ?", n.data, p.id),
+    join: s in "sheets",
+    on: fragment("(?->>'speaker_sheet_id')::integer = ?", n.data, s.id),
     where: fragment("(?->>'audio_asset_id')::integer = ?", n.data, ^asset_id),
     select: %{
       flow_id: f.id,
       flow_name: f.name,
       node_id: n.id,
-      speaker_name: p.name,
+      speaker_name: s.name,
       technical_id: fragment("?->>'technical_id'", n.data)
     }
   )
@@ -365,8 +365,8 @@ lib/storyarn_web/components/
 ├── audio_picker.ex              # Shared audio select + upload
 └── audio_helpers.ex             # Upload logic
 
-lib/storyarn_web/live/page_live/components/
-└── audio_tab.ex                 # Page audio tab
+lib/storyarn_web/live/sheet_live/components/
+└── audio_tab.ex                 # Sheet audio tab
 
 lib/storyarn_web/live/assets_live/
 ├── index.ex                     # Assets tool main page
@@ -385,7 +385,7 @@ assets/js/hooks/
 lib/storyarn/assets.ex                                    # Add usage queries
 lib/storyarn_web/live/flow_live/components/properties_panels.ex  # Use AudioPicker
 lib/storyarn_web/live/flow_live/show.ex                   # Handle audio events
-lib/storyarn_web/live/page_live/show.ex                   # Add Audio tab
+lib/storyarn_web/live/sheet_live/show.ex                   # Add Audio tab
 lib/storyarn_web/router.ex                                # Add assets route
 ```
 

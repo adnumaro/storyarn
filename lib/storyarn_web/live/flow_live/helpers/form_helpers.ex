@@ -19,19 +19,19 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   end
 
   @doc """
-  Builds a map of pages for the canvas (keyed by string ID).
+  Builds a map of sheets for the canvas (keyed by string ID).
   """
-  @spec pages_map(list()) :: map()
-  def pages_map(all_pages) do
-    Map.new(all_pages, fn page ->
+  @spec sheets_map(list()) :: map()
+  def sheets_map(all_sheets) do
+    Map.new(all_sheets, fn sheet ->
       avatar_url =
-        case page.avatar_asset do
+        case sheet.avatar_asset do
           %{url: url} when is_binary(url) -> url
           _ -> nil
         end
 
-      {to_string(page.id),
-       %{id: page.id, name: page.name, avatar_url: avatar_url, color: page.color}}
+      {to_string(sheet.id),
+       %{id: sheet.id, name: sheet.name, avatar_url: avatar_url, color: sheet.color}}
     end)
   end
 

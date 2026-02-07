@@ -2,7 +2,7 @@
  * Searchable combobox widget for instruction builder.
  *
  * A reusable dropdown with search-as-you-type filtering.
- * Options can be grouped (e.g., variables grouped by page).
+ * Options can be grouped (e.g., variables grouped by sheet).
  *
  * The dropdown is appended to document.body to escape any
  * overflow:hidden/auto containers in the panel.

@@ -106,8 +106,8 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
         expanded={@is_expanded}
         has_children={true}
         href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"}
-        page_id={@flow_id}
-        page_name={@flow.name}
+        sheet_id={@flow_id}
+        sheet_name={@flow.name}
         can_drag={@can_edit}
       >
         <:actions :if={@can_edit}>
@@ -140,8 +140,8 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
         icon="git-branch"
         href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"}
         active={@is_selected}
-        page_id={@flow_id}
-        page_name={@flow.name}
+        sheet_id={@flow_id}
+        sheet_name={@flow.name}
         can_drag={@can_edit}
       >
         <:actions :if={@can_edit}>

@@ -1,15 +1,15 @@
 import Sortable from "sortablejs";
 
 /**
- * SortableTree hook for nested drag-and-drop in page/flow trees.
+ * SortableTree hook for nested drag-and-drop in sheet/flow trees.
  *
  * Usage:
- * <div id="pages-tree" phx-hook="SortableTree">
+ * <div id="sheets-tree" phx-hook="SortableTree">
  *   <div data-sortable-container data-parent-id="">
- *     <div data-page-id="1" class="tree-node">
- *       Page 1
+ *     <div data-sheet-id="1" class="tree-node">
+ *       Sheet 1
  *       <div data-sortable-container data-parent-id="1">
- *         <div data-page-id="2" class="tree-node">Child</div>
+ *         <div data-sheet-id="2" class="tree-node">Child</div>
  *       </div>
  *     </div>
  *   </div>
@@ -21,13 +21,13 @@ import Sortable from "sortablejs";
  * </div>
  *
  * Events:
- * - For pages: Pushes "move_page" event with { page_id, parent_id, position }
+ * - For sheets: Pushes "move_sheet" event with { sheet_id, parent_id, position }
  * - For flows: Pushes "move_to_parent" event with { item_id, new_parent_id, position }
  */
 export const SortableTree = {
   mounted() {
     this.sortables = [];
-    this.treeType = this.el.dataset.treeType || "pages";
+    this.treeType = this.el.dataset.treeType || "sheets";
     this.initializeSortables();
   },
 
@@ -43,7 +43,7 @@ export const SortableTree = {
 
   initializeSortables() {
     const containers = this.el.querySelectorAll("[data-sortable-container]");
-    const groupName = this.treeType === "flows" ? "flows-tree" : "pages-tree";
+    const groupName = this.treeType === "flows" ? "flows-tree" : "sheets-tree";
 
     for (const container of containers) {
       const sortable = new Sortable(container, {
@@ -51,7 +51,7 @@ export const SortableTree = {
         animation: 150,
         fallbackOnBody: true,
         swapThreshold: 0.65,
-        draggable: "[data-page-id]", // Uses data-page-id for both pages and flows
+        draggable: "[data-sheet-id]", // Uses data-sheet-id for both sheets and flows
         ghostClass: "sortable-ghost",
         chosenClass: "sortable-chosen",
         dragClass: "sortable-drag",
@@ -64,11 +64,11 @@ export const SortableTree = {
             return;
           }
 
-          const itemId = event.item.dataset.pageId;
+          const itemId = event.item.dataset.sheetId;
           const newParentId = event.to.dataset.parentId || null;
 
-          // Calculate position based on sibling elements with data-page-id
-          const siblings = Array.from(event.to.children).filter((el) => el.dataset.pageId);
+          // Calculate position based on sibling elements with data-sheet-id
+          const siblings = Array.from(event.to.children).filter((el) => el.dataset.sheetId);
           const newPosition = siblings.indexOf(event.item);
 
           if (this.treeType === "flows") {
@@ -78,8 +78,8 @@ export const SortableTree = {
               position: String(newPosition >= 0 ? newPosition : 0),
             });
           } else {
-            this.pushEvent("move_page", {
-              page_id: itemId,
+            this.pushEvent("move_sheet", {
+              sheet_id: itemId,
               parent_id: newParentId,
               position: newPosition >= 0 ? newPosition : 0,
             });

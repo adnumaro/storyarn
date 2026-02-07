@@ -2,7 +2,7 @@ defmodule StoryarnWeb.Components.MemberComponents do
   @moduledoc """
   Shared components for displaying team members and invitations.
 
-  These components are used in both project and workspace settings pages.
+  These components are used in both project and workspace settings sheets.
   """
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext

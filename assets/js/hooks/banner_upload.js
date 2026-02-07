@@ -1,5 +1,5 @@
 /**
- * BannerUpload hook for handling page banner file selection
+ * BannerUpload hook for handling sheet banner file selection
  *
  * Reads the selected file and sends it as base64 to the server.
  */
@@ -26,11 +26,11 @@ export const BannerUpload = {
       const reader = new FileReader();
       reader.onload = (event) => {
         const base64 = event.target.result;
-        const pageId = this.el.dataset.pageId;
+        const sheetId = this.el.dataset.sheetId;
         const target = this.el.dataset.target;
 
         const payload = {
-          page_id: pageId,
+          sheet_id: sheetId,
           filename: file.name,
           content_type: file.type,
           data: base64,

@@ -4,7 +4,7 @@ defmodule StoryarnWeb.Components.SaveIndicator do
 
   Supports two variants:
   - `:inline` - Simple inline indicator (used in flow editor header)
-  - `:floating` - Absolute positioned with background (used in page editor)
+  - `:floating` - Absolute positioned with background (used in sheet editor)
   """
 
   use Phoenix.Component

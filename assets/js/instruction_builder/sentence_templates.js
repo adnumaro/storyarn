@@ -6,13 +6,13 @@
  * - "slot" entries are interactive (combobox/input)
  *
  * When value_type == "variable_ref", the "value" slot is replaced by
- * "value_page" + separator + "value" (as variable combobox).
+ * "value_sheet" + separator + "value" (as variable combobox).
  */
 
 export const SENTENCE_TEMPLATES = {
   set: [
     { type: "verb", value: "Set" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "\u00b7" },
     { type: "slot", key: "variable", placeholder: "variable" },
     { type: "text", value: "to" },
@@ -22,7 +22,7 @@ export const SENTENCE_TEMPLATES = {
     { type: "verb", value: "Add" },
     { type: "slot", key: "value", placeholder: "value" },
     { type: "text", value: "to" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "\u00b7" },
     { type: "slot", key: "variable", placeholder: "variable" },
   ],
@@ -30,33 +30,33 @@ export const SENTENCE_TEMPLATES = {
     { type: "verb", value: "Subtract" },
     { type: "slot", key: "value", placeholder: "value" },
     { type: "text", value: "from" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "\u00b7" },
     { type: "slot", key: "variable", placeholder: "variable" },
   ],
   set_true: [
     { type: "verb", value: "Set" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "\u00b7" },
     { type: "slot", key: "variable", placeholder: "variable" },
     { type: "text", value: "to true" },
   ],
   set_false: [
     { type: "verb", value: "Set" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "\u00b7" },
     { type: "slot", key: "variable", placeholder: "variable" },
     { type: "text", value: "to false" },
   ],
   toggle: [
     { type: "verb", value: "Toggle" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "\u00b7" },
     { type: "slot", key: "variable", placeholder: "variable" },
   ],
   clear: [
     { type: "verb", value: "Clear" },
-    { type: "slot", key: "page", placeholder: "page" },
+    { type: "slot", key: "sheet", placeholder: "sheet" },
     { type: "text", value: "\u00b7" },
     { type: "slot", key: "variable", placeholder: "variable" },
   ],
@@ -72,13 +72,13 @@ export function getTemplate(operator) {
 
 /**
  * Expands value slot for variable_ref mode.
- * Replaces the single "value" slot with "value_page" + "·" + "value".
+ * Replaces the single "value" slot with "value_sheet" + "·" + "value".
  */
 export function expandTemplateForVariableRef(template) {
   const expanded = [];
   for (const item of template) {
     if (item.type === "slot" && item.key === "value") {
-      expanded.push({ type: "slot", key: "value_page", placeholder: "page" });
+      expanded.push({ type: "slot", key: "value_sheet", placeholder: "sheet" });
       expanded.push({ type: "text", value: "\u00b7" });
       expanded.push({
         type: "slot",

@@ -16,7 +16,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Flows
-  alias Storyarn.Pages
+  alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
@@ -156,18 +156,19 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      |> assign(:editing_mode, nil)}
   end
 
-  @spec handle_create_page(Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_create_page(socket) do
-    case Pages.create_page(socket.assigns.project, %{name: gettext("Untitled")}) do
-      {:ok, new_page} ->
+  @spec handle_create_sheet(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_create_sheet(socket) do
+    case Sheets.create_sheet(socket.assigns.project, %{name: gettext("Untitled")}) do
+      {:ok, new_sheet} ->
         {:noreply,
          push_navigate(socket,
            to:
-             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/pages/#{new_page.id}"
+             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
          )}
 
       {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not create page."))}
+        {:noreply, put_flash(socket, :error, gettext("Could not create sheet."))}
     end
   end
 
@@ -206,7 +207,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_mention_suggestions(%{"query" => query}, socket) do
     project_id = socket.assigns.project.id
-    results = Pages.search_referenceable(project_id, query, ["page", "flow"])
+    results = Sheets.search_referenceable(project_id, query, ["sheet", "flow"])
 
     items =
       Enum.map(results, fn result ->

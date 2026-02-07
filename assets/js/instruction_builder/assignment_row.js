@@ -24,7 +24,7 @@ import {
  * @param {HTMLElement} opts.container - Row container element
  * @param {Object} opts.assignment - Assignment data
  * @param {Array} opts.variables - All project variables
- * @param {Array} opts.pagesWithVariables - Grouped pages [{shortcut, name, vars}]
+ * @param {Array} opts.sheetsWithVariables - Grouped sheets [{shortcut, name, vars}]
  * @param {boolean} opts.canEdit - Whether editing is allowed
  * @param {Function} opts.onChange - Callback when assignment changes: (updatedAssignment) => void
  * @param {Function} opts.onRemove - Callback to remove this row: () => void
@@ -35,7 +35,7 @@ export function createAssignmentRow(opts) {
     container,
     assignment,
     variables,
-    pagesWithVariables,
+    sheetsWithVariables,
     canEdit,
     onChange,
     onRemove,
@@ -119,7 +119,7 @@ export function createAssignmentRow(opts) {
     // Value type toggle (only for operators that require a value)
     if (!NO_VALUE_OPERATORS.has(operator) && canEdit) {
       const valueSlotEl =
-        comboboxes.value_page?.input?.parentElement ||
+        comboboxes.value_sheet?.input?.parentElement ||
         comboboxes.value?.input?.parentElement;
       if (valueSlotEl) {
         const toggle = createValueTypeToggle();
@@ -183,9 +183,9 @@ export function createAssignmentRow(opts) {
 
   function getOptionsForSlot(key) {
     switch (key) {
-      case "page":
-      case "value_page":
-        return pagesWithVariables.map((p) => ({
+      case "sheet":
+      case "value_sheet":
+        return sheetsWithVariables.map((p) => ({
           value: p.shortcut,
           label: p.name,
           displayValue: p.shortcut,
@@ -193,13 +193,13 @@ export function createAssignmentRow(opts) {
         }));
 
       case "variable": {
-        const pageShortcut = currentAssignment.page;
-        if (!pageShortcut) return [];
-        const page = pagesWithVariables.find(
-          (p) => p.shortcut === pageShortcut,
+        const sheetShortcut = currentAssignment.sheet;
+        if (!sheetShortcut) return [];
+        const sheet = sheetsWithVariables.find(
+          (p) => p.shortcut === sheetShortcut,
         );
-        if (!page) return [];
-        return page.vars.map((v) => ({
+        if (!sheet) return [];
+        return sheet.vars.map((v) => ({
           value: v.variable_name,
           label: v.variable_name,
           meta: v.block_type,
@@ -209,13 +209,13 @@ export function createAssignmentRow(opts) {
       }
 
       case "value": {
-        // When value_type is variable_ref, show variables from value_page
+        // When value_type is variable_ref, show variables from value_sheet
         if (currentAssignment.value_type === "variable_ref") {
-          const vp = currentAssignment.value_page;
-          if (!vp) return [];
-          const page = pagesWithVariables.find((p) => p.shortcut === vp);
-          if (!page) return [];
-          return page.vars.map((v) => ({
+          const vs = currentAssignment.value_sheet;
+          if (!vs) return [];
+          const sheet = sheetsWithVariables.find((p) => p.shortcut === vs);
+          if (!sheet) return [];
+          return sheet.vars.map((v) => ({
             value: v.variable_name,
             label: v.variable_name,
             meta: v.block_type,
@@ -224,7 +224,7 @@ export function createAssignmentRow(opts) {
         // Literal mode: check if it's a select type, show options
         const selectedVar = findVariable(
           variables,
-          currentAssignment.page,
+          currentAssignment.sheet,
           currentAssignment.variable,
         );
         if (
@@ -254,13 +254,13 @@ export function createAssignmentRow(opts) {
   function isSlotDisabled(key) {
     switch (key) {
       case "variable":
-        return !currentAssignment.page;
+        return !currentAssignment.sheet;
       case "value":
         if (currentAssignment.value_type === "variable_ref") {
-          return !currentAssignment.value_page;
+          return !currentAssignment.value_sheet;
         }
         return !currentAssignment.variable;
-      case "value_page":
+      case "value_sheet":
         return !currentAssignment.variable;
       default:
         return false;
@@ -270,11 +270,11 @@ export function createAssignmentRow(opts) {
   function handleSlotChange(key, option, slotKeys) {
     currentAssignment[key] = option.value;
 
-    if (key === "page") {
+    if (key === "sheet") {
       currentAssignment.variable = null;
       currentAssignment.operator = "set";
       currentAssignment.value = null;
-      currentAssignment.value_page = null;
+      currentAssignment.value_sheet = null;
       notifyChange();
       // Defer re-render to next frame so the current combobox event finishes
       requestAnimationFrame(() => {
@@ -288,7 +288,7 @@ export function createAssignmentRow(opts) {
       // Auto-detect type and set first operator
       const selectedVar = findVariable(
         variables,
-        currentAssignment.page,
+        currentAssignment.sheet,
         option.value,
       );
       if (selectedVar) {
@@ -298,7 +298,7 @@ export function createAssignmentRow(opts) {
         }
       }
       currentAssignment.value = null;
-      currentAssignment.value_page = null;
+      currentAssignment.value_sheet = null;
       notifyChange();
       requestAnimationFrame(() => {
         render();
@@ -312,7 +312,7 @@ export function createAssignmentRow(opts) {
       return;
     }
 
-    if (key === "value_page") {
+    if (key === "value_sheet") {
       currentAssignment.value = null;
       notifyChange();
       requestAnimationFrame(() => {
@@ -360,7 +360,7 @@ export function createAssignmentRow(opts) {
         // Clear value when switching between value/no-value operators
         if (NO_VALUE_OPERATORS.has(op) !== NO_VALUE_OPERATORS.has(oldOp)) {
           currentAssignment.value = null;
-          currentAssignment.value_page = null;
+          currentAssignment.value_sheet = null;
           currentAssignment.value_type = "literal";
         }
         notifyChange();
@@ -408,7 +408,7 @@ export function createAssignmentRow(opts) {
       e.preventDefault();
       if (currentAssignment.value_type === "variable_ref") {
         currentAssignment.value_type = "literal";
-        currentAssignment.value_page = null;
+        currentAssignment.value_sheet = null;
       } else {
         currentAssignment.value_type = "variable_ref";
         currentAssignment.value = null;
@@ -423,7 +423,7 @@ export function createAssignmentRow(opts) {
   function getVariableType() {
     const v = findVariable(
       variables,
-      currentAssignment.page,
+      currentAssignment.sheet,
       currentAssignment.variable,
     );
     return v ? v.block_type : null;
@@ -433,11 +433,11 @@ export function createAssignmentRow(opts) {
     if (onChange) onChange({ ...currentAssignment });
   }
 
-  function findVariable(vars, pageShortcut, variableName) {
-    if (!pageShortcut || !variableName) return null;
+  function findVariable(vars, sheetShortcut, variableName) {
+    if (!sheetShortcut || !variableName) return null;
     return vars.find(
       (v) =>
-        v.page_shortcut === pageShortcut && v.variable_name === variableName,
+        v.sheet_shortcut === sheetShortcut && v.variable_name === variableName,
     );
   }
 
@@ -445,7 +445,7 @@ export function createAssignmentRow(opts) {
   return {
     getAssignment: () => ({ ...currentAssignment }),
     focusFirstEmpty: () => {
-      for (const key of ["page", "variable", "value"]) {
+      for (const key of ["sheet", "variable", "value"]) {
         if (!currentAssignment[key] && comboboxes[key]) {
           comboboxes[key].focus();
           return;

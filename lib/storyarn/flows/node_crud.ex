@@ -4,7 +4,7 @@ defmodule Storyarn.Flows.NodeCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.{Flow, FlowNode, VariableReferenceTracker}
-  alias Storyarn.Pages.ReferenceTracker
+  alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Repo
 
   def list_nodes(flow_id) do

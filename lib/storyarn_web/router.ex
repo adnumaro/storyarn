@@ -110,12 +110,12 @@ defmodule StoryarnWeb.Router do
            ProjectLive.Settings,
            :edit
 
-      # Pages (wiki-style content)
-      live "/workspaces/:workspace_slug/projects/:project_slug/pages", PageLive.Index, :index
-      live "/workspaces/:workspace_slug/projects/:project_slug/pages/:id", PageLive.Show, :show
+      # Sheets (character sheets, location sheets, etc.)
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets", SheetLive.Index, :index
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id", SheetLive.Show, :show
 
-      live "/workspaces/:workspace_slug/projects/:project_slug/pages/:id/edit",
-           PageLive.Show,
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/edit",
+           SheetLive.Show,
            :edit
 
       # Trash

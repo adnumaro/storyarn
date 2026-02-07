@@ -36,7 +36,7 @@ export default {
     `);
   },
 
-  getPreviewText(data, _pagesMap, hubsMap) {
+  getPreviewText(data, _sheetsMap, hubsMap) {
     const targetHub = data.target_hub_id ? hubsMap?.[data.target_hub_id] : null;
     if (targetHub?.label) return `→ ${targetHub.label}`;
     return data.target_hub_id ? `→ ${data.target_hub_id}` : "";
@@ -50,7 +50,7 @@ export default {
     return indicators;
   },
 
-  nodeColor(data, config, _pagesMap, hubsMap) {
+  nodeColor(data, config, _sheetsMap, hubsMap) {
     const targetHub = data.target_hub_id ? hubsMap?.[data.target_hub_id] : null;
     return targetHub?.color_hex || config.color;
   },

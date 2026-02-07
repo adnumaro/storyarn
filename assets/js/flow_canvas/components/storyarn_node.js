@@ -13,7 +13,7 @@ export class StoryarnNode extends LitElement {
     return {
       data: { type: Object },
       emit: { type: Function },
-      pagesMap: { type: Object },
+      sheetsMap: { type: Object },
       hubsMap: { type: Object },
     };
   }
@@ -33,7 +33,7 @@ export class StoryarnNode extends LitElement {
       config,
       selected: node.selected,
       emit: this.emit,
-      pagesMap: this.pagesMap,
+      sheetsMap: this.sheetsMap,
       hubsMap: this.hubsMap,
     });
   }

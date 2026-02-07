@@ -461,7 +461,7 @@ data: %{
 
 ### 7.5.F.8 Hierarchical Organization
 
-Flows are organized in a tree structure identical to Pages. Any flow can have children AND content (nodes).
+Flows are organized in a tree structure identical to Sheets. Any flow can have children AND content (nodes).
 
 ```
 🔀 Flows

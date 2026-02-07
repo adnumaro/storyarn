@@ -10,7 +10,7 @@ defmodule Storyarn.Flows.Condition do
     "logic": "all",      // "all" (AND) or "any" (OR)
     "rules": [
       {
-        "page": "mc.jaime",         // page shortcut
+        "sheet": "mc.jaime",         // sheet shortcut
         "variable": "class",         // variable_name of the block
         "operator": "equals",        // comparison operator
         "value": "mage"              // value to compare against
@@ -170,7 +170,7 @@ defmodule Storyarn.Flows.Condition do
   def add_rule(%{"logic" => logic, "rules" => rules}, opts) do
     new_rule = %{
       "id" => generate_rule_id(),
-      "page" => nil,
+      "sheet" => nil,
       "variable" => nil,
       "operator" => "equals",
       "value" => nil
@@ -252,7 +252,7 @@ defmodule Storyarn.Flows.Condition do
   defp normalize_rule(rule) when is_map(rule) do
     base = %{
       "id" => rule["id"] || generate_rule_id(),
-      "page" => rule["page"],
+      "sheet" => rule["sheet"],
       "variable" => rule["variable"],
       "operator" => normalize_operator(rule["operator"]),
       "value" => rule["value"]
@@ -273,7 +273,7 @@ defmodule Storyarn.Flows.Condition do
   defp normalize_operator(_), do: "equals"
 
   defp valid_rule_structure?(rule) when is_map(rule) do
-    Map.has_key?(rule, "page") and
+    Map.has_key?(rule, "sheet") and
       Map.has_key?(rule, "variable") and
       Map.has_key?(rule, "operator")
   end
@@ -283,7 +283,7 @@ defmodule Storyarn.Flows.Condition do
   # A rule is considered valid/complete if it has page, variable, and operator set
   # (value may be nil for operators like is_empty, is_true, is_false, is_nil)
   defp valid_rule?(rule) when is_map(rule) do
-    page = rule["page"]
+    page = rule["sheet"]
     variable = rule["variable"]
     operator = rule["operator"]
 

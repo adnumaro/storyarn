@@ -27,7 +27,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
   def default_data do
     %{
-      "speaker_page_id" => nil,
+      "speaker_sheet_id" => nil,
       "text" => "",
       "stage_directions" => "",
       "menu_text" => "",
@@ -42,7 +42,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
   def extract_form_data(data) do
     %{
-      "speaker_page_id" => data["speaker_page_id"] || "",
+      "speaker_sheet_id" => data["speaker_sheet_id"] || "",
       "text" => data["text"] || "",
       "stage_directions" => data["stage_directions"] || "",
       "menu_text" => data["menu_text"] || "",
@@ -142,9 +142,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   def handle_generate_technical_id(socket) do
     node = socket.assigns.selected_node
     flow = socket.assigns.flow
-    speaker_page_id = node.data["speaker_page_id"]
-    speaker_name = get_speaker_name(socket, speaker_page_id)
-    speaker_count = count_speaker_in_flow(flow, speaker_page_id, node.id)
+    speaker_sheet_id = node.data["speaker_sheet_id"]
+    speaker_name = get_speaker_name(socket, speaker_sheet_id)
+    speaker_count = count_speaker_in_flow(flow, speaker_sheet_id, node.id)
     technical_id = generate_technical_id(flow.shortcut, speaker_name, speaker_count)
 
     NodeHelpers.update_node_field(socket, node.id, "technical_id", technical_id)
@@ -192,20 +192,20 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
   defp get_speaker_name(_socket, nil), do: nil
 
-  defp get_speaker_name(socket, speaker_page_id) do
-    Enum.find_value(socket.assigns.all_pages, fn page ->
-      if to_string(page.id) == to_string(speaker_page_id), do: page.name
+  defp get_speaker_name(socket, speaker_sheet_id) do
+    Enum.find_value(socket.assigns.all_sheets, fn sheet ->
+      if to_string(sheet.id) == to_string(speaker_sheet_id), do: sheet.name
     end)
   end
 
-  defp count_speaker_in_flow(flow, speaker_page_id, current_node_id) do
+  defp count_speaker_in_flow(flow, speaker_sheet_id, current_node_id) do
     flow = Repo.preload(flow, :nodes)
 
     same_speaker_nodes =
       flow.nodes
       |> Enum.filter(fn node ->
         node.type == "dialogue" &&
-          to_string(node.data["speaker_page_id"]) == to_string(speaker_page_id)
+          to_string(node.data["speaker_sheet_id"]) == to_string(speaker_sheet_id)
       end)
       |> Enum.sort_by(& &1.inserted_at)
 

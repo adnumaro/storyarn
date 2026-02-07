@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.Components.ProjectSidebar do
   @moduledoc """
   Sidebar component for project navigation.
-  Dispatches to PageTree and FlowTree for content sections.
+  Dispatches to SheetTree and FlowTree for content sections.
   """
 
   use Phoenix.Component
@@ -12,15 +12,15 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
   import StoryarnWeb.Components.TreeComponents
 
   alias StoryarnWeb.Components.Sidebar.FlowTree
-  alias StoryarnWeb.Components.Sidebar.PageTree
+  alias StoryarnWeb.Components.Sidebar.SheetTree
 
   attr :project, :map, required: true
   attr :workspace, :map, required: true
-  attr :pages_tree, :list, default: []
+  attr :sheets_tree, :list, default: []
   attr :flows_tree, :list, default: []
-  attr :active_tool, :atom, default: :pages
+  attr :active_tool, :atom, default: :sheets
   attr :current_path, :string, required: true
-  attr :selected_page_id, :string, default: nil
+  attr :selected_sheet_id, :string, default: nil
   attr :selected_flow_id, :string, default: nil
   attr :can_edit, :boolean, default: false
 
@@ -58,10 +58,10 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
             active={flows_page?(@current_path, @workspace.slug, @project.slug)}
           />
           <.tree_link
-            label={gettext("Pages")}
-            href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/pages"}
+            label={gettext("Sheets")}
+            href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets"}
             icon="file-text"
-            active={pages_tool_page?(@current_path, @workspace.slug, @project.slug)}
+            active={sheets_tool_page?(@current_path, @workspace.slug, @project.slug)}
           />
         </div>
 
@@ -75,11 +75,11 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
             can_edit={@can_edit}
           />
         <% else %>
-          <PageTree.pages_section
-            pages_tree={@pages_tree}
+          <SheetTree.sheets_section
+            sheets_tree={@sheets_tree}
             workspace={@workspace}
             project={@project}
-            selected_page_id={@selected_page_id}
+            selected_sheet_id={@selected_sheet_id}
             can_edit={@can_edit}
           />
         <% end %>
@@ -116,7 +116,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
     String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows")
   end
 
-  defp pages_tool_page?(path, workspace_slug, project_slug) do
-    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/pages")
+  defp sheets_tool_page?(path, workspace_slug, project_slug) do
+    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets")
   end
 end
