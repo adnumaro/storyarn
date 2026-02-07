@@ -69,6 +69,16 @@ defmodule Storyarn.Pages.PageQueries do
     |> Repo.all()
   end
 
+  @spec list_all_pages(integer()) :: [Page.t()]
+  def list_all_pages(project_id) do
+    from(p in Page,
+      where: p.project_id == ^project_id and is_nil(p.deleted_at),
+      order_by: [asc: p.position, asc: p.name],
+      preload: [:avatar_asset]
+    )
+    |> Repo.all()
+  end
+
   @spec list_leaf_pages(integer()) :: [Page.t()]
   def list_leaf_pages(project_id) do
     parent_ids_subquery =

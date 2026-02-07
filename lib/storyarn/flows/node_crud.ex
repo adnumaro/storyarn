@@ -253,7 +253,8 @@ defmodule Storyarn.Flows.NodeCrud do
         where: fragment("?->>'target_hub_id' = ?", n.data, ^old_hub_id),
         update: [
           set: [
-            data: fragment("jsonb_set(?, '{target_hub_id}', to_jsonb(?::text))", n.data, ^new_hub_id),
+            data:
+              fragment("jsonb_set(?, '{target_hub_id}', to_jsonb(?::text))", n.data, ^new_hub_id),
             updated_at: ^now
           ]
         ]

@@ -85,8 +85,14 @@ defmodule Storyarn.Pages do
   defdelegate get_children(page_id), to: PageQueries
 
   @doc """
+  Lists all pages for a project.
+  Used for speaker selection in dialogue nodes and canvas rendering.
+  """
+  @spec list_all_pages(id()) :: [page()]
+  defdelegate list_all_pages(project_id), to: PageQueries
+
+  @doc """
   Lists all leaf pages (pages with no children) for a project.
-  Useful for speaker selection in dialogue nodes.
   """
   @spec list_leaf_pages(id()) :: [page()]
   defdelegate list_leaf_pages(project_id), to: PageQueries
