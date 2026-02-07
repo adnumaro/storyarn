@@ -1,7 +1,7 @@
 # Instruction Node + Variable Reference System
 
-> **Status**: Phase A complete, Phases B-D pending
-> **Date**: February 6, 2026
+> **Status**: Phases A-C complete, Phase D pending
+> **Date**: February 7, 2026
 > **Scope**: Instruction node visual builder, variable write/read tracking, variable usage UI on pages
 
 ---
@@ -10,12 +10,12 @@
 
 Four phases that build on each other:
 
-| Phase | What | Effort | Depends on |
-|-------|------|--------|------------|
-| **A** | Instruction Node (visual builder) | Medium | Nothing |
-| **B** | Variable Reference Tracking (DB + tracker) | Medium | A |
-| **C** | Variable Usage UI (page editor) | Small | B |
-| **D** | Robustness (stale refs, repair) | Small | C |
+| Phase | What | Effort | Depends on | Status |
+|-------|------|--------|------------|--------|
+| **A** | Instruction Node (visual builder) | Medium | Nothing | ✅ Done |
+| **B** | Variable Reference Tracking (DB + tracker) | Medium | A | ✅ Done |
+| **C** | Variable Usage UI (page editor) | Small | B | ✅ Done |
+| **D** | Robustness (stale refs, repair) | Small | C | Pending |
 
 **Total new files:** 8
 **Total modified files:** ~14
@@ -1494,21 +1494,25 @@ Each phase should be committed separately.
 - [x] Duplicate instruction node preserves assignments (including value_type)
 - [x] Collaboration: external update via `handleEvent("node_updated")` refreshes builder
 
-### Phase B
-- [ ] `mix ecto.migrate` — migration runs
-- [ ] Save instruction node (literal) → variable_references table has write entry
-- [ ] Save instruction node (variable_ref) → variable_references table has write entry AND read entry (for source variable)
-- [ ] Save condition node → variable_references table has read entries
-- [ ] Delete node → references cascade deleted
-- [ ] Delete block → references cascade deleted
-- [ ] Unresolvable variable (bad shortcut) → no reference created, no error
+### Phase B ✅
+- [x] `mix ecto.migrate` — migration runs (20260207004821_create_variable_references)
+- [x] Save instruction node (literal) → variable_references table has write entry
+- [x] Save instruction node (variable_ref) → variable_references table has write entry AND read entry (for source variable)
+- [x] Save condition node → variable_references table has read entries
+- [x] Delete node → references cascade deleted
+- [x] Delete block → references cascade deleted
+- [x] Unresolvable variable (bad shortcut) → no reference created, no error
+- [x] `mix test` — 592 tests, 0 failures (15 new tracker tests)
 
-### Phase C
-- [ ] Page editor → References tab → variable usage section visible
-- [ ] Shows "Modified by" for variables written by instruction nodes
-- [ ] Shows "Read by" for variables read by condition nodes
-- [ ] Click navigate → opens flow editor zoomed to the node
-- [ ] Variables with no usage show "Not used in any flow"
+### Phase C ✅
+- [x] Page editor → References tab → variable usage section visible
+- [x] Shows "Modified by" (warning/yellow) for variables written by instruction nodes
+- [x] Shows "Read by" (info/blue) for variables read by condition nodes
+- [x] Click navigate → opens flow editor zoomed to the node (`?node=X` param)
+- [x] Variables with no usage show "No variables on this page are used in any flow yet."
+- [x] Pages without variables don't show the section at all
+- [x] Inline detail for write refs shows operator + value (e.g., `+= 10`, `= true`)
+- [x] `mix test` — 597 tests, 0 failures (5 new LiveView tests)
 
 ### Phase D
 - [ ] Rename page shortcut → variable usage still shows (block_id FK intact)

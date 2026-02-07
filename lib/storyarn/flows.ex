@@ -19,7 +19,8 @@ defmodule Storyarn.Flows do
     FlowNode,
     HubColors,
     NodeCrud,
-    TreeOperations
+    TreeOperations,
+    VariableReferenceTracker
   }
 
   alias Storyarn.Projects.Project
@@ -251,6 +252,24 @@ defmodule Storyarn.Flows do
   """
   @spec list_referencing_jumps(integer(), String.t()) :: [map()]
   defdelegate list_referencing_jumps(flow_id, hub_id), to: NodeCrud
+
+  # =============================================================================
+  # Variable Reference Tracking
+  # =============================================================================
+
+  @doc """
+  Returns all variable references for a block, with flow/node info.
+  Used by the page editor's variable usage section.
+  """
+  @spec get_variable_usage(integer(), integer()) :: [map()]
+  defdelegate get_variable_usage(block_id, project_id), to: VariableReferenceTracker
+
+  @doc """
+  Counts variable references for a block, grouped by kind.
+  Returns %{"read" => N, "write" => M}.
+  """
+  @spec count_variable_usage(integer()) :: map()
+  defdelegate count_variable_usage(block_id), to: VariableReferenceTracker
 
   # =============================================================================
   # Connections - CRUD Operations

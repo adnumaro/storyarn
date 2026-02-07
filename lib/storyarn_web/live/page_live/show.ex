@@ -139,6 +139,7 @@ defmodule StoryarnWeb.PageLive.Show do
           id="references-tab"
           project={@project}
           page={@page}
+          blocks={@blocks}
           can_edit={@can_edit}
           current_user_id={@current_scope.user.id}
         />

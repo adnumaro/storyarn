@@ -251,7 +251,21 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   @impl true
-  def handle_params(_params, _url, socket), do: {:noreply, socket}
+  def handle_params(params, _url, socket) do
+    socket =
+      case params["node"] do
+        nil ->
+          socket
+
+        node_id ->
+          case Integer.parse(node_id) do
+            {id, ""} -> push_event(socket, "navigate_to_node", %{node_db_id: id})
+            _ -> socket
+          end
+      end
+
+    {:noreply, socket}
+  end
 
   # ===========================================================================
   # Event Handlers (thin delegation)

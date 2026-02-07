@@ -7,12 +7,22 @@ defmodule StoryarnWeb.PageLive.Components.ReferencesTab do
   use StoryarnWeb, :live_component
 
   alias StoryarnWeb.PageLive.Components.BacklinksSection
+  alias StoryarnWeb.PageLive.Components.VariableUsageSection
   alias StoryarnWeb.PageLive.Components.VersionsSection
 
   @impl true
   def render(assigns) do
     ~H"""
     <div class="space-y-8">
+      <%!-- Variable Usage Section --%>
+      <.live_component
+        module={VariableUsageSection}
+        id="variable-usage-section"
+        page={@page}
+        project={@project}
+        blocks={@blocks}
+      />
+
       <%!-- Backlinks Section --%>
       <.live_component
         module={BacklinksSection}
