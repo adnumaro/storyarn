@@ -1,7 +1,7 @@
 # Storyarn Competitive Strategy & Recommendations
 
 > **Date:** February 2024
-> **Based on:** [Narrative Design Tools Research](./research/NARRATIVE_DESIGN_TOOLS_RESEARCH.md)
+> **Based on:** [Narrative Design Tools Research](../research/NARRATIVE_DESIGN_TOOLS_RESEARCH.md)
 
 ---
 

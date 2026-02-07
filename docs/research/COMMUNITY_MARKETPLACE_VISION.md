@@ -543,4 +543,4 @@ Execute Phase 1 (tool) excellently, then carefully expand to community and marke
 - [ArtStation Marketplace](https://www.artstation.com/marketplace)
 - [Envato Market](https://market.envato.com/)
 - [GitHub Sponsors](https://github.com/sponsors)
-- [Patent Research](./research/GAME_MECHANICS_BANK_RESEARCH.md)
+- [Patent Research](GAME_MECHANICS_BANK_RESEARCH.md)

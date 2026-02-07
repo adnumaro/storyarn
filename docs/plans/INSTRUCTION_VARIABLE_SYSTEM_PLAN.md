@@ -10,12 +10,12 @@
 
 Four phases that build on each other:
 
-| Phase | What | Effort | Depends on | Status |
-|-------|------|--------|------------|--------|
-| **A** | Instruction Node (visual builder) | Medium | Nothing | ✅ Done |
-| **B** | Variable Reference Tracking (DB + tracker) | Medium | A | ✅ Done |
-| **C** | Variable Usage UI (page editor) | Small | B | ✅ Done |
-| **D** | Robustness (stale refs, repair) | Small | C | Pending |
+| Phase   | What                                       | Effort   | Depends on   | Status   |
+|---------|--------------------------------------------|----------|--------------|----------|
+| **A**   | Instruction Node (visual builder)          | Medium   | Nothing      | ✅ Done   |
+| **B**   | Variable Reference Tracking (DB + tracker) | Medium   | A            | ✅ Done   |
+| **C**   | Variable Usage UI (page editor)            | Small    | B            | ✅ Done   |
+| **D**   | Robustness (stale refs, repair)            | Small    | C            | Pending  |
 
 **Total new files:** 8
 **Total modified files:** ~14
@@ -197,23 +197,23 @@ end
 
 Each operator defines a sentence template. Static words are rendered as plain text, `[slots]` are inline combobox inputs. The sentence structure changes based on the operator:
 
-| Operator | Sentence Template | Example Render |
-|----------|-------------------|----------------|
-| `set` | `Set [page]·[variable] to [value]` | `Set mc.jaime · health to 100` |
-| `add` | `Add [value] to [page]·[variable]` | `Add 10 to mc.jaime · health` |
-| `subtract` | `Subtract [value] from [page]·[variable]` | `Subtract 20 from mc.jaime · health` |
-| `set_true` | `Set [page]·[variable] to true` | `Set mc.zelda · hasMasterSword to true` |
-| `set_false` | `Set [page]·[variable] to false` | `Set mc.jaime · isAlive to false` |
-| `toggle` | `Toggle [page]·[variable]` | `Toggle mc.jaime · isAlive` |
-| `clear` | `Clear [page]·[variable]` | `Clear mc.jaime · name` |
+| Operator    | Sentence Template                         | Example Render                          |
+|-------------|-------------------------------------------|-----------------------------------------|
+| `set`       | `Set [page]·[variable] to [value]`        | `Set mc.jaime · health to 100`          |
+| `add`       | `Add [value] to [page]·[variable]`        | `Add 10 to mc.jaime · health`           |
+| `subtract`  | `Subtract [value] from [page]·[variable]` | `Subtract 20 from mc.jaime · health`    |
+| `set_true`  | `Set [page]·[variable] to true`           | `Set mc.zelda · hasMasterSword to true` |
+| `set_false` | `Set [page]·[variable] to false`          | `Set mc.jaime · isAlive to false`       |
+| `toggle`    | `Toggle [page]·[variable]`                | `Toggle mc.jaime · isAlive`             |
+| `clear`     | `Clear [page]·[variable]`                 | `Clear mc.jaime · name`                 |
 
 When `value_type == "variable_ref"`, the value slot becomes a page·variable combobox:
 
-| Operator | Sentence Template (variable_ref) | Example Render |
-|----------|----------------------------------|----------------|
-| `set` | `Set [page]·[variable] to [src_page]·[src_variable]` | `Set mc.link · hasMasterSword to global.quests · masterSwordDone` |
-| `add` | `Add [src_page]·[src_variable] to [page]·[variable]` | `Add items.potion · value to mc.jaime · health` |
-| `subtract` | `Subtract [src_page]·[src_variable] from [page]·[variable]` | `Subtract enemy.boss · damage from mc.jaime · health` |
+| Operator   | Sentence Template (variable_ref)                            | Example Render                                                    |
+|------------|-------------------------------------------------------------|-------------------------------------------------------------------|
+| `set`      | `Set [page]·[variable] to [src_page]·[src_variable]`        | `Set mc.link · hasMasterSword to global.quests · masterSwordDone` |
+| `add`      | `Add [src_page]·[src_variable] to [page]·[variable]`        | `Add items.potion · value to mc.jaime · health`                   |
+| `subtract` | `Subtract [src_page]·[src_variable] from [page]·[variable]` | `Subtract enemy.boss · damage from mc.jaime · health`             |
 
 **Note:** Operators that don't require a value (`set_true`, `set_false`, `toggle`, `clear`) ignore `value_type` entirely — the toggle between literal/variable_ref is hidden for these operators.
 
@@ -1412,39 +1412,39 @@ When a flow node has stale variable references, show a warning indicator on the 
 
 ### New Files (11)
 
-| File | Phase | Purpose |
-|------|-------|---------|
-| `lib/storyarn/flows/instruction.ex` | A | Domain logic |
-| `lib/storyarn_web/components/instruction_builder.ex` | A | Thin HEEx wrapper (renders hook container) |
-| `assets/js/hooks/instruction_builder/instruction_builder_hook.js` | A | LiveView hook (entry point, state management) |
-| `assets/js/hooks/instruction_builder/assignment_row.js` | A | Sentence-flow row rendering |
-| `assets/js/hooks/instruction_builder/combobox.js` | A | Searchable combobox widget |
-| `assets/js/hooks/instruction_builder/sentence_templates.js` | A | Operator → sentence template mapping |
-| `lib/storyarn_web/live/flow_live/components/panels/instruction_panel.ex` | A | Panel UI |
-| `lib/storyarn_web/live/flow_live/handlers/instruction_event_handlers.ex` | A | Event handler (receives full state from JS) |
-| `priv/repo/migrations/XXXXXXXX_create_variable_references.exs` | B | DB migration |
-| `lib/storyarn/flows/variable_reference.ex` | B | Ecto schema |
-| `lib/storyarn/flows/variable_reference_tracker.ex` | B | Tracking logic |
-| `lib/storyarn_web/live/page_live/components/variable_usage_section.ex` | C | Page UI |
+| File                                                                     | Phase  | Purpose                                       |
+|--------------------------------------------------------------------------|--------|-----------------------------------------------|
+| `lib/storyarn/flows/instruction.ex`                                      | A      | Domain logic                                  |
+| `lib/storyarn_web/components/instruction_builder.ex`                     | A      | Thin HEEx wrapper (renders hook container)    |
+| `assets/js/hooks/instruction_builder/instruction_builder_hook.js`        | A      | LiveView hook (entry point, state management) |
+| `assets/js/hooks/instruction_builder/assignment_row.js`                  | A      | Sentence-flow row rendering                   |
+| `assets/js/hooks/instruction_builder/combobox.js`                        | A      | Searchable combobox widget                    |
+| `assets/js/hooks/instruction_builder/sentence_templates.js`              | A      | Operator → sentence template mapping          |
+| `lib/storyarn_web/live/flow_live/components/panels/instruction_panel.ex` | A      | Panel UI                                      |
+| `lib/storyarn_web/live/flow_live/handlers/instruction_event_handlers.ex` | A      | Event handler (receives full state from JS)   |
+| `priv/repo/migrations/XXXXXXXX_create_variable_references.exs`           | B      | DB migration                                  |
+| `lib/storyarn/flows/variable_reference.ex`                               | B      | Ecto schema                                   |
+| `lib/storyarn/flows/variable_reference_tracker.ex`                       | B      | Tracking logic                                |
+| `lib/storyarn_web/live/page_live/components/variable_usage_section.ex`   | C      | Page UI                                       |
 
 ### Modified Files (~14)
 
-| File | Phase | Changes |
-|------|-------|---------|
-| `lib/storyarn_web/live/flow_live/node_type_registry.ex` | A | default_data, extract_form_data |
-| `lib/storyarn_web/live/flow_live/components/panels/simple_panels.ex` | A | Remove instruction case |
-| `lib/storyarn_web/live/flow_live/components/properties_panels.ex` | A | Route to InstructionPanel |
-| `lib/storyarn_web/live/flow_live/show.ex` | A+C | New event + node query param |
-| `assets/js/hooks/flow_canvas/components/node_formatters.js` | A | Sentence-style instruction preview |
-| `assets/js/hooks/flow_canvas/components/storyarn_node.js` | A | Instruction rendering (if needed) |
-| `assets/js/hooks/index.js` | A | Register InstructionBuilder hook |
-| `assets/css/app.css` | A | Instruction builder styles |
-| `lib/storyarn/flows/node_crud.ex` | B | Integrate variable tracker |
-| `lib/storyarn/flows.ex` | B | Facade delegates |
-| `lib/storyarn_web/live/page_live/components/references_tab.ex` | C | Add variable usage |
-| `lib/storyarn_web/live/page_live/show.ex` | C | Pass blocks to tab |
-| `test/storyarn/flows_test.exs` | A | Instruction node tests |
-| New test files | A+B | Domain + tracker tests |
+| File                                                                 | Phase  | Changes                            |
+|----------------------------------------------------------------------|--------|------------------------------------|
+| `lib/storyarn_web/live/flow_live/node_type_registry.ex`              | A      | default_data, extract_form_data    |
+| `lib/storyarn_web/live/flow_live/components/panels/simple_panels.ex` | A      | Remove instruction case            |
+| `lib/storyarn_web/live/flow_live/components/properties_panels.ex`    | A      | Route to InstructionPanel          |
+| `lib/storyarn_web/live/flow_live/show.ex`                            | A+C    | New event + node query param       |
+| `assets/js/hooks/flow_canvas/components/node_formatters.js`          | A      | Sentence-style instruction preview |
+| `assets/js/hooks/flow_canvas/components/storyarn_node.js`            | A      | Instruction rendering (if needed)  |
+| `assets/js/hooks/index.js`                                           | A      | Register InstructionBuilder hook   |
+| `assets/css/app.css`                                                 | A      | Instruction builder styles         |
+| `lib/storyarn/flows/node_crud.ex`                                    | B      | Integrate variable tracker         |
+| `lib/storyarn/flows.ex`                                              | B      | Facade delegates                   |
+| `lib/storyarn_web/live/page_live/components/references_tab.ex`       | C      | Add variable usage                 |
+| `lib/storyarn_web/live/page_live/show.ex`                            | C      | Pass blocks to tab                 |
+| `test/storyarn/flows_test.exs`                                       | A      | Instruction node tests             |
+| New test files                                                       | A+B    | Domain + tracker tests             |
 
 ---
 
@@ -1530,6 +1530,6 @@ These are NOT part of this plan but should be noted. See `FUTURE_FEATURES.md` fo
 3. **Cross-flow variable analysis** — "Show me all flows that touch this variable" as a project-level view.
 4. **Variable rename propagation** — When a page shortcut or variable name changes, auto-update all referencing node data (not just the reference table).
 5. **Export integration** — Include variable reference graph in export format.
-6. ***Expression text mode** — Alternative text input for power users (articy:expresso-like). See FUTURE_FEATURES.md.
-7. ***Conditional assignments ("When...change...to")** — Inline conditions on assignments. See FUTURE_FEATURES.md.
-8. ***Slash commands in value input** — `/page` to switch to variable selector. See FUTURE_FEATURES.md.
+6. **Expression text mode** — Alternative text input for power users (articy:expresso-like). See FUTURE_FEATURES.md.
+7. **Conditional assignments ("When...change...to")** — Inline conditions on assignments. See FUTURE_FEATURES.md.
+8. **Slash commands in value input** — `/page` to switch to variable selector. See FUTURE_FEATURES.md.

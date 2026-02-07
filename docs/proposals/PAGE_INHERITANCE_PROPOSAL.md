@@ -2,7 +2,7 @@
 
 > **Date:** February 2024
 > **Status:** Proposal
-> **Related:** [Narrative Design Tools Research](./research/NARRATIVE_DESIGN_TOOLS_RESEARCH.md)
+> **Related:** [Narrative Design Tools Research](../research/NARRATIVE_DESIGN_TOOLS_RESEARCH.md)
 
 ---
 

@@ -1,8 +1,8 @@
 # Page Inheritance: Comparison with Industry Tools
 
 > **Date:** February 2024
-> **Related Research:** [Entity Database Tools Research](./research/ENTITY_DATABASE_TOOLS_RESEARCH.md)
-> **Related Proposal:** [Page Inheritance Proposal](./PAGE_INHERITANCE_PROPOSAL.md)
+> **Related Research:** [Entity Database Tools Research](ENTITY_DATABASE_TOOLS_RESEARCH.md)
+> **Related Proposal:** [Page Inheritance Proposal](../proposals/PAGE_INHERITANCE_PROPOSAL.md)
 
 ---
 

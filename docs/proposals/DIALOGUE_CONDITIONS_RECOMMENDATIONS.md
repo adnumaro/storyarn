@@ -1,6 +1,6 @@
 # Dialogue Conditions: Recommendations
 
-> **Based on**: [DIALOGUE_CONDITIONS_RESEARCH.md](./research/DIALOGUE_CONDITIONS_RESEARCH.md)
+> **Based on**: [DIALOGUE_CONDITIONS_RESEARCH.md](../research/DIALOGUE_CONDITIONS_RESEARCH.md)
 > **Date**: February 2026
 > **Status**: Proposal
 
@@ -242,6 +242,6 @@ end
 
 ## References
 
-- [Research Document](./research/DIALOGUE_CONDITIONS_RESEARCH.md)
+- [Research Document](../research/DIALOGUE_CONDITIONS_RESEARCH.md)
 - [articy:draft Conditions](https://www.articy.com/help/adx/Scripting_Conditions_Instructions.html)
 - [Arcweave Branches](https://arcweave.com/docs/1.0/branches)

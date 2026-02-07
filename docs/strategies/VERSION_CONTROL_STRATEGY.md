@@ -2,7 +2,7 @@
 
 > **Date:** February 2026
 > **Status:** Approved
-> **Related:** [Version Control Research](./research/VERSION_CONTROL_RESEARCH.md)
+> **Related:** [Version Control Research](../research/VERSION_CONTROL_RESEARCH.md)
 
 ---
 

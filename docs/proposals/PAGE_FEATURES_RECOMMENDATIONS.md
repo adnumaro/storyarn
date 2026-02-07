@@ -1,7 +1,7 @@
 # Page Features: Recommendations & Strategy
 
 > **Date:** February 2024
-> **Based on:** [Page Features Research](./research/PAGE_FEATURES_RESEARCH.md)
+> **Based on:** [Page Features Research](../research/PAGE_FEATURES_RESEARCH.md)
 
 ---
 

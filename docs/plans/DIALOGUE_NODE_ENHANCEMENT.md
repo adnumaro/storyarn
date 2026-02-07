@@ -3,22 +3,22 @@
 > **Objective**: Enhance Storyarn's dialogue node to match the feature set of articy:draft and Arcweave, the industry-leading narrative design tools.
 
 > **Related Documents**:
-> - [Research: Condition Placement](./docs/research/DIALOGUE_CONDITIONS_RESEARCH.md)
-> - [Recommendations: Condition Model](./docs/DIALOGUE_CONDITIONS_RECOMMENDATIONS.md)
+> - [Research: Condition Placement](../research/DIALOGUE_CONDITIONS_RESEARCH.md)
+> - [Recommendations: Condition Model](../proposals/DIALOGUE_CONDITIONS_RECOMMENDATIONS.md)
 
 ---
 
 ## Implementation Status
 
-| Phase | Name | Priority | Status |
-|-------|------|----------|--------|
-| 1 | Core Dialogue Enhancement | Essential | ✅ COMPLETED |
-| 2 | Visual Customization | Essential | ✅ COMPLETED (audio only, color/cover deferred) |
-| 3 | Technical Identifiers | Important | ✅ COMPLETED |
-| 4 | Logic & Conditions | Important | ✅ COMPLETED |
-| 5 | Templates System | Nice to Have | ⏳ PENDING |
-| 6 | Reference System | Nice to Have | ⏳ PENDING |
-| 7 | Enhanced Node Display | Nice to Have | ⏳ PENDING |
+| Phase   | Name                      | Priority     | Status                                         |
+|---------|---------------------------|--------------|------------------------------------------------|
+| 1       | Core Dialogue Enhancement | Essential    | ✅ COMPLETED                                    |
+| 2       | Visual Customization      | Essential    | ✅ COMPLETED (audio only, color/cover deferred) |
+| 3       | Technical Identifiers     | Important    | ✅ COMPLETED                                    |
+| 4       | Logic & Conditions        | Important    | ✅ COMPLETED                                    |
+| 5       | Templates System          | Nice to Have | ⏳ PENDING                                      |
+| 6       | Reference System          | Nice to Have | ⏳ PENDING                                      |
+| 7       | Enhanced Node Display     | Nice to Have | ⏳ PENDING                                      |
 
 ---
 
@@ -76,15 +76,15 @@ end
 
 ### Key Files
 
-| Component | File |
-|-----------|------|
-| Node defaults | `lib/storyarn_web/live/flow_live/components/node_type_helpers.ex` |
-| Properties panel | `lib/storyarn_web/live/flow_live/components/properties_panels.ex` |
+| Component         | File                                                              |
+|-------------------|-------------------------------------------------------------------|
+| Node defaults     | `lib/storyarn_web/live/flow_live/components/node_type_helpers.ex` |
+| Properties panel  | `lib/storyarn_web/live/flow_live/components/properties_panels.ex` |
 | Screenplay editor | `lib/storyarn_web/live/flow_live/components/screenplay_editor.ex` |
-| Canvas rendering | `assets/js/hooks/flow_canvas/components/storyarn_node.js` |
-| Node config | `assets/js/hooks/flow_canvas/node_config.js` |
-| Condition builder | `lib/storyarn_web/components/condition_builder.ex` |
-| Flow show | `lib/storyarn_web/live/flow_live/show.ex` |
+| Canvas rendering  | `assets/js/hooks/flow_canvas/components/storyarn_node.js`         |
+| Node config       | `assets/js/hooks/flow_canvas/node_config.js`                      |
+| Condition builder | `lib/storyarn_web/components/condition_builder.ex`                |
+| Flow show         | `lib/storyarn_web/live/flow_live/show.ex`                         |
 
 ---
 
@@ -138,7 +138,7 @@ end
 ### Phase 4: Logic & Conditions ✅
 
 **Connection Conditions - REMOVED:**
-- Based on [research](./docs/research/DIALOGUE_CONDITIONS_RESEARCH.md)
+- Based on [research](../research/DIALOGUE_CONDITIONS_RESEARCH.md)
 - No major tool uses edge-based conditions
 - All routing via Condition nodes
 
@@ -450,8 +450,8 @@ The JSON export should include all dialogue fields:
 ## References
 
 **Internal Documentation:**
-- [Research: Condition Placement in Dialogue Systems](./docs/research/DIALOGUE_CONDITIONS_RESEARCH.md)
-- [Recommendations: Dialogue Conditions Model](./docs/DIALOGUE_CONDITIONS_RECOMMENDATIONS.md)
+- [Research: Condition Placement in Dialogue Systems](../research/DIALOGUE_CONDITIONS_RESEARCH.md)
+- [Recommendations: Dialogue Conditions Model](../proposals/DIALOGUE_CONDITIONS_RECOMMENDATIONS.md)
 
 **External References:**
 - [articy:draft Dialogue Fragments](https://www.articy.com/help/adx/Flow_Objects_DialogFragment.html)

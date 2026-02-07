@@ -532,26 +532,26 @@ RUN mix local.hex --force && \
 ENV MIX_ENV="prod"
 
 # Install mix dependencies
-COPY mix.exs mix.lock ./
+COPY ../../mix.exs mix.lock ./
 RUN mix deps.get --only $MIX_ENV
 RUN mkdir config
 
 # Copy compile-time config
-COPY config/config.exs config/${MIX_ENV}.exs config/
+COPY ../../config/config.exs config/${MIX_ENV}.exs config/
 RUN mix deps.compile
 
 # Build assets
-COPY assets assets
+COPY ../../assets assets
 RUN cd assets && npm ci && cd ..
 RUN mix assets.deploy
 
 # Compile the release
-COPY lib lib
-COPY priv priv
+COPY ../../lib lib
+COPY ../../priv priv
 RUN mix compile
 
 # Copy runtime config
-COPY config/runtime.exs config/
+COPY ../../config/runtime.exs config/
 COPY rel rel
 RUN mix release
 
