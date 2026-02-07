@@ -136,7 +136,11 @@ export default {
   },
 
   getPreviewText(data) {
-    return getConditionSummary(data);
+    const summary = getConditionSummary(data);
+    if (data.has_stale_refs) {
+      return summary ? `\u26A0 ${summary}` : "\u26A0 Stale references";
+    }
+    return summary;
   },
 
   formatOutputLabel(key, data) {

@@ -158,6 +158,57 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       assert ref.kind == "write"
       assert ref.block_id == ctx.health_block.id
     end
+
+    test "stores source_page and source_variable on write reference", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "assign_1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      ref = Repo.one!(VariableReference)
+      assert ref.source_page == "mc.jaime"
+      assert ref.source_variable == "health"
+    end
+
+    test "stores source_page and source_variable on read reference from variable_ref", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "assign_1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "sword_done",
+                "value_type" => "variable_ref",
+                "value_page" => "global.quests"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      read_ref = Repo.all(VariableReference) |> Enum.find(&(&1.kind == "read"))
+      assert read_ref.source_page == "global.quests"
+      assert read_ref.source_variable == "sword_done"
+    end
   end
 
   describe "update_references/1 with condition nodes" do
@@ -228,6 +279,33 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       block_ids = Enum.map(refs, & &1.block_id) |> Enum.sort()
       expected = Enum.sort([ctx.health_block.id, ctx.quest_block.id])
       assert block_ids == expected
+    end
+
+    test "stores source_page and source_variable on condition read reference", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "condition",
+          data: %{
+            "condition" => %{
+              "logic" => "all",
+              "rules" => [
+                %{
+                  "id" => "rule_1",
+                  "page" => "mc.jaime",
+                  "variable" => "health",
+                  "operator" => "greater_than",
+                  "value" => "50"
+                }
+              ]
+            }
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      ref = Repo.one!(VariableReference)
+      assert ref.source_page == "mc.jaime"
+      assert ref.source_variable == "health"
     end
   end
 
@@ -510,6 +588,688 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
     test "returns empty map for unused variable", ctx do
       counts = VariableReferenceTracker.count_variable_usage(ctx.health_block.id)
       assert counts == %{}
+    end
+  end
+
+  describe "check_stale_references/2" do
+    test "returns stale: false when node JSON matches current names", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "assign_1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      refs = VariableReferenceTracker.check_stale_references(ctx.health_block.id, ctx.project.id)
+      assert length(refs) == 1
+      assert hd(refs).stale == false
+    end
+
+    test "returns stale: true when page shortcut was renamed", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "assign_1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename the page shortcut (simulating what happens in the UI)
+      Storyarn.Pages.update_page(ctx.page, %{shortcut: "mc.renamed"})
+
+      refs = VariableReferenceTracker.check_stale_references(ctx.health_block.id, ctx.project.id)
+      assert length(refs) == 1
+      assert hd(refs).stale == true
+    end
+
+    test "detects stale condition read ref after rename", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "condition",
+          data: %{
+            "condition" => %{
+              "logic" => "all",
+              "rules" => [
+                %{
+                  "id" => "rule_1",
+                  "page" => "mc.jaime",
+                  "variable" => "health",
+                  "operator" => "greater_than",
+                  "value" => "50"
+                }
+              ]
+            }
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename the page shortcut
+      Storyarn.Pages.update_page(ctx.page, %{shortcut: "mc.renamed"})
+
+      refs = VariableReferenceTracker.check_stale_references(ctx.health_block.id, ctx.project.id)
+      assert length(refs) == 1
+      assert hd(refs).stale == true
+    end
+
+    test "returns empty list for nonexistent block", ctx do
+      refs = VariableReferenceTracker.check_stale_references(-1, ctx.project.id)
+      assert refs == []
+    end
+
+    test "returns empty list when page is soft-deleted", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "assign_1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Soft-delete the page
+      Storyarn.Pages.delete_page(ctx.page)
+
+      refs = VariableReferenceTracker.check_stale_references(ctx.health_block.id, ctx.project.id)
+      assert refs == []
+    end
+
+    test "returns empty list when block is soft-deleted", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "assign_1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Soft-delete the block
+      Storyarn.Pages.delete_block(ctx.health_block)
+
+      refs = VariableReferenceTracker.check_stale_references(ctx.health_block.id, ctx.project.id)
+      assert refs == []
+    end
+  end
+
+  describe "repair_stale_references/1" do
+    test "repairs stale instruction write ref after page rename", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "assign_1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename the page shortcut
+      Storyarn.Pages.update_page(ctx.page, %{shortcut: "mc.renamed"})
+
+      # Verify it's stale
+      refs = VariableReferenceTracker.check_stale_references(ctx.health_block.id, ctx.project.id)
+      assert hd(refs).stale == true
+
+      # Repair
+      {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert count == 1
+
+      # Verify no longer stale
+      refs = VariableReferenceTracker.check_stale_references(ctx.health_block.id, ctx.project.id)
+      assert length(refs) == 1
+      assert hd(refs).stale == false
+
+      # Verify node data was updated
+      updated_node = Storyarn.Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      assignment = hd(updated_node.data["assignments"])
+      assert assignment["page"] == "mc.renamed"
+      assert assignment["variable"] == "health"
+    end
+
+    test "repairs stale condition read ref after page rename", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "condition",
+          data: %{
+            "condition" => %{
+              "logic" => "all",
+              "rules" => [
+                %{
+                  "id" => "rule_1",
+                  "page" => "mc.jaime",
+                  "variable" => "health",
+                  "operator" => "greater_than",
+                  "value" => "50"
+                }
+              ]
+            }
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename the page shortcut
+      Storyarn.Pages.update_page(ctx.page, %{shortcut: "mc.renamed"})
+
+      {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert count == 1
+
+      # Verify node data was updated
+      updated_node = Storyarn.Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      rule = hd(updated_node.data["condition"]["rules"])
+      assert rule["page"] == "mc.renamed"
+      assert rule["variable"] == "health"
+    end
+
+    test "returns 0 when nothing is stale", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "assign_1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert count == 0
+    end
+  end
+
+  describe "list_stale_node_ids/1" do
+    test "returns node IDs with stale references", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "assign_1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Not stale yet
+      stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
+      assert MapSet.size(stale_ids) == 0
+
+      # Rename page
+      Storyarn.Pages.update_page(ctx.page, %{shortcut: "mc.renamed"})
+
+      stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
+      assert MapSet.member?(stale_ids, node.id)
+    end
+
+    test "returns empty MapSet when no stale refs exist", ctx do
+      stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
+      assert MapSet.size(stale_ids) == 0
+    end
+
+    test "returns only stale node IDs when mixed stale and non-stale nodes exist", ctx do
+      stale_node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      fresh_node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a2",
+                "page" => "global.quests",
+                "variable" => "sword_done",
+                "operator" => "set_true",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(stale_node)
+      VariableReferenceTracker.update_references(fresh_node)
+
+      # Rename only mc.jaime → mc.renamed
+      Storyarn.Pages.update_page(ctx.page, %{shortcut: "mc.renamed"})
+
+      stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
+      assert MapSet.member?(stale_ids, stale_node.id)
+      refute MapSet.member?(stale_ids, fresh_node.id)
+    end
+
+    test "excludes nodes referencing soft-deleted pages", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Soft-delete the page — should NOT show as stale
+      Storyarn.Pages.delete_page(ctx.page)
+
+      stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
+      assert MapSet.size(stale_ids) == 0
+    end
+  end
+
+  describe "repair_stale_references/1 — deterministic matching" do
+    test "multi-assignment repair: only stale assignment is updated", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              },
+              %{
+                "id" => "a2",
+                "page" => "global.quests",
+                "variable" => "sword_done",
+                "operator" => "set_true",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename only mc.jaime → mc.renamed
+      Storyarn.Pages.update_page(ctx.page, %{shortcut: "mc.renamed"})
+
+      {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert count == 1
+
+      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      [a1, a2] = updated_node.data["assignments"]
+
+      assert a1["page"] == "mc.renamed"
+      assert a1["variable"] == "health"
+      # Second assignment must be untouched
+      assert a2["page"] == "global.quests"
+      assert a2["variable"] == "sword_done"
+    end
+
+    test "variable_ref source repair after page rename", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "page" => "global.quests",
+                "variable" => "sword_done",
+                "operator" => "set",
+                "value" => "health",
+                "value_type" => "variable_ref",
+                "value_page" => "mc.jaime"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename the source page
+      Storyarn.Pages.update_page(ctx.page, %{shortcut: "mc.renamed"})
+
+      {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert count == 1
+
+      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      assignment = hd(updated_node.data["assignments"])
+
+      assert assignment["value_page"] == "mc.renamed"
+      assert assignment["value"] == "health"
+      # Write target was not stale, must be unchanged
+      assert assignment["page"] == "global.quests"
+      assert assignment["variable"] == "sword_done"
+    end
+
+    test "multi-rule condition repair: only stale rule is updated", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "condition",
+          data: %{
+            "condition" => %{
+              "logic" => "all",
+              "rules" => [
+                %{
+                  "id" => "r1",
+                  "page" => "mc.jaime",
+                  "variable" => "health",
+                  "operator" => "greater_than",
+                  "value" => "50"
+                },
+                %{
+                  "id" => "r2",
+                  "page" => "global.quests",
+                  "variable" => "sword_done",
+                  "operator" => "is_true",
+                  "value" => nil
+                }
+              ]
+            }
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename only mc.jaime → mc.renamed
+      Storyarn.Pages.update_page(ctx.page, %{shortcut: "mc.renamed"})
+
+      {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert count == 1
+
+      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      [r1, r2] = updated_node.data["condition"]["rules"]
+
+      assert r1["page"] == "mc.renamed"
+      assert r1["variable"] == "health"
+      # Second rule must be untouched
+      assert r2["page"] == "global.quests"
+      assert r2["variable"] == "sword_done"
+    end
+
+    test "variable name rename is detected and repaired", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename the block's variable_name (label change: "Health" → "Vitality")
+      Storyarn.Pages.update_block(ctx.health_block, %{
+        config: %{"label" => "Vitality", "placeholder" => "0"}
+      })
+
+      # Verify stale
+      refs = VariableReferenceTracker.check_stale_references(ctx.health_block.id, ctx.project.id)
+      assert length(refs) == 1
+      assert hd(refs).stale == true
+
+      # Repair
+      {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert count == 1
+
+      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      assignment = hd(updated_node.data["assignments"])
+      assert assignment["page"] == "mc.jaime"
+      assert assignment["variable"] == "vitality"
+    end
+
+    test "mixed stale/non-stale assignments: only stale one is fixed", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              },
+              %{
+                "id" => "a2",
+                "page" => "global.quests",
+                "variable" => "sword_done",
+                "operator" => "set_true",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename only mc.jaime
+      Storyarn.Pages.update_page(ctx.page, %{shortcut: "mc.renamed"})
+
+      {:ok, 1} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+
+      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      [a1, a2] = updated_node.data["assignments"]
+
+      # Stale one repaired
+      assert a1["page"] == "mc.renamed"
+      assert a1["variable"] == "health"
+      # Fresh one untouched
+      assert a2["page"] == "global.quests"
+      assert a2["variable"] == "sword_done"
+    end
+
+    test "repair is idempotent — second run returns 0", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+      Storyarn.Pages.update_page(ctx.page, %{shortcut: "mc.renamed"})
+
+      {:ok, 1} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      {:ok, 0} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+    end
+
+    test "two assignments to two different pages — both repaired correctly after rename", ctx do
+      # Create a third page
+      page3 = page_fixture(ctx.project, %{name: "Items", shortcut: "items"})
+
+      gold_block =
+        block_fixture(page3, %{
+          type: "number",
+          config: %{"label" => "Gold", "placeholder" => "0"}
+        })
+
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "page" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              },
+              %{
+                "id" => "a2",
+                "page" => "items",
+                "variable" => "gold",
+                "operator" => "add",
+                "value" => "50",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename BOTH pages
+      Storyarn.Pages.update_page(ctx.page, %{shortcut: "mc.renamed"})
+      Storyarn.Pages.update_page(page3, %{shortcut: "inventory"})
+
+      {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert count == 1
+
+      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      [a1, a2] = updated_node.data["assignments"]
+
+      # Each assignment gets the CORRECT new shortcut — no cross-wiring
+      assert a1["page"] == "mc.renamed"
+      assert a1["variable"] == "health"
+      assert a2["page"] == "inventory"
+      assert a2["variable"] == "gold"
+
+      # Confirm gold_block ref was stored properly (prevents warnings)
+      _gold_block = gold_block
+    end
+  end
+
+  describe "check_stale_references/2 — instruction read refs" do
+    test "detects stale instruction variable_ref source after page rename", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "page" => "global.quests",
+                "variable" => "sword_done",
+                "operator" => "set",
+                "value" => "health",
+                "value_type" => "variable_ref",
+                "value_page" => "mc.jaime"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename the source page
+      Storyarn.Pages.update_page(ctx.page, %{shortcut: "mc.renamed"})
+
+      refs = VariableReferenceTracker.check_stale_references(ctx.health_block.id, ctx.project.id)
+      assert length(refs) == 1
+      assert hd(refs).stale == true
+      assert hd(refs).kind == "read"
     end
   end
 end

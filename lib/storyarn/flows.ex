@@ -271,6 +271,26 @@ defmodule Storyarn.Flows do
   @spec count_variable_usage(integer()) :: map()
   defdelegate count_variable_usage(block_id), to: VariableReferenceTracker
 
+  @doc """
+  Returns variable usage for a block with stale detection.
+  Each ref map gets an additional `:stale` boolean.
+  """
+  @spec check_stale_references(integer(), integer()) :: [map()]
+  defdelegate check_stale_references(block_id, project_id), to: VariableReferenceTracker
+
+  @doc """
+  Repairs all stale variable references across a project.
+  Returns `{:ok, count}` of repaired nodes.
+  """
+  @spec repair_stale_references(integer()) :: {:ok, non_neg_integer()} | {:error, term()}
+  defdelegate repair_stale_references(project_id), to: VariableReferenceTracker
+
+  @doc """
+  Returns a MapSet of node IDs in a flow that have at least one stale reference.
+  """
+  @spec list_stale_node_ids(integer()) :: MapSet.t()
+  defdelegate list_stale_node_ids(flow_id), to: VariableReferenceTracker
+
   # =============================================================================
   # Connections - CRUD Operations
   # =============================================================================
@@ -382,16 +402,23 @@ defmodule Storyarn.Flows do
   """
   @spec serialize_for_canvas(flow()) :: map()
   def serialize_for_canvas(%Flow{} = flow) do
+    stale_node_ids = VariableReferenceTracker.list_stale_node_ids(flow.id)
+
     %{
       id: flow.id,
       name: flow.name,
       nodes:
         Enum.map(flow.nodes, fn node ->
+          data =
+            node.type
+            |> resolve_node_colors(node.data)
+            |> maybe_add_stale_flag(node.id, stale_node_ids)
+
           %{
             id: node.id,
             type: node.type,
             position: %{x: node.position_x, y: node.position_y},
-            data: resolve_node_colors(node.type, node.data)
+            data: data
           }
         end),
       connections:
@@ -422,4 +449,12 @@ defmodule Storyarn.Flows do
   end
 
   def resolve_node_colors(_type, data), do: data
+
+  defp maybe_add_stale_flag(data, node_id, stale_node_ids) do
+    if MapSet.member?(stale_node_ids, node_id) do
+      Map.put(data, "has_stale_refs", true)
+    else
+      data
+    end
+  end
 end

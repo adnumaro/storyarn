@@ -74,7 +74,11 @@ export default {
   },
 
   getPreviewText(data) {
-    return getInstructionSummary(data);
+    const summary = getInstructionSummary(data);
+    if (data.has_stale_refs) {
+      return summary ? `\u26A0 ${summary}` : "\u26A0 Stale references";
+    }
+    return summary;
   },
 
   needsRebuild(_oldData, _newData) {

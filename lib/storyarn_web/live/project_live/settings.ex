@@ -6,6 +6,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
   import StoryarnWeb.Components.MemberComponents
 
+  alias Storyarn.Flows
   alias Storyarn.Pages
   alias Storyarn.Projects
   alias Storyarn.Repo
@@ -115,6 +116,26 @@ defmodule StoryarnWeb.ProjectLive.Settings do
               invitation={invitation}
               on_revoke="revoke_invitation"
             />
+          </div>
+        </section>
+
+        <div class="divider" />
+
+        <%!-- Maintenance Section --%>
+        <section>
+          <h3 class="text-lg font-semibold mb-4">{gettext("Maintenance")}</h3>
+          <div class="card bg-base-200 p-4">
+            <p class="text-sm mb-3">
+              {gettext(
+                "If you renamed page shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
+              )}
+            </p>
+            <.button
+              phx-click="repair_variable_references"
+              data-confirm={gettext("This will update node data across the entire project. Continue?")}
+            >
+              {gettext("Repair variable references")}
+            </.button>
           </div>
         </section>
 
@@ -262,6 +283,35 @@ defmodule StoryarnWeb.ProjectLive.Settings do
     case authorize(socket, :manage_members) do
       :ok ->
         do_remove_member(socket, id)
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  def handle_event("repair_variable_references", _params, socket) do
+    case authorize(socket, :manage_project) do
+      :ok ->
+        case Flows.repair_stale_references(socket.assigns.project.id) do
+          {:ok, count} ->
+            message =
+              if count == 0,
+                do: gettext("All variable references are up to date."),
+                else:
+                  ngettext(
+                    "Repaired %{count} node.",
+                    "Repaired %{count} nodes.",
+                    count,
+                    count: count
+                  )
+
+            {:noreply, put_flash(socket, :info, message)}
+
+          {:error, _reason} ->
+            {:noreply,
+             put_flash(socket, :error, gettext("Failed to repair variable references."))}
+        end
 
       {:error, :unauthorized} ->
         {:noreply,

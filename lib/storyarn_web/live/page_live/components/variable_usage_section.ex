@@ -85,7 +85,7 @@ defmodule StoryarnWeb.PageLive.Components.VariableUsageSection do
 
     usage_map =
       Map.new(variable_blocks, fn block ->
-        usage = Flows.get_variable_usage(block.id, project_id)
+        usage = Flows.check_stale_references(block.id, project_id)
         reads = Enum.filter(usage, &(&1.kind == "read"))
         writes = Enum.filter(usage, &(&1.kind == "write"))
         {block.id, %{reads: reads, writes: writes}}
@@ -192,6 +192,10 @@ defmodule StoryarnWeb.PageLive.Components.VariableUsageSection do
       <span class="text-base-content/40">&rarr;</span>
       <span class="badge badge-xs badge-ghost">{@ref.node_type}</span>
       <span :if={@detail} class="text-base-content/40">{@detail}</span>
+      <span :if={@ref[:stale]} class="badge badge-xs badge-warning gap-1" title={gettext("Reference may be outdated")}>
+        <.icon name="alert-triangle" class="size-3" />
+        {gettext("Outdated")}
+      </span>
     </.link>
     """
   end
@@ -214,9 +218,14 @@ defmodule StoryarnWeb.PageLive.Components.VariableUsageSection do
         a["page"] == page.shortcut and a["variable"] == block.variable_name
       end)
 
-    if matching do
-      format_assignment_detail(matching)
-    end
+    # Fallback for stale refs: match by variable_name only (covers page rename case)
+    matching =
+      matching ||
+        if ref[:stale] do
+          Enum.find(assignments, fn a -> a["variable"] == block.variable_name end)
+        end
+
+    if matching, do: format_assignment_detail(matching)
   end
 
   defp format_ref_detail(_ref, _page, _block), do: nil
