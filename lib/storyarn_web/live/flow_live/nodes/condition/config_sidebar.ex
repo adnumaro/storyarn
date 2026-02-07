@@ -1,6 +1,6 @@
-defmodule StoryarnWeb.FlowLive.Components.Panels.ConditionPanel do
+defmodule StoryarnWeb.FlowLive.Nodes.Condition.ConfigSidebar do
   @moduledoc """
-  Properties panel component for condition nodes.
+  Sidebar panel for condition nodes.
 
   Renders: switch mode toggle, condition builder, and output info.
   """
@@ -12,12 +12,17 @@ defmodule StoryarnWeb.FlowLive.Components.Panels.ConditionPanel do
 
   alias Storyarn.Flows.Condition
 
-  attr :form, :map, required: true
   attr :node, :map, required: true
+  attr :form, :map, required: true
   attr :can_edit, :boolean, default: false
+  attr :all_pages, :list, default: []
+  attr :flow_hubs, :list, default: []
+  attr :audio_assets, :list, default: []
+  attr :panel_sections, :map, default: %{}
   attr :project_variables, :list, default: []
+  attr :referencing_jumps, :list, default: []
 
-  def condition_properties(assigns) do
+  def config_sidebar(assigns) do
     raw_condition = assigns.node.data["condition"]
 
     condition_data =
@@ -109,4 +114,6 @@ defmodule StoryarnWeb.FlowLive.Components.Panels.ConditionPanel do
     </div>
     """
   end
+
+  def wrap_in_form?, do: false
 end

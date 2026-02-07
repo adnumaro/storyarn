@@ -20,10 +20,12 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
-  alias StoryarnWeb.FlowLive.Handlers.ConditionEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
-  alias StoryarnWeb.FlowLive.Handlers.NodeEventHandlers
-  alias StoryarnWeb.FlowLive.Handlers.ResponseEventHandlers
+  alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
+  alias StoryarnWeb.FlowLive.Nodes.Condition
+  alias StoryarnWeb.FlowLive.Nodes.Dialogue
+  alias StoryarnWeb.FlowLive.Nodes.Exit, as: ExitNode
+  alias StoryarnWeb.FlowLive.Nodes.Instruction
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
@@ -124,7 +126,7 @@ defmodule StoryarnWeb.FlowLive.Show do
             phx-update="ignore"
             class="absolute inset-0"
             data-flow={Jason.encode!(@flow_data)}
-            data-pages={Jason.encode!(FormHelpers.pages_map(@leaf_pages))}
+            data-pages={Jason.encode!(FormHelpers.pages_map(@all_pages))}
             data-locks={Jason.encode!(@node_locks)}
             data-user-id={@current_scope.user.id}
             data-user-color={Collaboration.user_color(@current_scope.user.id)}
@@ -138,7 +140,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           node={@selected_node}
           form={@node_form}
           can_edit={@can_edit}
-          leaf_pages={@leaf_pages}
+          all_pages={@all_pages}
           flow_hubs={@flow_hubs}
           audio_assets={@audio_assets}
           panel_sections={@panel_sections}
@@ -156,7 +158,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         id={"screenplay-editor-#{@selected_node.id}"}
         node={@selected_node}
         can_edit={@can_edit}
-        leaf_pages={@leaf_pages}
+        all_pages={@all_pages}
         on_close={JS.push("close_editor")}
         on_open_sidebar={JS.push("open_sidebar")}
       />
@@ -168,7 +170,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         show={@preview_show}
         start_node={@preview_node}
         project={@project}
-        pages_map={FormHelpers.pages_map(@leaf_pages)}
+        pages_map={FormHelpers.pages_map(@all_pages)}
       />
     </div>
     """
@@ -213,7 +215,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     project = Repo.preload(project, :workspace)
     can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
     flow_data = Flows.serialize_for_canvas(flow)
-    leaf_pages = Pages.list_leaf_pages(project.id)
+    all_pages = Pages.list_all_pages(project.id)
     flow_hubs = Flows.list_hubs(flow.id)
     audio_assets = Assets.list_assets(project.id, content_type: "audio/")
     project_variables = Pages.list_project_variables(project.id)
@@ -230,7 +232,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     |> assign(:flow_data, flow_data)
     |> assign(:can_edit, can_edit)
     |> assign(:node_types, @node_types)
-    |> assign(:leaf_pages, leaf_pages)
+    |> assign(:all_pages, all_pages)
     |> assign(:flow_hubs, flow_hubs)
     |> assign(:audio_assets, audio_assets)
     |> assign(:project_variables, project_variables)
@@ -257,145 +259,139 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   @impl true
   def handle_event("add_node", params, socket) do
-    with_auth(:edit_content, socket, fn -> NodeEventHandlers.handle_add_node(params, socket) end)
+    with_auth(:edit_content, socket, fn -> GenericNodeHandlers.handle_add_node(params, socket) end)
   end
 
   def handle_event("save_name", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      NodeEventHandlers.handle_save_name(params, socket)
+      GenericNodeHandlers.handle_save_name(params, socket)
     end)
   end
 
   def handle_event("save_shortcut", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      NodeEventHandlers.handle_save_shortcut(params, socket)
+      GenericNodeHandlers.handle_save_shortcut(params, socket)
     end)
   end
 
   def handle_event("node_selected", params, socket) do
-    NodeEventHandlers.handle_node_selected(params, socket)
+    GenericNodeHandlers.handle_node_selected(params, socket)
   end
 
   def handle_event("node_double_clicked", params, socket) do
-    NodeEventHandlers.handle_node_double_clicked(params, socket)
+    GenericNodeHandlers.handle_node_double_clicked(params, socket)
   end
 
   def handle_event("open_screenplay", _params, socket) do
-    NodeEventHandlers.handle_open_screenplay(socket)
+    Dialogue.Node.handle_open_screenplay(socket)
   end
 
   def handle_event("open_sidebar", _params, socket) do
-    NodeEventHandlers.handle_open_sidebar(socket)
+    GenericNodeHandlers.handle_open_sidebar(socket)
   end
 
   def handle_event("close_editor", _params, socket) do
-    NodeEventHandlers.handle_close_editor(socket)
+    GenericNodeHandlers.handle_close_editor(socket)
   end
 
   def handle_event("deselect_node", _params, socket) do
-    NodeEventHandlers.handle_deselect_node(socket)
+    GenericNodeHandlers.handle_deselect_node(socket)
   end
 
   def handle_event("create_page", _params, socket) do
-    with_auth(:edit_content, socket, fn -> NodeEventHandlers.handle_create_page(socket) end)
+    with_auth(:edit_content, socket, fn -> GenericNodeHandlers.handle_create_page(socket) end)
   end
 
   def handle_event("node_moved", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      NodeEventHandlers.handle_node_moved(params, socket)
+      GenericNodeHandlers.handle_node_moved(params, socket)
     end)
   end
 
   def handle_event("update_node_data", %{"node" => _} = params, socket) do
     with_auth(:edit_content, socket, fn ->
-      NodeEventHandlers.handle_update_node_data(params, socket)
+      GenericNodeHandlers.handle_update_node_data(params, socket)
     end)
   end
 
-  # Handle condition builder fields coming from the dialogue form
-  def handle_event("update_node_data", params, socket) when is_map(params) do
-    has_response_condition_fields =
-      Map.has_key?(params, "response-id") and Map.has_key?(params, "node-id")
-
-    has_rule_fields =
-      Enum.any?(params, fn {key, _} ->
-        String.starts_with?(key, "rule_page_") or
-          String.starts_with?(key, "rule_variable_") or
-          String.starts_with?(key, "rule_operator_") or
-          String.starts_with?(key, "rule_value_")
-      end)
-
-    if has_response_condition_fields and has_rule_fields do
-      with_auth(:edit_content, socket, fn ->
-        ConditionEventHandlers.handle_response_condition_from_form(params, socket)
-      end)
-    else
-      {:noreply, socket}
-    end
+  # Catch-all for update_node_data events without the "node" key (no-op)
+  def handle_event("update_node_data", _params, socket) do
+    {:noreply, socket}
   end
 
   def handle_event("update_node_text", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      NodeEventHandlers.handle_update_node_text(params, socket)
+      GenericNodeHandlers.handle_update_node_text(params, socket)
     end)
   end
 
   def handle_event("mention_suggestions", params, socket) do
-    NodeEventHandlers.handle_mention_suggestions(params, socket)
+    GenericNodeHandlers.handle_mention_suggestions(params, socket)
   end
 
   def handle_event("delete_node", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      NodeEventHandlers.handle_delete_node(params, socket)
+      GenericNodeHandlers.handle_delete_node(params, socket)
     end)
   end
 
   def handle_event("duplicate_node", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      NodeEventHandlers.handle_duplicate_node(params, socket)
+      GenericNodeHandlers.handle_duplicate_node(params, socket)
     end)
   end
 
   def handle_event("generate_technical_id", _params, socket) do
     with_auth(:edit_content, socket, fn ->
-      NodeEventHandlers.handle_generate_technical_id(socket)
+      node = socket.assigns.selected_node
+
+      cond do
+        node && node.type == "dialogue" ->
+          Dialogue.Node.handle_generate_technical_id(socket)
+
+        node && node.type == "exit" ->
+          ExitNode.Node.handle_generate_technical_id(socket)
+
+        true ->
+          {:noreply, socket}
+      end
     end)
   end
 
   def handle_event("update_node_field", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      NodeEventHandlers.handle_update_node_field(params, socket)
+      GenericNodeHandlers.handle_update_node_field(params, socket)
     end)
   end
 
-  # Responses
+  # Responses (dialogue-specific)
   def handle_event("add_response", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      ResponseEventHandlers.handle_add_response(params, socket)
+      Dialogue.Node.handle_add_response(params, socket)
     end)
   end
 
   def handle_event("remove_response", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      ResponseEventHandlers.handle_remove_response(params, socket)
+      Dialogue.Node.handle_remove_response(params, socket)
     end)
   end
 
   def handle_event("update_response_text", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      ResponseEventHandlers.handle_update_response_text(params, socket)
+      Dialogue.Node.handle_update_response_text(params, socket)
     end)
   end
 
   def handle_event("update_response_condition", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      ResponseEventHandlers.handle_update_response_condition(params, socket)
+      Dialogue.Node.handle_update_response_condition(params, socket)
     end)
   end
 
   def handle_event("update_response_instruction", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      ResponseEventHandlers.handle_update_response_instruction(params, socket)
+      Dialogue.Node.handle_update_response_instruction(params, socket)
     end)
   end
 
@@ -423,19 +419,26 @@ defmodule StoryarnWeb.FlowLive.Show do
   # Condition builders
   def handle_event("update_response_condition_builder", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      ConditionEventHandlers.handle_update_response_condition_builder(params, socket)
+      Condition.Node.handle_update_response_condition_builder(params, socket)
     end)
   end
 
   def handle_event("update_condition_builder", params, socket) do
     with_auth(:edit_content, socket, fn ->
-      ConditionEventHandlers.handle_update_condition_builder(params, socket)
+      Condition.Node.handle_update_condition_builder(params, socket)
     end)
   end
 
   def handle_event("toggle_switch_mode", _params, socket) do
     with_auth(:edit_content, socket, fn ->
-      ConditionEventHandlers.handle_toggle_switch_mode(socket)
+      Condition.Node.handle_toggle_switch_mode(socket)
+    end)
+  end
+
+  # Instruction builder
+  def handle_event("update_instruction_builder", params, socket) do
+    with_auth(:edit_content, socket, fn ->
+      Instruction.Node.handle_update_instruction_builder(params, socket)
     end)
   end
 
@@ -445,7 +448,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("start_preview", params, socket) do
-    NodeEventHandlers.handle_start_preview(params, socket)
+    GenericNodeHandlers.handle_start_preview(params, socket)
   end
 
   def handle_event("request_flow_refresh", _params, socket) do

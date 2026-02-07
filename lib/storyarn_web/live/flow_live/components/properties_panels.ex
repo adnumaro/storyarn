@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   @moduledoc """
   Properties panel components for the flow editor.
-  Dispatches to type-specific panel components.
+  Provides shared frame, delegates content to per-type sidebar modules.
   """
 
   use Phoenix.Component
@@ -10,14 +10,12 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers
 
-  alias StoryarnWeb.FlowLive.Components.Panels.ConditionPanel
-  alias StoryarnWeb.FlowLive.Components.Panels.DialoguePanel
-  alias StoryarnWeb.FlowLive.Components.Panels.SimplePanels
+  alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   attr :node, :map, required: true
   attr :form, :map, required: true
   attr :can_edit, :boolean, default: false
-  attr :leaf_pages, :list, default: []
+  attr :all_pages, :list, default: []
   attr :flow_hubs, :list, default: []
   attr :audio_assets, :list, default: []
   attr :panel_sections, :map, default: %{}
@@ -38,11 +36,11 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
       </div>
 
       <div class="flex-1 overflow-y-auto p-4">
-        <.node_properties_form
+        <.node_sidebar_content
           node={@node}
           form={@form}
           can_edit={@can_edit}
-          leaf_pages={@leaf_pages}
+          all_pages={@all_pages}
           flow_hubs={@flow_hubs}
           audio_assets={@audio_assets}
           panel_sections={@panel_sections}
@@ -93,82 +91,27 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :node, :map, required: true
   attr :form, :map, required: true
   attr :can_edit, :boolean, default: false
-  attr :leaf_pages, :list, default: []
+  attr :all_pages, :list, default: []
   attr :flow_hubs, :list, default: []
   attr :audio_assets, :list, default: []
   attr :panel_sections, :map, default: %{}
   attr :project_variables, :list, default: []
   attr :referencing_jumps, :list, default: []
 
-  def node_properties_form(assigns) do
-    speaker_options =
-      [{"", gettext("Select speaker...")}] ++
-        Enum.map(assigns.leaf_pages, fn page -> {page.name, page.id} end)
-
-    hub_options =
-      [{"", gettext("Select target hub...")}] ++
-        Enum.map(assigns.flow_hubs, fn hub ->
-          display =
-            if hub.label && hub.label != "" do
-              "#{hub.label} (#{hub.hub_id})"
-            else
-              hub.hub_id
-            end
-
-          {display, hub.hub_id}
-        end)
-
-    audio_options =
-      [{"", gettext("No audio")}] ++
-        Enum.map(assigns.audio_assets, fn asset -> {asset.filename, asset.id} end)
-
-    selected_audio =
-      if assigns.form[:audio_asset_id] && assigns.form[:audio_asset_id].value do
-        Enum.find(assigns.audio_assets, fn a ->
-          to_string(a.id) == to_string(assigns.form[:audio_asset_id].value)
-        end)
-      end
-
-    assigns =
-      assigns
-      |> assign(:speaker_options, speaker_options)
-      |> assign(:hub_options, hub_options)
-      |> assign(:audio_options, audio_options)
-      |> assign(:selected_audio, selected_audio)
+  defp node_sidebar_content(assigns) do
+    sidebar_mod = NodeTypeRegistry.sidebar_module(assigns.node.type)
+    assigns = assign(assigns, :sidebar_mod, sidebar_mod)
 
     ~H"""
-    <%= if @node.type == "condition" do %>
-      <ConditionPanel.condition_properties
-        form={@form}
-        node={@node}
-        can_edit={@can_edit}
-        project_variables={@project_variables}
-      />
-    <% else %>
-      <.form for={@form} phx-change="update_node_data" phx-debounce="500">
-        <%= case @node.type do %>
-          <% "dialogue" -> %>
-            <DialoguePanel.dialogue_properties
-              form={@form}
-              node={@node}
-              can_edit={@can_edit}
-              speaker_options={@speaker_options}
-              audio_options={@audio_options}
-              selected_audio={@selected_audio}
-              panel_sections={@panel_sections}
-              project_variables={@project_variables}
-            />
-          <% _ -> %>
-            <SimplePanels.simple_properties
-              node={@node}
-              form={@form}
-              can_edit={@can_edit}
-              hub_options={@hub_options}
-              referencing_jumps={@referencing_jumps}
-            />
-        <% end %>
-      </.form>
-    <% end %>
+    {if @sidebar_mod, do: @sidebar_mod.config_sidebar(assigns), else: default_sidebar(assigns)}
+    """
+  end
+
+  defp default_sidebar(assigns) do
+    ~H"""
+    <p class="text-sm text-base-content/60">
+      {gettext("No properties for this node type.")}
+    </p>
     """
   end
 end

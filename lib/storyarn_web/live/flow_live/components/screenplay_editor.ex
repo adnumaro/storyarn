@@ -15,7 +15,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
         module={ScreenplayEditor}
         id="screenplay-editor"
         node={@selected_node}
-        leaf_pages={@leaf_pages}
+        all_pages={@all_pages}
         can_edit={@can_edit}
         on_close={JS.push("close_editor")}
         on_open_sidebar={JS.push("open_sidebar")}
@@ -209,12 +209,12 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
 
   defp assign_derived(socket) do
     node = socket.assigns.node
-    leaf_pages = socket.assigns.leaf_pages
+    all_pages = socket.assigns.all_pages
 
     form = build_form(node)
-    speaker_name = get_speaker_name(node, leaf_pages)
+    speaker_name = get_speaker_name(node, all_pages)
     word_count = count_words(node.data["text"])
-    speaker_options = build_speaker_options(leaf_pages)
+    speaker_options = build_speaker_options(all_pages)
 
     socket
     |> assign(:form, form)
@@ -254,19 +254,19 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
     end
   end
 
-  defp build_speaker_options(leaf_pages) do
-    Enum.map(leaf_pages, fn page -> {page.name, page.id} end)
+  defp build_speaker_options(all_pages) do
+    Enum.map(all_pages, fn page -> {page.name, page.id} end)
   end
 
-  defp get_speaker_name(node, leaf_pages) do
+  defp get_speaker_name(node, all_pages) do
     speaker_page_id = node.data["speaker_page_id"]
-    find_page_name(speaker_page_id, leaf_pages)
+    find_page_name(speaker_page_id, all_pages)
   end
 
-  defp find_page_name(nil, _leaf_pages), do: nil
+  defp find_page_name(nil, _all_pages), do: nil
 
-  defp find_page_name(speaker_page_id, leaf_pages) do
-    case Enum.find(leaf_pages, fn page -> page.id == speaker_page_id end) do
+  defp find_page_name(speaker_page_id, all_pages) do
+    case Enum.find(all_pages, fn page -> page.id == speaker_page_id end) do
       nil -> nil
       page -> page.name
     end

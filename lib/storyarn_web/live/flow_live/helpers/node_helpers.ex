@@ -15,6 +15,69 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
 
   @doc """
+  Single canonical path for all node data updates.
+
+  Always reads fresh from DB (never from socket assigns), applies the caller's
+  transform function, writes to DB, reloads flow data, and pushes to canvas.
+
+  ## Parameters
+
+    * `socket` - The LiveView socket
+    * `node_id` - The database ID of the node to update
+    * `update_fn` - A function `(current_data :: map()) -> new_data :: map()`
+
+  ## Returns
+
+    `{:noreply, socket}` — ready for direct return from a handle_event/handle_info.
+  """
+  @spec persist_node_update(Phoenix.LiveView.Socket.t(), any(), (map() -> map())) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def persist_node_update(socket, node_id, update_fn) do
+    # 1. ALWAYS read fresh from DB (never from socket.assigns.selected_node)
+    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+
+    # 2. Apply caller's transform
+    new_data = update_fn.(node.data || %{})
+
+    # 3. Write to DB
+    case Flows.update_node_data(node, new_data) do
+      {:ok, updated_node, %{renamed_jumps: renamed_count}} ->
+        form = FormHelpers.node_data_to_form(updated_node)
+        schedule_save_status_reset()
+
+        socket =
+          socket
+          |> reload_flow_data()
+          |> assign(:selected_node, updated_node)
+          |> assign(:node_form, form)
+          |> assign(:save_status, :saved)
+          |> maybe_refresh_referencing_jumps(updated_node)
+          |> push_node_or_flow_update(updated_node, renamed_count)
+
+        {:noreply, socket}
+
+      {:error, :hub_id_required} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           Gettext.gettext(StoryarnWeb.Gettext, "Hub ID is required.")
+         )}
+
+      {:error, :hub_id_not_unique} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           Gettext.gettext(StoryarnWeb.Gettext, "Hub ID already exists in this flow.")
+         )}
+
+      {:error, _} ->
+        {:noreply, socket}
+    end
+  end
+
+  @doc """
   Adds a new node to the flow.
   Returns {:noreply, socket} tuple.
   """
@@ -60,77 +123,12 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   @spec update_node_data(Phoenix.LiveView.Socket.t(), map()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def update_node_data(socket, node_params) do
-    node = socket.assigns.selected_node
+    node_id = socket.assigns.selected_node.id
+    normalized_params = normalize_form_params(node_params)
 
-    # Merge new params with existing data to preserve other fields
-    merged_data = Map.merge(node.data || %{}, node_params)
-
-    case Flows.update_node_data(node, merged_data) do
-      {:ok, updated_node, %{renamed_jumps: renamed_count}} ->
-        form = FormHelpers.node_data_to_form(updated_node)
-        schedule_save_status_reset()
-
-        socket =
-          socket
-          |> reload_flow_data()
-          |> assign(:selected_node, updated_node)
-          |> assign(:node_form, form)
-          |> assign(:save_status, :saved)
-
-        # Refresh referencing_jumps for hub nodes
-        socket =
-          if updated_node.type == "hub" do
-            jumps =
-              Flows.list_referencing_jumps(
-                socket.assigns.flow.id,
-                updated_node.data["hub_id"] || ""
-              )
-
-            assign(socket, :referencing_jumps, jumps)
-          else
-            socket
-          end
-
-        # Full reload when cascade happened, otherwise single node update
-        socket =
-          if renamed_count > 0 do
-            socket
-            |> put_flash(
-              :info,
-              Gettext.ngettext(
-                StoryarnWeb.Gettext,
-                "%{count} Jump node updated.",
-                "%{count} Jump nodes updated.",
-                renamed_count,
-                count: renamed_count
-              )
-            )
-            |> push_event("flow_updated", socket.assigns.flow_data)
-          else
-            push_event(socket, "node_updated", %{id: node.id, data: canvas_data(updated_node)})
-          end
-
-        {:noreply, socket}
-
-      {:error, :hub_id_required} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           Gettext.gettext(StoryarnWeb.Gettext, "Hub ID is required.")
-         )}
-
-      {:error, :hub_id_not_unique} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           Gettext.gettext(StoryarnWeb.Gettext, "Hub ID already exists in this flow.")
-         )}
-
-      {:error, _} ->
-        {:noreply, socket}
-    end
+    persist_node_update(socket, node_id, fn data ->
+      Map.merge(data, normalized_params)
+    end)
   end
 
   @doc """
@@ -142,23 +140,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   def duplicate_node(socket, node_id) do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
 
-    # Clear unique identifiers when duplicating nodes
-    data =
-      cond do
-        node.type == "hub" ->
-          Map.put(node.data, "hub_id", "")
-
-        node.type == "exit" ->
-          Map.put(node.data, "technical_id", "")
-
-        node.type == "dialogue" ->
-          node.data
-          |> Map.put("technical_id", "")
-          |> Map.put("localization_id", NodeTypeRegistry.default_data("dialogue")["localization_id"])
-
-        true ->
-          node.data
-      end
+    # Delegate unique identifier cleanup to per-type module
+    data = NodeTypeRegistry.duplicate_data_cleanup(node.type, node.data)
 
     attrs = %{
       type: node.type,
@@ -199,25 +182,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   @spec update_node_text(Phoenix.LiveView.Socket.t(), any(), String.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def update_node_text(socket, node_id, content) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-    updated_data = Map.put(node.data, "text", content)
-
-    case Flows.update_node_data(node, updated_data) do
-      {:ok, updated_node, _meta} ->
-        schedule_save_status_reset()
-
-        socket =
-          socket
-          |> reload_flow_data()
-          |> assign(:save_status, :saved)
-          |> maybe_update_selected_node(node, updated_node)
-          |> push_event("node_updated", %{id: node.id, data: canvas_data(updated_node)})
-
-        {:noreply, socket}
-
-      {:error, _} ->
-        {:noreply, socket}
-    end
+    persist_node_update(socket, node_id, fn data ->
+      Map.put(data, "text", content)
+    end)
   end
 
   @doc """
@@ -246,43 +213,64 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   @spec update_node_field(Phoenix.LiveView.Socket.t(), any(), String.t(), any()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def update_node_field(socket, node_id, field, value) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-    updated_data = Map.put(node.data, field, value)
-
-    case Flows.update_node_data(node, updated_data) do
-      {:ok, updated_node, _meta} ->
-        form = FormHelpers.node_data_to_form(updated_node)
-        schedule_save_status_reset()
-
-        {:noreply,
-         socket
-         |> reload_flow_data()
-         |> assign(:selected_node, updated_node)
-         |> assign(:node_form, form)
-         |> assign(:save_status, :saved)
-         |> push_event("node_updated", %{id: node_id, data: canvas_data(updated_node)})}
-
-      {:error, _} ->
-        {:noreply, socket}
-    end
+    persist_node_update(socket, node_id, fn data ->
+      Map.put(data, field, value)
+    end)
   end
 
   # Private functions
 
   # Resolves node data for canvas events (e.g., hub color name → hex).
+  # Also used by persist_node_update and add_node.
   defp canvas_data(node) do
     Flows.resolve_node_colors(node.type, node.data)
   end
 
-  defp maybe_update_selected_node(socket, original_node, updated_node) do
-    if socket.assigns.selected_node && socket.assigns.selected_node.id == original_node.id do
-      form = FormHelpers.node_data_to_form(updated_node)
+  # Pushes a full flow update when hub renames cascaded, otherwise a single node update.
+  defp push_node_or_flow_update(socket, _node, renamed_count) when renamed_count > 0 do
+    socket
+    |> put_flash(
+      :info,
+      Gettext.ngettext(
+        StoryarnWeb.Gettext,
+        "%{count} Jump node updated.",
+        "%{count} Jump nodes updated.",
+        renamed_count,
+        count: renamed_count
+      )
+    )
+    |> push_event("flow_updated", socket.assigns.flow_data)
+  end
 
-      socket
-      |> assign(:selected_node, updated_node)
-      |> assign(:node_form, form)
-    else
-      socket
+  defp push_node_or_flow_update(socket, node, _renamed_count) do
+    push_event(socket, "node_updated", %{id: node.id, data: canvas_data(node)})
+  end
+
+  # Refreshes referencing_jumps assign for hub nodes.
+  defp maybe_refresh_referencing_jumps(socket, %{type: "hub"} = node) do
+    jumps =
+      Flows.list_referencing_jumps(
+        socket.assigns.flow.id,
+        node.data["hub_id"] || ""
+      )
+
+    assign(socket, :referencing_jumps, jumps)
+  end
+
+  defp maybe_refresh_referencing_jumps(socket, _node), do: socket
+
+  # Normalizes empty strings to nil for ID fields that should be nullable.
+  @doc false
+  def normalize_form_params(params) do
+    params
+    |> normalize_empty_to_nil("speaker_page_id")
+    |> normalize_empty_to_nil("audio_asset_id")
+  end
+
+  defp normalize_empty_to_nil(params, key) do
+    case params[key] do
+      "" -> Map.put(params, key, nil)
+      _ -> params
     end
   end
 

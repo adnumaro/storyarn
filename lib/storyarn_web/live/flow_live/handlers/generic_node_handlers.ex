@@ -1,10 +1,11 @@
-defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
+defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   @moduledoc """
-  Handles node-related events for the flow editor LiveView.
+  Handles generic node events for the flow editor LiveView.
 
-  Responsible for: add, select, deselect, move, delete, duplicate,
-  update node data/text/field, generate technical ID.
+  Responsible for type-agnostic operations: add, select, deselect, move,
+  delete, duplicate, update data/text/field, open/close editor.
 
+  Type-specific event handlers live in their respective `Nodes.{Type}.Node` modules.
   Delegates heavy lifting to NodeHelpers. Returns `{:noreply, socket}`.
   """
 
@@ -16,12 +17,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
 
   alias Storyarn.Flows
   alias Storyarn.Pages
-  alias Storyarn.Repo
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
+  alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
-  import StoryarnWeb.FlowLive.Components.NodeTypeHelpers, only: [generate_technical_id: 3]
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
 
   @spec handle_add_node(map(), Phoenix.LiveView.Socket.t()) ::
@@ -84,18 +84,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
         socket
       end
 
-    referencing_jumps =
-      if node.type == "hub" do
-        Flows.list_referencing_jumps(socket.assigns.flow.id, node.data["hub_id"] || "")
-      else
-        []
-      end
+    socket = NodeTypeRegistry.on_select(node.type, node, socket)
 
     {:noreply,
      socket
      |> assign(:selected_node, node)
      |> assign(:node_form, form)
-     |> assign(:referencing_jumps, referencing_jumps)
      |> assign(:editing_mode, :sidebar)}
   end
 
@@ -106,8 +100,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
     form = FormHelpers.node_data_to_form(node)
     user = socket.assigns.current_scope.user
 
-    # Only dialogue nodes support screenplay mode
-    editing_mode = if node.type == "dialogue", do: :screenplay, else: :sidebar
+    editing_mode = NodeTypeRegistry.on_double_click(node.type, node)
 
     socket =
       if socket.assigns.can_edit do
@@ -121,16 +114,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
      |> assign(:selected_node, node)
      |> assign(:node_form, form)
      |> assign(:editing_mode, editing_mode)}
-  end
-
-  @spec handle_open_screenplay(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_open_screenplay(socket) do
-    if socket.assigns.selected_node && socket.assigns.selected_node.type == "dialogue" do
-      {:noreply, assign(socket, :editing_mode, :screenplay)}
-    else
-      {:noreply, socket}
-    end
   end
 
   @spec handle_open_sidebar(Phoenix.LiveView.Socket.t()) ::
@@ -251,34 +234,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
     NodeHelpers.duplicate_node(socket, node_id)
   end
 
-  @spec handle_generate_technical_id(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_generate_technical_id(socket) do
-    node = socket.assigns.selected_node
-
-    cond do
-      node && node.type == "dialogue" ->
-        flow = socket.assigns.flow
-        speaker_page_id = node.data["speaker_page_id"]
-        speaker_name = get_speaker_name(socket, speaker_page_id)
-        speaker_count = count_speaker_in_flow(flow, speaker_page_id, node.id)
-        technical_id = generate_technical_id(flow.shortcut, speaker_name, speaker_count)
-
-        NodeHelpers.update_node_field(socket, node.id, "technical_id", technical_id)
-
-      node && node.type == "exit" ->
-        flow = socket.assigns.flow
-        exit_count = count_exit_in_flow(flow, node.id)
-        label = node.data["label"]
-        technical_id = generate_exit_technical_id(flow.shortcut, label, exit_count)
-
-        NodeHelpers.update_node_field(socket, node.id, "technical_id", technical_id)
-
-      true ->
-        {:noreply, socket}
-    end
-  end
-
   @spec handle_update_node_field(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_update_node_field(%{"field" => field, "value" => value}, socket) do
@@ -306,62 +261,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.NodeEventHandlers do
       nil -> gettext("Could not save shortcut.")
     end
   end
-
-  defp get_speaker_name(_socket, nil), do: nil
-
-  defp get_speaker_name(socket, speaker_page_id) do
-    Enum.find_value(socket.assigns.leaf_pages, fn page ->
-      if to_string(page.id) == to_string(speaker_page_id), do: page.name
-    end)
-  end
-
-  defp count_speaker_in_flow(flow, speaker_page_id, current_node_id) do
-    flow = Repo.preload(flow, :nodes)
-
-    same_speaker_nodes =
-      flow.nodes
-      |> Enum.filter(fn node ->
-        node.type == "dialogue" &&
-          to_string(node.data["speaker_page_id"]) == to_string(speaker_page_id)
-      end)
-      |> Enum.sort_by(& &1.inserted_at)
-
-    case Enum.find_index(same_speaker_nodes, &(&1.id == current_node_id)) do
-      nil -> length(same_speaker_nodes) + 1
-      index -> index + 1
-    end
-  end
-
-  defp count_exit_in_flow(flow, current_node_id) do
-    flow = Repo.preload(flow, :nodes)
-
-    exit_nodes =
-      flow.nodes
-      |> Enum.filter(&(&1.type == "exit"))
-      |> Enum.sort_by(& &1.inserted_at)
-
-    case Enum.find_index(exit_nodes, &(&1.id == current_node_id)) do
-      nil -> length(exit_nodes) + 1
-      index -> index + 1
-    end
-  end
-
-  defp generate_exit_technical_id(flow_slug, label, exit_count) do
-    flow_part = normalize_for_id(flow_slug || "")
-    label_part = normalize_for_id(label || "")
-    flow_part = if flow_part == "", do: "flow", else: flow_part
-    label_part = if label_part == "", do: "exit", else: label_part
-    "#{flow_part}_#{label_part}_#{exit_count}"
-  end
-
-  defp normalize_for_id(text) when is_binary(text) do
-    text
-    |> String.downcase()
-    |> String.replace(~r/[^a-z0-9]+/, "_")
-    |> String.trim("_")
-  end
-
-  defp normalize_for_id(_), do: ""
 
   defp handle_node_lock_acquisition(socket, node_id, user) do
     alias Storyarn.Collaboration

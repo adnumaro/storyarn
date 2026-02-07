@@ -561,7 +561,8 @@ defmodule Storyarn.FlowsTest do
       flow = flow_fixture(project)
       node = node_fixture(flow)
 
-      {:ok, updated, _meta} = Flows.update_node_data(node, %{"speaker" => "Hero", "text" => "Hi!"})
+      {:ok, updated, _meta} =
+        Flows.update_node_data(node, %{"speaker" => "Hero", "text" => "Hi!"})
 
       assert updated.data["speaker"] == "Hero"
       assert updated.data["text"] == "Hi!"

@@ -10,6 +10,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
   import Phoenix.Component, only: [assign: 2, assign: 3]
   import Phoenix.LiveView, only: [push_event: 3]
 
+  alias Storyarn.Flows
   alias Storyarn.Pages
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
 
@@ -32,6 +33,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
   @spec handle_node_updated(Storyarn.Flows.FlowNode.t(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_node_updated(updated_node, socket) do
+    # The ScreenplayEditor already wrote to DB, so just reload state and push canvas data
     form = FormHelpers.node_data_to_form(updated_node)
     schedule_save_status_reset()
 
@@ -41,7 +43,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
      |> assign(:selected_node, updated_node)
      |> assign(:node_form, form)
      |> assign(:save_status, :saved)
-     |> push_event("node_updated", %{id: updated_node.id, data: updated_node.data})}
+     |> push_event("node_updated", %{
+       id: updated_node.id,
+       data: Flows.resolve_node_colors(updated_node.type, updated_node.data)
+     })}
   end
 
   @spec handle_close_preview(Phoenix.LiveView.Socket.t()) ::

@@ -13,8 +13,8 @@ defmodule StoryarnWeb.FlowLive.ShowEventsTest do
   alias Storyarn.Repo
 
   describe "handler module exports" do
-    test "NodeEventHandlers exports all expected functions" do
-      module = StoryarnWeb.FlowLive.Handlers.NodeEventHandlers
+    test "GenericNodeHandlers exports all expected functions" do
+      module = StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
       Code.ensure_loaded!(module)
 
       assert function_exported?(module, :handle_add_node, 2)
@@ -26,13 +26,12 @@ defmodule StoryarnWeb.FlowLive.ShowEventsTest do
       assert function_exported?(module, :handle_update_node_data, 2)
       assert function_exported?(module, :handle_update_node_text, 2)
       assert function_exported?(module, :handle_update_node_field, 2)
-      assert function_exported?(module, :handle_generate_technical_id, 1)
       assert function_exported?(module, :handle_save_shortcut, 2)
       assert function_exported?(module, :handle_start_preview, 2)
     end
 
-    test "ResponseEventHandlers exports all expected functions" do
-      module = StoryarnWeb.FlowLive.Handlers.ResponseEventHandlers
+    test "Dialogue.Node exports all expected functions" do
+      module = StoryarnWeb.FlowLive.Nodes.Dialogue.Node
       Code.ensure_loaded!(module)
 
       assert function_exported?(module, :handle_add_response, 2)
@@ -40,15 +39,24 @@ defmodule StoryarnWeb.FlowLive.ShowEventsTest do
       assert function_exported?(module, :handle_update_response_text, 2)
       assert function_exported?(module, :handle_update_response_condition, 2)
       assert function_exported?(module, :handle_update_response_instruction, 2)
+      assert function_exported?(module, :handle_generate_technical_id, 1)
+      assert function_exported?(module, :handle_open_screenplay, 1)
     end
 
-    test "ConditionEventHandlers exports all expected functions" do
-      module = StoryarnWeb.FlowLive.Handlers.ConditionEventHandlers
+    test "Condition.Node exports all expected functions" do
+      module = StoryarnWeb.FlowLive.Nodes.Condition.Node
       Code.ensure_loaded!(module)
 
       assert function_exported?(module, :handle_update_condition_builder, 2)
       assert function_exported?(module, :handle_update_response_condition_builder, 2)
       assert function_exported?(module, :handle_toggle_switch_mode, 1)
+    end
+
+    test "Instruction.Node exports all expected functions" do
+      module = StoryarnWeb.FlowLive.Nodes.Instruction.Node
+      Code.ensure_loaded!(module)
+
+      assert function_exported?(module, :handle_update_instruction_builder, 2)
     end
 
     test "CollaborationEventHandlers exports all expected functions" do

@@ -22,8 +22,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   Builds a map of pages for the canvas (keyed by string ID).
   """
   @spec pages_map(list()) :: map()
-  def pages_map(leaf_pages) do
-    Map.new(leaf_pages, fn page ->
+  def pages_map(all_pages) do
+    Map.new(all_pages, fn page ->
       avatar_url =
         case page.avatar_asset do
           %{url: url} when is_binary(url) -> url
