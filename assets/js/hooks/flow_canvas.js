@@ -24,6 +24,18 @@ export const FlowCanvas = {
     this.initEditor();
   },
 
+  get isLoadingFromServer() {
+    return this._loadingFromServerCount > 0;
+  },
+
+  enterLoadingFromServer() {
+    this._loadingFromServerCount++;
+  },
+
+  exitLoadingFromServer() {
+    this._loadingFromServerCount = Math.max(0, this._loadingFromServerCount - 1);
+  },
+
   async initEditor() {
     const container = this.el;
     const flowData = JSON.parse(container.dataset.flow || "{}");
@@ -47,7 +59,7 @@ export const FlowCanvas = {
     // Create and configure plugins
     this.connectionDataMap = new Map();
     this.nodeMap = new Map();
-    this.isLoadingFromServer = false;
+    this._loadingFromServerCount = 0;
 
     const plugins = createPlugins(container, this);
     this.editor = plugins.editor;
@@ -79,7 +91,7 @@ export const FlowCanvas = {
   },
 
   async loadFlow(flowData) {
-    this.isLoadingFromServer = true;
+    this.enterLoadingFromServer();
     try {
       for (const nodeData of flowData.nodes || []) {
         await this.addNodeToEditor(nodeData);
@@ -88,7 +100,7 @@ export const FlowCanvas = {
         await this.addConnectionToEditor(connData);
       }
     } finally {
-      this.isLoadingFromServer = false;
+      this.exitLoadingFromServer();
     }
   },
 
@@ -111,6 +123,21 @@ export const FlowCanvas = {
     const targetNode = this.nodeMap.get(connData.target_node_id);
 
     if (!sourceNode || !targetNode) return;
+
+    // Skip connections referencing pins that no longer exist on the node
+    // (e.g., a deleted dialogue response whose connection wasn't cleaned up)
+    if (!sourceNode.outputs[connData.source_pin]) {
+      console.warn(
+        `Skipping connection ${connData.id}: source pin "${connData.source_pin}" not found on node ${connData.source_node_id}`,
+      );
+      return;
+    }
+    if (!targetNode.inputs[connData.target_pin]) {
+      console.warn(
+        `Skipping connection ${connData.id}: target pin "${connData.target_pin}" not found on node ${connData.target_node_id}`,
+      );
+      return;
+    }
 
     const connection = new ClassicPreset.Connection(
       sourceNode,

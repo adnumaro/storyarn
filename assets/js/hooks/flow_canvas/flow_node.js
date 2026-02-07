@@ -3,7 +3,7 @@
  */
 
 import { ClassicPreset } from "rete";
-import { NODE_CONFIGS } from "./node_config.js";
+import { NODE_CONFIGS, getNodeDef } from "./node_config.js";
 
 /**
  * FlowNode extends the classic Rete.js Node with custom properties
@@ -28,28 +28,15 @@ export class FlowNode extends ClassicPreset.Node {
       this.addInput(inputName, new ClassicPreset.Input(new ClassicPreset.Socket("flow")));
     }
 
-    // Add outputs - check for dynamic outputs
-    if (config.dynamicOutputs && type === "dialogue" && data.responses?.length > 0) {
-      // Dialogue: Add one output per response
-      for (const response of data.responses) {
-        this.addOutput(response.id, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
-      }
-    } else if (config.dynamicOutputs && type === "condition") {
-      // Condition: outputs depend on switch_mode
-      if (data.switch_mode && data.condition?.rules?.length > 0) {
-        // Switch mode: one output per rule + default
-        for (const rule of data.condition.rules) {
-          this.addOutput(rule.id, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
-        }
-        // Always add default output for switch mode
-        this.addOutput("default", new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
-      } else {
-        // Normal mode: True/False outputs
-        this.addOutput("true", new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
-        this.addOutput("false", new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
+    // Add outputs — delegate to per-type createOutputs if available
+    const def = getNodeDef(type);
+    const dynamicOutputs = def?.createOutputs?.(data);
+
+    if (dynamicOutputs) {
+      for (const outputName of dynamicOutputs) {
+        this.addOutput(outputName, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
       }
     } else {
-      // Add default outputs
       for (const outputName of config.outputs) {
         this.addOutput(outputName, new ClassicPreset.Output(new ClassicPreset.Socket("flow")));
       }

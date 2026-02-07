@@ -13,9 +13,10 @@ export function setupEventHandlers(hook) {
   hook.lastNodeClickTime = 0;
   hook.lastClickedNodeId = null;
 
-  // Node position changes (drag)
+  // Node position changes (drag) — skip during server-initiated loads
   hook.area.addPipe((context) => {
     if (context.type === "nodetranslated") {
+      if (hook.isLoadingFromServer) return context;
       const node = hook.editor.getNode(context.data.id);
       if (node?.nodeId) {
         hook.editorHandlers.debounceNodeMoved(node.nodeId, context.data.position);
@@ -37,7 +38,7 @@ export function setupEventHandlers(hook) {
         hook.lastClickedNodeId = node.nodeId;
         hook.selectedNodeId = node.nodeId;
 
-        if (isDoubleClick && node.nodeType === "dialogue") {
+        if (isDoubleClick) {
           hook.pushEvent("node_double_clicked", { id: node.nodeId });
         } else {
           hook.pushEvent("node_selected", { id: node.nodeId });
@@ -87,7 +88,14 @@ export function setupEventHandlers(hook) {
   hook.handleEvent("flow_updated", (data) => hook.editorHandlers.handleFlowUpdated(data));
   hook.handleEvent("node_added", (data) => hook.editorHandlers.handleNodeAdded(data));
   hook.handleEvent("node_removed", (data) => hook.editorHandlers.handleNodeRemoved(data));
-  hook.handleEvent("node_updated", (data) => hook.editorHandlers.handleNodeUpdated(data));
+  // Serialize node_updated events to prevent race conditions when
+  // multiple response additions/deletions trigger concurrent rebuilds
+  hook._nodeUpdateQueue = Promise.resolve();
+  hook.handleEvent("node_updated", (data) => {
+    hook._nodeUpdateQueue = hook._nodeUpdateQueue
+      .then(() => hook.editorHandlers.handleNodeUpdated(data))
+      .catch((err) => console.error("node_updated handler error:", err));
+  });
   hook.handleEvent("connection_added", (data) => hook.editorHandlers.handleConnectionAdded(data));
   hook.handleEvent("connection_removed", (data) =>
     hook.editorHandlers.handleConnectionRemoved(data),

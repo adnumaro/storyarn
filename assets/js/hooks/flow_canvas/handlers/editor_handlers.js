@@ -4,6 +4,7 @@
 
 import { ClassicPreset } from "rete";
 import { FlowNode } from "../flow_node.js";
+import { getNodeDef } from "../node_config.js";
 
 /**
  * Creates the editor handlers with methods bound to the hook context.
@@ -44,10 +45,10 @@ export function createEditorHandlers(hook) {
      * @param {Object} data - Flow data with nodes and connections
      */
     async handleFlowUpdated(data) {
-      for (const conn of hook.editor.getConnections()) {
+      for (const conn of [...hook.editor.getConnections()]) {
         await hook.editor.removeConnection(conn.id);
       }
-      for (const node of hook.editor.getNodes()) {
+      for (const node of [...hook.editor.getNodes()]) {
         await hook.editor.removeNode(node.id);
       }
       hook.nodeMap.clear();
@@ -72,19 +73,19 @@ export function createEditorHandlers(hook) {
     async handleNodeRemoved(data) {
       const node = hook.nodeMap.get(data.id);
       if (node) {
-        const needsRebuild = node.nodeType === "hub" || node.nodeType === "jump";
+        const needsHubRebuild = node.nodeType === "hub" || node.nodeType === "jump";
         await hook.editor.removeNode(node.id);
         hook.nodeMap.delete(data.id);
         if (hook.selectedNodeId === data.id) {
           hook.selectedNodeId = null;
         }
-        if (needsRebuild) await hook.rebuildHubsMap();
+        if (needsHubRebuild) await hook.rebuildHubsMap();
       }
     },
 
     /**
      * Handles node updated event from server.
-     * For dialogue nodes with changing responses, rebuilds the entire node.
+     * Uses per-type needsRebuild to determine if full rebuild is needed.
      * @param {Object} data - Data with id and nodeData
      */
     async handleNodeUpdated(data) {
@@ -95,16 +96,12 @@ export function createEditorHandlers(hook) {
         return;
       }
 
-      // Check if responses changed (need full rebuild to update outputs)
-      const oldResponses = existingNode.nodeData?.responses || [];
-      const newResponses = nodeData.responses || [];
-      const responsesChanged =
-        oldResponses.length !== newResponses.length ||
-        oldResponses.some((r, i) => r.id !== newResponses[i]?.id);
+      // Check per-type needsRebuild
+      const def = getNodeDef(existingNode.nodeType);
+      const shouldRebuild = def?.needsRebuild?.(existingNode.nodeData, nodeData) || false;
 
-      // For dialogue nodes with changing responses, rebuild the node
-      if (existingNode.nodeType === "dialogue" && responsesChanged) {
-        await this.rebuildDialogueNode(id, existingNode, nodeData);
+      if (shouldRebuild) {
+        await this.rebuildNode(id, existingNode, nodeData);
       } else {
         // Update nodeData with new reference to trigger Lit re-render
         existingNode.nodeData = { ...nodeData };
@@ -117,17 +114,20 @@ export function createEditorHandlers(hook) {
     },
 
     /**
-     * Rebuilds a dialogue node preserving its connections.
+     * Rebuilds a node preserving its connections.
+     * Used when outputs change (responses, condition rules, etc.).
      * @param {string|number} id - The database node ID
      * @param {Object} existingNode - The existing Rete node
      * @param {Object} nodeData - The new node data
      */
-    async rebuildDialogueNode(id, existingNode, nodeData) {
-      const position = await hook.area.getNodePosition(existingNode.id);
+    async rebuildNode(id, existingNode, nodeData) {
+      const view = hook.area.nodeViews.get(existingNode.id);
+      const position = view ? { ...view.position } : { x: 0, y: 0 };
 
-      hook.isLoadingFromServer = true;
+      hook.enterLoadingFromServer();
       try {
-        const connections = hook.editor.getConnections();
+        // Snapshot the array — getConnections() returns a mutable reference
+        const connections = [...hook.editor.getConnections()];
         const affectedConnections = [];
 
         // Save and remove affected connections (including their metadata)
@@ -156,7 +156,7 @@ export function createEditorHandlers(hook) {
         await hook.area.translate(newNode.id, position);
         hook.nodeMap.set(id, newNode);
 
-        // Force re-render to update visual (speaker name, etc.)
+        // Force re-render to update visual
         await hook.area.update("node", newNode.id);
 
         // Restore connections with their metadata
@@ -184,7 +184,7 @@ export function createEditorHandlers(hook) {
           }
         }
       } finally {
-        hook.isLoadingFromServer = false;
+        hook.exitLoadingFromServer();
       }
     },
 
@@ -193,11 +193,31 @@ export function createEditorHandlers(hook) {
      * @param {Object} data - Connection data
      */
     async handleConnectionAdded(data) {
-      hook.isLoadingFromServer = true;
+      // Check if this connection already exists locally (user created it)
+      const existingConn = hook.editor.getConnections().find(
+        (c) =>
+          hook.editor.getNode(c.source)?.nodeId === data.source_node_id &&
+          c.sourceOutput === data.source_pin &&
+          hook.editor.getNode(c.target)?.nodeId === data.target_node_id &&
+          c.targetInput === data.target_pin,
+      );
+
+      if (existingConn) {
+        // Connection already exists locally. Just update the connectionDataMap with server ID.
+        hook.connectionDataMap.set(existingConn.id, {
+          id: data.id,
+          label: data.label || null,
+          condition: data.condition || null,
+        });
+        return;
+      }
+
+      // Connection doesn't exist locally (e.g., from collaborator). Add it.
+      hook.enterLoadingFromServer();
       try {
         await hook.addConnectionToEditor(data);
       } finally {
-        hook.isLoadingFromServer = false;
+        hook.exitLoadingFromServer();
       }
     },
 
@@ -206,7 +226,7 @@ export function createEditorHandlers(hook) {
      * @param {Object} data - Data with source_node_id and target_node_id
      */
     async handleConnectionRemoved(data) {
-      hook.isLoadingFromServer = true;
+      hook.enterLoadingFromServer();
       try {
         const connections = hook.editor.getConnections();
         for (const conn of connections) {
@@ -223,7 +243,7 @@ export function createEditorHandlers(hook) {
           }
         }
       } finally {
-        hook.isLoadingFromServer = false;
+        hook.exitLoadingFromServer();
       }
     },
 
