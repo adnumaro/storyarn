@@ -3,7 +3,7 @@ defmodule Storyarn.Flows.VariableReference do
   Schema for variable references.
 
   Tracks which flow nodes read or write which variables (blocks).
-  Used to show variable usage in the page editor and detect stale references.
+  Used to show variable usage in the sheet editor and detect stale references.
 
   ## Kinds
 

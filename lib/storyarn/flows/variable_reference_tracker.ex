@@ -114,6 +114,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         node_id: n.id,
         node_type: n.type,
         node_data: n.data,
+        source_sheet: vr.source_sheet,
+        source_variable: vr.source_variable,
         stale: vr.source_sheet != s.shortcut or vr.source_variable != b.variable_name
       },
       order_by: [asc: vr.kind, asc: f.name]

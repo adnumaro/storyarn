@@ -210,20 +210,13 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
   defp icon_for_node_type("condition"), do: "git-branch"
   defp icon_for_node_type(_), do: "circle"
 
-  defp format_ref_detail(ref, sheet, block) when ref.kind == "write" do
+  defp format_ref_detail(ref, _sheet, _block) when ref.kind == "write" do
     assignments = ref.node_data["assignments"] || []
 
     matching =
       Enum.find(assignments, fn a ->
-        a["sheet"] == sheet.shortcut and a["variable"] == block.variable_name
+        a["sheet"] == ref.source_sheet and a["variable"] == ref.source_variable
       end)
-
-    # Fallback for stale refs: match by variable_name only (covers sheet rename case)
-    matching =
-      matching ||
-        if ref[:stale] do
-          Enum.find(assignments, fn a -> a["variable"] == block.variable_name end)
-        end
 
     if matching, do: format_assignment_detail(matching)
   end
@@ -250,7 +243,7 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
   defp format_assignment_detail(%{
          "operator" => op,
          "value_type" => "variable_ref",
-         "value_page" => vp,
+         "value_sheet" => vp,
          "value" => v
        })
        when is_binary(vp) and is_binary(v) do
