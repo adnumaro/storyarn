@@ -12,8 +12,9 @@ defmodule Storyarn.Repo.Migrations.CreateEntityReferences do
       timestamps()
     end
 
-    create index(:entity_references, [:target_type, :target_id])
     create index(:entity_references, [:source_type, :source_id])
+    create index(:entity_references, [:target_type, :target_id])
+    create index(:entity_references, [:target_type, :target_id, :source_type])
 
     create unique_index(
              :entity_references,
