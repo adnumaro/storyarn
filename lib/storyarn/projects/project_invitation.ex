@@ -10,9 +10,8 @@ defmodule Storyarn.Projects.ProjectInvitation do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Projects.Project
+  alias Storyarn.Shared.TokenGenerator
 
-  @hash_algorithm :sha256
-  @rand_size 32
   @invitation_validity_in_days 7
 
   @type t :: %__MODULE__{
@@ -66,8 +65,7 @@ defmodule Storyarn.Projects.ProjectInvitation do
   into the database.
   """
   def build_invitation(project, invited_by, email, role \\ "editor") do
-    token = :crypto.strong_rand_bytes(@rand_size)
-    hashed_token = :crypto.hash(@hash_algorithm, token)
+    {encoded_token, hashed_token} = TokenGenerator.build_hashed_token()
 
     expires_at =
       DateTime.utc_now()
@@ -83,7 +81,7 @@ defmodule Storyarn.Projects.ProjectInvitation do
       expires_at: expires_at
     }
 
-    {Base.url_encode64(token, padding: false), invitation}
+    {encoded_token, invitation}
   end
 
   @doc """
@@ -92,10 +90,8 @@ defmodule Storyarn.Projects.ProjectInvitation do
   Returns `{:ok, query}` if the token is valid, `:error` otherwise.
   """
   def verify_token_query(token) do
-    case Base.url_decode64(token, padding: false) do
-      {:ok, decoded_token} ->
-        hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
-
+    case TokenGenerator.decode_and_hash(token) do
+      {:ok, hashed_token} ->
         query =
           from(i in __MODULE__,
             where: i.token == ^hashed_token,

@@ -1,4 +1,4 @@
-defmodule Storyarn.Encrypted.Binary do
+defmodule Storyarn.Shared.EncryptedBinary do
   @moduledoc """
   Encrypted binary type for Ecto schemas.
 

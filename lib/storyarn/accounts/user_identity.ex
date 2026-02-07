@@ -39,8 +39,8 @@ defmodule Storyarn.Accounts.UserIdentity do
     field :provider_meta, :map, default: %{}
 
     # Encrypted token storage
-    field :provider_token_encrypted, Storyarn.Encrypted.Binary
-    field :provider_refresh_token_encrypted, Storyarn.Encrypted.Binary
+    field :provider_token_encrypted, Storyarn.Shared.EncryptedBinary
+    field :provider_refresh_token_encrypted, Storyarn.Shared.EncryptedBinary
 
     # Virtual fields for API compatibility (input only)
     field :provider_token, :string, virtual: true, redact: true

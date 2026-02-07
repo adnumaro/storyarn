@@ -5,9 +5,7 @@ defmodule Storyarn.Accounts.UserToken do
   use Ecto.Schema
   import Ecto.Query
   alias Storyarn.Accounts.UserToken
-
-  @hash_algorithm :sha256
-  @rand_size 32
+  alias Storyarn.Shared.TokenGenerator
 
   # It is very important to keep the magic link token expiry short,
   # since someone with access to the email may take over the account.
@@ -56,7 +54,7 @@ defmodule Storyarn.Accounts.UserToken do
   session they deem invalid.
   """
   def build_session_token(user) do
-    token = :crypto.strong_rand_bytes(@rand_size)
+    token = :crypto.strong_rand_bytes(32)
     dt = user.authenticated_at || DateTime.utc_now(:second)
     {token, %UserToken{token: token, context: "session", user_id: user.id, authenticated_at: dt}}
   end
@@ -97,10 +95,9 @@ defmodule Storyarn.Accounts.UserToken do
   end
 
   defp build_hashed_token(user, context, sent_to) do
-    token = :crypto.strong_rand_bytes(@rand_size)
-    hashed_token = :crypto.hash(@hash_algorithm, token)
+    {encoded_token, hashed_token} = TokenGenerator.build_hashed_token()
 
-    {Base.url_encode64(token, padding: false),
+    {encoded_token,
      %UserToken{
        token: hashed_token,
        context: context,
@@ -119,16 +116,14 @@ defmodule Storyarn.Accounts.UserToken do
   15 minutes. The context of a magic link token is always "login".
   """
   def verify_magic_link_token_query(token) do
-    case Base.url_decode64(token, padding: false) do
-      {:ok, decoded_token} ->
-        hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
-
+    case TokenGenerator.decode_and_hash(token) do
+      {:ok, hashed_token} ->
         query =
-          from token in by_token_and_context_query(hashed_token, "login"),
-            join: user in assoc(token, :user),
-            where: token.inserted_at > ago(^@magic_link_validity_in_minutes, "minute"),
-            where: token.sent_to == user.email,
-            select: {user, token}
+          from t in by_token_and_context_query(hashed_token, "login"),
+            join: user in assoc(t, :user),
+            where: t.inserted_at > ago(^@magic_link_validity_in_minutes, "minute"),
+            where: t.sent_to == user.email,
+            select: {user, t}
 
         {:ok, query}
 
@@ -149,13 +144,11 @@ defmodule Storyarn.Accounts.UserToken do
   The context must always start with "change:".
   """
   def verify_change_email_token_query(token, "change:" <> _ = context) do
-    case Base.url_decode64(token, padding: false) do
-      {:ok, decoded_token} ->
-        hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
-
+    case TokenGenerator.decode_and_hash(token) do
+      {:ok, hashed_token} ->
         query =
-          from token in by_token_and_context_query(hashed_token, context),
-            where: token.inserted_at > ago(@change_email_validity_in_days, "day")
+          from t in by_token_and_context_query(hashed_token, context),
+            where: t.inserted_at > ago(@change_email_validity_in_days, "day")
 
         {:ok, query}
 

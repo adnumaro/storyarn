@@ -1,6 +1,6 @@
 defmodule Storyarn.Shortcuts do
   @moduledoc """
-  Utilities for generating and managing shortcuts for pages and flows.
+  Utilities for generating and managing shortcuts for sheets and flows.
 
   Shortcuts are unique identifiers within a project that can be used to
   reference sheets and flows (e.g., #mc.jaime, #chapter-1).
