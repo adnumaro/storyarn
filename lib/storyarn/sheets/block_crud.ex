@@ -2,8 +2,9 @@ defmodule Storyarn.Sheets.BlockCrud do
   @moduledoc false
 
   import Ecto.Query, warn: false
+  require Logger
 
-  alias Storyarn.Sheets.{Block, Sheet, ReferenceTracker}
+  alias Storyarn.Sheets.{Block, Sheet, ReferenceTracker, PropertyInheritance}
   alias Storyarn.Repo
 
   # =============================================================================
@@ -67,23 +68,74 @@ defmodule Storyarn.Sheets.BlockCrud do
     config = attrs[:config] || Block.default_config(attrs[:type] || attrs["type"])
     value = attrs[:value] || Block.default_value(attrs[:type] || attrs["type"])
 
-    %Block{sheet_id: sheet.id}
-    |> Block.create_changeset(
-      attrs
-      |> Map.put(:position, position)
-      |> Map.put_new(:config, config)
-      |> Map.put_new(:value, value)
-    )
-    |> ensure_unique_variable_name(sheet.id, nil)
-    |> Repo.insert()
+    result =
+      %Block{sheet_id: sheet.id}
+      |> Block.create_changeset(
+        attrs
+        |> Map.put(:position, position)
+        |> Map.put_new(:config, config)
+        |> Map.put_new(:value, value)
+      )
+      |> ensure_unique_variable_name(sheet.id, nil)
+      |> Repo.insert()
+
+    # If block has scope: "children" and is not itself an inherited instance,
+    # auto-create instances on all descendant sheets
+    case result do
+      {:ok, block} when block.scope == "children" and is_nil(block.inherited_from_block_id) ->
+        descendant_ids = PropertyInheritance.get_descendant_sheet_ids(sheet.id)
+
+        if descendant_ids != [] do
+          {:ok, _count} = PropertyInheritance.create_inherited_instances(block, descendant_ids)
+        end
+
+      _ ->
+        :ok
+    end
+
+    result
   end
 
   def update_block(%Block{} = block, attrs) do
-    block
-    |> Block.update_changeset(attrs)
-    |> ensure_unique_variable_name(block.sheet_id, block.id)
-    |> Repo.update()
+    old_scope = block.scope
+
+    result =
+      block
+      |> Block.update_changeset(attrs)
+      |> ensure_unique_variable_name(block.sheet_id, block.id)
+      |> Repo.update()
+
+    # Handle scope changes
+    case result do
+      {:ok, updated_block} ->
+        handle_scope_change(updated_block, old_scope)
+
+        # Sync definition to instances if scope is "children"
+        if updated_block.scope == "children" and old_scope == "children" do
+          case PropertyInheritance.sync_definition_change(updated_block) do
+            {:ok, _} -> :ok
+            {:error, reason} -> Logger.error("Failed to sync definition change: #{inspect(reason)}")
+          end
+        end
+
+      _ ->
+        :ok
+    end
+
+    result
   end
+
+  defp handle_scope_change(%Block{scope: "children"}, "self") do
+    # Scope changed from "self" to "children" - instances created via propagation modal
+    :ok
+  end
+
+  defp handle_scope_change(%Block{scope: "self"} = block, "children") do
+    # Scope changed from "children" to "self" - remove all inherited instances
+    PropertyInheritance.delete_inherited_instances(block)
+  end
+
+  defp handle_scope_change(_block, _old_scope), do: :ok
 
   def update_block_value(%Block{} = block, value) do
     Ecto.Multi.new()
@@ -104,10 +156,25 @@ defmodule Storyarn.Sheets.BlockCrud do
   end
 
   def update_block_config(%Block{} = block, config) do
-    block
-    |> Block.config_changeset(%{config: config})
-    |> ensure_unique_variable_name(block.sheet_id, block.id)
-    |> Repo.update()
+    result =
+      block
+      |> Block.config_changeset(%{config: config})
+      |> ensure_unique_variable_name(block.sheet_id, block.id)
+      |> Repo.update()
+
+    # Sync definition change to inherited instances
+    case result do
+      {:ok, %{scope: "children"} = updated_block} ->
+        case PropertyInheritance.sync_definition_change(updated_block) do
+          {:ok, _} -> :ok
+          {:error, reason} -> Logger.error("Failed to sync config change: #{inspect(reason)}")
+        end
+
+      _ ->
+        :ok
+    end
+
+    result
   end
 
   @doc """
@@ -116,6 +183,11 @@ defmodule Storyarn.Sheets.BlockCrud do
   def delete_block(%Block{} = block) do
     # Clean up references before soft-deleting
     ReferenceTracker.delete_block_references(block.id)
+
+    # If this is a parent block with scope: "children", soft-delete all instances
+    if block.scope == "children" do
+      PropertyInheritance.delete_inherited_instances(block)
+    end
 
     block
     |> Block.delete_changeset()
@@ -132,15 +204,86 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   @doc """
   Restores a soft-deleted block.
+  If the block has scope "children", also restores its inherited instances.
   """
   def restore_block(%Block{} = block) do
-    block
-    |> Block.restore_changeset()
-    |> Repo.update()
+    result =
+      block
+      |> Block.restore_changeset()
+      |> Repo.update()
+
+    case result do
+      {:ok, restored_block} when restored_block.scope == "children" ->
+        PropertyInheritance.restore_inherited_instances(restored_block)
+
+      _ ->
+        :ok
+    end
+
+    result
   end
 
   def change_block(%Block{} = block, attrs \\ %{}) do
     Block.update_changeset(block, attrs)
+  end
+
+  @doc false
+  def ensure_unique_variable_name_public(changeset, sheet_id, exclude_block_id) do
+    ensure_unique_variable_name(changeset, sheet_id, exclude_block_id)
+  end
+
+  @doc """
+  Returns the next available block position for a sheet.
+  """
+  def next_block_position(sheet_id) do
+    query =
+      from(b in Block,
+        where: b.sheet_id == ^sheet_id and is_nil(b.deleted_at),
+        select: max(b.position)
+      )
+
+    (Repo.one(query) || -1) + 1
+  end
+
+  @doc """
+  Returns all existing variable names for a sheet, optionally excluding a block ID.
+  """
+  def list_variable_names(sheet_id, exclude_block_id \\ nil) do
+    query =
+      from(b in Block,
+        where:
+          b.sheet_id == ^sheet_id and
+            is_nil(b.deleted_at) and
+            not is_nil(b.variable_name),
+        select: b.variable_name
+      )
+
+    query =
+      if exclude_block_id do
+        where(query, [b], b.id != ^exclude_block_id)
+      else
+        query
+      end
+
+    Repo.all(query)
+  end
+
+  @doc """
+  Finds a unique variable name by appending _2, _3, etc. if collisions exist.
+  `existing_names` can be a list or a MapSet of names already taken.
+  """
+  def find_unique_variable_name(base_name, existing_names) do
+    member? =
+      case existing_names do
+        %MapSet{} -> MapSet.member?(existing_names, base_name)
+        names when is_list(names) -> base_name in names
+      end
+
+    if member? do
+      find_unique_with_suffix(base_name, existing_names, 2)
+    else
+      base_name
+    end
   end
 
   # =============================================================================
@@ -167,16 +310,6 @@ defmodule Storyarn.Sheets.BlockCrud do
   # Private Helpers
   # =============================================================================
 
-  defp next_block_position(sheet_id) do
-    query =
-      from(b in Block,
-        where: b.sheet_id == ^sheet_id and is_nil(b.deleted_at),
-        select: max(b.position)
-      )
-
-    (Repo.one(query) || -1) + 1
-  end
-
   # Ensures the variable_name is unique within the sheet.
   # If a collision exists, adds suffix _2, _3, etc.
   defp ensure_unique_variable_name(changeset, sheet_id, exclude_block_id) do
@@ -187,7 +320,8 @@ defmodule Storyarn.Sheets.BlockCrud do
     if is_nil(variable_name) do
       changeset
     else
-      unique_name = find_unique_variable_name(variable_name, sheet_id, exclude_block_id)
+      existing_names = list_variable_names(sheet_id, exclude_block_id)
+      unique_name = find_unique_variable_name(variable_name, existing_names)
 
       if unique_name != variable_name do
         put_change(changeset, :variable_name, unique_name)
@@ -197,43 +331,19 @@ defmodule Storyarn.Sheets.BlockCrud do
     end
   end
 
-  defp find_unique_variable_name(base_name, sheet_id, exclude_block_id) do
-    existing_names = list_variable_names(sheet_id, exclude_block_id)
-
-    if base_name in existing_names do
-      find_unique_with_suffix(base_name, existing_names, 2)
-    else
-      base_name
-    end
-  end
-
   defp find_unique_with_suffix(base_name, existing_names, suffix) do
     candidate = "#{base_name}_#{suffix}"
 
-    if candidate in existing_names do
+    member? =
+      case existing_names do
+        %MapSet{} -> MapSet.member?(existing_names, candidate)
+        names when is_list(names) -> candidate in names
+      end
+
+    if member? do
       find_unique_with_suffix(base_name, existing_names, suffix + 1)
     else
       candidate
     end
-  end
-
-  defp list_variable_names(sheet_id, exclude_block_id) do
-    query =
-      from(b in Block,
-        where:
-          b.sheet_id == ^sheet_id and
-            is_nil(b.deleted_at) and
-            not is_nil(b.variable_name),
-        select: b.variable_name
-      )
-
-    query =
-      if exclude_block_id do
-        where(query, [b], b.id != ^exclude_block_id)
-      else
-        query
-      end
-
-    Repo.all(query)
   end
 end
