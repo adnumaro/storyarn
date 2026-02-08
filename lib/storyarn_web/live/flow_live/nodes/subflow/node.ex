@@ -32,7 +32,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
     current_flow_id = socket.assigns.flow.id
 
     available_flows =
-      Flows.list_leaf_flows(project_id)
+      Flows.list_flows(project_id)
       |> Enum.reject(&(&1.id == current_flow_id))
 
     exit_nodes =

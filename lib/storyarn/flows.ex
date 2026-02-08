@@ -47,13 +47,6 @@ defmodule Storyarn.Flows do
   defdelegate list_flows(project_id), to: FlowCrud
 
   @doc """
-  Lists leaf flows (flows that are not parents of other flows).
-  Useful for subflow reference selection where folder flows are excluded.
-  """
-  @spec list_leaf_flows(integer()) :: [flow()]
-  defdelegate list_leaf_flows(project_id), to: FlowCrud
-
-  @doc """
   Lists flows as a tree structure.
   Returns root-level flows with their children preloaded recursively.
   """

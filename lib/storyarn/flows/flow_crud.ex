@@ -22,25 +22,6 @@ defmodule Storyarn.Flows.FlowCrud do
     |> Repo.all()
   end
 
-  @doc """
-  Lists leaf flows (not parents of other flows).
-  Used for subflow reference selection.
-  """
-  def list_leaf_flows(project_id) do
-    parent_ids_subquery =
-      from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at) and not is_nil(f.parent_id),
-        select: f.parent_id
-      )
-
-    from(f in Flow,
-      where:
-        f.project_id == ^project_id and is_nil(f.deleted_at) and
-          f.id not in subquery(parent_ids_subquery),
-      order_by: [desc: f.is_main, asc: f.name]
-    )
-    |> Repo.all()
-  end
 
   @doc """
   Lists flows as a tree structure.
