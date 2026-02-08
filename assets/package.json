@@ -29,6 +29,7 @@
     "rete-minimap-plugin": "^2.0.3",
     "rete-render-utils": "^2.0.2",
     "sortablejs": "^1.15.6",
-    "topbar": "^3.0.0"
+    "topbar": "^3.0.0",
+    "vanilla-colorful": "^0.7.2"
   }
 }
