@@ -3,7 +3,7 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.{Sheet, PropertyInheritance}
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
@@ -22,9 +22,17 @@ defmodule Storyarn.Sheets.SheetCrud do
     # Auto-generate shortcut from name if not provided
     attrs = maybe_generate_shortcut(attrs, project.id, nil)
 
-    %Sheet{project_id: project.id}
-    |> Sheet.create_changeset(Map.put(attrs, "position", position))
-    |> Repo.insert()
+    result =
+      %Sheet{project_id: project.id}
+      |> Sheet.create_changeset(Map.put(attrs, "position", position))
+      |> Repo.insert()
+
+    # Auto-inherit blocks from ancestor chain
+    with {:ok, sheet} <- result do
+      PropertyInheritance.inherit_blocks_for_new_sheet(sheet)
+    end
+
+    result
   end
 
   def update_sheet(%Sheet{} = sheet, attrs) do
@@ -116,9 +124,17 @@ defmodule Storyarn.Sheets.SheetCrud do
     with :ok <- validate_parent(sheet, parent_id) do
       position = position || next_position(sheet.project_id, parent_id)
 
-      sheet
-      |> Sheet.move_changeset(%{parent_id: parent_id, position: position})
-      |> Repo.update()
+      result =
+        sheet
+        |> Sheet.move_changeset(%{parent_id: parent_id, position: position})
+        |> Repo.update()
+
+      # Recalculate inherited blocks for the moved sheet
+      with {:ok, moved_sheet} <- result do
+        PropertyInheritance.recalculate_on_move(moved_sheet)
+      end
+
+      result
     end
   end
 
@@ -167,16 +183,7 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   defp get_descendant_ids(sheet_id) do
-    direct_children_ids =
-      from(s in Sheet,
-        where: s.parent_id == ^sheet_id and is_nil(s.deleted_at),
-        select: s.id
-      )
-      |> Repo.all()
-
-    Enum.flat_map(direct_children_ids, fn child_id ->
-      [child_id | get_descendant_ids(child_id)]
-    end)
+    PropertyInheritance.get_descendant_sheet_ids(sheet_id)
   end
 
   defp descendant?(potential_descendant_id, ancestor_id) do

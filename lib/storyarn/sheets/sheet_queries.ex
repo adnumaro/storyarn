@@ -8,7 +8,7 @@ defmodule Storyarn.Sheets.SheetQueries do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.{Sheet, Block}
   alias Storyarn.Repo
 
   # =============================================================================
@@ -208,6 +208,102 @@ defmodule Storyarn.Sheets.SheetQueries do
       _ ->
         {:error, :invalid_type}
     end
+  end
+
+  # =============================================================================
+  # Inheritance Queries
+  # =============================================================================
+
+  @doc """
+  Loads a sheet with its blocks split into inherited and own groups.
+  Returns `{inherited_groups, own_blocks}` where inherited_groups is
+  `[%{source_sheet: sheet, blocks: [block, ...]}]`.
+  """
+  @spec get_sheet_blocks_grouped(integer()) ::
+          {[%{source_sheet: Sheet.t(), blocks: [Block.t()]}], [Block.t()]}
+  def get_sheet_blocks_grouped(sheet_id) do
+    blocks =
+      from(b in Block,
+        where: b.sheet_id == ^sheet_id and is_nil(b.deleted_at),
+        order_by: [asc: b.position],
+        preload: [:inherited_from_block]
+      )
+      |> Repo.all()
+
+    {inherited, own} =
+      Enum.split_with(blocks, fn b ->
+        Block.inherited?(b)
+      end)
+
+    # Batch-load all source sheets to avoid N+1
+    source_sheet_ids =
+      inherited
+      |> Enum.map(fn b ->
+        case b.inherited_from_block do
+          nil -> nil
+          source -> source.sheet_id
+        end
+      end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    source_sheets_map =
+      if source_sheet_ids == [] do
+        %{}
+      else
+        from(s in Sheet,
+          where: s.id in ^source_sheet_ids and is_nil(s.deleted_at),
+          preload: [:avatar_asset]
+        )
+        |> Repo.all()
+        |> Map.new(fn s -> {s.id, s} end)
+      end
+
+    # Group inherited blocks by source sheet
+    inherited_groups =
+      inherited
+      |> Enum.group_by(fn b ->
+        case b.inherited_from_block do
+          nil -> nil
+          source -> source.sheet_id
+        end
+      end)
+      |> Enum.reject(fn {k, _} -> is_nil(k) end)
+      |> Enum.map(fn {source_sheet_id, blocks} ->
+        %{source_sheet: Map.get(source_sheets_map, source_sheet_id), blocks: blocks}
+      end)
+      |> Enum.reject(fn g -> is_nil(g.source_sheet) end)
+
+    {inherited_groups, own}
+  end
+
+  @doc """
+  Lists all blocks with `scope: "children"` for a sheet.
+  """
+  @spec list_inheritable_blocks(integer()) :: [Block.t()]
+  def list_inheritable_blocks(sheet_id) do
+    from(b in Block,
+      where:
+        b.sheet_id == ^sheet_id and
+          b.scope == "children" and
+          is_nil(b.deleted_at),
+      order_by: [asc: b.position]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Lists all instance blocks for a given parent block ID.
+  """
+  @spec list_inherited_instances(integer()) :: [Block.t()]
+  def list_inherited_instances(parent_block_id) do
+    from(b in Block,
+      where:
+        b.inherited_from_block_id == ^parent_block_id and
+          is_nil(b.deleted_at),
+      preload: [:sheet]
+    )
+    |> Repo.all()
   end
 
   # =============================================================================
