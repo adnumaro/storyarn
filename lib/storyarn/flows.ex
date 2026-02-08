@@ -47,6 +47,13 @@ defmodule Storyarn.Flows do
   defdelegate list_flows(project_id), to: FlowCrud
 
   @doc """
+  Lists leaf flows (flows that are not parents of other flows).
+  Useful for subflow reference selection where folder flows are excluded.
+  """
+  @spec list_leaf_flows(integer()) :: [flow()]
+  defdelegate list_leaf_flows(project_id), to: FlowCrud
+
+  @doc """
   Lists flows as a tree structure.
   Returns root-level flows with their children preloaded recursively.
   """
@@ -73,6 +80,13 @@ defmodule Storyarn.Flows do
   """
   @spec get_flow(integer(), integer()) :: flow() | nil
   defdelegate get_flow(project_id, flow_id), to: FlowCrud
+
+  @doc """
+  Gets a single flow by ID within a project (no preloads).
+  Used for breadcrumbs and lightweight lookups.
+  """
+  @spec get_flow_brief(integer(), integer()) :: flow() | nil
+  defdelegate get_flow_brief(project_id, flow_id), to: FlowCrud
 
   @doc """
   Gets a single flow by ID within a project.
@@ -253,6 +267,26 @@ defmodule Storyarn.Flows do
   @spec list_referencing_jumps(integer(), String.t()) :: [map()]
   defdelegate list_referencing_jumps(flow_id, hub_id), to: NodeCrud
 
+  @doc """
+  Lists all Exit nodes for a given flow.
+  Used by subflow nodes to generate dynamic output pins.
+  """
+  @spec list_exit_nodes_for_flow(integer()) :: [map()]
+  defdelegate list_exit_nodes_for_flow(flow_id), to: NodeCrud
+
+  @doc """
+  Finds all subflow nodes that reference a given flow within the same project.
+  Used for stale detection when a flow is deleted or exits change.
+  """
+  @spec list_subflow_nodes_referencing(integer(), integer()) :: [map()]
+  defdelegate list_subflow_nodes_referencing(flow_id, project_id), to: NodeCrud
+
+  @doc """
+  Checks if a subflow reference would create a circular dependency.
+  """
+  @spec has_circular_reference?(integer(), integer()) :: boolean()
+  defdelegate has_circular_reference?(source_flow_id, target_flow_id), to: NodeCrud
+
   # =============================================================================
   # Variable Reference Tracking
   # =============================================================================
@@ -403,6 +437,7 @@ defmodule Storyarn.Flows do
   @spec serialize_for_canvas(flow()) :: map()
   def serialize_for_canvas(%Flow{} = flow) do
     stale_node_ids = VariableReferenceTracker.list_stale_node_ids(flow.id)
+    subflow_cache = NodeCrud.batch_resolve_subflow_data(flow.nodes)
 
     %{
       id: flow.id,
@@ -411,7 +446,7 @@ defmodule Storyarn.Flows do
         Enum.map(flow.nodes, fn node ->
           data =
             node.type
-            |> resolve_node_colors(node.data)
+            |> resolve_node_colors(node.data, subflow_cache)
             |> maybe_add_stale_flag(node.id, stale_node_ids)
 
           %{
@@ -436,11 +471,19 @@ defmodule Storyarn.Flows do
   end
 
   @doc """
-  Enriches node data with resolved values for the canvas.
-  Currently resolves hub color names to hex values.
+  Enriches node data with resolved values for the canvas (single node).
+  Used by individual node update events. For bulk serialization, use the 3-arity version.
   """
   @spec resolve_node_colors(String.t(), map()) :: map()
-  def resolve_node_colors("hub", data) do
+  def resolve_node_colors(type, data), do: resolve_node_colors(type, data, %{})
+
+  @doc """
+  Enriches node data with resolved values for the canvas.
+  Resolves hub color names to hex values and subflow references.
+  The subflow_cache is pre-fetched by batch_resolve_subflow_data/1.
+  """
+  @spec resolve_node_colors(String.t(), map(), map()) :: map()
+  def resolve_node_colors("hub", data, _subflow_cache) do
     Map.put(
       data,
       "color_hex",
@@ -448,7 +491,11 @@ defmodule Storyarn.Flows do
     )
   end
 
-  def resolve_node_colors(_type, data), do: data
+  def resolve_node_colors("subflow", data, subflow_cache) do
+    NodeCrud.resolve_subflow_data(data, subflow_cache)
+  end
+
+  def resolve_node_colors(_type, data, _subflow_cache), do: data
 
   defp maybe_add_stale_flag(data, node_id, stale_node_ids) do
     if MapSet.member?(stale_node_ids, node_id) do

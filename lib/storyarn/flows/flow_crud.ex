@@ -3,9 +3,11 @@ defmodule Storyarn.Flows.FlowCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.{Flow, FlowNode, TreeOperations}
+  alias Storyarn.Collaboration
+  alias Storyarn.Flows.{Flow, FlowNode, NodeCrud, TreeOperations}
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
+  alias Storyarn.Shared.MapUtils
   alias Storyarn.Shortcuts
 
   @doc """
@@ -15,6 +17,26 @@ defmodule Storyarn.Flows.FlowCrud do
   def list_flows(project_id) do
     from(f in Flow,
       where: f.project_id == ^project_id and is_nil(f.deleted_at),
+      order_by: [desc: f.is_main, asc: f.name]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Lists leaf flows (not parents of other flows).
+  Used for subflow reference selection.
+  """
+  def list_leaf_flows(project_id) do
+    parent_ids_subquery =
+      from(f in Flow,
+        where: f.project_id == ^project_id and is_nil(f.deleted_at) and not is_nil(f.parent_id),
+        select: f.parent_id
+      )
+
+    from(f in Flow,
+      where:
+        f.project_id == ^project_id and is_nil(f.deleted_at) and
+          f.id not in subquery(parent_ids_subquery),
       order_by: [desc: f.is_main, asc: f.name]
     )
     |> Repo.all()
@@ -87,6 +109,17 @@ defmodule Storyarn.Flows.FlowCrud do
     from(f in Flow,
       where: f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at),
       preload: [:nodes, :connections]
+    )
+    |> Repo.one()
+  end
+
+  @doc """
+  Gets a flow with only basic fields (no preloads).
+  Used for breadcrumbs and lightweight lookups.
+  """
+  def get_flow_brief(project_id, flow_id) do
+    from(f in Flow,
+      where: f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at)
     )
     |> Repo.one()
   end
@@ -167,18 +200,27 @@ defmodule Storyarn.Flows.FlowCrud do
   Also soft-deletes all children recursively.
   """
   def delete_flow(%Flow{} = flow) do
-    Repo.transaction(fn ->
-      # Soft delete the flow itself
-      {:ok, deleted_flow} =
-        flow
-        |> Flow.delete_changeset()
-        |> Repo.update()
+    result =
+      Repo.transaction(fn ->
+        # Soft delete the flow itself
+        {:ok, deleted_flow} =
+          flow
+          |> Flow.delete_changeset()
+          |> Repo.update()
 
-      # Also soft-delete all children recursively
-      soft_delete_children(flow.project_id, flow.id)
+        # Also soft-delete all children recursively
+        soft_delete_children(flow.project_id, flow.id)
 
-      deleted_flow
-    end)
+        deleted_flow
+      end)
+
+    # Notify open canvases that have subflow nodes referencing this flow
+    case result do
+      {:ok, _} -> notify_affected_subflows(flow.id, flow.project_id)
+      _ -> :ok
+    end
+
+    result
   end
 
   @doc """
@@ -207,6 +249,21 @@ defmodule Storyarn.Flows.FlowCrud do
       order_by: [desc: f.deleted_at]
     )
     |> Repo.all()
+  end
+
+  defp notify_affected_subflows(deleted_flow_id, project_id) do
+    affected = NodeCrud.list_subflow_nodes_referencing(deleted_flow_id, project_id)
+
+    affected
+    |> Enum.map(& &1.flow_id)
+    |> Enum.uniq()
+    |> Enum.each(fn flow_id ->
+      Collaboration.broadcast_change(flow_id, :flow_refresh, %{
+        user_id: 0,
+        user_email: "System",
+        user_color: "#666"
+      })
+    end)
   end
 
   defp soft_delete_children(project_id, parent_id) do
@@ -295,12 +352,7 @@ defmodule Storyarn.Flows.FlowCrud do
     end
   end
 
-  defp stringify_keys(map) when is_map(map) do
-    Map.new(map, fn
-      {k, v} when is_atom(k) -> {Atom.to_string(k), v}
-      {k, v} -> {k, v}
-    end)
-  end
+  defp stringify_keys(map), do: MapUtils.stringify_keys(map)
 
   defp maybe_assign_position(attrs, project_id, parent_id) do
     if Map.has_key?(attrs, "position") do

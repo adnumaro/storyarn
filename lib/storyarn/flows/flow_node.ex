@@ -21,9 +21,9 @@ defmodule Storyarn.Flows.FlowNode do
 
   alias Storyarn.Flows.{Flow, FlowConnection}
 
-  @node_types ~w(dialogue hub condition instruction jump entry exit)
+  @node_types ~w(dialogue hub condition instruction jump entry exit subflow)
 
-  @type node_type :: :dialogue | :hub | :condition | :instruction | :jump | :entry | :exit
+  @type node_type :: :dialogue | :hub | :condition | :instruction | :jump | :entry | :exit | :subflow
   @type t :: %__MODULE__{
           id: integer() | nil,
           type: String.t() | nil,
