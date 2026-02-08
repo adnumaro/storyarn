@@ -262,6 +262,40 @@ defmodule StoryarnWeb.SheetLive.Show do
     end)
   end
 
+  # Sheet color (from ColorPicker hook — pushes to parent LV, not LiveComponent)
+  def handle_event("set_sheet_color", %{"color" => color}, socket) do
+    with_authorization(socket, :edit_content, fn socket ->
+      update_sheet_color(socket, color)
+    end)
+  end
+
+  def handle_event("clear_sheet_color", _params, socket) do
+    with_authorization(socket, :edit_content, fn socket ->
+      update_sheet_color(socket, nil)
+    end)
+  end
+
+  defp update_sheet_color(socket, color) do
+    sheet = socket.assigns.sheet
+
+    case Sheets.update_sheet(sheet, %{color: color}) do
+      {:ok, updated_sheet} ->
+        updated_sheet =
+          Repo.preload(updated_sheet, [:avatar_asset, :banner_asset, :current_version],
+            force: true
+          )
+
+        {:noreply,
+         socket
+         |> assign(:sheet, updated_sheet)
+         |> assign(:save_status, :saved)
+         |> schedule_save_status_reset()}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not update color."))}
+    end
+  end
+
   # ===========================================================================
   # Handle Info
   # ===========================================================================
@@ -351,19 +385,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_info({:sheet_title, :error, message}, socket) do
-    {:noreply, put_flash(socket, :error, message)}
-  end
-
-  # Handle messages from SheetColor LiveComponent
-  def handle_info({:sheet_color, :sheet_updated, sheet}, socket) do
-    {:noreply,
-     socket
-     |> assign(:sheet, sheet)
-     |> assign(:save_status, :saved)
-     |> schedule_save_status_reset()}
-  end
-
-  def handle_info({:sheet_color, :error, message}, socket) do
     {:noreply, put_flash(socket, :error, message)}
   end
 
