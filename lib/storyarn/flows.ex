@@ -445,6 +445,7 @@ defmodule Storyarn.Flows do
   def serialize_for_canvas(%Flow{} = flow) do
     stale_node_ids = VariableReferenceTracker.list_stale_node_ids(flow.id)
     subflow_cache = NodeCrud.batch_resolve_subflow_data(flow.nodes)
+    referencing_flows = NodeCrud.list_nodes_referencing_flow(flow.id, flow.project_id)
 
     %{
       id: flow.id,
@@ -455,6 +456,7 @@ defmodule Storyarn.Flows do
             node.type
             |> resolve_node_colors(node.data, subflow_cache)
             |> maybe_add_stale_flag(node.id, stale_node_ids)
+            |> maybe_add_referencing_flows(node.type, referencing_flows)
 
           %{
             id: node.id,
@@ -507,6 +509,22 @@ defmodule Storyarn.Flows do
   end
 
   def resolve_node_colors(_type, data, _subflow_cache), do: data
+
+  defp maybe_add_referencing_flows(data, "entry", referencing_flows) do
+    refs =
+      Enum.map(referencing_flows, fn ref ->
+        %{
+          "flow_id" => ref.flow_id,
+          "flow_name" => ref.flow_name,
+          "flow_shortcut" => ref.flow_shortcut,
+          "node_type" => to_string(ref.node_type)
+        }
+      end)
+
+    Map.put(data, "referencing_flows", refs)
+  end
+
+  defp maybe_add_referencing_flows(data, _type, _referencing_flows), do: data
 
   defp maybe_add_stale_flag(data, node_id, stale_node_ids) do
     if MapSet.member?(stale_node_ids, node_id) do

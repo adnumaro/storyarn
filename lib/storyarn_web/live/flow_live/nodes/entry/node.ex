@@ -8,6 +8,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Entry.Node do
 
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Storyarn.Flows
+
   def type, do: "entry"
   def icon_name, do: "play"
   def label, do: gettext("Entry")
@@ -15,8 +17,13 @@ defmodule StoryarnWeb.FlowLive.Nodes.Entry.Node do
 
   def extract_form_data(_data), do: %{}
 
-  @doc "Entry nodes have no special selection behavior."
-  def on_select(_node, socket), do: socket
+  def on_select(_node, socket) do
+    flow_id = socket.assigns.flow.id
+    project_id = socket.assigns.project.id
+    referencing_flows = Flows.list_nodes_referencing_flow(flow_id, project_id)
+
+    Phoenix.Component.assign(socket, :referencing_flows, referencing_flows)
+  end
 
   @doc "Entry nodes open sidebar on double-click."
   def on_double_click(_node), do: :sidebar

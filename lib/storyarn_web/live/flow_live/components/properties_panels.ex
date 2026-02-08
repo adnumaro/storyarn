@@ -52,6 +52,8 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           referencing_jumps={@referencing_jumps}
           available_flows={@available_flows}
           subflow_exits={@subflow_exits}
+          outcome_tags_suggestions={@outcome_tags_suggestions}
+          referencing_flows={@referencing_flows}
         />
       </div>
 

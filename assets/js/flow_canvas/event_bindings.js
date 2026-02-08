@@ -134,6 +134,11 @@ export function setupEventHandlers(hook) {
     hook.pushEvent("navigate_to_exit_flow", { "flow-id": String(e.detail.flowId) });
   });
 
+  // Referencing flow navigation (entry node → subflows that reference this flow)
+  hook.el.addEventListener("navigate-to-referencing-flow", (e) => {
+    hook.pushEvent("navigate_to_referencing_flow", { "flow-id": String(e.detail.flowId) });
+  });
+
   // Handle server events - Collaboration
   hook.handleEvent("cursor_update", (data) => hook.cursorHandler.handleCursorUpdate(data));
   hook.handleEvent("cursor_leave", (data) => hook.cursorHandler.handleCursorLeave(data));
