@@ -297,11 +297,40 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
   # ===========================================================================
 
   defp push_debug_canvas(socket, state) do
-    push_event(socket, "debug_highlight_node", %{
+    active_connection = find_active_connection(state, socket.assigns.debug_connections)
+
+    socket
+    |> push_event("debug_highlight_node", %{
       node_id: state.current_node_id,
       status: to_string(state.status),
       execution_path: state.execution_path
     })
+    |> push_event("debug_highlight_connections", %{
+      active_connection: active_connection,
+      execution_path: state.execution_path
+    })
+  end
+
+  defp find_active_connection(state, connections) do
+    path = state.execution_path
+
+    case path do
+      [] ->
+        nil
+
+      [_single] ->
+        nil
+
+      _ ->
+        source_id = Enum.at(path, -2)
+        target_id = Enum.at(path, -1)
+
+        Enum.find_value(connections, fn conn ->
+          if conn.source_node_id == source_id and conn.target_node_id == target_id do
+            %{source_node_id: source_id, target_node_id: target_id, source_pin: conn.source_pin}
+          end
+        end)
+    end
   end
 
   defp parse_speed(val) when is_binary(val) do

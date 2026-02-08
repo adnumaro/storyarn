@@ -38,11 +38,13 @@ export class StoryarnConnection extends LitElement {
       pointer-events: auto;
     }
 
-    /* Visible connection line */
+    /* Visible connection line — uses CSS custom properties for debug overrides */
     path.visible {
       fill: none;
-      stroke: oklch(var(--bc, 0.7 0 0) / 0.4);
-      stroke-width: 2px;
+      stroke: var(--conn-stroke, oklch(var(--bc, 0.7 0 0) / 0.4));
+      stroke-width: var(--conn-stroke-width, 2px);
+      stroke-dasharray: var(--conn-dash, none);
+      animation: var(--conn-animation, none);
       pointer-events: none;
       transition: stroke 0.15s ease, stroke-width 0.15s ease;
     }
@@ -51,6 +53,12 @@ export class StoryarnConnection extends LitElement {
     path.hit-area:hover + path.visible {
       stroke: oklch(var(--p, 0.6 0.2 250));
       stroke-width: 3px;
+    }
+
+    @keyframes debug-flow {
+      to {
+        stroke-dashoffset: -12;
+      }
     }
 
     .label-group {

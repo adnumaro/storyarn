@@ -143,6 +143,9 @@ export function setupEventHandlers(hook) {
   hook.handleEvent("debug_highlight_node", (data) =>
     hook.debugHandler.handleHighlightNode(data),
   );
+  hook.handleEvent("debug_highlight_connections", (data) =>
+    hook.debugHandler.handleHighlightConnections(data),
+  );
   hook.handleEvent("debug_clear_highlights", () => hook.debugHandler.handleClearHighlights());
 
   // Handle server events - Collaboration

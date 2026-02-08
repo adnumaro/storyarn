@@ -792,14 +792,14 @@ Implemented inline variable editing in the debug panel.
 
 **Files:** `debug_panel.ex` (filter bar + logic), `debug_handlers.ex` (filter handlers), `show.ex` (assigns + events + pass attrs)
 
-#### Task 13: Connection visual feedback
+#### Task 13: Connection visual feedback ✅
 
-- [ ] Extend `push_debug_canvas/2` to send `debug_highlight_connections` push event with active connection info (source_node_id → target_node_id)
-- [ ] `handleHighlightConnections(data)` in `debug_handler.js` — find `<storyarn-connection>` elements, add `debug-edge-active` class to the active connection's `path.visible` via Shadow DOM (`el.shadowRoot.querySelector`)
-- [ ] CSS in `storyarn_connection.js` `static styles`: `path.visible.debug-edge-active` — stroke primary color, `stroke-dasharray: 8 4`, `animation: debug-flow 0.6s linear infinite`
-- [ ] `@keyframes debug-flow { to { stroke-dashoffset: -12; } }`
-- [ ] Extend `handleClearHighlights()` to also remove connection debug classes
-- [ ] Register `debug_highlight_connections` in `event_bindings.js`
+- [x] Extend `push_debug_canvas/2` to send `debug_highlight_connections` push event with active connection info (source_node_id → target_node_id)
+- [x] `handleHighlightConnections(data)` in `debug_handler.js` — find `<storyarn-connection>` elements, add `debug-edge-active` class to the active connection's `path.visible` via Shadow DOM (`el.shadowRoot.querySelector`)
+- [x] CSS in `storyarn_connection.js` `static styles`: `path.visible.debug-edge-active` — stroke primary color, `stroke-dasharray: 8 4`, `animation: debug-flow 0.6s linear infinite`
+- [x] `@keyframes debug-flow { to { stroke-dashoffset: -12; } }`
+- [x] Extend `handleClearHighlights()` to also remove connection debug classes
+- [x] Register `debug_highlight_connections` in `event_bindings.js`
 
 **Shadow DOM note:** `<storyarn-connection>` is a LitElement. CSS must go in `static styles` (not external). DOM access via `el.shadowRoot.querySelector("path.visible")`.
 
