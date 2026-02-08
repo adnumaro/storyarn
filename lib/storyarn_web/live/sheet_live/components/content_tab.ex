@@ -18,7 +18,38 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   def render(assigns) do
     ~H"""
     <div id={@id}>
-      <%!-- Blocks --%>
+      <%!-- Inherited Properties (grouped by source sheet) --%>
+      <div :for={group <- @inherited_groups} class="mb-6">
+        <.inherited_section_header
+          source_sheet={group.source_sheet}
+          block_count={length(group.blocks)}
+          workspace={@workspace}
+          project={@project}
+        />
+        <div class="flex flex-col gap-2 -mx-2 sm:-mx-8 md:-mx-16 border-l-2 border-info/30 ml-1">
+          <div
+            :for={block <- group.blocks}
+            class="group relative w-full px-2 sm:px-8 md:px-16"
+            id={"block-#{block.id}"}
+          >
+            <.inherited_block_wrapper
+              block={block}
+              can_edit={@can_edit}
+              editing_block_id={@editing_block_id}
+              target={@myself}
+            />
+          </div>
+        </div>
+      </div>
+
+      <%!-- Own Properties --%>
+      <div
+        :if={@inherited_groups != []}
+        class="text-xs text-base-content/50 uppercase tracking-wider mt-6 mb-2 px-2 sm:px-8 md:px-16"
+      >
+        {gettext("Own Properties")}
+      </div>
+
       <div
         id="blocks-container"
         class="flex flex-col gap-2 -mx-2 sm:-mx-8 md:-mx-16"
@@ -29,7 +60,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         data-handle=".drag-handle"
       >
         <div
-          :for={block <- @blocks}
+          :for={block <- @own_blocks}
           class="group relative w-full px-2 sm:px-8 md:px-16"
           id={"block-#{block.id}"}
           data-id={block.id}
@@ -55,7 +86,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           <span class="text-sm">{gettext("Type / to add a block")}</span>
         </div>
 
-        <.block_menu :if={@show_block_menu} target={@myself} />
+        <.block_menu :if={@show_block_menu} target={@myself} scope={@block_scope} />
       </div>
 
       <%!-- Children sheets --%>
@@ -68,6 +99,16 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
       <%!-- Configuration Panel (Right Sidebar) --%>
       <.config_panel :if={@configuring_block} block={@configuring_block} target={@myself} />
+
+      <%!-- Propagation Modal --%>
+      <.live_component
+        :if={@propagation_block}
+        module={StoryarnWeb.SheetLive.Components.PropagationModal}
+        id="propagation-modal"
+        block={@propagation_block}
+        sheet={@sheet}
+        target={@myself}
+      />
     </div>
     """
   end
@@ -80,6 +121,27 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       |> assign_new(:show_block_menu, fn -> false end)
       |> assign_new(:editing_block_id, fn -> nil end)
       |> assign_new(:configuring_block, fn -> nil end)
+      |> assign_new(:block_scope, fn -> "self" end)
+      |> assign_new(:propagation_block, fn -> nil end)
+
+    # Split blocks into inherited and own groups using optimized batch query
+    {inherited_groups, own_blocks} =
+      Sheets.get_sheet_blocks_grouped(socket.assigns.sheet.id)
+
+    # Enrich blocks with reference_target for reference-type blocks
+    project_id = socket.assigns.project.id
+
+    inherited_groups =
+      Enum.map(inherited_groups, fn group ->
+        %{group | blocks: enrich_with_references(group.blocks, project_id)}
+      end)
+
+    own_blocks = enrich_with_references(own_blocks, project_id)
+
+    socket =
+      socket
+      |> assign(:inherited_groups, inherited_groups)
+      |> assign(:own_blocks, own_blocks)
 
     {:ok, socket}
   end
@@ -98,23 +160,34 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   end
 
   # ===========================================================================
+  # Block Scope Events
+  # ===========================================================================
+
+  def handle_event("set_block_scope", %{"scope" => scope}, socket)
+      when scope in ["self", "children"] do
+    {:noreply, assign(socket, :block_scope, scope)}
+  end
+
+  # ===========================================================================
   # Block CRUD Events
   # ===========================================================================
 
   def handle_event("add_block", %{"type" => type}, socket) do
     with_authorization(socket, fn socket ->
       sheet = socket.assigns.sheet
-      project_id = socket.assigns.project.id
+      scope = socket.assigns.block_scope
 
-      case Sheets.create_block(sheet, %{type: type}) do
+      case Sheets.create_block(sheet, %{type: type, scope: scope}) do
         {:ok, _block} ->
-          blocks = ReferenceHelpers.load_blocks_with_references(sheet.id, project_id)
-
           socket =
             socket
-            |> assign(:blocks, blocks)
             |> assign(:show_block_menu, false)
+            |> assign(:block_scope, "self")
 
+          # If scope is "children" and sheet already has descendants that weren't
+          # auto-propagated (e.g., if we want the propagation modal), it's already
+          # handled by BlockCrud.create_block. No modal needed for new blocks since
+          # they auto-propagate to all descendants.
           notify_parent(socket, :saved)
           {:noreply, socket}
 
@@ -133,12 +206,9 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       # Wrap raw value in %{"content" => value} structure expected by the schema
       case Sheets.update_block_value(block, %{"content" => value}) do
         {:ok, _updated} ->
-          blocks =
-            ReferenceHelpers.load_blocks_with_references(socket.assigns.sheet.id, project_id)
-
           maybe_create_version(socket)
           notify_parent(socket, :saved)
-          {:noreply, assign(socket, :blocks, blocks)}
+          {:noreply, socket}
 
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, gettext("Could not update block."))}
@@ -154,12 +224,9 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
       case Sheets.delete_block(block) do
         {:ok, _} ->
-          blocks =
-            ReferenceHelpers.load_blocks_with_references(socket.assigns.sheet.id, project_id)
-
           maybe_create_version(socket)
           notify_parent(socket, :saved)
-          {:noreply, assign(socket, :blocks, blocks)}
+          {:noreply, socket}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, gettext("Could not delete block."))}
@@ -170,15 +237,13 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   def handle_event("reorder", %{"ids" => ids, "group" => "blocks"}, socket) do
     with_authorization(socket, fn socket ->
       sheet_id = socket.assigns.sheet.id
-      project_id = socket.assigns.project.id
       block_ids = Enum.map(ids, &to_integer/1)
 
       case Sheets.reorder_blocks(sheet_id, block_ids) do
         {:ok, _} ->
-          blocks = ReferenceHelpers.load_blocks_with_references(sheet_id, project_id)
           maybe_create_version(socket)
           notify_parent(socket, :saved)
-          {:noreply, assign(socket, :blocks, blocks)}
+          {:noreply, socket}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, gettext("Could not reorder blocks."))}
@@ -279,13 +344,11 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
       case Sheets.update_block_config(block, config_params) do
         {:ok, updated_block} ->
-          blocks = reload_blocks(socket)
           maybe_create_version(socket)
           notify_parent(socket, :saved)
 
           {:noreply,
            socket
-           |> assign(:blocks, blocks)
            |> assign(:configuring_block, updated_block)}
 
         {:error, _changeset} ->
@@ -301,13 +364,11 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
       case Sheets.update_block(block, %{is_constant: new_value}) do
         {:ok, updated_block} ->
-          blocks = reload_blocks(socket)
           maybe_create_version(socket)
           notify_parent(socket, :saved)
 
           {:noreply,
            socket
-           |> assign(:blocks, blocks)
            |> assign(:configuring_block, updated_block)}
 
         {:error, _changeset} ->
@@ -369,6 +430,208 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   end
 
   # ===========================================================================
+  # Inheritance Action Events
+  # ===========================================================================
+
+  def handle_event("detach_inherited_block", %{"id" => block_id}, socket) do
+    with_authorization(socket, fn socket ->
+      block_id = to_integer(block_id)
+      project_id = socket.assigns.project.id
+      block = Sheets.get_block_in_project!(block_id, project_id)
+
+      case Sheets.detach_block(block) do
+        {:ok, _} ->
+          maybe_create_version(socket)
+          notify_parent(socket, :saved)
+
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("Property detached. Changes to the source won't affect this copy."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not detach property."))}
+      end
+    end)
+  end
+
+  def handle_event("reattach_block", %{"id" => block_id}, socket) do
+    with_authorization(socket, fn socket ->
+      block_id = to_integer(block_id)
+      project_id = socket.assigns.project.id
+      block = Sheets.get_block_in_project!(block_id, project_id)
+
+      case Sheets.reattach_block(block) do
+        {:ok, _} ->
+          maybe_create_version(socket)
+          notify_parent(socket, :saved)
+
+          {:noreply,
+           socket
+           |> assign(:configuring_block, nil)
+           |> put_flash(:info, gettext("Property re-synced with source."))}
+
+        {:error, :source_not_found} ->
+          {:noreply, put_flash(socket, :error, gettext("Source block no longer exists."))}
+      end
+    end)
+  end
+
+  def handle_event("hide_inherited_for_children", %{"id" => block_id}, socket) do
+    with_authorization(socket, fn socket ->
+      block_id = to_integer(block_id)
+      sheet = socket.assigns.sheet
+
+      case Sheets.hide_for_children(sheet, block_id) do
+        {:ok, updated_sheet} ->
+          {:noreply,
+           socket
+           |> assign(:sheet, updated_sheet)
+           |> put_flash(:info, gettext("Property hidden from children."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not hide property."))}
+      end
+    end)
+  end
+
+  def handle_event("unhide_inherited_for_children", %{"id" => block_id}, socket) do
+    with_authorization(socket, fn socket ->
+      block_id = to_integer(block_id)
+      sheet = socket.assigns.sheet
+
+      case Sheets.unhide_for_children(sheet, block_id) do
+        {:ok, updated_sheet} ->
+          {:noreply,
+           socket
+           |> assign(:sheet, updated_sheet)
+           |> put_flash(:info, gettext("Property visible to children again."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not unhide property."))}
+      end
+    end)
+  end
+
+  def handle_event("navigate_to_source", %{"id" => block_id}, socket) do
+    block_id = to_integer(block_id)
+    project_id = socket.assigns.project.id
+    block = Sheets.get_block_in_project!(block_id, project_id)
+    source_sheet = Sheets.get_source_sheet(block)
+
+    if source_sheet do
+      workspace = socket.assigns.workspace
+      project = socket.assigns.project
+
+      {:noreply,
+       push_navigate(socket,
+         to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{source_sheet.id}"
+       )}
+    else
+      {:noreply, put_flash(socket, :error, gettext("Source sheet not found."))}
+    end
+  end
+
+  def handle_event("change_block_scope", %{"scope" => scope}, socket)
+      when scope in ["self", "children"] do
+    with_authorization(socket, fn socket ->
+      block = socket.assigns.configuring_block
+
+      if block.scope == scope do
+        {:noreply, socket}
+      else
+        case Sheets.update_block(block, %{scope: scope}) do
+          {:ok, updated_block} ->
+            maybe_create_version(socket)
+            notify_parent(socket, :saved)
+
+            socket =
+              socket
+              |> assign(:configuring_block, updated_block)
+
+            # When changing from "self" to "children", check for existing descendants
+            # and open propagation modal if any exist
+            socket =
+              if scope == "children" do
+                descendant_ids = Sheets.get_descendant_sheet_ids(socket.assigns.sheet.id)
+
+                if descendant_ids != [] do
+                  assign(socket, :propagation_block, updated_block)
+                else
+                  socket
+                end
+              else
+                assign(socket, :propagation_block, nil)
+              end
+
+            {:noreply, socket}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not change scope."))}
+        end
+      end
+    end)
+  end
+
+  def handle_event("toggle_required", _params, socket) do
+    with_authorization(socket, fn socket ->
+      block = socket.assigns.configuring_block
+      new_value = !block.required
+
+      case Sheets.update_block(block, %{required: new_value}) do
+        {:ok, updated_block} ->
+          notify_parent(socket, :saved)
+
+          {:noreply,
+           socket
+           |> assign(:configuring_block, updated_block)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not update required flag."))}
+      end
+    end)
+  end
+
+  # ===========================================================================
+  # Propagation Events
+  # ===========================================================================
+
+  def handle_event("open_propagation_modal", %{"block-id" => block_id}, socket) do
+    block_id = to_integer(block_id)
+    block = Sheets.get_block_in_project!(block_id, socket.assigns.project.id)
+    {:noreply, assign(socket, :propagation_block, block)}
+  end
+
+  def handle_event("cancel_propagation", _params, socket) do
+    {:noreply, assign(socket, :propagation_block, nil)}
+  end
+
+  def handle_event("propagate_property", %{"sheet_ids" => sheet_ids_json}, socket) do
+    with_authorization(socket, fn socket ->
+      block = socket.assigns.propagation_block
+
+      case Jason.decode(sheet_ids_json) do
+        {:ok, sheet_ids} when is_list(sheet_ids) ->
+          case Sheets.propagate_to_descendants(block, sheet_ids) do
+            {:ok, count} ->
+              {:noreply,
+               socket
+               |> assign(:propagation_block, nil)
+               |> put_flash(
+                 :info,
+                 gettext("Property propagated to %{count} pages.", count: count)
+               )}
+
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, gettext("Could not propagate property."))}
+          end
+
+        _ ->
+          {:noreply, put_flash(socket, :error, gettext("Invalid sheet selection."))}
+      end
+    end)
+  end
+
+  # ===========================================================================
   # Private Helpers
   # ===========================================================================
 
@@ -380,21 +643,14 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     end
   end
 
-  defp handle_block_result(socket, {:ok, blocks}) do
+  defp handle_block_result(socket, {:ok, _blocks}) do
     maybe_create_version(socket)
     notify_parent(socket, :saved)
-    {:noreply, assign(socket, :blocks, blocks)}
+    {:noreply, socket}
   end
 
   defp handle_block_result(socket, {:error, message}) do
     {:noreply, put_flash(socket, :error, message)}
-  end
-
-  defp reload_blocks(socket) do
-    ReferenceHelpers.load_blocks_with_references(
-      socket.assigns.sheet.id,
-      socket.assigns.project.id
-    )
   end
 
   defp maybe_create_version(socket) do
@@ -410,9 +666,119 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   defp to_integer(value) when is_binary(value), do: String.to_integer(value)
   defp to_integer(value) when is_integer(value), do: value
 
+  defp enrich_with_references(blocks, project_id) do
+    Enum.map(blocks, fn block ->
+      if block.type == "reference" do
+        target_type = get_in(block.value, ["target_type"])
+        target_id = get_in(block.value, ["target_id"])
+        reference_target = Sheets.get_reference_target(target_type, target_id, project_id)
+        Map.put(block, :reference_target, reference_target)
+      else
+        Map.put(block, :reference_target, nil)
+      end
+    end)
+  end
+
   # ===========================================================================
   # Sub-components
   # ===========================================================================
+
+  attr :source_sheet, :map, required: true
+  attr :block_count, :integer, required: true
+  attr :workspace, :map, required: true
+  attr :project, :map, required: true
+
+  defp inherited_section_header(assigns) do
+    ~H"""
+    <div class="flex items-center gap-2 mb-2 px-2 sm:px-8 md:px-16">
+      <.icon name="arrow-up-right" class="size-4 text-info" />
+      <span class="text-xs text-base-content/50 uppercase tracking-wider">
+        {gettext("Inherited from")}
+      </span>
+      <.link
+        navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{@source_sheet.id}"}
+        class="text-sm font-medium text-info hover:underline"
+      >
+        {@source_sheet.name}
+      </.link>
+      <span class="text-xs text-base-content/40">({@block_count})</span>
+    </div>
+    """
+  end
+
+  attr :block, :map, required: true
+  attr :can_edit, :boolean, required: true
+  attr :editing_block_id, :any, default: nil
+  attr :target, :any, default: nil
+
+  defp inherited_block_wrapper(assigns) do
+    ~H"""
+    <div class="relative group/inherited">
+      <.block_component
+        block={@block}
+        can_edit={@can_edit}
+        editing_block_id={@editing_block_id}
+        target={@target}
+      />
+      <%!-- Inherited block actions overlay --%>
+      <div class="absolute top-1 right-2 flex items-center gap-1 opacity-0 group-hover/inherited:opacity-100 transition-opacity">
+        <%!-- Go to source --%>
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs btn-square tooltip tooltip-left"
+          data-tip={gettext("Go to source")}
+          phx-click="navigate_to_source"
+          phx-value-id={@block.id}
+          phx-target={@target}
+        >
+          <.icon name="arrow-up-right" class="size-3 text-info" />
+        </button>
+        <%!-- Context menu --%>
+        <div class="dropdown dropdown-end">
+          <div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square">
+            <.icon name="ellipsis-vertical" class="size-3" />
+          </div>
+          <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+            <li>
+              <button phx-click="navigate_to_source" phx-value-id={@block.id} phx-target={@target}>
+                <.icon name="arrow-up-right" class="size-4" />
+                {gettext("Go to source")}
+              </button>
+            </li>
+            <li>
+              <button
+                phx-click="detach_inherited_block"
+                phx-value-id={@block.id}
+                phx-target={@target}
+              >
+                <.icon name="scissors" class="size-4" />
+                {gettext("Detach property")}
+              </button>
+            </li>
+            <li>
+              <button
+                phx-click="hide_inherited_for_children"
+                phx-value-id={@block.inherited_from_block_id}
+                phx-target={@target}
+              >
+                <.icon name="eye-off" class="size-4" />
+                {gettext("Hide for children")}
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <%!-- Required indicator --%>
+      <div
+        :if={@block.required}
+        class="absolute top-1 left-2 text-error text-xs font-bold"
+        title={gettext("Required")}
+      >
+        *
+      </div>
+    </div>
+    """
+  end
 
   attr :children, :list, required: true
   attr :workspace, :map, required: true
