@@ -14,6 +14,7 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.{
     Block,
     BlockCrud,
+    PropertyInheritance,
     Sheet,
     SheetCrud,
     SheetQueries,
@@ -208,6 +209,67 @@ defmodule Storyarn.Sheets do
       TreeOperations.move_sheet_to_position(sheet, new_parent_id, new_position)
     end
   end
+
+  # =============================================================================
+  # Property Inheritance
+  # =============================================================================
+
+  @doc """
+  Returns inherited blocks for a sheet, grouped by source sheet.
+  """
+  defdelegate resolve_inherited_blocks(sheet_id), to: PropertyInheritance
+
+  @doc """
+  Gets a sheet's blocks split into inherited and own groups.
+  Returns `{inherited_groups, own_blocks}`.
+  """
+  defdelegate get_sheet_blocks_grouped(sheet_id), to: SheetQueries
+
+  @doc """
+  Propagates an inheritable block to selected descendant sheets.
+  """
+  defdelegate propagate_to_descendants(parent_block, selected_sheet_ids),
+    to: PropertyInheritance
+
+  @doc """
+  Detaches an inherited block, making it a local copy.
+  """
+  defdelegate detach_block(block), to: PropertyInheritance
+
+  @doc """
+  Re-attaches a previously detached block.
+  """
+  defdelegate reattach_block(block), to: PropertyInheritance
+
+  @doc """
+  Hides an ancestor block from this sheet's children.
+  """
+  defdelegate hide_for_children(sheet, ancestor_block_id), to: PropertyInheritance
+
+  @doc """
+  Unhides an ancestor block for this sheet's children.
+  """
+  defdelegate unhide_for_children(sheet, ancestor_block_id), to: PropertyInheritance
+
+  @doc """
+  Returns the source sheet for an inherited block.
+  """
+  defdelegate get_source_sheet(block), to: PropertyInheritance
+
+  @doc """
+  Returns all descendant sheet IDs for a given sheet.
+  """
+  defdelegate get_descendant_sheet_ids(sheet_id), to: PropertyInheritance
+
+  @doc """
+  Lists all blocks with `scope: "children"` for a sheet.
+  """
+  defdelegate list_inheritable_blocks(sheet_id), to: SheetQueries
+
+  @doc """
+  Lists all inherited instance blocks for a parent block.
+  """
+  defdelegate list_inherited_instances(parent_block_id), to: SheetQueries
 
   # =============================================================================
   # Blocks - CRUD Operations
