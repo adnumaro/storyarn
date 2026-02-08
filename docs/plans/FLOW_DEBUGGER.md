@@ -824,14 +824,14 @@ Original plan was a config modal, but reverted in favor of a lightweight inline 
 
 **Files:** `debug_handlers.ex` (change_start_node handler), `debug_panel.ex` (start_node_select component), `show.ex` (event delegation)
 
-#### Task 15: Panel resize
+#### Task 15: Panel resize ✅
 
-- [ ] Drag handle (4px bar, `cursor: row-resize`) at top of debug panel
-- [ ] JS hook `DebugPanelResize` — mousedown/mousemove/mouseup tracking
-- [ ] Clamp height: 150px–500px
-- [ ] Persist to `localStorage("storyarn-debug-panel-height")`
-- [ ] Load saved height on mount, default 280px
-- [ ] Replace fixed `style="height: 280px;"` with dynamic height
+- [x] Drag handle (4px bar, `cursor: row-resize`) at top of debug panel
+- [x] JS hook `DebugPanelResize` — mousedown/mousemove/mouseup tracking
+- [x] Clamp height: 150px–500px
+- [x] Persist to `localStorage("storyarn-debug-panel-height")`
+- [x] Load saved height on mount, default 280px
+- [x] Replace fixed `style="height: 280px;"` with dynamic height
 
 **Files:** `debug_panel.ex` (drag handle + dynamic height), new `assets/js/hooks/debug_panel_resize.js` (hook), hook registration
 

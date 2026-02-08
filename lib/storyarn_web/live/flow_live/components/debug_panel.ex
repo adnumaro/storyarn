@@ -31,7 +31,12 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
 
   def debug_panel(assigns) do
     ~H"""
-    <div class="bg-base-100 border-t border-base-300 flex flex-col" style="height: 280px;" data-debug-active>
+    <div id="debug-panel" phx-hook="DebugPanelResize" class="bg-base-100 border-t border-base-300 flex flex-col" style="height: 280px;" data-debug-active>
+      <%!-- Drag handle --%>
+      <div
+        data-resize-handle
+        class="h-1 cursor-row-resize bg-transparent hover:bg-accent/30 transition-colors shrink-0"
+      ></div>
       <%!-- Controls bar --%>
       <div class="flex items-center gap-2 px-3 py-1.5 border-b border-base-300 shrink-0">
         <div class="flex items-center gap-0.5">
