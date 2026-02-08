@@ -97,23 +97,42 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_node_double_clicked(%{"id" => node_id}, socket) do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
-    form = FormHelpers.node_data_to_form(node)
-    user = socket.assigns.current_scope.user
-
     editing_mode = NodeTypeRegistry.on_double_click(node.type, node)
 
-    socket =
-      if socket.assigns.can_edit do
-        handle_node_lock_acquisition(socket, node_id, user)
-      else
-        socket
-      end
+    case editing_mode do
+      {:navigate, flow_id} ->
+        socket =
+          if socket.assigns.selected_node && socket.assigns.can_edit do
+            release_node_lock(socket, socket.assigns.selected_node.id)
+          else
+            socket
+          end
 
-    {:noreply,
-     socket
-     |> assign(:selected_node, node)
-     |> assign(:node_form, form)
-     |> assign(:editing_mode, editing_mode)}
+        flow_id = if is_binary(flow_id), do: flow_id, else: to_string(flow_id)
+
+        {:noreply,
+         push_navigate(socket,
+           to:
+             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}?from=#{socket.assigns.flow.id}"
+         )}
+
+      mode ->
+        form = FormHelpers.node_data_to_form(node)
+        user = socket.assigns.current_scope.user
+
+        socket =
+          if socket.assigns.can_edit do
+            handle_node_lock_acquisition(socket, node_id, user)
+          else
+            socket
+          end
+
+        {:noreply,
+         socket
+         |> assign(:selected_node, node)
+         |> assign(:node_form, form)
+         |> assign(:editing_mode, mode)}
+    end
   end
 
   @spec handle_open_sidebar(Phoenix.LiveView.Socket.t()) ::

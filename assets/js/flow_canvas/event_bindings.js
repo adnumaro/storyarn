@@ -124,6 +124,11 @@ export function setupEventHandlers(hook) {
     hook.navigationHandler.navigateToJumps(e.detail.hubDbId);
   });
 
+  // Subflow navigation (composed from storyarn-node Shadow DOM)
+  hook.el.addEventListener("navigate-to-subflow", (e) => {
+    hook.pushEvent("navigate_to_subflow", { "flow-id": String(e.detail.flowId) });
+  });
+
   // Handle server events - Collaboration
   hook.handleEvent("cursor_update", (data) => hook.cursorHandler.handleCursorUpdate(data));
   hook.handleEvent("cursor_leave", (data) => hook.cursorHandler.handleCursorLeave(data));

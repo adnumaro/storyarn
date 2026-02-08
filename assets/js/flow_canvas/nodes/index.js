@@ -14,8 +14,9 @@ import hub from "./hub.js";
 import condition from "./condition.js";
 import instruction from "./instruction.js";
 import jump from "./jump.js";
+import subflow from "./subflow.js";
 
-const NODE_DEFS = { entry, exit, dialogue, hub, condition, instruction, jump };
+const NODE_DEFS = { entry, exit, dialogue, hub, condition, instruction, jump, subflow };
 
 /**
  * Returns the full definition object for a node type.

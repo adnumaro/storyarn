@@ -26,6 +26,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.Dialogue
   alias StoryarnWeb.FlowLive.Nodes.Exit, as: ExitNode
   alias StoryarnWeb.FlowLive.Nodes.Instruction
+  alias StoryarnWeb.FlowLive.Nodes.Subflow
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
@@ -39,13 +40,21 @@ defmodule StoryarnWeb.FlowLive.Show do
     <div class="h-screen flex flex-col">
       <%!-- Header --%>
       <header class="navbar bg-base-100 border-b border-base-300 px-4 shrink-0">
-        <div class="flex-none">
+        <div class="flex-none flex items-center gap-1">
           <.link
             navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows"}
             class="btn btn-ghost btn-sm gap-2"
           >
             <.icon name="chevron-left" class="size-4" />
             {gettext("Flows")}
+          </.link>
+          <.link
+            :if={@from_flow}
+            navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@from_flow.id}"}
+            class="btn btn-ghost btn-sm gap-1 text-base-content/60"
+          >
+            <.icon name="corner-up-left" class="size-3" />
+            {@from_flow.name}
           </.link>
         </div>
         <div class="flex-1 flex items-center gap-3 ml-4">
@@ -146,6 +155,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           panel_sections={@panel_sections}
           project_variables={@project_variables}
           referencing_jumps={@referencing_jumps}
+          available_flows={@available_flows}
+          subflow_exits={@subflow_exits}
         />
       </div>
 
@@ -239,6 +250,9 @@ defmodule StoryarnWeb.FlowLive.Show do
     |> assign(:selected_node, nil)
     |> assign(:node_form, nil)
     |> assign(:referencing_jumps, [])
+    |> assign(:available_flows, [])
+    |> assign(:subflow_exits, [])
+    |> assign(:from_flow, nil)
     |> assign(:editing_mode, nil)
     |> assign(:save_status, :idle)
     |> assign(:preview_show, false)
@@ -261,6 +275,25 @@ defmodule StoryarnWeb.FlowLive.Show do
           case Integer.parse(node_id) do
             {id, ""} -> push_event(socket, "navigate_to_node", %{node_db_id: id})
             _ -> socket
+          end
+      end
+
+    # Support "from" param for subflow breadcrumb navigation
+    socket =
+      case params["from"] do
+        nil ->
+          assign(socket, :from_flow, nil)
+
+        from_id ->
+          case Integer.parse(from_id) do
+            {id, ""} ->
+              case Flows.get_flow_brief(socket.assigns.project.id, id) do
+                nil -> assign(socket, :from_flow, nil)
+                flow -> assign(socket, :from_flow, flow)
+              end
+
+            _ ->
+              assign(socket, :from_flow, nil)
           end
       end
 
@@ -456,6 +489,34 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  # Subflow
+  def handle_event("navigate_to_subflow", %{"flow-id" => flow_id_str}, socket) do
+    case Integer.parse(flow_id_str) do
+      {flow_id, ""} ->
+        # Validate that the target flow belongs to the current project
+        case Flows.get_flow_brief(socket.assigns.project.id, flow_id) do
+          nil ->
+            {:noreply, put_flash(socket, :error, gettext("Flow not found."))}
+
+          _flow ->
+            {:noreply,
+             push_navigate(socket,
+               to:
+                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}?from=#{socket.assigns.flow.id}"
+             )}
+        end
+
+      _ ->
+        {:noreply, put_flash(socket, :error, gettext("Invalid flow ID."))}
+    end
+  end
+
+  def handle_event("update_subflow_reference", %{"referenced_flow_id" => ref_id}, socket) do
+    with_auth(:edit_content, socket, fn ->
+      Subflow.Node.handle_update_reference(ref_id, socket)
+    end)
+  end
+
   # Collaboration & Preview
   def handle_event("cursor_moved", params, socket) do
     CollaborationEventHandlers.handle_cursor_moved(params, socket)
@@ -470,15 +531,24 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("navigate_to_hub", %{"id" => node_id}, socket) do
-    {:noreply, push_event(socket, "navigate_to_hub", %{jump_db_id: String.to_integer(node_id)})}
+    case Integer.parse(node_id) do
+      {id, ""} -> {:noreply, push_event(socket, "navigate_to_hub", %{jump_db_id: id})}
+      _ -> {:noreply, socket}
+    end
   end
 
   def handle_event("navigate_to_node", %{"id" => node_id}, socket) do
-    {:noreply, push_event(socket, "navigate_to_node", %{node_db_id: String.to_integer(node_id)})}
+    case Integer.parse(node_id) do
+      {id, ""} -> {:noreply, push_event(socket, "navigate_to_node", %{node_db_id: id})}
+      _ -> {:noreply, socket}
+    end
   end
 
   def handle_event("navigate_to_jumps", %{"id" => node_id}, socket) do
-    {:noreply, push_event(socket, "navigate_to_jumps", %{hub_db_id: String.to_integer(node_id)})}
+    case Integer.parse(node_id) do
+      {id, ""} -> {:noreply, push_event(socket, "navigate_to_jumps", %{hub_db_id: id})}
+      _ -> {:noreply, socket}
+    end
   end
 
   # ===========================================================================

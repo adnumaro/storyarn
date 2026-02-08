@@ -21,6 +21,8 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :panel_sections, :map, default: %{}
   attr :project_variables, :list, default: []
   attr :referencing_jumps, :list, default: []
+  attr :available_flows, :list, default: []
+  attr :subflow_exits, :list, default: []
 
   def node_properties_panel(assigns) do
     ~H"""
@@ -46,6 +48,8 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           panel_sections={@panel_sections}
           project_variables={@project_variables}
           referencing_jumps={@referencing_jumps}
+          available_flows={@available_flows}
+          subflow_exits={@subflow_exits}
         />
       </div>
 
@@ -97,6 +101,8 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :panel_sections, :map, default: %{}
   attr :project_variables, :list, default: []
   attr :referencing_jumps, :list, default: []
+  attr :available_flows, :list, default: []
+  attr :subflow_exits, :list, default: []
 
   defp node_sidebar_content(assigns) do
     sidebar_mod = NodeTypeRegistry.sidebar_module(assigns.node.type)

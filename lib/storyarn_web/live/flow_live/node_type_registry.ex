@@ -21,7 +21,8 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
     "hub" => Nodes.Hub.Node,
     "condition" => Nodes.Condition.Node,
     "instruction" => Nodes.Instruction.Node,
-    "jump" => Nodes.Jump.Node
+    "jump" => Nodes.Jump.Node,
+    "subflow" => Nodes.Subflow.Node
   }
 
   @sidebar_modules %{
@@ -31,7 +32,8 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
     "hub" => Nodes.Hub.ConfigSidebar,
     "condition" => Nodes.Condition.ConfigSidebar,
     "instruction" => Nodes.Instruction.ConfigSidebar,
-    "jump" => Nodes.Jump.ConfigSidebar
+    "jump" => Nodes.Jump.ConfigSidebar,
+    "subflow" => Nodes.Subflow.ConfigSidebar
   }
 
   @types Map.keys(@node_modules) |> Enum.sort()
@@ -89,7 +91,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   end
 
   @doc "Returns the editing mode for double-click on a node type."
-  @spec on_double_click(String.t(), map()) :: :sidebar | :screenplay
+  @spec on_double_click(String.t(), map()) :: :sidebar | :screenplay | {:navigate, any()}
   def on_double_click(type, node) do
     case node_module(type) do
       nil -> :sidebar
