@@ -161,7 +161,7 @@ lib/storyarn_web/live/flow_live/
 │   │   ├── node.ex                      # Metadata only
 │   │   └── config_sidebar.ex
 │   ├── entry/
-│   │   ├── node.ex                      # Metadata only
+│   │   ├── node.ex                      # Metadata + on_select (load referencing_flows)
 │   │   └── config_sidebar.ex
 │   └── exit/
 │       ├── node.ex                      # Metadata + handlers (generate_technical_id)
@@ -195,7 +195,7 @@ assets/js/
 │   │   ├── instruction.js               # Config, preview formatting
 │   │   ├── hub.js                       # Config, nav links, color
 │   │   ├── jump.js                      # Config, nav links, indicators
-│   │   ├── entry.js                     # Config only
+│   │   ├── entry.js                     # Config, referencing flows, nav links
 │   │   └── exit.js                      # Config, color logic
 │   ├── node_config.js                   # Thin re-export from nodes/index.js + createIconSvg
 │   ├── flow_node.js                     # Delegates pin creation to per-type createOutputs
@@ -215,6 +215,50 @@ assets/js/
 ```
 
 **Per-type architecture principle:** Each `nodes/{type}/` directory tells you everything that node type does — read 2 files to understand the full behavior.
+
+## Icon Convention
+
+**NEVER use Unicode emojis or custom SVGs. Always use [Lucide](https://lucide.dev) icons.**
+
+**HEEx templates (server-rendered):**
+```elixir
+<.icon name="box" class="size-3 opacity-60" />
+<.icon name="square" class="size-4" />
+```
+
+**JS — Icon utilities** (`node_config.js`):
+
+| Utility | Purpose | Default |
+|---------|---------|---------|
+| `createIconHTML(Icon, { size })` | General-purpose → outerHTML string | 10px |
+| `createIconSvg(Icon)` | Node header icons (stroke styling) | 16px |
+
+**Flow canvas JS (Shadow DOM — Rete.js):**
+```javascript
+import { unsafeSVG } from "lit/directives/unsafe-svg.js";
+import { Box } from "lucide";
+import { createIconHTML } from "../node_config.js";
+
+// Pre-create as module-level constants
+const BOX_ICON = createIconHTML(Box, { size: 12 });
+
+// Render inside Lit html`` templates with unsafeSVG
+html`<span>${unsafeSVG(BOX_ICON)} Label</span>`;
+```
+
+**Hooks / builders (regular DOM):**
+```javascript
+import { createElement, Plus } from "lucide";
+
+// Append as live DOM element (not outerHTML)
+button.appendChild(createElement(Plus, { width: 12, height: 12 }));
+```
+
+**Rules:**
+- Node headers: `createIconSvg(Icon)` (16px, stroke styling)
+- outerHTML strings (Lit/Shadow DOM, innerHTML): `createIconHTML(Icon, { size })`
+- DOM element appends (hooks, builders): `createElement(Icon, { width, height })` directly
+- Always pre-create icon constants at module level — never inside `render()`
 
 ## Storyarn-Specific Patterns
 
