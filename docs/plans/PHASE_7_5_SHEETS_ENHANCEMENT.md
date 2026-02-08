@@ -4,7 +4,7 @@
 >
 > **Priority:** Before Phase 7 (Export) - this defines the data model that will be exported
 >
-> **Last Updated:** February 3, 2026
+> **Last Updated:** February 8, 2026
 
 ## Overview
 
@@ -13,8 +13,11 @@ This phase enhances the Sheets system to be more like Notion/articy:draft, addin
 - Reference system with shortcuts (`#shortcut.path`)
 - Bidirectional links (backlinks)
 - Sheet versioning and history
-- New block types (boolean, reference)
+- New block types (boolean, date, reference)
 - Sheet avatar (image upload replacing icon field)
+- Sheet color and description
+- Property inheritance (blocks cascade from parent to child sheets)
+- Column layout (blocks side-by-side in 2-3 column groups)
 
 ---
 
@@ -25,18 +28,30 @@ This phase enhances the Sheets system to be more like Notion/articy:draft, addin
 ```
 sheets
 ├── id, project_id, name, parent_id, position
-├── avatar_asset_id   # REPLACES icon: Sheet avatar/thumbnail (FK to assets)
-├── shortcut          # NEW: User-defined alias (unique per project)
-├── banner_asset_id   # NEW: Optional header image (FK to assets)
+├── shortcut                    # User-defined alias (unique per project)
+├── description                 # Rich text for annotations
+├── color                       # Hex color (#fff, #3b82f6, #3b82f680)
+├── avatar_asset_id             # Sheet avatar/thumbnail (FK to assets)
+├── banner_asset_id             # Optional header image (FK to assets)
+├── current_version_id          # FK to sheet_versions
+├── hidden_inherited_block_ids  # {:array, :integer} - hidden ancestor blocks
+├── deleted_at                  # Soft delete
 └── timestamps
 
 blocks
 ├── id, sheet_id, type, position, config, value
-├── is_variable       # NEW: boolean - if true, accessible from scripting
-├── variable_name     # NEW: auto-generated from label (slugified)
+├── is_constant                 # boolean (default false) - if true, NOT a variable
+├── variable_name               # Auto-generated from label (slugified)
+├── scope                       # "self" | "children" - inheritance scope
+├── inherited_from_block_id     # FK to parent block (for inheritance)
+├── detached                    # boolean - detached from parent definition
+├── required                    # boolean - required field
+├── column_group_id             # UUID - groups blocks side-by-side
+├── column_index                # integer 0-2 - position within column group
+├── deleted_at                  # Soft delete
 └── timestamps
 
-sheet_versions        # NEW TABLE
+sheet_versions
 ├── id, sheet_id
 ├── version_number
 ├── snapshot (JSONB)  # {name, avatar_asset_id, shortcut, blocks: [...]}
@@ -44,12 +59,12 @@ sheet_versions        # NEW TABLE
 ├── change_summary    # Auto-generated: "Added 2 blocks, modified text"
 └── created_at
 
-entity_references     # NEW TABLE (for backlinks tracking)
+entity_references     # Backlinks tracking
 ├── id
-├── source_type       # "sheet" | "flow" | "flow_node"
-├── source_id
+├── source_type       # "block" | "flow_node"
+├── source_id         # bigint
 ├── target_type       # "sheet" | "flow"
-├── target_id
+├── target_id         # bigint
 ├── context           # Where in the source (block_id, node field, etc.)
 └── timestamps
 ```
@@ -115,7 +130,8 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 ### 7.5.2 Block Variables
 
 #### 7.5.2.1 Variable Fields
-- [x] Add `is_constant` field to `blocks` table (boolean, default: false) - inverted logic
+- [x] Add `is_constant` field to `blocks` table (boolean, default: false)
+  - **Note:** Inverted logic — `is_constant: false` means the block IS a variable
 - [x] Add `variable_name` field to `blocks` table (string, nullable)
 - [x] Auto-generate `variable_name` from label on block create/update
 - [x] Slugify function: "Health Points" → "health_points"
@@ -168,7 +184,14 @@ Option B: Toggle with neutral: ○ ◐ ●
 Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 ```
 
-#### 7.5.3.2 Reference Block ✅ DONE
+#### 7.5.3.2 Date Block ✅ DONE
+- [x] Add "date" to block types enum
+- [x] Schema: config `{label}`
+- [x] Schema: value `{content}` where content is ISO date string or null
+- [x] UI: Date picker
+- [x] Can be variable (value type: string ISO date)
+
+#### 7.5.3.3 Reference Block ✅ DONE
 - [x] Add "reference" to block types enum
 - [x] Schema: config `{label, allowed_types}` where allowed_types is ["sheet", "flow"] or subset
 - [x] Schema: value `{target_type, target_id}`
@@ -278,6 +301,71 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 
 ---
 
+### 7.5.8 Property Inheritance ✅ DONE
+
+Blocks with `scope: "children"` automatically cascade to descendant sheets.
+
+#### 7.5.8.1 Schema
+- [x] Add `scope` field to blocks ("self" | "children", default: "self")
+- [x] Add `inherited_from_block_id` FK to blocks (points to parent block)
+- [x] Add `detached` boolean to blocks (detached from parent definition)
+- [x] Add `required` boolean to blocks (required field flag)
+- [x] Add `hidden_inherited_block_ids` array to sheets (hidden ancestor blocks)
+
+#### 7.5.8.2 PropertyInheritance Module
+- [x] `resolve_inherited_blocks/1` — returns inherited blocks grouped by source sheet
+- [x] `create_inherited_instances/2` — creates block instances on child sheets
+- [x] `propagate_to_descendants/2` — bulk creates instances for selected descendants
+- [x] `sync_definition_change/1` — syncs config/type changes to non-detached instances
+- [x] `detach_block/1` — makes inherited block independent (keeps provenance)
+- [x] `reattach_block/1` — re-syncs previously detached block
+- [x] `hide_for_children/2` — hides ancestor block from cascading
+- [x] `unhide_for_children/2` — unhides ancestor block
+- [x] `delete_inherited_instances/1` — soft-deletes instances when parent deleted
+- [x] `restore_inherited_instances/1` — restores deleted instances
+- [x] Variable names auto-deduplicated per sheet on inheritance
+
+#### 7.5.8.3 UI
+- [x] Inherited blocks grouped by source sheet with "Inherited from" header
+- [x] Scope indicator (arrow-down icon) for blocks with `scope: "children"`
+- [x] Context menu: Go to source, Detach, Hide for children
+- [x] Drag handle hidden for inherited blocks
+- [x] Propagation modal when changing scope to "children" on existing descendants
+
+---
+
+### 7.5.9 Column Layout ✅ DONE
+
+Blocks can be arranged side-by-side in 2-3 column groups.
+
+#### 7.5.9.1 Schema
+- [x] Add `column_group_id` (UUID) to blocks — shared by blocks in same group
+- [x] Add `column_index` (integer 0-2) to blocks — position within group
+
+#### 7.5.9.2 Operations
+- [x] `reorder_blocks_with_columns/2` — reorder with column layout info
+- [x] `create_column_group/2` — group blocks side-by-side (min 2, max 3)
+- [x] `dissolve_column_group/2` — reset blocks to full-width
+- [x] Auto-dissolve when deletion leaves fewer than 2 blocks in group
+- [x] Divider blocks cannot be placed in columns
+
+#### 7.5.9.3 UI
+- [x] ColumnSortable hook (two-tier SortableJS: vertical + horizontal)
+- [x] Drag to right edge of block to create column group
+- [x] Drop indicator CSS for column creation
+- [x] Responsive: columns stack on mobile
+
+---
+
+### 7.5.10 Sheet Color ✅ DONE
+
+- [x] Add `color` field to sheets (hex string, nullable)
+- [x] Validation: `#fff`, `#3b82f6`, or `#3b82f680` (3, 6, or 8 hex chars)
+- [x] Figma-style color picker dropdown in sheet editor
+- [x] Color displayed in sidebar tree
+
+---
+
 ## UI/UX Specifications
 
 ### Sheet Layout (After)
@@ -371,7 +459,7 @@ end
 ### Migration 3: Block Variables
 ```elixir
 alter table(:blocks) do
-  add :is_variable, :boolean, default: false
+  add :is_constant, :boolean, default: false  # inverted: false = IS a variable
   add :variable_name, :string
 end
 
@@ -399,9 +487,9 @@ create index(:sheet_versions, [:sheet_id, :inserted_at])
 ```elixir
 create table(:entity_references) do
   add :source_type, :string, null: false
-  add :source_id, :binary_id, null: false
+  add :source_id, :bigint, null: false
   add :target_type, :string, null: false
-  add :target_id, :binary_id, null: false
+  add :target_id, :bigint, null: false
   add :context, :string
 
   timestamps()
@@ -428,6 +516,32 @@ create index(:sheets, [:deleted_at])
 create index(:blocks, [:deleted_at])
 ```
 
+### Migration 7: Block Inheritance Fields
+```elixir
+alter table(:blocks) do
+  add :scope, :string, default: "self"
+  add :inherited_from_block_id, references(:blocks, on_delete: :nilify_all)
+  add :detached, :boolean, default: false
+  add :required, :boolean, default: false
+end
+
+alter table(:sheets) do
+  add :hidden_inherited_block_ids, {:array, :integer}, default: []
+end
+```
+
+### Migration 8: Block Column Layout Fields
+```elixir
+alter table(:blocks) do
+  add :column_group_id, :uuid
+  add :column_index, :integer, default: 0
+end
+
+create index(:blocks, [:sheet_id, :column_group_id],
+  where: "column_group_id IS NOT NULL",
+  name: :blocks_sheet_column_group_index)
+```
+
 ---
 
 ## Implementation Order
@@ -437,19 +551,23 @@ Recommended order to minimize dependencies and allow incremental testing:
 | Order | Task                                           | Dependencies              | Testable Outcome             |
 |-------|------------------------------------------------|---------------------------|------------------------------|
 | 1     | ✅ Boolean block                                | None                      | New block type works         |
-| 2     | ✅ Sheet avatar (replace icon)                  | Assets system             | Avatar upload/display works  |
-| 3     | ✅ Sheet banner                                 | Assets system             | Banner display works         |
-| 4     | ✅ Soft delete                                  | None                      | Trash/restore works          |
-| 5     | ✅ Block variables (is_constant, variable_name) | None                      | Variables marked correctly   |
-| 6     | ✅ Shortcuts (sheets)                           | None                      | Shortcuts validated/saved    |
-| 7     | ✅ Shortcuts (flows)                            | None                      | Flow shortcuts work          |
-| 8     | ✅ Sheet tabs UI                                | None                      | Tab navigation works         |
-| 9     | ✅ Sheet versions                               | None                      | Versions created/listed      |
-| 10    | ✅ Version history UI                           | Sheet versions            | History tab works            |
-| 11    | ✅ Reference block                              | Shortcuts                 | Can reference sheets/flows   |
-| 12    | ✅ Mentions (Tiptap)                            | Shortcuts                 | # mentions work in rich_text |
-| 13    | ✅ Entity references table                      | Mentions, Reference block | References tracked           |
-| 14    | ✅ Backlinks UI                                 | Entity references         | Backlinks displayed          |
+| 2     | ✅ Date block                                   | None                      | Date picker works            |
+| 3     | ✅ Sheet avatar (replace icon)                  | Assets system             | Avatar upload/display works  |
+| 4     | ✅ Sheet banner                                 | Assets system             | Banner display works         |
+| 5     | ✅ Sheet color                                  | None                      | Color picker works           |
+| 6     | ✅ Soft delete                                  | None                      | Trash/restore works          |
+| 7     | ✅ Block variables (is_constant, variable_name) | None                      | Variables marked correctly   |
+| 8     | ✅ Shortcuts (sheets)                           | None                      | Shortcuts validated/saved    |
+| 9     | ✅ Shortcuts (flows)                            | None                      | Flow shortcuts work          |
+| 10    | ✅ Sheet tabs UI                                | None                      | Tab navigation works         |
+| 11    | ✅ Sheet versions                               | None                      | Versions created/listed      |
+| 12    | ✅ Version history UI                           | Sheet versions            | History tab works            |
+| 13    | ✅ Reference block                              | Shortcuts                 | Can reference sheets/flows   |
+| 14    | ✅ Mentions (Tiptap)                            | Shortcuts                 | # mentions work in rich_text |
+| 15    | ✅ Entity references table                      | Mentions, Reference block | References tracked           |
+| 16    | ✅ Backlinks UI                                 | Entity references         | Backlinks displayed          |
+| 17    | ✅ Property inheritance                         | Tree structure            | Blocks cascade to children   |
+| 18    | ✅ Column layout                                | None                      | Blocks side-by-side          |
 
 ---
 
@@ -462,22 +580,30 @@ Recommended order to minimize dependencies and allow incremental testing:
 - [ ] Change summary generation
 - [ ] Reference extraction from rich_text
 - [ ] Backlinks queries
+- [ ] Property inheritance (create, detach, reattach, sync, hide/unhide)
+- [ ] Column layout (create group, dissolve, auto-dissolve on delete)
 
 ### Integration Tests
 - [ ] Boolean block CRUD
+- [ ] Date block CRUD
 - [ ] Sheet avatar upload and display
 - [ ] Sheet banner upload and display
+- [ ] Sheet color picker
 - [ ] Reference block with search
 - [ ] Sheet versioning flow
 - [ ] Soft delete and restore
 - [ ] Mention insertion and rendering
+- [ ] Inherited blocks cascade to child sheets
+- [ ] Column group creation and reordering
 
 ### E2E Tests
-- [ ] Create sheet with new block types (boolean, reference)
+- [ ] Create sheet with new block types (boolean, date, reference)
 - [ ] Upload sheet avatar and banner
 - [ ] Set up shortcut and use in mention
 - [ ] View backlinks
 - [ ] Restore from version history
+- [ ] Create parent sheet with children scope blocks, verify cascade
+- [ ] Drag blocks into column layout
 
 ---
 
@@ -495,17 +621,18 @@ Recommended order to minimize dependencies and allow incremental testing:
 
 ## Success Criteria
 
-- [x] New block types working (boolean) ✅
-- [x] New block types working (reference) ✅
-- [x] Sheet avatar working (replaces icon field) ✅
-- [x] Sheet banner working ✅
-- [x] Shortcuts can be set on sheets and flows ✅
-- [x] Mentions with `#` work in rich_text blocks ✅
-- [x] Backlinks show what references a sheet ✅
-- [x] Version history accessible in References tab ✅
-- [x] Soft delete with trash recovery working ✅
+- [x] New block types working (boolean, date, reference)
+- [x] Sheet avatar working (replaces icon field)
+- [x] Sheet banner working
+- [x] Sheet color picker working
+- [x] Shortcuts can be set on sheets and flows
+- [x] Mentions with `#` work in rich_text blocks
+- [x] Backlinks show what references a sheet
+- [x] Version history accessible in References tab
+- [x] Soft delete with trash recovery working
+- [x] Property inheritance cascades blocks to child sheets
+- [x] Column layout allows blocks side-by-side
 
 ---
 
 *This plan will be incorporated into IMPLEMENTATION_PLAN.md once approved and implementation begins.*
-sog
