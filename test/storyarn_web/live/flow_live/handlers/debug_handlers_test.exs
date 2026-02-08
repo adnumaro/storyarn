@@ -467,4 +467,70 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       assert result.assigns.debug_var_changed_only == false
     end
   end
+
+  # ===========================================================================
+  # handle_debug_change_start_node/2
+  # ===========================================================================
+
+  describe "handle_debug_change_start_node/2" do
+    test "resets session from new start node" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "dialogue", %{"text" => "Hello"}),
+        3 => node(3, "exit")
+      }
+
+      state = Engine.init(%{"mc.health" => var(100, "number")}, 1)
+
+      socket =
+        build_socket(%{
+          debug_state: state,
+          debug_nodes: nodes,
+          debug_connections: [conn(2, "output", 3)],
+          debug_auto_playing: true
+        })
+
+      {:noreply, result} =
+        DebugHandlers.handle_debug_change_start_node(%{"node_id" => "2"}, socket)
+
+      assert result.assigns.debug_state.start_node_id == 2
+      assert result.assigns.debug_state.current_node_id == 2
+      assert result.assigns.debug_state.execution_path == [2]
+      assert result.assigns.debug_state.step_count == 0
+      assert result.assigns.debug_auto_playing == false
+    end
+
+    test "ignores non-existent node id" do
+      state = Engine.init(%{}, 1)
+
+      socket =
+        build_socket(%{
+          debug_state: state,
+          debug_nodes: %{1 => node(1, "entry")},
+          debug_connections: []
+        })
+
+      {:noreply, result} =
+        DebugHandlers.handle_debug_change_start_node(%{"node_id" => "99"}, socket)
+
+      # State unchanged
+      assert result.assigns.debug_state.start_node_id == 1
+    end
+
+    test "ignores invalid node id string" do
+      state = Engine.init(%{}, 1)
+
+      socket =
+        build_socket(%{
+          debug_state: state,
+          debug_nodes: %{1 => node(1, "entry")},
+          debug_connections: []
+        })
+
+      {:noreply, result} =
+        DebugHandlers.handle_debug_change_start_node(%{"node_id" => "abc"}, socket)
+
+      assert result.assigns.debug_state.start_node_id == 1
+    end
+  end
 end

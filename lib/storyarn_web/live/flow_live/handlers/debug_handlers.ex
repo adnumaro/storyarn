@@ -28,6 +28,30 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
     end
   end
 
+  def handle_debug_change_start_node(%{"node_id" => node_id_str}, socket) do
+    case Integer.parse(node_id_str) do
+      {node_id, ""} ->
+        state = socket.assigns.debug_state
+        nodes = socket.assigns.debug_nodes
+
+        if Map.has_key?(nodes, node_id) do
+          new_state = Engine.reset(%{state | start_node_id: node_id})
+
+          {:noreply,
+           socket
+           |> assign(:debug_state, new_state)
+           |> assign(:debug_auto_playing, false)
+           |> push_event("debug_clear_highlights", %{})
+           |> push_debug_canvas(new_state)}
+        else
+          {:noreply, socket}
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_debug_step(socket) do
     state = socket.assigns.debug_state
     nodes = socket.assigns.debug_nodes

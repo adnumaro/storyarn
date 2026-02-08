@@ -216,6 +216,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         project={@project}
         sheets_map={FormHelpers.sheets_map(@all_sheets)}
       />
+
     </div>
     """
   end
@@ -707,6 +708,10 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("debug_var_toggle_changed", _params, socket) do
     DebugHandlers.handle_debug_var_toggle_changed(socket)
+  end
+
+  def handle_event("debug_change_start_node", params, socket) do
+    DebugHandlers.handle_debug_change_start_node(params, socket)
   end
 
   # Collaboration & Preview

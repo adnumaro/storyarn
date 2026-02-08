@@ -805,22 +805,24 @@ Implemented inline variable editing in the debug panel.
 
 **Files:** `debug_handlers.ex` (push event), `debug_handler.js` (handle + cleanup), `storyarn_connection.js` (CSS), `event_bindings.js` (register event)
 
-#### Task 14: Initial state configuration modal
+#### Task 14: Start node selector in debug panel ✅
 
-- [ ] Modify `handle_debug_start/1` to open config modal instead of immediately starting
-- [ ] New assigns: `debug_config_modal_open`, `debug_config_variables`, `debug_config_start_node_id`, `debug_config_overrides`
-- [ ] `handle_debug_config_set_start_node/2` — sets start node dropdown
-- [ ] `handle_debug_config_set_override/2` — sets variable override
-- [ ] `handle_debug_config_clear_overrides/1` — clears all overrides
-- [ ] `handle_debug_config_confirm/1` — applies overrides to initial variables, starts session
-- [ ] `handle_debug_config_cancel/1` — closes modal
-- [ ] `debug_config_modal/1` component using `<.modal>` from CoreComponents
-- [ ] "Start from" dropdown (entry node preselected), variables table with Override column, Start/Cancel buttons
-- [ ] Overridden values highlighted in blue
+Original plan was a config modal, but reverted in favor of a lightweight inline approach:
+- Variable overrides already covered by Task 11 (inline editing in Variables tab)
+- A modal adds friction and goes against the "enter and start" philosophy
 
-**Modal pattern:** Follow `<.modal>` from `core_components.ex` (used by `preview_component.ex`).
+**Implemented instead:** inline start node dropdown in the controls bar status area.
 
-**Files:** `debug_handlers.ex` (modal handlers), `debug_panel.ex` or new `debug_config_modal.ex` (component), `show.ex` (assigns + events + render modal)
+- [x] Click Debug → session starts immediately from entry node (no modal)
+- [x] `start_node_select/1` component in debug panel controls bar (after step count)
+- [x] Dropdown lists all nodes (entry nodes sorted first), shows type + name excerpt
+- [x] Changing start node auto-resets session from the new node
+- [x] `handle_debug_change_start_node/2` — validates node exists, resets with `Engine.reset/1`
+- [x] Disabled during auto-play
+- [x] 3 handler tests (reset from new node, ignore non-existent, ignore invalid string)
+- [x] All 849 tests passing, zero warnings
+
+**Files:** `debug_handlers.ex` (change_start_node handler), `debug_panel.ex` (start_node_select component), `show.ex` (event delegation)
 
 #### Task 15: Panel resize
 

@@ -101,6 +101,11 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           <span class="text-xs text-base-content/40 tabular-nums">
             {gettext("Step %{count}", count: @debug_state.step_count)}
           </span>
+          <.start_node_select
+            start_node_id={@debug_state.start_node_id}
+            debug_nodes={@debug_nodes}
+            disabled={@debug_auto_playing}
+          />
         </div>
 
         <%!-- Speed slider --%>
@@ -191,6 +196,63 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
       </div>
     </div>
     """
+  end
+
+  # ===========================================================================
+  # Start node select
+  # ===========================================================================
+
+  attr :start_node_id, :integer, required: true
+  attr :debug_nodes, :map, required: true
+  attr :disabled, :boolean, default: false
+
+  defp start_node_select(assigns) do
+    nodes =
+      assigns.debug_nodes
+      |> Enum.map(fn {id, node} -> {id, node} end)
+      |> Enum.sort_by(fn {_id, node} -> if node.type == "entry", do: 0, else: 1 end)
+
+    assigns = Phoenix.Component.assign(assigns, :nodes, nodes)
+
+    ~H"""
+    <form phx-change="debug_change_start_node" class="flex items-center gap-1">
+      <span class="text-xs text-base-content/30">{gettext("Start:")}</span>
+      <select
+        name="node_id"
+        class="select select-xs select-ghost text-xs h-6 min-h-0 pl-1 pr-5 font-normal"
+        disabled={@disabled}
+        title={gettext("Change start node (resets session)")}
+      >
+        <option
+          :for={{id, node} <- @nodes}
+          value={id}
+          selected={id == @start_node_id}
+        >
+          {start_node_label(node, id)}
+        </option>
+      </select>
+    </form>
+    """
+  end
+
+  defp start_node_label(node, id) do
+    type_label = String.capitalize(node.type)
+    data = node.data || %{}
+    text = data["text"]
+
+    name =
+      if is_binary(text) and text != "" do
+        text
+        |> String.replace(~r/<[^>]+>/, "")
+        |> String.trim()
+        |> String.slice(0, 20)
+      end
+
+    if name && name != "" do
+      "#{type_label}: #{name}"
+    else
+      "#{type_label} ##{id}"
+    end
   end
 
   # ===========================================================================
