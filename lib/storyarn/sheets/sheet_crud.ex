@@ -6,6 +6,7 @@ defmodule Storyarn.Sheets.SheetCrud do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
+  alias Storyarn.Shared.MapUtils
   alias Storyarn.Shortcuts
 
   # =============================================================================
@@ -200,12 +201,7 @@ defmodule Storyarn.Sheets.SheetCrud do
     (Repo.one(query) || -1) + 1
   end
 
-  defp stringify_keys(map) when is_map(map) do
-    Map.new(map, fn
-      {k, v} when is_atom(k) -> {Atom.to_string(k), v}
-      {k, v} -> {k, v}
-    end)
-  end
+  defp stringify_keys(map), do: MapUtils.stringify_keys(map)
 
   defp maybe_generate_shortcut(attrs, project_id, exclude_sheet_id) do
     # Only generate if shortcut is not provided and name is available
