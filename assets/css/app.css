@@ -47,6 +47,22 @@
   opacity: 0.9;
 }
 
+/* Drop indicator for column creation */
+.column-drop-target {
+  position: relative;
+}
+
+.column-drop-target::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 2px;
+}
+
 /* TipTap Editor styles */
 .tiptap-content {
   min-height: 100px;

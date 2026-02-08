@@ -33,6 +33,7 @@ import { FlowCanvas } from "./hooks/flow_canvas";
 import { ReferenceSearch } from "./hooks/reference_search";
 import { ScreenplayEditor } from "./hooks/screenplay_editor";
 // Custom hooks
+import { ColumnSortable } from "./hooks/column_sortable";
 import { SortableList } from "./hooks/sortable_list";
 import { SortableTree } from "./hooks/sortable_tree";
 import { TiptapEditor } from "./hooks/tiptap_editor";
@@ -55,6 +56,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ...colocatedHooks,
     AvatarUpload,
     BannerUpload,
+    ColumnSortable,
     EditableShortcut,
     EditableTitle,
     SortableList,
