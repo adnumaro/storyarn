@@ -76,6 +76,8 @@ defmodule Storyarn.Sheets.Block do
   # Block types that cannot be variables (no meaningful value to expose)
   @non_variable_types ~w(divider reference)
 
+  @scopes ~w(self children)
+
   @type t :: %__MODULE__{
           id: integer() | nil,
           type: String.t() | nil,
@@ -84,8 +86,14 @@ defmodule Storyarn.Sheets.Block do
           value: map() | nil,
           is_constant: boolean(),
           variable_name: String.t() | nil,
+          scope: String.t(),
+          inherited_from_block_id: integer() | nil,
+          detached: boolean(),
+          required: boolean(),
           sheet_id: integer() | nil,
           sheet: Sheet.t() | Ecto.Association.NotLoaded.t() | nil,
+          inherited_from_block: t() | Ecto.Association.NotLoaded.t() | nil,
+          inherited_instances: [t()] | Ecto.Association.NotLoaded.t(),
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -98,9 +106,14 @@ defmodule Storyarn.Sheets.Block do
     field :value, :map, default: %{}
     field :is_constant, :boolean, default: false
     field :variable_name, :string
+    field :scope, :string, default: "self"
+    field :detached, :boolean, default: false
+    field :required, :boolean, default: false
     field :deleted_at, :utc_datetime
 
     belongs_to :sheet, Sheet
+    belongs_to :inherited_from_block, __MODULE__
+    has_many :inherited_instances, __MODULE__, foreign_key: :inherited_from_block_id
 
     timestamps(type: :utc_datetime)
   end
@@ -115,11 +128,16 @@ defmodule Storyarn.Sheets.Block do
   """
   def create_changeset(block, attrs) do
     block
-    |> cast(attrs, [:type, :position, :config, :value, :is_constant, :variable_name])
+    |> cast(attrs, [
+      :type, :position, :config, :value, :is_constant, :variable_name,
+      :scope, :inherited_from_block_id, :detached, :required
+    ])
     |> validate_required([:type])
     |> validate_inclusion(:type, @block_types)
+    |> validate_inclusion(:scope, @scopes)
     |> validate_config()
     |> maybe_generate_variable_name()
+    |> foreign_key_constraint(:inherited_from_block_id)
   end
 
   @doc """
@@ -127,9 +145,13 @@ defmodule Storyarn.Sheets.Block do
   """
   def update_changeset(block, attrs) do
     block
-    |> cast(attrs, [:type, :position, :config, :value, :is_constant, :variable_name])
+    |> cast(attrs, [
+      :type, :position, :config, :value, :is_constant, :variable_name,
+      :scope, :detached, :required
+    ])
     |> validate_required([:type])
     |> validate_inclusion(:type, @block_types)
+    |> validate_inclusion(:scope, @scopes)
     |> validate_config()
     |> maybe_generate_variable_name()
   end
@@ -247,6 +269,18 @@ defmodule Storyarn.Sheets.Block do
   def variable?(%__MODULE__{type: type, is_constant: is_constant}) do
     can_be_variable?(type) and not is_constant
   end
+
+  @doc """
+  Returns the list of valid scopes.
+  """
+  def scopes, do: @scopes
+
+  @doc """
+  Returns true if the block is an active inherited instance (not detached).
+  """
+  def inherited?(%__MODULE__{inherited_from_block_id: nil}), do: false
+  def inherited?(%__MODULE__{detached: true}), do: false
+  def inherited?(%__MODULE__{}), do: true
 
   @doc """
   Generates a variable name from a label string.

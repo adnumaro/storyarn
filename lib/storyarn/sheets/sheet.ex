@@ -35,6 +35,7 @@ defmodule Storyarn.Sheets.Sheet do
           description: String.t() | nil,
           color: String.t() | nil,
           position: integer() | nil,
+          hidden_inherited_block_ids: [integer()],
           avatar_asset_id: integer() | nil,
           avatar_asset: Asset.t() | Ecto.Association.NotLoaded.t() | nil,
           banner_asset_id: integer() | nil,
@@ -58,6 +59,7 @@ defmodule Storyarn.Sheets.Sheet do
     field :description, :string
     field :color, :string
     field :position, :integer, default: 0
+    field :hidden_inherited_block_ids, {:array, :integer}, default: []
     field :deleted_at, :utc_datetime
 
     belongs_to :project, Project
@@ -85,7 +87,8 @@ defmodule Storyarn.Sheets.Sheet do
       :avatar_asset_id,
       :banner_asset_id,
       :parent_id,
-      :position
+      :position,
+      :hidden_inherited_block_ids
     ])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
@@ -109,7 +112,8 @@ defmodule Storyarn.Sheets.Sheet do
       :avatar_asset_id,
       :banner_asset_id,
       :parent_id,
-      :position
+      :position,
+      :hidden_inherited_block_ids
     ])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
