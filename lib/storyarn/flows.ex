@@ -487,7 +487,7 @@ defmodule Storyarn.Flows do
     Map.put(
       data,
       "color_hex",
-      HubColors.to_hex(data["color"] || "purple", HubColors.default_hex())
+      HubColors.to_hex(data["color"], HubColors.default_hex())
     )
   end
 

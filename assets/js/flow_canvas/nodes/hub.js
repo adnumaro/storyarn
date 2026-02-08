@@ -39,7 +39,8 @@ export default {
     return data.color_hex || config.color;
   },
 
-  needsRebuild(_oldData, _newData) {
+  needsRebuild(oldData, newData) {
+    if (oldData?.color_hex !== newData.color_hex) return true;
     return false;
   },
 };

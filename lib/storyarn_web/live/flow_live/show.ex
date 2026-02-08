@@ -30,6 +30,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
+  alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
   # Filter out entry from user-addable node types (entry is auto-created with flow)
   @node_types FlowNode.node_types() |> Enum.reject(&(&1 == "entry"))
@@ -517,6 +518,18 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  # Hub color picker
+  def handle_event("update_hub_color", %{"color" => color}, socket) do
+    with_auth(:edit_content, socket, fn ->
+      node = socket.assigns.selected_node
+      validated = validate_hex_color(color, Flows.HubColors.default_hex())
+
+      NodeHelpers.persist_node_update(socket, node.id, fn data ->
+        Map.put(data, "color", validated)
+      end)
+    end)
+  end
+
   # Collaboration & Preview
   def handle_event("cursor_moved", params, socket) do
     CollaborationEventHandlers.handle_cursor_moved(params, socket)
@@ -600,4 +613,14 @@ defmodule StoryarnWeb.FlowLive.Show do
   defp unauthorized_flash(socket) do
     put_flash(socket, :error, gettext("You don't have permission to perform this action."))
   end
+
+  defp validate_hex_color(color, default) when is_binary(color) do
+    if String.match?(color, ~r/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/) do
+      color
+    else
+      default
+    end
+  end
+
+  defp validate_hex_color(_, default), do: default
 end

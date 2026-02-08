@@ -1,36 +1,24 @@
 defmodule Storyarn.Flows.HubColors do
   @moduledoc """
-  Single source of truth for hub node color definitions.
+  Hub node color utilities.
 
-  Used by:
-  - `SimplePanels` for the color dropdown options
-  - `Flows.serialize_for_canvas/1` to resolve hex values for the JS canvas
+  All colors are stored and resolved as hex strings.
   """
 
-  @colors %{
-    "purple" => "#8b5cf6",
-    "blue" => "#3b82f6",
-    "green" => "#22c55e",
-    "yellow" => "#f59e0b",
-    "red" => "#ef4444",
-    "pink" => "#ec4899",
-    "orange" => "#f97316",
-    "cyan" => "#06b6d4"
-  }
+  @default_hex "#8b5cf6"
 
-  @doc "Returns all color names."
-  @spec names() :: [String.t()]
-  def names, do: Map.keys(@colors) |> Enum.sort()
-
-  @doc "Resolves a color name to its hex value. Returns nil if not found."
-  @spec to_hex(String.t()) :: String.t() | nil
-  def to_hex(name), do: Map.get(@colors, name)
-
-  @doc "Resolves a color name to hex, falling back to the default purple."
-  @spec to_hex(String.t(), String.t()) :: String.t()
-  def to_hex(name, default), do: Map.get(@colors, name, default)
-
-  @doc "Returns the default color hex value (purple)."
+  @doc "Returns the default color hex value."
   @spec default_hex() :: String.t()
-  def default_hex, do: @colors["purple"]
+  def default_hex, do: @default_hex
+
+  @doc "Passes through a hex color, falling back to default for nil."
+  @spec to_hex(String.t() | nil) :: String.t() | nil
+  def to_hex(nil), do: nil
+  def to_hex(hex), do: hex
+
+  @doc "Passes through a hex color, falling back to default for nil or empty."
+  @spec to_hex(String.t() | nil, String.t()) :: String.t()
+  def to_hex(nil, default), do: default
+  def to_hex("", default), do: default
+  def to_hex(hex, _default), do: hex
 end

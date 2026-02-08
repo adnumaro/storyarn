@@ -16,13 +16,13 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.Node do
   def icon_name, do: "log-in"
   def label, do: gettext("Hub")
 
-  def default_data, do: %{"hub_id" => "", "label" => "", "color" => "purple"}
+  def default_data, do: %{"hub_id" => "", "label" => "", "color" => "#8b5cf6"}
 
   def extract_form_data(data) do
     %{
       "hub_id" => data["hub_id"] || "",
       "label" => data["label"] || "",
-      "color" => data["color"] || "purple"
+      "color" => data["color"] || "#8b5cf6"
     }
   end
 
