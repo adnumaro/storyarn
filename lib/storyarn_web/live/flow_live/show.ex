@@ -7,6 +7,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   import StoryarnWeb.Components.CollaborationComponents
   import StoryarnWeb.Components.SaveIndicator
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers
+  import StoryarnWeb.FlowLive.Components.DebugPanel
   import StoryarnWeb.FlowLive.Components.PropertiesPanels
   import StoryarnWeb.Layouts, only: [flash_group: 1]
 
@@ -20,6 +21,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
+  alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Nodes.Condition
@@ -101,6 +103,17 @@ defmodule StoryarnWeb.FlowLive.Show do
         <div class="flex-none flex items-center gap-4">
           <.online_users users={@online_users} current_user_id={@current_scope.user.id} />
           <.save_indicator :if={@can_edit} status={@save_status} />
+          <button
+            type="button"
+            class={[
+              "btn btn-sm gap-2",
+              if(@debug_panel_open, do: "btn-accent", else: "btn-ghost")
+            ]}
+            phx-click={if(@debug_panel_open, do: "debug_stop", else: "debug_start")}
+          >
+            <.icon name="bug" class="size-4" />
+            {if @debug_panel_open, do: gettext("Stop Debug"), else: gettext("Debug")}
+          </button>
           <div :if={@can_edit} class="dropdown dropdown-end">
             <button type="button" tabindex="0" class="btn btn-primary btn-sm gap-2">
               <.icon name="plus" class="size-4" />
@@ -129,22 +142,30 @@ defmodule StoryarnWeb.FlowLive.Show do
         user_color={@collab_toast.user_color}
       />
 
-      <%!-- Main content: Canvas + Properties Panel --%>
+      <%!-- Main content: Canvas + Debug Panel + Properties Panel --%>
       <div class="flex-1 flex overflow-hidden">
-        <%!-- Canvas --%>
-        <div class="flex-1 relative bg-base-200">
-          <div
-            id="flow-canvas"
-            phx-hook="FlowCanvas"
-            phx-update="ignore"
-            class="absolute inset-0"
-            data-flow={Jason.encode!(@flow_data)}
-            data-sheets={Jason.encode!(FormHelpers.sheets_map(@all_sheets))}
-            data-locks={Jason.encode!(@node_locks)}
-            data-user-id={@current_scope.user.id}
-            data-user-color={Collaboration.user_color(@current_scope.user.id)}
-          >
+        <%!-- Canvas + Debug Panel (vertical stack) --%>
+        <div class="flex-1 flex flex-col">
+          <div class="flex-1 relative bg-base-200">
+            <div
+              id="flow-canvas"
+              phx-hook="FlowCanvas"
+              phx-update="ignore"
+              class="absolute inset-0"
+              data-flow={Jason.encode!(@flow_data)}
+              data-sheets={Jason.encode!(FormHelpers.sheets_map(@all_sheets))}
+              data-locks={Jason.encode!(@node_locks)}
+              data-user-id={@current_scope.user.id}
+              data-user-color={Collaboration.user_color(@current_scope.user.id)}
+            >
+            </div>
           </div>
+
+          <.debug_panel
+            :if={@debug_panel_open && @debug_state}
+            debug_state={@debug_state}
+            debug_active_tab={@debug_active_tab}
+          />
         </div>
 
         <%!-- Node Properties Panel (Sidebar mode) --%>
@@ -270,6 +291,11 @@ defmodule StoryarnWeb.FlowLive.Show do
     |> assign(:collab_toast, nil)
     |> assign(:remote_cursors, %{})
     |> assign(:panel_sections, %{})
+    |> assign(:debug_state, nil)
+    |> assign(:debug_panel_open, false)
+    |> assign(:debug_active_tab, "console")
+    |> assign(:debug_nodes, %{})
+    |> assign(:debug_connections, [])
   end
 
   @impl true
@@ -609,6 +635,35 @@ defmodule StoryarnWeb.FlowLive.Show do
       _ ->
         {:noreply, put_flash(socket, :error, gettext("Invalid flow ID."))}
     end
+  end
+
+  # Debug
+  def handle_event("debug_start", _params, socket) do
+    DebugHandlers.handle_debug_start(socket)
+  end
+
+  def handle_event("debug_step", _params, socket) do
+    DebugHandlers.handle_debug_step(socket)
+  end
+
+  def handle_event("debug_step_back", _params, socket) do
+    DebugHandlers.handle_debug_step_back(socket)
+  end
+
+  def handle_event("debug_choose_response", params, socket) do
+    DebugHandlers.handle_debug_choose_response(params, socket)
+  end
+
+  def handle_event("debug_reset", _params, socket) do
+    DebugHandlers.handle_debug_reset(socket)
+  end
+
+  def handle_event("debug_stop", _params, socket) do
+    DebugHandlers.handle_debug_stop(socket)
+  end
+
+  def handle_event("debug_tab_change", params, socket) do
+    DebugHandlers.handle_debug_tab_change(params, socket)
   end
 
   # Collaboration & Preview

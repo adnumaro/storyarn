@@ -13,6 +13,7 @@ import { createPlugins, finalizeSetup } from "../flow_canvas/setup.js";
 import { setupEventHandlers } from "../flow_canvas/event_bindings.js";
 import {
   createCursorHandler,
+  createDebugHandler,
   createEditorHandlers,
   createKeyboardHandler,
   createLockHandler,
@@ -51,6 +52,7 @@ export const FlowCanvas = {
     this.editorHandlers = createEditorHandlers(this);
 
     this.navigationHandler = createNavigationHandler(this);
+    this.debugHandler = createDebugHandler(this);
 
     this.cursorHandler.init();
     this.lockHandler.init();
@@ -208,6 +210,7 @@ export const FlowCanvas = {
     this.keyboardHandler?.destroy();
     this.editorHandlers?.destroy();
     this.navigationHandler?.destroy();
+    this.debugHandler?.destroy();
 
     if (this.minimap?.element) {
       this.minimap.element.remove();

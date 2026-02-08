@@ -227,6 +227,49 @@ export const storyarnNodeStyles = css`
     }
   }
 
+  /* Debug: current node — pulsing primary border */
+  :host(.debug-current) .node {
+    animation: debug-pulse 1.5s ease-in-out infinite;
+    border-color: oklch(var(--p, 0.6 0.2 250) / 0.6);
+  }
+
+  /* Debug: visited node — subtle success border */
+  :host(.debug-visited) .node {
+    border-color: oklch(var(--su, 0.75 0.15 150) / 0.4);
+  }
+
+  /* Debug: waiting for input — pulsing warning border */
+  :host(.debug-waiting) .node {
+    animation: debug-pulse-warning 1.5s ease-in-out infinite;
+    border-color: oklch(var(--wa, 0.8 0.15 80) / 0.6);
+  }
+
+  /* Debug: error node — error border */
+  :host(.debug-error) .node {
+    border-color: oklch(var(--er, 0.65 0.25 25) / 0.5);
+    box-shadow: 0 0 0 2px oklch(var(--er, 0.65 0.25 25) / 0.15);
+  }
+
+  @keyframes debug-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 3px oklch(var(--p, 0.6 0.2 250) / 0.35);
+    }
+    50% {
+      box-shadow: 0 0 0 6px oklch(var(--p, 0.6 0.2 250) / 0.12),
+                  0 0 14px oklch(var(--p, 0.6 0.2 250) / 0.08);
+    }
+  }
+
+  @keyframes debug-pulse-warning {
+    0%, 100% {
+      box-shadow: 0 0 0 3px oklch(var(--wa, 0.8 0.15 80) / 0.35);
+    }
+    50% {
+      box-shadow: 0 0 0 6px oklch(var(--wa, 0.8 0.15 80) / 0.12),
+                  0 0 14px oklch(var(--wa, 0.8 0.15 80) / 0.08);
+    }
+  }
+
   .nav-link {
     cursor: pointer;
     text-decoration: underline dotted;

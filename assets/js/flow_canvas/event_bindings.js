@@ -139,6 +139,12 @@ export function setupEventHandlers(hook) {
     hook.pushEvent("navigate_to_referencing_flow", { "flow-id": String(e.detail.flowId) });
   });
 
+  // Handle server events - Debug
+  hook.handleEvent("debug_highlight_node", (data) =>
+    hook.debugHandler.handleHighlightNode(data),
+  );
+  hook.handleEvent("debug_clear_highlights", () => hook.debugHandler.handleClearHighlights());
+
   // Handle server events - Collaboration
   hook.handleEvent("cursor_update", (data) => hook.cursorHandler.handleCursorUpdate(data));
   hook.handleEvent("cursor_leave", (data) => hook.cursorHandler.handleCursorLeave(data));

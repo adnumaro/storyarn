@@ -623,25 +623,6 @@ Before starting a debug session (triggered by any entry point), a modal appears:
 
 **Goal:** Step-by-step debugging within a single flow with variable inspection and per-rule condition detail.
 
-**Backend:**
-- [ ] `Evaluator.State` struct (including snapshots stack for undo)
-- [ ] `Evaluator.ConditionEval` — evaluate all operator types, return per-rule results
-- [ ] `Evaluator.InstructionExec` — execute all assignment operators, return changes list
-- [ ] `Evaluator.Engine` — `init/3`, `step/3`, `step_back/1`, `choose_response/3`, `reset/1`
-- [ ] Unit tests for engine, condition_eval, instruction_exec
-- [ ] `debug_handlers.ex` — LiveView event handlers for debug_start, debug_step, debug_step_back, debug_stop, debug_choose_response
-
-**Frontend:**
-- [ ] Debug panel component (bottom panel with controls bar)
-- [ ] Console tab — log entries with expandable per-rule condition breakdown
-- [ ] Variables tab — 4-column view (Initial / Previous / Current / Source), read-only
-- [ ] Canvas: highlight current node (CSS class toggled via push_event)
-- [ ] Canvas: mark visited nodes (green tint)
-- [ ] Canvas: mark error nodes (red tint)
-- [ ] "Start debug" button in toolbar
-- [ ] "Start debug here" in node context menu
-- [ ] Step Back button (undo)
-
 **Scope exclusions for Phase 1:**
 - No auto-play (step-by-step only)
 - No connection animations
@@ -649,6 +630,81 @@ Before starting a debug session (triggered by any entry point), a modal appears:
 - No History or Path tabs
 - No initial state modal (uses DB values directly)
 - No analysis/player toggle (analysis mode only)
+
+#### Task 1: `Evaluator.State` + `Evaluator.ConditionEval` + tests ✅
+
+- [x] `Evaluator.State` struct definition (all fields for debug session)
+- [x] `Evaluator.ConditionEval.evaluate/2` — evaluate condition map against variable state
+- [x] `Evaluator.ConditionEval.evaluate_rule/2` — evaluate single rule, return detail
+- [x] `Evaluator.ConditionEval.evaluate_string/2` — parse JSON string conditions (dialogue fields)
+- [x] All condition operators: number, boolean, text, select, multi_select, date
+- [x] Logic modes: `"all"` (AND) and `"any"` (OR)
+- [x] Edge cases: missing variables → nil, empty rules → true, legacy conditions → skip
+- [x] Unit tests for `condition_eval` (60 tests)
+
+**Files:** `lib/storyarn/flows/evaluator/state.ex`, `lib/storyarn/flows/evaluator/condition_eval.ex`, `test/storyarn/flows/evaluator/condition_eval_test.exs`
+
+#### Task 2: `Evaluator.InstructionExec` + tests ✅
+
+- [x] `Evaluator.InstructionExec.execute/2` — execute assignments list, return `{:ok, new_variables, changes, errors}`
+- [x] `Evaluator.InstructionExec.execute_string/2` — parse JSON string instructions (dialogue output_instruction)
+- [x] All instruction operators: set, add, subtract, set_true, set_false, toggle, clear
+- [x] `variable_ref` support (resolve value from another variable in state)
+- [x] Edge cases: missing variable → error + skip, incomplete assignment → skip, chained ops
+- [x] Unit tests for `instruction_exec` (31 tests)
+
+**Files:** `lib/storyarn/flows/evaluator/instruction_exec.ex`, `test/storyarn/flows/evaluator/instruction_exec_test.exs`
+
+#### Task 3: `Evaluator.Engine` + tests ✅
+
+- [x] `Engine.init/2` — initialize state from pre-loaded variables + start node
+- [x] `Engine.step/3` — advance one node (entry, exit, dialogue, condition, instruction, hub, jump, scene, subflow)
+- [x] `Engine.step_back/1` — undo last step via snapshots stack
+- [x] `Engine.choose_response/3` — user selects a dialogue response, execute response instruction, advance
+- [x] `Engine.reset/1` — reset to initial state
+- [x] Dialogue: input_condition evaluation, output_instruction execution, response condition evaluation
+- [x] Condition: boolean mode + switch mode with per-rule detail logging
+- [x] Console logging for each node type (per-rule detail for conditions)
+- [x] Execution path tracking, snapshot stack for undo
+- [x] Infinite loop protection (max_steps)
+- [x] Unit tests with simulated flow graphs (37 tests)
+
+**Files:** `lib/storyarn/flows/evaluator/engine.ex`, `test/storyarn/flows/evaluator/engine_test.exs`
+
+#### Task 4: Debug handlers + panel + first working integration ✅
+
+- [x] `debug_handlers.ex` — events: `debug_start`, `debug_step`, `debug_step_back`, `debug_stop`, `debug_choose_response`, `debug_reset`, `debug_tab_change`
+- [x] Socket assigns in `show.ex`: `debug_state`, `debug_panel_open`, `debug_active_tab`, `debug_nodes`, `debug_connections`
+- [x] `debug_panel.ex` component — controls bar (step, step back, reset, stop) + status badge + console tab + response choices
+- [x] "Debug" toggle button in flow editor toolbar (start/stop)
+- [x] Wire up: click Debug → load variables + graph → init engine → panel opens → step through flow → see console log → choose responses → reset/stop
+- [x] Variables converted from `Sheets.list_project_variables/1` with type-based defaults (number→0, boolean→false, text→"")
+- [x] All 791 tests passing, zero warnings
+
+**Files:** `lib/storyarn_web/live/flow_live/handlers/debug_handlers.ex` (new), `lib/storyarn_web/live/flow_live/components/debug_panel.ex` (new), `lib/storyarn_web/live/flow_live/show.ex` (modified)
+
+#### Task 5: Canvas visual feedback ✅
+
+- [x] Push events from LiveView: `debug_highlight_node` (node_id, status, execution_path), `debug_clear_highlights`
+- [x] `debug_handler.js` — `handleHighlightNode` and `handleClearHighlights` methods following navigation_handler.js pattern
+- [x] CSS classes in `storyarn_node_styles.js`: `.debug-current` (pulsing primary), `.debug-visited` (success border), `.debug-waiting` (pulsing warning), `.debug-error` (error border)
+- [x] `@keyframes debug-pulse` and `debug-pulse-warning` animations using OKLch + daisyUI variables
+- [x] Auto-scroll canvas to current node on each step via `AreaExtensions.zoomAt`
+- [x] `debug_clear_highlights` removes all debug overlays on stop
+- [x] Handler registered in `handlers/index.js`, wired in `event_bindings.js`, lifecycle in `flow_canvas.js`
+- [x] All 791 tests passing
+
+**Files:** `assets/js/flow_canvas/handlers/debug_handler.js` (new), `assets/js/flow_canvas/components/storyarn_node_styles.js` (modified), `assets/js/flow_canvas/event_bindings.js` (modified), `assets/js/hooks/flow_canvas.js` (modified), `assets/js/flow_canvas/handlers/index.js` (modified)
+
+#### Task 6: Variables tab
+
+- [ ] 4-column table: Variable / Initial / Previous / Current
+- [ ] Source color coding: orange = instruction, blue = user override, gray = unchanged
+- [ ] Diff highlighting: bold values that differ from initial
+- [ ] Read-only (inline editing is Phase 2)
+- [ ] Tab switch in debug panel (`debug_active_tab`)
+
+**Files:** `lib/storyarn_web/live/flow_live/components/debug_panel.ex`
 
 ### Phase 2 — Interactivity + Visual Polish
 
