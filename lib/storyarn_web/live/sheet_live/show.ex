@@ -13,7 +13,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.SheetLive.Components.Banner
   alias StoryarnWeb.SheetLive.Components.ContentTab
   alias StoryarnWeb.SheetLive.Components.SheetAvatar
-  alias StoryarnWeb.SheetLive.Components.SheetColor
+
   alias StoryarnWeb.SheetLive.Components.SheetTitle
   alias StoryarnWeb.SheetLive.Components.ReferencesTab
   alias StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers
@@ -80,12 +80,6 @@ defmodule StoryarnWeb.SheetLive.Show do
                 sheet={@sheet}
                 project={@project}
                 current_user_id={@current_scope.user.id}
-                can_edit={@can_edit}
-              />
-              <.live_component
-                module={SheetColor}
-                id="sheet-color"
-                sheet={@sheet}
                 can_edit={@can_edit}
               />
             </div>

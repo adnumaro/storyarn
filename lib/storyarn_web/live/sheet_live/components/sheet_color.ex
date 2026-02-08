@@ -11,7 +11,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetColor do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="flex flex-col gap-2">
+    <div class="flex flex-col gap-1">
       <div class="flex items-center gap-2">
         <span class="text-sm text-base-content/60">{gettext("Color")}</span>
         <%= if @sheet.color do %>
