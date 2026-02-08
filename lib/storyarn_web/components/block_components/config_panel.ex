@@ -38,6 +38,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
       |> assign(:is_constant, assigns.block.is_constant || false)
       |> assign(:variable_name, assigns.block.variable_name)
       |> assign(:can_be_variable, Storyarn.Sheets.Block.can_be_variable?(assigns.block.type))
+      |> assign(:scope, assigns.block.scope || "self")
+      |> assign(:is_inherited, Storyarn.Sheets.Block.inherited?(assigns.block))
+      |> assign(:is_detached, assigns.block.detached || false)
+      |> assign(:required, assigns.block.required || false)
 
     ~H"""
     <div class="fixed inset-y-0 right-0 w-80 bg-base-200 shadow-xl z-50 flex flex-col">
@@ -62,7 +66,89 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
             <label class="label">
               <span class="label-text">{gettext("Type")}</span>
             </label>
-            <div class="badge badge-neutral">{@block.type}</div>
+            <div class="flex items-center gap-2">
+              <div class="badge badge-neutral">{@block.type}</div>
+              <div :if={@is_inherited} class="badge badge-info badge-outline badge-sm">
+                {gettext("Inherited")}
+              </div>
+              <div :if={@is_detached} class="badge badge-warning badge-outline badge-sm">
+                {gettext("Detached")}
+              </div>
+            </div>
+          </div>
+
+          <%!-- Scope selector (only for non-inherited blocks) --%>
+          <div :if={!@is_inherited && @block.type != "divider"}>
+            <label class="label">
+              <span class="label-text">{gettext("Scope")}</span>
+            </label>
+            <div class="flex flex-col gap-2">
+              <label class="flex items-center gap-2 cursor-pointer text-sm">
+                <input
+                  type="radio"
+                  name="scope"
+                  value="self"
+                  checked={@scope == "self"}
+                  class="radio radio-sm"
+                  phx-click="change_block_scope"
+                  phx-value-scope="self"
+                  phx-target={@target}
+                />
+                <span>{gettext("This page only")}</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer text-sm">
+                <input
+                  type="radio"
+                  name="scope"
+                  value="children"
+                  checked={@scope == "children"}
+                  class="radio radio-sm"
+                  phx-click="change_block_scope"
+                  phx-value-scope="children"
+                  phx-target={@target}
+                />
+                <span>{gettext("This page and all children")}</span>
+              </label>
+            </div>
+            <p :if={@scope == "children"} class="text-xs text-base-content/50 mt-1">
+              {gettext("Changes to this property's definition will sync to all children.")}
+            </p>
+          </div>
+
+          <%!-- Required toggle (only for inheritable blocks) --%>
+          <div :if={@scope == "children" && !@is_inherited} class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <input
+                type="checkbox"
+                name="required"
+                value="true"
+                checked={@required}
+                class="toggle toggle-sm"
+                phx-click="toggle_required"
+                phx-target={@target}
+              />
+              <span class="label-text">{gettext("Required")}</span>
+            </label>
+            <p class="text-xs text-base-content/50 ml-12">
+              {gettext("Mark this property as required for children.")}
+            </p>
+          </div>
+
+          <%!-- Re-attach option for detached blocks --%>
+          <div :if={@is_detached}>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline btn-info w-full"
+              phx-click="reattach_block"
+              phx-value-id={@block.id}
+              phx-target={@target}
+            >
+              <.icon name="link" class="size-4" />
+              {gettext("Re-sync with source")}
+            </button>
+            <p class="text-xs text-base-content/50 mt-1">
+              {gettext("Resets the property definition to match the source. Your value will be preserved.")}
+            </p>
           </div>
 
           <%!-- Use as constant toggle (first after Type) --%>

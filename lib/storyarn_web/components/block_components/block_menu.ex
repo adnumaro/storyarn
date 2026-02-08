@@ -14,10 +14,44 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
       <.block_menu target={@myself} />
   """
   attr :target, :any, default: nil
+  attr :scope, :string, default: "self"
 
   def block_menu(assigns) do
     ~H"""
     <div class="absolute z-10 bg-base-100 border border-base-300 rounded-lg shadow-lg p-2 w-64">
+      <%!-- Scope selector --%>
+      <div class="px-2 py-2 mb-2 border-b border-base-300">
+        <div class="text-xs text-base-content/50 uppercase mb-1">{gettext("Scope")}</div>
+        <div class="flex flex-col gap-1">
+          <label class="flex items-center gap-2 cursor-pointer text-sm">
+            <input
+              type="radio"
+              name="block_scope"
+              value="self"
+              checked={@scope == "self"}
+              class="radio radio-xs"
+              phx-click="set_block_scope"
+              phx-value-scope="self"
+              phx-target={@target}
+            />
+            <span>{gettext("This page only")}</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer text-sm">
+            <input
+              type="radio"
+              name="block_scope"
+              value="children"
+              checked={@scope == "children"}
+              class="radio radio-xs"
+              phx-click="set_block_scope"
+              phx-value-scope="children"
+              phx-target={@target}
+            />
+            <span>{gettext("This page and all children")}</span>
+          </label>
+        </div>
+      </div>
+
       <div class="text-xs text-base-content/50 px-2 py-1 uppercase">{gettext("Basic Blocks")}</div>
       <button
         type="button"

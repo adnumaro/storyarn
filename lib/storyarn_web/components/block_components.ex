@@ -98,6 +98,15 @@ defmodule StoryarnWeb.Components.BlockComponents do
         </div>
       </div>
 
+      <%!-- Scope indicator for inheritable blocks --%>
+      <div
+        :if={Map.get(@block, :scope) == "children"}
+        class="absolute -right-1 top-1 lg:opacity-0 lg:group-hover:opacity-100"
+        title={gettext("Inherited by children")}
+      >
+        <.icon name="arrow-down" class="size-3 text-info/60" />
+      </div>
+
       <%!-- Block content --%>
       <div class="flex-1 lg:flex-none">
         <%= case @block.type do %>
