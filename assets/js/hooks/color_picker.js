@@ -1,24 +1,27 @@
 /**
- * ColorPicker hook — wraps vanilla-colorful's <hex-color-picker>.
- *
- * Usage in HEEX:
- *   <div id="color-X" phx-hook="ColorPicker" data-color="#3b82f6" data-event="update_color" data-field="color">
- *     <!-- picker injected here by hook -->
- *   </div>
+ * ColorPicker hook — Figma-style dropdown color picker.
+ * Trigger: swatch + editable hex. Dropdown: spectrum + hue + eyedropper + hex input.
+ * Positioning handled by @floating-ui/dom.
  *
  * Attributes:
  *   data-color   — initial hex color
- *   data-event   — LiveView event to push (e.g., "update_hub_color")
+ *   data-event   — LiveView event to push
  *   data-field   — field name sent in event payload
  */
 import "vanilla-colorful/hex-color-picker.js";
 import "vanilla-colorful/hex-input.js";
+import { createElement, Pipette, ChevronDown } from "lucide";
+import { computePosition, flip, shift, offset, autoUpdate } from "@floating-ui/dom";
 
 export const ColorPicker = {
-  // Note: phx-update="ignore" is set on the container, so updated() won't fire.
-  // The hook fully owns its DOM; server re-renders are skipped by design.
   mounted() {
+    this.open = false;
+    this._cleanupAutoUpdate = null;
     this.render();
+    this._onClickOutside = (e) => {
+      if (this.open && !this.el.contains(e.target) && !this.panel.contains(e.target)) this.close();
+    };
+    document.addEventListener("mousedown", this._onClickOutside);
   },
 
   render() {
@@ -26,40 +29,99 @@ export const ColorPicker = {
     const event = this.el.dataset.event;
     const field = this.el.dataset.field || "color";
 
-    // Create picker
+    // ── Trigger: [swatch] [# hex] [chevron] ──
+    const trigger = document.createElement("div");
+    trigger.style.cssText =
+      "display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--color-base-300);border-radius:0.375rem;background-color:var(--color-base-100);cursor:pointer;";
+    this.trigger = trigger;
+
+    const swatch = document.createElement("div");
+    swatch.style.cssText = `width:16px;height:16px;border-radius:4px;border:1px solid var(--color-base-300);background:${color};flex-shrink:0;`;
+    this.swatch = swatch;
+
+    const triggerHex = document.createElement("span");
+    triggerHex.textContent = color;
+    triggerHex.style.cssText =
+      "font-family:monospace;font-size:11px;color:var(--color-base-content);opacity:0.6;flex:1;";
+    this.triggerHex = triggerHex;
+
+    const chevron = document.createElement("span");
+    chevron.appendChild(createElement(ChevronDown, { width: 10, height: 10, "stroke-width": 2.5, style: "opacity:0.35" }));
+    chevron.style.cssText = "flex-shrink:0;display:flex;transition:transform 0.15s;";
+    this.chevron = chevron;
+
+    trigger.append(swatch, triggerHex, chevron);
+    trigger.addEventListener("click", () =>
+      this.open ? this.close() : this.openPanel(),
+    );
+
+    // ── Dropdown panel (appended to body to escape overflow:hidden) ──
+    const panel = document.createElement("div");
+    panel.style.cssText =
+      "position:fixed;width:240px;z-index:9999;padding:12px;border:1px solid var(--color-base-300);border-radius:0.5rem;background-color:var(--color-base-100);box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);display:none;";
+    this.panel = panel;
+
+    // Picker (spectrum + hue)
     this.picker = document.createElement("hex-color-picker");
     this.picker.color = color;
     this.picker.style.width = "100%";
+    this.picker.style.setProperty("--hcp-height", "140px");
 
-    // Create hex input row
-    const inputRow = document.createElement("div");
-    inputRow.style.cssText = "display:flex;align-items:center;gap:6px;margin-top:6px;";
+    // Bottom row: [eyedropper] [swatch] [# hex-input]
+    const bottomRow = document.createElement("div");
+    bottomRow.style.cssText =
+      "display:flex;align-items:center;gap:8px;margin-top:10px;";
 
-    const swatch = document.createElement("div");
-    swatch.style.cssText = `width:24px;height:24px;border-radius:6px;border:1px solid rgba(0,0,0,0.15);background:${color};flex-shrink:0;`;
-    this.swatch = swatch;
+    // Eyedropper button (only if EyeDropper API available)
+    if (window.EyeDropper) {
+      const eyedropperBtn = document.createElement("button");
+      eyedropperBtn.type = "button";
+      eyedropperBtn.appendChild(createElement(Pipette, { width: 14, height: 14 }));
+      eyedropperBtn.style.cssText =
+        "display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:0.375rem;border:1px solid var(--color-base-300);background-color:var(--color-base-200);cursor:pointer;color:var(--color-base-content);opacity:0.6;flex-shrink:0;";
+      eyedropperBtn.title = "Pick color from screen";
+      eyedropperBtn.addEventListener("click", async () => {
+        try {
+          const dropper = new EyeDropper();
+          const result = await dropper.open();
+          this.setColor(result.sRGBHex);
+        } catch {
+          /* user cancelled */
+        }
+      });
+      bottomRow.appendChild(eyedropperBtn);
+    }
 
-    const label = document.createElement("span");
-    label.textContent = "#";
-    label.style.cssText = "font-size:12px;opacity:0.5;";
+    const inputSwatch = document.createElement("div");
+    inputSwatch.style.cssText = `width:22px;height:22px;border-radius:5px;border:1px solid var(--color-base-300);background:${color};flex-shrink:0;`;
+    this.inputSwatch = inputSwatch;
 
-    this.input = document.createElement("hex-input");
-    this.input.color = color;
-    this.input.setAttribute("alpha", "");
-    this.input.style.cssText = "flex:1;";
+    const hashLabel = document.createElement("span");
+    hashLabel.textContent = "#";
+    hashLabel.style.cssText =
+      "font-family:monospace;font-size:11px;color:var(--color-base-content);opacity:0.4;flex-shrink:0;";
 
-    // Style the inner input
+    this.hexInput = document.createElement("hex-input");
+    this.hexInput.color = color;
+    this.hexInput.setAttribute("alpha", "");
+    this.hexInput.style.cssText = "flex:1;min-width:0;";
+
     const innerInput = document.createElement("input");
-    innerInput.style.cssText = "width:100%;font-family:monospace;font-size:12px;border:1px solid rgba(0,0,0,0.15);border-radius:4px;padding:2px 6px;background:transparent;color:inherit;";
-    this.input.appendChild(innerInput);
+    innerInput.style.cssText =
+      "width:100%;font-family:monospace;font-size:11px;border:1px solid var(--color-base-300);border-radius:0.25rem;padding:3px 6px;background-color:var(--color-base-200);color:var(--color-base-content);outline:none;";
+    this.hexInput.appendChild(innerInput);
 
-    inputRow.append(swatch, label, this.input);
-    this.el.append(this.picker, inputRow);
+    bottomRow.append(inputSwatch, hashLabel, this.hexInput);
+    panel.append(this.picker, bottomRow);
+    document.body.appendChild(panel);
+    this.el.appendChild(trigger);
 
-    // Debounce pushEvent to avoid flooding server
+    // ── Sync ──
     let debounceTimer;
-    const pushColor = (hex) => {
+    this._pushColor = (hex) => {
       swatch.style.background = hex;
+      inputSwatch.style.background = hex;
+      triggerHex.textContent = hex;
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         this.pushEvent(event, { [field]: hex });
@@ -67,17 +129,50 @@ export const ColorPicker = {
     };
 
     this.picker.addEventListener("color-changed", (e) => {
-      this.input.color = e.detail.value;
-      pushColor(e.detail.value);
+      this.hexInput.color = e.detail.value;
+      this._pushColor(e.detail.value);
     });
 
-    this.input.addEventListener("color-changed", (e) => {
+    this.hexInput.addEventListener("color-changed", (e) => {
       this.picker.color = e.detail.value;
-      pushColor(e.detail.value);
+      this._pushColor(e.detail.value);
     });
   },
 
+  setColor(hex) {
+    this.picker.color = hex;
+    this.hexInput.color = hex;
+    this._pushColor(hex);
+  },
+
+  openPanel() {
+    this.open = true;
+    this.panel.style.display = "block";
+    this.chevron.style.transform = "rotate(180deg)";
+
+    // Floating UI handles positioning + auto-repositioning on scroll/resize
+    this._cleanupAutoUpdate = autoUpdate(this.trigger, this.panel, () => {
+      computePosition(this.trigger, this.panel, {
+        placement: "bottom-start",
+        strategy: "fixed",
+        middleware: [offset(4), flip(), shift({ padding: 8 })],
+      }).then(({ x, y }) => {
+        Object.assign(this.panel.style, { left: `${x}px`, top: `${y}px` });
+      });
+    });
+  },
+
+  close() {
+    this.open = false;
+    this.panel.style.display = "none";
+    this.chevron.style.transform = "";
+    this._cleanupAutoUpdate?.();
+    this._cleanupAutoUpdate = null;
+  },
+
   destroyed() {
-    // Web components clean up automatically
+    document.removeEventListener("mousedown", this._onClickOutside);
+    this._cleanupAutoUpdate?.();
+    this.panel?.remove();
   },
 };
