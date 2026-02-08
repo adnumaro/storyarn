@@ -359,22 +359,22 @@ lib/storyarn_web/live/flow_live/
 
 **Events from the UI:**
 
-| Event                      | Action                                         |
-|----------------------------|-------------------------------------------------|
-| `debug_start`              | Init debug state, open panel, highlight node    |
-| `debug_start_from_node`    | Init debug state starting from specific node    |
-| `debug_step`               | Call Engine.step, update state, push to canvas  |
-| `debug_step_back`          | Call Engine.step_back, restore snapshot          |
-| `debug_play`               | Set status to :running, start auto-step timer   |
-| `debug_pause`              | Set status to :paused, cancel timer             |
-| `debug_stop`               | Clear debug state, close panel, reset canvas    |
-| `debug_restart`            | Reset state to initial, restart from start node |
-| `debug_choose_response`    | Call Engine.choose_response, continue           |
+| Event                      | Action                                               |
+|----------------------------|------------------------------------------------------|
+| `debug_start`              | Init debug state, open panel, highlight node         |
+| `debug_start_from_node`    | Init debug state starting from specific node         |
+| `debug_step`               | Call Engine.step, update state, push to canvas       |
+| `debug_step_back`          | Call Engine.step_back, restore snapshot              |
+| `debug_play`               | Set status to :running, start auto-step timer        |
+| `debug_pause`              | Set status to :paused, cancel timer                  |
+| `debug_stop`               | Clear debug state, close panel, reset canvas         |
+| `debug_restart`            | Reset state to initial, restart from start node      |
+| `debug_choose_response`    | Call Engine.choose_response, continue                |
 | `debug_set_variable`       | Manually update a variable (source = :user_override) |
-| `debug_set_speed`          | Update auto-play interval                       |
-| `debug_switch_tab`         | Change active tab in panel                      |
-| `debug_set_initial_state`  | Override variable values before starting        |
-| `debug_toggle_view_mode`   | Switch between :analysis and :player mode       |
+| `debug_set_speed`          | Update auto-play interval                            |
+| `debug_switch_tab`         | Change active tab in panel                           |
+| `debug_set_initial_state`  | Override variable values before starting             |
+| `debug_toggle_view_mode`   | Switch between :analysis and :player mode            |
 
 **Auto-play mechanism:**
 
@@ -400,17 +400,17 @@ lib/storyarn_web/live/flow_live/
 
 #### Debug Overlay Events (LiveView → JS)
 
-| Push event                  | Payload                                    | Canvas action                        |
-|-----------------------------|--------------------------------------------|--------------------------------------|
-| `debug_highlight_node`      | `{node_id, type}`                          | Add pulsing border to current node   |
-| `debug_mark_visited`        | `{node_id}`                                | Add green tint / checkmark           |
-| `debug_mark_error`          | `{node_id}`                                | Add red tint                         |
+| Push event                  | Payload                                    | Canvas action                                   |
+|-----------------------------|--------------------------------------------|-------------------------------------------------|
+| `debug_highlight_node`      | `{node_id, type}`                          | Add pulsing border to current node              |
+| `debug_mark_visited`        | `{node_id}`                                | Add green tint / checkmark                      |
+| `debug_mark_error`          | `{node_id}`                                | Add red tint                                    |
 | `debug_mark_branch_failed`  | `{node_id, pin, reason}`                   | Red tint on specific output pin (analysis mode) |
-| `debug_animate_edge`        | `{source_id, target_id, source_pin}`       | Animate dash flow on connection      |
-| `debug_dim_edges`           | `{except: [connection_ids]}`               | Reduce opacity on non-taken paths    |
-| `debug_clear`               | `{}`                                       | Remove all debug overlays            |
-| `debug_scroll_to_node`      | `{node_id}`                                | Pan canvas to center on node         |
-| `debug_clear_last_step`     | `{node_id, edges}`                         | Remove highlights from undone step   |
+| `debug_animate_edge`        | `{source_id, target_id, source_pin}`       | Animate dash flow on connection                 |
+| `debug_dim_edges`           | `{except: [connection_ids]}`               | Reduce opacity on non-taken paths               |
+| `debug_clear`               | `{}`                                       | Remove all debug overlays                       |
+| `debug_scroll_to_node`      | `{node_id}`                                | Pan canvas to center on node                    |
+| `debug_clear_last_step`     | `{node_id, edges}`                         | Remove highlights from undone step              |
 
 #### CSS Animations
 
@@ -487,16 +487,16 @@ The debug panel appears at the bottom of the flow editor, resizable vertically. 
 
 ### Controls Bar
 
-| Control     | Icon | Action                                          |
-|-------------|------|-------------------------------------------------|
-| Play        | `▶`  | Start/resume auto-play                          |
-| Step        | `⏭`  | Advance one node                                |
-| Step Back   | `⏮`  | Undo last step (restore previous snapshot)      |
-| Pause       | `⏸`  | Pause auto-play                                 |
-| Stop        | `⏹`  | End debug session                               |
-| Restart     | `↺`  | Reset to initial state and start node           |
-| Speed       | slider | 200ms to 3000ms delay between auto-steps      |
-| View Mode   | toggle | Analysis (show all) / Player (valid only)      |
+| Control     | Icon   | Action                                           |
+|-------------|--------|--------------------------------------------------|
+| Play        | `▶`    | Start/resume auto-play                           |
+| Step        | `⏭`    | Advance one node                                 |
+| Step Back   | `⏮`    | Undo last step (restore previous snapshot)       |
+| Pause       | `⏸`    | Pause auto-play                                  |
+| Stop        | `⏹`    | End debug session                                |
+| Restart     | `↺`    | Reset to initial state and start node            |
+| Speed       | slider | 200ms to 3000ms delay between auto-steps         |
+| View Mode   | toggle | Analysis (show all) / Player (valid only)        |
 
 ### Console Tab
 
@@ -743,20 +743,20 @@ assets/css/app.css                                           # Debug animations 
 
 ## Edge Cases
 
-| Scenario                                    | Behavior                                                    |
-|---------------------------------------------|-------------------------------------------------------------|
-| Node has no outgoing connections             | Log error, end execution                                    |
-| Condition evaluates but no matching pin      | Log error with rule detail, end execution                   |
-| Variable referenced in condition is missing  | Treat as nil, log warning with variable name                |
-| Instruction references non-existent variable | Log error, skip assignment, continue with remaining         |
+| Scenario                                     | Behavior                                                                                   |
+|----------------------------------------------|--------------------------------------------------------------------------------------------|
+| Node has no outgoing connections             | Log error, end execution                                                                   |
+| Condition evaluates but no matching pin      | Log error with rule detail, end execution                                                  |
+| Variable referenced in condition is missing  | Treat as nil, log warning with variable name                                               |
+| Instruction references non-existent variable | Log error, skip assignment, continue with remaining                                        |
 | Dialogue has 0 valid responses after filter  | Analysis: show all as failed; Player: log warning, follow "output" pin if exists, else end |
-| Circular path (infinite loop)               | Auto-play stops after max_steps (default: 500), log error   |
-| Node data is malformed / unparseable        | Log error, skip node, try to follow output                  |
-| Start from node with no input connections   | Valid — just start there                                    |
-| User edits variable during auto-play        | Pause auto-play, apply change, user can resume              |
-| Multiple connections from same pin           | Follow first one found, log warning (should not happen)     |
-| Stale variable references                   | Use current sheet_shortcut.variable_name, log warning       |
-| Step back at first node                     | No-op, log info "Already at the start"                      |
-| Step back after choosing response            | Restore snapshot, return to dialogue with choices re-presented |
-| Toggle analysis↔player mid-session          | Immediate: re-evaluate current node's visible branches      |
-| Variable override during condition node      | If current node is condition, re-evaluate and update console |
+| Circular path (infinite loop)                | Auto-play stops after max_steps (default: 500), log error                                  |
+| Node data is malformed / unparseable         | Log error, skip node, try to follow output                                                 |
+| Start from node with no input connections    | Valid — just start there                                                                   |
+| User edits variable during auto-play         | Pause auto-play, apply change, user can resume                                             |
+| Multiple connections from same pin           | Follow first one found, log warning (should not happen)                                    |
+| Stale variable references                    | Use current sheet_shortcut.variable_name, log warning                                      |
+| Step back at first node                      | No-op, log info "Already at the start"                                                     |
+| Step back after choosing response            | Restore snapshot, return to dialogue with choices re-presented                             |
+| Toggle analysis↔player mid-session           | Immediate: re-evaluate current node's visible branches                                     |
+| Variable override during condition node      | If current node is condition, re-evaluate and update console                               |
