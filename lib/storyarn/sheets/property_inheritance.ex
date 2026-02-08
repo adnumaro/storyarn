@@ -105,6 +105,8 @@ defmodule Storyarn.Sheets.PropertyInheritance do
             inherited_from_block_id: parent_block.id,
             detached: false,
             required: parent_block.required,
+            column_group_id: nil,
+            column_index: 0,
             sheet_id: sheet_id,
             inserted_at: now,
             updated_at: now
@@ -481,6 +483,8 @@ defmodule Storyarn.Sheets.PropertyInheritance do
             inherited_from_block_id: parent_block.id,
             detached: false,
             required: parent_block.required,
+            column_group_id: nil,
+            column_index: 0,
             sheet_id: sheet.id,
             inserted_at: now,
             updated_at: now

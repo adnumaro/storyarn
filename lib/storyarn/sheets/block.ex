@@ -90,6 +90,8 @@ defmodule Storyarn.Sheets.Block do
           inherited_from_block_id: integer() | nil,
           detached: boolean(),
           required: boolean(),
+          column_group_id: Ecto.UUID.t() | nil,
+          column_index: integer(),
           sheet_id: integer() | nil,
           sheet: Sheet.t() | Ecto.Association.NotLoaded.t() | nil,
           inherited_from_block: t() | Ecto.Association.NotLoaded.t() | nil,
@@ -109,6 +111,8 @@ defmodule Storyarn.Sheets.Block do
     field :scope, :string, default: "self"
     field :detached, :boolean, default: false
     field :required, :boolean, default: false
+    field :column_group_id, Ecto.UUID
+    field :column_index, :integer, default: 0
     field :deleted_at, :utc_datetime
 
     belongs_to :sheet, Sheet
@@ -130,11 +134,13 @@ defmodule Storyarn.Sheets.Block do
     block
     |> cast(attrs, [
       :type, :position, :config, :value, :is_constant, :variable_name,
-      :scope, :inherited_from_block_id, :detached, :required
+      :scope, :inherited_from_block_id, :detached, :required,
+      :column_group_id, :column_index
     ])
     |> validate_required([:type])
     |> validate_inclusion(:type, @block_types)
     |> validate_inclusion(:scope, @scopes)
+    |> validate_inclusion(:column_index, 0..2)
     |> validate_config()
     |> maybe_generate_variable_name()
     |> foreign_key_constraint(:inherited_from_block_id)
@@ -147,11 +153,12 @@ defmodule Storyarn.Sheets.Block do
     block
     |> cast(attrs, [
       :type, :position, :config, :value, :is_constant, :variable_name,
-      :scope, :detached, :required
+      :scope, :detached, :required, :column_group_id, :column_index
     ])
     |> validate_required([:type])
     |> validate_inclusion(:type, @block_types)
     |> validate_inclusion(:scope, @scopes)
+    |> validate_inclusion(:column_index, 0..2)
     |> validate_config()
     |> maybe_generate_variable_name()
   end
