@@ -1,14 +1,13 @@
 defmodule StoryarnWeb.SheetLive.Components.ReferencesTab do
   @moduledoc """
   LiveComponent for the References tab in the sheet editor.
-  Contains BacklinksSection and VersionsSection sub-components.
+  Contains VariableUsageSection and BacklinksSection sub-components.
   """
 
   use StoryarnWeb, :live_component
 
   alias StoryarnWeb.SheetLive.Components.BacklinksSection
   alias StoryarnWeb.SheetLive.Components.VariableUsageSection
-  alias StoryarnWeb.SheetLive.Components.VersionsSection
 
   @impl true
   def render(assigns) do
@@ -29,16 +28,6 @@ defmodule StoryarnWeb.SheetLive.Components.ReferencesTab do
         id="backlinks-section"
         sheet={@sheet}
         project={@project}
-      />
-
-      <%!-- Version History Section --%>
-      <.live_component
-        module={VersionsSection}
-        id="versions-section"
-        sheet={@sheet}
-        project={@project}
-        current_user_id={@current_user_id}
-        can_edit={@can_edit}
       />
     </div>
     """

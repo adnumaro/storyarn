@@ -16,6 +16,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   alias StoryarnWeb.SheetLive.Components.SheetTitle
   alias StoryarnWeb.SheetLive.Components.ReferencesTab
+  alias StoryarnWeb.SheetLive.Components.HistoryTab
   alias StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers
   alias StoryarnWeb.SheetLive.Helpers.ReferenceHelpers
 
@@ -110,6 +111,15 @@ defmodule StoryarnWeb.SheetLive.Show do
             <.icon name="link" class="size-4 mr-2" />
             {gettext("References")}
           </button>
+          <button
+            role="tab"
+            class={["tab", @current_tab == "history" && "tab-active"]}
+            phx-click="switch_tab"
+            phx-value-tab="history"
+          >
+            <.icon name="clock" class="size-4 mr-2" />
+            {gettext("History")}
+          </button>
         </div>
 
         <%!-- Tab Content: Content (LiveComponent) --%>
@@ -134,6 +144,15 @@ defmodule StoryarnWeb.SheetLive.Show do
           project={@project}
           sheet={@sheet}
           blocks={@blocks}
+        />
+
+        <%!-- Tab Content: History (LiveComponent) --%>
+        <.live_component
+          :if={@current_tab == "history"}
+          module={HistoryTab}
+          id="history-tab"
+          project={@project}
+          sheet={@sheet}
           can_edit={@can_edit}
           current_user_id={@current_scope.user.id}
         />
@@ -210,7 +229,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
 
   @impl true
-  def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in ["content", "references"] do
+  def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in ["content", "references", "history"] do
     {:noreply, assign(socket, :current_tab, tab)}
   end
 
