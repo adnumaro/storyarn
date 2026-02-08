@@ -53,25 +53,53 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       <div
         id="blocks-container"
         class="flex flex-col gap-2 -mx-2 sm:-mx-8 md:-mx-16"
-        phx-hook={if @can_edit, do: "SortableList", else: nil}
+        phx-hook={if @can_edit, do: "ColumnSortable", else: nil}
         phx-target={@myself}
         data-phx-target={"##{@id}"}
         data-group="blocks"
         data-handle=".drag-handle"
       >
-        <div
-          :for={block <- @own_blocks}
-          class="group relative w-full px-2 sm:px-8 md:px-16"
-          id={"block-#{block.id}"}
-          data-id={block.id}
-        >
-          <.block_component
-            block={block}
-            can_edit={@can_edit}
-            editing_block_id={@editing_block_id}
-            target={@myself}
-          />
-        </div>
+        <%= for item <- @layout_items do %>
+          <%= case item.type do %>
+            <% :full_width -> %>
+              <div
+                class="group relative w-full px-2 sm:px-8 md:px-16"
+                id={"block-#{item.block.id}"}
+                data-id={item.block.id}
+              >
+                <.block_component
+                  block={item.block}
+                  can_edit={@can_edit}
+                  editing_block_id={@editing_block_id}
+                  target={@myself}
+                />
+              </div>
+            <% :column_group -> %>
+              <div
+                class={[
+                  "column-group grid gap-8 px-2 sm:px-8 md:px-16",
+                  column_grid_class(item.column_count)
+                ]}
+                data-column-group={item.group_id}
+              >
+                <div
+                  :for={block <- item.blocks}
+                  class="column-item group relative w-full"
+                  id={"block-#{block.id}"}
+                  data-id={block.id}
+                  data-column-group={item.group_id}
+                  data-column-index={block.column_index}
+                >
+                  <.block_component
+                    block={block}
+                    can_edit={@can_edit}
+                    editing_block_id={@editing_block_id}
+                    target={@myself}
+                  />
+                </div>
+              </div>
+          <% end %>
+        <% end %>
       </div>
 
       <%!-- Add block button / slash command --%>
@@ -138,10 +166,13 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
     own_blocks = enrich_with_references(own_blocks, project_id)
 
+    layout_items = group_blocks_for_layout(own_blocks)
+
     socket =
       socket
       |> assign(:inherited_groups, inherited_groups)
       |> assign(:own_blocks, own_blocks)
+      |> assign(:layout_items, layout_items)
 
     {:ok, socket}
   end
@@ -179,17 +210,13 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
       case Sheets.create_block(sheet, %{type: type, scope: scope}) do
         {:ok, _block} ->
-          socket =
-            socket
-            |> assign(:show_block_menu, false)
-            |> assign(:block_scope, "self")
-
-          # If scope is "children" and sheet already has descendants that weren't
-          # auto-propagated (e.g., if we want the propagation modal), it's already
-          # handled by BlockCrud.create_block. No modal needed for new blocks since
-          # they auto-propagate to all descendants.
           notify_parent(socket, :saved)
-          {:noreply, socket}
+
+          {:noreply,
+           socket
+           |> assign(:show_block_menu, false)
+           |> assign(:block_scope, "self")
+           |> reload_blocks()}
 
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, gettext("Could not create block."))}
@@ -208,7 +235,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         {:ok, _updated} ->
           maybe_create_version(socket)
           notify_parent(socket, :saved)
-          {:noreply, socket}
+          {:noreply, reload_blocks(socket)}
 
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, gettext("Could not update block."))}
@@ -226,7 +253,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         {:ok, _} ->
           maybe_create_version(socket)
           notify_parent(socket, :saved)
-          {:noreply, socket}
+          {:noreply, reload_blocks(socket)}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, gettext("Could not delete block."))}
@@ -243,10 +270,96 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         {:ok, _} ->
           maybe_create_version(socket)
           notify_parent(socket, :saved)
-          {:noreply, socket}
+          {:noreply, reload_blocks(socket)}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, gettext("Could not reorder blocks."))}
+      end
+    end)
+  end
+
+  def handle_event("reorder_with_columns", %{"items" => items}, socket) do
+    with_authorization(socket, fn socket ->
+      sheet_id = socket.assigns.sheet.id
+
+      # Fetch all blocks for this sheet once to avoid N+1 queries
+      blocks_by_id =
+        Sheets.list_blocks(sheet_id)
+        |> Map.new(fn b -> {b.id, b} end)
+
+      # Sanitize: convert string IDs to integers, force dividers to full-width,
+      # and reject any block IDs that don't belong to this sheet
+      sanitized =
+        items
+        |> Enum.map(fn item ->
+          block_id = to_integer(item["id"])
+          block = Map.get(blocks_by_id, block_id)
+
+          if block do
+            column_group_id =
+              if block.type == "divider", do: nil, else: item["column_group_id"]
+
+            column_index =
+              if column_group_id == nil, do: 0, else: item["column_index"] || 0
+
+            %{
+              id: block_id,
+              column_group_id: column_group_id,
+              column_index: column_index
+            }
+          end
+        end)
+        |> Enum.reject(&is_nil/1)
+
+      case Sheets.reorder_blocks_with_columns(sheet_id, sanitized) do
+        {:ok, _} ->
+          maybe_create_version(socket)
+          notify_parent(socket, :saved)
+          {:noreply, reload_blocks(socket)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not reorder blocks."))}
+      end
+    end)
+  end
+
+  def handle_event("create_column_group", %{"block_ids" => block_ids}, socket) do
+    with_authorization(socket, fn socket ->
+      sheet_id = socket.assigns.sheet.id
+
+      # Fetch all blocks for this sheet in a single query
+      blocks_by_id =
+        Sheets.list_blocks(sheet_id)
+        |> Map.new(fn b -> {b.id, b} end)
+
+      requested_ids = Enum.map(block_ids, &to_integer/1)
+      blocks = Enum.map(requested_ids, &Map.get(blocks_by_id, &1))
+
+      cond do
+        Enum.any?(blocks, &is_nil/1) ->
+          {:noreply, put_flash(socket, :error, gettext("Block not found."))}
+
+        Enum.any?(blocks, fn b -> b.type == "divider" end) ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Divider blocks cannot be placed in columns."))}
+
+        Enum.any?(blocks, fn b -> b.column_group_id != nil end) ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Block is already in a column group."))}
+
+        true ->
+          validated_ids = Enum.map(blocks, & &1.id)
+
+          case Sheets.create_column_group(sheet_id, validated_ids) do
+            {:ok, _group_id} ->
+              maybe_create_version(socket)
+              notify_parent(socket, :saved)
+              {:noreply, reload_blocks(socket)}
+
+            {:error, _} ->
+              {:noreply,
+               put_flash(socket, :error, gettext("Could not create column group."))}
+          end
       end
     end)
   end
@@ -349,7 +462,8 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
           {:noreply,
            socket
-           |> assign(:configuring_block, updated_block)}
+           |> assign(:configuring_block, updated_block)
+           |> reload_blocks()}
 
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, gettext("Could not save configuration."))}
@@ -369,7 +483,8 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
           {:noreply,
            socket
-           |> assign(:configuring_block, updated_block)}
+           |> assign(:configuring_block, updated_block)
+           |> reload_blocks()}
 
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, gettext("Could not toggle constant."))}
@@ -446,6 +561,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
           {:noreply,
            socket
+           |> reload_blocks()
            |> put_flash(:info, gettext("Property detached. Changes to the source won't affect this copy."))}
 
         {:error, _} ->
@@ -468,6 +584,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           {:noreply,
            socket
            |> assign(:configuring_block, nil)
+           |> reload_blocks()
            |> put_flash(:info, gettext("Property re-synced with source."))}
 
         {:error, :source_not_found} ->
@@ -547,6 +664,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
             socket =
               socket
               |> assign(:configuring_block, updated_block)
+              |> reload_blocks()
 
             # When changing from "self" to "children", check for existing descendants
             # and open propagation modal if any exist
@@ -583,7 +701,8 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
           {:noreply,
            socket
-           |> assign(:configuring_block, updated_block)}
+           |> assign(:configuring_block, updated_block)
+           |> reload_blocks()}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, gettext("Could not update required flag."))}
@@ -646,11 +765,31 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   defp handle_block_result(socket, {:ok, _blocks}) do
     maybe_create_version(socket)
     notify_parent(socket, :saved)
-    {:noreply, socket}
+    {:noreply, reload_blocks(socket)}
   end
 
   defp handle_block_result(socket, {:error, message}) do
     {:noreply, put_flash(socket, :error, message)}
+  end
+
+  defp reload_blocks(socket) do
+    sheet_id = socket.assigns.sheet.id
+    project_id = socket.assigns.project.id
+
+    {inherited_groups, own_blocks} = Sheets.get_sheet_blocks_grouped(sheet_id)
+
+    inherited_groups =
+      Enum.map(inherited_groups, fn group ->
+        %{group | blocks: enrich_with_references(group.blocks, project_id)}
+      end)
+
+    own_blocks = enrich_with_references(own_blocks, project_id)
+    layout_items = group_blocks_for_layout(own_blocks)
+
+    socket
+    |> assign(:inherited_groups, inherited_groups)
+    |> assign(:own_blocks, own_blocks)
+    |> assign(:layout_items, layout_items)
   end
 
   defp maybe_create_version(socket) do
@@ -665,6 +804,38 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
   defp to_integer(value) when is_binary(value), do: String.to_integer(value)
   defp to_integer(value) when is_integer(value), do: value
+
+  # Groups blocks into layout items: full-width or column groups.
+  # Blocks are already ordered by position. Consecutive blocks sharing
+  # a column_group_id form a column group; others are full-width.
+  defp group_blocks_for_layout(blocks) do
+    blocks
+    |> Enum.chunk_by(fn block -> block.column_group_id end)
+    |> Enum.flat_map(fn chunk ->
+      first = List.first(chunk)
+
+      if first.column_group_id != nil and length(chunk) >= 2 do
+        sorted = Enum.sort_by(chunk, & &1.column_index)
+        column_count = min(length(sorted), 3)
+
+        [
+          %{
+            type: :column_group,
+            group_id: first.column_group_id,
+            blocks: sorted,
+            column_count: column_count
+          }
+        ]
+      else
+        Enum.map(chunk, fn block ->
+          %{type: :full_width, block: block}
+        end)
+      end
+    end)
+  end
+
+  defp column_grid_class(2), do: "sm:grid-cols-2"
+  defp column_grid_class(3), do: "sm:grid-cols-3"
 
   defp enrich_with_references(blocks, project_id) do
     Enum.map(blocks, fn block ->
@@ -690,18 +861,18 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
   defp inherited_section_header(assigns) do
     ~H"""
-    <div class="flex items-center gap-2 mb-2 px-2 sm:px-8 md:px-16">
-      <.icon name="arrow-up-right" class="size-4 text-info" />
-      <span class="text-xs text-base-content/50 uppercase tracking-wider">
+    <div class="flex items-center gap-1.5 mb-1 ml-1">
+      <.icon name="arrow-up-right" class="size-3 text-info/60" />
+      <span class="text-[10px] text-base-content/40 uppercase tracking-wider">
         {gettext("Inherited from")}
       </span>
       <.link
         navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{@source_sheet.id}"}
-        class="text-sm font-medium text-info hover:underline"
+        class="text-xs font-medium text-info hover:underline"
       >
         {@source_sheet.name}
       </.link>
-      <span class="text-xs text-base-content/40">({@block_count})</span>
+      <span class="text-[10px] text-base-content/30">({@block_count})</span>
     </div>
     """
   end
@@ -713,61 +884,13 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
   defp inherited_block_wrapper(assigns) do
     ~H"""
-    <div class="relative group/inherited">
+    <div class="relative">
       <.block_component
         block={@block}
         can_edit={@can_edit}
         editing_block_id={@editing_block_id}
         target={@target}
       />
-      <%!-- Inherited block actions overlay --%>
-      <div class="absolute top-1 right-2 flex items-center gap-1 opacity-0 group-hover/inherited:opacity-100 transition-opacity">
-        <%!-- Go to source --%>
-        <button
-          type="button"
-          class="btn btn-ghost btn-xs btn-square tooltip tooltip-left"
-          data-tip={gettext("Go to source")}
-          phx-click="navigate_to_source"
-          phx-value-id={@block.id}
-          phx-target={@target}
-        >
-          <.icon name="arrow-up-right" class="size-3 text-info" />
-        </button>
-        <%!-- Context menu --%>
-        <div class="dropdown dropdown-end">
-          <div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square">
-            <.icon name="ellipsis-vertical" class="size-3" />
-          </div>
-          <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
-            <li>
-              <button phx-click="navigate_to_source" phx-value-id={@block.id} phx-target={@target}>
-                <.icon name="arrow-up-right" class="size-4" />
-                {gettext("Go to source")}
-              </button>
-            </li>
-            <li>
-              <button
-                phx-click="detach_inherited_block"
-                phx-value-id={@block.id}
-                phx-target={@target}
-              >
-                <.icon name="scissors" class="size-4" />
-                {gettext("Detach property")}
-              </button>
-            </li>
-            <li>
-              <button
-                phx-click="hide_inherited_for_children"
-                phx-value-id={@block.inherited_from_block_id}
-                phx-target={@target}
-              >
-                <.icon name="eye-off" class="size-4" />
-                {gettext("Hide for children")}
-              </button>
-            </li>
-          </ul>
-        </div>
-      </div>
       <%!-- Required indicator --%>
       <div
         :if={@block.required}
