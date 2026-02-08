@@ -22,7 +22,8 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
     "condition" => Nodes.Condition.Node,
     "instruction" => Nodes.Instruction.Node,
     "jump" => Nodes.Jump.Node,
-    "subflow" => Nodes.Subflow.Node
+    "subflow" => Nodes.Subflow.Node,
+    "scene" => Nodes.Scene.Node
   }
 
   @sidebar_modules %{
@@ -33,7 +34,8 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
     "condition" => Nodes.Condition.ConfigSidebar,
     "instruction" => Nodes.Instruction.ConfigSidebar,
     "jump" => Nodes.Jump.ConfigSidebar,
-    "subflow" => Nodes.Subflow.ConfigSidebar
+    "subflow" => Nodes.Subflow.ConfigSidebar,
+    "scene" => Nodes.Scene.ConfigSidebar
   }
 
   @types Map.keys(@node_modules) |> Enum.sort()

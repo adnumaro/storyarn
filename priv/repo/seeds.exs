@@ -274,7 +274,12 @@ IO.puts("  ✓ Evrart Claire sheet")
     parent_id: char_folder.id
   })
 
-Seed.block!(klaasje_sheet, "text", "Name", value: "Klaasje Amandou", is_constant: true, position: 0)
+Seed.block!(klaasje_sheet, "text", "Name",
+  value: "Klaasje Amandou",
+  is_constant: true,
+  position: 0
+)
+
 Seed.block!(klaasje_sheet, "divider", "", position: 1)
 Seed.block!(klaasje_sheet, "number", "Trust", value: 20, position: 2, placeholder: "0-100")
 
@@ -455,7 +460,23 @@ Flows.set_main_flow(prologue)
 
 # Move entry & exit to better positions
 Flows.update_node_position(entry_node, %{position_x: 50.0, position_y: 300.0})
-Flows.update_node_position(exit_node, %{position_x: 1600.0, position_y: 300.0})
+Flows.update_node_position(exit_node, %{position_x: 1800.0, position_y: 300.0})
+
+# — Scene: Hotel room —
+{:ok, s_hotel_room} =
+  Flows.create_node(prologue, %{
+    type: "scene",
+    position_x: 150.0,
+    position_y: 300.0,
+    data: %{
+      "location_sheet_id" => hotel_sheet.id,
+      "int_ext" => "int",
+      "sub_location" => "Room",
+      "time_of_day" => "morning",
+      "description" => "A wrecked hotel room. Bottles and clothes everywhere.",
+      "technical_id" => "PRO_SCENE_HOTEL"
+    }
+  })
 
 # — Dialogue: Internal monologue —
 resp_wake_1 = Seed.rid()
@@ -468,7 +489,8 @@ resp_wake_2 = Seed.rid()
     position_y: 300.0,
     data: %{
       "speaker_sheet_id" => detective_sheet.id,
-      "text" => "<p>The ceiling is spinning. Everything hurts. You smell like industrial solvent and regret.</p>",
+      "text" =>
+        "<p>The ceiling is spinning. Everything hurts. You smell like industrial solvent and regret.</p>",
       "stage_directions" => "The detective opens his eyes in a wrecked hotel room.",
       "menu_text" => "",
       "technical_id" => "PRO_WAKE_01",
@@ -543,7 +565,8 @@ resp_remember = Seed.rid()
     position_y: 100.0,
     data: %{
       "speaker_sheet_id" => detective_sheet.id,
-      "text" => "<p>Fragments surface. A badge. A name — maybe yours. A city that hates you back.</p>",
+      "text" =>
+        "<p>Fragments surface. A badge. A name — maybe yours. A city that hates you back.</p>",
       "stage_directions" => "A flash of memory.",
       "technical_id" => "PRO_MEMORY_01",
       "responses" => [
@@ -570,7 +593,8 @@ resp_crawl = Seed.rid()
     position_y: 400.0,
     data: %{
       "speaker_sheet_id" => detective_sheet.id,
-      "text" => "<p>Your body screams in protest. Every joint a declaration of war against consciousness.</p>",
+      "text" =>
+        "<p>Your body screams in protest. Every joint a declaration of war against consciousness.</p>",
       "stage_directions" => "The detective drags himself upright.",
       "technical_id" => "PRO_CRAWL_01",
       "output_instruction" =>
@@ -617,7 +641,15 @@ resp_crawl = Seed.rid()
   })
 
 # Connections — Prologue
-Flows.create_connection(prologue, entry_node, d_wake, %{source_pin: "output", target_pin: "input"})
+Flows.create_connection(prologue, entry_node, s_hotel_room, %{
+  source_pin: "output",
+  target_pin: "input"
+})
+
+Flows.create_connection(prologue, s_hotel_room, d_wake, %{
+  source_pin: "output",
+  target_pin: "input"
+})
 
 Flows.create_connection(prologue, d_wake, i_visit, %{
   source_pin: resp_wake_1,
@@ -682,7 +714,23 @@ IO.puts("  ✓ Prologue flow (main) with #{length(Flows.list_nodes(prologue.id))
 [ch1_exit] = Flows.list_nodes(ch1.id) |> Enum.filter(&(&1.type == "exit"))
 
 Flows.update_node_position(ch1_entry, %{position_x: 50.0, position_y: 300.0})
-Flows.update_node_position(ch1_exit, %{position_x: 1800.0, position_y: 300.0})
+Flows.update_node_position(ch1_exit, %{position_x: 2000.0, position_y: 300.0})
+
+# — Scene: Crime scene exterior —
+{:ok, s_crime_scene} =
+  Flows.create_node(ch1, %{
+    type: "scene",
+    position_x: 150.0,
+    position_y: 300.0,
+    data: %{
+      "location_sheet_id" => hotel_sheet.id,
+      "int_ext" => "ext",
+      "sub_location" => "Backyard",
+      "time_of_day" => "morning",
+      "description" => "Behind the hostel. A body hangs from an old oak tree.",
+      "technical_id" => "CH1_SCENE_CRIME"
+    }
+  })
 
 # — Dialogue: Kim introduction —
 resp_kim_hello = Seed.rid()
@@ -805,7 +853,8 @@ not_enough_case = Seed.cid()
     position_y: 200.0,
     data: %{
       "speaker_sheet_id" => kim_sheet.id,
-      "text" => "<p>\"Good work, detective. We have enough to proceed to the next phase of the investigation.\"</p>",
+      "text" =>
+        "<p>\"Good work, detective. We have enough to proceed to the next phase of the investigation.\"</p>",
       "stage_directions" => "Kim nods approvingly.",
       "technical_id" => "CH1_ENOUGH_01",
       "output_instruction" =>
@@ -856,7 +905,12 @@ resp_back = Seed.rid()
   })
 
 # Connections — Chapter 1
-Flows.create_connection(ch1, ch1_entry, d_kim_intro, %{
+Flows.create_connection(ch1, ch1_entry, s_crime_scene, %{
+  source_pin: "output",
+  target_pin: "input"
+})
+
+Flows.create_connection(ch1, s_crime_scene, d_kim_intro, %{
   source_pin: "output",
   target_pin: "input"
 })
@@ -980,7 +1034,8 @@ no_badge_case = Seed.cid()
     position_y: 100.0,
     data: %{
       "speaker_sheet_id" => detective_sheet.id,
-      "text" => "<p>You pat your pocket. The badge is there. Slightly bent, but real. You are a cop.</p>",
+      "text" =>
+        "<p>You pat your pocket. The badge is there. Slightly bent, but real. You are a cop.</p>",
       "technical_id" => "QB_HAVE_BADGE",
       "responses" => []
     }
@@ -1018,7 +1073,8 @@ resp_ask_kim_badge = Seed.rid()
     position_y: 350.0,
     data: %{
       "speaker_sheet_id" => kim_sheet.id,
-      "text" => "<p>\"No.\" A pause. \"But I'll note it in my report. We'll sort it out after the case.\"</p>",
+      "text" =>
+        "<p>\"No.\" A pause. \"But I'll note it in my report. We'll sort it out after the case.\"</p>",
       "technical_id" => "QB_KIM_BADGE",
       "output_instruction" =>
         Seed.instruction_json([
@@ -1247,7 +1303,8 @@ resp_leave = Seed.rid()
     position_y: 300.0,
     data: %{
       "speaker_sheet_id" => kim_sheet.id,
-      "text" => "<p>Kim turns to you, pen poised over his notebook. \"What would you like to discuss?\"</p>",
+      "text" =>
+        "<p>Kim turns to you, pen poised over his notebook. \"What would you like to discuss?\"</p>",
       "technical_id" => "DK_MENU_01",
       "responses" => [
         %{
@@ -1583,7 +1640,8 @@ no_truth_case = Seed.cid()
     position_y: 200.0,
     data: %{
       "speaker_sheet_id" => kim_sheet.id,
-      "text" => "<p>\"She gave us something to work with. Let's verify her story before we proceed.\"</p>",
+      "text" =>
+        "<p>\"She gave us something to work with. Let's verify her story before we proceed.\"</p>",
       "technical_id" => "DKL_TRUTH_END",
       "responses" => []
     }

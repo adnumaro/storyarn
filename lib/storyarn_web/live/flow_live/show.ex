@@ -26,6 +26,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.Dialogue
   alias StoryarnWeb.FlowLive.Nodes.Exit, as: ExitNode
   alias StoryarnWeb.FlowLive.Nodes.Instruction
+  alias StoryarnWeb.FlowLive.Nodes.Scene
   alias StoryarnWeb.FlowLive.Nodes.Subflow
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
@@ -51,7 +52,9 @@ defmodule StoryarnWeb.FlowLive.Show do
           </.link>
           <.link
             :if={@from_flow}
-            navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@from_flow.id}"}
+            navigate={
+              ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@from_flow.id}"
+            }
             class="btn btn-ghost btn-sm gap-1 text-base-content/60"
           >
             <.icon name="corner-up-left" class="size-3" />
@@ -403,6 +406,9 @@ defmodule StoryarnWeb.FlowLive.Show do
 
         node && node.type == "exit" ->
           ExitNode.Node.handle_generate_technical_id(socket)
+
+        node && node.type == "scene" ->
+          Scene.Node.handle_generate_technical_id(socket)
 
         true ->
           {:noreply, socket}
