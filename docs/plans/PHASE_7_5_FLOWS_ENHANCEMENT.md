@@ -4,20 +4,20 @@
 >
 > **Priority:** Alongside Phase 7.5 Pages Enhancement - both define the data model for export
 >
-> **Last Updated:** February 4, 2026
+> **Last Updated:** February 8, 2026
 
 ## Overview
 
 This phase enhances the Flows system to mirror the Pages tree structure, adding:
 - Hierarchical flow organization (tree like Pages)
 - Explicit Entry and Exit nodes per flow
-- Inter-flow navigation (FlowJump, FlowReturn)
+- Inter-flow navigation (Subflow node, Exit caller_return mode)
 - Intra-flow convergence (Hub, Jump)
 - Event Trigger nodes for parallel world events
 - Flow versioning and history
-- Integration with Page block variables (`#shortcut.variable`)
+- Integration with sheet variables (`#shortcut.variable`)
 
-**Design Philosophy:** The tree structure is for **organization only**, not execution order. Flow connections (including FlowJump nodes) define the actual narrative path.
+**Design Philosophy:** The tree structure is for **organization only**, not execution order. Flow connections (including Subflow nodes) define the actual narrative path.
 
 ---
 
@@ -85,17 +85,20 @@ We initially considered an explicit `is_folder` boolean but decided against it:
 | Entry node                           | ✅ Done  | Auto-created, cannot delete          |
 | Exit node                            | ✅ Done  | Multiple allowed, can delete         |
 | Hub node                             | ✅ Done  | hub_id unique per flow, color picker |
+| Jump node                            | ✅ Done  | Targets hub_id in same flow          |
+| Subflow node (was "FlowJump")        | ✅ Done  | Dynamic exit pins from referenced flow |
+| Scene node                           | ✅ Done  | Screenplay slug line (INT/EXT, location, time) |
+| Instruction node                     | ✅ Done  | Variable assignment builder          |
+| Tree UI (sidebar)                    | ✅ Done  | SortableTree, drag-and-drop, context menu |
+| Entry "Referenced By"                | ✅ Done  | Shows subflows and exit flow_references |
 
 ### Pending
 
 | Task                | Priority  | Dependencies  |
 |---------------------|-----------|---------------|
-| Jump node           | ✅ Done   | Hub node      |
-| FlowJump node       | Medium    | None          |
-| FlowReturn node     | Medium    | FlowJump      |
 | Event node          | Low       | None          |
 | Flow versions       | Medium    | None          |
-| Variable references | Low       | Pages 7.5     |
+| Variable references | Low       | Sheets 7.5    |
 
 ---
 
@@ -145,25 +148,26 @@ flow_versions (NOT YET IMPLEMENTED)
 
 ### Overview of All Node Types
 
-| Node       | Type Key      | Category     | Purpose                                  | Status   |
-|------------|---------------|--------------|------------------------------------------|----------|
-| Entry      | `entry`       | Flow Control | Single entry point per flow (required)   | ✅ Done   |
-| Exit       | `exit`        | Flow Control | Exit point(s) of the flow                | ✅ Done   |
-| FlowJump   | `flow_jump`   | Inter-flow   | Navigate to another flow                 | Pending  |
-| FlowReturn | `flow_return` | Inter-flow   | Return to calling flow                   | Pending  |
-| Hub        | `hub`         | Intra-flow   | Convergence point for multiple paths     | ✅ Done   |
-| Jump       | `jump`        | Intra-flow   | Jump to a Hub in same flow               | ✅ Done   |
-| Event      | `event`       | World State  | Trigger parallel events without blocking | Pending  |
+| Node        | Type Key      | Category     | Purpose                                  | Status   |
+|-------------|---------------|--------------|------------------------------------------|----------|
+| Entry       | `entry`       | Flow Control | Single entry point per flow (required)   | ✅ Done   |
+| Exit        | `exit`        | Flow Control | Exit point(s), 3 modes: terminal, flow_reference, caller_return | ✅ Done |
+| Subflow     | `subflow`     | Inter-flow   | Navigate to another flow (dynamic exit pins) | ✅ Done |
+| Hub         | `hub`         | Intra-flow   | Convergence point for multiple paths     | ✅ Done   |
+| Jump        | `jump`        | Intra-flow   | Jump to a Hub in same flow               | ✅ Done   |
+| Scene       | `scene`       | Narrative    | Screenplay slug line (INT/EXT, location, time) | ✅ Done |
+| Event       | `event`       | World State  | Trigger parallel events without blocking | Pending  |
 
 ### Existing Node Types (Reference)
 
-| Node        | Type Key      | Purpose                              |
-|-------------|---------------|--------------------------------------|
-| Dialogue    | `dialogue`    | Single line of dialogue with speaker |
-| Choice      | `choice`      | Player decision point with options   |
-| Condition   | `condition`   | Branch based on variable state       |
-| Instruction | `instruction` | Modify variable values               |
-| Note        | `note`        | Designer annotations (not exported)  |
+| Node        | Type Key      | Purpose                                         |
+|-------------|---------------|-------------------------------------------------|
+| Dialogue    | `dialogue`    | Single line of dialogue with speaker + responses |
+| Condition   | `condition`   | Branch based on variable state (dynamic outputs) |
+| Instruction | `instruction` | Variable assignment via builder UI               |
+
+> **Note:** There is no separate "Choice" node. Player choices are handled via dialogue responses.
+> **Note:** "FlowReturn" was absorbed into exit node's `caller_return` mode.
 
 ---
 
@@ -241,89 +245,66 @@ data: %{
 
 ---
 
-### 7.5.F.3 FlowJump Node
+### 7.5.F.3 Subflow Node (was "FlowJump") ✅ DONE
 
-Navigate to another flow in the project. This is the primary way to connect flows.
+Navigate to another flow in the project. Implemented as `subflow` with dynamic exit pins.
 
 ```
 ┌─────────────────────────────┐
-│  ⤴️ FlowJump                │
+│  📦 Subflow                  │
 ├─────────────────────────────┤
 │  Target: [Select flow ▼]    │
 │  Act 1 / Scene 2            │
-│  #act1.scene2               │
 ├─────────────────────────────┤
-│────○                   ○────│
+│────○              [exit1]○──│  (dynamic exit pins from
+│                   [exit2]○──│   referenced flow's exits)
 └─────────────────────────────┘
 ```
 
 **Schema:**
 ```elixir
-type: "flow_jump"
+type: "subflow"
 data: %{
-  "target_flow_id" => "uuid",      # Required: destination flow
-  "target_flow_shortcut" => "...", # Cached for display
-  "target_flow_name" => "...",     # Cached for display
-  "target_flow_path" => "..."      # Cached: "Act 1 / Scene 2"
+  "referenced_flow_id" => integer  # Required: destination flow
 }
 ```
 
 **Rules:**
-- [ ] Target must be a flow in the same project
-- [ ] Target cannot be the same flow (use Hub/Jump for that)
-- [ ] Both input and output handles (can chain or continue after return)
-- [ ] Visual indicator if target flow doesn't exist (deleted)
-- [ ] Clicking the node can navigate to target flow
+- [x] Target must be a flow in the same project
+- [x] Target cannot be the same flow (self-reference prevented)
+- [x] Input pin + dynamic output pins (one per exit node in referenced flow)
+- [x] Double-click navigates to referenced flow
+- [x] Entry node of referenced flow shows "Referenced By" backlinks
 
 **Implementation:**
-- [ ] Add `flow_jump` to node types enum
-- [ ] Flow selector component (searchable, shows tree path)
-- [ ] Search by: name, shortcut, path
-- [ ] Cache target info for display (denormalized)
-- [ ] Handle deleted targets gracefully
-- [ ] Track in entity_references table (for backlinks)
-- [ ] UI: Arrow icon, shows target path, click to navigate
+- [x] Add `subflow` to node type registry
+- [x] Flow selector in sidebar (all project flows excluding self)
+- [x] Load exit nodes from referenced flow for dynamic output pins
+- [x] Double-click navigates to target flow
+- [x] Entry node on_select loads referencing subflows and exit flow_references
 
 ---
 
-### 7.5.F.4 FlowReturn Node
+### 7.5.F.4 FlowReturn — Absorbed into Exit Node ✅ DONE
 
-Return to the flow that jumped to this one. Enables "subroutine" patterns.
+Instead of a separate FlowReturn node, the Exit node has 3 modes:
 
-```
-┌─────────────────────────────┐
-│  ↩️ FlowReturn              │
-├─────────────────────────────┤
-│  Return to caller           │
-├─────────────────────────────┤
-│────○                        │ (input only)
-└─────────────────────────────┘
-```
+| Exit Mode        | Behavior                                     |
+|------------------|----------------------------------------------|
+| `terminal`       | End of flow (default)                        |
+| `flow_reference` | Navigate to another flow (like a Subflow at the end) |
+| `caller_return`  | Return to the calling flow (subroutine pattern) |
 
-**Schema:**
-```elixir
-type: "flow_return"
-data: %{}  # No configuration needed
-```
-
-**Rules:**
-- [ ] No output handles (execution returns to caller)
-- [ ] If no caller (flow entered directly), acts as Exit
-- [ ] Useful for reusable conversation flows
+This is simpler than a separate node type and keeps exit semantics in one place.
 
 **Use Case Example:**
 ```
 Main Quest Flow:
-  ... → [FlowJump: Merchant Barter] → [Continue after purchase] → ...
+  ... → [Subflow: Merchant Barter] ─[exit1]─→ [Continue] → ...
 
 Merchant Barter Flow (reusable):
-  [Entry] → [Dialogue] → [Choice: Buy/Sell/Leave] → [FlowReturn]
+  [Entry] → [Dialogue] → [Responses] → [Exit: caller_return]
 ```
-
-**Implementation:**
-- [ ] Add `flow_return` to node types enum
-- [ ] Runtime: maintain call stack during simulation
-- [ ] UI: Return arrow icon, distinct from Exit
 
 ---
 
@@ -490,9 +471,9 @@ Flows are organized in a tree structure identical to Sheets. Any flow can have c
 - [x] `description` for annotations
 - [x] Soft delete cascades to children
 - [x] TreeOperations module (reorder, move)
-- [ ] Tree UI in sidebar (pending)
-- [ ] Drag-and-drop reordering (pending)
-- [ ] Context menu: New Flow, Rename, Delete (pending)
+- [x] Tree UI in sidebar (ProjectSidebar + SortableTree hook)
+- [x] Drag-and-drop reordering
+- [x] Context menu: New Flow, Rename, Delete
 
 ---
 
@@ -568,11 +549,11 @@ create index(:flows, [:deleted_at])
 
 ---
 
-## Integration with Page Variables
+## Integration with Sheet Variables
 
 ### 7.5.F.11 Variable References in Conditions/Instructions
 
-Flows can read and modify Page block variables using the `#shortcut.variable` syntax from Phase 7.5.
+Flows can read and modify sheet variables using the `#shortcut.variable` syntax from Phase 7.5.
 
 **In Condition Nodes:**
 ```
@@ -591,9 +572,9 @@ Flows can read and modify Page block variables using the `#shortcut.variable` sy
 
 **Implementation:**
 - [ ] Parser for `#shortcut.variable` syntax in condition/instruction scripts
-- [ ] Autocomplete in script editors (fetch page shortcuts + variables)
-- [ ] Validation: check referenced pages/variables exist
-- [ ] Runtime resolution: resolve shortcut → page → block → value
+- [ ] Autocomplete in script editors (fetch sheet shortcuts + variables)
+- [ ] Validation: check referenced sheets/variables exist
+- [ ] Runtime resolution: resolve shortcut → sheet → block → value
 - [ ] Track references in entity_references table
 
 ---
@@ -611,13 +592,13 @@ Flows can read and modify Page block variables using the `#shortcut.variable` sy
 │ ├── Characters           │ First encounter with Jaime...                 │
 │ └── Locations            ├───────────────────────────────────────────────┤
 │                          │                                               │
-│ 🔀 Flows ◀               │  🟢 ───→ [Dialogue] ───→ [Choice] ───┐       │
-│ ▼ 🔀 Act 1               │  Entry   "Hello!"      "Accept?"    │       │
+│ 🔀 Flows ◀               │  🟢 ───→ [Dialogue] ───→ [Dialogue] ──┐      │
+│ ▼ 🔀 Act 1               │  Entry   "Hello!"      (responses)  │      │
 │   ├── Intro              │                                      │       │
 │   ├── Meet Jaime ◀────── │            ┌──────────────────────────┘       │
 │   └── 🔀 Tavern          │            │                                  │
 │       ├── Enter          │            ▼                                  │
-│       └── Bar Fight      │  [Condition] ─── true ──→ [FlowJump] → 🔴    │
+│       └── Bar Fight      │  [Condition] ─── true ──→ [Subflow] → 🔴     │
 │ ├── 🔀 Act 2             │  #jaime.likes_player      #act1.tavern Exit  │
 │ └── 🔀 Shared            │       │                                       │
 │     └── Merchant         │       └── false ──→ [Dialogue] ──→ 🔴        │
@@ -626,11 +607,11 @@ Flows can read and modify Page block variables using the `#shortcut.variable` sy
 │                          ├───────────────────────────────────────────────┤
 │                          │ NODE PALETTE        │ PROPERTIES              │
 │                          │ [Entry] [Exit]      │ Type: Dialogue          │
-│                          │ [FlowJump] [Return] │ Speaker: #mc.jaime      │
+│                          │ [Subflow] [Scene]   │ Speaker: #mc.jaime      │
 │                          │ [Hub] [Jump]        │ Text: "Hello!"          │
 │                          │ [Event]             │                         │
-│                          │ [Dialogue] [Choice] │ [Delete Node]           │
-│                          │ [Condition] [Instr] │                         │
+│                          │ [Dialogue] [Instr]  │ [Delete Node]           │
+│                          │ [Condition]         │                         │
 └──────────────────────────┴─────────────────────┴─────────────────────────┘
 ```
 
@@ -639,27 +620,26 @@ Flows can read and modify Page block variables using the `#shortcut.variable` sy
 ```
 ┌─────────────────────────────────────┐
 │ FLOW CONTROL                        │
-│ [🟢 Entry] [🔴 Exit]                │
+│ [Entry] [Exit]                      │
 │                                     │
 │ NAVIGATION                          │
-│ [⤴️ FlowJump] [↩️ Return]           │
-│ [🔷 Hub] [⤵️ Jump]                  │
+│ [Subflow] [Hub] [Jump]              │
 │                                     │
 │ NARRATIVE                           │
-│ [💬 Dialogue] [❓ Choice]           │
+│ [Dialogue] [Scene]                  │
 │                                     │
 │ LOGIC                               │
-│ [🔀 Condition] [📝 Instruction]     │
+│ [Condition] [Instruction]           │
 │                                     │
-│ WORLD                               │
-│ [🎯 Event]                          │
-│                                     │
-│ OTHER                               │
-│ [📌 Note]                           │
+│ WORLD (pending)                     │
+│ [Event]                             │
 └─────────────────────────────────────┘
 ```
 
-### FlowJump Selector
+> **Note:** No separate "Choice" node — dialogue responses handle player choices.
+> **Note:** No separate "FlowReturn" — exit node's `caller_return` mode handles it.
+
+### Subflow Flow Selector
 
 ```
 ┌─────────────────────────────────────┐
@@ -743,15 +723,16 @@ Just update the application code to handle new types.
 | 4      | Description field                         | ✅ Done  | None                | Flows and Pages have descriptions  |
 | 5      | Tree UI (reuse from Pages)                | ✅ Done  | Tree structure      | Sidebar shows flow tree            |
 | 6      | Entry node                                | ✅ Done  | None                | Entry node works                   |
-| 7      | Exit node                                 | ✅ Done  | None                | Exit node works                    |
+| 7      | Exit node (3 modes)                       | ✅ Done  | None                | Exit node works (terminal, flow_reference, caller_return) |
 | 8      | Hub node                                  | ✅ Done  | None                | Hub convergence works              |
 | 9      | Jump node                                 | ✅ Done  | Hub node            | Jump to Hub works                  |
-| 10     | FlowJump node                             | Pending | None                | Can jump between flows             |
-| 11     | FlowReturn node                           | Pending | FlowJump            | Return to caller works             |
-| 12     | Event node                                | Pending | None                | Events can be fired                |
-| 13     | Variable references in scripts            | Pending | 7.5 Block variables | #shortcut.var works                |
-| 14     | Flow versions                             | Pending | None                | Version history works              |
-| 15     | Backlinks for flows                       | Pending | entity_references   | "What jumps here?"                 |
+| 10     | Subflow node (was FlowJump)               | ✅ Done  | None                | Navigate between flows, dynamic exit pins |
+| 11     | Scene node                                | ✅ Done  | None                | Screenplay slug line works         |
+| 12     | Instruction node                          | ✅ Done  | None                | Variable assignment builder works  |
+| 13     | Entry "Referenced By" backlinks           | ✅ Done  | Subflow node        | Entry shows referencing subflows   |
+| 14     | Event node                                | Pending | None                | Events can be fired                |
+| 15     | Variable references in scripts            | Pending | 7.5 Block variables | #shortcut.var works                |
+| 16     | Flow versions                             | Pending | None                | Version history works              |
 
 ---
 
@@ -765,7 +746,7 @@ Just update the application code to handle new types.
 - [x] Tree listing (list_flows_tree, list_flows_by_parent)
 - [x] Entry node validation (exactly one per flow, cannot delete)
 - [x] Hub ID uniqueness within flow
-- [ ] FlowJump target validation
+- [ ] Subflow target validation
 - [ ] Variable reference parsing
 - [ ] Version snapshot creation
 
@@ -774,7 +755,7 @@ Just update the application code to handle new types.
 - [ ] Create flow with auto Entry node
 - [ ] Create flow with children and nodes
 - [x] Soft delete parent cascades to children
-- [ ] FlowJump between flows
+- [ ] Subflow between flows (dynamic exit pins)
 - [ ] Hub/Jump within same flow
 - [ ] Event node creation and export
 - [ ] Flow versioning and restore
@@ -782,8 +763,8 @@ Just update the application code to handle new types.
 ### E2E Tests
 
 - [ ] Build complete flow tree
-- [ ] Navigate between flows via FlowJump
-- [ ] Use Page variables in Condition nodes
+- [ ] Navigate between flows via Subflow node
+- [ ] Use sheet variables in Condition nodes
 - [ ] Restore flow from version history
 
 ---
@@ -829,14 +810,14 @@ When exporting flows to JSON for game engines:
 1. **Parent deletion:** When deleting a parent flow, should children be deleted or moved to grandparent?
    - **Decision:** Cascade soft delete to all children (implemented)
 
-2. **Circular FlowJumps:** Should we detect and warn about A → B → A cycles?
+2. **Circular Subflows:** Should we detect and warn about A → B → A cycles?
    - Recommendation: Warn but allow (could be intentional loops)
 
 3. **Entry node position:** Auto-position or let user place it?
    - Recommendation: Auto-create at {100, 300}, user can move it
 
 4. **Multiple Entry nodes:** Should we ever allow multiple entries (for different starting points)?
-   - Recommendation: No, use FlowJump from a "router" flow instead
+   - Recommendation: No, use a Subflow from a "router" flow instead
 
 5. **Event node integration:** How do game engines consume events?
    - Recommendation: Export as separate event list, let engine decide
@@ -848,12 +829,14 @@ When exporting flows to JSON for game engines:
 - [x] Flows organized in tree structure (like Pages)
 - [x] Any flow can have children AND content (unified model)
 - [x] Soft delete with trash recovery
-- [ ] Every flow has exactly one Entry node
-- [ ] FlowJump navigates between flows correctly
-- [ ] Hub/Jump works for intra-flow convergence
+- [x] Every flow has exactly one Entry node
+- [x] Subflow navigates between flows correctly (with dynamic exit pins)
+- [x] Hub/Jump works for intra-flow convergence
+- [x] Entry node shows "Referenced By" backlinks
+- [x] Scene node for screenplay slug lines
+- [x] Exit node supports 3 modes (terminal, flow_reference, caller_return)
 - [ ] Event nodes can be created and exported
-- [ ] Flow shortcuts work with # syntax
-- [ ] Page variables accessible in Condition/Instruction nodes
+- [ ] Sheet variables accessible in Condition/Instruction nodes
 - [ ] Flow versioning with restore capability
 
 ---
@@ -864,10 +847,10 @@ When exporting flows to JSON for game engines:
 |------------------------|------------------------------|-------------------------------------------|
 | Flow organization      | Nested containers (submerge) | Unified tree (any node can have children) |
 | Entry/Exit             | Multiple pins, implicit      | 1 Entry + N Exit, explicit                |
-| Inter-flow navigation  | Pins connect inner/outer     | FlowJump node                             |
+| Inter-flow navigation  | Pins connect inner/outer     | Subflow node (dynamic exit pins)          |
 | Intra-flow convergence | Hub + Jump                   | Hub + Jump (same)                         |
 | Parallel events        | Not supported                | Event node                                |
-| Variables              | Global Variables             | Page block variables                      |
+| Variables              | Global Variables             | Sheet block variables                     |
 | Learning curve         | Medium-high                  | Low (familiar tree pattern)               |
 
 **Key Advantage:** Storyarn's unified model is simpler to learn (one navigation paradigm, no folder/content distinction) while being equally powerful for narrative design.
