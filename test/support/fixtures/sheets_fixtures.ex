@@ -45,4 +45,39 @@ defmodule Storyarn.SheetsFixtures do
     {:ok, block} = Sheets.create_block(sheet, attrs)
     block
   end
+
+  @doc """
+  Creates a child sheet under the given parent.
+  """
+  def child_sheet_fixture(project, parent, attrs \\ %{}) do
+    attrs =
+      attrs
+      |> Map.put(:parent_id, parent.id)
+      |> valid_sheet_attributes()
+
+    {:ok, sheet} = Sheets.create_sheet(project, attrs)
+    sheet
+  end
+
+  @doc """
+  Creates a block with `scope: "children"` (inheritable to descendants).
+  """
+  def inheritable_block_fixture(sheet, attrs \\ []) do
+    attrs = Enum.into(attrs, %{})
+    label = attrs[:label] || unique_block_label()
+    type = attrs[:type] || "text"
+
+    block_attrs = %{
+      type: type,
+      scope: "children",
+      config: %{"label" => label, "placeholder" => ""},
+      value: Storyarn.Sheets.Block.default_value(type)
+    }
+
+    block_attrs =
+      if Map.has_key?(attrs, :required), do: Map.put(block_attrs, :required, attrs[:required]), else: block_attrs
+
+    {:ok, block} = Sheets.create_block(sheet, block_attrs)
+    block
+  end
 end
