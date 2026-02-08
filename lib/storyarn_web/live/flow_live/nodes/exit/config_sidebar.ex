@@ -152,7 +152,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
               disabled={!@can_edit}
               class="radio radio-xs"
             />
-            <span class="text-xs">{gettext("Continue to flow")} &rarr;</span>
+            <span class="text-xs inline-flex items-center gap-1">{gettext("Continue to flow")} <.icon name="arrow-right" class="size-3" /></span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-base-200">
             <input
@@ -165,7 +165,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
               disabled={!@can_edit}
               class="radio radio-xs"
             />
-            <span class="text-xs">{gettext("Return to caller")} &hookleftarrow;</span>
+            <span class="text-xs inline-flex items-center gap-1">{gettext("Return to caller")} <.icon name="corner-down-left" class="size-3" /></span>
           </label>
         </div>
       </div>
@@ -252,9 +252,10 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
             phx-click="navigate_to_referencing_flow"
             phx-value-flow-id={ref.flow_id}
           >
-            <span class="opacity-60 text-xs">
-              {if ref.node_type == "subflow", do: "\u{1F500}", else: "\u{2192}"}
-            </span>
+            <.icon
+              name={if ref.node_type == "subflow", do: "box", else: "square"}
+              class="size-3 opacity-60"
+            />
             <span class="truncate">{ref.flow_name}</span>
           </button>
         </div>

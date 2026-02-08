@@ -13,6 +13,7 @@
  * JS-rendered children on re-render.
  */
 
+import { createElement, Plus } from "lucide";
 import { createAssignmentRow } from "../instruction_builder/assignment_row";
 
 const DEFAULT_TRANSLATIONS = {
@@ -131,8 +132,8 @@ export const InstructionBuilder = {
       addBtn.type = "button";
       addBtn.className =
         "btn btn-ghost btn-xs gap-1 border border-dashed border-base-300 mt-2";
-      addBtn.innerHTML =
-        `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ${this.t.add_assignment}`;
+      addBtn.appendChild(createElement(Plus, { width: 12, height: 12 }));
+      addBtn.append(` ${this.t.add_assignment}`);
       addBtn.addEventListener("click", () => {
         const newAssignment = {
           id: `assign_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,

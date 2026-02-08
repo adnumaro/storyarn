@@ -189,7 +189,7 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
     >
       <.icon name={icon_for_node_type(@ref.node_type)} class="size-3 text-base-content/40 group-hover:text-primary" />
       <span class="font-medium">{@ref.flow_name}</span>
-      <span class="text-base-content/40">&rarr;</span>
+      <.icon name="arrow-right" class="size-3 text-base-content/40" />
       <span class="badge badge-xs badge-ghost">{@ref.node_type}</span>
       <span :if={@detail} class="text-base-content/40">{@detail}</span>
       <span :if={@ref[:stale]} class="badge badge-xs badge-warning gap-1" title={gettext("Reference may be outdated")}>

@@ -4,9 +4,13 @@
  * Includes instruction-formatting functions (absorbed from node_formatters.js).
  */
 import { html } from "lit";
-import { Zap } from "lucide";
-import { createIconSvg } from "../node_config.js";
+import { unsafeSVG } from "lit/directives/unsafe-svg.js";
+import { Zap, TriangleAlert } from "lucide";
+import { createIconSvg, createIconHTML } from "../node_config.js";
 import { nodeShell, defaultHeader, renderPreview, renderSockets } from "./render_helpers.js";
+
+// Pre-create stale reference warning icon
+const STALE_ICON = createIconHTML(TriangleAlert, { size: 12 });
 
 // --- Instruction formatting (was node_formatters.js) ---
 
@@ -76,7 +80,8 @@ export default {
   getPreviewText(data) {
     const summary = getInstructionSummary(data);
     if (data.has_stale_refs) {
-      return summary ? `\u26A0 ${summary}` : "\u26A0 Stale references";
+      const text = summary || "Stale references";
+      return html`<span style="display:inline-flex;align-items:center;gap:3px">${unsafeSVG(STALE_ICON)} ${text}</span>`;
     }
     return summary;
   },

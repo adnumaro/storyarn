@@ -5,18 +5,12 @@
 
 import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
-import { createElement, TriangleAlert, Volume2 } from "lucide";
+import { TriangleAlert, Volume2 } from "lucide";
+import { createIconHTML } from "../node_config.js";
 
 // Pre-create icon SVGs (shared across all node types)
-const _audioIconEl = createElement(Volume2);
-_audioIconEl.setAttribute("width", "12");
-_audioIconEl.setAttribute("height", "12");
-const AUDIO_ICON = _audioIconEl.outerHTML;
-
-const _alertIconEl = createElement(TriangleAlert);
-_alertIconEl.setAttribute("width", "10");
-_alertIconEl.setAttribute("height", "10");
-const ALERT_ICON = _alertIconEl.outerHTML;
+const AUDIO_ICON = createIconHTML(Volume2, { size: 12 });
+const ALERT_ICON = createIconHTML(TriangleAlert);
 
 /**
  * Outer node wrapper with border color and selection state.
@@ -76,6 +70,10 @@ export function renderIndicators(indicators) {
         if (ind.type === "error")
           return html`<span class="error-badge" title="${ind.title}"
             >${unsafeSVG(ALERT_ICON)}</span
+          >`;
+        if (ind.svg)
+          return html`<span class="logic-indicator ${ind.class || ""}" title="${ind.title}"
+            >${unsafeSVG(ind.svg)}</span
           >`;
         return html`<span
           class="logic-indicator ${ind.class || ""}"
@@ -188,6 +186,7 @@ export function renderSockets(node, nodeData, def, emit) {
     ${outputs.map(([key, output]) => {
       let outputLabel = def?.formatOutputLabel?.(key, nodeData) ?? key;
       const badges = def?.getOutputBadges?.(key, nodeData) || [];
+      const labelTitle = typeof outputLabel === "string" ? outputLabel : key;
 
       return html`
         <div class="socket-row output">
@@ -196,7 +195,7 @@ export function renderSockets(node, nodeData, def, emit) {
               ? html`<div class="error-badge" title="${badge.title}">${unsafeSVG(ALERT_ICON)}</div>`
               : html`<span class="${badge.class}" title="${badge.title}">${badge.text}</span>`,
           )}
-          <span class="label" title="${outputLabel}">${outputLabel}</span>
+          <span class="label" title="${labelTitle}">${outputLabel}</span>
           <rete-ref
             class="output-socket"
             .data=${{

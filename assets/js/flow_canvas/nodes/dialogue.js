@@ -2,8 +2,8 @@
  * Dialogue node type definition.
  */
 import { html } from "lit";
-import { MessageSquare } from "lucide";
-import { createIconSvg } from "../node_config.js";
+import { Lock, Zap, MessageSquare } from "lucide";
+import { createIconSvg, createIconHTML } from "../node_config.js";
 import {
   nodeShell,
   defaultHeader,
@@ -11,6 +11,10 @@ import {
   renderPreview,
   renderSockets,
 } from "./render_helpers.js";
+
+// Pre-create indicator icons
+const LOCK_ICON = createIconHTML(Lock);
+const ZAP_ICON = createIconHTML(Zap);
 
 export default {
   config: {
@@ -65,10 +69,10 @@ export default {
   getIndicators(data) {
     const indicators = [];
     if (data.input_condition)
-      indicators.push({ text: "🔒", title: "Has input condition", class: "input-condition" });
+      indicators.push({ svg: LOCK_ICON, title: "Has input condition", class: "input-condition" });
     if (data.output_instruction)
       indicators.push({
-        text: "⚡",
+        svg: ZAP_ICON,
         title: "Has output instruction",
         class: "output-instruction",
       });

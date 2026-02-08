@@ -5,9 +5,15 @@
  * (terminal, flow_reference, or caller_return).
  */
 import { html } from "lit";
-import { Square } from "lucide";
-import { createIconSvg } from "../node_config.js";
+import { unsafeSVG } from "lit/directives/unsafe-svg.js";
+import { Square, ArrowRight, CornerDownLeft } from "lucide";
+import { createIconSvg, createIconHTML } from "../node_config.js";
 import { nodeShell, defaultHeader, renderNavLink, renderPreview, renderSockets } from "./render_helpers.js";
+
+// Pre-create exit mode icons
+const NAV_ARROW_ICON = createIconHTML(ArrowRight, { size: 12 });
+const RETURN_ICON = createIconHTML(CornerDownLeft, { size: 12 });
+const TERMINAL_ICON = createIconHTML(Square);
 
 export default {
   config: {
@@ -28,8 +34,8 @@ export default {
     let navLink = "";
     if (nodeData.exit_mode === "flow_reference" && nodeData.referenced_flow_name) {
       const shortcut = nodeData.referenced_flow_shortcut ? ` (#${nodeData.referenced_flow_shortcut})` : "";
-      const navText = `\u2192 ${nodeData.referenced_flow_name}${shortcut}`;
-      navLink = renderNavLink(navText, "navigate-to-exit-flow", "flowId", nodeData.referenced_flow_id, emit);
+      const navContent = html`<span style="display:inline-flex;align-items:center;gap:4px">${unsafeSVG(NAV_ARROW_ICON)} ${nodeData.referenced_flow_name}${shortcut}</span>`;
+      navLink = renderNavLink(navContent, "navigate-to-exit-flow", "flowId", nodeData.referenced_flow_id, emit);
     }
 
     // Outcome tags
@@ -49,9 +55,10 @@ export default {
 
   getPreviewText(data) {
     const label = data.label || "Exit";
-    if (data.exit_mode === "caller_return") return `${label} \u21A9`;
+    if (data.exit_mode === "caller_return")
+      return html`<span style="display:inline-flex;align-items:center;gap:4px">${label} ${unsafeSVG(RETURN_ICON)}</span>`;
     if (data.exit_mode === "flow_reference") return label;
-    return `${label} \u25A0`;
+    return html`<span style="display:inline-flex;align-items:center;gap:4px">${label} ${unsafeSVG(TERMINAL_ICON)}</span>`;
   },
 
   getIndicators(data) {

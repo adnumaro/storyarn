@@ -5,9 +5,15 @@
  * generated from the referenced flow's Exit nodes.
  */
 import { html } from "lit";
-import { Box } from "lucide";
-import { createIconSvg } from "../node_config.js";
+import { unsafeSVG } from "lit/directives/unsafe-svg.js";
+import { Box, ArrowRight, CornerDownLeft, Square } from "lucide";
+import { createIconSvg, createIconHTML } from "../node_config.js";
 import { nodeShell, defaultHeader, renderNavLink, renderSockets } from "./render_helpers.js";
+
+// Pre-create icons for nav link and exit mode labels
+const NAV_ARROW_ICON = createIconHTML(ArrowRight, { size: 12 });
+const RETURN_ICON = createIconHTML(CornerDownLeft);
+const TERMINAL_ICON = createIconHTML(Square);
 
 export default {
   config: {
@@ -40,9 +46,9 @@ export default {
       const exitId = parseInt(key.replace("exit_", ""));
       const exit = data.exit_labels?.find((e) => e.id === exitId);
       if (exit) {
-        const modeIcon = exit.exit_mode === "caller_return" ? "\u21A9" : "\u25A0";
+        const modeIconSvg = exit.exit_mode === "caller_return" ? RETURN_ICON : TERMINAL_ICON;
         const label = exit.label || "Exit";
-        return `${modeIcon} ${label}`;
+        return html`<span style="display:inline-flex;align-items:center;gap:3px">${unsafeSVG(modeIconSvg)} ${label}</span>`;
       }
       return "Exit";
     }
@@ -59,16 +65,16 @@ export default {
     const indicators = this.getIndicators(nodeData);
     const preview = this.getPreviewText(nodeData);
 
-    let navText = null;
+    let navContent = null;
     if (nodeData.referenced_flow_name) {
       const shortcut = nodeData.referenced_flow_shortcut ? ` (#${nodeData.referenced_flow_shortcut})` : "";
-      navText = `\u2192 ${nodeData.referenced_flow_name}${shortcut}`;
+      navContent = html`<span style="display:inline-flex;align-items:center;gap:4px">${unsafeSVG(NAV_ARROW_ICON)} ${nodeData.referenced_flow_name}${shortcut}</span>`;
     }
 
     return nodeShell(color, selected, html`
       ${defaultHeader(config, color, indicators)}
-      ${navText
-        ? renderNavLink(navText, "navigate-to-subflow", "flowId", nodeData.referenced_flow_id, emit)
+      ${navContent
+        ? renderNavLink(navContent, "navigate-to-subflow", "flowId", nodeData.referenced_flow_id, emit)
         : ""}
       ${!nodeData.referenced_flow_id ? html`<div class="node-data"><div class="node-data-text" style="opacity:0.5">No flow selected</div></div>` : ""}
       <div class="content">${renderSockets(node, nodeData, this, emit)}</div>

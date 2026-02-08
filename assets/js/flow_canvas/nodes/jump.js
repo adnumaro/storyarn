@@ -2,8 +2,9 @@
  * Jump node type definition.
  */
 import { html } from "lit";
-import { LogOut } from "lucide";
-import { createIconSvg } from "../node_config.js";
+import { unsafeSVG } from "lit/directives/unsafe-svg.js";
+import { LogOut, ArrowRight } from "lucide";
+import { createIconSvg, createIconHTML } from "../node_config.js";
 import {
   nodeShell,
   defaultHeader,
@@ -11,6 +12,9 @@ import {
   renderPreview,
   renderSockets,
 } from "./render_helpers.js";
+
+// Pre-create navigation arrow icon
+const ARROW_ICON = createIconHTML(ArrowRight, { size: 12 });
 
 export default {
   config: {
@@ -38,8 +42,9 @@ export default {
 
   getPreviewText(data, _sheetsMap, hubsMap) {
     const targetHub = data.target_hub_id ? hubsMap?.[data.target_hub_id] : null;
-    if (targetHub?.label) return `→ ${targetHub.label}`;
-    return data.target_hub_id ? `→ ${data.target_hub_id}` : "";
+    const label = targetHub?.label || data.target_hub_id;
+    if (!label) return "";
+    return html`<span style="display:inline-flex;align-items:center;gap:4px">${unsafeSVG(ARROW_ICON)} ${label}</span>`;
   },
 
   getIndicators(data) {

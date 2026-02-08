@@ -2,9 +2,13 @@
  * Hub node type definition.
  */
 import { html } from "lit";
-import { LogIn } from "lucide";
-import { createIconSvg } from "../node_config.js";
+import { unsafeSVG } from "lit/directives/unsafe-svg.js";
+import { LogIn, ArrowUpRight } from "lucide";
+import { createIconSvg, createIconHTML } from "../node_config.js";
 import { nodeShell, defaultHeader, renderNavLink, renderSockets } from "./render_helpers.js";
+
+// Pre-create jump count icon
+const JUMP_ICON = createIconHTML(ArrowUpRight, { size: 12 });
 
 export default {
   config: {
@@ -19,11 +23,12 @@ export default {
     const { node, nodeData, config, selected, emit, hubsMap } = ctx;
     const color = this.nodeColor(nodeData, config);
     const hubEntry = hubsMap?.[nodeData.hub_id];
-    const navText = `↗ ${hubEntry?.jumpCount || 0} jumps`;
+    const jumpCount = hubEntry?.jumpCount || 0;
+    const navContent = html`<span style="display:inline-flex;align-items:center;gap:4px">${unsafeSVG(JUMP_ICON)} ${jumpCount} jumps</span>`;
 
     return nodeShell(color, selected, html`
       ${defaultHeader(config, color, [])}
-      ${renderNavLink(navText, "navigate-to-jumps", "hubDbId", node.nodeId, emit)}
+      ${renderNavLink(navContent, "navigate-to-jumps", "hubDbId", node.nodeId, emit)}
       <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
     `);
   },
