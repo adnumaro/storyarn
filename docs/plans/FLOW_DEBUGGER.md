@@ -696,15 +696,18 @@ Before starting a debug session (triggered by any entry point), a modal appears:
 
 **Files:** `assets/js/flow_canvas/handlers/debug_handler.js` (new), `assets/js/flow_canvas/components/storyarn_node_styles.js` (modified), `assets/js/flow_canvas/event_bindings.js` (modified), `assets/js/hooks/flow_canvas.js` (modified), `assets/js/flow_canvas/handlers/index.js` (modified)
 
-#### Task 6: Variables tab
+#### Task 6: Variables tab ✅
 
-- [ ] 4-column table: Variable / Initial / Previous / Current
-- [ ] Source color coding: orange = instruction, blue = user override, gray = unchanged
-- [ ] Diff highlighting: bold values that differ from initial
-- [ ] Read-only (inline editing is Phase 2)
-- [ ] Tab switch in debug panel (`debug_active_tab`)
+- [x] 5-column table: Variable / Type / Initial / Previous / Current (sorted alphabetically)
+- [x] Source color coding: `text-warning` (orange) = instruction, `text-info` (blue) = user override, `text-base-content/50` (gray) = unchanged
+- [x] Diff highlighting: bold values + ◆ diamond indicator when current differs from initial
+- [x] Read-only (inline editing is Phase 2)
+- [x] Tab switch in debug panel (`debug_active_tab`) — "Variables" tab button added
+- [x] Empty state message when no project variables exist
+- [x] Type badge per variable, sheet shortcut dimmed for readability
+- [x] All 791 tests passing
 
-**Files:** `lib/storyarn_web/live/flow_live/components/debug_panel.ex`
+**Files:** `lib/storyarn_web/live/flow_live/components/debug_panel.ex` (modified)
 
 ### Phase 2 — Interactivity + Visual Polish
 

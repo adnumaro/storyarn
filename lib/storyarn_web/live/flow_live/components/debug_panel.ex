@@ -5,7 +5,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   Renders a docked panel at the bottom of the canvas with:
   - Controls bar: Step, Step Back, Reset, Stop
   - Status indicator
-  - Tabbed content area (Console tab)
+  - Tabbed content area (Console, Variables)
   - Response choices when waiting for user input
   """
 
@@ -85,6 +85,15 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           >
             {gettext("Console")}
           </button>
+          <button
+            type="button"
+            role="tab"
+            class={"tab #{if @debug_active_tab == "variables", do: "tab-active"}"}
+            phx-click="debug_tab_change"
+            phx-value-tab="variables"
+          >
+            {gettext("Variables")}
+          </button>
         </div>
       </div>
 
@@ -95,6 +104,10 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           console={@debug_state.console}
           pending_choices={@debug_state.pending_choices}
           status={@debug_state.status}
+        />
+        <.variables_tab
+          :if={@debug_active_tab == "variables"}
+          variables={@debug_state.variables}
         />
       </div>
     </div>
@@ -137,6 +150,64 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
         :if={@status == :waiting_input and not is_nil(@pending_choices)}
         choices={@pending_choices}
       />
+    </div>
+    """
+  end
+
+  # ===========================================================================
+  # Variables tab
+  # ===========================================================================
+
+  attr :variables, :map, required: true
+
+  defp variables_tab(assigns) do
+    sorted =
+      assigns.variables
+      |> Enum.sort_by(fn {key, _} -> key end)
+
+    assigns = Phoenix.Component.assign(assigns, :sorted_vars, sorted)
+
+    ~H"""
+    <div class="text-xs">
+      <table class="table table-xs table-pin-rows">
+        <thead>
+          <tr class="text-base-content/50">
+            <th class="font-medium">{gettext("Variable")}</th>
+            <th class="font-medium w-16">{gettext("Type")}</th>
+            <th class="font-medium w-20 text-right">{gettext("Initial")}</th>
+            <th class="font-medium w-20 text-right">{gettext("Previous")}</th>
+            <th class="font-medium w-24 text-right">{gettext("Current")}</th>
+          </tr>
+        </thead>
+        <tbody class="font-mono">
+          <tr :for={{key, var} <- @sorted_vars} class="hover:bg-base-200">
+            <td class="truncate max-w-48" title={key}>
+              <span class="text-base-content/40">{var.sheet_shortcut}.</span>{var.variable_name}
+            </td>
+            <td>
+              <span class="badge badge-xs badge-ghost font-sans">{var.block_type}</span>
+            </td>
+            <td class="text-right text-base-content/50 tabular-nums">
+              {format_value(var.initial_value)}
+            </td>
+            <td class="text-right text-base-content/50 tabular-nums">
+              {format_value(var.previous_value)}
+            </td>
+            <td class={["text-right tabular-nums", var_current_class(var)]}>
+              <span :if={var.value != var.initial_value} class={var_source_color(var.source)}>
+                ◆
+              </span>
+              <span class={if var.value != var.initial_value, do: "font-bold"}>
+                {format_value(var.value)}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div :if={@sorted_vars == []} class="flex items-center justify-center h-24 text-base-content/30">
+        {gettext("No variables in this project")}
+      </div>
     </div>
     """
   end
@@ -231,6 +302,24 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   end
 
   defp format_ts(_), do: "0.000s"
+
+  # -- Variable helpers --
+
+  defp var_current_class(var) do
+    if var.value != var.initial_value, do: var_source_color(var.source), else: "text-base-content/50"
+  end
+
+  defp var_source_color(:instruction), do: "text-warning"
+  defp var_source_color(:user_override), do: "text-info"
+  defp var_source_color(_), do: "text-base-content/50"
+
+  defp format_value(nil), do: "nil"
+  defp format_value(true), do: "true"
+  defp format_value(false), do: "false"
+  defp format_value(val) when is_list(val), do: Enum.join(val, ", ")
+  defp format_value(val) when is_binary(val) and byte_size(val) > 30, do: String.slice(val, 0, 30) <> "..."
+  defp format_value(val) when is_binary(val), do: val
+  defp format_value(val), do: to_string(val)
 
   defp clean_response_text(text) when is_binary(text) do
     text
