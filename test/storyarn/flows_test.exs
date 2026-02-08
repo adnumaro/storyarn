@@ -243,7 +243,9 @@ defmodule Storyarn.FlowsTest do
       assert exit_node != nil
       assert exit_node.position_x == 500.0
       assert exit_node.position_y == 300.0
-      assert exit_node.data["is_success"] == true
+      assert exit_node.data["outcome_tags"] == []
+      assert exit_node.data["outcome_color"] == "#22c55e"
+      assert exit_node.data["exit_mode"] == "terminal"
       assert exit_node.data["technical_id"] == ""
     end
 

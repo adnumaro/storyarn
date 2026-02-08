@@ -84,11 +84,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.ConfigSidebar do
             :for={exit_node <- @subflow_exits}
             class="flex items-center gap-2 text-xs px-2 py-1 rounded bg-base-200"
           >
-            <span class={[
-              "badge badge-xs",
-              if(exit_node.is_success != false, do: "badge-success", else: "badge-error")
-            ]}>
-              {if exit_node.is_success != false, do: "✓", else: "✕"}
+            <span
+              class="w-2 h-2 rounded-full shrink-0"
+              style={"background-color: #{exit_node[:outcome_color] || "#22c55e"}"}
+            />
+            <span class="opacity-60">
+              {exit_mode_icon(exit_node[:exit_mode] || "terminal")}
             </span>
             <span class="truncate">{exit_node.label || gettext("Unnamed exit")}</span>
           </div>
@@ -113,4 +114,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.ConfigSidebar do
     </div>
     """
   end
+
+  defp exit_mode_icon("caller_return"), do: "\u21A9"
+  defp exit_mode_icon("flow_reference"), do: "\u2192"
+  defp exit_mode_icon(_), do: "\u25A0"
 end

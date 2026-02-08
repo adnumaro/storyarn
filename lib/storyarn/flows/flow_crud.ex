@@ -174,7 +174,14 @@ defmodule Storyarn.Flows.FlowCrud do
             type: "exit",
             position_x: 500.0,
             position_y: 300.0,
-            data: %{"label" => "", "technical_id" => "", "is_success" => true}
+            data: %{
+              "label" => "",
+              "technical_id" => "",
+              "outcome_tags" => [],
+              "outcome_color" => "#22c55e",
+              "exit_mode" => "terminal",
+              "referenced_flow_id" => nil
+            }
           })
           |> Repo.insert!()
 

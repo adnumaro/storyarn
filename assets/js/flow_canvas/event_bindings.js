@@ -129,6 +129,11 @@ export function setupEventHandlers(hook) {
     hook.pushEvent("navigate_to_subflow", { "flow-id": String(e.detail.flowId) });
   });
 
+  // Exit flow reference navigation (composed from storyarn-node Shadow DOM)
+  hook.el.addEventListener("navigate-to-exit-flow", (e) => {
+    hook.pushEvent("navigate_to_exit_flow", { "flow-id": String(e.detail.flowId) });
+  });
+
   // Handle server events - Collaboration
   hook.handleEvent("cursor_update", (data) => hook.cursorHandler.handleCursorUpdate(data));
   hook.handleEvent("cursor_leave", (data) => hook.cursorHandler.handleCursorLeave(data));

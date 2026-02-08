@@ -158,6 +158,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           referencing_jumps={@referencing_jumps}
           available_flows={@available_flows}
           subflow_exits={@subflow_exits}
+          outcome_tags_suggestions={@outcome_tags_suggestions}
+          referencing_flows={@referencing_flows}
         />
       </div>
 
@@ -253,6 +255,8 @@ defmodule StoryarnWeb.FlowLive.Show do
     |> assign(:referencing_jumps, [])
     |> assign(:available_flows, [])
     |> assign(:subflow_exits, [])
+    |> assign(:outcome_tags_suggestions, [])
+    |> assign(:referencing_flows, [])
     |> assign(:from_flow, nil)
     |> assign(:editing_mode, nil)
     |> assign(:save_status, :idle)
@@ -518,6 +522,37 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  # Exit node events
+  def handle_event("update_exit_mode", %{"mode" => mode}, socket) do
+    with_auth(:edit_content, socket, fn ->
+      ExitNode.Node.handle_update_exit_mode(mode, socket)
+    end)
+  end
+
+  def handle_event("update_exit_reference", %{"flow-id" => flow_id}, socket) do
+    with_auth(:edit_content, socket, fn ->
+      ExitNode.Node.handle_update_exit_reference(flow_id, socket)
+    end)
+  end
+
+  def handle_event("add_outcome_tag", %{"tag" => tag}, socket) do
+    with_auth(:edit_content, socket, fn ->
+      ExitNode.Node.handle_add_outcome_tag(tag, socket)
+    end)
+  end
+
+  def handle_event("remove_outcome_tag", %{"tag" => tag}, socket) do
+    with_auth(:edit_content, socket, fn ->
+      ExitNode.Node.handle_remove_outcome_tag(tag, socket)
+    end)
+  end
+
+  def handle_event("update_outcome_color", %{"color" => color}, socket) do
+    with_auth(:edit_content, socket, fn ->
+      ExitNode.Node.handle_update_outcome_color(color, socket)
+    end)
+  end
+
   # Hub color picker
   def handle_event("update_hub_color", %{"color" => color}, socket) do
     with_auth(:edit_content, socket, fn ->
@@ -528,6 +563,46 @@ defmodule StoryarnWeb.FlowLive.Show do
         Map.put(data, "color", validated)
       end)
     end)
+  end
+
+  def handle_event("navigate_to_exit_flow", %{"flow-id" => flow_id_str}, socket) do
+    case Integer.parse(flow_id_str) do
+      {flow_id, ""} ->
+        case Flows.get_flow_brief(socket.assigns.project.id, flow_id) do
+          nil ->
+            {:noreply, put_flash(socket, :error, gettext("Flow not found."))}
+
+          _flow ->
+            {:noreply,
+             push_navigate(socket,
+               to:
+                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}?from=#{socket.assigns.flow.id}"
+             )}
+        end
+
+      _ ->
+        {:noreply, put_flash(socket, :error, gettext("Invalid flow ID."))}
+    end
+  end
+
+  def handle_event("navigate_to_referencing_flow", %{"flow-id" => flow_id_str}, socket) do
+    case Integer.parse(flow_id_str) do
+      {flow_id, ""} ->
+        case Flows.get_flow_brief(socket.assigns.project.id, flow_id) do
+          nil ->
+            {:noreply, put_flash(socket, :error, gettext("Flow not found."))}
+
+          _flow ->
+            {:noreply,
+             push_navigate(socket,
+               to:
+                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}?from=#{socket.assigns.flow.id}"
+             )}
+        end
+
+      _ ->
+        {:noreply, put_flash(socket, :error, gettext("Invalid flow ID."))}
+    end
   end
 
   # Collaboration & Preview

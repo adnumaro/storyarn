@@ -321,7 +321,7 @@ defmodule Storyarn.Flows.NodeCrud do
 
   @doc """
   Lists all Exit nodes for a given flow.
-  Returns a list of maps with :id, :label, and :is_success.
+  Returns a list of maps with :id, :label, :outcome_tags, :outcome_color, and :exit_mode.
   Used by subflow nodes to generate dynamic output pins.
   """
   def list_exit_nodes_for_flow(flow_id) do
@@ -330,11 +330,29 @@ defmodule Storyarn.Flows.NodeCrud do
       select: %{
         id: n.id,
         label: fragment("?->>'label'", n.data),
-        is_success: fragment("(?->>'is_success')::boolean", n.data)
+        outcome_tags: fragment("?->'outcome_tags'", n.data),
+        outcome_color: fragment("coalesce(?->>'outcome_color', '#22c55e')", n.data),
+        exit_mode: fragment("coalesce(?->>'exit_mode', 'terminal')", n.data)
       },
       order_by: [asc: n.inserted_at]
     )
     |> Repo.all()
+  end
+
+  @doc """
+  Lists all unique outcome tags used across exit nodes in a project.
+  Used for autocomplete suggestions.
+  """
+  def list_outcome_tags_for_project(project_id) do
+    from(n in FlowNode,
+      join: f in assoc(n, :flow),
+      where: f.project_id == ^project_id and n.type == "exit",
+      where: fragment("jsonb_array_length(coalesce(?->'outcome_tags', '[]'::jsonb)) > 0", n.data),
+      select: fragment("jsonb_array_elements_text(?->'outcome_tags')", n.data)
+    )
+    |> Repo.all()
+    |> Enum.uniq()
+    |> Enum.sort()
   end
 
   @doc """
@@ -356,6 +374,33 @@ defmodule Storyarn.Flows.NodeCrud do
   end
 
   @doc """
+  Finds all nodes (subflow and exit with flow_reference) that reference a given flow.
+  Returns a list of maps with :node_id, :node_type, :flow_id, :flow_name, :flow_shortcut.
+  Used by exit nodes to show "Referenced by" section.
+  """
+  def list_nodes_referencing_flow(flow_id, project_id) do
+    flow_id_str = to_string(flow_id)
+
+    from(n in FlowNode,
+      join: f in Flow, on: n.flow_id == f.id,
+      where: f.project_id == ^project_id and is_nil(f.deleted_at),
+      where:
+        (n.type == "subflow" and fragment("?->>'referenced_flow_id' = ?", n.data, ^flow_id_str)) or
+          (n.type == "exit" and fragment("?->>'exit_mode'", n.data) == "flow_reference" and
+             fragment("?->>'referenced_flow_id' = ?", n.data, ^flow_id_str)),
+      select: %{
+        node_id: n.id,
+        node_type: n.type,
+        flow_id: f.id,
+        flow_name: f.name,
+        flow_shortcut: f.shortcut
+      },
+      order_by: [asc: f.name]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
   Checks if setting source_flow_id to reference target_flow_id would create a circular reference.
   Walks the subflow reference graph from target_flow_id to detect cycles.
   """
@@ -370,21 +415,37 @@ defmodule Storyarn.Flows.NodeCrud do
       MapSet.member?(visited, current_flow_id) -> false
       true ->
         visited = MapSet.put(visited, current_flow_id)
-
-        # Find all subflow nodes in current_flow_id and check their references
-        referenced_flow_ids =
-          from(n in FlowNode,
-            where: n.flow_id == ^current_flow_id and n.type == "subflow",
-            where: not is_nil(fragment("?->>'referenced_flow_id'", n.data)),
-            where: fragment("?->>'referenced_flow_id' ~ '^[0-9]+$'", n.data),
-            select: fragment("(?->>'referenced_flow_id')::integer", n.data)
-          )
-          |> Repo.all()
+        referenced_flow_ids = get_referenced_flow_ids(current_flow_id)
 
         Enum.any?(referenced_flow_ids, fn ref_id ->
           do_check_circular(source_flow_id, ref_id, visited, depth + 1)
         end)
     end
+  end
+
+  defp get_referenced_flow_ids(flow_id) do
+    # Subflow references
+    subflow_refs =
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and n.type == "subflow",
+        where: not is_nil(fragment("?->>'referenced_flow_id'", n.data)),
+        where: fragment("?->>'referenced_flow_id' ~ '^[0-9]+$'", n.data),
+        select: fragment("(?->>'referenced_flow_id')::integer", n.data)
+      )
+      |> Repo.all()
+
+    # Exit flow references
+    exit_refs =
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and n.type == "exit",
+        where: fragment("?->>'exit_mode'", n.data) == "flow_reference",
+        where: not is_nil(fragment("?->>'referenced_flow_id'", n.data)),
+        where: fragment("?->>'referenced_flow_id' ~ '^[0-9]+$'", n.data),
+        select: fragment("(?->>'referenced_flow_id')::integer", n.data)
+      )
+      |> Repo.all()
+
+    (subflow_refs ++ exit_refs) |> Enum.reject(&is_nil/1) |> Enum.uniq()
   end
 
   defp validate_and_insert_subflow(%Flow{} = flow, attrs) do
@@ -442,7 +503,9 @@ defmodule Storyarn.Flows.NodeCrud do
             flow_id: n.flow_id,
             id: n.id,
             label: fragment("?->>'label'", n.data),
-            is_success: fragment("(?->>'is_success')::boolean", n.data)
+            outcome_tags: fragment("?->'outcome_tags'", n.data),
+            outcome_color: fragment("coalesce(?->>'outcome_color', '#22c55e')", n.data),
+            exit_mode: fragment("coalesce(?->>'exit_mode', 'terminal')", n.data)
           },
           order_by: [asc: n.inserted_at]
         )
@@ -518,6 +581,37 @@ defmodule Storyarn.Flows.NodeCrud do
     |> Map.put("referenced_flow_name", nil)
     |> Map.put("referenced_flow_shortcut", nil)
     |> Map.put("exit_labels", [])
+  end
+
+  @doc """
+  Resolves exit node data by enriching it with referenced flow info when exit_mode is flow_reference.
+  """
+  def resolve_exit_data(%{"exit_mode" => "flow_reference"} = data) do
+    with ref_id when ref_id not in [nil, ""] <- data["referenced_flow_id"],
+         int_id when is_integer(int_id) <- safe_to_integer(ref_id),
+         %Flow{deleted_at: nil} = flow <- Repo.get(Flow, int_id) do
+      data
+      |> Map.put("stale_reference", false)
+      |> Map.put("referenced_flow_name", flow.name)
+      |> Map.put("referenced_flow_shortcut", flow.shortcut)
+    else
+      nil -> data
+      "" -> data
+      %Flow{} ->
+        mark_stale_reference(data)
+
+      _ ->
+        mark_stale_reference(data)
+    end
+  end
+
+  def resolve_exit_data(data), do: data
+
+  defp mark_stale_reference(data) do
+    data
+    |> Map.put("stale_reference", true)
+    |> Map.put("referenced_flow_name", nil)
+    |> Map.put("referenced_flow_shortcut", nil)
   end
 
   @doc """

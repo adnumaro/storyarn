@@ -282,6 +282,20 @@ defmodule Storyarn.Flows do
   defdelegate list_subflow_nodes_referencing(flow_id, project_id), to: NodeCrud
 
   @doc """
+  Lists all unique outcome tags used across exit nodes in a project.
+  Used for autocomplete suggestions in exit node sidebar.
+  """
+  @spec list_outcome_tags_for_project(integer()) :: [String.t()]
+  defdelegate list_outcome_tags_for_project(project_id), to: NodeCrud
+
+  @doc """
+  Finds all nodes (subflow and exit with flow_reference) that reference a given flow.
+  Used by exit nodes to show "Referenced by" section.
+  """
+  @spec list_nodes_referencing_flow(integer(), integer()) :: [map()]
+  defdelegate list_nodes_referencing_flow(flow_id, project_id), to: NodeCrud
+
+  @doc """
   Checks if a subflow reference would create a circular dependency.
   """
   @spec has_circular_reference?(integer(), integer()) :: boolean()
@@ -493,6 +507,10 @@ defmodule Storyarn.Flows do
 
   def resolve_node_colors("subflow", data, subflow_cache) do
     NodeCrud.resolve_subflow_data(data, subflow_cache)
+  end
+
+  def resolve_node_colors("exit", data, _subflow_cache) do
+    NodeCrud.resolve_exit_data(data)
   end
 
   def resolve_node_colors(_type, data, _subflow_cache), do: data

@@ -21,10 +21,16 @@ export default {
 
   /**
    * Dynamic outputs: one per Exit node in referenced flow.
+   * Exits with exit_mode "flow_reference" route themselves and are excluded.
    */
   createOutputs(data) {
     if (data.exit_labels?.length > 0) {
-      return data.exit_labels.map((e) => `exit_${e.id}`);
+      const relevantExits = data.exit_labels.filter(
+        (e) => e.exit_mode !== "flow_reference"
+      );
+      if (relevantExits.length > 0) {
+        return relevantExits.map((e) => `exit_${e.id}`);
+      }
     }
     return null; // Fall back to static ["output"]
   },
@@ -34,8 +40,9 @@ export default {
       const exitId = parseInt(key.replace("exit_", ""));
       const exit = data.exit_labels?.find((e) => e.id === exitId);
       if (exit) {
-        const icon = exit.is_success === false ? "✕" : "✓";
-        return `${icon} ${exit.label || "Exit"}`;
+        const modeIcon = exit.exit_mode === "caller_return" ? "\u21A9" : "\u25A0";
+        const label = exit.label || "Exit";
+        return `${modeIcon} ${label}`;
       }
       return "Exit";
     }
@@ -92,6 +99,6 @@ export default {
     const oldExits = oldData?.exit_labels || [];
     const newExits = newData.exit_labels || [];
     if (oldExits.length !== newExits.length) return true;
-    return oldExits.some((e, i) => e.id !== newExits[i]?.id);
+    return oldExits.some((e, i) => e.id !== newExits[i]?.id || e.exit_mode !== newExits[i]?.exit_mode);
   },
 };
