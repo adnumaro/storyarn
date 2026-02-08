@@ -233,10 +233,36 @@ defmodule Storyarn.Sheets.Versioning do
   defp restore_blocks_from_snapshot(repo, sheet_id, blocks_data) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
+    # Collect all inherited_from_block_ids to validate in batch
+    source_block_ids =
+      blocks_data
+      |> Enum.map(& &1["inherited_from_block_id"])
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    existing_source_ids =
+      if source_block_ids == [] do
+        MapSet.new()
+      else
+        from(b in Block, where: b.id in ^source_block_ids and is_nil(b.deleted_at), select: b.id)
+        |> repo.all()
+        |> MapSet.new()
+      end
+
     blocks =
       blocks_data
       |> Enum.sort_by(& &1["position"])
       |> Enum.map(fn block_data ->
+        inherited_from = block_data["inherited_from_block_id"]
+
+        # If source block no longer exists, nilify reference and mark as detached
+        {inherited_from, detached} =
+          if inherited_from && !MapSet.member?(existing_source_ids, inherited_from) do
+            {nil, true}
+          else
+            {inherited_from, block_data["detached"] || false}
+          end
+
         %{
           sheet_id: sheet_id,
           type: block_data["type"],
@@ -245,6 +271,10 @@ defmodule Storyarn.Sheets.Versioning do
           value: block_data["value"] || %{},
           is_constant: block_data["is_constant"] || false,
           variable_name: block_data["variable_name"],
+          scope: block_data["scope"] || "self",
+          inherited_from_block_id: inherited_from,
+          detached: detached,
+          required: block_data["required"] || false,
           inserted_at: now,
           updated_at: now
         }
@@ -277,7 +307,11 @@ defmodule Storyarn.Sheets.Versioning do
       "config" => block.config,
       "value" => block.value,
       "is_constant" => block.is_constant,
-      "variable_name" => block.variable_name
+      "variable_name" => block.variable_name,
+      "scope" => block.scope,
+      "inherited_from_block_id" => block.inherited_from_block_id,
+      "detached" => block.detached,
+      "required" => block.required
     }
   end
 
