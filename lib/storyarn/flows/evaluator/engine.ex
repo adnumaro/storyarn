@@ -121,6 +121,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
         execution_path: snapshot.execution_path,
         pending_choices: snapshot.pending_choices,
         status: snapshot.status,
+        history: snapshot.history,
         snapshots: rest,
         step_count: max(state.step_count - 1, 0)
     }
@@ -173,6 +174,41 @@ defmodule Storyarn.Flows.Evaluator.Engine do
 
   def choose_response(state, _response_id, _connections) do
     {:error, state, :not_waiting_input}
+  end
+
+  @doc """
+  Manually set a variable value (user override in the debug panel).
+
+  Updates the variable value, sets source to `:user_override`, and adds
+  console + history entries to track the change.
+  """
+  @spec set_variable(State.t(), String.t(), any()) :: {:ok, State.t()} | {:error, :not_found}
+  def set_variable(%State{} = state, variable_ref, new_value) do
+    case Map.get(state.variables, variable_ref) do
+      nil ->
+        {:error, :not_found}
+
+      var ->
+        old_value = var.value
+        updated_var = %{var | value: new_value, previous_value: old_value, source: :user_override}
+        variables = Map.put(state.variables, variable_ref, updated_var)
+
+        state = %{state | variables: variables}
+
+        state =
+          add_console(
+            state,
+            :info,
+            nil,
+            "",
+            "User override: #{variable_ref}: #{format_value(old_value)} → #{format_value(new_value)}"
+          )
+
+        change = %{variable_ref: variable_ref, old_value: old_value, new_value: new_value}
+        state = add_history_entries(state, nil, "", [change], :user_override)
+
+        {:ok, state}
+    end
   end
 
   @doc """
@@ -263,20 +299,59 @@ defmodule Storyarn.Flows.Evaluator.Engine do
       follow_output(state, node.id, label, connections)
     else
       evaluated = evaluate_response_conditions(responses, state.variables)
-      valid_count = Enum.count(evaluated, & &1.valid)
+      valid_responses = Enum.filter(evaluated, & &1.valid)
+      valid_count = length(valid_responses)
       total_count = length(evaluated)
 
-      state =
-        add_console(
-          state,
-          :info,
-          node.id,
-          label,
-          "Dialogue — waiting for response (#{valid_count} of #{total_count} valid)"
-        )
+      if valid_count == 1 do
+        # Single valid response — auto-select it
+        [only] = valid_responses
 
-      pending = %{node_id: node.id, responses: evaluated}
-      {:waiting_input, %{state | status: :waiting_input, pending_choices: pending}}
+        state =
+          add_console(
+            state,
+            :info,
+            node.id,
+            label,
+            "Dialogue — auto-selected \"#{only.text}\" (1 of #{total_count} valid)"
+          )
+
+        # Execute response instruction if present
+        state =
+          if is_binary(only[:instruction]) and only[:instruction] != "" do
+            execute_response_instruction(only.instruction, state, node.id)
+          else
+            state
+          end
+
+        # Follow connection from the response pin
+        conn =
+          find_connection(connections, node.id, only.id) ||
+            find_connection(connections, node.id, "resp_#{only.id}")
+
+        case conn do
+          nil ->
+            state =
+              add_console(state, :error, node.id, label, "No connection from response #{only.id}")
+
+            {:finished, %{state | status: :finished}}
+
+          conn ->
+            advance_to(state, conn.target_node_id)
+        end
+      else
+        state =
+          add_console(
+            state,
+            :info,
+            node.id,
+            label,
+            "Dialogue — waiting for response (#{valid_count} of #{total_count} valid)"
+          )
+
+        pending = %{node_id: node.id, responses: evaluated}
+        {:waiting_input, %{state | status: :waiting_input, pending_choices: pending}}
+      end
     end
   end
 
@@ -301,7 +376,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     {:ok, new_variables, changes, errors} = InstructionExec.execute(assignments, state.variables)
     state = %{state | variables: new_variables}
 
-    # Log each change
+    # Log each change to console + history
     state =
       Enum.reduce(changes, state, fn change, acc ->
         add_console(
@@ -312,6 +387,8 @@ defmodule Storyarn.Flows.Evaluator.Engine do
           "#{change.variable_ref}: #{format_value(change.old_value)} → #{format_value(change.new_value)} (#{change.operator})"
         )
       end)
+
+    state = add_history_entries(state, node.id, label, changes, :instruction)
 
     # Log errors
     state =
@@ -479,6 +556,8 @@ defmodule Storyarn.Flows.Evaluator.Engine do
           )
         end)
 
+      state = add_history_entries(state, node_id, label, changes, :instruction)
+
       Enum.reduce(errors, state, fn error, acc ->
         add_console(
           acc,
@@ -509,6 +588,8 @@ defmodule Storyarn.Flows.Evaluator.Engine do
           "Response instruction: #{change.variable_ref}: #{format_value(change.old_value)} → #{format_value(change.new_value)}"
         )
       end)
+
+    state = add_history_entries(state, node_id, "", changes, :instruction)
 
     Enum.reduce(errors, state, fn error, acc ->
       add_console(acc, :error, node_id, "", "Response instruction error: #{error.reason}")
@@ -572,7 +653,8 @@ defmodule Storyarn.Flows.Evaluator.Engine do
       variables: state.variables,
       execution_path: state.execution_path,
       pending_choices: state.pending_choices,
-      status: state.status
+      status: state.status,
+      history: state.history
     }
 
     %{state | snapshots: [snapshot | state.snapshots]}
@@ -640,6 +722,25 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     else
       " (all #{total} rules passed)"
     end
+  end
+
+  defp add_history_entries(state, _node_id, _node_label, [], _source), do: state
+
+  defp add_history_entries(state, node_id, node_label, changes, source) do
+    entries =
+      Enum.map(changes, fn change ->
+        %{
+          ts: elapsed_ms(state),
+          node_id: node_id,
+          node_label: node_label || "",
+          variable_ref: change.variable_ref,
+          old_value: change.old_value,
+          new_value: change.new_value,
+          source: source
+        }
+      end)
+
+    %{state | history: state.history ++ entries}
   end
 
   defp format_value(nil), do: "nil"

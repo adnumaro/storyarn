@@ -165,6 +165,12 @@ defmodule StoryarnWeb.FlowLive.Show do
             :if={@debug_panel_open && @debug_state}
             debug_state={@debug_state}
             debug_active_tab={@debug_active_tab}
+            debug_nodes={@debug_nodes}
+            debug_auto_playing={@debug_auto_playing}
+            debug_speed={@debug_speed}
+            debug_editing_var={@debug_editing_var}
+            debug_var_filter={@debug_var_filter}
+            debug_var_changed_only={@debug_var_changed_only}
           />
         </div>
 
@@ -296,6 +302,11 @@ defmodule StoryarnWeb.FlowLive.Show do
     |> assign(:debug_active_tab, "console")
     |> assign(:debug_nodes, %{})
     |> assign(:debug_connections, [])
+    |> assign(:debug_speed, 800)
+    |> assign(:debug_auto_playing, false)
+    |> assign(:debug_editing_var, nil)
+    |> assign(:debug_var_filter, "")
+    |> assign(:debug_var_changed_only, false)
   end
 
   @impl true
@@ -666,6 +677,38 @@ defmodule StoryarnWeb.FlowLive.Show do
     DebugHandlers.handle_debug_tab_change(params, socket)
   end
 
+  def handle_event("debug_play", _params, socket) do
+    DebugHandlers.handle_debug_play(socket)
+  end
+
+  def handle_event("debug_pause", _params, socket) do
+    DebugHandlers.handle_debug_pause(socket)
+  end
+
+  def handle_event("debug_set_speed", params, socket) do
+    DebugHandlers.handle_debug_set_speed(params, socket)
+  end
+
+  def handle_event("debug_edit_variable", params, socket) do
+    DebugHandlers.handle_debug_edit_variable(params, socket)
+  end
+
+  def handle_event("debug_cancel_edit", _params, socket) do
+    DebugHandlers.handle_debug_cancel_edit(socket)
+  end
+
+  def handle_event("debug_set_variable", params, socket) do
+    DebugHandlers.handle_debug_set_variable(params, socket)
+  end
+
+  def handle_event("debug_var_filter", params, socket) do
+    DebugHandlers.handle_debug_var_filter(params, socket)
+  end
+
+  def handle_event("debug_var_toggle_changed", _params, socket) do
+    DebugHandlers.handle_debug_var_toggle_changed(socket)
+  end
+
   # Collaboration & Preview
   def handle_event("cursor_moved", params, socket) do
     CollaborationEventHandlers.handle_cursor_moved(params, socket)
@@ -716,6 +759,9 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_info({:mention_suggestions, query, component_cid}, socket),
     do: EditorInfoHandlers.handle_mention_suggestions(query, component_cid, socket)
+
+  def handle_info(:debug_auto_step, socket),
+    do: DebugHandlers.handle_debug_auto_step(socket)
 
   def handle_info(:clear_collab_toast, socket),
     do: CollaborationEventHandlers.handle_clear_collab_toast(socket)

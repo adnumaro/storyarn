@@ -711,34 +711,140 @@ Before starting a debug session (triggered by any entry point), a modal appears:
 
 ### Phase 2 — Interactivity + Visual Polish
 
-**Goal:** Auto-play, runtime variable editing, analysis/player toggle, full visual feedback, all panel tabs.
+**Goal:** Auto-play, runtime variable editing, full visual feedback, all panel tabs, keyboard shortcuts.
 
-**Backend:**
-- [ ] Auto-play timer mechanism (`Process.send_after` + `:debug_auto_step`)
-- [ ] `debug_set_variable` handler (mutate variable state mid-session, source = :user_override)
-- [ ] `debug_set_speed` handler
-- [ ] `debug_toggle_view_mode` handler (switch analysis ↔ player)
-- [ ] Input condition evaluation on dialogue nodes (log errors with rule detail on failure)
-- [ ] Response condition filtering (analysis: show all + mark invalid; player: hide invalid)
-- [ ] Initial state modal backend (load project variables, accept overrides)
+**Scope exclusions for Phase 2:**
+- No analysis/player toggle (deferred to Phase 3 — requires significant engine changes for branch visibility)
+- No failed branch indicators (depends on analysis/player mode)
 
-**Frontend:**
-- [ ] Auto-play controls (play, pause, speed slider)
-- [ ] Restart button
-- [ ] Analysis / Player mode toggle in controls bar
-- [ ] Initial state configuration modal
-- [ ] Variables tab — inline editing (edited values turn blue)
-- [ ] Variables tab — diff highlighting (bold for changed, color-coded by source)
-- [ ] Variables tab — search/filter + "Changed only" filter
-- [ ] History tab — variable mutation timeline with source tracking
-- [ ] Path tab — ordered visited nodes with outcomes
-- [ ] Connection animations (flowing dashes on active path)
-- [ ] Dimmed connections (non-taken paths)
-- [ ] Failed branch indicators (red dashed outline in analysis mode)
-- [ ] Error node highlighting (red tint)
-- [ ] Auto-scroll canvas to current node during auto-play
-- [ ] Panel resize (drag handle)
-- [ ] Keyboard shortcuts (Ctrl+D toggle, F10 step, F9 step back, F5 play)
+#### Task 7: Path tab ✅
+
+- [x] Add "Path" tab button in debug panel tabs bar
+- [x] `path_tab/1` component showing ordered list of visited nodes
+- [x] Each entry: step number, node type icon (`<.icon>`), node label, outcome message (from console)
+- [x] Current node highlighted with `text-primary font-bold`
+- [x] Empty state: "No steps yet"
+- [x] Pass `debug_nodes` to `debug_panel/1` (add attr + wire from `show.ex`)
+- [x] `build_path_entries/3` public (`@doc false`) for testability — consume-first-match algorithm handles repeated node visits
+- [x] Unit tests: 15 tests covering all scenarios (empty, step numbers, types, labels, outcomes, repeated visits, missing nodes)
+- [x] All 806 tests passing, zero warnings
+
+**Data source:** `state.execution_path` (node IDs) + `state.console` (outcome messages) + `debug_nodes` (type/data lookup).
+
+**Files:** `debug_panel.ex` (add tab + component), `show.ex` (pass `debug_nodes` to panel), `test/storyarn_web/live/flow_live/components/debug_panel_test.exs` (new)
+
+#### Task 8: History tab ✅
+
+- [x] Populate `state.history` in Engine on variable mutations (instruction nodes, dialogue output_instruction, response instructions)
+- [x] Add `history` to snapshot struct for correct step_back behavior
+- [x] Add "History" tab button in debug panel
+- [x] `history_tab/1` component — table: Time | Node | Change | Source
+- [x] Source badge: "instr" (warning) / "user" (info)
+- [x] Empty state: "No variable changes yet"
+- [x] Updated `history_entry` type in State to structured format (variable_ref, old_value, new_value, source)
+- [x] `add_history_entries/5` helper in Engine for all 3 mutation sites
+- [x] Unit tests: 7 new history tests in engine_test (instruction, multiple assignments, output_instruction, response instruction, step_back restore, reset clear, no-mutation nodes)
+- [x] All 813 tests passing, zero warnings
+
+**Engine changes:** In `evaluate_instruction/3`, `execute_output_instruction/4`, and `execute_response_instruction/3` — append history entries after `InstructionExec.execute/2` returns changes. In `push_snapshot/1` — include `history`. In `step_back/1` — restore `history`.
+
+**Files:** `state.ex` (updated types), `engine.ex` (populate history + snapshot), `debug_panel.ex` (add tab + component), `engine_test.exs` (7 new tests)
+
+#### Task 9: Auto-play ✅
+
+Implemented auto-play with Play/Pause toggle, speed slider (200-3000ms), and timer-based stepping.
+
+- `debug_handlers.ex`: `handle_debug_play/1`, `handle_debug_pause/1`, `handle_debug_set_speed/2`, `handle_debug_auto_step/1`
+- `debug_panel.ex`: Play/Pause toggle button (fast-forward/pause icons), speed slider with label, buttons disabled during auto-play
+- `show.ex`: New assigns (`debug_speed`, `debug_auto_playing`), event delegations, `handle_info(:debug_auto_step)`
+- Auto-play stays active during `:waiting_input` (user picks response, flow continues). Stops only on `:finished`/error
+- Single-response dialogues auto-select (engine change in `engine.ex`)
+- 17 tests in `debug_handlers_test.exs`
+
+#### Task 10: Keyboard shortcuts ✅
+
+Implemented debug keyboard shortcuts in `keyboard_handler.js`:
+
+- F10 = step, F9 = step back, F5 = toggle play/pause, F6 = reset
+- Ctrl+Shift+D / Cmd+Shift+D = toggle debug mode (works even without debug panel open)
+- All shortcuts `preventDefault` to block browser defaults (F5=refresh)
+- Debug shortcuts guarded by `[data-debug-active]` attribute on debug panel root div
+- F5 play/pause detects auto-play state by querying for the pause button in DOM
+
+#### Task 11: Variables tab — inline editing ✅
+
+Implemented inline variable editing in the debug panel.
+
+- `engine.ex`: `Engine.set_variable/3` — updates value, sets `:user_override` source, adds console + history entries
+- `debug_handlers.ex`: `handle_debug_edit_variable/2`, `handle_debug_cancel_edit/1`, `handle_debug_set_variable/2` with `parse_variable_value/2` (number/boolean/text)
+- `debug_panel.ex`: Current column cells clickable → inline `<input>` or `<select>` by block_type (number→number input, boolean→select, text→text input). Submit on Enter/blur, cancel on Escape. `var_edit_input/1` component with pattern matching on block_type
+- `show.ex`: New assign `debug_editing_var`, event delegations, attr passed to panel
+- 5 engine tests + 6 handler tests
+
+#### Task 12: Variables tab — search/filter ✅
+
+- [x] New assigns: `debug_var_filter: ""`, `debug_var_changed_only: false`
+- [x] Filter bar above variables table: text input + "Changed only" toggle button + count label
+- [x] Text filter: case-insensitive `String.contains?(key, filter)`
+- [x] Changed only: keep vars where `value != initial_value`
+- [x] `handle_debug_var_filter/2` + `handle_debug_var_toggle_changed/1` handlers
+- [x] Counter: "3 of 15 variables"
+
+**Files:** `debug_panel.ex` (filter bar + logic), `debug_handlers.ex` (filter handlers), `show.ex` (assigns + events + pass attrs)
+
+#### Task 13: Connection visual feedback
+
+- [ ] Extend `push_debug_canvas/2` to send `debug_highlight_connections` push event with active connection info (source_node_id → target_node_id)
+- [ ] `handleHighlightConnections(data)` in `debug_handler.js` — find `<storyarn-connection>` elements, add `debug-edge-active` class to the active connection's `path.visible` via Shadow DOM (`el.shadowRoot.querySelector`)
+- [ ] CSS in `storyarn_connection.js` `static styles`: `path.visible.debug-edge-active` — stroke primary color, `stroke-dasharray: 8 4`, `animation: debug-flow 0.6s linear infinite`
+- [ ] `@keyframes debug-flow { to { stroke-dashoffset: -12; } }`
+- [ ] Extend `handleClearHighlights()` to also remove connection debug classes
+- [ ] Register `debug_highlight_connections` in `event_bindings.js`
+
+**Shadow DOM note:** `<storyarn-connection>` is a LitElement. CSS must go in `static styles` (not external). DOM access via `el.shadowRoot.querySelector("path.visible")`.
+
+**Files:** `debug_handlers.ex` (push event), `debug_handler.js` (handle + cleanup), `storyarn_connection.js` (CSS), `event_bindings.js` (register event)
+
+#### Task 14: Initial state configuration modal
+
+- [ ] Modify `handle_debug_start/1` to open config modal instead of immediately starting
+- [ ] New assigns: `debug_config_modal_open`, `debug_config_variables`, `debug_config_start_node_id`, `debug_config_overrides`
+- [ ] `handle_debug_config_set_start_node/2` — sets start node dropdown
+- [ ] `handle_debug_config_set_override/2` — sets variable override
+- [ ] `handle_debug_config_clear_overrides/1` — clears all overrides
+- [ ] `handle_debug_config_confirm/1` — applies overrides to initial variables, starts session
+- [ ] `handle_debug_config_cancel/1` — closes modal
+- [ ] `debug_config_modal/1` component using `<.modal>` from CoreComponents
+- [ ] "Start from" dropdown (entry node preselected), variables table with Override column, Start/Cancel buttons
+- [ ] Overridden values highlighted in blue
+
+**Modal pattern:** Follow `<.modal>` from `core_components.ex` (used by `preview_component.ex`).
+
+**Files:** `debug_handlers.ex` (modal handlers), `debug_panel.ex` or new `debug_config_modal.ex` (component), `show.ex` (assigns + events + render modal)
+
+#### Task 15: Panel resize
+
+- [ ] Drag handle (4px bar, `cursor: row-resize`) at top of debug panel
+- [ ] JS hook `DebugPanelResize` — mousedown/mousemove/mouseup tracking
+- [ ] Clamp height: 150px–500px
+- [ ] Persist to `localStorage("storyarn-debug-panel-height")`
+- [ ] Load saved height on mount, default 280px
+- [ ] Replace fixed `style="height: 280px;"` with dynamic height
+
+**Files:** `debug_panel.ex` (drag handle + dynamic height), new `assets/js/hooks/debug_panel_resize.js` (hook), hook registration
+
+#### Suggested execution order
+
+Tasks 7-15, in this order. Each delivers standalone value:
+1. Task 7 (Path tab) — simple, pure UI
+2. Task 8 (History tab) — small engine change + UI
+3. Task 9 (Auto-play) — timer + controls
+4. Task 10 (Keyboard shortcuts) — JS only
+5. Task 11 (Variables inline editing) — engine + handlers + UI
+6. Task 12 (Variables search/filter) — pure UI state
+7. Task 13 (Connection visual feedback) — backend + JS + CSS
+8. Task 14 (Initial state modal) — most complex
+9. Task 15 (Panel resize) — independent
 
 ### Phase 3 — Advanced
 

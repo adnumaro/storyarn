@@ -14,25 +14,53 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
 
   import StoryarnWeb.Components.CoreComponents
 
+  alias StoryarnWeb.FlowLive.NodeTypeRegistry
+
   # ===========================================================================
   # Main panel
   # ===========================================================================
 
   attr :debug_state, :map, required: true
   attr :debug_active_tab, :string, default: "console"
+  attr :debug_nodes, :map, default: %{}
+  attr :debug_auto_playing, :boolean, default: false
+  attr :debug_speed, :integer, default: 800
+  attr :debug_editing_var, :string, default: nil
+  attr :debug_var_filter, :string, default: ""
+  attr :debug_var_changed_only, :boolean, default: false
 
   def debug_panel(assigns) do
     ~H"""
-    <div class="bg-base-100 border-t border-base-300 flex flex-col" style="height: 280px;">
+    <div class="bg-base-100 border-t border-base-300 flex flex-col" style="height: 280px;" data-debug-active>
       <%!-- Controls bar --%>
       <div class="flex items-center gap-2 px-3 py-1.5 border-b border-base-300 shrink-0">
         <div class="flex items-center gap-0.5">
+          <button
+            :if={!@debug_auto_playing}
+            type="button"
+            class="btn btn-ghost btn-xs btn-square"
+            phx-click="debug_play"
+            title={gettext("Auto-play")}
+            disabled={@debug_state.status == :finished}
+          >
+            <.icon name="fast-forward" class="size-3.5" />
+          </button>
+          <button
+            :if={@debug_auto_playing}
+            type="button"
+            class="btn btn-accent btn-xs btn-square"
+            phx-click="debug_pause"
+            title={gettext("Pause")}
+          >
+            <.icon name="pause" class="size-3.5" />
+          </button>
+          <div class="divider divider-horizontal mx-0.5 h-4"></div>
           <button
             type="button"
             class="btn btn-ghost btn-xs btn-square"
             phx-click="debug_step"
             title={gettext("Step")}
-            disabled={@debug_state.status in [:finished]}
+            disabled={@debug_state.status in [:finished] or @debug_auto_playing}
           >
             <.icon name="play" class="size-3.5" />
           </button>
@@ -41,7 +69,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             class="btn btn-ghost btn-xs btn-square"
             phx-click="debug_step_back"
             title={gettext("Step Back")}
-            disabled={@debug_state.snapshots == []}
+            disabled={@debug_state.snapshots == [] or @debug_auto_playing}
           >
             <.icon name="undo-2" class="size-3.5" />
           </button>
@@ -50,6 +78,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             class="btn btn-ghost btn-xs btn-square"
             phx-click="debug_reset"
             title={gettext("Reset")}
+            disabled={@debug_auto_playing}
           >
             <.icon name="rotate-ccw" class="size-3.5" />
           </button>
@@ -74,6 +103,25 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           </span>
         </div>
 
+        <%!-- Speed slider --%>
+        <div class="flex items-center gap-1.5">
+          <.icon name="gauge" class="size-3 text-base-content/30" />
+          <input
+            type="range"
+            min="200"
+            max="3000"
+            step="100"
+            value={@debug_speed}
+            phx-change="debug_set_speed"
+            name="speed"
+            class="range range-xs w-16"
+            title={gettext("%{ms}ms per step", ms: @debug_speed)}
+          />
+          <span class="text-xs text-base-content/30 tabular-nums w-10">
+            {format_speed(@debug_speed)}
+          </span>
+        </div>
+
         <%!-- Tabs --%>
         <div role="tablist" class="tabs tabs-boxed tabs-xs bg-base-200">
           <button
@@ -94,6 +142,24 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           >
             {gettext("Variables")}
           </button>
+          <button
+            type="button"
+            role="tab"
+            class={"tab #{if @debug_active_tab == "history", do: "tab-active"}"}
+            phx-click="debug_tab_change"
+            phx-value-tab="history"
+          >
+            {gettext("History")}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class={"tab #{if @debug_active_tab == "path", do: "tab-active"}"}
+            phx-click="debug_tab_change"
+            phx-value-tab="path"
+          >
+            {gettext("Path")}
+          </button>
         </div>
       </div>
 
@@ -108,6 +174,19 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
         <.variables_tab
           :if={@debug_active_tab == "variables"}
           variables={@debug_state.variables}
+          editing_var={@debug_editing_var}
+          var_filter={@debug_var_filter}
+          var_changed_only={@debug_var_changed_only}
+        />
+        <.history_tab
+          :if={@debug_active_tab == "history"}
+          history={@debug_state.history}
+        />
+        <.path_tab
+          :if={@debug_active_tab == "path"}
+          execution_path={@debug_state.execution_path}
+          console={@debug_state.console}
+          debug_nodes={@debug_nodes}
         />
       </div>
     </div>
@@ -159,16 +238,63 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   # ===========================================================================
 
   attr :variables, :map, required: true
+  attr :editing_var, :string, default: nil
+  attr :var_filter, :string, default: ""
+  attr :var_changed_only, :boolean, default: false
 
   defp variables_tab(assigns) do
-    sorted =
-      assigns.variables
+    all_vars = assigns.variables
+    filter = String.downcase(assigns.var_filter)
+    changed_only = assigns.var_changed_only
+
+    filtered =
+      all_vars
+      |> Enum.filter(fn {key, var} ->
+        matches_filter = filter == "" or String.contains?(String.downcase(key), filter)
+        matches_changed = !changed_only or var.value != var.initial_value
+        matches_filter and matches_changed
+      end)
       |> Enum.sort_by(fn {key, _} -> key end)
 
-    assigns = Phoenix.Component.assign(assigns, :sorted_vars, sorted)
+    assigns =
+      assigns
+      |> Phoenix.Component.assign(:sorted_vars, filtered)
+      |> Phoenix.Component.assign(:total_count, map_size(all_vars))
+      |> Phoenix.Component.assign(:filtered_count, length(filtered))
 
     ~H"""
     <div class="text-xs">
+      <%!-- Filter bar --%>
+      <div class="flex items-center gap-2 px-3 py-1.5 border-b border-base-300 bg-base-200/30">
+        <div class="relative flex-1 max-w-48">
+          <.icon name="search" class="size-3 absolute left-2 top-1/2 -translate-y-1/2 text-base-content/30" />
+          <input
+            type="text"
+            name="filter"
+            value={@var_filter}
+            placeholder={gettext("Filter variables...")}
+            phx-change="debug_var_filter"
+            phx-debounce="150"
+            class="input input-xs input-bordered w-full pl-7"
+          />
+        </div>
+        <button
+          type="button"
+          class={[
+            "btn btn-xs gap-1",
+            if(@var_changed_only, do: "btn-accent", else: "btn-ghost")
+          ]}
+          phx-click="debug_var_toggle_changed"
+          title={gettext("Show only changed variables")}
+        >
+          <.icon name="diff" class="size-3" />
+          {gettext("Changed")}
+        </button>
+        <span class="text-xs text-base-content/30 tabular-nums ml-auto">
+          {gettext("%{shown} of %{total}", shown: @filtered_count, total: @total_count)}
+        </span>
+      </div>
+
       <table class="table table-xs table-pin-rows">
         <thead>
           <tr class="text-base-content/50">
@@ -194,23 +320,254 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
               {format_value(var.previous_value)}
             </td>
             <td class={["text-right tabular-nums", var_current_class(var)]}>
-              <span :if={var.value != var.initial_value} class={var_source_color(var.source)}>
-                ◆
-              </span>
-              <span class={if var.value != var.initial_value, do: "font-bold"}>
-                {format_value(var.value)}
+              <%= if @editing_var == key do %>
+                <.var_edit_input key={key} var={var} />
+              <% else %>
+                <div
+                  class="cursor-pointer hover:bg-base-300 rounded px-1 -mx-1"
+                  phx-click="debug_edit_variable"
+                  phx-value-key={key}
+                  title={gettext("Click to edit")}
+                >
+                  <span :if={var.value != var.initial_value} class={var_source_color(var.source)}>
+                    ◆
+                  </span>
+                  <span class={if var.value != var.initial_value, do: "font-bold"}>
+                    {format_value(var.value)}
+                  </span>
+                </div>
+              <% end %>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div
+        :if={@sorted_vars == [] and @total_count == 0}
+        class="flex items-center justify-center h-24 text-base-content/30"
+      >
+        {gettext("No variables in this project")}
+      </div>
+      <div
+        :if={@sorted_vars == [] and @total_count > 0}
+        class="flex items-center justify-center h-24 text-base-content/30"
+      >
+        {gettext("No matching variables")}
+      </div>
+    </div>
+    """
+  end
+
+  attr :key, :string, required: true
+  attr :var, :map, required: true
+
+  defp var_edit_input(%{var: %{block_type: "boolean"}} = assigns) do
+    ~H"""
+    <select
+      name="value"
+      class="select select-xs select-bordered w-full text-right text-info"
+      phx-change="debug_set_variable"
+      phx-value-key={@key}
+      autofocus
+      phx-key="Escape"
+      phx-keydown="debug_cancel_edit"
+    >
+      <option value="true" selected={@var.value == true}>true</option>
+      <option value="false" selected={@var.value != true}>false</option>
+    </select>
+    """
+  end
+
+  defp var_edit_input(%{var: %{block_type: "number"}} = assigns) do
+    ~H"""
+    <form phx-submit="debug_set_variable" phx-value-key={@key} class="flex">
+      <input
+        type="number"
+        name="value"
+        value={@var.value}
+        step="any"
+        class="input input-xs input-bordered w-full text-right text-info tabular-nums"
+        autofocus
+        phx-blur="debug_set_variable"
+        phx-value-key={@key}
+        phx-key="Escape"
+        phx-keydown="debug_cancel_edit"
+      />
+    </form>
+    """
+  end
+
+  defp var_edit_input(assigns) do
+    ~H"""
+    <form phx-submit="debug_set_variable" phx-value-key={@key} class="flex">
+      <input
+        type="text"
+        name="value"
+        value={@var.value}
+        class="input input-xs input-bordered w-full text-right text-info"
+        autofocus
+        phx-blur="debug_set_variable"
+        phx-value-key={@key}
+        phx-key="Escape"
+        phx-keydown="debug_cancel_edit"
+      />
+    </form>
+    """
+  end
+
+  # ===========================================================================
+  # History tab
+  # ===========================================================================
+
+  attr :history, :list, required: true
+
+  defp history_tab(assigns) do
+    ~H"""
+    <div class="text-xs">
+      <table :if={@history != []} class="table table-xs table-pin-rows">
+        <thead>
+          <tr class="text-base-content/50">
+            <th class="font-medium w-16">{gettext("Time")}</th>
+            <th class="font-medium">{gettext("Node")}</th>
+            <th class="font-medium">{gettext("Change")}</th>
+            <th class="font-medium w-14">{gettext("Source")}</th>
+          </tr>
+        </thead>
+        <tbody class="font-mono">
+          <tr :for={entry <- @history} class="hover:bg-base-200">
+            <td class="text-base-content/30 tabular-nums">{format_ts(entry.ts)}</td>
+            <td class="truncate max-w-32" title={entry.node_label}>
+              {if entry.node_label != "", do: entry.node_label, else: gettext("(user override)")}
+            </td>
+            <td class="truncate max-w-64">
+              <span class="text-base-content/40">{entry.variable_ref}:</span>
+              <span>{format_value(entry.old_value)}</span>
+              <span class="text-base-content/30">→</span>
+              <span class="font-bold">{format_value(entry.new_value)}</span>
+            </td>
+            <td>
+              <span class={["badge badge-xs", history_source_class(entry.source)]}>
+                {history_source_label(entry.source)}
               </span>
             </td>
           </tr>
         </tbody>
       </table>
 
-      <div :if={@sorted_vars == []} class="flex items-center justify-center h-24 text-base-content/30">
-        {gettext("No variables in this project")}
+      <div :if={@history == []} class="flex items-center justify-center h-24 text-base-content/30">
+        {gettext("No variable changes yet")}
       </div>
     </div>
     """
   end
+
+  defp history_source_class(:instruction), do: "badge-warning"
+  defp history_source_class(:user_override), do: "badge-info"
+  defp history_source_class(_), do: "badge-ghost"
+
+  defp history_source_label(:instruction), do: gettext("instr")
+  defp history_source_label(:user_override), do: gettext("user")
+  defp history_source_label(_), do: ""
+
+  # ===========================================================================
+  # Path tab
+  # ===========================================================================
+
+  attr :execution_path, :list, required: true
+  attr :console, :list, required: true
+  attr :debug_nodes, :map, required: true
+
+  defp path_tab(assigns) do
+    entries = build_path_entries(assigns.execution_path, assigns.debug_nodes, assigns.console)
+    assigns = Phoenix.Component.assign(assigns, :entries, entries)
+
+    ~H"""
+    <div class="text-xs">
+      <div :if={@entries == []} class="flex items-center justify-center h-24 text-base-content/30">
+        {gettext("No steps yet")}
+      </div>
+      <div
+        :for={entry <- @entries}
+        class={[
+          "flex items-center gap-2 px-3 py-1",
+          if(entry.is_current, do: "text-primary font-bold bg-primary/5", else: "hover:bg-base-200")
+        ]}
+      >
+        <span class="text-base-content/30 w-5 text-right tabular-nums shrink-0 select-none">
+          {entry.step}
+        </span>
+        <.icon name={path_icon(entry.type)} class="size-3 shrink-0 opacity-60" />
+        <span :if={entry.label} class="truncate max-w-32">
+          {entry.label}
+        </span>
+        <span class="text-base-content/30 shrink-0">→</span>
+        <span class="truncate flex-1 text-base-content/50 font-normal">
+          {entry.outcome || ""}
+        </span>
+      </div>
+    </div>
+    """
+  end
+
+  @doc false
+  def build_path_entries(path, nodes, console) do
+    node_entries = Enum.filter(console, fn e -> e.node_id != nil end)
+    path_length = length(path)
+
+    {entries, _remaining} =
+      path
+      |> Enum.with_index(1)
+      |> Enum.reduce({[], node_entries}, fn {node_id, step}, {acc, remaining} ->
+        node = Map.get(nodes, node_id)
+        {outcome, rest} = pop_first_match(remaining, node_id)
+
+        entry = %{
+          step: step,
+          node_id: node_id,
+          type: (node && node.type) || "unknown",
+          label: path_node_label(node),
+          outcome: outcome,
+          is_current: step == path_length
+        }
+
+        {acc ++ [entry], rest}
+      end)
+
+    entries
+  end
+
+  defp pop_first_match([], _node_id), do: {nil, []}
+
+  defp pop_first_match([entry | rest], node_id) do
+    if entry.node_id == node_id do
+      {entry.message, rest}
+    else
+      {found, remaining} = pop_first_match(rest, node_id)
+      {found, [entry | remaining]}
+    end
+  end
+
+  defp path_node_label(nil), do: nil
+
+  defp path_node_label(node) do
+    data = node.data || %{}
+    text = data["text"]
+
+    if is_binary(text) and text != "" do
+      text
+      |> String.replace(~r/<[^>]+>/, "")
+      |> String.trim()
+      |> String.slice(0, 30)
+      |> case do
+        "" -> nil
+        clean -> clean
+      end
+    else
+      nil
+    end
+  end
+
+  defp path_icon(type), do: NodeTypeRegistry.icon_name(type)
 
   # ===========================================================================
   # Response choices
@@ -277,11 +634,13 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   # ===========================================================================
 
   defp status_badge_class(:paused), do: "badge-info"
+  defp status_badge_class(:running), do: "badge-success"
   defp status_badge_class(:waiting_input), do: "badge-warning"
   defp status_badge_class(:finished), do: "badge-neutral"
   defp status_badge_class(_), do: "badge-info"
 
   defp status_label(:paused), do: gettext("Paused")
+  defp status_label(:running), do: gettext("Running")
   defp status_label(:waiting_input), do: gettext("Waiting")
   defp status_label(:finished), do: gettext("Finished")
   defp status_label(_), do: ""
@@ -294,6 +653,9 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   defp level_color(:warning), do: "text-warning"
   defp level_color(:error), do: "text-error"
   defp level_color(_), do: "text-base-content/40"
+
+  defp format_speed(ms) when ms >= 1000, do: "#{Float.round(ms / 1000, 1)}s"
+  defp format_speed(ms), do: "#{ms}ms"
 
   defp format_ts(ms) when is_integer(ms) do
     s = div(ms, 1000)

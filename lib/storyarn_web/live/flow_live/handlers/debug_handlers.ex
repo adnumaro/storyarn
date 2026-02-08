@@ -69,10 +69,17 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
 
     case Engine.choose_response(state, response_id, connections) do
       {:ok, new_state} ->
-        {:noreply,
-         socket
-         |> assign(:debug_state, new_state)
-         |> push_debug_canvas(new_state)}
+        socket =
+          socket
+          |> assign(:debug_state, new_state)
+          |> push_debug_canvas(new_state)
+
+        if socket.assigns.debug_auto_playing do
+          speed = socket.assigns.debug_speed
+          Process.send_after(self(), :debug_auto_step, speed)
+        end
+
+        {:noreply, socket}
 
       {:error, new_state, _reason} ->
         {:noreply,
@@ -89,6 +96,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
     {:noreply,
      socket
      |> assign(:debug_state, new_state)
+     |> assign(:debug_auto_playing, false)
      |> push_event("debug_clear_highlights", %{})
      |> push_debug_canvas(new_state)}
   end
@@ -98,6 +106,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
      socket
      |> assign(:debug_state, nil)
      |> assign(:debug_panel_open, false)
+     |> assign(:debug_auto_playing, false)
      |> assign(:debug_nodes, %{})
      |> assign(:debug_connections, [])
      |> push_event("debug_clear_highlights", %{})}
@@ -105,6 +114,101 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
 
   def handle_debug_tab_change(%{"tab" => tab}, socket) do
     {:noreply, assign(socket, :debug_active_tab, tab)}
+  end
+
+  def handle_debug_play(socket) do
+    speed = socket.assigns.debug_speed
+    Process.send_after(self(), :debug_auto_step, speed)
+
+    {:noreply, assign(socket, :debug_auto_playing, true)}
+  end
+
+  def handle_debug_pause(socket) do
+    {:noreply, assign(socket, :debug_auto_playing, false)}
+  end
+
+  def handle_debug_set_speed(%{"speed" => speed_str}, socket) do
+    speed = parse_speed(speed_str)
+    {:noreply, assign(socket, :debug_speed, speed)}
+  end
+
+  def handle_debug_edit_variable(%{"key" => key}, socket) do
+    {:noreply, assign(socket, :debug_editing_var, key)}
+  end
+
+  def handle_debug_cancel_edit(socket) do
+    {:noreply, assign(socket, :debug_editing_var, nil)}
+  end
+
+  def handle_debug_set_variable(%{"key" => key, "value" => raw_value}, socket) do
+    state = socket.assigns.debug_state
+    block_type = get_in(state.variables, [key, :block_type])
+    parsed = parse_variable_value(raw_value, block_type)
+
+    case Engine.set_variable(state, key, parsed) do
+      {:ok, new_state} ->
+        {:noreply,
+         socket
+         |> assign(:debug_state, new_state)
+         |> assign(:debug_editing_var, nil)}
+
+      {:error, :not_found} ->
+        {:noreply, assign(socket, :debug_editing_var, nil)}
+    end
+  end
+
+  def handle_debug_var_filter(%{"filter" => filter}, socket) do
+    {:noreply, assign(socket, :debug_var_filter, filter)}
+  end
+
+  def handle_debug_var_toggle_changed(socket) do
+    {:noreply, assign(socket, :debug_var_changed_only, !socket.assigns.debug_var_changed_only)}
+  end
+
+  def handle_debug_auto_step(socket) do
+    state = socket.assigns.debug_state
+
+    cond do
+      !socket.assigns.debug_auto_playing || is_nil(state) || state.status == :finished ->
+        {:noreply, assign(socket, :debug_auto_playing, false)}
+
+      state.status == :waiting_input ->
+        # Keep auto-play active but don't schedule next step — wait for user choice
+        {:noreply, socket}
+
+      true ->
+        nodes = socket.assigns.debug_nodes
+        connections = socket.assigns.debug_connections
+
+        case Engine.step(state, nodes, connections) do
+          {status, new_state} ->
+            socket =
+              socket
+              |> assign(:debug_state, new_state)
+              |> push_debug_canvas(new_state)
+
+            cond do
+              status == :finished ->
+                {:noreply, assign(socket, :debug_auto_playing, false)}
+
+              status == :waiting_input ->
+                # Keep auto-play active, wait for user to choose a response
+                {:noreply, socket}
+
+              true ->
+                speed = socket.assigns.debug_speed
+                Process.send_after(self(), :debug_auto_step, speed)
+                {:noreply, socket}
+            end
+
+          {:error, new_state, _reason} ->
+            {:noreply,
+             socket
+             |> assign(:debug_state, new_state)
+             |> assign(:debug_auto_playing, false)
+             |> push_debug_canvas(new_state)}
+        end
+    end
   end
 
   # ===========================================================================
@@ -199,4 +303,25 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
       execution_path: state.execution_path
     })
   end
+
+  defp parse_speed(val) when is_binary(val) do
+    case Integer.parse(val) do
+      {n, _} -> max(200, min(n, 3000))
+      :error -> 800
+    end
+  end
+
+  defp parse_speed(val) when is_integer(val), do: max(200, min(val, 3000))
+  defp parse_speed(_), do: 800
+
+  defp parse_variable_value(raw, "number") do
+    case Float.parse(raw) do
+      {n, _} -> n
+      :error -> 0
+    end
+  end
+
+  defp parse_variable_value("true", "boolean"), do: true
+  defp parse_variable_value(_, "boolean"), do: false
+  defp parse_variable_value(raw, _), do: raw
 end

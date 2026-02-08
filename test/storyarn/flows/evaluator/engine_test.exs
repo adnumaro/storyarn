@@ -388,7 +388,8 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
             "text" => "Choose",
             "responses" => [
               %{"id" => "r1", "text" => "Needs 100+ health", "condition" => condition_json, "instruction" => ""},
-              %{"id" => "r2", "text" => "Always available", "condition" => "", "instruction" => ""}
+              %{"id" => "r2", "text" => "Always available", "condition" => "", "instruction" => ""},
+              %{"id" => "r3", "text" => "Also available", "condition" => "", "instruction" => ""}
             ]
           })
       }
@@ -431,7 +432,8 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
           node(2, "dialogue", %{
             "text" => "Choose",
             "responses" => [
-              %{"id" => "r1", "text" => "Take damage", "condition" => "", "instruction" => instruction_json}
+              %{"id" => "r1", "text" => "Take damage", "condition" => "", "instruction" => instruction_json},
+              %{"id" => "r2", "text" => "No damage", "condition" => "", "instruction" => ""}
             ]
           }),
         3 => node(3, "exit")
@@ -447,6 +449,44 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
 
       # 100 - 10 = 90 (response instruction subtracts 10)
       assert state.variables["mc.jaime.health"].value == 90.0
+    end
+
+    test "auto-selects and executes instruction for single valid response" do
+      instruction_json =
+        Jason.encode!([
+          %{
+            "id" => "a1",
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "subtract",
+            "value" => "10",
+            "value_type" => "literal",
+            "value_sheet" => nil
+          }
+        ])
+
+      nodes = %{
+        1 => node(1, "entry"),
+        2 =>
+          node(2, "dialogue", %{
+            "text" => "Choose",
+            "responses" => [
+              %{"id" => "r1", "text" => "Take damage", "condition" => "", "instruction" => instruction_json}
+            ]
+          }),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "r1", 3)]
+      variables = %{"mc.jaime.health" => var(100, "number")}
+      state = Engine.init(variables, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      # Single response auto-selected — goes directly to :ok, no waiting_input
+      {:ok, state} = Engine.step(state, nodes, conns)
+
+      assert state.variables["mc.jaime.health"].value == 90.0
+      assert state.current_node_id == 3
     end
   end
 
@@ -832,7 +872,8 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
           node(2, "dialogue", %{
             "text" => "Choose",
             "responses" => [
-              %{"id" => "r1", "text" => "Option", "condition" => "", "instruction" => ""}
+              %{"id" => "r1", "text" => "Option A", "condition" => "", "instruction" => ""},
+              %{"id" => "r2", "text" => "Option B", "condition" => "", "instruction" => ""}
             ]
           })
       }
@@ -1034,16 +1075,337 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       {:ok, state} = Engine.step(state, nodes, conns)
       assert state.current_node_id == 4
 
-      # Dialogue: waiting for response
-      {:waiting_input, state} = Engine.step(state, nodes, conns)
-
-      # Choose "Continue"
-      {:ok, state} = Engine.choose_response(state, "r1", conns)
+      # Dialogue: single response auto-selected, advances to exit
+      {:ok, state} = Engine.step(state, nodes, conns)
       assert state.current_node_id == 5
 
       # Exit
       {:finished, state} = Engine.step(state, nodes, conns)
       assert state.execution_path == [1, 2, 3, 4, 5]
+    end
+  end
+
+  # =============================================================================
+  # History tracking
+  # =============================================================================
+
+  describe "history" do
+    test "instruction node populates history entries" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 =>
+          node(2, "instruction", %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "subtract",
+                "value" => "30",
+                "value_type" => "literal",
+                "value_sheet" => nil
+              }
+            ]
+          }),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      variables = %{"mc.jaime.health" => var(100, "number")}
+      state = Engine.init(variables, 1)
+
+      assert state.history == []
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:ok, state} = Engine.step(state, nodes, conns)
+
+      assert length(state.history) == 1
+      [entry] = state.history
+      assert entry.variable_ref == "mc.jaime.health"
+      assert entry.old_value == 100
+      assert entry.new_value == 70.0
+      assert entry.source == :instruction
+      assert entry.node_id == 2
+      assert is_integer(entry.ts)
+    end
+
+    test "multiple assignments create multiple history entries" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 =>
+          node(2, "instruction", %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "subtract",
+                "value" => "10",
+                "value_type" => "literal",
+                "value_sheet" => nil
+              },
+              %{
+                "id" => "a2",
+                "sheet" => "world",
+                "variable" => "quest_started",
+                "operator" => "set_true",
+                "value" => "",
+                "value_type" => "literal",
+                "value_sheet" => nil
+              }
+            ]
+          }),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+
+      variables = %{
+        "mc.jaime.health" => var(100, "number"),
+        "world.quest_started" => var(false, "boolean")
+      }
+
+      state = Engine.init(variables, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:ok, state} = Engine.step(state, nodes, conns)
+
+      assert length(state.history) == 2
+      refs = Enum.map(state.history, & &1.variable_ref)
+      assert "mc.jaime.health" in refs
+      assert "world.quest_started" in refs
+    end
+
+    test "dialogue output_instruction populates history" do
+      instruction_json =
+        Jason.encode!([
+          %{
+            "id" => "a1",
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "subtract",
+            "value" => "20",
+            "value_type" => "literal",
+            "value_sheet" => nil
+          }
+        ])
+
+      nodes = %{
+        1 => node(1, "entry"),
+        2 =>
+          node(2, "dialogue", %{
+            "text" => "With output instruction",
+            "output_instruction" => instruction_json,
+            "responses" => []
+          }),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      variables = %{"mc.jaime.health" => var(100, "number")}
+      state = Engine.init(variables, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:ok, state} = Engine.step(state, nodes, conns)
+
+      assert length(state.history) == 1
+      [entry] = state.history
+      assert entry.variable_ref == "mc.jaime.health"
+      assert entry.old_value == 100
+      assert entry.new_value == 80.0
+      assert entry.source == :instruction
+    end
+
+    test "response instruction populates history" do
+      instruction_json =
+        Jason.encode!([
+          %{
+            "id" => "a1",
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "subtract",
+            "value" => "10",
+            "value_type" => "literal",
+            "value_sheet" => nil
+          }
+        ])
+
+      nodes = %{
+        1 => node(1, "entry"),
+        2 =>
+          node(2, "dialogue", %{
+            "text" => "Choose",
+            "responses" => [
+              %{"id" => "r1", "text" => "Damage", "condition" => "", "instruction" => instruction_json},
+              %{"id" => "r2", "text" => "No damage", "condition" => "", "instruction" => ""}
+            ]
+          }),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "r1", 3)]
+      variables = %{"mc.jaime.health" => var(100, "number")}
+      state = Engine.init(variables, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:waiting_input, state} = Engine.step(state, nodes, conns)
+
+      assert state.history == []
+
+      {:ok, state} = Engine.choose_response(state, "r1", conns)
+
+      assert length(state.history) == 1
+      [entry] = state.history
+      assert entry.variable_ref == "mc.jaime.health"
+      assert entry.new_value == 90.0
+      assert entry.source == :instruction
+    end
+
+    test "step_back restores history to previous state" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 =>
+          node(2, "instruction", %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "subtract",
+                "value" => "30",
+                "value_type" => "literal",
+                "value_sheet" => nil
+              }
+            ]
+          }),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      variables = %{"mc.jaime.health" => var(100, "number")}
+      state = Engine.init(variables, 1)
+
+      # Step through entry
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert state.history == []
+
+      # Step through instruction — adds history
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert length(state.history) == 1
+
+      # Step back — restores history to before instruction
+      {:ok, state} = Engine.step_back(state)
+      assert state.history == []
+    end
+
+    test "reset clears history" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 =>
+          node(2, "instruction", %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "50",
+                "value_type" => "literal",
+                "value_sheet" => nil
+              }
+            ]
+          }),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      variables = %{"mc.jaime.health" => var(100, "number")}
+      state = Engine.init(variables, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert length(state.history) == 1
+
+      state = Engine.reset(state)
+      assert state.history == []
+    end
+
+    test "nodes without mutations produce no history" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "hub"),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      state = Engine.init(%{}, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:finished, state} = Engine.step(state, nodes, conns)
+
+      assert state.history == []
+    end
+  end
+
+  # =============================================================================
+  # set_variable/3
+  # =============================================================================
+
+  describe "set_variable/3" do
+    test "updates variable value and sets source to :user_override" do
+      variables = %{"mc.jaime.health" => var(100, "number")}
+      state = Engine.init(variables, 1)
+
+      {:ok, state} = Engine.set_variable(state, "mc.jaime.health", 75)
+
+      assert state.variables["mc.jaime.health"].value == 75
+      assert state.variables["mc.jaime.health"].source == :user_override
+      assert state.variables["mc.jaime.health"].previous_value == 100
+    end
+
+    test "adds console entry for user override" do
+      variables = %{"mc.jaime.health" => var(100, "number")}
+      state = Engine.init(variables, 1)
+
+      {:ok, state} = Engine.set_variable(state, "mc.jaime.health", 75)
+
+      messages = console_messages(state)
+      assert Enum.any?(messages, &String.contains?(&1, "User override"))
+      assert Enum.any?(messages, &String.contains?(&1, "mc.jaime.health"))
+    end
+
+    test "adds history entry with source :user_override" do
+      variables = %{"mc.jaime.health" => var(100, "number")}
+      state = Engine.init(variables, 1)
+
+      {:ok, state} = Engine.set_variable(state, "mc.jaime.health", 75)
+
+      assert length(state.history) == 1
+      [entry] = state.history
+      assert entry.variable_ref == "mc.jaime.health"
+      assert entry.old_value == 100
+      assert entry.new_value == 75
+      assert entry.source == :user_override
+    end
+
+    test "returns error for unknown variable" do
+      state = Engine.init(%{}, 1)
+
+      assert {:error, :not_found} = Engine.set_variable(state, "unknown.var", 42)
+    end
+
+    test "preserves other variable fields" do
+      variables = %{"mc.jaime.health" => var(100, "number", sheet: "mc.jaime", name: "health")}
+      state = Engine.init(variables, 1)
+
+      {:ok, state} = Engine.set_variable(state, "mc.jaime.health", 50)
+
+      var = state.variables["mc.jaime.health"]
+      assert var.block_type == "number"
+      assert var.sheet_shortcut == "mc.jaime"
+      assert var.variable_name == "health"
+      assert var.initial_value == 100
     end
   end
 end

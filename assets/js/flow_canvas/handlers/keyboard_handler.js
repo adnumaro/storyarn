@@ -23,7 +23,52 @@ export function createKeyboardHandler(hook, lockHandler) {
      * @param {KeyboardEvent} e - The keyboard event
      */
     handleKeyboard(e) {
-      // Ignore when typing in inputs
+      // Debug shortcuts — work even when typing in inputs (except Ctrl+Shift+D toggle)
+      const debugActive = !!hook.el
+        .closest("[id]")
+        ?.parentElement?.querySelector("[data-debug-active]");
+
+      // Ctrl+Shift+D / Cmd+Shift+D — toggle debug mode (always available)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "D") {
+        e.preventDefault();
+        hook.pushEvent(debugActive ? "debug_stop" : "debug_start", {});
+        return;
+      }
+
+      if (debugActive) {
+        // F10 — step forward
+        if (e.key === "F10") {
+          e.preventDefault();
+          hook.pushEvent("debug_step", {});
+          return;
+        }
+
+        // F9 — step back
+        if (e.key === "F9") {
+          e.preventDefault();
+          hook.pushEvent("debug_step_back", {});
+          return;
+        }
+
+        // F5 — toggle play/pause
+        if (e.key === "F5") {
+          e.preventDefault();
+          const autoPlaying = !!hook.el
+            .closest("[id]")
+            ?.parentElement?.querySelector("[data-debug-active] [phx-click='debug_pause']");
+          hook.pushEvent(autoPlaying ? "debug_pause" : "debug_play", {});
+          return;
+        }
+
+        // F6 — reset
+        if (e.key === "F6") {
+          e.preventDefault();
+          hook.pushEvent("debug_reset", {});
+          return;
+        }
+      }
+
+      // Ignore when typing in inputs for non-debug shortcuts
       if (
         e.target.tagName === "INPUT" ||
         e.target.tagName === "TEXTAREA" ||

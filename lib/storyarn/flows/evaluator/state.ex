@@ -36,8 +36,10 @@ defmodule Storyarn.Flows.Evaluator.State do
           ts: integer(),
           node_id: integer() | nil,
           node_label: String.t(),
-          type: :step | :choice | :variable_change | :error,
-          details: String.t()
+          variable_ref: String.t(),
+          old_value: any(),
+          new_value: any(),
+          source: :instruction | :user_override
         }
 
   @type snapshot :: %{
@@ -45,7 +47,8 @@ defmodule Storyarn.Flows.Evaluator.State do
           variables: %{String.t() => variable()},
           execution_path: [integer()],
           pending_choices: map() | nil,
-          status: status()
+          status: status(),
+          history: [history_entry()]
         }
 
   @type t :: %__MODULE__{
