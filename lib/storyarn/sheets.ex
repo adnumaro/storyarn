@@ -357,6 +357,19 @@ defmodule Storyarn.Sheets do
   defdelegate reorder_blocks(sheet_id, block_ids), to: BlockCrud
 
   @doc """
+  Reorders blocks with column layout information.
+  Each item in the list contains id, column_group_id, and column_index.
+  """
+  @spec reorder_blocks_with_columns(id(), [map()]) :: {:ok, [block()]} | {:error, term()}
+  defdelegate reorder_blocks_with_columns(sheet_id, items), to: BlockCrud
+
+  @doc """
+  Creates a column group from a list of block IDs.
+  """
+  @spec create_column_group(id(), [id()]) :: {:ok, Ecto.UUID.t()} | {:error, term()}
+  defdelegate create_column_group(sheet_id, block_ids), to: BlockCrud
+
+  @doc """
   Returns a changeset for tracking block changes.
   """
   @spec change_block(block(), attrs()) :: changeset()

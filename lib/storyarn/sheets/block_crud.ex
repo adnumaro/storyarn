@@ -189,9 +189,20 @@ defmodule Storyarn.Sheets.BlockCrud do
       PropertyInheritance.delete_inherited_instances(block)
     end
 
-    block
-    |> Block.delete_changeset()
-    |> Repo.update()
+    result =
+      block
+      |> Block.delete_changeset()
+      |> Repo.update()
+
+    # If the block was in a column group, check if the group should dissolve
+    case result do
+      {:ok, deleted_block} ->
+        maybe_dissolve_column_group(deleted_block.sheet_id, deleted_block.column_group_id)
+        {:ok, deleted_block}
+
+      error ->
+        error
+    end
   end
 
   @doc """
@@ -287,6 +298,84 @@ defmodule Storyarn.Sheets.BlockCrud do
   end
 
   # =============================================================================
+  # Column Layout Operations
+  # =============================================================================
+
+  @doc """
+  Reorders blocks with column layout information.
+
+  Accepts a list of maps with `id`, `column_group_id`, and `column_index`.
+  Updates each block's position (= list index), column_group_id, and column_index.
+  Only updates blocks that belong to the given sheet.
+  """
+  def reorder_blocks_with_columns(sheet_id, items) when is_list(items) do
+    Repo.transaction(fn ->
+      items
+      |> Enum.with_index()
+      |> Enum.each(fn {item, index} ->
+        block_id = item.id
+        column_group_id = item.column_group_id
+        column_index = item[:column_index] || 0
+        column_index = max(0, min(column_index, 2))
+
+        from(b in Block,
+          where: b.id == ^block_id and b.sheet_id == ^sheet_id and is_nil(b.deleted_at)
+        )
+        |> Repo.update_all(
+          set: [position: index, column_group_id: column_group_id, column_index: column_index]
+        )
+      end)
+
+      list_blocks(sheet_id)
+    end)
+  end
+
+  @doc """
+  Creates a column group from a list of blocks.
+  Generates a new UUID for the group and assigns column indices.
+  Returns {:ok, group_id} or {:error, reason}.
+  """
+  def create_column_group(sheet_id, block_ids) when is_list(block_ids) do
+    group_id = Ecto.UUID.generate()
+
+    Repo.transaction(fn ->
+      total_updated =
+        block_ids
+        |> Enum.with_index()
+        |> Enum.reduce(0, fn {block_id, idx}, acc ->
+          {count, _} =
+            from(b in Block,
+              where: b.id == ^block_id and b.sheet_id == ^sheet_id and is_nil(b.deleted_at)
+            )
+            |> Repo.update_all(set: [column_group_id: group_id, column_index: idx])
+
+          acc + count
+        end)
+
+      if total_updated < 2 do
+        Repo.rollback(:not_enough_blocks)
+      else
+        group_id
+      end
+    end)
+  end
+
+  @doc """
+  Dissolves a column group by resetting column fields for all blocks in the group.
+  """
+  def dissolve_column_group(sheet_id, column_group_id) do
+    from(b in Block,
+      where:
+        b.sheet_id == ^sheet_id and
+          b.column_group_id == ^column_group_id and
+          is_nil(b.deleted_at)
+    )
+    |> Repo.update_all(set: [column_group_id: nil, column_index: 0])
+
+    :ok
+  end
+
+  # =============================================================================
   # Reordering
   # =============================================================================
 
@@ -328,6 +417,27 @@ defmodule Storyarn.Sheets.BlockCrud do
       else
         changeset
       end
+    end
+  end
+
+  # Dissolves a column group if it has fewer than 2 active blocks remaining.
+  defp maybe_dissolve_column_group(_sheet_id, nil), do: :ok
+
+  defp maybe_dissolve_column_group(sheet_id, column_group_id) do
+    count =
+      from(b in Block,
+        where:
+          b.sheet_id == ^sheet_id and
+            b.column_group_id == ^column_group_id and
+            is_nil(b.deleted_at),
+        select: count(b.id)
+      )
+      |> Repo.one()
+
+    if count < 2 do
+      dissolve_column_group(sheet_id, column_group_id)
+    else
+      :ok
     end
   end
 
