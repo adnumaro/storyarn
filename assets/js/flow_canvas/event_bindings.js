@@ -147,6 +147,9 @@ export function setupEventHandlers(hook) {
     hook.debugHandler.handleHighlightConnections(data),
   );
   hook.handleEvent("debug_clear_highlights", () => hook.debugHandler.handleClearHighlights());
+  hook.handleEvent("debug_update_breakpoints", (data) =>
+    hook.debugHandler.handleUpdateBreakpoints(data),
+  );
 
   // Handle server events - Collaboration
   hook.handleEvent("cursor_update", (data) => hook.cursorHandler.handleCursorUpdate(data));

@@ -37,6 +37,7 @@ function findNodeElement(container, reteId) {
 export function createDebugHandler(hook) {
   let currentEl = null;
   let visitedEls = new Set();
+  let breakpointEls = new Set();
   let activeConnView = null;
   let visitedConnViews = new Set();
 
@@ -140,6 +141,35 @@ export function createDebugHandler(hook) {
     },
 
     /**
+     * Handles the debug_update_breakpoints push event from LiveView.
+     * Adds/removes `.debug-breakpoint` class on storyarn-node elements.
+     *
+     * @param {{ breakpoint_ids: number[] }} data
+     */
+    handleUpdateBreakpoints(data) {
+      const { breakpoint_ids } = data;
+      const idSet = new Set(breakpoint_ids || []);
+
+      // Remove class from nodes no longer in breakpoints
+      for (const el of breakpointEls) {
+        el.classList.remove("debug-breakpoint");
+      }
+      breakpointEls = new Set();
+
+      // Add class to current breakpoint nodes
+      for (const dbId of idSet) {
+        const reteNode = hook.nodeMap.get(dbId);
+        if (!reteNode) continue;
+
+        const el = findNodeElement(hook.el, reteNode.id);
+        if (!el) continue;
+
+        el.classList.add("debug-breakpoint");
+        breakpointEls.add(el);
+      }
+    },
+
+    /**
      * Removes all debug visual overlays from the canvas.
      */
     handleClearHighlights() {
@@ -154,6 +184,12 @@ export function createDebugHandler(hook) {
         el.classList.remove("debug-visited", "debug-current", "debug-waiting", "debug-error");
       }
       visitedEls = new Set();
+
+      // Clear breakpoint indicators
+      for (const el of breakpointEls) {
+        el.classList.remove("debug-breakpoint");
+      }
+      breakpointEls = new Set();
 
       // Clear active connection
       if (activeConnView) {

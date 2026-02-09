@@ -11,6 +11,7 @@ export const storyarnNodeStyles = css`
   }
 
   .node {
+    position: relative;
     background: oklch(var(--b1, 0.2 0 0));
     border-radius: 8px;
     min-width: 180px;
@@ -248,6 +249,20 @@ export const storyarnNodeStyles = css`
   :host(.debug-error) .node {
     border-color: oklch(var(--er, 0.65 0.25 25) / 0.5);
     box-shadow: 0 0 0 2px oklch(var(--er, 0.65 0.25 25) / 0.15);
+  }
+
+  /* Debug: breakpoint — red dot at top-right corner */
+  :host(.debug-breakpoint) .node::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: oklch(var(--er, 0.65 0.25 25));
+    box-shadow: 0 0 4px oklch(var(--er, 0.65 0.25 25) / 0.5);
+    z-index: 10;
   }
 
   @keyframes debug-pulse {

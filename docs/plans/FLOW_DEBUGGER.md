@@ -950,10 +950,10 @@ Tasks 7-15, in this order. Each delivers standalone value:
 
 **Tests:** No automated tests (JS visual). Manual verification: toggle breakpoint, see red dot.
 
-- [ ] Register `debug_update_breakpoints` event in event_bindings.js
-- [ ] Add `handleUpdateBreakpoints` to debug_handler.js
-- [ ] Add `.debug-breakpoint` CSS class with red dot pseudo-element
-- [ ] Clear breakpoint visuals in handleClearHighlights
+- [x] Register `debug_update_breakpoints` event in event_bindings.js
+- [x] Add `handleUpdateBreakpoints` to debug_handler.js
+- [x] Add `.debug-breakpoint` CSS class with red dot pseudo-element
+- [x] Clear breakpoint visuals in handleClearHighlights
 
 ---
 
