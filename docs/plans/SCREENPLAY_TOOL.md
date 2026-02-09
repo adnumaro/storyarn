@@ -25,7 +25,7 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 
 | Phase   | Name                                                | Priority     | Status   |
 |---------|-----------------------------------------------------|--------------|----------|
-| 1       | Database & Context                                  | Essential    | Pending  |
+| 1       | Database & Context                                  | Essential    | Done     |
 | 2       | Sidebar & Navigation                                | Essential    | Pending  |
 | 3       | Screenplay Editor (Core Blocks)                     | Essential    | Pending  |
 | 4       | Slash Command System                                | Essential    | Pending  |
@@ -34,6 +34,294 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 | 7       | Flow Sync — Flow → Screenplay                       | Essential    | Pending  |
 | 8       | Dual Dialogue & Advanced Formatting                 | Important    | Pending  |
 | 9       | Title Page & Export                                 | Nice to Have | Pending  |
+
+### Phase 1 — Detailed Task Breakdown
+
+| Task | Name                                  | Status  | Tests |
+|------|---------------------------------------|---------|-------|
+| 1.1  | Migration: create_screenplays         | Done    | N/A   |
+| 1.2  | Screenplay schema + changesets        | Done    | 25 pass |
+| 1.3  | ScreenplayElement schema + changesets | Done    | 29 pass |
+| 1.4  | ScreenplayCrud + test fixtures        | Done    | 18 pass |
+| 1.5  | ElementCrud                           | Done    | 16 pass |
+| 1.6  | ScreenplayQueries + TreeOperations    | Done    | 10 pass |
+| 1.7  | ElementGrouping                       | Done    | 17 pass |
+| 1.8  | Context facade (Screenplays.ex)       | Done    | 2 pass |
+
+#### Task 1.1 — Migration: `create_screenplays`
+
+**Goal:** Create the database tables for `screenplays` and `screenplay_elements`.
+
+**File:** `priv/repo/migrations/TIMESTAMP_create_screenplays.exs`
+
+**Details:**
+- Follow the exact pattern from `20260201120005_create_flows.exs` migration
+- Create `screenplays` table with fields: `name` (string, not null), `shortcut` (string), `description` (string), `position` (integer, default 0), `deleted_at` (utc_datetime), `project_id` (FK → projects, on_delete: delete_all), `parent_id` (FK → screenplays, on_delete: nilify_all), `linked_flow_id` (FK → flows, on_delete: nilify_all), `draft_of_id` (FK → screenplays, on_delete: delete_all), `draft_label` (string), `draft_status` (string, default "active"), timestamps
+- Create indexes: `[:project_id]`, `[:parent_id]`, `[:project_id, :parent_id, :position]`, `[:deleted_at]`, `[:linked_flow_id]`, `[:draft_of_id]`
+- Create unique partial index on `[:project_id, :shortcut]` WHERE `shortcut IS NOT NULL AND deleted_at IS NULL`
+- Create unique partial index on `[:linked_flow_id]` WHERE `linked_flow_id IS NOT NULL AND deleted_at IS NULL` (Edge Case A)
+- Create `screenplay_elements` table with fields: `type` (string, not null), `position` (integer, default 0, not null), `content` (text, default ""), `data` (map, default %{}), `depth` (integer, default 0), `branch` (string), `screenplay_id` (FK → screenplays, on_delete: delete_all, not null), `linked_node_id` (FK → flow_nodes, on_delete: nilify_all), timestamps
+- Create indexes: `[:screenplay_id]`, `[:screenplay_id, :position]`, `[:linked_node_id]`
+- **NO** `group_id` column (Edge Case F: dialogue groups computed from adjacency)
+
+**Verification:** `mix ecto.migrate` runs without errors. `mix ecto.rollback` works cleanly.
+
+**No tests needed** — migration correctness is verified by successful migrate/rollback.
+
+---
+
+#### Task 1.2 — Screenplay Schema + Changesets
+
+**Goal:** Create the `Screenplay` Ecto schema with all changesets.
+
+**Files:**
+- `lib/storyarn/screenplays/screenplay.ex`
+- `test/storyarn/screenplays/screenplay_test.exs`
+
+**Details:**
+- Follow the exact pattern from `lib/storyarn/flows/flow.ex`
+- Schema fields match the migration: `name`, `shortcut`, `description`, `position`, `deleted_at`, `draft_label`, `draft_status`
+- Relationships: `belongs_to :project` (Storyarn.Projects.Project), `belongs_to :parent` (__MODULE__), `belongs_to :linked_flow` (Storyarn.Flows.Flow), `belongs_to :draft_of` (__MODULE__), `has_many :children` (__MODULE__, foreign_key: :parent_id), `has_many :drafts` (__MODULE__, foreign_key: :draft_of_id), `has_many :elements` (Storyarn.Screenplays.ScreenplayElement)
+- Helper: `draft?/1` — returns true if `draft_of_id` is not nil
+- Changesets (follow Flow pattern):
+  - `create_changeset/2` — validates name required, 1-200 chars; auto-generates shortcut if not provided (reuse `Storyarn.Shortcuts` module pattern from flows)
+  - `update_changeset/2` — updates name, shortcut, description
+  - `move_changeset/2` — updates parent_id, position
+  - `delete_changeset/1` — sets deleted_at to now
+  - `restore_changeset/1` — sets deleted_at to nil
+  - `link_flow_changeset/2` — updates linked_flow_id
+
+**Tests** (`test/storyarn/screenplays/screenplay_test.exs`):
+- Valid create changeset with name
+- Create changeset requires name
+- Create changeset rejects name > 200 chars
+- Update changeset works
+- Delete changeset sets deleted_at
+- Restore changeset clears deleted_at
+- `draft?/1` returns true when draft_of_id is set
+- `draft?/1` returns false when draft_of_id is nil
+
+---
+
+#### Task 1.3 — ScreenplayElement Schema + Changesets
+
+**Goal:** Create the `ScreenplayElement` Ecto schema with changesets and type helpers.
+
+**Files:**
+- `lib/storyarn/screenplays/screenplay_element.ex`
+- `test/storyarn/screenplays/screenplay_element_test.exs`
+
+**Details:**
+- Schema fields match migration: `type`, `position`, `content`, `data`, `depth`, `branch`
+- Relationships: `belongs_to :screenplay`, `belongs_to :linked_node` (Storyarn.Flows.FlowNode)
+- Module attribute `@element_types` with all 14 types: `scene_heading`, `action`, `character`, `dialogue`, `parenthetical`, `transition`, `dual_dialogue`, `conditional`, `instruction`, `response`, `hub_marker`, `jump_marker`, `note`, `section`, `page_break`, `title_page`
+- Public functions: `types/0`, `standard_types/0`, `interactive_types/0`, `flow_marker_types/0`, `dialogue_group_types/0`, `non_mappeable_types/0`
+- Changesets:
+  - `create_changeset/2` — validates type in @element_types, position >= 0, content is string, depth >= 0, branch in [nil, "true", "false"]
+  - `update_changeset/2` — updates content, data, type, depth, branch
+  - `position_changeset/2` — updates position only
+  - `link_node_changeset/2` — updates linked_node_id
+
+**Tests** (`test/storyarn/screenplays/screenplay_element_test.exs`):
+- Valid create changeset for each standard type
+- Create changeset rejects invalid type
+- Create changeset rejects negative position
+- Branch validates only nil, "true", "false"
+- `types/0` returns all 14 types
+- `standard_types/0` returns correct subset
+- `interactive_types/0` returns conditional, instruction, response
+- `flow_marker_types/0` returns hub_marker, jump_marker
+- `dialogue_group_types/0` returns character, dialogue, parenthetical
+- `non_mappeable_types/0` returns note, section, page_break, title_page
+
+---
+
+#### Task 1.4 — ScreenplayCrud + Test Fixtures
+
+**Goal:** Implement CRUD operations for screenplays and create test fixtures.
+
+**Files:**
+- `lib/storyarn/screenplays/screenplay_crud.ex`
+- `test/support/fixtures/screenplays_fixtures.ex`
+- `test/storyarn/screenplays/screenplay_crud_test.exs`
+
+**Details — ScreenplayCrud** (follow `lib/storyarn/flows/flow_crud.ex` pattern):
+- `create_screenplay/2` — receives project struct + attrs map. Auto-assigns position (max position + 1 among siblings). Inserts via Repo. Does NOT auto-create elements (unlike flows which auto-create entry/exit nodes).
+- `get_screenplay!/2` — receives project_id + screenplay_id. Raises if not found. Filters `deleted_at IS NULL` and `draft_of_id IS NULL`. Preloads elements ordered by position.
+- `get_screenplay/2` — same but returns nil instead of raising.
+- `update_screenplay/2` — receives screenplay + attrs. Uses update_changeset.
+- `delete_screenplay/1` — soft delete. Uses delete_changeset. Also recursively soft-deletes children (same pattern as FlowCrud).
+- `restore_screenplay/1` — restore from soft delete. Uses restore_changeset.
+- `list_deleted_screenplays/1` — lists soft-deleted screenplays for a project (for trash/restore UI).
+
+**Details — Test Fixtures** (follow `test/support/fixtures/flows_fixtures.ex` pattern):
+- `unique_screenplay_name/0` — returns "Screenplay #{System.unique_integer([:positive])}"
+- `valid_screenplay_attributes/1` — merges defaults with provided attrs
+- `screenplay_fixture/2` — creates a screenplay for a project (project defaults to project_fixture())
+- `element_fixture/2` — creates a screenplay element (defaults: type "action", content "Test action")
+
+**Tests** (`test/storyarn/screenplays/screenplay_crud_test.exs`):
+- `create_screenplay/2` creates with valid attrs
+- `create_screenplay/2` fails without name
+- `create_screenplay/2` auto-assigns position
+- `get_screenplay!/2` returns screenplay with elements preloaded
+- `get_screenplay!/2` raises for deleted screenplay
+- `get_screenplay!/2` raises for draft screenplay (draft_of_id not nil)
+- `update_screenplay/2` updates name and description
+- `delete_screenplay/1` soft-deletes (sets deleted_at)
+- `delete_screenplay/1` recursively deletes children
+- `restore_screenplay/1` clears deleted_at
+- `list_deleted_screenplays/1` returns only deleted screenplays
+
+---
+
+#### Task 1.5 — ElementCrud
+
+**Goal:** Implement CRUD operations for screenplay elements including insert-at-position and reorder.
+
+**Files:**
+- `lib/storyarn/screenplays/element_crud.ex`
+- `test/storyarn/screenplays/element_crud_test.exs`
+
+**Details** (no direct Flow equivalent — this is new logic):
+- `list_elements/1` — all elements for a screenplay_id, ordered by position ASC
+- `create_element/2` — receives screenplay struct + attrs. Appends at end (position = max + 1).
+- `insert_element_at/3` — receives screenplay struct, position integer, attrs map. In a transaction: shift all elements with position >= target position by +1, then insert new element at target position. Returns `{:ok, element}`.
+- `update_element/2` — receives element + attrs. Updates content, data, type, depth, branch.
+- `delete_element/1` — receives element. In a transaction: delete element, then compact positions (shift down all elements after deleted one by -1). Returns `{:ok, element}`.
+- `reorder_elements/2` — receives screenplay_id + ordered list of element IDs. In a transaction: update each element's position to its index in the list. Returns `{:ok, elements}`.
+- `split_element/3` — receives element, cursor_position (integer), new_type (string). In a transaction:
+  1. Split element.content at cursor_position into `before_text` and `after_text`
+  2. Update current element content to `before_text`
+  3. Insert new element of `new_type` at position + 1 with empty content
+  4. Insert third element (same type as original) at position + 2 with `after_text`
+  5. Shift all subsequent elements by +2
+  Returns `{:ok, before_element, new_element, after_element}`.
+
+**Tests** (`test/storyarn/screenplays/element_crud_test.exs`):
+- `list_elements/1` returns elements ordered by position
+- `create_element/2` appends at end with correct position
+- `insert_element_at/3` inserts at position 0 (beginning)
+- `insert_element_at/3` inserts in the middle, shifts subsequent
+- `insert_element_at/3` inserts at end
+- `update_element/2` updates content and data
+- `update_element/2` can change element type
+- `delete_element/1` removes element and compacts positions
+- `delete_element/1` on last element works (no compaction needed)
+- `reorder_elements/2` reorders elements by ID list
+- `split_element/3` splits content correctly (middle of text)
+- `split_element/3` splits at beginning (before = empty)
+- `split_element/3` splits at end (after = empty)
+- `split_element/3` shifts subsequent element positions by +2
+
+---
+
+#### Task 1.6 — ScreenplayQueries + TreeOperations
+
+**Goal:** Implement read-only queries and tree reordering operations.
+
+**Files:**
+- `lib/storyarn/screenplays/screenplay_queries.ex`
+- `lib/storyarn/screenplays/tree_operations.ex`
+- `test/storyarn/screenplays/screenplay_queries_test.exs`
+- `test/storyarn/screenplays/tree_operations_test.exs`
+
+**Details — ScreenplayQueries:**
+- `list_screenplays_tree/1` — receives project_id. Returns flat list of non-deleted, non-draft screenplays ordered by position. Build tree in memory (same pattern as `Flows.FlowCrud.build_tree/1`). Excludes drafts (`WHERE draft_of_id IS NULL AND deleted_at IS NULL`).
+- `get_with_elements/1` — receives screenplay_id. Returns screenplay with elements preloaded (ordered by position).
+- `count_elements/1` — receives screenplay_id. Returns integer count of elements.
+- `list_drafts/1` — receives screenplay_id (the original). Returns all drafts where `draft_of_id = screenplay_id` and `deleted_at IS NULL`.
+
+**Details — TreeOperations** (copy pattern from `lib/storyarn/flows/tree_operations.ex`):
+- `reorder_screenplays/3` — receives project_id, parent_id, list of screenplay_ids. In a transaction: update position of each screenplay to its index. Returns `{:ok, screenplays}`.
+- `move_screenplay_to_position/3` — receives screenplay, parent_id, position. Updates parent_id and position. Returns `{:ok, screenplay}`.
+
+**Tests — ScreenplayQueries:**
+- `list_screenplays_tree/1` returns tree structure
+- `list_screenplays_tree/1` excludes deleted screenplays
+- `list_screenplays_tree/1` excludes drafts
+- `list_screenplays_tree/1` orders by position
+- `get_with_elements/1` preloads elements in order
+- `count_elements/1` returns correct count
+- `count_elements/1` returns 0 for empty screenplay
+- `list_drafts/1` returns drafts of a screenplay
+- `list_drafts/1` excludes deleted drafts
+
+**Tests — TreeOperations:**
+- `reorder_screenplays/3` updates positions
+- `move_screenplay_to_position/3` moves to new parent
+- `move_screenplay_to_position/3` moves to root (parent_id = nil)
+
+---
+
+#### Task 1.7 — ElementGrouping
+
+**Goal:** Implement dialogue group computation from element adjacency (Edge Case F).
+
+**Files:**
+- `lib/storyarn/screenplays/element_grouping.ex`
+- `test/storyarn/screenplays/element_grouping_test.exs`
+
+**Details:**
+- `compute_dialogue_groups/1` — receives list of elements (ordered by position). Returns elements annotated with a computed `group_id` (virtual, not stored). Rules:
+  - `character` starts a new group (generates UUID-based group_id)
+  - `parenthetical` continues current group if preceded by `character` or `dialogue`
+  - `dialogue` continues current group if preceded by `character` or `parenthetical`
+  - Any other type breaks the current group (group_id = nil)
+  - Single-pass O(n) algorithm
+  - Returns list of `{element, group_id}` tuples
+
+- `group_elements/1` — receives list of elements (ordered by position). Groups consecutive elements into logical units that map to flow nodes. Returns list of `%{type: atom, elements: [element], group_id: string | nil}` structs. Grouping rules:
+  - Consecutive character + parenthetical? + dialogue → one `:dialogue_group`
+  - `scene_heading` alone → `:scene_heading`
+  - `action` alone → `:action`
+  - `transition` alone → `:transition`
+  - `conditional` alone → `:conditional`
+  - `instruction` alone → `:instruction`
+  - `response` alone → `:response`
+  - `dual_dialogue` alone → `:dual_dialogue`
+  - `hub_marker` alone → `:hub_marker`
+  - `jump_marker` alone → `:jump_marker`
+  - `note`, `section`, `page_break`, `title_page` → `:non_mappeable`
+
+**Tests** (`test/storyarn/screenplays/element_grouping_test.exs`):
+- `compute_dialogue_groups/1` groups character + dialogue
+- `compute_dialogue_groups/1` groups character + parenthetical + dialogue
+- `compute_dialogue_groups/1` breaks group on non-dialogue type
+- `compute_dialogue_groups/1` handles multiple consecutive groups
+- `compute_dialogue_groups/1` returns nil group_id for non-dialogue elements
+- `compute_dialogue_groups/1` handles empty list
+- `group_elements/1` returns dialogue_group for character+dialogue
+- `group_elements/1` returns individual groups for scene_heading, action, etc.
+- `group_elements/1` attaches response to preceding dialogue group (if exists)
+- `group_elements/1` marks orphan response as standalone
+- `group_elements/1` returns non_mappeable for note/section/page_break/title_page
+- `group_elements/1` handles mixed element sequence (realistic screenplay)
+
+---
+
+#### Task 1.8 — Context Facade (Screenplays.ex)
+
+**Goal:** Create the top-level Screenplays context module that delegates to submodules.
+
+**Files:**
+- `lib/storyarn/screenplays.ex`
+- `test/storyarn/screenplays_test.exs` (integration smoke tests)
+
+**Details:**
+- Follow the exact `defdelegate` pattern from `lib/storyarn/flows.ex`
+- Alias all submodules: `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `TreeOperations`, `ElementGrouping`
+- Delegate all public functions (list from plan section 1.4)
+- Do NOT include `FlowSync` delegates yet (Phases 6-7)
+
+**Tests** (`test/storyarn/screenplays_test.exs`) — integration smoke tests:
+- Create screenplay → add elements → list elements → verify order
+- Create screenplay → delete → verify soft-deleted → restore → verify active
+- Create elements → reorder → verify new positions
+- Create elements → group_elements → verify grouping
+- Create screenplay with children → list tree → verify hierarchy
+
+---
 
 ---
 

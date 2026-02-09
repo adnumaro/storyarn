@@ -9,8 +9,9 @@ defmodule Storyarn.Shortcuts do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.Flow
-  alias Storyarn.Sheets.Sheet
   alias Storyarn.Repo
+  alias Storyarn.Screenplays.Screenplay
+  alias Storyarn.Sheets.Sheet
 
   @doc """
   Generates a unique shortcut for a sheet based on its name.
@@ -42,6 +43,23 @@ defmodule Storyarn.Shortcuts do
       nil
     else
       existing = list_flow_shortcuts(project_id, exclude_flow_id)
+      find_unique_shortcut(base_shortcut, existing)
+    end
+  end
+
+  @doc """
+  Generates a unique shortcut for a screenplay based on its name.
+
+  Returns a slugified version of the name, with a numeric suffix if needed
+  to ensure uniqueness within the project (e.g., "screenplay", "screenplay-1").
+  """
+  def generate_screenplay_shortcut(name, project_id, exclude_screenplay_id \\ nil) do
+    base_shortcut = slugify(name)
+
+    if base_shortcut == "" do
+      nil
+    else
+      existing = list_screenplay_shortcuts(project_id, exclude_screenplay_id)
       find_unique_shortcut(base_shortcut, existing)
     end
   end
@@ -114,6 +132,26 @@ defmodule Storyarn.Shortcuts do
     query =
       if exclude_flow_id do
         where(query, [f], f.id != ^exclude_flow_id)
+      else
+        query
+      end
+
+    Repo.all(query)
+  end
+
+  defp list_screenplay_shortcuts(project_id, exclude_screenplay_id) do
+    query =
+      from(s in Screenplay,
+        where:
+          s.project_id == ^project_id and
+            is_nil(s.deleted_at) and
+            not is_nil(s.shortcut),
+        select: s.shortcut
+      )
+
+    query =
+      if exclude_screenplay_id do
+        where(query, [s], s.id != ^exclude_screenplay_id)
       else
         query
       end
