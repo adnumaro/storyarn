@@ -166,6 +166,27 @@ defmodule Storyarn.Screenplays.ScreenplayCrudTest do
     end
   end
 
+  describe "change_screenplay/2" do
+    setup :setup_project
+
+    test "returns a valid changeset with valid attrs", %{project: project} do
+      screenplay = %Storyarn.Screenplays.Screenplay{project_id: project.id}
+      changeset = ScreenplayCrud.change_screenplay(screenplay, %{name: "Act 1"})
+
+      assert %Ecto.Changeset{} = changeset
+      assert changeset.valid?
+    end
+
+    test "returns a changeset with errors for invalid attrs", %{project: project} do
+      screenplay = %Storyarn.Screenplays.Screenplay{project_id: project.id}
+      changeset = ScreenplayCrud.change_screenplay(screenplay, %{name: ""})
+
+      assert %Ecto.Changeset{} = changeset
+      refute changeset.valid?
+      assert {"can't be blank", _} = changeset.errors[:name]
+    end
+  end
+
   describe "list_screenplays/1" do
     setup :setup_project
 

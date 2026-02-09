@@ -127,6 +127,19 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/flows", FlowLive.Index, :index
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/new", FlowLive.Index, :new
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id", FlowLive.Show, :show
+
+      # Screenplays (block-based screenplay editor)
+      live "/workspaces/:workspace_slug/projects/:project_slug/screenplays",
+           ScreenplayLive.Index,
+           :index
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/screenplays/new",
+           ScreenplayLive.Index,
+           :new
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/screenplays/:id",
+           ScreenplayLive.Show,
+           :show
     end
 
     post "/users/update-password", UserSessionController, :update_password

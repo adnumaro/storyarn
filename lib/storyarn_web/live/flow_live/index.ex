@@ -54,7 +54,7 @@ defmodule StoryarnWeb.FlowLive.Index do
         </div>
 
         <.modal
-          :if={@live_action == :new}
+          :if={@live_action == :new and @can_edit}
           id="new-flow-modal"
           show
           on_cancel={JS.patch(~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows")}
@@ -299,26 +299,6 @@ defmodule StoryarnWeb.FlowLive.Index do
     end
   end
 
-  def handle_event("reorder_tree", %{"order" => order, "parent_id" => parent_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        parent_id = if parent_id == "", do: nil, else: String.to_integer(parent_id)
-        flow_ids = Enum.map(order, &String.to_integer/1)
-
-        case Flows.reorder_flows(socket.assigns.project.id, parent_id, flow_ids) do
-          {:ok, _} ->
-            {:noreply, reload_flows(socket)}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not reorder flows."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
-    end
-  end
-
   def handle_event(
         "move_to_parent",
         %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
@@ -327,8 +307,8 @@ defmodule StoryarnWeb.FlowLive.Index do
     case authorize(socket, :edit_content) do
       :ok ->
         flow = Flows.get_flow!(socket.assigns.project.id, item_id)
-        new_parent_id = if new_parent_id == "", do: nil, else: String.to_integer(new_parent_id)
-        position = String.to_integer(position)
+        new_parent_id = parse_int(new_parent_id)
+        position = parse_int(position) || 0
 
         case Flows.move_flow_to_position(flow, new_parent_id, position) do
           {:ok, _} ->
@@ -362,6 +342,17 @@ defmodule StoryarnWeb.FlowLive.Index do
       {:error, :unauthorized} ->
         {:noreply,
          put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  defp parse_int(""), do: nil
+  defp parse_int(nil), do: nil
+  defp parse_int(val) when is_integer(val), do: val
+
+  defp parse_int(str) when is_binary(str) do
+    case Integer.parse(str) do
+      {int, ""} -> int
+      _ -> nil
     end
   end
 

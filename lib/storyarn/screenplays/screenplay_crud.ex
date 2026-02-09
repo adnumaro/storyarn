@@ -146,6 +146,14 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   end
 
   @doc """
+  Returns a changeset for tracking screenplay changes.
+  Used by Form components for validation.
+  """
+  def change_screenplay(%Screenplay{} = screenplay, attrs \\ %{}) do
+    Screenplay.update_changeset(screenplay, attrs)
+  end
+
+  @doc """
   Lists all soft-deleted screenplays for a project (trash).
   """
   def list_deleted_screenplays(project_id) do

@@ -12,16 +12,19 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
   import StoryarnWeb.Components.TreeComponents
 
   alias StoryarnWeb.Components.Sidebar.FlowTree
+  alias StoryarnWeb.Components.Sidebar.ScreenplayTree
   alias StoryarnWeb.Components.Sidebar.SheetTree
 
   attr :project, :map, required: true
   attr :workspace, :map, required: true
   attr :sheets_tree, :list, default: []
   attr :flows_tree, :list, default: []
+  attr :screenplays_tree, :list, default: []
   attr :active_tool, :atom, default: :sheets
   attr :current_path, :string, required: true
   attr :selected_sheet_id, :string, default: nil
   attr :selected_flow_id, :string, default: nil
+  attr :selected_screenplay_id, :string, default: nil
   attr :can_edit, :boolean, default: false
 
   def project_sidebar(assigns) do
@@ -58,6 +61,12 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
             active={flows_page?(@current_path, @workspace.slug, @project.slug)}
           />
           <.tree_link
+            label={gettext("Screenplays")}
+            href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays"}
+            icon="scroll-text"
+            active={screenplays_page?(@current_path, @workspace.slug, @project.slug)}
+          />
+          <.tree_link
             label={gettext("Sheets")}
             href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets"}
             icon="file-text"
@@ -66,22 +75,31 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
         </div>
 
         <%!-- Dynamic content section based on active tool --%>
-        <%= if @active_tool == :flows do %>
-          <FlowTree.flows_section
-            flows_tree={@flows_tree}
-            workspace={@workspace}
-            project={@project}
-            selected_flow_id={@selected_flow_id}
-            can_edit={@can_edit}
-          />
-        <% else %>
-          <SheetTree.sheets_section
-            sheets_tree={@sheets_tree}
-            workspace={@workspace}
-            project={@project}
-            selected_sheet_id={@selected_sheet_id}
-            can_edit={@can_edit}
-          />
+        <%= cond do %>
+          <% @active_tool == :flows -> %>
+            <FlowTree.flows_section
+              flows_tree={@flows_tree}
+              workspace={@workspace}
+              project={@project}
+              selected_flow_id={@selected_flow_id}
+              can_edit={@can_edit}
+            />
+          <% @active_tool == :screenplays -> %>
+            <ScreenplayTree.screenplays_section
+              screenplays_tree={@screenplays_tree}
+              workspace={@workspace}
+              project={@project}
+              selected_screenplay_id={@selected_screenplay_id}
+              can_edit={@can_edit}
+            />
+          <% true -> %>
+            <SheetTree.sheets_section
+              sheets_tree={@sheets_tree}
+              workspace={@workspace}
+              project={@project}
+              selected_sheet_id={@selected_sheet_id}
+              can_edit={@can_edit}
+            />
         <% end %>
       </nav>
 
@@ -114,6 +132,10 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
 
   defp flows_page?(path, workspace_slug, project_slug) do
     String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows")
+  end
+
+  defp screenplays_page?(path, workspace_slug, project_slug) do
+    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/screenplays")
   end
 
   defp sheets_tool_page?(path, workspace_slug, project_slug) do

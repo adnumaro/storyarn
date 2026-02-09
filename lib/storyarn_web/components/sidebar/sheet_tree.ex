@@ -12,6 +12,8 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.TreeComponents
 
+  alias StoryarnWeb.Components.Sidebar.TreeHelpers
+
   attr :sheets_tree, :list, required: true
   attr :workspace, :map, required: true
   attr :project, :map, required: true
@@ -82,12 +84,12 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
   attr :can_edit, :boolean, default: false
 
   def sheet_tree_items(assigns) do
-    has_children = has_children?(assigns.sheet)
+    has_children = TreeHelpers.has_children?(assigns.sheet)
     is_selected = assigns.selected_sheet_id == to_string(assigns.sheet.id)
 
     is_expanded =
       has_children and
-        has_selected_sheet_recursive?(assigns.sheet.children, assigns.selected_sheet_id)
+        TreeHelpers.has_selected_recursive?(assigns.sheet.children, assigns.selected_sheet_id)
 
     assigns =
       assigns
@@ -106,8 +108,8 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
         expanded={@is_expanded}
         has_children={true}
         href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{@sheet.id}"}
-        sheet_id={@sheet_id}
-        sheet_name={@sheet.name}
+        item_id={@sheet_id}
+        item_name={@sheet.name}
         can_drag={@can_edit}
       >
         <:actions :if={@can_edit}>
@@ -140,8 +142,8 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
         avatar_url={@avatar_url}
         href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{@sheet.id}"}
         active={@is_selected}
-        sheet_id={@sheet_id}
-        sheet_name={@sheet.name}
+        item_id={@sheet_id}
+        item_name={@sheet.name}
         can_drag={@can_edit}
       >
         <:actions :if={@can_edit}>
@@ -195,24 +197,6 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
     </div>
     """
   end
-
-  defp has_children?(sheet) do
-    case Map.get(sheet, :children) do
-      nil -> false
-      [] -> false
-      children when is_list(children) -> true
-      _ -> false
-    end
-  end
-
-  defp has_selected_sheet_recursive?(sheets, selected_id) when is_binary(selected_id) do
-    Enum.any?(sheets, fn sheet ->
-      to_string(sheet.id) == selected_id or
-        has_selected_sheet_recursive?(Map.get(sheet, :children, []), selected_id)
-    end)
-  end
-
-  defp has_selected_sheet_recursive?(_sheets, _selected_id), do: false
 
   defp get_avatar_url(%{avatar_asset: %{url: url}}) when is_binary(url), do: url
   defp get_avatar_url(_sheet), do: nil

@@ -26,7 +26,7 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 | Phase   | Name                                                | Priority     | Status   |
 |---------|-----------------------------------------------------|--------------|----------|
 | 1       | Database & Context                                  | Essential    | Done     |
-| 2       | Sidebar & Navigation                                | Essential    | Pending  |
+| 2       | Sidebar & Navigation                                | Essential    | Done        |
 | 3       | Screenplay Editor (Core Blocks)                     | Essential    | Pending  |
 | 4       | Slash Command System                                | Essential    | Pending  |
 | 5       | Interactive Blocks (Condition/Instruction/Response) | Essential    | Pending  |
@@ -35,291 +35,311 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 | 8       | Dual Dialogue & Advanced Formatting                 | Important    | Pending  |
 | 9       | Title Page & Export                                 | Nice to Have | Pending  |
 
-### Phase 1 — Detailed Task Breakdown
+### Phase 1 — Summary (Done, 117 tests)
 
-| Task | Name                                  | Status  | Tests |
-|------|---------------------------------------|---------|-------|
-| 1.1  | Migration: create_screenplays         | Done    | N/A   |
-| 1.2  | Screenplay schema + changesets        | Done    | 25 pass |
-| 1.3  | ScreenplayElement schema + changesets | Done    | 29 pass |
-| 1.4  | ScreenplayCrud + test fixtures        | Done    | 18 pass |
-| 1.5  | ElementCrud                           | Done    | 16 pass |
-| 1.6  | ScreenplayQueries + TreeOperations    | Done    | 10 pass |
-| 1.7  | ElementGrouping                       | Done    | 17 pass |
-| 1.8  | Context facade (Screenplays.ex)       | Done    | 2 pass |
+**Commit:** `93d3f33` — All 8 tasks complete, audited, 117 tests passing.
 
-#### Task 1.1 — Migration: `create_screenplays`
+**Files created:**
+- `priv/repo/migrations/20260209120000_create_screenplays.exs` — tables + indexes (Edge Case A unique partial index on linked_flow_id)
+- `lib/storyarn/screenplays/screenplay.ex` — schema, 6 changesets (create/update/move/delete/restore/link_flow), `draft?/1`, `deleted?/1`
+- `lib/storyarn/screenplays/screenplay_element.ex` — 16 element types, 4 changesets, type helpers (`types/0`, `standard_types/0`, `interactive_types/0`, `flow_marker_types/0`, `dialogue_group_types/0`, `non_mappeable_types/0`)
+- `lib/storyarn/screenplays/screenplay_crud.ex` — list, list_tree, get, get!, create (auto-shortcut/position), update, delete (recursive soft-delete), restore, list_deleted
+- `lib/storyarn/screenplays/element_crud.ex` — list, create, insert_at, update, delete (compact positions), reorder, split_element
+- `lib/storyarn/screenplays/screenplay_queries.ex` — get_with_elements, count_elements, list_drafts
+- `lib/storyarn/screenplays/tree_operations.ex` — reorder_screenplays, move_screenplay_to_position
+- `lib/storyarn/screenplays/element_grouping.ex` — compute_dialogue_groups (O(n) single-pass), group_elements (with response attachment)
+- `lib/storyarn/screenplays.ex` — context facade with defdelegate to all submodules
+- `lib/storyarn/shortcuts.ex` — added `generate_screenplay_shortcut/3`
+- `test/support/fixtures/screenplays_fixtures.ex` — screenplay_fixture, element_fixture
+- 8 test files (117 tests total)
 
-**Goal:** Create the database tables for `screenplays` and `screenplay_elements`.
+**Key patterns:** Follows Flows context exactly. Soft-delete + recursive children. Transaction error handling with explicit `case` + `Repo.rollback`. No `group_id` column (Edge Case F: computed from adjacency).
 
-**File:** `priv/repo/migrations/TIMESTAMP_create_screenplays.exs`
+---
+
+### Phase 2 — Detailed Task Breakdown
+
+| Task | Name                                               | Status  | Tests |
+|------|----------------------------------------------------|---------|-------|
+| 2.1  | `change_screenplay` + context delegate             | Done    | 2     |
+| 2.2  | Routes + ScreenplayLive.Index (mount & render)     | Done    | 3     |
+| 2.3  | Layout + ProjectSidebar integration                | Done    | 1     |
+| 2.4  | ScreenplayTree sidebar component                   | Done    | 2     |
+| 2.5  | ScreenplayLive.Form (modal create)                 | Done    | 3     |
+| 2.6  | Index event handlers (CRUD + tree)                 | Done    | 8     |
+
+#### Task 2.1 — `change_screenplay` + Context Delegate
+
+**Goal:** Add the `change_screenplay/2` function needed by the Form component for changeset validation, and delegate it through the Screenplays facade.
+
+**Files:**
+- `lib/storyarn/screenplays/screenplay_crud.ex` (add function)
+- `lib/storyarn/screenplays.ex` (add delegate)
+- `test/storyarn/screenplays/screenplay_crud_test.exs` (add tests)
 
 **Details:**
-- Follow the exact pattern from `20260201120005_create_flows.exs` migration
-- Create `screenplays` table with fields: `name` (string, not null), `shortcut` (string), `description` (string), `position` (integer, default 0), `deleted_at` (utc_datetime), `project_id` (FK → projects, on_delete: delete_all), `parent_id` (FK → screenplays, on_delete: nilify_all), `linked_flow_id` (FK → flows, on_delete: nilify_all), `draft_of_id` (FK → screenplays, on_delete: delete_all), `draft_label` (string), `draft_status` (string, default "active"), timestamps
-- Create indexes: `[:project_id]`, `[:parent_id]`, `[:project_id, :parent_id, :position]`, `[:deleted_at]`, `[:linked_flow_id]`, `[:draft_of_id]`
-- Create unique partial index on `[:project_id, :shortcut]` WHERE `shortcut IS NOT NULL AND deleted_at IS NULL`
-- Create unique partial index on `[:linked_flow_id]` WHERE `linked_flow_id IS NOT NULL AND deleted_at IS NULL` (Edge Case A)
-- Create `screenplay_elements` table with fields: `type` (string, not null), `position` (integer, default 0, not null), `content` (text, default ""), `data` (map, default %{}), `depth` (integer, default 0), `branch` (string), `screenplay_id` (FK → screenplays, on_delete: delete_all, not null), `linked_node_id` (FK → flow_nodes, on_delete: nilify_all), timestamps
-- Create indexes: `[:screenplay_id]`, `[:screenplay_id, :position]`, `[:linked_node_id]`
-- **NO** `group_id` column (Edge Case F: dialogue groups computed from adjacency)
+- Add `change_screenplay/2` to `ScreenplayCrud` — follows the exact pattern from `Flows.FlowCrud.change_flow/2`:
+  ```elixir
+  def change_screenplay(%Screenplay{} = screenplay, attrs \\ %{}) do
+    Screenplay.update_changeset(screenplay, attrs)
+  end
+  ```
+- Add `defdelegate change_screenplay(screenplay, attrs \\ %{}), to: ScreenplayCrud` to `Screenplays` facade
+- This is needed by the Form live component in Task 2.5
 
-**Verification:** `mix ecto.migrate` runs without errors. `mix ecto.rollback` works cleanly.
-
-**No tests needed** — migration correctness is verified by successful migrate/rollback.
+**Tests** (add to existing `screenplay_crud_test.exs`):
+- `change_screenplay/2` returns a valid changeset for a new screenplay
+- `change_screenplay/2` returns a changeset with errors for invalid attrs
 
 ---
 
-#### Task 1.2 — Screenplay Schema + Changesets
+#### Task 2.2 — Routes + ScreenplayLive.Index (mount & render)
 
-**Goal:** Create the `Screenplay` Ecto schema with all changesets.
+**Goal:** Create the routes and the Index LiveView with mount and render — without event handlers yet.
 
 **Files:**
-- `lib/storyarn/screenplays/screenplay.ex`
-- `test/storyarn/screenplays/screenplay_test.exs`
+- `lib/storyarn_web/router.ex` (add routes)
+- `lib/storyarn_web/live/screenplay_live/index.ex` (create)
+- `test/storyarn_web/live/screenplay_live/index_test.exs` (create)
+
+**Details — Router:**
+Add inside the `:require_authenticated_user` live_session, alongside the existing flow routes:
+```elixir
+# Screenplays
+live "/workspaces/:workspace_slug/projects/:project_slug/screenplays",
+     ScreenplayLive.Index, :index
+live "/workspaces/:workspace_slug/projects/:project_slug/screenplays/new",
+     ScreenplayLive.Index, :new
+live "/workspaces/:workspace_slug/projects/:project_slug/screenplays/:id",
+     ScreenplayLive.Show, :show
+```
+
+**Details — ScreenplayLive.Index (mount + render only):**
+Copy the exact pattern from `FlowLive.Index`:
+
+- `mount/3`:
+  1. Extract `workspace_slug` and `project_slug` from params
+  2. Call `Projects.get_project_by_slugs/3` — same as FlowLive.Index
+  3. Preload `project.workspace`
+  4. Load `screenplays = Screenplays.list_screenplays(project.id)`
+  5. Load `screenplays_tree = Screenplays.list_screenplays_tree(project.id)`
+  6. Compute `can_edit = ProjectMembership.can?(membership.role, :edit_content)`
+  7. Assign all to socket: `:project`, `:workspace`, `:membership`, `:can_edit`, `:screenplays`, `:screenplays_tree`
+  8. On error: flash + redirect to `/workspaces`
+
+- `render/1`:
+  - Wrap in `<Layouts.project>` with `active_tool={:screenplays}`, `screenplays_tree={@screenplays_tree}`, `current_path={~p"...screenplays"}`
+  - Header: `gettext("Screenplays")` with subtitle `gettext("Write and format screenplays with industry-standard formatting")`
+  - Actions: "New Screenplay" button (link patch to `/screenplays/new`) — gated on `@can_edit`
+  - Empty state: `<.empty_state icon="scroll-text">` with `gettext("No screenplays yet. Create your first screenplay to get started.")`
+  - Non-empty: `.screenplay_card` for each screenplay (same card pattern as `FlowLive.Index.flow_card`)
+  - Card icon: `"scroll-text"` (Lucide), no "Main" badge (screenplays have no is_main concept)
+  - Card menu: only "Delete" action (with `data-confirm`)
+  - Modal: `:if={@live_action == :new}` showing `ScreenplayLive.Form` component (Task 2.5, can stub with placeholder initially)
+
+- `handle_params/3`: no-op `{:noreply, socket}` (same as FlowLive.Index)
+
+- `reload_screenplays/1` private helper: reloads both `@screenplays` and `@screenplays_tree`
+
+**Note:** Event handlers will be added in Task 2.6. For now, the buttons are rendered but handlers are deferred.
+
+**Tests** (`test/storyarn_web/live/screenplay_live/index_test.exs`):
+- Renders "Screenplays" header for project owner
+- Renders empty state when no screenplays exist
+- Redirects non-members to `/workspaces`
+
+---
+
+#### Task 2.3 — Layout + ProjectSidebar Integration
+
+**Goal:** Modify `Layouts.project` and `ProjectSidebar` to support the new screenplays tool.
+
+**Files:**
+- `lib/storyarn_web/components/layouts.ex` (add attrs)
+- `lib/storyarn_web/components/project_sidebar.ex` (add tool link + conditional tree)
+
+**Details — Layouts.project:**
+Add these new attrs alongside existing ones:
+```elixir
+attr :screenplays_tree, :list, default: [], doc: "screenplays with preloaded children for the tree"
+attr :selected_screenplay_id, :string, default: nil, doc: "currently selected screenplay ID for sidebar highlighting"
+```
+Forward them to `<.project_sidebar>`:
+```elixir
+<.project_sidebar
+  ...existing attrs...
+  screenplays_tree={@screenplays_tree}
+  selected_screenplay_id={@selected_screenplay_id}
+/>
+```
+
+**Details — ProjectSidebar:**
+1. Add attrs:
+   ```elixir
+   attr :screenplays_tree, :list, default: []
+   attr :selected_screenplay_id, :string, default: nil
+   ```
+2. Add alias: `alias StoryarnWeb.Components.Sidebar.ScreenplayTree`
+3. Add tool link **between** Flows and Sheets:
+   ```heex
+   <.tree_link
+     label={gettext("Screenplays")}
+     href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays"}
+     icon="scroll-text"
+     active={screenplays_page?(@current_path, @workspace.slug, @project.slug)}
+   />
+   ```
+4. Change the conditional tree rendering from `if/else` to `cond`:
+   ```heex
+   <%= cond do %>
+     <% @active_tool == :flows -> %>
+       <FlowTree.flows_section ... />
+     <% @active_tool == :screenplays -> %>
+       <ScreenplayTree.screenplays_section
+         screenplays_tree={@screenplays_tree}
+         workspace={@workspace}
+         project={@project}
+         selected_screenplay_id={@selected_screenplay_id}
+         can_edit={@can_edit}
+       />
+     <% true -> %>
+       <SheetTree.sheets_section ... />
+   <% end %>
+   ```
+5. Add helper: `defp screenplays_page?(path, workspace_slug, project_slug)` — same pattern as `flows_page?/3`
+
+**Tests** (add to existing index_test.exs):
+- Renders "Screenplays" tool link in sidebar when visiting screenplays page
+
+---
+
+#### Task 2.4 — ScreenplayTree Sidebar Component
+
+**Goal:** Create the tree component for the screenplay sidebar, replicating the FlowTree pattern.
+
+**Files:**
+- `lib/storyarn_web/components/sidebar/screenplay_tree.ex` (create)
+- `test/storyarn_web/live/screenplay_live/index_test.exs` (add tests)
 
 **Details:**
-- Follow the exact pattern from `lib/storyarn/flows/flow.ex`
-- Schema fields match the migration: `name`, `shortcut`, `description`, `position`, `deleted_at`, `draft_label`, `draft_status`
-- Relationships: `belongs_to :project` (Storyarn.Projects.Project), `belongs_to :parent` (__MODULE__), `belongs_to :linked_flow` (Storyarn.Flows.Flow), `belongs_to :draft_of` (__MODULE__), `has_many :children` (__MODULE__, foreign_key: :parent_id), `has_many :drafts` (__MODULE__, foreign_key: :draft_of_id), `has_many :elements` (Storyarn.Screenplays.ScreenplayElement)
-- Helper: `draft?/1` — returns true if `draft_of_id` is not nil
-- Changesets (follow Flow pattern):
-  - `create_changeset/2` — validates name required, 1-200 chars; auto-generates shortcut if not provided (reuse `Storyarn.Shortcuts` module pattern from flows)
-  - `update_changeset/2` — updates name, shortcut, description
-  - `move_changeset/2` — updates parent_id, position
-  - `delete_changeset/1` — sets deleted_at to now
-  - `restore_changeset/1` — sets deleted_at to nil
-  - `link_flow_changeset/2` — updates linked_flow_id
+Copy the exact structure of `lib/storyarn_web/components/sidebar/flow_tree.ex` with these substitutions:
 
-**Tests** (`test/storyarn/screenplays/screenplay_test.exs`):
-- Valid create changeset with name
-- Create changeset requires name
-- Create changeset rejects name > 200 chars
-- Update changeset works
-- Delete changeset sets deleted_at
-- Restore changeset clears deleted_at
-- `draft?/1` returns true when draft_of_id is set
-- `draft?/1` returns false when draft_of_id is nil
+| FlowTree              | ScreenplayTree                   |
+|-----------------------|----------------------------------|
+| `flows_section`       | `screenplays_section`            |
+| `flow_tree_items`     | `screenplay_tree_items`          |
+| `flow_menu`           | `screenplay_menu`                |
+| `@flows_tree`         | `@screenplays_tree`              |
+| `@selected_flow_id`   | `@selected_screenplay_id`        |
+| `"git-branch"` icon   | `"scroll-text"` icon             |
+| `"create_flow"`       | `"create_screenplay"`            |
+| `"create_child_flow"` | `"create_child_screenplay"`      |
+| `"delete_flow"`       | `"delete_screenplay"`            |
+| `"Filter flows..."`   | `gettext("Filter screenplays...")` |
+| `"No flows yet"`      | `gettext("No screenplays yet")`  |
+| `"New Flow"`          | `gettext("New Screenplay")`      |
+| `"Add child flow"`    | `gettext("Add child screenplay")` |
+| `"Set as main"`       | **REMOVE** (no is_main for screenplays) |
+| `"Move to Trash"`     | `gettext("Move to Trash")`       |
+| `flows-tree-search`   | `screenplays-tree-search`        |
+| `flows-tree-container`| `screenplays-tree-container`     |
+| `data-tree-type`      | `"screenplays"`                  |
+| `flow-#{id}`          | `screenplay-#{id}`               |
+| Route path `/flows/`  | `/screenplays/`                  |
+
+**Component structure:**
+- `screenplays_section/1` — header + search + tree container (uses TreeSearch + SortableTree hooks)
+- `screenplay_tree_items/1` — recursive rendering with `.tree_node` (has children) or `.tree_leaf`
+- `screenplay_menu/1` — dropdown with "Move to Trash" only (no "Set as main")
+
+**Helper functions:**
+- `has_screenplay_children?/1` — checks if screenplay.children is non-empty
+- `has_selected_screenplay_recursive?/2` — recursively searches for selected ID
+
+**Tests** (add to index_test.exs):
+- Renders screenplay names in sidebar tree when screenplays exist
+- Renders "No screenplays yet" when tree is empty
 
 ---
 
-#### Task 1.3 — ScreenplayElement Schema + Changesets
+#### Task 2.5 — ScreenplayLive.Form (Modal Create)
 
-**Goal:** Create the `ScreenplayElement` Ecto schema with changesets and type helpers.
+**Goal:** Create the Form live component for creating screenplays via modal, plus wire the `handle_info` callback in Index.
 
 **Files:**
-- `lib/storyarn/screenplays/screenplay_element.ex`
-- `test/storyarn/screenplays/screenplay_element_test.exs`
+- `lib/storyarn_web/live/screenplay_live/form.ex` (create)
+- `test/storyarn_web/live/screenplay_live/index_test.exs` (add tests)
 
 **Details:**
-- Schema fields match migration: `type`, `position`, `content`, `data`, `depth`, `branch`
-- Relationships: `belongs_to :screenplay`, `belongs_to :linked_node` (Storyarn.Flows.FlowNode)
-- Module attribute `@element_types` with all 14 types: `scene_heading`, `action`, `character`, `dialogue`, `parenthetical`, `transition`, `dual_dialogue`, `conditional`, `instruction`, `response`, `hub_marker`, `jump_marker`, `note`, `section`, `page_break`, `title_page`
-- Public functions: `types/0`, `standard_types/0`, `interactive_types/0`, `flow_marker_types/0`, `dialogue_group_types/0`, `non_mappeable_types/0`
-- Changesets:
-  - `create_changeset/2` — validates type in @element_types, position >= 0, content is string, depth >= 0, branch in [nil, "true", "false"]
-  - `update_changeset/2` — updates content, data, type, depth, branch
-  - `position_changeset/2` — updates position only
-  - `link_node_changeset/2` — updates linked_node_id
+Copy the exact pattern from `lib/storyarn_web/live/flow_live/form.ex`:
 
-**Tests** (`test/storyarn/screenplays/screenplay_element_test.exs`):
-- Valid create changeset for each standard type
-- Create changeset rejects invalid type
-- Create changeset rejects negative position
-- Branch validates only nil, "true", "false"
-- `types/0` returns all 14 types
-- `standard_types/0` returns correct subset
-- `interactive_types/0` returns conditional, instruction, response
-- `flow_marker_types/0` returns hub_marker, jump_marker
-- `dialogue_group_types/0` returns character, dialogue, parenthetical
-- `non_mappeable_types/0` returns note, section, page_break, title_page
+- `update/2`: builds changeset from `Screenplays.change_screenplay(%Screenplay{})`, assigns `:form`
+- `render/1`: form with fields for `name` (required) and `description` (textarea, optional)
+  - Label: `gettext("Name")`, placeholder: `gettext("Main Story")`
+  - Description label: `gettext("Description")`, placeholder: `gettext("Describe the purpose of this screenplay...")`
+  - Submit button: `gettext("Create Screenplay")` with `phx-disable-with={gettext("Creating...")}`
+  - Cancel link patches back to screenplays index
+- `handle_event("validate", ...)`: validates changeset with `:validate` action
+- `handle_event("save", ...)`: calls `Screenplays.create_screenplay(project, params)`, notifies parent on success
 
----
+**Index integration:**
+- Add `handle_info({StoryarnWeb.ScreenplayLive.Form, {:saved, screenplay}}, socket)` to Index
+  - Flash: `gettext("Screenplay created successfully.")`
+  - Navigate to: `~p"/workspaces/#{ws}/projects/#{p}/screenplays/#{screenplay.id}"`
 
-#### Task 1.4 — ScreenplayCrud + Test Fixtures
-
-**Goal:** Implement CRUD operations for screenplays and create test fixtures.
-
-**Files:**
-- `lib/storyarn/screenplays/screenplay_crud.ex`
-- `test/support/fixtures/screenplays_fixtures.ex`
-- `test/storyarn/screenplays/screenplay_crud_test.exs`
-
-**Details — ScreenplayCrud** (follow `lib/storyarn/flows/flow_crud.ex` pattern):
-- `create_screenplay/2` — receives project struct + attrs map. Auto-assigns position (max position + 1 among siblings). Inserts via Repo. Does NOT auto-create elements (unlike flows which auto-create entry/exit nodes).
-- `get_screenplay!/2` — receives project_id + screenplay_id. Raises if not found. Filters `deleted_at IS NULL` and `draft_of_id IS NULL`. Preloads elements ordered by position.
-- `get_screenplay/2` — same but returns nil instead of raising.
-- `update_screenplay/2` — receives screenplay + attrs. Uses update_changeset.
-- `delete_screenplay/1` — soft delete. Uses delete_changeset. Also recursively soft-deletes children (same pattern as FlowCrud).
-- `restore_screenplay/1` — restore from soft delete. Uses restore_changeset.
-- `list_deleted_screenplays/1` — lists soft-deleted screenplays for a project (for trash/restore UI).
-
-**Details — Test Fixtures** (follow `test/support/fixtures/flows_fixtures.ex` pattern):
-- `unique_screenplay_name/0` — returns "Screenplay #{System.unique_integer([:positive])}"
-- `valid_screenplay_attributes/1` — merges defaults with provided attrs
-- `screenplay_fixture/2` — creates a screenplay for a project (project defaults to project_fixture())
-- `element_fixture/2` — creates a screenplay element (defaults: type "action", content "Test action")
-
-**Tests** (`test/storyarn/screenplays/screenplay_crud_test.exs`):
-- `create_screenplay/2` creates with valid attrs
-- `create_screenplay/2` fails without name
-- `create_screenplay/2` auto-assigns position
-- `get_screenplay!/2` returns screenplay with elements preloaded
-- `get_screenplay!/2` raises for deleted screenplay
-- `get_screenplay!/2` raises for draft screenplay (draft_of_id not nil)
-- `update_screenplay/2` updates name and description
-- `delete_screenplay/1` soft-deletes (sets deleted_at)
-- `delete_screenplay/1` recursively deletes children
-- `restore_screenplay/1` clears deleted_at
-- `list_deleted_screenplays/1` returns only deleted screenplays
+**Tests** (add to index_test.exs):
+- Opens modal when clicking "New Screenplay" button
+- Creates screenplay via form and redirects to show page
+- Shows validation error when name is empty
 
 ---
 
-#### Task 1.5 — ElementCrud
+#### Task 2.6 — Index Event Handlers (CRUD + Tree)
 
-**Goal:** Implement CRUD operations for screenplay elements including insert-at-position and reorder.
-
-**Files:**
-- `lib/storyarn/screenplays/element_crud.ex`
-- `test/storyarn/screenplays/element_crud_test.exs`
-
-**Details** (no direct Flow equivalent — this is new logic):
-- `list_elements/1` — all elements for a screenplay_id, ordered by position ASC
-- `create_element/2` — receives screenplay struct + attrs. Appends at end (position = max + 1).
-- `insert_element_at/3` — receives screenplay struct, position integer, attrs map. In a transaction: shift all elements with position >= target position by +1, then insert new element at target position. Returns `{:ok, element}`.
-- `update_element/2` — receives element + attrs. Updates content, data, type, depth, branch.
-- `delete_element/1` — receives element. In a transaction: delete element, then compact positions (shift down all elements after deleted one by -1). Returns `{:ok, element}`.
-- `reorder_elements/2` — receives screenplay_id + ordered list of element IDs. In a transaction: update each element's position to its index in the list. Returns `{:ok, elements}`.
-- `split_element/3` — receives element, cursor_position (integer), new_type (string). In a transaction:
-  1. Split element.content at cursor_position into `before_text` and `after_text`
-  2. Update current element content to `before_text`
-  3. Insert new element of `new_type` at position + 1 with empty content
-  4. Insert third element (same type as original) at position + 2 with `after_text`
-  5. Shift all subsequent elements by +2
-  Returns `{:ok, before_element, new_element, after_element}`.
-
-**Tests** (`test/storyarn/screenplays/element_crud_test.exs`):
-- `list_elements/1` returns elements ordered by position
-- `create_element/2` appends at end with correct position
-- `insert_element_at/3` inserts at position 0 (beginning)
-- `insert_element_at/3` inserts in the middle, shifts subsequent
-- `insert_element_at/3` inserts at end
-- `update_element/2` updates content and data
-- `update_element/2` can change element type
-- `delete_element/1` removes element and compacts positions
-- `delete_element/1` on last element works (no compaction needed)
-- `reorder_elements/2` reorders elements by ID list
-- `split_element/3` splits content correctly (middle of text)
-- `split_element/3` splits at beginning (before = empty)
-- `split_element/3` splits at end (after = empty)
-- `split_element/3` shifts subsequent element positions by +2
-
----
-
-#### Task 1.6 — ScreenplayQueries + TreeOperations
-
-**Goal:** Implement read-only queries and tree reordering operations.
+**Goal:** Implement all event handlers in ScreenplayLive.Index for create, delete, tree reorder, and cross-tool navigation.
 
 **Files:**
-- `lib/storyarn/screenplays/screenplay_queries.ex`
-- `lib/storyarn/screenplays/tree_operations.ex`
-- `test/storyarn/screenplays/screenplay_queries_test.exs`
-- `test/storyarn/screenplays/tree_operations_test.exs`
+- `lib/storyarn_web/live/screenplay_live/index.ex` (add handlers)
+- `test/storyarn_web/live/screenplay_live/index_test.exs` (add tests)
 
-**Details — ScreenplayQueries:**
-- `list_screenplays_tree/1` — receives project_id. Returns flat list of non-deleted, non-draft screenplays ordered by position. Build tree in memory (same pattern as `Flows.FlowCrud.build_tree/1`). Excludes drafts (`WHERE draft_of_id IS NULL AND deleted_at IS NULL`).
-- `get_with_elements/1` — receives screenplay_id. Returns screenplay with elements preloaded (ordered by position).
-- `count_elements/1` — receives screenplay_id. Returns integer count of elements.
-- `list_drafts/1` — receives screenplay_id (the original). Returns all drafts where `draft_of_id = screenplay_id` and `deleted_at IS NULL`.
+**Details — Event handlers** (copy exact patterns from `FlowLive.Index`):
 
-**Details — TreeOperations** (copy pattern from `lib/storyarn/flows/tree_operations.ex`):
-- `reorder_screenplays/3` — receives project_id, parent_id, list of screenplay_ids. In a transaction: update position of each screenplay to its index. Returns `{:ok, screenplays}`.
-- `move_screenplay_to_position/3` — receives screenplay, parent_id, position. Updates parent_id and position. Returns `{:ok, screenplay}`.
+| Event                    | Params                                    | Action                                                   |
+|--------------------------|-------------------------------------------|----------------------------------------------------------|
+| `"delete"`               | `%{"id" => id}`                           | `Screenplays.delete_screenplay/1` → reload + flash       |
+| `"delete_screenplay"`    | `%{"id" => id}`                           | Delegates to `"delete"` handler (sidebar menu fires this) |
+| `"create_screenplay"`    | none                                      | `Screenplays.create_screenplay(project, %{name: gettext("Untitled Screenplay")})` → navigate to show |
+| `"create_child_screenplay"` | `%{"parent-id" => parent_id}`          | Same as create but with `parent_id` attr                 |
+| `"reorder_tree"`         | `%{"order" => order, "parent_id" => pid}` | `Screenplays.reorder_screenplays/3` → reload             |
+| `"move_to_parent"`       | `%{"item_id" => id, "new_parent_id" => pid, "position" => pos}` | `Screenplays.move_screenplay_to_position/3` → reload |
+| `"create_sheet"`         | none                                      | Cross-tool: `Sheets.create_sheet/2` → navigate (same as FlowLive.Index) |
+| `"create_flow"`          | none                                      | Cross-tool: `Flows.create_flow/2` → navigate (same as FlowLive.Index) |
 
-**Tests — ScreenplayQueries:**
-- `list_screenplays_tree/1` returns tree structure
-- `list_screenplays_tree/1` excludes deleted screenplays
-- `list_screenplays_tree/1` excludes drafts
-- `list_screenplays_tree/1` orders by position
-- `get_with_elements/1` preloads elements in order
-- `count_elements/1` returns correct count
-- `count_elements/1` returns 0 for empty screenplay
-- `list_drafts/1` returns drafts of a screenplay
-- `list_drafts/1` excludes deleted drafts
+All handlers follow the authorization pattern:
+```elixir
+case authorize(socket, :edit_content) do
+  :ok -> # do action
+  {:error, :unauthorized} -> put_flash(socket, :error, gettext("You don't have permission..."))
+end
+```
 
-**Tests — TreeOperations:**
-- `reorder_screenplays/3` updates positions
-- `move_screenplay_to_position/3` moves to new parent
-- `move_screenplay_to_position/3` moves to root (parent_id = nil)
+**Flash messages:**
+- `gettext("Screenplay moved to trash.")` — on successful delete
+- `gettext("Could not delete screenplay.")` — on delete error
+- `gettext("Screenplay created successfully.")` — on create (from Form callback)
+- `gettext("Could not create screenplay.")` — on create error
+- `gettext("Could not reorder screenplays.")` — on reorder error
+- `gettext("Could not move screenplay.")` — on move error
 
----
-
-#### Task 1.7 — ElementGrouping
-
-**Goal:** Implement dialogue group computation from element adjacency (Edge Case F).
-
-**Files:**
-- `lib/storyarn/screenplays/element_grouping.ex`
-- `test/storyarn/screenplays/element_grouping_test.exs`
-
-**Details:**
-- `compute_dialogue_groups/1` — receives list of elements (ordered by position). Returns elements annotated with a computed `group_id` (virtual, not stored). Rules:
-  - `character` starts a new group (generates UUID-based group_id)
-  - `parenthetical` continues current group if preceded by `character` or `dialogue`
-  - `dialogue` continues current group if preceded by `character` or `parenthetical`
-  - Any other type breaks the current group (group_id = nil)
-  - Single-pass O(n) algorithm
-  - Returns list of `{element, group_id}` tuples
-
-- `group_elements/1` — receives list of elements (ordered by position). Groups consecutive elements into logical units that map to flow nodes. Returns list of `%{type: atom, elements: [element], group_id: string | nil}` structs. Grouping rules:
-  - Consecutive character + parenthetical? + dialogue → one `:dialogue_group`
-  - `scene_heading` alone → `:scene_heading`
-  - `action` alone → `:action`
-  - `transition` alone → `:transition`
-  - `conditional` alone → `:conditional`
-  - `instruction` alone → `:instruction`
-  - `response` alone → `:response`
-  - `dual_dialogue` alone → `:dual_dialogue`
-  - `hub_marker` alone → `:hub_marker`
-  - `jump_marker` alone → `:jump_marker`
-  - `note`, `section`, `page_break`, `title_page` → `:non_mappeable`
-
-**Tests** (`test/storyarn/screenplays/element_grouping_test.exs`):
-- `compute_dialogue_groups/1` groups character + dialogue
-- `compute_dialogue_groups/1` groups character + parenthetical + dialogue
-- `compute_dialogue_groups/1` breaks group on non-dialogue type
-- `compute_dialogue_groups/1` handles multiple consecutive groups
-- `compute_dialogue_groups/1` returns nil group_id for non-dialogue elements
-- `compute_dialogue_groups/1` handles empty list
-- `group_elements/1` returns dialogue_group for character+dialogue
-- `group_elements/1` returns individual groups for scene_heading, action, etc.
-- `group_elements/1` attaches response to preceding dialogue group (if exists)
-- `group_elements/1` marks orphan response as standalone
-- `group_elements/1` returns non_mappeable for note/section/page_break/title_page
-- `group_elements/1` handles mixed element sequence (realistic screenplay)
-
----
-
-#### Task 1.8 — Context Facade (Screenplays.ex)
-
-**Goal:** Create the top-level Screenplays context module that delegates to submodules.
-
-**Files:**
-- `lib/storyarn/screenplays.ex`
-- `test/storyarn/screenplays_test.exs` (integration smoke tests)
-
-**Details:**
-- Follow the exact `defdelegate` pattern from `lib/storyarn/flows.ex`
-- Alias all submodules: `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `TreeOperations`, `ElementGrouping`
-- Delegate all public functions (list from plan section 1.4)
-- Do NOT include `FlowSync` delegates yet (Phases 6-7)
-
-**Tests** (`test/storyarn/screenplays_test.exs`) — integration smoke tests:
-- Create screenplay → add elements → list elements → verify order
-- Create screenplay → delete → verify soft-deleted → restore → verify active
-- Create elements → reorder → verify new positions
-- Create elements → group_elements → verify grouping
-- Create screenplay with children → list tree → verify hierarchy
+**Tests** (add to index_test.exs):
+- `create_screenplay` event creates a new screenplay and redirects
+- `create_child_screenplay` creates child screenplay with parent_id
+- `delete_screenplay` moves screenplay to trash and shows flash
+- `reorder_tree` updates screenplay positions
+- `move_to_parent` moves screenplay to new parent
+- Unauthorized user cannot create screenplay (viewer role)
+- Unauthorized user cannot delete screenplay (viewer role)
+- Delete shows confirmation dialog text
 
 ---
 

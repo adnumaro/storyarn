@@ -1,8 +1,8 @@
-defmodule StoryarnWeb.Components.Sidebar.FlowTree do
+defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
   @moduledoc """
-  Flow tree components for the project sidebar.
+  Screenplay tree components for the project sidebar.
 
-  Renders: flows section with search, sortable tree, flow menu.
+  Renders: screenplays section with search, sortable tree, screenplay menu.
   """
 
   use Phoenix.Component
@@ -14,23 +14,23 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
 
   alias StoryarnWeb.Components.Sidebar.TreeHelpers
 
-  attr :flows_tree, :list, required: true
+  attr :screenplays_tree, :list, required: true
   attr :workspace, :map, required: true
   attr :project, :map, required: true
-  attr :selected_flow_id, :string, default: nil
+  attr :selected_screenplay_id, :string, default: nil
   attr :can_edit, :boolean, default: false
 
-  def flows_section(assigns) do
+  def screenplays_section(assigns) do
     ~H"""
     <div>
       <div class="flex items-center justify-between mb-1">
-        <.tree_section label={gettext("Flows")} />
+        <.tree_section label={gettext("Screenplays")} />
         <button
           :if={@can_edit}
           type="button"
-          phx-click="create_flow"
+          phx-click="create_screenplay"
           class="btn btn-ghost btn-xs"
-          title={gettext("New Flow")}
+          title={gettext("New Screenplay")}
         >
           <.icon name="plus" class="size-3" />
         </button>
@@ -38,38 +38,38 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
 
       <%!-- Search input --%>
       <div
-        :if={@flows_tree != []}
-        id="flows-tree-search"
+        :if={@screenplays_tree != []}
+        id="screenplays-tree-search"
         phx-hook="TreeSearch"
-        data-tree-id="flows-tree-container"
+        data-tree-id="screenplays-tree-container"
         class="mb-2"
       >
         <input
           type="text"
           data-tree-search-input
-          placeholder={gettext("Filter flows...")}
+          placeholder={gettext("Filter screenplays...")}
           class="input input-xs input-bordered w-full"
         />
       </div>
 
-      <div :if={@flows_tree == []} class="text-sm text-base-content/50 px-4 py-2">
-        {gettext("No flows yet")}
+      <div :if={@screenplays_tree == []} class="text-sm text-base-content/50 px-4 py-2">
+        {gettext("No screenplays yet")}
       </div>
 
       <%!-- Tree container with sortable support --%>
       <div
-        :if={@flows_tree != []}
-        id="flows-tree-container"
+        :if={@screenplays_tree != []}
+        id="screenplays-tree-container"
         phx-hook={if @can_edit, do: "SortableTree", else: nil}
-        data-tree-type="flows"
+        data-tree-type="screenplays"
       >
         <div data-sortable-container data-parent-id="">
-          <.flow_tree_items
-            :for={flow <- @flows_tree}
-            flow={flow}
+          <.screenplay_tree_items
+            :for={screenplay <- @screenplays_tree}
+            screenplay={screenplay}
             workspace={@workspace}
             project={@project}
-            selected_flow_id={@selected_flow_id}
+            selected_screenplay_id={@selected_screenplay_id}
             can_edit={@can_edit}
           />
         </div>
@@ -78,95 +78,102 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
     """
   end
 
-  attr :flow, :map, required: true
+  attr :screenplay, :map, required: true
   attr :workspace, :map, required: true
   attr :project, :map, required: true
-  attr :selected_flow_id, :string, default: nil
+  attr :selected_screenplay_id, :string, default: nil
   attr :can_edit, :boolean, default: false
 
-  def flow_tree_items(assigns) do
-    has_children = TreeHelpers.has_children?(assigns.flow)
-    is_selected = assigns.selected_flow_id == to_string(assigns.flow.id)
+  def screenplay_tree_items(assigns) do
+    has_children = TreeHelpers.has_children?(assigns.screenplay)
+    is_selected = assigns.selected_screenplay_id == to_string(assigns.screenplay.id)
 
     is_expanded =
       has_children and
-        TreeHelpers.has_selected_recursive?(assigns.flow.children, assigns.selected_flow_id)
+        TreeHelpers.has_selected_recursive?(
+          assigns.screenplay.children,
+          assigns.selected_screenplay_id
+        )
 
     assigns =
       assigns
       |> assign(:has_children, has_children)
       |> assign(:is_selected, is_selected)
       |> assign(:is_expanded, is_expanded)
-      |> assign(:flow_id, to_string(assigns.flow.id))
+      |> assign(:screenplay_id, to_string(assigns.screenplay.id))
 
     ~H"""
     <%= if @has_children do %>
       <.tree_node
-        id={"flow-#{@flow.id}"}
-        label={@flow.name}
-        icon="git-branch"
+        id={"screenplay-#{@screenplay.id}"}
+        label={@screenplay.name}
+        icon="scroll-text"
         expanded={@is_expanded}
         has_children={true}
-        href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"}
-        item_id={@flow_id}
-        item_name={@flow.name}
+        href={
+          ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays/#{@screenplay.id}"
+        }
+        item_id={@screenplay_id}
+        item_name={@screenplay.name}
         can_drag={@can_edit}
       >
         <:actions :if={@can_edit}>
           <button
             type="button"
-            phx-click="create_child_flow"
-            phx-value-parent-id={@flow.id}
+            phx-click="create_child_screenplay"
+            phx-value-parent-id={@screenplay.id}
             class="btn btn-ghost btn-xs btn-square"
-            title={gettext("Add child flow")}
+            title={gettext("Add child screenplay")}
             onclick="event.preventDefault(); event.stopPropagation();"
           >
             <.icon name="plus" class="size-3" />
           </button>
         </:actions>
         <:menu :if={@can_edit}>
-          <.flow_menu flow_id={@flow_id} flow={@flow} />
+          <.screenplay_menu screenplay_id={@screenplay_id} />
         </:menu>
-        <.flow_tree_items
-          :for={child <- @flow.children}
-          flow={child}
+        <.screenplay_tree_items
+          :for={child <- @screenplay.children}
+          screenplay={child}
           workspace={@workspace}
           project={@project}
-          selected_flow_id={@selected_flow_id}
+          selected_screenplay_id={@selected_screenplay_id}
           can_edit={@can_edit}
         />
       </.tree_node>
     <% else %>
       <.tree_leaf
-        label={@flow.name}
-        icon="git-branch"
-        href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"}
+        label={@screenplay.name}
+        icon="scroll-text"
+        href={
+          ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays/#{@screenplay.id}"
+        }
         active={@is_selected}
-        item_id={@flow_id}
-        item_name={@flow.name}
+        item_id={@screenplay_id}
+        item_name={@screenplay.name}
         can_drag={@can_edit}
       >
         <:actions :if={@can_edit}>
           <button
             type="button"
-            phx-click="create_child_flow"
-            phx-value-parent-id={@flow.id}
+            phx-click="create_child_screenplay"
+            phx-value-parent-id={@screenplay.id}
             class="btn btn-ghost btn-xs btn-square"
-            title={gettext("Add child flow")}
+            title={gettext("Add child screenplay")}
             onclick="event.preventDefault(); event.stopPropagation();"
           >
             <.icon name="plus" class="size-3" />
           </button>
         </:actions>
         <:menu :if={@can_edit}>
-          <.flow_menu flow_id={@flow_id} flow={@flow} />
+          <.screenplay_menu screenplay_id={@screenplay_id} />
         </:menu>
       </.tree_leaf>
     <% end %>
     """
   end
 
-  defp flow_menu(assigns) do
+  defp screenplay_menu(assigns) do
     ~H"""
     <div class="dropdown dropdown-end">
       <button
@@ -181,23 +188,13 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
         tabindex="0"
         class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-40 z-50"
       >
-        <li :if={!@flow.is_main}>
-          <button
-            type="button"
-            phx-click="set_main_flow"
-            phx-value-id={@flow_id}
-            onclick="event.stopPropagation();"
-          >
-            <.icon name="star" class="size-4" />
-            {gettext("Set as main")}
-          </button>
-        </li>
         <li>
           <button
             type="button"
             class="text-error"
-            phx-click="delete_flow"
-            phx-value-id={@flow_id}
+            phx-click="delete_screenplay"
+            phx-value-id={@screenplay_id}
+            data-confirm={gettext("Are you sure you want to delete this screenplay?")}
             onclick="event.stopPropagation();"
           >
             <.icon name="trash-2" class="size-4" />
@@ -208,5 +205,4 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
     </div>
     """
   end
-
 end

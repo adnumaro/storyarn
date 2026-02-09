@@ -1,28 +1,26 @@
 import Sortable from "sortablejs";
 
 /**
- * SortableTree hook for nested drag-and-drop in sheet/flow trees.
+ * SortableTree hook for nested drag-and-drop in sheet/flow/screenplay trees.
  *
  * Usage:
  * <div id="sheets-tree" phx-hook="SortableTree">
  *   <div data-sortable-container data-parent-id="">
- *     <div data-sheet-id="1" class="tree-node">
+ *     <div data-item-id="1" class="tree-node">
  *       Sheet 1
  *       <div data-sortable-container data-parent-id="1">
- *         <div data-sheet-id="2" class="tree-node">Child</div>
+ *         <div data-item-id="2" class="tree-node">Child</div>
  *       </div>
  *     </div>
  *   </div>
  * </div>
  *
- * For flows, add data-tree-type="flows" to the container:
+ * For flows/screenplays, add data-tree-type to the container:
  * <div id="flows-tree" phx-hook="SortableTree" data-tree-type="flows">
- *   ...
- * </div>
  *
  * Events:
  * - For sheets: Pushes "move_sheet" event with { sheet_id, parent_id, position }
- * - For flows: Pushes "move_to_parent" event with { item_id, new_parent_id, position }
+ * - For flows/screenplays: Pushes "move_to_parent" event with { item_id, new_parent_id, position }
  */
 export const SortableTree = {
   mounted() {
@@ -43,7 +41,7 @@ export const SortableTree = {
 
   initializeSortables() {
     const containers = this.el.querySelectorAll("[data-sortable-container]");
-    const groupName = this.treeType === "flows" ? "flows-tree" : "sheets-tree";
+    const groupName = `${this.treeType}-tree`;
 
     for (const container of containers) {
       const sortable = new Sortable(container, {
@@ -51,7 +49,7 @@ export const SortableTree = {
         animation: 150,
         fallbackOnBody: true,
         swapThreshold: 0.65,
-        draggable: "[data-sheet-id]", // Uses data-sheet-id for both sheets and flows
+        draggable: "[data-item-id]",
         ghostClass: "sortable-ghost",
         chosenClass: "sortable-chosen",
         dragClass: "sortable-drag",
@@ -64,24 +62,26 @@ export const SortableTree = {
             return;
           }
 
-          const itemId = event.item.dataset.sheetId;
-          const newParentId = event.to.dataset.parentId || null;
+          const itemId = event.item.dataset.itemId;
+          const newParentId = event.to.dataset.parentId || "";
 
-          // Calculate position based on sibling elements with data-sheet-id
-          const siblings = Array.from(event.to.children).filter((el) => el.dataset.sheetId);
+          // Calculate position based on sibling elements with data-item-id
+          const siblings = Array.from(event.to.children).filter((el) => el.dataset.itemId);
           const newPosition = siblings.indexOf(event.item);
+          const position = String(newPosition >= 0 ? newPosition : 0);
 
-          if (this.treeType === "flows") {
-            this.pushEvent("move_to_parent", {
-              item_id: itemId,
-              new_parent_id: newParentId,
-              position: String(newPosition >= 0 ? newPosition : 0),
-            });
-          } else {
+          if (this.treeType === "sheets") {
             this.pushEvent("move_sheet", {
               sheet_id: itemId,
               parent_id: newParentId,
-              position: newPosition >= 0 ? newPosition : 0,
+              position: position,
+            });
+          } else {
+            // flows and screenplays use the same event format
+            this.pushEvent("move_to_parent", {
+              item_id: itemId,
+              new_parent_id: newParentId,
+              position: position,
             });
           }
         },

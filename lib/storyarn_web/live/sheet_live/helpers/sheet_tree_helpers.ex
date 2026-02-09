@@ -38,6 +38,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
   def move_sheet(socket, sheet_id, parent_id, position) do
     sheet = Sheets.get_sheet!(socket.assigns.project.id, sheet_id)
     parent_id = normalize_parent_id(parent_id)
+    position = normalize_position(position)
 
     case Sheets.move_sheet_to_position(sheet, parent_id, position) do
       {:ok, _sheet} ->
@@ -138,4 +139,15 @@ defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
   end
 
   defp normalize_parent_id(id) when is_integer(id), do: id
+
+  defp normalize_position(val) when is_integer(val), do: val
+
+  defp normalize_position(str) when is_binary(str) do
+    case Integer.parse(str) do
+      {int, ""} -> int
+      _ -> 0
+    end
+  end
+
+  defp normalize_position(_), do: 0
 end

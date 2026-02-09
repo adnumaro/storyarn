@@ -9,22 +9,38 @@ defmodule StoryarnWeb.Components.SheetComponents do
   alias Storyarn.Assets.Asset
 
   @doc """
-  Normalizes a parent_id value, converting empty strings to nil.
+  Safely parses an integer from a string, empty string, or nil.
 
   ## Examples
 
-      iex> normalize_parent_id("")
+      iex> parse_int("")
       nil
 
-      iex> normalize_parent_id(nil)
+      iex> parse_int(nil)
       nil
 
-      iex> normalize_parent_id("123")
-      "123"
+      iex> parse_int("123")
+      123
+
+      iex> parse_int(42)
+      42
   """
-  def normalize_parent_id(""), do: nil
-  def normalize_parent_id(nil), do: nil
-  def normalize_parent_id(parent_id), do: parent_id
+  def parse_int(""), do: nil
+  def parse_int(nil), do: nil
+  def parse_int(val) when is_integer(val), do: val
+
+  def parse_int(str) when is_binary(str) do
+    case Integer.parse(str) do
+      {int, ""} -> int
+      _ -> nil
+    end
+  end
+
+  @doc """
+  Normalizes a parent_id value, converting empty strings to nil.
+  Delegates to parse_int/1 for safe integer parsing.
+  """
+  def normalize_parent_id(val), do: parse_int(val)
 
   @avatar_sizes %{
     "sm" => "size-4",

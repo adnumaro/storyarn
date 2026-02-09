@@ -118,7 +118,11 @@ defmodule StoryarnWeb.Layouts do
 
   attr :flows_tree, :list, default: [], doc: "flows with preloaded children for the tree"
 
-  attr :active_tool, :atom, default: :sheets, doc: "active tool (:sheets or :flows)"
+  attr :screenplays_tree, :list,
+    default: [],
+    doc: "screenplays with preloaded children for the tree"
+
+  attr :active_tool, :atom, default: :sheets, doc: "active tool (:sheets, :flows, or :screenplays)"
 
   attr :current_path, :string, default: "", doc: "current path for navigation highlighting"
 
@@ -129,6 +133,10 @@ defmodule StoryarnWeb.Layouts do
   attr :selected_flow_id, :string,
     default: nil,
     doc: "currently selected flow ID for sidebar highlighting"
+
+  attr :selected_screenplay_id, :string,
+    default: nil,
+    doc: "currently selected screenplay ID for sidebar highlighting"
 
   attr :can_edit, :boolean, default: false, doc: "whether the user can edit sheets"
 
@@ -177,10 +185,12 @@ defmodule StoryarnWeb.Layouts do
           workspace={@workspace}
           sheets_tree={@sheets_tree}
           flows_tree={@flows_tree}
+          screenplays_tree={@screenplays_tree}
           active_tool={@active_tool}
           current_path={@current_path}
           selected_sheet_id={@selected_sheet_id}
           selected_flow_id={@selected_flow_id}
+          selected_screenplay_id={@selected_screenplay_id}
           can_edit={@can_edit}
         />
       </div>

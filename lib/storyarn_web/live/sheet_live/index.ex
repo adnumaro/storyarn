@@ -172,6 +172,7 @@ defmodule StoryarnWeb.SheetLive.Index do
     if socket.assigns.can_edit do
       sheet = Sheets.get_sheet!(socket.assigns.project.id, sheet_id)
       parent_id = normalize_parent_id(parent_id)
+      position = parse_int(position) || 0
 
       case Sheets.move_sheet_to_position(sheet, parent_id, position) do
         {:ok, _sheet} ->

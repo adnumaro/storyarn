@@ -49,6 +49,9 @@ defmodule Storyarn.Screenplays do
   @doc "Restores a soft-deleted screenplay."
   defdelegate restore_screenplay(screenplay), to: ScreenplayCrud
 
+  @doc "Returns a changeset for tracking screenplay changes."
+  defdelegate change_screenplay(screenplay, attrs \\ %{}), to: ScreenplayCrud
+
   @doc "Lists all soft-deleted screenplays for a project (trash)."
   defdelegate list_deleted_screenplays(project_id), to: ScreenplayCrud
 

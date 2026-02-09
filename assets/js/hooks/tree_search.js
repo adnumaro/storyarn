@@ -6,7 +6,7 @@
  *   <input type="text" data-tree-search-input placeholder="Filter sheets..." />
  * </div>
  *
- * The tree items should have data-sheet-name and data-sheet-id attributes.
+ * The tree items should have data-item-name and data-item-id attributes.
  * Parent containers should have data-parent-id attributes.
  */
 export const TreeSearch = {
@@ -50,15 +50,15 @@ export const TreeSearch = {
       this.isFiltering = true;
     }
 
-    const allNodes = tree.querySelectorAll("[data-sheet-id]");
+    const allNodes = tree.querySelectorAll("[data-item-id]");
     const matchingIds = new Set();
     const ancestorIds = new Set();
 
     // Find matching nodes and their ancestors
     for (const node of allNodes) {
-      const sheetName = (node.dataset.sheetName || "").toLowerCase();
-      if (sheetName.includes(query)) {
-        matchingIds.add(node.dataset.sheetId);
+      const itemName = (node.dataset.itemName || "").toLowerCase();
+      if (itemName.includes(query)) {
+        matchingIds.add(node.dataset.itemId);
         // Walk up to find all ancestors
         this.collectAncestors(node, ancestorIds);
       }
@@ -66,7 +66,7 @@ export const TreeSearch = {
 
     // Show/hide nodes based on match or ancestor status
     for (const node of allNodes) {
-      const nodeId = node.dataset.sheetId;
+      const nodeId = node.dataset.itemId;
       const isMatch = matchingIds.has(nodeId);
       const isAncestor = ancestorIds.has(nodeId);
       const shouldShow = isMatch || isAncestor;
@@ -91,9 +91,9 @@ export const TreeSearch = {
     let current = node.parentElement;
     while (current) {
       // Check if we're inside a tree node's children container
-      const parentNode = current.closest("[data-sheet-id]");
+      const parentNode = current.closest("[data-item-id]");
       if (parentNode && parentNode !== node) {
-        ancestorIds.add(parentNode.dataset.sheetId);
+        ancestorIds.add(parentNode.dataset.itemId);
         current = parentNode.parentElement;
       } else {
         break;
@@ -102,10 +102,9 @@ export const TreeSearch = {
   },
 
   expandNode(node) {
-    // Find the expand/collapse content for this node
-    const expandNodeId = node.dataset.sheetId;
-    const content = document.getElementById(`tree-content-sheet-${expandNodeId}`);
-    const chevron = document.querySelector(`#tree-toggle-sheet-${expandNodeId} [data-chevron]`);
+    // Find the content container and chevron within this node using DOM traversal
+    const content = node.querySelector(":scope > [id^='tree-content-']");
+    const chevron = node.querySelector(":scope [data-chevron]");
 
     if (content) {
       content.classList.remove("hidden");
@@ -119,8 +118,7 @@ export const TreeSearch = {
     this.savedExpandState.clear();
     const contents = tree.querySelectorAll("[id^='tree-content-']");
     for (const content of contents) {
-      const nodeId = content.id.replace("tree-content-sheet-", "");
-      this.savedExpandState.set(nodeId, !content.classList.contains("hidden"));
+      this.savedExpandState.set(content.id, !content.classList.contains("hidden"));
     }
   },
 
@@ -128,7 +126,7 @@ export const TreeSearch = {
     const tree = document.getElementById(this.treeId);
     if (!tree) return;
 
-    const allNodes = tree.querySelectorAll("[data-sheet-id]");
+    const allNodes = tree.querySelectorAll("[data-item-id]");
 
     // Show all nodes and remove highlights
     for (const node of allNodes) {
@@ -138,9 +136,11 @@ export const TreeSearch = {
 
     // Restore previous expand state
     if (this.isFiltering) {
-      for (const [nodeId, wasExpanded] of this.savedExpandState) {
-        const content = document.getElementById(`tree-content-sheet-${nodeId}`);
-        const chevron = document.querySelector(`#tree-toggle-sheet-${nodeId} [data-chevron]`);
+      for (const [contentId, wasExpanded] of this.savedExpandState) {
+        const content = document.getElementById(contentId);
+        // Find the chevron in the same parent node
+        const parentNode = content?.parentElement;
+        const chevron = parentNode?.querySelector(":scope [data-chevron]");
 
         if (content) {
           content.classList.toggle("hidden", !wasExpanded);
