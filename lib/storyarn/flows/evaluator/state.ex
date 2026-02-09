@@ -65,7 +65,8 @@ defmodule Storyarn.Flows.Evaluator.State do
           pending_choices: map() | nil,
           step_count: non_neg_integer(),
           max_steps: non_neg_integer(),
-          started_at: integer() | nil
+          started_at: integer() | nil,
+          breakpoints: MapSet.t(integer())
         }
 
   defstruct [
@@ -82,6 +83,7 @@ defmodule Storyarn.Flows.Evaluator.State do
     execution_path: [],
     pending_choices: nil,
     step_count: 0,
-    max_steps: 500
+    max_steps: 500,
+    breakpoints: MapSet.new()
   ]
 end

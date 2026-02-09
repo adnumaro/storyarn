@@ -38,14 +38,14 @@ A Chrome DevTools-style debugging panel for flows. Allows authors to execute flo
 
 ### Features adopted for Storyarn
 
-| Feature | Origin | Storyarn adaptation |
-|---|---|---|
-| Before/After + 3-column state | Both | **4-column variable view**: Initial / Previous / Current / Source (who changed it) |
-| Analysis vs Player mode | articy | **Toggle in debug panel**: show all branches (failed in red) vs only valid ones |
-| Sub-expression highlighting | articy | **Per-rule evaluation detail** in console: which specific rule failed and why |
+| Feature                        | Origin    | Storyarn adaptation                                                                   |
+|--------------------------------|-----------|---------------------------------------------------------------------------------------|
+| Before/After + 3-column state  | Both      | **4-column variable view**: Initial / Previous / Current / Source (who changed it)    |
+| Analysis vs Player mode        | articy    | **Toggle in debug panel**: show all branches (failed in red) vs only valid ones       |
+| Sub-expression highlighting    | articy    | **Per-rule evaluation detail** in console: which specific rule failed and why         |
 | Force-assign with color coding | Arcweaver | **Color-coded variables**: blue = user override, orange = changed by instruction node |
-| Undo / step backward | Arcweaver | **Undo step** button: revert to previous state snapshot |
-| Journeys (saved paths) | articy | **Phase 3**: save debug sessions as named test cases for regression |
+| Undo / step backward           | Arcweaver | **Undo step** button: revert to previous state snapshot                               |
+| Journeys (saved paths)         | articy    | **Phase 3**: save debug sessions as named test cases for regression                   |
 
 ---
 
@@ -848,29 +848,327 @@ Tasks 7-15, in this order. Each delivers standalone value:
 8. Task 14 (Initial state modal) — most complex
 9. Task 15 (Panel resize) — independent
 
-### Phase 3 — Advanced
+### Phase 3 — Advanced (Tasks 16-26)
 
 **Goal:** Cross-flow debugging, breakpoints, saved test sessions.
 
-**Backend:**
-- [ ] Call stack for cross-flow jumps (push/pop flow context)
-- [ ] Load target flow graph when hitting a jump node
-- [ ] Return to origin flow on exit node (if stack is not empty)
-- [ ] Breakpoint system (set of node_ids where execution pauses)
-- [ ] Saved test sessions — persist debug configurations to DB:
-  - Name, start_node_id, variable_overrides, view_mode
-  - Associated with a flow (has_many relationship)
-  - Can be loaded from initial state modal dropdown
+**Key findings from codebase exploration:**
+- **Jump node bug:** Engine reads `data["hub_id"]` but jump nodes store `data["target_hub_id"]`. Hub nodes store `data["hub_id"]`. These are string identifiers, not DB node IDs.
+- **`evaluate_node` doesn't receive nodes map** — only the current node, state, and connections. Task 16 refactors the signature to add `nodes` as 4th param.
+- **Exit node `exit_mode`:** `"terminal"` | `"flow_reference"` | `"caller_return"`. `referenced_flow_id` stores the target flow DB ID. Already fully implemented in the editor, just not in the debugger.
+- **Subflow node:** Stores `referenced_flow_id`. Currently finishes execution in debugger.
+- **Engine is pure functional** — returns status tuples, handler does all DB/socket work. New status tuples (`{:flow_jump, state, flow_id}`, `{:flow_return, state}`) let the handler decide what to do.
+- **Canvas navigation via `push_navigate` remounts LiveView** — debug state needs to survive navigation. Requires a temporary store (ETS/Agent).
+- **Existing APIs:** `Flows.list_nodes/1`, `Flows.list_connections/1`, `Flows.get_flow_brief/2`, `Flows.list_hubs/1` all available.
 
-**Frontend:**
-- [ ] Cross-flow navigation (canvas reloads target flow, panel maintains state)
-- [ ] Call stack display in Path tab (indented sub-flow entries)
-- [ ] "Return to caller" indicator when inside a jumped flow
-- [ ] Breadcrumb trail: "Main Flow → Quest Flow → Current Node"
-- [ ] Breakpoint toggle (click node gutter or context menu)
-- [ ] Breakpoint indicators on nodes (red dot)
-- [ ] Saved test sessions: save current config, load from dropdown, name sessions
-- [ ] Conditional breakpoints (break when variable meets condition)
+---
+
+#### Task 16: Jump node → target hub (same flow)
+
+**Goal:** Jump nodes currently end execution. Make them navigate to the target hub within the same flow.
+
+**Files:** `engine.ex`
+
+**Implementation:**
+1. Refactor ALL `evaluate_node` clauses to accept 4th param `nodes` (private function, safe change). Called from `step/3` which has `nodes`. Every clause gets `_nodes` except jump.
+2. Replace jump evaluator: read `data["target_hub_id"]`, scan `nodes` map for a hub where `node.data["hub_id"]` matches, call `advance_to(state, hub_node_id)`.
+3. Add `find_hub_by_hub_id(nodes, target_hub_id)` private helper — `Enum.find_value` over nodes.
+4. Error cases: missing `target_hub_id` → error + finish; hub not found → error + finish.
+
+**Tests:** 3 tests — jump to valid hub advances; missing target_hub_id finishes with error; non-existent hub_id finishes with error. Use existing test helpers (`node/3`, `conn/4`). Build a nodes map with `entry(1) → jump(2, target_hub_id: "h1") + hub(3, hub_id: "h1") → exit(4)`.
+
+- [x] Refactor evaluate_node signature to accept `nodes` as 4th param
+- [x] Implement jump → hub navigation within same flow
+- [x] Handle error cases (missing target_hub_id, hub not found)
+- [x] Write 3 tests
+
+---
+
+#### Task 17: Breakpoints — engine support
+
+**Goal:** Add breakpoint data to state and expose toggle/check functions.
+
+**Files:** `state.ex`, `engine.ex`
+
+**Implementation:**
+1. `state.ex`: Add `breakpoints: MapSet.t(integer())` to type and `breakpoints: MapSet.new()` to defstruct.
+2. `engine.ex`: Add 3 public functions:
+   - `toggle_breakpoint(state, node_id)` → adds/removes from MapSet
+   - `has_breakpoint?(state, node_id)` → boolean
+   - `at_breakpoint?(state)` → checks `current_node_id` membership
+3. `reset/1`: Preserve breakpoints → `%{new_state | breakpoints: state.breakpoints}`
+4. Add `add_breakpoint_hit(state, node_id)` public function (wraps `add_console` with `:warning` level, message "Paused at breakpoint") — needed by handler in Task 18.
+
+**Tests:** 5 tests — toggle adds, toggle removes, has_breakpoint true/false, at_breakpoint checks current node, reset preserves breakpoints.
+
+- [x] Add `breakpoints` field to State struct
+- [x] Add toggle_breakpoint, has_breakpoint?, at_breakpoint? functions
+- [x] Preserve breakpoints on reset
+- [x] Add add_breakpoint_hit public function
+- [x] Write 5 tests
+
+---
+
+#### Task 18: Breakpoints — handler + panel UI
+
+**Goal:** Users toggle breakpoints from Path tab. Auto-play pauses at breakpoint nodes.
+
+**Files:** `debug_handlers.ex`, `debug_panel.ex`, `show.ex`, `debug_handlers_test.exs`
+
+**Implementation:**
+1. `debug_handlers.ex`:
+   - Add `handle_debug_toggle_breakpoint(%{"node_id" => id_str}, socket)` — parse int, call `Engine.toggle_breakpoint`, push `debug_update_breakpoints` event with `%{breakpoint_ids: MapSet.to_list(state.breakpoints)}`.
+   - Modify `handle_debug_auto_step/1`: after `Engine.step` returns, before scheduling next step, check `Engine.at_breakpoint?(new_state)`. If true: call `Engine.add_breakpoint_hit`, set `debug_auto_playing: false`, push canvas.
+2. `debug_panel.ex`:
+   - Add `breakpoints` attr to `path_tab` (pass `@debug_state.breakpoints` from main component).
+   - In each path entry row, prepend a small clickable circle: red filled if node_id in breakpoints, empty border otherwise. `phx-click="debug_toggle_breakpoint" phx-value-node_id={entry.node_id}`.
+3. `show.ex`: Add event delegation for `"debug_toggle_breakpoint"`.
+
+**Tests:** 3 tests — toggle adds breakpoint, auto_step pauses at breakpoint, toggle removes breakpoint.
+
+- [x] Add toggle_breakpoint handler + push breakpoints event
+- [x] Modify auto_step to pause at breakpoints
+- [x] Add breakpoint indicators in Path tab UI
+- [x] Wire event delegation in show.ex
+- [x] Write 3 tests
+
+---
+
+#### Task 19: Breakpoints — canvas visual indicators
+
+**Goal:** Show red dot on canvas nodes that have breakpoints.
+
+**Files:** `assets/js/flow_canvas/event_bindings.js`, `assets/js/flow_canvas/handlers/debug_handler.js`, CSS
+
+**Implementation:**
+1. `event_bindings.js`: Register `debug_update_breakpoints` event → `hook.debugHandler.handleUpdateBreakpoints(data)`.
+2. `debug_handler.js`:
+   - Add `let breakpointEls = new Set()` to closure state.
+   - Add `handleUpdateBreakpoints({ breakpoint_ids })`: clear old `.debug-breakpoint` classes, find elements for each breakpoint_id via `hook.nodeMap.get(dbId)` + `findNodeElement`, add class.
+   - Clear breakpointEls in `handleClearHighlights`.
+3. CSS: Add `.debug-breakpoint` pseudo-element — red dot (8px circle, `oklch(var(--er))`) at top-right corner of `storyarn-node`.
+
+**Tests:** No automated tests (JS visual). Manual verification: toggle breakpoint, see red dot.
+
+- [ ] Register `debug_update_breakpoints` event in event_bindings.js
+- [ ] Add `handleUpdateBreakpoints` to debug_handler.js
+- [ ] Add `.debug-breakpoint` CSS class with red dot pseudo-element
+- [ ] Clear breakpoint visuals in handleClearHighlights
+
+---
+
+#### Task 20: Cross-flow — engine call stack + exit/subflow transitions
+
+**Goal:** Add call stack to state. Exit nodes with `flow_reference` and subflow nodes return `{:flow_jump, state, target_flow_id}`. Exit with `caller_return` returns `{:flow_return, state}`.
+
+**Files:** `state.ex`, `engine.ex`
+
+**Implementation:**
+1. `state.ex`: Add types and fields:
+   - `flow_frame` type: `%{flow_id: integer(), return_node_id: integer(), nodes: map(), connections: list(), execution_path: [integer()]}`
+   - Add to struct: `call_stack: []`, `current_flow_id: nil`
+2. `engine.ex`:
+   - Add `push_flow_context(state, flow_id, nodes, connections)` — builds frame from current state, prepends to `call_stack`.
+   - Add `pop_flow_context(state)` → `{:ok, frame, updated_state}` | `{:error, :empty_stack}`.
+   - Modify exit node evaluator: check `exit_mode`. `"flow_reference"` with `referenced_flow_id` → `{:flow_jump, state, target_flow_id}`. `"caller_return"` with non-empty stack → `{:flow_return, state}`. `"caller_return"` with empty stack → `{:finished, state}`. `"terminal"` → `{:finished, state}` (unchanged).
+   - Modify subflow evaluator: if `referenced_flow_id` → `{:flow_jump, state, target_flow_id}`, else → error + finish.
+   - Update `step/3` return type spec to include `{:flow_jump, State.t(), integer()}` and `{:flow_return, State.t()}`.
+   - `reset/1`: Clear `call_stack`, preserve `breakpoints` and `current_flow_id`.
+
+**Tests:** 7 tests — exit with flow_reference returns flow_jump; exit with caller_return + stack returns flow_return; exit with caller_return + empty stack finishes; exit terminal finishes; subflow with ref returns flow_jump; subflow without ref finishes; push/pop context roundtrip.
+
+- [ ] Add `flow_frame` type, `call_stack`, `current_flow_id` to State
+- [ ] Add push_flow_context / pop_flow_context functions
+- [ ] Modify exit node evaluator for exit_mode variants
+- [ ] Modify subflow evaluator for referenced_flow_id
+- [ ] Update step/3 return type spec
+- [ ] Update reset/1 to clear call_stack, preserve breakpoints
+- [ ] Write 7 tests
+
+---
+
+#### Task 21: Cross-flow — handler data loading + breadcrumb
+
+**Goal:** Handler catches `{:flow_jump, ...}` and `{:flow_return, ...}`, loads target flow data, updates socket assigns. Debug panel shows breadcrumb when in sub-flow.
+
+**Files:** `debug_handlers.ex`, `debug_panel.ex`, `show.ex`
+
+**Implementation:**
+1. `debug_handlers.ex`:
+   - Extract `handle_step_result/2` private helper that pattern-matches on all step results.
+   - `{:flow_jump, state, target_flow_id}`: call `Engine.push_flow_context` with current assigns, `build_nodes_map(target_flow_id)`, `build_connections(target_flow_id)`, find entry node, assign new state with `current_node_id: entry_id`, `current_flow_id: target_flow_id`, assign new `debug_nodes`/`debug_connections`, push canvas events. **No navigation** — canvas stays on original flow (Task 22 handles navigation).
+   - `{:flow_return, state}`: call `Engine.pop_flow_context`, restore `debug_nodes`/`debug_connections` from frame, set `current_flow_id: frame.flow_id`, follow output connection from `frame.return_node_id` in restored connections to find next node.
+   - Refactor `handle_debug_step/1` and `handle_debug_auto_step/1` to use `handle_step_result/2`.
+   - In `start_debug_session/1`: set `current_flow_id: flow.id` on state after init.
+2. `debug_panel.ex`: Add breadcrumb bar between drag handle and controls bar:
+   ```
+   <div :if={@debug_state.call_stack != []} class="...">
+     <.icon name="layers" /> In sub-flow (N level(s) deep)
+   </div>
+   ```
+3. `show.ex`: No new assigns needed — `call_stack` and `current_flow_id` live in `debug_state`.
+
+**Tests:** 4 tests — step into flow_reference updates assigns; step into caller_return restores assigns; nested jumps (A→B) push multiple frames; return from nested restores correct context.
+
+- [ ] Extract handle_step_result/2 helper
+- [ ] Handle {:flow_jump, ...} — load target flow, push context
+- [ ] Handle {:flow_return, ...} — pop context, restore assigns
+- [ ] Refactor step/auto_step handlers to use handle_step_result
+- [ ] Set current_flow_id on session start
+- [ ] Add breadcrumb bar in debug_panel
+- [ ] Write 4 tests
+
+---
+
+#### Task 22: Cross-flow — canvas navigation
+
+**Goal:** When debugger enters a sub-flow, navigate the editor to that flow so canvas highlighting works. Debug state survives the LiveView remount.
+
+**Files:** New `lib/storyarn/flows/debug_session_store.ex`, `debug_handlers.ex`, `show.ex`, `application.ex`
+
+**Implementation:**
+1. Create `DebugSessionStore` — simple Agent storing `%{{user_id, project_id} => debug_assigns_map}`:
+   - `store(key, assigns_map)` — saves all debug-related assigns
+   - `take(key)` — returns and removes the stored assigns (one-shot)
+2. Add to supervision tree in `application.ex`.
+3. In `debug_handlers.ex`, after loading target flow data (flow_jump/flow_return):
+   - Call `DebugSessionStore.store({user_id, project_id}, debug_assigns)` before navigate.
+   - Call `push_navigate(socket, to: ~p"/projects/#{project_id}/flows/#{target_flow_id}")`.
+4. In `show.ex` `mount/3`: After loading flow, check `DebugSessionStore.take({user_id, project_id})`. If found, restore all debug assigns and push canvas events.
+5. In `debug_panel.ex`: Enhance breadcrumb with flow names (store `flow_name` in call stack frames). Add click-to-return button.
+
+**Tests:** Agent tests for store/take. Handler tests verify DebugSessionStore.store is called (mock or check Agent state).
+
+- [ ] Create DebugSessionStore Agent module
+- [ ] Add to supervision tree
+- [ ] Store debug assigns before push_navigate
+- [ ] Restore debug assigns on mount
+- [ ] Enhance breadcrumb with flow names and return button
+- [ ] Write tests
+
+---
+
+#### Task 23: Cross-flow — Path tab call stack display
+
+**Goal:** Show flow transitions in Path tab with visual separators and indentation.
+
+**Files:** `debug_panel.ex`
+
+**Implementation:**
+1. Add a `depth` field to each path entry. The depth equals the call_stack length when that node was visited. Store this alongside execution_path in state (e.g., `execution_path_with_depth: [{node_id, depth}, ...]`).
+2. In `build_path_entries`, cross-reference `console` entries for flow transition messages. When found, insert a separator entry:
+   ```elixir
+   %{type: :flow_separator, flow_name: "Quest Flow", depth: 1}
+   ```
+3. Render separators with distinct styling (info background, layers icon).
+4. Indent sub-flow entries based on depth.
+
+**Tests:** Unit test `build_path_entries` with mock data including flow transitions.
+
+- [ ] Add depth tracking to execution path
+- [ ] Insert flow separator entries in path tab
+- [ ] Render separators with distinct styling
+- [ ] Indent sub-flow entries by depth
+- [ ] Write tests
+
+---
+
+#### Task 24: Saved test sessions — schema + context
+
+**Goal:** Persist debug configurations to DB for re-use.
+
+**Files:** New migration, new `lib/storyarn/flows/debug_session.ex`, `lib/storyarn/flows.ex` (or new submodule)
+
+**Implementation:**
+1. Migration `create_debug_sessions`:
+   - `name` (string, required), `start_node_id` (integer), `variable_overrides` (map, default `%{}`), `breakpoints` (array of integers, default `[]`), `flow_id` (references flows, on_delete: delete_all).
+   - Index on `flow_id`.
+2. Schema with changeset: validate required `name` + `flow_id`, max length 100 for name.
+3. Context functions in `Flows` (or `Flows.DebugSessionCrud`):
+   - `list_debug_sessions(flow_id)` — ordered by inserted_at desc
+   - `get_debug_session!(id)`
+   - `create_debug_session(attrs)`
+   - `delete_debug_session(id)`
+
+**Tests:** Standard CRUD tests — create with valid attrs, create fails without name, list returns sessions for flow, delete removes session.
+
+- [ ] Create migration
+- [ ] Create DebugSession schema + changeset
+- [ ] Add CRUD context functions
+- [ ] Write CRUD tests
+
+---
+
+#### Task 25: Saved test sessions — panel UI
+
+**Goal:** Save/load/delete debug sessions from the panel.
+
+**Files:** `debug_handlers.ex`, `debug_panel.ex`, `show.ex`
+
+**Implementation:**
+1. `debug_handlers.ex`:
+   - `handle_debug_save_session(%{"name" => name}, socket)` — extract start_node_id, variable overrides (non-initial values), breakpoints from state. Call `Flows.create_debug_session/1`. Refresh `debug_sessions` assign.
+   - `handle_debug_load_session(%{"id" => id}, socket)` — load session, rebuild variables with overrides applied, re-init engine with session's start_node_id, set breakpoints.
+   - `handle_debug_delete_session(%{"id" => id}, socket)` — delete and refresh list.
+2. `debug_panel.ex`: Add dropdown or small section near controls:
+   - Save button → inline text input for name → submit → `phx-submit="debug_save_session"`.
+   - Load dropdown → list of saved sessions → `phx-click="debug_load_session" phx-value-id={s.id}`.
+   - Delete icon per session → `phx-click="debug_delete_session" phx-value-id={s.id}`.
+3. `show.ex`:
+   - Add `debug_sessions` assign (loaded in `start_debug_session` via `Flows.list_debug_sessions(flow.id)`).
+   - Event delegations for save/load/delete.
+
+**Tests:** Handler tests — save creates session, load restores state, delete removes session.
+
+- [ ] Add save/load/delete handlers
+- [ ] Add sessions UI section in debug panel
+- [ ] Wire event delegations in show.ex
+- [ ] Load debug_sessions on session start
+- [ ] Write handler tests
+
+---
+
+#### Task 26: Conditional breakpoints
+
+**Goal:** Breakpoints can optionally have a condition. Only pause when condition evaluates to true.
+
+**Files:** `state.ex`, `engine.ex`, `debug_handlers.ex`, `debug_panel.ex`
+
+**Implementation:**
+1. Change `breakpoints` from `MapSet.t(integer())` to `%{integer() => nil | String.t()}`. Key = node_id. Value = `nil` (unconditional) or condition JSON string.
+2. Update `toggle_breakpoint/2` to add with `nil` condition by default.
+3. Add `set_breakpoint_condition(state, node_id, condition)` — updates condition for existing breakpoint.
+4. Update `at_breakpoint?/1`: if value is `nil` → true. If string → evaluate with `ConditionEval.evaluate_string/2`, return result.
+5. Update handler: `handle_debug_set_breakpoint_condition(%{"node_id" => id, "condition" => json}, socket)`.
+6. UI: In Path tab, when breakpoint is set, show expandable condition input (simple textarea for condition JSON, or integrate the condition builder component).
+7. Update Task 18/19 code to work with map instead of MapSet.
+
+**Tests:** Conditional breakpoint only pauses when condition is met. Unconditional still works. Empty condition treated as unconditional.
+
+- [ ] Change breakpoints from MapSet to map (node_id => nil | condition)
+- [ ] Add set_breakpoint_condition function
+- [ ] Update at_breakpoint? to evaluate conditions
+- [ ] Add handler for setting breakpoint conditions
+- [ ] Add condition input UI in Path tab
+- [ ] Update breakpoint event push for map format
+- [ ] Write tests
+
+---
+
+#### Suggested execution order
+
+Tasks 16-26, in this order. Each delivers standalone value:
+1. Task 16 (Jump → hub) — immediate fix, jump nodes work
+2. Task 17 (Breakpoints engine) — data foundation
+3. Task 18 (Breakpoints UI) — usable breakpoints
+4. Task 19 (Breakpoints canvas) — visual feedback
+5. Task 20 (Cross-flow engine) — call stack + return tuples
+6. Task 21 (Cross-flow handler) — flow transitions work in panel
+7. Task 22 (Cross-flow canvas) — full visual debugging across flows
+8. Task 23 (Path tab stack) — enriched path display
+9. Task 24 (Sessions schema) — DB foundation
+10. Task 25 (Sessions UI) — save/load sessions
+11. Task 26 (Conditional breakpoints) — advanced breakpoints
 
 ---
 

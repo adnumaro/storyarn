@@ -714,6 +714,10 @@ defmodule StoryarnWeb.FlowLive.Show do
     DebugHandlers.handle_debug_change_start_node(params, socket)
   end
 
+  def handle_event("debug_toggle_breakpoint", params, socket) do
+    DebugHandlers.handle_debug_toggle_breakpoint(params, socket)
+  end
+
   # Collaboration & Preview
   def handle_event("cursor_moved", params, socket) do
     CollaborationEventHandlers.handle_cursor_moved(params, socket)

@@ -161,14 +161,42 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
   end
 
   # =============================================================================
-  # Jump node — ends execution (Phase 1)
+  # Jump node → target hub (same flow)
   # =============================================================================
 
   describe "jump node" do
-    test "ends execution with info" do
+    test "jumps to target hub within same flow" do
       nodes = %{
         1 => node(1, "entry"),
-        2 => node(2, "jump", %{"hub_id" => "target_hub"})
+        2 => node(2, "jump", %{"target_hub_id" => "h1"}),
+        3 => node(3, "hub", %{"hub_id" => "h1"}),
+        4 => node(4, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(3, "default", 4)]
+      state = Engine.init(%{}, 1)
+
+      # entry → jump
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert state.current_node_id == 2
+
+      # jump → hub (via target_hub_id lookup)
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert state.current_node_id == 3
+      assert Enum.any?(state.console, &(&1.message =~ "Jump → hub \"h1\""))
+
+      # hub → exit
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert state.current_node_id == 4
+
+      # exit → finished
+      {:finished, _state} = Engine.step(state, nodes, conns)
+    end
+
+    test "finishes with error when target_hub_id is missing" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "jump", %{})
       }
 
       conns = [conn(1, "default", 2)]
@@ -176,7 +204,23 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
 
       {:ok, state} = Engine.step(state, nodes, conns)
       {:finished, state} = Engine.step(state, nodes, conns)
-      assert Enum.any?(state.console, &(&1.message =~ "Jump to hub target_hub"))
+      assert state.status == :finished
+      assert Enum.any?(state.console, &(&1.message =~ "no target_hub_id"))
+    end
+
+    test "finishes with error when target hub not found" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "jump", %{"target_hub_id" => "nonexistent"})
+      }
+
+      conns = [conn(1, "default", 2)]
+      state = Engine.init(%{}, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:finished, state} = Engine.step(state, nodes, conns)
+      assert state.status == :finished
+      assert Enum.any?(state.console, &(&1.message =~ "not found in this flow"))
     end
   end
 
@@ -932,6 +976,58 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       assert state.step_count == 0
       assert state.snapshots == []
       assert state.execution_path == [1]
+    end
+  end
+
+  # =============================================================================
+  # Breakpoints
+  # =============================================================================
+
+  describe "breakpoints" do
+    test "toggle_breakpoint adds a breakpoint" do
+      state = Engine.init(%{}, 1)
+      state = Engine.toggle_breakpoint(state, 5)
+
+      assert Engine.has_breakpoint?(state, 5)
+      assert MapSet.size(state.breakpoints) == 1
+    end
+
+    test "toggle_breakpoint removes an existing breakpoint" do
+      state = Engine.init(%{}, 1)
+      state = Engine.toggle_breakpoint(state, 5)
+      state = Engine.toggle_breakpoint(state, 5)
+
+      refute Engine.has_breakpoint?(state, 5)
+      assert MapSet.size(state.breakpoints) == 0
+    end
+
+    test "has_breakpoint? returns false for non-breakpoint node" do
+      state = Engine.init(%{}, 1)
+      refute Engine.has_breakpoint?(state, 99)
+    end
+
+    test "at_breakpoint? checks current_node_id against breakpoints" do
+      state = Engine.init(%{}, 1)
+      state = Engine.toggle_breakpoint(state, 1)
+
+      assert Engine.at_breakpoint?(state)
+
+      state = Engine.toggle_breakpoint(state, 1)
+      refute Engine.at_breakpoint?(state)
+    end
+
+    test "reset preserves breakpoints" do
+      variables = %{"mc.jaime.health" => var(100, "number")}
+      state = Engine.init(variables, 1)
+      state = Engine.toggle_breakpoint(state, 3)
+      state = Engine.toggle_breakpoint(state, 7)
+
+      state = Engine.reset(state)
+
+      assert Engine.has_breakpoint?(state, 3)
+      assert Engine.has_breakpoint?(state, 7)
+      assert state.current_node_id == 1
+      assert state.step_count == 0
     end
   end
 

@@ -101,7 +101,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
       node ->
         state = push_snapshot(state)
         state = %{state | step_count: state.step_count + 1, previous_variables: state.variables}
-        evaluate_node(node, state, connections)
+        evaluate_node(node, state, connections, nodes)
     end
   end
 
@@ -213,58 +213,129 @@ defmodule Storyarn.Flows.Evaluator.Engine do
 
   @doc """
   Reset the debug session to its initial state.
+  Preserves breakpoints across resets.
   """
   @spec reset(State.t()) :: State.t()
   def reset(%State{} = state) do
-    init(state.initial_variables, state.start_node_id)
+    new_state = init(state.initial_variables, state.start_node_id)
+    %{new_state | breakpoints: state.breakpoints}
+  end
+
+  # =============================================================================
+  # Breakpoints
+  # =============================================================================
+
+  @doc """
+  Toggle a breakpoint on/off for a node.
+  """
+  @spec toggle_breakpoint(State.t(), integer()) :: State.t()
+  def toggle_breakpoint(%State{} = state, node_id) do
+    breakpoints =
+      if MapSet.member?(state.breakpoints, node_id) do
+        MapSet.delete(state.breakpoints, node_id)
+      else
+        MapSet.put(state.breakpoints, node_id)
+      end
+
+    %{state | breakpoints: breakpoints}
+  end
+
+  @doc """
+  Check if a node has a breakpoint set.
+  """
+  @spec has_breakpoint?(State.t(), integer()) :: boolean()
+  def has_breakpoint?(%State{} = state, node_id) do
+    MapSet.member?(state.breakpoints, node_id)
+  end
+
+  @doc """
+  Check if execution is currently paused at a breakpoint.
+  """
+  @spec at_breakpoint?(State.t()) :: boolean()
+  def at_breakpoint?(%State{current_node_id: nil}), do: false
+
+  def at_breakpoint?(%State{} = state) do
+    MapSet.member?(state.breakpoints, state.current_node_id)
+  end
+
+  @doc """
+  Add a console entry indicating execution paused at a breakpoint.
+  """
+  @spec add_breakpoint_hit(State.t(), integer()) :: State.t()
+  def add_breakpoint_hit(%State{} = state, node_id) do
+    add_console(state, :warning, node_id, "", "Paused at breakpoint")
   end
 
   # =============================================================================
   # Node evaluation — dispatches by node type
   # =============================================================================
 
-  defp evaluate_node(%{type: "entry"} = node, state, connections) do
+  defp evaluate_node(%{type: "entry"} = node, state, connections, _nodes) do
     label = node_label(node)
     state = add_console(state, :info, node.id, label, "Execution started")
     follow_output(state, node.id, label, connections)
   end
 
-  defp evaluate_node(%{type: "exit"} = node, state, _connections) do
+  defp evaluate_node(%{type: "exit"} = node, state, _connections, _nodes) do
     label = node_label(node)
     state = add_console(state, :info, node.id, label, "Execution finished")
     {:finished, %{state | status: :finished}}
   end
 
-  defp evaluate_node(%{type: "hub"} = node, state, connections) do
+  defp evaluate_node(%{type: "hub"} = node, state, connections, _nodes) do
     label = node_label(node)
     state = add_console(state, :info, node.id, label, "Hub — pass through")
     follow_output(state, node.id, label, connections)
   end
 
-  defp evaluate_node(%{type: "scene"} = node, state, connections) do
+  defp evaluate_node(%{type: "scene"} = node, state, connections, _nodes) do
     label = node_label(node)
     state = add_console(state, :info, node.id, label, "Scene — pass through")
     follow_output(state, node.id, label, connections)
   end
 
-  defp evaluate_node(%{type: "jump"} = node, state, _connections) do
+  defp evaluate_node(%{type: "jump"} = node, state, _connections, nodes) do
     label = node_label(node)
     data = node.data || %{}
-    hub_id = data["hub_id"] || "unknown"
+    target_hub_id = data["target_hub_id"]
 
-    state =
-      add_console(
-        state,
-        :info,
-        node.id,
-        label,
-        "Jump to hub #{hub_id} — ending (cross-flow not yet supported)"
-      )
+    cond do
+      is_nil(target_hub_id) or target_hub_id == "" ->
+        state =
+          add_console(state, :error, node.id, label, "Jump node has no target_hub_id configured")
 
-    {:finished, %{state | status: :finished}}
+        {:finished, %{state | status: :finished}}
+
+      true ->
+        case find_hub_by_hub_id(nodes, target_hub_id) do
+          nil ->
+            state =
+              add_console(
+                state,
+                :error,
+                node.id,
+                label,
+                "Jump target hub \"#{target_hub_id}\" not found in this flow"
+              )
+
+            {:finished, %{state | status: :finished}}
+
+          hub_node_id ->
+            state =
+              add_console(
+                state,
+                :info,
+                node.id,
+                label,
+                "Jump → hub \"#{target_hub_id}\" (node #{hub_node_id})"
+              )
+
+            advance_to(state, hub_node_id)
+        end
+    end
   end
 
-  defp evaluate_node(%{type: "subflow"} = node, state, _connections) do
+  defp evaluate_node(%{type: "subflow"} = node, state, _connections, _nodes) do
     label = node_label(node)
 
     state =
@@ -279,7 +350,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     {:finished, %{state | status: :finished}}
   end
 
-  defp evaluate_node(%{type: "dialogue"} = node, state, connections) do
+  defp evaluate_node(%{type: "dialogue"} = node, state, connections, _nodes) do
     data = node.data || %{}
     label = node_label(node)
 
@@ -355,7 +426,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     end
   end
 
-  defp evaluate_node(%{type: "condition"} = node, state, connections) do
+  defp evaluate_node(%{type: "condition"} = node, state, connections, _nodes) do
     data = node.data || %{}
     label = node_label(node)
     condition = data["condition"] || %{"logic" => "all", "rules" => []}
@@ -368,7 +439,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     end
   end
 
-  defp evaluate_node(%{type: "instruction"} = node, state, connections) do
+  defp evaluate_node(%{type: "instruction"} = node, state, connections, _nodes) do
     data = node.data || %{}
     label = node_label(node)
     assignments = data["assignments"] || []
@@ -407,7 +478,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
   end
 
   # Unknown node type — pass through
-  defp evaluate_node(node, state, connections) do
+  defp evaluate_node(node, state, connections, _nodes) do
     label = node_label(node)
 
     state =
@@ -658,6 +729,14 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     }
 
     %{state | snapshots: [snapshot | state.snapshots]}
+  end
+
+  defp find_hub_by_hub_id(nodes, target_hub_id) do
+    Enum.find_value(nodes, fn {node_id, node} ->
+      if node.type == "hub" and is_map(node.data) and node.data["hub_id"] == target_hub_id do
+        node_id
+      end
+    end)
   end
 
   defp find_connection(connections, source_node_id, source_pin) do

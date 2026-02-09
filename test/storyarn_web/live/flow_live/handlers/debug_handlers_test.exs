@@ -469,6 +469,73 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
   end
 
   # ===========================================================================
+  # handle_debug_toggle_breakpoint/2
+  # ===========================================================================
+
+  describe "handle_debug_toggle_breakpoint/2" do
+    test "adds breakpoint for a node" do
+      state = Engine.init(%{}, 1)
+      socket = build_socket(%{debug_state: state})
+
+      {:noreply, result} =
+        DebugHandlers.handle_debug_toggle_breakpoint(%{"node_id" => "5"}, socket)
+
+      assert MapSet.member?(result.assigns.debug_state.breakpoints, 5)
+    end
+
+    test "removes existing breakpoint" do
+      state = Engine.init(%{}, 1) |> Engine.toggle_breakpoint(5)
+      socket = build_socket(%{debug_state: state})
+
+      {:noreply, result} =
+        DebugHandlers.handle_debug_toggle_breakpoint(%{"node_id" => "5"}, socket)
+
+      refute MapSet.member?(result.assigns.debug_state.breakpoints, 5)
+    end
+
+    test "auto_step pauses at breakpoint" do
+      # entry(1) -> hub(2) -> hub(3) -> exit(4)
+      # Set breakpoint on node 3
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "hub"),
+        3 => node(3, "hub"),
+        4 => node(4, "exit")
+      }
+
+      connections = [
+        conn(1, "default", 2),
+        conn(2, "default", 3),
+        conn(3, "default", 4)
+      ]
+
+      # Start at entry, step once to reach hub(2)
+      state = Engine.init(%{}, 1)
+      {:ok, state} = Engine.step(state, nodes, connections)
+      assert state.current_node_id == 2
+
+      # Set breakpoint on node 3
+      state = Engine.toggle_breakpoint(state, 3)
+
+      socket =
+        build_socket(%{
+          debug_state: state,
+          debug_nodes: nodes,
+          debug_connections: connections,
+          debug_auto_playing: true,
+          debug_speed: 200
+        })
+
+      # Auto-step from hub(2) should land on hub(3) and pause due to breakpoint
+      {:noreply, result} = DebugHandlers.handle_debug_auto_step(socket)
+
+      assert result.assigns.debug_state.current_node_id == 3
+      assert result.assigns.debug_auto_playing == false
+      assert Enum.any?(result.assigns.debug_state.console, &(&1.message =~ "Paused at breakpoint"))
+    end
+  end
+
+  # ===========================================================================
   # handle_debug_change_start_node/2
   # ===========================================================================
 

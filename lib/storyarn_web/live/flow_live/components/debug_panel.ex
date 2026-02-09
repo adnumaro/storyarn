@@ -197,6 +197,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           execution_path={@debug_state.execution_path}
           console={@debug_state.console}
           debug_nodes={@debug_nodes}
+          breakpoints={@debug_state.breakpoints}
         />
       </div>
     </div>
@@ -543,6 +544,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   attr :execution_path, :list, required: true
   attr :console, :list, required: true
   attr :debug_nodes, :map, required: true
+  attr :breakpoints, :any, default: MapSet.new()
 
   defp path_tab(assigns) do
     entries = build_path_entries(assigns.execution_path, assigns.debug_nodes, assigns.console)
@@ -560,6 +562,21 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           if(entry.is_current, do: "text-primary font-bold bg-primary/5", else: "hover:bg-base-200")
         ]}
       >
+        <button
+          type="button"
+          class="shrink-0 flex items-center justify-center w-3 h-3"
+          phx-click="debug_toggle_breakpoint"
+          phx-value-node_id={entry.node_id}
+          title={if MapSet.member?(@breakpoints, entry.node_id), do: gettext("Remove breakpoint"), else: gettext("Set breakpoint")}
+        >
+          <span class={[
+            "block rounded-full",
+            if(MapSet.member?(@breakpoints, entry.node_id),
+              do: "w-2.5 h-2.5 bg-error",
+              else: "w-2 h-2 border border-base-content/20 hover:border-error/50"
+            )
+          ]}></span>
+        </button>
         <span class="text-base-content/30 w-5 text-right tabular-nums shrink-0 select-none">
           {entry.step}
         </span>

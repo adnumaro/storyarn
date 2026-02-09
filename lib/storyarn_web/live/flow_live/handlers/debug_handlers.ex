@@ -189,6 +189,23 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
     {:noreply, assign(socket, :debug_var_changed_only, !socket.assigns.debug_var_changed_only)}
   end
 
+  def handle_debug_toggle_breakpoint(%{"node_id" => node_id_str}, socket) do
+    case Integer.parse(node_id_str) do
+      {node_id, ""} ->
+        state = Engine.toggle_breakpoint(socket.assigns.debug_state, node_id)
+
+        {:noreply,
+         socket
+         |> assign(:debug_state, state)
+         |> push_event("debug_update_breakpoints", %{
+           breakpoint_ids: MapSet.to_list(state.breakpoints)
+         })}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_debug_auto_step(socket) do
     state = socket.assigns.debug_state
 
@@ -206,12 +223,24 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
 
         case Engine.step(state, nodes, connections) do
           {status, new_state} ->
+            # Check if we hit a breakpoint
+            {new_state, hit_breakpoint} =
+              if status not in [:finished, :waiting_input] and
+                   Engine.at_breakpoint?(new_state) do
+                {Engine.add_breakpoint_hit(new_state, new_state.current_node_id), true}
+              else
+                {new_state, false}
+              end
+
             socket =
               socket
               |> assign(:debug_state, new_state)
               |> push_debug_canvas(new_state)
 
             cond do
+              hit_breakpoint ->
+                {:noreply, assign(socket, :debug_auto_playing, false)}
+
               status == :finished ->
                 {:noreply, assign(socket, :debug_auto_playing, false)}
 
