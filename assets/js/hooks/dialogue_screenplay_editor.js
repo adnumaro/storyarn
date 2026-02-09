@@ -1,12 +1,12 @@
 /**
- * ScreenplayEditor - Phoenix LiveView Hook for the fullscreen screenplay editor.
+ * DialogueScreenplayEditor - Phoenix LiveView Hook for the fullscreen screenplay editor.
  *
  * Handles keyboard shortcuts:
  * - Escape: Close the editor
  * - Tab: Focus stage directions input
  */
 
-export const ScreenplayEditor = {
+export const DialogueScreenplayEditor = {
   mounted() {
     this.handleKeyDown = this.handleKeyDown.bind(this);
     document.addEventListener("keydown", this.handleKeyDown);

@@ -31,7 +31,9 @@ import { EditableShortcut } from "./hooks/editable_shortcut";
 import { EditableTitle } from "./hooks/editable_title";
 import { FlowCanvas } from "./hooks/flow_canvas";
 import { ReferenceSearch } from "./hooks/reference_search";
-import { ScreenplayEditor } from "./hooks/screenplay_editor";
+import { DialogueScreenplayEditor } from "./hooks/dialogue_screenplay_editor";
+import { ScreenplayElement } from "./hooks/screenplay_element";
+import { ScreenplayEditorPage } from "./hooks/screenplay_editor_page";
 // Custom hooks
 import { ColumnSortable } from "./hooks/column_sortable";
 import { SortableList } from "./hooks/sortable_list";
@@ -73,7 +75,9 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ConditionBuilder,
     DebugPanelResize,
     ReferenceSearch,
-    ScreenplayEditor,
+    DialogueScreenplayEditor,
+    ScreenplayElement,
+    ScreenplayEditorPage,
   },
 });
 

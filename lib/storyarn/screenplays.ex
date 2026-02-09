@@ -14,6 +14,7 @@ defmodule Storyarn.Screenplays do
   """
 
   alias Storyarn.Screenplays.{
+    AutoDetect,
     ElementCrud,
     ElementGrouping,
     ScreenplayCrud,
@@ -112,4 +113,11 @@ defmodule Storyarn.Screenplays do
 
   @doc "Groups consecutive elements into logical units for flow mapping."
   defdelegate group_elements(elements), to: ElementGrouping
+
+  # =============================================================================
+  # Auto-Detection
+  # =============================================================================
+
+  @doc "Detects element type from content text patterns. Returns type string or nil."
+  defdelegate detect_type(content), to: AutoDetect
 end

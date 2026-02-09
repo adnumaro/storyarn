@@ -36,7 +36,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
     ~H"""
     <div
       id="screenplay-editor"
-      phx-hook="ScreenplayEditor"
+      phx-hook="DialogueScreenplayEditor"
       phx-target={@myself}
       class="fixed inset-0 z-50 bg-base-100 flex flex-col"
     >

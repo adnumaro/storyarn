@@ -31,6 +31,9 @@
 /* Make LiveView wrapper divs transparent for layout */
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
+/* Screenplay editor styles */
+@import "./screenplay.css";
+
 /* This file is for your main application CSS */
 
 /* SortableJS styles */
