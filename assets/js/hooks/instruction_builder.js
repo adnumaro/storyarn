@@ -30,6 +30,8 @@ export const InstructionBuilder = {
     this.assignments = JSON.parse(this.el.dataset.assignments || "[]");
     this.variables = JSON.parse(this.el.dataset.variables || "[]");
     this.canEdit = JSON.parse(this.el.dataset.canEdit || "true");
+    this.context = JSON.parse(this.el.dataset.context || "{}");
+    this.eventName = this.el.dataset.eventName || null;
     this.t = {
       ...DEFAULT_TRANSLATIONS,
       ...JSON.parse(this.el.dataset.translations || "{}"),
@@ -80,6 +82,16 @@ export const InstructionBuilder = {
 
   pushAssignments() {
     this._pendingPushCount++;
+
+    // Custom event name — used by screenplay editor and other consumers
+    if (this.eventName) {
+      this.pushEvent(this.eventName, {
+        assignments: this.assignments,
+        ...this.context,
+      });
+      return;
+    }
+
     this.pushEvent("update_instruction_builder", {
       assignments: this.assignments,
     });

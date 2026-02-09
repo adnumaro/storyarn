@@ -1294,4 +1294,72 @@ defmodule Storyarn.SheetsTest do
       assert sheet2.shortcut == "reused-shortcut"
     end
   end
+
+  describe "list_project_variables/1" do
+    test "returns variable blocks with correct shape" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc"})
+      block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
+
+      [var] = Sheets.list_project_variables(project.id)
+
+      assert var.sheet_name == "MC"
+      assert var.sheet_shortcut == "mc"
+      assert var.variable_name == "health"
+      assert var.block_type == "number"
+      assert var.options == nil
+      assert Map.has_key?(var, :sheet_id)
+      assert Map.has_key?(var, :block_id)
+      refute Map.has_key?(var, :config)
+    end
+
+    test "excludes constant blocks" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc"})
+      block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
+      block_fixture(sheet, %{type: "text", config: %{"label" => "Bio"}, is_constant: true})
+
+      vars = Sheets.list_project_variables(project.id)
+
+      assert length(vars) == 1
+      assert hd(vars).variable_name == "health"
+    end
+
+    test "excludes non-variable types like divider" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc"})
+      block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
+      block_fixture(sheet, %{type: "divider", config: %{"label" => "---"}})
+
+      vars = Sheets.list_project_variables(project.id)
+
+      assert length(vars) == 1
+    end
+
+    test "returns empty list for project with no sheets" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert Sheets.list_project_variables(project.id) == []
+    end
+
+    test "includes select options in result" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc"})
+
+      block_fixture(sheet, %{
+        type: "select",
+        config: %{"label" => "Class", "options" => ["Warrior", "Mage"]}
+      })
+
+      [var] = Sheets.list_project_variables(project.id)
+
+      assert var.block_type == "select"
+      assert var.options == ["Warrior", "Mage"]
+    end
+  end
 end

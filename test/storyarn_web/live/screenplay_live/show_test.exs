@@ -5,6 +5,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScreenplaysFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Repo
 
@@ -76,14 +77,14 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
     test "interactive blocks render as stubs with type label", %{conn: conn, project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "conditional", content: ""})
-      element_fixture(screenplay, %{type: "instruction", content: ""})
+      element_fixture(screenplay, %{type: "dual_dialogue", content: ""})
+      element_fixture(screenplay, %{type: "hub_marker", content: ""})
 
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
       assert html =~ "sp-stub-badge"
-      assert html =~ "Conditional"
-      assert html =~ "Instruction"
+      assert html =~ "Dual Dialogue"
+      assert html =~ "Hub Marker"
     end
 
     test "page break renders as visual separator", %{conn: conn, project: project} do
@@ -863,6 +864,554 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       assert path == "/workspaces"
       assert flash["error"] =~ "access"
+    end
+
+    # -------------------------------------------------------------------------
+    # Phase 5.2 — Conditional block inline condition builder
+    # -------------------------------------------------------------------------
+
+    test "conditional element renders condition builder instead of stub", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "conditional", content: ""})
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "sp-interactive-condition"
+      assert html =~ "condition-builder"
+      refute html =~ "sp-stub-badge"
+    end
+
+    test "conditional element renders with existing condition data", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{"id" => "r1", "sheet" => "mc", "variable" => "health", "operator" => "greater_than", "value" => "50"}
+        ]
+      }
+
+      element_fixture(screenplay, %{
+        type: "conditional",
+        content: "",
+        data: %{"condition" => condition}
+      })
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "sp-interactive-condition"
+      assert html =~ "condition-builder"
+    end
+
+    test "update_screenplay_condition persists condition to element data", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "conditional", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{"id" => "r1", "sheet" => "mc", "variable" => "health", "operator" => "equals", "value" => "100"}
+        ]
+      }
+
+      view
+      |> render_click("update_screenplay_condition", %{
+        "element-id" => to_string(el.id),
+        "condition" => condition
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.data["condition"]["logic"] == "all"
+      assert length(updated.data["condition"]["rules"]) == 1
+      [rule] = updated.data["condition"]["rules"]
+      assert rule["sheet"] == "mc"
+      assert rule["variable"] == "health"
+    end
+
+    test "update_screenplay_condition with nonexistent element is a no-op", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      _el = element_fixture(screenplay, %{type: "conditional", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_screenplay_condition", %{
+        "element-id" => "999999",
+        "condition" => %{"logic" => "all", "rules" => []}
+      })
+
+      # No crash, page still renders
+      assert render(view) =~ "screenplay-page"
+    end
+
+    test "viewer cannot update screenplay condition", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "conditional", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_screenplay_condition", %{
+        "element-id" => to_string(el.id),
+        "condition" => %{
+          "logic" => "all",
+          "rules" => [
+            %{"id" => "r1", "sheet" => "mc", "variable" => "health", "operator" => "equals", "value" => "100"}
+          ]
+        }
+      })
+
+      assert render(view) =~ "permission"
+      unchanged = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert unchanged.data == nil || unchanged.data == %{}
+    end
+
+    # -------------------------------------------------------------------------
+    # Phase 5.3 — Instruction block inline instruction builder
+    # -------------------------------------------------------------------------
+
+    test "instruction element renders instruction builder instead of stub", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "instruction", content: ""})
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "sp-interactive-instruction"
+      assert html =~ "instruction-builder"
+      refute html =~ "sp-stub-badge"
+    end
+
+    test "instruction element renders with existing assignments data", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      assignments = [
+        %{
+          "id" => "a1",
+          "sheet" => "mc",
+          "variable" => "health",
+          "operator" => "add",
+          "value" => "10",
+          "value_type" => "literal",
+          "value_sheet" => nil
+        }
+      ]
+
+      element_fixture(screenplay, %{
+        type: "instruction",
+        content: "",
+        data: %{"assignments" => assignments}
+      })
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "sp-interactive-instruction"
+      assert html =~ "instruction-builder"
+    end
+
+    test "update_screenplay_instruction persists assignments to element data", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "instruction", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      assignments = [
+        %{
+          "id" => "a1",
+          "sheet" => "mc",
+          "variable" => "health",
+          "operator" => "set",
+          "value" => "100",
+          "value_type" => "literal",
+          "value_sheet" => nil
+        }
+      ]
+
+      view
+      |> render_click("update_screenplay_instruction", %{
+        "element-id" => to_string(el.id),
+        "assignments" => assignments
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert length(updated.data["assignments"]) == 1
+      [assignment] = updated.data["assignments"]
+      assert assignment["sheet"] == "mc"
+      assert assignment["variable"] == "health"
+      assert assignment["operator"] == "set"
+    end
+
+    test "update_screenplay_instruction with nonexistent element is a no-op", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      _el = element_fixture(screenplay, %{type: "instruction", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_screenplay_instruction", %{
+        "element-id" => "999999",
+        "assignments" => []
+      })
+
+      assert render(view) =~ "screenplay-page"
+    end
+
+    test "viewer cannot update screenplay instruction", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "instruction", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_screenplay_instruction", %{
+        "element-id" => to_string(el.id),
+        "assignments" => [
+          %{"id" => "a1", "sheet" => "mc", "variable" => "health", "operator" => "set", "value" => "100"}
+        ]
+      })
+
+      assert render(view) =~ "permission"
+      unchanged = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert unchanged.data == nil || unchanged.data == %{}
+    end
+
+    # -------------------------------------------------------------------------
+    # Phase 5.4 — Response block basic choices management
+    # -------------------------------------------------------------------------
+
+    test "response element renders choices UI instead of stub", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      element_fixture(screenplay, %{
+        type: "response",
+        content: "",
+        data: %{
+          "choices" => [
+            %{"id" => "c1", "text" => "Go left"},
+            %{"id" => "c2", "text" => "Go right"}
+          ]
+        }
+      })
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "sp-interactive-response"
+      assert html =~ "Go left"
+      assert html =~ "Go right"
+      refute html =~ "sp-stub-badge"
+    end
+
+    test "add_response_choice adds a choice to element data", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "response", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("add_response_choice", %{"element-id" => to_string(el.id)})
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert length(updated.data["choices"]) == 1
+      [choice] = updated.data["choices"]
+      assert is_binary(choice["id"])
+      assert choice["text"] == ""
+    end
+
+    test "remove_response_choice removes choice by ID", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "response",
+          content: "",
+          data: %{
+            "choices" => [
+              %{"id" => "c1", "text" => "Keep"},
+              %{"id" => "c2", "text" => "Remove"}
+            ]
+          }
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("remove_response_choice", %{
+        "element-id" => to_string(el.id),
+        "choice-id" => "c2"
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert length(updated.data["choices"]) == 1
+      [choice] = updated.data["choices"]
+      assert choice["text"] == "Keep"
+    end
+
+    test "update_response_choice_text updates choice text", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "response",
+          content: "",
+          data: %{"choices" => [%{"id" => "c1", "text" => "Old text"}]}
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_response_choice_text", %{
+        "element-id" => to_string(el.id),
+        "choice-id" => "c1",
+        "value" => "New text"
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      [choice] = updated.data["choices"]
+      assert choice["text"] == "New text"
+    end
+
+    test "viewer cannot add response choice", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "response", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("add_response_choice", %{"element-id" => to_string(el.id)})
+
+      assert render(view) =~ "permission"
+      unchanged = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert unchanged.data == nil || unchanged.data == %{}
+    end
+
+    # -------------------------------------------------------------------------
+    # Phase 5.5 — Response per-choice condition and instruction
+    # -------------------------------------------------------------------------
+
+    test "toggle_choice_condition adds default condition to choice", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "response",
+          content: "",
+          data: %{"choices" => [%{"id" => "c1", "text" => "Option A"}]}
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("toggle_choice_condition", %{
+        "element-id" => to_string(el.id),
+        "choice-id" => "c1"
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      [choice] = updated.data["choices"]
+      assert choice["condition"] == %{"logic" => "all", "rules" => []}
+    end
+
+    test "toggle_choice_condition removes condition from choice", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "response",
+          content: "",
+          data: %{
+            "choices" => [
+              %{"id" => "c1", "text" => "Option A", "condition" => %{"logic" => "all", "rules" => []}}
+            ]
+          }
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("toggle_choice_condition", %{
+        "element-id" => to_string(el.id),
+        "choice-id" => "c1"
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      [choice] = updated.data["choices"]
+      refute Map.has_key?(choice, "condition")
+    end
+
+    test "update_response_choice_condition persists sanitized condition per choice", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "response",
+          content: "",
+          data: %{
+            "choices" => [
+              %{"id" => "c1", "text" => "Option A", "condition" => %{"logic" => "all", "rules" => []}}
+            ]
+          }
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      condition = %{
+        "logic" => "any",
+        "rules" => [
+          %{"id" => "r1", "sheet" => "mc", "variable" => "health", "operator" => "equals", "value" => "50"}
+        ]
+      }
+
+      view
+      |> render_click("update_response_choice_condition", %{
+        "element-id" => to_string(el.id),
+        "choice-id" => "c1",
+        "condition" => condition
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      [choice] = updated.data["choices"]
+      assert choice["condition"]["logic"] == "any"
+      assert length(choice["condition"]["rules"]) == 1
+    end
+
+    test "update_response_choice_instruction persists sanitized assignments per choice", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "response",
+          content: "",
+          data: %{
+            "choices" => [
+              %{"id" => "c1", "text" => "Option A", "instruction" => []}
+            ]
+          }
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      assignments = [
+        %{"id" => "a1", "sheet" => "mc", "variable" => "health", "operator" => "add", "value" => "10"}
+      ]
+
+      view
+      |> render_click("update_response_choice_instruction", %{
+        "element-id" => to_string(el.id),
+        "choice-id" => "c1",
+        "assignments" => assignments
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      [choice] = updated.data["choices"]
+      assert length(choice["instruction"]) == 1
+      [assignment] = choice["instruction"]
+      assert assignment["sheet"] == "mc"
+      assert assignment["operator"] == "add"
+    end
+
+    test "viewer cannot toggle choice condition", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "response",
+          content: "",
+          data: %{"choices" => [%{"id" => "c1", "text" => "Option A"}]}
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("toggle_choice_condition", %{
+        "element-id" => to_string(el.id),
+        "choice-id" => "c1"
+      })
+
+      assert render(view) =~ "permission"
+      unchanged = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      [choice] = unchanged.data["choices"]
+      refute Map.has_key?(choice, "condition")
+    end
+
+    # -------------------------------------------------------------------------
+    # Phase 5 — Project variables loaded in mount
+    # -------------------------------------------------------------------------
+
+    test "mount loads project variables and renders page with sheets present", %{
+      conn: conn,
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc"})
+      block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
+      block_fixture(sheet, %{type: "boolean", config: %{"label" => "Alive"}})
+
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "action", content: "Walk."})
+
+      # Verifies the full integration: Sheets query runs during mount without error
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "screenplay-page"
+      assert html =~ "Walk."
     end
   end
 end

@@ -8,6 +8,9 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   alias Storyarn.Screenplays
   alias Storyarn.Screenplays.Screenplay
   alias Storyarn.Screenplays.ScreenplayElement
+  alias Storyarn.Flows.Condition
+  alias Storyarn.Flows.Instruction
+  alias Storyarn.Sheets
   alias Storyarn.Repo
 
   import StoryarnWeb.Components.Screenplay.ElementRenderer
@@ -82,6 +85,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           :for={element <- @elements}
           element={element}
           can_edit={@can_edit}
+          variables={@project_variables}
         />
       </div>
       <.slash_command_menu
@@ -112,6 +116,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         screenplay = Screenplays.get_screenplay!(project.id, screenplay_id)
         screenplays_tree = Screenplays.list_screenplays_tree(project.id)
         elements = Screenplays.list_elements(screenplay.id)
+        project_variables = Sheets.list_project_variables(project.id)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
 
         socket =
@@ -123,6 +128,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           |> assign(:screenplay, screenplay)
           |> assign(:screenplays_tree, screenplays_tree)
           |> assign(:elements, elements)
+          |> assign(:project_variables, project_variables)
           |> assign(:slash_menu_element_id, nil)
 
         {:ok, socket}
@@ -327,7 +333,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         nil ->
           {:noreply, socket}
 
-        element when is_nil(pos) ->
+        _element when is_nil(pos) ->
           {:noreply, socket}
 
         element ->
@@ -364,6 +370,192 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       end
 
     {:noreply, socket}
+  end
+
+  # ---------------------------------------------------------------------------
+  # Interactive block handlers
+  # ---------------------------------------------------------------------------
+
+  def handle_event(
+        "update_screenplay_condition",
+        %{"element-id" => id, "condition" => condition},
+        socket
+      ) do
+    with_edit_permission(socket, fn ->
+      case find_element(socket, id) do
+        nil ->
+          {:noreply, socket}
+
+        element ->
+          sanitized = Condition.sanitize(condition)
+          data = Map.put(element.data || %{}, "condition", sanitized)
+
+          case Screenplays.update_element(element, %{data: data}) do
+            {:ok, updated} ->
+              {:noreply, update_element_in_list(socket, updated)}
+
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, gettext("Could not save condition."))}
+          end
+      end
+    end)
+  end
+
+  def handle_event(
+        "update_screenplay_instruction",
+        %{"element-id" => id, "assignments" => assignments},
+        socket
+      ) do
+    with_edit_permission(socket, fn ->
+      case find_element(socket, id) do
+        nil ->
+          {:noreply, socket}
+
+        element ->
+          sanitized = Instruction.sanitize(assignments)
+          data = Map.put(element.data || %{}, "assignments", sanitized)
+
+          case Screenplays.update_element(element, %{data: data}) do
+            {:ok, updated} ->
+              {:noreply, update_element_in_list(socket, updated)}
+
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, gettext("Could not save instruction."))}
+          end
+      end
+    end)
+  end
+
+  def handle_event("add_response_choice", %{"element-id" => id}, socket) do
+    with_edit_permission(socket, fn ->
+      case find_element(socket, id) do
+        nil ->
+          {:noreply, socket}
+
+        element ->
+          new_choice = %{"id" => Ecto.UUID.generate(), "text" => ""}
+          data = element.data || %{}
+          choices = (data["choices"] || []) ++ [new_choice]
+          data = Map.put(data, "choices", choices)
+
+          case Screenplays.update_element(element, %{data: data}) do
+            {:ok, updated} ->
+              {:noreply, update_element_in_list(socket, updated)}
+
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, gettext("Could not add choice."))}
+          end
+      end
+    end)
+  end
+
+  def handle_event(
+        "remove_response_choice",
+        %{"element-id" => id, "choice-id" => choice_id},
+        socket
+      ) do
+    with_edit_permission(socket, fn ->
+      case find_element(socket, id) do
+        nil ->
+          {:noreply, socket}
+
+        element ->
+          data = element.data || %{}
+          choices = Enum.reject(data["choices"] || [], &(&1["id"] == choice_id))
+          data = Map.put(data, "choices", choices)
+
+          case Screenplays.update_element(element, %{data: data}) do
+            {:ok, updated} ->
+              {:noreply, update_element_in_list(socket, updated)}
+
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, gettext("Could not remove choice."))}
+          end
+      end
+    end)
+  end
+
+  def handle_event(
+        "update_response_choice_text",
+        %{"element-id" => id, "choice-id" => choice_id, "value" => text},
+        socket
+      ) do
+    with_edit_permission(socket, fn ->
+      case find_element(socket, id) do
+        nil ->
+          {:noreply, socket}
+
+        element ->
+          data = element.data || %{}
+
+          choices =
+            Enum.map(data["choices"] || [], fn choice ->
+              if choice["id"] == choice_id, do: Map.put(choice, "text", text), else: choice
+            end)
+
+          data = Map.put(data, "choices", choices)
+
+          case Screenplays.update_element(element, %{data: data}) do
+            {:ok, updated} ->
+              {:noreply, update_element_in_list(socket, updated)}
+
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, gettext("Could not update choice."))}
+          end
+      end
+    end)
+  end
+
+  def handle_event(
+        "toggle_choice_condition",
+        %{"element-id" => id, "choice-id" => choice_id},
+        socket
+      ) do
+    with_edit_permission(socket, fn ->
+      update_choice_field(socket, id, choice_id, fn choice ->
+        if choice["condition"],
+          do: Map.delete(choice, "condition"),
+          else: Map.put(choice, "condition", Condition.new())
+      end)
+    end)
+  end
+
+  def handle_event(
+        "toggle_choice_instruction",
+        %{"element-id" => id, "choice-id" => choice_id},
+        socket
+      ) do
+    with_edit_permission(socket, fn ->
+      update_choice_field(socket, id, choice_id, fn choice ->
+        if choice["instruction"],
+          do: Map.delete(choice, "instruction"),
+          else: Map.put(choice, "instruction", [])
+      end)
+    end)
+  end
+
+  def handle_event(
+        "update_response_choice_condition",
+        %{"element-id" => id, "choice-id" => choice_id, "condition" => condition},
+        socket
+      ) do
+    with_edit_permission(socket, fn ->
+      update_choice_field(socket, id, choice_id, fn choice ->
+        Map.put(choice, "condition", Condition.sanitize(condition))
+      end)
+    end)
+  end
+
+  def handle_event(
+        "update_response_choice_instruction",
+        %{"element-id" => id, "choice-id" => choice_id, "assignments" => assignments},
+        socket
+      ) do
+    with_edit_permission(socket, fn ->
+      update_choice_field(socket, id, choice_id, fn choice ->
+        Map.put(choice, "instruction", Instruction.sanitize(assignments))
+      end)
+    end)
   end
 
   # ---------------------------------------------------------------------------
@@ -540,5 +732,30 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       end)
 
     assign(socket, :elements, elements)
+  end
+
+  defp update_choice_field(socket, element_id, choice_id, update_fn) do
+    case find_element(socket, element_id) do
+      nil ->
+        {:noreply, socket}
+
+      element ->
+        data = element.data || %{}
+
+        choices =
+          Enum.map(data["choices"] || [], fn choice ->
+            if choice["id"] == choice_id, do: update_fn.(choice), else: choice
+          end)
+
+        data = Map.put(data, "choices", choices)
+
+        case Screenplays.update_element(element, %{data: data}) do
+          {:ok, updated} ->
+            {:noreply, update_element_in_list(socket, updated)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not update choice."))}
+        end
+    end
   end
 end

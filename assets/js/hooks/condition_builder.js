@@ -42,6 +42,7 @@ export const ConditionBuilder = {
     this.canEdit = JSON.parse(this.el.dataset.canEdit || "true");
     this.switchMode = JSON.parse(this.el.dataset.switchMode || "false");
     this.context = JSON.parse(this.el.dataset.context || "{}");
+    this.eventName = this.el.dataset.eventName || null;
     this.t = {
       ...DEFAULT_TRANSLATIONS,
       ...JSON.parse(this.el.dataset.translations || "{}"),
@@ -119,6 +120,16 @@ export const ConditionBuilder = {
 
   pushCondition() {
     this._pendingPushCount++;
+
+    // Custom event name — used by screenplay editor and other consumers
+    if (this.eventName) {
+      this.pushEvent(this.eventName, {
+        condition: this.condition,
+        ...this.context,
+      });
+      return;
+    }
+
     const eventName = this.context["response-id"]
       ? "update_response_condition_builder"
       : "update_condition_builder";

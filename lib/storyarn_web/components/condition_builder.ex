@@ -24,6 +24,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   attr :can_edit, :boolean, default: true
   attr :context, :map, default: %{}
   attr :switch_mode, :boolean, default: false
+  attr :event_name, :string, default: nil
 
   def condition_builder(assigns) do
     parsed_condition =
@@ -49,6 +50,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
       data-can-edit={Jason.encode!(@can_edit)}
       data-switch-mode={Jason.encode!(@switch_mode)}
       data-context={Jason.encode!(@context)}
+      data-event-name={@event_name}
       data-translations={Jason.encode!(@translations)}
       class="condition-builder"
     >

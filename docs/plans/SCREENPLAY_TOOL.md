@@ -29,7 +29,7 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 | 2       | Sidebar & Navigation                                | Essential    | Done      |
 | 3       | Screenplay Editor (Core Blocks)                     | Essential    | Done      |
 | 4       | Slash Command System                                | Essential    | Done      |
-| 5       | Interactive Blocks (Condition/Instruction/Response) | Essential    | Pending   |
+| 5       | Interactive Blocks (Condition/Instruction/Response) | Essential    | Done      |
 | 6       | Flow Sync — Screenplay → Flow                       | Essential    | Pending   |
 | 7       | Flow Sync — Flow → Screenplay                       | Essential    | Pending   |
 | 8       | Dual Dialogue & Advanced Formatting                 | Important    | Pending   |
@@ -114,6 +114,21 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 - `assets/css/screenplay.css` — `.slash-menu` styles: fixed positioning, dark mode, search input, group labels, item hover/highlight states, hidden states for filtered items/groups
 
 **Key patterns:** Server controls menu visibility via `@slash_menu_element_id` assign. JS hook handles positioning and keyboard interaction. `phx-click-away` closes menu on outside click. Mid-text `/` only triggers at valid positions (preserves "INT./EXT." typing). `cursor_position` parsed to integer server-side for safety.
+
+### Phase 5 — Summary (Done, 20 tests)
+
+**Tasks completed:** 5.1 Load project variables + wire to element renderer | 5.2 Conditional block — inline condition builder (5 tests) | 5.3 Instruction block — inline instruction builder (5 tests) | 5.4 Response block — basic choices management (5 tests) | 5.5 Response per-choice condition and instruction (5 tests)
+
+**Files modified:**
+- `lib/storyarn_web/components/condition_builder.ex` — added `event_name` attr, `data-event-name` to template
+- `lib/storyarn_web/components/instruction_builder.ex` — added `context` and `event_name` attrs, `data-context` and `data-event-name` to template
+- `assets/js/hooks/condition_builder.js` — custom event name support in `pushCondition()`: if `eventName` is set, push custom event with `{condition, ...context}` and return early
+- `assets/js/hooks/instruction_builder.js` — custom event name and context support in `pushAssignments()`: same pattern as condition_builder
+- `lib/storyarn_web/components/screenplay/element_renderer.ex` — 3 new `render_block` clauses for conditional (inline condition builder), instruction (inline instruction builder), response (server-rendered choices with per-choice condition/instruction toggles); removed conditional/instruction/response from `@stub_types`; imports ConditionBuilder, InstructionBuilder, CoreComponents
+- `lib/storyarn_web/live/screenplay_live/show.ex` — loads `project_variables` in mount; 9 new event handlers: `update_screenplay_condition`, `update_screenplay_instruction`, `add_response_choice`, `remove_response_choice`, `update_response_choice_text`, `toggle_choice_condition`, `toggle_choice_instruction`, `update_response_choice_condition`, `update_response_choice_instruction`; `update_choice_field/4` private helper for per-choice updates; aliases `Condition`, `Instruction`, `Sheets`
+- `assets/css/screenplay.css` — interactive block styles (`.sp-interactive-block`, `.sp-interactive-header`, `.sp-interactive-label`, per-type accent colors), choice row styles (`.sp-choice-row`, `.sp-choice-input`, `.sp-choice-toggle`, `.sp-choice-extras`, `.sp-add-choice`), dark mode for choice inputs
+
+**Key patterns:** `event_name` attr on builders enables reuse in screenplay editor without modifying existing flow editor paths. Response block uses standard `<input>` + `phx-blur`/`phx-click` (no custom JS hook — KISS). Per-choice condition/instruction use same builder components with toggle visibility. All handlers go through `with_edit_permission`. Conditions sanitized via `Condition.sanitize/1`, assignments via `Instruction.sanitize/1`. No branching/nesting (depth/branch) — deferred to a separate phase.
 
 ---
 
@@ -514,194 +529,9 @@ end
 
 ---
 
-## Phase 5: Interactive Blocks (Condition/Instruction/Response)
+## Phase 5: Interactive Blocks (Done)
 
-### 5.1 Conditional Block
-
-Renders inline within the screenplay. Uses the existing `ConditionBuilder` component.
-
-```elixir
-def conditional_block(assigns) do
-  ~H"""
-  <div class="sp-conditional-wrapper">
-    <div class="sp-block-header">
-      <.icon name="git-branch" class="size-4" />
-      <span class="sp-block-label"><%= gettext("Condition") %></span>
-      <button phx-click="delete_element" phx-value-id={@element.id} class="sp-block-delete">
-        <.icon name="x" class="size-3" />
-      </button>
-    </div>
-
-    <!-- Condition builder (reuses existing component) -->
-    <.condition_builder
-      id={"sp-cond-#{@element.id}"}
-      condition={@element.data["condition"]}
-      variables={@project_variables}
-      can_edit={@can_edit}
-      switch_mode={false}
-      context={%{"element-id" => @element.id}}
-    />
-
-    <!-- Branch containers for nested elements -->
-    <div class="sp-branches">
-      <div class="sp-branch sp-branch-true">
-        <div class="sp-branch-label"><%= gettext("True") %></div>
-        <div class="sp-branch-content" data-branch="true" data-depth={@element.depth + 1}>
-          <!-- Nested elements with branch="true" rendered here -->
-        </div>
-      </div>
-      <div class="sp-branch sp-branch-false">
-        <div class="sp-branch-label"><%= gettext("False") %></div>
-        <div class="sp-branch-content" data-branch="false" data-depth={@element.depth + 1}>
-          <!-- Nested elements with branch="false" rendered here -->
-        </div>
-      </div>
-    </div>
-  </div>
-  """
-end
-```
-
-### 5.2 Conditional Branching Model
-
-When a conditional block is created, elements inside it belong to a **branch**:
-
-```
-Element List (flat, ordered by position):
-┌──────────────────────────────────────────────────┐
-│ pos=0  type=scene_heading   depth=0  branch=nil  │
-│ pos=1  type=action          depth=0  branch=nil  │
-│ pos=2  type=character       depth=0  branch=nil  │
-│ pos=3  type=dialogue        depth=0  branch=nil  │
-│ pos=4  type=conditional     depth=0  branch=nil  │  ← CONDITION
-│ pos=5  type=character       depth=1  branch=true │  ← Inside TRUE
-│ pos=6  type=dialogue        depth=1  branch=true │
-│ pos=7  type=character       depth=1  branch=false│  ← Inside FALSE
-│ pos=8  type=dialogue        depth=1  branch=false│
-│ pos=9  type=character       depth=0  branch=nil  │  ← After condition
-│ pos=10 type=dialogue        depth=0  branch=nil  │
-└──────────────────────────────────────────────────┘
-```
-
-The `depth` and `branch` fields determine rendering:
-- `depth=0, branch=nil` → rendered at root level
-- `depth=1, branch="true"` → rendered inside the TRUE branch of the nearest conditional at depth=0
-- `depth=1, branch="false"` → rendered inside the FALSE branch
-
-The rendering logic in the LiveView groups elements by their conditional context before passing to the template.
-
-### 5.3 Instruction Block
-
-```elixir
-def instruction_block(assigns) do
-  ~H"""
-  <div class="sp-instruction-wrapper">
-    <div class="sp-block-header">
-      <.icon name="zap" class="size-4" />
-      <span class="sp-block-label"><%= gettext("Instruction") %></span>
-      <button phx-click="delete_element" phx-value-id={@element.id} class="sp-block-delete">
-        <.icon name="x" class="size-3" />
-      </button>
-    </div>
-
-    <!-- Instruction builder (reuses existing component) -->
-    <.instruction_builder
-      id={"sp-instr-#{@element.id}"}
-      assignments={@element.data["assignments"] || []}
-      variables={@project_variables}
-      can_edit={@can_edit}
-    />
-  </div>
-  """
-end
-```
-
-### 5.4 Response Block
-
-```elixir
-def response_block(assigns) do
-  ~H"""
-  <div class="sp-response-wrapper">
-    <div class="sp-block-header">
-      <.icon name="list" class="size-4" />
-      <span class="sp-block-label"><%= gettext("Responses") %></span>
-    </div>
-
-    <div class="sp-response-list">
-      <div :for={choice <- (@element.data["choices"] || [])} class="sp-response-item">
-        <span class="sp-response-arrow">→</span>
-        <input
-          type="text"
-          value={choice["text"]}
-          placeholder={gettext("Response text...")}
-          phx-blur="update_response_text"
-          phx-value-element-id={@element.id}
-          phx-value-choice-id={choice["id"]}
-          class="sp-response-input"
-        />
-
-        <!-- Optional condition indicator -->
-        <span :if={choice["condition"]} class="sp-response-indicator" title={gettext("Has condition")}>
-          [?]
-        </span>
-
-        <!-- Optional instruction indicator -->
-        <span :if={choice["instruction"]} class="sp-response-indicator" title={gettext("Has instruction")}>
-          [⚡]
-        </span>
-
-        <!-- Expand button to edit condition/instruction -->
-        <button phx-click="toggle_response_detail" phx-value-choice-id={choice["id"]}>
-          <.icon name="chevron-down" class="size-3" />
-        </button>
-      </div>
-
-      <button :if={@can_edit} phx-click="add_response_choice" phx-value-element-id={@element.id}
-              class="sp-add-response">
-        + <%= gettext("Add response") %>
-      </button>
-    </div>
-  </div>
-  """
-end
-```
-
-### 5.5 Event Handlers for Interactive Blocks
-
-```elixir
-# Condition builder update (from ConditionBuilder hook)
-def handle_event("update_condition_builder", %{"condition" => condition, "element-id" => element_id}, socket) do
-  element = get_element(socket, element_id)
-  sanitized = Condition.sanitize(condition)
-  {:ok, updated} = Screenplays.update_element(element, %{
-    data: Map.put(element.data, "condition", sanitized),
-    content: Condition.format_short(sanitized)  # Human-readable label
-  })
-  {:noreply, update_element_in_list(socket, updated)}
-end
-
-# Instruction builder update (from InstructionBuilder hook)
-def handle_event("update_instruction_builder", %{"assignments" => assignments, "element-id" => element_id}, socket) do
-  element = get_element(socket, element_id)
-  sanitized = Instruction.sanitize(assignments)
-  {:ok, updated} = Screenplays.update_element(element, %{
-    data: Map.put(element.data, "assignments", sanitized),
-    content: Instruction.format_assignments_short(sanitized)
-  })
-  {:noreply, update_element_in_list(socket, updated)}
-end
-
-# Response management
-def handle_event("add_response_choice", %{"element-id" => element_id}, socket) do
-  element = get_element(socket, element_id)
-  choices = element.data["choices"] || []
-  new_choice = %{"id" => Ecto.UUID.generate(), "text" => "", "condition" => nil, "instruction" => nil}
-  {:ok, updated} = Screenplays.update_element(element, %{
-    data: Map.put(element.data, "choices", choices ++ [new_choice])
-  })
-  {:noreply, update_element_in_list(socket, updated)}
-end
-```
+Covered in [Phase 5 Summary](#phase-5--summary-done-20-tests) above. Reference code removed — see committed files.
 
 ---
 

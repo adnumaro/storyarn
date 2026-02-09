@@ -16,6 +16,8 @@ defmodule StoryarnWeb.Components.InstructionBuilder do
   attr :assignments, :list, default: []
   attr :variables, :list, default: []
   attr :can_edit, :boolean, default: true
+  attr :context, :map, default: %{}
+  attr :event_name, :string, default: nil
 
   def instruction_builder(assigns) do
     assigns = assign(assigns, :translations, translations())
@@ -28,6 +30,8 @@ defmodule StoryarnWeb.Components.InstructionBuilder do
       data-assignments={Jason.encode!(@assignments)}
       data-variables={Jason.encode!(@variables)}
       data-can-edit={Jason.encode!(@can_edit)}
+      data-context={Jason.encode!(@context)}
+      data-event-name={@event_name}
       data-translations={Jason.encode!(@translations)}
       class="instruction-builder"
     >

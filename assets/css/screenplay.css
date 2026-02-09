@@ -180,6 +180,175 @@
 }
 
 /* ---------------------------------------------------------------------------
+   Interactive blocks — condition, instruction, response
+   --------------------------------------------------------------------------- */
+
+.sp-interactive-block {
+  font-family: system-ui, sans-serif;
+  font-size: 0.875rem;
+  background-color: color-mix(in oklch, var(--color-base-content) 3%, transparent);
+  border-left: 3px solid var(--color-base-300);
+  padding: 8px 12px;
+  margin: 12px 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.sp-interactive-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.sp-interactive-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+}
+
+.sp-interactive-condition {
+  border-left-color: var(--color-primary);
+}
+
+.sp-interactive-instruction {
+  border-left-color: var(--color-warning);
+}
+
+.sp-interactive-response {
+  border-left-color: var(--color-info);
+}
+
+/* Choice rows */
+.sp-choice-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.sp-choice-number {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in oklch, var(--color-base-content) 40%, transparent);
+  min-width: 1.5em;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.sp-choice-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--color-base-300);
+  border-radius: 4px;
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+  font-size: 0.8125rem;
+  font-family: system-ui, sans-serif;
+  outline: none;
+}
+
+.sp-choice-input:focus {
+  border-color: var(--color-info);
+}
+
+:--dark .sp-choice-input {
+  background-color: var(--color-base-300);
+}
+
+.sp-choice-text {
+  flex: 1;
+  font-size: 0.8125rem;
+}
+
+.sp-choice-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: color-mix(in oklch, var(--color-base-content) 40%, transparent);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.sp-choice-remove:hover {
+  color: var(--color-error);
+  background-color: color-mix(in oklch, var(--color-error) 10%, transparent);
+}
+
+.sp-choice-empty {
+  font-size: 0.75rem;
+  color: color-mix(in oklch, var(--color-base-content) 40%, transparent);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+.sp-add-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 4px 8px;
+  border: 1px dashed var(--color-base-300);
+  border-radius: 4px;
+  background: none;
+  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+  font-size: 0.75rem;
+  font-family: system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.sp-add-choice:hover {
+  border-color: var(--color-info);
+  color: var(--color-info);
+}
+
+/* Choice group (row + optional extras) */
+.sp-choice-group {
+  margin-bottom: 4px;
+}
+
+/* Toggle buttons for per-choice condition/instruction */
+.sp-choice-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.sp-choice-toggle:hover {
+  color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+  background-color: var(--color-base-200);
+}
+
+.sp-choice-toggle-active {
+  color: var(--color-primary);
+}
+
+.sp-choice-toggle-active:hover {
+  color: var(--color-primary);
+}
+
+/* Collapsible extras below each choice */
+.sp-choice-extras {
+  margin-left: 2em;
+  padding: 4px 0 4px 8px;
+  border-left: 2px solid var(--color-base-300);
+}
+
+/* ---------------------------------------------------------------------------
    Stub blocks — interactive/flow types (Phase 5)
    --------------------------------------------------------------------------- */
 
