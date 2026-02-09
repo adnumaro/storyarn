@@ -24,7 +24,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
       [%{source_node_id: 1, source_pin: "default", target_node_id: 2, target_pin: "input"}, ...]
   """
 
-  alias Storyarn.Flows.Evaluator.{State, ConditionEval, InstructionExec}
+  alias Storyarn.Flows.Evaluator.{Helpers, State, ConditionEval, InstructionExec}
 
   # =============================================================================
   # Public API
@@ -58,7 +58,8 @@ defmodule Storyarn.Flows.Evaluator.Engine do
           rule_details: nil
         }
       ],
-      execution_path: [start_node_id]
+      execution_path: [start_node_id],
+      execution_log: [%{node_id: start_node_id, depth: 0}]
     }
   end
 
@@ -75,6 +76,8 @@ defmodule Storyarn.Flows.Evaluator.Engine do
           {:ok, State.t()}
           | {:waiting_input, State.t()}
           | {:finished, State.t()}
+          | {:flow_jump, State.t(), integer()}
+          | {:flow_return, State.t()}
           | {:error, State.t(), atom()}
   def step(%State{status: :finished} = state, _nodes, _connections) do
     {:finished, state}
@@ -118,10 +121,14 @@ defmodule Storyarn.Flows.Evaluator.Engine do
       state
       | current_node_id: snapshot.node_id,
         variables: snapshot.variables,
+        previous_variables: snapshot.previous_variables,
         execution_path: snapshot.execution_path,
+        execution_log: snapshot.execution_log,
         pending_choices: snapshot.pending_choices,
         status: snapshot.status,
         history: snapshot.history,
+        call_stack: snapshot.call_stack,
+        current_flow_id: snapshot.current_flow_id,
         snapshots: rest,
         step_count: max(state.step_count - 1, 0)
     }
@@ -213,12 +220,50 @@ defmodule Storyarn.Flows.Evaluator.Engine do
 
   @doc """
   Reset the debug session to its initial state.
-  Preserves breakpoints across resets.
+  Preserves breakpoints and current_flow_id across resets.
+  Clears call stack.
   """
   @spec reset(State.t()) :: State.t()
   def reset(%State{} = state) do
     new_state = init(state.initial_variables, state.start_node_id)
-    %{new_state | breakpoints: state.breakpoints}
+    %{new_state | breakpoints: state.breakpoints, current_flow_id: state.current_flow_id}
+  end
+
+  # =============================================================================
+  # Cross-flow call stack
+  # =============================================================================
+
+  @doc """
+  Push the current flow context onto the call stack before entering a sub-flow.
+
+  Saves: current flow_id, the return node (subflow/exit node that triggered the jump),
+  the current nodes map, connections, and execution path — everything needed to
+  resume after returning.
+  """
+  @spec push_flow_context(State.t(), integer(), map(), list(), String.t() | nil) :: State.t()
+  def push_flow_context(%State{} = state, return_node_id, nodes, connections, flow_name \\ nil) do
+    frame = %{
+      flow_id: state.current_flow_id,
+      flow_name: flow_name,
+      return_node_id: return_node_id,
+      nodes: nodes,
+      connections: connections,
+      execution_path: state.execution_path
+    }
+
+    %{state | call_stack: [frame | state.call_stack]}
+  end
+
+  @doc """
+  Pop the most recent flow context from the call stack (returning from a sub-flow).
+
+  Returns `{:ok, frame, updated_state}` or `{:error, :empty_stack}`.
+  """
+  @spec pop_flow_context(State.t()) :: {:ok, map(), State.t()} | {:error, :empty_stack}
+  def pop_flow_context(%State{call_stack: []}), do: {:error, :empty_stack}
+
+  def pop_flow_context(%State{call_stack: [frame | rest]} = state) do
+    {:ok, frame, %{state | call_stack: rest}}
   end
 
   # =============================================================================
@@ -266,6 +311,14 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     add_console(state, :warning, node_id, "", "Paused at breakpoint")
   end
 
+  @doc """
+  Add a console entry from outside the engine (e.g., handler-level warnings).
+  """
+  @spec add_console_entry(State.t(), atom(), integer() | nil, String.t(), String.t()) :: State.t()
+  def add_console_entry(%State{} = state, level, node_id, node_label, message) do
+    add_console(state, level, node_id, node_label, message)
+  end
+
   # =============================================================================
   # Node evaluation — dispatches by node type
   # =============================================================================
@@ -278,8 +331,38 @@ defmodule Storyarn.Flows.Evaluator.Engine do
 
   defp evaluate_node(%{type: "exit"} = node, state, _connections, _nodes) do
     label = node_label(node)
-    state = add_console(state, :info, node.id, label, "Execution finished")
-    {:finished, %{state | status: :finished}}
+    data = node.data || %{}
+    exit_mode = data["exit_mode"] || "terminal"
+
+    case exit_mode do
+      "flow_reference" ->
+        case data["referenced_flow_id"] do
+          nil ->
+            state =
+              add_console(state, :error, node.id, label, "Exit has flow_reference mode but no referenced_flow_id")
+
+            {:finished, %{state | status: :finished}}
+
+          flow_id ->
+            state =
+              add_console(state, :info, node.id, label, "Exit → flow reference (flow #{flow_id})")
+
+            {:flow_jump, state, flow_id}
+        end
+
+      "caller_return" ->
+        if state.call_stack != [] do
+          state = add_console(state, :info, node.id, label, "Exit → return to caller")
+          {:flow_return, state}
+        else
+          state = add_console(state, :info, node.id, label, "Exit → caller return (no caller, finishing)")
+          {:finished, %{state | status: :finished}}
+        end
+
+      _terminal ->
+        state = add_console(state, :info, node.id, label, "Execution finished")
+        {:finished, %{state | status: :finished}}
+    end
   end
 
   defp evaluate_node(%{type: "hub"} = node, state, connections, _nodes) do
@@ -337,25 +420,29 @@ defmodule Storyarn.Flows.Evaluator.Engine do
 
   defp evaluate_node(%{type: "subflow"} = node, state, _connections, _nodes) do
     label = node_label(node)
+    data = node.data || %{}
 
-    state =
-      add_console(
-        state,
-        :info,
-        node.id,
-        label,
-        "Subflow — ending (cross-flow not yet supported)"
-      )
+    case data["referenced_flow_id"] do
+      nil ->
+        state =
+          add_console(state, :error, node.id, label, "Subflow node has no referenced_flow_id")
 
-    {:finished, %{state | status: :finished}}
+        {:finished, %{state | status: :finished}}
+
+      flow_id ->
+        state =
+          add_console(state, :info, node.id, label, "Subflow → entering flow #{flow_id}")
+
+        {:flow_jump, state, flow_id}
+    end
   end
 
   defp evaluate_node(%{type: "dialogue"} = node, state, connections, _nodes) do
     data = node.data || %{}
     label = node_label(node)
 
-    # 1. Evaluate input_condition if present
-    {state, _input_ok} = evaluate_input_condition(data, state, node.id, label)
+    # 1. Evaluate input_condition if present (logs warning if failed)
+    state = evaluate_input_condition(data, state, node.id, label)
 
     # 2. Execute output_instruction if present
     state = execute_output_instruction(data, state, node.id, label)
@@ -586,24 +673,21 @@ defmodule Storyarn.Flows.Evaluator.Engine do
       {result, rule_results} = ConditionEval.evaluate_string(input_condition, state.variables)
 
       if result do
-        {state, true}
+        state
       else
         detail = format_rule_summary(rule_results)
 
-        state =
-          add_console_with_rules(
-            state,
-            :warning,
-            node_id,
-            label,
-            "Input condition failed#{detail}",
-            rule_results
-          )
-
-        {state, false}
+        add_console_with_rules(
+          state,
+          :warning,
+          node_id,
+          label,
+          "Input condition failed#{detail}",
+          rule_results
+        )
       end
     else
-      {state, true}
+      state
     end
   end
 
@@ -693,17 +777,22 @@ defmodule Storyarn.Flows.Evaluator.Engine do
   # =============================================================================
 
   defp advance_to(state, target_node_id) do
+    log_entry = %{node_id: target_node_id, depth: length(state.call_stack)}
+
     {:ok,
      %{
        state
        | current_node_id: target_node_id,
          status: :paused,
          pending_choices: nil,
-         execution_path: state.execution_path ++ [target_node_id]
+         execution_path: [target_node_id | state.execution_path],
+         execution_log: [log_entry | state.execution_log]
      }}
   end
 
   defp follow_output(state, node_id, label, connections) do
+    # Check both pin names: "default" is canonical, "output" is legacy.
+    # Some older flows may use "output" as the pin name.
     conn =
       find_connection(connections, node_id, "default") ||
         find_connection(connections, node_id, "output")
@@ -722,10 +811,14 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     snapshot = %{
       node_id: state.current_node_id,
       variables: state.variables,
+      previous_variables: state.previous_variables,
       execution_path: state.execution_path,
+      execution_log: state.execution_log,
       pending_choices: state.pending_choices,
       status: state.status,
-      history: state.history
+      history: state.history,
+      call_stack: state.call_stack,
+      current_flow_id: state.current_flow_id
     }
 
     %{state | snapshots: [snapshot | state.snapshots]}
@@ -746,14 +839,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
   end
 
   defp node_label(%{data: %{"text" => text}}) when is_binary(text) and text != "" do
-    text
-    |> String.replace(~r/<[^>]*>/, "")
-    |> String.trim()
-    |> String.slice(0, 40)
-    |> case do
-      "" -> nil
-      clean -> clean
-    end
+    Helpers.strip_html(text, 40)
   end
 
   defp node_label(_node), do: nil
@@ -768,7 +854,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
       rule_details: nil
     }
 
-    %{state | console: state.console ++ [entry]}
+    %{state | console: [entry | state.console]}
   end
 
   defp add_console_with_rules(state, level, node_id, node_label, message, rule_details) do
@@ -781,7 +867,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
       rule_details: rule_details
     }
 
-    %{state | console: state.console ++ [entry]}
+    %{state | console: [entry | state.console]}
   end
 
   defp elapsed_ms(%{started_at: nil}), do: 0
@@ -819,10 +905,8 @@ defmodule Storyarn.Flows.Evaluator.Engine do
         }
       end)
 
-    %{state | history: state.history ++ entries}
+    %{state | history: Enum.reverse(entries) ++ state.history}
   end
 
-  defp format_value(nil), do: "nil"
-  defp format_value(v) when is_binary(v), do: v
-  defp format_value(v), do: inspect(v)
+  defp format_value(value), do: Helpers.format_value(value)
 end

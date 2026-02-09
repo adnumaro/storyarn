@@ -18,13 +18,21 @@ import { AreaExtensions } from "rete-area-plugin";
 
 /**
  * Finds the storyarn-node DOM element for a given Rete node ID.
+ * Uses a cache for fast repeated lookups; falls back to DOM scan.
  * @param {HTMLElement} container - The flow canvas container element
  * @param {string} reteId - The Rete node ID (e.g. "node-5")
+ * @param {Map} cache - Element cache (reteId -> element)
  * @returns {HTMLElement|null}
  */
-function findNodeElement(container, reteId) {
-  for (const el of container.querySelectorAll("storyarn-node")) {
-    if (el.data?.id === reteId) return el;
+function findNodeElement(container, reteId, cache) {
+  let el = cache.get(reteId);
+  if (el && el.isConnected) return el;
+
+  for (const candidate of container.querySelectorAll("storyarn-node")) {
+    if (candidate.data?.id === reteId) {
+      cache.set(reteId, candidate);
+      return candidate;
+    }
   }
   return null;
 }
@@ -40,6 +48,8 @@ export function createDebugHandler(hook) {
   let breakpointEls = new Set();
   let activeConnView = null;
   let visitedConnViews = new Set();
+  let nodeElCache = new Map();
+  let lastPathLength = 0;
 
   return {
     /**
@@ -53,28 +63,31 @@ export function createDebugHandler(hook) {
 
       // 1. Remove previous "current" highlight
       if (currentEl) {
-        currentEl.classList.remove("debug-current", "debug-waiting");
+        currentEl.classList.remove("debug-current", "debug-waiting", "debug-error");
         // Keep debug-visited on it since it was visited
         currentEl.classList.add("debug-visited");
       }
 
-      // 2. Mark all nodes in execution path as visited
-      for (const dbId of execution_path || []) {
+      // 2. Mark only NEW nodes in execution path as visited (skip already-processed)
+      const path = execution_path || [];
+      for (let i = lastPathLength; i < path.length; i++) {
+        const dbId = path[i];
         const reteNode = hook.nodeMap.get(dbId);
         if (!reteNode) continue;
 
-        const el = findNodeElement(hook.el, reteNode.id);
+        const el = findNodeElement(hook.el, reteNode.id, nodeElCache);
         if (!el || visitedEls.has(el)) continue;
 
         el.classList.add("debug-visited");
         visitedEls.add(el);
       }
+      lastPathLength = path.length;
 
       // 3. Highlight current node
       const currentNode = hook.nodeMap.get(node_id);
       if (!currentNode) return;
 
-      const el = findNodeElement(hook.el, currentNode.id);
+      const el = findNodeElement(hook.el, currentNode.id, nodeElCache);
       if (!el) return;
 
       // Remove visited style on current (current takes precedence)
@@ -82,6 +95,8 @@ export function createDebugHandler(hook) {
 
       if (status === "waiting_input") {
         el.classList.add("debug-waiting");
+      } else if (status === "error") {
+        el.classList.add("debug-error");
       } else if (status === "finished") {
         el.classList.add("debug-current");
         // No pulsing for finished — just a static highlight
@@ -161,7 +176,7 @@ export function createDebugHandler(hook) {
         const reteNode = hook.nodeMap.get(dbId);
         if (!reteNode) continue;
 
-        const el = findNodeElement(hook.el, reteNode.id);
+        const el = findNodeElement(hook.el, reteNode.id, nodeElCache);
         if (!el) continue;
 
         el.classList.add("debug-breakpoint");
@@ -175,7 +190,7 @@ export function createDebugHandler(hook) {
     handleClearHighlights() {
       // Clear current node
       if (currentEl) {
-        currentEl.classList.remove("debug-current", "debug-waiting");
+        currentEl.classList.remove("debug-current", "debug-waiting", "debug-error");
         currentEl = null;
       }
 
@@ -202,6 +217,10 @@ export function createDebugHandler(hook) {
         clearConnDebugProps(el);
       }
       visitedConnViews = new Set();
+
+      // Reset caches
+      nodeElCache.clear();
+      lastPathLength = 0;
     },
 
     /**

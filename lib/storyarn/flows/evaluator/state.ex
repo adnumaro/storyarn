@@ -10,7 +10,7 @@ defmodule Storyarn.Flows.Evaluator.State do
   Sessions are not persisted. Closing the debug panel discards all state.
   """
 
-  @type status :: :paused | :running | :waiting_input | :finished
+  @type status :: :paused | :waiting_input | :finished
 
   @type variable :: %{
           value: any(),
@@ -42,13 +42,30 @@ defmodule Storyarn.Flows.Evaluator.State do
           source: :instruction | :user_override
         }
 
+  @type flow_frame :: %{
+          flow_id: integer(),
+          return_node_id: integer(),
+          nodes: map(),
+          connections: list(),
+          execution_path: [integer()]
+        }
+
+  @type execution_log_entry :: %{
+          node_id: integer(),
+          depth: non_neg_integer()
+        }
+
   @type snapshot :: %{
           node_id: integer(),
           variables: %{String.t() => variable()},
+          previous_variables: %{String.t() => variable()},
           execution_path: [integer()],
+          execution_log: [execution_log_entry()],
           pending_choices: map() | nil,
           status: status(),
-          history: [history_entry()]
+          history: [history_entry()],
+          call_stack: [flow_frame()],
+          current_flow_id: integer() | nil
         }
 
   @type t :: %__MODULE__{
@@ -62,11 +79,14 @@ defmodule Storyarn.Flows.Evaluator.State do
           history: [history_entry()],
           console: [console_entry()],
           execution_path: [integer()],
+          execution_log: [execution_log_entry()],
           pending_choices: map() | nil,
           step_count: non_neg_integer(),
           max_steps: non_neg_integer(),
           started_at: integer() | nil,
-          breakpoints: MapSet.t(integer())
+          breakpoints: MapSet.t(integer()),
+          call_stack: [flow_frame()],
+          current_flow_id: integer() | nil
         }
 
   defstruct [
@@ -81,9 +101,12 @@ defmodule Storyarn.Flows.Evaluator.State do
     history: [],
     console: [],
     execution_path: [],
+    execution_log: [],
     pending_choices: nil,
     step_count: 0,
     max_steps: 500,
-    breakpoints: MapSet.new()
+    breakpoints: MapSet.new(),
+    call_stack: [],
+    current_flow_id: nil
   ]
 end

@@ -41,8 +41,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       debug_connections: [],
       debug_speed: 800,
       debug_auto_playing: false,
+      debug_auto_timer: nil,
       debug_active_tab: "console",
-      debug_panel_open: true
+      debug_panel_open: true,
+      debug_editing_var: nil,
+      debug_var_filter: "",
+      debug_var_changed_only: false,
+      current_scope: %{user: %{id: 1}},
+      project: %{id: 1, slug: "test-project"},
+      workspace: %{slug: "test-workspace"},
+      flow: %{id: 1, name: "Test Flow"}
     }
 
     assigns = Map.merge(defaults, overrides)
@@ -536,6 +544,173 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
   end
 
   # ===========================================================================
+  # Cross-flow: flow_return via handle_debug_step
+  # ===========================================================================
+
+  describe "handle_debug_step with flow_return" do
+    test "stores debug state and navigates on caller_return" do
+      # Parent flow: entry(1) -> subflow(2) -> exit(3)
+      parent_nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "subflow", %{"referenced_flow_id" => 42}),
+        3 => node(3, "exit")
+      }
+
+      parent_conns = [conn(1, "default", 2), conn(2, "default", 3)]
+
+      # Sub-flow: entry(10) -> exit(11, caller_return)
+      sub_nodes = %{
+        10 => node(10, "entry"),
+        11 => node(11, "exit", %{"exit_mode" => "caller_return"})
+      }
+
+      sub_conns = [conn(10, "default", 11)]
+
+      # State is at exit node 11 (caller_return) in the sub-flow, with parent on call stack
+      state = Engine.init(%{}, 10)
+      state = Engine.push_flow_context(state, 2, parent_nodes, parent_conns)
+      state = %{state | current_flow_id: 42}
+
+      # Step through entry to get to exit
+      {:ok, state} = Engine.step(state, sub_nodes, sub_conns)
+      assert state.current_node_id == 11
+
+      socket =
+        build_socket(%{
+          debug_state: state,
+          debug_nodes: sub_nodes,
+          debug_connections: sub_conns
+        })
+
+      # Step at exit(caller_return) → flow_return → stores and navigates
+      {:noreply, result} = DebugHandlers.handle_debug_step(socket)
+
+      # Socket should have a navigation redirect set
+      assert result.redirected
+
+      # Stored debug state should have parent flow data restored
+      stored = Storyarn.Flows.DebugSessionStore.take({1, 1})
+      assert stored.debug_nodes == parent_nodes
+      assert stored.debug_connections == parent_conns
+      assert stored.debug_state.current_node_id == 3
+      assert stored.debug_state.call_stack == []
+    end
+
+    test "advances to correct next node after return" do
+      # Parent: entry(1) -> subflow(2) -> hub(3) -> exit(4)
+      parent_nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "subflow", %{"referenced_flow_id" => 42}),
+        3 => node(3, "hub"),
+        4 => node(4, "exit")
+      }
+
+      parent_conns = [conn(1, "default", 2), conn(2, "default", 3), conn(3, "default", 4)]
+
+      # Sub-flow at exit node with caller_return
+      sub_nodes = %{
+        10 => node(10, "exit", %{"exit_mode" => "caller_return"})
+      }
+
+      state = Engine.init(%{}, 10)
+      state = Engine.push_flow_context(state, 2, parent_nodes, parent_conns)
+      state = %{state | current_flow_id: 42}
+
+      socket =
+        build_socket(%{
+          debug_state: state,
+          debug_nodes: sub_nodes,
+          debug_connections: []
+        })
+
+      {:noreply, _result} = DebugHandlers.handle_debug_step(socket)
+
+      # Verify stored state has correct next node
+      stored = Storyarn.Flows.DebugSessionStore.take({1, 1})
+      assert stored.debug_state.current_node_id == 3
+      assert stored.debug_state.current_flow_id == nil
+    end
+
+    test "finishes when return node has no outgoing connection" do
+      # Parent flow: entry(1) -> subflow(2) (no connection from subflow)
+      parent_nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "subflow", %{"referenced_flow_id" => 42})
+      }
+
+      parent_conns = [conn(1, "default", 2)]
+
+      sub_nodes = %{
+        10 => node(10, "exit", %{"exit_mode" => "caller_return"})
+      }
+
+      state = Engine.init(%{}, 10)
+      state = Engine.push_flow_context(state, 2, parent_nodes, parent_conns)
+      state = %{state | current_flow_id: 42}
+
+      socket =
+        build_socket(%{
+          debug_state: state,
+          debug_nodes: sub_nodes,
+          debug_connections: []
+        })
+
+      {:noreply, _result} = DebugHandlers.handle_debug_step(socket)
+
+      stored = Storyarn.Flows.DebugSessionStore.take({1, 1})
+      assert stored.debug_state.status == :finished
+    end
+
+    test "nested return restores correct parent context" do
+      # Grandparent flow: entry(1) -> subflow_A(2) -> exit(3)
+      gp_nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "subflow", %{"referenced_flow_id" => 10}),
+        3 => node(3, "exit")
+      }
+
+      gp_conns = [conn(1, "default", 2), conn(2, "default", 3)]
+
+      # Parent flow: entry(10) -> subflow_B(11) -> exit(12)
+      parent_nodes = %{
+        10 => node(10, "entry"),
+        11 => node(11, "subflow", %{"referenced_flow_id" => 20}),
+        12 => node(12, "exit")
+      }
+
+      parent_conns = [conn(10, "default", 11), conn(11, "default", 12)]
+
+      # Current (child) flow at exit with caller_return
+      child_nodes = %{
+        20 => node(20, "exit", %{"exit_mode" => "caller_return"})
+      }
+
+      # Build state: grandparent pushed first, then parent
+      state = Engine.init(%{}, 20)
+      state = Engine.push_flow_context(state, 2, gp_nodes, gp_conns)
+      state = Engine.push_flow_context(state, 11, parent_nodes, parent_conns)
+      state = %{state | current_flow_id: 20}
+
+      socket =
+        build_socket(%{
+          debug_state: state,
+          debug_nodes: child_nodes,
+          debug_connections: []
+        })
+
+      # First return: back to parent flow
+      {:noreply, _result} = DebugHandlers.handle_debug_step(socket)
+
+      stored = Storyarn.Flows.DebugSessionStore.take({1, 1})
+      assert stored.debug_nodes == parent_nodes
+      assert stored.debug_connections == parent_conns
+      assert stored.debug_state.current_node_id == 12
+      # Still has grandparent on stack
+      assert length(stored.debug_state.call_stack) == 1
+    end
+  end
+
+  # ===========================================================================
   # handle_debug_change_start_node/2
   # ===========================================================================
 
@@ -562,7 +737,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
 
       assert result.assigns.debug_state.start_node_id == 2
       assert result.assigns.debug_state.current_node_id == 2
-      assert result.assigns.debug_state.execution_path == [2]
+      assert Enum.reverse(result.assigns.debug_state.execution_path) == [2]
       assert result.assigns.debug_state.step_count == 0
       assert result.assigns.debug_auto_playing == false
     end

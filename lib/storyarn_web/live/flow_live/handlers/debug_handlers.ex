@@ -8,11 +8,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
   """
 
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
+  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, put_flash: 3]
 
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Flows
+  alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.Evaluator.Engine
   alias Storyarn.Sheets
 
@@ -57,18 +58,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
     nodes = socket.assigns.debug_nodes
     connections = socket.assigns.debug_connections
 
-    case Engine.step(state, nodes, connections) do
-      {_status, new_state} ->
-        {:noreply,
-         socket
-         |> assign(:debug_state, new_state)
-         |> push_debug_canvas(new_state)}
+    result = Engine.step(state, nodes, connections)
 
-      {:error, new_state, _reason} ->
-        {:noreply,
-         socket
-         |> assign(:debug_state, new_state)
-         |> push_debug_canvas(new_state)}
+    case apply_step_result(result, socket) do
+      {:navigating, socket} ->
+        {:noreply, socket}
+
+      {:continue, socket} ->
+        {:noreply, push_debug_canvas(socket, socket.assigns.debug_state)}
     end
   end
 
@@ -98,10 +95,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
           |> assign(:debug_state, new_state)
           |> push_debug_canvas(new_state)
 
-        if socket.assigns.debug_auto_playing do
-          speed = socket.assigns.debug_speed
-          Process.send_after(self(), :debug_auto_step, speed)
-        end
+        socket =
+          if socket.assigns.debug_auto_playing do
+            schedule_auto_step(socket)
+          else
+            socket
+          end
 
         {:noreply, socket}
 
@@ -115,19 +114,42 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
 
   def handle_debug_reset(socket) do
     state = socket.assigns.debug_state
-    new_state = Engine.reset(state)
 
-    {:noreply,
-     socket
-     |> assign(:debug_state, new_state)
-     |> assign(:debug_auto_playing, false)
-     |> push_event("debug_clear_highlights", %{})
-     |> push_debug_canvas(new_state)}
+    if state.call_stack != [] do
+      # Navigate back to root flow when resetting from a sub-flow
+      root_frame = List.last(state.call_stack)
+      root_flow_id = root_frame.flow_id
+
+      new_state = Engine.reset(state)
+      new_state = %{new_state | current_flow_id: root_flow_id}
+
+      socket =
+        socket
+        |> cancel_auto_timer()
+        |> assign(:debug_state, new_state)
+        |> assign(:debug_nodes, root_frame.nodes)
+        |> assign(:debug_connections, root_frame.connections)
+        |> assign(:debug_auto_playing, false)
+
+      {:navigating, socket} = store_and_navigate(socket, root_flow_id)
+      {:noreply, socket}
+    else
+      new_state = Engine.reset(state)
+
+      {:noreply,
+       socket
+       |> cancel_auto_timer()
+       |> assign(:debug_state, new_state)
+       |> assign(:debug_auto_playing, false)
+       |> push_event("debug_clear_highlights", %{})
+       |> push_debug_canvas(new_state)}
+    end
   end
 
   def handle_debug_stop(socket) do
     {:noreply,
      socket
+     |> cancel_auto_timer()
      |> assign(:debug_state, nil)
      |> assign(:debug_panel_open, false)
      |> assign(:debug_auto_playing, false)
@@ -141,14 +163,19 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
   end
 
   def handle_debug_play(socket) do
-    speed = socket.assigns.debug_speed
-    Process.send_after(self(), :debug_auto_step, speed)
+    socket =
+      socket
+      |> assign(:debug_auto_playing, true)
+      |> schedule_auto_step()
 
-    {:noreply, assign(socket, :debug_auto_playing, true)}
+    {:noreply, socket}
   end
 
   def handle_debug_pause(socket) do
-    {:noreply, assign(socket, :debug_auto_playing, false)}
+    {:noreply,
+     socket
+     |> cancel_auto_timer()
+     |> assign(:debug_auto_playing, false)}
   end
 
   def handle_debug_set_speed(%{"speed" => speed_str}, socket) do
@@ -167,7 +194,15 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
   def handle_debug_set_variable(%{"key" => key, "value" => raw_value}, socket) do
     state = socket.assigns.debug_state
     block_type = get_in(state.variables, [key, :block_type])
-    parsed = parse_variable_value(raw_value, block_type)
+    {parsed, parse_warning} = parse_variable_value(raw_value, block_type)
+
+    # Add console warning if value didn't parse cleanly
+    state =
+      if parse_warning do
+        Engine.add_console_entry(state, :warning, nil, "", parse_warning)
+      else
+        state
+      end
 
     case Engine.set_variable(state, key, parsed) do
       {:ok, new_state} ->
@@ -221,11 +256,18 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
         nodes = socket.assigns.debug_nodes
         connections = socket.assigns.debug_connections
 
-        case Engine.step(state, nodes, connections) do
-          {status, new_state} ->
-            # Check if we hit a breakpoint
+        result = Engine.step(state, nodes, connections)
+
+        case apply_step_result(result, socket) do
+          {:navigating, socket} ->
+            {:noreply, socket}
+
+          {:continue, socket} ->
+            new_state = socket.assigns.debug_state
+
+            # Check if we hit a breakpoint (only if not finished/waiting)
             {new_state, hit_breakpoint} =
-              if status not in [:finished, :waiting_input] and
+              if new_state.status not in [:finished, :waiting_input] and
                    Engine.at_breakpoint?(new_state) do
                 {Engine.add_breakpoint_hit(new_state, new_state.current_node_id), true}
               else
@@ -241,25 +283,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
               hit_breakpoint ->
                 {:noreply, assign(socket, :debug_auto_playing, false)}
 
-              status == :finished ->
+              new_state.status == :finished ->
                 {:noreply, assign(socket, :debug_auto_playing, false)}
 
-              status == :waiting_input ->
+              new_state.status == :waiting_input ->
                 # Keep auto-play active, wait for user to choose a response
                 {:noreply, socket}
 
               true ->
-                speed = socket.assigns.debug_speed
-                Process.send_after(self(), :debug_auto_step, speed)
-                {:noreply, socket}
+                {:noreply, schedule_auto_step(socket)}
             end
-
-          {:error, new_state, _reason} ->
-            {:noreply,
-             socket
-             |> assign(:debug_state, new_state)
-             |> assign(:debug_auto_playing, false)
-             |> push_debug_canvas(new_state)}
         end
     end
   end
@@ -282,6 +315,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
       entry_node_id ->
         variables = build_variables(project.id)
         state = Engine.init(variables, entry_node_id)
+        state = %{state | current_flow_id: flow.id}
 
         {:noreply,
          socket
@@ -292,6 +326,121 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
          |> assign(:debug_connections, connections)
          |> push_debug_canvas(state)}
     end
+  end
+
+  # ===========================================================================
+  # Private — step result handling (cross-flow transitions)
+  # ===========================================================================
+
+  # Updates socket assigns based on Engine.step result.
+  # Returns {:continue, socket} for normal steps, {:navigating, socket} for cross-flow.
+  defp apply_step_result({:flow_jump, state, target_flow_id}, socket) do
+    current_node_id = state.current_node_id
+    nodes = socket.assigns.debug_nodes
+    connections = socket.assigns.debug_connections
+    flow_name = socket.assigns.flow.name
+
+    state = Engine.push_flow_context(state, current_node_id, nodes, connections, flow_name)
+
+    target_nodes = build_nodes_map(target_flow_id)
+    target_connections = build_connections(target_flow_id)
+
+    case find_entry_node(target_nodes) do
+      nil ->
+        {:continue, assign(socket, :debug_state, %{state | status: :finished})}
+
+      entry_id ->
+        log_entry = %{node_id: entry_id, depth: length(state.call_stack)}
+
+        state = %{
+          state
+          | current_node_id: entry_id,
+            current_flow_id: target_flow_id,
+            execution_path: [entry_id | state.execution_path],
+            execution_log: [log_entry | state.execution_log]
+        }
+
+        socket =
+          socket
+          |> assign(:debug_state, state)
+          |> assign(:debug_nodes, target_nodes)
+          |> assign(:debug_connections, target_connections)
+
+        store_and_navigate(socket, target_flow_id)
+    end
+  end
+
+  defp apply_step_result({:flow_return, state}, socket) do
+    case Engine.pop_flow_context(state) do
+      {:error, :empty_stack} ->
+        {:continue, assign(socket, :debug_state, %{state | status: :finished})}
+
+      {:ok, frame, state} ->
+        state = %{state | current_flow_id: frame.flow_id}
+
+        # Find next node after the return node in restored connections
+        next_conn =
+          Enum.find(frame.connections, fn c ->
+            c.source_node_id == frame.return_node_id
+          end)
+
+        state =
+          if next_conn do
+            log_entry = %{node_id: next_conn.target_node_id, depth: length(state.call_stack)}
+
+            %{
+              state
+              | current_node_id: next_conn.target_node_id,
+                execution_path: [next_conn.target_node_id | frame.execution_path],
+                execution_log: [log_entry | state.execution_log]
+            }
+          else
+            %{state | status: :finished}
+          end
+
+        socket =
+          socket
+          |> assign(:debug_state, state)
+          |> assign(:debug_nodes, frame.nodes)
+          |> assign(:debug_connections, frame.connections)
+
+        store_and_navigate(socket, frame.flow_id)
+    end
+  end
+
+  defp apply_step_result({_status, state}, socket) do
+    {:continue, assign(socket, :debug_state, state)}
+  end
+
+  defp apply_step_result({:error, state, _reason}, socket) do
+    {:continue, assign(socket, :debug_state, state)}
+  end
+
+  defp store_and_navigate(socket, target_flow_id) do
+    user_id = socket.assigns.current_scope.user.id
+    project_id = socket.assigns.project.id
+    workspace_slug = socket.assigns.workspace.slug
+    project_slug = socket.assigns.project.slug
+
+    debug_assigns = %{
+      debug_state: socket.assigns.debug_state,
+      debug_nodes: socket.assigns.debug_nodes,
+      debug_connections: socket.assigns.debug_connections,
+      debug_panel_open: true,
+      debug_active_tab: socket.assigns.debug_active_tab,
+      debug_speed: socket.assigns.debug_speed,
+      debug_auto_playing: socket.assigns.debug_auto_playing,
+      debug_editing_var: nil,
+      debug_var_filter: socket.assigns.debug_var_filter,
+      debug_var_changed_only: socket.assigns.debug_var_changed_only
+    }
+
+    DebugSessionStore.store({user_id, project_id}, debug_assigns)
+
+    path =
+      "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{target_flow_id}"
+
+    {:navigating, push_navigate(socket, to: path)}
   end
 
   # ===========================================================================
@@ -350,23 +499,32 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
   # ===========================================================================
 
   defp push_debug_canvas(socket, state) do
-    active_connection = find_active_connection(state, socket.assigns.debug_connections)
+    # execution_path is stored in newest-first order; reverse for display
+    path = Enum.reverse(state.execution_path)
+    active_connection = find_active_connection(path, socket.assigns.debug_connections)
+
+    # Show "error" status when current node has an error console entry
+    status_str =
+      if state.status == :finished and
+           Enum.any?(state.console, &(&1.level == :error and &1.node_id == state.current_node_id)) do
+        "error"
+      else
+        to_string(state.status)
+      end
 
     socket
     |> push_event("debug_highlight_node", %{
       node_id: state.current_node_id,
-      status: to_string(state.status),
-      execution_path: state.execution_path
+      status: status_str,
+      execution_path: path
     })
     |> push_event("debug_highlight_connections", %{
       active_connection: active_connection,
-      execution_path: state.execution_path
+      execution_path: path
     })
   end
 
-  defp find_active_connection(state, connections) do
-    path = state.execution_path
-
+  defp find_active_connection(path, connections) do
     case path do
       [] ->
         nil
@@ -398,12 +556,40 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
 
   defp parse_variable_value(raw, "number") do
     case Float.parse(raw) do
-      {n, _} -> n
-      :error -> 0
+      {n, _} ->
+        {n, nil}
+
+      :error ->
+        warning =
+          if raw != "",
+            do: "Invalid number \"#{String.slice(raw, 0, 20)}\", using 0",
+            else: nil
+
+        {0, warning}
     end
   end
 
-  defp parse_variable_value("true", "boolean"), do: true
-  defp parse_variable_value(_, "boolean"), do: false
-  defp parse_variable_value(raw, _), do: raw
+  defp parse_variable_value("true", "boolean"), do: {true, nil}
+  defp parse_variable_value(_, "boolean"), do: {false, nil}
+  defp parse_variable_value(raw, _), do: {raw, nil}
+
+  # ===========================================================================
+  # Private — auto-play timer management
+  # ===========================================================================
+
+  defp schedule_auto_step(socket) do
+    socket = cancel_auto_timer(socket)
+    speed = socket.assigns.debug_speed
+    ref = Process.send_after(self(), :debug_auto_step, speed)
+    assign(socket, :debug_auto_timer, ref)
+  end
+
+  defp cancel_auto_timer(socket) do
+    case socket.assigns[:debug_auto_timer] do
+      nil -> socket
+      ref ->
+        Process.cancel_timer(ref)
+        assign(socket, :debug_auto_timer, nil)
+    end
+  end
 end

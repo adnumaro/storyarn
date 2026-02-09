@@ -23,17 +23,17 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 
 ## Implementation Status
 
-| Phase | Name | Priority | Status |
-|-------|------|----------|--------|
-| 1 | Database & Context | Essential | Pending |
-| 2 | Sidebar & Navigation | Essential | Pending |
-| 3 | Screenplay Editor (Core Blocks) | Essential | Pending |
-| 4 | Slash Command System | Essential | Pending |
-| 5 | Interactive Blocks (Condition/Instruction/Response) | Essential | Pending |
-| 6 | Flow Sync — Screenplay → Flow | Essential | Pending |
-| 7 | Flow Sync — Flow → Screenplay | Essential | Pending |
-| 8 | Dual Dialogue & Advanced Formatting | Important | Pending |
-| 9 | Title Page & Export | Nice to Have | Pending |
+| Phase   | Name                                                | Priority     | Status   |
+|---------|-----------------------------------------------------|--------------|----------|
+| 1       | Database & Context                                  | Essential    | Pending  |
+| 2       | Sidebar & Navigation                                | Essential    | Pending  |
+| 3       | Screenplay Editor (Core Blocks)                     | Essential    | Pending  |
+| 4       | Slash Command System                                | Essential    | Pending  |
+| 5       | Interactive Blocks (Condition/Instruction/Response) | Essential    | Pending  |
+| 6       | Flow Sync — Screenplay → Flow                       | Essential    | Pending  |
+| 7       | Flow Sync — Flow → Screenplay                       | Essential    | Pending  |
+| 8       | Dual Dialogue & Advanced Formatting                 | Important    | Pending  |
+| 9       | Title Page & Export                                 | Nice to Have | Pending  |
 
 ---
 

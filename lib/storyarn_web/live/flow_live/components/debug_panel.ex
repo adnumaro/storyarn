@@ -14,6 +14,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
 
   import StoryarnWeb.Components.CoreComponents
 
+  alias Storyarn.Flows.Evaluator.Helpers, as: EvalHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   # ===========================================================================
@@ -28,6 +29,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   attr :debug_editing_var, :string, default: nil
   attr :debug_var_filter, :string, default: ""
   attr :debug_var_changed_only, :boolean, default: false
+  attr :debug_current_flow_name, :string, default: nil
 
   def debug_panel(assigns) do
     ~H"""
@@ -37,6 +39,18 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
         data-resize-handle
         class="h-1 cursor-row-resize bg-transparent hover:bg-accent/30 transition-colors shrink-0"
       ></div>
+      <%!-- Breadcrumb bar (sub-flow indicator) --%>
+      <div
+        :if={@debug_state.call_stack != []}
+        class="flex items-center gap-1.5 px-3 py-1 bg-info/10 border-b border-info/20 text-xs text-info shrink-0"
+      >
+        <.icon name="layers" class="size-3 shrink-0" />
+        <span :for={frame <- Enum.reverse(@debug_state.call_stack)} class="flex items-center gap-1">
+          <span class="text-info/60">{frame[:flow_name] || gettext("Flow")}</span>
+          <.icon name="chevron-right" class="size-2.5 text-info/40" />
+        </span>
+        <span class="font-medium">{@debug_current_flow_name || gettext("Current")}</span>
+      </div>
       <%!-- Controls bar --%>
       <div class="flex items-center gap-2 px-3 py-1.5 border-b border-base-300 shrink-0">
         <div class="flex items-center gap-0.5">
@@ -194,6 +208,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
         />
         <.path_tab
           :if={@debug_active_tab == "path"}
+          execution_log={@debug_state.execution_log}
           execution_path={@debug_state.execution_path}
           console={@debug_state.console}
           debug_nodes={@debug_nodes}
@@ -244,17 +259,9 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   defp start_node_label(node, id) do
     type_label = String.capitalize(node.type)
     data = node.data || %{}
-    text = data["text"]
+    name = EvalHelpers.strip_html(data["text"], 20)
 
-    name =
-      if is_binary(text) and text != "" do
-        text
-        |> String.replace(~r/<[^>]+>/, "")
-        |> String.trim()
-        |> String.slice(0, 20)
-      end
-
-    if name && name != "" do
+    if name do
       "#{type_label}: #{name}"
     else
       "#{type_label} ##{id}"
@@ -270,6 +277,8 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   attr :status, :atom, required: true
 
   defp console_tab(assigns) do
+    assigns = Phoenix.Component.assign(assigns, :console, Enum.reverse(assigns.console))
+
     ~H"""
     <div class="font-mono text-xs">
       <div
@@ -289,7 +298,15 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
         >
           {entry.node_label}
         </span>
-        <span class="flex-1 break-all">{entry.message}</span>
+        <span class="flex-1 break-all">
+          {entry.message}
+          <div :if={entry.rule_details && entry.rule_details != []} class="mt-0.5">
+            <div :for={rule <- entry.rule_details} class="text-[10px] text-base-content/40">
+              {rule.variable_ref} {rule.operator} {rule.expected_value}
+              → {if rule.passed, do: "pass", else: "fail"} (actual: {format_value(rule.actual_value)})
+            </div>
+          </div>
+        </span>
       </div>
 
       <%!-- Response choices --%>
@@ -490,6 +507,8 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   attr :history, :list, required: true
 
   defp history_tab(assigns) do
+    assigns = Phoenix.Component.assign(assigns, :history, Enum.reverse(assigns.history))
+
     ~H"""
     <div class="text-xs">
       <table :if={@history != []} class="table table-xs table-pin-rows">
@@ -541,13 +560,23 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   # Path tab
   # ===========================================================================
 
+  attr :execution_log, :list, default: []
   attr :execution_path, :list, required: true
   attr :console, :list, required: true
   attr :debug_nodes, :map, required: true
   attr :breakpoints, :any, default: MapSet.new()
 
   defp path_tab(assigns) do
-    entries = build_path_entries(assigns.execution_path, assigns.debug_nodes, assigns.console)
+    log =
+      if assigns.execution_log != [] do
+        Enum.reverse(assigns.execution_log)
+      else
+        Enum.reverse(assigns.execution_path)
+        |> Enum.map(fn node_id -> %{node_id: node_id, depth: 0} end)
+      end
+
+    console = Enum.reverse(assigns.console)
+    entries = build_path_entries(log, assigns.debug_nodes, console)
     assigns = Phoenix.Component.assign(assigns, :entries, entries)
 
     ~H"""
@@ -555,53 +584,88 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
       <div :if={@entries == []} class="flex items-center justify-center h-24 text-base-content/30">
         {gettext("No steps yet")}
       </div>
-      <div
-        :for={entry <- @entries}
-        class={[
-          "flex items-center gap-2 px-3 py-1",
-          if(entry.is_current, do: "text-primary font-bold bg-primary/5", else: "hover:bg-base-200")
-        ]}
-      >
-        <button
-          type="button"
-          class="shrink-0 flex items-center justify-center w-3 h-3"
-          phx-click="debug_toggle_breakpoint"
-          phx-value-node_id={entry.node_id}
-          title={if MapSet.member?(@breakpoints, entry.node_id), do: gettext("Remove breakpoint"), else: gettext("Set breakpoint")}
+      <div :for={entry <- @entries} class="contents">
+        <%!-- Flow separator --%>
+        <div
+          :if={entry[:separator]}
+          class="flex items-center gap-2 px-3 py-0.5 text-info/50 select-none"
         >
-          <span class={[
-            "block rounded-full",
-            if(MapSet.member?(@breakpoints, entry.node_id),
-              do: "w-2.5 h-2.5 bg-error",
-              else: "w-2 h-2 border border-base-content/20 hover:border-error/50"
-            )
-          ]}></span>
-        </button>
-        <span class="text-base-content/30 w-5 text-right tabular-nums shrink-0 select-none">
-          {entry.step}
-        </span>
-        <.icon name={path_icon(entry.type)} class="size-3 shrink-0 opacity-60" />
-        <span :if={entry.label} class="truncate max-w-32">
-          {entry.label}
-        </span>
-        <span class="text-base-content/30 shrink-0">→</span>
-        <span class="truncate flex-1 text-base-content/50 font-normal">
-          {entry.outcome || ""}
-        </span>
+          <div class="flex-1 border-t border-info/20"></div>
+          <.icon
+            name={if entry.direction == :enter, do: "arrow-down-right", else: "arrow-up-left"}
+            class="size-3"
+          />
+          <span class="text-[10px]">
+            {if entry.direction == :enter, do: gettext("Entering sub-flow"), else: gettext("Returned to parent")}
+          </span>
+          <div class="flex-1 border-t border-info/20"></div>
+        </div>
+        <%!-- Normal path entry --%>
+        <div
+          :if={!entry[:separator]}
+          class={[
+            "flex items-center gap-2 py-1 pr-3",
+            if(entry.is_current, do: "text-primary font-bold bg-primary/5", else: "hover:bg-base-200")
+          ]}
+          style={"padding-left: #{12 + entry.depth * 16}px"}
+        >
+          <button
+            type="button"
+            class="shrink-0 flex items-center justify-center w-3 h-3"
+            phx-click="debug_toggle_breakpoint"
+            phx-value-node_id={entry.node_id}
+            title={if MapSet.member?(@breakpoints, entry.node_id), do: gettext("Remove breakpoint"), else: gettext("Set breakpoint")}
+          >
+            <span class={[
+              "block rounded-full",
+              if(MapSet.member?(@breakpoints, entry.node_id),
+                do: "w-2.5 h-2.5 bg-error",
+                else: "w-2 h-2 border border-base-content/20 hover:border-error/50"
+              )
+            ]}></span>
+          </button>
+          <span class="text-base-content/30 w-5 text-right tabular-nums shrink-0 select-none">
+            {entry.step}
+          </span>
+          <.icon name={path_icon(entry.type)} class="size-3 shrink-0 opacity-60" />
+          <span :if={entry.label} class="truncate max-w-32">
+            {entry.label}
+          </span>
+          <span class="text-base-content/30 shrink-0">→</span>
+          <span class="truncate flex-1 text-base-content/50 font-normal">
+            {entry.outcome || ""}
+          </span>
+        </div>
       </div>
     </div>
     """
   end
 
   @doc false
-  def build_path_entries(path, nodes, console) do
+  def build_path_entries(execution_log, nodes, console) do
     node_entries = Enum.filter(console, fn e -> e.node_id != nil end)
-    path_length = length(path)
+    log_length = length(execution_log)
 
-    {entries, _remaining} =
-      path
+    {entries, _remaining, _prev_depth} =
+      execution_log
       |> Enum.with_index(1)
-      |> Enum.reduce({[], node_entries}, fn {node_id, step}, {acc, remaining} ->
+      |> Enum.reduce({[], node_entries, 0}, fn {log_entry, step}, {acc, remaining, prev_depth} ->
+        node_id = log_entry.node_id
+        depth = log_entry.depth
+
+        # Insert separator when depth changes
+        separators =
+          cond do
+            depth > prev_depth ->
+              [%{separator: true, direction: :enter, depth: depth}]
+
+            depth < prev_depth ->
+              [%{separator: true, direction: :return, depth: depth}]
+
+            true ->
+              []
+          end
+
         node = Map.get(nodes, node_id)
         {outcome, rest} = pop_first_match(remaining, node_id)
 
@@ -611,10 +675,11 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           type: (node && node.type) || "unknown",
           label: path_node_label(node),
           outcome: outcome,
-          is_current: step == path_length
+          is_current: step == log_length,
+          depth: depth
         }
 
-        {acc ++ [entry], rest}
+        {acc ++ separators ++ [entry], rest, depth}
       end)
 
     entries
@@ -636,19 +701,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   defp path_node_label(node) do
     data = node.data || %{}
     text = data["text"]
-
-    if is_binary(text) and text != "" do
-      text
-      |> String.replace(~r/<[^>]+>/, "")
-      |> String.trim()
-      |> String.slice(0, 30)
-      |> case do
-        "" -> nil
-        clean -> clean
-      end
-    else
-      nil
-    end
+    if is_binary(text) and text != "", do: EvalHelpers.strip_html(text, 30)
   end
 
   defp path_icon(type), do: NodeTypeRegistry.icon_name(type)
@@ -718,13 +771,11 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   # ===========================================================================
 
   defp status_badge_class(:paused), do: "badge-info"
-  defp status_badge_class(:running), do: "badge-success"
   defp status_badge_class(:waiting_input), do: "badge-warning"
   defp status_badge_class(:finished), do: "badge-neutral"
   defp status_badge_class(_), do: "badge-info"
 
   defp status_label(:paused), do: gettext("Paused")
-  defp status_label(:running), do: gettext("Running")
   defp status_label(:waiting_input), do: gettext("Waiting")
   defp status_label(:finished), do: gettext("Finished")
   defp status_label(_), do: ""
@@ -759,23 +810,10 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   defp var_source_color(:user_override), do: "text-info"
   defp var_source_color(_), do: "text-base-content/50"
 
-  defp format_value(nil), do: "nil"
-  defp format_value(true), do: "true"
-  defp format_value(false), do: "false"
-  defp format_value(val) when is_list(val), do: Enum.join(val, ", ")
-  defp format_value(val) when is_binary(val) and byte_size(val) > 30, do: String.slice(val, 0, 30) <> "..."
-  defp format_value(val) when is_binary(val), do: val
-  defp format_value(val), do: to_string(val)
+  defp format_value(value), do: EvalHelpers.format_value(value)
 
   defp clean_response_text(text) when is_binary(text) do
-    text
-    |> String.replace(~r/<[^>]*>/, "")
-    |> String.trim()
-    |> String.slice(0, 40)
-    |> case do
-      "" -> gettext("(empty)")
-      clean -> clean
-    end
+    EvalHelpers.strip_html(text, 40) || gettext("(empty)")
   end
 
   defp clean_response_text(_), do: gettext("(empty)")

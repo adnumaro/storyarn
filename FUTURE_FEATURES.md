@@ -742,6 +742,31 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
 
 ---
 
+## Flow Debugger — Deferred Enhancements
+
+> **Related:** See `docs/plans/FLOW_DEBUGGER.md` — Phase 3, Tasks 24-26
+> **Status:** Deferred after completing Tasks 16-23
+
+### Saved Test Sessions (Tasks 24-25)
+
+Persist debug configurations to the database for re-use. Users can save a named session with a specific start node, variable overrides, and breakpoints, then reload it later to repeat the same test scenario.
+
+- **Schema:** `debug_sessions` table with `name`, `start_node_id`, `variable_overrides` (map), `breakpoints` (integer array), `flow_id` (FK)
+- **CRUD:** `list_debug_sessions/1`, `get_debug_session!/1`, `create_debug_session/1`, `delete_debug_session/1`
+- **Panel UI:** Save button with name input, load dropdown listing saved sessions, delete per session
+- **Handler:** Save extracts state from engine, load rebuilds engine with overrides applied
+
+### Conditional Breakpoints (Task 26)
+
+Breakpoints can optionally have a condition expression. Execution only pauses when the condition evaluates to true.
+
+- Change `breakpoints` from `MapSet.t(integer)` to `%{integer => nil | String.t}` (node_id => condition)
+- `at_breakpoint?/1` evaluates condition via `ConditionEval.evaluate_string/2` when present
+- UI: expandable condition input in the Path tab per breakpoint
+- Update canvas breakpoint visuals for conditional vs unconditional
+
+---
+
 ## Other Ideas (Not Yet Planned)
 
 ### Search & Query System

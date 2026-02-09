@@ -16,6 +16,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Assets
   alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Sheets
   alias Storyarn.Projects
@@ -171,6 +172,7 @@ defmodule StoryarnWeb.FlowLive.Show do
             debug_editing_var={@debug_editing_var}
             debug_var_filter={@debug_var_filter}
             debug_var_changed_only={@debug_var_changed_only}
+            debug_current_flow_name={@flow.name}
           />
         </div>
 
@@ -252,8 +254,61 @@ defmodule StoryarnWeb.FlowLive.Show do
          |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/flows")}
 
       flow ->
-        {:ok, setup_flow_view(socket, project, membership, flow)}
+        socket = setup_flow_view(socket, project, membership, flow)
+        socket = maybe_restore_debug_session(socket)
+        {:ok, socket}
     end
+  end
+
+  defp maybe_restore_debug_session(socket) do
+    user_id = socket.assigns.current_scope.user.id
+    project_id = socket.assigns.project.id
+
+    case DebugSessionStore.take({user_id, project_id}) do
+      nil ->
+        socket
+
+      debug_assigns ->
+        socket =
+          if debug_assigns.debug_auto_playing do
+            ref = Process.send_after(self(), :debug_auto_step, debug_assigns.debug_speed)
+            assign(socket, :debug_auto_timer, ref)
+          else
+            socket
+          end
+
+        socket
+        |> assign(:debug_state, debug_assigns.debug_state)
+        |> assign(:debug_panel_open, debug_assigns.debug_panel_open)
+        |> assign(:debug_active_tab, debug_assigns.debug_active_tab)
+        |> assign(:debug_nodes, debug_assigns.debug_nodes)
+        |> assign(:debug_connections, debug_assigns.debug_connections)
+        |> assign(:debug_speed, debug_assigns.debug_speed)
+        |> assign(:debug_auto_playing, debug_assigns.debug_auto_playing)
+        |> assign(:debug_editing_var, debug_assigns.debug_editing_var)
+        |> assign(:debug_var_filter, debug_assigns.debug_var_filter)
+        |> assign(:debug_var_changed_only, debug_assigns.debug_var_changed_only)
+        |> push_debug_canvas_events(debug_assigns.debug_state)
+    end
+  end
+
+  defp push_debug_canvas_events(socket, state) do
+    # execution_path is stored newest-first; reverse for display
+    path = Enum.reverse(state.execution_path)
+
+    socket
+    |> push_event("debug_highlight_node", %{
+      node_id: state.current_node_id,
+      status: to_string(state.status),
+      execution_path: path
+    })
+    |> push_event("debug_highlight_connections", %{
+      active_connection: nil,
+      execution_path: path
+    })
+    |> push_event("debug_update_breakpoints", %{
+      breakpoint_ids: MapSet.to_list(state.breakpoints)
+    })
   end
 
   defp setup_flow_view(socket, project, membership, flow) do
@@ -308,6 +363,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     |> assign(:debug_editing_var, nil)
     |> assign(:debug_var_filter, "")
     |> assign(:debug_var_changed_only, false)
+    |> assign(:debug_auto_timer, nil)
   end
 
   @impl true

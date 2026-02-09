@@ -34,7 +34,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
   end
 
   defp console_messages(state) do
-    Enum.map(state.console, & &1.message)
+    state.console |> Enum.reverse() |> Enum.map(& &1.message)
   end
 
   # =============================================================================
@@ -51,7 +51,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       assert state.status == :paused
       assert state.variables == vars
       assert state.initial_variables == vars
-      assert state.execution_path == [1]
+      assert Enum.reverse(state.execution_path) == [1]
       assert state.step_count == 0
       assert state.snapshots == []
       assert length(state.console) == 1
@@ -80,7 +80,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       # Step 1: evaluate entry node → moves to exit
       {:ok, state} = Engine.step(state, nodes, conns)
       assert state.current_node_id == 2
-      assert state.execution_path == [1, 2]
+      assert Enum.reverse(state.execution_path) == [1, 2]
 
       # Step 2: evaluate exit node → finished
       {:finished, state} = Engine.step(state, nodes, conns)
@@ -225,14 +225,28 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
   end
 
   # =============================================================================
-  # Subflow node — ends execution (Phase 1)
+  # Subflow node — cross-flow transitions
   # =============================================================================
 
   describe "subflow node" do
-    test "ends execution with info" do
+    test "returns flow_jump when referenced_flow_id is set" do
       nodes = %{
         1 => node(1, "entry"),
-        2 => node(2, "subflow")
+        2 => node(2, "subflow", %{"referenced_flow_id" => 42})
+      }
+
+      conns = [conn(1, "default", 2)]
+      state = Engine.init(%{}, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:flow_jump, state, 42} = Engine.step(state, nodes, conns)
+      assert Enum.any?(state.console, &(&1.message =~ "entering flow 42"))
+    end
+
+    test "finishes with error when referenced_flow_id is nil" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "subflow", %{"referenced_flow_id" => nil})
       }
 
       conns = [conn(1, "default", 2)]
@@ -240,7 +254,8 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
 
       {:ok, state} = Engine.step(state, nodes, conns)
       {:finished, state} = Engine.step(state, nodes, conns)
-      assert Enum.any?(state.console, &(&1.message =~ "Subflow"))
+      assert state.status == :finished
+      assert Enum.any?(state.console, &(&1.message =~ "no referenced_flow_id"))
     end
   end
 
@@ -909,6 +924,101 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       {:error, :no_history} = Engine.step_back(state)
     end
 
+    test "step_back restores previous_variables" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 =>
+          node(2, "instruction", %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "subtract",
+                "value" => "30",
+                "value_type" => "literal",
+                "value_sheet" => nil
+              }
+            ]
+          }),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      variables = %{"mc.jaime.health" => var(100, "number")}
+      state = Engine.init(variables, 1)
+
+      # Step through entry — previous_variables still equals initial
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert state.previous_variables["mc.jaime.health"].value == 100
+
+      # Step through instruction — mutates variables, previous_variables captured
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert state.variables["mc.jaime.health"].value == 70.0
+      # previous_variables was set to the variables snapshot before instruction ran
+      assert state.previous_variables["mc.jaime.health"].value == 100
+
+      # Step back — previous_variables should be restored from snapshot
+      {:ok, restored} = Engine.step_back(state)
+      assert restored.previous_variables["mc.jaime.health"].value == 100
+      assert restored.variables["mc.jaime.health"].value == 100
+    end
+
+    test "step_back restores call_stack" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "hub"),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      state = Engine.init(%{}, 1)
+
+      # Push a flow context before stepping
+      parent_nodes = %{10 => node(10, "entry")}
+      parent_conns = [conn(10, "default", 11)]
+      state = Engine.push_flow_context(state, 10, parent_nodes, parent_conns)
+      assert length(state.call_stack) == 1
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      stack_after_step1 = state.call_stack
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+
+      {:ok, restored} = Engine.step_back(state)
+      assert restored.call_stack == stack_after_step1
+    end
+
+    test "step_back restores current_flow_id" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "hub"),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      state = Engine.init(%{}, 1)
+      state = %{state | current_flow_id: 42}
+
+      # Step 1: entry -> hub. Snapshot saved with current_flow_id: 42
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert state.current_flow_id == 42
+
+      # Simulate cross-flow by changing flow_id before next step
+      state = %{state | current_flow_id: 99}
+
+      # Step 2: hub -> exit. Snapshot saved with current_flow_id: 99
+      {:ok, state} = Engine.step(state, nodes, conns)
+
+      # Step back to step 2 snapshot (current_flow_id: 99)
+      {:ok, state} = Engine.step_back(state)
+      assert state.current_flow_id == 99
+
+      # Step back to step 1 snapshot (current_flow_id: 42)
+      {:ok, restored} = Engine.step_back(state)
+      assert restored.current_flow_id == 42
+    end
+
     test "step back from waiting_input restores dialogue" do
       nodes = %{
         1 => node(1, "entry"),
@@ -975,7 +1085,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       assert state.variables["mc.jaime.health"].value == 100
       assert state.step_count == 0
       assert state.snapshots == []
-      assert state.execution_path == [1]
+      assert Enum.reverse(state.execution_path) == [1]
     end
   end
 
@@ -1096,7 +1206,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       {:ok, state} = Engine.step(state, nodes, conns)
       {:finished, state} = Engine.step(state, nodes, conns)
 
-      assert state.execution_path == [1, 2, 3, 4]
+      assert Enum.reverse(state.execution_path) == [1, 2, 3, 4]
     end
   end
 
@@ -1177,7 +1287,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
 
       # Exit
       {:finished, state} = Engine.step(state, nodes, conns)
-      assert state.execution_path == [1, 2, 3, 4, 5]
+      assert Enum.reverse(state.execution_path) == [1, 2, 3, 4, 5]
     end
   end
 
@@ -1445,6 +1555,117 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
   end
 
   # =============================================================================
+  # Exit node — cross-flow transitions
+  # =============================================================================
+
+  describe "exit node cross-flow" do
+    test "exit with flow_reference returns flow_jump" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "exit", %{"exit_mode" => "flow_reference", "referenced_flow_id" => 99})
+      }
+
+      conns = [conn(1, "default", 2)]
+      state = Engine.init(%{}, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:flow_jump, state, 99} = Engine.step(state, nodes, conns)
+      assert Enum.any?(state.console, &(&1.message =~ "flow reference"))
+    end
+
+    test "exit with flow_reference but no referenced_flow_id finishes with error" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "exit", %{"exit_mode" => "flow_reference", "referenced_flow_id" => nil})
+      }
+
+      conns = [conn(1, "default", 2)]
+      state = Engine.init(%{}, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:finished, state} = Engine.step(state, nodes, conns)
+      assert state.status == :finished
+      assert Enum.any?(state.console, &(&1.message =~ "no referenced_flow_id"))
+    end
+
+    test "exit with caller_return and non-empty stack returns flow_return" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "exit", %{"exit_mode" => "caller_return"})
+      }
+
+      conns = [conn(1, "default", 2)]
+      state = Engine.init(%{}, 1)
+      # Simulate a call stack with one frame
+      state = Engine.push_flow_context(state, 10, %{}, [])
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:flow_return, state} = Engine.step(state, nodes, conns)
+      assert Enum.any?(state.console, &(&1.message =~ "return to caller"))
+    end
+
+    test "exit with caller_return and empty stack finishes" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "exit", %{"exit_mode" => "caller_return"})
+      }
+
+      conns = [conn(1, "default", 2)]
+      state = Engine.init(%{}, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:finished, state} = Engine.step(state, nodes, conns)
+      assert state.status == :finished
+      assert Enum.any?(state.console, &(&1.message =~ "no caller"))
+    end
+
+    test "exit with terminal mode finishes (default behavior)" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "exit", %{"exit_mode" => "terminal"})
+      }
+
+      conns = [conn(1, "default", 2)]
+      state = Engine.init(%{}, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:finished, state} = Engine.step(state, nodes, conns)
+      assert state.status == :finished
+      assert Enum.any?(state.console, &(&1.message =~ "Execution finished"))
+    end
+  end
+
+  # =============================================================================
+  # Push/pop flow context
+  # =============================================================================
+
+  describe "push_flow_context / pop_flow_context" do
+    test "roundtrip preserves frame data" do
+      state = Engine.init(%{}, 1)
+      state = %{state | current_flow_id: 100, execution_path: [3, 2, 1]}
+
+      nodes_map = %{10 => node(10, "entry")}
+      conns_list = [conn(10, "default", 11)]
+
+      state = Engine.push_flow_context(state, 5, nodes_map, conns_list)
+      assert length(state.call_stack) == 1
+
+      {:ok, frame, state} = Engine.pop_flow_context(state)
+      assert frame.flow_id == 100
+      assert frame.return_node_id == 5
+      assert frame.nodes == nodes_map
+      assert frame.connections == conns_list
+      assert frame.execution_path == [3, 2, 1]
+      assert state.call_stack == []
+    end
+
+    test "pop from empty stack returns error" do
+      state = Engine.init(%{}, 1)
+      assert {:error, :empty_stack} = Engine.pop_flow_context(state)
+    end
+  end
+
+  # =============================================================================
   # set_variable/3
   # =============================================================================
 
@@ -1502,6 +1723,127 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       assert var.sheet_shortcut == "mc.jaime"
       assert var.variable_name == "health"
       assert var.initial_value == 100
+    end
+  end
+
+  # =============================================================================
+  # Execution log
+  # =============================================================================
+
+  describe "execution_log" do
+    test "init seeds execution_log with start node at depth 0" do
+      state = Engine.init(%{}, 1)
+
+      assert Enum.reverse(state.execution_log) == [%{node_id: 1, depth: 0}]
+    end
+
+    test "advance_to prepends target node with current depth" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "hub"),
+        3 => node(3, "exit")
+      }
+
+      connections = [conn(1, "default", 2), conn(2, "default", 3)]
+      state = Engine.init(%{}, 1)
+
+      {:ok, state} = Engine.step(state, nodes, connections)
+
+      assert Enum.reverse(state.execution_log) == [
+               %{node_id: 1, depth: 0},
+               %{node_id: 2, depth: 0}
+             ]
+
+      {:ok, state} = Engine.step(state, nodes, connections)
+
+      assert Enum.reverse(state.execution_log) == [
+               %{node_id: 1, depth: 0},
+               %{node_id: 2, depth: 0},
+               %{node_id: 3, depth: 0}
+             ]
+    end
+
+    test "execution_log depth reflects call_stack length" do
+      # Simulate being in a sub-flow with 1 frame on call stack
+      nodes = %{
+        10 => node(10, "entry"),
+        11 => node(11, "hub"),
+        12 => node(12, "exit")
+      }
+
+      connections = [conn(10, "default", 11), conn(11, "default", 12)]
+
+      state = Engine.init(%{}, 10)
+
+      # Push a flow context to simulate being in a sub-flow
+      parent_nodes = %{1 => node(1, "entry")}
+      parent_conns = [conn(1, "default", 2)]
+      state = Engine.push_flow_context(state, 1, parent_nodes, parent_conns)
+
+      {:ok, state} = Engine.step(state, nodes, connections)
+
+      # Entry was depth 0 (from init, before push), hub should be depth 1 (after push)
+      # execution_log is newest-first, so hd is the most recent entry
+      assert hd(state.execution_log) == %{node_id: 11, depth: 1}
+    end
+
+    test "step_back restores execution_log from snapshot" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "hub"),
+        3 => node(3, "exit")
+      }
+
+      connections = [conn(1, "default", 2), conn(2, "default", 3)]
+      state = Engine.init(%{}, 1)
+
+      {:ok, state} = Engine.step(state, nodes, connections)
+      log_after_step1 = state.execution_log
+
+      {:ok, state} = Engine.step(state, nodes, connections)
+      assert length(state.execution_log) == 3
+
+      {:ok, restored} = Engine.step_back(state)
+      assert restored.execution_log == log_after_step1
+    end
+
+    test "reset clears execution_log" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "exit")
+      }
+
+      connections = [conn(1, "default", 2)]
+      state = Engine.init(%{}, 1)
+      {:ok, state} = Engine.step(state, nodes, connections)
+
+      reset_state = Engine.reset(state)
+
+      assert Enum.reverse(reset_state.execution_log) == [%{node_id: 1, depth: 0}]
+    end
+
+    test "choose_response prepends to execution_log" do
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "dialogue", %{
+          "text" => "Hello",
+          "responses" => [
+            %{"id" => "r1", "text" => "A", "condition" => "", "instruction" => ""},
+            %{"id" => "r2", "text" => "B", "condition" => "", "instruction" => ""}
+          ]
+        }),
+        3 => node(3, "exit")
+      }
+
+      connections = [conn(1, "default", 2), conn(2, "r1", 3)]
+      state = Engine.init(%{}, 1)
+
+      {:ok, state} = Engine.step(state, nodes, connections)
+      {:waiting_input, state} = Engine.step(state, nodes, connections)
+      {:ok, state} = Engine.choose_response(state, "r1", connections)
+
+      # execution_log is newest-first, so hd is the most recent entry
+      assert hd(state.execution_log) == %{node_id: 3, depth: 0}
     end
   end
 end
