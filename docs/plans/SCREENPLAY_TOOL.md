@@ -27,7 +27,7 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 |---------|-----------------------------------------------------|--------------|-----------|
 | 1       | Database & Context                                  | Essential    | Done      |
 | 2       | Sidebar & Navigation                                | Essential    | Done      |
-| 3       | Screenplay Editor (Core Blocks)                     | Essential    | Pending   |
+| 3       | Screenplay Editor (Core Blocks)                     | Essential    | Done      |
 | 4       | Slash Command System                                | Essential    | Pending   |
 | 5       | Interactive Blocks (Condition/Instruction/Response) | Essential    | Pending   |
 | 6       | Flow Sync — Screenplay → Flow                       | Essential    | Pending   |
@@ -76,18 +76,29 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 
 ---
 
-### Phase 3 — Task Breakdown
+### Phase 3 — Summary (Done, 28 show tests + 20 auto_detect tests)
 
-**See [SCREENPLAY_PHASE_3.md](./SCREENPLAY_PHASE_3.md) for full detailed task breakdown.**
+**Commit:** `f3a9692` — All 6 tasks complete, audited, 48 tests.
 
-| Task | Name                                                              | Status  | Tests |
-|------|-------------------------------------------------------------------|---------|-------|
-| 3.1  | Hook rename + Show LiveView: load elements + editor layout + CSS  | Pending | ~5    |
-| 3.2  | Element renderer + per-type block components + CSS                | Pending | ~4    |
-| 3.3  | Contenteditable + ScreenplayElement hook + debounced save         | Pending | ~3    |
-| 3.4  | Enter key: create next element + type inference                   | Pending | ~4    |
-| 3.5  | Backspace (delete empty), Tab (cycle type), Arrow navigation      | Pending | ~4    |
-| 3.6  | Auto-detection + editor toolbar + screenplay name editing         | Pending | ~4    |
+**Tasks completed:** 3.1 Hook rename + Show LiveView + editor layout + CSS | 3.2 Element renderer + per-type blocks + CSS | 3.3 Contenteditable + ScreenplayElement hook + debounced save | 3.4 Enter key: create next element + server-side type inference | 3.5 Backspace (delete empty), Tab (cycle type), Arrow navigation | 3.6 Auto-detection + editor toolbar + screenplay name editing
+
+**Files created:**
+- `assets/css/screenplay.css` — industry-standard formatting (Courier 12pt, per-type margins/indentation, dark mode)
+- `assets/js/hooks/screenplay_element.js` — per-element hook (debounced save, Enter/Backspace/Tab keydown, type change via DOM events)
+- `assets/js/hooks/screenplay_editor_page.js` — page-level orchestrator (focus management, arrow navigation, server type-change propagation)
+- `assets/js/hooks/dialogue_screenplay_editor.js` — renamed from `screenplay_editor.js` (frees the name)
+- `lib/storyarn_web/components/screenplay/element_renderer.ex` — dispatch component (8 editable types, 7 stub types, page_break, fallback)
+- `lib/storyarn/screenplays/auto_detect.ex` — pattern matching (scene_heading, character, transition, parenthetical)
+- `test/storyarn/screenplays/auto_detect_test.exs` — 20 unit tests
+
+**Files modified:**
+- `lib/storyarn_web/live/screenplay_live/show.ex` — full editor: mount elements, 10 event handlers, `with_edit_permission` helper, `build_update_attrs` (auto-detect integration), `@next_type` server-side inference, `screenplays_path` helper, `do_create_screenplay` helper
+- `lib/storyarn/screenplays.ex` — added `detect_type/1` delegate
+- `assets/js/app.js` — registered 3 hooks (DialogueScreenplayEditor, ScreenplayElement, ScreenplayEditorPage)
+- `assets/css/app.css` — imported screenplay.css
+- `lib/storyarn_web/live/flow_live/components/screenplay_editor.ex` — updated phx-hook to DialogueScreenplayEditor
+
+**Key patterns:** Server-side next-type inference via `@next_type` map (ignores client hint, fixes race condition with auto-detect). Cross-hook communication via custom DOM events (`typechanged`). `phx-update="ignore"` on editable elements with manual DOM class updates for type changes. `with_edit_permission/2` extracts authorization boilerplate. `screenplays_path/2` extracts URL construction. Safe `parse_int/1` for all client-sent IDs.
 
 ---
 
@@ -364,8 +375,6 @@ This phase transforms `ScreenplayLive.Show` from a skeleton into a functional bl
 - Interactive blocks (`conditional`, `instruction`, `response`) render as stubs — full implementation in Phase 5
 
 **Prerequisite:** Rename existing `ScreenplayEditor` hook (dialogue fullscreen editor) → `DialogueScreenplayEditor` to free the name.
-
-**See [SCREENPLAY_PHASE_3.md](./SCREENPLAY_PHASE_3.md) for the full implementation plan (Tasks 3.1–3.6).**
 
 ---
 
