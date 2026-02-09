@@ -61,6 +61,41 @@ export const ScreenplayElement = {
   },
 
   handleKeyDown(event) {
+    // Slash command detection
+    if (event.key === "/") {
+      const text = this.editableBlock.textContent;
+
+      // Empty element → open menu directly
+      if (text.trim() === "") {
+        event.preventDefault();
+        this.pushEvent("open_slash_menu", { element_id: this.elementId });
+        return;
+      }
+
+      // Non-empty element → split if at a valid position
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const cursorPos = this.getCursorOffset();
+        const beforeText = text.substring(0, cursorPos);
+
+        // Valid positions: start of text, after space, or after newline
+        if (
+          beforeText === "" ||
+          beforeText.endsWith(" ") ||
+          beforeText.endsWith("\n")
+        ) {
+          event.preventDefault();
+          this.flushDebounce();
+          this.pushEvent("split_and_open_slash_menu", {
+            element_id: this.elementId,
+            cursor_position: cursorPos,
+          });
+          return;
+        }
+      }
+      // Otherwise let `/` type normally (e.g. "INT./EXT.")
+    }
+
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       this.flushDebounce();
@@ -112,6 +147,19 @@ export const ScreenplayElement = {
     this.el.classList.add(`sp-${newType}`);
     this.el.dataset.elementType = newType;
     this.elementType = newType;
+  },
+
+  /**
+   * Returns the cursor offset as a plain-text character index within the editable block.
+   */
+  getCursorOffset() {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return 0;
+
+    const range = sel.getRangeAt(0).cloneRange();
+    range.selectNodeContents(this.editableBlock);
+    range.setEnd(sel.anchorNode, sel.anchorOffset);
+    return range.toString().length;
   },
 
   flushDebounce() {

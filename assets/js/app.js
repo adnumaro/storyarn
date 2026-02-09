@@ -34,6 +34,7 @@ import { ReferenceSearch } from "./hooks/reference_search";
 import { DialogueScreenplayEditor } from "./hooks/dialogue_screenplay_editor";
 import { ScreenplayElement } from "./hooks/screenplay_element";
 import { ScreenplayEditorPage } from "./hooks/screenplay_editor_page";
+import { SlashCommand } from "./hooks/slash_command";
 // Custom hooks
 import { ColumnSortable } from "./hooks/column_sortable";
 import { SortableList } from "./hooks/sortable_list";
@@ -78,6 +79,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     DialogueScreenplayEditor,
     ScreenplayElement,
     ScreenplayEditorPage,
+    SlashCommand,
   },
 });
 

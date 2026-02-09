@@ -28,7 +28,7 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 | 1       | Database & Context                                  | Essential    | Done      |
 | 2       | Sidebar & Navigation                                | Essential    | Done      |
 | 3       | Screenplay Editor (Core Blocks)                     | Essential    | Done      |
-| 4       | Slash Command System                                | Essential    | Pending   |
+| 4       | Slash Command System                                | Essential    | Done      |
 | 5       | Interactive Blocks (Condition/Instruction/Response) | Essential    | Pending   |
 | 6       | Flow Sync — Screenplay → Flow                       | Essential    | Pending   |
 | 7       | Flow Sync — Flow → Screenplay                       | Essential    | Pending   |
@@ -99,6 +99,21 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 - `lib/storyarn_web/live/flow_live/components/screenplay_editor.ex` — updated phx-hook to DialogueScreenplayEditor
 
 **Key patterns:** Server-side next-type inference via `@next_type` map (ignores client hint, fixes race condition with auto-detect). Cross-hook communication via custom DOM events (`typechanged`). `phx-update="ignore"` on editable elements with manual DOM class updates for type changes. `with_edit_permission/2` extracts authorization boilerplate. `screenplays_path/2` extracts URL construction. Safe `parse_int/1` for all client-sent IDs.
+
+### Phase 4 — Summary (Done, 19 tests)
+
+**Tasks completed:** 4.1 Slash command LiveView handlers + assigns (6 tests) | 4.2 Slash Command Menu HEEx component + CSS (5 tests) | 4.3 SlashCommand JS hook — keyboard, search, mouse (JS-only) | 4.4 Slash key detection in ScreenplayElement hook (4 tests) | 4.5 Mid-text slash: split element + open menu (4 tests)
+
+**Files created:**
+- `lib/storyarn_web/components/screenplay/slash_command_menu.ex` — floating command palette (12 commands in 3 groups: Screenplay, Interactive, Utility), `slash_group` and `slash_item` sub-components, Lucide icons
+- `assets/js/hooks/slash_command.js` — menu hook: positioning via `getBoundingClientRect`, keyboard navigation (Arrow/Enter/Escape), search filtering, mouse support, cleanup in `destroyed()`
+
+**Files modified:**
+- `lib/storyarn_web/live/screenplay_live/show.ex` — 4 event handlers: `open_slash_menu`, `select_slash_command`, `split_and_open_slash_menu`, `close_slash_menu`; `@slash_menu_element_id` assign; type validation via `ScreenplayElement.types()`; `parse_int` on `cursor_position` for safety
+- `assets/js/hooks/screenplay_element.js` — `/` key detection in `handleKeyDown`: empty element → `open_slash_menu`, non-empty at valid position (start, after space/newline) → `split_and_open_slash_menu`; `getCursorOffset()` helper using Range API; `flushDebounce()` before split
+- `assets/css/screenplay.css` — `.slash-menu` styles: fixed positioning, dark mode, search input, group labels, item hover/highlight states, hidden states for filtered items/groups
+
+**Key patterns:** Server controls menu visibility via `@slash_menu_element_id` assign. JS hook handles positioning and keyboard interaction. `phx-click-away` closes menu on outside click. Mid-text `/` only triggers at valid positions (preserves "INT./EXT." typing). `cursor_position` parsed to integer server-side for safety.
 
 ---
 

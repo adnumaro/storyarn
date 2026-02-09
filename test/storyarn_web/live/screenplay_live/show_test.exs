@@ -349,6 +349,382 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
     end
 
     # -------------------------------------------------------------------------
+    # Slash command handlers
+    # -------------------------------------------------------------------------
+
+    test "open_slash_menu sets menu state for valid element", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+
+      # Menu is open — the assign is set (we verify indirectly via select working)
+      view |> render_click("select_slash_command", %{"type" => "scene_heading"})
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.type == "scene_heading"
+    end
+
+    test "select_slash_command changes element type", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: "Some text"})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+      view |> render_click("select_slash_command", %{"type" => "character"})
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.type == "character"
+      assert updated.content == "Some text"
+    end
+
+    test "select_slash_command clears menu state", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+      view |> render_click("select_slash_command", %{"type" => "note"})
+
+      # Second select without open should be a no-op (menu is closed)
+      view |> render_click("select_slash_command", %{"type" => "transition"})
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.type == "note"
+    end
+
+    test "select_slash_command rejects invalid type", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+      view |> render_click("select_slash_command", %{"type" => "nonexistent_type"})
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.type == "action"
+    end
+
+    test "close_slash_menu clears menu state", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+      view |> render_click("close_slash_menu")
+
+      # Select after close should be a no-op
+      view |> render_click("select_slash_command", %{"type" => "character"})
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.type == "action"
+    end
+
+    test "slash menu renders when open", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, html} = live(conn, show_url(project, screenplay))
+
+      # Menu should NOT be rendered initially
+      refute html =~ "slash-command-menu"
+
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+
+      html = render(view)
+      assert html =~ ~s(id="slash-command-menu")
+    end
+
+    test "slash menu not rendered when closed", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+      view |> render_click("close_slash_menu")
+
+      html = render(view)
+      refute html =~ "slash-command-menu"
+    end
+
+    test "slash menu shows all three groups", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+
+      html = render(view)
+      assert html =~ "Screenplay"
+      assert html =~ "Interactive"
+      assert html =~ "Utility"
+    end
+
+    test "slash menu shows expected command items", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+
+      html = render(view)
+      # Screenplay group items
+      assert html =~ "Scene Heading"
+      assert html =~ "Character"
+      assert html =~ "Transition"
+      # Interactive group items
+      assert html =~ "Condition"
+      assert html =~ "Instruction"
+      assert html =~ "Responses"
+      # Utility group items
+      assert html =~ "Note"
+      assert html =~ "Page Break"
+    end
+
+    test "clicking slash menu item changes element type", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+
+      # Click the button directly (simulates user clicking a menu item)
+      view |> render_click("select_slash_command", %{"type" => "conditional"})
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.type == "conditional"
+
+      # Menu should be gone after selection
+      refute render(view) =~ "slash-command-menu"
+    end
+
+    test "viewer cannot open slash menu", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+
+      assert render(view) =~ "permission"
+    end
+
+    # -------------------------------------------------------------------------
+    # Slash key detection (Task 4.4)
+    # -------------------------------------------------------------------------
+
+    test "open_slash_menu on empty element opens menu and renders it", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      # Simulate the JS hook pushing open_slash_menu for an empty element
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+
+      html = render(view)
+      assert html =~ ~s(id="slash-command-menu")
+      assert html =~ ~s(data-target-id="sp-el-#{el.id}")
+    end
+
+    test "open_slash_menu on element with content still opens menu", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: "Has content"})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      # Server allows open_slash_menu regardless of content — JS gates the trigger
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+
+      html = render(view)
+      assert html =~ ~s(id="slash-command-menu")
+    end
+
+    test "select_slash_command after open on empty element changes type and closes menu", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+      view |> render_click("select_slash_command", %{"type" => "scene_heading"})
+
+      # Type changed
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.type == "scene_heading"
+
+      # Content still empty
+      assert updated.content == ""
+
+      # Menu closed
+      refute render(view) =~ "slash-command-menu"
+    end
+
+    test "open_slash_menu with nonexistent element_id is a no-op", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      _el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("open_slash_menu", %{"element_id" => "999999"})
+
+      # Menu should NOT be open
+      refute render(view) =~ "slash-command-menu"
+    end
+
+    # -------------------------------------------------------------------------
+    # Mid-text slash: split + open menu (Task 4.5)
+    # -------------------------------------------------------------------------
+
+    test "split_and_open_slash_menu splits element and opens menu for middle", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: "Hello world"})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      # Split at position 6 → "Hello " | new action | "world"
+      view
+      |> render_click("split_and_open_slash_menu", %{
+        "element_id" => to_string(el.id),
+        "cursor_position" => 6
+      })
+
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert length(elements) == 3
+
+      [before_el, middle_el, after_el] = elements
+      assert before_el.content == "Hello "
+      assert middle_el.content == ""
+      assert middle_el.type == "action"
+      assert after_el.content == "world"
+
+      # Menu should be open, targeting the middle element
+      html = render(view)
+      assert html =~ ~s(id="slash-command-menu")
+      assert html =~ ~s(data-target-id="sp-el-#{middle_el.id}")
+    end
+
+    test "split_and_open_slash_menu at position 0 creates empty before element", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "dialogue", content: "Some text"})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("split_and_open_slash_menu", %{
+        "element_id" => to_string(el.id),
+        "cursor_position" => 0
+      })
+
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert length(elements) == 3
+
+      [before_el, middle_el, after_el] = elements
+      assert before_el.content == ""
+      assert middle_el.type == "action"
+      assert after_el.content == "Some text"
+
+      assert render(view) =~ "slash-command-menu"
+    end
+
+    test "selecting command after split changes middle element type", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: "Before After"})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("split_and_open_slash_menu", %{
+        "element_id" => to_string(el.id),
+        "cursor_position" => 7
+      })
+
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      middle_el = Enum.at(elements, 1)
+
+      # Select a command to change middle element's type
+      view |> render_click("select_slash_command", %{"type" => "transition"})
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> Enum.at(1)
+      assert updated.id == middle_el.id
+      assert updated.type == "transition"
+
+      # Menu should be gone
+      refute render(view) =~ "slash-command-menu"
+    end
+
+    test "split_and_open_slash_menu with nonexistent element is a no-op", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      _el = element_fixture(screenplay, %{type: "action", content: "Something"})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("split_and_open_slash_menu", %{
+        "element_id" => "999999",
+        "cursor_position" => 3
+      })
+
+      # No split should have happened
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert length(elements) == 1
+
+      refute render(view) =~ "slash-command-menu"
+    end
+
+    # -------------------------------------------------------------------------
     # Toolbar
     # -------------------------------------------------------------------------
 

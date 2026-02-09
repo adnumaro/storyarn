@@ -7,9 +7,11 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   alias Storyarn.Projects
   alias Storyarn.Screenplays
   alias Storyarn.Screenplays.Screenplay
+  alias Storyarn.Screenplays.ScreenplayElement
   alias Storyarn.Repo
 
   import StoryarnWeb.Components.Screenplay.ElementRenderer
+  import StoryarnWeb.Components.Screenplay.SlashCommandMenu
 
   # Standard types eligible for auto-detection on content update
   @auto_detect_types ~w(action scene_heading character dialogue parenthetical transition)
@@ -82,6 +84,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           can_edit={@can_edit}
         />
       </div>
+      <.slash_command_menu
+        :if={@slash_menu_element_id}
+        element_id={@slash_menu_element_id}
+      />
     </Layouts.project>
     """
   end
@@ -117,6 +123,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           |> assign(:screenplay, screenplay)
           |> assign(:screenplays_tree, screenplays_tree)
           |> assign(:elements, elements)
+          |> assign(:slash_menu_element_id, nil)
 
         {:ok, socket}
 
@@ -262,6 +269,101 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           end
       end
     end)
+  end
+
+  # ---------------------------------------------------------------------------
+  # Slash command handlers
+  # ---------------------------------------------------------------------------
+
+  def handle_event("open_slash_menu", %{"element_id" => id}, socket) do
+    with_edit_permission(socket, fn ->
+      case find_element(socket, id) do
+        nil ->
+          {:noreply, socket}
+
+        element ->
+          {:noreply, assign(socket, :slash_menu_element_id, element.id)}
+      end
+    end)
+  end
+
+  def handle_event("select_slash_command", %{"type" => type}, socket) do
+    with_edit_permission(socket, fn ->
+      element_id = socket.assigns.slash_menu_element_id
+
+      if is_nil(element_id) do
+        {:noreply, socket}
+      else
+        element = Enum.find(socket.assigns.elements, &(&1.id == element_id))
+
+        if is_nil(element) || type not in ScreenplayElement.types() do
+          {:noreply, assign(socket, :slash_menu_element_id, nil)}
+        else
+          case Screenplays.update_element(element, %{type: type}) do
+            {:ok, updated} ->
+              {:noreply,
+               socket
+               |> update_element_in_list(updated)
+               |> assign(:slash_menu_element_id, nil)
+               |> push_event("focus_element", %{id: updated.id})}
+
+            {:error, _} ->
+              {:noreply,
+               socket
+               |> assign(:slash_menu_element_id, nil)
+               |> put_flash(:error, gettext("Could not change element type."))}
+          end
+        end
+      end
+    end)
+  end
+
+  def handle_event("split_and_open_slash_menu", params, socket) do
+    %{"element_id" => id, "cursor_position" => pos} = params
+    pos = if is_integer(pos), do: pos, else: parse_int(pos)
+
+    with_edit_permission(socket, fn ->
+      case find_element(socket, id) do
+        nil ->
+          {:noreply, socket}
+
+        element when is_nil(pos) ->
+          {:noreply, socket}
+
+        element ->
+          case Screenplays.split_element(element, pos, "action") do
+            {:ok, {_before, new_element, _after}} ->
+              elements = Screenplays.list_elements(socket.assigns.screenplay.id)
+
+              {:noreply,
+               socket
+               |> assign(:elements, elements)
+               |> assign(:slash_menu_element_id, new_element.id)}
+
+            {:error, _} ->
+              {:noreply,
+               socket
+               |> put_flash(:error, gettext("Could not split element."))}
+          end
+      end
+    end)
+  end
+
+  def handle_event("close_slash_menu", _params, socket) do
+    element_id = socket.assigns.slash_menu_element_id
+
+    socket =
+      socket
+      |> assign(:slash_menu_element_id, nil)
+
+    socket =
+      if element_id do
+        push_event(socket, "focus_element", %{id: element_id})
+      else
+        socket
+      end
+
+    {:noreply, socket}
   end
 
   # ---------------------------------------------------------------------------
