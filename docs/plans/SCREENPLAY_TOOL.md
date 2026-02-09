@@ -4,7 +4,7 @@
 >
 > **Priority:** Major feature
 >
-> **Last Updated:** February 7, 2026
+> **Last Updated:** February 9, 2026
 
 ## Overview
 
@@ -34,6 +34,189 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 | 7       | Flow Sync — Flow → Screenplay                       | Essential    | Pending  |
 | 8       | Dual Dialogue & Advanced Formatting                 | Important    | Pending  |
 | 9       | Title Page & Export                                 | Nice to Have | Pending  |
+
+---
+
+## Known Edge Cases & Solutions
+
+> **Added:** February 9, 2026
+> These solutions address architectural issues identified during plan review.
+
+### A. Multiple screenplays linked to the same flow
+
+**Problem:** The schema doesn't prevent two screenplays from linking to the same flow, causing sync conflicts.
+
+**Solution:** Unique partial index on `linked_flow_id`:
+
+```elixir
+create unique_index(:screenplays, [:linked_flow_id],
+  where: "linked_flow_id IS NOT NULL AND deleted_at IS NULL",
+  name: :screenplays_linked_flow_unique
+)
+```
+
+If a user tries to link a second screenplay to an already-linked flow, show a flash error identifying which screenplay already owns the link.
+
+### B. Distinguishing auto-generated vs manual flow nodes
+
+**Problem:** `sync_to_flow` needs to know which nodes it created (safe to update/delete) vs which the user added manually in the canvas (must preserve).
+
+**Solution:** Add a `source` field to `flow_nodes`:
+
+```elixir
+# Migration: add_source_to_flow_nodes
+add :source, :string, default: "manual"  # "manual" | "screenplay_sync"
+```
+
+- Nodes created by `sync_to_flow` are marked `"screenplay_sync"`
+- Nodes created from the flow canvas remain `"manual"`
+- Sync operations only touch nodes with `source = "screenplay_sync"`
+
+### C. Destructive sync (clear + recreate)
+
+**Problem:** Both sync directions do full clear + recreate, losing manual canvas positions (XY), writer notes, sections, and page breaks.
+
+**Solution:** Diff-based sync instead of clear + recreate.
+
+**sync_to_flow:**
+1. Load existing nodes where `source = "screenplay_sync"`
+2. Build map `{linked_node_id => existing node}`
+3. For each element group:
+   - If `linked_node_id` exists in map → **update** node data (preserve position_x/y)
+   - If not → **create** new node, set `source = "screenplay_sync"`
+4. Synced nodes no longer mapped to any element → **delete**
+5. Nodes with `source = "manual"` → **never touch**
+
+**sync_from_flow:**
+1. Load existing elements with `linked_node_id`
+2. Build map `{linked_node_id => element}`
+3. For each flow node:
+   - If element exists → **update** content/data
+   - If not → **create** new element
+4. Mappeable elements with no corresponding node → **delete**
+5. Non-mappeable elements (note, section, page_break, title_page) → **always preserve**
+
+### D. Hub/Jump nodes lose information when synced to screenplay
+
+**Problem:** The plan maps hub → note and jump → note, losing navigation data. Round-trip sync destroys hubs/jumps.
+
+**Solution:** Add `hub_marker` and `jump_marker` element types:
+
+```elixir
+# Add to @element_types
+~w(... hub_marker jump_marker)
+
+# hub_marker — preserves hub data for round-trip
+%{type: "hub_marker", content: "Hub: Tavern Encounters", data: %{"hub_node_id" => 42, "color" => "blue"}}
+
+# jump_marker — preserves jump target data for round-trip
+%{type: "jump_marker", content: "-> Jump to: Tavern Encounters", data: %{"target_hub_id" => 42, "target_flow_id" => nil}}
+```
+
+These render as non-editable visual badges in the screenplay editor. On sync_to_flow they reconstruct as proper hub/jump nodes with all data intact.
+
+### E. Response block without preceding dialogue
+
+**Problem:** Response elements map to "add responses to PREVIOUS dialogue node" but the user may create a response with no dialogue before it.
+
+**Solution:** Soft validation + fallback.
+
+- **On creation:** When `/response` is selected, check if the preceding element is a dialogue group. If not, show a flash warning but allow creation anyway (writer may be working out of order).
+- **Visual indicator:** Orphaned response blocks show a warning icon with tooltip "No preceding dialogue — responses won't sync to flow."
+- **On sync_to_flow:** An orphaned response auto-generates a dialogue node wrapper with empty text + the responses attached. Not ideal but doesn't break the flow.
+
+### F. Group ID management for dialogue groups
+
+**Problem:** Stored `group_id` can become inconsistent when elements are reordered, inserted, or deleted.
+
+**Solution:** Remove `group_id` from the schema entirely. Compute groups dynamically from adjacency in `ElementGrouping`:
+
+```elixir
+def compute_groups(elements) do
+  # Consecutive character → parenthetical? → dialogue form a group
+  # Rules:
+  #   - character starts a new group
+  #   - parenthetical continues if preceded by character or dialogue in same group
+  #   - dialogue continues if preceded by character or parenthetical in same group
+  #   - any other type breaks the group
+end
+```
+
+Groups are derived from element order — impossible to become inconsistent. Cost is O(n) per computation on a list typically under 500 elements (trivial).
+
+**Migration change:** Remove `group_id` column and its index from `screenplay_elements`.
+
+### G. Nested conditionals (depth > 1)
+
+**Problem:** The plan shows depth 0 and 1 but doesn't address conditionals inside conditionals.
+
+**Solution:** The flat list model with `depth` + `branch` already supports arbitrary nesting. The rendering algorithm walks elements in order:
+
+- `conditional` at depth N → start collecting branches at depth N+1
+- Elements at depth N+1 with `branch = "true"` → render inside TRUE branch
+- Elements at depth N+1 with `branch = "false"` → render inside FALSE branch
+- When depth decreases back to N → branch collection ends
+
+**UI limit:** The slash command menu does not offer `/conditional` when current depth >= 3 (practical limit). The data model and sync engine support unlimited depth.
+
+### H. No collaboration for screenplay editor
+
+**Problem:** Flows and Sheets have real-time collaboration (presence, locks, cursors). The screenplay plan doesn't mention it.
+
+**Solution:** Reuse the existing `Collaboration` module with element-level locking.
+
+- **Topic:** `screenplay:{id}` (same pattern as `flow:{id}`)
+- **Presence:** Track online users via `Collaboration.track_presence/3`
+- **Locks:** When a user focuses a `contenteditable` element, acquire lock on that element_id. Show colored border matching the collaborator's color on locked elements.
+- **Changes:** Broadcast element updates so other LiveView sessions refresh.
+
+No cursor tracking needed (no canvas). This is a subset of what flows already implement.
+
+**When:** Implement in Phase 3 alongside the core editor, not as a later addition. Retrofitting locks onto an editor not designed for them is significantly harder.
+
+### I. Soft-deleted linked flow/screenplay
+
+**Problem:** If a flow is soft-deleted while a screenplay references it via `linked_flow_id`, the screenplay appears "linked" to a deleted entity.
+
+**Solution:** Check link status on load, show warning UI.
+
+```elixir
+# In ScreenplayLive.Show mount:
+link_status = cond do
+  is_nil(screenplay.linked_flow_id) -> :unlinked
+  flow = Flows.get_flow(screenplay.linked_flow_id) ->
+    if flow.deleted_at, do: :flow_deleted, else: :linked
+  true -> :flow_missing
+end
+```
+
+- `:flow_deleted` → Banner: "The linked flow is in trash" + [Unlink] + [Restore flow] buttons
+- `:flow_missing` → Banner: "The linked flow no longer exists" + [Unlink] button
+- No blocking — the screenplay works independently regardless of link status.
+
+### J. No undo/redo
+
+**Problem:** A writing editor without undo is a significant UX risk.
+
+**Solution:** Phased approach.
+
+**Immediate (free):** Browser-native `contenteditable` undo (Cmd+Z) handles text editing within a single element. Works without any code.
+
+**Later (Phase 3.5 or 4.5):** Session-level operation log for structural changes:
+
+```elixir
+# Stored in socket assigns (session-only, not persisted)
+# Each structural operation (create, delete, reorder, change_type) pushes to undo_stack
+assign(socket, :undo_stack, [])   # list of %{action, element_id, before, after}
+assign(socket, :redo_stack, [])
+```
+
+- Ctrl+Z pops from undo_stack, applies `before` state, pushes to redo_stack
+- Ctrl+Shift+Z does the inverse
+- Stack limit: 50 operations
+- Clears on page navigation (session-only)
+
+This covers the 95% case. Full persistent undo history is deferred.
 
 ---
 
@@ -119,6 +302,12 @@ def change do
     add :parent_id, references(:screenplays, on_delete: :nilify_all)
     add :linked_flow_id, references(:flows, on_delete: :nilify_all)
 
+    # Draft support (see FUTURE_FEATURES.md — Copy-Based Drafts)
+    # null = original, non-null = this is a draft of the referenced screenplay
+    add :draft_of_id, references(:screenplays, on_delete: :delete_all)
+    add :draft_label, :string           # "Alternative ending", "Draft B", etc.
+    add :draft_status, :string, default: "active"  # "active" | "archived"
+
     timestamps(type: :utc_datetime)
   end
 
@@ -127,10 +316,17 @@ def change do
   create index(:screenplays, [:project_id, :parent_id, :position])
   create index(:screenplays, [:deleted_at])
   create index(:screenplays, [:linked_flow_id])
+  create index(:screenplays, [:draft_of_id])
 
   create unique_index(:screenplays, [:project_id, :shortcut],
     where: "shortcut IS NOT NULL AND deleted_at IS NULL",
     name: :screenplays_project_shortcut_unique
+  )
+
+  # Prevent multiple screenplays from linking to the same flow (Edge Case A)
+  create unique_index(:screenplays, [:linked_flow_id],
+    where: "linked_flow_id IS NOT NULL AND deleted_at IS NULL",
+    name: :screenplays_linked_flow_unique
   )
 
   # -------------------------------------------------------
@@ -142,7 +338,7 @@ def change do
     add :data, :map, default: %{}
     add :depth, :integer, default: 0        # For nesting inside conditionals
     add :branch, :string                    # "true"/"false"/nil for conditional branches
-    add :group_id, :string                  # Groups character+parenthetical+dialogue
+    # NOTE: No group_id column — dialogue groups are computed from adjacency (Edge Case F)
 
     add :screenplay_id, references(:screenplays, on_delete: :delete_all), null: false
     add :linked_node_id, references(:flow_nodes, on_delete: :nilify_all)
@@ -153,7 +349,6 @@ def change do
   create index(:screenplay_elements, [:screenplay_id])
   create index(:screenplay_elements, [:screenplay_id, :position])
   create index(:screenplay_elements, [:linked_node_id])
-  create index(:screenplay_elements, [:group_id])
 end
 ```
 
@@ -175,15 +370,23 @@ defmodule Storyarn.Screenplays.Screenplay do
     field :position, :integer, default: 0
     field :deleted_at, :utc_datetime
 
+    # Draft support (see FUTURE_FEATURES.md — Copy-Based Drafts)
+    field :draft_label, :string
+    field :draft_status, :string, default: "active"
+
     belongs_to :project, Storyarn.Projects.Project
     belongs_to :parent, __MODULE__
     belongs_to :linked_flow, Storyarn.Flows.Flow
+    belongs_to :draft_of, __MODULE__
 
     has_many :children, __MODULE__, foreign_key: :parent_id
+    has_many :drafts, __MODULE__, foreign_key: :draft_of_id
     has_many :elements, Storyarn.Screenplays.ScreenplayElement
 
     timestamps(type: :utc_datetime)
   end
+
+  def draft?(%__MODULE__{draft_of_id: id}), do: not is_nil(id)
 
   # Changesets: create, update, move, delete, restore, link_flow
   # Validation: same rules as Flow (name 1-200, shortcut regex, etc.)
@@ -200,6 +403,7 @@ defmodule Storyarn.Screenplays.ScreenplayElement do
   @element_types ~w(
     scene_heading action character dialogue parenthetical
     transition dual_dialogue conditional instruction response
+    hub_marker jump_marker
     note section page_break title_page
   )
 
@@ -210,7 +414,7 @@ defmodule Storyarn.Screenplays.ScreenplayElement do
     field :data, :map, default: %{}
     field :depth, :integer, default: 0
     field :branch, :string
-    field :group_id, :string
+    # NOTE: No group_id — dialogue groups computed from adjacency (see Edge Case F)
 
     belongs_to :screenplay, Storyarn.Screenplays.Screenplay
     belongs_to :linked_node, Storyarn.Flows.FlowNode
@@ -226,8 +430,14 @@ defmodule Storyarn.Screenplays.ScreenplayElement do
   # Interactive types (map to flow nodes)
   def interactive_types, do: ~w(conditional instruction response)
 
-  # Types that form dialogue groups
+  # Flow navigation markers (round-trip safe, see Edge Case D)
+  def flow_marker_types, do: ~w(hub_marker jump_marker)
+
+  # Types that form dialogue groups (computed from adjacency)
   def dialogue_group_types, do: ~w(character dialogue parenthetical)
+
+  # Types that have no flow mapping (preserved during sync_from_flow)
+  def non_mappeable_types, do: ~w(note section page_break title_page)
 end
 ```
 
@@ -242,14 +452,14 @@ Each element type uses the `content` field for its text and `data` for type-spec
 # action
 %{type: "action", content: "The door creaks open. JAIME enters.", data: %{}}
 
-# character
-%{type: "character", content: "JAIME", data: %{"sheet_id" => 42}, group_id: "grp_abc"}
+# character (dialogue groups computed from adjacency — no stored group_id)
+%{type: "character", content: "JAIME", data: %{"sheet_id" => 42}}
 
-# parenthetical
-%{type: "parenthetical", content: "(looking around)", data: %{}, group_id: "grp_abc"}
+# parenthetical (groups with adjacent character+dialogue automatically)
+%{type: "parenthetical", content: "(looking around)", data: %{}}
 
-# dialogue
-%{type: "dialogue", content: "Is anyone here?", data: %{}, group_id: "grp_abc"}
+# dialogue (groups with adjacent character+parenthetical automatically)
+%{type: "dialogue", content: "Is anyone here?", data: %{}}
 
 # transition
 %{type: "transition", content: "CUT TO:", data: %{}}
@@ -313,6 +523,12 @@ Each element type uses the `content` field for its text and `data` for type-spec
   }
 }
 
+# hub_marker — preserves hub data for round-trip sync (Edge Case D)
+%{type: "hub_marker", content: "Hub: Tavern Encounters", data: %{"hub_node_id" => 42, "color" => "blue"}}
+
+# jump_marker — preserves jump target data for round-trip sync (Edge Case D)
+%{type: "jump_marker", content: "-> Jump to: Tavern Encounters", data: %{"target_hub_id" => 42, "target_flow_id" => nil}}
+
 # note
 %{type: "note", content: "This scene needs more tension", data: %{}}
 
@@ -345,10 +561,10 @@ defmodule Storyarn.Screenplays do
   alias Storyarn.Screenplays.{
     Screenplay, ScreenplayElement,
     ScreenplayCrud, ElementCrud, ScreenplayQueries,
-    TreeOperations, FlowSync
+    TreeOperations, FlowSync, ElementGrouping
   }
 
-  # Tree
+  # Tree (excludes drafts — drafts are accessed via their original)
   defdelegate list_screenplays_tree(project_id), to: ScreenplayQueries
   defdelegate get_screenplay!(project_id, screenplay_id), to: ScreenplayCrud
 
@@ -366,6 +582,10 @@ defmodule Storyarn.Screenplays do
   defdelegate reorder_elements(screenplay_id, element_ids), to: ElementCrud
   defdelegate insert_element_at(screenplay, position, attrs), to: ElementCrud
   defdelegate split_element(element, cursor_position, new_type), to: ElementCrud
+
+  # Element grouping (computed, not stored — see Edge Case F)
+  defdelegate compute_dialogue_groups(elements), to: ElementGrouping
+  defdelegate group_elements(elements), to: ElementGrouping
 
   # Tree operations
   defdelegate move_screenplay_to_position(screenplay, parent_id, position), to: TreeOperations
@@ -406,9 +626,10 @@ Copy the pattern from `Storyarn.Flows.FlowCrud`:
 
 #### `ScreenplayQueries` — Read-only queries
 
-- `list_screenplays_tree/1` — Tree structure for sidebar (same pattern as `Flows.list_flows_tree`)
+- `list_screenplays_tree/1` — Tree structure for sidebar (same pattern as `Flows.list_flows_tree`). **Excludes drafts** (`WHERE draft_of_id IS NULL`).
 - `get_with_elements/1` — Screenplay with all elements preloaded
 - `count_elements/1` — Element count for badges
+- `list_drafts/1` — List all drafts of a given screenplay (for the draft selector UI)
 
 #### `TreeOperations` — Copy from `Storyarn.Flows.TreeOperations`
 
@@ -420,21 +641,38 @@ Identical logic: move screenplay within tree, reorder siblings, prevent cycles.
 defmodule Storyarn.Screenplays.ElementGrouping do
   @doc """
   Groups consecutive elements into logical units that map to flow nodes.
+  Dialogue groups are computed from adjacency — no stored group_id (Edge Case F).
 
   Rules:
-  - Consecutive character + parenthetical? + dialogue with same group_id → 1 Dialogue Node
+  - Consecutive character + parenthetical? + dialogue (adjacent) → 1 Dialogue Node
   - scene_heading → Entry Node
   - transition → Exit Node / Connection
-  - conditional → Condition Node (includes nested branch elements)
+  - conditional → Condition Node (includes nested branch elements, depth support — Edge Case G)
   - instruction → Instruction Node
-  - response → Adds responses to the preceding Dialogue Node
+  - response → Adds responses to the preceding Dialogue Node (Edge Case E: orphan fallback)
   - action → Dialogue Node with empty text and stage_directions = content
-  - dual_dialogue → Two parallel Dialogue Nodes
-  - note, section, page_break, title_page → No flow mapping
+  - dual_dialogue → Two parallel Dialogue Nodes (hub pattern)
+  - hub_marker → Hub Node (round-trip safe — Edge Case D)
+  - jump_marker → Jump Node (round-trip safe — Edge Case D)
+  - note, section, page_break, title_page → No flow mapping (preserved on sync)
   """
 
   def group_elements(elements) do
     # Returns list of %ElementGroup{} structs
+  end
+
+  @doc """
+  Computes dialogue groups from element adjacency.
+  Returns elements annotated with a computed group identifier.
+
+  Rules:
+  - character starts a new group
+  - parenthetical continues if preceded by character or dialogue in same group
+  - dialogue continues if preceded by character or parenthetical in same group
+  - any other type breaks the current group
+  """
+  def compute_dialogue_groups(elements) do
+    # O(n) single-pass over elements list
   end
 end
 ```
@@ -558,6 +796,9 @@ Add translations for all new user-facing strings:
 
 ## Phase 3: Screenplay Editor (Core Blocks)
 
+> **Note:** This phase includes collaboration setup (Edge Case H). Element locking and
+> presence tracking are built into the editor from the start, not added later.
+
 ### 3.1 LiveView: `ScreenplayLive.Show`
 
 The main editor view. This is the most complex part.
@@ -567,13 +808,20 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
 
-  alias Storyarn.Screenplays
+  alias Storyarn.{Screenplays, Collaboration}
 
   def mount(params, _session, socket) do
     screenplay = Screenplays.get_screenplay!(project.id, params["id"])
     elements = Screenplays.list_elements(screenplay.id)
     project_variables = Sheets.list_project_variables(project.id)
     all_sheets = Sheets.list_sheets_flat(project.id)  # For speaker selection
+
+    # Check linked flow status (Edge Case I)
+    link_status = check_link_status(screenplay)
+
+    # Setup collaboration: presence + element locks + change broadcasts (Edge Case H)
+    # Uses topic "screenplay:{id}" — same Collaboration module as flows
+    socket = CollaborationHelpers.setup_screenplay_collaboration(socket, screenplay, current_user)
 
     socket
     |> assign(:screenplay, screenplay)
@@ -582,6 +830,9 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     |> assign(:all_sheets, all_sheets)
     |> assign(:focused_element_id, nil)
     |> assign(:editing_element_id, nil)
+    |> assign(:link_status, link_status)          # Edge Case I
+    |> assign(:undo_stack, [])                    # Edge Case J (structural undo)
+    |> assign(:redo_stack, [])                    # Edge Case J (structural redo)
   end
 
   def render(assigns) do
@@ -1407,15 +1658,18 @@ Screenplay Element(s)           →  Flow Node Type
 ─────────────────────────────────────────────────
 scene_heading                   →  entry
 character + parenthetical? +    →  dialogue (speaker_sheet_id from character.data.sheet_id,
-  dialogue (same group_id)         stage_directions from parenthetical, text from dialogue)
+  dialogue (adjacent group)        stage_directions from parenthetical, text from dialogue)
 action                          →  dialogue (text="", stage_directions=content)
 conditional                     →  condition (expression from data.condition)
 instruction                     →  instruction (assignments from data.assignments)
 response                        →  Adds responses[] to PREVIOUS dialogue node
+                                   (orphan fallback: auto-wraps in empty dialogue — Edge Case E)
 transition                      →  exit
 dual_dialogue                   →  Two dialogue nodes in parallel (hub pattern)
-note, section, page_break       →  No mapping (skipped)
-title_page                      →  No mapping (skipped)
+hub_marker                      →  hub (data preserved for round-trip — Edge Case D)
+jump_marker                     →  jump (data preserved for round-trip — Edge Case D)
+note, section, page_break       →  No mapping (preserved during sync — Edge Case C)
+title_page                      →  No mapping (preserved during sync — Edge Case C)
 ```
 
 ### 6.3 FlowSync Module
@@ -1425,8 +1679,9 @@ defmodule Storyarn.Screenplays.FlowSync do
   alias Storyarn.{Flows, Screenplays}
 
   @doc """
-  Sync screenplay content to its linked flow.
+  Sync screenplay content to its linked flow using diff-based approach (Edge Case C).
   Creates the flow if it doesn't exist.
+  Preserves manually-added nodes (source="manual") and node canvas positions.
   """
   def sync_to_flow(%Screenplay{} = screenplay) do
     elements = Screenplays.list_elements(screenplay.id)
@@ -1435,20 +1690,21 @@ defmodule Storyarn.Screenplays.FlowSync do
     flow = ensure_flow(screenplay)
 
     Repo.transaction(fn ->
-      # 1. Clear existing nodes that were auto-generated (keep manually added ones)
-      clear_synced_nodes(flow)
+      # 1. Load existing synced nodes (source="screenplay_sync") — Edge Case B
+      existing_synced = load_synced_nodes(flow)
+      existing_map = Map.new(existing_synced, &{&1.id, &1})
 
-      # 2. Create nodes from groups
-      {nodes, element_node_map} = create_nodes_from_groups(flow, groups)
+      # 2. Diff: create new, update changed, delete removed (preserve XY positions)
+      {nodes, element_node_map} = diff_and_apply_nodes(flow, groups, existing_map)
 
-      # 3. Create connections (sequential order, branching for conditionals)
-      create_connections(flow, nodes, groups)
+      # 3. Update connections (sequential order, branching for conditionals)
+      update_connections(flow, nodes, groups)
 
       # 4. Update linked_node_id on elements
       update_element_links(element_node_map)
 
-      # 5. Auto-layout nodes on canvas
-      auto_layout_nodes(flow, nodes)
+      # 5. Auto-layout ONLY new nodes (existing keep their positions)
+      auto_layout_new_nodes(flow, nodes, existing_map)
     end)
   end
 
@@ -1550,32 +1806,41 @@ entry             →  scene_heading (name from node label)
 dialogue          →  character + parenthetical? + dialogue
                      (+ response block if node has responses)
 condition         →  conditional block
-                     (nested elements for true/false branches)
+                     (nested elements for true/false branches — Edge Case G)
 instruction       →  instruction block
-hub               →  note (hub marker)
-jump              →  note (jump marker)
+hub               →  hub_marker (preserves all hub data — Edge Case D)
+jump              →  jump_marker (preserves all jump data — Edge Case D)
 exit              →  transition
 ```
 
 ### 7.3 FlowSync.sync_from_flow
 
 ```elixir
+@doc """
+Sync flow content to screenplay using diff-based approach (Edge Case C).
+Preserves non-mappeable elements (notes, sections, page_breaks, title_page).
+"""
 def sync_from_flow(%Screenplay{linked_flow_id: flow_id} = screenplay) when not is_nil(flow_id) do
   flow = Flows.get_flow_with_nodes_and_connections!(flow_id)
   all_sheets = Sheets.list_sheets_flat(screenplay.project_id)
 
   Repo.transaction(fn ->
-    # 1. Clear existing elements
-    clear_elements(screenplay)
+    # 1. Load existing elements, separate mappeable from non-mappeable
+    existing = Screenplays.list_elements(screenplay.id)
+    {mappeable, preserved} = split_by_mappeability(existing)
+    existing_map = Map.new(mappeable, &{&1.linked_node_id, &1})
 
     # 2. Find entry nodes (starting points)
     entry_nodes = Enum.filter(flow.nodes, &(&1.type == "entry"))
 
     # 3. DFS traversal generating elements
-    elements = traverse_flow(flow, entry_nodes, all_sheets)
+    new_elements = traverse_flow(flow, entry_nodes, all_sheets)
 
-    # 4. Bulk insert elements with positions
-    insert_elements(screenplay, elements)
+    # 4. Diff: update existing mappeable elements, create new, delete orphaned
+    diff_and_apply_elements(screenplay, new_elements, existing_map)
+
+    # 5. Re-insert preserved elements (notes, sections, page_breaks) at their positions
+    reinsert_preserved_elements(screenplay, preserved)
   end)
 end
 
@@ -1799,11 +2064,29 @@ Parse `.fountain` files into screenplay elements. Use the Fountain spec to detec
 
 **Rationale**: Keeps the database simple while supporting visual nesting. Matches the flow graph model where condition nodes have labeled outputs (true/false).
 
-### D5: Group ID for dialogue groups
+### D5: Computed dialogue groups (no stored group_id)
 
-**Decision**: Consecutive character + parenthetical + dialogue share a `group_id`.
+**Decision**: Dialogue groups are computed from element adjacency at runtime, not stored in the database.
 
-**Rationale**: This explicitly links them as a single unit for flow sync. When syncing to flow, elements with the same `group_id` become one dialogue node. The `group_id` is generated when creating the character element and inherited by subsequent parenthetical/dialogue elements.
+**Rationale**: A stored `group_id` becomes inconsistent when elements are reordered, inserted, or deleted. Computing groups from adjacency (character → parenthetical? → dialogue are consecutive) is O(n), trivial for typical element counts (<500), and impossible to become inconsistent. See Edge Case F.
+
+### D6: Diff-based sync instead of clear + recreate
+
+**Decision**: Both `sync_to_flow` and `sync_from_flow` use a diff approach that updates existing entities, creates new ones, and only deletes orphaned ones.
+
+**Rationale**: Clear + recreate destroys manual work — canvas positions in flows, writer notes in screenplays. Diff-based sync preserves what it can while keeping content synchronized. See Edge Case C.
+
+### D7: Flow node `source` field for sync ownership
+
+**Decision**: Add `source` field ("manual" | "screenplay_sync") to `flow_nodes` to track which nodes were auto-generated by screenplay sync.
+
+**Rationale**: Sync operations must know which nodes they "own" (safe to update/delete) vs which the user manually created in the canvas (must preserve). See Edge Case B.
+
+### D8: Draft fields in schema from day one
+
+**Decision**: Include `draft_of_id`, `draft_label`, and `draft_status` in the screenplay migration even though drafts are not implemented in the initial phases.
+
+**Rationale**: Adding columns later requires a migration and risks breaking queries. Including them now (unused, nullable) costs nothing and ensures all queries include `WHERE draft_of_id IS NULL` from the start, preventing breakage when drafts are implemented. See FUTURE_FEATURES.md — Copy-Based Drafts.
 
 ---
 
@@ -1834,14 +2117,18 @@ test/storyarn_web/live/screenplay_live/
 
 1. **Element CRUD**: Create, update, delete, reorder elements
 2. **Split**: Split element at cursor, verify three new elements
-3. **Grouping**: Consecutive character+dialogue → one group
-4. **Sync to flow**: Screenplay → flow node mapping correctness
-5. **Sync from flow**: Flow → screenplay element mapping correctness
-6. **Conditional nesting**: Elements inside condition branches
-7. **Response block**: Add/remove/edit choices with conditions
-8. **Slash commands**: Type detection, menu filtering
+3. **Computed grouping**: Consecutive character+dialogue → one group; reorder breaks group correctly
+4. **Sync to flow (diff)**: Update existing nodes, create new, delete orphaned, preserve manual nodes
+5. **Sync from flow (diff)**: Update existing elements, preserve notes/sections/page_breaks
+6. **Conditional nesting**: Elements inside condition branches, depth 2+ nesting
+7. **Response block**: Add/remove/edit choices; orphan response shows warning
+8. **Slash commands**: Type detection, menu filtering, depth limit for /conditional
 9. **Auto-detect**: Text pattern → element type
 10. **Tree operations**: Sidebar hierarchy, drag-drop reorder
+11. **Hub/Jump round-trip**: hub_marker → sync_to_flow → hub node → sync_from_flow → hub_marker
+12. **Linked flow deleted**: Screenplay shows warning, unlink works
+13. **Unique flow link**: Cannot link two screenplays to same flow
+14. **Collaboration**: Element locking, presence, broadcast on element update
 
 ---
 
@@ -1859,10 +2146,14 @@ test/storyarn_web/live/screenplay_live/
 
 Each phase is independently testable and deployable. Phases 1-5 deliver a fully functional standalone screenplay editor. Phases 6-7 add the flow integration. Phases 8-9 add polish.
 
+**Prerequisite migration**: Before Phase 6, add `source` field to `flow_nodes` table (Edge Case B). This is a separate migration that can be done anytime before sync implementation.
+
 ---
 
 ## Dependencies
 
-- **Existing**: Condition builder, instruction builder, variable system, TipTap editor
+- **Existing**: Condition builder, instruction builder, variable system, TipTap editor, Collaboration module (presence + locks)
+- **New migration needed**: `add_source_to_flow_nodes` — adds `source` field for sync ownership (Edge Case B)
 - **No new deps needed**: All rendering is CSS + contenteditable + existing Phoenix LiveView
 - **Lucide icons**: `scroll-text`, `clapperboard`, `align-left`, `columns-2`, `parentheses`, `scissors`
+- **Future**: Draft system fields are in schema but not implemented — see FUTURE_FEATURES.md

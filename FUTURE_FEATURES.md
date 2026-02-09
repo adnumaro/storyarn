@@ -2,68 +2,260 @@
 
 > **Purpose:** Document planned features that are not in the current implementation scope
 >
-> **Last Updated:** February 6, 2026
+> **Last Updated:** February 9, 2026
 
 ---
 
-## Variable State Timeline
+## Copy-Based Drafts (Screenplays & Flows)
 
-> **Dependency:** Requires Phase 7.5 (block variables) + flow scripting system
+> **Dependency:** Requires Screenplay Tool (Phase 1 schema ready) + Flow system
+> **Priority:** Must Have — essential for creative iteration workflows
+> **Schema fields:** Already included in Screenplay migration (draft_of_id, draft_label, draft_status)
+> **Related:** `docs/plans/SCREENPLAY_TOOL.md` — Design Decision D8
 
 ### Concept
 
-A debugging/preview tool that answers: **"What is the state of this entity at this point in the story?"**
+Drafts allow writers and designers to create **alternative versions** of a screenplay or flow without losing the current version. Think of it as git branches for non-technical creative users.
 
-When blocks are marked as variables, they can be modified by flow nodes (instructions). The timeline shows how variable values evolve as the player progresses through the narrative.
+A draft is a **full deep clone** of the original entity — it's an independent copy that can be edited, compared, and optionally promoted to replace the original.
 
 ### Use Cases
 
-1. **Designer Preview:** "If the player takes path A, what happens to Jaime's health?"
-2. **Debugging:** "Why does this condition fail? What's the variable state here?"
-3. **Documentation:** "Show me all the ways this character can change"
+1. **Alternative scenes:** "What if the protagonist takes the dark path instead?"
+2. **A/B testing narratives:** Create two versions of a scene, playtest both, keep the better one
+3. **Client proposals:** Present multiple approaches for the same scene
+4. **Safe experimentation:** Try a radical restructure without risking the working version
+5. **Versioned milestones:** Archive the "approved" version before making further edits
 
-### Architecture
+### Data Model
 
-```
-Variable Timeline System
-├── Flow Scripting (prerequisite)
-│   ├── Instruction nodes can modify variables
-│   │   └── Syntax: #mc.jaime.health -= 30
-│   ├── Condition nodes can read variables
-│   │   └── Syntax: #mc.jaime.health > 50
-│   └── Variables resolved at design-time for preview
-│
-├── State Calculation Engine
-│   ├── Start from sheet's initial block values
-│   ├── Walk through flow graph (or selected path)
-│   ├── Apply variable modifications at each node
-│   └── Track state at each step
-│
-├── Timeline Visualization
-│   ├── Option A: On Sheet (References tab or new "Timeline" tab)
-│   │   └── "This sheet's variables change in these flows at these nodes"
-│   │
-│   ├── Option B: On Flow (sidebar panel)
-│   │   └── Select a node → see variable state at that point
-│   │   └── Compare states between two nodes
-│   │
-│   └── Option C: Interactive Simulation
-│       └── "Play" through the flow, making choices
-│       └── See variable changes in real-time
-│       └── Branch selection at hubs
-│
-└── Data Model
-    flow_variable_changes (calculated, not stored)
-    ├── flow_id
-    ├── node_id
-    ├── variable_path (#mc.jaime.health)
-    ├── operation (set, add, subtract, etc.)
-    └── expression (the instruction code)
+#### Schema additions (Screenplay — already in migration)
+
+```elixir
+# In screenplays table (fields already present in Phase 1 migration):
+add :draft_of_id, references(:screenplays, on_delete: :delete_all)
+add :draft_label, :string           # "Alternative ending", "Draft B", etc.
+add :draft_status, :string, default: "active"  # "active" | "archived"
 ```
 
-### UI Concepts
+#### Schema additions (Flow — separate migration when implemented)
 
-#### Option A: Sheet Timeline Tab
+```elixir
+# Migration: add_draft_fields_to_flows
+add :draft_of_id, references(:flows, on_delete: :delete_all)
+add :draft_label, :string
+add :draft_status, :string, default: "active"
+
+create index(:flows, [:draft_of_id])
+```
+
+#### Entity Hierarchy
+
+```
+Screenplay "Act 1 Scene 3" (id=10, draft_of_id=nil)     ← ORIGINAL
+├── Draft "Dark ending"    (id=15, draft_of_id=10)       ← ACTIVE DRAFT
+├── Draft "Happy ending"   (id=16, draft_of_id=10)       ← ACTIVE DRAFT
+└── Draft "Archived v1"    (id=17, draft_of_id=10, status=archived)
+
+Flow "Scene 3 Flow" (id=20, draft_of_id=nil)             ← ORIGINAL
+├── Draft "With hub routing" (id=25, draft_of_id=20)     ← ACTIVE DRAFT
+└── Draft "Linear version"   (id=26, draft_of_id=20)     ← ACTIVE DRAFT
+```
+
+### How It Works
+
+#### Creating a Draft
+
+"Create draft" = deep clone of the entity + all its children:
+
+**Screenplay draft:**
+1. Clone `screenplay` record → set `draft_of_id` to original's id
+2. Clone all `screenplay_elements` → point to new screenplay
+3. Preserve `linked_node_id` references (elements still point to same flow nodes)
+4. User names the draft (default: "Draft of {original_name}")
+
+**Flow draft:**
+1. Clone `flow` record → set `draft_of_id` to original's id
+2. Clone all `flow_nodes` → point to new flow, build old→new ID map
+3. Clone all `flow_connections` → point to new flow, remap node IDs using the map
+4. User names the draft
+
+```elixir
+defmodule Storyarn.Screenplays.DraftOperations do
+  def create_draft(%Screenplay{} = original, attrs \\ %{}) do
+    Repo.transaction(fn ->
+      # 1. Clone screenplay
+      draft = clone_screenplay(original, %{
+        draft_of_id: original.id,
+        draft_label: attrs[:label] || "Draft of #{original.name}",
+        draft_status: "active"
+      })
+
+      # 2. Clone all elements
+      elements = Screenplays.list_elements(original.id)
+      Enum.each(elements, fn el ->
+        clone_element(el, %{screenplay_id: draft.id})
+      end)
+
+      draft
+    end)
+  end
+end
+```
+
+#### Promoting a Draft
+
+"Promote" = the draft becomes the original, the original becomes an archived draft:
+
+1. Swap `draft_of_id`: original gets `draft_of_id = draft.id`, draft gets `draft_of_id = nil`
+2. Original's status → `"archived"`, draft's status → `"active"`
+3. All other drafts of the original now point to the promoted draft (update `draft_of_id`)
+4. If the original was linked to a flow, the promoted draft inherits the `linked_flow_id`
+
+```elixir
+def promote_draft(%Screenplay{draft_of_id: original_id} = draft) when not is_nil(original_id) do
+  original = Repo.get!(Screenplay, original_id)
+
+  Repo.transaction(fn ->
+    # 1. Original becomes archived draft of the promoted entity
+    original
+    |> Screenplay.changeset(%{draft_of_id: draft.id, draft_status: "archived", draft_label: "Pre-promotion archive"})
+    |> Repo.update!()
+
+    # 2. Draft becomes original
+    draft
+    |> Screenplay.changeset(%{draft_of_id: nil, position: original.position, parent_id: original.parent_id})
+    |> Repo.update!()
+
+    # 3. Redirect other drafts
+    from(s in Screenplay, where: s.draft_of_id == ^original_id and s.id != ^draft.id)
+    |> Repo.update_all(set: [draft_of_id: draft.id])
+  end)
+end
+```
+
+#### Archiving / Deleting a Draft
+
+- **Archive:** Set `draft_status = "archived"`. Hidden from default view, still accessible.
+- **Delete:** Soft delete (set `deleted_at`). Can be restored from trash.
+
+### UI Design
+
+#### Sidebar: Drafts are NOT in the tree
+
+Drafts don't appear in the main sidebar tree. The tree only shows originals (`WHERE draft_of_id IS NULL`).
+
+#### Editor: Draft selector in toolbar
+
+When viewing an original that has drafts, the toolbar shows a dropdown:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [scroll-text] Act 1 Scene 3    [Original ▼]    [Sync] [⋮]  │
+│                                 ┌──────────────────────┐    │
+│                                 │ ● Original           │    │
+│                                 │ ○ Dark ending        │    │
+│                                 │ ○ Happy ending       │    │
+│                                 │ ─────────────────    │    │
+│                                 │ Archived (1)    ▸    │    │
+│                                 │ ─────────────────    │    │
+│                                 │ + New Draft          │    │
+│                                 └──────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+When viewing a draft:
+- Banner at top: "You are editing draft: Dark ending" + [Promote] + [Back to original]
+- All editing works identically to the original
+- Collaboration works independently per draft
+
+### Cross-Entity Draft Linking
+
+A screenplay draft can have its own `linked_flow_id`, independent of the original:
+
+| Scenario                  | Screenplay         | linked_flow_id            |
+|---------------------------|--------------------|---------------------------|
+| Original with flow        | Scene 3 (original) | → Flow Scene 3 (original) |
+| Draft with same flow      | Scene 3 draft A    | → Flow Scene 3 (original) |
+| Draft with own flow draft | Scene 3 draft B    | → Flow Scene 3 draft X    |
+| Draft unlinked            | Scene 3 draft C    | → nil                     |
+
+This is handled naturally by the existing `linked_flow_id` field — no special logic needed.
+
+**Constraint:** The unique index on `linked_flow_id` means only ONE screenplay entity (original or draft) can be linked to a given flow at a time. This prevents sync conflicts.
+
+### Implementation Phases
+
+#### Draft Phase 1: Core (Screenplay only)
+- Deep clone function for screenplays + elements
+- Draft CRUD: create, archive, delete, restore
+- Draft selector dropdown in screenplay editor toolbar
+- Draft banner when editing a draft
+- `list_drafts/1` query
+- Filter drafts from sidebar tree
+
+#### Draft Phase 2: Promote & Compare
+- Promote draft to original
+- Side-by-side diff view (element-level comparison)
+- Draft history timeline
+
+#### Draft Phase 3: Flow Drafts
+- Add `draft_of_id`, `draft_label`, `draft_status` to flows migration
+- Deep clone for flows + nodes + connections
+- Draft selector in flow editor toolbar
+- Cross-entity linking (screenplay draft ↔ flow draft)
+
+#### Draft Phase 4: Advanced
+- Merge: cherry-pick elements from a draft into the original
+- Batch drafts: create draft of entire flow+screenplay pair simultaneously
+- Draft comments/annotations: "This version changes the motivation for..."
+
+### Impact Assessment
+
+| Component         | Impact   | Notes                                           |
+|-------------------|----------|-------------------------------------------------|
+| Screenplay schema | None     | Fields already in migration                     |
+| Flow schema       | Low      | One migration to add 3 fields                   |
+| Sidebar tree      | None     | Already filters `draft_of_id IS NULL`           |
+| CRUD operations   | Low      | Deep clone is the main new function             |
+| Sync engine       | None     | Works via existing `linked_flow_id`             |
+| Collaboration     | None     | Each draft is an independent entity             |
+| Editor UI         | Medium   | Draft selector dropdown + banner                |
+| Queries           | Low      | Add `WHERE draft_of_id IS NULL` to list queries |
+
+**Total difficulty: Medium.** The bulk of the work is the deep clone function and the toolbar UI. The architecture supports it cleanly because a draft IS a full entity, not a layer on top.
+
+### Competitive Reference
+
+- **articy:draft:** Has a "Working Copies" feature where you can clone packages for parallel editing. Merge is manual.
+- **Google Docs:** "Suggested edits" mode (inline, not full copies). Different mental model.
+- **Git:** Full branch-and-merge. Most powerful but requires technical knowledge.
+- **Figma:** "Branching" feature (beta). Deep copy of entire file with merge capability.
+
+Storyarn's copy-based approach is closest to articy's Working Copies — simple, predictable, and no merge conflicts (you choose which version to keep).
+
+---
+
+## Variable State Timeline (Sheet-Side View)
+
+> **Dependency:** Requires `variable_references` table (done) + Sheet UI extension
+> **Prerequisites completed:** Instruction nodes, condition nodes, variable tracking, flow debugger
+> **Partially superseded:** Options B & C are now covered by the Flow Debugger
+
+### Concept
+
+A sheet-side view that answers: **"Where and how does this variable change across all flows?"**
+
+This is the **remaining piece** of the original Variable State Timeline feature. The flow-side features (originally planned as Options B & C) have been implemented as part of the Flow Debugger:
+
+- **Option B (Flow State Inspector)** → Implemented as the debugger's Variables tab (shows current/initial/previous values at the current node, with filtering and editing)
+- **Option C (Interactive Simulation)** → Implemented as the Flow Debugger itself (step through flows, choose responses, auto-play, cross-flow call stack, breakpoints)
+- **Option A (Sheet Timeline Tab)** → Not yet implemented — this is what remains
+
+### What Remains: Sheet Timeline Tab
+
+The `variable_references` table already tracks which flow nodes read/write which variables. The missing piece is a UI on the Sheet view that visualizes this:
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ [Content] [References] [Timeline]                           │
@@ -71,104 +263,48 @@ Variable Timeline System
 │ VARIABLE CHANGES                                            │
 │                                                             │
 │ health (initial: 100)                                       │
-│ ├─ 🔀 Chapter 1 / Node "Fight"    → 70  (-30)              │
-│ ├─ 🔀 Chapter 1 / Node "Heal"     → 100 (+30)              │
-│ └─ 🔀 Chapter 2 / Node "Ambush"   → 50  (-50)              │
+│ ├─ Chapter 1 / Node "Fight"    → writes (-30)               │
+│ ├─ Chapter 1 / Node "Heal"     → writes (+30)               │
+│ └─ Chapter 2 / Node "Ambush"   → writes (-50)               │
 │                                                             │
 │ mood (initial: "neutral")                                   │
-│ ├─ 🔀 Chapter 1 / Node "Victory"  → "happy"                │
-│ └─ 🔀 Chapter 2 / Node "Betrayal" → "angry"                │
+│ ├─ Chapter 1 / Node "Victory"  → writes ("happy")           │
+│ └─ Chapter 2 / Node "Betrayal" → writes ("angry")           │
+│                                                             │
+│ health (reads)                                              │
+│ ├─ Chapter 1 / Node "Check HP" → reads (condition)          │
+│ └─ Chapter 2 / Node "Death?"   → reads (condition)          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-#### Option B: Flow State Inspector (sidebar)
-```
-┌──────────────────────────────────────┐
-│ STATE AT: "Fight" node               │
-├──────────────────────────────────────┤
-│ #mc.jaime                            │
-│   health: 70 (was 100)               │
-│   mood: "neutral"                    │
-│   is_alive: true                     │
-│                                      │
-│ #mc.elena                            │
-│   trust_level: 5                     │
-│   knows_secret: false                │
-├──────────────────────────────────────┤
-│ [Compare with another node ▼]        │
-└──────────────────────────────────────┘
+### Implementation
+
+The data layer already exists:
+
+```elixir
+# Already implemented:
+Storyarn.Flows.VariableReferenceTracker.get_variable_usage(block_id, project_id)
+# Returns: [%{flow_name, node_id, node_type, kind: "read"|"write", source_sheet, source_variable}]
 ```
 
-#### Option C: Interactive Simulation
-```
-┌─────────────────────────────────────────────────────────────┐
-│ SIMULATION MODE                               [▶ Play] [⏹]  │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│ Current Node: "Tavern Entrance"                             │
-│                                                             │
-│ 📍 State:                                                   │
-│    #mc.jaime.health = 100                                   │
-│    #mc.jaime.gold = 50                                      │
-│                                                             │
-│ 💬 "Welcome to the tavern, traveler."                       │
-│                                                             │
-│ Choose response:                                            │
-│ ┌──────────────────────────────────────────────────────────┐│
-│ │ [1] "I need a room" → gold -= 10                         ││
-│ │ [2] "I'm looking for someone" → (no change)              ││
-│ │ [3] "Give me all your money!" → karma -= 20              ││
-│ └──────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Implementation Phases
-
-1. **Flow Scripting System** (prerequisite)
-   - Define instruction syntax for variable modification
-   - Define condition syntax for variable reading
-   - Parser for expressions
-   - Variable path resolution
-
-2. **Basic State Calculation**
-   - Walk linear flow paths
-   - Apply modifications
-   - Handle simple branches (show multiple outcomes)
-
-3. **Timeline UI (Sheet)**
-   - Show where variables change
-   - Link to flow nodes
-
-4. **State Inspector (Flow)**
-   - Show state at selected node
-   - Compare states
-
-5. **Interactive Simulation** (advanced)
-   - Playable preview
-   - Choice selection
-   - State tracking
+What's needed:
+1. **Sheet UI:** Add "Timeline" or "Usage" tab to the sheet editor
+2. **Query:** Group variable_references by variable, sorted by flow
+3. **Navigation:** Click a reference to jump to the flow node
+4. **Stale detection:** Show warning if a variable reference points to a renamed/deleted variable
 
 ### Complexity Considerations
 
-- **Branching paths:** A flow can have many paths. Show all? Let user select?
-- **Loops:** Flows might loop. How to handle infinite states?
-- **Cross-flow jumps:** Variable changes might span multiple flows
-- **Calculation performance:** Large flows with many variables could be slow
-- **Conflicts:** Same variable modified differently in parallel branches
-
-### Recommendation
-
-Start with **Option B (Flow State Inspector)** as it's:
-- Most immediately useful for debugging
-- Scoped to single flow (simpler calculation)
-- Doesn't require solving branching complexity initially
+- **Cross-flow jumps:** Variable changes might span multiple flows — show all flows
+- **Static analysis only:** This shows where variables CAN change, not runtime values (the debugger handles runtime)
+- **Performance:** Large projects with many flows could have many references — pagination or lazy loading
 
 ---
 
 ## Expression Text Mode (Power User Mode)
 
-> **Dependency:** Requires Instruction Node (Phase A) shipped and tested
-> **Priority:** P1 — first feature after visual builder ships
+> **Dependency:** Instruction Node — shipped and tested
+> **Priority:** P1 — ready to implement when prioritized
 
 ### Concept
 
@@ -188,7 +324,7 @@ The visual sentence-flow builder is Storyarn's core UX differentiator. Adding a 
 
 ### When to Revisit
 
-After the visual builder (Phase A) has shipped and received user feedback. If users with programming backgrounds report the builder as slow for bulk operations, this becomes high priority.
+The visual builder is now shipped. This becomes relevant once user feedback indicates that power users find the visual builder slow for bulk operations.
 
 ### Implementation Sketch
 
@@ -207,7 +343,7 @@ articy:draft's expresso language (C#-like syntax with autocomplete and syntax hi
 
 ## Slash Commands in Value Input
 
-> **Dependency:** Requires Instruction Node (Phase A)
+> **Dependency:** Instruction Node — shipped
 > **Priority:** P3 — only if user demand emerges
 
 ### Concept
@@ -237,7 +373,7 @@ Inspired by Notion's `/` command palette and VS Code's command palette, but thos
 
 ## Conditional Assignments ("When...Change...To")
 
-> **Dependency:** Requires Instruction Node (Phase A) + Condition Builder
+> **Dependency:** Instruction Node + Condition Builder — both shipped
 > **Priority:** P2 — lightweight "only if" version first
 
 ### Concept
@@ -285,15 +421,15 @@ No mainstream narrative tool merges conditions and instructions this way. Ink us
 
 ### Market Landscape
 
-| Tool | Approach | Visual Builder? | Non-Programmer Friendly? |
-|---|---|---|---|
-| **articy:draft** | C#-like text with autocomplete | No | Medium — C# syntax is barrier |
-| **Twine (Harlowe)** | Functional macros `(set: $v to x)` | No | Easy for basics, steep for logic |
-| **Ink (Inkle)** | Custom syntax (`~ x = 2`) | No | Writer-friendly but still code |
-| **Yarn Spinner** | Tag-based `<<set $v to x>>` | No | Screenplay-like, accessible |
-| **Chat Mapper** | Lua + dropdowns | Partial | Lua quirks frustrate users |
-| **Dialogue System Unity** | Lua + **full dropdown wizard** | **Yes** | **Most accessible** for complex logic |
-| **Fungus** | 100% visual blocks | **Yes** | Most accessible but tedious at scale |
+| Tool                      | Approach                           | Visual Builder?   | Non-Programmer Friendly?              |
+|---------------------------|------------------------------------|-------------------|---------------------------------------|
+| **articy:draft**          | C#-like text with autocomplete     | No                | Medium — C# syntax is barrier         |
+| **Twine (Harlowe)**       | Functional macros `(set: $v to x)` | No                | Easy for basics, steep for logic      |
+| **Ink (Inkle)**           | Custom syntax (`~ x = 2`)          | No                | Writer-friendly but still code        |
+| **Yarn Spinner**          | Tag-based `<<set $v to x>>`        | No                | Screenplay-like, accessible           |
+| **Chat Mapper**           | Lua + dropdowns                    | Partial           | Lua quirks frustrate users            |
+| **Dialogue System Unity** | Lua + **full dropdown wizard**     | **Yes**           | **Most accessible** for complex logic |
+| **Fungus**                | 100% visual blocks                 | **Yes**           | Most accessible but tedious at scale  |
 
 ### Key Findings
 
@@ -313,10 +449,10 @@ No mainstream narrative tool merges conditions and instructions this way. Ink us
 
 Storyarn occupies an **unserved niche**: a standalone narrative design tool with a visual instruction builder that feels like writing.
 
-| Segment | Competition | Storyarn Advantage |
-|---|---|---|
-| Text scripting | articy, Ink, Yarn Spinner | Accessible to non-programmers |
-| Pure visual blocks | Fungus | Scales better, less tedious |
+| Segment              | Competition               | Storyarn Advantage                        |
+|----------------------|---------------------------|-------------------------------------------|
+| Text scripting       | articy, Ink, Yarn Spinner | Accessible to non-programmers             |
+| Pure visual blocks   | Fungus                    | Scales better, less tedious               |
 | Hybrid wizard + code | Dialogue System for Unity | Standalone (not engine-locked), modern UX |
 
 ### What Ships Commercial Games
@@ -425,15 +561,15 @@ On image hover:
 
 ### Style Presets
 
-| Preset | Description | Best For |
-|--------|-------------|----------|
-| Fantasy Portrait | Detailed character art | Characters |
-| Environment Concept | Wide landscape/interior | Locations |
-| Item Render | Clean object on neutral BG | Items |
-| Pixel Art | Retro game style | Retro games |
-| Anime | Anime/manga style | Visual novels |
-| Realistic | Photo-realistic | Modern settings |
-| Sketch | Concept sketch style | Early development |
+| Preset              | Description                | Best For          |
+|---------------------|----------------------------|-------------------|
+| Fantasy Portrait    | Detailed character art     | Characters        |
+| Environment Concept | Wide landscape/interior    | Locations         |
+| Item Render         | Clean object on neutral BG | Items             |
+| Pixel Art           | Retro game style           | Retro games       |
+| Anime               | Anime/manga style          | Visual novels     |
+| Realistic           | Photo-realistic            | Modern settings   |
+| Sketch              | Concept sketch style       | Early development |
 
 ### Configuration Options
 
@@ -647,7 +783,8 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
 
 ## Dialogue Node Enhancements (Deferred)
 
-> **Related:** See DIALOGUE_NODE_ENHANCEMENT.md for current implementation plan
+> **Core phases (1-4) shipped:** Speaker, stage directions, menu text, audio, technical/localization IDs, response conditions/instructions
+> **Related:** See DIALOGUE_NODE_ENHANCEMENT.md for completed phases
 
 ### Configurable Node Header Style
 
@@ -744,26 +881,31 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
 
 ## Flow Debugger — Deferred Enhancements
 
-> **Related:** See `docs/plans/FLOW_DEBUGGER.md` — Phase 3, Tasks 24-26
-> **Status:** Deferred after completing Tasks 16-23
+> **Core debugger:** Implemented and merged to main (Feb 2026)
+> **What's done:** Step/step-back/reset, simple breakpoints, cross-flow call stack, variable inspection/editing, auto-play, start node selection, console, history, execution path, resizable panel, canvas visual feedback
+> **Status:** These are additive enhancements to the shipped debugger
 
-### Saved Test Sessions (Tasks 24-25)
+### Saved Test Sessions
 
 Persist debug configurations to the database for re-use. Users can save a named session with a specific start node, variable overrides, and breakpoints, then reload it later to repeat the same test scenario.
+
+Currently debug state is in-memory only (socket assigns + `DebugSessionStore` Agent for cross-flow navigation). Sessions are lost when the panel is closed.
 
 - **Schema:** `debug_sessions` table with `name`, `start_node_id`, `variable_overrides` (map), `breakpoints` (integer array), `flow_id` (FK)
 - **CRUD:** `list_debug_sessions/1`, `get_debug_session!/1`, `create_debug_session/1`, `delete_debug_session/1`
 - **Panel UI:** Save button with name input, load dropdown listing saved sessions, delete per session
 - **Handler:** Save extracts state from engine, load rebuilds engine with overrides applied
 
-### Conditional Breakpoints (Task 26)
+### Conditional Breakpoints
 
 Breakpoints can optionally have a condition expression. Execution only pauses when the condition evaluates to true.
 
-- Change `breakpoints` from `MapSet.t(integer)` to `%{integer => nil | String.t}` (node_id => condition)
-- `at_breakpoint?/1` evaluates condition via `ConditionEval.evaluate_string/2` when present
+Currently breakpoints are a simple `MapSet.t(integer)` of node IDs — execution always pauses at any breakpoint node.
+
+- Change `breakpoints` from `MapSet.t(integer)` to `%{integer => nil | String.t}` (node_id => condition or nil)
+- `at_breakpoint?/1` evaluates condition via `ConditionEval.evaluate_string/2` when present, passes unconditionally when nil
 - UI: expandable condition input in the Path tab per breakpoint
-- Update canvas breakpoint visuals for conditional vs unconditional
+- Update canvas breakpoint visuals for conditional (outlined) vs unconditional (filled)
 
 ---
 
