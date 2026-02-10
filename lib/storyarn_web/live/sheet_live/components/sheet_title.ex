@@ -6,8 +6,8 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
 
   use StoryarnWeb, :live_component
 
-  alias Storyarn.Sheets
   alias Storyarn.Repo
+  alias Storyarn.Sheets
 
   @impl true
   def render(assigns) do

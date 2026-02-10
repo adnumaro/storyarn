@@ -9,8 +9,8 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Sheets.{Block, Sheet, BlockCrud, EntityReference}
   alias Storyarn.Repo
+  alias Storyarn.Sheets.{Block, BlockCrud, EntityReference, Sheet}
 
   # =============================================================================
   # Resolution
@@ -38,20 +38,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
       hidden_block_ids = collect_hidden_block_ids(all_sheets)
 
       ancestors
-      |> Enum.map(fn ancestor ->
-        blocks =
-          from(b in Block,
-            where:
-              b.sheet_id == ^ancestor.id and
-                b.scope == "children" and
-                is_nil(b.deleted_at),
-            order_by: [asc: b.position]
-          )
-          |> Repo.all()
-          |> Enum.reject(fn b -> b.id in hidden_block_ids end)
-
-        %{source_sheet: ancestor, blocks: blocks}
-      end)
+      |> Enum.map(&ancestor_to_block_group(&1, hidden_block_ids))
       |> Enum.reject(fn group -> group.blocks == [] end)
     end
   end
@@ -146,96 +133,12 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   @spec sync_definition_change(Block.t()) :: {:ok, integer()}
   def sync_definition_change(%Block{} = parent_block) do
     Repo.transaction(fn ->
-      instances_query =
-        from(b in Block,
-          where:
-            b.inherited_from_block_id == ^parent_block.id and
-              b.detached == false and
-              is_nil(b.deleted_at)
-        )
-
-      instances = Repo.all(instances_query)
+      instances = list_non_detached_instances(parent_block.id)
 
       if instances == [] do
         0
       else
-        # Derive variable name from parent config
-        label = get_in(parent_block.config, ["label"])
-        base_variable_name = Block.slugify(label)
-
-        variable_name =
-          if Block.can_be_variable?(parent_block.type) and not parent_block.is_constant do
-            base_variable_name
-          else
-            nil
-          end
-
-        # Check if any instance has a different type (type change)
-        type_changed? = Enum.any?(instances, &(&1.type != parent_block.type))
-
-        # Batch update common fields with update_all
-        common_updates =
-          [
-            set: [
-              config: parent_block.config,
-              required: parent_block.required,
-              is_constant: parent_block.is_constant
-            ]
-          ]
-
-        common_updates =
-          if type_changed? do
-            Keyword.update!(common_updates, :set, fn sets ->
-              sets ++
-                [
-                  type: parent_block.type,
-                  value: Block.default_value(parent_block.type)
-                ]
-            end)
-          else
-            common_updates
-          end
-
-        from(b in Block,
-          where:
-            b.inherited_from_block_id == ^parent_block.id and
-              b.detached == false and
-              is_nil(b.deleted_at)
-        )
-        |> Repo.update_all(common_updates)
-
-        # Handle variable name dedup per-instance (different sheets may have different conflicts)
-        if variable_name do
-          # Group instances by sheet_id for efficient dedup
-          instances
-          |> Enum.group_by(& &1.sheet_id)
-          |> Enum.each(fn {sheet_id, sheet_instances} ->
-            existing_names =
-              MapSet.new(BlockCrud.list_variable_names(sheet_id))
-
-            Enum.reduce(sheet_instances, existing_names, fn instance, taken ->
-              # Remove the instance's own current name from taken (we're replacing it)
-              taken = MapSet.delete(taken, instance.variable_name)
-              unique = BlockCrud.find_unique_variable_name(variable_name, taken)
-
-              from(b in Block, where: b.id == ^instance.id)
-              |> Repo.update_all(set: [variable_name: unique])
-
-              MapSet.put(taken, unique)
-            end)
-          end)
-        else
-          # Clear variable names
-          from(b in Block,
-            where:
-              b.inherited_from_block_id == ^parent_block.id and
-                b.detached == false and
-                is_nil(b.deleted_at)
-          )
-          |> Repo.update_all(set: [variable_name: nil])
-        end
-
-        length(instances)
+        do_sync_definition(parent_block, instances)
       end
     end)
     |> case do
@@ -346,24 +249,8 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         |> Repo.all()
 
       if instance_ids != [] do
-        # Clean up entity references from these blocks
-        from(r in EntityReference,
-          where: r.source_type == "block" and r.source_id in ^instance_ids
-        )
-        |> Repo.delete_all()
-
-        # Clean orphaned hidden_inherited_block_ids on sheets that reference the parent block
-        from(s in Sheet,
-          where: ^parent_block.id in s.hidden_inherited_block_ids
-        )
-        |> Repo.all()
-        |> Enum.each(fn sheet ->
-          updated_ids = List.delete(sheet.hidden_inherited_block_ids, parent_block.id)
-
-          sheet
-          |> Ecto.Changeset.change(%{hidden_inherited_block_ids: updated_ids})
-          |> Repo.update!()
-        end)
+        cleanup_instance_references(instance_ids)
+        cleanup_hidden_block_ids(parent_block.id)
       end
 
       # Soft-delete all instances
@@ -438,64 +325,10 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
     inheritable_blocks =
       ancestors
-      |> Enum.flat_map(fn ancestor ->
-        from(b in Block,
-          where:
-            b.sheet_id == ^ancestor.id and
-              b.scope == "children" and
-              is_nil(b.deleted_at),
-          order_by: [asc: b.position]
-        )
-        |> Repo.all()
-      end)
+      |> Enum.flat_map(&load_children_scope_blocks/1)
       |> Enum.reject(fn b -> b.id in hidden_block_ids end)
 
-    if inheritable_blocks == [] do
-      {:ok, 0}
-    else
-      now = DateTime.utc_now() |> DateTime.truncate(:second)
-
-      start_position = next_block_position(sheet.id)
-      existing_names = MapSet.new(BlockCrud.list_variable_names(sheet.id))
-
-      {entries, _} =
-        inheritable_blocks
-        |> Enum.with_index(start_position)
-        |> Enum.map_reduce(existing_names, fn {parent_block, index}, taken_names ->
-          base_name = derive_variable_name(parent_block, sheet.id)
-
-          {variable_name, updated_taken} =
-            if base_name do
-              unique = BlockCrud.find_unique_variable_name(base_name, taken_names)
-              {unique, MapSet.put(taken_names, unique)}
-            else
-              {nil, taken_names}
-            end
-
-          entry = %{
-            type: parent_block.type,
-            config: parent_block.config,
-            value: Block.default_value(parent_block.type),
-            position: index,
-            is_constant: parent_block.is_constant,
-            variable_name: variable_name,
-            scope: "self",
-            inherited_from_block_id: parent_block.id,
-            detached: false,
-            required: parent_block.required,
-            column_group_id: nil,
-            column_index: 0,
-            sheet_id: sheet.id,
-            inserted_at: now,
-            updated_at: now
-          }
-
-          {entry, updated_taken}
-        end)
-
-      {count, _} = Repo.insert_all(Block, entries)
-      {:ok, count}
-    end
+    do_inherit_blocks(sheet, inheritable_blocks)
   end
 
   @doc """
@@ -594,5 +427,202 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     else
       nil
     end
+  end
+
+  # Loads children-scope blocks for an ancestor sheet (used in resolve_inherited_blocks)
+  defp ancestor_to_block_group(ancestor, hidden_block_ids) do
+    blocks =
+      from(b in Block,
+        where:
+          b.sheet_id == ^ancestor.id and
+            b.scope == "children" and
+            is_nil(b.deleted_at),
+        order_by: [asc: b.position]
+      )
+      |> Repo.all()
+      |> Enum.reject(fn b -> b.id in hidden_block_ids end)
+
+    %{source_sheet: ancestor, blocks: blocks}
+  end
+
+  # Lists non-detached instances for a parent block
+  defp list_non_detached_instances(parent_block_id) do
+    from(b in Block,
+      where:
+        b.inherited_from_block_id == ^parent_block_id and
+          b.detached == false and
+          is_nil(b.deleted_at)
+    )
+    |> Repo.all()
+  end
+
+  # Core sync logic extracted from sync_definition_change
+  defp do_sync_definition(parent_block, instances) do
+    variable_name = derive_sync_variable_name(parent_block)
+    common_updates = build_common_updates(parent_block, instances)
+
+    from(b in Block,
+      where:
+        b.inherited_from_block_id == ^parent_block.id and
+          b.detached == false and
+          is_nil(b.deleted_at)
+    )
+    |> Repo.update_all(common_updates)
+
+    sync_instance_variable_names(parent_block.id, instances, variable_name)
+
+    length(instances)
+  end
+
+  defp derive_sync_variable_name(parent_block) do
+    label = get_in(parent_block.config, ["label"])
+    base_variable_name = Block.slugify(label)
+
+    if Block.can_be_variable?(parent_block.type) and not parent_block.is_constant do
+      base_variable_name
+    else
+      nil
+    end
+  end
+
+  defp build_common_updates(parent_block, instances) do
+    base = [
+      set: [
+        config: parent_block.config,
+        required: parent_block.required,
+        is_constant: parent_block.is_constant
+      ]
+    ]
+
+    type_changed? = Enum.any?(instances, &(&1.type != parent_block.type))
+
+    if type_changed? do
+      Keyword.update!(base, :set, fn sets ->
+        sets ++ [type: parent_block.type, value: Block.default_value(parent_block.type)]
+      end)
+    else
+      base
+    end
+  end
+
+  defp sync_instance_variable_names(parent_block_id, _instances, nil) do
+    from(b in Block,
+      where:
+        b.inherited_from_block_id == ^parent_block_id and
+          b.detached == false and
+          is_nil(b.deleted_at)
+    )
+    |> Repo.update_all(set: [variable_name: nil])
+  end
+
+  defp sync_instance_variable_names(_parent_block_id, instances, variable_name) do
+    instances
+    |> Enum.group_by(& &1.sheet_id)
+    |> Enum.each(fn {sheet_id, sheet_instances} ->
+      dedup_variable_names_for_sheet(sheet_instances, sheet_id, variable_name)
+    end)
+  end
+
+  defp dedup_variable_names_for_sheet(sheet_instances, sheet_id, variable_name) do
+    existing_names = MapSet.new(BlockCrud.list_variable_names(sheet_id))
+
+    Enum.reduce(sheet_instances, existing_names, fn instance, taken ->
+      taken = MapSet.delete(taken, instance.variable_name)
+      unique = BlockCrud.find_unique_variable_name(variable_name, taken)
+
+      from(b in Block, where: b.id == ^instance.id)
+      |> Repo.update_all(set: [variable_name: unique])
+
+      MapSet.put(taken, unique)
+    end)
+  end
+
+  # Cleans up entity references for deleted instance blocks
+  defp cleanup_instance_references(instance_ids) do
+    from(r in EntityReference,
+      where: r.source_type == "block" and r.source_id in ^instance_ids
+    )
+    |> Repo.delete_all()
+  end
+
+  # Cleans orphaned hidden_inherited_block_ids on sheets referencing the parent block
+  defp cleanup_hidden_block_ids(parent_block_id) do
+    from(s in Sheet,
+      where: ^parent_block_id in s.hidden_inherited_block_ids
+    )
+    |> Repo.all()
+    |> Enum.each(fn sheet ->
+      updated_ids = List.delete(sheet.hidden_inherited_block_ids, parent_block_id)
+
+      sheet
+      |> Ecto.Changeset.change(%{hidden_inherited_block_ids: updated_ids})
+      |> Repo.update!()
+    end)
+  end
+
+  # Loads children-scope blocks for an ancestor (used in inherit_blocks_for_new_sheet)
+  defp load_children_scope_blocks(ancestor) do
+    from(b in Block,
+      where:
+        b.sheet_id == ^ancestor.id and
+          b.scope == "children" and
+          is_nil(b.deleted_at),
+      order_by: [asc: b.position]
+    )
+    |> Repo.all()
+  end
+
+  # Creates inherited block entries from inheritable blocks
+  defp do_inherit_blocks(_sheet, []), do: {:ok, 0}
+
+  defp do_inherit_blocks(sheet, inheritable_blocks) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    start_position = next_block_position(sheet.id)
+    existing_names = MapSet.new(BlockCrud.list_variable_names(sheet.id))
+
+    {entries, _} =
+      inheritable_blocks
+      |> Enum.with_index(start_position)
+      |> Enum.map_reduce(existing_names, fn {parent_block, index}, taken_names ->
+        build_inherited_entry(parent_block, sheet.id, index, taken_names, now)
+      end)
+
+    {count, _} = Repo.insert_all(Block, entries)
+    {:ok, count}
+  end
+
+  defp build_inherited_entry(parent_block, sheet_id, position, taken_names, now) do
+    base_name = derive_variable_name(parent_block, sheet_id)
+
+    {variable_name, updated_taken} =
+      resolve_unique_variable(base_name, taken_names)
+
+    entry = %{
+      type: parent_block.type,
+      config: parent_block.config,
+      value: Block.default_value(parent_block.type),
+      position: position,
+      is_constant: parent_block.is_constant,
+      variable_name: variable_name,
+      scope: "self",
+      inherited_from_block_id: parent_block.id,
+      detached: false,
+      required: parent_block.required,
+      column_group_id: nil,
+      column_index: 0,
+      sheet_id: sheet_id,
+      inserted_at: now,
+      updated_at: now
+    }
+
+    {entry, updated_taken}
+  end
+
+  defp resolve_unique_variable(nil, taken_names), do: {nil, taken_names}
+
+  defp resolve_unique_variable(base_name, taken_names) do
+    unique = BlockCrud.find_unique_variable_name(base_name, taken_names)
+    {unique, MapSet.put(taken_names, unique)}
   end
 end

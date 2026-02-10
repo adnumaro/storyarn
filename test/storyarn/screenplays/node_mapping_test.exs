@@ -216,7 +216,14 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
         %{type: :scene_heading, elements: [el(%{id: 1, type: "scene_heading", content: "INT. OFFICE - DAY"})], group_id: nil},
         %{type: :action, elements: [el(%{id: 2, type: "action", content: "A desk."})], group_id: nil},
         %{type: :non_mappeable, elements: [el(%{id: 3, type: "note", content: "Remember to revise"})], group_id: nil},
-        %{type: :dialogue_group, elements: [el(%{id: 4, type: "character", content: "BOB"}), el(%{id: 5, type: "dialogue", content: "Hi."})], group_id: "g1"},
+        %{
+          type: :dialogue_group,
+          elements: [
+            el(%{id: 4, type: "character", content: "BOB"}),
+            el(%{id: 5, type: "dialogue", content: "Hi."})
+          ],
+          group_id: "g1"
+        },
         %{type: :transition, elements: [el(%{id: 6, type: "transition", content: "CUT TO:"})], group_id: nil}
       ]
 

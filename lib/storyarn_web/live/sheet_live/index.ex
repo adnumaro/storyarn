@@ -5,9 +5,9 @@ defmodule StoryarnWeb.SheetLive.Index do
 
   import StoryarnWeb.Components.SheetComponents
 
-  alias Storyarn.Sheets
   alias Storyarn.Projects
   alias Storyarn.Repo
+  alias Storyarn.Sheets
 
   @impl true
   def render(assigns) do

@@ -3,8 +3,8 @@ defmodule Storyarn.Sheets.TreeOperations do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Sheets.Sheet
   alias Storyarn.Repo
+  alias Storyarn.Sheets.Sheet
 
   @doc """
   Reorders sheets within a parent container.

@@ -4,9 +4,9 @@ defmodule Storyarn.Flows.NodeCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.{Flow, FlowNode, VariableReferenceTracker}
-  alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
+  alias Storyarn.Sheets.ReferenceTracker
 
   def list_nodes(flow_id) do
     from(n in FlowNode,
@@ -38,29 +38,30 @@ defmodule Storyarn.Flows.NodeCrud do
     attrs = stringify_keys(attrs)
 
     case attrs["type"] do
-      "entry" ->
-        if has_entry_node?(flow.id) do
-          {:error, :entry_node_exists}
-        else
-          insert_node(flow, attrs)
-        end
+      "entry" -> create_entry_node(flow, attrs)
+      "hub" -> create_hub_node(flow, attrs)
+      "subflow" -> validate_and_insert_subflow(flow, attrs)
+      _ -> insert_node(flow, attrs)
+    end
+  end
 
-      "hub" ->
-        hub_id = get_in(attrs, ["data", "hub_id"])
-        hub_id = if hub_id == nil || hub_id == "", do: generate_hub_id(flow.id), else: hub_id
+  defp create_entry_node(flow, attrs) do
+    if has_entry_node?(flow.id) do
+      {:error, :entry_node_exists}
+    else
+      insert_node(flow, attrs)
+    end
+  end
 
-        if hub_id_exists?(flow.id, hub_id, nil) do
-          {:error, :hub_id_not_unique}
-        else
-          updated_data = Map.put(attrs["data"] || %{}, "hub_id", hub_id)
-          insert_node(flow, Map.put(attrs, "data", updated_data))
-        end
+  defp create_hub_node(flow, attrs) do
+    hub_id = get_in(attrs, ["data", "hub_id"])
+    hub_id = if hub_id == nil || hub_id == "", do: generate_hub_id(flow.id), else: hub_id
 
-      "subflow" ->
-        validate_and_insert_subflow(flow, attrs)
-
-      _ ->
-        insert_node(flow, attrs)
+    if hub_id_exists?(flow.id, hub_id, nil) do
+      {:error, :hub_id_not_unique}
+    else
+      updated_data = Map.put(attrs["data"] || %{}, "hub_id", hub_id)
+      insert_node(flow, Map.put(attrs, "data", updated_data))
     end
   end
 
@@ -77,7 +78,7 @@ defmodule Storyarn.Flows.NodeCrud do
     |> Repo.exists?()
   end
 
-  defp is_last_exit_node?(node) do
+  defp last_exit_node?(node) do
     from(n in FlowNode,
       where: n.flow_id == ^node.flow_id and n.type == "exit"
     )
@@ -160,38 +161,46 @@ defmodule Storyarn.Flows.NodeCrud do
     |> Repo.update()
   end
 
+  def update_node_data(%FlowNode{type: "hub"} = node, data) do
+    update_hub_node_data(node, data)
+  end
+
   def update_node_data(%FlowNode{} = node, data) do
-    if node.type == "hub" do
-      hub_id = data["hub_id"]
+    case do_update_node_data(node, data) do
+      {:ok, updated_node} -> {:ok, updated_node, %{renamed_jumps: 0}}
+      error -> error
+    end
+  end
 
-      cond do
-        hub_id == nil || hub_id == "" ->
-          {:error, :hub_id_required}
+  defp update_hub_node_data(node, data) do
+    hub_id = data["hub_id"]
 
-        hub_id_exists?(node.flow_id, hub_id, node.id) ->
-          {:error, :hub_id_not_unique}
+    cond do
+      hub_id == nil || hub_id == "" ->
+        {:error, :hub_id_required}
 
-        true ->
-          old_hub_id = node.data["hub_id"]
+      hub_id_exists?(node.flow_id, hub_id, node.id) ->
+        {:error, :hub_id_not_unique}
 
-          case do_update_node_data(node, data) do
-            {:ok, updated_node} ->
-              renamed_count =
-                if old_hub_id != hub_id,
-                  do: cascade_hub_id_rename(node.flow_id, old_hub_id, hub_id),
-                  else: 0
+      true ->
+        do_update_hub_data(node, data, hub_id)
+    end
+  end
 
-              {:ok, updated_node, %{renamed_jumps: renamed_count}}
+  defp do_update_hub_data(node, data, hub_id) do
+    old_hub_id = node.data["hub_id"]
 
-            error ->
-              error
-          end
-      end
-    else
-      case do_update_node_data(node, data) do
-        {:ok, updated_node} -> {:ok, updated_node, %{renamed_jumps: 0}}
-        error -> error
-      end
+    case do_update_node_data(node, data) do
+      {:ok, updated_node} ->
+        renamed_count =
+          if old_hub_id != hub_id,
+            do: cascade_hub_id_rename(node.flow_id, old_hub_id, hub_id),
+            else: 0
+
+        {:ok, updated_node, %{renamed_jumps: renamed_count}}
+
+      error ->
+        error
     end
   end
 
@@ -212,37 +221,37 @@ defmodule Storyarn.Flows.NodeCrud do
     end
   end
 
-  def delete_node(%FlowNode{} = node) do
-    cond do
-      node.type == "entry" ->
-        {:error, :cannot_delete_entry_node}
+  def delete_node(%FlowNode{type: "entry"}), do: {:error, :cannot_delete_entry_node}
 
-      node.type == "exit" && is_last_exit_node?(node) ->
-        {:error, :cannot_delete_last_exit}
-
-      true ->
-        Repo.transaction(fn ->
-          orphaned_count =
-            if node.type == "hub" do
-              clear_orphaned_jumps(node.flow_id, node.data["hub_id"])
-            else
-              0
-            end
-
-          ReferenceTracker.delete_flow_node_references(node.id)
-          VariableReferenceTracker.delete_references(node.id)
-
-          case Repo.delete(node) do
-            {:ok, deleted_node} -> {deleted_node, %{orphaned_jumps: orphaned_count}}
-            {:error, changeset} -> Repo.rollback(changeset)
-          end
-        end)
-        |> case do
-          {:ok, {deleted_node, meta}} -> {:ok, deleted_node, meta}
-          {:error, reason} -> {:error, reason}
-        end
-    end
+  def delete_node(%FlowNode{type: "exit"} = node) do
+    if last_exit_node?(node), do: {:error, :cannot_delete_last_exit}, else: do_delete_node(node)
   end
+
+  def delete_node(%FlowNode{} = node), do: do_delete_node(node)
+
+  defp do_delete_node(node) do
+    Repo.transaction(fn ->
+      orphaned_count = maybe_clear_orphaned_jumps(node)
+
+      ReferenceTracker.delete_flow_node_references(node.id)
+      VariableReferenceTracker.delete_references(node.id)
+
+      case Repo.delete(node) do
+        {:ok, deleted_node} -> {deleted_node, %{orphaned_jumps: orphaned_count}}
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
+    |> unwrap_delete_result()
+  end
+
+  defp maybe_clear_orphaned_jumps(%{type: "hub"} = node) do
+    clear_orphaned_jumps(node.flow_id, node.data["hub_id"])
+  end
+
+  defp maybe_clear_orphaned_jumps(_node), do: 0
+
+  defp unwrap_delete_result({:ok, {deleted_node, meta}}), do: {:ok, deleted_node, meta}
+  defp unwrap_delete_result({:error, reason}), do: {:error, reason}
 
   defp cascade_hub_id_rename(flow_id, old_hub_id, new_hub_id)
        when is_binary(old_hub_id) and old_hub_id != "" do

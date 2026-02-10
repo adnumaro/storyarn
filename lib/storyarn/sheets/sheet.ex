@@ -18,8 +18,8 @@ defmodule Storyarn.Sheets.Sheet do
   import Ecto.Changeset
 
   alias Storyarn.Assets.Asset
-  alias Storyarn.Sheets.{Block, SheetVersion}
   alias Storyarn.Projects.Project
+  alias Storyarn.Sheets.{Block, SheetVersion}
 
   # Shortcut format: lowercase, alphanumeric, dots and hyphens allowed, no spaces
   # Examples: mc.jaime, loc.tavern, items.sword, quest-1

@@ -40,19 +40,24 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     }
   end
 
+  @form_defaults %{
+    "speaker_sheet_id" => "",
+    "text" => "",
+    "stage_directions" => "",
+    "menu_text" => "",
+    "audio_asset_id" => nil,
+    "technical_id" => "",
+    "localization_id" => "",
+    "input_condition" => "",
+    "output_instruction" => "",
+    "responses" => []
+  }
+
   def extract_form_data(data) do
-    %{
-      "speaker_sheet_id" => data["speaker_sheet_id"] || "",
-      "text" => data["text"] || "",
-      "stage_directions" => data["stage_directions"] || "",
-      "menu_text" => data["menu_text"] || "",
-      "audio_asset_id" => data["audio_asset_id"],
-      "technical_id" => data["technical_id"] || "",
-      "localization_id" => data["localization_id"] || "",
-      "input_condition" => data["input_condition"] || "",
-      "output_instruction" => data["output_instruction"] || "",
-      "responses" => data["responses"] || []
-    }
+    Map.merge(@form_defaults, Map.take(data, Map.keys(@form_defaults)), fn
+      _key, default, nil -> default
+      _key, _default, value -> value
+    end)
   end
 
   def on_select(_node, socket), do: socket
@@ -163,12 +168,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
   defp update_response_field(socket, node_id, response_id, field, value) do
     NodeHelpers.persist_node_update(socket, node_id, fn data ->
-      Map.update(data, "responses", [], fn responses ->
-        Enum.map(responses, fn
-          %{"id" => ^response_id} = resp -> Map.put(resp, field, value)
-          resp -> resp
-        end)
-      end)
+      Map.update(data, "responses", [], &set_response_field(&1, response_id, field, value))
+    end)
+  end
+
+  defp set_response_field(responses, response_id, field, value) do
+    Enum.map(responses, fn
+      %{"id" => ^response_id} = resp -> Map.put(resp, field, value)
+      resp -> resp
     end)
   end
 

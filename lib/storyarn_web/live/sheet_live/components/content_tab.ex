@@ -291,24 +291,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       # and reject any block IDs that don't belong to this sheet
       sanitized =
         items
-        |> Enum.map(fn item ->
-          block_id = to_integer(item["id"])
-          block = Map.get(blocks_by_id, block_id)
-
-          if block do
-            column_group_id =
-              if block.type == "divider", do: nil, else: item["column_group_id"]
-
-            column_index =
-              if column_group_id == nil, do: 0, else: item["column_index"] || 0
-
-            %{
-              id: block_id,
-              column_group_id: column_group_id,
-              column_index: column_index
-            }
-          end
-        end)
+        |> Enum.map(&sanitize_column_item(&1, blocks_by_id))
         |> Enum.reject(&is_nil/1)
 
       case Sheets.reorder_blocks_with_columns(sheet_id, sanitized) do
@@ -335,31 +318,12 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       requested_ids = Enum.map(block_ids, &to_integer/1)
       blocks = Enum.map(requested_ids, &Map.get(blocks_by_id, &1))
 
-      cond do
-        Enum.any?(blocks, &is_nil/1) ->
-          {:noreply, put_flash(socket, :error, gettext("Block not found."))}
+      case validate_column_group_blocks(blocks) do
+        :ok ->
+          do_create_column_group(socket, sheet_id, blocks)
 
-        Enum.any?(blocks, fn b -> b.type == "divider" end) ->
-          {:noreply,
-           put_flash(socket, :error, gettext("Divider blocks cannot be placed in columns."))}
-
-        Enum.any?(blocks, fn b -> b.column_group_id != nil end) ->
-          {:noreply,
-           put_flash(socket, :error, gettext("Block is already in a column group."))}
-
-        true ->
-          validated_ids = Enum.map(blocks, & &1.id)
-
-          case Sheets.create_column_group(sheet_id, validated_ids) do
-            {:ok, _group_id} ->
-              maybe_create_version(socket)
-              notify_parent(socket, :saved)
-              {:noreply, reload_blocks(socket)}
-
-            {:error, _} ->
-              {:noreply,
-               put_flash(socket, :error, gettext("Could not create column group."))}
-          end
+        {:error, message} ->
+          {:noreply, put_flash(socket, :error, message)}
       end
     end)
   end
@@ -656,36 +620,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       if block.scope == scope do
         {:noreply, socket}
       else
-        case Sheets.update_block(block, %{scope: scope}) do
-          {:ok, updated_block} ->
-            maybe_create_version(socket)
-            notify_parent(socket, :saved)
-
-            socket =
-              socket
-              |> assign(:configuring_block, updated_block)
-              |> reload_blocks()
-
-            # When changing from "self" to "children", check for existing descendants
-            # and open propagation modal if any exist
-            socket =
-              if scope == "children" do
-                descendant_ids = Sheets.get_descendant_sheet_ids(socket.assigns.sheet.id)
-
-                if descendant_ids != [] do
-                  assign(socket, :propagation_block, updated_block)
-                else
-                  socket
-                end
-              else
-                assign(socket, :propagation_block, nil)
-              end
-
-            {:noreply, socket}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not change scope."))}
-        end
+        do_change_block_scope(socket, block, scope)
       end
     end)
   end
@@ -730,19 +665,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
       case Jason.decode(sheet_ids_json) do
         {:ok, sheet_ids} when is_list(sheet_ids) ->
-          case Sheets.propagate_to_descendants(block, sheet_ids) do
-            {:ok, count} ->
-              {:noreply,
-               socket
-               |> assign(:propagation_block, nil)
-               |> put_flash(
-                 :info,
-                 gettext("Property propagated to %{count} pages.", count: count)
-               )}
-
-            {:error, _} ->
-              {:noreply, put_flash(socket, :error, gettext("Could not propagate property."))}
-          end
+          do_propagate_property(socket, block, sheet_ids)
 
         _ ->
           {:noreply, put_flash(socket, :error, gettext("Invalid sheet selection."))}
@@ -805,33 +728,133 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   defp to_integer(value) when is_binary(value), do: String.to_integer(value)
   defp to_integer(value) when is_integer(value), do: value
 
+  defp sanitize_column_item(item, blocks_by_id) do
+    block_id = to_integer(item["id"])
+    block = Map.get(blocks_by_id, block_id)
+
+    if block do
+      column_group_id =
+        if block.type == "divider", do: nil, else: item["column_group_id"]
+
+      column_index =
+        if column_group_id == nil, do: 0, else: item["column_index"] || 0
+
+      %{
+        id: block_id,
+        column_group_id: column_group_id,
+        column_index: column_index
+      }
+    end
+  end
+
+  defp validate_column_group_blocks(blocks) do
+    cond do
+      Enum.any?(blocks, &is_nil/1) ->
+        {:error, gettext("Block not found.")}
+
+      Enum.any?(blocks, fn b -> b.type == "divider" end) ->
+        {:error, gettext("Divider blocks cannot be placed in columns.")}
+
+      Enum.any?(blocks, fn b -> b.column_group_id != nil end) ->
+        {:error, gettext("Block is already in a column group.")}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp do_create_column_group(socket, sheet_id, blocks) do
+    validated_ids = Enum.map(blocks, & &1.id)
+
+    case Sheets.create_column_group(sheet_id, validated_ids) do
+      {:ok, _group_id} ->
+        maybe_create_version(socket)
+        notify_parent(socket, :saved)
+        {:noreply, reload_blocks(socket)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not create column group."))}
+    end
+  end
+
+  defp do_change_block_scope(socket, block, scope) do
+    case Sheets.update_block(block, %{scope: scope}) do
+      {:ok, updated_block} ->
+        maybe_create_version(socket)
+        notify_parent(socket, :saved)
+
+        socket =
+          socket
+          |> assign(:configuring_block, updated_block)
+          |> reload_blocks()
+          |> maybe_open_propagation_modal(scope, updated_block)
+
+        {:noreply, socket}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not change scope."))}
+    end
+  end
+
+  defp maybe_open_propagation_modal(socket, "children", updated_block) do
+    descendant_ids = Sheets.get_descendant_sheet_ids(socket.assigns.sheet.id)
+
+    if descendant_ids != [] do
+      assign(socket, :propagation_block, updated_block)
+    else
+      socket
+    end
+  end
+
+  defp maybe_open_propagation_modal(socket, _scope, _block) do
+    assign(socket, :propagation_block, nil)
+  end
+
+  defp do_propagate_property(socket, block, sheet_ids) do
+    case Sheets.propagate_to_descendants(block, sheet_ids) do
+      {:ok, count} ->
+        {:noreply,
+         socket
+         |> assign(:propagation_block, nil)
+         |> put_flash(
+           :info,
+           gettext("Property propagated to %{count} pages.", count: count)
+         )}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not propagate property."))}
+    end
+  end
+
   # Groups blocks into layout items: full-width or column groups.
   # Blocks are already ordered by position. Consecutive blocks sharing
   # a column_group_id form a column group; others are full-width.
   defp group_blocks_for_layout(blocks) do
     blocks
     |> Enum.chunk_by(fn block -> block.column_group_id end)
-    |> Enum.flat_map(fn chunk ->
-      first = List.first(chunk)
+    |> Enum.flat_map(&chunk_to_layout_items/1)
+  end
 
-      if first.column_group_id != nil and length(chunk) >= 2 do
-        sorted = Enum.sort_by(chunk, & &1.column_index)
-        column_count = min(length(sorted), 3)
+  defp chunk_to_layout_items(chunk) do
+    first = List.first(chunk)
 
-        [
-          %{
-            type: :column_group,
-            group_id: first.column_group_id,
-            blocks: sorted,
-            column_count: column_count
-          }
-        ]
-      else
-        Enum.map(chunk, fn block ->
-          %{type: :full_width, block: block}
-        end)
-      end
-    end)
+    if first.column_group_id != nil and length(chunk) >= 2 do
+      sorted = Enum.sort_by(chunk, & &1.column_index)
+      column_count = min(length(sorted), 3)
+
+      [
+        %{
+          type: :column_group,
+          group_id: first.column_group_id,
+          blocks: sorted,
+          column_count: column_count
+        }
+      ]
+    else
+      Enum.map(chunk, fn block ->
+        %{type: :full_width, block: block}
+      end)
+    end
   end
 
   defp column_grid_class(2), do: "sm:grid-cols-2"

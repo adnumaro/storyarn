@@ -4,9 +4,9 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
 
-  alias Storyarn.Sheets
   alias Storyarn.Projects
   alias Storyarn.Repo
+  alias Storyarn.Sheets
 
   @impl true
   def render(assigns) do

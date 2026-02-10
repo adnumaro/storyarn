@@ -7,18 +7,17 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.Components.SheetComponents
   import StoryarnWeb.Components.SaveIndicator
 
-  alias Storyarn.Sheets
   alias Storyarn.Projects
   alias Storyarn.Repo
+  alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Components.Banner
   alias StoryarnWeb.SheetLive.Components.ContentTab
-  alias StoryarnWeb.SheetLive.Components.SheetAvatar
-
-  alias StoryarnWeb.SheetLive.Components.SheetTitle
-  alias StoryarnWeb.SheetLive.Components.ReferencesTab
   alias StoryarnWeb.SheetLive.Components.HistoryTab
-  alias StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers
+  alias StoryarnWeb.SheetLive.Components.ReferencesTab
+  alias StoryarnWeb.SheetLive.Components.SheetAvatar
+  alias StoryarnWeb.SheetLive.Components.SheetTitle
   alias StoryarnWeb.SheetLive.Helpers.ReferenceHelpers
+  alias StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers
 
   @impl true
   def render(assigns) do

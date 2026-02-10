@@ -7,9 +7,9 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   import StoryarnWeb.Components.MemberComponents
 
   alias Storyarn.Flows
-  alias Storyarn.Sheets
   alias Storyarn.Projects
   alias Storyarn.Repo
+  alias Storyarn.Sheets
 
   @impl true
   def render(assigns) do
@@ -293,25 +293,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   def handle_event("repair_variable_references", _params, socket) do
     case authorize(socket, :manage_project) do
       :ok ->
-        case Flows.repair_stale_references(socket.assigns.project.id) do
-          {:ok, count} ->
-            message =
-              if count == 0,
-                do: gettext("All variable references are up to date."),
-                else:
-                  ngettext(
-                    "Repaired %{count} node.",
-                    "Repaired %{count} nodes.",
-                    count,
-                    count: count
-                  )
-
-            {:noreply, put_flash(socket, :info, message)}
-
-          {:error, _reason} ->
-            {:noreply,
-             put_flash(socket, :error, gettext("Failed to repair variable references."))}
-        end
+        do_repair_variable_references(socket)
 
       {:error, :unauthorized} ->
         {:noreply,
@@ -344,6 +326,27 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   end
 
   # Private helpers
+
+  defp do_repair_variable_references(socket) do
+    case Flows.repair_stale_references(socket.assigns.project.id) do
+      {:ok, count} ->
+        {:noreply, put_flash(socket, :info, repair_message(count))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("Failed to repair variable references."))}
+    end
+  end
+
+  defp repair_message(0), do: gettext("All variable references are up to date.")
+
+  defp repair_message(count) do
+    ngettext(
+      "Repaired %{count} node.",
+      "Repaired %{count} nodes.",
+      count,
+      count: count
+    )
+  end
 
   defp do_send_invitation(socket, invite_params) do
     case Projects.create_invitation(

@@ -17,31 +17,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
   attr :target, :any, default: nil
 
   def config_panel(assigns) do
-    config = assigns.block.config || %{}
-
     assigns =
       assigns
-      |> assign(:label, config["label"] || "")
-      |> assign(:placeholder, config["placeholder"] || "")
-      |> assign(:options, config["options"] || [])
-      |> assign(:max_length, config["max_length"])
-      |> assign(:min, config["min"])
-      |> assign(:max, config["max"])
-      |> assign(:max_options, config["max_options"])
-      |> assign(:min_date, config["min_date"])
-      |> assign(:max_date, config["max_date"])
-      |> assign(:mode, config["mode"] || "two_state")
-      |> assign(:true_label, config["true_label"] || "")
-      |> assign(:false_label, config["false_label"] || "")
-      |> assign(:neutral_label, config["neutral_label"] || "")
-      |> assign(:allowed_types, config["allowed_types"] || ["sheet", "flow"])
-      |> assign(:is_constant, assigns.block.is_constant || false)
-      |> assign(:variable_name, assigns.block.variable_name)
-      |> assign(:can_be_variable, Storyarn.Sheets.Block.can_be_variable?(assigns.block.type))
-      |> assign(:scope, assigns.block.scope || "self")
-      |> assign(:is_inherited, Storyarn.Sheets.Block.inherited?(assigns.block))
-      |> assign(:is_detached, assigns.block.detached || false)
-      |> assign(:required, assigns.block.required || false)
+      |> assign_config_fields()
+      |> assign_block_fields()
 
     ~H"""
     <div class="fixed inset-y-0 right-0 w-80 bg-base-200 shadow-xl z-50 flex flex-col">
@@ -448,5 +427,48 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
     <div class="fixed inset-0 bg-black/20 z-40" phx-click="close_config_panel" phx-target={@target}>
     </div>
     """
+  end
+
+  defp assign_config_fields(assigns) do
+    config = assigns.block.config || %{}
+
+    assigns
+    |> assign_core_config(config)
+    |> assign_type_specific_config(config)
+  end
+
+  defp assign_core_config(assigns, config) do
+    assigns
+    |> assign(:label, config["label"] || "")
+    |> assign(:placeholder, config["placeholder"] || "")
+    |> assign(:options, config["options"] || [])
+    |> assign(:max_length, config["max_length"])
+    |> assign(:min, config["min"])
+    |> assign(:max, config["max"])
+    |> assign(:max_options, config["max_options"])
+  end
+
+  defp assign_type_specific_config(assigns, config) do
+    assigns
+    |> assign(:min_date, config["min_date"])
+    |> assign(:max_date, config["max_date"])
+    |> assign(:mode, config["mode"] || "two_state")
+    |> assign(:true_label, config["true_label"] || "")
+    |> assign(:false_label, config["false_label"] || "")
+    |> assign(:neutral_label, config["neutral_label"] || "")
+    |> assign(:allowed_types, config["allowed_types"] || ["sheet", "flow"])
+  end
+
+  defp assign_block_fields(assigns) do
+    block = assigns.block
+
+    assigns
+    |> assign(:is_constant, block.is_constant || false)
+    |> assign(:variable_name, block.variable_name)
+    |> assign(:can_be_variable, Storyarn.Sheets.Block.can_be_variable?(block.type))
+    |> assign(:scope, block.scope || "self")
+    |> assign(:is_inherited, Storyarn.Sheets.Block.inherited?(block))
+    |> assign(:is_detached, block.detached || false)
+    |> assign(:required, block.required || false)
   end
 end

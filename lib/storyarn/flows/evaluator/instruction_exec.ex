@@ -50,46 +50,55 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
   def execute(assignments, variables) when is_list(assignments) do
     assignments
     |> Enum.filter(&Instruction.complete_assignment?/1)
-    |> Enum.reduce({variables, [], []}, fn assignment, {vars, changes, errors} ->
-      variable_ref = "#{assignment["sheet"]}.#{assignment["variable"]}"
-      operator = assignment["operator"]
-
-      case Map.get(vars, variable_ref) do
-        nil ->
-          error = %{variable_ref: variable_ref, reason: "Variable not found in state"}
-          {vars, changes, errors ++ [error]}
-
-        %{value: old_value} = var_entry ->
-          case resolve_value(assignment, vars) do
-            {:ok, resolved_value} ->
-              new_value = apply_operator(operator, old_value, resolved_value, var_entry.block_type)
-
-              updated_entry = %{
-                var_entry
-                | value: new_value,
-                  previous_value: old_value,
-                  source: :instruction
-              }
-
-              change = %{
-                variable_ref: variable_ref,
-                old_value: old_value,
-                new_value: new_value,
-                operator: operator
-              }
-
-              {Map.put(vars, variable_ref, updated_entry), changes ++ [change], errors}
-
-            {:error, reason} ->
-              error = %{variable_ref: variable_ref, reason: reason}
-              {vars, changes, errors ++ [error]}
-          end
-      end
+    |> Enum.reduce({variables, [], []}, fn assignment, acc ->
+      execute_single_assignment(assignment, acc)
     end)
     |> then(fn {vars, changes, errors} -> {:ok, vars, changes, errors} end)
   end
 
   def execute(_, variables), do: {:ok, variables, [], []}
+
+  defp execute_single_assignment(assignment, {vars, changes, errors}) do
+    variable_ref = "#{assignment["sheet"]}.#{assignment["variable"]}"
+
+    case Map.get(vars, variable_ref) do
+      nil ->
+        error = %{variable_ref: variable_ref, reason: "Variable not found in state"}
+        {vars, changes, errors ++ [error]}
+
+      var_entry ->
+        apply_assignment(assignment, variable_ref, var_entry, vars, changes, errors)
+    end
+  end
+
+  defp apply_assignment(assignment, variable_ref, var_entry, vars, changes, errors) do
+    operator = assignment["operator"]
+
+    case resolve_value(assignment, vars) do
+      {:ok, resolved_value} ->
+        new_value = apply_operator(operator, var_entry.value, resolved_value, var_entry.block_type)
+
+        updated_entry = %{
+          var_entry
+          | value: new_value,
+            previous_value: var_entry.value,
+            source: :instruction
+        }
+
+        change = %{
+          variable_ref: variable_ref,
+          old_value: var_entry.value,
+          new_value: new_value,
+          operator: operator
+        }
+
+        {Map.put(vars, variable_ref, updated_entry), changes ++ [change], errors}
+
+      {:error, reason} ->
+        error = %{variable_ref: variable_ref, reason: reason}
+        {vars, changes, errors ++ [error]}
+    end
+  end
 
   @doc """
   Executes assignments from a JSON string (as stored in dialogue node output_instruction).

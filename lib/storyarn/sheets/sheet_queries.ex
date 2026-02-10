@@ -8,8 +8,8 @@ defmodule Storyarn.Sheets.SheetQueries do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Sheets.{Sheet, Block}
   alias Storyarn.Repo
+  alias Storyarn.Sheets.{Block, Sheet}
 
   # =============================================================================
   # Tree Operations
@@ -169,21 +169,22 @@ defmodule Storyarn.Sheets.SheetQueries do
       order_by: [asc: s.name, asc: b.position]
     )
     |> Repo.all()
-    |> Enum.map(fn var ->
-      options =
-        case var.block_type do
-          type when type in ["select", "multi_select"] ->
-            var.config["options"] || []
-
-          _ ->
-            nil
-        end
-
-      var
-      |> Map.put(:options, options)
-      |> Map.delete(:config)
-    end)
+    |> Enum.map(&extract_variable_options/1)
   end
+
+  defp extract_variable_options(var) do
+    options = extract_options_from_config(var.block_type, var.config)
+
+    var
+    |> Map.put(:options, options)
+    |> Map.delete(:config)
+  end
+
+  defp extract_options_from_config(type, config) when type in ["select", "multi_select"] do
+    config["options"] || []
+  end
+
+  defp extract_options_from_config(_type, _config), do: nil
 
   # =============================================================================
   # Reference Validation

@@ -4,8 +4,8 @@ defmodule Storyarn.SheetsFixtures do
   sheets via the `Storyarn.Sheets` context.
   """
 
-  alias Storyarn.Sheets
   alias Storyarn.ProjectsFixtures
+  alias Storyarn.Sheets
 
   def unique_sheet_name, do: "Sheet #{System.unique_integer([:positive])}"
 

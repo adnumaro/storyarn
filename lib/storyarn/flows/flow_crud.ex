@@ -22,7 +22,6 @@ defmodule Storyarn.Flows.FlowCrud do
     |> Repo.all()
   end
 
-
   @doc """
   Lists flows as a tree structure.
   Returns root-level flows with their children preloaded (up to 5 levels deep).
@@ -312,31 +311,42 @@ defmodule Storyarn.Flows.FlowCrud do
   defp maybe_generate_shortcut_on_update(%Flow{} = flow, attrs) do
     attrs = stringify_keys(attrs)
 
-    # If attrs explicitly set shortcut, use that
-    if Map.has_key?(attrs, "shortcut") do
-      attrs
-    else
+    cond do
+      # If attrs explicitly set shortcut, use that
+      Map.has_key?(attrs, "shortcut") ->
+        attrs
+
       # If name is changing, regenerate shortcut from new name
-      new_name = attrs["name"]
-
-      if new_name && new_name != "" && new_name != flow.name do
-        shortcut = Shortcuts.generate_flow_shortcut(new_name, flow.project_id, flow.id)
+      name_changing?(attrs, flow) ->
+        shortcut = Shortcuts.generate_flow_shortcut(attrs["name"], flow.project_id, flow.id)
         Map.put(attrs, "shortcut", shortcut)
-      else
-        # If flow has no shortcut yet, generate one from current name
-        if is_nil(flow.shortcut) || flow.shortcut == "" do
-          name = flow.name
 
-          if name && name != "" do
-            shortcut = Shortcuts.generate_flow_shortcut(name, flow.project_id, flow.id)
-            Map.put(attrs, "shortcut", shortcut)
-          else
-            attrs
-          end
-        else
-          attrs
-        end
-      end
+      # If flow has no shortcut yet, generate one from current name
+      missing_shortcut?(flow) ->
+        generate_shortcut_from_current_name(flow, attrs)
+
+      true ->
+        attrs
+    end
+  end
+
+  defp name_changing?(attrs, flow) do
+    new_name = attrs["name"]
+    new_name && new_name != "" && new_name != flow.name
+  end
+
+  defp missing_shortcut?(flow) do
+    is_nil(flow.shortcut) || flow.shortcut == ""
+  end
+
+  defp generate_shortcut_from_current_name(flow, attrs) do
+    name = flow.name
+
+    if name && name != "" do
+      shortcut = Shortcuts.generate_flow_shortcut(name, flow.project_id, flow.id)
+      Map.put(attrs, "shortcut", shortcut)
+    else
+      attrs
     end
   end
 

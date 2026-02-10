@@ -5,8 +5,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
   import Phoenix.LiveView
   use Gettext, backend: StoryarnWeb.Gettext
 
-  alias Storyarn.Sheets
   alias Storyarn.Repo
+  alias Storyarn.Sheets
 
   @versions_per_page 20
 

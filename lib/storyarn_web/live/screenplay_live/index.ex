@@ -4,9 +4,9 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
 
-  alias Storyarn.Screenplays
   alias Storyarn.Projects
   alias Storyarn.Repo
+  alias Storyarn.Screenplays
 
   @impl true
   def render(assigns) do

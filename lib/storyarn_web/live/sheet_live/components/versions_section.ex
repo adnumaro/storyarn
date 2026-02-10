@@ -6,8 +6,8 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
 
   use StoryarnWeb, :live_component
 
-  alias Storyarn.Sheets
   alias Storyarn.Repo
+  alias Storyarn.Sheets
 
   @versions_per_page 20
 

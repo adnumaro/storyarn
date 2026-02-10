@@ -187,27 +187,20 @@ defmodule Storyarn.Flows.Instruction do
       when is_binary(sheet) and sheet != "" and is_binary(variable) and variable != "" do
     ref = "#{sheet}.#{variable}"
     operator = assignment["operator"] || "set"
-
-    case operator do
-      "set_true" ->
-        "#{ref} = true"
-
-      "set_false" ->
-        "#{ref} = false"
-
-      "toggle" ->
-        "toggle #{ref}"
-
-      "clear" ->
-        "clear #{ref}"
-
-      op ->
-        value_display = format_value(assignment)
-        "#{ref} #{operator_label(op)} #{value_display}"
-    end
+    format_operator_short(ref, operator, assignment)
   end
 
   def format_assignment_short(_), do: ""
+
+  defp format_operator_short(ref, "set_true", _assignment), do: "#{ref} = true"
+  defp format_operator_short(ref, "set_false", _assignment), do: "#{ref} = false"
+  defp format_operator_short(ref, "toggle", _assignment), do: "toggle #{ref}"
+  defp format_operator_short(ref, "clear", _assignment), do: "clear #{ref}"
+
+  defp format_operator_short(ref, op, assignment) do
+    value_display = format_value(assignment)
+    "#{ref} #{operator_label(op)} #{value_display}"
+  end
 
   @doc """
   Returns true if an assignment has all required fields for execution.

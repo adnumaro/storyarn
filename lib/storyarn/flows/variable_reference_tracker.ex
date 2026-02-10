@@ -14,8 +14,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   import Ecto.Query
 
   alias Storyarn.Flows.{Flow, FlowNode, VariableReference}
-  alias Storyarn.Sheets.{Block, Sheet}
   alias Storyarn.Repo
+  alias Storyarn.Sheets.{Block, Sheet}
 
   @doc """
   Updates variable references for a node after its data changes.
@@ -211,73 +211,58 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     project_id = get_project_id(node.flow_id)
 
     if project_id do
-      Enum.flat_map(assignments, fn assign ->
-        write_ref =
-          case resolve_block(project_id, assign["sheet"], assign["variable"]) do
-            nil ->
-              []
-
-            block_id ->
-              [
-                %{
-                  block_id: block_id,
-                  kind: "write",
-                  source_sheet: assign["sheet"],
-                  source_variable: assign["variable"]
-                }
-              ]
-          end
-
-        read_ref =
-          if assign["value_type"] == "variable_ref" do
-            case resolve_block(project_id, assign["value_sheet"], assign["value"]) do
-              nil ->
-                []
-
-              block_id ->
-                [
-                  %{
-                    block_id: block_id,
-                    kind: "read",
-                    source_sheet: assign["value_sheet"],
-                    source_variable: assign["value"]
-                  }
-                ]
-            end
-          else
-            []
-          end
-
-        write_ref ++ read_ref
-      end)
+      Enum.flat_map(assignments, &extract_assignment_refs(&1, project_id))
     else
       []
     end
   end
+
+  defp extract_assignment_refs(assign, project_id) do
+    write_ref = resolve_write_ref(project_id, assign)
+    read_ref = resolve_assignment_read_ref(project_id, assign)
+    write_ref ++ read_ref
+  end
+
+  defp resolve_write_ref(project_id, assign) do
+    case resolve_block(project_id, assign["sheet"], assign["variable"]) do
+      nil ->
+        []
+
+      block_id ->
+        [%{block_id: block_id, kind: "write", source_sheet: assign["sheet"], source_variable: assign["variable"]}]
+    end
+  end
+
+  defp resolve_assignment_read_ref(project_id, %{"value_type" => "variable_ref"} = assign) do
+    case resolve_block(project_id, assign["value_sheet"], assign["value"]) do
+      nil ->
+        []
+
+      block_id ->
+        [%{block_id: block_id, kind: "read", source_sheet: assign["value_sheet"], source_variable: assign["value"]}]
+    end
+  end
+
+  defp resolve_assignment_read_ref(_project_id, _assign), do: []
 
   defp extract_read_refs(node) do
     rules = get_in(node.data, ["condition", "rules"]) || []
     project_id = get_project_id(node.flow_id)
 
     if project_id do
-      Enum.flat_map(rules, fn rule ->
-        case resolve_block(project_id, rule["sheet"], rule["variable"]) do
-          nil ->
-            []
-
-          block_id ->
-            [
-              %{
-                block_id: block_id,
-                kind: "read",
-                source_sheet: rule["sheet"],
-                source_variable: rule["variable"]
-              }
-            ]
-        end
-      end)
+      Enum.flat_map(rules, &resolve_rule_read_ref(&1, project_id))
     else
       []
+    end
+  end
+
+  defp resolve_rule_read_ref(rule, project_id) do
+    case resolve_block(project_id, rule["sheet"], rule["variable"]) do
+      nil ->
+        []
+
+      block_id ->
+        [%{block_id: block_id, kind: "read", source_sheet: rule["sheet"], source_variable: rule["variable"]}]
     end
   end
 
@@ -349,26 +334,26 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   # Deterministic repair for variable_ref read sources in instruction assignments.
   defp repair_read_sources(assignments, read_refs) do
-    Enum.map(assignments, fn assignment ->
-      if assignment["value_type"] != "variable_ref" do
-        assignment
-      else
-        matching_ref =
-          Enum.find(read_refs, fn ref ->
-            ref.source_sheet == assignment["value_sheet"] and
-              ref.source_variable == assignment["value"]
-          end)
-
-        if matching_ref do
-          assignment
-          |> Map.put("value_sheet", matching_ref.current_shortcut)
-          |> Map.put("value", matching_ref.current_variable)
-        else
-          assignment
-        end
-      end
-    end)
+    Enum.map(assignments, &repair_read_source(&1, read_refs))
   end
+
+  defp repair_read_source(%{"value_type" => "variable_ref"} = assignment, read_refs) do
+    matching_ref =
+      Enum.find(read_refs, fn ref ->
+        ref.source_sheet == assignment["value_sheet"] and
+          ref.source_variable == assignment["value"]
+      end)
+
+    if matching_ref do
+      assignment
+      |> Map.put("value_sheet", matching_ref.current_shortcut)
+      |> Map.put("value", matching_ref.current_variable)
+    else
+      assignment
+    end
+  end
+
+  defp repair_read_source(assignment, _read_refs), do: assignment
 
   # Deterministic repair for condition rules.
   defp repair_condition_rules(rules, read_refs) do

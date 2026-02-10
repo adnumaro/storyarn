@@ -18,23 +18,23 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Flows
   alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Sheets
   alias Storyarn.Projects
   alias Storyarn.Repo
+  alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
+  alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
+  alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
+  alias StoryarnWeb.FlowLive.Helpers.FormHelpers
+  alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
   alias StoryarnWeb.FlowLive.Nodes.Condition
   alias StoryarnWeb.FlowLive.Nodes.Dialogue
   alias StoryarnWeb.FlowLive.Nodes.Exit, as: ExitNode
   alias StoryarnWeb.FlowLive.Nodes.Instruction
   alias StoryarnWeb.FlowLive.Nodes.Scene
   alias StoryarnWeb.FlowLive.Nodes.Subflow
-  alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
-  alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
-  alias StoryarnWeb.FlowLive.Helpers.FormHelpers
-  alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
   # Filter out entry from user-addable node types (entry is auto-created with flow)
   @node_types FlowNode.node_types() |> Enum.reject(&(&1 == "entry"))
@@ -369,37 +369,36 @@ defmodule StoryarnWeb.FlowLive.Show do
   @impl true
   def handle_params(params, _url, socket) do
     socket =
-      case params["node"] do
-        nil ->
-          socket
-
-        node_id ->
-          case Integer.parse(node_id) do
-            {id, ""} -> push_event(socket, "navigate_to_node", %{node_db_id: id})
-            _ -> socket
-          end
-      end
-
-    # Support "from" param for subflow breadcrumb navigation
-    socket =
-      case params["from"] do
-        nil ->
-          assign(socket, :from_flow, nil)
-
-        from_id ->
-          case Integer.parse(from_id) do
-            {id, ""} ->
-              case Flows.get_flow_brief(socket.assigns.project.id, id) do
-                nil -> assign(socket, :from_flow, nil)
-                flow -> assign(socket, :from_flow, flow)
-              end
-
-            _ ->
-              assign(socket, :from_flow, nil)
-          end
-      end
+      socket
+      |> maybe_navigate_to_node(params["node"])
+      |> maybe_set_from_flow(params["from"])
 
     {:noreply, socket}
+  end
+
+  defp maybe_navigate_to_node(socket, nil), do: socket
+
+  defp maybe_navigate_to_node(socket, node_id) do
+    case Integer.parse(node_id) do
+      {id, ""} -> push_event(socket, "navigate_to_node", %{node_db_id: id})
+      _ -> socket
+    end
+  end
+
+  defp maybe_set_from_flow(socket, nil), do: assign(socket, :from_flow, nil)
+
+  defp maybe_set_from_flow(socket, from_id) do
+    case Integer.parse(from_id) do
+      {id, ""} -> resolve_from_flow(socket, id)
+      _ -> assign(socket, :from_flow, nil)
+    end
+  end
+
+  defp resolve_from_flow(socket, id) do
+    case Flows.get_flow_brief(socket.assigns.project.id, id) do
+      nil -> assign(socket, :from_flow, nil)
+      flow -> assign(socket, :from_flow, flow)
+    end
   end
 
   # ===========================================================================

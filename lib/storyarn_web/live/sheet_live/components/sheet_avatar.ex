@@ -9,8 +9,8 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   import StoryarnWeb.Components.SheetComponents
 
   alias Storyarn.Assets
-  alias Storyarn.Sheets
   alias Storyarn.Repo
+  alias Storyarn.Sheets
 
   @impl true
   def render(assigns) do

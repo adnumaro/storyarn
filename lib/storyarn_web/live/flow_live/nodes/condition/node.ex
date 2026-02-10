@@ -60,16 +60,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
       ) do
     if node_id && response_id do
       NodeHelpers.persist_node_update(socket, node_id, fn data ->
-        Map.update(data, "responses", [], fn responses ->
-          Enum.map(responses, fn
-            %{"id" => ^response_id} = resp ->
-              sanitized = Condition.sanitize(condition_data)
-              Map.put(resp, "condition", Condition.to_json(sanitized))
-
-            resp ->
-              resp
-          end)
-        end)
+        update_response_condition(data, response_id, condition_data)
       end)
     else
       {:noreply, socket}
@@ -85,31 +76,43 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
     node = socket.assigns.selected_node
 
     if node && node.type == "condition" do
-      NodeHelpers.persist_node_update(socket, node.id, fn data ->
-        new_switch_mode = !(data["switch_mode"] || false)
-
-        updated_condition =
-          if new_switch_mode do
-            condition = data["condition"] || Condition.new()
-            rules = condition["rules"] || []
-
-            updated_rules =
-              Enum.map(rules, fn rule ->
-                Map.put_new(rule, "label", "")
-              end)
-
-            Map.put(condition, "rules", updated_rules)
-          else
-            data["condition"]
-          end
-
-        data
-        |> Map.put("switch_mode", new_switch_mode)
-        |> Map.put("condition", updated_condition)
-      end)
+      NodeHelpers.persist_node_update(socket, node.id, &toggle_switch_data/1)
     else
       {:noreply, socket}
     end
   end
+
+  # -- Private helpers --
+
+  defp update_response_condition(data, response_id, condition_data) do
+    Map.update(data, "responses", [], fn responses ->
+      Enum.map(responses, fn
+        %{"id" => ^response_id} = resp ->
+          sanitized = Condition.sanitize(condition_data)
+          Map.put(resp, "condition", Condition.to_json(sanitized))
+
+        resp ->
+          resp
+      end)
+    end)
+  end
+
+  defp toggle_switch_data(data) do
+    new_switch_mode = !(data["switch_mode"] || false)
+    updated_condition = maybe_add_labels(data["condition"], new_switch_mode)
+
+    data
+    |> Map.put("switch_mode", new_switch_mode)
+    |> Map.put("condition", updated_condition)
+  end
+
+  defp maybe_add_labels(condition, true) do
+    condition = condition || Condition.new()
+    rules = condition["rules"] || []
+    updated_rules = Enum.map(rules, fn rule -> Map.put_new(rule, "label", "") end)
+    Map.put(condition, "rules", updated_rules)
+  end
+
+  defp maybe_add_labels(condition, false), do: condition
 
 end

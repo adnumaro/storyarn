@@ -6,8 +6,8 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
   import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Sheets
   alias Storyarn.Repo
+  alias Storyarn.Sheets
 
   describe "Sheet show" do
     setup :register_and_log_in_user

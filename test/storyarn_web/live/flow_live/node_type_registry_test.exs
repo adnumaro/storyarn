@@ -7,7 +7,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistryTest do
     test "returns all known node types" do
       types = NodeTypeRegistry.types()
       assert is_list(types)
-      assert length(types) > 0
+      assert [_ | _] = types
       assert "dialogue" in types
       assert "condition" in types
       assert "entry" in types

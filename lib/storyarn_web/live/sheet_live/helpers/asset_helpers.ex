@@ -6,8 +6,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Assets
-  alias Storyarn.Sheets
   alias Storyarn.Repo
+  alias Storyarn.Sheets
 
   @doc """
   Handles remove_avatar event.

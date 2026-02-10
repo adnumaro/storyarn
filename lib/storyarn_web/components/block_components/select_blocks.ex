@@ -59,35 +59,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
   attr :target, :any, default: nil
 
   def multi_select_block(assigns) do
-    label = get_in(assigns.block.config, ["label"]) || ""
-    placeholder = get_in(assigns.block.config, ["placeholder"]) || ""
-    options = get_in(assigns.block.config, ["options"]) || []
-    content = get_in(assigns.block.value, ["content"]) || []
-    is_constant = assigns.block.is_constant || false
-
-    # Get selected options with their labels
-    selected_options =
-      Enum.map(content, fn key ->
-        option = Enum.find(options, fn opt -> opt["key"] == key end)
-        %{key: key, label: (option && option["value"]) || key}
-      end)
-
-    # Use configured placeholder or default
-    default_placeholder =
-      if selected_options == [],
-        do: gettext("Type and press Enter to add..."),
-        else: gettext("Add more...")
-
-    display_placeholder = if placeholder != "", do: placeholder, else: default_placeholder
-
-    assigns =
-      assigns
-      |> assign(:label, label)
-      |> assign(:placeholder, display_placeholder)
-      |> assign(:options, options)
-      |> assign(:content, content)
-      |> assign(:selected_options, selected_options)
-      |> assign(:is_constant, is_constant)
+    assigns = prepare_multi_select_assigns(assigns)
 
     ~H"""
     <div class="py-1">
@@ -131,6 +103,36 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
     </div>
     """
   end
+
+  defp prepare_multi_select_assigns(assigns) do
+    label = get_in(assigns.block.config, ["label"]) || ""
+    placeholder = get_in(assigns.block.config, ["placeholder"]) || ""
+    options = get_in(assigns.block.config, ["options"]) || []
+    content = get_in(assigns.block.value, ["content"]) || []
+    is_constant = assigns.block.is_constant || false
+
+    selected_options = resolve_selected_options(content, options)
+    display_placeholder = resolve_placeholder(placeholder, selected_options)
+
+    assigns
+    |> assign(:label, label)
+    |> assign(:placeholder, display_placeholder)
+    |> assign(:options, options)
+    |> assign(:content, content)
+    |> assign(:selected_options, selected_options)
+    |> assign(:is_constant, is_constant)
+  end
+
+  defp resolve_selected_options(content, options) do
+    Enum.map(content, fn key ->
+      option = Enum.find(options, fn opt -> opt["key"] == key end)
+      %{key: key, label: (option && option["value"]) || key}
+    end)
+  end
+
+  defp resolve_placeholder("", []), do: gettext("Type and press Enter to add...")
+  defp resolve_placeholder("", _selected), do: gettext("Add more...")
+  defp resolve_placeholder(placeholder, _selected), do: placeholder
 
   defp find_option_label(options, key) do
     Enum.find_value(options, fn opt -> opt["key"] == key && opt["value"] end)

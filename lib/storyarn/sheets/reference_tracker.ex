@@ -28,8 +28,8 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   """
 
   import Ecto.Query
-  alias Storyarn.Sheets.EntityReference
   alias Storyarn.Repo
+  alias Storyarn.Sheets.EntityReference
 
   @doc """
   Updates references from a block.

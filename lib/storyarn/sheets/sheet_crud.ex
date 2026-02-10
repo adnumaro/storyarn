@@ -3,10 +3,10 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Sheets.{Sheet, PropertyInheritance}
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
+  alias Storyarn.Sheets.{PropertyInheritance, Sheet}
   alias Storyarn.Shortcuts
 
   # =============================================================================
@@ -107,7 +107,7 @@ defmodule Storyarn.Sheets.SheetCrud do
   Use with caution - this cannot be undone.
   """
   def permanently_delete_sheet(%Sheet{} = sheet) do
-    alias Storyarn.Sheets.{SheetVersion, ReferenceTracker}
+    alias Storyarn.Sheets.{ReferenceTracker, SheetVersion}
 
     # Delete all versions first
     from(v in SheetVersion, where: v.sheet_id == ^sheet.id)
@@ -226,31 +226,42 @@ defmodule Storyarn.Sheets.SheetCrud do
   defp maybe_generate_shortcut_on_update(%Sheet{} = sheet, attrs) do
     attrs = stringify_keys(attrs)
 
-    # If attrs explicitly set shortcut, use that
-    if Map.has_key?(attrs, "shortcut") do
-      attrs
-    else
+    cond do
+      # If attrs explicitly set shortcut, use that
+      Map.has_key?(attrs, "shortcut") ->
+        attrs
+
       # If name is changing, regenerate shortcut from new name
-      new_name = attrs["name"]
-
-      if new_name && new_name != "" && new_name != sheet.name do
-        shortcut = Shortcuts.generate_sheet_shortcut(new_name, sheet.project_id, sheet.id)
+      name_changing?(attrs, sheet) ->
+        shortcut = Shortcuts.generate_sheet_shortcut(attrs["name"], sheet.project_id, sheet.id)
         Map.put(attrs, "shortcut", shortcut)
-      else
-        # If sheet has no shortcut yet, generate one from current name
-        if is_nil(sheet.shortcut) || sheet.shortcut == "" do
-          name = sheet.name
 
-          if name && name != "" do
-            shortcut = Shortcuts.generate_sheet_shortcut(name, sheet.project_id, sheet.id)
-            Map.put(attrs, "shortcut", shortcut)
-          else
-            attrs
-          end
-        else
-          attrs
-        end
-      end
+      # If sheet has no shortcut yet, generate one from current name
+      missing_shortcut?(sheet) ->
+        maybe_generate_from_existing_name(attrs, sheet)
+
+      true ->
+        attrs
+    end
+  end
+
+  defp name_changing?(attrs, sheet) do
+    new_name = attrs["name"]
+    new_name && new_name != "" && new_name != sheet.name
+  end
+
+  defp missing_shortcut?(sheet) do
+    is_nil(sheet.shortcut) || sheet.shortcut == ""
+  end
+
+  defp maybe_generate_from_existing_name(attrs, sheet) do
+    name = sheet.name
+
+    if name && name != "" do
+      shortcut = Shortcuts.generate_sheet_shortcut(name, sheet.project_id, sheet.id)
+      Map.put(attrs, "shortcut", shortcut)
+    else
+      attrs
     end
   end
 end

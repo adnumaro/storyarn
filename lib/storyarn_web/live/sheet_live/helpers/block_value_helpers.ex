@@ -125,39 +125,48 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockValueHelpers do
       end)
 
     if existing do
-      if existing["key"] in current_content do
-        blocks = ReferenceHelpers.load_blocks_with_references(sheet_id, project_id)
-        {:ok, blocks}
-      else
-        new_content = [existing["key"] | current_content]
-
-        case Sheets.update_block_value(block, %{"content" => new_content}) do
-          {:ok, _} ->
-            blocks = ReferenceHelpers.load_blocks_with_references(sheet_id, project_id)
-            {:ok, blocks}
-
-          {:error, _} ->
-            {:error, gettext("Could not update multi-select.")}
-        end
-      end
+      add_existing_option(block, existing, current_content, sheet_id, project_id)
     else
-      new_option = %{"key" => key, "value" => value}
-      new_options = current_options ++ [new_option]
-      new_content = [key | current_content]
-
-      with {:ok, _} <-
-             Sheets.update_block_config(block, %{
-               "options" => new_options,
-               "label" => block.config["label"] || ""
-             }),
-           block <- Sheets.get_block_in_project!(block_id, project_id),
-           {:ok, _} <- Sheets.update_block_value(block, %{"content" => new_content}) do
-        blocks = ReferenceHelpers.load_blocks_with_references(sheet_id, project_id)
-        {:ok, blocks}
-      else
-        _ -> {:error, gettext("Could not add option.")}
-      end
+      create_new_option(block, block_id, key, value, current_options, current_content, sheet_id, project_id)
     end
+  end
+
+  defp add_existing_option(block, existing, current_content, sheet_id, project_id) do
+    if existing["key"] in current_content do
+      load_blocks_result(sheet_id, project_id)
+    else
+      new_content = [existing["key"] | current_content]
+      update_and_load_blocks(block, new_content, sheet_id, project_id)
+    end
+  end
+
+  defp update_and_load_blocks(block, new_content, sheet_id, project_id) do
+    case Sheets.update_block_value(block, %{"content" => new_content}) do
+      {:ok, _} -> load_blocks_result(sheet_id, project_id)
+      {:error, _} -> {:error, gettext("Could not update multi-select.")}
+    end
+  end
+
+  defp create_new_option(block, block_id, key, value, current_options, current_content, sheet_id, project_id) do
+    new_options = current_options ++ [%{"key" => key, "value" => value}]
+    new_content = [key | current_content]
+
+    with {:ok, _} <-
+           Sheets.update_block_config(block, %{
+             "options" => new_options,
+             "label" => block.config["label"] || ""
+           }),
+         updated_block <- Sheets.get_block_in_project!(block_id, project_id),
+         {:ok, _} <- Sheets.update_block_value(updated_block, %{"content" => new_content}) do
+      load_blocks_result(sheet_id, project_id)
+    else
+      _ -> {:error, gettext("Could not add option.")}
+    end
+  end
+
+  defp load_blocks_result(sheet_id, project_id) do
+    blocks = ReferenceHelpers.load_blocks_with_references(sheet_id, project_id)
+    {:ok, blocks}
   end
 
   defp generate_option_key(value) do

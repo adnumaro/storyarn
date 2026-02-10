@@ -68,44 +68,56 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
     node = socket.assigns.selected_node
 
     if node do
-      ref_id = if ref_id == "" || is_nil(ref_id), do: nil, else: ref_id
-      current_flow_id = socket.assigns.flow.id
-      parsed_ref_id = if ref_id, do: NodeCrud.safe_to_integer(ref_id)
-
-      cond do
-        ref_id && is_nil(parsed_ref_id) ->
-          {:noreply, put_flash(socket, :error, gettext("Invalid flow reference."))}
-
-        ref_id && parsed_ref_id == current_flow_id ->
-          {:noreply, put_flash(socket, :error, gettext("A flow cannot reference itself."))}
-
-        ref_id && Flows.has_circular_reference?(current_flow_id, parsed_ref_id) ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             gettext("Circular reference detected. This flow is already referenced by the target.")
-           )}
-
-        true ->
-          case NodeHelpers.persist_node_update(socket, node.id, fn data ->
-                 Map.put(data, "referenced_flow_id", ref_id)
-               end) do
-            {:noreply, updated_socket} ->
-              exit_nodes =
-                case parsed_ref_id do
-                  nil -> []
-                  id -> Flows.list_exit_nodes_for_flow(id)
-                end
-
-              {:noreply, assign(updated_socket, :subflow_exits, exit_nodes)}
-
-            other ->
-              other
-          end
-      end
+      do_update_reference(node, ref_id, socket)
     else
       {:noreply, socket}
     end
   end
+
+  defp do_update_reference(node, ref_id, socket) do
+    ref_id = if ref_id == "" || is_nil(ref_id), do: nil, else: ref_id
+
+    case validate_reference(ref_id, socket.assigns.flow.id) do
+      :ok -> persist_reference(node, ref_id, socket)
+      {:error, message} -> {:noreply, put_flash(socket, :error, message)}
+    end
+  end
+
+  defp validate_reference(nil, _current_flow_id), do: :ok
+
+  defp validate_reference(ref_id, current_flow_id) do
+    parsed = NodeCrud.safe_to_integer(ref_id)
+
+    cond do
+      is_nil(parsed) ->
+        {:error, gettext("Invalid flow reference.")}
+
+      parsed == current_flow_id ->
+        {:error, gettext("A flow cannot reference itself.")}
+
+      Flows.has_circular_reference?(current_flow_id, parsed) ->
+        {:error, gettext("Circular reference detected. This flow is already referenced by the target.")}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp persist_reference(node, ref_id, socket) do
+    parsed_ref_id = if ref_id, do: NodeCrud.safe_to_integer(ref_id)
+
+    case NodeHelpers.persist_node_update(socket, node.id, fn data ->
+           Map.put(data, "referenced_flow_id", ref_id)
+         end) do
+      {:noreply, updated_socket} ->
+        exit_nodes = load_exit_nodes(parsed_ref_id)
+        {:noreply, assign(updated_socket, :subflow_exits, exit_nodes)}
+
+      other ->
+        other
+    end
+  end
+
+  defp load_exit_nodes(nil), do: []
+  defp load_exit_nodes(id), do: Flows.list_exit_nodes_for_flow(id)
 end

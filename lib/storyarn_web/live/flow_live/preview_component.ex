@@ -248,16 +248,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
       assign_empty_node(socket)
     else
       visited = MapSet.put(visited, node.id)
-      target_hub_id = node.data["target_hub_id"]
-
-      if target_hub_id && target_hub_id != "" do
-        case Flows.get_hub_by_hub_id(node.flow_id, target_hub_id) do
-          nil -> assign_empty_node(socket)
-          hub -> skip_to_next_dialogue(socket, hub, visited, depth + 1)
-        end
-      else
-        assign_empty_node(socket)
-      end
+      follow_jump_target(socket, node, visited, depth)
     end
   end
 
@@ -266,22 +257,42 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
       assign_empty_node(socket)
     else
       visited = MapSet.put(visited, node.id)
-      connections = Flows.get_outgoing_connections(node.id)
-
-      case List.first(connections) do
-        nil ->
-          assign_empty_node(socket)
-
-        next_conn ->
-          next_node = Flows.get_node_by_id!(next_conn.target_node_id)
-
-          if next_node.type == "dialogue" do
-            load_dialogue_node(socket, next_node)
-          else
-            skip_to_next_dialogue(socket, next_node, visited, depth + 1)
-          end
-      end
+      follow_first_connection(socket, node, visited, depth)
     end
+  end
+
+  defp follow_jump_target(socket, node, visited, depth) do
+    target_hub_id = node.data["target_hub_id"]
+
+    if target_hub_id && target_hub_id != "" do
+      case Flows.get_hub_by_hub_id(node.flow_id, target_hub_id) do
+        nil -> assign_empty_node(socket)
+        hub -> skip_to_next_dialogue(socket, hub, visited, depth + 1)
+      end
+    else
+      assign_empty_node(socket)
+    end
+  end
+
+  defp follow_first_connection(socket, node, visited, depth) do
+    connections = Flows.get_outgoing_connections(node.id)
+
+    case List.first(connections) do
+      nil ->
+        assign_empty_node(socket)
+
+      next_conn ->
+        next_node = Flows.get_node_by_id!(next_conn.target_node_id)
+        load_or_skip(socket, next_node, visited, depth)
+    end
+  end
+
+  defp load_or_skip(socket, %{type: "dialogue"} = node, _visited, _depth) do
+    load_dialogue_node(socket, node)
+  end
+
+  defp load_or_skip(socket, node, visited, depth) do
+    skip_to_next_dialogue(socket, node, visited, depth + 1)
   end
 
   defp assign_empty_node(socket) do
@@ -299,36 +310,38 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
 
   defp resolve_speaker(assigns, speaker_sheet_id)
        when is_integer(speaker_sheet_id) or is_binary(speaker_sheet_id) do
-    sheet_id =
-      if is_binary(speaker_sheet_id) do
-        case Integer.parse(speaker_sheet_id) do
-          {id, ""} -> id
-          _ -> nil
-        end
-      else
-        speaker_sheet_id
-      end
-
-    if sheet_id do
-      # Try to get from sheets_map first
-      sheets_map = Map.get(assigns, :sheets_map, %{})
-      sheet_info = Map.get(sheets_map, to_string(sheet_id))
-
-      if sheet_info do
-        sheet_info.name
-      else
-        # Fallback to database lookup
-        project_id = assigns.project.id
-
-        case Sheets.get_sheet(project_id, sheet_id) do
-          nil -> nil
-          sheet -> sheet.name
-        end
-      end
-    end
+    sheet_id = parse_sheet_id(speaker_sheet_id)
+    if sheet_id, do: lookup_speaker_name(assigns, sheet_id)
   end
 
   defp resolve_speaker(_assigns, _), do: nil
+
+  defp parse_sheet_id(id) when is_integer(id), do: id
+
+  defp parse_sheet_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {parsed, ""} -> parsed
+      _ -> nil
+    end
+  end
+
+  defp lookup_speaker_name(assigns, sheet_id) do
+    sheets_map = Map.get(assigns, :sheets_map, %{})
+    sheet_info = Map.get(sheets_map, to_string(sheet_id))
+
+    if sheet_info do
+      sheet_info.name
+    else
+      lookup_speaker_from_db(assigns.project.id, sheet_id)
+    end
+  end
+
+  defp lookup_speaker_from_db(project_id, sheet_id) do
+    case Sheets.get_sheet(project_id, sheet_id) do
+      nil -> nil
+      sheet -> sheet.name
+    end
+  end
 
   defp speaker_initials(nil), do: "?"
 

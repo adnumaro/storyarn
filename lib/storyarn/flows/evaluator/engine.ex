@@ -24,7 +24,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
       [%{source_node_id: 1, source_pin: "default", target_node_id: 2, target_pin: "input"}, ...]
   """
 
-  alias Storyarn.Flows.Evaluator.{Helpers, State, ConditionEval, InstructionExec}
+  alias Storyarn.Flows.Evaluator.{ConditionEval, Helpers, InstructionExec, State}
 
   # =============================================================================
   # Public API
@@ -382,39 +382,37 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     data = node.data || %{}
     target_hub_id = data["target_hub_id"]
 
-    cond do
-      is_nil(target_hub_id) or target_hub_id == "" ->
-        state =
-          add_console(state, :error, node.id, label, "Jump node has no target_hub_id configured")
+    if is_nil(target_hub_id) or target_hub_id == "" do
+      state =
+        add_console(state, :error, node.id, label, "Jump node has no target_hub_id configured")
 
-        {:finished, %{state | status: :finished}}
+      {:finished, %{state | status: :finished}}
+    else
+      case find_hub_by_hub_id(nodes, target_hub_id) do
+        nil ->
+          state =
+            add_console(
+              state,
+              :error,
+              node.id,
+              label,
+              "Jump target hub \"#{target_hub_id}\" not found in this flow"
+            )
 
-      true ->
-        case find_hub_by_hub_id(nodes, target_hub_id) do
-          nil ->
-            state =
-              add_console(
-                state,
-                :error,
-                node.id,
-                label,
-                "Jump target hub \"#{target_hub_id}\" not found in this flow"
-              )
+          {:finished, %{state | status: :finished}}
 
-            {:finished, %{state | status: :finished}}
+        hub_node_id ->
+          state =
+            add_console(
+              state,
+              :info,
+              node.id,
+              label,
+              "Jump → hub \"#{target_hub_id}\" (node #{hub_node_id})"
+            )
 
-          hub_node_id ->
-            state =
-              add_console(
-                state,
-                :info,
-                node.id,
-                label,
-                "Jump → hub \"#{target_hub_id}\" (node #{hub_node_id})"
-              )
-
-            advance_to(state, hub_node_id)
-        end
+          advance_to(state, hub_node_id)
+      end
     end
   end
 
@@ -449,68 +447,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
 
     # 3. Handle responses
     responses = data["responses"] || []
-
-    if responses == [] do
-      state =
-        add_console(state, :info, node.id, label, "Dialogue — no responses, following output")
-
-      follow_output(state, node.id, label, connections)
-    else
-      evaluated = evaluate_response_conditions(responses, state.variables)
-      valid_responses = Enum.filter(evaluated, & &1.valid)
-      valid_count = length(valid_responses)
-      total_count = length(evaluated)
-
-      if valid_count == 1 do
-        # Single valid response — auto-select it
-        [only] = valid_responses
-
-        state =
-          add_console(
-            state,
-            :info,
-            node.id,
-            label,
-            "Dialogue — auto-selected \"#{only.text}\" (1 of #{total_count} valid)"
-          )
-
-        # Execute response instruction if present
-        state =
-          if is_binary(only[:instruction]) and only[:instruction] != "" do
-            execute_response_instruction(only.instruction, state, node.id)
-          else
-            state
-          end
-
-        # Follow connection from the response pin
-        conn =
-          find_connection(connections, node.id, only.id) ||
-            find_connection(connections, node.id, "resp_#{only.id}")
-
-        case conn do
-          nil ->
-            state =
-              add_console(state, :error, node.id, label, "No connection from response #{only.id}")
-
-            {:finished, %{state | status: :finished}}
-
-          conn ->
-            advance_to(state, conn.target_node_id)
-        end
-      else
-        state =
-          add_console(
-            state,
-            :info,
-            node.id,
-            label,
-            "Dialogue — waiting for response (#{valid_count} of #{total_count} valid)"
-          )
-
-        pending = %{node_id: node.id, responses: evaluated}
-        {:waiting_input, %{state | status: :waiting_input, pending_choices: pending}}
-      end
-    end
+    handle_dialogue_responses(responses, state, node.id, label, connections)
   end
 
   defp evaluate_node(%{type: "condition"} = node, state, connections, _nodes) do
@@ -581,6 +518,75 @@ defmodule Storyarn.Flows.Evaluator.Engine do
   end
 
   # =============================================================================
+  # Dialogue response helpers
+  # =============================================================================
+
+  defp handle_dialogue_responses([], state, node_id, label, connections) do
+    state = add_console(state, :info, node_id, label, "Dialogue — no responses, following output")
+    follow_output(state, node_id, label, connections)
+  end
+
+  defp handle_dialogue_responses(responses, state, node_id, label, connections) do
+    evaluated = evaluate_response_conditions(responses, state.variables)
+    valid_responses = Enum.filter(evaluated, & &1.valid)
+
+    case valid_responses do
+      [only] -> auto_select_response(only, evaluated, state, node_id, label, connections)
+      _ -> wait_for_response(evaluated, valid_responses, state, node_id, label)
+    end
+  end
+
+  defp auto_select_response(only, evaluated, state, node_id, label, connections) do
+    total_count = length(evaluated)
+
+    state =
+      add_console(
+        state,
+        :info,
+        node_id,
+        label,
+        "Dialogue — auto-selected \"#{only.text}\" (1 of #{total_count} valid)"
+      )
+
+    state =
+      if is_binary(only[:instruction]) and only[:instruction] != "" do
+        execute_response_instruction(only.instruction, state, node_id)
+      else
+        state
+      end
+
+    conn =
+      find_connection(connections, node_id, only.id) ||
+        find_connection(connections, node_id, "resp_#{only.id}")
+
+    case conn do
+      nil ->
+        state = add_console(state, :error, node_id, label, "No connection from response #{only.id}")
+        {:finished, %{state | status: :finished}}
+
+      conn ->
+        advance_to(state, conn.target_node_id)
+    end
+  end
+
+  defp wait_for_response(evaluated, valid_responses, state, node_id, label) do
+    valid_count = length(valid_responses)
+    total_count = length(evaluated)
+
+    state =
+      add_console(
+        state,
+        :info,
+        node_id,
+        label,
+        "Dialogue — waiting for response (#{valid_count} of #{total_count} valid)"
+      )
+
+    pending = %{node_id: node_id, responses: evaluated}
+    {:waiting_input, %{state | status: :waiting_input, pending_choices: pending}}
+  end
+
+  # =============================================================================
   # Condition evaluation
   # =============================================================================
 
@@ -617,37 +623,38 @@ defmodule Storyarn.Flows.Evaluator.Engine do
 
     {matched_pin, state} =
       Enum.reduce_while(rules, {nil, state}, fn rule, {_pin, acc_state} ->
-        rule_result = ConditionEval.evaluate_rule(rule, acc_state.variables)
-        rule_label = rule["label"] || rule["id"] || "unnamed"
-
-        if rule_result.passed do
-          acc_state =
-            add_console(acc_state, :info, node_id, label, "Switch → case \"#{rule_label}\" matched")
-
-          {:halt, {rule["id"], acc_state}}
-        else
-          acc_state =
-            add_console(
-              acc_state,
-              :info,
-              node_id,
-              label,
-              "Switch → case \"#{rule_label}\" did not match"
-            )
-
-          {:cont, {nil, acc_state}}
-        end
+        evaluate_switch_rule(rule, acc_state, node_id, label)
       end)
 
-    state =
-      if is_nil(matched_pin) do
-        add_console(state, :warning, node_id, label, "Switch — no case matched, following default")
-      else
-        state
-      end
-
+    state = log_switch_default_if_unmatched(state, matched_pin, node_id, label)
     pin = matched_pin || "default"
+    follow_switch_pin(state, node_id, label, pin, connections)
+  end
 
+  defp evaluate_switch_rule(rule, acc_state, node_id, label) do
+    rule_result = ConditionEval.evaluate_rule(rule, acc_state.variables)
+    rule_label = rule["label"] || rule["id"] || "unnamed"
+
+    if rule_result.passed do
+      acc_state =
+        add_console(acc_state, :info, node_id, label, "Switch → case \"#{rule_label}\" matched")
+
+      {:halt, {rule["id"], acc_state}}
+    else
+      acc_state =
+        add_console(acc_state, :info, node_id, label, "Switch → case \"#{rule_label}\" did not match")
+
+      {:cont, {nil, acc_state}}
+    end
+  end
+
+  defp log_switch_default_if_unmatched(state, nil, node_id, label) do
+    add_console(state, :warning, node_id, label, "Switch — no case matched, following default")
+  end
+
+  defp log_switch_default_if_unmatched(state, _matched_pin, _node_id, _label), do: state
+
+  defp follow_switch_pin(state, node_id, label, pin, connections) do
     conn =
       find_connection(connections, node_id, pin) ||
         if(pin != "default", do: find_connection(connections, node_id, "default"))

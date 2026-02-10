@@ -11,8 +11,8 @@ defmodule Storyarn.Sheets.Versioning do
 
   alias Ecto.Multi
   alias Storyarn.Accounts.User
-  alias Storyarn.Sheets.{Block, Sheet, SheetVersion}
   alias Storyarn.Repo
+  alias Storyarn.Sheets.{Block, Sheet, SheetVersion}
 
   @doc """
   Creates a new version snapshot of the given sheet.
@@ -232,56 +232,63 @@ defmodule Storyarn.Sheets.Versioning do
 
   defp restore_blocks_from_snapshot(repo, sheet_id, blocks_data) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
+    existing_source_ids = load_existing_source_ids(repo, blocks_data)
 
-    # Collect all inherited_from_block_ids to validate in batch
+    blocks =
+      blocks_data
+      |> Enum.sort_by(& &1["position"])
+      |> Enum.map(&snapshot_to_block_entry(&1, sheet_id, existing_source_ids, now))
+
+    {count, _} = repo.insert_all(Block, blocks)
+    {:ok, count}
+  end
+
+  defp load_existing_source_ids(repo, blocks_data) do
     source_block_ids =
       blocks_data
       |> Enum.map(& &1["inherited_from_block_id"])
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
 
-    existing_source_ids =
-      if source_block_ids == [] do
-        MapSet.new()
-      else
-        from(b in Block, where: b.id in ^source_block_ids and is_nil(b.deleted_at), select: b.id)
-        |> repo.all()
-        |> MapSet.new()
-      end
+    if source_block_ids == [] do
+      MapSet.new()
+    else
+      from(b in Block, where: b.id in ^source_block_ids and is_nil(b.deleted_at), select: b.id)
+      |> repo.all()
+      |> MapSet.new()
+    end
+  end
 
-    blocks =
-      blocks_data
-      |> Enum.sort_by(& &1["position"])
-      |> Enum.map(fn block_data ->
-        inherited_from = block_data["inherited_from_block_id"]
+  defp snapshot_to_block_entry(block_data, sheet_id, existing_source_ids, now) do
+    {inherited_from, detached} =
+      resolve_inheritance(block_data, existing_source_ids)
 
-        # If source block no longer exists, nilify reference and mark as detached
-        {inherited_from, detached} =
-          if inherited_from && !MapSet.member?(existing_source_ids, inherited_from) do
-            {nil, true}
-          else
-            {inherited_from, block_data["detached"] || false}
-          end
+    %{
+      sheet_id: sheet_id,
+      type: block_data["type"],
+      position: block_data["position"],
+      config: block_data["config"] || %{},
+      value: block_data["value"] || %{},
+      is_constant: block_data["is_constant"] || false,
+      variable_name: block_data["variable_name"],
+      scope: block_data["scope"] || "self",
+      inherited_from_block_id: inherited_from,
+      detached: detached,
+      required: block_data["required"] || false,
+      inserted_at: now,
+      updated_at: now
+    }
+  end
 
-        %{
-          sheet_id: sheet_id,
-          type: block_data["type"],
-          position: block_data["position"],
-          config: block_data["config"] || %{},
-          value: block_data["value"] || %{},
-          is_constant: block_data["is_constant"] || false,
-          variable_name: block_data["variable_name"],
-          scope: block_data["scope"] || "self",
-          inherited_from_block_id: inherited_from,
-          detached: detached,
-          required: block_data["required"] || false,
-          inserted_at: now,
-          updated_at: now
-        }
-      end)
+  defp resolve_inheritance(block_data, existing_source_ids) do
+    inherited_from = block_data["inherited_from_block_id"]
 
-    {count, _} = repo.insert_all(Block, blocks)
-    {:ok, count}
+    # If source block no longer exists, nilify reference and mark as detached
+    if inherited_from && !MapSet.member?(existing_source_ids, inherited_from) do
+      {nil, true}
+    else
+      {inherited_from, block_data["detached"] || false}
+    end
   end
 
   # ===========================================================================

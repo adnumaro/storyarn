@@ -249,52 +249,62 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
         {:noreply, assign(socket, :debug_auto_playing, false)}
 
       state.status == :waiting_input ->
-        # Keep auto-play active but don't schedule next step — wait for user choice
         {:noreply, socket}
 
       true ->
-        nodes = socket.assigns.debug_nodes
-        connections = socket.assigns.debug_connections
-
-        result = Engine.step(state, nodes, connections)
-
-        case apply_step_result(result, socket) do
-          {:navigating, socket} ->
-            {:noreply, socket}
-
-          {:continue, socket} ->
-            new_state = socket.assigns.debug_state
-
-            # Check if we hit a breakpoint (only if not finished/waiting)
-            {new_state, hit_breakpoint} =
-              if new_state.status not in [:finished, :waiting_input] and
-                   Engine.at_breakpoint?(new_state) do
-                {Engine.add_breakpoint_hit(new_state, new_state.current_node_id), true}
-              else
-                {new_state, false}
-              end
-
-            socket =
-              socket
-              |> assign(:debug_state, new_state)
-              |> push_debug_canvas(new_state)
-
-            cond do
-              hit_breakpoint ->
-                {:noreply, assign(socket, :debug_auto_playing, false)}
-
-              new_state.status == :finished ->
-                {:noreply, assign(socket, :debug_auto_playing, false)}
-
-              new_state.status == :waiting_input ->
-                # Keep auto-play active, wait for user to choose a response
-                {:noreply, socket}
-
-              true ->
-                {:noreply, schedule_auto_step(socket)}
-            end
-        end
+        do_auto_step(socket, state)
     end
+  end
+
+  defp do_auto_step(socket, state) do
+    nodes = socket.assigns.debug_nodes
+    connections = socket.assigns.debug_connections
+    result = Engine.step(state, nodes, connections)
+
+    case apply_step_result(result, socket) do
+      {:navigating, socket} ->
+        {:noreply, socket}
+
+      {:continue, socket} ->
+        finalize_auto_step(socket)
+    end
+  end
+
+  defp finalize_auto_step(socket) do
+    new_state = socket.assigns.debug_state
+
+    {new_state, hit_breakpoint} = maybe_hit_breakpoint(new_state)
+
+    socket =
+      socket
+      |> assign(:debug_state, new_state)
+      |> push_debug_canvas(new_state)
+
+    schedule_or_stop_auto_play(socket, new_state, hit_breakpoint)
+  end
+
+  defp maybe_hit_breakpoint(state) do
+    if state.status not in [:finished, :waiting_input] and Engine.at_breakpoint?(state) do
+      {Engine.add_breakpoint_hit(state, state.current_node_id), true}
+    else
+      {state, false}
+    end
+  end
+
+  defp schedule_or_stop_auto_play(socket, _state, true) do
+    {:noreply, assign(socket, :debug_auto_playing, false)}
+  end
+
+  defp schedule_or_stop_auto_play(socket, %{status: :finished}, _hit_breakpoint) do
+    {:noreply, assign(socket, :debug_auto_playing, false)}
+  end
+
+  defp schedule_or_stop_auto_play(socket, %{status: :waiting_input}, _hit_breakpoint) do
+    {:noreply, socket}
+  end
+
+  defp schedule_or_stop_auto_play(socket, _state, _hit_breakpoint) do
+    {:noreply, schedule_auto_step(socket)}
   end
 
   # ===========================================================================
@@ -524,24 +534,18 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
     })
   end
 
+  defp find_active_connection([], _connections), do: nil
+  defp find_active_connection([_single], _connections), do: nil
+
   defp find_active_connection(path, connections) do
-    case path do
-      [] ->
-        nil
+    source_id = Enum.at(path, -2)
+    target_id = Enum.at(path, -1)
 
-      [_single] ->
-        nil
-
-      _ ->
-        source_id = Enum.at(path, -2)
-        target_id = Enum.at(path, -1)
-
-        Enum.find_value(connections, fn conn ->
-          if conn.source_node_id == source_id and conn.target_node_id == target_id do
-            %{source_node_id: source_id, target_node_id: target_id, source_pin: conn.source_pin}
-          end
-        end)
-    end
+    Enum.find_value(connections, fn conn ->
+      if conn.source_node_id == source_id and conn.target_node_id == target_id do
+        %{source_node_id: source_id, target_node_id: target_id, source_pin: conn.source_pin}
+      end
+    end)
   end
 
   defp parse_speed(val) when is_binary(val) do

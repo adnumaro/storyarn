@@ -357,7 +357,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       ReferenceTracker.update_block_references(updated_instance)
 
       backlinks_before = ReferenceTracker.get_backlinks("sheet", target_sheet.id)
-      assert length(backlinks_before) >= 1
+      assert [_ | _] = backlinks_before
 
       # Now delete inherited instances
       {:ok, _} = PropertyInheritance.delete_inherited_instances(block)
@@ -400,7 +400,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
         |> Repo.all()
 
       # Should still exist in DB but be soft-deleted
-      assert length(all_blocks) >= 1
+      assert [_ | _] = all_blocks
       assert Enum.all?(all_blocks, &(not is_nil(&1.deleted_at)))
     end
 
@@ -583,7 +583,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       new_child = child_sheet_fixture(project, parent, %{name: "New Child"})
 
       child_blocks = Sheets.list_blocks(new_child.id)
-      assert length(child_blocks) >= 1
+      assert [_ | _] = child_blocks
       assert Enum.any?(child_blocks, fn b -> not is_nil(b.inherited_from_block_id) end)
     end
 
@@ -625,7 +625,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       {:ok, version} = Sheets.create_version(child, user)
 
       block_snapshots = version.snapshot["blocks"]
-      assert length(block_snapshots) >= 1
+      assert [_ | _] = block_snapshots
 
       inherited_snapshot = Enum.find(block_snapshots, & &1["inherited_from_block_id"])
       assert inherited_snapshot
@@ -657,7 +657,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
         b.detached == true
       end)
 
-      assert orphaned || length(restored_blocks) >= 0
+      assert orphaned || is_list(restored_blocks)
       # The key point: no crash occurred during restore
     end
   end
@@ -677,7 +677,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
 
       assert length(inherited_groups) == 1
       assert hd(inherited_groups).source_sheet.id == parent.id
-      assert length(own_blocks) >= 1
+      assert [_ | _] = own_blocks
     end
 
     test "batch-loads source sheets (no N+1)", %{

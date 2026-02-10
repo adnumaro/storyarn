@@ -4,8 +4,8 @@ defmodule Storyarn.Sheets.BlockCrud do
   import Ecto.Query, warn: false
   require Logger
 
-  alias Storyarn.Sheets.{Block, Sheet, ReferenceTracker, PropertyInheritance}
   alias Storyarn.Repo
+  alias Storyarn.Sheets.{Block, PropertyInheritance, ReferenceTracker, Sheet}
 
   # =============================================================================
   # Query Operations
@@ -65,8 +65,9 @@ defmodule Storyarn.Sheets.BlockCrud do
   def create_block(%Sheet{} = sheet, attrs) do
     position = attrs[:position] || next_block_position(sheet.id)
 
-    config = attrs[:config] || Block.default_config(attrs[:type] || attrs["type"])
-    value = attrs[:value] || Block.default_value(attrs[:type] || attrs["type"])
+    block_type = attrs[:type] || attrs["type"]
+    config = attrs[:config] || Block.default_config(block_type)
+    value = attrs[:value] || Block.default_value(block_type)
 
     result =
       %Block{sheet_id: sheet.id}
@@ -81,17 +82,7 @@ defmodule Storyarn.Sheets.BlockCrud do
 
     # If block has scope: "children" and is not itself an inherited instance,
     # auto-create instances on all descendant sheets
-    case result do
-      {:ok, block} when block.scope == "children" and is_nil(block.inherited_from_block_id) ->
-        descendant_ids = PropertyInheritance.get_descendant_sheet_ids(sheet.id)
-
-        if descendant_ids != [] do
-          {:ok, _count} = PropertyInheritance.create_inherited_instances(block, descendant_ids)
-        end
-
-      _ ->
-        :ok
-    end
+    maybe_propagate_to_descendants(result, sheet.id)
 
     result
   end
@@ -109,14 +100,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     case result do
       {:ok, updated_block} ->
         handle_scope_change(updated_block, old_scope)
-
-        # Sync definition to instances if scope is "children"
-        if updated_block.scope == "children" and old_scope == "children" do
-          case PropertyInheritance.sync_definition_change(updated_block) do
-            {:ok, _} -> :ok
-            {:error, reason} -> Logger.error("Failed to sync definition change: #{inspect(reason)}")
-          end
-        end
+        maybe_sync_definition(updated_block, old_scope)
 
       _ ->
         :ok
@@ -124,6 +108,27 @@ defmodule Storyarn.Sheets.BlockCrud do
 
     result
   end
+
+  defp maybe_propagate_to_descendants({:ok, block}, sheet_id)
+       when block.scope == "children" and is_nil(block.inherited_from_block_id) do
+    descendant_ids = PropertyInheritance.get_descendant_sheet_ids(sheet_id)
+
+    if descendant_ids != [] do
+      {:ok, _count} = PropertyInheritance.create_inherited_instances(block, descendant_ids)
+    end
+  end
+
+  defp maybe_propagate_to_descendants(_result, _sheet_id), do: :ok
+
+  # Sync definition to instances if scope remained "children"
+  defp maybe_sync_definition(%Block{scope: "children"} = updated_block, "children") do
+    case PropertyInheritance.sync_definition_change(updated_block) do
+      {:ok, _} -> :ok
+      {:error, reason} -> Logger.error("Failed to sync definition change: #{inspect(reason)}")
+    end
+  end
+
+  defp maybe_sync_definition(_block, _old_scope), do: :ok
 
   defp handle_scope_change(%Block{scope: "children"}, "self") do
     # Scope changed from "self" to "children" - instances created via propagation modal
