@@ -17,6 +17,7 @@ defmodule Storyarn.Screenplays do
     AutoDetect,
     ElementCrud,
     ElementGrouping,
+    FlowSync,
     ScreenplayCrud,
     ScreenplayQueries,
     TreeOperations
@@ -113,6 +114,22 @@ defmodule Storyarn.Screenplays do
 
   @doc "Groups consecutive elements into logical units for flow mapping."
   defdelegate group_elements(elements), to: ElementGrouping
+
+  # =============================================================================
+  # Flow Sync
+  # =============================================================================
+
+  @doc "Returns the linked flow, creating one if the screenplay is unlinked."
+  defdelegate ensure_flow(screenplay), to: FlowSync
+
+  @doc "Links a screenplay to an existing flow."
+  defdelegate link_to_flow(screenplay, flow_id), to: FlowSync
+
+  @doc "Unlinks a screenplay from its flow. Clears all element links."
+  defdelegate unlink_flow(screenplay), to: FlowSync
+
+  @doc "Syncs screenplay elements to the linked flow."
+  defdelegate sync_to_flow(screenplay), to: FlowSync
 
   # =============================================================================
   # Auto-Detection

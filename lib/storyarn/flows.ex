@@ -82,6 +82,13 @@ defmodule Storyarn.Flows do
   defdelegate get_flow_brief(project_id, flow_id), to: FlowCrud
 
   @doc """
+  Gets a single flow by ID within a project, including soft-deleted flows.
+  Returns `nil` if not found.
+  """
+  @spec get_flow_including_deleted(integer(), integer()) :: flow() | nil
+  defdelegate get_flow_including_deleted(project_id, flow_id), to: FlowCrud
+
+  @doc """
   Gets a single flow by ID within a project.
   Raises `Ecto.NoResultsError` if not found.
   """

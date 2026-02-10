@@ -4,7 +4,7 @@
 >
 > **Priority:** Major feature
 >
-> **Last Updated:** February 9, 2026
+> **Last Updated:** February 10, 2026
 
 ## Overview
 
@@ -30,10 +30,11 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 | 3       | Screenplay Editor (Core Blocks)                     | Essential    | Done      |
 | 4       | Slash Command System                                | Essential    | Done      |
 | 5       | Interactive Blocks (Condition/Instruction/Response) | Essential    | Done      |
-| 6       | Flow Sync — Screenplay → Flow                       | Essential    | Pending   |
-| 7       | Flow Sync — Flow → Screenplay                       | Essential    | Pending   |
-| 8       | Dual Dialogue & Advanced Formatting                 | Important    | Pending   |
-| 9       | Title Page & Export                                 | Nice to Have | Pending   |
+| 6       | Flow Sync — Screenplay → Flow                       | Essential    | Done        |
+| 7       | Flow Sync — Flow → Screenplay                       | Essential    | Pending     |
+| 8       | Response Branching & Linked Pages                   | Essential    | Pending     |
+| 9       | Dual Dialogue & Advanced Formatting                 | Important    | Pending     |
+| 10      | Title Page & Export                                 | Nice to Have | Pending     |
 
 ### Phase 1 — Summary (Done, 117 tests)
 
@@ -129,6 +130,28 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 - `assets/css/screenplay.css` — interactive block styles (`.sp-interactive-block`, `.sp-interactive-header`, `.sp-interactive-label`, per-type accent colors), choice row styles (`.sp-choice-row`, `.sp-choice-input`, `.sp-choice-toggle`, `.sp-choice-extras`, `.sp-add-choice`), dark mode for choice inputs
 
 **Key patterns:** `event_name` attr on builders enables reuse in screenplay editor without modifying existing flow editor paths. Response block uses standard `<input>` + `phx-blur`/`phx-click` (no custom JS hook — KISS). Per-choice condition/instruction use same builder components with toggle visibility. All handlers go through `with_edit_permission`. Conditions sanitized via `Condition.sanitize/1`, assignments via `Instruction.sanitize/1`. No branching/nesting (depth/branch) — deferred to a separate phase.
+
+### Phase 6 — Summary (Done, 41 tests)
+
+**Tasks completed:** 6.1 Migration — add `source` field to `flow_nodes` (3 tests) | 6.2 NodeMapping — pure element-to-node conversion (13 tests) | 6.3 FlowSync — ensure_flow, link, unlink (6 tests) | 6.4 sync_to_flow — diff-based sync engine (11 tests) | 6.5 Auto-layout algorithm (3 tests) | 6.6 UI toolbar sync controls + LiveView handlers (5 tests)
+
+**Files created:**
+- `priv/repo/migrations/20260209180000_add_source_to_flow_nodes.exs` — adds `source` string field (default "manual", not null) + index
+- `lib/storyarn/screenplays/node_mapping.ex` — pure-function module converting element groups to flow node attr maps; handles all 14 element types (scene_heading→entry/scene, dialogue group, action, conditional, instruction, response orphan, transition, hub_marker, jump_marker, dual_dialogue skip, non-mappeable skip); INT./EXT. parsing; response choice serialization with condition/instruction
+- `lib/storyarn/screenplays/flow_sync.ex` — sync engine: `ensure_flow/1` (create or return flow), `link_to_flow/2` (with project validation), `unlink_flow/1` (transaction: clear element links + screenplay link), `sync_to_flow/1` (diff-based: group elements → map to node attrs → create/update/delete synced nodes → create connections → auto-layout new nodes → link elements)
+- `test/storyarn/flows/flow_node_test.exs` — 3 tests for source field validation
+- `test/storyarn/screenplays/node_mapping_test.exs` — 13 tests for all mapping functions
+- `test/storyarn/screenplays/flow_sync_test.exs` — 20 tests (lifecycle + sync + auto-layout)
+
+**Files modified:**
+- `lib/storyarn/flows/flow_node.ex` — added `source` field, `@valid_sources`, validation in create_changeset
+- `lib/storyarn/flows.ex` — added `get_flow_including_deleted/2` delegate for soft-delete detection
+- `lib/storyarn/screenplays.ex` — added delegates: `ensure_flow/1`, `link_to_flow/2`, `unlink_flow/1`, `sync_to_flow/1`
+- `lib/storyarn_web/live/screenplay_live/show.ex` — link status detection in mount (`detect_link_status/1` → `:unlinked | :linked | :flow_deleted | :flow_missing`); toolbar sync controls (conditional rendering per status); 4 event handlers: `create_flow_from_screenplay`, `sync_to_flow`, `unlink_flow`, `navigate_to_flow`
+- `assets/css/screenplay.css` — sync control styles: `.screenplay-toolbar-separator`, `.sp-sync-btn`, `.sp-sync-btn-subtle`, `.sp-sync-badge`, `.sp-sync-linked`, `.sp-sync-warning`
+- `test/storyarn_web/live/screenplay_live/show_test.exs` — 5 new tests for toolbar sync controls
+
+**Key patterns:** Diff-based sync (Edge Case C) — never clear + recreate, preserves manual nodes and XY positions. `source` field on `flow_nodes` ("manual" | "screenplay_sync") distinguishes sync ownership (Edge Case B). NodeMapping is pure (no DB), FlowSync handles all side effects in transactions. Auto-layout: x=400, y_start=100, y_spacing=150 — only new nodes get positioned, existing keep their positions. Condition nodes connect both `true` and `false` to next node (flat, no branching yet). Orphan response creates empty dialogue wrapper (Edge Case E). Hub/jump markers round-trip safely (Edge Case D).
 
 ---
 
@@ -288,6 +311,16 @@ end
 - `:flow_deleted` → Banner: "The linked flow is in trash" + [Unlink] + [Restore flow] buttons
 - `:flow_missing` → Banner: "The linked flow no longer exists" + [Unlink] button
 - No blocking — the screenplay works independently regardless of link status.
+
+### K. Response branching & linked pages
+
+**Problem:** Game narratives are non-linear. Dialogue response choices need to branch into different story paths, but the original plan treats responses as inert data with no destination — the sync produces a flat linear chain regardless of how many responses a dialogue has.
+
+**Solution:** Response choices gain a `linked_screenplay_id` field (stored in the JSON `data`, no migration needed). Each choice can link to a child screenplay page in the tree. The sync engine traverses the full tree recursively: when it encounters a response with a linked page, it creates a connection from the response output pin to the first node of that child page's content. The auto-layout algorithm branches horizontally at response nodes.
+
+**UX:** The writer creates linked pages via double-click on a response choice, right-click context menu, or a bulk "Generate all pages" button. Child pages appear in the sidebar tree under the parent. Visual indicators show which choices are linked and which child pages are empty.
+
+**Phase:** 8 — implemented after Phase 6/7 (linear sync), updates the sync engine and layout algorithm.
 
 ### J. No undo/redo
 
@@ -535,149 +568,9 @@ Covered in [Phase 5 Summary](#phase-5--summary-done-20-tests) above. Reference c
 
 ---
 
-## Phase 6: Flow Sync — Screenplay → Flow
+## Phase 6: Flow Sync — Screenplay → Flow (Done)
 
-### 6.1 Sync Strategy
-
-When a screenplay is linked to a flow (or a new flow is created from a screenplay), the sync engine:
-
-1. Groups screenplay elements into logical units via `ElementGrouping`
-2. Creates/updates flow nodes for each group
-3. Creates connections based on element order
-4. Stores `linked_node_id` on each element for tracking
-
-### 6.2 Element → Node Mapping
-
-```
-Screenplay Element(s)           →  Flow Node Type
-─────────────────────────────────────────────────
-scene_heading                   →  entry
-character + parenthetical? +    →  dialogue (speaker_sheet_id from character.data.sheet_id,
-  dialogue (adjacent group)        stage_directions from parenthetical, text from dialogue)
-action                          →  dialogue (text="", stage_directions=content)
-conditional                     →  condition (expression from data.condition)
-instruction                     →  instruction (assignments from data.assignments)
-response                        →  Adds responses[] to PREVIOUS dialogue node
-                                   (orphan fallback: auto-wraps in empty dialogue — Edge Case E)
-transition                      →  exit
-dual_dialogue                   →  Two dialogue nodes in parallel (hub pattern)
-hub_marker                      →  hub (data preserved for round-trip — Edge Case D)
-jump_marker                     →  jump (data preserved for round-trip — Edge Case D)
-note, section, page_break       →  No mapping (preserved during sync — Edge Case C)
-title_page                      →  No mapping (preserved during sync — Edge Case C)
-```
-
-### 6.3 FlowSync Module
-
-```elixir
-defmodule Storyarn.Screenplays.FlowSync do
-  alias Storyarn.{Flows, Screenplays}
-
-  @doc """
-  Sync screenplay content to its linked flow using diff-based approach (Edge Case C).
-  Creates the flow if it doesn't exist.
-  Preserves manually-added nodes (source="manual") and node canvas positions.
-  """
-  def sync_to_flow(%Screenplay{} = screenplay) do
-    elements = Screenplays.list_elements(screenplay.id)
-    groups = ElementGrouping.group_elements(elements)
-
-    flow = ensure_flow(screenplay)
-
-    Repo.transaction(fn ->
-      # 1. Load existing synced nodes (source="screenplay_sync") — Edge Case B
-      existing_synced = load_synced_nodes(flow)
-      existing_map = Map.new(existing_synced, &{&1.id, &1})
-
-      # 2. Diff: create new, update changed, delete removed (preserve XY positions)
-      {nodes, element_node_map} = diff_and_apply_nodes(flow, groups, existing_map)
-
-      # 3. Update connections (sequential order, branching for conditionals)
-      update_connections(flow, nodes, groups)
-
-      # 4. Update linked_node_id on elements
-      update_element_links(element_node_map)
-
-      # 5. Auto-layout ONLY new nodes (existing keep their positions)
-      auto_layout_new_nodes(flow, nodes, existing_map)
-    end)
-  end
-
-  @doc """
-  Link a screenplay to an existing flow.
-  """
-  def link_to_flow(%Screenplay{} = screenplay, flow_id) do
-    screenplay
-    |> Screenplay.link_flow_changeset(%{linked_flow_id: flow_id})
-    |> Repo.update()
-  end
-
-  @doc """
-  Unlink a screenplay from its flow. Does NOT delete the flow.
-  Clears linked_node_id from all elements.
-  """
-  def unlink_flow(%Screenplay{} = screenplay) do
-    Repo.transaction(fn ->
-      # Clear all element links
-      from(e in ScreenplayElement,
-        where: e.screenplay_id == ^screenplay.id and not is_nil(e.linked_node_id)
-      )
-      |> Repo.update_all(set: [linked_node_id: nil])
-
-      # Unlink screenplay
-      screenplay
-      |> Screenplay.link_flow_changeset(%{linked_flow_id: nil})
-      |> Repo.update!()
-    end)
-  end
-
-  defp ensure_flow(%Screenplay{linked_flow_id: nil} = screenplay) do
-    {:ok, flow} = Flows.create_flow(screenplay.project_id, %{
-      name: screenplay.name <> " (Flow)",
-      description: "Auto-generated from screenplay"
-    })
-    link_to_flow(screenplay, flow.id)
-    flow
-  end
-  defp ensure_flow(%Screenplay{linked_flow_id: flow_id}) do
-    Flows.get_flow!(flow_id)
-  end
-end
-```
-
-### 6.4 Auto-Layout Algorithm
-
-When generating a flow from screenplay, nodes need positions:
-
-```elixir
-defp auto_layout_nodes(flow, nodes) do
-  # Simple vertical layout:
-  # - Sequential nodes: stack vertically with 150px spacing
-  # - Conditional branches: offset horizontally
-  #   TRUE branch: x - 200
-  #   FALSE branch: x + 200
-  # - After condition merge: return to center x
-  # Base position: x=400, y=100
-  # Increment y by 150 for each node
-
-  x_center = 400
-  y_start = 100
-  y_spacing = 150
-  branch_offset = 250
-
-  # Walk through nodes and assign positions
-  # (detailed algorithm handles nested conditionals)
-end
-```
-
-### 6.5 When to Sync
-
-Sync is triggered:
-- **Manually**: User clicks "Sync to Flow" button in toolbar
-- **On save**: Optionally, debounced auto-sync (user preference)
-- **On link**: When linking screenplay to a flow for the first time
-
-Important: Do NOT sync on every keystroke. Sync is a batch operation.
+Covered in [Phase 6 Summary](#phase-6--summary-done-41-tests) above. Reference code removed — see committed files.
 
 ---
 
@@ -791,15 +684,125 @@ end
 
 When both screenplay and flow have been edited independently:
 
-- Show a diff/merge UI (Phase 9+, future enhancement)
+- Show a diff/merge UI (Phase 10+, future enhancement)
 - For now: last-write-wins with user confirmation dialog
 - Track `last_synced_at` timestamp on both screenplay and flow to detect divergence
 
 ---
 
-## Phase 8: Dual Dialogue & Advanced Formatting
+## Phase 8: Response Branching & Linked Pages
 
-### 8.1 Dual Dialogue Block
+> **Prerequisite:** Phase 6 (Screenplay → Flow sync) and Phase 7 (Flow → Screenplay sync)
+>
+> **Why this phase exists:** The screenplay tool serves narrative game design — not film. Game narratives are non-linear: dialogue responses branch into different story paths. Without this phase, response choices are inert data with no destination. This phase makes the screenplay tree the source of truth for the game's narrative graph.
+
+### Overview
+
+Response choices link to **child screenplay pages**, turning the sidebar tree into the narrative branching structure. Each response creates a separate story path that the writer authors on its own page. The sync engine (Phase 6) is updated to traverse the full page tree and generate branching flow connections, and the auto-layout algorithm is updated to position branches horizontally.
+
+### Core Concepts
+
+1. **Linked Pages** — Each response choice gains a `linked_screenplay_id` field pointing to a child screenplay page. The choice text becomes the branch label; the child page contains the full scene for that branch.
+
+2. **Screenplay Tree = Narrative Graph** — The existing `parent_id` tree structure already supports parent-child relationships. This phase gives that tree semantic meaning: a child page IS a narrative branch reached via a response choice in the parent.
+
+3. **Multi-page Sync** — All pages in a screenplay tree sync to the **same flow** (the root's `linked_flow_id`). Each page contributes nodes to the shared flow. Response pins connect to the first node of each child page's content.
+
+4. **Branching Layout** — The auto-layout algorithm (Phase 6, Task 6.5) is replaced with a tree-aware layout that branches horizontally at response nodes and stacks each branch's nodes vertically.
+
+### Data Model Changes
+
+**Response choice — add `linked_screenplay_id`:**
+```elixir
+# In element.data["choices"]
+%{
+  "id" => "c1",
+  "text" => "I need a room",
+  "condition" => nil,
+  "instruction" => nil,
+  "linked_screenplay_id" => 42  # FK → screenplays (child page)
+}
+```
+
+No schema migration needed — `linked_screenplay_id` lives inside the JSON `data` field. Validation ensures the referenced screenplay exists and is a child of the current page.
+
+### UX: Creating Linked Pages from Responses
+
+When a writer adds response choices via `/responses`, each choice is initially unlinked (no destination page). The writer creates linked pages through:
+
+1. **Double-click** on a response choice → creates a new child screenplay page named after the choice text, auto-links it, and navigates to it
+2. **Right-click context menu** on a choice → "Create page for this response"
+3. **"Generate all pages" button** in the response block header → creates child pages for all unlinked choices in bulk
+4. **Link to existing page** — dropdown/search to link a choice to an already-existing screenplay page in the tree
+
+After linking, the choice row shows the page name as a clickable link for quick navigation.
+
+### Visual Indicators
+
+| State | Indicator |
+|-------|-----------|
+| Response choice with linked page | Filled link icon + page name (clickable → navigates to child page) |
+| Response choice without linked page | Empty link icon + "Create page" affordance |
+| Empty child page in sidebar tree | Subtle draft/empty icon (e.g., faded or dotted) |
+| Child page with content | Normal page icon in tree |
+| Response block with all choices linked | Green checkmark on block header |
+| Response block with unlinked choices | Warning indicator on block header |
+
+### Sync Engine Updates (extends Phase 6)
+
+Phase 6's `sync_to_flow/1` processes a single screenplay page linearly. This phase updates it to:
+
+1. **Recursive tree traversal** — `sync_to_flow` starts at the root page and, when it encounters a response with `linked_screenplay_id`, recursively processes the child page's elements before continuing.
+
+2. **Response branching connections** — Instead of `dialogue.output → next_node`, each linked response choice creates a connection from its output pin (`response_0`, `response_1`, ...) to the **first node** of the child page's content.
+
+3. **Multi-page node generation** — Each child page's elements generate nodes in the shared flow. The first scene_heading of a child page maps to a `scene` node (not `entry` — only the root page's first scene_heading is `entry`).
+
+4. **Orphan cleanup scope** — Expanded to include nodes from deleted child pages. If a child page is removed from the tree or a choice is unlinked, the corresponding synced nodes are deleted.
+
+5. **Element linking across pages** — Elements from all pages in the tree receive `linked_node_id` pointing to their corresponding node in the shared flow.
+
+**Connection rules update:**
+
+| Source node | Condition | Connection |
+|-------------|-----------|------------|
+| Dialogue without responses | — | `output` → next sequential node |
+| Dialogue with linked responses | Each choice | `response_N` → first node of child page N |
+| Dialogue with unlinked responses | Fallback | `output` → next sequential node |
+| Dialogue with mixed (some linked, some not) | Per choice | Linked: `response_N` → child; Unlinked: no connection for that pin |
+| Condition node | — | `true` + `false` → next node (unchanged) |
+
+### Layout Algorithm Update (replaces Phase 6 Task 6.5)
+
+The simple vertical stack is replaced with a tree-aware layout:
+
+1. **Sequential segments** — nodes without branches stack vertically (same as Phase 6)
+2. **Response branches** — when a dialogue node has N linked responses, the layout creates N horizontal columns below it
+3. **Column layout** — each column contains the child page's nodes stacked vertically
+4. **Horizontal spacing** — columns are evenly spaced with a configurable gap (e.g., 300px between column centers)
+5. **Recursive branching** — child pages that themselves have responses branch further (the algorithm is recursive)
+6. **Column width calculation** — each column's width is determined by the widest subtree it contains (to prevent overlap)
+7. **Convergence** — if branches reconverge via hub/jump markers, the layout returns to center
+
+### Scope & Constraints
+
+- **No depth limit** — a response in a child page can link to a grandchild page, and so on. The tree/flow can be arbitrarily deep.
+- **Cross-page hub/jump** — hub_marker and jump_marker elements can reference nodes across pages (e.g., a jump in page B targeting a hub in page A).
+- **Root-only flow link** — only the root screenplay has `linked_flow_id`. Child pages don't have their own flows — they contribute to the parent's flow.
+- **Phase 7 (Flow → Screenplay) impact** — `sync_from_flow` must also be updated to handle the tree structure: when traversing response branches in the flow, it maps them to child pages (or creates them if they don't exist).
+- **Collaboration** — real-time collaboration (Edge Case H) extends naturally to child pages since they're independent screenplay records.
+
+### What This Phase Does NOT Cover
+
+- **Condition branching** (depth/branch) — conditionals with nested true/false element branches remain deferred. Condition nodes sync their data but connect linearly.
+- **Dual dialogue** — side-by-side dialogue remains deferred to Phase 9.
+- **Visual flow preview** — an inline minimap showing the narrative graph within the screenplay editor is a future enhancement.
+
+---
+
+## Phase 9: Dual Dialogue & Advanced Formatting
+
+### 9.1 Dual Dialogue Block
 
 Two characters speaking simultaneously, rendered side by side:
 
@@ -835,7 +838,7 @@ def dual_dialogue_block(assigns) do
 end
 ```
 
-### 8.2 Character Extensions
+### 9.2 Character Extensions
 
 Support standard extensions after character name:
 
@@ -847,7 +850,7 @@ JAIME (CONT'D)    → Continued (auto-detected when same speaker as previous)
 
 The character element auto-appends `(CONT'D)` when the same speaker had the previous dialogue block.
 
-### 8.3 Formatting Preview / Read Mode
+### 9.3 Formatting Preview / Read Mode
 
 A read-only mode that hides all interactive blocks and shows pure screenplay formatting:
 - No condition/instruction/response blocks visible
@@ -857,9 +860,9 @@ A read-only mode that hides all interactive blocks and shows pure screenplay for
 
 ---
 
-## Phase 9: Title Page & Export
+## Phase 10: Title Page & Export
 
-### 9.1 Title Page Block
+### 10.1 Title Page Block
 
 Special block rendered at the top of the screenplay:
 
@@ -875,7 +878,7 @@ Special block rendered at the top of the screenplay:
                                     Contact: studio@example.com
 ```
 
-### 9.2 Fountain Export
+### 10.2 Fountain Export
 
 Export screenplay as `.fountain` text file:
 
@@ -923,11 +926,11 @@ defmodule Storyarn.Screenplays.Export.Fountain do
 end
 ```
 
-### 9.3 PDF Export (Future)
+### 10.3 PDF Export (Future)
 
 Use a PDF rendering library to generate properly formatted screenplay PDFs. This is deferred to a later phase.
 
-### 9.4 Import from Fountain
+### 10.4 Import from Fountain
 
 Parse `.fountain` files into screenplay elements. Use the Fountain spec to detect element types from text patterns.
 
@@ -1034,21 +1037,22 @@ test/storyarn_web/live/screenplay_live/
 3. **Phase 3** — Core blocks (scene_heading, action, character, dialogue, parenthetical, transition)
 4. **Phase 4** — Slash command system
 5. **Phase 5** — Interactive blocks (conditional, instruction, response)
-6. **Phase 6** — Screenplay → Flow sync
-7. **Phase 7** — Flow → Screenplay sync
-8. **Phase 8** — Dual dialogue + advanced formatting
-9. **Phase 9** — Title page + Fountain export/import
+6. **Phase 6** — Screenplay → Flow sync (linear)
+7. **Phase 7** — Flow → Screenplay sync (linear)
+8. **Phase 8** — Response branching & linked pages (non-linear narratives, updates sync + layout)
+9. **Phase 9** — Dual dialogue + advanced formatting
+10. **Phase 10** — Title page + Fountain export/import
 
-Each phase is independently testable and deployable. Phases 1-5 deliver a fully functional standalone screenplay editor. Phases 6-7 add the flow integration. Phases 8-9 add polish.
+Each phase is independently testable and deployable. Phases 1-5 deliver a fully functional standalone screenplay editor. Phases 6-7 add linear flow integration. Phase 8 makes the system work for interactive/branching narratives. Phases 9-10 add polish.
 
-**Prerequisite migration**: Before Phase 6, add `source` field to `flow_nodes` table (Edge Case B). This is a separate migration that can be done anytime before sync implementation.
+**Prerequisite migration**: ~~Before Phase 6, add `source` field to `flow_nodes` table (Edge Case B).~~ Done in Phase 6 Task 6.1.
 
 ---
 
 ## Dependencies
 
 - **Existing**: Condition builder, instruction builder, variable system, TipTap editor, Collaboration module (presence + locks)
-- **New migration needed**: `add_source_to_flow_nodes` — adds `source` field for sync ownership (Edge Case B)
+- **Migration done**: `add_source_to_flow_nodes` — `source` field for sync ownership (Edge Case B, Phase 6 Task 6.1)
 - **No new deps needed**: All rendering is CSS + contenteditable + existing Phoenix LiveView
 - **Lucide icons**: `scroll-text`, `clapperboard`, `align-left`, `columns-2`, `parentheses`, `scissors`
 - **Future**: Draft system fields are in schema but not implemented — see FUTURE_FEATURES.md

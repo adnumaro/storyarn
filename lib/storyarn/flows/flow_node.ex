@@ -23,6 +23,7 @@ defmodule Storyarn.Flows.FlowNode do
   alias Storyarn.Flows.{Flow, FlowConnection}
 
   @node_types ~w(dialogue hub condition instruction jump entry exit subflow scene)
+  @valid_sources ~w(manual screenplay_sync)
 
   @type node_type ::
           :dialogue
@@ -40,6 +41,7 @@ defmodule Storyarn.Flows.FlowNode do
           position_x: float(),
           position_y: float(),
           data: map(),
+          source: String.t(),
           flow_id: integer() | nil,
           flow: Flow.t() | Ecto.Association.NotLoaded.t() | nil,
           outgoing_connections: [FlowConnection.t()] | Ecto.Association.NotLoaded.t(),
@@ -53,6 +55,7 @@ defmodule Storyarn.Flows.FlowNode do
     field :position_x, :float, default: 0.0
     field :position_y, :float, default: 0.0
     field :data, :map, default: %{}
+    field :source, :string, default: "manual"
 
     belongs_to :flow, Flow
     has_many :outgoing_connections, FlowConnection, foreign_key: :source_node_id
@@ -71,9 +74,10 @@ defmodule Storyarn.Flows.FlowNode do
   """
   def create_changeset(node, attrs) do
     node
-    |> cast(attrs, [:type, :position_x, :position_y, :data])
+    |> cast(attrs, [:type, :position_x, :position_y, :data, :source])
     |> validate_required([:type])
     |> validate_inclusion(:type, @node_types)
+    |> validate_inclusion(:source, @valid_sources)
   end
 
   @doc """

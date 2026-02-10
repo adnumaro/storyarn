@@ -1393,6 +1393,91 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
     end
 
     # -------------------------------------------------------------------------
+    # Phase 6 — Flow sync controls
+    # -------------------------------------------------------------------------
+
+    test "mount detects unlinked status and renders Create Flow button", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "Create Flow"
+      refute html =~ "sp-sync-linked"
+    end
+
+    test "mount detects linked status and renders flow badge", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = Storyarn.Flows.create_flow(project, %{name: "Test Flow"})
+      {:ok, screenplay} = Storyarn.Screenplays.FlowSync.link_to_flow(screenplay, flow.id)
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "sp-sync-linked"
+      assert html =~ "Test Flow"
+      assert html =~ "Sync"
+      refute html =~ "Create Flow"
+    end
+
+    test "create_flow_from_screenplay creates flow and syncs", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+      element_fixture(screenplay, %{type: "action", content: "A desk.", position: 1})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("create_flow_from_screenplay")
+
+      html = render(view)
+      assert html =~ "sp-sync-linked"
+      assert html =~ "Flow created and synced"
+
+      updated = Storyarn.Screenplays.get_screenplay!(project.id, screenplay.id)
+      assert updated.linked_flow_id != nil
+    end
+
+    test "sync_to_flow updates linked flow", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+      {:ok, flow} = Storyarn.Flows.create_flow(project, %{name: "Test Flow"})
+      {:ok, _screenplay} = Storyarn.Screenplays.FlowSync.link_to_flow(screenplay, flow.id)
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("sync_to_flow")
+
+      assert render(view) =~ "synced to flow"
+    end
+
+    test "unlink_flow clears link and updates status", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = Storyarn.Flows.create_flow(project, %{name: "Test Flow"})
+      {:ok, _screenplay} = Storyarn.Screenplays.FlowSync.link_to_flow(screenplay, flow.id)
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      assert render(view) =~ "sp-sync-linked"
+
+      view |> render_click("unlink_flow")
+
+      html = render(view)
+      assert html =~ "Flow unlinked"
+      assert html =~ "Create Flow"
+      refute html =~ "sp-sync-linked"
+
+      updated = Storyarn.Screenplays.get_screenplay!(project.id, screenplay.id)
+      assert is_nil(updated.linked_flow_id)
+    end
+
+    # -------------------------------------------------------------------------
     # Phase 5 — Project variables loaded in mount
     # -------------------------------------------------------------------------
 

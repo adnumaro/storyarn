@@ -8,6 +8,8 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   alias Storyarn.Screenplays
   alias Storyarn.Screenplays.Screenplay
   alias Storyarn.Screenplays.ScreenplayElement
+  alias Storyarn.Screenplays.FlowSync
+  alias Storyarn.Flows
   alias Storyarn.Flows.Condition
   alias Storyarn.Flows.Instruction
   alias Storyarn.Sheets
@@ -71,6 +73,54 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           <span :if={Screenplay.draft?(@screenplay)} class="screenplay-toolbar-badge screenplay-toolbar-draft">
             {gettext("Draft")}
           </span>
+          <span class="screenplay-toolbar-separator"></span>
+          <%= case @link_status do %>
+            <% :unlinked -> %>
+              <button
+                :if={@can_edit}
+                class="sp-sync-btn"
+                phx-click="create_flow_from_screenplay"
+              >
+                <.icon name="git-branch" class="size-3.5" />
+                {gettext("Create Flow")}
+              </button>
+            <% :linked -> %>
+              <button
+                class="sp-sync-badge sp-sync-linked"
+                phx-click="navigate_to_flow"
+              >
+                <.icon name="git-branch" class="size-3" />
+                {@linked_flow.name}
+              </button>
+              <button
+                :if={@can_edit}
+                class="sp-sync-btn"
+                phx-click="sync_to_flow"
+              >
+                <.icon name="refresh-cw" class="size-3.5" />
+                {gettext("Sync")}
+              </button>
+              <button
+                :if={@can_edit}
+                class="sp-sync-btn sp-sync-btn-subtle"
+                phx-click="unlink_flow"
+              >
+                <.icon name="unlink" class="size-3.5" />
+              </button>
+            <% status when status in [:flow_deleted, :flow_missing] -> %>
+              <span class="sp-sync-badge sp-sync-warning">
+                <.icon name="alert-triangle" class="size-3" />
+                {if status == :flow_deleted, do: gettext("Flow trashed"), else: gettext("Flow missing")}
+              </span>
+              <button
+                :if={@can_edit}
+                class="sp-sync-btn sp-sync-btn-subtle"
+                phx-click="unlink_flow"
+              >
+                <.icon name="unlink" class="size-3.5" />
+                {gettext("Unlink")}
+              </button>
+          <% end %>
         </div>
       </div>
       <div id="screenplay-page" class="screenplay-page" phx-hook="ScreenplayEditorPage">
@@ -118,6 +168,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         elements = Screenplays.list_elements(screenplay.id)
         project_variables = Sheets.list_project_variables(project.id)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+        {link_status, linked_flow} = detect_link_status(screenplay)
 
         socket =
           socket
@@ -130,6 +181,8 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           |> assign(:elements, elements)
           |> assign(:project_variables, project_variables)
           |> assign(:slash_menu_element_id, nil)
+          |> assign(:link_status, link_status)
+          |> assign(:linked_flow, linked_flow)
 
         {:ok, socket}
 
@@ -577,6 +630,79 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     end)
   end
 
+  def handle_event("create_flow_from_screenplay", _params, socket) do
+    with_edit_permission(socket, fn ->
+      screenplay = socket.assigns.screenplay
+
+      with {:ok, flow} <- FlowSync.ensure_flow(screenplay),
+           screenplay = Screenplays.get_screenplay!(screenplay.project_id, screenplay.id),
+           {:ok, _flow} <- FlowSync.sync_to_flow(screenplay) do
+        screenplay = Screenplays.get_screenplay!(screenplay.project_id, screenplay.id)
+
+        {:noreply,
+         socket
+         |> assign(:screenplay, screenplay)
+         |> assign(:link_status, :linked)
+         |> assign(:linked_flow, flow)
+         |> put_flash(:info, gettext("Flow created and synced."))}
+      else
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not create flow."))}
+      end
+    end)
+  end
+
+  def handle_event("sync_to_flow", _params, socket) do
+    with_edit_permission(socket, fn ->
+      screenplay = socket.assigns.screenplay
+
+      if socket.assigns.link_status != :linked do
+        {:noreply, put_flash(socket, :error, gettext("Screenplay is not linked to a flow."))}
+      else
+        case FlowSync.sync_to_flow(screenplay) do
+          {:ok, _flow} ->
+            {:noreply, put_flash(socket, :info, gettext("Screenplay synced to flow."))}
+
+          {:error, _reason} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not sync screenplay."))}
+        end
+      end
+    end)
+  end
+
+  def handle_event("unlink_flow", _params, socket) do
+    with_edit_permission(socket, fn ->
+      screenplay = socket.assigns.screenplay
+
+      case FlowSync.unlink_flow(screenplay) do
+        {:ok, updated} ->
+          {:noreply,
+           socket
+           |> assign(:screenplay, updated)
+           |> assign(:link_status, :unlinked)
+           |> assign(:linked_flow, nil)
+           |> put_flash(:info, gettext("Flow unlinked."))}
+
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not unlink flow."))}
+      end
+    end)
+  end
+
+  def handle_event("navigate_to_flow", _params, socket) do
+    flow = socket.assigns.linked_flow
+
+    if flow do
+      {:noreply,
+       push_navigate(socket,
+         to:
+           ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow.id}"
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
   # ---------------------------------------------------------------------------
   # Sidebar event handlers
   # ---------------------------------------------------------------------------
@@ -645,6 +771,20 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
+
+  defp detect_link_status(%Screenplay{linked_flow_id: nil}), do: {:unlinked, nil}
+
+  defp detect_link_status(%Screenplay{project_id: project_id, linked_flow_id: flow_id}) do
+    case Flows.get_flow_including_deleted(project_id, flow_id) do
+      nil ->
+        {:flow_missing, nil}
+
+      flow ->
+        if Storyarn.Flows.Flow.deleted?(flow),
+          do: {:flow_deleted, flow},
+          else: {:linked, flow}
+    end
+  end
 
   defp with_edit_permission(socket, fun) do
     case authorize(socket, :edit_content) do
