@@ -1,9 +1,9 @@
 defmodule Storyarn.Screenplays.FlowSyncTest do
   use Storyarn.DataCase, async: true
 
+  alias Storyarn.Flows
   alias Storyarn.Screenplays
   alias Storyarn.Screenplays.FlowSync
-  alias Storyarn.Flows
 
   import Storyarn.ProjectsFixtures
   import Storyarn.ScreenplaysFixtures
@@ -293,6 +293,255 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       assert length(condition_conns) == 2
       pins = Enum.map(condition_conns, & &1.source_pin) |> Enum.sort()
       assert pins == ["false", "true"]
+    end
+  end
+
+  describe "sync_from_flow/1" do
+    setup :setup_project
+
+    test "returns error when screenplay is not linked", %{project: project} do
+      screenplay = screenplay_fixture(project)
+
+      assert {:error, :not_linked} = FlowSync.sync_from_flow(screenplay)
+    end
+
+    test "returns error when flow has no entry node", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = Flows.create_flow(project, %{name: "Empty Flow"})
+      {:ok, screenplay} = FlowSync.link_to_flow(screenplay, flow.id)
+
+      # Delete default entry node
+      entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      # Force delete entry by deleting from DB directly
+      Storyarn.Repo.delete!(entry)
+
+      assert {:error, :no_entry_node} = FlowSync.sync_from_flow(screenplay)
+    end
+
+    test "creates elements from flow nodes", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+      element_fixture(screenplay, %{type: "action", content: "A desk.", position: 1})
+
+      # Push to flow first
+      {:ok, _flow} = FlowSync.sync_to_flow(screenplay)
+
+      # Delete screenplay elements to simulate empty screenplay
+      Screenplays.list_elements(screenplay.id) |> Enum.each(&Storyarn.Repo.delete!/1)
+      assert Screenplays.list_elements(screenplay.id) == []
+
+      # Pull from flow
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      elements = Screenplays.list_elements(screenplay.id)
+      types = Enum.map(elements, & &1.type)
+
+      # entry → scene_heading, dialogue(action) → action
+      assert "scene_heading" in types
+      assert "action" in types
+    end
+
+    test "dialogue node with text produces character + dialogue elements", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = FlowSync.ensure_flow(screenplay)
+      screenplay = Screenplays.get_screenplay!(project.id, screenplay.id)
+
+      # Create a dialogue node manually on the flow
+      {:ok, _node} =
+        Flows.create_node(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Hello there.",
+            "stage_directions" => "",
+            "menu_text" => "JOHN",
+            "responses" => []
+          }
+        })
+
+      # Connect entry → dialogue
+      entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      dialogue = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "dialogue"))
+
+      Flows.create_connection(flow, entry, dialogue, %{
+        source_pin: "output",
+        target_pin: "input"
+      })
+
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      elements = Screenplays.list_elements(screenplay.id)
+      types = Enum.map(elements, & &1.type)
+
+      assert "scene_heading" in types
+      assert "character" in types
+      assert "dialogue" in types
+
+      char = Enum.find(elements, &(&1.type == "character"))
+      assert char.content == "JOHN"
+
+      dlg = Enum.find(elements, &(&1.type == "dialogue"))
+      assert dlg.content == "Hello there."
+    end
+
+    test "action-style dialogue produces single action element", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = FlowSync.ensure_flow(screenplay)
+      screenplay = Screenplays.get_screenplay!(project.id, screenplay.id)
+
+      {:ok, _node} =
+        Flows.create_node(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "",
+            "stage_directions" => "A desk sits in the corner.",
+            "menu_text" => "",
+            "responses" => []
+          }
+        })
+
+      entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      action_node = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "dialogue" and &1.source == "manual"))
+      Flows.create_connection(flow, entry, action_node, %{source_pin: "output", target_pin: "input"})
+
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      elements = Screenplays.list_elements(screenplay.id)
+      action = Enum.find(elements, &(&1.type == "action"))
+
+      assert action
+      assert action.content == "A desk sits in the corner."
+    end
+
+    test "updates existing linked elements on re-sync", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+      element_fixture(screenplay, %{type: "action", content: "Original.", position: 1})
+
+      {:ok, flow} = FlowSync.sync_to_flow(screenplay)
+
+      # Modify flow node data
+      dialogue_node =
+        Flows.list_nodes(flow.id)
+        |> Enum.find(&(&1.type == "dialogue" and &1.data["stage_directions"] == "Original."))
+
+      Flows.update_node(dialogue_node, %{data: Map.put(dialogue_node.data, "stage_directions", "Updated from flow.")})
+
+      # Pull back
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      elements = Screenplays.list_elements(screenplay.id)
+      action = Enum.find(elements, &(&1.type == "action"))
+
+      assert action.content == "Updated from flow."
+    end
+
+    test "deletes orphaned mappeable elements on re-sync", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+      element_fixture(screenplay, %{type: "action", content: "To remove.", position: 1})
+
+      {:ok, flow} = FlowSync.sync_to_flow(screenplay)
+
+      # Delete the dialogue node from flow (the action-mapped one)
+      dialogue_node =
+        Flows.list_nodes(flow.id)
+        |> Enum.find(&(&1.type == "dialogue" and &1.data["stage_directions"] == "To remove."))
+
+      # Also delete associated connections
+      Flows.list_connections(flow.id)
+      |> Enum.filter(&(&1.source_node_id == dialogue_node.id or &1.target_node_id == dialogue_node.id))
+      |> Enum.each(&Storyarn.Repo.delete!/1)
+
+      Storyarn.Repo.delete!(dialogue_node)
+
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      elements = Screenplays.list_elements(screenplay.id)
+      types = Enum.map(elements, & &1.type)
+
+      assert "scene_heading" in types
+      refute "action" in types
+    end
+
+    test "preserves non-mappeable elements (notes)", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+      element_fixture(screenplay, %{type: "note", content: "Remember to revise", position: 1})
+      element_fixture(screenplay, %{type: "action", content: "A desk.", position: 2})
+
+      {:ok, _flow} = FlowSync.sync_to_flow(screenplay)
+
+      # Sync from flow — note should survive
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      elements = Screenplays.list_elements(screenplay.id)
+      types = Enum.map(elements, & &1.type)
+
+      assert "note" in types
+      note = Enum.find(elements, &(&1.type == "note"))
+      assert note.content == "Remember to revise"
+    end
+
+    test "non-mappeable element position anchored to next mapped element", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+      element_fixture(screenplay, %{type: "note", content: "My note", position: 1})
+      element_fixture(screenplay, %{type: "action", content: "A desk.", position: 2})
+
+      {:ok, _flow} = FlowSync.sync_to_flow(screenplay)
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      elements = Screenplays.list_elements(screenplay.id)
+      note = Enum.find(elements, &(&1.type == "note"))
+      action = Enum.find(elements, &(&1.type == "action"))
+
+      # Note should be before the action element it was anchored to
+      assert note.position < action.position
+    end
+
+    test "elements get linked_node_id set after sync", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = FlowSync.ensure_flow(screenplay)
+      screenplay = Screenplays.get_screenplay!(project.id, screenplay.id)
+
+      {:ok, _node} =
+        Flows.create_node(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Hi.", "stage_directions" => "", "menu_text" => "BOB", "responses" => []}
+        })
+
+      entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      dialogue = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "dialogue"))
+      Flows.create_connection(flow, entry, dialogue, %{source_pin: "output", target_pin: "input"})
+
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      elements = Screenplays.list_elements(screenplay.id)
+      mappeable = Enum.reject(elements, &(&1.type in Storyarn.Screenplays.ScreenplayElement.non_mappeable_types()))
+
+      assert Enum.all?(mappeable, &(not is_nil(&1.linked_node_id)))
+    end
+
+    test "subflow nodes are skipped", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = FlowSync.ensure_flow(screenplay)
+      screenplay = Screenplays.get_screenplay!(project.id, screenplay.id)
+
+      {:ok, _node} = Flows.create_node(flow, %{type: "subflow", data: %{}})
+
+      entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      subflow = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "subflow"))
+      Flows.create_connection(flow, entry, subflow, %{source_pin: "output", target_pin: "input"})
+
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      elements = Screenplays.list_elements(screenplay.id)
+      types = Enum.map(elements, & &1.type)
+
+      # Only scene_heading from entry, no subflow element
+      assert "scene_heading" in types
+      refute "subflow" in types
+      assert length(elements) == 1
     end
   end
 

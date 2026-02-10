@@ -131,6 +131,9 @@ defmodule Storyarn.Screenplays do
   @doc "Syncs screenplay elements to the linked flow."
   defdelegate sync_to_flow(screenplay), to: FlowSync
 
+  @doc "Syncs flow nodes into the screenplay (reverse direction)."
+  defdelegate sync_from_flow(screenplay), to: FlowSync
+
   # =============================================================================
   # Auto-Detection
   # =============================================================================

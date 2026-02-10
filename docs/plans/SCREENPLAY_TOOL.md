@@ -23,18 +23,18 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 
 ## Implementation Status
 
-| Phase   | Name                                                | Priority     | Status    |
-|---------|-----------------------------------------------------|--------------|-----------|
-| 1       | Database & Context                                  | Essential    | Done      |
-| 2       | Sidebar & Navigation                                | Essential    | Done      |
-| 3       | Screenplay Editor (Core Blocks)                     | Essential    | Done      |
-| 4       | Slash Command System                                | Essential    | Done      |
-| 5       | Interactive Blocks (Condition/Instruction/Response) | Essential    | Done      |
-| 6       | Flow Sync — Screenplay → Flow                       | Essential    | Done        |
-| 7       | Flow Sync — Flow → Screenplay                       | Essential    | Pending     |
-| 8       | Response Branching & Linked Pages                   | Essential    | Pending     |
-| 9       | Dual Dialogue & Advanced Formatting                 | Important    | Pending     |
-| 10      | Title Page & Export                                 | Nice to Have | Pending     |
+| Phase   | Name                                                | Priority     | Status     |
+|---------|-----------------------------------------------------|--------------|------------|
+| 1       | Database & Context                                  | Essential    | Done       |
+| 2       | Sidebar & Navigation                                | Essential    | Done       |
+| 3       | Screenplay Editor (Core Blocks)                     | Essential    | Done       |
+| 4       | Slash Command System                                | Essential    | Done       |
+| 5       | Interactive Blocks (Condition/Instruction/Response) | Essential    | Done       |
+| 6       | Flow Sync — Screenplay → Flow                       | Essential    | Done       |
+| 7       | Flow Sync — Flow → Screenplay                       | Essential    | Done       |
+| 8       | Response Branching & Linked Pages                   | Essential    | Pending    |
+| 9       | Dual Dialogue & Advanced Formatting                 | Important    | Pending    |
+| 10      | Title Page & Export                                 | Nice to Have | Pending    |
 
 ### Phase 1 — Summary (Done, 117 tests)
 
@@ -152,6 +152,25 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 - `test/storyarn_web/live/screenplay_live/show_test.exs` — 5 new tests for toolbar sync controls
 
 **Key patterns:** Diff-based sync (Edge Case C) — never clear + recreate, preserves manual nodes and XY positions. `source` field on `flow_nodes` ("manual" | "screenplay_sync") distinguishes sync ownership (Edge Case B). NodeMapping is pure (no DB), FlowSync handles all side effects in transactions. Auto-layout: x=400, y_start=100, y_spacing=150 — only new nodes get positioned, existing keep their positions. Condition nodes connect both `true` and `false` to next node (flat, no branching yet). Orphan response creates empty dialogue wrapper (Edge Case E). Hub/jump markers round-trip safely (Edge Case D).
+
+### Phase 7 — Summary (Done, 47 tests)
+
+**Tasks completed:** 7.1 ReverseNodeMapping — pure node→element(s) conversion (23 tests) | 7.2 FlowTraversal — linearize flow graph via DFS (10 tests) | 7.3 FlowSync.sync_from_flow — diff engine (11 tests) | 7.4 UI — toolbar "Sync from Flow" button + handler (3 tests)
+
+**Files created:**
+- `lib/storyarn/screenplays/reverse_node_mapping.ex` — pure-function module converting flow nodes to element attr maps; handles all node types (entry→scene_heading, scene→scene_heading, dialogue→character+parenthetical?+dialogue+response?, action-style dialogue→action, condition→conditional, instruction→instruction, exit→transition, hub→hub_marker, jump→jump_marker, subflow→skip); response choice deserialization (condition via `Condition.parse/1`, instruction via `Jason.decode/1`)
+- `lib/storyarn/screenplays/flow_traversal.ex` — pure-function module for DFS graph linearization; builds adjacency list from connections, traverses from entry nodes following primary pin ("output" for standard, "true" for conditions), cycle detection via visited set, multiple entry support with shared visited set
+- `test/storyarn/screenplays/reverse_node_mapping_test.exs` — 23 tests (all node types, dialogue variants, deserialization, multi-node expansion)
+- `test/storyarn/screenplays/flow_traversal_test.exs` — 10 tests (linear chain, condition branching, terminals, cycles, hub, multiple entries, disconnected nodes, complex paths)
+
+**Files modified:**
+- `lib/storyarn/screenplays/flow_sync.ex` — added `sync_from_flow/1` with full pipeline: validate link → load nodes + connections → FlowTraversal.linearize → ReverseNodeMapping.nodes_to_element_attrs → diff against existing elements (group by source_node_id/linked_node_id, match by type) → create/update/delete → preserve non-mappeable with anchor strategy → recompact positions
+- `lib/storyarn/screenplays.ex` — added `sync_from_flow/1` delegate
+- `lib/storyarn_web/live/screenplay_live/show.ex` — renamed "Sync" button to "To Flow" (upload icon), added "From Flow" button (download icon), added `sync_from_flow` event handler with error handling for not-linked and no-entry-node
+- `test/storyarn/screenplays/flow_sync_test.exs` — 11 new tests (not-linked error, no-entry-node error, create elements from flow, dialogue expansion, action-style, re-sync update, orphan deletion, non-mappeable preservation, anchor positioning, linked_node_id, subflow skip)
+- `test/storyarn_web/live/screenplay_live/show_test.exs` — 3 new tests (sync_from_flow success, not-linked error, viewer permission), updated existing test for renamed button text
+
+**Key patterns:** ReverseNodeMapping and FlowTraversal are pure modules (no DB) for testability. Anchor-based non-mappeable preservation: each note/section/page_break records the `linked_node_id` of the next mappeable element as its anchor; after sync, non-mappeable elements are re-inserted before their anchor. Multi-element diff: dialogue nodes produce 2-4 elements, diff groups by `source_node_id`/`linked_node_id` and matches within each group by element type. Condition nodes follow primary path only ("true" pin) — symmetric with Phase 6's flat approach. All nodes synced (both `source: "manual"` and `source: "screenplay_sync"`).
 
 ---
 
@@ -574,119 +593,9 @@ Covered in [Phase 6 Summary](#phase-6--summary-done-41-tests) above. Reference c
 
 ---
 
-## Phase 7: Flow Sync — Flow → Screenplay
+## Phase 7: Flow Sync — Flow → Screenplay (Done)
 
-### 7.1 Strategy
-
-When a flow exists and a screenplay is created from it (or the flow is edited while linked):
-
-1. DFS traversal from entry node(s)
-2. Each node generates screenplay elements
-3. Branches in the flow create conditional blocks in the screenplay
-4. Connections define element order
-
-### 7.2 Node → Element Mapping
-
-```
-Flow Node Type    →  Screenplay Element(s)
-───────────────────────────────────────────
-entry             →  scene_heading (name from node label)
-dialogue          →  character + parenthetical? + dialogue
-                     (+ response block if node has responses)
-condition         →  conditional block
-                     (nested elements for true/false branches — Edge Case G)
-instruction       →  instruction block
-hub               →  hub_marker (preserves all hub data — Edge Case D)
-jump              →  jump_marker (preserves all jump data — Edge Case D)
-exit              →  transition
-```
-
-### 7.3 FlowSync.sync_from_flow
-
-```elixir
-@doc """
-Sync flow content to screenplay using diff-based approach (Edge Case C).
-Preserves non-mappeable elements (notes, sections, page_breaks, title_page).
-"""
-def sync_from_flow(%Screenplay{linked_flow_id: flow_id} = screenplay) when not is_nil(flow_id) do
-  flow = Flows.get_flow_with_nodes_and_connections!(flow_id)
-  all_sheets = Sheets.list_sheets_flat(screenplay.project_id)
-
-  Repo.transaction(fn ->
-    # 1. Load existing elements, separate mappeable from non-mappeable
-    existing = Screenplays.list_elements(screenplay.id)
-    {mappeable, preserved} = split_by_mappeability(existing)
-    existing_map = Map.new(mappeable, &{&1.linked_node_id, &1})
-
-    # 2. Find entry nodes (starting points)
-    entry_nodes = Enum.filter(flow.nodes, &(&1.type == "entry"))
-
-    # 3. DFS traversal generating elements
-    new_elements = traverse_flow(flow, entry_nodes, all_sheets)
-
-    # 4. Diff: update existing mappeable elements, create new, delete orphaned
-    diff_and_apply_elements(screenplay, new_elements, existing_map)
-
-    # 5. Re-insert preserved elements (notes, sections, page_breaks) at their positions
-    reinsert_preserved_elements(screenplay, preserved)
-  end)
-end
-
-defp traverse_flow(flow, start_nodes, all_sheets) do
-  # Build adjacency list from connections
-  adjacency = build_adjacency(flow.connections)
-  visited = MapSet.new()
-
-  Enum.flat_map(start_nodes, fn entry ->
-    {elements, _visited} = dfs(entry, adjacency, flow.nodes, all_sheets, visited, 0, nil)
-    elements
-  end)
-end
-
-defp dfs(node, adjacency, all_nodes, all_sheets, visited, depth, branch) do
-  if MapSet.member?(visited, node.id) do
-    {[], visited}
-  else
-    visited = MapSet.put(visited, node.id)
-    elements = node_to_elements(node, all_sheets, depth, branch)
-    next_nodes = get_next_nodes(node.id, adjacency, all_nodes)
-
-    case node.type do
-      "condition" ->
-        # Branch: traverse true and false paths
-        {true_elements, visited} = traverse_branch(next_nodes, "true", adjacency, all_nodes, all_sheets, visited, depth + 1)
-        {false_elements, visited} = traverse_branch(next_nodes, "false", adjacency, all_nodes, all_sheets, visited, depth + 1)
-        # Find merge point and continue
-        {merge_elements, visited} = find_and_traverse_merge(next_nodes, adjacency, all_nodes, all_sheets, visited, depth)
-
-        {elements ++ true_elements ++ false_elements ++ merge_elements, visited}
-
-      _ ->
-        # Sequential: traverse next node
-        {next_elements, visited} =
-          case next_nodes do
-            [{_pin, next_node}] -> dfs(next_node, adjacency, all_nodes, all_sheets, visited, depth, branch)
-            _ -> {[], visited}
-          end
-        {elements ++ next_elements, visited}
-    end
-  end
-end
-```
-
-### 7.4 When to Sync from Flow
-
-- **Manually**: User clicks "Sync from Flow" in toolbar
-- **On open**: When opening a linked screenplay, offer to refresh from flow if flow has changed since last sync
-- **Never automatic**: Flow edits don't auto-push to screenplay (would be disruptive while writing)
-
-### 7.5 Conflict Resolution
-
-When both screenplay and flow have been edited independently:
-
-- Show a diff/merge UI (Phase 10+, future enhancement)
-- For now: last-write-wins with user confirmation dialog
-- Track `last_synced_at` timestamp on both screenplay and flow to detect divergence
+Covered in [Phase 7 Summary](#phase-7--summary-done-47-tests) above. Reference code removed — see committed files.
 
 ---
 
@@ -739,14 +648,14 @@ After linking, the choice row shows the page name as a clickable link for quick 
 
 ### Visual Indicators
 
-| State | Indicator |
-|-------|-----------|
-| Response choice with linked page | Filled link icon + page name (clickable → navigates to child page) |
-| Response choice without linked page | Empty link icon + "Create page" affordance |
-| Empty child page in sidebar tree | Subtle draft/empty icon (e.g., faded or dotted) |
-| Child page with content | Normal page icon in tree |
-| Response block with all choices linked | Green checkmark on block header |
-| Response block with unlinked choices | Warning indicator on block header |
+| State                                  | Indicator                                                          |
+|----------------------------------------|--------------------------------------------------------------------|
+| Response choice with linked page       | Filled link icon + page name (clickable → navigates to child page) |
+| Response choice without linked page    | Empty link icon + "Create page" affordance                         |
+| Empty child page in sidebar tree       | Subtle draft/empty icon (e.g., faded or dotted)                    |
+| Child page with content                | Normal page icon in tree                                           |
+| Response block with all choices linked | Green checkmark on block header                                    |
+| Response block with unlinked choices   | Warning indicator on block header                                  |
 
 ### Sync Engine Updates (extends Phase 6)
 
@@ -764,13 +673,13 @@ Phase 6's `sync_to_flow/1` processes a single screenplay page linearly. This pha
 
 **Connection rules update:**
 
-| Source node | Condition | Connection |
-|-------------|-----------|------------|
-| Dialogue without responses | — | `output` → next sequential node |
-| Dialogue with linked responses | Each choice | `response_N` → first node of child page N |
-| Dialogue with unlinked responses | Fallback | `output` → next sequential node |
-| Dialogue with mixed (some linked, some not) | Per choice | Linked: `response_N` → child; Unlinked: no connection for that pin |
-| Condition node | — | `true` + `false` → next node (unchanged) |
+| Source node                                 | Condition   | Connection                                                         |
+|---------------------------------------------|-------------|--------------------------------------------------------------------|
+| Dialogue without responses                  | —           | `output` → next sequential node                                    |
+| Dialogue with linked responses              | Each choice | `response_N` → first node of child page N                          |
+| Dialogue with unlinked responses            | Fallback    | `output` → next sequential node                                    |
+| Dialogue with mixed (some linked, some not) | Per choice  | Linked: `response_N` → child; Unlinked: no connection for that pin |
+| Condition node                              | —           | `true` + `false` → next node (unchanged)                           |
 
 ### Layout Algorithm Update (replaces Phase 6 Task 6.5)
 

@@ -8,14 +8,16 @@ defmodule Storyarn.Screenplays.FlowSync do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Repo
   alias Storyarn.Flows
   alias Storyarn.Flows.{FlowConnection, FlowNode}
+  alias Storyarn.Repo
 
   alias Storyarn.Screenplays.{
     ElementCrud,
     ElementGrouping,
+    FlowTraversal,
     NodeMapping,
+    ReverseNodeMapping,
     Screenplay,
     ScreenplayElement
   }
@@ -118,8 +120,201 @@ defmodule Storyarn.Screenplays.FlowSync do
     end
   end
 
+  @doc """
+  Syncs flow nodes into the screenplay (reverse direction).
+
+  Traverses the flow graph via DFS, reverse-maps nodes to element attrs,
+  diffs against existing elements, and applies creates/updates/deletes.
+  Non-mappeable elements (notes, sections, page_breaks) are preserved.
+
+  Returns `{:ok, screenplay}` or `{:error, reason}`.
+  """
+  def sync_from_flow(%Screenplay{id: id}) do
+    # Re-fetch to get latest linked_flow_id
+    screenplay = Repo.get!(Screenplay, id)
+
+    if is_nil(screenplay.linked_flow_id) do
+      {:error, :not_linked}
+    else
+      sync_from_flow_linked(screenplay)
+    end
+  end
+
+  defp sync_from_flow_linked(screenplay) do
+    case ensure_flow(screenplay) do
+      {:error, reason} ->
+        {:error, reason}
+
+      {:ok, flow} ->
+        nodes = Flows.list_nodes(flow.id)
+        connections = Flows.list_connections(flow.id)
+
+        case FlowTraversal.linearize(nodes, connections) do
+          {:error, :no_entry_node} ->
+            {:error, :no_entry_node}
+
+          {:ok, ordered_nodes} ->
+            new_attrs = ReverseNodeMapping.nodes_to_element_attrs(ordered_nodes)
+            do_sync_from_flow(screenplay, new_attrs)
+        end
+    end
+  end
+
   # ---------------------------------------------------------------------------
-  # Sync internals
+  # sync_from_flow internals
+  # ---------------------------------------------------------------------------
+
+  defp do_sync_from_flow(screenplay, new_attrs) do
+    non_mappeable = ScreenplayElement.non_mappeable_types()
+    existing = ElementCrud.list_elements(screenplay.id)
+
+    # Separate mappeable vs non-mappeable with anchors
+    non_mappeable_anchored = extract_non_mappeable_with_anchors(existing, non_mappeable)
+    mappeable_existing = Enum.reject(existing, &(&1.type in non_mappeable))
+
+    Repo.transaction(fn ->
+      # Diff: match new attrs against existing mappeable elements
+      {result_elements, orphaned} = diff_elements(screenplay, new_attrs, mappeable_existing)
+
+      # Delete orphaned mappeable elements
+      Enum.each(orphaned, &Repo.delete!/1)
+
+      # Interleave non-mappeable at anchored positions
+      final_order = insert_non_mappeable(result_elements, non_mappeable_anchored)
+
+      # Recompact positions
+      recompact_positions!(final_order)
+
+      Repo.get!(Screenplay, screenplay.id)
+    end)
+  end
+
+  defp extract_non_mappeable_with_anchors(elements, non_mappeable) do
+    elements
+    |> Enum.with_index()
+    |> Enum.filter(fn {el, _idx} -> el.type in non_mappeable end)
+    |> Enum.map(fn {el, idx} -> {el, find_anchor(elements, idx, non_mappeable)} end)
+  end
+
+  defp find_anchor(elements, idx, non_mappeable) do
+    next_mappeable =
+      elements
+      |> Enum.drop(idx + 1)
+      |> Enum.find(fn e -> e.type not in non_mappeable end)
+
+    case next_mappeable do
+      nil -> :end
+      next -> next.linked_node_id || :end
+    end
+  end
+
+  defp diff_elements(screenplay, new_attrs, mappeable_existing) do
+    # Group existing by linked_node_id
+    existing_by_node = Enum.group_by(mappeable_existing, & &1.linked_node_id)
+
+    # Group new attrs by source_node_id
+    new_by_node = Enum.group_by(new_attrs, & &1.source_node_id)
+
+    # Track which existing elements were matched
+    all_node_ids = MapSet.new(Map.keys(new_by_node))
+
+    # Process each node group in order of new_attrs
+    {result_elements, used_existing_ids} =
+      new_attrs
+      |> Enum.reduce({[], MapSet.new()}, fn attr, {acc, used} ->
+        existing_for_node = Map.get(existing_by_node, attr.source_node_id, [])
+
+        # Find first unused existing element matching by type
+        match =
+          Enum.find(existing_for_node, fn el ->
+            el.type == attr.type and not MapSet.member?(used, el.id)
+          end)
+
+        case match do
+          nil ->
+            # CREATE
+            element = create_element_from_attr!(screenplay, attr)
+            {acc ++ [element], used}
+
+          existing ->
+            # UPDATE
+            element = update_element_from_attr!(existing, attr)
+            {acc ++ [element], MapSet.put(used, existing.id)}
+        end
+      end)
+
+    # Orphaned = existing mappeable elements not matched
+    orphaned =
+      Enum.filter(mappeable_existing, fn el ->
+        not MapSet.member?(used_existing_ids, el.id) and
+          (is_nil(el.linked_node_id) or not MapSet.member?(all_node_ids, el.linked_node_id))
+      end)
+
+    # Also orphan matched-node elements that weren't used
+    extra_orphaned =
+      Enum.filter(mappeable_existing, fn el ->
+        not MapSet.member?(used_existing_ids, el.id) and
+          not is_nil(el.linked_node_id) and
+          MapSet.member?(all_node_ids, el.linked_node_id)
+      end)
+
+    {result_elements, orphaned ++ extra_orphaned}
+  end
+
+  defp create_element_from_attr!(screenplay, attr) do
+    %ScreenplayElement{screenplay_id: screenplay.id}
+    |> ScreenplayElement.create_changeset(%{
+      type: attr.type,
+      content: attr.content || "",
+      data: attr.data || %{},
+      position: 0
+    })
+    |> Ecto.Changeset.put_change(:linked_node_id, attr.source_node_id)
+    |> Repo.insert!()
+  end
+
+  defp update_element_from_attr!(element, attr) do
+    element
+    |> ScreenplayElement.update_changeset(%{
+      type: attr.type,
+      content: attr.content || "",
+      data: attr.data || %{}
+    })
+    |> Ecto.Changeset.put_change(:linked_node_id, attr.source_node_id)
+    |> Repo.update!()
+  end
+
+  defp insert_non_mappeable(result_elements, non_mappeable_anchored) do
+    # Group non-mappeable by anchor
+    by_anchor = Enum.group_by(non_mappeable_anchored, fn {_el, anchor} -> anchor end)
+
+    # Build final list: for each result element, prepend any anchored non-mappeable
+    final =
+      Enum.flat_map(result_elements, fn el ->
+        anchored = Map.get(by_anchor, el.linked_node_id, [])
+        non_map_els = Enum.map(anchored, fn {nme, _anchor} -> nme end)
+        non_map_els ++ [el]
+      end)
+
+    # Append any non-mappeable anchored to :end
+    tail = Map.get(by_anchor, :end, []) |> Enum.map(fn {nme, _} -> nme end)
+    final ++ tail
+  end
+
+  defp recompact_positions!(elements) do
+    elements
+    |> Enum.with_index()
+    |> Enum.each(fn {el, idx} ->
+      if el.position != idx do
+        el
+        |> Ecto.Changeset.change(%{position: idx})
+        |> Repo.update!()
+      end
+    end)
+  end
+
+  # ---------------------------------------------------------------------------
+  # sync_to_flow internals
   # ---------------------------------------------------------------------------
 
   defp do_sync(screenplay, flow, node_attrs_list) do
@@ -136,15 +331,7 @@ defmodule Storyarn.Screenplays.FlowSync do
       # Create or update nodes
       {result_nodes, matched_ids} =
         Enum.map_reduce(node_attrs_list, MapSet.new(), fn attrs, matched ->
-          case find_existing_node(attrs, element_to_node, synced_by_id, entry_node) do
-            nil ->
-              node = create_sync_node!(flow, attrs)
-              {node, matched}
-
-            existing ->
-              node = update_sync_node!(existing, attrs)
-              {node, MapSet.put(matched, existing.id)}
-          end
+          upsert_sync_node(attrs, element_to_node, synced_by_id, entry_node, flow, matched)
         end)
 
       # Delete orphaned synced nodes
@@ -162,6 +349,18 @@ defmodule Storyarn.Screenplays.FlowSync do
 
       Flows.get_flow!(screenplay.project_id, flow.id)
     end)
+  end
+
+  defp upsert_sync_node(attrs, element_to_node, synced_by_id, entry_node, flow, matched) do
+    case find_existing_node(attrs, element_to_node, synced_by_id, entry_node) do
+      nil ->
+        node = create_sync_node!(flow, attrs)
+        {node, matched}
+
+      existing ->
+        node = update_sync_node!(existing, attrs)
+        {node, MapSet.put(matched, existing.id)}
+    end
   end
 
   defp find_existing_node(%{type: "entry"}, _element_to_node, _synced_by_id, entry_node) do
@@ -238,15 +437,19 @@ defmodule Storyarn.Screenplays.FlowSync do
     result_nodes
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.each(fn [source, target] ->
-      unless source.type in ~w(exit jump) do
-        if source.type == "condition" do
-          create_connection!(flow, source, target, "true", "input")
-          create_connection!(flow, source, target, "false", "input")
-        else
-          create_connection!(flow, source, target, "output", "input")
-        end
-      end
+      connect_pair!(flow, source, target)
     end)
+  end
+
+  defp connect_pair!(_flow, %{type: type}, _target) when type in ~w(exit jump), do: :ok
+
+  defp connect_pair!(flow, %{type: "condition"} = source, target) do
+    create_connection!(flow, source, target, "true", "input")
+    create_connection!(flow, source, target, "false", "input")
+  end
+
+  defp connect_pair!(flow, source, target) do
+    create_connection!(flow, source, target, "output", "input")
   end
 
   defp create_connection!(flow, source, target, source_pin, target_pin) do

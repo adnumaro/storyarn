@@ -1420,7 +1420,8 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       assert html =~ "sp-sync-linked"
       assert html =~ "Test Flow"
-      assert html =~ "Sync"
+      assert html =~ "To Flow"
+      assert html =~ "From Flow"
       refute html =~ "Create Flow"
     end
 
@@ -1455,6 +1456,48 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       view |> render_click("sync_to_flow")
 
       assert render(view) =~ "synced to flow"
+    end
+
+    test "sync_from_flow updates elements from linked flow", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+      element_fixture(screenplay, %{type: "action", content: "Original.", position: 1})
+
+      # Create flow and sync to it
+      {:ok, _flow} = Storyarn.Screenplays.FlowSync.sync_to_flow(screenplay)
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("sync_from_flow")
+
+      assert render(view) =~ "updated from flow"
+    end
+
+    test "sync_from_flow when not linked shows error flash", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "action", content: "Test.", position: 0})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      # Manually trigger the event (button won't be visible but handler exists)
+      view |> render_click("sync_from_flow")
+
+      assert render(view) =~ "not linked"
+    end
+
+    test "viewer cannot sync from flow", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = Storyarn.Flows.create_flow(project, %{name: "Test Flow"})
+      {:ok, _screenplay} = Storyarn.Screenplays.FlowSync.link_to_flow(screenplay, flow.id)
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("sync_from_flow")
+
+      assert render(view) =~ "don&#39;t have permission"
     end
 
     test "unlink_flow clears link and updates status", %{conn: conn, project: project} do
