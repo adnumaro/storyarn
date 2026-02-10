@@ -35,13 +35,13 @@ defmodule Storyarn.Screenplays.FlowTraversal do
         adjacency = build_adjacency(connections)
         nodes_by_id = Map.new(nodes, &{&1.id, &1})
 
-        {ordered, _visited} =
+        {reversed, _visited} =
           Enum.reduce(entries, {[], MapSet.new()}, fn entry, {acc, visited} ->
             {path, visited} = traverse(entry, adjacency, nodes_by_id, visited)
-            {acc ++ path, visited}
+            {Enum.reverse(path) ++ acc, visited}
           end)
 
-        {:ok, ordered}
+        {:ok, Enum.reverse(reversed)}
     end
   end
 

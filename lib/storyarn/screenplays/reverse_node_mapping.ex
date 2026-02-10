@@ -59,7 +59,7 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   # ---------------------------------------------------------------------------
 
   defp map_scene(%FlowNode{id: id, data: data}) do
-    [%{type: "scene_heading", content: reconstruct_scene_heading(data), data: nil, source_node_id: id}]
+    [%{type: "scene_heading", content: reconstruct_scene_heading(data || %{}), data: nil, source_node_id: id}]
   end
 
   defp reconstruct_scene_heading(data) do
@@ -83,6 +83,7 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   # ---------------------------------------------------------------------------
 
   defp map_dialogue(%FlowNode{id: id, data: data}) do
+    data = data || %{}
     text = data["text"] || ""
     stage_directions = data["stage_directions"] || ""
     menu_text = data["menu_text"] || ""
@@ -135,7 +136,7 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   # ---------------------------------------------------------------------------
 
   defp map_condition(%FlowNode{id: id, data: data}) do
-    condition = data["condition"] || %{"logic" => "all", "rules" => []}
+    condition = (data || %{})["condition"] || %{"logic" => "all", "rules" => []}
 
     [%{type: "conditional", content: nil, data: %{"condition" => condition}, source_node_id: id}]
   end
@@ -145,7 +146,7 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   # ---------------------------------------------------------------------------
 
   defp map_instruction(%FlowNode{id: id, data: data}) do
-    assignments = data["assignments"] || []
+    assignments = (data || %{})["assignments"] || []
 
     [%{type: "instruction", content: nil, data: %{"assignments" => assignments}, source_node_id: id}]
   end
@@ -155,7 +156,7 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   # ---------------------------------------------------------------------------
 
   defp map_exit(%FlowNode{id: id, data: data}) do
-    label = data["label"] || ""
+    label = (data || %{})["label"] || ""
 
     [%{type: "transition", content: label, data: nil, source_node_id: id}]
   end
@@ -165,6 +166,8 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   # ---------------------------------------------------------------------------
 
   defp map_hub(%FlowNode{id: id, data: data}) do
+    data = data || %{}
+
     [
       %{
         type: "hub_marker",
@@ -184,7 +187,7 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
       %{
         type: "jump_marker",
         content: nil,
-        data: %{"target_hub_id" => data["target_hub_id"] || ""},
+        data: %{"target_hub_id" => (data || %{})["target_hub_id"] || ""},
         source_node_id: id
       }
     ]

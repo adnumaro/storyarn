@@ -197,14 +197,13 @@ defmodule Storyarn.Screenplays.FlowSync do
   end
 
   defp find_anchor(elements, idx, non_mappeable) do
-    next_mappeable =
-      elements
-      |> Enum.drop(idx + 1)
-      |> Enum.find(fn e -> e.type not in non_mappeable end)
-
-    case next_mappeable do
+    elements
+    |> Enum.drop(idx + 1)
+    |> Enum.find(fn e -> e.type not in non_mappeable end)
+    |> case do
       nil -> :end
-      next -> next.linked_node_id || :end
+      %{linked_node_id: nil, id: id} -> {:element_id, id}
+      %{linked_node_id: node_id} -> node_id
     end
   end
 
@@ -212,16 +211,9 @@ defmodule Storyarn.Screenplays.FlowSync do
     # Group existing by linked_node_id
     existing_by_node = Enum.group_by(mappeable_existing, & &1.linked_node_id)
 
-    # Group new attrs by source_node_id
-    new_by_node = Enum.group_by(new_attrs, & &1.source_node_id)
-
-    # Track which existing elements were matched
-    all_node_ids = MapSet.new(Map.keys(new_by_node))
-
-    # Process each node group in order of new_attrs
-    {result_elements, used_existing_ids} =
-      new_attrs
-      |> Enum.reduce({[], MapSet.new()}, fn attr, {acc, used} ->
+    # Process each new attr in order, collecting results via prepend (O(1) per item)
+    {reversed_elements, used_existing_ids} =
+      Enum.reduce(new_attrs, {[], MapSet.new()}, fn attr, {acc, used} ->
         existing_for_node = Map.get(existing_by_node, attr.source_node_id, [])
 
         # Find first unused existing element matching by type
@@ -232,54 +224,40 @@ defmodule Storyarn.Screenplays.FlowSync do
 
         case match do
           nil ->
-            # CREATE
             element = create_element_from_attr!(screenplay, attr)
-            {acc ++ [element], used}
+            {[element | acc], used}
 
           existing ->
-            # UPDATE
             element = update_element_from_attr!(existing, attr)
-            {acc ++ [element], MapSet.put(used, existing.id)}
+            {[element | acc], MapSet.put(used, existing.id)}
         end
       end)
 
-    # Orphaned = existing mappeable elements not matched
+    result_elements = Enum.reverse(reversed_elements)
+
+    # Orphaned = all existing mappeable elements that were not matched
     orphaned =
       Enum.filter(mappeable_existing, fn el ->
-        not MapSet.member?(used_existing_ids, el.id) and
-          (is_nil(el.linked_node_id) or not MapSet.member?(all_node_ids, el.linked_node_id))
+        not MapSet.member?(used_existing_ids, el.id)
       end)
 
-    # Also orphan matched-node elements that weren't used
-    extra_orphaned =
-      Enum.filter(mappeable_existing, fn el ->
-        not MapSet.member?(used_existing_ids, el.id) and
-          not is_nil(el.linked_node_id) and
-          MapSet.member?(all_node_ids, el.linked_node_id)
-      end)
+    {result_elements, orphaned}
+  end
 
-    {result_elements, orphaned ++ extra_orphaned}
+  defp element_attrs_from(attr) do
+    %{type: attr.type, content: attr.content || "", data: attr.data || %{}}
   end
 
   defp create_element_from_attr!(screenplay, attr) do
     %ScreenplayElement{screenplay_id: screenplay.id}
-    |> ScreenplayElement.create_changeset(%{
-      type: attr.type,
-      content: attr.content || "",
-      data: attr.data || %{},
-      position: 0
-    })
+    |> ScreenplayElement.create_changeset(Map.put(element_attrs_from(attr), :position, 0))
     |> Ecto.Changeset.put_change(:linked_node_id, attr.source_node_id)
     |> Repo.insert!()
   end
 
   defp update_element_from_attr!(element, attr) do
     element
-    |> ScreenplayElement.update_changeset(%{
-      type: attr.type,
-      content: attr.content || "",
-      data: attr.data || %{}
-    })
+    |> ScreenplayElement.update_changeset(element_attrs_from(attr))
     |> Ecto.Changeset.put_change(:linked_node_id, attr.source_node_id)
     |> Repo.update!()
   end
@@ -289,10 +267,12 @@ defmodule Storyarn.Screenplays.FlowSync do
     by_anchor = Enum.group_by(non_mappeable_anchored, fn {_el, anchor} -> anchor end)
 
     # Build final list: for each result element, prepend any anchored non-mappeable
+    # Anchors can be: node_id (integer), {:element_id, id}, or :end
     final =
       Enum.flat_map(result_elements, fn el ->
-        anchored = Map.get(by_anchor, el.linked_node_id, [])
-        non_map_els = Enum.map(anchored, fn {nme, _anchor} -> nme end)
+        by_node = Map.get(by_anchor, el.linked_node_id, [])
+        by_elem = Map.get(by_anchor, {:element_id, el.id}, [])
+        non_map_els = Enum.map(by_node ++ by_elem, fn {nme, _anchor} -> nme end)
         non_map_els ++ [el]
       end)
 
