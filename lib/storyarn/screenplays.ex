@@ -18,6 +18,7 @@ defmodule Storyarn.Screenplays do
     ElementCrud,
     ElementGrouping,
     FlowSync,
+    LinkedPageCrud,
     ScreenplayCrud,
     ScreenplayQueries,
     TreeOperations
@@ -53,6 +54,9 @@ defmodule Storyarn.Screenplays do
 
   @doc "Returns a changeset for tracking screenplay changes."
   defdelegate change_screenplay(screenplay, attrs \\ %{}), to: ScreenplayCrud
+
+  @doc "Checks if a screenplay exists within a project (non-deleted, non-draft)."
+  defdelegate screenplay_exists?(project_id, screenplay_id), to: ScreenplayCrud
 
   @doc "Lists all soft-deleted screenplays for a project (trash)."
   defdelegate list_deleted_screenplays(project_id), to: ScreenplayCrud
@@ -133,6 +137,31 @@ defmodule Storyarn.Screenplays do
 
   @doc "Syncs flow nodes into the screenplay (reverse direction)."
   defdelegate sync_from_flow(screenplay), to: FlowSync
+
+  # =============================================================================
+  # Linked Pages (Response Branching)
+  # =============================================================================
+
+  @doc "Creates a child screenplay linked to a response choice."
+  defdelegate create_linked_page(parent, element, choice_id), to: LinkedPageCrud
+
+  @doc "Links a response choice to an existing child screenplay."
+  defdelegate link_choice(element, choice_id, child_id, parent_id), to: LinkedPageCrud
+
+  @doc "Unlinks a response choice from its linked screenplay."
+  defdelegate unlink_choice(element, choice_id), to: LinkedPageCrud
+
+  @doc "Returns linked screenplay IDs for all choices in a response element."
+  defdelegate linked_screenplay_ids(element), to: LinkedPageCrud
+
+  @doc "Lists child screenplays for a parent. Returns [%{id, name}]."
+  defdelegate list_child_screenplays(parent_id), to: LinkedPageCrud
+
+  @doc "Finds a choice by ID in a response element's data."
+  defdelegate find_choice(element, choice_id), to: LinkedPageCrud
+
+  @doc "Updates a choice in a response element by applying update_fn to the matching choice."
+  defdelegate update_choice(element, choice_id, update_fn), to: LinkedPageCrud
 
   # =============================================================================
   # Auto-Detection

@@ -154,6 +154,18 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   end
 
   @doc """
+  Checks if a screenplay exists within a project (non-deleted, non-draft).
+  """
+  def screenplay_exists?(project_id, screenplay_id) do
+    from(s in Screenplay,
+      where:
+        s.id == ^screenplay_id and s.project_id == ^project_id and
+          is_nil(s.deleted_at) and is_nil(s.draft_of_id)
+    )
+    |> Repo.exists?()
+  end
+
+  @doc """
   Lists all soft-deleted screenplays for a project (trash).
   """
   def list_deleted_screenplays(project_id) do

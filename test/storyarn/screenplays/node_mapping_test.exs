@@ -210,6 +210,57 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
     end
   end
 
+  describe "group_to_node_attrs/2 response with linked_screenplay_id" do
+    test "preserves linked_screenplay_id in response serialization" do
+      group = %{
+        type: :dialogue_group,
+        elements: [
+          el(%{id: 1, type: "character", content: "NPC"}),
+          el(%{id: 2, type: "dialogue", content: "Choose your path."}),
+          el(%{
+            id: 3,
+            type: "response",
+            data: %{
+              "choices" => [
+                %{"id" => "c1", "text" => "Go left", "condition" => nil, "instruction" => nil, "linked_screenplay_id" => 42},
+                %{"id" => "c2", "text" => "Go right", "condition" => nil, "instruction" => nil, "linked_screenplay_id" => nil}
+              ]
+            }
+          })
+        ],
+        group_id: "g4"
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+
+      [r1, r2] = result.data["responses"]
+      assert r1["linked_screenplay_id"] == 42
+      assert r2["linked_screenplay_id"] == nil
+    end
+
+    test "preserves linked_screenplay_id in orphan response serialization" do
+      group = %{
+        type: :response,
+        elements: [
+          el(%{
+            id: 1,
+            type: "response",
+            data: %{
+              "choices" => [
+                %{"id" => "c1", "text" => "Option", "condition" => nil, "instruction" => nil, "linked_screenplay_id" => 99}
+              ]
+            }
+          })
+        ],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+
+      assert hd(result.data["responses"])["linked_screenplay_id"] == 99
+    end
+  end
+
   describe "groups_to_node_attrs/1" do
     test "converts full group list, skipping non-mappeable" do
       groups = [

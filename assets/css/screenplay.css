@@ -410,6 +410,99 @@
   color: var(--color-primary);
 }
 
+/* Linked page controls in choice rows */
+.sp-choice-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.sp-choice-page-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font-size: 0.6875rem;
+  font-family: system-ui, sans-serif;
+  cursor: pointer;
+  border-radius: 4px;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+.sp-choice-page-link:hover {
+  background-color: color-mix(in oklch, var(--color-primary) 10%, transparent);
+}
+
+.sp-choice-page-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-choice-unlink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.sp-choice-unlink:hover {
+  color: var(--color-error);
+  background-color: color-mix(in oklch, var(--color-error) 10%, transparent);
+}
+
+.sp-choice-create-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.sp-choice-create-page:hover {
+  color: var(--color-info);
+  background-color: color-mix(in oklch, var(--color-info) 10%, transparent);
+}
+
+/* Generate all pages button in header */
+.sp-generate-pages-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px dashed var(--color-base-300);
+  border-radius: 4px;
+  background: none;
+  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+  font-size: 0.6875rem;
+  font-family: system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.sp-generate-pages-btn:hover {
+  border-color: var(--color-info);
+  color: var(--color-info);
+}
+
 /* Collapsible extras below each choice */
 .sp-choice-extras {
   margin-left: 2em;

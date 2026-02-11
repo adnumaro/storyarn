@@ -627,4 +627,540 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       assert new_dialogue.position_y == 400.0
     end
   end
+
+  describe "sync_to_flow/1 multi-page" do
+    setup :setup_project
+
+    test "response + linked child page creates branch connection", %{project: project} do
+      parent = screenplay_fixture(project)
+      element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+      element_fixture(parent, %{type: "character", content: "NPC", position: 1})
+      element_fixture(parent, %{type: "dialogue", content: "Pick one.", position: 2})
+
+      child = screenplay_fixture(project, %{parent_id: parent.id})
+      element_fixture(child, %{type: "scene_heading", content: "INT. LEFT PATH", position: 0})
+      element_fixture(child, %{type: "action", content: "You go left.", position: 1})
+
+      element_fixture(parent, %{
+        type: "response",
+        position: 3,
+        data: %{
+          "choices" => [
+            %{"id" => "c1", "text" => "Go left", "linked_screenplay_id" => child.id}
+          ]
+        }
+      })
+
+      {:ok, flow} = FlowSync.sync_to_flow(parent)
+
+      connections = Flows.list_connections(flow.id)
+      branch_conn = Enum.find(connections, &(&1.source_pin == "c1"))
+
+      assert branch_conn
+      assert branch_conn.target_pin == "input"
+
+      # Branch connects dialogue to child's first node (scene)
+      synced = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
+      scene_node = Enum.find(synced, &(&1.type == "scene"))
+      dialogue_node = Enum.find(synced, fn n -> n.type == "dialogue" and n.data["text"] == "Pick one." end)
+
+      assert branch_conn.source_node_id == dialogue_node.id
+      assert branch_conn.target_node_id == scene_node.id
+    end
+
+    test "child page scene_heading maps to scene node (not entry)", %{project: project} do
+      parent = screenplay_fixture(project)
+      element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+      element_fixture(parent, %{type: "character", content: "NPC", position: 1})
+      element_fixture(parent, %{type: "dialogue", content: "Pick.", position: 2})
+
+      child = screenplay_fixture(project, %{parent_id: parent.id})
+      element_fixture(child, %{type: "scene_heading", content: "INT. CAVE", position: 0})
+
+      element_fixture(parent, %{
+        type: "response",
+        position: 3,
+        data: %{"choices" => [%{"id" => "c1", "text" => "Enter cave", "linked_screenplay_id" => child.id}]}
+      })
+
+      {:ok, flow} = FlowSync.sync_to_flow(parent)
+      synced = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
+
+      scene = Enum.find(synced, &(&1.type == "scene"))
+      assert scene
+      assert scene.data["description"] == "CAVE"
+    end
+
+    test "response pin uses choice ID as source_pin", %{project: project} do
+      parent = screenplay_fixture(project)
+      element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE", position: 0})
+      element_fixture(parent, %{type: "character", content: "NPC", position: 1})
+      element_fixture(parent, %{type: "dialogue", content: "Pick.", position: 2})
+
+      child = screenplay_fixture(project, %{parent_id: parent.id})
+      element_fixture(child, %{type: "scene_heading", content: "INT. PATH", position: 0})
+
+      element_fixture(parent, %{
+        type: "response",
+        position: 3,
+        data: %{"choices" => [%{"id" => "choice-abc", "text" => "Go", "linked_screenplay_id" => child.id}]}
+      })
+
+      {:ok, flow} = FlowSync.sync_to_flow(parent)
+      connections = Flows.list_connections(flow.id)
+
+      assert Enum.any?(connections, &(&1.source_pin == "choice-abc"))
+    end
+
+    test "unlinked response choices produce no branch connection", %{project: project} do
+      parent = screenplay_fixture(project)
+      element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE", position: 0})
+      element_fixture(parent, %{type: "character", content: "NPC", position: 1})
+      element_fixture(parent, %{type: "dialogue", content: "Pick.", position: 2})
+
+      element_fixture(parent, %{
+        type: "response",
+        position: 3,
+        data: %{
+          "choices" => [
+            %{"id" => "c1", "text" => "Option A"},
+            %{"id" => "c2", "text" => "Option B"}
+          ]
+        }
+      })
+
+      {:ok, flow} = FlowSync.sync_to_flow(parent)
+      connections = Flows.list_connections(flow.id)
+
+      refute Enum.any?(connections, &(&1.source_pin == "c1"))
+      refute Enum.any?(connections, &(&1.source_pin == "c2"))
+    end
+
+    test "mixed linked/unlinked responses: only linked get connections", %{project: project} do
+      parent = screenplay_fixture(project)
+      element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE", position: 0})
+      element_fixture(parent, %{type: "character", content: "NPC", position: 1})
+      element_fixture(parent, %{type: "dialogue", content: "Pick.", position: 2})
+
+      child = screenplay_fixture(project, %{parent_id: parent.id})
+      element_fixture(child, %{type: "scene_heading", content: "INT. PATH", position: 0})
+
+      element_fixture(parent, %{
+        type: "response",
+        position: 3,
+        data: %{
+          "choices" => [
+            %{"id" => "c1", "text" => "Go left", "linked_screenplay_id" => child.id},
+            %{"id" => "c2", "text" => "Go right"}
+          ]
+        }
+      })
+
+      {:ok, flow} = FlowSync.sync_to_flow(parent)
+      connections = Flows.list_connections(flow.id)
+
+      assert Enum.any?(connections, &(&1.source_pin == "c1"))
+      refute Enum.any?(connections, &(&1.source_pin == "c2"))
+    end
+
+    test "nested branches (grandchild pages) produce recursive connections", %{project: project} do
+      parent = screenplay_fixture(project)
+      element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE", position: 0})
+      element_fixture(parent, %{type: "character", content: "NPC", position: 1})
+      element_fixture(parent, %{type: "dialogue", content: "Pick.", position: 2})
+
+      child = screenplay_fixture(project, %{parent_id: parent.id})
+      element_fixture(child, %{type: "scene_heading", content: "INT. PATH", position: 0})
+      element_fixture(child, %{type: "character", content: "NPC2", position: 1})
+      element_fixture(child, %{type: "dialogue", content: "Next?", position: 2})
+
+      grandchild = screenplay_fixture(project, %{parent_id: child.id})
+      element_fixture(grandchild, %{type: "scene_heading", content: "INT. DEEP", position: 0})
+
+      element_fixture(child, %{
+        type: "response",
+        position: 3,
+        data: %{"choices" => [%{"id" => "c2", "text" => "Deeper", "linked_screenplay_id" => grandchild.id}]}
+      })
+
+      element_fixture(parent, %{
+        type: "response",
+        position: 3,
+        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+      })
+
+      {:ok, flow} = FlowSync.sync_to_flow(parent)
+      connections = Flows.list_connections(flow.id)
+
+      assert Enum.any?(connections, &(&1.source_pin == "c1"))
+      assert Enum.any?(connections, &(&1.source_pin == "c2"))
+    end
+
+    test "elements from all pages get linked_node_id after sync", %{project: project} do
+      parent = screenplay_fixture(project)
+      sh = element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+      element_fixture(parent, %{type: "character", content: "NPC", position: 1})
+      element_fixture(parent, %{type: "dialogue", content: "Pick.", position: 2})
+
+      child = screenplay_fixture(project, %{parent_id: parent.id})
+      child_sh = element_fixture(child, %{type: "scene_heading", content: "INT. PATH", position: 0})
+      child_action = element_fixture(child, %{type: "action", content: "Walking.", position: 1})
+
+      element_fixture(parent, %{
+        type: "response",
+        position: 3,
+        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+      })
+
+      {:ok, _flow} = FlowSync.sync_to_flow(parent)
+
+      parent_elements = Screenplays.list_elements(parent.id)
+      parent_sh = Enum.find(parent_elements, &(&1.id == sh.id))
+      refute is_nil(parent_sh.linked_node_id)
+
+      child_elements = Screenplays.list_elements(child.id)
+      child_sh_el = Enum.find(child_elements, &(&1.id == child_sh.id))
+      child_action_el = Enum.find(child_elements, &(&1.id == child_action.id))
+      refute is_nil(child_sh_el.linked_node_id)
+      refute is_nil(child_action_el.linked_node_id)
+    end
+
+    test "orphaned nodes from deleted child page are cleaned up on re-sync", %{project: project} do
+      parent = screenplay_fixture(project)
+      element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE", position: 0})
+      element_fixture(parent, %{type: "character", content: "NPC", position: 1})
+      element_fixture(parent, %{type: "dialogue", content: "Pick.", position: 2})
+
+      child = screenplay_fixture(project, %{parent_id: parent.id})
+      element_fixture(child, %{type: "scene_heading", content: "INT. PATH", position: 0})
+      element_fixture(child, %{type: "action", content: "Walking.", position: 1})
+
+      element_fixture(parent, %{
+        type: "response",
+        position: 3,
+        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+      })
+
+      {:ok, flow} = FlowSync.sync_to_flow(parent)
+
+      synced_before = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
+      count_before = length(synced_before)
+
+      # Soft-delete the child page
+      Screenplays.delete_screenplay(child)
+
+      {:ok, _flow} = FlowSync.sync_to_flow(parent)
+
+      synced_after = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
+      assert length(synced_after) < count_before
+      refute Enum.any?(synced_after, &(&1.type == "scene"))
+    end
+
+    test "re-sync multi-page updates existing branch nodes without duplication", %{project: project} do
+      parent = screenplay_fixture(project)
+      element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE", position: 0})
+      element_fixture(parent, %{type: "character", content: "NPC", position: 1})
+      element_fixture(parent, %{type: "dialogue", content: "Pick.", position: 2})
+
+      child = screenplay_fixture(project, %{parent_id: parent.id})
+      element_fixture(child, %{type: "scene_heading", content: "INT. PATH", position: 0})
+      child_action = element_fixture(child, %{type: "action", content: "Original.", position: 1})
+
+      element_fixture(parent, %{
+        type: "response",
+        position: 3,
+        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+      })
+
+      {:ok, flow} = FlowSync.sync_to_flow(parent)
+      count_after_first = Flows.list_nodes(flow.id) |> Enum.count(&(&1.source == "screenplay_sync"))
+
+      # Update child element and re-sync
+      Screenplays.update_element(child_action, %{content: "Updated."})
+      {:ok, _flow} = FlowSync.sync_to_flow(parent)
+
+      count_after_second = Flows.list_nodes(flow.id) |> Enum.count(&(&1.source == "screenplay_sync"))
+      assert count_after_second == count_after_first
+
+      synced = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
+      action_node = Enum.find(synced, &(&1.data["stage_directions"] == "Updated."))
+      assert action_node
+    end
+  end
+
+  describe "sync_from_flow/1 multi-page" do
+    setup :setup_project
+
+    test "creates child pages from response branches in flow", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = FlowSync.ensure_flow(screenplay)
+      screenplay = Screenplays.get_screenplay!(project.id, screenplay.id)
+
+      # Create dialogue with responses on the flow
+      {:ok, dialogue_node} =
+        Flows.create_node(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Pick one.",
+            "stage_directions" => "",
+            "menu_text" => "NPC",
+            "responses" => [%{"id" => "c1", "text" => "Go left"}]
+          }
+        })
+
+      {:ok, scene_node} =
+        Flows.create_node(flow, %{
+          type: "scene",
+          data: %{"int_ext" => "int", "description" => "LEFT PATH", "time_of_day" => ""}
+        })
+
+      entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      Flows.create_connection(flow, entry, dialogue_node, %{source_pin: "output", target_pin: "input"})
+      Flows.create_connection(flow, dialogue_node, scene_node, %{source_pin: "c1", target_pin: "input"})
+
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      # Root should have scene_heading + character + dialogue + response
+      root_elements = Screenplays.list_elements(screenplay.id)
+      root_types = Enum.map(root_elements, & &1.type)
+      assert "scene_heading" in root_types
+      assert "character" in root_types
+      assert "response" in root_types
+
+      # A child page should have been created
+      children =
+        Storyarn.Repo.all(
+          from(s in Storyarn.Screenplays.Screenplay,
+            where: s.parent_id == ^screenplay.id and is_nil(s.deleted_at)
+          )
+        )
+
+      assert length(children) == 1
+      child = hd(children)
+      assert child.name == "Go left"
+
+      # Child should have scene_heading element
+      child_elements = Screenplays.list_elements(child.id)
+      child_types = Enum.map(child_elements, & &1.type)
+      assert "scene_heading" in child_types
+    end
+
+    test "updates existing child page elements on re-sync", %{project: project} do
+      # Build a multi-page screenplay and push to flow
+      parent = screenplay_fixture(project)
+      element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+      element_fixture(parent, %{type: "character", content: "NPC", position: 1})
+      element_fixture(parent, %{type: "dialogue", content: "Pick.", position: 2})
+
+      child = screenplay_fixture(project, %{parent_id: parent.id})
+      element_fixture(child, %{type: "scene_heading", content: "INT. PATH", position: 0})
+      element_fixture(child, %{type: "action", content: "Walking.", position: 1})
+
+      element_fixture(parent, %{
+        type: "response",
+        position: 3,
+        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+      })
+
+      {:ok, flow} = FlowSync.sync_to_flow(parent)
+
+      # Modify the child's action node data on the flow
+      action_node =
+        Flows.list_nodes(flow.id)
+        |> Enum.find(&(&1.data["stage_directions"] == "Walking."))
+
+      Flows.update_node(action_node, %{
+        data: Map.put(action_node.data, "stage_directions", "Running fast.")
+      })
+
+      # Pull back
+      {:ok, _screenplay} = FlowSync.sync_from_flow(parent)
+
+      child_elements = Screenplays.list_elements(child.id)
+      action = Enum.find(child_elements, &(&1.type == "action"))
+      assert action.content == "Running fast."
+    end
+
+    test "links choice to child page after creation", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = FlowSync.ensure_flow(screenplay)
+      screenplay = Screenplays.get_screenplay!(project.id, screenplay.id)
+
+      {:ok, dialogue_node} =
+        Flows.create_node(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Choose.",
+            "stage_directions" => "",
+            "menu_text" => "NPC",
+            "responses" => [%{"id" => "c1", "text" => "Option A"}]
+          }
+        })
+
+      {:ok, scene_node} =
+        Flows.create_node(flow, %{
+          type: "scene",
+          data: %{"int_ext" => "int", "description" => "CAVE", "time_of_day" => ""}
+        })
+
+      entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      Flows.create_connection(flow, entry, dialogue_node, %{source_pin: "output", target_pin: "input"})
+      Flows.create_connection(flow, dialogue_node, scene_node, %{source_pin: "c1", target_pin: "input"})
+
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      # The response element should have linked_screenplay_id set
+      root_elements = Screenplays.list_elements(screenplay.id)
+      response = Enum.find(root_elements, &(&1.type == "response"))
+      choice = hd(response.data["choices"])
+      refute is_nil(choice["linked_screenplay_id"])
+
+      # The linked child should exist
+      child = Storyarn.Repo.get!(Storyarn.Screenplays.Screenplay, choice["linked_screenplay_id"])
+      assert child.parent_id == screenplay.id
+    end
+
+    test "nested branches create grandchild pages", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = FlowSync.ensure_flow(screenplay)
+      screenplay = Screenplays.get_screenplay!(project.id, screenplay.id)
+
+      {:ok, d1} =
+        Flows.create_node(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Level 1.",
+            "stage_directions" => "",
+            "menu_text" => "NPC",
+            "responses" => [%{"id" => "c1", "text" => "Go deeper"}]
+          }
+        })
+
+      {:ok, d2} =
+        Flows.create_node(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Level 2.",
+            "stage_directions" => "",
+            "menu_text" => "NPC2",
+            "responses" => [%{"id" => "c2", "text" => "Even deeper"}]
+          }
+        })
+
+      {:ok, scene} =
+        Flows.create_node(flow, %{
+          type: "scene",
+          data: %{"int_ext" => "int", "description" => "DEEP CAVE", "time_of_day" => ""}
+        })
+
+      entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      Flows.create_connection(flow, entry, d1, %{source_pin: "output", target_pin: "input"})
+      Flows.create_connection(flow, d1, d2, %{source_pin: "c1", target_pin: "input"})
+      Flows.create_connection(flow, d2, scene, %{source_pin: "c2", target_pin: "input"})
+
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      # Should have a child
+      children =
+        Storyarn.Repo.all(
+          from(s in Storyarn.Screenplays.Screenplay,
+            where: s.parent_id == ^screenplay.id and is_nil(s.deleted_at)
+          )
+        )
+
+      assert length(children) == 1
+      child = hd(children)
+
+      # Child should have a grandchild
+      grandchildren =
+        Storyarn.Repo.all(
+          from(s in Storyarn.Screenplays.Screenplay,
+            where: s.parent_id == ^child.id and is_nil(s.deleted_at)
+          )
+        )
+
+      assert length(grandchildren) == 1
+      grandchild = hd(grandchildren)
+
+      # Grandchild should have scene_heading element
+      gc_elements = Screenplays.list_elements(grandchild.id)
+      assert Enum.any?(gc_elements, &(&1.type == "scene_heading"))
+    end
+
+    test "sync does not crash with nested tree (depth safety)", %{project: project} do
+      parent = screenplay_fixture(project)
+      element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE", position: 0})
+      element_fixture(parent, %{type: "character", content: "NPC", position: 1})
+      element_fixture(parent, %{type: "dialogue", content: "Pick.", position: 2})
+
+      child = screenplay_fixture(project, %{parent_id: parent.id})
+      element_fixture(child, %{type: "scene_heading", content: "INT. PATH", position: 0})
+      element_fixture(child, %{type: "character", content: "NPC2", position: 1})
+      element_fixture(child, %{type: "dialogue", content: "Again.", position: 2})
+
+      grandchild = screenplay_fixture(project, %{parent_id: child.id})
+      element_fixture(grandchild, %{type: "scene_heading", content: "INT. DEEP", position: 0})
+
+      element_fixture(child, %{
+        type: "response",
+        position: 3,
+        data: %{"choices" => [%{"id" => "c2", "text" => "Deeper", "linked_screenplay_id" => grandchild.id}]}
+      })
+
+      element_fixture(parent, %{
+        type: "response",
+        position: 3,
+        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+      })
+
+      # sync_to_flow should handle 2 levels without issue
+      {:ok, flow} = FlowSync.sync_to_flow(parent)
+      synced = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
+      assert synced != []
+
+      # sync_from_flow should also handle nested trees
+      {:ok, _screenplay} = FlowSync.sync_from_flow(parent)
+    end
+
+    test "removed branch preserves child page but unlinks choice", %{project: project} do
+      # Build multi-page screenplay and push to flow
+      parent = screenplay_fixture(project)
+      element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE", position: 0})
+      element_fixture(parent, %{type: "character", content: "NPC", position: 1})
+      element_fixture(parent, %{type: "dialogue", content: "Pick.", position: 2})
+
+      child = screenplay_fixture(project, %{parent_id: parent.id})
+      element_fixture(child, %{type: "scene_heading", content: "INT. PATH", position: 0})
+
+      element_fixture(parent, %{
+        type: "response",
+        position: 3,
+        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+      })
+
+      {:ok, flow} = FlowSync.sync_to_flow(parent)
+
+      # Remove the branch connection from the flow (keep the dialogue node)
+      connections = Flows.list_connections(flow.id)
+      branch_conn = Enum.find(connections, &(&1.source_pin == "c1"))
+
+      if branch_conn do
+        Storyarn.Repo.delete!(branch_conn)
+      end
+
+      # Pull from flow — branch is gone
+      {:ok, _screenplay} = FlowSync.sync_from_flow(parent)
+
+      # Child page should still exist
+      child_still = Storyarn.Repo.get(Storyarn.Screenplays.Screenplay, child.id)
+      assert child_still
+      assert is_nil(child_still.deleted_at)
+
+      # But the choice's linked_screenplay_id should be nil
+      root_elements = Screenplays.list_elements(parent.id)
+      response = Enum.find(root_elements, &(&1.type == "response"))
+      choice = Enum.find(response.data["choices"], &(&1["id"] == "c1"))
+      assert is_nil(choice["linked_screenplay_id"])
+    end
+  end
 end

@@ -20,6 +20,7 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
   attr :element, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :variables, :list, default: []
+  attr :linked_pages, :map, default: %{}
 
   def element_renderer(assigns) do
     assigns = assign(assigns, :editable, assigns.can_edit and assigns.element.type in @editable_types)
@@ -116,13 +117,35 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
   # ---------------------------------------------------------------------------
 
   defp render_block(%{element: %{type: "response"}} = assigns) do
-    assigns = assign(assigns, :choices, assigns.element.data["choices"] || [])
+    choices = assigns.element.data["choices"] || []
+    linked_count = Enum.count(choices, & &1["linked_screenplay_id"])
+    total = length(choices)
+
+    assigns =
+      assigns
+      |> assign(:choices, choices)
+      |> assign(:all_linked, linked_count > 0 and linked_count == total)
+      |> assign(:some_unlinked, linked_count > 0 and linked_count < total)
+      |> assign(:has_unlinked, total > 0 and linked_count < total)
 
     ~H"""
     <div class="sp-interactive-block sp-interactive-response">
       <div class="sp-interactive-header">
         <.icon name="list" class="size-4 opacity-60" />
         <span class="sp-interactive-label">{gettext("Responses")}</span>
+        <.icon :if={@all_linked} name="check-circle" class="size-3.5 text-success" />
+        <.icon :if={@some_unlinked} name="alert-circle" class="size-3.5 text-warning" />
+        <button
+          :if={@can_edit && @has_unlinked}
+          type="button"
+          class="sp-generate-pages-btn"
+          phx-click="generate_all_linked_pages"
+          phx-value-element-id={@element.id}
+          title={gettext("Create pages for all unlinked choices")}
+        >
+          <.icon name="files" class="size-3" />
+          {gettext("Generate pages")}
+        </button>
       </div>
       <div :if={@choices == [] && !@can_edit} class="sp-choice-empty">
         {gettext("No choices defined")}
@@ -144,6 +167,41 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
             phx-value-choice-id={choice["id"]}
           />
           <span :if={!@can_edit} class="sp-choice-text">{choice["text"]}</span>
+          <div :if={choice["linked_screenplay_id"]} class="sp-choice-link">
+            <button
+              type="button"
+              class="sp-choice-page-link"
+              phx-click="navigate_to_linked_page"
+              phx-value-element-id={@element.id}
+              phx-value-choice-id={choice["id"]}
+              title={gettext("Go to linked page")}
+            >
+              <.icon name="file-text" class="size-3" />
+              <span class="sp-choice-page-name">{linked_page_name(choice, @linked_pages)}</span>
+            </button>
+            <button
+              :if={@can_edit}
+              type="button"
+              class="sp-choice-unlink"
+              phx-click="unlink_choice_screenplay"
+              phx-value-element-id={@element.id}
+              phx-value-choice-id={choice["id"]}
+              title={gettext("Unlink page")}
+            >
+              <.icon name="unlink" class="size-3" />
+            </button>
+          </div>
+          <button
+            :if={@can_edit && !choice["linked_screenplay_id"]}
+            type="button"
+            class="sp-choice-create-page"
+            phx-click="create_linked_page"
+            phx-value-element-id={@element.id}
+            phx-value-choice-id={choice["id"]}
+            title={gettext("Create page for this choice")}
+          >
+            <.icon name="file-plus" class="size-3" />
+          </button>
           <button
             :if={@can_edit}
             type="button"
@@ -246,6 +304,13 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
   defp placeholder_for("note"), do: gettext("Note...")
   defp placeholder_for("section"), do: gettext("Section heading")
   defp placeholder_for(_), do: ""
+
+  defp linked_page_name(choice, linked_pages) do
+    case Map.get(linked_pages, choice["linked_screenplay_id"]) do
+      nil -> gettext("(deleted)")
+      name -> name
+    end
+  end
 
   defp empty?(%{content: nil}), do: true
   defp empty?(%{content: ""}), do: true

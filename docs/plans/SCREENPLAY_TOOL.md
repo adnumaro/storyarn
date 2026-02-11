@@ -4,7 +4,7 @@
 >
 > **Priority:** Major feature
 >
-> **Last Updated:** February 10, 2026
+> **Last Updated:** February 11, 2026
 
 ## Overview
 
@@ -32,7 +32,7 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 | 5       | Interactive Blocks (Condition/Instruction/Response) | Essential    | Done       |
 | 6       | Flow Sync — Screenplay → Flow                       | Essential    | Done       |
 | 7       | Flow Sync — Flow → Screenplay                       | Essential    | Done       |
-| 8       | Response Branching & Linked Pages                   | Essential    | Pending    |
+| 8       | Response Branching & Linked Pages                   | Essential    | Done       |
 | 9       | Dual Dialogue & Advanced Formatting                 | Important    | Pending    |
 | 10      | Title Page & Export                                 | Nice to Have | Pending    |
 
@@ -171,6 +171,40 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 - `test/storyarn_web/live/screenplay_live/show_test.exs` — 3 new tests (sync_from_flow success, not-linked error, viewer permission), updated existing test for renamed button text
 
 **Key patterns:** ReverseNodeMapping and FlowTraversal are pure modules (no DB) for testability. Anchor-based non-mappeable preservation: each note/section/page_break records the `linked_node_id` of the next mappeable element as its anchor; after sync, non-mappeable elements are re-inserted before their anchor. Multi-element diff: dialogue nodes produce 2-4 elements, diff groups by `source_node_id`/`linked_node_id` and matches within each group by element type. Condition nodes follow primary path only ("true" pin) — symmetric with Phase 6's flat approach. All nodes synced (both `source: "manual"` and `source: "screenplay_sync"`).
+
+### Phase 8 — Summary (Done, 156 tests total across all Phase 8 files)
+
+**Tasks completed:** 8.1 LinkedPageCrud — create/link/unlink choice pages (10 tests) | 8.2 PageTreeBuilder — recursive page tree → flat node attrs + connections (10 tests) | 8.3 FlowTraversal update — `linearize_tree/2` with response branches (4 tests) | 8.4 FlowSync update — multi-page sync_to_flow + sync_from_flow with branching (22 tests) | 8.5 FlowLayout — tree-aware auto-layout with horizontal branching (4 tests) | 8.6 UI — linked page controls in response block + sidebar tree navigation (5 tests) | 8.audit — audit fixes (6 tasks, see below)
+
+**Files created:**
+- `lib/storyarn/screenplays/linked_page_crud.ex` — CRUD for linked pages: `create_linked_page/3` (creates child screenplay + sets `linked_screenplay_id` on choice), `link_choice/4`, `unlink_choice/2`, `linked_screenplay_ids/1`, `list_child_screenplays/1`, `find_choice/2` (public), `update_choice/3` (public)
+- `lib/storyarn/screenplays/page_tree_builder.ex` — pure-function module: `build/1` (recursive page data → tree with `node_attrs_list` + `branches`), `flatten/1` (tree → flat `all_node_attrs` + `connections` + `screenplay_ids` for sync engine)
+- `lib/storyarn/screenplays/flow_layout.ex` — pure-function module: `compute_positions/2` (tree-aware layout with horizontal branching at response nodes, `@x_gap 350`, `@y_spacing 150`), bounds-safe with nil guard on `Enum.at`
+- `test/storyarn/screenplays/linked_page_crud_test.exs` — 10 tests
+- `test/storyarn/screenplays/page_tree_builder_test.exs` — 10 tests
+- `test/storyarn/screenplays/flow_layout_test.exs` — 4 tests
+
+**Files modified:**
+- `lib/storyarn/screenplays/flow_traversal.ex` — added `linearize_tree/2` (DFS with branch collection at dialogue response pins), made `response_ids/1` public; removed unused `linearize/2` and `traverse/4` (audit A.1, A.3)
+- `lib/storyarn/screenplays/flow_sync.ex` — `sync_to_flow` updated to load full page tree via `load_descendant_data` + `PageTreeBuilder`, multi-page node creation + branching connections; `sync_from_flow` updated with `sync_page_from_tree!` recursive sync + `sync_branch_from_tree!` (creates child pages from flow branches); `cleanup_orphaned_links!` unlinks choices whose branches no longer exist in flow; added `@max_tree_depth 20` recursion guard (audit A.4); refactored `create_branch_child!` to use pattern match instead of `Repo.rollback` (audit A.5); consolidated choice helpers via `LinkedPageCrud` (audit A.2)
+- `lib/storyarn/screenplays.ex` — added delegates: `create_linked_page`, `link_choice`, `unlink_choice`, `linked_screenplay_ids`, `list_child_screenplays`, `find_choice`, `update_choice`, `screenplay_exists?`
+- `lib/storyarn/screenplays/screenplay_crud.ex` — added `screenplay_exists?/2` for navigation validation (audit A.6)
+- `lib/storyarn_web/live/screenplay_live/show.ex` — 4 new linked page event handlers (`create_linked_page`, `navigate_to_linked_page`, `unlink_choice_screenplay`, `generate_all_linked_pages`); `valid_navigation_target?/2` check for defense-in-depth (audit A.6); uses `LinkedPageCrud.find_choice/2` instead of local duplicate (audit A.2)
+- `lib/storyarn_web/components/screenplay/element_renderer.ex` — response block shows linked page indicators (link icon + page name or create affordance)
+- `assets/css/screenplay.css` — linked page styles (`.sp-choice-link`, `.sp-choice-create-link`, `.sp-generate-all`)
+- `test/storyarn/screenplays/flow_traversal_test.exs` — removed 10 `linearize/2` tests (covered by `linearize_tree/2`)
+- `test/storyarn/screenplays/flow_sync_test.exs` — 22 new multi-page tests (branch connections, child page creation, nested branches, orphan cleanup, re-sync, depth safety)
+- `test/storyarn_web/live/screenplay_live/show_test.exs` — 5 new linked page tests
+
+**Audit fixes (Phase 8 audit):**
+- A.1: Removed dead code `linearize/2` + `traverse/4` from FlowTraversal (-35 LOC)
+- A.2: Consolidated duplicated choice helpers → single source in `LinkedPageCrud` (3 copies → 1)
+- A.3: Consolidated `response_ids` → single public function in `FlowTraversal` (2 copies → 1)
+- A.4: Added `@max_tree_depth 20` depth guards to `load_descendant_data`, `sync_page_from_tree!`, `sync_branch_from_tree!`
+- A.5: Bounds-safe `FlowLayout.layout_node/7` (nil guard on Enum.at), `create_branch_child!` uses pattern match instead of `Repo.rollback`
+- A.6: `screenplay_exists?/2` + `valid_navigation_target?/2` defense-in-depth on navigate
+
+**Key patterns:** Response choices store `linked_screenplay_id` in JSON data (no migration). `PageTreeBuilder` is pure (no DB) — converts recursive page data into flat node attrs + connection specs. Multi-page sync: all pages in a tree sync to the root's single flow. `linearize_tree/2` produces a recursive tree result with branches; `sync_from_flow` creates child pages from flow branches and recursively syncs each. Layout algorithm branches horizontally at response nodes with `@x_gap 350px` between columns.
 
 ---
 

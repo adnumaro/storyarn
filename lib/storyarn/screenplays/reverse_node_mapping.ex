@@ -124,7 +124,8 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
           "id" => r["id"],
           "text" => r["text"] || "",
           "condition" => deserialize_condition(r["condition"]),
-          "instruction" => deserialize_instruction(r["instruction"])
+          "instruction" => deserialize_instruction(r["instruction"]),
+          "linked_screenplay_id" => r["linked_screenplay_id"]
         }
       end)
 

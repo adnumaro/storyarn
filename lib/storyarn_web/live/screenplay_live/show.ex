@@ -11,6 +11,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   alias Storyarn.Repo
   alias Storyarn.Screenplays
   alias Storyarn.Screenplays.FlowSync
+  alias Storyarn.Screenplays.LinkedPageCrud
   alias Storyarn.Screenplays.Screenplay
   alias Storyarn.Screenplays.ScreenplayElement
   alias Storyarn.Sheets
@@ -146,6 +147,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           element={element}
           can_edit={@can_edit}
           variables={@project_variables}
+          linked_pages={@linked_pages}
         />
       </div>
       <.slash_command_menu
@@ -193,6 +195,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           |> assign(:slash_menu_element_id, nil)
           |> assign(:link_status, link_status)
           |> assign(:linked_flow, linked_flow)
+          |> assign(:linked_pages, load_linked_pages(screenplay))
 
         {:ok, socket}
 
@@ -395,6 +398,44 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       update_choice_field(socket, id, choice_id, fn choice ->
         Map.put(choice, "instruction", Instruction.sanitize(assignments))
       end)
+    end)
+  end
+
+  # ---------------------------------------------------------------------------
+  # Linked page handlers
+  # ---------------------------------------------------------------------------
+
+  def handle_event(
+        "create_linked_page",
+        %{"element-id" => eid, "choice-id" => cid},
+        socket
+      ) do
+    with_edit_permission(socket, fn ->
+      do_create_linked_page(socket, eid, cid)
+    end)
+  end
+
+  def handle_event(
+        "navigate_to_linked_page",
+        %{"element-id" => eid, "choice-id" => cid},
+        socket
+      ) do
+    do_navigate_to_linked_page(socket, eid, cid)
+  end
+
+  def handle_event(
+        "unlink_choice_screenplay",
+        %{"element-id" => eid, "choice-id" => cid},
+        socket
+      ) do
+    with_edit_permission(socket, fn ->
+      do_unlink_choice_screenplay(socket, eid, cid)
+    end)
+  end
+
+  def handle_event("generate_all_linked_pages", %{"element-id" => eid}, socket) do
+    with_edit_permission(socket, fn ->
+      do_generate_all_linked_pages(socket, eid)
     end)
   end
 
@@ -866,6 +907,118 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
             {:noreply, put_flash(socket, :error, gettext("Could not move screenplay."))}
         end
     end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Private helpers — linked pages
+  # ---------------------------------------------------------------------------
+
+  defp do_create_linked_page(socket, element_id, choice_id) do
+    case find_element(socket, element_id) do
+      nil ->
+        {:noreply, socket}
+
+      element ->
+        screenplay = socket.assigns.screenplay
+
+        case Screenplays.create_linked_page(screenplay, element, choice_id) do
+          {:ok, _child, updated_element} ->
+            {:noreply,
+             socket
+             |> update_element_in_list(updated_element)
+             |> assign(:linked_pages, load_linked_pages(screenplay))
+             |> reload_screenplays_tree()
+             |> put_flash(:info, gettext("Linked page created."))}
+
+          {:error, :choice_not_found} ->
+            {:noreply, put_flash(socket, :error, gettext("Choice not found."))}
+
+          {:error, :already_linked} ->
+            {:noreply, put_flash(socket, :error, gettext("Choice already has a linked page."))}
+
+          {:error, _reason} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not create linked page."))}
+        end
+    end
+  end
+
+  defp do_navigate_to_linked_page(socket, element_id, choice_id) do
+    case find_element(socket, element_id) do
+      nil ->
+        {:noreply, socket}
+
+      element ->
+        choice = LinkedPageCrud.find_choice(element, choice_id)
+        linked_id = choice && choice["linked_screenplay_id"]
+
+        if linked_id && valid_navigation_target?(socket, linked_id) do
+          {:noreply, push_navigate(socket, to: screenplays_path(socket, linked_id))}
+        else
+          {:noreply, socket}
+        end
+    end
+  end
+
+  defp valid_navigation_target?(socket, screenplay_id) do
+    Screenplays.screenplay_exists?(socket.assigns.project.id, screenplay_id)
+  end
+
+  defp do_unlink_choice_screenplay(socket, element_id, choice_id) do
+    case find_element(socket, element_id) do
+      nil ->
+        {:noreply, socket}
+
+      element ->
+        case Screenplays.unlink_choice(element, choice_id) do
+          {:ok, updated_element} ->
+            {:noreply, update_element_in_list(socket, updated_element)}
+
+          {:error, _reason} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not unlink choice."))}
+        end
+    end
+  end
+
+  defp do_generate_all_linked_pages(socket, element_id) do
+    case find_element(socket, element_id) do
+      nil ->
+        {:noreply, socket}
+
+      element ->
+        screenplay = socket.assigns.screenplay
+        choices = (element.data || %{})["choices"] || []
+        unlinked = Enum.reject(choices, & &1["linked_screenplay_id"])
+
+        case create_pages_for_choices(screenplay, element, unlinked) do
+          {:ok, updated_element} ->
+            {:noreply,
+             socket
+             |> update_element_in_list(updated_element)
+             |> assign(:linked_pages, load_linked_pages(screenplay))
+             |> reload_screenplays_tree()
+             |> put_flash(:info, gettext("Linked pages created."))}
+
+          {:error, _reason} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not create linked pages."))}
+        end
+    end
+  end
+
+  defp create_pages_for_choices(_screenplay, element, []), do: {:ok, element}
+
+  defp create_pages_for_choices(screenplay, element, [choice | rest]) do
+    case Screenplays.create_linked_page(screenplay, element, choice["id"]) do
+      {:ok, _child, updated_element} ->
+        create_pages_for_choices(screenplay, updated_element, rest)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp load_linked_pages(screenplay) do
+    Screenplays.list_child_screenplays(screenplay.id)
+    |> Map.new(fn s -> {s.id, s.name} end)
   end
 
   # ---------------------------------------------------------------------------

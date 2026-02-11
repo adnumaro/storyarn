@@ -14,9 +14,11 @@ defmodule Storyarn.Screenplays.NodeMapping do
   Skips non-mappeable groups and dual_dialogue (returns only mappeable entries).
   The first `scene_heading` group maps to an `entry` node; subsequent ones to `scene` nodes.
   """
-  def groups_to_node_attrs(groups) when is_list(groups) do
+  def groups_to_node_attrs(groups, opts \\ []) when is_list(groups) do
+    offset = if Keyword.get(opts, :child_page, false), do: 1, else: 0
+
     groups
-    |> Enum.with_index()
+    |> Enum.with_index(offset)
     |> Enum.flat_map(fn {group, index} ->
       case group_to_node_attrs(group, index) do
         nil -> []
@@ -252,7 +254,8 @@ defmodule Storyarn.Screenplays.NodeMapping do
         "id" => choice["id"],
         "text" => choice["text"] || "",
         "condition" => serialize_condition(choice["condition"]),
-        "instruction" => serialize_instruction(choice["instruction"])
+        "instruction" => serialize_instruction(choice["instruction"]),
+        "linked_screenplay_id" => choice["linked_screenplay_id"]
       }
     end)
   end

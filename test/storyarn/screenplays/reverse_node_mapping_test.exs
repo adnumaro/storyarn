@@ -151,6 +151,24 @@ defmodule Storyarn.Screenplays.ReverseNodeMappingTest do
       assert hd(choice["instruction"])["operator"] == "set"
     end
 
+    test "preserves linked_screenplay_id in response deserialization" do
+      data = %{
+        "text" => "Choose.",
+        "stage_directions" => "",
+        "menu_text" => "NPC",
+        "responses" => [
+          %{"id" => "c1", "text" => "Left", "condition" => nil, "instruction" => nil, "linked_screenplay_id" => 42},
+          %{"id" => "c2", "text" => "Right", "condition" => nil, "instruction" => nil, "linked_screenplay_id" => nil}
+        ]
+      }
+
+      result = ReverseNodeMapping.node_to_element_attrs(build_node(id: 54, type: "dialogue", data: data))
+      [_, _, %{data: %{"choices" => choices}}] = result
+
+      assert Enum.at(choices, 0)["linked_screenplay_id"] == 42
+      assert Enum.at(choices, 1)["linked_screenplay_id"] == nil
+    end
+
     test "passes through map condition and list instruction unchanged" do
       condition = %{"logic" => "any", "rules" => []}
       instruction = [%{"sheet" => "x", "variable" => "y", "operator" => "add", "value" => "1"}]
