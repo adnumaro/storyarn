@@ -10,17 +10,20 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Storyarn.Screenplays.CharacterExtension
+
   import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
   import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.InstructionBuilder
 
   @editable_types ~w(scene_heading action character dialogue parenthetical transition note section)
-  @stub_types ~w(dual_dialogue hub_marker jump_marker title_page)
+  @stub_types ~w(hub_marker jump_marker title_page)
 
   attr :element, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :variables, :list, default: []
   attr :linked_pages, :map, default: %{}
+  attr :continuations, :any, default: MapSet.new()
 
   def element_renderer(assigns) do
     assigns = assign(assigns, :editable, assigns.can_edit and assigns.element.type in @editable_types)
@@ -40,6 +43,10 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
       data-position={@element.position}
     >
       {render_block(assigns)}
+      <span
+        :if={@element.type == "character" and show_contd?(@element, @continuations)}
+        class="sp-contd"
+      >(CONT'D)</span>
     </div>
     """
   end
@@ -271,6 +278,26 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
   end
 
   # ---------------------------------------------------------------------------
+  # Dual dialogue block — two speakers side by side
+  # ---------------------------------------------------------------------------
+
+  defp render_block(%{element: %{type: "dual_dialogue"}} = assigns) do
+    data = assigns.element.data || %{}
+
+    assigns =
+      assigns
+      |> assign(:left, data["left"] || %{})
+      |> assign(:right, data["right"] || %{})
+
+    ~H"""
+    <div class="sp-dual-dialogue">
+      <.dual_column side="left" data={@left} element={@element} can_edit={@can_edit} />
+      <.dual_column side="right" data={@right} element={@element} can_edit={@can_edit} />
+    </div>
+    """
+  end
+
+  # ---------------------------------------------------------------------------
   # Interactive / flow-marker / stub blocks (Phase 5)
   # ---------------------------------------------------------------------------
 
@@ -288,6 +315,73 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
   defp render_block(assigns) do
     ~H"""
     <div class="sp-block">{@element.content}</div>
+    """
+  end
+
+  # ---------------------------------------------------------------------------
+  # Dual dialogue sub-component
+  # ---------------------------------------------------------------------------
+
+  attr :side, :string, required: true
+  attr :data, :map, required: true
+  attr :element, :map, required: true
+  attr :can_edit, :boolean, required: true
+
+  defp dual_column(assigns) do
+    ~H"""
+    <div class="sp-dual-column">
+      <div class="sp-dual-character">
+        <input
+          :if={@can_edit}
+          type="text"
+          value={@data["character"]}
+          placeholder={gettext("CHARACTER")}
+          class="sp-dual-character-input"
+          phx-blur="update_dual_dialogue"
+          phx-value-element-id={@element.id}
+          phx-value-side={@side}
+          phx-value-field="character"
+        />
+        <span :if={!@can_edit} class="sp-dual-character-text">{@data["character"]}</span>
+      </div>
+      <div :if={@data["parenthetical"] != nil} class="sp-dual-parenthetical">
+        <input
+          :if={@can_edit}
+          type="text"
+          value={@data["parenthetical"]}
+          placeholder={gettext("(direction)")}
+          class="sp-dual-paren-input"
+          phx-blur="update_dual_dialogue"
+          phx-value-element-id={@element.id}
+          phx-value-side={@side}
+          phx-value-field="parenthetical"
+        />
+        <span :if={!@can_edit} class="sp-dual-paren-text">{@data["parenthetical"]}</span>
+      </div>
+      <button
+        :if={@can_edit}
+        type="button"
+        class={["sp-dual-toggle-paren", @data["parenthetical"] != nil && "sp-dual-toggle-paren-active"]}
+        phx-click="toggle_dual_parenthetical"
+        phx-value-element-id={@element.id}
+        phx-value-side={@side}
+        title={gettext("Toggle parenthetical")}
+      >
+        <.icon name={if @data["parenthetical"] != nil, do: "minus", else: "plus"} class="size-3" />
+      </button>
+      <div class="sp-dual-dialogue-text">
+        <textarea
+          :if={@can_edit}
+          placeholder={gettext("Dialogue...")}
+          class="sp-dual-dialogue-input"
+          phx-blur="update_dual_dialogue"
+          phx-value-element-id={@element.id}
+          phx-value-side={@side}
+          phx-value-field="dialogue"
+        >{@data["dialogue"]}</textarea>
+        <span :if={!@can_edit} class="sp-dual-dialogue-readonly">{@data["dialogue"]}</span>
+      </div>
+    </div>
     """
   end
 
@@ -310,6 +404,11 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
       nil -> gettext("(deleted)")
       name -> name
     end
+  end
+
+  defp show_contd?(element, continuations) do
+    MapSet.member?(continuations, element.id) and
+      not CharacterExtension.has_contd?(element.content)
   end
 
   defp empty?(%{content: nil}), do: true

@@ -4,7 +4,7 @@
 >
 > **Priority:** Major feature
 >
-> **Last Updated:** February 11, 2026
+> **Last Updated:** February 12, 2026
 
 ## Overview
 
@@ -33,7 +33,7 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 | 6       | Flow Sync — Screenplay → Flow                       | Essential    | Done       |
 | 7       | Flow Sync — Flow → Screenplay                       | Essential    | Done       |
 | 8       | Response Branching & Linked Pages                   | Essential    | Done       |
-| 9       | Dual Dialogue & Advanced Formatting                 | Important    | Pending    |
+| 9       | Dual Dialogue & Advanced Formatting                 | Important    | Done       |
 | 10      | Title Page & Export                                 | Nice to Have | Pending    |
 
 ### Phase 1 — Summary (Done, 117 tests)
@@ -205,6 +205,39 @@ Screenplay is a **block-based screenplay editor** where each block maps to a flo
 - A.6: `screenplay_exists?/2` + `valid_navigation_target?/2` defense-in-depth on navigate
 
 **Key patterns:** Response choices store `linked_screenplay_id` in JSON data (no migration). `PageTreeBuilder` is pure (no DB) — converts recursive page data into flat node attrs + connection specs. Multi-page sync: all pages in a tree sync to the root's single flow. `linearize_tree/2` produces a recursive tree result with branches; `sync_from_flow` creates child pages from flow branches and recursively syncs each. Layout algorithm branches horizontally at response nodes with `@x_gap 350px` between columns.
+
+### Phase 9 — Summary (Done, 1315 total tests)
+
+**Tasks completed:** 9.1 CONT'D auto-detection + display (16 tests) | 9.2 Dual Dialogue block — data + CRUD + rendering (3+3 tests) | 9.3 Dual Dialogue flow sync — forward + reverse mapping (4 tests) | 9.4 Read mode — toggle, filtering, CSS
+
+**Files created:**
+- `lib/storyarn/screenplays/character_extension.ex` — pure module for parsing character name extensions (V.O., O.S., CONT'D); `parse/1` → `%{base_name, extensions}`, `base_name/1`, `has_contd?/1`
+- `test/storyarn/screenplays/character_extension_test.exs` — 16 tests (parse variants, base_name, has_contd?)
+- `docs/SCREENPLAY_FORMAT_CONVENTIONS.md` — 752 lines, 16 sections, 29 references; industry-standard screenplay formatting conventions
+
+**Files modified:**
+- `lib/storyarn/screenplays/element_grouping.ex` — added `compute_continuations/1` (O(n) single-pass over annotated elements), `@continuation_breakers` module attribute (8 types that reset speaker context), `check_continuation/3` helper
+- `lib/storyarn/screenplays/node_mapping.ex` — added `group_to_node_attrs` clause for `:dual_dialogue`, `map_dual_dialogue/1` (left → primary node data, right → `dual_dialogue` sub-map), `dual_side_to_node_data/1` (maps `character/parenthetical/dialogue` → `menu_text/stage_directions/text`)
+- `lib/storyarn/screenplays/reverse_node_mapping.ex` — added dual dialogue detection in `map_dialogue/1` (checks `data["dual_dialogue"]`), `map_dual_dialogue_reverse/2` (reverses node data back to dual_dialogue element), `non_empty_or_nil/1` (converts `""` → `nil` for parenthetical toggle semantics)
+- `lib/storyarn_web/live/screenplay_live/show.ex` — added `@valid_dual_sides`, `@valid_dual_fields` allowlists; `@read_mode_hidden_types` (7 types); `read_mode` assign + toggle handler; `visible_elements/2` (filters elements in read mode); `assign_elements_with_continuations/2` (recomputes CONT'D on every mutation); `do_update_dual_dialogue/5` with guard clauses; `do_toggle_dual_parenthetical/3`; `slash_command_attrs("dual_dialogue")` with default data + content clear
+- `lib/storyarn_web/components/screenplay/element_renderer.ex` — added `continuations` attr; removed `dual_dialogue` from `@stub_types`; `render_block` for `dual_dialogue` (grid layout with `dual_column` sub-component); `dual_column/1` private component (character input, optional parenthetical, dialogue textarea, toggle button); CONT'D badge span; `show_contd?/2` (MapSet check + duplicate suppression)
+- `assets/css/screenplay.css` — `.sp-contd` styles (inline badge); `.sp-dual_dialogue` outer margin; `.sp-dual-dialogue` grid layout (1fr 1fr, gap 24px); `.sp-dual-column`, `.sp-dual-character-input`, `.sp-dual-paren-input`, `.sp-dual-dialogue-input`, `.sp-dual-toggle-paren` styles with focus/hover/dark mode; `.screenplay-read-mode` (cursor default, empty hidden, contenteditable pointer-events disabled)
+- `test/storyarn/screenplays/element_grouping_test.exs` — continuation detection tests
+- `test/storyarn/screenplays/node_mapping_test.exs` — 3 dual_dialogue mapping tests (basic, parentheticals, empty data)
+- `test/storyarn/screenplays/reverse_node_mapping_test.exs` — 3 dual_dialogue reverse mapping tests (basic, parentheticals, standard fallback)
+- `test/storyarn/screenplays/flow_sync_test.exs` — 4 dual dialogue sync tests (sync_to_flow, sync_from_flow, round-trip, re-sync update)
+- `test/storyarn_web/live/screenplay_live/show_test.exs` — dual dialogue CRUD tests, read mode toggle tests, CONT'D display tests
+
+**Audit fixes (Phase 9 audit):**
+- 1.1: Fixed `has_contd?` substring false positive — changed from `String.contains?("CONT'D")` to parsing extensions and checking `Enum.any?(&(String.upcase(&1) == "CONT'D"))` (prevents matching "CONT'D" inside non-extension substrings)
+- 1.3: Fixed stale `content` field — added `content: ""` to `slash_command_attrs("dual_dialogue")` to clear previous content when converting to dual dialogue
+- 3.1: Documented `String.to_atom` usage in `classify_element_type` — expanded comment explaining why `to_atom` (not `to_existing_atom`) is correct (orphan types like `:parenthetical` don't exist as atoms elsewhere)
+- 3.2: Documented CSS naming inconsistency — added comment explaining `.sp-dual_dialogue` (auto-generated from element type) vs `.sp-dual-dialogue` (inner grid component class)
+
+**Not fixed (by design):**
+- Parenthetical round-trip (`""` → `nil`): correct behavior — flow model has no toggle concept, hiding empty parentheticals on sync gives cleaner UI
+
+**Key patterns:** `CharacterExtension` is pure (no DB) for testability. CONT'D detection uses `compute_continuations/1` which builds on `compute_dialogue_groups/1` — recomputed on every element mutation via `assign_elements_with_continuations/2` (O(n), negligible for typical element counts). Dual dialogue stores both speakers in a single element's `data` field (`left`/`right` sub-maps with `character/parenthetical/dialogue`). Forward mapping puts left as primary node data and right under `dual_dialogue` key. `@valid_dual_sides` + `@valid_dual_fields` guard clauses reject invalid input silently. Read mode AND's `can_edit` with `!@read_mode` and filters interactive types via `visible_elements/2` + hides empty elements via CSS.
 
 ---
 
@@ -743,63 +776,9 @@ The simple vertical stack is replaced with a tree-aware layout:
 
 ---
 
-## Phase 9: Dual Dialogue & Advanced Formatting
+## Phase 9: Dual Dialogue & Advanced Formatting (Done)
 
-### 9.1 Dual Dialogue Block
-
-Two characters speaking simultaneously, rendered side by side:
-
-```elixir
-def dual_dialogue_block(assigns) do
-  ~H"""
-  <div class="sp-dual-dialogue">
-    <div class="sp-dual-column">
-      <.character_input
-        value={@element.data["left"]["character"]}
-        sheet_id={@element.data["left"]["sheet_id"]}
-        side="left"
-        element_id={@element.id}
-        all_sheets={@all_sheets}
-      />
-      <div :if={@element.data["left"]["parenthetical"]} class="sp-parenthetical">
-        <%= @element.data["left"]["parenthetical"] %>
-      </div>
-      <.dialogue_input
-        value={@element.data["left"]["dialogue"]}
-        side="left"
-        element_id={@element.id}
-      />
-    </div>
-
-    <div class="sp-dual-column">
-      <.character_input ... side="right" ... />
-      <div :if={...} class="sp-parenthetical">...</div>
-      <.dialogue_input ... side="right" ... />
-    </div>
-  </div>
-  """
-end
-```
-
-### 9.2 Character Extensions
-
-Support standard extensions after character name:
-
-```
-JAIME (V.O.)      → Voice Over
-JAIME (O.S.)      → Off Screen
-JAIME (CONT'D)    → Continued (auto-detected when same speaker as previous)
-```
-
-The character element auto-appends `(CONT'D)` when the same speaker had the previous dialogue block.
-
-### 9.3 Formatting Preview / Read Mode
-
-A read-only mode that hides all interactive blocks and shows pure screenplay formatting:
-- No condition/instruction/response blocks visible
-- No note blocks visible
-- Perfect for sharing with non-technical collaborators
-- Toggle via button in toolbar
+Covered in [Phase 9 Summary](#phase-9--summary-done-1315-total-tests) above. Reference code removed — see committed files.
 
 ---
 

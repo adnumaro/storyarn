@@ -198,14 +198,83 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
     end
   end
 
+  describe "group_to_node_attrs/2 dual_dialogue" do
+    test "maps dual_dialogue to dialogue node with dual_dialogue data" do
+      group = %{
+        type: :dual_dialogue,
+        elements: [
+          el(%{
+            id: 1,
+            type: "dual_dialogue",
+            data: %{
+              "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => "Hello!"},
+              "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hi there!"}
+            }
+          })
+        ],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+
+      assert result.type == "dialogue"
+      assert result.source == "screenplay_sync"
+      assert result.element_ids == [1]
+      assert result.data["menu_text"] == "ALICE"
+      assert result.data["text"] == "Hello!"
+      assert result.data["stage_directions"] == ""
+      assert result.data["responses"] == []
+
+      dual = result.data["dual_dialogue"]
+      assert dual["menu_text"] == "BOB"
+      assert dual["text"] == "Hi there!"
+      assert dual["stage_directions"] == ""
+    end
+
+    test "maps dual_dialogue with parentheticals to stage_directions" do
+      group = %{
+        type: :dual_dialogue,
+        elements: [
+          el(%{
+            id: 2,
+            type: "dual_dialogue",
+            data: %{
+              "left" => %{"character" => "ALICE", "parenthetical" => "whispering", "dialogue" => "Psst."},
+              "right" => %{"character" => "BOB", "parenthetical" => "shouting", "dialogue" => "WHAT?"}
+            }
+          })
+        ],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+
+      assert result.data["stage_directions"] == "whispering"
+      assert result.data["dual_dialogue"]["stage_directions"] == "shouting"
+    end
+
+    test "maps dual_dialogue with empty data to default values" do
+      group = %{
+        type: :dual_dialogue,
+        elements: [el(%{id: 3, type: "dual_dialogue", data: %{}})],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+
+      assert result.type == "dialogue"
+      assert result.data["menu_text"] == ""
+      assert result.data["text"] == ""
+      assert result.data["stage_directions"] == ""
+      assert result.data["dual_dialogue"]["menu_text"] == ""
+      assert result.data["dual_dialogue"]["text"] == ""
+      assert result.data["dual_dialogue"]["stage_directions"] == ""
+    end
+  end
+
   describe "group_to_node_attrs/2 non-mappeable" do
     test "returns nil for non-mappeable groups" do
       group = %{type: :non_mappeable, elements: [el(%{id: 1, type: "note", content: "A note"})], group_id: nil}
-      assert NodeMapping.group_to_node_attrs(group) == nil
-    end
-
-    test "returns nil for dual_dialogue" do
-      group = %{type: :dual_dialogue, elements: [el(%{id: 1, type: "dual_dialogue"})], group_id: nil}
       assert NodeMapping.group_to_node_attrs(group) == nil
     end
   end

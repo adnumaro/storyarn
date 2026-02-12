@@ -75,16 +75,16 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       assert html =~ ~s(data-position="#{el.position}")
     end
 
-    test "interactive blocks render as stubs with type label", %{conn: conn, project: project} do
+    test "flow marker blocks render as stubs with type label", %{conn: conn, project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "dual_dialogue", content: ""})
       element_fixture(screenplay, %{type: "hub_marker", content: ""})
+      element_fixture(screenplay, %{type: "jump_marker", content: ""})
 
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
       assert html =~ "sp-stub-badge"
-      assert html =~ "Dual Dialogue"
       assert html =~ "Hub Marker"
+      assert html =~ "Jump Marker"
     end
 
     test "page break renders as visual separator", %{conn: conn, project: project} do
@@ -1753,6 +1753,295 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
     end
 
     # -------------------------------------------------------------------------
+    # Phase 9.2 — Dual dialogue block
+    # -------------------------------------------------------------------------
+
+    test "dual dialogue renders 2-column layout instead of stub", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+
+      element_fixture(screenplay, %{
+        type: "dual_dialogue",
+        content: "",
+        data: %{
+          "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => "Hello."},
+          "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hi there."}
+        }
+      })
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "sp-dual-dialogue"
+      assert html =~ "ALICE"
+      assert html =~ "BOB"
+      refute html =~ "sp-stub-badge"
+    end
+
+    test "dual dialogue shows parenthetical when not nil", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+
+      element_fixture(screenplay, %{
+        type: "dual_dialogue",
+        content: "",
+        data: %{
+          "left" => %{"character" => "ALICE", "parenthetical" => "(whispering)", "dialogue" => "Hello."},
+          "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hi."}
+        }
+      })
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "(whispering)"
+      assert html =~ "sp-dual-parenthetical"
+    end
+
+    test "dual dialogue hides parenthetical when nil", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+
+      element_fixture(screenplay, %{
+        type: "dual_dialogue",
+        content: "",
+        data: %{
+          "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => "Hello."},
+          "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hi."}
+        }
+      })
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      refute html =~ "sp-dual-parenthetical"
+    end
+
+    test "slash command creates dual_dialogue with default data", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
+      view |> render_click("select_slash_command", %{"type" => "dual_dialogue"})
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.type == "dual_dialogue"
+      assert updated.data["left"]["character"] == ""
+      assert updated.data["left"]["dialogue"] == ""
+      assert is_nil(updated.data["left"]["parenthetical"])
+      assert updated.data["right"]["character"] == ""
+      assert updated.data["right"]["dialogue"] == ""
+      assert is_nil(updated.data["right"]["parenthetical"])
+    end
+
+    test "update_dual_dialogue updates left character", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "dual_dialogue",
+          content: "",
+          data: %{
+            "left" => %{"character" => "", "parenthetical" => nil, "dialogue" => ""},
+            "right" => %{"character" => "", "parenthetical" => nil, "dialogue" => ""}
+          }
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_dual_dialogue", %{
+        "element-id" => to_string(el.id),
+        "side" => "left",
+        "field" => "character",
+        "value" => "ALICE"
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.data["left"]["character"] == "ALICE"
+    end
+
+    test "update_dual_dialogue updates right dialogue", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "dual_dialogue",
+          content: "",
+          data: %{
+            "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => "Hello."},
+            "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => ""}
+          }
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_dual_dialogue", %{
+        "element-id" => to_string(el.id),
+        "side" => "right",
+        "field" => "dialogue",
+        "value" => "Hi there."
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.data["right"]["dialogue"] == "Hi there."
+      # Left side unchanged
+      assert updated.data["left"]["character"] == "ALICE"
+    end
+
+    test "update_dual_dialogue rejects invalid side", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "dual_dialogue",
+          content: "",
+          data: %{
+            "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => ""},
+            "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => ""}
+          }
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_dual_dialogue", %{
+        "element-id" => to_string(el.id),
+        "side" => "middle",
+        "field" => "character",
+        "value" => "HACKER"
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.data["left"]["character"] == "ALICE"
+      assert updated.data["right"]["character"] == "BOB"
+    end
+
+    test "toggle_dual_parenthetical turns on parenthetical", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "dual_dialogue",
+          content: "",
+          data: %{
+            "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => "Hello."},
+            "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hi."}
+          }
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("toggle_dual_parenthetical", %{
+        "element-id" => to_string(el.id),
+        "side" => "left"
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.data["left"]["parenthetical"] == ""
+    end
+
+    test "toggle_dual_parenthetical turns off parenthetical", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "dual_dialogue",
+          content: "",
+          data: %{
+            "left" => %{"character" => "ALICE", "parenthetical" => "(yelling)", "dialogue" => "Hello."},
+            "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hi."}
+          }
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("toggle_dual_parenthetical", %{
+        "element-id" => to_string(el.id),
+        "side" => "left"
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert is_nil(updated.data["left"]["parenthetical"])
+    end
+
+    test "delete dual_dialogue element removes it", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "dual_dialogue",
+          content: "",
+          data: %{
+            "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => "Hello."},
+            "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hi."}
+          }
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("delete_element", %{"id" => to_string(el.id)})
+
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert elements == []
+    end
+
+    test "viewer cannot edit dual dialogue", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "dual_dialogue",
+          content: "",
+          data: %{
+            "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => "Hello."},
+            "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hi."}
+          }
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_dual_dialogue", %{
+        "element-id" => to_string(el.id),
+        "side" => "left",
+        "field" => "character",
+        "value" => "HACKER"
+      })
+
+      assert render(view) =~ "permission"
+      unchanged = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert unchanged.data["left"]["character"] == "ALICE"
+    end
+
+    test "viewer sees read-only dual dialogue", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+
+      element_fixture(screenplay, %{
+        type: "dual_dialogue",
+        content: "",
+        data: %{
+          "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => "Hello."},
+          "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hi."}
+        }
+      })
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "sp-dual-dialogue"
+      assert html =~ "ALICE"
+      assert html =~ "BOB"
+      # Should not have edit inputs
+      refute html =~ "sp-dual-character-input"
+      refute html =~ "sp-dual-dialogue-input"
+    end
+
+    # -------------------------------------------------------------------------
     # Phase 5 — Project variables loaded in mount
     # -------------------------------------------------------------------------
 
@@ -1772,6 +2061,129 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       assert html =~ "screenplay-page"
       assert html =~ "Walk."
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  # Phase 9.4 — Read mode
+  # -------------------------------------------------------------------------
+
+  describe "read mode" do
+    setup :register_and_log_in_user
+
+    setup %{user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      %{project: project}
+    end
+
+    test "toggle_read_mode activates read mode", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "action", content: "Walk."})
+
+      {:ok, view, html} = live(conn, show_url(project, screenplay))
+
+      refute html =~ "screenplay-read-mode"
+
+      html = view |> element(~s(button[phx-click="toggle_read_mode"])) |> render_click()
+
+      assert html =~ "screenplay-read-mode"
+    end
+
+    test "toggle_read_mode twice deactivates read mode", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "action", content: "Walk."})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> element(~s(button[phx-click="toggle_read_mode"])) |> render_click()
+      html = view |> element(~s(button[phx-click="toggle_read_mode"])) |> render_click()
+
+      refute html =~ "screenplay-read-mode"
+    end
+
+    test "read mode hides conditional elements", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "action", content: "Walk.", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "conditional",
+        position: 1,
+        data: %{"condition" => %{"logic" => "all", "rules" => []}}
+      })
+
+      {:ok, view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "sp-conditional"
+
+      html = view |> element(~s(button[phx-click="toggle_read_mode"])) |> render_click()
+
+      refute html =~ "sp-conditional"
+      assert html =~ "Walk."
+    end
+
+    test "read mode hides instruction elements", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "action", content: "Walk.", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "instruction",
+        position: 1,
+        data: %{"assignments" => []}
+      })
+
+      {:ok, view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "sp-instruction"
+
+      html = view |> element(~s(button[phx-click="toggle_read_mode"])) |> render_click()
+
+      refute html =~ "sp-instruction"
+    end
+
+    test "read mode hides note elements", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "action", content: "Walk.", position: 0})
+      element_fixture(screenplay, %{type: "note", content: "Director note", position: 1})
+
+      {:ok, view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "Director note"
+
+      html = view |> element(~s(button[phx-click="toggle_read_mode"])) |> render_click()
+
+      refute html =~ "Director note"
+    end
+
+    test "read mode preserves scene_heading, character, dialogue, action, transition, dual_dialogue",
+         %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+      element_fixture(screenplay, %{type: "action", content: "He enters.", position: 1})
+      element_fixture(screenplay, %{type: "character", content: "JOHN", position: 2})
+      element_fixture(screenplay, %{type: "dialogue", content: "Hello.", position: 3})
+      element_fixture(screenplay, %{type: "transition", content: "CUT TO:", position: 4})
+
+      element_fixture(screenplay, %{
+        type: "dual_dialogue",
+        position: 5,
+        data: %{
+          "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => "Hi!"},
+          "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hey!"}
+        }
+      })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      html = view |> element(~s(button[phx-click="toggle_read_mode"])) |> render_click()
+
+      assert html =~ "sp-scene_heading"
+      assert html =~ "sp-action"
+      assert html =~ "sp-character"
+      assert html =~ "sp-dialogue"
+      assert html =~ "sp-transition"
+      assert html =~ "sp-dual_dialogue"
+      assert html =~ "INT. OFFICE - DAY"
+      assert html =~ "Hello."
     end
   end
 end

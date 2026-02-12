@@ -66,6 +66,33 @@
   flex-shrink: 0;
 }
 
+/* Toolbar buttons */
+.sp-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 1px solid var(--color-base-300);
+  border-radius: 6px;
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+  cursor: pointer;
+}
+
+.sp-toolbar-btn:hover {
+  background-color: var(--color-base-200);
+}
+
+.sp-toolbar-btn-active {
+  background-color: oklch(var(--p));
+  color: oklch(var(--pc));
+  border-color: oklch(var(--p));
+}
+
+.sp-toolbar-btn-active:hover {
+  background-color: oklch(var(--p) / 0.85);
+}
+
 /* Sync controls */
 .sp-sync-btn {
   display: inline-flex;
@@ -192,6 +219,17 @@
   margin-left: 192px;
   margin-top: 12px;
   margin-bottom: 0;
+}
+
+/* CONT'D auto-badge — computed, not stored */
+.sp-contd {
+  font-family: "Courier Prime", "Courier New", monospace;
+  font-size: 12pt;
+  text-transform: uppercase;
+  opacity: 0.5;
+  margin-left: 0.5ch;
+  user-select: none;
+  pointer-events: none;
 }
 
 /* Parenthetical — indented, narrow width */
@@ -511,6 +549,148 @@
 }
 
 /* ---------------------------------------------------------------------------
+   Dual dialogue — two speakers side by side
+   Note: .sp-dual_dialogue (underscore) = auto-generated from sp-#{element.type}.
+         .sp-dual-dialogue (hyphen) = inner grid component class.
+   --------------------------------------------------------------------------- */
+
+.sp-dual_dialogue {
+  margin: 12px 0;
+}
+
+.sp-dual-dialogue {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 8px 0;
+}
+
+.sp-dual-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sp-dual-character {
+  text-align: center;
+}
+
+.sp-dual-character-input {
+  width: 100%;
+  text-align: center;
+  text-transform: uppercase;
+  font-family: "Courier Prime", "Courier New", monospace;
+  font-size: 12pt;
+  font-weight: bold;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 4px;
+  color: var(--color-base-content);
+  outline: none;
+}
+
+.sp-dual-character-input:focus {
+  border-color: var(--color-base-300);
+  background-color: var(--color-base-200);
+}
+
+.sp-dual-character-input::placeholder {
+  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+  font-weight: normal;
+}
+
+.sp-dual-character-text {
+  display: block;
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.sp-dual-parenthetical {
+  text-align: center;
+}
+
+.sp-dual-paren-input {
+  width: 100%;
+  text-align: center;
+  font-family: "Courier Prime", "Courier New", monospace;
+  font-size: 12pt;
+  font-style: italic;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 4px;
+  color: var(--color-base-content);
+  outline: none;
+}
+
+.sp-dual-paren-input:focus {
+  border-color: var(--color-base-300);
+  background-color: var(--color-base-200);
+}
+
+.sp-dual-paren-input::placeholder {
+  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+  font-style: normal;
+}
+
+.sp-dual-paren-text {
+  font-style: italic;
+}
+
+.sp-dual-toggle-paren {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.sp-dual-toggle-paren:hover {
+  color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+  background-color: var(--color-base-200);
+}
+
+.sp-dual-toggle-paren-active {
+  color: var(--color-primary);
+}
+
+.sp-dual-dialogue-input {
+  width: 100%;
+  min-height: 3em;
+  font-family: "Courier Prime", "Courier New", monospace;
+  font-size: 12pt;
+  line-height: 1;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 4px;
+  color: var(--color-base-content);
+  outline: none;
+  resize: vertical;
+}
+
+.sp-dual-dialogue-input:focus {
+  border-color: var(--color-base-300);
+  background-color: var(--color-base-200);
+}
+
+.sp-dual-dialogue-input::placeholder {
+  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+}
+
+.sp-dual-dialogue-readonly {
+  white-space: pre-wrap;
+}
+
+/* ---------------------------------------------------------------------------
    Stub blocks — interactive/flow types (Phase 5)
    --------------------------------------------------------------------------- */
 
@@ -650,4 +830,22 @@
 
 .slash-menu-group[hidden] {
   display: none;
+}
+
+/* ==========================================================================
+   Read mode
+   ========================================================================== */
+
+.screenplay-read-mode .screenplay-element {
+  cursor: default;
+}
+
+.screenplay-read-mode .sp-empty {
+  display: none;
+}
+
+.screenplay-read-mode [contenteditable="true"] {
+  pointer-events: none;
+  -webkit-user-modify: read-only;
+  caret-color: transparent;
 }

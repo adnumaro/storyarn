@@ -190,6 +190,60 @@ defmodule Storyarn.Screenplays.ReverseNodeMappingTest do
     end
   end
 
+  describe "node_to_element_attrs/1 — dialogue (dual_dialogue)" do
+    test "dialogue with dual_dialogue data produces dual_dialogue element" do
+      data = %{
+        "text" => "Hello!",
+        "stage_directions" => "",
+        "menu_text" => "ALICE",
+        "responses" => [],
+        "dual_dialogue" => %{
+          "text" => "Hi there!",
+          "stage_directions" => "",
+          "menu_text" => "BOB"
+        }
+      }
+
+      result = ReverseNodeMapping.node_to_element_attrs(build_node(id: 55, type: "dialogue", data: data))
+
+      assert [%{type: "dual_dialogue", source_node_id: 55, data: dd_data}] = result
+      assert dd_data["left"]["character"] == "ALICE"
+      assert dd_data["left"]["dialogue"] == "Hello!"
+      assert dd_data["left"]["parenthetical"] == nil
+      assert dd_data["right"]["character"] == "BOB"
+      assert dd_data["right"]["dialogue"] == "Hi there!"
+      assert dd_data["right"]["parenthetical"] == nil
+    end
+
+    test "dialogue without dual_dialogue data produces standard elements" do
+      data = %{"text" => "Hello.", "stage_directions" => "", "menu_text" => "JOHN", "responses" => []}
+      result = ReverseNodeMapping.node_to_element_attrs(build_node(id: 56, type: "dialogue", data: data))
+
+      types = Enum.map(result, & &1.type)
+      assert types == ["character", "dialogue"]
+    end
+
+    test "dual_dialogue with parentheticals populates parenthetical fields" do
+      data = %{
+        "text" => "Psst.",
+        "stage_directions" => "whispering",
+        "menu_text" => "ALICE",
+        "responses" => [],
+        "dual_dialogue" => %{
+          "text" => "WHAT?",
+          "stage_directions" => "shouting",
+          "menu_text" => "BOB"
+        }
+      }
+
+      result = ReverseNodeMapping.node_to_element_attrs(build_node(id: 57, type: "dialogue", data: data))
+
+      assert [%{type: "dual_dialogue", data: dd_data}] = result
+      assert dd_data["left"]["parenthetical"] == "whispering"
+      assert dd_data["right"]["parenthetical"] == "shouting"
+    end
+  end
+
   describe "node_to_element_attrs/1 — condition" do
     test "produces conditional with condition data" do
       condition = %{"logic" => "all", "rules" => [%{"sheet" => "mc", "variable" => "hp", "operator" => "greater_than", "value" => "50"}]}

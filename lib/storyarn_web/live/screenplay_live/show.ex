@@ -10,6 +10,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Screenplays
+  alias Storyarn.Screenplays.ElementGrouping
   alias Storyarn.Screenplays.FlowSync
   alias Storyarn.Screenplays.LinkedPageCrud
   alias Storyarn.Screenplays.Screenplay
@@ -21,6 +22,13 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
   # Standard types eligible for auto-detection on content update
   @auto_detect_types ~w(action scene_heading character dialogue parenthetical transition)
+
+  # Dual dialogue field validation
+  @valid_dual_sides ~w(left right)
+  @valid_dual_fields ~w(character parenthetical dialogue)
+
+  # Types hidden in read mode (interactive, utility, and stub blocks)
+  @read_mode_hidden_types ~w(conditional instruction response note hub_marker jump_marker title_page)
 
   # Server-side next-type inference (Enter key creates the logical next element).
   # Note/section types are excluded intentionally — Enter always creates "action" for them.
@@ -74,6 +82,14 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           <span :if={Screenplay.draft?(@screenplay)} class="screenplay-toolbar-badge screenplay-toolbar-draft">
             {gettext("Draft")}
           </span>
+          <button
+            type="button"
+            class={["sp-toolbar-btn", @read_mode && "sp-toolbar-btn-active"]}
+            phx-click="toggle_read_mode"
+            title={if @read_mode, do: gettext("Exit read mode"), else: gettext("Read mode")}
+          >
+            <.icon name={if @read_mode, do: "pencil", else: "book-open"} class="size-4" />
+          </button>
           <span class="screenplay-toolbar-separator"></span>
           <%= case @link_status do %>
             <% :unlinked -> %>
@@ -134,24 +150,29 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           <% end %>
         </div>
       </div>
-      <div id="screenplay-page" class="screenplay-page" phx-hook="ScreenplayEditorPage">
+      <div
+        id="screenplay-page"
+        class={["screenplay-page", @read_mode && "screenplay-read-mode"]}
+        phx-hook="ScreenplayEditorPage"
+      >
         <div
-          :if={@elements == []}
+          :if={@elements == [] && !@read_mode}
           class="screenplay-element sp-action sp-empty sp-empty-state"
           phx-click={@can_edit && "create_first_element"}
         >
           <div class="sp-block" data-placeholder={gettext("Start typing or press / for commands")}></div>
         </div>
         <.element_renderer
-          :for={element <- @elements}
+          :for={element <- visible_elements(@elements, @read_mode)}
           element={element}
-          can_edit={@can_edit}
+          can_edit={@can_edit && !@read_mode}
           variables={@project_variables}
           linked_pages={@linked_pages}
+          continuations={@continuations}
         />
       </div>
       <.slash_command_menu
-        :if={@slash_menu_element_id}
+        :if={@slash_menu_element_id && !@read_mode}
         element_id={@slash_menu_element_id}
       />
     </Layouts.project>
@@ -190,9 +211,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           |> assign(:can_edit, can_edit)
           |> assign(:screenplay, screenplay)
           |> assign(:screenplays_tree, screenplays_tree)
-          |> assign(:elements, elements)
+          |> assign_elements_with_continuations(elements)
           |> assign(:project_variables, project_variables)
           |> assign(:slash_menu_element_id, nil)
+          |> assign(:read_mode, false)
           |> assign(:link_status, link_status)
           |> assign(:linked_flow, linked_flow)
           |> assign(:linked_pages, load_linked_pages(screenplay))
@@ -205,6 +227,15 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
          |> put_flash(:error, gettext("You don't have access to this project."))
          |> redirect(to: ~p"/workspaces")}
     end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Read mode
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_event("toggle_read_mode", _params, socket) do
+    {:noreply, assign(socket, :read_mode, !socket.assigns.read_mode)}
   end
 
   # ---------------------------------------------------------------------------
@@ -238,7 +269,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
           {:noreply,
            socket
-           |> assign(:elements, elements)
+           |> assign_elements_with_continuations(elements)
            |> push_event("focus_element", %{id: new_element.id})}
 
         {:error, _} ->
@@ -398,6 +429,30 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       update_choice_field(socket, id, choice_id, fn choice ->
         Map.put(choice, "instruction", Instruction.sanitize(assignments))
       end)
+    end)
+  end
+
+  # ---------------------------------------------------------------------------
+  # Dual dialogue handlers
+  # ---------------------------------------------------------------------------
+
+  def handle_event(
+        "update_dual_dialogue",
+        %{"element-id" => id, "side" => side, "field" => field, "value" => value},
+        socket
+      ) do
+    with_edit_permission(socket, fn ->
+      do_update_dual_dialogue(socket, id, side, field, value)
+    end)
+  end
+
+  def handle_event(
+        "toggle_dual_parenthetical",
+        %{"element-id" => id, "side" => side},
+        socket
+      ) do
+    with_edit_permission(socket, fn ->
+      do_toggle_dual_parenthetical(socket, id, side)
     end)
   end
 
@@ -605,7 +660,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
             {:noreply,
              socket
-             |> assign(:elements, elements)
+             |> assign_elements_with_continuations(elements)
              |> push_event("focus_element", %{id: new_element.id})}
 
           {:error, _} ->
@@ -630,7 +685,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       {:ok, _} ->
         reloaded = Screenplays.list_elements(socket.assigns.screenplay.id)
 
-        socket = assign(socket, :elements, reloaded)
+        socket = assign_elements_with_continuations(socket, reloaded)
 
         socket =
           if prev do
@@ -679,7 +734,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   defp apply_slash_command(socket, element, type) do
-    case Screenplays.update_element(element, %{type: type}) do
+    case Screenplays.update_element(element, slash_command_attrs(type)) do
       {:ok, updated} ->
         {:noreply,
          socket
@@ -694,6 +749,71 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
          |> put_flash(:error, gettext("Could not change element type."))}
     end
   end
+
+  defp slash_command_attrs("dual_dialogue") do
+    %{
+      type: "dual_dialogue",
+      content: "",
+      data: %{
+        "left" => %{"character" => "", "parenthetical" => nil, "dialogue" => ""},
+        "right" => %{"character" => "", "parenthetical" => nil, "dialogue" => ""}
+      }
+    }
+  end
+
+  defp slash_command_attrs(type), do: %{type: type}
+
+  defp do_update_dual_dialogue(socket, id, side, field, value)
+       when side in @valid_dual_sides and field in @valid_dual_fields do
+    case find_element(socket, id) do
+      nil ->
+        {:noreply, socket}
+
+      element ->
+        data = element.data || %{}
+        side_data = data[side] || %{}
+        updated_side = Map.put(side_data, field, value)
+        updated_data = Map.put(data, side, updated_side)
+
+        case Screenplays.update_element(element, %{data: updated_data}) do
+          {:ok, updated} ->
+            {:noreply, update_element_in_list(socket, updated)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not update dual dialogue."))}
+        end
+    end
+  end
+
+  defp do_update_dual_dialogue(socket, _id, _side, _field, _value), do: {:noreply, socket}
+
+  defp do_toggle_dual_parenthetical(socket, id, side) when side in @valid_dual_sides do
+    case find_element(socket, id) do
+      nil ->
+        {:noreply, socket}
+
+      element ->
+        data = element.data || %{}
+        side_data = data[side] || %{}
+
+        updated_side =
+          if side_data["parenthetical"] != nil,
+            do: Map.put(side_data, "parenthetical", nil),
+            else: Map.put(side_data, "parenthetical", "")
+
+        updated_data = Map.put(data, side, updated_side)
+
+        case Screenplays.update_element(element, %{data: updated_data}) do
+          {:ok, updated} ->
+            {:noreply, update_element_in_list(socket, updated)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not toggle parenthetical."))}
+        end
+    end
+  end
+
+  defp do_toggle_dual_parenthetical(socket, _id, _side), do: {:noreply, socket}
 
   defp do_split_and_open_slash_menu(socket, id, pos) do
     case find_element(socket, id) do
@@ -710,7 +830,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
             {:noreply,
              socket
-             |> assign(:elements, elements)
+             |> assign_elements_with_continuations(elements)
              |> assign(:slash_menu_element_id, new_element.id)}
 
           {:error, _} ->
@@ -848,7 +968,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
           {:noreply,
            socket
-           |> assign(:elements, elements)
+           |> assign_elements_with_continuations(elements)
            |> put_flash(:info, gettext("Screenplay updated from flow."))}
 
         {:error, :no_entry_node} ->
@@ -1025,6 +1145,12 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # Private helpers — general utilities
   # ---------------------------------------------------------------------------
 
+  defp visible_elements(elements, false), do: elements
+
+  defp visible_elements(elements, true) do
+    Enum.reject(elements, &(&1.type in @read_mode_hidden_types))
+  end
+
   defp detect_link_status(%Screenplay{linked_flow_id: nil}), do: {:unlinked, nil}
 
   defp detect_link_status(%Screenplay{project_id: project_id, linked_flow_id: flow_id}) do
@@ -1124,7 +1250,13 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         if el.id == updated_element.id, do: updated_element, else: el
       end)
 
-    assign(socket, :elements, elements)
+    assign_elements_with_continuations(socket, elements)
+  end
+
+  defp assign_elements_with_continuations(socket, elements) do
+    socket
+    |> assign(:elements, elements)
+    |> assign(:continuations, ElementGrouping.compute_continuations(elements))
   end
 
   defp update_choice_field(socket, element_id, choice_id, update_fn) do

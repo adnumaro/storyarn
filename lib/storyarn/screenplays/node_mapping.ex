@@ -71,8 +71,11 @@ defmodule Storyarn.Screenplays.NodeMapping do
     map_jump_marker(element)
   end
 
+  def group_to_node_attrs(%{type: :dual_dialogue, elements: [element]}, _index) do
+    map_dual_dialogue(element)
+  end
+
   def group_to_node_attrs(%{type: :non_mappeable}, _index), do: nil
-  def group_to_node_attrs(%{type: :dual_dialogue}, _index), do: nil
   def group_to_node_attrs(_group, _index), do: nil
 
   # ---------------------------------------------------------------------------
@@ -238,6 +241,39 @@ defmodule Storyarn.Screenplays.NodeMapping do
       },
       element_ids: [element.id],
       source: "screenplay_sync"
+    }
+  end
+
+  defp map_dual_dialogue(element) do
+    data = element.data || %{}
+    left = dual_side_to_node_data(data["left"])
+    right = dual_side_to_node_data(data["right"])
+
+    %{
+      type: "dialogue",
+      data:
+        Map.merge(left, %{
+          "speaker_sheet_id" => nil,
+          "audio_asset_id" => nil,
+          "technical_id" => "",
+          "localization_id" => "",
+          "input_condition" => "",
+          "output_instruction" => "",
+          "responses" => [],
+          "dual_dialogue" => right
+        }),
+      element_ids: [element.id],
+      source: "screenplay_sync"
+    }
+  end
+
+  defp dual_side_to_node_data(nil), do: %{"text" => "", "stage_directions" => "", "menu_text" => ""}
+
+  defp dual_side_to_node_data(side) do
+    %{
+      "text" => side["dialogue"] || "",
+      "stage_directions" => side["parenthetical"] || "",
+      "menu_text" => side["character"] || ""
     }
   end
 

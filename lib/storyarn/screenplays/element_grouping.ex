@@ -3,10 +3,11 @@ defmodule Storyarn.Screenplays.ElementGrouping do
   Computes dialogue groups and logical element groups from adjacency.
 
   Dialogue groups are computed dynamically — no stored `group_id` (Edge Case F).
+  Continuation markers (CONT'D) are also computed from adjacency.
   This module provides O(n) single-pass algorithms over element lists.
   """
 
-  alias Storyarn.Screenplays.ScreenplayElement
+  alias Storyarn.Screenplays.{CharacterExtension, ScreenplayElement}
 
   @dialogue_group_types ScreenplayElement.dialogue_group_types()
   @non_mappeable_types ScreenplayElement.non_mappeable_types()
@@ -41,6 +42,52 @@ defmodule Storyarn.Screenplays.ElementGrouping do
       end)
 
     result
+  end
+
+  # Types that reset the speaker context for CONT'D detection
+  @continuation_breakers ~w(scene_heading transition page_break conditional instruction response dual_dialogue hub_marker jump_marker)
+
+  @doc """
+  Computes which character elements should display (CONT'D).
+
+  Returns a MapSet of element IDs. A character gets (CONT'D) when:
+  - The same base name appeared in the most recent preceding dialogue group
+  - Only non-scene-breaking elements (action, note, section) appear between them
+  - Scene headings, transitions, page breaks, and interactive elements reset the speaker context
+
+  Uses `CharacterExtension.base_name/1` for comparison (strips V.O., O.S., etc.).
+  """
+  @spec compute_continuations([ScreenplayElement.t()]) :: MapSet.t()
+  def compute_continuations([]), do: MapSet.new()
+
+  def compute_continuations(elements) when is_list(elements) do
+    annotated = compute_dialogue_groups(elements)
+
+    {continuations, _last_speaker} =
+      Enum.reduce(annotated, {MapSet.new(), nil}, fn {element, group_id}, {cont_set, last_speaker} ->
+        cond do
+          element.type == "character" and not is_nil(group_id) ->
+            check_continuation(element, last_speaker, cont_set)
+
+          element.type in @continuation_breakers ->
+            {cont_set, nil}
+
+          true ->
+            {cont_set, last_speaker}
+        end
+      end)
+
+    continuations
+  end
+
+  defp check_continuation(element, last_speaker, cont_set) do
+    current_base = CharacterExtension.base_name(element.content) |> String.upcase()
+
+    if last_speaker && current_base == last_speaker do
+      {MapSet.put(cont_set, element.id), current_base}
+    else
+      {cont_set, current_base}
+    end
   end
 
   @doc """
@@ -127,7 +174,9 @@ defmodule Storyarn.Screenplays.ElementGrouping do
   end
 
   defp classify_element_type(type) when type in @non_mappeable_types, do: :non_mappeable
-  # Safe: input is validated against a fixed allowlist in ScreenplayElement.create_changeset
+  # Safe: input is validated against a fixed allowlist in ScreenplayElement.create_changeset.
+  # Uses String.to_atom/1 (not to_existing_atom) because orphan types like "parenthetical"
+  # may not exist as atoms elsewhere in the codebase.
   defp classify_element_type(type), do: String.to_atom(type)
 
   defp attach_responses(groups) do

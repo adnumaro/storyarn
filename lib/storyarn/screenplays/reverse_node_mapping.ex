@@ -84,15 +84,20 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
 
   defp map_dialogue(%FlowNode{id: id, data: data}) do
     data = data || %{}
-    text = data["text"] || ""
-    stage_directions = data["stage_directions"] || ""
-    menu_text = data["menu_text"] || ""
-    responses = data["responses"] || []
 
-    if action_style?(text, stage_directions, menu_text, responses) do
-      [%{type: "action", content: stage_directions, data: nil, source_node_id: id}]
+    if data["dual_dialogue"] do
+      map_dual_dialogue_reverse(id, data)
     else
-      build_dialogue_elements(id, text, stage_directions, menu_text, responses)
+      text = data["text"] || ""
+      stage_directions = data["stage_directions"] || ""
+      menu_text = data["menu_text"] || ""
+      responses = data["responses"] || []
+
+      if action_style?(text, stage_directions, menu_text, responses) do
+        [%{type: "action", content: stage_directions, data: nil, source_node_id: id}]
+      else
+        build_dialogue_elements(id, text, stage_directions, menu_text, responses)
+      end
     end
   end
 
@@ -193,6 +198,38 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
       }
     ]
   end
+
+  # ---------------------------------------------------------------------------
+  # Dual dialogue reverse mapping
+  # ---------------------------------------------------------------------------
+
+  defp map_dual_dialogue_reverse(id, data) do
+    dual = data["dual_dialogue"] || %{}
+
+    [
+      %{
+        type: "dual_dialogue",
+        content: "",
+        data: %{
+          "left" => %{
+            "character" => data["menu_text"] || "",
+            "parenthetical" => non_empty_or_nil(data["stage_directions"]),
+            "dialogue" => data["text"] || ""
+          },
+          "right" => %{
+            "character" => dual["menu_text"] || "",
+            "parenthetical" => non_empty_or_nil(dual["stage_directions"]),
+            "dialogue" => dual["text"] || ""
+          }
+        },
+        source_node_id: id
+      }
+    ]
+  end
+
+  defp non_empty_or_nil(nil), do: nil
+  defp non_empty_or_nil(""), do: nil
+  defp non_empty_or_nil(s), do: s
 
   # ---------------------------------------------------------------------------
   # Deserialization helpers

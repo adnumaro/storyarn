@@ -1122,6 +1122,134 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       {:ok, _screenplay} = FlowSync.sync_from_flow(parent)
     end
 
+    test "sync_to_flow with dual_dialogue creates node with dual data", %{project: project} do
+      parent = screenplay_fixture(project)
+      element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE", position: 0})
+
+      element_fixture(parent, %{
+        type: "dual_dialogue",
+        position: 1,
+        data: %{
+          "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => "Hello!"},
+          "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hi there!"}
+        }
+      })
+
+      {:ok, flow} = FlowSync.sync_to_flow(parent)
+      synced = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
+
+      dialogue = Enum.find(synced, &(&1.type == "dialogue"))
+      assert dialogue.data["menu_text"] == "ALICE"
+      assert dialogue.data["text"] == "Hello!"
+
+      dual = dialogue.data["dual_dialogue"]
+      assert dual["menu_text"] == "BOB"
+      assert dual["text"] == "Hi there!"
+    end
+
+    test "sync_from_flow with dual dialogue node creates dual_dialogue element", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = FlowSync.ensure_flow(screenplay)
+      screenplay = Screenplays.get_screenplay!(project.id, screenplay.id)
+
+      {:ok, _node} =
+        Flows.create_node(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Hello!",
+            "stage_directions" => "",
+            "menu_text" => "ALICE",
+            "responses" => [],
+            "dual_dialogue" => %{
+              "text" => "Hi there!",
+              "stage_directions" => "",
+              "menu_text" => "BOB"
+            }
+          }
+        })
+
+      entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+      dialogue = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "dialogue"))
+      Flows.create_connection(flow, entry, dialogue, %{source_pin: "output", target_pin: "input"})
+
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      elements = Screenplays.list_elements(screenplay.id)
+      dual = Enum.find(elements, &(&1.type == "dual_dialogue"))
+
+      assert dual
+      assert dual.data["left"]["character"] == "ALICE"
+      assert dual.data["left"]["dialogue"] == "Hello!"
+      assert dual.data["right"]["character"] == "BOB"
+      assert dual.data["right"]["dialogue"] == "Hi there!"
+    end
+
+    test "round-trip: dual_dialogue → sync_to_flow → sync_from_flow preserves data", %{project: project} do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "dual_dialogue",
+        position: 1,
+        data: %{
+          "left" => %{"character" => "ALICE", "parenthetical" => "whispering", "dialogue" => "Psst."},
+          "right" => %{"character" => "BOB", "parenthetical" => "shouting", "dialogue" => "WHAT?"}
+        }
+      })
+
+      element_fixture(screenplay, %{type: "action", content: "They stare.", position: 2})
+
+      # Push to flow
+      {:ok, _flow} = FlowSync.sync_to_flow(screenplay)
+
+      # Delete elements and pull back
+      Screenplays.list_elements(screenplay.id) |> Enum.each(&Storyarn.Repo.delete!/1)
+      assert Screenplays.list_elements(screenplay.id) == []
+
+      {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
+
+      elements = Screenplays.list_elements(screenplay.id)
+      dual = Enum.find(elements, &(&1.type == "dual_dialogue"))
+
+      assert dual
+      assert dual.data["left"]["character"] == "ALICE"
+      assert dual.data["left"]["parenthetical"] == "whispering"
+      assert dual.data["left"]["dialogue"] == "Psst."
+      assert dual.data["right"]["character"] == "BOB"
+      assert dual.data["right"]["parenthetical"] == "shouting"
+      assert dual.data["right"]["dialogue"] == "WHAT?"
+    end
+
+    test "dual dialogue between standard dialogue groups has correct connections", %{project: project} do
+      parent = screenplay_fixture(project)
+      element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE", position: 0})
+      element_fixture(parent, %{type: "character", content: "JOHN", position: 1})
+      element_fixture(parent, %{type: "dialogue", content: "Before.", position: 2})
+
+      element_fixture(parent, %{
+        type: "dual_dialogue",
+        position: 3,
+        data: %{
+          "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => "Hello!"},
+          "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hi!"}
+        }
+      })
+
+      element_fixture(parent, %{type: "character", content: "JOHN", position: 4})
+      element_fixture(parent, %{type: "dialogue", content: "After.", position: 5})
+
+      {:ok, flow} = FlowSync.sync_to_flow(parent)
+
+      synced = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
+      connections = Flows.list_connections(flow.id)
+
+      # entry + dialogue(JOHN before) + dialogue(dual) + dialogue(JOHN after) = 4 nodes
+      assert length(synced) == 4
+
+      # 3 sequential connections: entry→before, before→dual, dual→after
+      assert length(connections) == 3
+    end
+
     test "removed branch preserves child page but unlinks choice", %{project: project} do
       # Build multi-page screenplay and push to flow
       parent = screenplay_fixture(project)

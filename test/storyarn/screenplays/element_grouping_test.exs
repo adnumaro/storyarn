@@ -220,5 +220,159 @@ defmodule Storyarn.Screenplays.ElementGroupingTest do
       assert Enum.at(result, 0).type == :conditional
       assert Enum.at(result, 1).type == :instruction
     end
+
+    test "dual_dialogue is a standalone group", %{screenplay: sp} do
+      elements = make_elements(sp, ["dual_dialogue"])
+      result = ElementGrouping.group_elements(elements)
+
+      assert length(result) == 1
+      assert Enum.at(result, 0).type == :dual_dialogue
+      assert Enum.at(result, 0).group_id == nil
+    end
+
+    test "dual_dialogue between dialogue groups does not break grouping", %{screenplay: sp} do
+      elements =
+        make_elements(sp, [
+          "character",
+          "dialogue",
+          "dual_dialogue",
+          "character",
+          "dialogue"
+        ])
+
+      result = ElementGrouping.group_elements(elements)
+
+      types = Enum.map(result, & &1.type)
+      assert types == [:dialogue_group, :dual_dialogue, :dialogue_group]
+    end
+  end
+
+  describe "compute_continuations/1" do
+    setup :setup_screenplay
+
+    test "returns empty MapSet for empty list" do
+      assert ElementGrouping.compute_continuations([]) == MapSet.new()
+    end
+
+    test "no continuation for single dialogue group", %{screenplay: sp} do
+      elements = make_elements_with_content(sp, [
+        {"character", "JAIME"},
+        {"dialogue", "Hello."}
+      ])
+
+      assert ElementGrouping.compute_continuations(elements) == MapSet.new()
+    end
+
+    test "marks continuation when same speaker in consecutive groups", %{screenplay: sp} do
+      elements = make_elements_with_content(sp, [
+        {"character", "JAIME"},
+        {"dialogue", "Hello."},
+        {"character", "JAIME"},
+        {"dialogue", "How are you?"}
+      ])
+
+      continuations = ElementGrouping.compute_continuations(elements)
+      second_char = Enum.at(elements, 2)
+
+      assert MapSet.member?(continuations, second_char.id)
+      assert MapSet.size(continuations) == 1
+    end
+
+    test "no continuation when different speakers", %{screenplay: sp} do
+      elements = make_elements_with_content(sp, [
+        {"character", "JAIME"},
+        {"dialogue", "Hello."},
+        {"character", "ALICE"},
+        {"dialogue", "Hi there."}
+      ])
+
+      assert ElementGrouping.compute_continuations(elements) == MapSet.new()
+    end
+
+    test "scene heading resets speaker context", %{screenplay: sp} do
+      elements = make_elements_with_content(sp, [
+        {"character", "JAIME"},
+        {"dialogue", "Hello."},
+        {"scene_heading", "INT. OFFICE - DAY"},
+        {"character", "JAIME"},
+        {"dialogue", "Different scene."}
+      ])
+
+      assert ElementGrouping.compute_continuations(elements) == MapSet.new()
+    end
+
+    test "action between same speaker preserves continuation", %{screenplay: sp} do
+      elements = make_elements_with_content(sp, [
+        {"character", "JAIME"},
+        {"dialogue", "Hello."},
+        {"action", "He pauses."},
+        {"character", "JAIME"},
+        {"dialogue", "I mean hi."}
+      ])
+
+      continuations = ElementGrouping.compute_continuations(elements)
+      second_char = Enum.at(elements, 3)
+
+      assert MapSet.member?(continuations, second_char.id)
+    end
+
+    test "comparison is case-insensitive", %{screenplay: sp} do
+      elements = make_elements_with_content(sp, [
+        {"character", "JAIME"},
+        {"dialogue", "Hello."},
+        {"character", "jaime"},
+        {"dialogue", "Hi again."}
+      ])
+
+      continuations = ElementGrouping.compute_continuations(elements)
+      assert MapSet.size(continuations) == 1
+    end
+
+    test "strips extensions when comparing names", %{screenplay: sp} do
+      elements = make_elements_with_content(sp, [
+        {"character", "JAIME"},
+        {"dialogue", "Hello."},
+        {"character", "JAIME (V.O.)"},
+        {"dialogue", "Thinking aloud."}
+      ])
+
+      continuations = ElementGrouping.compute_continuations(elements)
+      second_char = Enum.at(elements, 2)
+
+      assert MapSet.member?(continuations, second_char.id)
+    end
+
+    test "dual_dialogue resets speaker context", %{screenplay: sp} do
+      elements = make_elements_with_content(sp, [
+        {"character", "JAIME"},
+        {"dialogue", "Hello."},
+        {"dual_dialogue", ""},
+        {"character", "JAIME"},
+        {"dialogue", "After dual."}
+      ])
+
+      assert ElementGrouping.compute_continuations(elements) == MapSet.new()
+    end
+
+    test "transition resets speaker context", %{screenplay: sp} do
+      elements = make_elements_with_content(sp, [
+        {"character", "JAIME"},
+        {"dialogue", "Hello."},
+        {"transition", "CUT TO:"},
+        {"character", "JAIME"},
+        {"dialogue", "Same person, new scene."}
+      ])
+
+      assert ElementGrouping.compute_continuations(elements) == MapSet.new()
+    end
+  end
+
+  # Helper that creates elements with specific content
+  defp make_elements_with_content(screenplay, type_content_list) do
+    type_content_list
+    |> Enum.with_index()
+    |> Enum.map(fn {{type, content}, idx} ->
+      element_fixture(screenplay, %{type: type, content: content, position: idx})
+    end)
   end
 end
