@@ -104,4 +104,30 @@ defmodule Storyarn.Screenplays.AutoDetectTest do
       assert AutoDetect.detect_type("O'BRIEN") == "character"
     end
   end
+
+  describe "detect_type/1 with HTML content" do
+    test "detects scene heading wrapped in HTML" do
+      assert AutoDetect.detect_type("<p>INT. LIVING ROOM - DAY</p>") == "scene_heading"
+    end
+
+    test "detects character name in HTML" do
+      assert AutoDetect.detect_type("<p>JOHN</p>") == "character"
+    end
+
+    test "detects transition in HTML" do
+      assert AutoDetect.detect_type("<p>CUT TO:</p>") == "transition"
+    end
+
+    test "returns nil for action text in HTML" do
+      assert AutoDetect.detect_type("<p>He walks away.</p>") == nil
+    end
+
+    test "strips bold tags before detecting" do
+      assert AutoDetect.detect_type("<p><strong>JAIME</strong></p>") == "character"
+    end
+
+    test "returns nil for empty paragraph" do
+      assert AutoDetect.detect_type("<p></p>") == nil
+    end
+  end
 end

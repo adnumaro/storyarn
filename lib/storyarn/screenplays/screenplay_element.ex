@@ -55,6 +55,8 @@ defmodule Storyarn.Screenplays.ScreenplayElement do
   @flow_marker_types ~w(hub_marker jump_marker)
   @dialogue_group_types ~w(character dialogue parenthetical)
   @non_mappeable_types ~w(note section page_break title_page)
+  @tiptap_types ~w(dialogue action scene_heading parenthetical transition note section)
+  @keyboard_types ~w(scene_heading action character dialogue parenthetical transition note section)
   @valid_branches [nil, "true", "false"]
 
   @type t :: %__MODULE__{
@@ -104,6 +106,12 @@ defmodule Storyarn.Screenplays.ScreenplayElement do
 
   @doc "Types with no flow mapping, preserved during sync_from_flow (Edge Case C)."
   def non_mappeable_types, do: @non_mappeable_types
+
+  @doc "Types rendered with TipTap rich-text editor."
+  def tiptap_types, do: @tiptap_types
+
+  @doc "Types that respond to keyboard shortcuts (Tab cycling, Enter creation)."
+  def keyboard_types, do: @keyboard_types
 
   @doc """
   Changeset for creating a new element.

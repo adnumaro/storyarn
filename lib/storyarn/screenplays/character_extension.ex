@@ -6,6 +6,8 @@ defmodule Storyarn.Screenplays.CharacterExtension do
   Parses `"JAIME (V.O.)"` → `%{base_name: "JAIME", extensions: ["V.O."]}`.
   """
 
+  alias Storyarn.Screenplays.ContentUtils
+
   @type parsed :: %{base_name: String.t(), extensions: [String.t()]}
 
   @doc """
@@ -24,13 +26,15 @@ defmodule Storyarn.Screenplays.CharacterExtension do
   def parse(""), do: %{base_name: "", extensions: []}
 
   def parse(content) when is_binary(content) do
+    plain = ContentUtils.strip_html(content)
+
     extensions =
       ~r/\(([^)]+)\)/
-      |> Regex.scan(content)
+      |> Regex.scan(plain)
       |> Enum.map(fn [_, ext] -> String.trim(ext) end)
 
     base_name =
-      content
+      plain
       |> String.replace(~r/\s*\([^)]+\)/, "")
       |> String.trim()
 
@@ -47,6 +51,27 @@ defmodule Storyarn.Screenplays.CharacterExtension do
   """
   @spec base_name(String.t() | nil) :: String.t()
   def base_name(content), do: parse(content).base_name
+
+  @doc """
+  Returns the base name for a screenplay element, using sheet lookup when available.
+
+  If the element has a `sheet_id` in its data, looks up the sheet name from `sheets_map`
+  and uppercases it. Otherwise falls back to `base_name/1` on the element's content.
+  """
+  @spec base_name_from_element(map(), map()) :: String.t()
+  def base_name_from_element(%{data: %{"sheet_id" => sheet_id}} = _element, sheets_map)
+      when not is_nil(sheet_id) do
+    sheet_id = if is_binary(sheet_id), do: String.to_integer(sheet_id), else: sheet_id
+
+    case Map.get(sheets_map, sheet_id) do
+      nil -> ""
+      sheet -> String.upcase(sheet.name)
+    end
+  end
+
+  def base_name_from_element(element, _sheets_map) do
+    base_name(element.content)
+  end
 
   @doc """
   Checks if content already includes a CONT'D extension.

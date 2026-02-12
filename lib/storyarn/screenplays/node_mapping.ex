@@ -7,6 +7,7 @@ defmodule Storyarn.Screenplays.NodeMapping do
   """
 
   alias Storyarn.Flows.Condition
+  alias Storyarn.Screenplays.ContentUtils
 
   @doc """
   Converts a list of element groups into a list of node attr maps.
@@ -88,11 +89,13 @@ defmodule Storyarn.Screenplays.NodeMapping do
     dialogue = Enum.find(elements, &(&1.type == "dialogue"))
     response = Enum.find(elements, &(&1.type == "response"))
 
+    speaker_sheet_id = get_in((character && character.data) || %{}, ["sheet_id"])
+
     data = %{
-      "speaker_sheet_id" => nil,
+      "speaker_sheet_id" => speaker_sheet_id,
       "text" => (dialogue && dialogue.content) || "",
-      "stage_directions" => (parenthetical && parenthetical.content) || "",
-      "menu_text" => (character && character.content) || "",
+      "stage_directions" => ContentUtils.strip_html((parenthetical && parenthetical.content) || ""),
+      "menu_text" => ContentUtils.strip_html((character && character.content) || ""),
       "audio_asset_id" => nil,
       "technical_id" => "",
       "localization_id" => "",
@@ -119,7 +122,7 @@ defmodule Storyarn.Screenplays.NodeMapping do
   end
 
   defp map_scene_heading(element, _index) do
-    parsed = parse_scene_heading(element.content || "")
+    parsed = parse_scene_heading(ContentUtils.strip_html(element.content || ""))
 
     %{
       type: "scene",
@@ -142,7 +145,7 @@ defmodule Storyarn.Screenplays.NodeMapping do
       data: %{
         "speaker_sheet_id" => nil,
         "text" => "",
-        "stage_directions" => element.content || "",
+        "stage_directions" => ContentUtils.strip_html(element.content || ""),
         "menu_text" => "",
         "audio_asset_id" => nil,
         "technical_id" => "",
@@ -208,7 +211,7 @@ defmodule Storyarn.Screenplays.NodeMapping do
     %{
       type: "exit",
       data: %{
-        "label" => element.content || "",
+        "label" => ContentUtils.strip_html(element.content || ""),
         "technical_id" => "",
         "outcome_tags" => [],
         "outcome_color" => "#22c55e",

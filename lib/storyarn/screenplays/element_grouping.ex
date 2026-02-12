@@ -55,19 +55,20 @@ defmodule Storyarn.Screenplays.ElementGrouping do
   - Only non-scene-breaking elements (action, note, section) appear between them
   - Scene headings, transitions, and interactive elements reset the speaker context
 
-  Uses `CharacterExtension.base_name/1` for comparison (strips V.O., O.S., etc.).
+  Uses `CharacterExtension.base_name_from_element/2` for comparison (supports sheet refs).
   """
-  @spec compute_continuations([ScreenplayElement.t()]) :: MapSet.t()
-  def compute_continuations([]), do: MapSet.new()
+  @spec compute_continuations([ScreenplayElement.t()], map()) :: MapSet.t()
+  def compute_continuations(elements, sheets_map \\ %{})
+  def compute_continuations([], _sheets_map), do: MapSet.new()
 
-  def compute_continuations(elements) when is_list(elements) do
+  def compute_continuations(elements, sheets_map) when is_list(elements) do
     annotated = compute_dialogue_groups(elements)
 
     {continuations, _last_speaker} =
       Enum.reduce(annotated, {MapSet.new(), nil}, fn {element, group_id}, {cont_set, last_speaker} ->
         cond do
           element.type == "character" and not is_nil(group_id) ->
-            check_continuation(element, last_speaker, cont_set)
+            check_continuation(element, last_speaker, cont_set, sheets_map)
 
           element.type in @continuation_breakers ->
             {cont_set, nil}
@@ -80,8 +81,8 @@ defmodule Storyarn.Screenplays.ElementGrouping do
     continuations
   end
 
-  defp check_continuation(element, last_speaker, cont_set) do
-    current_base = CharacterExtension.base_name(element.content) |> String.upcase()
+  defp check_continuation(element, last_speaker, cont_set, sheets_map) do
+    current_base = CharacterExtension.base_name_from_element(element, sheets_map) |> String.upcase()
 
     if last_speaker && current_base == last_speaker do
       {MapSet.put(cont_set, element.id), current_base}

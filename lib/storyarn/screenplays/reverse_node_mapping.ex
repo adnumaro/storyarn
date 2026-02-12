@@ -92,11 +92,12 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
       stage_directions = data["stage_directions"] || ""
       menu_text = data["menu_text"] || ""
       responses = data["responses"] || []
+      speaker_sheet_id = data["speaker_sheet_id"]
 
       if action_style?(text, stage_directions, menu_text, responses) do
         [%{type: "action", content: stage_directions, data: nil, source_node_id: id}]
       else
-        build_dialogue_elements(id, text, stage_directions, menu_text, responses)
+        build_dialogue_elements(id, text, stage_directions, menu_text, responses, speaker_sheet_id)
       end
     end
   end
@@ -105,10 +106,13 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
     text == "" and stage_directions != "" and responses == [] and menu_text == ""
   end
 
-  defp build_dialogue_elements(id, text, stage_directions, menu_text, responses) do
+  defp build_dialogue_elements(id, text, stage_directions, menu_text, responses, speaker_sheet_id) do
     character_name = if menu_text != "", do: menu_text, else: "CHARACTER"
 
-    elements = [%{type: "character", content: character_name, data: nil, source_node_id: id}]
+    character_data =
+      if speaker_sheet_id, do: %{"sheet_id" => speaker_sheet_id}, else: nil
+
+    elements = [%{type: "character", content: character_name, data: character_data, source_node_id: id}]
 
     elements =
       if stage_directions != "",

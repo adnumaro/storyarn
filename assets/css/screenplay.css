@@ -1,6 +1,55 @@
 /* Screenplay Editor — Industry-standard formatting */
 
 /* ---------------------------------------------------------------------------
+   Courier Prime — self-hosted web font
+   --------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Courier Prime";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/courier-prime-v11-latin-regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Courier Prime";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/courier-prime-v11-latin-italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Courier Prime";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/courier-prime-v11-latin-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Courier Prime";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/courier-prime-v11-latin-700italic.woff2") format("woff2");
+}
+
+/* ---------------------------------------------------------------------------
+   Container — darker desk surface behind the paper page
+   --------------------------------------------------------------------------- */
+
+.screenplay-container {
+  min-height: 100vh;
+  background-color: var(--color-base-300);
+}
+
+[data-theme="dark"] .screenplay-container {
+  background-color: color-mix(in oklch, var(--color-base-300) 80%, black);
+}
+
+/* ---------------------------------------------------------------------------
    Toolbar — screenplay name, element count, draft status
    --------------------------------------------------------------------------- */
 
@@ -84,13 +133,13 @@
 }
 
 .sp-toolbar-btn-active {
-  background-color: oklch(var(--p));
-  color: oklch(var(--pc));
-  border-color: oklch(var(--p));
+  background-color: var(--color-primary);
+  color: var(--color-primary-content);
+  border-color: var(--color-primary);
 }
 
 .sp-toolbar-btn-active:hover {
-  background-color: oklch(var(--p) / 0.85);
+  background-color: color-mix(in oklch, var(--color-primary) 85%, transparent);
 }
 
 /* Sync controls */
@@ -165,34 +214,24 @@
   line-height: 1;
   padding: 96px 96px 96px 144px;
   min-height: 100vh;
+  cursor: text;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Dark mode */
-@custom-selector :--dark [data-theme="dark"];
-
-:--dark .screenplay-page {
-  background-color: var(--color-base-200);
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+[data-theme="dark"] .screenplay-page {
+  background-color: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  box-shadow: 0 4px 24px rgb(0 0 0 / 0.4);
 }
 
-/* Element base */
+
+/* Element base — used by interactive blocks and read mode */
 .screenplay-element {
   position: relative;
   white-space: pre-wrap;
   word-wrap: break-word;
-}
-
-/* Empty element placeholder via CSS (reads from inner .sp-block) */
-.sp-empty .sp-block[data-placeholder]:empty::before {
-  content: attr(data-placeholder);
-  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
-  pointer-events: none;
-}
-
-/* Empty state — clickable area to create first element */
-.sp-empty-state {
-  cursor: text;
-  min-height: 1.5em;
+  cursor: auto;
 }
 
 /* ---------------------------------------------------------------------------
@@ -331,6 +370,45 @@
   border-left-color: var(--color-info);
 }
 
+/* Delete button in interactive block headers */
+.sp-interactive-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.sp-interactive-block:hover .sp-interactive-delete,
+.sp-dual-dialogue-wrapper:hover > .sp-dual-delete {
+  opacity: 1;
+}
+
+.sp-interactive-delete:hover {
+  color: var(--color-error);
+  background-color: color-mix(in oklch, var(--color-error) 10%, transparent);
+}
+
+/* Dual dialogue wrapper — positions delete button */
+.sp-dual-dialogue-wrapper {
+  position: relative;
+}
+
+.sp-dual-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
 /* Choice rows */
 .sp-choice-row {
   display: flex;
@@ -364,7 +442,7 @@
   border-color: var(--color-info);
 }
 
-:--dark .sp-choice-input {
+[data-theme="dark"] .sp-choice-input {
   background-color: var(--color-base-300);
 }
 
@@ -734,7 +812,7 @@
   font-size: 0.875rem;
 }
 
-:--dark .slash-menu {
+[data-theme="dark"] .slash-menu {
   background-color: var(--color-base-200);
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3);
 }
@@ -762,7 +840,7 @@
   border-color: var(--color-primary);
 }
 
-:--dark .slash-menu-search-input {
+[data-theme="dark"] .slash-menu-search-input {
   background-color: var(--color-base-300);
 }
 
@@ -797,8 +875,8 @@
   background-color: var(--color-base-200);
 }
 
-:--dark .slash-menu-item:hover,
-:--dark .slash-menu-item.highlighted {
+[data-theme="dark"] .slash-menu-item:hover,
+[data-theme="dark"] .slash-menu-item.highlighted {
   background-color: var(--color-base-300);
 }
 
@@ -836,6 +914,224 @@
   display: none;
 }
 
+/* ---------------------------------------------------------------------------
+   Character sheet reference — linked name display + nav/clear buttons
+   --------------------------------------------------------------------------- */
+
+.sp-character-ref {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sp-character-ref-name {
+  font-family: "Courier Prime", "Courier New", monospace;
+  font-size: 12pt;
+  text-transform: uppercase;
+}
+
+/* NodeView: inline actions shown next to editable content */
+.sp-character-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.sp-character-nav,
+.sp-character-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.sp-character-nav:hover {
+  color: var(--color-primary);
+  background-color: color-mix(in oklch, var(--color-primary) 10%, transparent);
+}
+
+.sp-character-clear:hover {
+  color: var(--color-error);
+  background-color: color-mix(in oklch, var(--color-error) 10%, transparent);
+}
+
+/* ---------------------------------------------------------------------------
+   Character sheet picker — floating search dropdown
+   --------------------------------------------------------------------------- */
+
+.sp-character-picker {
+  position: fixed;
+  z-index: 50;
+  width: 260px;
+  max-height: 300px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  font-family: system-ui, sans-serif;
+  font-size: 0.875rem;
+}
+
+[data-theme="dark"] .sp-character-picker {
+  background-color: var(--color-base-200);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+}
+
+.sp-character-picker-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-bottom: 1px solid var(--color-base-300);
+  background-color: transparent;
+  color: var(--color-base-content);
+  font-size: 0.8125rem;
+  outline: none;
+}
+
+.sp-character-picker-list {
+  overflow-y: auto;
+  max-height: 248px;
+  padding: 4px 0;
+}
+
+.sp-character-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  color: var(--color-base-content);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.8125rem;
+}
+
+.sp-character-picker-item:hover,
+.sp-character-picker-highlighted {
+  background-color: var(--color-base-200);
+}
+
+[data-theme="dark"] .sp-character-picker-item:hover,
+[data-theme="dark"] .sp-character-picker-highlighted {
+  background-color: var(--color-base-300);
+}
+
+.sp-character-picker-name {
+  flex: 1;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-character-picker-shortcut {
+  font-size: 0.6875rem;
+  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+  flex-shrink: 0;
+}
+
+.sp-character-picker-empty {
+  padding: 12px 10px;
+  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------------------
+   TipTap — unified editor ProseMirror styles
+   --------------------------------------------------------------------------- */
+
+/* Placeholder via @tiptap/extension-placeholder */
+.screenplay-prosemirror .is-empty::before {
+  content: attr(data-placeholder);
+  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+  font-style: italic;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* Unified TipTap editor — fill the page area */
+#screenplay-editor {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+#screenplay-editor .screenplay-prosemirror {
+  flex: 1;
+}
+
+/* Unified TipTap editor — remove focus ring */
+.screenplay-prosemirror:focus-visible,
+.screenplay-prosemirror:focus {
+  outline: none;
+}
+
+/* Read-only TipTap rendered HTML */
+.sp-tiptap-readonly p {
+  margin: 0;
+}
+
+/* Base mention style (clipboard, external contexts) */
+.mention {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background-color: color-mix(in oklch, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+  font-family: system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mention:hover {
+  background-color: color-mix(in oklch, var(--color-primary) 25%, transparent);
+}
+
+/* Inline mention chip — # references inside TipTap text */
+.screenplay-prosemirror .mention,
+.sp-tiptap-container .mention,
+.sp-tiptap-readonly .mention {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background-color: color-mix(in oklch, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+  font-family: system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.screenplay-prosemirror .mention:hover,
+.sp-tiptap-container .mention:hover,
+.sp-tiptap-readonly .mention:hover {
+  background-color: color-mix(in oklch, var(--color-primary) 25%, transparent);
+}
+
 /* ==========================================================================
    Read mode
    ========================================================================== */
@@ -852,4 +1148,9 @@
   pointer-events: none;
   -webkit-user-modify: read-only;
   caret-color: transparent;
+}
+
+.screenplay-read-mode .sp-character-nav,
+.screenplay-read-mode .sp-character-clear {
+  display: none;
 }

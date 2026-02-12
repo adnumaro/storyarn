@@ -190,6 +190,43 @@ defmodule Storyarn.Screenplays.ReverseNodeMappingTest do
     end
   end
 
+  describe "node_to_element_attrs/1 — dialogue (with speaker_sheet_id)" do
+    test "propagates speaker_sheet_id as sheet_id in character data" do
+      data = %{
+        "text" => "Follow me.",
+        "stage_directions" => "",
+        "menu_text" => "DETECTIVE",
+        "responses" => [],
+        "speaker_sheet_id" => 42
+      }
+
+      result = ReverseNodeMapping.node_to_element_attrs(build_node(id: 58, type: "dialogue", data: data))
+
+      assert [%{type: "character", data: %{"sheet_id" => 42}}, %{type: "dialogue"}] = result
+    end
+
+    test "sets character data to nil when speaker_sheet_id is nil" do
+      data = %{
+        "text" => "Hello.",
+        "stage_directions" => "",
+        "menu_text" => "JOHN",
+        "responses" => [],
+        "speaker_sheet_id" => nil
+      }
+
+      result = ReverseNodeMapping.node_to_element_attrs(build_node(id: 59, type: "dialogue", data: data))
+
+      assert [%{type: "character", data: nil}, %{type: "dialogue"}] = result
+    end
+
+    test "sets character data to nil when speaker_sheet_id is absent" do
+      data = %{"text" => "Hi.", "stage_directions" => "", "menu_text" => "BOB", "responses" => []}
+      result = ReverseNodeMapping.node_to_element_attrs(build_node(id: 60, type: "dialogue", data: data))
+
+      assert [%{type: "character", data: nil}, %{type: "dialogue"}] = result
+    end
+  end
+
   describe "node_to_element_attrs/1 — dialogue (dual_dialogue)" do
     test "dialogue with dual_dialogue data produces dual_dialogue element" do
       data = %{

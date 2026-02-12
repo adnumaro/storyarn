@@ -48,31 +48,36 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
-      assert html =~ "Start typing or press / for commands"
+      # Empty screenplay renders the unified TipTap editor (placeholder is client-side)
+      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ ~s(phx-hook="ScreenplayEditor")
     end
 
-    test "elements have correct type CSS class", %{conn: conn, project: project} do
+    test "text elements are embedded in editor JSON with correct types", %{conn: conn, project: project} do
       screenplay = screenplay_fixture(project)
       element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY"})
       element_fixture(screenplay, %{type: "character", content: "JOHN"})
 
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
-      assert html =~ "sp-scene_heading"
-      assert html =~ "sp-character"
+      # Text elements are in the unified TipTap editor JSON (data-content)
+      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "sceneHeading"
       assert html =~ "INT. OFFICE - DAY"
       assert html =~ "JOHN"
     end
 
-    test "element renderer renders data attributes", %{conn: conn, project: project} do
+    test "text element data is embedded in editor JSON", %{conn: conn, project: project} do
       screenplay = screenplay_fixture(project)
       el = element_fixture(screenplay, %{type: "action", content: "She runs."})
 
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
-      assert html =~ ~s(data-element-id="#{el.id}")
-      assert html =~ ~s(data-element-type="action")
-      assert html =~ ~s(data-position="#{el.position}")
+      # Text element data is in the TipTap editor JSON (data-content)
+      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "She runs."
+      assert html =~ "elementId"
+      assert html =~ to_string(el.id)
     end
 
     test "flow marker blocks render as stubs with type label", %{conn: conn, project: project} do
@@ -87,27 +92,30 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       assert html =~ "Jump Marker"
     end
 
-    test "page break renders as visual separator", %{conn: conn, project: project} do
+    test "page break is embedded in editor JSON", %{conn: conn, project: project} do
       screenplay = screenplay_fixture(project)
       element_fixture(screenplay, %{type: "page_break", content: ""})
 
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
-      assert html =~ "sp-page_break"
-      assert html =~ "sp-page-break-line"
+      # Page break is an atom node in the TipTap editor JSON
+      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "pageBreak"
     end
 
-    test "elements render as contenteditable when user has edit permission", %{
+    test "elements render as editable when user has edit permission", %{
       conn: conn,
       project: project
     } do
       screenplay = screenplay_fixture(project)
       element_fixture(screenplay, %{type: "action", content: "Editable."})
+      element_fixture(screenplay, %{type: "character", content: "JOHN"})
 
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
-      assert html =~ ~s(contenteditable="true")
-      assert html =~ "ScreenplayElement"
+      # Unified TipTap editor replaces per-element hooks
+      assert html =~ ~s(phx-hook="ScreenplayEditor")
+      assert html =~ ~s(data-can-edit="true")
     end
 
     test "toolbar renders screenplay name", %{conn: conn, project: project} do
@@ -326,7 +334,8 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       elements = Storyarn.Screenplays.list_elements(screenplay.id)
       assert elements == []
-      assert render(view) =~ "Start typing or press / for commands"
+      # TipTap editor is still present (placeholder text is client-side)
+      assert render(view) =~ ~s(id="screenplay-editor")
     end
 
     test "change_element_type changes type while preserving content", %{
@@ -442,20 +451,8 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       assert updated.type == "action"
     end
 
-    test "slash menu renders when open", %{conn: conn, project: project} do
-      screenplay = screenplay_fixture(project)
-      el = element_fixture(screenplay, %{type: "action", content: ""})
-
-      {:ok, view, html} = live(conn, show_url(project, screenplay))
-
-      # Menu should NOT be rendered initially
-      refute html =~ "slash-command-menu"
-
-      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
-
-      html = render(view)
-      assert html =~ ~s(id="slash-command-menu")
-    end
+    # Slash menu visual rendering is now client-side (TipTap SlashCommands extension).
+    # Server-side state (open/select/close) is tested via behavioral tests below.
 
     test "slash menu not rendered when closed", %{conn: conn, project: project} do
       screenplay = screenplay_fixture(project)
@@ -468,42 +465,6 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       html = render(view)
       refute html =~ "slash-command-menu"
-    end
-
-    test "slash menu shows all three groups", %{conn: conn, project: project} do
-      screenplay = screenplay_fixture(project)
-      el = element_fixture(screenplay, %{type: "action", content: ""})
-
-      {:ok, view, _html} = live(conn, show_url(project, screenplay))
-
-      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
-
-      html = render(view)
-      assert html =~ "Screenplay"
-      assert html =~ "Interactive"
-      assert html =~ "Utility"
-    end
-
-    test "slash menu shows expected command items", %{conn: conn, project: project} do
-      screenplay = screenplay_fixture(project)
-      el = element_fixture(screenplay, %{type: "action", content: ""})
-
-      {:ok, view, _html} = live(conn, show_url(project, screenplay))
-
-      view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
-
-      html = render(view)
-      # Screenplay group items
-      assert html =~ "Scene Heading"
-      assert html =~ "Character"
-      assert html =~ "Transition"
-      # Interactive group items
-      assert html =~ "Condition"
-      assert html =~ "Instruction"
-      assert html =~ "Responses"
-      # Utility group items
-      assert html =~ "Note"
-      assert html =~ "Page Break"
     end
 
     test "clicking slash menu item changes element type", %{conn: conn, project: project} do
@@ -542,7 +503,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
     # Slash key detection (Task 4.4)
     # -------------------------------------------------------------------------
 
-    test "open_slash_menu on empty element opens menu and renders it", %{
+    test "open_slash_menu on empty element sets menu state", %{
       conn: conn,
       project: project
     } do
@@ -551,12 +512,12 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       {:ok, view, _html} = live(conn, show_url(project, screenplay))
 
-      # Simulate the JS hook pushing open_slash_menu for an empty element
       view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
 
-      html = render(view)
-      assert html =~ ~s(id="slash-command-menu")
-      assert html =~ ~s(data-target-id="sp-el-#{el.id}")
+      # Verify state is set by successfully selecting a command
+      view |> render_click("select_slash_command", %{"type" => "scene_heading"})
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.type == "scene_heading"
     end
 
     test "open_slash_menu on element with content still opens menu", %{
@@ -568,11 +529,12 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       {:ok, view, _html} = live(conn, show_url(project, screenplay))
 
-      # Server allows open_slash_menu regardless of content — JS gates the trigger
       view |> render_click("open_slash_menu", %{"element_id" => to_string(el.id)})
 
-      html = render(view)
-      assert html =~ ~s(id="slash-command-menu")
+      # Verify state is set by selecting a command
+      view |> render_click("select_slash_command", %{"type" => "character"})
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.type == "character"
     end
 
     test "select_slash_command after open on empty element changes type and closes menu", %{
@@ -642,10 +604,11 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       assert middle_el.type == "action"
       assert after_el.content == "world"
 
-      # Menu should be open, targeting the middle element
-      html = render(view)
-      assert html =~ ~s(id="slash-command-menu")
-      assert html =~ ~s(data-target-id="sp-el-#{middle_el.id}")
+      # Verify menu state targets the middle element (select changes its type)
+      view |> render_click("select_slash_command", %{"type" => "scene_heading"})
+      middle_updated = Storyarn.Screenplays.list_elements(screenplay.id) |> Enum.at(1)
+      assert middle_updated.id == middle_el.id
+      assert middle_updated.type == "scene_heading"
     end
 
     test "split_and_open_slash_menu at position 0 creates empty before element", %{
@@ -671,7 +634,10 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       assert middle_el.type == "action"
       assert after_el.content == "Some text"
 
-      assert render(view) =~ "slash-command-menu"
+      # Verify menu state is set for middle element
+      view |> render_click("select_slash_command", %{"type" => "transition"})
+      middle_updated = Storyarn.Screenplays.list_elements(screenplay.id) |> Enum.at(1)
+      assert middle_updated.type == "transition"
     end
 
     test "selecting command after split changes middle element type", %{

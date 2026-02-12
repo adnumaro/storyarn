@@ -6,32 +6,11 @@
 import { FileText, Zap } from "lucide";
 import Mention from "@tiptap/extension-mention";
 import { createIconHTML } from "../flow_canvas/node_config.js";
+import { escapeHtml, escapeAttr, positionPopup } from "../screenplay/utils.js";
 
 // Pre-create icon HTML strings for mention popup
 const SHEET_ICON_SM = createIconHTML(FileText, { size: 14 });
 const FLOW_ICON_SM = createIconHTML(Zap, { size: 14 });
-
-/**
- * Escape HTML attribute values to prevent XSS.
- */
-function escapeAttr(str) {
-  if (str == null) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-/**
- * Escape HTML to prevent XSS.
- */
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
 
 /**
  * Update popup content with current items and selection.
@@ -81,24 +60,14 @@ function updatePopup(popup, items, selectedIndex, props) {
 }
 
 /**
- * Position popup near the cursor.
- */
-function positionPopup(popup, props) {
-  if (!popup || !props.clientRect) return;
-
-  const rect = props.clientRect();
-  if (!rect) return;
-
-  popup.style.left = `${rect.left}px`;
-  popup.style.top = `${rect.bottom + 8}px`;
-  popup.style.minWidth = "200px";
-  popup.style.maxWidth = "300px";
-}
-
-/**
  * Creates a custom mention extension with # as trigger character.
+ *
+ * Accepts either:
+ * - A hook directly: createMentionExtension(hook)
+ * - An options object: createMentionExtension({ liveViewHook: hook })
  */
-export function createMentionExtension(hook) {
+export function createMentionExtension(hookOrOptions) {
+  const hook = hookOrOptions?.liveViewHook || hookOrOptions;
   return Mention.configure({
     HTMLAttributes: {
       class: "mention",
@@ -106,6 +75,65 @@ export function createMentionExtension(hook) {
     suggestion: {
       char: "#",
       allowSpaces: false,
+
+      command: ({ editor, range, props: item }) => {
+        const $from = editor.state.doc.resolve(range.from);
+        const blockNode = $from.parent;
+
+        // CHARACTER block: set sheet reference instead of inserting inline mention
+        if (blockNode.type.name === "character") {
+          const blockStart = $from.start();
+          const blockEnd = $from.end();
+          const blockPos = $from.before();
+
+          editor
+            .chain()
+            .focus()
+            .command(({ tr, dispatch }) => {
+              if (dispatch) {
+                // Replace entire block content with uppercase sheet name
+                const nameText = editor.schema.text(
+                  (item.name || item.label || "").toUpperCase(),
+                );
+                tr.replaceWith(blockStart, blockEnd, nameText);
+
+                // Set sheetId attribute on the CHARACTER block node
+                tr.setNodeMarkup(blockPos, undefined, {
+                  ...blockNode.attrs,
+                  sheetId: String(item.id),
+                });
+              }
+              return true;
+            })
+            .run();
+
+          // Persist immediately to server — don't rely on debounced sync
+          // (if the user navigates away quickly, the debounce may be canceled)
+          const elementId = blockNode.attrs.elementId;
+          if (elementId && hook) {
+            hook.pushEvent("set_character_sheet", {
+              id: String(elementId),
+              sheet_id: String(item.id),
+            });
+          }
+          return;
+        }
+
+        // Default: insert inline mention node
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertContent([
+            {
+              type: "mention",
+              attrs: { id: item.id, label: item.label || item.name },
+            },
+            { type: "text", text: " " },
+          ])
+          .run();
+      },
+
       items: async ({ query }) => {
         return new Promise((resolve) => {
           if (hook.mentionDebounce) {
@@ -115,7 +143,15 @@ export function createMentionExtension(hook) {
             hook.mentionResolve([]);
           }
 
-          hook.mentionResolve = resolve;
+          const wrappedResolve = (serverItems) => {
+            resolve(
+              (serverItems || []).map((item) => ({
+                ...item,
+                label: item.label || item.name,
+              })),
+            );
+          };
+          hook.mentionResolve = wrappedResolve;
 
           hook.mentionDebounce = setTimeout(() => {
             const target = hook.el.dataset.phxTarget;
@@ -126,7 +162,7 @@ export function createMentionExtension(hook) {
             }
 
             setTimeout(() => {
-              if (hook.mentionResolve === resolve) {
+              if (hook.mentionResolve === wrappedResolve) {
                 hook.mentionResolve = null;
                 resolve([]);
               }
@@ -138,10 +174,12 @@ export function createMentionExtension(hook) {
         let popup;
         let selectedIndex = 0;
         let items = [];
+        let commandFn = null;
 
         return {
           onStart: (props) => {
             items = props.items;
+            commandFn = props.command;
             selectedIndex = 0;
 
             popup = document.createElement("div");
@@ -149,39 +187,40 @@ export function createMentionExtension(hook) {
               "mention-popup bg-base-100 border border-base-300 rounded-lg shadow-lg p-1 max-h-60 overflow-y-auto z-50";
             popup.style.position = "absolute";
 
-            updatePopup(popup, items, selectedIndex, props);
+            updatePopup(popup, items, selectedIndex, { command: commandFn });
             document.body.appendChild(popup);
-            positionPopup(popup, props);
+            positionPopup(popup, props, { offsetY: 8, minWidth: "200px", maxWidth: "300px" });
           },
 
           onUpdate: (props) => {
             items = props.items;
+            commandFn = props.command;
             selectedIndex = 0;
-            updatePopup(popup, items, selectedIndex, props);
-            positionPopup(popup, props);
+            updatePopup(popup, items, selectedIndex, { command: commandFn });
+            positionPopup(popup, props, { offsetY: 8, minWidth: "200px", maxWidth: "300px" });
           },
 
-          onKeyDown: (props) => {
-            if (props.event.key === "ArrowUp") {
+          onKeyDown: ({ event }) => {
+            if (event.key === "ArrowUp") {
               selectedIndex = (selectedIndex - 1 + items.length) % items.length;
-              updatePopup(popup, items, selectedIndex, props);
+              updatePopup(popup, items, selectedIndex, { command: commandFn });
               return true;
             }
 
-            if (props.event.key === "ArrowDown") {
+            if (event.key === "ArrowDown") {
               selectedIndex = (selectedIndex + 1) % items.length;
-              updatePopup(popup, items, selectedIndex, props);
+              updatePopup(popup, items, selectedIndex, { command: commandFn });
               return true;
             }
 
-            if (props.event.key === "Enter") {
-              if (items[selectedIndex]) {
-                props.command(items[selectedIndex]);
+            if (event.key === "Enter") {
+              if (items[selectedIndex] && commandFn) {
+                commandFn(items[selectedIndex]);
               }
               return true;
             }
 
-            if (props.event.key === "Escape") {
+            if (event.key === "Escape") {
               popup?.remove();
               return true;
             }
@@ -200,8 +239,7 @@ export function createMentionExtension(hook) {
       return [
         "span",
         {
-          class:
-            "mention inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium cursor-pointer hover:bg-primary/30",
+          class: "mention",
           "data-type": escapeAttr(attrs.type || "sheet"),
           "data-id": escapeAttr(attrs.id),
           "data-label": escapeAttr(attrs.label),

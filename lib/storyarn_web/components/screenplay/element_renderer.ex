@@ -5,18 +5,27 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
   Dispatches to per-type block functions based on element type.
   Includes inline builders for interactive types (conditional,
   instruction, response) and badge stubs for flow-marker types.
+
+  Note: Text elements (action, dialogue, etc.) are now handled by the unified
+  TipTap editor (`ScreenplayEditor` hook). This component is only used for
+  interactive blocks in edit mode and all elements in read mode. The TipTap
+  text block rendering paths and placeholder helpers will be removed in Phase 2.
   """
 
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Screenplays.CharacterExtension
+  alias Storyarn.Screenplays.ContentUtils
+  alias Storyarn.Screenplays.ScreenplayElement
 
+  import Phoenix.HTML, only: [raw: 1]
   import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
   import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.InstructionBuilder
 
-  @editable_types ~w(scene_heading action character dialogue parenthetical transition note section)
+  @editable_types ScreenplayElement.keyboard_types()
+  @tiptap_types ScreenplayElement.tiptap_types()
   @stub_types ~w(hub_marker jump_marker title_page)
 
   attr :element, :map, required: true
@@ -24,21 +33,22 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
   attr :variables, :list, default: []
   attr :linked_pages, :map, default: %{}
   attr :continuations, :any, default: MapSet.new()
+  attr :sheets_map, :map, default: %{}
 
   def element_renderer(assigns) do
-    assigns = assign(assigns, :editable, assigns.can_edit and assigns.element.type in @editable_types)
+    assigns = compute_element_flags(assigns)
 
     ~H"""
     <div
-      id={"sp-el-#{@element.id}"}
+      id={"sp-el-#{@element.id}-#{@element.type}#{if @sheet_ref, do: "-ref", else: ""}"}
       class={[
         "screenplay-element",
         "sp-#{@element.type}",
         empty?(@element) && "sp-empty",
         left_transition?(@element) && "sp-transition-left"
       ]}
-      phx-hook={@editable && "ScreenplayElement"}
-      phx-update={@editable && "ignore"}
+      phx-hook={@hook}
+      phx-update={@ignore_update && "ignore"}
       data-element-id={@element.id}
       data-element-type={@element.type}
       data-position={@element.position}
@@ -53,14 +63,103 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
   end
 
   # ---------------------------------------------------------------------------
-  # Standard blocks — single template, per-type placeholder
+  # Character with sheet reference — non-editable name from sheet
   # ---------------------------------------------------------------------------
 
-  defp render_block(%{element: %{type: type}} = assigns) when type in @editable_types do
+  defp render_block(
+         %{element: %{type: "character", data: %{"sheet_id" => sheet_id}}, can_edit: true} =
+           assigns
+       )
+       when not is_nil(sheet_id) do
+    int_id = safe_int(sheet_id)
+    sheet = Map.get(assigns.sheets_map, int_id)
+    assigns = assign(assigns, :sheet, sheet)
+    assigns = assign(assigns, :sheet_name, if(sheet, do: String.upcase(sheet.name), else: "???"))
+
+    ~H"""
+    <div class="sp-block sp-character-ref">
+      <span class="sp-character-ref-name">{@sheet_name}</span>
+      <button
+        type="button"
+        class="sp-character-nav"
+        phx-click="navigate_to_sheet"
+        phx-value-sheet-id={@element.data["sheet_id"]}
+        title={gettext("Go to sheet")}
+      >
+        <.icon name="external-link" class="size-3" />
+      </button>
+      <button
+        type="button"
+        class="sp-character-clear"
+        phx-click="clear_character_sheet"
+        phx-value-id={@element.id}
+        title={gettext("Remove sheet reference")}
+      >
+        <.icon name="x" class="size-3" />
+      </button>
+    </div>
+    """
+  end
+
+  # Character with sheet reference — read-only display
+  defp render_block(
+         %{element: %{type: "character", data: %{"sheet_id" => sheet_id}}} = assigns
+       )
+       when not is_nil(sheet_id) do
+    int_id = safe_int(sheet_id)
+    sheet = Map.get(assigns.sheets_map, int_id)
+    assigns = assign(assigns, :sheet_name, if(sheet, do: String.upcase(sheet.name), else: "???"))
+
+    ~H"""
+    <div class="sp-block sp-character-ref">
+      <span class="sp-character-ref-name">{@sheet_name}</span>
+    </div>
+    """
+  end
+
+  # ---------------------------------------------------------------------------
+  # TipTap-powered text blocks (editable) — dialogue, action, etc.
+  # ---------------------------------------------------------------------------
+
+  defp render_block(%{element: %{type: type}, tiptap: true, can_edit: true} = assigns)
+       when type in @tiptap_types do
     assigns = assign(assigns, :placeholder, placeholder_for(type))
 
     ~H"""
-    <div class="sp-block" contenteditable={to_string(@can_edit)} data-placeholder={@placeholder}>{@element.content}</div>
+    <div
+      id={"sp-tiptap-#{@element.id}"}
+      class="sp-tiptap-container"
+      phx-update="ignore"
+      data-content={@element.content || ""}
+      data-can-edit="true"
+      data-placeholder={@placeholder}
+    >
+    </div>
+    """
+  end
+
+  # TipTap types (read-only) — render HTML content directly
+  defp render_block(%{element: %{type: type}} = assigns) when type in @tiptap_types do
+    ~H"""
+    <div class="sp-block sp-tiptap-readonly">{raw(ContentUtils.sanitize_html(@element.content))}</div>
+    """
+  end
+
+  # ---------------------------------------------------------------------------
+  # Standard blocks — character (plain contenteditable)
+  # ---------------------------------------------------------------------------
+
+  defp render_block(%{element: %{type: "character"}, can_edit: true} = assigns) do
+    assigns = assign(assigns, :placeholder, placeholder_for("character"))
+
+    ~H"""
+    <div class="sp-block" contenteditable="true" data-placeholder={@placeholder}>{@element.content}</div>
+    """
+  end
+
+  defp render_block(%{element: %{type: "character"}} = assigns) do
+    ~H"""
+    <div class="sp-block">{@element.content}</div>
     """
   end
 
@@ -81,10 +180,7 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
   defp render_block(%{element: %{type: "conditional"}} = assigns) do
     ~H"""
     <div class="sp-interactive-block sp-interactive-condition">
-      <div class="sp-interactive-header">
-        <.icon name="git-branch" class="size-4 opacity-60" />
-        <span class="sp-interactive-label">{gettext("Condition")}</span>
-      </div>
+      <.interactive_header icon="git-branch" label={gettext("Condition")} can_edit={@can_edit} element_id={@element.id} />
       <.condition_builder
         id={"sp-condition-#{@element.id}"}
         condition={@element.data["condition"]}
@@ -104,10 +200,7 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
   defp render_block(%{element: %{type: "instruction"}} = assigns) do
     ~H"""
     <div class="sp-interactive-block sp-interactive-instruction">
-      <div class="sp-interactive-header">
-        <.icon name="zap" class="size-4 opacity-60" />
-        <span class="sp-interactive-label">{gettext("Instruction")}</span>
-      </div>
+      <.interactive_header icon="zap" label={gettext("Instruction")} can_edit={@can_edit} element_id={@element.id} />
       <.instruction_builder
         id={"sp-instruction-#{@element.id}"}
         assignments={@element.data["assignments"] || []}
@@ -138,23 +231,23 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
 
     ~H"""
     <div class="sp-interactive-block sp-interactive-response">
-      <div class="sp-interactive-header">
-        <.icon name="list" class="size-4 opacity-60" />
-        <span class="sp-interactive-label">{gettext("Responses")}</span>
-        <.icon :if={@all_linked} name="check-circle" class="size-3.5 text-success" />
-        <.icon :if={@some_unlinked} name="alert-circle" class="size-3.5 text-warning" />
-        <button
-          :if={@can_edit && @has_unlinked}
-          type="button"
-          class="sp-generate-pages-btn"
-          phx-click="generate_all_linked_pages"
-          phx-value-element-id={@element.id}
-          title={gettext("Create pages for all unlinked choices")}
-        >
-          <.icon name="files" class="size-3" />
-          {gettext("Generate pages")}
-        </button>
-      </div>
+      <.interactive_header icon="list" label={gettext("Responses")} can_edit={@can_edit} element_id={@element.id}>
+        <:actions>
+          <.icon :if={@all_linked} name="check-circle" class="size-3.5 text-success" />
+          <.icon :if={@some_unlinked} name="alert-circle" class="size-3.5 text-warning" />
+          <button
+            :if={@can_edit && @has_unlinked}
+            type="button"
+            class="sp-generate-pages-btn"
+            phx-click="generate_all_linked_pages"
+            phx-value-element-id={@element.id}
+            title={gettext("Create pages for all unlinked choices")}
+          >
+            <.icon name="files" class="size-3" />
+            {gettext("Generate pages")}
+          </button>
+        </:actions>
+      </.interactive_header>
       <div :if={@choices == [] && !@can_edit} class="sp-choice-empty">
         {gettext("No choices defined")}
       </div>
@@ -291,9 +384,21 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
       |> assign(:right, data["right"] || %{})
 
     ~H"""
-    <div class="sp-dual-dialogue">
-      <.dual_column side="left" data={@left} element={@element} can_edit={@can_edit} />
-      <.dual_column side="right" data={@right} element={@element} can_edit={@can_edit} />
+    <div class="sp-dual-dialogue-wrapper">
+      <button
+        :if={@can_edit}
+        type="button"
+        class="sp-interactive-delete sp-dual-delete"
+        phx-click="delete_element"
+        phx-value-id={@element.id}
+        title={gettext("Delete block")}
+      >
+        <.icon name="trash-2" class="size-3.5" />
+      </button>
+      <div class="sp-dual-dialogue">
+        <.dual_column side="left" data={@left} element={@element} can_edit={@can_edit} />
+        <.dual_column side="right" data={@right} element={@element} can_edit={@can_edit} />
+      </div>
     </div>
     """
   end
@@ -390,6 +495,53 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
   # Helpers
   # ---------------------------------------------------------------------------
 
+  attr :icon, :string, required: true
+  attr :label, :string, required: true
+  attr :can_edit, :boolean, required: true
+  attr :element_id, :any, required: true
+  slot :actions
+
+  defp interactive_header(assigns) do
+    ~H"""
+    <div class="sp-interactive-header">
+      <.icon name={@icon} class="size-4 opacity-60" />
+      <span class="sp-interactive-label">{@label}</span>
+      {render_slot(@actions)}
+      <button
+        :if={@can_edit}
+        type="button"
+        class="sp-interactive-delete"
+        phx-click="delete_element"
+        phx-value-id={@element_id}
+        title={gettext("Delete block")}
+      >
+        <.icon name="trash-2" class="size-3.5" />
+      </button>
+    </div>
+    """
+  end
+
+  defp compute_element_flags(assigns) do
+    editable = assigns.can_edit and assigns.element.type in @editable_types
+    sheet_ref? = sheet_ref?(assigns.element)
+    tiptap? = editable and assigns.element.type in @tiptap_types
+    hook = resolve_hook(editable, tiptap?)
+    ignore_update = editable and not tiptap? and not sheet_ref?
+
+    assigns
+    |> assign(:editable, editable)
+    |> assign(:sheet_ref, sheet_ref?)
+    |> assign(:tiptap, tiptap?)
+    |> assign(:hook, hook)
+    |> assign(:ignore_update, ignore_update)
+  end
+
+  defp sheet_ref?(%{type: "character", data: %{"sheet_id" => id}}) when not is_nil(id), do: true
+  defp sheet_ref?(_), do: false
+
+  # Text elements are handled by the unified TipTap editor; per-element hooks removed.
+  defp resolve_hook(_editable, _tiptap), do: nil
+
   defp placeholder_for("scene_heading"), do: gettext("INT. LOCATION - TIME")
   defp placeholder_for("action"), do: gettext("Describe the action...")
   defp placeholder_for("character"), do: gettext("CHARACTER NAME")
@@ -407,9 +559,20 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
     end
   end
 
+  defp safe_int(val) when is_integer(val), do: val
+
+  defp safe_int(val) when is_binary(val) do
+    case Integer.parse(val) do
+      {int, ""} -> int
+      _ -> nil
+    end
+  end
+
+  defp safe_int(_), do: nil
+
   defp show_contd?(element, continuations) do
     MapSet.member?(continuations, element.id) and
-      not CharacterExtension.has_contd?(element.content)
+      (sheet_ref?(element) or not CharacterExtension.has_contd?(element.content))
   end
 
   defp left_transition?(%{type: "transition", content: content}) when is_binary(content) do
@@ -420,6 +583,7 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
 
   defp empty?(%{content: nil}), do: true
   defp empty?(%{content: ""}), do: true
+  defp empty?(%{content: "<p></p>"}), do: true
   defp empty?(_), do: false
 
   defp humanize_type(type) do

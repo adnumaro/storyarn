@@ -6,8 +6,12 @@ defmodule Storyarn.Screenplays.AutoDetect do
   (meaning the current type should be kept).
   """
 
+  alias Storyarn.Screenplays.ContentUtils
+
   @doc """
   Detects the element type based on content patterns.
+
+  Strips HTML before matching so TipTap content is handled correctly.
 
   ## Examples
 
@@ -28,7 +32,7 @@ defmodule Storyarn.Screenplays.AutoDetect do
   """
   @spec detect_type(String.t()) :: String.t() | nil
   def detect_type(content) do
-    trimmed = String.trim(content)
+    trimmed = content |> ContentUtils.strip_html() |> String.trim()
 
     cond do
       trimmed == "" ->

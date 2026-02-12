@@ -53,6 +53,57 @@ defmodule Storyarn.Screenplays.CharacterExtensionTest do
     end
   end
 
+  describe "parse/1 with HTML content" do
+    test "strips HTML before parsing" do
+      result = CharacterExtension.parse("<p>JAIME (V.O.)</p>")
+      assert result.base_name == "JAIME"
+      assert result.extensions == ["V.O."]
+    end
+
+    test "strips bold tags before parsing" do
+      result = CharacterExtension.parse("<strong>JAIME</strong> (CONT'D)")
+      assert result.base_name == "JAIME"
+      assert result.extensions == ["CONT'D"]
+    end
+  end
+
+  describe "base_name_from_element/2" do
+    test "uses sheet name when sheet_id is present and sheet exists" do
+      element = %{data: %{"sheet_id" => 42}, content: "OLD_NAME"}
+      sheets_map = %{42 => %{id: 42, name: "Detective"}}
+
+      assert CharacterExtension.base_name_from_element(element, sheets_map) == "DETECTIVE"
+    end
+
+    test "returns empty when sheet_id is present but sheet not in map" do
+      element = %{data: %{"sheet_id" => 99}, content: "OLD_NAME"}
+      sheets_map = %{}
+
+      assert CharacterExtension.base_name_from_element(element, sheets_map) == ""
+    end
+
+    test "falls back to base_name when no sheet_id" do
+      element = %{data: %{}, content: "JAIME (V.O.)"}
+      sheets_map = %{}
+
+      assert CharacterExtension.base_name_from_element(element, sheets_map) == "JAIME"
+    end
+
+    test "falls back to base_name when data is nil" do
+      element = %{data: nil, content: "BOB"}
+      sheets_map = %{}
+
+      assert CharacterExtension.base_name_from_element(element, sheets_map) == "BOB"
+    end
+
+    test "falls back when sheet_id is nil in data" do
+      element = %{data: %{"sheet_id" => nil}, content: "ALICE"}
+      sheets_map = %{}
+
+      assert CharacterExtension.base_name_from_element(element, sheets_map) == "ALICE"
+    end
+  end
+
   describe "has_contd?/1" do
     test "returns true when CONT'D is present" do
       assert CharacterExtension.has_contd?("JAIME (CONT'D)")

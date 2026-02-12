@@ -330,6 +330,128 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
     end
   end
 
+  describe "group_to_node_attrs/2 dialogue group with sheet reference" do
+    test "propagates sheet_id as speaker_sheet_id" do
+      group = %{
+        type: :dialogue_group,
+        elements: [
+          el(%{id: 1, type: "character", content: "DETECTIVE", data: %{"sheet_id" => 42}}),
+          el(%{id: 2, type: "dialogue", content: "Follow me."})
+        ],
+        group_id: "g5"
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+
+      assert result.type == "dialogue"
+      assert result.data["speaker_sheet_id"] == 42
+      assert result.data["menu_text"] == "DETECTIVE"
+    end
+
+    test "sets speaker_sheet_id to nil when no sheet reference" do
+      group = %{
+        type: :dialogue_group,
+        elements: [
+          el(%{id: 1, type: "character", content: "JAIME", data: %{}}),
+          el(%{id: 2, type: "dialogue", content: "Hello."})
+        ],
+        group_id: "g6"
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+
+      assert result.data["speaker_sheet_id"] == nil
+    end
+
+    test "sets speaker_sheet_id to nil when character data is nil" do
+      group = %{
+        type: :dialogue_group,
+        elements: [
+          el(%{id: 1, type: "character", content: "JAIME", data: nil}),
+          el(%{id: 2, type: "dialogue", content: "Hello."})
+        ],
+        group_id: "g7"
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+
+      assert result.data["speaker_sheet_id"] == nil
+    end
+  end
+
+  describe "group_to_node_attrs/2 HTML content stripping" do
+    test "strips HTML from parenthetical content for stage_directions" do
+      group = %{
+        type: :dialogue_group,
+        elements: [
+          el(%{id: 1, type: "character", content: "MARIA"}),
+          el(%{id: 2, type: "parenthetical", content: "<p>whispering</p>"}),
+          el(%{id: 3, type: "dialogue", content: "<p>Come here.</p>"})
+        ],
+        group_id: "g-html"
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+
+      assert result.data["stage_directions"] == "whispering"
+      # dialogue content passes through as HTML (flow uses TipTap)
+      assert result.data["text"] == "<p>Come here.</p>"
+    end
+
+    test "strips HTML from character content for menu_text" do
+      group = %{
+        type: :dialogue_group,
+        elements: [
+          el(%{id: 1, type: "character", content: "<p><strong>JOHN</strong></p>"}),
+          el(%{id: 2, type: "dialogue", content: "Hello."})
+        ],
+        group_id: "g-html2"
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+
+      assert result.data["menu_text"] == "JOHN"
+    end
+
+    test "strips HTML from action content for stage_directions" do
+      group = %{
+        type: :action,
+        elements: [el(%{id: 1, type: "action", content: "<p>The door creaks open.</p>"})],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+
+      assert result.data["stage_directions"] == "The door creaks open."
+    end
+
+    test "strips HTML from scene heading content before parsing" do
+      group = %{
+        type: :scene_heading,
+        elements: [el(%{id: 1, type: "scene_heading", content: "<p>EXT. FOREST - DAY</p>"})],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group, 1)
+
+      assert result.data["int_ext"] == "ext"
+      assert result.data["description"] == "FOREST"
+      assert result.data["time_of_day"] == "DAY"
+    end
+
+    test "strips HTML from transition content for label" do
+      group = %{
+        type: :transition,
+        elements: [el(%{id: 1, type: "transition", content: "<p>FADE OUT.</p>"})],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+
+      assert result.data["label"] == "FADE OUT."
+    end
+  end
+
   describe "groups_to_node_attrs/1" do
     test "converts full group list, skipping non-mappeable" do
       groups = [
