@@ -83,5 +83,25 @@ defmodule Storyarn.Screenplays.AutoDetectTest do
     test "returns nil for mixed-case text" do
       assert AutoDetect.detect_type("John walks into the room.") == nil
     end
+
+    test "detects EST. as scene heading" do
+      assert AutoDetect.detect_type("EST. CITY SKYLINE - DAY") == "scene_heading"
+    end
+
+    test "detects INTERCUT: as transition" do
+      assert AutoDetect.detect_type("INTERCUT:") == "transition"
+    end
+
+    test "detects character with multiple extensions" do
+      assert AutoDetect.detect_type("JAIME (V.O.) (CONT'D)") == "character"
+    end
+
+    test "detects character with hyphenated name" do
+      assert AutoDetect.detect_type("JOHN-PAUL") == "character"
+    end
+
+    test "detects character with apostrophe" do
+      assert AutoDetect.detect_type("O'BRIEN") == "character"
+    end
   end
 end

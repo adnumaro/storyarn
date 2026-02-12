@@ -45,7 +45,7 @@ defmodule Storyarn.Screenplays.ElementGrouping do
   end
 
   # Types that reset the speaker context for CONT'D detection
-  @continuation_breakers ~w(scene_heading transition page_break conditional instruction response dual_dialogue hub_marker jump_marker)
+  @continuation_breakers ~w(scene_heading transition conditional instruction response dual_dialogue hub_marker jump_marker)
 
   @doc """
   Computes which character elements should display (CONT'D).
@@ -53,7 +53,7 @@ defmodule Storyarn.Screenplays.ElementGrouping do
   Returns a MapSet of element IDs. A character gets (CONT'D) when:
   - The same base name appeared in the most recent preceding dialogue group
   - Only non-scene-breaking elements (action, note, section) appear between them
-  - Scene headings, transitions, page breaks, and interactive elements reset the speaker context
+  - Scene headings, transitions, and interactive elements reset the speaker context
 
   Uses `CharacterExtension.base_name/1` for comparison (strips V.O., O.S., etc.).
   """

@@ -34,7 +34,8 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
       class={[
         "screenplay-element",
         "sp-#{@element.type}",
-        empty?(@element) && "sp-empty"
+        empty?(@element) && "sp-empty",
+        left_transition?(@element) && "sp-transition-left"
       ]}
       phx-hook={@editable && "ScreenplayElement"}
       phx-update={@editable && "ignore"}
@@ -410,6 +411,12 @@ defmodule StoryarnWeb.Components.Screenplay.ElementRenderer do
     MapSet.member?(continuations, element.id) and
       not CharacterExtension.has_contd?(element.content)
   end
+
+  defp left_transition?(%{type: "transition", content: content}) when is_binary(content) do
+    content |> String.trim() |> String.upcase() |> String.ends_with?("IN:")
+  end
+
+  defp left_transition?(_), do: false
 
   defp empty?(%{content: nil}), do: true
   defp empty?(%{content: ""}), do: true

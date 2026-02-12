@@ -160,7 +160,7 @@
   margin: 0 auto;
   background-color: var(--color-base-100);
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  font-family: "Courier New", Courier, monospace;
+  font-family: "Courier Prime", "Courier New", Courier, monospace;
   font-size: 12pt;
   line-height: 1;
   padding: 96px 96px 96px 144px;
@@ -203,21 +203,21 @@
 .sp-scene_heading {
   text-transform: uppercase;
   font-weight: bold;
-  margin-top: 24px;
-  margin-bottom: 12px;
+  margin-top: 32px; /* 2 blank lines before (§7) */
+  margin-bottom: 16px; /* 1 blank line after (§7) */
 }
 
 /* Action — full width, standard margins */
 .sp-action {
-  margin-top: 12px;
-  margin-bottom: 12px;
+  margin-top: 16px;
+  margin-bottom: 16px;
 }
 
 /* Character name — uppercase, centered offset */
 .sp-character {
   text-transform: uppercase;
-  margin-left: 192px;
-  margin-top: 12px;
+  margin-left: 211px; /* 22 chars — 3.7" from left page edge (§3.1) */
+  margin-top: 16px;
   margin-bottom: 0;
 }
 
@@ -234,8 +234,8 @@
 
 /* Parenthetical — indented, narrow width */
 .sp-parenthetical {
-  margin-left: 144px;
-  max-width: 192px;
+  margin-left: 154px; /* 16 chars — 3.1" from left page edge (§3.1) */
+  max-width: 240px; /* 25 chars — 2.5" width (§3.1) */
   margin-top: 0;
   margin-bottom: 0;
 }
@@ -243,7 +243,7 @@
 /* Dialogue — indented, medium width */
 .sp-dialogue {
   margin-left: 96px;
-  max-width: 288px;
+  max-width: 336px; /* 35 chars — 3.5" width (§3.1) */
   margin-top: 0;
   margin-bottom: 0;
 }
@@ -252,8 +252,12 @@
 .sp-transition {
   text-align: right;
   text-transform: uppercase;
-  margin-top: 12px;
-  margin-bottom: 12px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.sp-transition-left {
+  text-align: left;
 }
 
 /* Note — sans-serif, warm bg, left accent border */
@@ -263,7 +267,7 @@
   background-color: color-mix(in oklch, var(--color-warning) 10%, transparent);
   border-left: 3px solid var(--color-warning);
   padding: 8px 12px;
-  margin: 12px 0;
+  margin: 16px 0;
   border-radius: 0 4px 4px 0;
 }
 
@@ -296,7 +300,7 @@
   background-color: color-mix(in oklch, var(--color-base-content) 3%, transparent);
   border-left: 3px solid var(--color-base-300);
   padding: 8px 12px;
-  margin: 12px 0;
+  margin: 16px 0;
   border-radius: 0 4px 4px 0;
 }
 
@@ -555,7 +559,7 @@
    --------------------------------------------------------------------------- */
 
 .sp-dual_dialogue {
-  margin: 12px 0;
+  margin: 16px 0;
 }
 
 .sp-dual-dialogue {

@@ -56,11 +56,11 @@ defmodule Storyarn.Screenplays.AutoDetect do
 
   # INT. / EXT. / INT./EXT. / I/E. prefixes
   defp scene_heading?(text) do
-    Regex.match?(~r/^(INT\.|EXT\.|INT\.\/EXT\.|I\/E\.?)\s/i, text)
+    Regex.match?(~r/^(INT\.|EXT\.|INT\.\/EXT\.|I\/E\.?|EST\.)\s/i, text)
   end
 
   # Well-known transitions
-  @known_transitions ["FADE IN:", "FADE OUT.", "FADE TO BLACK."]
+  @known_transitions ["FADE IN:", "FADE OUT.", "FADE TO BLACK.", "INTERCUT:"]
   defp known_transition?(text), do: text in @known_transitions
 
   # Pattern: ALL CAPS + "TO:" at end (e.g. "CUT TO:", "DISSOLVE TO:")
@@ -77,6 +77,6 @@ defmodule Storyarn.Screenplays.AutoDetect do
   # Must check AFTER transitions and parentheticals to avoid false positives
   defp character_name?(text) do
     String.length(text) < 50 and
-      Regex.match?(~r/^[A-Z][A-Z\s\.']+(\s*\([\w\.]+\))?$/, text)
+      Regex.match?(~r/^[A-Z][A-Z\s\.\-']+(\s*\([^)]+\))*$/, text)
   end
 end

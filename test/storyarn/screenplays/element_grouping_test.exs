@@ -354,6 +354,21 @@ defmodule Storyarn.Screenplays.ElementGroupingTest do
       assert ElementGrouping.compute_continuations(elements) == MapSet.new()
     end
 
+    test "page_break does not reset continuation", %{screenplay: sp} do
+      elements = make_elements_with_content(sp, [
+        {"character", "JAIME"},
+        {"dialogue", "First line."},
+        {"page_break", ""},
+        {"action", "He pauses."},
+        {"character", "JAIME"},
+        {"dialogue", "Second line."}
+      ])
+
+      continuations = ElementGrouping.compute_continuations(elements)
+      jaime_2 = Enum.at(elements, 4)
+      assert MapSet.member?(continuations, jaime_2.id)
+    end
+
     test "transition resets speaker context", %{screenplay: sp} do
       elements = make_elements_with_content(sp, [
         {"character", "JAIME"},
