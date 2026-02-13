@@ -155,16 +155,19 @@ defmodule Storyarn.Screenplays.TiptapSerialization do
   # -- Private: HTML <-> TipTap inline content --------------------------------
 
   # Plain text is stored as-is for backward compatibility. When content
-  # contains `<span class="mention">` tags (inline sheet references),
-  # Floki parses the HTML into mixed text + mention TipTap nodes.
+  # contains HTML tags (mentions, marks, hard breaks), Floki parses the
+  # HTML into TipTap inline nodes with marks.
+
+  # Tags that trigger HTML parsing (mentions, marks, hard breaks)
+  @html_tag_pattern ~r/<(?:span|strong|em|[bis]|del|br)\b/i
 
   defp html_to_inline_content(nil), do: []
   defp html_to_inline_content(""), do: []
 
   defp html_to_inline_content(content) when is_binary(content) do
-    if String.contains?(content, "<span") do
+    if Regex.match?(@html_tag_pattern, content) do
       case Floki.parse_fragment(content) do
-        {:ok, tree} -> parse_inline_tree(tree)
+        {:ok, tree} -> parse_inline_tree(tree, [])
         _ -> [%{"type" => "text", "text" => content}]
       end
     else
@@ -172,21 +175,41 @@ defmodule Storyarn.Screenplays.TiptapSerialization do
     end
   end
 
-  defp parse_inline_tree(nodes) do
+  defp parse_inline_tree(nodes, marks) do
     Enum.flat_map(nodes, fn
       text when is_binary(text) ->
-        if text == "", do: [], else: [%{"type" => "text", "text" => text}]
+        if text == "", do: [], else: [text_node(text, marks)]
+
+      {"br", _, _} ->
+        [%{"type" => "hardBreak"}]
+
+      {"strong", _, children} ->
+        parse_inline_tree(children, marks ++ [%{"type" => "bold"}])
+
+      {"b", _, children} ->
+        parse_inline_tree(children, marks ++ [%{"type" => "bold"}])
+
+      {"em", _, children} ->
+        parse_inline_tree(children, marks ++ [%{"type" => "italic"}])
+
+      {"i", _, children} ->
+        parse_inline_tree(children, marks ++ [%{"type" => "italic"}])
+
+      {"s", _, children} ->
+        parse_inline_tree(children, marks ++ [%{"type" => "strike"}])
+
+      {"del", _, children} ->
+        parse_inline_tree(children, marks ++ [%{"type" => "strike"}])
 
       {"span", attrs, children} ->
-        parse_inline_span(Map.new(attrs), attrs, children)
+        parse_inline_span(Map.new(attrs), children, marks)
 
-      {tag, tag_attrs, children} ->
-        text = Floki.text({tag, tag_attrs, children})
-        if text == "", do: [], else: [%{"type" => "text", "text" => text}]
+      {_tag, _tag_attrs, children} ->
+        parse_inline_tree(children, marks)
     end)
   end
 
-  defp parse_inline_span(attrs_map, attrs, children) do
+  defp parse_inline_span(attrs_map, children, marks) do
     if mention_span?(attrs_map) do
       [
         %{
@@ -199,24 +222,33 @@ defmodule Storyarn.Screenplays.TiptapSerialization do
         }
       ]
     else
-      text = Floki.text({"span", attrs, children})
-      if text == "", do: [], else: [%{"type" => "text", "text" => text}]
+      parse_inline_tree(children, marks)
     end
   end
 
   defp mention_span?(%{"class" => class}), do: String.contains?(class, "mention")
   defp mention_span?(_), do: false
 
+  defp text_node(text, []), do: %{"type" => "text", "text" => text}
+  defp text_node(text, marks), do: %{"type" => "text", "text" => text, "marks" => marks}
+
+  # -- Private: TipTap inline content -> HTML ----------------------------------
+
   defp inline_content_to_html(nil), do: ""
   defp inline_content_to_html([]), do: ""
 
   defp inline_content_to_html(content) when is_list(content) do
-    has_mentions = Enum.any?(content, &match?(%{"type" => "mention"}, &1))
-
-    if has_mentions do
+    if needs_html_output?(content) do
       Enum.map_join(content, "", fn
+        %{"type" => "text", "text" => text, "marks" => marks}
+        when is_list(marks) and marks != [] ->
+          wrap_marks(escape_html(text), marks)
+
         %{"type" => "text", "text" => text} ->
           escape_html(text)
+
+        %{"type" => "hardBreak"} ->
+          "<br>"
 
         %{"type" => "mention", "attrs" => attrs} ->
           id = escape_attr(attrs["id"] || "")
@@ -236,6 +268,21 @@ defmodule Storyarn.Screenplays.TiptapSerialization do
       end)
     end
   end
+
+  defp needs_html_output?(content) do
+    Enum.any?(content, fn
+      %{"type" => "mention"} -> true
+      %{"type" => "hardBreak"} -> true
+      %{"type" => "text", "marks" => [_ | _]} -> true
+      _ -> false
+    end)
+  end
+
+  defp wrap_marks(html, []), do: html
+  defp wrap_marks(html, [%{"type" => "bold"} | rest]), do: wrap_marks("<strong>#{html}</strong>", rest)
+  defp wrap_marks(html, [%{"type" => "italic"} | rest]), do: wrap_marks("<em>#{html}</em>", rest)
+  defp wrap_marks(html, [%{"type" => "strike"} | rest]), do: wrap_marks("<s>#{html}</s>", rest)
+  defp wrap_marks(html, [_ | rest]), do: wrap_marks(html, rest)
 
   defp escape_html(text) when is_binary(text) do
     text

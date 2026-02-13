@@ -410,6 +410,304 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
     end
   end
 
+  # -- Rich text marks (bold, italic, strike) -----------------------------------
+
+  describe "elements_to_doc/1 with marks" do
+    test "parses <strong> tag into bold mark" do
+      doc =
+        TiptapSerialization.elements_to_doc([
+          element(id: 1, type: "action", content: "He <strong>ran</strong> fast")
+        ])
+
+      [node] = doc["content"]
+
+      assert [
+               %{"type" => "text", "text" => "He "},
+               %{"type" => "text", "text" => "ran", "marks" => [%{"type" => "bold"}]},
+               %{"type" => "text", "text" => " fast"}
+             ] = node["content"]
+    end
+
+    test "parses <b> tag as bold mark" do
+      doc =
+        TiptapSerialization.elements_to_doc([
+          element(id: 1, type: "action", content: "<b>bold</b>")
+        ])
+
+      [node] = doc["content"]
+      assert [%{"type" => "text", "text" => "bold", "marks" => [%{"type" => "bold"}]}] = node["content"]
+    end
+
+    test "parses <em> tag into italic mark" do
+      doc =
+        TiptapSerialization.elements_to_doc([
+          element(id: 1, type: "dialogue", content: "Say <em>please</em>")
+        ])
+
+      [node] = doc["content"]
+
+      assert [
+               %{"type" => "text", "text" => "Say "},
+               %{"type" => "text", "text" => "please", "marks" => [%{"type" => "italic"}]}
+             ] = node["content"]
+    end
+
+    test "parses <i> tag as italic mark" do
+      doc =
+        TiptapSerialization.elements_to_doc([
+          element(id: 1, type: "action", content: "<i>italic</i>")
+        ])
+
+      [node] = doc["content"]
+      assert [%{"type" => "text", "text" => "italic", "marks" => [%{"type" => "italic"}]}] = node["content"]
+    end
+
+    test "parses <s> tag into strike mark" do
+      doc =
+        TiptapSerialization.elements_to_doc([
+          element(id: 1, type: "action", content: "<s>deleted</s> text")
+        ])
+
+      [node] = doc["content"]
+
+      assert [
+               %{"type" => "text", "text" => "deleted", "marks" => [%{"type" => "strike"}]},
+               %{"type" => "text", "text" => " text"}
+             ] = node["content"]
+    end
+
+    test "parses <del> tag as strike mark" do
+      doc =
+        TiptapSerialization.elements_to_doc([
+          element(id: 1, type: "action", content: "<del>removed</del>")
+        ])
+
+      [node] = doc["content"]
+      assert [%{"type" => "text", "text" => "removed", "marks" => [%{"type" => "strike"}]}] = node["content"]
+    end
+
+    test "parses nested marks (bold + italic)" do
+      doc =
+        TiptapSerialization.elements_to_doc([
+          element(id: 1, type: "action", content: "<strong><em>both</em></strong>")
+        ])
+
+      [node] = doc["content"]
+
+      assert [
+               %{
+                 "type" => "text",
+                 "text" => "both",
+                 "marks" => [%{"type" => "bold"}, %{"type" => "italic"}]
+               }
+             ] = node["content"]
+    end
+
+    test "plain text without mark tags produces no marks key" do
+      doc =
+        TiptapSerialization.elements_to_doc([
+          element(id: 1, type: "action", content: "plain text")
+        ])
+
+      [node] = doc["content"]
+      [text_node] = node["content"]
+
+      refute Map.has_key?(text_node, "marks")
+    end
+  end
+
+  # -- Hard break (<br>) ------------------------------------------------------
+
+  describe "elements_to_doc/1 with hard breaks" do
+    test "parses <br> into hardBreak node" do
+      doc =
+        TiptapSerialization.elements_to_doc([
+          element(id: 1, type: "action", content: "Line one<br>Line two")
+        ])
+
+      [node] = doc["content"]
+
+      assert [
+               %{"type" => "text", "text" => "Line one"},
+               %{"type" => "hardBreak"},
+               %{"type" => "text", "text" => "Line two"}
+             ] = node["content"]
+    end
+
+    test "parses self-closing <br/> and <br /> variants" do
+      for br <- ["<br>", "<br/>", "<br />"] do
+        doc =
+          TiptapSerialization.elements_to_doc([
+            element(id: 1, type: "action", content: "A#{br}B")
+          ])
+
+        [node] = doc["content"]
+        types = Enum.map(node["content"], & &1["type"])
+        assert types == ["text", "hardBreak", "text"], "Failed for variant: #{br}"
+      end
+    end
+  end
+
+  # -- doc_to_element_attrs with marks and hard breaks -------------------------
+
+  describe "doc_to_element_attrs/1 with marks" do
+    test "serializes bold mark as <strong> tag" do
+      doc = %{
+        "type" => "doc",
+        "content" => [
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [
+              %{"type" => "text", "text" => "bold", "marks" => [%{"type" => "bold"}]}
+            ]
+          }
+        ]
+      }
+
+      [attrs] = TiptapSerialization.doc_to_element_attrs(doc)
+      assert attrs.content == "<strong>bold</strong>"
+    end
+
+    test "serializes italic mark as <em> tag" do
+      doc = %{
+        "type" => "doc",
+        "content" => [
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [
+              %{"type" => "text", "text" => "italic", "marks" => [%{"type" => "italic"}]}
+            ]
+          }
+        ]
+      }
+
+      [attrs] = TiptapSerialization.doc_to_element_attrs(doc)
+      assert attrs.content == "<em>italic</em>"
+    end
+
+    test "serializes strike mark as <s> tag" do
+      doc = %{
+        "type" => "doc",
+        "content" => [
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [
+              %{"type" => "text", "text" => "struck", "marks" => [%{"type" => "strike"}]}
+            ]
+          }
+        ]
+      }
+
+      [attrs] = TiptapSerialization.doc_to_element_attrs(doc)
+      assert attrs.content == "<s>struck</s>"
+    end
+
+    test "serializes nested marks" do
+      doc = %{
+        "type" => "doc",
+        "content" => [
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [
+              %{
+                "type" => "text",
+                "text" => "both",
+                "marks" => [%{"type" => "bold"}, %{"type" => "italic"}]
+              }
+            ]
+          }
+        ]
+      }
+
+      [attrs] = TiptapSerialization.doc_to_element_attrs(doc)
+      assert attrs.content == "<em><strong>both</strong></em>"
+    end
+
+    test "serializes hardBreak as <br>" do
+      doc = %{
+        "type" => "doc",
+        "content" => [
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [
+              %{"type" => "text", "text" => "Line one"},
+              %{"type" => "hardBreak"},
+              %{"type" => "text", "text" => "Line two"}
+            ]
+          }
+        ]
+      }
+
+      [attrs] = TiptapSerialization.doc_to_element_attrs(doc)
+      assert attrs.content == "Line one<br>Line two"
+    end
+
+    test "escapes HTML in marked text" do
+      doc = %{
+        "type" => "doc",
+        "content" => [
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [
+              %{"type" => "text", "text" => "x < y", "marks" => [%{"type" => "bold"}]}
+            ]
+          }
+        ]
+      }
+
+      [attrs] = TiptapSerialization.doc_to_element_attrs(doc)
+      assert attrs.content == "<strong>x &lt; y</strong>"
+    end
+
+    test "plain text without marks skips HTML output" do
+      doc = %{
+        "type" => "doc",
+        "content" => [
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [
+              %{"type" => "text", "text" => "Hello"},
+              %{"type" => "text", "text" => " world"}
+            ]
+          }
+        ]
+      }
+
+      [attrs] = TiptapSerialization.doc_to_element_attrs(doc)
+      # No HTML output — plain text concatenation (no escaping)
+      assert attrs.content == "Hello world"
+    end
+
+    test "mixed marks and mentions" do
+      doc = %{
+        "type" => "doc",
+        "content" => [
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [
+              %{"type" => "text", "text" => "Visit ", "marks" => [%{"type" => "bold"}]},
+              %{"type" => "mention", "attrs" => %{"id" => "7", "label" => "Village", "type" => "sheet"}},
+              %{"type" => "text", "text" => " today"}
+            ]
+          }
+        ]
+      }
+
+      [attrs] = TiptapSerialization.doc_to_element_attrs(doc)
+      assert attrs.content =~ "<strong>Visit </strong>"
+      assert attrs.content =~ ~s(data-id="7")
+      assert attrs.content =~ " today"
+    end
+  end
+
   # -- Round-trip tests -------------------------------------------------------
 
   describe "round-trip" do
@@ -516,6 +814,119 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
       [result] = TiptapSerialization.doc_to_element_attrs(doc)
       assert result.content =~ "A &amp; B"
       assert result.content =~ ~s(data-id="1")
+    end
+
+    test "round-trip preserves bold marks" do
+      content = "He <strong>ran</strong> fast"
+      original = element(id: 1, type: "action", content: content, position: 0)
+
+      doc = TiptapSerialization.elements_to_doc([original])
+      [result] = TiptapSerialization.doc_to_element_attrs(doc)
+
+      assert result.content =~ "<strong>ran</strong>"
+      assert result.content =~ "He "
+      assert result.content =~ " fast"
+    end
+
+    test "round-trip preserves italic marks" do
+      content = "<em>whispered</em> words"
+      original = element(id: 1, type: "dialogue", content: content, position: 0)
+
+      doc = TiptapSerialization.elements_to_doc([original])
+      [result] = TiptapSerialization.doc_to_element_attrs(doc)
+
+      assert result.content =~ "<em>whispered</em>"
+      assert result.content =~ " words"
+    end
+
+    test "round-trip preserves strike marks" do
+      content = "<s>deleted</s> text"
+      original = element(id: 1, type: "action", content: content, position: 0)
+
+      doc = TiptapSerialization.elements_to_doc([original])
+      [result] = TiptapSerialization.doc_to_element_attrs(doc)
+
+      assert result.content =~ "<s>deleted</s>"
+      assert result.content =~ " text"
+    end
+
+    test "round-trip preserves hard breaks" do
+      content = "Line one<br>Line two"
+      original = element(id: 1, type: "action", content: content, position: 0)
+
+      doc = TiptapSerialization.elements_to_doc([original])
+      [result] = TiptapSerialization.doc_to_element_attrs(doc)
+
+      assert result.content == "Line one<br>Line two"
+    end
+
+    test "round-trip preserves nested bold + italic" do
+      content = "<strong><em>both</em></strong>"
+      original = element(id: 1, type: "action", content: content, position: 0)
+
+      doc = TiptapSerialization.elements_to_doc([original])
+      [result] = TiptapSerialization.doc_to_element_attrs(doc)
+
+      # Nested: inner mark wraps first, outer wraps second
+      assert result.content == "<em><strong>both</strong></em>"
+    end
+
+    test "round-trip preserves bold text mixed with mentions" do
+      content =
+        ~s(<strong>Visit</strong> <span class="mention" data-type="sheet" data-id="7" data-label="Village">#Village</span>)
+
+      original = element(id: 1, type: "action", content: content, position: 0)
+
+      doc = TiptapSerialization.elements_to_doc([original])
+      [result] = TiptapSerialization.doc_to_element_attrs(doc)
+
+      assert result.content =~ "<strong>Visit</strong>"
+      assert result.content =~ ~s(data-id="7")
+    end
+
+    test "round-trip preserves hard break mixed with marks" do
+      content = "<strong>Bold</strong><br><em>Italic</em>"
+      original = element(id: 1, type: "action", content: content, position: 0)
+
+      doc = TiptapSerialization.elements_to_doc([original])
+      [result] = TiptapSerialization.doc_to_element_attrs(doc)
+
+      assert result.content =~ "<strong>Bold</strong>"
+      assert result.content =~ "<br>"
+      assert result.content =~ "<em>Italic</em>"
+    end
+
+    test "round-trip preserves auto-detected scene heading type and content" do
+      original = element(id: 1, type: "scene_heading", content: "INT. OFFICE - DAY", position: 0)
+
+      doc = TiptapSerialization.elements_to_doc([original])
+      assert [%{"type" => "sceneHeading"}] = doc["content"]
+
+      [result] = TiptapSerialization.doc_to_element_attrs(doc)
+      assert result.type == "scene_heading"
+      assert result.content == "INT. OFFICE - DAY"
+    end
+
+    test "round-trip preserves auto-detected transition type and content" do
+      original = element(id: 1, type: "transition", content: "CUT TO:", position: 0)
+
+      doc = TiptapSerialization.elements_to_doc([original])
+      assert [%{"type" => "transition"}] = doc["content"]
+
+      [result] = TiptapSerialization.doc_to_element_attrs(doc)
+      assert result.type == "transition"
+      assert result.content == "CUT TO:"
+    end
+
+    test "round-trip preserves auto-detected parenthetical type and content" do
+      original = element(id: 1, type: "parenthetical", content: "(whispering)", position: 0)
+
+      doc = TiptapSerialization.elements_to_doc([original])
+      assert [%{"type" => "parenthetical"}] = doc["content"]
+
+      [result] = TiptapSerialization.doc_to_element_attrs(doc)
+      assert result.type == "parenthetical"
+      assert result.content == "(whispering)"
     end
   end
 end

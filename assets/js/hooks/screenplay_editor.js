@@ -42,6 +42,9 @@ import { ScreenplayKeymap } from "../screenplay/extensions/screenplay_keymap.js"
 import { ScreenplayPlaceholder } from "../screenplay/extensions/screenplay_placeholder.js";
 import { SlashCommands } from "../screenplay/extensions/slash_commands.js";
 import { LiveViewBridge } from "../screenplay/extensions/liveview_bridge.js";
+import { AutoDetectRules } from "../screenplay/extensions/auto_detect_rules.js";
+import { ContdPlugin } from "../screenplay/extensions/contd_plugin.js";
+import { TransitionAlignPlugin } from "../screenplay/extensions/transition_align_plugin.js";
 
 // Shared extensions
 import { createMentionExtension } from "../tiptap/mention_extension.js";
@@ -130,6 +133,9 @@ export const ScreenplayEditor = {
         ScreenplayKeymap,
         ScreenplayPlaceholder,
         SlashCommands,
+        AutoDetectRules,
+        ContdPlugin,
+        TransitionAlignPlugin,
         LiveViewBridge.configure({ liveViewHook }),
         createMentionExtension({ liveViewHook }),
       ],

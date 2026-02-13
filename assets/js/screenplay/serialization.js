@@ -107,28 +107,36 @@ export function docToElements(editor) {
  * Get the content of a node as a string.
  *
  * Pure text nodes are returned as-is (backward compatible plain text).
- * When inline mention nodes are present, content is serialized as HTML
- * with `<span class="mention">` tags so mentions survive the round-trip.
+ * When marks, hard breaks, or mentions are present, content is serialized
+ * as HTML so rich formatting survives the round-trip.
  */
 function getNodeText(node) {
   if (!node.content || node.content.size === 0) return "";
 
-  // Check for inline mention nodes
-  let hasMentions = false;
+  // Check if we need HTML serialization (mentions, marks, hard breaks)
+  let needsHtml = false;
   node.content.forEach((child) => {
-    if (child.type.name === "mention") hasMentions = true;
+    if (child.type.name === "mention" || child.type.name === "hardBreak")
+      needsHtml = true;
+    if (child.marks && child.marks.length > 0) needsHtml = true;
   });
 
-  // No mentions: plain text (backward compatible, no encoding overhead)
-  if (!hasMentions) {
+  // No rich content: plain text (backward compatible, no encoding overhead)
+  if (!needsHtml) {
     return node.textContent || "";
   }
 
-  // Has mentions: serialize as HTML
+  // Serialize as HTML
   let html = "";
   node.content.forEach((child) => {
     if (child.type.name === "text") {
-      html += escapeHtml(child.text || "");
+      let text = escapeHtml(child.text || "");
+      if (child.marks && child.marks.length > 0) {
+        text = wrapMarks(text, child.marks);
+      }
+      html += text;
+    } else if (child.type.name === "hardBreak") {
+      html += "<br>";
     } else if (child.type.name === "mention") {
       const { id, label, type } = child.attrs;
       html += `<span class="mention" data-type="${escapeAttr(type || "sheet")}" data-id="${escapeAttr(id)}" data-label="${escapeAttr(label)}">#${escapeHtml(label || "")}</span>`;
@@ -137,6 +145,24 @@ function getNodeText(node) {
     }
   });
 
+  return html;
+}
+
+/** Wrap HTML text in mark tags (bold → <strong>, italic → <em>, strike → <s>). */
+function wrapMarks(html, marks) {
+  for (const mark of marks) {
+    switch (mark.type.name) {
+      case "bold":
+        html = `<strong>${html}</strong>`;
+        break;
+      case "italic":
+        html = `<em>${html}</em>`;
+        break;
+      case "strike":
+        html = `<s>${html}</s>`;
+        break;
+    }
+  }
   return html;
 }
 
@@ -197,52 +223,76 @@ export function elementsToDoc(elements, schema) {
   return { type: "doc", content };
 }
 
+// Tags that trigger HTML parsing (mentions, marks, hard breaks)
+const HTML_TAG_PATTERN = /<(?:span|strong|em|[bis]|del|br)\b/i;
+
 /**
  * Converts an HTML string to TipTap inline content nodes.
  *
- * Plain text (no mention spans) is wrapped in a single text node for
- * backward compatibility. HTML with `<span class="mention">` tags is
- * parsed into mixed text + mention nodes.
+ * Plain text (no HTML tags) is wrapped in a single text node for
+ * backward compatibility. HTML with marks, mentions, or hard breaks
+ * is parsed into structured TipTap nodes with marks.
  */
 function htmlToInlineContent(html) {
   if (!html || html.trim() === "") return [];
 
-  // No mention spans: plain text (backward compat + fast path)
-  if (!html.includes("<span")) {
+  // No HTML tags: plain text (backward compat + fast path)
+  if (!HTML_TAG_PATTERN.test(html)) {
     return [{ type: "text", text: html }];
   }
 
   // Parse as HTML fragment using a <template> (no resource loading)
   const template = document.createElement("template");
   template.innerHTML = html;
+  const nodes = parseInlineNodes(template.content.childNodes, []);
+
+  return nodes.length > 0 ? nodes : [{ type: "text", text: html }];
+}
+
+/** Recursively parse DOM nodes into TipTap inline content, accumulating marks. */
+function parseInlineNodes(childNodes, marks) {
   const nodes = [];
 
-  for (const child of template.content.childNodes) {
+  for (const child of childNodes) {
     if (child.nodeType === 3) {
       // Text node
       if (child.textContent) {
-        nodes.push({ type: "text", text: child.textContent });
+        const node = { type: "text", text: child.textContent };
+        if (marks.length > 0) {
+          node.marks = marks.map((m) => ({ type: m }));
+        }
+        nodes.push(node);
       }
-    } else if (
-      child.nodeType === 1 &&
-      child.classList.contains("mention")
-    ) {
-      // Mention span
-      nodes.push({
-        type: "mention",
-        attrs: {
-          id: child.getAttribute("data-id") || "",
-          label: child.getAttribute("data-label") || "",
-          type: child.getAttribute("data-type") || "sheet",
-        },
-      });
     } else if (child.nodeType === 1) {
-      // Unknown element: extract text content
-      if (child.textContent) {
-        nodes.push({ type: "text", text: child.textContent });
+      const tag = child.tagName.toLowerCase();
+
+      if (child.classList.contains("mention")) {
+        nodes.push({
+          type: "mention",
+          attrs: {
+            id: child.getAttribute("data-id") || "",
+            label: child.getAttribute("data-label") || "",
+            type: child.getAttribute("data-type") || "sheet",
+          },
+        });
+      } else if (tag === "br") {
+        nodes.push({ type: "hardBreak" });
+      } else if (tag === "strong" || tag === "b") {
+        nodes.push(...parseInlineNodes(child.childNodes, [...marks, "bold"]));
+      } else if (tag === "em" || tag === "i") {
+        nodes.push(
+          ...parseInlineNodes(child.childNodes, [...marks, "italic"]),
+        );
+      } else if (tag === "s" || tag === "del") {
+        nodes.push(
+          ...parseInlineNodes(child.childNodes, [...marks, "strike"]),
+        );
+      } else {
+        // Unknown element: recurse into children preserving marks
+        nodes.push(...parseInlineNodes(child.childNodes, marks));
       }
     }
   }
 
-  return nodes.length > 0 ? nodes : [{ type: "text", text: html }];
+  return nodes;
 }
