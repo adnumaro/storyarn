@@ -448,7 +448,8 @@
   font-size: 0.8125rem;
 }
 
-.sp-choice-remove {
+/* Shared action button base — 20x20 icon, hidden until row hover */
+.sp-row-action {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -460,11 +461,28 @@
   cursor: pointer;
   border-radius: 4px;
   flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
-.sp-choice-remove:hover {
+.sp-row-action:hover {
+  color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+  background-color: var(--color-base-200);
+}
+
+.sp-row-action-danger:hover {
   color: var(--color-error);
   background-color: color-mix(in oklch, var(--color-error) 10%, transparent);
+}
+
+/* Show all actions when hovering anywhere on the interactive block */
+.sp-interactive-block:hover .sp-row-action {
+  opacity: 1;
+}
+
+/* Active toggles stay visible (they indicate state) */
+.sp-row-action.sp-choice-toggle-active {
+  opacity: 1;
 }
 
 .sp-choice-empty {
@@ -499,30 +517,8 @@
   margin-bottom: 4px;
 }
 
-/* Toggle buttons for per-choice condition/instruction */
-.sp-choice-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: none;
-  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
-  cursor: pointer;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-
-.sp-choice-toggle:hover {
-  color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
-  background-color: var(--color-base-200);
-}
-
-.sp-choice-toggle-active {
-  color: var(--color-primary);
-}
-
+/* Active toggle overrides — primary color when condition/instruction is set */
+.sp-choice-toggle-active,
 .sp-choice-toggle-active:hover {
   color: var(--color-primary);
 }
@@ -561,39 +557,13 @@
   white-space: nowrap;
 }
 
-.sp-choice-unlink {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: none;
-  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
-  cursor: pointer;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-
+/* Unlink hover override — danger color */
 .sp-choice-unlink:hover {
   color: var(--color-error);
   background-color: color-mix(in oklch, var(--color-error) 10%, transparent);
 }
 
-.sp-choice-create-page {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: none;
-  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
-  cursor: pointer;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-
+/* Create-page hover override — info color */
 .sp-choice-create-page:hover {
   color: var(--color-info);
   background-color: color-mix(in oklch, var(--color-info) 10%, transparent);

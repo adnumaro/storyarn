@@ -71,7 +71,7 @@ export const Instruction = Node.create({
 
       // Builder container
       const builderContainer = document.createElement("div");
-      builderContainer.className = "sp-instruction-builder-container";
+      builderContainer.className = "sp-instruction-builder-container instruction-builder";
       dom.appendChild(builderContainer);
 
       const assignments = node.attrs.data?.assignments || [];

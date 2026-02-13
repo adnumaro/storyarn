@@ -130,7 +130,7 @@ export function createResponseBuilder({
         if (canEdit) {
           const unlinkBtn = document.createElement("button");
           unlinkBtn.type = "button";
-          unlinkBtn.className = "sp-choice-unlink";
+          unlinkBtn.className = "sp-row-action sp-choice-unlink";
           unlinkBtn.title = "Unlink page";
           unlinkBtn.appendChild(createElement(Unlink, { width: 12, height: 12 }));
           unlinkBtn.addEventListener("click", () => {
@@ -146,7 +146,7 @@ export function createResponseBuilder({
       } else if (canEdit) {
         const createBtn = document.createElement("button");
         createBtn.type = "button";
-        createBtn.className = "sp-choice-create-page";
+        createBtn.className = "sp-row-action sp-choice-create-page";
         createBtn.title = "Create page for this choice";
         createBtn.appendChild(createElement(FilePlus, { width: 12, height: 12 }));
         createBtn.addEventListener("click", () => {
@@ -162,7 +162,7 @@ export function createResponseBuilder({
       if (canEdit) {
         const condToggle = document.createElement("button");
         condToggle.type = "button";
-        condToggle.className = `sp-choice-toggle ${choice.condition ? "sp-choice-toggle-active" : ""}`;
+        condToggle.className = `sp-row-action sp-choice-toggle ${choice.condition ? "sp-choice-toggle-active" : ""}`;
         condToggle.title = "Toggle condition";
         condToggle.appendChild(createElement(GitBranch, { width: 12, height: 12 }));
         condToggle.addEventListener("click", () => {
@@ -176,7 +176,7 @@ export function createResponseBuilder({
         // Instruction toggle
         const instrToggle = document.createElement("button");
         instrToggle.type = "button";
-        instrToggle.className = `sp-choice-toggle ${choice.instruction ? "sp-choice-toggle-active" : ""}`;
+        instrToggle.className = `sp-row-action sp-choice-toggle ${choice.instruction ? "sp-choice-toggle-active" : ""}`;
         instrToggle.title = "Toggle instruction";
         instrToggle.appendChild(createElement(Zap, { width: 12, height: 12 }));
         instrToggle.addEventListener("click", () => {
@@ -190,7 +190,7 @@ export function createResponseBuilder({
         // Remove button
         const removeBtn = document.createElement("button");
         removeBtn.type = "button";
-        removeBtn.className = "sp-choice-remove";
+        removeBtn.className = "sp-row-action sp-row-action-danger";
         removeBtn.appendChild(createElement(X, { width: 12, height: 12 }));
         removeBtn.addEventListener("click", () => {
           pushEvent("remove_response_choice", {

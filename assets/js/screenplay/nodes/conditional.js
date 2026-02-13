@@ -71,7 +71,7 @@ export const Conditional = Node.create({
 
       // Builder container
       const builderContainer = document.createElement("div");
-      builderContainer.className = "sp-condition-builder-container";
+      builderContainer.className = "sp-condition-builder-container condition-builder";
       dom.appendChild(builderContainer);
 
       const condition = node.attrs.data?.condition || { logic: "all", rules: [] };

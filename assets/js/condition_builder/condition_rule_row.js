@@ -201,8 +201,7 @@ export function createConditionRuleRow(opts) {
     if (canEdit) {
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";
-      removeBtn.className =
-        "btn btn-ghost btn-xs btn-square text-error opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 self-center";
+      removeBtn.className = "sp-row-action sp-row-action-danger";
       removeBtn.appendChild(createElement(X, { width: 12, height: 12 }));
       removeBtn.title = "Remove";
       removeBtn.addEventListener("click", () => {
