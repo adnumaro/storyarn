@@ -178,28 +178,30 @@ defmodule Storyarn.Screenplays.TiptapSerialization do
         if text == "", do: [], else: [%{"type" => "text", "text" => text}]
 
       {"span", attrs, children} ->
-        attrs_map = Map.new(attrs)
-
-        if mention_span?(attrs_map) do
-          [
-            %{
-              "type" => "mention",
-              "attrs" => %{
-                "id" => attrs_map["data-id"] || "",
-                "label" => attrs_map["data-label"] || "",
-                "type" => attrs_map["data-type"] || "sheet"
-              }
-            }
-          ]
-        else
-          text = Floki.text({"span", attrs, children})
-          if text == "", do: [], else: [%{"type" => "text", "text" => text}]
-        end
+        parse_inline_span(Map.new(attrs), attrs, children)
 
       {tag, tag_attrs, children} ->
         text = Floki.text({tag, tag_attrs, children})
         if text == "", do: [], else: [%{"type" => "text", "text" => text}]
     end)
+  end
+
+  defp parse_inline_span(attrs_map, attrs, children) do
+    if mention_span?(attrs_map) do
+      [
+        %{
+          "type" => "mention",
+          "attrs" => %{
+            "id" => attrs_map["data-id"] || "",
+            "label" => attrs_map["data-label"] || "",
+            "type" => attrs_map["data-type"] || "sheet"
+          }
+        }
+      ]
+    else
+      text = Floki.text({"span", attrs, children})
+      if text == "", do: [], else: [%{"type" => "text", "text" => text}]
+    end
   end
 
   defp mention_span?(%{"class" => class}), do: String.contains?(class, "mention")
