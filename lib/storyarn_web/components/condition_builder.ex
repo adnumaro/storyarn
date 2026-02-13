@@ -58,7 +58,8 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
     """
   end
 
-  defp translations do
+  @doc false
+  def translations do
     %{
       operator_labels: %{
         "equals" => gettext("equals"),

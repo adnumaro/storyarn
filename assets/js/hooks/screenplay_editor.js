@@ -117,11 +117,15 @@ export const ScreenplayEditor = {
     // Parse shared data for interactive NodeViews
     let variables = [];
     let linkedPages = {};
+    let translations = {};
     try {
       variables = JSON.parse(this.el.dataset.variables || "[]");
     } catch { /* ignore */ }
     try {
       linkedPages = JSON.parse(this.el.dataset.linkedPages || "{}");
+    } catch { /* ignore */ }
+    try {
+      translations = JSON.parse(this.el.dataset.translations || "{}");
     } catch { /* ignore */ }
 
     let initialContent;
@@ -182,9 +186,9 @@ export const ScreenplayEditor = {
         TitlePage.configure({ liveViewHook, canEdit }),
 
         // Interactive atom nodes (Phase 2)
-        Conditional.configure({ liveViewHook, variables, canEdit }),
-        Instruction.configure({ liveViewHook, variables, canEdit }),
-        Response.configure({ liveViewHook, variables, canEdit, linkedPages }),
+        Conditional.configure({ liveViewHook, variables, canEdit, translations }),
+        Instruction.configure({ liveViewHook, variables, canEdit, translations }),
+        Response.configure({ liveViewHook, variables, canEdit, linkedPages, translations }),
         DualDialogue.configure({ liveViewHook, canEdit }),
 
         // Behavior extensions

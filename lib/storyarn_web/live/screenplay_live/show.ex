@@ -16,6 +16,8 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   alias Storyarn.Screenplays.Screenplay
   alias Storyarn.Screenplays.TiptapSerialization
   alias Storyarn.Sheets
+  alias StoryarnWeb.Components.ConditionBuilder
+  alias StoryarnWeb.Components.InstructionBuilder
 
   # Title page field validation
   @valid_title_fields ~w(title credit author draft_date contact)
@@ -178,6 +180,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
             data-read-mode={to_string(@read_mode)}
             data-variables={Jason.encode!(@project_variables)}
             data-linked-pages={Jason.encode!(@linked_pages)}
+            data-translations={Jason.encode!(screenplay_translations())}
             data-highlight-element={@highlight_element_id}
             phx-update="ignore"
           >
@@ -1503,4 +1506,8 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
   defp sanitize_plain_text(value) when is_binary(value), do: ContentUtils.strip_html(value)
   defp sanitize_plain_text(_), do: ""
+
+  defp screenplay_translations do
+    Map.merge(InstructionBuilder.translations(), ConditionBuilder.translations())
+  end
 end

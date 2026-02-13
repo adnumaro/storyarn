@@ -39,7 +39,8 @@ defmodule StoryarnWeb.Components.InstructionBuilder do
     """
   end
 
-  defp translations do
+  @doc false
+  def translations do
     %{
       operator_verbs: %{
         "set" => gettext("Set"),
