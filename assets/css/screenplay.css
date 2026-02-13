@@ -919,12 +919,6 @@
   gap: 6px;
 }
 
-.sp-character-ref-name {
-  font-family: "Courier Prime", "Courier New", monospace;
-  font-size: 12pt;
-  text-transform: uppercase;
-}
-
 /* NodeView: inline actions shown next to editable content */
 .sp-character-actions {
   display: inline-flex;
@@ -960,94 +954,6 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Character sheet picker — floating search dropdown
-   --------------------------------------------------------------------------- */
-
-.sp-character-picker {
-  position: fixed;
-  z-index: 50;
-  width: 260px;
-  max-height: 300px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--color-base-100);
-  border: 1px solid var(--color-base-300);
-  border-radius: 8px;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  font-family: system-ui, sans-serif;
-  font-size: 0.875rem;
-}
-
-[data-theme="dark"] .sp-character-picker {
-  background-color: var(--color-base-200);
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3);
-}
-
-.sp-character-picker-input {
-  width: 100%;
-  padding: 8px 10px;
-  border: none;
-  border-bottom: 1px solid var(--color-base-300);
-  background-color: transparent;
-  color: var(--color-base-content);
-  font-size: 0.8125rem;
-  outline: none;
-}
-
-.sp-character-picker-list {
-  overflow-y: auto;
-  max-height: 248px;
-  padding: 4px 0;
-}
-
-.sp-character-picker-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 10px;
-  border: none;
-  background: none;
-  color: var(--color-base-content);
-  cursor: pointer;
-  text-align: left;
-  font-size: 0.8125rem;
-}
-
-.sp-character-picker-item:hover,
-.sp-character-picker-highlighted {
-  background-color: var(--color-base-200);
-}
-
-[data-theme="dark"] .sp-character-picker-item:hover,
-[data-theme="dark"] .sp-character-picker-highlighted {
-  background-color: var(--color-base-300);
-}
-
-.sp-character-picker-name {
-  flex: 1;
-  font-weight: 500;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sp-character-picker-shortcut {
-  font-size: 0.6875rem;
-  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
-  flex-shrink: 0;
-}
-
-.sp-character-picker-empty {
-  padding: 12px 10px;
-  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
-  font-size: 0.8125rem;
-  text-align: center;
-}
-
-/* ---------------------------------------------------------------------------
    TipTap — unified editor ProseMirror styles
    --------------------------------------------------------------------------- */
 
@@ -1076,11 +982,6 @@
 .screenplay-prosemirror:focus-visible,
 .screenplay-prosemirror:focus {
   outline: none;
-}
-
-/* Read-only TipTap rendered HTML */
-.sp-tiptap-readonly p {
-  margin: 0;
 }
 
 /* Base mention style (clipboard, external contexts) */
