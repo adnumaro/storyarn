@@ -13,8 +13,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   alias Storyarn.Repo
   alias Storyarn.Screenplays
   alias Storyarn.Screenplays.ContentUtils
-  alias Storyarn.Screenplays.FlowSync
-  alias Storyarn.Screenplays.LinkedPageCrud
   alias Storyarn.Screenplays.Screenplay
   alias Storyarn.Screenplays.TiptapSerialization
   alias Storyarn.Sheets
@@ -545,9 +543,9 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     with_edit_permission(socket, fn ->
       screenplay = socket.assigns.screenplay
 
-      with {:ok, flow} <- FlowSync.ensure_flow(screenplay),
+      with {:ok, flow} <- Screenplays.ensure_flow(screenplay),
            screenplay = Screenplays.get_screenplay!(screenplay.project_id, screenplay.id),
-           {:ok, _flow} <- FlowSync.sync_to_flow(screenplay) do
+           {:ok, _flow} <- Screenplays.sync_to_flow(screenplay) do
         screenplay = Screenplays.get_screenplay!(screenplay.project_id, screenplay.id)
 
         {:noreply,
@@ -579,7 +577,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     with_edit_permission(socket, fn ->
       screenplay = socket.assigns.screenplay
 
-      case FlowSync.unlink_flow(screenplay) do
+      case Screenplays.unlink_flow(screenplay) do
         {:ok, updated} ->
           {:noreply,
            socket
@@ -1041,7 +1039,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     if socket.assigns.link_status != :linked do
       {:noreply, put_flash(socket, :error, gettext("Screenplay is not linked to a flow."))}
     else
-      case FlowSync.sync_to_flow(socket.assigns.screenplay) do
+      case Screenplays.sync_to_flow(socket.assigns.screenplay) do
         {:ok, _flow} ->
           {:noreply, put_flash(socket, :info, gettext("Screenplay synced to flow."))}
 
@@ -1057,7 +1055,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     if socket.assigns.link_status != :linked do
       {:noreply, put_flash(socket, :error, gettext("Screenplay is not linked to a flow."))}
     else
-      case FlowSync.sync_from_flow(screenplay) do
+      case Screenplays.sync_from_flow(screenplay) do
         {:ok, _screenplay} ->
           elements = Screenplays.list_elements(screenplay.id)
 
@@ -1168,7 +1166,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         {:noreply, socket}
 
       element ->
-        choice = LinkedPageCrud.find_choice(element, choice_id)
+        choice = Screenplays.find_choice(element, choice_id)
         linked_id = choice && choice["linked_screenplay_id"]
 
         if linked_id && valid_navigation_target?(socket, linked_id) do
