@@ -28,6 +28,13 @@ import {
   Note,
   Section,
   PageBreak,
+  HubMarker,
+  JumpMarker,
+  TitlePage,
+  Conditional,
+  Instruction,
+  Response,
+  DualDialogue,
 } from "../screenplay/nodes/index.js";
 
 // Screenplay extensions
@@ -45,6 +52,16 @@ export const ScreenplayEditor = {
 
     const contentJson = this.el.dataset.content;
     const canEdit = this.el.dataset.canEdit === "true";
+
+    // Parse shared data for interactive NodeViews
+    let variables = [];
+    let linkedPages = {};
+    try {
+      variables = JSON.parse(this.el.dataset.variables || "[]");
+    } catch { /* ignore */ }
+    try {
+      linkedPages = JSON.parse(this.el.dataset.linkedPages || "{}");
+    } catch { /* ignore */ }
 
     let initialContent;
     try {
@@ -99,6 +116,15 @@ export const ScreenplayEditor = {
 
         // Atom nodes
         PageBreak,
+        HubMarker,
+        JumpMarker,
+        TitlePage,
+
+        // Interactive atom nodes (Phase 2)
+        Conditional.configure({ liveViewHook, variables, canEdit }),
+        Instruction.configure({ liveViewHook, variables, canEdit }),
+        Response.configure({ liveViewHook, variables, canEdit, linkedPages }),
+        DualDialogue.configure({ liveViewHook, canEdit }),
 
         // Behavior extensions
         ScreenplayKeymap,
@@ -120,6 +146,70 @@ export const ScreenplayEditor = {
     this.handleEvent("focus_editor", () => {
       if (this._destroyed || !this.editor) return;
       this.editor.commands.focus("end");
+    });
+
+    // Server pushes updated element data after interactive block mutations.
+    // Find the node by elementId and update its `data` attribute so the
+    // NodeView's update() callback re-renders with fresh data.
+    this.handleEvent("element_data_updated", ({ element_id, data }) => {
+      if (this._destroyed || !this.editor) return;
+
+      const { doc, tr } = this.editor.state;
+      let found = false;
+
+      doc.forEach((node, pos) => {
+        if (found) return;
+        if (node.attrs.elementId === element_id) {
+          tr.setNodeMarkup(pos, undefined, { ...node.attrs, data });
+          found = true;
+        }
+      });
+
+      if (found) {
+        // Suppress the LiveViewBridge sync — this is a server echo, not a user edit
+        const bridge = this.editor.extensionManager.extensions.find(
+          (e) => e.name === "liveViewBridge",
+        );
+        if (bridge) {
+          bridge.storage.suppressUpdate = true;
+        }
+
+        this.editor.view.dispatch(tr);
+
+        requestAnimationFrame(() => {
+          if (bridge) bridge.storage.suppressUpdate = false;
+        });
+      }
+    });
+
+    // Server pushes updated linked pages data (for response NodeViews).
+    // Update stored data AND trigger re-render of all response NodeViews
+    // so page names refresh without waiting for element_data_updated.
+    this.handleEvent("linked_pages_updated", ({ linked_pages }) => {
+      if (this._destroyed || !this.editor) return;
+      this._linkedPages = linked_pages || {};
+
+      // Touch all response nodes to trigger NodeView.update() with fresh linked pages
+      const { doc, tr } = this.editor.state;
+      let touched = false;
+
+      doc.forEach((node, pos) => {
+        if (node.type.name === "response") {
+          tr.setNodeMarkup(pos, undefined, { ...node.attrs });
+          touched = true;
+        }
+      });
+
+      if (touched) {
+        const bridge = this.editor.extensionManager.extensions.find(
+          (e) => e.name === "liveViewBridge",
+        );
+        if (bridge) bridge.storage.suppressUpdate = true;
+        this.editor.view.dispatch(tr);
+        requestAnimationFrame(() => {
+          if (bridge) bridge.storage.suppressUpdate = false;
+        });
+      }
     });
 
     // Ctrl/Cmd+Click on inline mentions → navigate to sheet

@@ -10,43 +10,24 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Screenplays
-  alias Storyarn.Screenplays.ContentUtils
   alias Storyarn.Screenplays.ElementGrouping
   alias Storyarn.Screenplays.FlowSync
   alias Storyarn.Screenplays.LinkedPageCrud
   alias Storyarn.Screenplays.Screenplay
-  alias Storyarn.Screenplays.ScreenplayElement
   alias Storyarn.Screenplays.TiptapSerialization
   alias Storyarn.Sheets
 
   import StoryarnWeb.Components.Screenplay.ElementRenderer
 
-  # Standard types eligible for auto-detection on content update
-  @auto_detect_types ~w(action scene_heading character dialogue parenthetical transition)
-
   # Dual dialogue field validation
   @valid_dual_sides ~w(left right)
   @valid_dual_fields ~w(character parenthetical dialogue)
 
-  # Type lists from the schema — used in guards and conditionals
-  @tiptap_types ScreenplayElement.tiptap_types()
-
-  # Types managed by the unified TipTap editor (text blocks + page_break)
-  @editor_types ~w(scene_heading action character dialogue parenthetical transition note section page_break)
+  # All types managed by the unified TipTap editor (text blocks + atom NodeViews)
+  @editor_types ~w(scene_heading action character dialogue parenthetical transition note section page_break hub_marker jump_marker title_page conditional instruction response dual_dialogue)
 
   # Types hidden in read mode (interactive, utility, and stub blocks)
   @read_mode_hidden_types ~w(conditional instruction response note hub_marker jump_marker title_page)
-
-  # Server-side next-type inference (Enter key creates the logical next element).
-  # Note/section types are excluded intentionally — Enter always creates "action" for them.
-  @next_type %{
-    "scene_heading" => "action",
-    "action" => "action",
-    "character" => "dialogue",
-    "parenthetical" => "dialogue",
-    "dialogue" => "action",
-    "transition" => "scene_heading"
-  }
 
   @impl true
   def render(assigns) do
@@ -172,6 +153,8 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           phx-hook="ScreenplayEditor"
           data-content={Jason.encode!(@editor_doc)}
           data-can-edit={to_string(@can_edit)}
+          data-variables={Jason.encode!(@project_variables)}
+          data-linked-pages={Jason.encode!(@linked_pages)}
           phx-update="ignore"
         >
         </div>
@@ -181,24 +164,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           :for={element <- visible_elements(@elements, @read_mode)}
           :if={@read_mode}
           element={element}
-          can_edit={false}
-          variables={@project_variables}
-          linked_pages={@linked_pages}
           continuations={@continuations}
           sheets_map={@sheets_map}
         />
 
-        <%!-- Edit mode: Interactive blocks rendered below editor --%>
-        <.element_renderer
-          :for={element <- @interactive_elements}
-          :if={!@read_mode && @interactive_elements != []}
-          element={element}
-          can_edit={@can_edit}
-          variables={@project_variables}
-          linked_pages={@linked_pages}
-          continuations={@continuations}
-          sheets_map={@sheets_map}
-        />
       </div>
       </div>
     </Layouts.project>
@@ -244,7 +213,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           |> assign_elements_with_continuations(elements)
           |> assign(:project_variables, project_variables)
           |> assign(:read_mode, false)
-          |> assign(:slash_menu_element_id, nil)
           |> assign(:link_status, link_status)
           |> assign(:linked_flow, linked_flow)
           |> assign(:linked_pages, load_linked_pages(screenplay))
@@ -273,67 +241,9 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # ---------------------------------------------------------------------------
 
   @impl true
-  def handle_event("update_element_content", %{"id" => id, "content" => content}, socket) do
-    with_edit_permission(socket, fn ->
-      do_update_element_content(socket, id, content)
-    end)
-  end
-
-  def handle_event(
-        "create_next_element",
-        %{"after_id" => after_id, "content" => content},
-        socket
-      ) do
-    with_edit_permission(socket, fn ->
-      do_create_next_element(socket, after_id, content)
-    end)
-  end
-
-  def handle_event("create_first_element", _params, socket) do
-    with_edit_permission(socket, fn ->
-      attrs = %{type: "action", content: ""}
-
-      case Screenplays.insert_element_at(socket.assigns.screenplay, 0, attrs) do
-        {:ok, new_element} ->
-          elements = Screenplays.list_elements(socket.assigns.screenplay.id)
-
-          {:noreply,
-           socket
-           |> assign_elements_with_continuations(elements)
-           |> push_event("focus_element", %{id: new_element.id})}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not create element."))}
-      end
-    end)
-  end
-
-  def handle_event("create_element_at_end", _params, socket) do
-    with_edit_permission(socket, fn ->
-      case Screenplays.create_element(socket.assigns.screenplay, %{type: "action", content: ""}) do
-        {:ok, new_element} ->
-          elements = Screenplays.list_elements(socket.assigns.screenplay.id)
-
-          {:noreply,
-           socket
-           |> assign_elements_with_continuations(elements)
-           |> push_event("focus_element", %{id: new_element.id})}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not create element."))}
-      end
-    end)
-  end
-
   def handle_event("delete_element", %{"id" => id}, socket) do
     with_edit_permission(socket, fn ->
       do_delete_element(socket, id)
-    end)
-  end
-
-  def handle_event("change_element_type", %{"id" => id, "type" => type}, socket) do
-    with_edit_permission(socket, fn ->
-      do_change_element_type(socket, id, type)
     end)
   end
 
@@ -345,54 +255,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     with_edit_permission(socket, fn ->
       do_sync_editor_content(socket, client_elements)
     end)
-  end
-
-  # ---------------------------------------------------------------------------
-  # Slash command handlers (legacy — still used by interactive block element_renderer)
-  # ---------------------------------------------------------------------------
-
-  def handle_event("open_slash_menu", %{"element_id" => id}, socket) do
-    with_edit_permission(socket, fn ->
-      case find_element(socket, id) do
-        nil ->
-          {:noreply, socket}
-
-        element ->
-          {:noreply, assign(socket, :slash_menu_element_id, element.id)}
-      end
-    end)
-  end
-
-  def handle_event("select_slash_command", %{"type" => type}, socket) do
-    with_edit_permission(socket, fn ->
-      do_select_slash_command(socket, type)
-    end)
-  end
-
-  def handle_event("split_and_open_slash_menu", params, socket) do
-    %{"element_id" => id, "cursor_position" => pos} = params
-    pos = if is_integer(pos), do: pos, else: parse_int(pos)
-
-    with_edit_permission(socket, fn ->
-      do_split_and_open_slash_menu(socket, id, pos)
-    end)
-  end
-
-  def handle_event("close_slash_menu", _params, socket) do
-    element_id = socket.assigns.slash_menu_element_id
-
-    socket =
-      socket
-      |> assign(:slash_menu_element_id, nil)
-
-    socket =
-      if element_id do
-        push_event(socket, "focus_element", %{id: element_id})
-      else
-        socket
-      end
-
-    {:noreply, socket}
   end
 
   # ---------------------------------------------------------------------------
@@ -723,7 +585,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     existing = socket.assigns.elements
     client_ids = extract_client_ids(client_elements)
 
-    delete_removed_text_elements(existing, client_ids)
+    delete_removed_editor_elements(existing, client_ids)
     upsert_client_elements(screenplay, client_elements, Map.new(existing, &{&1.id, &1}))
     reorder_after_sync(screenplay, client_elements, existing)
 
@@ -742,7 +604,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     |> MapSet.new()
   end
 
-  defp delete_removed_text_elements(existing, client_ids) do
+  defp delete_removed_editor_elements(existing, client_ids) do
     existing
     |> Enum.filter(&(&1.type in @editor_types))
     |> Enum.reject(&(&1.id in client_ids))
@@ -761,91 +623,21 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     end)
   end
 
-  defp reorder_after_sync(screenplay, client_elements, existing) do
-    text_ids =
+  defp reorder_after_sync(screenplay, client_elements, _existing) do
+    editor_ids =
       Enum.flat_map(client_elements, fn el ->
         eid = el["element_id"] && parse_int(el["element_id"])
         if eid, do: [eid], else: []
       end)
 
     all_elements = Screenplays.list_elements(screenplay.id)
-    known_ids = MapSet.union(extract_client_ids(client_elements), interactive_ids(existing))
-    new_ids = all_elements |> Enum.reject(&(&1.id in known_ids)) |> Enum.map(& &1.id)
+    client_ids = extract_client_ids(client_elements)
+    new_ids = all_elements |> Enum.reject(&(&1.id in client_ids)) |> Enum.map(& &1.id)
 
-    interactive_ids =
-      all_elements
-      |> Enum.reject(&(&1.type in @editor_types))
-      |> Enum.sort_by(& &1.position)
-      |> Enum.map(& &1.id)
-
-    ordered_ids = text_ids ++ new_ids ++ interactive_ids
+    ordered_ids = editor_ids ++ new_ids
 
     if ordered_ids != [] do
       Screenplays.reorder_elements(screenplay.id, ordered_ids)
-    end
-  end
-
-  defp interactive_ids(elements) do
-    elements
-    |> Enum.reject(&(&1.type in @editor_types))
-    |> Enum.map(& &1.id)
-    |> MapSet.new()
-  end
-
-  defp do_update_element_content(socket, id, content) do
-    case find_element(socket, id) do
-      nil ->
-        {:noreply, socket}
-
-      element ->
-        attrs = build_update_attrs(element, content)
-        persist_element_content(socket, element, attrs)
-    end
-  end
-
-  defp persist_element_content(socket, element, attrs) do
-    case Screenplays.update_element(element, attrs) do
-      {:ok, updated} ->
-        socket = update_element_in_list(socket, updated)
-
-        socket =
-          if updated.type != element.type,
-            do: push_event(socket, "focus_element", %{id: updated.id}),
-            else: socket
-
-        {:noreply, socket}
-
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not save content."))}
-    end
-  end
-
-  defp do_create_next_element(socket, after_id, content) do
-    case find_element(socket, after_id) do
-      nil ->
-        {:noreply, socket}
-
-      element ->
-        new_position = element.position + 1
-        next_type = Map.get(@next_type, element.type, "action")
-        attrs = %{type: next_type, content: content}
-
-        case Screenplays.insert_element_at(
-               socket.assigns.screenplay,
-               new_position,
-               attrs
-             ) do
-          {:ok, new_element} ->
-            elements = Screenplays.list_elements(socket.assigns.screenplay.id)
-
-            {:noreply,
-             socket
-             |> assign_elements_with_continuations(elements)
-             |> push_event("focus_element", %{id: new_element.id})}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create element."))}
-        end
     end
   end
 
@@ -881,81 +673,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     end
   end
 
-  defp do_change_element_type(socket, id, type) do
-    case find_element(socket, id) do
-      nil ->
-        {:noreply, socket}
-
-      element ->
-        content = normalize_content_for_type(element.content, type)
-
-        case Screenplays.update_element(element, %{type: type, content: content}) do
-          {:ok, updated} ->
-            {:noreply,
-             socket
-             |> update_element_in_list(updated)
-             |> push_event("focus_element", %{id: updated.id})}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not change element type."))}
-        end
-    end
-  end
-
-  defp do_select_slash_command(socket, type) do
-    element_id = socket.assigns.slash_menu_element_id
-    element = element_id && Enum.find(socket.assigns.elements, &(&1.id == element_id))
-
-    cond do
-      is_nil(element_id) ->
-        {:noreply, socket}
-
-      is_nil(element) || type not in ScreenplayElement.types() ->
-        {:noreply, assign(socket, :slash_menu_element_id, nil)}
-
-      true ->
-        apply_slash_command(socket, element, type)
-    end
-  end
-
-  defp apply_slash_command(socket, element, type) do
-    attrs =
-      slash_command_attrs(type)
-      |> Map.put_new_lazy(:content, fn -> normalize_content_for_type(element.content, type) end)
-
-    case Screenplays.update_element(element, attrs) do
-      {:ok, updated} ->
-        {:noreply,
-         socket
-         |> update_element_in_list(updated)
-         |> assign(:slash_menu_element_id, nil)
-         |> push_event("focus_element", %{id: updated.id})}
-
-      {:error, _} ->
-        {:noreply,
-         socket
-         |> assign(:slash_menu_element_id, nil)
-         |> put_flash(:error, gettext("Could not change element type."))}
-    end
-  end
-
-  defp slash_command_attrs("dual_dialogue") do
-    %{
-      type: "dual_dialogue",
-      content: "",
-      data: %{
-        "left" => %{"character" => "", "parenthetical" => nil, "dialogue" => ""},
-        "right" => %{"character" => "", "parenthetical" => nil, "dialogue" => ""}
-      }
-    }
-  end
-
-  defp slash_command_attrs(type), do: %{type: type}
-
-  defp normalize_content_for_type(content, type) when type in @tiptap_types, do: content || ""
-
-  defp normalize_content_for_type(content, _type), do: ContentUtils.strip_html(content || "")
-
   defp do_update_dual_dialogue(socket, id, side, field, value)
        when side in @valid_dual_sides and field in @valid_dual_fields do
     case find_element(socket, id) do
@@ -970,7 +687,8 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
         case Screenplays.update_element(element, %{data: updated_data}) do
           {:ok, updated} ->
-            {:noreply, update_element_in_list(socket, updated)}
+            socket = update_element_in_list(socket, updated)
+            {:noreply, push_element_data_updated(socket, updated)}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, gettext("Could not update dual dialogue."))}
@@ -998,7 +716,8 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
         case Screenplays.update_element(element, %{data: updated_data}) do
           {:ok, updated} ->
-            {:noreply, update_element_in_list(socket, updated)}
+            socket = update_element_in_list(socket, updated)
+            {:noreply, push_element_data_updated(socket, updated)}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, gettext("Could not toggle parenthetical."))}
@@ -1007,32 +726,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   defp do_toggle_dual_parenthetical(socket, _id, _side), do: {:noreply, socket}
-
-  defp do_split_and_open_slash_menu(socket, id, pos) do
-    case find_element(socket, id) do
-      nil ->
-        {:noreply, socket}
-
-      _element when is_nil(pos) ->
-        {:noreply, socket}
-
-      element ->
-        case Screenplays.split_element(element, pos, "action") do
-          {:ok, {_before, new_element, _after}} ->
-            elements = Screenplays.list_elements(socket.assigns.screenplay.id)
-
-            {:noreply,
-             socket
-             |> assign_elements_with_continuations(elements)
-             |> assign(:slash_menu_element_id, new_element.id)}
-
-          {:error, _} ->
-            {:noreply,
-             socket
-             |> put_flash(:error, gettext("Could not split element."))}
-        end
-    end
-  end
 
   defp do_update_screenplay_condition(socket, id, condition) do
     case find_element(socket, id) do
@@ -1045,7 +738,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
         case Screenplays.update_element(element, %{data: data}) do
           {:ok, updated} ->
-            {:noreply, update_element_in_list(socket, updated)}
+            {:noreply,
+             socket
+             |> update_element_in_list(updated)
+             |> push_element_data_updated(updated)}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, gettext("Could not save condition."))}
@@ -1064,7 +760,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
         case Screenplays.update_element(element, %{data: data}) do
           {:ok, updated} ->
-            {:noreply, update_element_in_list(socket, updated)}
+            {:noreply,
+             socket
+             |> update_element_in_list(updated)
+             |> push_element_data_updated(updated)}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, gettext("Could not save instruction."))}
@@ -1085,7 +784,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
         case Screenplays.update_element(element, %{data: data}) do
           {:ok, updated} ->
-            {:noreply, update_element_in_list(socket, updated)}
+            {:noreply,
+             socket
+             |> update_element_in_list(updated)
+             |> push_element_data_updated(updated)}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, gettext("Could not add choice."))}
@@ -1105,7 +807,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
         case Screenplays.update_element(element, %{data: data}) do
           {:ok, updated} ->
-            {:noreply, update_element_in_list(socket, updated)}
+            {:noreply,
+             socket
+             |> update_element_in_list(updated)
+             |> push_element_data_updated(updated)}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, gettext("Could not remove choice."))}
@@ -1279,10 +984,14 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
         case Screenplays.create_linked_page(screenplay, element, choice_id) do
           {:ok, _child, updated_element} ->
+            new_linked_pages = load_linked_pages(screenplay)
+
             {:noreply,
              socket
              |> update_element_in_list(updated_element)
-             |> assign(:linked_pages, load_linked_pages(screenplay))
+             |> assign(:linked_pages, new_linked_pages)
+             |> push_event("linked_pages_updated", %{linked_pages: new_linked_pages})
+             |> push_element_data_updated(updated_element)
              |> reload_screenplays_tree()
              |> put_flash(:info, gettext("Linked page created."))}
 
@@ -1327,7 +1036,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       element ->
         case Screenplays.unlink_choice(element, choice_id) do
           {:ok, updated_element} ->
-            {:noreply, update_element_in_list(socket, updated_element)}
+            {:noreply,
+             socket
+             |> update_element_in_list(updated_element)
+             |> push_element_data_updated(updated_element)}
 
           {:error, _reason} ->
             {:noreply, put_flash(socket, :error, gettext("Could not unlink choice."))}
@@ -1347,10 +1059,14 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
         case create_pages_for_choices(screenplay, element, unlinked) do
           {:ok, updated_element} ->
+            new_linked_pages = load_linked_pages(screenplay)
+
             {:noreply,
              socket
              |> update_element_in_list(updated_element)
-             |> assign(:linked_pages, load_linked_pages(screenplay))
+             |> assign(:linked_pages, new_linked_pages)
+             |> push_event("linked_pages_updated", %{linked_pages: new_linked_pages})
+             |> push_element_data_updated(updated_element)
              |> reload_screenplays_tree()
              |> put_flash(:info, gettext("Linked pages created."))}
 
@@ -1426,23 +1142,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     end)
   end
 
-  defp build_update_attrs(element, content) do
-    base = %{content: content}
-
-    # Skip auto-detection for sheet-referenced characters (content comes from sheet)
-    sheet_referenced? = element.type == "character" and get_in(element.data || %{}, ["sheet_id"]) != nil
-
-    if element.type in @auto_detect_types and not sheet_referenced? do
-      case Screenplays.detect_type(content) do
-        nil -> base
-        detected when detected == element.type -> base
-        detected -> Map.put(base, :type, detected)
-      end
-    else
-      base
-    end
-  end
-
   defp parse_int(""), do: nil
   defp parse_int(nil), do: nil
   defp parse_int(val) when is_integer(val), do: val
@@ -1494,14 +1193,16 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
   defp assign_elements_with_continuations(socket, elements) do
     sheets_map = socket.assigns[:sheets_map] || %{}
-    text_elements = Enum.filter(elements, &(&1.type in @editor_types))
-    interactive_elements = Enum.reject(elements, &(&1.type in @editor_types))
 
     socket
     |> assign(:elements, elements)
     |> assign(:continuations, ElementGrouping.compute_continuations(elements, sheets_map))
-    |> assign(:editor_doc, TiptapSerialization.elements_to_doc(text_elements))
-    |> assign(:interactive_elements, interactive_elements)
+    |> assign(:editor_doc, TiptapSerialization.elements_to_doc(elements))
+  end
+
+  # Push element data back to TipTap NodeViews after server-side mutations
+  defp push_element_data_updated(socket, %{id: id, data: data}) do
+    push_event(socket, "element_data_updated", %{element_id: id, data: data || %{}})
   end
 
   defp update_choice_field(socket, element_id, choice_id, update_fn) do
@@ -1526,7 +1227,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
     case Screenplays.update_element(element, %{data: data}) do
       {:ok, updated} ->
-        {:noreply, update_element_in_list(socket, updated)}
+        {:noreply,
+         socket
+         |> update_element_in_list(updated)
+         |> push_element_data_updated(updated)}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, gettext("Could not update choice."))}
