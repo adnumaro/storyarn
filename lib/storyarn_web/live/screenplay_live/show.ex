@@ -207,13 +207,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       {:ok, project, membership} ->
         project = Repo.preload(project, :workspace)
         screenplay = Screenplays.get_screenplay!(project.id, screenplay_id)
-        screenplays_tree = Screenplays.list_screenplays_tree(project.id)
-        elements = Screenplays.list_elements(screenplay.id)
-        project_variables = Sheets.list_project_variables(project.id)
-        all_sheets = Sheets.list_all_sheets(project.id)
-        sheets_map = Map.new(all_sheets, &{&1.id, &1})
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
-        {link_status, linked_flow} = detect_link_status(screenplay)
 
         socket =
           socket
@@ -222,15 +216,18 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           |> assign(:membership, membership)
           |> assign(:can_edit, can_edit)
           |> assign(:screenplay, screenplay)
-          |> assign(:screenplays_tree, screenplays_tree)
-          |> assign(:all_sheets, all_sheets)
-          |> assign(:sheets_map, sheets_map)
-          |> assign_elements_with_continuations(elements)
-          |> assign(:project_variables, project_variables)
           |> assign(:read_mode, false)
-          |> assign(:link_status, link_status)
-          |> assign(:linked_flow, linked_flow)
-          |> assign(:linked_pages, load_linked_pages(screenplay))
+          # Defaults for disconnected render — real data loaded on connect
+          |> assign(:screenplays_tree, [])
+          |> assign(:sheets_map, %{})
+          |> assign(:elements, [])
+          |> assign(:editor_doc, TiptapSerialization.elements_to_doc([]))
+          |> assign(:project_variables, [])
+          |> assign(:link_status, :unlinked)
+          |> assign(:linked_flow, nil)
+          |> assign(:linked_pages, %{})
+
+        socket = if connected?(socket), do: load_connected_data(socket, screenplay), else: socket
 
         {:ok, socket}
 
@@ -240,6 +237,25 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
          |> put_flash(:error, gettext("You don't have access to this project."))
          |> redirect(to: ~p"/workspaces")}
     end
+  end
+
+  defp load_connected_data(socket, screenplay) do
+    project = socket.assigns.project
+    elements = Screenplays.list_elements(screenplay.id)
+    project_variables = Sheets.list_project_variables(project.id)
+    all_sheets = Sheets.list_all_sheets(project.id)
+    sheets_map = Map.new(all_sheets, &{&1.id, &1})
+    screenplays_tree = Screenplays.list_screenplays_tree(project.id)
+    {link_status, linked_flow} = detect_link_status(screenplay)
+
+    socket
+    |> assign(:screenplays_tree, screenplays_tree)
+    |> assign(:sheets_map, sheets_map)
+    |> assign_elements_with_editor_doc(elements)
+    |> assign(:project_variables, project_variables)
+    |> assign(:link_status, link_status)
+    |> assign(:linked_flow, linked_flow)
+    |> assign(:linked_pages, load_linked_pages(screenplay))
   end
 
   # ---------------------------------------------------------------------------
@@ -637,7 +653,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     reorder_after_sync(screenplay, ordered_ids)
 
     elements = Screenplays.list_elements(screenplay.id)
-    {:noreply, assign_elements_with_continuations(socket, elements)}
+    {:noreply, assign_elements(socket, elements)}
   end
 
   defp do_sync_editor_content(socket, _), do: {:noreply, socket}
@@ -717,7 +733,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       {:ok, _} ->
         reloaded = Screenplays.list_elements(socket.assigns.screenplay.id)
 
-        socket = assign_elements_with_continuations(socket, reloaded)
+        socket = assign_elements(socket, reloaded)
 
         socket =
           if prev do
@@ -853,7 +869,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
           {:noreply,
            socket
-           |> assign_elements_with_continuations(elements)
+           |> assign_elements(elements)
            |> push_editor_content(elements)
            |> put_flash(:info, gettext("Fountain file imported successfully."))}
 
@@ -1047,7 +1063,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
           {:noreply,
            socket
-           |> assign_elements_with_continuations(elements)
+           |> assign_elements(elements)
            |> push_editor_content(elements)
            |> put_flash(:info, gettext("Screenplay updated from flow."))}
 
@@ -1321,13 +1337,19 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         if el.id == updated_element.id, do: updated_element, else: el
       end)
 
-    assign_elements_with_continuations(socket, elements)
+    assign_elements(socket, elements)
   end
 
-  defp assign_elements_with_continuations(socket, elements) do
+  # Mount/reconnect: computes editor_doc for initial render
+  defp assign_elements_with_editor_doc(socket, elements) do
     socket
     |> assign(:elements, elements)
     |> assign(:editor_doc, TiptapSerialization.elements_to_doc(elements))
+  end
+
+  # Post-mount updates: skips editor_doc recomputation (client owns the doc)
+  defp assign_elements(socket, elements) do
+    assign(socket, :elements, elements)
   end
 
   # Push full editor content to TipTap after server-side bulk updates (e.g. flow sync).
