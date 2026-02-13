@@ -662,10 +662,12 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     Enum.flat_map(client_elements, fn el ->
       element_id = el["element_id"] && parse_int(el["element_id"])
 
+      type = el["type"] || "action"
+
       attrs = %{
-        type: el["type"] || "action",
+        type: type,
         content: ContentUtils.sanitize_html(el["content"]),
-        data: el["data"] || %{}
+        data: sanitize_element_data(type, el["data"])
       }
 
       upsert_single_element(screenplay, attrs, element_id && Map.get(existing_by_id, element_id))
@@ -740,7 +742,14 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       element ->
         data = element.data || %{}
         side_data = data[side] || %{}
-        updated_side = Map.put(side_data, field, value)
+
+        sanitized_value =
+          case field do
+            f when f in ~w(dialogue parenthetical) -> ContentUtils.sanitize_html(value)
+            "character" -> sanitize_plain_text(value)
+          end
+
+        updated_side = Map.put(side_data, field, sanitized_value)
         updated_data = Map.put(data, side, updated_side)
 
         case Screenplays.update_element(element, %{data: updated_data}) do
@@ -793,7 +802,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
       element ->
         data = element.data || %{}
-        updated_data = Map.put(data, field, String.trim(value))
+        updated_data = Map.put(data, field, sanitize_plain_text(value))
 
         case Screenplays.update_element(element, %{data: updated_data}) do
           {:ok, updated} ->
@@ -1374,4 +1383,71 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         {:noreply, put_flash(socket, :error, gettext("Could not update choice."))}
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Data sanitization — type-aware sanitization for sync_editor_content
+  # ---------------------------------------------------------------------------
+
+  defp sanitize_element_data("conditional", data) when is_map(data) do
+    %{"condition" => Condition.sanitize(data["condition"])}
+  end
+
+  defp sanitize_element_data("instruction", data) when is_map(data) do
+    %{"assignments" => Instruction.sanitize(data["assignments"])}
+  end
+
+  defp sanitize_element_data("response", data) when is_map(data) do
+    choices =
+      (data["choices"] || [])
+      |> Enum.filter(&is_map/1)
+      |> Enum.map(fn choice ->
+        choice
+        |> Map.take(~w(id text condition instruction linked_screenplay_id))
+        |> sanitize_choice_fields()
+      end)
+
+    %{"choices" => choices}
+  end
+
+  defp sanitize_element_data("title_page", data) when is_map(data) do
+    data
+    |> Map.take(@valid_title_fields)
+    |> Map.new(fn {k, v} -> {k, sanitize_plain_text(v)} end)
+  end
+
+  defp sanitize_element_data("dual_dialogue", data) when is_map(data) do
+    Map.new(@valid_dual_sides, fn side ->
+      side_data = data[side] || %{}
+
+      sanitized =
+        side_data
+        |> Map.take(@valid_dual_fields)
+        |> Map.new(fn
+          {"dialogue", v} -> {"dialogue", ContentUtils.sanitize_html(v)}
+          {"parenthetical", v} -> {"parenthetical", ContentUtils.sanitize_html(v)}
+          {"character", v} -> {"character", sanitize_plain_text(v)}
+        end)
+
+      {side, sanitized}
+    end)
+  end
+
+  defp sanitize_element_data(_type, _data), do: %{}
+
+  defp sanitize_choice_fields(choice) do
+    choice
+    |> update_if_present("text", &sanitize_plain_text/1)
+    |> update_if_present("condition", &Condition.sanitize/1)
+    |> update_if_present("instruction", &Instruction.sanitize/1)
+  end
+
+  defp update_if_present(map, key, fun) do
+    case Map.fetch(map, key) do
+      {:ok, value} -> Map.put(map, key, fun.(value))
+      :error -> map
+    end
+  end
+
+  defp sanitize_plain_text(value) when is_binary(value), do: ContentUtils.strip_html(value)
+  defp sanitize_plain_text(_), do: ""
 end
