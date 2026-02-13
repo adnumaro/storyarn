@@ -4,6 +4,8 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
 
+  require Logger
+
   alias Storyarn.Flows
   alias Storyarn.Flows.Condition
   alias Storyarn.Flows.Instruction
@@ -678,7 +680,16 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   defp upsert_single_element(_screenplay, attrs, existing_el) do
-    Screenplays.update_element(existing_el, attrs)
+    case Screenplays.update_element(existing_el, attrs) do
+      {:ok, _} ->
+        :ok
+
+      {:error, changeset} ->
+        Logger.warning(
+          "Failed to update screenplay element #{existing_el.id}: #{inspect(changeset.errors)}"
+        )
+    end
+
     [existing_el.id]
   end
 
@@ -808,10 +819,24 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       screenplay = socket.assigns.screenplay
 
       result =
-        Repo.transaction(fn ->
-          Enum.each(socket.assigns.elements, &Screenplays.delete_element/1)
-          Enum.each(parsed, &Screenplays.create_element(screenplay, &1))
+        Ecto.Multi.new()
+        |> Ecto.Multi.run(:delete_existing, fn _repo, _ ->
+          Enum.each(socket.assigns.elements, fn el ->
+            {:ok, _} = Screenplays.delete_element(el)
+          end)
+
+          {:ok, :deleted}
         end)
+        |> Ecto.Multi.run(:create_imported, fn _repo, _ ->
+          created =
+            Enum.map(parsed, fn attrs ->
+              {:ok, el} = Screenplays.create_element(screenplay, attrs)
+              el
+            end)
+
+          {:ok, created}
+        end)
+        |> Repo.transaction()
 
       case result do
         {:ok, _} ->
@@ -823,7 +848,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
            |> push_editor_content(elements)
            |> put_flash(:info, gettext("Fountain file imported successfully."))}
 
-        {:error, _} ->
+        {:error, _step, _reason, _changes} ->
           {:noreply, put_flash(socket, :error, gettext("Could not import file."))}
       end
     end
