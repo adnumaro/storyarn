@@ -10,6 +10,7 @@ import { Extension } from "@tiptap/core";
 import { Suggestion } from "@tiptap/suggestion";
 import { PluginKey } from "@tiptap/pm/state";
 import { slashMenuRenderer } from "./slash_menu_renderer.js";
+import { setBlockType } from "./screenplay_keymap.js";
 
 const COMMANDS = [
   // Screenplay
@@ -64,7 +65,7 @@ export const SlashCommands = Extension.create({
           editor.chain().focus().deleteRange(range).run();
 
           if (item.mode === "setNode") {
-            editor.commands.setNode(item.type);
+            setBlockType(editor, item.type);
           } else if (item.mode === "insertAtom") {
             // For atom nodes, check if the schema has this node type
             // Interactive blocks (conditional, instruction, response) are Phase 2 —

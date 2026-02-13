@@ -11,6 +11,27 @@
 import { Extension } from "@tiptap/core";
 
 /**
+ * Change the current block's type directly via setNodeMarkup.
+ *
+ * Unlike TipTap's built-in `setNode`, this does NOT call `clearNodes` first,
+ * which avoids an "Invalid content for node type mention" crash when the block
+ * contains inline mention atoms. All screenplay blocks share the same content
+ * spec (`inline*`) and are flat children of the doc, so `clearNodes` is
+ * unnecessary.
+ */
+export function setBlockType(editor, typeName) {
+  const nodeType = editor.schema.nodes[typeName];
+  if (!nodeType) return false;
+
+  const { $from } = editor.state.selection;
+  const pos = $from.before($from.depth);
+  const { tr } = editor.state;
+  tr.setNodeMarkup(pos, nodeType);
+  editor.view.dispatch(tr);
+  return true;
+}
+
+/**
  * Maps the current block type to the type created by pressing Enter.
  * Types not in this map produce "action" (the default screenplay block).
  */
@@ -51,7 +72,7 @@ function handleEnter(editor) {
 
   // Empty non-action text block → convert to action instead of splitting
   if (currentNode.textContent === "" && currentType !== "action") {
-    return editor.commands.setNode("action");
+    return setBlockType(editor, "action");
   }
 
   const nextType = NEXT_TYPE[currentType] || "action";
@@ -62,7 +83,17 @@ function handleEnter(editor) {
   const hasSheetId =
     currentType === "character" && currentNode.attrs.sheetId;
 
-  const chain = editor.chain().splitBlock().setNode(nextType);
+  const chain = editor
+    .chain()
+    .splitBlock()
+    .command(({ tr, state, dispatch }) => {
+      if (dispatch) {
+        const { $from } = state.selection;
+        const pos = $from.before($from.depth);
+        tr.setNodeMarkup(pos, state.schema.nodes[nextType]);
+      }
+      return true;
+    });
 
   if (hasSheetId && atStart) {
     // After split, cursor is in the new (second) block. The first block
@@ -108,7 +139,7 @@ function handleTab(editor, direction) {
   const nextIdx = (idx + direction + TYPE_CYCLE.length) % TYPE_CYCLE.length;
   const nextType = TYPE_CYCLE[nextIdx];
 
-  return editor.commands.setNode(nextType);
+  return setBlockType(editor, nextType);
 }
 
 /**
@@ -130,7 +161,7 @@ function handleBackspace(editor) {
     currentType !== "action" &&
     TYPE_CYCLE.includes(currentType)
   ) {
-    return editor.commands.setNode("action");
+    return setBlockType(editor, "action");
   }
 
   // Empty action at the start of the document → nothing to do

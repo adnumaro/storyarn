@@ -647,13 +647,20 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
     delete_removed_editor_elements(existing, client_ids)
 
-    ordered_ids =
-      upsert_client_elements(screenplay, client_elements, Map.new(existing, &{&1.id, &1}))
+    existing_by_id = Map.new(existing, &{&1.id, &1})
+
+    {ordered_ids, changed_ids} =
+      upsert_client_elements(screenplay, client_elements, existing_by_id)
 
     reorder_after_sync(screenplay, ordered_ids)
 
     elements = Screenplays.list_elements(screenplay.id)
-    Enum.each(elements, &Sheets.update_screenplay_element_references/1)
+
+    # Only update references for elements whose content or data actually changed
+    elements
+    |> Enum.filter(&(&1.id in changed_ids))
+    |> Enum.each(&Sheets.update_screenplay_element_references/1)
+
     {:noreply, assign_elements(socket, elements)}
   end
 
@@ -679,40 +686,55 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   defp upsert_client_elements(screenplay, client_elements, existing_by_id) do
-    Enum.flat_map(client_elements, fn el ->
-      element_id = el["element_id"] && parse_int(el["element_id"])
+    {ordered_ids, changed_ids} =
+      Enum.reduce(client_elements, {[], MapSet.new()}, fn el, {ids, changed} ->
+        element_id = el["element_id"] && parse_int(el["element_id"])
 
-      type = el["type"] || "action"
+        type = el["type"] || "action"
 
-      attrs = %{
-        type: type,
-        content: ContentUtils.sanitize_html(el["content"]),
-        data: sanitize_element_data(type, el["data"])
-      }
+        attrs = %{
+          type: type,
+          content: ContentUtils.sanitize_html(el["content"]),
+          data: sanitize_element_data(type, el["data"])
+        }
 
-      upsert_single_element(screenplay, attrs, element_id && Map.get(existing_by_id, element_id))
-    end)
+        existing_el = element_id && Map.get(existing_by_id, element_id)
+
+        case upsert_single_element(screenplay, attrs, existing_el) do
+          {:created, id} -> {ids ++ [id], MapSet.put(changed, id)}
+          {:updated, id} -> {ids ++ [id], MapSet.put(changed, id)}
+          {:unchanged, id} -> {ids ++ [id], changed}
+          :error -> {ids, changed}
+        end
+      end)
+
+    {ordered_ids, changed_ids}
   end
 
   defp upsert_single_element(screenplay, attrs, nil) do
     case Screenplays.create_element(screenplay, attrs) do
-      {:ok, created} -> [created.id]
-      _ -> []
+      {:ok, created} -> {:created, created.id}
+      _ -> :error
     end
   end
 
   defp upsert_single_element(_screenplay, attrs, existing_el) do
+    changed? =
+      existing_el.content != attrs.content ||
+        existing_el.data != attrs.data ||
+        existing_el.type != attrs.type
+
     case Screenplays.update_element(existing_el, attrs) do
       {:ok, _} ->
-        :ok
+        if changed?, do: {:updated, existing_el.id}, else: {:unchanged, existing_el.id}
 
       {:error, changeset} ->
         Logger.warning(
           "Failed to update screenplay element #{existing_el.id}: #{inspect(changeset.errors)}"
         )
-    end
 
-    [existing_el.id]
+        {:unchanged, existing_el.id}
+    end
   end
 
   defp reorder_after_sync(screenplay, ordered_ids) do
