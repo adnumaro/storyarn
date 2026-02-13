@@ -262,12 +262,14 @@
   pointer-events: none;
 }
 
-/* Parenthetical — indented, narrow width */
+/* Parenthetical — indented, narrow width, italic + muted (§4.5) */
 .sp-parenthetical {
   margin-left: 154px; /* 16 chars — 3.1" from left page edge (§3.1) */
   max-width: 240px; /* 25 chars — 2.5" width (§3.1) */
   margin-top: 0;
   margin-bottom: 0;
+  font-style: italic;
+  opacity: 0.6;
 }
 
 /* Dialogue — indented, medium width */
@@ -686,6 +688,8 @@
 
 .sp-dual-parenthetical {
   text-align: center;
+  font-style: italic;
+  opacity: 0.6;
 }
 
 .sp-dual-paren-input {
