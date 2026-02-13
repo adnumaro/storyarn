@@ -225,15 +225,6 @@
   box-shadow: 0 4px 24px rgb(0 0 0 / 0.4);
 }
 
-
-/* Element base — used by interactive blocks and read mode */
-.screenplay-element {
-  position: relative;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  cursor: auto;
-}
-
 /* ---------------------------------------------------------------------------
    Per-type styles — industry-standard screenplay formatting
    --------------------------------------------------------------------------- */
@@ -356,6 +347,10 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+}
+
+.sp-interactive-title-page {
+  border-left-color: var(--color-accent);
 }
 
 .sp-interactive-condition {
@@ -1108,49 +1103,77 @@
   background-color: color-mix(in oklch, var(--color-primary) 25%, transparent);
 }
 
-/* Inline mention chip — # references inside TipTap text */
-.screenplay-prosemirror .mention,
-.sp-tiptap-container .mention,
-.sp-tiptap-readonly .mention {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 0 4px;
-  border-radius: 4px;
-  background-color: color-mix(in oklch, var(--color-primary) 15%, transparent);
-  color: var(--color-primary);
-  font-family: system-ui, sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.screenplay-prosemirror .mention:hover,
-.sp-tiptap-container .mention:hover,
-.sp-tiptap-readonly .mention:hover {
-  background-color: color-mix(in oklch, var(--color-primary) 25%, transparent);
-}
-
 /* ==========================================================================
-   Read mode
+   Read mode — TipTap-native via .sp-read-mode on .ProseMirror
    ========================================================================== */
 
-.screenplay-read-mode .screenplay-element {
-  cursor: default;
-}
-
-.screenplay-read-mode .sp-empty {
+/* Hide interactive, utility, and stub blocks in read mode */
+.sp-read-mode [data-node-type="conditional"],
+.sp-read-mode [data-node-type="instruction"],
+.sp-read-mode [data-node-type="response"],
+.sp-read-mode [data-node-type="note"],
+.sp-read-mode [data-node-type="hub_marker"],
+.sp-read-mode [data-node-type="jump_marker"],
+.sp-read-mode [data-node-type="title_page"] {
   display: none;
 }
 
-.screenplay-read-mode [contenteditable="true"] {
-  pointer-events: none;
-  -webkit-user-modify: read-only;
-  caret-color: transparent;
-}
-
-.screenplay-read-mode .sp-character-nav,
-.screenplay-read-mode .sp-character-clear {
+/* Hide character sheet nav/clear buttons in read mode */
+.sp-read-mode .sp-character-nav,
+.sp-read-mode .sp-character-clear {
   display: none;
 }
+
+/* ---------------------------------------------------------------------------
+   Title page fields
+   --------------------------------------------------------------------------- */
+
+.sp-title-page-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sp-title-page-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-title-page-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+  min-width: 72px;
+  flex-shrink: 0;
+}
+
+.sp-title-page-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--color-base-content);
+  font-family: "Courier Prime", "Courier New", monospace;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.sp-title-page-input:focus {
+  border-color: var(--color-base-300);
+  background-color: var(--color-base-200);
+}
+
+.sp-title-page-input::placeholder {
+  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+}
+
+.sp-title-page-value {
+  font-family: "Courier Prime", "Courier New", monospace;
+  font-size: 0.875rem;
+  color: var(--color-base-content);
+}
+

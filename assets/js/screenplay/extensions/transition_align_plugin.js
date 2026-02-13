@@ -2,7 +2,7 @@
  * TransitionAlignPlugin — TipTap extension that toggles left-alignment on
  * transition blocks whose content ends with "IN:" (e.g. "FADE IN:").
  *
- * Mirrors the server-side left_transition? logic in element_renderer.ex
+ * Mirrors the server-side left_transition? logic in the server-side element type logic
  * so the edit-mode editor matches read-mode rendering.
  *
  * Uses ProseMirror node decorations to add/remove the `.sp-transition-left`

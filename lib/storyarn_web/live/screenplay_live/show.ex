@@ -10,14 +10,15 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Screenplays
-  alias Storyarn.Screenplays.ElementGrouping
+  alias Storyarn.Screenplays.ContentUtils
   alias Storyarn.Screenplays.FlowSync
   alias Storyarn.Screenplays.LinkedPageCrud
   alias Storyarn.Screenplays.Screenplay
   alias Storyarn.Screenplays.TiptapSerialization
   alias Storyarn.Sheets
 
-  import StoryarnWeb.Components.Screenplay.ElementRenderer
+  # Title page field validation
+  @valid_title_fields ~w(title credit author draft_date contact)
 
   # Dual dialogue field validation
   @valid_dual_sides ~w(left right)
@@ -25,9 +26,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
   # All types managed by the unified TipTap editor (text blocks + atom NodeViews)
   @editor_types ~w(scene_heading action character dialogue parenthetical transition note section page_break hub_marker jump_marker title_page conditional instruction response dual_dialogue)
-
-  # Types hidden in read mode (interactive, utility, and stub blocks)
-  @read_mode_hidden_types ~w(conditional instruction response note hub_marker jump_marker title_page)
 
   @impl true
   def render(assigns) do
@@ -46,129 +44,144 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       can_edit={@can_edit}
     >
       <div class="screenplay-container -mx-12 lg:-mx-8 -my-6 lg:-my-8 px-12 lg:px-8 py-6 lg:py-8">
-      <div class="screenplay-toolbar" id="screenplay-toolbar">
-        <div class="screenplay-toolbar-left">
-          <h1
-            :if={@can_edit}
-            id="screenplay-title"
-            class="screenplay-toolbar-title"
-            contenteditable="true"
-            phx-hook="EditableTitle"
-            phx-update="ignore"
-            data-placeholder={gettext("Untitled")}
-            data-name={@screenplay.name}
-          >
+        <div class="screenplay-toolbar" id="screenplay-toolbar">
+          <div class="screenplay-toolbar-left">
+            <h1
+              :if={@can_edit}
+              id="screenplay-title"
+              class="screenplay-toolbar-title"
+              contenteditable="true"
+              phx-hook="EditableTitle"
+              phx-update="ignore"
+              data-placeholder={gettext("Untitled")}
+              data-name={@screenplay.name}
+            >
             {@screenplay.name}
           </h1>
-          <h1 :if={!@can_edit} class="screenplay-toolbar-title">
-            {@screenplay.name}
-          </h1>
+            <h1 :if={!@can_edit} class="screenplay-toolbar-title">
+              {@screenplay.name}
+            </h1>
+          </div>
+          <div class="screenplay-toolbar-right">
+            <span class="screenplay-toolbar-badge" id="screenplay-element-count">
+              {ngettext("%{count} element", "%{count} elements", length(@elements))}
+            </span>
+            <span
+              :if={Screenplay.draft?(@screenplay)}
+              class="screenplay-toolbar-badge screenplay-toolbar-draft"
+            >
+              {gettext("Draft")}
+            </span>
+            <button
+              type="button"
+              class={["sp-toolbar-btn", @read_mode && "sp-toolbar-btn-active"]}
+              phx-click="toggle_read_mode"
+              title={if @read_mode, do: gettext("Exit read mode"), else: gettext("Read mode")}
+            >
+              <.icon name={if @read_mode, do: "pencil", else: "book-open"} class="size-4" />
+            </button>
+            <a
+              href={
+                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays/#{@screenplay.id}/export/fountain"
+              }
+              class="sp-toolbar-btn"
+              title={gettext("Export as Fountain")}
+              download
+            >
+              <.icon name="download" class="size-4" />
+            </a>
+            <button
+              :if={@can_edit}
+              type="button"
+              class="sp-toolbar-btn"
+              title={gettext("Import Fountain")}
+              id="screenplay-import-btn"
+              phx-hook="FountainImport"
+            >
+              <.icon name="upload" class="size-4" />
+            </button>
+            <span class="screenplay-toolbar-separator"></span>
+            <%= case @link_status do %>
+              <% :unlinked -> %>
+                <button
+                  :if={@can_edit}
+                  class="sp-sync-btn"
+                  phx-click="create_flow_from_screenplay"
+                >
+                  <.icon name="git-branch" class="size-3.5" />
+                  {gettext("Create Flow")}
+                </button>
+              <% :linked -> %>
+                <button
+                  class="sp-sync-badge sp-sync-linked"
+                  phx-click="navigate_to_flow"
+                >
+                  <.icon name="git-branch" class="size-3" />
+                  {@linked_flow.name}
+                </button>
+                <button
+                  :if={@can_edit}
+                  class="sp-sync-btn"
+                  phx-click="sync_to_flow"
+                  title={gettext("Push screenplay to flow")}
+                >
+                  <.icon name="upload" class="size-3.5" />
+                  {gettext("To Flow")}
+                </button>
+                <button
+                  :if={@can_edit}
+                  class="sp-sync-btn"
+                  phx-click="sync_from_flow"
+                  title={gettext("Update screenplay from flow")}
+                >
+                  <.icon name="download" class="size-3.5" />
+                  {gettext("From Flow")}
+                </button>
+                <button
+                  :if={@can_edit}
+                  class="sp-sync-btn sp-sync-btn-subtle"
+                  phx-click="unlink_flow"
+                >
+                  <.icon name="unlink" class="size-3.5" />
+                </button>
+              <% status when status in [:flow_deleted, :flow_missing] -> %>
+                <span class="sp-sync-badge sp-sync-warning">
+                  <.icon name="alert-triangle" class="size-3" />
+                  {if status == :flow_deleted,
+                    do: gettext("Flow trashed"),
+                    else: gettext("Flow missing")}
+                </span>
+                <button
+                  :if={@can_edit}
+                  class="sp-sync-btn sp-sync-btn-subtle"
+                  phx-click="unlink_flow"
+                >
+                  <.icon name="unlink" class="size-3.5" />
+                  {gettext("Unlink")}
+                </button>
+            <% end %>
+          </div>
         </div>
-        <div class="screenplay-toolbar-right">
-          <span class="screenplay-toolbar-badge" id="screenplay-element-count">
-            {ngettext("%{count} element", "%{count} elements", length(@elements))}
-          </span>
-          <span :if={Screenplay.draft?(@screenplay)} class="screenplay-toolbar-badge screenplay-toolbar-draft">
-            {gettext("Draft")}
-          </span>
-          <button
-            type="button"
-            class={["sp-toolbar-btn", @read_mode && "sp-toolbar-btn-active"]}
-            phx-click="toggle_read_mode"
-            title={if @read_mode, do: gettext("Exit read mode"), else: gettext("Read mode")}
-          >
-            <.icon name={if @read_mode, do: "pencil", else: "book-open"} class="size-4" />
-          </button>
-          <span class="screenplay-toolbar-separator"></span>
-          <%= case @link_status do %>
-            <% :unlinked -> %>
-              <button
-                :if={@can_edit}
-                class="sp-sync-btn"
-                phx-click="create_flow_from_screenplay"
-              >
-                <.icon name="git-branch" class="size-3.5" />
-                {gettext("Create Flow")}
-              </button>
-            <% :linked -> %>
-              <button
-                class="sp-sync-badge sp-sync-linked"
-                phx-click="navigate_to_flow"
-              >
-                <.icon name="git-branch" class="size-3" />
-                {@linked_flow.name}
-              </button>
-              <button
-                :if={@can_edit}
-                class="sp-sync-btn"
-                phx-click="sync_to_flow"
-                title={gettext("Push screenplay to flow")}
-              >
-                <.icon name="upload" class="size-3.5" />
-                {gettext("To Flow")}
-              </button>
-              <button
-                :if={@can_edit}
-                class="sp-sync-btn"
-                phx-click="sync_from_flow"
-                title={gettext("Update screenplay from flow")}
-              >
-                <.icon name="download" class="size-3.5" />
-                {gettext("From Flow")}
-              </button>
-              <button
-                :if={@can_edit}
-                class="sp-sync-btn sp-sync-btn-subtle"
-                phx-click="unlink_flow"
-              >
-                <.icon name="unlink" class="size-3.5" />
-              </button>
-            <% status when status in [:flow_deleted, :flow_missing] -> %>
-              <span class="sp-sync-badge sp-sync-warning">
-                <.icon name="alert-triangle" class="size-3" />
-                {if status == :flow_deleted, do: gettext("Flow trashed"), else: gettext("Flow missing")}
-              </span>
-              <button
-                :if={@can_edit}
-                class="sp-sync-btn sp-sync-btn-subtle"
-                phx-click="unlink_flow"
-              >
-                <.icon name="unlink" class="size-3.5" />
-                {gettext("Unlink")}
-              </button>
-          <% end %>
-        </div>
-      </div>
-      <div
-        id="screenplay-page"
-        class={[
-          "screenplay-page",
-          @read_mode && "screenplay-read-mode"
-        ]}
-      >
-        <%!-- Edit mode: Unified TipTap editor for text elements --%>
         <div
-          :if={!@read_mode}
-          id="screenplay-editor"
-          phx-hook="ScreenplayEditor"
-          data-content={Jason.encode!(@editor_doc)}
-          data-can-edit={to_string(@can_edit)}
-          data-variables={Jason.encode!(@project_variables)}
-          data-linked-pages={Jason.encode!(@linked_pages)}
-          phx-update="ignore"
+          id="screenplay-page"
+          class={[
+            "screenplay-page",
+            @read_mode && "screenplay-read-mode"
+          ]}
         >
+          <%!-- Unified TipTap editor — always rendered, read mode toggles editable --%>
+          <div
+            id="screenplay-editor"
+            phx-hook="ScreenplayEditor"
+            data-content={Jason.encode!(@editor_doc)}
+            data-can-edit={to_string(@can_edit)}
+            data-read-mode={to_string(@read_mode)}
+            data-variables={Jason.encode!(@project_variables)}
+            data-linked-pages={Jason.encode!(@linked_pages)}
+            phx-update="ignore"
+          >
+          </div>
         </div>
-
-        <%!-- Read mode: Static rendering of all visible elements --%>
-        <.element_renderer
-          :for={element <- visible_elements(@elements, @read_mode)}
-          :if={@read_mode}
-          element={element}
-          continuations={@continuations}
-          sheets_map={@sheets_map}
-        />
-
-      </div>
       </div>
     </Layouts.project>
     """
@@ -233,7 +246,12 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
   @impl true
   def handle_event("toggle_read_mode", _params, socket) do
-    {:noreply, assign(socket, :read_mode, !socket.assigns.read_mode)}
+    new_mode = !socket.assigns.read_mode
+
+    {:noreply,
+     socket
+     |> assign(:read_mode, new_mode)
+     |> push_event("set_read_mode", %{read_mode: new_mode})}
   end
 
   # ---------------------------------------------------------------------------
@@ -372,6 +390,30 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       ) do
     with_edit_permission(socket, fn ->
       do_toggle_dual_parenthetical(socket, id, side)
+    end)
+  end
+
+  # ---------------------------------------------------------------------------
+  # Title page handlers
+  # ---------------------------------------------------------------------------
+
+  def handle_event(
+        "update_title_page",
+        %{"element-id" => id, "field" => field, "value" => value},
+        socket
+      ) do
+    with_edit_permission(socket, fn ->
+      do_update_title_page(socket, id, field, value)
+    end)
+  end
+
+  # ---------------------------------------------------------------------------
+  # Import handler
+  # ---------------------------------------------------------------------------
+
+  def handle_event("import_fountain", %{"content" => content}, socket) do
+    with_edit_permission(socket, fn ->
+      do_import_fountain(socket, content)
     end)
   end
 
@@ -586,8 +628,11 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     client_ids = extract_client_ids(client_elements)
 
     delete_removed_editor_elements(existing, client_ids)
-    upsert_client_elements(screenplay, client_elements, Map.new(existing, &{&1.id, &1}))
-    reorder_after_sync(screenplay, client_elements, existing)
+
+    ordered_ids =
+      upsert_client_elements(screenplay, client_elements, Map.new(existing, &{&1.id, &1}))
+
+    reorder_after_sync(screenplay, ordered_ids)
 
     elements = Screenplays.list_elements(screenplay.id)
     {:noreply, assign_elements_with_continuations(socket, elements)}
@@ -612,30 +657,32 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   defp upsert_client_elements(screenplay, client_elements, existing_by_id) do
-    Enum.each(client_elements, fn el ->
+    Enum.flat_map(client_elements, fn el ->
       element_id = el["element_id"] && parse_int(el["element_id"])
-      attrs = %{type: el["type"] || "action", content: el["content"] || "", data: el["data"] || %{}}
 
-      case element_id && Map.get(existing_by_id, element_id) do
-        nil -> Screenplays.create_element(screenplay, attrs)
-        existing_el -> Screenplays.update_element(existing_el, attrs)
-      end
+      attrs = %{
+        type: el["type"] || "action",
+        content: ContentUtils.sanitize_html(el["content"]),
+        data: el["data"] || %{}
+      }
+
+      upsert_single_element(screenplay, attrs, element_id && Map.get(existing_by_id, element_id))
     end)
   end
 
-  defp reorder_after_sync(screenplay, client_elements, _existing) do
-    editor_ids =
-      Enum.flat_map(client_elements, fn el ->
-        eid = el["element_id"] && parse_int(el["element_id"])
-        if eid, do: [eid], else: []
-      end)
+  defp upsert_single_element(screenplay, attrs, nil) do
+    case Screenplays.create_element(screenplay, attrs) do
+      {:ok, created} -> [created.id]
+      _ -> []
+    end
+  end
 
-    all_elements = Screenplays.list_elements(screenplay.id)
-    client_ids = extract_client_ids(client_elements)
-    new_ids = all_elements |> Enum.reject(&(&1.id in client_ids)) |> Enum.map(& &1.id)
+  defp upsert_single_element(_screenplay, attrs, existing_el) do
+    Screenplays.update_element(existing_el, attrs)
+    [existing_el.id]
+  end
 
-    ordered_ids = editor_ids ++ new_ids
-
+  defp reorder_after_sync(screenplay, ordered_ids) do
     if ordered_ids != [] do
       Screenplays.reorder_elements(screenplay.id, ordered_ids)
     end
@@ -726,6 +773,63 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   defp do_toggle_dual_parenthetical(socket, _id, _side), do: {:noreply, socket}
+
+  defp do_update_title_page(socket, id, field, value)
+       when field in @valid_title_fields do
+    case find_element(socket, id) do
+      nil ->
+        {:noreply, socket}
+
+      element ->
+        data = element.data || %{}
+        updated_data = Map.put(data, field, String.trim(value))
+
+        case Screenplays.update_element(element, %{data: updated_data}) do
+          {:ok, updated} ->
+            {:noreply,
+             socket
+             |> update_element_in_list(updated)
+             |> push_element_data_updated(updated)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not update title page."))}
+        end
+    end
+  end
+
+  defp do_update_title_page(socket, _id, _field, _value), do: {:noreply, socket}
+
+  defp do_import_fountain(socket, content) when is_binary(content) do
+    parsed = Screenplays.parse_fountain(content)
+
+    if parsed == [] do
+      {:noreply, put_flash(socket, :error, gettext("No content found in imported file."))}
+    else
+      screenplay = socket.assigns.screenplay
+
+      result =
+        Repo.transaction(fn ->
+          Enum.each(socket.assigns.elements, &Screenplays.delete_element/1)
+          Enum.each(parsed, &Screenplays.create_element(screenplay, &1))
+        end)
+
+      case result do
+        {:ok, _} ->
+          elements = Screenplays.list_elements(screenplay.id)
+
+          {:noreply,
+           socket
+           |> assign_elements_with_continuations(elements)
+           |> push_editor_content(elements)
+           |> put_flash(:info, gettext("Fountain file imported successfully."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not import file."))}
+      end
+    end
+  end
+
+  defp do_import_fountain(socket, _content), do: {:noreply, socket}
 
   defp do_update_screenplay_condition(socket, id, condition) do
     case find_element(socket, id) do
@@ -910,6 +1014,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           {:noreply,
            socket
            |> assign_elements_with_continuations(elements)
+           |> push_editor_content(elements)
            |> put_flash(:info, gettext("Screenplay updated from flow."))}
 
         {:error, :no_entry_node} ->
@@ -1097,12 +1202,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # Private helpers — general utilities
   # ---------------------------------------------------------------------------
 
-  defp visible_elements(elements, false), do: elements
-
-  defp visible_elements(elements, true) do
-    Enum.reject(elements, &(&1.type in @read_mode_hidden_types))
-  end
-
   defp detect_link_status(%Screenplay{linked_flow_id: nil}), do: {:unlinked, nil}
 
   defp detect_link_status(%Screenplay{project_id: project_id, linked_flow_id: flow_id}) do
@@ -1192,12 +1291,26 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   defp assign_elements_with_continuations(socket, elements) do
-    sheets_map = socket.assigns[:sheets_map] || %{}
-
     socket
     |> assign(:elements, elements)
-    |> assign(:continuations, ElementGrouping.compute_continuations(elements, sheets_map))
     |> assign(:editor_doc, TiptapSerialization.elements_to_doc(elements))
+  end
+
+  # Push full editor content to TipTap after server-side bulk updates (e.g. flow sync).
+  # The LiveViewBridge extension listens for "set_editor_content" and replaces the doc.
+  defp push_editor_content(socket, elements) do
+    client_elements =
+      Enum.map(elements, fn el ->
+        %{
+          id: el.id,
+          type: el.type,
+          position: el.position,
+          content: el.content || "",
+          data: el.data || %{}
+        }
+      end)
+
+    push_event(socket, "set_editor_content", %{elements: client_elements})
   end
 
   # Push element data back to TipTap NodeViews after server-side mutations

@@ -53,7 +53,10 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       assert html =~ ~s(phx-hook="ScreenplayEditor")
     end
 
-    test "text elements are embedded in editor JSON with correct types", %{conn: conn, project: project} do
+    test "text elements are embedded in editor JSON with correct types", %{
+      conn: conn,
+      project: project
+    } do
       screenplay = screenplay_fixture(project)
       element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY"})
       element_fixture(screenplay, %{type: "character", content: "JOHN"})
@@ -80,7 +83,10 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       assert html =~ to_string(el.id)
     end
 
-    test "flow marker blocks are embedded in editor JSON as atom nodes", %{conn: conn, project: project} do
+    test "flow marker blocks are embedded in editor JSON as atom nodes", %{
+      conn: conn,
+      project: project
+    } do
       screenplay = screenplay_fixture(project)
       element_fixture(screenplay, %{type: "hub_marker", content: ""})
       element_fixture(screenplay, %{type: "jump_marker", content: ""})
@@ -297,7 +303,13 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       condition = %{
         "logic" => "all",
         "rules" => [
-          %{"id" => "r1", "sheet" => "mc", "variable" => "health", "operator" => "greater_than", "value" => "50"}
+          %{
+            "id" => "r1",
+            "sheet" => "mc",
+            "variable" => "health",
+            "operator" => "greater_than",
+            "value" => "50"
+          }
         ]
       }
 
@@ -327,7 +339,13 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       condition = %{
         "logic" => "all",
         "rules" => [
-          %{"id" => "r1", "sheet" => "mc", "variable" => "health", "operator" => "equals", "value" => "100"}
+          %{
+            "id" => "r1",
+            "sheet" => "mc",
+            "variable" => "health",
+            "operator" => "equals",
+            "value" => "100"
+          }
         ]
       }
 
@@ -379,7 +397,13 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
         "condition" => %{
           "logic" => "all",
           "rules" => [
-            %{"id" => "r1", "sheet" => "mc", "variable" => "health", "operator" => "equals", "value" => "100"}
+            %{
+              "id" => "r1",
+              "sheet" => "mc",
+              "variable" => "health",
+              "operator" => "equals",
+              "value" => "100"
+            }
           ]
         }
       })
@@ -504,7 +528,13 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       |> render_click("update_screenplay_instruction", %{
         "element-id" => to_string(el.id),
         "assignments" => [
-          %{"id" => "a1", "sheet" => "mc", "variable" => "health", "operator" => "set", "value" => "100"}
+          %{
+            "id" => "a1",
+            "sheet" => "mc",
+            "variable" => "health",
+            "operator" => "set",
+            "value" => "100"
+          }
         ]
       })
 
@@ -676,7 +706,11 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
           content: "",
           data: %{
             "choices" => [
-              %{"id" => "c1", "text" => "Option A", "condition" => %{"logic" => "all", "rules" => []}}
+              %{
+                "id" => "c1",
+                "text" => "Option A",
+                "condition" => %{"logic" => "all", "rules" => []}
+              }
             ]
           }
         })
@@ -706,7 +740,11 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
           content: "",
           data: %{
             "choices" => [
-              %{"id" => "c1", "text" => "Option A", "condition" => %{"logic" => "all", "rules" => []}}
+              %{
+                "id" => "c1",
+                "text" => "Option A",
+                "condition" => %{"logic" => "all", "rules" => []}
+              }
             ]
           }
         })
@@ -716,7 +754,13 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       condition = %{
         "logic" => "any",
         "rules" => [
-          %{"id" => "r1", "sheet" => "mc", "variable" => "health", "operator" => "equals", "value" => "50"}
+          %{
+            "id" => "r1",
+            "sheet" => "mc",
+            "variable" => "health",
+            "operator" => "equals",
+            "value" => "50"
+          }
         ]
       }
 
@@ -753,7 +797,13 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       {:ok, view, _html} = live(conn, show_url(project, screenplay))
 
       assignments = [
-        %{"id" => "a1", "sheet" => "mc", "variable" => "health", "operator" => "add", "value" => "10"}
+        %{
+          "id" => "a1",
+          "sheet" => "mc",
+          "variable" => "health",
+          "operator" => "add",
+          "value" => "10"
+        }
       ]
 
       view
@@ -836,7 +886,13 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       project: project
     } do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "action", content: "A desk.", position: 1})
 
       {:ok, view, _html} = live(conn, show_url(project, screenplay))
@@ -853,7 +909,13 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
     test "sync_to_flow updates linked flow", %{conn: conn, project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       {:ok, flow} = Storyarn.Flows.create_flow(project, %{name: "Test Flow"})
       {:ok, _screenplay} = Storyarn.Screenplays.FlowSync.link_to_flow(screenplay, flow.id)
 
@@ -866,7 +928,13 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
     test "sync_from_flow updates elements from linked flow", %{conn: conn, project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "action", content: "Original.", position: 1})
 
       # Create flow and sync to it
@@ -1299,7 +1367,11 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
           type: "dual_dialogue",
           content: "",
           data: %{
-            "left" => %{"character" => "ALICE", "parenthetical" => "(yelling)", "dialogue" => "Hello."},
+            "left" => %{
+              "character" => "ALICE",
+              "parenthetical" => "(yelling)",
+              "dialogue" => "Hello."
+            },
             "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hi."}
           }
         })
@@ -1390,6 +1462,236 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
     end
 
     # -------------------------------------------------------------------------
+    # Phase 10 — Export toolbar link
+    # -------------------------------------------------------------------------
+
+    test "toolbar renders export link with correct path", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project, %{name: "Export Test"})
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "export/fountain"
+      assert html =~ "Export as Fountain"
+    end
+
+    # -------------------------------------------------------------------------
+    # Phase 10 — Title page interactive NodeView
+    # -------------------------------------------------------------------------
+
+    test "title_page element is embedded in editor JSON as atom node", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "title_page", content: ""})
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "titlePage"
+    end
+
+    test "title_page data appears in editor JSON", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+
+      element_fixture(screenplay, %{
+        type: "title_page",
+        content: "",
+        data: %{
+          "title" => "LA TABERNA DEL CUERVO",
+          "author" => "Studio Dev"
+        }
+      })
+
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+
+      assert html =~ "titlePage"
+      assert html =~ "LA TABERNA DEL CUERVO"
+      assert html =~ "Studio Dev"
+    end
+
+    test "update_title_page persists field to element data", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "title_page", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_title_page", %{
+        "element-id" => to_string(el.id),
+        "field" => "title",
+        "value" => "MY GREAT SCRIPT"
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert updated.data["title"] == "MY GREAT SCRIPT"
+    end
+
+    test "update_title_page rejects invalid field name", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "title_page", content: "", data: %{"title" => "Original"}})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_title_page", %{
+        "element-id" => to_string(el.id),
+        "field" => "evil_field",
+        "value" => "hacked"
+      })
+
+      # No crash, field not added
+      unchanged = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert unchanged.data["title"] == "Original"
+      refute Map.has_key?(unchanged.data, "evil_field")
+    end
+
+    test "update_title_page with nonexistent element is a no-op", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      _el = element_fixture(screenplay, %{type: "title_page", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_title_page", %{
+        "element-id" => "999999",
+        "field" => "title",
+        "value" => "Ghost"
+      })
+
+      assert render(view) =~ "screenplay-page"
+    end
+
+    test "viewer cannot update title page", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "title_page", content: ""})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_title_page", %{
+        "element-id" => to_string(el.id),
+        "field" => "title",
+        "value" => "Hacked"
+      })
+
+      assert render(view) =~ "permission"
+      unchanged = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert unchanged.data == nil || unchanged.data == %{}
+    end
+
+    # -------------------------------------------------------------------------
+    # Phase 10 — Import Fountain
+    # -------------------------------------------------------------------------
+
+    test "import_fountain replaces existing elements with parsed content", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "action", content: "Old content.", position: 0})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      fountain_text = "INT. OFFICE - DAY\n\nJOHN walks in."
+
+      view
+      |> render_click("import_fountain", %{"content" => fountain_text})
+
+      html = render(view)
+      assert html =~ "imported successfully"
+
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      types = Enum.map(elements, & &1.type)
+      assert "scene_heading" in types
+      assert "action" in types
+      refute Enum.any?(elements, &(&1.content == "Old content."))
+    end
+
+    test "import_fountain with empty content shows error flash", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "action", content: "Keep me.", position: 0})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("import_fountain", %{"content" => ""})
+
+      html = render(view)
+      assert html =~ "No content found"
+
+      # Original element preserved
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert length(elements) == 1
+      assert hd(elements).content == "Keep me."
+    end
+
+    test "viewer cannot import fountain", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+      element_fixture(screenplay, %{type: "action", content: "Protected.", position: 0})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("import_fountain", %{"content" => "INT. OFFICE - DAY\n\nNew."})
+
+      assert render(view) =~ "permission"
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert hd(elements).content == "Protected."
+    end
+
+    test "import_fountain with title page creates title_page element", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      fountain_text = "Title: My Great Script\nAuthor: Studio Dev\n\nINT. OFFICE - DAY"
+
+      view |> render_click("import_fountain", %{"content" => fountain_text})
+
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      tp = Enum.find(elements, &(&1.type == "title_page"))
+      assert tp
+      assert tp.data["title"] == "My Great Script"
+      assert tp.data["author"] == "Studio Dev"
+    end
+
+    test "import button appears for editors, hidden for viewers", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      screenplay = screenplay_fixture(project)
+
+      # Editor sees import button
+      {:ok, _view, html} = live(conn, show_url(project, screenplay))
+      assert html =~ "screenplay-import-btn"
+      assert html =~ "Import Fountain"
+
+      # Viewer does not see import button
+      owner = user_fixture()
+      viewer_project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(viewer_project, user, "viewer")
+      viewer_screenplay = screenplay_fixture(viewer_project)
+
+      {:ok, _view, viewer_html} = live(conn, show_url(viewer_project, viewer_screenplay))
+      refute viewer_html =~ "screenplay-import-btn"
+    end
+
+    # -------------------------------------------------------------------------
     # Phase 5 — Project variables loaded in mount
     # -------------------------------------------------------------------------
 
@@ -1409,6 +1711,247 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       assert html =~ "screenplay-page"
       assert html =~ "Walk."
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  # sync_editor_content round-trip
+  # -------------------------------------------------------------------------
+
+  describe "sync_editor_content" do
+    setup :register_and_log_in_user
+
+    setup %{user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      %{project: project}
+    end
+
+    test "creates new elements when element_id is nil", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("sync_editor_content", %{
+        "elements" => [
+          %{"type" => "scene_heading", "content" => "INT. OFFICE - DAY", "data" => %{}},
+          %{"type" => "action", "content" => "A desk.", "data" => %{}}
+        ]
+      })
+
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert length(elements) == 2
+      assert Enum.map(elements, & &1.type) == ["scene_heading", "action"]
+      assert Enum.map(elements, & &1.content) == ["INT. OFFICE - DAY", "A desk."]
+    end
+
+    test "updates existing element content", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: "Original.", position: 0})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("sync_editor_content", %{
+        "elements" => [
+          %{
+            "element_id" => to_string(el.id),
+            "type" => "action",
+            "content" => "Updated.",
+            "data" => %{}
+          }
+        ]
+      })
+
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert length(elements) == 1
+      assert hd(elements).content == "Updated."
+    end
+
+    test "updates existing element type", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: "INT. LOBBY", position: 0})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("sync_editor_content", %{
+        "elements" => [
+          %{
+            "element_id" => to_string(el.id),
+            "type" => "scene_heading",
+            "content" => "INT. LOBBY",
+            "data" => %{}
+          }
+        ]
+      })
+
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert hd(elements).type == "scene_heading"
+    end
+
+    test "deletes elements not in the payload", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el1 = element_fixture(screenplay, %{type: "action", content: "Keep.", position: 0})
+      _el2 = element_fixture(screenplay, %{type: "action", content: "Delete me.", position: 1})
+      el3 = element_fixture(screenplay, %{type: "action", content: "Also keep.", position: 2})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("sync_editor_content", %{
+        "elements" => [
+          %{
+            "element_id" => to_string(el1.id),
+            "type" => "action",
+            "content" => "Keep.",
+            "data" => %{}
+          },
+          %{
+            "element_id" => to_string(el3.id),
+            "type" => "action",
+            "content" => "Also keep.",
+            "data" => %{}
+          }
+        ]
+      })
+
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert length(elements) == 2
+      assert Enum.map(elements, & &1.content) == ["Keep.", "Also keep."]
+    end
+
+    test "preserves element order via position", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el1 = element_fixture(screenplay, %{type: "action", content: "First.", position: 0})
+      el2 = element_fixture(screenplay, %{type: "action", content: "Second.", position: 1})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      # Send in reversed order
+      view
+      |> render_click("sync_editor_content", %{
+        "elements" => [
+          %{
+            "element_id" => to_string(el2.id),
+            "type" => "action",
+            "content" => "Second.",
+            "data" => %{}
+          },
+          %{
+            "element_id" => to_string(el1.id),
+            "type" => "action",
+            "content" => "First.",
+            "data" => %{}
+          }
+        ]
+      })
+
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert Enum.map(elements, & &1.content) == ["Second.", "First."]
+    end
+
+    test "handles mixed create, update, and delete", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el1 = element_fixture(screenplay, %{type: "action", content: "Update me.", position: 0})
+      _el2 = element_fixture(screenplay, %{type: "action", content: "Delete me.", position: 1})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("sync_editor_content", %{
+        "elements" => [
+          %{
+            "element_id" => to_string(el1.id),
+            "type" => "action",
+            "content" => "Updated.",
+            "data" => %{}
+          },
+          %{"type" => "scene_heading", "content" => "INT. NEW SCENE", "data" => %{}}
+        ]
+      })
+
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert length(elements) == 2
+      assert Enum.map(elements, & &1.content) == ["Updated.", "INT. NEW SCENE"]
+      assert Enum.map(elements, & &1.type) == ["action", "scene_heading"]
+    end
+
+    test "preserves atom element data", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "id" => "r1",
+            "sheet" => "mc",
+            "variable" => "health",
+            "operator" => "greater_than",
+            "value" => "50"
+          }
+        ]
+      }
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("sync_editor_content", %{
+        "elements" => [
+          %{"type" => "conditional", "content" => "", "data" => %{"condition" => condition}}
+        ]
+      })
+
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert length(elements) == 1
+      el = hd(elements)
+      assert el.type == "conditional"
+      assert el.data["condition"]["logic"] == "all"
+      assert length(el.data["condition"]["rules"]) == 1
+    end
+
+    test "ignores non-list payload gracefully", %{conn: conn, project: project} do
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: "Safe.", position: 0})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      # String payload — should not crash
+      view |> render_click("sync_editor_content", %{"elements" => "bad"})
+
+      # nil payload — should not crash
+      view |> render_click("sync_editor_content", %{"elements" => nil})
+
+      # Existing element unchanged
+      elements = Storyarn.Screenplays.list_elements(screenplay.id)
+      assert length(elements) == 1
+      assert hd(elements).id == el.id
+    end
+
+    test "viewer cannot sync_editor_content", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+      el = element_fixture(screenplay, %{type: "action", content: "Protected.", position: 0})
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("sync_editor_content", %{
+        "elements" => [
+          %{
+            "element_id" => to_string(el.id),
+            "type" => "action",
+            "content" => "Hacked.",
+            "data" => %{}
+          }
+        ]
+      })
+
+      assert render(view) =~ "permission"
+      unchanged = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert unchanged.content == "Protected."
     end
   end
 
@@ -1449,7 +1992,10 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       refute html =~ "screenplay-read-mode"
     end
 
-    test "read mode hides conditional elements", %{conn: conn, project: project} do
+    test "read mode applies sp-read-mode class via CSS (elements hidden client-side)", %{
+      conn: conn,
+      project: project
+    } do
       screenplay = screenplay_fixture(project)
       element_fixture(screenplay, %{type: "action", content: "Walk.", position: 0})
 
@@ -1459,56 +2005,39 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
         data: %{"condition" => %{"logic" => "all", "rules" => []}}
       })
 
-      {:ok, view, html} = live(conn, show_url(project, screenplay))
-
-      # Conditional is in the TipTap editor JSON in edit mode
-      assert html =~ "conditional"
-
-      html = view |> element(~s(button[phx-click="toggle_read_mode"])) |> render_click()
-
-      # In read mode, conditional is hidden (not rendered by element_renderer)
-      refute html =~ "sp-conditional"
-      assert html =~ "Walk."
-    end
-
-    test "read mode hides instruction elements", %{conn: conn, project: project} do
-      screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "action", content: "Walk.", position: 0})
-
       element_fixture(screenplay, %{
         type: "instruction",
-        position: 1,
+        position: 2,
         data: %{"assignments" => []}
       })
 
+      element_fixture(screenplay, %{type: "note", content: "Director note", position: 3})
+
       {:ok, view, html} = live(conn, show_url(project, screenplay))
 
-      # Instruction is in the TipTap editor JSON in edit mode
+      # All elements are in the TipTap editor JSON in edit mode
+      assert html =~ "conditional"
       assert html =~ "instruction"
-
-      html = view |> element(~s(button[phx-click="toggle_read_mode"])) |> render_click()
-
-      refute html =~ "sp-instruction"
-    end
-
-    test "read mode hides note elements", %{conn: conn, project: project} do
-      screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "action", content: "Walk.", position: 0})
-      element_fixture(screenplay, %{type: "note", content: "Director note", position: 1})
-
-      {:ok, view, html} = live(conn, show_url(project, screenplay))
-
       assert html =~ "Director note"
 
       html = view |> element(~s(button[phx-click="toggle_read_mode"])) |> render_click()
 
-      refute html =~ "Director note"
+      # TipTap editor stays visible — CSS hides interactive blocks
+      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "screenplay-read-mode"
+      # Elements still present in the JSON (hidden by CSS, not removed from DOM)
+      assert html =~ "Walk."
     end
 
-    test "read mode preserves scene_heading, character, dialogue, action, transition, dual_dialogue",
-         %{conn: conn, project: project} do
+    test "read mode preserves visible types in editor", %{conn: conn, project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "action", content: "He enters.", position: 1})
       element_fixture(screenplay, %{type: "character", content: "JOHN", position: 2})
       element_fixture(screenplay, %{type: "dialogue", content: "Hello.", position: 3})
@@ -1527,14 +2056,13 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       html = view |> element(~s(button[phx-click="toggle_read_mode"])) |> render_click()
 
-      assert html =~ "sp-scene_heading"
-      assert html =~ "sp-action"
-      assert html =~ "sp-character"
-      assert html =~ "sp-dialogue"
-      assert html =~ "sp-transition"
-      assert html =~ "dual_dialogue"
+      # Editor remains with all content in JSON — visible types are not hidden by CSS
+      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "sceneHeading"
       assert html =~ "INT. OFFICE - DAY"
       assert html =~ "Hello."
+      assert html =~ "dualDialogue"
+      assert html =~ "ALICE"
     end
   end
 end

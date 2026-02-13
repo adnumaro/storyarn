@@ -82,6 +82,10 @@ defmodule StoryarnWeb.Router do
   scope "/", StoryarnWeb do
     pipe_through [:browser, :require_authenticated_user]
 
+    get "/workspaces/:workspace_slug/projects/:project_slug/screenplays/:id/export/fountain",
+        ScreenplayExportController,
+        :fountain
+
     live_session :require_authenticated_user,
       on_mount: [
         {StoryarnWeb.UserAuth, :require_authenticated},

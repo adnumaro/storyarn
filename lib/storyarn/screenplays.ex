@@ -169,4 +169,17 @@ defmodule Storyarn.Screenplays do
 
   @doc "Detects element type from content text patterns. Returns type string or nil."
   defdelegate detect_type(content), to: AutoDetect
+
+  # =============================================================================
+  # Export / Import
+  # =============================================================================
+
+  alias Storyarn.Screenplays.Export.Fountain, as: FountainExport
+  alias Storyarn.Screenplays.Import.Fountain, as: FountainImport
+
+  @doc "Exports elements to Fountain format string."
+  defdelegate export_fountain(elements), to: FountainExport, as: :export
+
+  @doc "Parses a Fountain format string into element attribute maps."
+  defdelegate parse_fountain(text), to: FountainImport, as: :parse
 end

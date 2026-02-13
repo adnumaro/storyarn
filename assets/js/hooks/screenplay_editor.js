@@ -49,12 +49,25 @@ import { TransitionAlignPlugin } from "../screenplay/extensions/transition_align
 // Shared extensions
 import { createMentionExtension } from "../tiptap/mention_extension.js";
 
+/** Dispatch a transaction while suppressing LiveViewBridge sync. */
+function suppressedDispatch(editor, tr) {
+  const bridge = editor.extensionManager.extensions.find(
+    (e) => e.name === "liveViewBridge",
+  );
+  if (bridge) bridge.storage.suppressUpdate = true;
+  editor.view.dispatch(tr);
+  requestAnimationFrame(() => {
+    if (bridge) bridge.storage.suppressUpdate = false;
+  });
+}
+
 export const ScreenplayEditor = {
   mounted() {
     this._destroyed = false;
 
     const contentJson = this.el.dataset.content;
     const canEdit = this.el.dataset.canEdit === "true";
+    const readMode = this.el.dataset.readMode === "true";
 
     // Parse shared data for interactive NodeViews
     let variables = [];
@@ -121,7 +134,7 @@ export const ScreenplayEditor = {
         PageBreak,
         HubMarker,
         JumpMarker,
-        TitlePage,
+        TitlePage.configure({ liveViewHook, canEdit }),
 
         // Interactive atom nodes (Phase 2)
         Conditional.configure({ liveViewHook, variables, canEdit }),
@@ -140,12 +153,27 @@ export const ScreenplayEditor = {
         createMentionExtension({ liveViewHook }),
       ],
       content: initialContent,
-      editable: canEdit,
+      editable: canEdit && !readMode,
       editorProps: {
         attributes: {
           class: "screenplay-prosemirror",
         },
       },
+    });
+
+    // Apply initial read mode CSS class if starting in read mode
+    if (readMode) {
+      const pm = this.el.querySelector(".ProseMirror");
+      if (pm) pm.classList.add("sp-read-mode");
+    }
+
+    // Server pushes read mode toggle
+    this.handleEvent("set_read_mode", ({ read_mode }) => {
+      if (this._destroyed || !this.editor) return;
+      this.editor.setEditable(!read_mode && canEdit);
+
+      const pm = this.el.querySelector(".ProseMirror");
+      if (pm) pm.classList.toggle("sp-read-mode", read_mode);
     });
 
     // Server can request focus (e.g. after element creation)
@@ -172,19 +200,7 @@ export const ScreenplayEditor = {
       });
 
       if (found) {
-        // Suppress the LiveViewBridge sync — this is a server echo, not a user edit
-        const bridge = this.editor.extensionManager.extensions.find(
-          (e) => e.name === "liveViewBridge",
-        );
-        if (bridge) {
-          bridge.storage.suppressUpdate = true;
-        }
-
-        this.editor.view.dispatch(tr);
-
-        requestAnimationFrame(() => {
-          if (bridge) bridge.storage.suppressUpdate = false;
-        });
+        suppressedDispatch(this.editor, tr);
       }
     });
 
@@ -207,14 +223,7 @@ export const ScreenplayEditor = {
       });
 
       if (touched) {
-        const bridge = this.editor.extensionManager.extensions.find(
-          (e) => e.name === "liveViewBridge",
-        );
-        if (bridge) bridge.storage.suppressUpdate = true;
-        this.editor.view.dispatch(tr);
-        requestAnimationFrame(() => {
-          if (bridge) bridge.storage.suppressUpdate = false;
-        });
+        suppressedDispatch(this.editor, tr);
       }
     });
 

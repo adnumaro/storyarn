@@ -46,6 +46,7 @@ import { InstructionBuilder } from "./hooks/instruction_builder";
 import { ColorPicker } from "./hooks/color_picker";
 import { ConditionBuilder } from "./hooks/condition_builder";
 import { DebugPanelResize } from "./hooks/debug_panel_resize";
+import { FountainImport } from "./hooks/fountain_import";
 
 // Theme management (keyboard shortcuts, cross-tab sync)
 import "./theme";
@@ -73,6 +74,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ColorPicker,
     ConditionBuilder,
     DebugPanelResize,
+    FountainImport,
     ReferenceSearch,
     DialogueScreenplayEditor,
     ScreenplayEditor,
