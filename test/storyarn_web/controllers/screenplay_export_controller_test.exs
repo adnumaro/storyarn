@@ -24,7 +24,13 @@ defmodule StoryarnWeb.ScreenplayExportControllerTest do
       project: project
     } do
       screenplay = screenplay_fixture(project, %{name: "My Script"})
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "action", content: "A desk.", position: 1})
 
       conn = get(conn, export_url(project, screenplay))
@@ -70,6 +76,34 @@ defmodule StoryarnWeb.ScreenplayExportControllerTest do
       assert body =~ "Walk."
       assert body =~ "Run."
       refute body =~ "conditional"
+    end
+
+    test "title_page element appears as Fountain metadata block", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project, %{name: "Title Test"})
+
+      element_fixture(screenplay, %{
+        type: "title_page",
+        content: "",
+        position: 0,
+        data: %{
+          "title" => "My Great Script",
+          "author" => "Studio Dev",
+          "draft_date" => "2025-01-01"
+        }
+      })
+
+      element_fixture(screenplay, %{type: "action", content: "He walks.", position: 1})
+
+      conn = get(conn, export_url(project, screenplay))
+
+      body = conn.resp_body
+      assert body =~ "Title: My Great Script"
+      assert body =~ "Author: Studio Dev"
+      assert body =~ "Draft date: 2025-01-01"
+      assert body =~ "He walks."
     end
 
     test "filename is slugified from screenplay name", %{conn: conn, project: project} do

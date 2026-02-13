@@ -754,30 +754,34 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         {:noreply, socket}
 
       element ->
-        data = element.data || %{}
-        side_data = data[side] || %{}
-
-        sanitized_value =
-          case field do
-            f when f in ~w(dialogue parenthetical) -> ContentUtils.sanitize_html(value)
-            "character" -> sanitize_plain_text(value)
-          end
-
-        updated_side = Map.put(side_data, field, sanitized_value)
-        updated_data = Map.put(data, side, updated_side)
-
-        case Screenplays.update_element(element, %{data: updated_data}) do
-          {:ok, updated} ->
-            socket = update_element_in_list(socket, updated)
-            {:noreply, push_element_data_updated(socket, updated)}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not update dual dialogue."))}
-        end
+        persist_dual_dialogue_field(socket, element, side, field, value)
     end
   end
 
   defp do_update_dual_dialogue(socket, _id, _side, _field, _value), do: {:noreply, socket}
+
+  defp persist_dual_dialogue_field(socket, element, side, field, value) do
+    data = element.data || %{}
+    side_data = data[side] || %{}
+
+    sanitized_value =
+      case field do
+        f when f in ~w(dialogue parenthetical) -> ContentUtils.sanitize_html(value)
+        "character" -> sanitize_plain_text(value)
+      end
+
+    updated_side = Map.put(side_data, field, sanitized_value)
+    updated_data = Map.put(data, side, updated_side)
+
+    case Screenplays.update_element(element, %{data: updated_data}) do
+      {:ok, updated} ->
+        socket = update_element_in_list(socket, updated)
+        {:noreply, push_element_data_updated(socket, updated)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not update dual dialogue."))}
+    end
+  end
 
   defp do_toggle_dual_parenthetical(socket, id, side) when side in @valid_dual_sides do
     case find_element(socket, id) do
@@ -844,20 +848,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       result =
         Ecto.Multi.new()
         |> Ecto.Multi.run(:delete_existing, fn _repo, _ ->
-          Enum.each(socket.assigns.elements, fn el ->
-            {:ok, _} = Screenplays.delete_element(el)
-          end)
-
-          {:ok, :deleted}
+          delete_all_elements(socket.assigns.elements)
         end)
         |> Ecto.Multi.run(:create_imported, fn _repo, _ ->
-          created =
-            Enum.map(parsed, fn attrs ->
-              {:ok, el} = Screenplays.create_element(screenplay, attrs)
-              el
-            end)
-
-          {:ok, created}
+          create_elements_from_parsed(screenplay, parsed)
         end)
         |> Repo.transaction()
 
@@ -878,6 +872,21 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   defp do_import_fountain(socket, _content), do: {:noreply, socket}
+
+  defp delete_all_elements(elements) do
+    Enum.each(elements, fn el -> {:ok, _} = Screenplays.delete_element(el) end)
+    {:ok, :deleted}
+  end
+
+  defp create_elements_from_parsed(screenplay, parsed) do
+    created =
+      Enum.map(parsed, fn attrs ->
+        {:ok, el} = Screenplays.create_element(screenplay, attrs)
+        el
+      end)
+
+    {:ok, created}
+  end
 
   defp do_update_screenplay_condition(socket, id, condition) do
     case find_element(socket, id) do

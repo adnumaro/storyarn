@@ -1529,7 +1529,13 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
     test "update_title_page rejects invalid field name", %{conn: conn, project: project} do
       screenplay = screenplay_fixture(project)
-      el = element_fixture(screenplay, %{type: "title_page", content: "", data: %{"title" => "Original"}})
+
+      el =
+        element_fixture(screenplay, %{
+          type: "title_page",
+          content: "",
+          data: %{"title" => "Original"}
+        })
 
       {:ok, view, _html} = live(conn, show_url(project, screenplay))
 
@@ -1689,6 +1695,145 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       {:ok, _view, viewer_html} = live(conn, show_url(viewer_project, viewer_screenplay))
       refute viewer_html =~ "screenplay-import-btn"
+    end
+
+    # -------------------------------------------------------------------------
+    # Additional handler coverage
+    # -------------------------------------------------------------------------
+
+    test "toggle_choice_instruction adds instruction to choice", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "response",
+          content: "",
+          data: %{"choices" => [%{"id" => "c1", "text" => "Option A"}]}
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("toggle_choice_instruction", %{
+        "element-id" => to_string(el.id),
+        "choice-id" => "c1"
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      [choice] = updated.data["choices"]
+      assert choice["instruction"] == []
+    end
+
+    test "toggle_choice_instruction removes instruction from choice", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      el =
+        element_fixture(screenplay, %{
+          type: "response",
+          content: "",
+          data: %{
+            "choices" => [
+              %{"id" => "c1", "text" => "Option A", "instruction" => []}
+            ]
+          }
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("toggle_choice_instruction", %{
+        "element-id" => to_string(el.id),
+        "choice-id" => "c1"
+      })
+
+      updated = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      [choice] = updated.data["choices"]
+      refute Map.has_key?(choice, "instruction")
+    end
+
+    test "viewer cannot sync to flow", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = Storyarn.Flows.create_flow(project, %{name: "Test Flow"})
+      {:ok, _screenplay} = Storyarn.Screenplays.FlowSync.link_to_flow(screenplay, flow.id)
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("sync_to_flow")
+
+      assert render(view) =~ "don&#39;t have permission"
+    end
+
+    test "viewer cannot create flow from screenplay", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("create_flow_from_screenplay")
+
+      assert render(view) =~ "don&#39;t have permission"
+      updated = Storyarn.Screenplays.get_screenplay!(project.id, screenplay.id)
+      assert is_nil(updated.linked_flow_id)
+    end
+
+    test "viewer cannot unlink flow", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+      screenplay = screenplay_fixture(project)
+      {:ok, flow} = Storyarn.Flows.create_flow(project, %{name: "Test Flow"})
+      {:ok, _screenplay} = Storyarn.Screenplays.FlowSync.link_to_flow(screenplay, flow.id)
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view |> render_click("unlink_flow")
+
+      assert render(view) =~ "don&#39;t have permission"
+      updated = Storyarn.Screenplays.get_screenplay!(project.id, screenplay.id)
+      assert updated.linked_flow_id == flow.id
+    end
+
+    test "update_dual_dialogue with nonexistent element is a no-op", %{
+      conn: conn,
+      project: project
+    } do
+      screenplay = screenplay_fixture(project)
+
+      _el =
+        element_fixture(screenplay, %{
+          type: "dual_dialogue",
+          content: "",
+          data: %{
+            "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => ""},
+            "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => ""}
+          }
+        })
+
+      {:ok, view, _html} = live(conn, show_url(project, screenplay))
+
+      view
+      |> render_click("update_dual_dialogue", %{
+        "element-id" => "999999",
+        "side" => "left",
+        "field" => "character",
+        "value" => "GHOST"
+      })
+
+      # No crash, original data preserved
+      assert render(view) =~ "screenplay-page"
+      unchanged = Storyarn.Screenplays.list_elements(screenplay.id) |> hd()
+      assert unchanged.data["left"]["character"] == "ALICE"
     end
 
     # -------------------------------------------------------------------------

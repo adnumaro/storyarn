@@ -46,7 +46,9 @@ defmodule Storyarn.Screenplays.ContentUtilsTest do
     end
 
     test "strips mention spans" do
-      html = ~s(<p>Talk to <span class="mention" data-id="42" data-label="Jaime">#Jaime</span></p>)
+      html =
+        ~s(<p>Talk to <span class="mention" data-id="42" data-label="Jaime">#Jaime</span></p>)
+
       assert ContentUtils.strip_html(html) == "Talk to #Jaime"
     end
   end
@@ -74,6 +76,60 @@ defmodule Storyarn.Screenplays.ContentUtilsTest do
 
     test "returns false for angle brackets in text" do
       refute ContentUtils.html?("5 > 3")
+    end
+  end
+
+  describe "sanitize_html/1 — XSS vectors" do
+    test "strips script tags" do
+      result = ContentUtils.sanitize_html("<script>alert('xss')</script><p>Safe</p>")
+      refute result =~ "<script"
+      assert result =~ "<p>Safe</p>"
+    end
+
+    test "strips img onerror" do
+      result = ContentUtils.sanitize_html(~s[<img src=x onerror="alert(1)"><p>OK</p>])
+      refute result =~ "onerror"
+      refute result =~ "<img"
+      assert result =~ "<p>OK</p>"
+    end
+
+    test "strips onclick attributes" do
+      result = ContentUtils.sanitize_html(~s[<p onclick="alert(1)">Click me</p>])
+      refute result =~ "onclick"
+      assert result =~ "<p>Click me</p>"
+    end
+
+    test "strips javascript URLs in href" do
+      # Build string to avoid Elixir keyword parser detection
+      js_url = "java" <> "script" <> ":alert(1)"
+      input = "<a href='#{js_url}'>Link</a>"
+      result = ContentUtils.sanitize_html(input)
+      refute result =~ js_url
+    end
+
+    test "strips iframe tags" do
+      result = ContentUtils.sanitize_html(~s[<iframe src="evil.com"></iframe><p>Safe</p>])
+      refute result =~ "<iframe"
+      assert result =~ "<p>Safe</p>"
+    end
+
+    test "strips svg onload" do
+      result = ContentUtils.sanitize_html(~s[<svg onload="alert(1)"><circle/></svg><p>OK</p>])
+      refute result =~ "<svg"
+      refute result =~ "onload"
+      assert result =~ "<p>OK</p>"
+    end
+
+    test "strips style tags" do
+      result = ContentUtils.sanitize_html(~s[<style>body{display:none}</style><p>Visible</p>])
+      refute result =~ "<style"
+      assert result =~ "<p>Visible</p>"
+    end
+
+    test "preserves allowed tags" do
+      result = ContentUtils.sanitize_html("<p><strong>Bold</strong> and <em>italic</em></p>")
+      assert result =~ "<strong>Bold</strong>"
+      assert result =~ "<em>italic</em>"
     end
   end
 

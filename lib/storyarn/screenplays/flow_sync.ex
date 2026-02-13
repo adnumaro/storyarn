@@ -36,15 +36,11 @@ defmodule Storyarn.Screenplays.FlowSync do
     project = Storyarn.Projects.get_project!(project_id)
 
     Repo.transaction(fn ->
-      case Flows.create_flow(project, %{name: screenplay.name}) do
-        {:ok, flow} ->
-          case link_to_flow(screenplay, flow.id) do
-            {:ok, _screenplay} -> flow
-            {:error, reason} -> Repo.rollback(reason)
-          end
-
-        {:error, reason} ->
-          Repo.rollback(reason)
+      with {:ok, flow} <- Flows.create_flow(project, %{name: screenplay.name}),
+           {:ok, _screenplay} <- link_to_flow(screenplay, flow.id) do
+        flow
+      else
+        {:error, reason} -> Repo.rollback(reason)
       end
     end)
   end
@@ -120,7 +116,14 @@ defmodule Storyarn.Screenplays.FlowSync do
       PageTreeBuilder.flatten(page_tree)
 
     with {:ok, flow} <- ensure_flow(screenplay) do
-      do_sync(%{screenplay | project_id: project_id}, flow, all_node_attrs, connections, screenplay_ids, page_tree)
+      do_sync(
+        %{screenplay | project_id: project_id},
+        flow,
+        all_node_attrs,
+        connections,
+        screenplay_ids,
+        page_tree
+      )
     end
   end
 
@@ -173,7 +176,8 @@ defmodule Storyarn.Screenplays.FlowSync do
 
   defp sync_page_from_tree!(screenplay, tree_result, depth \\ 0)
 
-  defp sync_page_from_tree!(_screenplay, _tree_result, depth) when depth > @max_tree_depth, do: :ok
+  defp sync_page_from_tree!(_screenplay, _tree_result, depth) when depth > @max_tree_depth,
+    do: :ok
 
   defp sync_page_from_tree!(screenplay, tree_result, depth) do
     new_attrs = ReverseNodeMapping.nodes_to_element_attrs(tree_result.nodes)

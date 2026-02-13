@@ -131,13 +131,12 @@ defmodule Storyarn.Screenplays.ContentUtils do
   defp strip_unsafe_node({:comment, _}), do: []
   defp strip_unsafe_node(_), do: []
 
-  defp unsafe_attr?(name, _value) when is_binary(name) do
+  defp unsafe_attr?(name, value) when is_binary(name) do
     downcased = String.downcase(name)
-    String.starts_with?(downcased, "on") || downcased in ~w(srcdoc formaction)
-  end
 
-  defp unsafe_attr?(_name, value) when is_binary(value) do
-    String.contains?(String.downcase(value), "javascript:")
+    String.starts_with?(downcased, "on") ||
+      downcased in ~w(srcdoc formaction) ||
+      (is_binary(value) and String.contains?(String.downcase(value), "javascript:"))
   end
 
   defp unsafe_attr?(_name, _value), do: false
