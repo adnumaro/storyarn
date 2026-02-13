@@ -168,7 +168,7 @@ export const ScreenplayEditor = {
         // Text block nodes (Action first = default block type for ProseMirror)
         Action,
         SceneHeading,
-        Character.configure({ liveViewHook }),
+        Character,
         Dialogue,
         Parenthetical,
         Transition,

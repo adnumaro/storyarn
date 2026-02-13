@@ -4,9 +4,17 @@
  * When `sheetId` is set (via # mention in a CHARACTER block), the character
  * name gets a visual reference style. Cmd/Ctrl+Click navigates to the sheet
  * (handled by the ScreenplayEditor hook, same as inline mentions).
+ *
+ * NO custom NodeView — ProseMirror fully manages the DOM via renderHTML.
+ * The nested <span class="sp-character-content"> provides a CSS target for
+ * the badge styling when a sheet reference is active.
+ *
+ * Auto-clear: when the user deletes all text from a referenced character,
+ * an appendTransaction plugin automatically clears the sheetId.
  */
 
 import { Node, mergeAttributes } from "@tiptap/core";
+import { Plugin } from "prosemirror-state";
 import { BASE_ATTRS } from "./base_attrs.js";
 
 export const Character = Node.create({
@@ -14,13 +22,6 @@ export const Character = Node.create({
   group: "screenplayBlock",
   content: "inline*",
   defining: true,
-
-  addOptions() {
-    return {
-      /** LiveView hook instance for pushing events to the server. */
-      liveViewHook: null,
-    };
-  },
 
   addAttributes() {
     return {
@@ -37,82 +38,52 @@ export const Character = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'div[data-node-type="character"]' }];
+    return [
+      {
+        tag: 'div[data-node-type="character"]',
+        // When pasting HTML with the nested span, read content from it;
+        // otherwise fall back to the matched div itself.
+        contentElement: (node) =>
+          node.querySelector(".sp-character-content") || node,
+      },
+    ];
   },
 
   renderHTML({ HTMLAttributes }) {
+    const hasRef = !!HTMLAttributes["data-sheet-id"];
     return [
       "div",
       mergeAttributes(HTMLAttributes, {
         "data-node-type": "character",
-        class: "sp-character",
+        class: hasRef ? "sp-character sp-character-ref" : "sp-character",
       }),
-      0,
+      ["span", { class: "sp-character-content" }, 0],
     ];
   },
 
-  addNodeView() {
-    const extension = this;
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        appendTransaction(_transactions, _oldState, newState) {
+          let tr = null;
 
-    return ({ node, getPos, editor }) => {
-      const hook = extension.options.liveViewHook;
-
-      const dom = document.createElement("div");
-      dom.classList.add("sp-character");
-      dom.dataset.nodeType = "character";
-
-      // Editable content area managed by ProseMirror
-      const contentDOM = document.createElement("span");
-      contentDOM.classList.add("sp-character-content");
-      dom.appendChild(contentDOM);
-
-      let currentSheetId = node.attrs.sheetId;
-      let currentNode = node;
-
-      function updateState(sheetId) {
-        if (sheetId) {
-          dom.classList.add("sp-character-ref");
-          dom.dataset.sheetId = sheetId;
-        } else {
-          dom.classList.remove("sp-character-ref");
-          delete dom.dataset.sheetId;
-        }
-      }
-
-      updateState(currentSheetId);
-
-      return {
-        dom,
-        contentDOM,
-        update: (updatedNode) => {
-          if (updatedNode.type.name !== "character") return false;
-          currentNode = updatedNode;
-          currentSheetId = updatedNode.attrs.sheetId;
-
-          // Auto-clear reference when content is deleted
-          if (currentSheetId && updatedNode.content.size === 0) {
-            const pos = getPos();
-            if (typeof pos === "number") {
-              editor.view.dispatch(
-                editor.state.tr.setNodeMarkup(pos, undefined, {
-                  ...updatedNode.attrs,
-                  sheetId: null,
-                }),
-              );
-              const elementId = updatedNode.attrs.elementId;
-              if (elementId && hook) {
-                hook.pushEvent("clear_character_sheet", {
-                  id: String(elementId),
-                });
-              }
-              return true;
+          newState.doc.forEach((node, pos) => {
+            if (
+              node.type.name === "character" &&
+              node.attrs.sheetId &&
+              node.content.size === 0
+            ) {
+              if (!tr) tr = newState.tr;
+              tr.setNodeMarkup(pos, undefined, {
+                ...node.attrs,
+                sheetId: null,
+              });
             }
-          }
+          });
 
-          updateState(currentSheetId);
-          return true;
+          return tr;
         },
-      };
-    };
+      }),
+    ];
   },
 });

@@ -497,12 +497,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     end)
   end
 
-  def handle_event("clear_character_sheet", %{"id" => id}, socket) do
-    with_edit_permission(socket, fn ->
-      do_clear_character_sheet(socket, id)
-    end)
-  end
-
   def handle_event("mention_suggestions", %{"query" => query}, socket) do
     results =
       Sheets.search_referenceable(socket.assigns.project.id, query, ["sheet"])
@@ -1042,25 +1036,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, gettext("Could not set character sheet."))}
-    end
-  end
-
-  defp do_clear_character_sheet(socket, id) do
-    case find_element(socket, id) do
-      nil ->
-        {:noreply, socket}
-
-      element ->
-        data = Map.delete(element.data || %{}, "sheet_id")
-
-        case Screenplays.update_element(element, %{content: "", data: data}) do
-          {:ok, updated} ->
-            Sheets.update_screenplay_element_references(updated)
-            {:noreply, update_element_in_list(socket, updated)}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not clear character sheet."))}
-        end
     end
   end
 

@@ -91,12 +91,17 @@ export const LiveViewBridge = Extension.create({
   },
 
   onDestroy() {
-    this.storage.destroyed = true;
+    const hook = this.options.liveViewHook;
 
-    if (this.storage.debounceTimer) {
+    // Flush any pending sync before tearing down — prevents content loss
+    // on LiveView navigation or page reload.
+    if (this.storage.debounceTimer && hook) {
       clearTimeout(this.storage.debounceTimer);
       this.storage.debounceTimer = null;
+      pushSync(this.editor, hook);
     }
+
+    this.storage.destroyed = true;
   },
 
 });
