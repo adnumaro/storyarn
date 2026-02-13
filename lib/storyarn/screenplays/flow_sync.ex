@@ -35,16 +35,18 @@ defmodule Storyarn.Screenplays.FlowSync do
   def ensure_flow(%Screenplay{linked_flow_id: nil, project_id: project_id} = screenplay) do
     project = Storyarn.Projects.get_project!(project_id)
 
-    case Flows.create_flow(project, %{name: screenplay.name}) do
-      {:ok, flow} ->
-        case link_to_flow(screenplay, flow.id) do
-          {:ok, _screenplay} -> {:ok, flow}
-          {:error, reason} -> {:error, reason}
-        end
+    Repo.transaction(fn ->
+      case Flows.create_flow(project, %{name: screenplay.name}) do
+        {:ok, flow} ->
+          case link_to_flow(screenplay, flow.id) do
+            {:ok, _screenplay} -> flow
+            {:error, reason} -> Repo.rollback(reason)
+          end
 
-      {:error, reason} ->
-        {:error, reason}
-    end
+        {:error, reason} ->
+          Repo.rollback(reason)
+      end
+    end)
   end
 
   def ensure_flow(%Screenplay{linked_flow_id: flow_id, project_id: project_id}) do
@@ -243,7 +245,7 @@ defmodule Storyarn.Screenplays.FlowSync do
   defp set_choice_linked_id!(screenplay_id, source_node_id, choice_id, child_id) do
     case find_response_element(screenplay_id, source_node_id) do
       nil ->
-        :ok
+        raise "Response element not found for screenplay #{screenplay_id}, node #{source_node_id}"
 
       element ->
         {:ok, _} =
