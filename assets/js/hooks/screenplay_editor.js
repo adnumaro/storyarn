@@ -302,16 +302,26 @@ export const ScreenplayEditor = {
       }
     });
 
-    // Ctrl/Cmd+Click on inline mentions → navigate to sheet
+    // Ctrl/Cmd+Click on mentions or character references → navigate to sheet
     this.el.addEventListener("click", (e) => {
       if (!e.metaKey && !e.ctrlKey) return;
-      const mention = e.target.closest(".mention");
-      if (!mention) return;
 
-      e.preventDefault();
-      const sheetId = mention.dataset.id;
-      if (sheetId) {
-        this.pushEvent("navigate_to_sheet", { sheet_id: sheetId });
+      // Inline mention: <span class="mention" data-id="...">
+      const mention = e.target.closest(".mention");
+      if (mention) {
+        e.preventDefault();
+        const sheetId = mention.dataset.id;
+        if (sheetId) this.pushEvent("navigate_to_sheet", { sheet_id: sheetId });
+        return;
+      }
+
+      // Character block with sheet reference: <div class="sp-character" data-sheet-id="...">
+      const character = e.target.closest(".sp-character[data-sheet-id]");
+      if (character) {
+        e.preventDefault();
+        this.pushEvent("navigate_to_sheet", {
+          sheet_id: character.dataset.sheetId,
+        });
       }
     });
 

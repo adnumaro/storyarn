@@ -910,47 +910,23 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Character sheet reference — linked name display + nav/clear buttons
+   Character sheet reference — mention-style badge on linked character name
    --------------------------------------------------------------------------- */
 
-.sp-character-ref {
+.sp-character-ref .sp-character-content {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-}
-
-/* NodeView: inline actions shown next to editable content */
-.sp-character-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  margin-left: 6px;
-  vertical-align: middle;
-}
-
-.sp-character-nav,
-.sp-character-clear {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: none;
-  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
-  cursor: pointer;
+  padding: 2px 6px;
   border-radius: 4px;
-  flex-shrink: 0;
+  background-color: color-mix(in oklch, var(--color-primary) 20%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 95%, transparent);
+  cursor: pointer;
 }
 
-.sp-character-nav:hover {
-  color: var(--color-primary);
-  background-color: color-mix(in oklch, var(--color-primary) 10%, transparent);
-}
-
-.sp-character-clear:hover {
-  color: var(--color-error);
-  background-color: color-mix(in oklch, var(--color-error) 10%, transparent);
+.sp-character-ref .sp-character-content::before {
+  content: "#";
+  margin-right: 2px;
+  pointer-events: none;
 }
 
 /* ---------------------------------------------------------------------------
@@ -989,10 +965,10 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 0 4px;
+  padding: 2px 6px;
   border-radius: 4px;
-  background-color: color-mix(in oklch, var(--color-primary) 15%, transparent);
-  color: var(--color-primary);
+  background-color: color-mix(in oklch, var(--color-primary) 20%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 95%, transparent);
   font-family: system-ui, sans-serif;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -1001,7 +977,7 @@
 }
 
 .mention:hover {
-  background-color: color-mix(in oklch, var(--color-primary) 25%, transparent);
+  background-color: color-mix(in oklch, var(--color-primary) 30%, transparent);
 }
 
 /* ==========================================================================
@@ -1019,11 +995,6 @@
   display: none;
 }
 
-/* Hide character sheet nav/clear buttons in read mode */
-.sp-read-mode .sp-character-nav,
-.sp-read-mode .sp-character-clear {
-  display: none;
-}
 
 /* ---------------------------------------------------------------------------
    Title page fields

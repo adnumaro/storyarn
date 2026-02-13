@@ -1,13 +1,12 @@
 /**
  * Character — screenplay character name node with optional sheet reference.
  *
- * When `sheetId` is set (via # mention in a CHARACTER block), a NodeView
- * renders action buttons (navigate to sheet, clear reference) alongside
- * the character name. The text is always editable via ProseMirror's contentDOM.
+ * When `sheetId` is set (via # mention in a CHARACTER block), the character
+ * name gets a visual reference style. Cmd/Ctrl+Click navigates to the sheet
+ * (handled by the ScreenplayEditor hook, same as inline mentions).
  */
 
 import { Node, mergeAttributes } from "@tiptap/core";
-import { createElement, ExternalLink, X } from "lucide";
 import { BASE_ATTRS } from "./base_attrs.js";
 
 export const Character = Node.create({
@@ -58,7 +57,6 @@ export const Character = Node.create({
     return ({ node, getPos, editor }) => {
       const hook = extension.options.liveViewHook;
 
-      // Outer wrapper
       const dom = document.createElement("div");
       dom.classList.add("sp-character");
       dom.dataset.nodeType = "character";
@@ -68,70 +66,6 @@ export const Character = Node.create({
       contentDOM.classList.add("sp-character-content");
       dom.appendChild(contentDOM);
 
-      // Action buttons container (nav + clear)
-      const actions = document.createElement("span");
-      actions.classList.add("sp-character-actions");
-      actions.contentEditable = "false";
-
-      const navBtn = document.createElement("button");
-      navBtn.type = "button";
-      navBtn.className = "sp-character-nav";
-      navBtn.title = "Go to sheet";
-      navBtn.appendChild(
-        createElement(ExternalLink, { width: 12, height: 12 }),
-      );
-      navBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (currentSheetId && hook) {
-          hook.pushEvent("navigate_to_sheet", { sheet_id: currentSheetId });
-        }
-      });
-      actions.appendChild(navBtn);
-
-      const clearBtn = document.createElement("button");
-      clearBtn.type = "button";
-      clearBtn.className = "sp-character-clear";
-      clearBtn.title = "Remove reference";
-      clearBtn.appendChild(createElement(X, { width: 12, height: 12 }));
-      clearBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const pos = getPos();
-        if (typeof pos !== "number") return;
-
-        // Clear sheetId in TipTap and empty the content
-        editor
-          .chain()
-          .focus()
-          .command(({ tr, dispatch }) => {
-            if (dispatch) {
-              tr.setNodeMarkup(pos, undefined, {
-                ...currentNode.attrs,
-                sheetId: null,
-              });
-              // Clear inline content
-              const start = pos + 1;
-              const end = pos + 1 + currentNode.content.size;
-              if (end > start) {
-                tr.delete(start, end);
-              }
-            }
-            return true;
-          })
-          .run();
-
-        // Persist immediately to server
-        const elementId = currentNode.attrs.elementId;
-        if (elementId && hook) {
-          hook.pushEvent("clear_character_sheet", { id: String(elementId) });
-        }
-      });
-      actions.appendChild(clearBtn);
-
-      dom.appendChild(actions);
-
-      // Track current state for event handlers
       let currentSheetId = node.attrs.sheetId;
       let currentNode = node;
 
@@ -139,11 +73,9 @@ export const Character = Node.create({
         if (sheetId) {
           dom.classList.add("sp-character-ref");
           dom.dataset.sheetId = sheetId;
-          actions.style.display = "";
         } else {
           dom.classList.remove("sp-character-ref");
           delete dom.dataset.sheetId;
-          actions.style.display = "none";
         }
       }
 
@@ -156,6 +88,27 @@ export const Character = Node.create({
           if (updatedNode.type.name !== "character") return false;
           currentNode = updatedNode;
           currentSheetId = updatedNode.attrs.sheetId;
+
+          // Auto-clear reference when content is deleted
+          if (currentSheetId && updatedNode.content.size === 0) {
+            const pos = getPos();
+            if (typeof pos === "number") {
+              editor.view.dispatch(
+                editor.state.tr.setNodeMarkup(pos, undefined, {
+                  ...updatedNode.attrs,
+                  sheetId: null,
+                }),
+              );
+              const elementId = updatedNode.attrs.elementId;
+              if (elementId && hook) {
+                hook.pushEvent("clear_character_sheet", {
+                  id: String(elementId),
+                });
+              }
+              return true;
+            }
+          }
+
           updateState(currentSheetId);
           return true;
         },
