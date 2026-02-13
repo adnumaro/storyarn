@@ -95,10 +95,15 @@ export const LiveViewBridge = Extension.create({
 
     // Flush any pending sync before tearing down — prevents content loss
     // on LiveView navigation or page reload.
+    // The push is best-effort: the socket may already be disconnected.
     if (this.storage.debounceTimer && hook) {
       clearTimeout(this.storage.debounceTimer);
       this.storage.debounceTimer = null;
-      pushSync(this.editor, hook);
+      try {
+        pushSync(this.editor, hook);
+      } catch {
+        // LiveView disconnected — nothing to flush to
+      }
     }
 
     this.storage.destroyed = true;
