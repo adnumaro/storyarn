@@ -94,7 +94,8 @@ defmodule Storyarn.Screenplays.NodeMapping do
     data = %{
       "speaker_sheet_id" => speaker_sheet_id,
       "text" => (dialogue && dialogue.content) || "",
-      "stage_directions" => ContentUtils.strip_html((parenthetical && parenthetical.content) || ""),
+      "stage_directions" =>
+        ContentUtils.strip_html((parenthetical && parenthetical.content) || ""),
       "menu_text" => ContentUtils.strip_html((character && character.content) || ""),
       "audio_asset_id" => nil,
       "technical_id" => "",
@@ -270,7 +271,8 @@ defmodule Storyarn.Screenplays.NodeMapping do
     }
   end
 
-  defp dual_side_to_node_data(nil), do: %{"text" => "", "stage_directions" => "", "menu_text" => ""}
+  defp dual_side_to_node_data(nil),
+    do: %{"text" => "", "stage_directions" => "", "menu_text" => ""}
 
   defp dual_side_to_node_data(side) do
     %{
@@ -304,7 +306,10 @@ defmodule Storyarn.Screenplays.NodeMapping do
   defp serialize_condition(condition) when is_binary(condition), do: condition
 
   defp serialize_instruction(nil), do: nil
-  defp serialize_instruction(assignments) when is_list(assignments), do: Jason.encode!(assignments)
+
+  defp serialize_instruction(assignments) when is_list(assignments),
+    do: Jason.encode!(assignments)
+
   defp serialize_instruction(instruction) when is_binary(instruction), do: instruction
 
   defp parse_scene_heading(content) do

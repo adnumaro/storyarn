@@ -52,8 +52,10 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   @spec get_variable_usage(integer(), integer()) :: [map()]
   def get_variable_usage(block_id, project_id) do
     from(vr in VariableReference,
-      join: n in FlowNode, on: n.id == vr.flow_node_id,
-      join: f in Flow, on: f.id == n.flow_id,
+      join: n in FlowNode,
+      on: n.id == vr.flow_node_id,
+      join: f in Flow,
+      on: f.id == n.flow_id,
       where: vr.block_id == ^block_id,
       where: f.project_id == ^project_id,
       where: is_nil(f.deleted_at),
@@ -97,10 +99,14 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   @spec check_stale_references(integer(), integer()) :: [map()]
   def check_stale_references(block_id, project_id) do
     from(vr in VariableReference,
-      join: n in FlowNode, on: n.id == vr.flow_node_id,
-      join: f in Flow, on: f.id == n.flow_id,
-      join: b in Block, on: b.id == vr.block_id,
-      join: s in Sheet, on: s.id == b.sheet_id,
+      join: n in FlowNode,
+      on: n.id == vr.flow_node_id,
+      join: f in Flow,
+      on: f.id == n.flow_id,
+      join: b in Block,
+      on: b.id == vr.block_id,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
       where: vr.block_id == ^block_id,
       where: f.project_id == ^project_id,
       where: is_nil(f.deleted_at),
@@ -134,10 +140,14 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     # Get all variable references for this project with current block info + source fields
     refs_with_info =
       from(vr in VariableReference,
-        join: n in FlowNode, on: n.id == vr.flow_node_id,
-        join: f in Flow, on: f.id == n.flow_id,
-        join: b in Block, on: b.id == vr.block_id,
-        join: s in Sheet, on: s.id == b.sheet_id,
+        join: n in FlowNode,
+        on: n.id == vr.flow_node_id,
+        join: f in Flow,
+        on: f.id == n.flow_id,
+        join: b in Block,
+        on: b.id == vr.block_id,
+        join: s in Sheet,
+        on: s.id == b.sheet_id,
         where: f.project_id == ^project_id,
         where: is_nil(f.deleted_at),
         where: is_nil(s.deleted_at),
@@ -190,9 +200,12 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   @spec list_stale_node_ids(integer()) :: MapSet.t()
   def list_stale_node_ids(flow_id) do
     from(vr in VariableReference,
-      join: n in FlowNode, on: n.id == vr.flow_node_id,
-      join: b in Block, on: b.id == vr.block_id,
-      join: s in Sheet, on: s.id == b.sheet_id,
+      join: n in FlowNode,
+      on: n.id == vr.flow_node_id,
+      join: b in Block,
+      on: b.id == vr.block_id,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
       where: n.flow_id == ^flow_id,
       where: is_nil(s.deleted_at),
       where: is_nil(b.deleted_at),
@@ -229,7 +242,14 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         []
 
       block_id ->
-        [%{block_id: block_id, kind: "write", source_sheet: assign["sheet"], source_variable: assign["variable"]}]
+        [
+          %{
+            block_id: block_id,
+            kind: "write",
+            source_sheet: assign["sheet"],
+            source_variable: assign["variable"]
+          }
+        ]
     end
   end
 
@@ -239,7 +259,14 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         []
 
       block_id ->
-        [%{block_id: block_id, kind: "read", source_sheet: assign["value_sheet"], source_variable: assign["value"]}]
+        [
+          %{
+            block_id: block_id,
+            kind: "read",
+            source_sheet: assign["value_sheet"],
+            source_variable: assign["value"]
+          }
+        ]
     end
   end
 
@@ -262,7 +289,14 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         []
 
       block_id ->
-        [%{block_id: block_id, kind: "read", source_sheet: rule["sheet"], source_variable: rule["variable"]}]
+        [
+          %{
+            block_id: block_id,
+            kind: "read",
+            source_sheet: rule["sheet"],
+            source_variable: rule["variable"]
+          }
+        ]
     end
   end
 
@@ -275,7 +309,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
        when is_binary(sheet_shortcut) and sheet_shortcut != "" and
               is_binary(variable_name) and variable_name != "" do
     from(b in Block,
-      join: s in Sheet, on: s.id == b.sheet_id,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
       where: s.project_id == ^project_id,
       where: s.shortcut == ^sheet_shortcut,
       where: b.variable_name == ^variable_name,
@@ -402,5 +437,4 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
     :ok
   end
-
 end

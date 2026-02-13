@@ -80,7 +80,9 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       element = element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE"})
 
       Storyarn.Repo.update!(
-        Storyarn.Screenplays.ScreenplayElement.link_node_changeset(element, %{linked_node_id: entry_node.id})
+        Storyarn.Screenplays.ScreenplayElement.link_node_changeset(element, %{
+          linked_node_id: entry_node.id
+        })
       )
 
       {:ok, unlinked} = FlowSync.unlink_flow(screenplay)
@@ -106,8 +108,18 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "creates nodes from screenplay elements", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
-      element_fixture(screenplay, %{type: "action", content: "A desk sits in the corner.", position: 1})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
+      element_fixture(screenplay, %{
+        type: "action",
+        content: "A desk sits in the corner.",
+        position: 1
+      })
 
       {:ok, flow} = FlowSync.sync_to_flow(screenplay)
       synced = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
@@ -119,7 +131,13 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "creates sequential connections between nodes", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "action", content: "A desk.", position: 1})
       element_fixture(screenplay, %{type: "character", content: "JOHN", position: 2})
       element_fixture(screenplay, %{type: "dialogue", content: "Hello.", position: 3})
@@ -135,7 +153,13 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "updates existing synced nodes on re-sync preserving position", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       action = element_fixture(screenplay, %{type: "action", content: "Original.", position: 1})
 
       {:ok, flow} = FlowSync.sync_to_flow(screenplay)
@@ -159,7 +183,13 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "deletes orphaned synced nodes", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       action = element_fixture(screenplay, %{type: "action", content: "To remove.", position: 1})
 
       {:ok, flow} = FlowSync.sync_to_flow(screenplay)
@@ -175,7 +205,12 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "never touches manual nodes", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
 
       {:ok, flow} = FlowSync.sync_to_flow(screenplay)
       {:ok, manual} = Flows.create_node(flow, %{type: "dialogue", data: %{}})
@@ -188,7 +223,14 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "links elements to created nodes via linked_node_id", %{project: project} do
       screenplay = screenplay_fixture(project)
-      sh = element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      sh =
+        element_fixture(screenplay, %{
+          type: "scene_heading",
+          content: "INT. OFFICE - DAY",
+          position: 0
+        })
+
       act = element_fixture(screenplay, %{type: "action", content: "A desk.", position: 1})
 
       {:ok, _flow} = FlowSync.sync_to_flow(screenplay)
@@ -204,7 +246,13 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "handles dialogue group with response choices", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "character", content: "NPC", position: 1})
       element_fixture(screenplay, %{type: "dialogue", content: "What do you want?", position: 2})
 
@@ -229,7 +277,13 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "skips non-mappeable elements", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "note", content: "Remember to revise", position: 1})
       element_fixture(screenplay, %{type: "action", content: "A desk.", position: 2})
 
@@ -254,7 +308,12 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "handles orphan response creating dialogue wrapper", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
 
       element_fixture(screenplay, %{
         type: "response",
@@ -272,7 +331,12 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "condition node gets both true and false connections to next node", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
 
       element_fixture(screenplay, %{
         type: "conditional",
@@ -320,7 +384,13 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "creates elements from flow nodes", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "action", content: "A desk.", position: 1})
 
       # Push to flow first
@@ -400,8 +470,14 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
         })
 
       entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
-      action_node = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "dialogue" and &1.source == "manual"))
-      Flows.create_connection(flow, entry, action_node, %{source_pin: "output", target_pin: "input"})
+
+      action_node =
+        Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "dialogue" and &1.source == "manual"))
+
+      Flows.create_connection(flow, entry, action_node, %{
+        source_pin: "output",
+        target_pin: "input"
+      })
 
       {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
 
@@ -414,7 +490,13 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "updates existing linked elements on re-sync", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "action", content: "Original.", position: 1})
 
       {:ok, flow} = FlowSync.sync_to_flow(screenplay)
@@ -424,7 +506,9 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
         Flows.list_nodes(flow.id)
         |> Enum.find(&(&1.type == "dialogue" and &1.data["stage_directions"] == "Original."))
 
-      Flows.update_node(dialogue_node, %{data: Map.put(dialogue_node.data, "stage_directions", "Updated from flow.")})
+      Flows.update_node(dialogue_node, %{
+        data: Map.put(dialogue_node.data, "stage_directions", "Updated from flow.")
+      })
 
       # Pull back
       {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
@@ -437,7 +521,13 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "deletes orphaned mappeable elements on re-sync", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "action", content: "To remove.", position: 1})
 
       {:ok, flow} = FlowSync.sync_to_flow(screenplay)
@@ -449,7 +539,9 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
       # Also delete associated connections
       Flows.list_connections(flow.id)
-      |> Enum.filter(&(&1.source_node_id == dialogue_node.id or &1.target_node_id == dialogue_node.id))
+      |> Enum.filter(
+        &(&1.source_node_id == dialogue_node.id or &1.target_node_id == dialogue_node.id)
+      )
       |> Enum.each(&Storyarn.Repo.delete!/1)
 
       Storyarn.Repo.delete!(dialogue_node)
@@ -465,7 +557,13 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "preserves non-mappeable elements (notes)", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "note", content: "Remember to revise", position: 1})
       element_fixture(screenplay, %{type: "action", content: "A desk.", position: 2})
 
@@ -484,7 +582,13 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "non-mappeable element position anchored to next mapped element", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "note", content: "My note", position: 1})
       element_fixture(screenplay, %{type: "action", content: "A desk.", position: 2})
 
@@ -507,7 +611,12 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       {:ok, _node} =
         Flows.create_node(flow, %{
           type: "dialogue",
-          data: %{"text" => "Hi.", "stage_directions" => "", "menu_text" => "BOB", "responses" => []}
+          data: %{
+            "text" => "Hi.",
+            "stage_directions" => "",
+            "menu_text" => "BOB",
+            "responses" => []
+          }
         })
 
       entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
@@ -517,7 +626,12 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
 
       elements = Screenplays.list_elements(screenplay.id)
-      mappeable = Enum.reject(elements, &(&1.type in Storyarn.Screenplays.ScreenplayElement.non_mappeable_types()))
+
+      mappeable =
+        Enum.reject(
+          elements,
+          &(&1.type in Storyarn.Screenplays.ScreenplayElement.non_mappeable_types())
+        )
 
       assert Enum.all?(mappeable, &(not is_nil(&1.linked_node_id)))
     end
@@ -571,7 +685,13 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "entry node preserves its create_flow position", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "action", content: "A desk.", position: 1})
 
       {:ok, flow} = FlowSync.sync_to_flow(screenplay)
@@ -595,7 +715,13 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "re-sync only auto-positions newly created nodes", %{project: project} do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
+
       element_fixture(screenplay, %{type: "action", content: "A desk.", position: 1})
 
       {:ok, flow} = FlowSync.sync_to_flow(screenplay)
@@ -662,7 +788,9 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       # Branch connects dialogue to child's first node (scene)
       synced = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
       scene_node = Enum.find(synced, &(&1.type == "scene"))
-      dialogue_node = Enum.find(synced, fn n -> n.type == "dialogue" and n.data["text"] == "Pick one." end)
+
+      dialogue_node =
+        Enum.find(synced, fn n -> n.type == "dialogue" and n.data["text"] == "Pick one." end)
 
       assert branch_conn.source_node_id == dialogue_node.id
       assert branch_conn.target_node_id == scene_node.id
@@ -680,7 +808,11 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       element_fixture(parent, %{
         type: "response",
         position: 3,
-        data: %{"choices" => [%{"id" => "c1", "text" => "Enter cave", "linked_screenplay_id" => child.id}]}
+        data: %{
+          "choices" => [
+            %{"id" => "c1", "text" => "Enter cave", "linked_screenplay_id" => child.id}
+          ]
+        }
       })
 
       {:ok, flow} = FlowSync.sync_to_flow(parent)
@@ -703,7 +835,11 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       element_fixture(parent, %{
         type: "response",
         position: 3,
-        data: %{"choices" => [%{"id" => "choice-abc", "text" => "Go", "linked_screenplay_id" => child.id}]}
+        data: %{
+          "choices" => [
+            %{"id" => "choice-abc", "text" => "Go", "linked_screenplay_id" => child.id}
+          ]
+        }
       })
 
       {:ok, flow} = FlowSync.sync_to_flow(parent)
@@ -780,13 +916,19 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       element_fixture(child, %{
         type: "response",
         position: 3,
-        data: %{"choices" => [%{"id" => "c2", "text" => "Deeper", "linked_screenplay_id" => grandchild.id}]}
+        data: %{
+          "choices" => [
+            %{"id" => "c2", "text" => "Deeper", "linked_screenplay_id" => grandchild.id}
+          ]
+        }
       })
 
       element_fixture(parent, %{
         type: "response",
         position: 3,
-        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+        data: %{
+          "choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]
+        }
       })
 
       {:ok, flow} = FlowSync.sync_to_flow(parent)
@@ -798,18 +940,30 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
     test "elements from all pages get linked_node_id after sync", %{project: project} do
       parent = screenplay_fixture(project)
-      sh = element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      sh =
+        element_fixture(parent, %{
+          type: "scene_heading",
+          content: "INT. OFFICE - DAY",
+          position: 0
+        })
+
       element_fixture(parent, %{type: "character", content: "NPC", position: 1})
       element_fixture(parent, %{type: "dialogue", content: "Pick.", position: 2})
 
       child = screenplay_fixture(project, %{parent_id: parent.id})
-      child_sh = element_fixture(child, %{type: "scene_heading", content: "INT. PATH", position: 0})
+
+      child_sh =
+        element_fixture(child, %{type: "scene_heading", content: "INT. PATH", position: 0})
+
       child_action = element_fixture(child, %{type: "action", content: "Walking.", position: 1})
 
       element_fixture(parent, %{
         type: "response",
         position: 3,
-        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+        data: %{
+          "choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]
+        }
       })
 
       {:ok, _flow} = FlowSync.sync_to_flow(parent)
@@ -838,7 +992,9 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       element_fixture(parent, %{
         type: "response",
         position: 3,
-        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+        data: %{
+          "choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]
+        }
       })
 
       {:ok, flow} = FlowSync.sync_to_flow(parent)
@@ -856,7 +1012,9 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       refute Enum.any?(synced_after, &(&1.type == "scene"))
     end
 
-    test "re-sync multi-page updates existing branch nodes without duplication", %{project: project} do
+    test "re-sync multi-page updates existing branch nodes without duplication", %{
+      project: project
+    } do
       parent = screenplay_fixture(project)
       element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE", position: 0})
       element_fixture(parent, %{type: "character", content: "NPC", position: 1})
@@ -869,17 +1027,23 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       element_fixture(parent, %{
         type: "response",
         position: 3,
-        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+        data: %{
+          "choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]
+        }
       })
 
       {:ok, flow} = FlowSync.sync_to_flow(parent)
-      count_after_first = Flows.list_nodes(flow.id) |> Enum.count(&(&1.source == "screenplay_sync"))
+
+      count_after_first =
+        Flows.list_nodes(flow.id) |> Enum.count(&(&1.source == "screenplay_sync"))
 
       # Update child element and re-sync
       Screenplays.update_element(child_action, %{content: "Updated."})
       {:ok, _flow} = FlowSync.sync_to_flow(parent)
 
-      count_after_second = Flows.list_nodes(flow.id) |> Enum.count(&(&1.source == "screenplay_sync"))
+      count_after_second =
+        Flows.list_nodes(flow.id) |> Enum.count(&(&1.source == "screenplay_sync"))
+
       assert count_after_second == count_after_first
 
       synced = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
@@ -915,8 +1079,16 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
         })
 
       entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
-      Flows.create_connection(flow, entry, dialogue_node, %{source_pin: "output", target_pin: "input"})
-      Flows.create_connection(flow, dialogue_node, scene_node, %{source_pin: "c1", target_pin: "input"})
+
+      Flows.create_connection(flow, entry, dialogue_node, %{
+        source_pin: "output",
+        target_pin: "input"
+      })
+
+      Flows.create_connection(flow, dialogue_node, scene_node, %{
+        source_pin: "c1",
+        target_pin: "input"
+      })
 
       {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
 
@@ -959,7 +1131,9 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       element_fixture(parent, %{
         type: "response",
         position: 3,
-        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+        data: %{
+          "choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]
+        }
       })
 
       {:ok, flow} = FlowSync.sync_to_flow(parent)
@@ -1004,8 +1178,16 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
         })
 
       entry = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
-      Flows.create_connection(flow, entry, dialogue_node, %{source_pin: "output", target_pin: "input"})
-      Flows.create_connection(flow, dialogue_node, scene_node, %{source_pin: "c1", target_pin: "input"})
+
+      Flows.create_connection(flow, entry, dialogue_node, %{
+        source_pin: "output",
+        target_pin: "input"
+      })
+
+      Flows.create_connection(flow, dialogue_node, scene_node, %{
+        source_pin: "c1",
+        target_pin: "input"
+      })
 
       {:ok, _screenplay} = FlowSync.sync_from_flow(screenplay)
 
@@ -1104,13 +1286,19 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       element_fixture(child, %{
         type: "response",
         position: 3,
-        data: %{"choices" => [%{"id" => "c2", "text" => "Deeper", "linked_screenplay_id" => grandchild.id}]}
+        data: %{
+          "choices" => [
+            %{"id" => "c2", "text" => "Deeper", "linked_screenplay_id" => grandchild.id}
+          ]
+        }
       })
 
       element_fixture(parent, %{
         type: "response",
         position: 3,
-        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+        data: %{
+          "choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]
+        }
       })
 
       # sync_to_flow should handle 2 levels without issue
@@ -1147,7 +1335,9 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       assert dual["text"] == "Hi there!"
     end
 
-    test "sync_from_flow with dual dialogue node creates dual_dialogue element", %{project: project} do
+    test "sync_from_flow with dual dialogue node creates dual_dialogue element", %{
+      project: project
+    } do
       screenplay = screenplay_fixture(project)
       {:ok, flow} = FlowSync.ensure_flow(screenplay)
       screenplay = Screenplays.get_screenplay!(project.id, screenplay.id)
@@ -1184,15 +1374,26 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       assert dual.data["right"]["dialogue"] == "Hi there!"
     end
 
-    test "round-trip: dual_dialogue → sync_to_flow → sync_from_flow preserves data", %{project: project} do
+    test "round-trip: dual_dialogue → sync_to_flow → sync_from_flow preserves data", %{
+      project: project
+    } do
       screenplay = screenplay_fixture(project)
-      element_fixture(screenplay, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
+
+      element_fixture(screenplay, %{
+        type: "scene_heading",
+        content: "INT. OFFICE - DAY",
+        position: 0
+      })
 
       element_fixture(screenplay, %{
         type: "dual_dialogue",
         position: 1,
         data: %{
-          "left" => %{"character" => "ALICE", "parenthetical" => "whispering", "dialogue" => "Psst."},
+          "left" => %{
+            "character" => "ALICE",
+            "parenthetical" => "whispering",
+            "dialogue" => "Psst."
+          },
           "right" => %{"character" => "BOB", "parenthetical" => "shouting", "dialogue" => "WHAT?"}
         }
       })
@@ -1220,7 +1421,9 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       assert dual.data["right"]["dialogue"] == "WHAT?"
     end
 
-    test "dual dialogue between standard dialogue groups has correct connections", %{project: project} do
+    test "dual dialogue between standard dialogue groups has correct connections", %{
+      project: project
+    } do
       parent = screenplay_fixture(project)
       element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE", position: 0})
       element_fixture(parent, %{type: "character", content: "JOHN", position: 1})
@@ -1263,7 +1466,9 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       element_fixture(parent, %{
         type: "response",
         position: 3,
-        data: %{"choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]}
+        data: %{
+          "choices" => [%{"id" => "c1", "text" => "Go", "linked_screenplay_id" => child.id}]
+        }
       })
 
       {:ok, flow} = FlowSync.sync_to_flow(parent)

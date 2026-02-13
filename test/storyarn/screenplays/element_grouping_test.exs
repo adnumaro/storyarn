@@ -195,7 +195,13 @@ defmodule Storyarn.Screenplays.ElementGroupingTest do
       # First dialogue group: character + parenthetical + dialogue + response
       first_dg = Enum.at(result, 2)
       assert length(first_dg.elements) == 4
-      assert Enum.map(first_dg.elements, & &1.type) == ["character", "parenthetical", "dialogue", "response"]
+
+      assert Enum.map(first_dg.elements, & &1.type) == [
+               "character",
+               "parenthetical",
+               "dialogue",
+               "response"
+             ]
 
       # Second dialogue group: character + dialogue
       second_dg = Enum.at(result, 3)
@@ -255,21 +261,23 @@ defmodule Storyarn.Screenplays.ElementGroupingTest do
     end
 
     test "no continuation for single dialogue group", %{screenplay: sp} do
-      elements = make_elements_with_content(sp, [
-        {"character", "JAIME"},
-        {"dialogue", "Hello."}
-      ])
+      elements =
+        make_elements_with_content(sp, [
+          {"character", "JAIME"},
+          {"dialogue", "Hello."}
+        ])
 
       assert ElementGrouping.compute_continuations(elements) == MapSet.new()
     end
 
     test "marks continuation when same speaker in consecutive groups", %{screenplay: sp} do
-      elements = make_elements_with_content(sp, [
-        {"character", "JAIME"},
-        {"dialogue", "Hello."},
-        {"character", "JAIME"},
-        {"dialogue", "How are you?"}
-      ])
+      elements =
+        make_elements_with_content(sp, [
+          {"character", "JAIME"},
+          {"dialogue", "Hello."},
+          {"character", "JAIME"},
+          {"dialogue", "How are you?"}
+        ])
 
       continuations = ElementGrouping.compute_continuations(elements)
       second_char = Enum.at(elements, 2)
@@ -279,36 +287,39 @@ defmodule Storyarn.Screenplays.ElementGroupingTest do
     end
 
     test "no continuation when different speakers", %{screenplay: sp} do
-      elements = make_elements_with_content(sp, [
-        {"character", "JAIME"},
-        {"dialogue", "Hello."},
-        {"character", "ALICE"},
-        {"dialogue", "Hi there."}
-      ])
+      elements =
+        make_elements_with_content(sp, [
+          {"character", "JAIME"},
+          {"dialogue", "Hello."},
+          {"character", "ALICE"},
+          {"dialogue", "Hi there."}
+        ])
 
       assert ElementGrouping.compute_continuations(elements) == MapSet.new()
     end
 
     test "scene heading resets speaker context", %{screenplay: sp} do
-      elements = make_elements_with_content(sp, [
-        {"character", "JAIME"},
-        {"dialogue", "Hello."},
-        {"scene_heading", "INT. OFFICE - DAY"},
-        {"character", "JAIME"},
-        {"dialogue", "Different scene."}
-      ])
+      elements =
+        make_elements_with_content(sp, [
+          {"character", "JAIME"},
+          {"dialogue", "Hello."},
+          {"scene_heading", "INT. OFFICE - DAY"},
+          {"character", "JAIME"},
+          {"dialogue", "Different scene."}
+        ])
 
       assert ElementGrouping.compute_continuations(elements) == MapSet.new()
     end
 
     test "action between same speaker preserves continuation", %{screenplay: sp} do
-      elements = make_elements_with_content(sp, [
-        {"character", "JAIME"},
-        {"dialogue", "Hello."},
-        {"action", "He pauses."},
-        {"character", "JAIME"},
-        {"dialogue", "I mean hi."}
-      ])
+      elements =
+        make_elements_with_content(sp, [
+          {"character", "JAIME"},
+          {"dialogue", "Hello."},
+          {"action", "He pauses."},
+          {"character", "JAIME"},
+          {"dialogue", "I mean hi."}
+        ])
 
       continuations = ElementGrouping.compute_continuations(elements)
       second_char = Enum.at(elements, 3)
@@ -317,24 +328,26 @@ defmodule Storyarn.Screenplays.ElementGroupingTest do
     end
 
     test "comparison is case-insensitive", %{screenplay: sp} do
-      elements = make_elements_with_content(sp, [
-        {"character", "JAIME"},
-        {"dialogue", "Hello."},
-        {"character", "jaime"},
-        {"dialogue", "Hi again."}
-      ])
+      elements =
+        make_elements_with_content(sp, [
+          {"character", "JAIME"},
+          {"dialogue", "Hello."},
+          {"character", "jaime"},
+          {"dialogue", "Hi again."}
+        ])
 
       continuations = ElementGrouping.compute_continuations(elements)
       assert MapSet.size(continuations) == 1
     end
 
     test "strips extensions when comparing names", %{screenplay: sp} do
-      elements = make_elements_with_content(sp, [
-        {"character", "JAIME"},
-        {"dialogue", "Hello."},
-        {"character", "JAIME (V.O.)"},
-        {"dialogue", "Thinking aloud."}
-      ])
+      elements =
+        make_elements_with_content(sp, [
+          {"character", "JAIME"},
+          {"dialogue", "Hello."},
+          {"character", "JAIME (V.O.)"},
+          {"dialogue", "Thinking aloud."}
+        ])
 
       continuations = ElementGrouping.compute_continuations(elements)
       second_char = Enum.at(elements, 2)
@@ -343,26 +356,28 @@ defmodule Storyarn.Screenplays.ElementGroupingTest do
     end
 
     test "dual_dialogue resets speaker context", %{screenplay: sp} do
-      elements = make_elements_with_content(sp, [
-        {"character", "JAIME"},
-        {"dialogue", "Hello."},
-        {"dual_dialogue", ""},
-        {"character", "JAIME"},
-        {"dialogue", "After dual."}
-      ])
+      elements =
+        make_elements_with_content(sp, [
+          {"character", "JAIME"},
+          {"dialogue", "Hello."},
+          {"dual_dialogue", ""},
+          {"character", "JAIME"},
+          {"dialogue", "After dual."}
+        ])
 
       assert ElementGrouping.compute_continuations(elements) == MapSet.new()
     end
 
     test "page_break does not reset continuation", %{screenplay: sp} do
-      elements = make_elements_with_content(sp, [
-        {"character", "JAIME"},
-        {"dialogue", "First line."},
-        {"page_break", ""},
-        {"action", "He pauses."},
-        {"character", "JAIME"},
-        {"dialogue", "Second line."}
-      ])
+      elements =
+        make_elements_with_content(sp, [
+          {"character", "JAIME"},
+          {"dialogue", "First line."},
+          {"page_break", ""},
+          {"action", "He pauses."},
+          {"character", "JAIME"},
+          {"dialogue", "Second line."}
+        ])
 
       continuations = ElementGrouping.compute_continuations(elements)
       jaime_2 = Enum.at(elements, 4)
@@ -370,13 +385,14 @@ defmodule Storyarn.Screenplays.ElementGroupingTest do
     end
 
     test "transition resets speaker context", %{screenplay: sp} do
-      elements = make_elements_with_content(sp, [
-        {"character", "JAIME"},
-        {"dialogue", "Hello."},
-        {"transition", "CUT TO:"},
-        {"character", "JAIME"},
-        {"dialogue", "Same person, new scene."}
-      ])
+      elements =
+        make_elements_with_content(sp, [
+          {"character", "JAIME"},
+          {"dialogue", "Hello."},
+          {"transition", "CUT TO:"},
+          {"character", "JAIME"},
+          {"dialogue", "Same person, new scene."}
+        ])
 
       assert ElementGrouping.compute_continuations(elements) == MapSet.new()
     end

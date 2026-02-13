@@ -64,7 +64,10 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
         </div>
       <% else %>
         <%= if @sheet.color do %>
-          <div class="relative group h-48 sm:h-56 lg:h-64 overflow-hidden rounded-2xl mb-6" style={"background-color: #{@sheet.color}"}>
+          <div
+            class="relative group h-48 sm:h-56 lg:h-64 overflow-hidden rounded-2xl mb-6"
+            style={"background-color: #{@sheet.color}"}
+          >
             <div
               :if={@can_edit}
               class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100"

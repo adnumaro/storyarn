@@ -53,10 +53,23 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
     end
 
     test "rules with incomplete entries are skipped" do
-      condition = make_condition("all", [
-        %{"id" => "r1", "sheet" => "mc", "variable" => nil, "operator" => "equals", "value" => "x"},
-        %{"id" => "r2", "sheet" => "", "variable" => "hp", "operator" => "equals", "value" => "1"}
-      ])
+      condition =
+        make_condition("all", [
+          %{
+            "id" => "r1",
+            "sheet" => "mc",
+            "variable" => nil,
+            "operator" => "equals",
+            "value" => "x"
+          },
+          %{
+            "id" => "r2",
+            "sheet" => "",
+            "variable" => "hp",
+            "operator" => "equals",
+            "value" => "1"
+          }
+        ])
 
       assert {true, []} = ConditionEval.evaluate(condition, %{})
     end
@@ -82,13 +95,19 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
     test "valid JSON condition is evaluated" do
       variables = %{"mc.jaime.health" => var(80, "number")}
 
-      json = Jason.encode!(%{
-        "logic" => "all",
-        "rules" => [
-          %{"id" => "r1", "sheet" => "mc.jaime", "variable" => "health",
-            "operator" => "greater_than", "value" => "50"}
-        ]
-      })
+      json =
+        Jason.encode!(%{
+          "logic" => "all",
+          "rules" => [
+            %{
+              "id" => "r1",
+              "sheet" => "mc.jaime",
+              "variable" => "health",
+              "operator" => "greater_than",
+              "value" => "50"
+            }
+          ]
+        })
 
       assert {true, [%{passed: true}]} = ConditionEval.evaluate_string(json, variables)
     end
@@ -109,10 +128,11 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
     end
 
     test "all mode — all pass → true", %{variables: variables} do
-      condition = make_condition("all", [
-        make_rule("mc.jaime", "health", "greater_than", "50"),
-        make_rule("mc.jaime", "alive", "is_true")
-      ])
+      condition =
+        make_condition("all", [
+          make_rule("mc.jaime", "health", "greater_than", "50"),
+          make_rule("mc.jaime", "alive", "is_true")
+        ])
 
       assert {true, results} = ConditionEval.evaluate(condition, variables)
       assert length(results) == 2
@@ -120,10 +140,11 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
     end
 
     test "all mode — one fails → false", %{variables: variables} do
-      condition = make_condition("all", [
-        make_rule("mc.jaime", "health", "greater_than", "50"),
-        make_rule("mc.jaime", "alive", "is_false")
-      ])
+      condition =
+        make_condition("all", [
+          make_rule("mc.jaime", "health", "greater_than", "50"),
+          make_rule("mc.jaime", "alive", "is_false")
+        ])
 
       assert {false, results} = ConditionEval.evaluate(condition, variables)
       assert Enum.at(results, 0).passed == true
@@ -131,10 +152,11 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
     end
 
     test "any mode — one passes → true", %{variables: variables} do
-      condition = make_condition("any", [
-        make_rule("mc.jaime", "health", "less_than", "50"),
-        make_rule("mc.jaime", "alive", "is_true")
-      ])
+      condition =
+        make_condition("any", [
+          make_rule("mc.jaime", "health", "less_than", "50"),
+          make_rule("mc.jaime", "alive", "is_true")
+        ])
 
       assert {true, results} = ConditionEval.evaluate(condition, variables)
       assert Enum.at(results, 0).passed == false
@@ -142,10 +164,11 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
     end
 
     test "any mode — all fail → false", %{variables: variables} do
-      condition = make_condition("any", [
-        make_rule("mc.jaime", "health", "less_than", "50"),
-        make_rule("mc.jaime", "alive", "is_false")
-      ])
+      condition =
+        make_condition("any", [
+          make_rule("mc.jaime", "health", "less_than", "50"),
+          make_rule("mc.jaime", "alive", "is_false")
+        ])
 
       assert {false, _results} = ConditionEval.evaluate(condition, variables)
     end
@@ -186,7 +209,9 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
     end
 
     test "greater_than_or_equal — pass (equal)", %{variables: v} do
-      condition = make_condition("all", [make_rule("mc.jaime", "health", "greater_than_or_equal", "80")])
+      condition =
+        make_condition("all", [make_rule("mc.jaime", "health", "greater_than_or_equal", "80")])
+
       assert {true, _} = ConditionEval.evaluate(condition, v)
     end
 
@@ -196,7 +221,9 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
     end
 
     test "less_than_or_equal — pass (equal)", %{variables: v} do
-      condition = make_condition("all", [make_rule("mc.jaime", "health", "less_than_or_equal", "80")])
+      condition =
+        make_condition("all", [make_rule("mc.jaime", "health", "less_than_or_equal", "80")])
+
       assert {true, _} = ConditionEval.evaluate(condition, v)
     end
 
@@ -264,7 +291,9 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
     end
 
     test "equals", %{variables: v} do
-      condition = make_condition("all", [make_rule("mc.jaime", "name", "equals", "Jaime Lannister")])
+      condition =
+        make_condition("all", [make_rule("mc.jaime", "name", "equals", "Jaime Lannister")])
+
       assert {true, _} = ConditionEval.evaluate(condition, v)
     end
 
@@ -365,12 +394,16 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
     end
 
     test "not_contains — pass", %{variables: v} do
-      condition = make_condition("all", [make_rule("mc.jaime", "skills", "not_contains", "magic")])
+      condition =
+        make_condition("all", [make_rule("mc.jaime", "skills", "not_contains", "magic")])
+
       assert {true, _} = ConditionEval.evaluate(condition, v)
     end
 
     test "not_contains — fail", %{variables: v} do
-      condition = make_condition("all", [make_rule("mc.jaime", "skills", "not_contains", "sword")])
+      condition =
+        make_condition("all", [make_rule("mc.jaime", "skills", "not_contains", "sword")])
+
       assert {false, _} = ConditionEval.evaluate(condition, v)
     end
 
@@ -479,10 +512,16 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
     test "includes all expected fields" do
       variables = %{"mc.jaime.health" => var(80, "number")}
 
-      condition = make_condition("all", [
-        %{"id" => "rule_42", "sheet" => "mc.jaime", "variable" => "health",
-          "operator" => "greater_than", "value" => "50"}
-      ])
+      condition =
+        make_condition("all", [
+          %{
+            "id" => "rule_42",
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "greater_than",
+            "value" => "50"
+          }
+        ])
 
       {true, [result]} = ConditionEval.evaluate(condition, variables)
 

@@ -187,12 +187,19 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
       }
       class="flex items-center gap-2 text-xs hover:text-primary group py-0.5"
     >
-      <.icon name={icon_for_node_type(@ref.node_type)} class="size-3 text-base-content/40 group-hover:text-primary" />
+      <.icon
+        name={icon_for_node_type(@ref.node_type)}
+        class="size-3 text-base-content/40 group-hover:text-primary"
+      />
       <span class="font-medium">{@ref.flow_name}</span>
       <.icon name="arrow-right" class="size-3 text-base-content/40" />
       <span class="badge badge-xs badge-ghost">{@ref.node_type}</span>
       <span :if={@detail} class="text-base-content/40">{@detail}</span>
-      <span :if={@ref[:stale]} class="badge badge-xs badge-warning gap-1" title={gettext("Reference may be outdated")}>
+      <span
+        :if={@ref[:stale]}
+        class="badge badge-xs badge-warning gap-1"
+        title={gettext("Reference may be outdated")}
+      >
         <.icon name="alert-triangle" class="size-3" />
         {gettext("Outdated")}
       </span>
@@ -231,7 +238,11 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
        when is_binary(v),
        do: "+= #{v}"
 
-  defp format_assignment_detail(%{"operator" => "subtract", "value" => v, "value_type" => "literal"})
+  defp format_assignment_detail(%{
+         "operator" => "subtract",
+         "value" => v,
+         "value_type" => "literal"
+       })
        when is_binary(v),
        do: "-= #{v}"
 

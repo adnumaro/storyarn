@@ -132,7 +132,9 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             </p>
             <.button
               phx-click="repair_variable_references"
-              data-confirm={gettext("This will update node data across the entire project. Continue?")}
+              data-confirm={
+                gettext("This will update node data across the entire project. Continue?")
+              }
             >
               {gettext("Repair variable references")}
             </.button>

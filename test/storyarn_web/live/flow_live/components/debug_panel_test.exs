@@ -301,7 +301,10 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanelTest do
       assert length(separators) == 2
 
       # Check order: ..., enter_sep, sub-flow entries, return_sep, parent entries
-      types = Enum.map(entries, fn e -> if e[:separator], do: {:sep, e.direction}, else: {:node, e.depth} end)
+      types =
+        Enum.map(entries, fn e ->
+          if e[:separator], do: {:sep, e.direction}, else: {:node, e.depth}
+        end)
 
       assert types == [
                {:node, 0},

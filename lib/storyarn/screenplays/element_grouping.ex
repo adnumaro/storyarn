@@ -65,7 +65,8 @@ defmodule Storyarn.Screenplays.ElementGrouping do
     annotated = compute_dialogue_groups(elements)
 
     {continuations, _last_speaker} =
-      Enum.reduce(annotated, {MapSet.new(), nil}, fn {element, group_id}, {cont_set, last_speaker} ->
+      Enum.reduce(annotated, {MapSet.new(), nil}, fn {element, group_id},
+                                                     {cont_set, last_speaker} ->
         cond do
           element.type == "character" and not is_nil(group_id) ->
             check_continuation(element, last_speaker, cont_set, sheets_map)
@@ -82,7 +83,8 @@ defmodule Storyarn.Screenplays.ElementGrouping do
   end
 
   defp check_continuation(element, last_speaker, cont_set, sheets_map) do
-    current_base = CharacterExtension.base_name_from_element(element, sheets_map) |> String.upcase()
+    current_base =
+      CharacterExtension.base_name_from_element(element, sheets_map) |> String.upcase()
 
     if last_speaker && current_base == last_speaker do
       {MapSet.put(cont_set, element.id), current_base}

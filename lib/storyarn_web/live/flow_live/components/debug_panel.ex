@@ -33,12 +33,19 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
 
   def debug_panel(assigns) do
     ~H"""
-    <div id="debug-panel" phx-hook="DebugPanelResize" class="bg-base-100 border-t border-base-300 flex flex-col" style="height: 280px;" data-debug-active>
+    <div
+      id="debug-panel"
+      phx-hook="DebugPanelResize"
+      class="bg-base-100 border-t border-base-300 flex flex-col"
+      style="height: 280px;"
+      data-debug-active
+    >
       <%!-- Drag handle --%>
       <div
         data-resize-handle
         class="h-1 cursor-row-resize bg-transparent hover:bg-accent/30 transition-colors shrink-0"
-      ></div>
+      >
+      </div>
       <%!-- Breadcrumb bar (sub-flow indicator) --%>
       <div
         :if={@debug_state.call_stack != []}
@@ -302,8 +309,9 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           {entry.message}
           <div :if={entry.rule_details && entry.rule_details != []} class="mt-0.5">
             <div :for={rule <- entry.rule_details} class="text-[10px] text-base-content/40">
-              {rule.variable_ref} {rule.operator} {rule.expected_value}
-              → {if rule.passed, do: "pass", else: "fail"} (actual: {format_value(rule.actual_value)})
+              {rule.variable_ref} {rule.operator} {rule.expected_value} → {if rule.passed,
+                do: "pass",
+                else: "fail"} (actual: {format_value(rule.actual_value)})
             </div>
           </div>
         </span>
@@ -352,7 +360,10 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
       <%!-- Filter bar --%>
       <div class="flex items-center gap-2 px-3 py-1.5 border-b border-base-300 bg-base-200/30">
         <div class="relative flex-1 max-w-48">
-          <.icon name="search" class="size-3 absolute left-2 top-1/2 -translate-y-1/2 text-base-content/30" />
+          <.icon
+            name="search"
+            class="size-3 absolute left-2 top-1/2 -translate-y-1/2 text-base-content/30"
+          />
           <input
             type="text"
             name="filter"
@@ -596,7 +607,9 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             class="size-3"
           />
           <span class="text-[10px]">
-            {if entry.direction == :enter, do: gettext("Entering sub-flow"), else: gettext("Returned to parent")}
+            {if entry.direction == :enter,
+              do: gettext("Entering sub-flow"),
+              else: gettext("Returned to parent")}
           </span>
           <div class="flex-1 border-t border-info/20"></div>
         </div>
@@ -614,7 +627,11 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             class="shrink-0 flex items-center justify-center w-3 h-3"
             phx-click="debug_toggle_breakpoint"
             phx-value-node_id={entry.node_id}
-            title={if MapSet.member?(@breakpoints, entry.node_id), do: gettext("Remove breakpoint"), else: gettext("Set breakpoint")}
+            title={
+              if MapSet.member?(@breakpoints, entry.node_id),
+                do: gettext("Remove breakpoint"),
+                else: gettext("Set breakpoint")
+            }
           >
             <span class={[
               "block rounded-full",
@@ -622,7 +639,8 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
                 do: "w-2.5 h-2.5 bg-error",
                 else: "w-2 h-2 border border-base-content/20 hover:border-error/50"
               )
-            ]}></span>
+            ]}>
+            </span>
           </button>
           <span class="text-base-content/30 w-5 text-right tabular-nums shrink-0 select-none">
             {entry.step}
@@ -803,7 +821,9 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   # -- Variable helpers --
 
   defp var_current_class(var) do
-    if var.value != var.initial_value, do: var_source_color(var.source), else: "text-base-content/50"
+    if var.value != var.initial_value,
+      do: var_source_color(var.source),
+      else: "text-base-content/50"
   end
 
   defp var_source_color(:instruction), do: "text-warning"

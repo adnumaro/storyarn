@@ -208,5 +208,4 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
     </div>
     """
   end
-
 end

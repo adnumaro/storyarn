@@ -122,12 +122,14 @@ defmodule Storyarn.Screenplays.PageTreeBuilder do
 
         branch_conn =
           if child_all != [] do
-            [%{
-              source_index: offset + branch.source_node_index,
-              target_index: cur,
-              source_pin: branch.choice_id,
-              target_pin: "input"
-            }]
+            [
+              %{
+                source_index: offset + branch.source_node_index,
+                target_index: cur,
+                source_pin: branch.choice_id,
+                target_pin: "input"
+              }
+            ]
           else
             []
           end
@@ -154,15 +156,32 @@ defmodule Storyarn.Screenplays.PageTreeBuilder do
 
         source.type == "condition" ->
           [
-            %{source_index: offset + src_idx, target_index: offset + tgt_idx, source_pin: "true", target_pin: "input"},
-            %{source_index: offset + src_idx, target_index: offset + tgt_idx, source_pin: "false", target_pin: "input"}
+            %{
+              source_index: offset + src_idx,
+              target_index: offset + tgt_idx,
+              source_pin: "true",
+              target_pin: "input"
+            },
+            %{
+              source_index: offset + src_idx,
+              target_index: offset + tgt_idx,
+              source_pin: "false",
+              target_pin: "input"
+            }
           ]
 
         MapSet.member?(branching_indices, src_idx) ->
           []
 
         true ->
-          [%{source_index: offset + src_idx, target_index: offset + tgt_idx, source_pin: "output", target_pin: "input"}]
+          [
+            %{
+              source_index: offset + src_idx,
+              target_index: offset + tgt_idx,
+              source_pin: "output",
+              target_pin: "input"
+            }
+          ]
       end
     end)
   end

@@ -42,7 +42,9 @@ defmodule Storyarn.Screenplays.LinkedPageCrudTest do
         ScreenplaysFixtures.element_fixture(screenplay, %{
           type: "response",
           content: nil,
-          data: %{"choices" => [%{"id" => "c1", "text" => "", "condition" => nil, "instruction" => nil}]}
+          data: %{
+            "choices" => [%{"id" => "c1", "text" => "", "condition" => nil, "instruction" => nil}]
+          }
         })
 
       assert {:ok, child, _el} = LinkedPageCrud.create_linked_page(screenplay, element, "c1")
@@ -50,7 +52,8 @@ defmodule Storyarn.Screenplays.LinkedPageCrudTest do
     end
 
     test "fails when choice_id does not exist", %{screenplay: sp, element: el} do
-      assert {:error, :choice_not_found} = LinkedPageCrud.create_linked_page(sp, el, "nonexistent")
+      assert {:error, :choice_not_found} =
+               LinkedPageCrud.create_linked_page(sp, el, "nonexistent")
     end
 
     test "fails when choice is already linked", %{screenplay: sp, element: el} do
@@ -67,7 +70,11 @@ defmodule Storyarn.Screenplays.LinkedPageCrudTest do
   end
 
   describe "link_choice/4" do
-    test "links choice to an existing child screenplay", %{project: project, screenplay: sp, element: el} do
+    test "links choice to an existing child screenplay", %{
+      project: project,
+      screenplay: sp,
+      element: el
+    } do
       child = ScreenplaysFixtures.screenplay_fixture(project, %{parent_id: sp.id})
 
       assert {:ok, updated_el} = LinkedPageCrud.link_choice(el, "c1", child.id, sp.id)
@@ -76,7 +83,11 @@ defmodule Storyarn.Screenplays.LinkedPageCrudTest do
       assert c1["linked_screenplay_id"] == child.id
     end
 
-    test "fails when child is not a child of parent", %{project: project, element: el, screenplay: sp} do
+    test "fails when child is not a child of parent", %{
+      project: project,
+      element: el,
+      screenplay: sp
+    } do
       other = ScreenplaysFixtures.screenplay_fixture(project)
 
       assert {:error, :invalid_child} = LinkedPageCrud.link_choice(el, "c1", other.id, sp.id)
@@ -88,7 +99,11 @@ defmodule Storyarn.Screenplays.LinkedPageCrudTest do
       assert {:error, :choice_not_found} = LinkedPageCrud.link_choice(el, "nope", child.id, sp.id)
     end
 
-    test "fails when child is already linked to another choice", %{project: project, screenplay: sp, element: el} do
+    test "fails when child is already linked to another choice", %{
+      project: project,
+      screenplay: sp,
+      element: el
+    } do
       child = ScreenplaysFixtures.screenplay_fixture(project, %{parent_id: sp.id})
 
       {:ok, updated_el} = LinkedPageCrud.link_choice(el, "c1", child.id, sp.id)
@@ -132,8 +147,11 @@ defmodule Storyarn.Screenplays.LinkedPageCrudTest do
 
   describe "list_child_screenplays/1" do
     test "lists children ordered by position", %{project: project, screenplay: sp} do
-      child_b = ScreenplaysFixtures.screenplay_fixture(project, %{name: "Branch B", parent_id: sp.id})
-      child_a = ScreenplaysFixtures.screenplay_fixture(project, %{name: "Branch A", parent_id: sp.id})
+      child_b =
+        ScreenplaysFixtures.screenplay_fixture(project, %{name: "Branch B", parent_id: sp.id})
+
+      child_a =
+        ScreenplaysFixtures.screenplay_fixture(project, %{name: "Branch A", parent_id: sp.id})
 
       children = LinkedPageCrud.list_child_screenplays(sp.id)
 

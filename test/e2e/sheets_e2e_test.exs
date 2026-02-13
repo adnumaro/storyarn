@@ -102,7 +102,9 @@ defmodule StoryarnWeb.E2E.SheetsTest do
 
       conn
       |> authenticate_user(user)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
+      |> visit(
+        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+      )
       |> assert_has("h1", text: "World Settings")
     end
 
@@ -113,7 +115,9 @@ defmodule StoryarnWeb.E2E.SheetsTest do
 
       conn
       |> authenticate_user(user)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
+      |> visit(
+        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+      )
       |> assert_has("span", text: "Type / to add a block")
     end
 
@@ -125,7 +129,9 @@ defmodule StoryarnWeb.E2E.SheetsTest do
 
       conn
       |> authenticate_user(user)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{child.id}")
+      |> visit(
+        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{child.id}"
+      )
       |> assert_has("a", text: "Characters")
       |> assert_has("h1", text: "Main Hero")
     end
@@ -141,7 +147,9 @@ defmodule StoryarnWeb.E2E.SheetsTest do
 
       conn
       |> authenticate_user(viewer)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
+      |> visit(
+        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+      )
       |> assert_has("h1", text: "Shared Sheet")
       |> refute_has("span", text: "Type / to add a block")
     end
@@ -155,7 +163,9 @@ defmodule StoryarnWeb.E2E.SheetsTest do
 
       conn
       |> authenticate_user(editor)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
+      |> visit(
+        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+      )
       |> assert_has("span", text: "Type / to add a block")
     end
   end
@@ -174,7 +184,9 @@ defmodule StoryarnWeb.E2E.SheetsTest do
 
       conn
       |> authenticate_user(user)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
+      |> visit(
+        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+      )
       |> assert_has("label", text: "Description")
     end
   end

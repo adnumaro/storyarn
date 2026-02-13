@@ -33,7 +33,8 @@ defmodule Storyarn.Sheets.Versioning do
     create_version(sheet, user.id, opts)
   end
 
-  def create_version(%Sheet{} = sheet, user_id, opts) when is_integer(user_id) or is_nil(user_id) do
+  def create_version(%Sheet{} = sheet, user_id, opts)
+      when is_integer(user_id) or is_nil(user_id) do
     # Ensure sheet has blocks loaded
     sheet = Repo.preload(sheet, :blocks)
 

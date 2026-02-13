@@ -280,7 +280,8 @@ defmodule Storyarn.Sheets.VersioningTest do
       {:ok, version} = Sheets.create_version(sheet, user)
 
       # Change the sheet
-      {:ok, updated_sheet} = Sheets.update_sheet(sheet, %{name: "Changed Name", shortcut: "changed"})
+      {:ok, updated_sheet} =
+        Sheets.update_sheet(sheet, %{name: "Changed Name", shortcut: "changed"})
 
       # Restore to original version
       {:ok, restored} = Sheets.restore_version(updated_sheet, version)

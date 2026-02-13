@@ -59,7 +59,12 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
 
         <%!-- Actions --%>
         <div class="modal-action">
-          <button type="button" class="btn btn-ghost" phx-click="cancel_propagation" phx-target={@target}>
+          <button
+            type="button"
+            class="btn btn-ghost"
+            phx-click="cancel_propagation"
+            phx-target={@target}
+          >
             {gettext("Cancel")}
           </button>
           <button
@@ -97,7 +102,9 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
 
     # Compute all_selected AFTER selected_ids is set (may have been preserved from previous render)
     selected_ids = socket.assigns.selected_ids
-    socket = assign(socket, :all_selected, length(selected_ids) == length(all_ids) and all_ids != [])
+
+    socket =
+      assign(socket, :all_selected, length(selected_ids) == length(all_ids) and all_ids != [])
 
     {:ok, socket}
   end
@@ -192,7 +199,7 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
     else
       Storyarn.Sheets.Sheet
       |> where([s], s.id in ^ids and is_nil(s.deleted_at))
-      |> order_by([s], [asc: s.position, asc: s.name])
+      |> order_by([s], asc: s.position, asc: s.name)
       |> Storyarn.Repo.all()
     end
   end
@@ -201,7 +208,7 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
     direct_children =
       Storyarn.Sheets.Sheet
       |> where([s], s.parent_id == ^sheet_id and is_nil(s.deleted_at))
-      |> order_by([s], [asc: s.position, asc: s.name])
+      |> order_by([s], asc: s.position, asc: s.name)
       |> Storyarn.Repo.all()
 
     Enum.map(direct_children, fn child ->

@@ -121,7 +121,8 @@ defmodule Storyarn.Screenplays.LinkedPageCrud do
     name = choice_name(choice)
 
     Repo.transaction(fn ->
-      with {:ok, child} <- ScreenplayCrud.create_screenplay(project, %{name: name, parent_id: parent.id}),
+      with {:ok, child} <-
+             ScreenplayCrud.create_screenplay(project, %{name: name, parent_id: parent.id}),
            {:ok, updated_element} <- set_linked_screenplay_id(element, choice["id"], child.id) do
         {child, updated_element}
       else

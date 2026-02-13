@@ -245,13 +245,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
     test "schedules next step when auto-play is active" do
       nodes = %{
         1 => node(1, "entry"),
-        2 => node(2, "dialogue", %{
-          "text" => "Hello",
-          "responses" => [
-            %{"id" => "r1", "text" => "Option A", "condition" => "", "instruction" => ""},
-            %{"id" => "r2", "text" => "Option B", "condition" => "", "instruction" => ""}
-          ]
-        }),
+        2 =>
+          node(2, "dialogue", %{
+            "text" => "Hello",
+            "responses" => [
+              %{"id" => "r1", "text" => "Option A", "condition" => "", "instruction" => ""},
+              %{"id" => "r2", "text" => "Option B", "condition" => "", "instruction" => ""}
+            ]
+          }),
         3 => node(3, "exit")
       }
 
@@ -284,13 +285,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
     test "does not schedule next step when auto-play is inactive" do
       nodes = %{
         1 => node(1, "entry"),
-        2 => node(2, "dialogue", %{
-          "text" => "Hello",
-          "responses" => [
-            %{"id" => "r1", "text" => "Option A", "condition" => "", "instruction" => ""},
-            %{"id" => "r2", "text" => "Option B", "condition" => "", "instruction" => ""}
-          ]
-        }),
+        2 =>
+          node(2, "dialogue", %{
+            "text" => "Hello",
+            "responses" => [
+              %{"id" => "r1", "text" => "Option A", "condition" => "", "instruction" => ""},
+              %{"id" => "r2", "text" => "Option B", "condition" => "", "instruction" => ""}
+            ]
+          }),
         3 => node(3, "exit")
       }
 
@@ -361,7 +363,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
     test "sets debug_editing_var assign" do
       socket = build_socket(%{debug_editing_var: nil})
 
-      {:noreply, result} = DebugHandlers.handle_debug_edit_variable(%{"key" => "mc.health"}, socket)
+      {:noreply, result} =
+        DebugHandlers.handle_debug_edit_variable(%{"key" => "mc.health"}, socket)
 
       assert result.assigns.debug_editing_var == "mc.health"
     end
@@ -539,7 +542,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
 
       assert result.assigns.debug_state.current_node_id == 3
       assert result.assigns.debug_auto_playing == false
-      assert Enum.any?(result.assigns.debug_state.console, &(&1.message =~ "Paused at breakpoint"))
+
+      assert Enum.any?(
+               result.assigns.debug_state.console,
+               &(&1.message =~ "Paused at breakpoint")
+             )
     end
   end
 

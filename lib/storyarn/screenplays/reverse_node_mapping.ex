@@ -59,7 +59,14 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   # ---------------------------------------------------------------------------
 
   defp map_scene(%FlowNode{id: id, data: data}) do
-    [%{type: "scene_heading", content: reconstruct_scene_heading(data || %{}), data: nil, source_node_id: id}]
+    [
+      %{
+        type: "scene_heading",
+        content: reconstruct_scene_heading(data || %{}),
+        data: nil,
+        source_node_id: id
+      }
+    ]
   end
 
   defp reconstruct_scene_heading(data) do
@@ -97,7 +104,14 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
       if action_style?(text, stage_directions, menu_text, responses) do
         [%{type: "action", content: stage_directions, data: nil, source_node_id: id}]
       else
-        build_dialogue_elements(id, text, stage_directions, menu_text, responses, speaker_sheet_id)
+        build_dialogue_elements(
+          id,
+          text,
+          stage_directions,
+          menu_text,
+          responses,
+          speaker_sheet_id
+        )
       end
     end
   end
@@ -112,11 +126,15 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
     character_data =
       if speaker_sheet_id, do: %{"sheet_id" => speaker_sheet_id}, else: nil
 
-    elements = [%{type: "character", content: character_name, data: character_data, source_node_id: id}]
+    elements = [
+      %{type: "character", content: character_name, data: character_data, source_node_id: id}
+    ]
 
     elements =
       if stage_directions != "",
-        do: elements ++ [%{type: "parenthetical", content: stage_directions, data: nil, source_node_id: id}],
+        do:
+          elements ++
+            [%{type: "parenthetical", content: stage_directions, data: nil, source_node_id: id}],
         else: elements
 
     elements = elements ++ [%{type: "dialogue", content: text, data: nil, source_node_id: id}]
@@ -158,7 +176,14 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   defp map_instruction(%FlowNode{id: id, data: data}) do
     assignments = (data || %{})["assignments"] || []
 
-    [%{type: "instruction", content: nil, data: %{"assignments" => assignments}, source_node_id: id}]
+    [
+      %{
+        type: "instruction",
+        content: nil,
+        data: %{"assignments" => assignments},
+        source_node_id: id
+      }
+    ]
   end
 
   # ---------------------------------------------------------------------------

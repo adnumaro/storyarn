@@ -149,7 +149,12 @@ defmodule Storyarn.Screenplays.FlowLayoutTest do
       # Branching at node 1 AND node 3 (both are dialogue)
       tree =
         make_tree(
-          [make_attrs("entry"), make_attrs("dialogue"), make_attrs("scene"), make_attrs("dialogue")],
+          [
+            make_attrs("entry"),
+            make_attrs("dialogue"),
+            make_attrs("scene"),
+            make_attrs("dialogue")
+          ],
           [
             make_branch(1, "c1", child_a),
             make_branch(3, "c2", child_b)

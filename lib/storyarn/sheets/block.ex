@@ -133,9 +133,18 @@ defmodule Storyarn.Sheets.Block do
   def create_changeset(block, attrs) do
     block
     |> cast(attrs, [
-      :type, :position, :config, :value, :is_constant, :variable_name,
-      :scope, :inherited_from_block_id, :detached, :required,
-      :column_group_id, :column_index
+      :type,
+      :position,
+      :config,
+      :value,
+      :is_constant,
+      :variable_name,
+      :scope,
+      :inherited_from_block_id,
+      :detached,
+      :required,
+      :column_group_id,
+      :column_index
     ])
     |> validate_required([:type])
     |> validate_inclusion(:type, @block_types)
@@ -152,8 +161,17 @@ defmodule Storyarn.Sheets.Block do
   def update_changeset(block, attrs) do
     block
     |> cast(attrs, [
-      :type, :position, :config, :value, :is_constant, :variable_name,
-      :scope, :detached, :required, :column_group_id, :column_index
+      :type,
+      :position,
+      :config,
+      :value,
+      :is_constant,
+      :variable_name,
+      :scope,
+      :detached,
+      :required,
+      :column_group_id,
+      :column_index
     ])
     |> validate_required([:type])
     |> validate_inclusion(:type, @block_types)

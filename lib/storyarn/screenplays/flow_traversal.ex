@@ -23,7 +23,12 @@ defmodule Storyarn.Screenplays.FlowTraversal do
 
       if Map.has_key?(pin_map, conn.source_pin),
         do: acc,
-        else: Map.put(acc, conn.source_node_id, Map.put(pin_map, conn.source_pin, conn.target_node_id))
+        else:
+          Map.put(
+            acc,
+            conn.source_node_id,
+            Map.put(pin_map, conn.source_pin, conn.target_node_id)
+          )
     end)
   end
 
@@ -56,7 +61,8 @@ defmodule Storyarn.Screenplays.FlowTraversal do
         nodes_by_id = Map.new(nodes, &{&1.id, &1})
 
         {result, _visited} =
-          Enum.reduce(entries, {%{nodes: [], branches: []}, MapSet.new()}, fn entry, {acc, visited} ->
+          Enum.reduce(entries, {%{nodes: [], branches: []}, MapSet.new()}, fn entry,
+                                                                              {acc, visited} ->
             {tree, visited} = traverse_tree(entry, adjacency, nodes_by_id, visited)
             {%{nodes: acc.nodes ++ tree.nodes, branches: acc.branches ++ tree.branches}, visited}
           end)

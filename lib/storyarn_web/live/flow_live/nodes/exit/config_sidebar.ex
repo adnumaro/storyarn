@@ -152,7 +152,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
               disabled={!@can_edit}
               class="radio radio-xs"
             />
-            <span class="text-xs inline-flex items-center gap-1">{gettext("Continue to flow")} <.icon name="arrow-right" class="size-3" /></span>
+            <span class="text-xs inline-flex items-center gap-1">
+              {gettext("Continue to flow")} <.icon name="arrow-right" class="size-3" />
+            </span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-base-200">
             <input
@@ -165,7 +167,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
               disabled={!@can_edit}
               class="radio radio-xs"
             />
-            <span class="text-xs inline-flex items-center gap-1">{gettext("Return to caller")} <.icon name="corner-down-left" class="size-3" /></span>
+            <span class="text-xs inline-flex items-center gap-1">
+              {gettext("Return to caller")} <.icon name="corner-down-left" class="size-3" />
+            </span>
           </label>
         </div>
       </div>

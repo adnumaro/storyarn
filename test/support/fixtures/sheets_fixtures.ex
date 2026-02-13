@@ -75,7 +75,9 @@ defmodule Storyarn.SheetsFixtures do
     }
 
     block_attrs =
-      if Map.has_key?(attrs, :required), do: Map.put(block_attrs, :required, attrs[:required]), else: block_attrs
+      if Map.has_key?(attrs, :required),
+        do: Map.put(block_attrs, :required, attrs[:required]),
+        else: block_attrs
 
     {:ok, block} = Sheets.create_block(sheet, block_attrs)
     block

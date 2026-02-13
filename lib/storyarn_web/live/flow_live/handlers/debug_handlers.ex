@@ -590,7 +590,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
 
   defp cancel_auto_timer(socket) do
     case socket.assigns[:debug_auto_timer] do
-      nil -> socket
+      nil ->
+        socket
+
       ref ->
         Process.cancel_timer(ref)
         assign(socket, :debug_auto_timer, nil)

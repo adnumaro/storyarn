@@ -407,8 +407,18 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
           node(2, "dialogue", %{
             "text" => "Choose",
             "responses" => [
-              %{"id" => "r1", "text" => "Strong choice", "condition" => condition_json, "instruction" => ""},
-              %{"id" => "r2", "text" => "Always available", "condition" => "", "instruction" => ""}
+              %{
+                "id" => "r1",
+                "text" => "Strong choice",
+                "condition" => condition_json,
+                "instruction" => ""
+              },
+              %{
+                "id" => "r2",
+                "text" => "Always available",
+                "condition" => "",
+                "instruction" => ""
+              }
             ]
           })
       }
@@ -446,8 +456,18 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
           node(2, "dialogue", %{
             "text" => "Choose",
             "responses" => [
-              %{"id" => "r1", "text" => "Needs 100+ health", "condition" => condition_json, "instruction" => ""},
-              %{"id" => "r2", "text" => "Always available", "condition" => "", "instruction" => ""},
+              %{
+                "id" => "r1",
+                "text" => "Needs 100+ health",
+                "condition" => condition_json,
+                "instruction" => ""
+              },
+              %{
+                "id" => "r2",
+                "text" => "Always available",
+                "condition" => "",
+                "instruction" => ""
+              },
               %{"id" => "r3", "text" => "Also available", "condition" => "", "instruction" => ""}
             ]
           })
@@ -491,7 +511,12 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
           node(2, "dialogue", %{
             "text" => "Choose",
             "responses" => [
-              %{"id" => "r1", "text" => "Take damage", "condition" => "", "instruction" => instruction_json},
+              %{
+                "id" => "r1",
+                "text" => "Take damage",
+                "condition" => "",
+                "instruction" => instruction_json
+              },
               %{"id" => "r2", "text" => "No damage", "condition" => "", "instruction" => ""}
             ]
           }),
@@ -530,7 +555,12 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
           node(2, "dialogue", %{
             "text" => "Choose",
             "responses" => [
-              %{"id" => "r1", "text" => "Take damage", "condition" => "", "instruction" => instruction_json}
+              %{
+                "id" => "r1",
+                "text" => "Take damage",
+                "condition" => "",
+                "instruction" => instruction_json
+              }
             ]
           }),
         3 => node(3, "exit")
@@ -1442,7 +1472,12 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
           node(2, "dialogue", %{
             "text" => "Choose",
             "responses" => [
-              %{"id" => "r1", "text" => "Damage", "condition" => "", "instruction" => instruction_json},
+              %{
+                "id" => "r1",
+                "text" => "Damage",
+                "condition" => "",
+                "instruction" => instruction_json
+              },
               %{"id" => "r2", "text" => "No damage", "condition" => "", "instruction" => ""}
             ]
           }),
@@ -1825,13 +1860,14 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
     test "choose_response prepends to execution_log" do
       nodes = %{
         1 => node(1, "entry"),
-        2 => node(2, "dialogue", %{
-          "text" => "Hello",
-          "responses" => [
-            %{"id" => "r1", "text" => "A", "condition" => "", "instruction" => ""},
-            %{"id" => "r2", "text" => "B", "condition" => "", "instruction" => ""}
-          ]
-        }),
+        2 =>
+          node(2, "dialogue", %{
+            "text" => "Hello",
+            "responses" => [
+              %{"id" => "r1", "text" => "A", "condition" => "", "instruction" => ""},
+              %{"id" => "r2", "text" => "B", "condition" => "", "instruction" => ""}
+            ]
+          }),
         3 => node(3, "exit")
       }
 

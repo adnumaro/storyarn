@@ -76,7 +76,8 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
 
     case resolve_value(assignment, vars) do
       {:ok, resolved_value} ->
-        new_value = apply_operator(operator, var_entry.value, resolved_value, var_entry.block_type)
+        new_value =
+          apply_operator(operator, var_entry.value, resolved_value, var_entry.block_type)
 
         updated_entry = %{
           var_entry

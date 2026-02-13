@@ -11,7 +11,9 @@ defmodule Storyarn.Flows.FlowNodeTest do
     end
 
     test "accepts screenplay_sync source" do
-      changeset = FlowNode.create_changeset(%FlowNode{}, %{type: "dialogue", source: "screenplay_sync"})
+      changeset =
+        FlowNode.create_changeset(%FlowNode{}, %{type: "dialogue", source: "screenplay_sync"})
+
       assert changeset.valid?
       assert Ecto.Changeset.get_change(changeset, :source) == "screenplay_sync"
     end

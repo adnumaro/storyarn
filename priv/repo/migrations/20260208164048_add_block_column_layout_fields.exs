@@ -8,8 +8,8 @@ defmodule Storyarn.Repo.Migrations.AddBlockColumnLayoutFields do
     end
 
     create index(:blocks, [:sheet_id, :column_group_id],
-      where: "column_group_id IS NOT NULL",
-      name: :blocks_sheet_column_group_index
-    )
+             where: "column_group_id IS NOT NULL",
+             name: :blocks_sheet_column_group_index
+           )
   end
 end

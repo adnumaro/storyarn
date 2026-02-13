@@ -228,7 +228,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
 
   @impl true
-  def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in ["content", "references", "history"] do
+  def handle_event("switch_tab", %{"tab" => tab}, socket)
+      when tab in ["content", "references", "history"] do
     {:noreply, assign(socket, :current_tab, tab)}
   end
 

@@ -89,7 +89,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
     NodeHelpers.persist_node_update(socket, node_id, fn data ->
       default_text = Gettext.gettext(StoryarnWeb.Gettext, "Response %{n}", n: response_number)
-      new_response = %{"id" => new_id, "text" => default_text, "condition" => nil, "instruction" => nil}
+
+      new_response = %{
+        "id" => new_id,
+        "text" => default_text,
+        "condition" => nil,
+        "instruction" => nil
+      }
+
       Map.update(data, "responses", [new_response], &(&1 ++ [new_response]))
     end)
   end

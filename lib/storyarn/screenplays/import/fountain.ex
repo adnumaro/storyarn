@@ -56,7 +56,9 @@ defmodule Storyarn.Screenplays.Import.Fountain do
   def parse(_), do: []
 
   defp build_title_elements(data) when data == %{}, do: []
-  defp build_title_elements(data), do: [%{type: "title_page", content: "", data: data, position: 0}]
+
+  defp build_title_elements(data),
+    do: [%{type: "title_page", content: "", data: data, position: 0}]
 
   # -- Title page extraction --------------------------------------------------
 
@@ -184,7 +186,8 @@ defmodule Storyarn.Screenplays.Import.Fountain do
 
   defp forced_action?(p), do: String.starts_with?(p, "!")
 
-  defp make_el(type, content), do: %{type: type, content: convert_marks(content), data: %{}, position: 0}
+  defp make_el(type, content),
+    do: %{type: type, content: convert_marks(content), data: %{}, position: 0}
 
   defp make_section(paragraph) do
     {level, text} = parse_section(paragraph)
@@ -235,7 +238,13 @@ defmodule Storyarn.Screenplays.Import.Fountain do
     {char_name, dual?} = parse_character_name(hd(lines))
 
     char_data = if dual?, do: %{"dual" => true}, else: %{}
-    char_el = %{type: "character", content: convert_marks(char_name), data: char_data, position: 0}
+
+    char_el = %{
+      type: "character",
+      content: convert_marks(char_name),
+      data: char_data,
+      position: 0
+    }
 
     inline_lines = tl(lines) |> Enum.reject(&(&1 == ""))
 

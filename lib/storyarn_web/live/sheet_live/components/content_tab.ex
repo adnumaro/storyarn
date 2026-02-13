@@ -526,7 +526,10 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           {:noreply,
            socket
            |> reload_blocks()
-           |> put_flash(:info, gettext("Property detached. Changes to the source won't affect this copy."))}
+           |> put_flash(
+             :info,
+             gettext("Property detached. Changes to the source won't affect this copy.")
+           )}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, gettext("Could not detach property."))}
@@ -890,7 +893,9 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         {gettext("Inherited from")}
       </span>
       <.link
-        navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{@source_sheet.id}"}
+        navigate={
+          ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{@source_sheet.id}"
+        }
         class="text-xs font-medium text-info hover:underline"
       >
         {@source_sheet.name}

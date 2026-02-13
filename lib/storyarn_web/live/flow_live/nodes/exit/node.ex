@@ -70,6 +70,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   # -- Parsing helpers --
 
   defp parse_outcome_tags(tags) when is_list(tags), do: tags
+
   defp parse_outcome_tags(tags) when is_binary(tags) do
     tags
     |> String.split(",")
@@ -77,6 +78,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
     |> Enum.reject(&(&1 == ""))
     |> Enum.uniq()
   end
+
   defp parse_outcome_tags(_), do: []
 
   defp normalize_tag(tag) do
@@ -102,12 +104,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   defp parse_referenced_flow_id(nil), do: nil
   defp parse_referenced_flow_id(""), do: nil
   defp parse_referenced_flow_id(id) when is_integer(id), do: id
+
   defp parse_referenced_flow_id(id) when is_binary(id) do
     case Integer.parse(id) do
       {int, ""} -> int
       _ -> nil
     end
   end
+
   defp parse_referenced_flow_id(_), do: nil
 
   def duplicate_data_cleanup(data) do
@@ -174,7 +178,11 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
 
       Flows.has_circular_reference?(current_flow_id, flow_id) ->
         {:noreply,
-         Phoenix.LiveView.put_flash(socket, :error, gettext("This would create a circular reference."))}
+         Phoenix.LiveView.put_flash(
+           socket,
+           :error,
+           gettext("This would create a circular reference.")
+         )}
 
       is_nil(Flows.get_flow_brief(project_id, flow_id)) ->
         {:noreply, Phoenix.LiveView.put_flash(socket, :error, gettext("Flow not found."))}

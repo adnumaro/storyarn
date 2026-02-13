@@ -46,8 +46,15 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
 
     test "incomplete assignments are skipped" do
       assignments = [
-        %{"id" => "a1", "sheet" => "mc", "variable" => nil, "operator" => "set", "value" => "x",
-          "value_type" => "literal", "value_sheet" => nil}
+        %{
+          "id" => "a1",
+          "sheet" => "mc",
+          "variable" => nil,
+          "operator" => "set",
+          "value" => "x",
+          "value_type" => "literal",
+          "value_sheet" => nil
+        }
       ]
 
       assert {:ok, %{}, [], []} = InstructionExec.execute(assignments, %{})
@@ -347,10 +354,17 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
     test "valid JSON assignments" do
       variables = %{"mc.jaime.health" => var(100, "number")}
 
-      json = Jason.encode!([
-        %{"id" => "a1", "sheet" => "mc.jaime", "variable" => "health",
-          "operator" => "subtract", "value" => "20", "value_type" => "literal"}
-      ])
+      json =
+        Jason.encode!([
+          %{
+            "id" => "a1",
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "subtract",
+            "value" => "20",
+            "value_type" => "literal"
+          }
+        ])
 
       {:ok, new_vars, [change], []} = InstructionExec.execute_string(json, variables)
 

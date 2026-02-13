@@ -9,15 +9,24 @@ defmodule Storyarn.Screenplays.CharacterExtensionTest do
     end
 
     test "extracts V.O. extension" do
-      assert CharacterExtension.parse("JAIME (V.O.)") == %{base_name: "JAIME", extensions: ["V.O."]}
+      assert CharacterExtension.parse("JAIME (V.O.)") == %{
+               base_name: "JAIME",
+               extensions: ["V.O."]
+             }
     end
 
     test "extracts O.S. extension" do
-      assert CharacterExtension.parse("ALICE (O.S.)") == %{base_name: "ALICE", extensions: ["O.S."]}
+      assert CharacterExtension.parse("ALICE (O.S.)") == %{
+               base_name: "ALICE",
+               extensions: ["O.S."]
+             }
     end
 
     test "extracts CONT'D extension" do
-      assert CharacterExtension.parse("JAIME (CONT'D)") == %{base_name: "JAIME", extensions: ["CONT'D"]}
+      assert CharacterExtension.parse("JAIME (CONT'D)") == %{
+               base_name: "JAIME",
+               extensions: ["CONT'D"]
+             }
     end
 
     test "extracts multiple extensions" do
@@ -35,7 +44,10 @@ defmodule Storyarn.Screenplays.CharacterExtensionTest do
     end
 
     test "handles name with extra whitespace" do
-      assert CharacterExtension.parse("  JAIME  (V.O.)  ") == %{base_name: "JAIME", extensions: ["V.O."]}
+      assert CharacterExtension.parse("  JAIME  (V.O.)  ") == %{
+               base_name: "JAIME",
+               extensions: ["V.O."]
+             }
     end
   end
 

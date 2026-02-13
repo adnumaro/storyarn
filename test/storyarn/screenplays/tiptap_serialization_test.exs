@@ -98,7 +98,8 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
     end
 
     test "converts a single text element" do
-      doc = TiptapSerialization.elements_to_doc([element(id: 1, type: "action", content: "Hello")])
+      doc =
+        TiptapSerialization.elements_to_doc([element(id: 1, type: "action", content: "Hello")])
 
       assert doc["type"] == "doc"
       [node] = doc["content"]
@@ -121,7 +122,9 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
     end
 
     test "converts each text element type correctly" do
-      text_types = ~w(scene_heading action character dialogue parenthetical transition note section)
+      text_types =
+        ~w(scene_heading action character dialogue parenthetical transition note section)
+
       expected = ~w(sceneHeading action character dialogue parenthetical transition note section)
 
       elements =
@@ -136,7 +139,8 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
     end
 
     test "converts atom element types correctly (no content)" do
-      atom_types = ~w(page_break conditional instruction response dual_dialogue hub_marker jump_marker title_page)
+      atom_types =
+        ~w(page_break conditional instruction response dual_dialogue hub_marker jump_marker title_page)
 
       elements =
         atom_types
@@ -288,9 +292,21 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
       doc = %{
         "type" => "doc",
         "content" => [
-          %{"type" => "action", "attrs" => %{}, "content" => [%{"type" => "text", "text" => "A"}]},
-          %{"type" => "dialogue", "attrs" => %{}, "content" => [%{"type" => "text", "text" => "B"}]},
-          %{"type" => "character", "attrs" => %{}, "content" => [%{"type" => "text", "text" => "C"}]}
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [%{"type" => "text", "text" => "A"}]
+          },
+          %{
+            "type" => "dialogue",
+            "attrs" => %{},
+            "content" => [%{"type" => "text", "text" => "B"}]
+          },
+          %{
+            "type" => "character",
+            "attrs" => %{},
+            "content" => [%{"type" => "text", "text" => "C"}]
+          }
         ]
       }
 
@@ -344,7 +360,10 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
             "attrs" => %{},
             "content" => [
               %{"type" => "text", "text" => "Hello "},
-              %{"type" => "mention", "attrs" => %{"id" => "42", "label" => "Jaime", "type" => "sheet"}},
+              %{
+                "type" => "mention",
+                "attrs" => %{"id" => "42", "label" => "Jaime", "type" => "sheet"}
+              },
               %{"type" => "text", "text" => " world"}
             ]
           }
@@ -368,7 +387,9 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
       content =
         ~s(Visit <span class="mention" data-type="sheet" data-id="7" data-label="Village">#Village</span> today)
 
-      doc = TiptapSerialization.elements_to_doc([element(id: 1, type: "action", content: content)])
+      doc =
+        TiptapSerialization.elements_to_doc([element(id: 1, type: "action", content: content)])
+
       [node] = doc["content"]
 
       assert [
@@ -382,7 +403,11 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
     end
 
     test "plain text without spans produces single text node" do
-      doc = TiptapSerialization.elements_to_doc([element(id: 1, type: "action", content: "Just text")])
+      doc =
+        TiptapSerialization.elements_to_doc([
+          element(id: 1, type: "action", content: "Just text")
+        ])
+
       [node] = doc["content"]
 
       assert node["content"] == [%{"type" => "text", "text" => "Just text"}]
@@ -402,7 +427,9 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
       content =
         ~s(<span class="mention" data-type="sheet" data-id="1" data-label="Alice">#Alice</span> and <span class="mention" data-type="sheet" data-id="2" data-label="Bob">#Bob</span>)
 
-      doc = TiptapSerialization.elements_to_doc([element(id: 1, type: "dialogue", content: content)])
+      doc =
+        TiptapSerialization.elements_to_doc([element(id: 1, type: "dialogue", content: content)])
+
       [node] = doc["content"]
 
       types = Enum.map(node["content"], & &1["type"])
@@ -435,7 +462,9 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
         ])
 
       [node] = doc["content"]
-      assert [%{"type" => "text", "text" => "bold", "marks" => [%{"type" => "bold"}]}] = node["content"]
+
+      assert [%{"type" => "text", "text" => "bold", "marks" => [%{"type" => "bold"}]}] =
+               node["content"]
     end
 
     test "parses <em> tag into italic mark" do
@@ -459,7 +488,9 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
         ])
 
       [node] = doc["content"]
-      assert [%{"type" => "text", "text" => "italic", "marks" => [%{"type" => "italic"}]}] = node["content"]
+
+      assert [%{"type" => "text", "text" => "italic", "marks" => [%{"type" => "italic"}]}] =
+               node["content"]
     end
 
     test "parses <s> tag into strike mark" do
@@ -483,7 +514,9 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
         ])
 
       [node] = doc["content"]
-      assert [%{"type" => "text", "text" => "removed", "marks" => [%{"type" => "strike"}]}] = node["content"]
+
+      assert [%{"type" => "text", "text" => "removed", "marks" => [%{"type" => "strike"}]}] =
+               node["content"]
     end
 
     test "parses nested marks (bold + italic)" do
@@ -694,7 +727,10 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
             "attrs" => %{},
             "content" => [
               %{"type" => "text", "text" => "Visit ", "marks" => [%{"type" => "bold"}]},
-              %{"type" => "mention", "attrs" => %{"id" => "7", "label" => "Village", "type" => "sheet"}},
+              %{
+                "type" => "mention",
+                "attrs" => %{"id" => "7", "label" => "Village", "type" => "sheet"}
+              },
               %{"type" => "text", "text" => " today"}
             ]
           }
@@ -712,7 +748,14 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
 
   describe "round-trip" do
     test "elements -> doc -> attrs preserves all data" do
-      original = element(id: 42, type: "dialogue", content: "Hello world", position: 0, data: %{"key" => "val"})
+      original =
+        element(
+          id: 42,
+          type: "dialogue",
+          content: "Hello world",
+          position: 0,
+          data: %{"key" => "val"}
+        )
 
       doc = TiptapSerialization.elements_to_doc([original])
       [result] = TiptapSerialization.doc_to_element_attrs(doc)
@@ -731,7 +774,12 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
         element(id: 3, type: "page_break", position: 2),
         element(id: 4, type: "character", content: "JOHN", position: 3, data: %{"sheet_id" => 5}),
         element(id: 5, type: "dialogue", content: "Line.", position: 4),
-        element(id: 6, type: "conditional", position: 5, data: %{"condition" => %{"logic" => "all", "rules" => []}})
+        element(
+          id: 6,
+          type: "conditional",
+          position: 5,
+          data: %{"condition" => %{"logic" => "all", "rules" => []}}
+        )
       ]
 
       doc = TiptapSerialization.elements_to_doc(originals)
@@ -754,7 +802,8 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
       assert Enum.at(results, 5).data == %{"condition" => %{"logic" => "all", "rules" => []}}
 
       # Types preserved
-      assert Enum.map(results, & &1.type) == ~w(scene_heading action page_break character dialogue conditional)
+      assert Enum.map(results, & &1.type) ==
+               ~w(scene_heading action page_break character dialogue conditional)
 
       # IDs preserved
       assert Enum.map(results, & &1.element_id) == [1, 2, 3, 4, 5, 6]

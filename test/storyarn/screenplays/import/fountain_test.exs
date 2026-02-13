@@ -302,7 +302,8 @@ defmodule Storyarn.Screenplays.Import.FountainTest do
     test "standard fountain script survives import→export" do
       alias Storyarn.Screenplays.Export.Fountain, as: FountainExport
 
-      input = "INT. OFFICE - DAY\n\nJOHN walks into the room.\n\nJOHN\n\nHello there.\n\nCUT TO:\n\nEXT. PARK - NIGHT\n\nIt is dark outside."
+      input =
+        "INT. OFFICE - DAY\n\nJOHN walks into the room.\n\nJOHN\n\nHello there.\n\nCUT TO:\n\nEXT. PARK - NIGHT\n\nIt is dark outside."
 
       parsed = Fountain.parse(input)
       output = FountainExport.export(parsed)

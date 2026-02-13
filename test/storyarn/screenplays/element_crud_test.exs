@@ -18,7 +18,9 @@ defmodule Storyarn.Screenplays.ElementCrudTest do
     setup :setup_screenplay
 
     test "returns elements ordered by position", %{screenplay: screenplay} do
-      e1 = element_fixture(screenplay, %{type: "scene_heading", content: "INT. TAVERN", position: 0})
+      e1 =
+        element_fixture(screenplay, %{type: "scene_heading", content: "INT. TAVERN", position: 0})
+
       e2 = element_fixture(screenplay, %{type: "action", content: "A door opens.", position: 1})
       e3 = element_fixture(screenplay, %{type: "character", content: "JAIME", position: 2})
 
@@ -37,7 +39,9 @@ defmodule Storyarn.Screenplays.ElementCrudTest do
     setup :setup_screenplay
 
     test "appends at end with correct position", %{screenplay: screenplay} do
-      {:ok, e1} = ElementCrud.create_element(screenplay, %{type: "scene_heading", content: "INT."})
+      {:ok, e1} =
+        ElementCrud.create_element(screenplay, %{type: "scene_heading", content: "INT."})
+
       {:ok, e2} = ElementCrud.create_element(screenplay, %{type: "action", content: "Text"})
 
       assert e1.position == 0
@@ -164,7 +168,8 @@ defmodule Storyarn.Screenplays.ElementCrudTest do
     setup :setup_screenplay
 
     test "splits content at middle", %{screenplay: screenplay} do
-      element = element_fixture(screenplay, %{type: "action", content: "Hello World", position: 0})
+      element =
+        element_fixture(screenplay, %{type: "action", content: "Hello World", position: 0})
 
       {:ok, {before_el, new_el, after_el}} =
         ElementCrud.split_element(element, 5, "character")

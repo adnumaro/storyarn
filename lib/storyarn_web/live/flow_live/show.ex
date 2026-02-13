@@ -218,7 +218,6 @@ defmodule StoryarnWeb.FlowLive.Show do
         project={@project}
         sheets_map={FormHelpers.sheets_map(@all_sheets)}
       />
-
     </div>
     """
   end

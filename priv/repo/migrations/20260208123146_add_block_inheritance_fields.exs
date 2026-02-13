@@ -15,6 +15,10 @@ defmodule Storyarn.Repo.Migrations.AddBlockInheritanceFields do
 
     create index(:blocks, [:inherited_from_block_id])
     create index(:blocks, [:sheet_id, :inherited_from_block_id])
-    create index(:blocks, [:scope], where: "scope = 'children'", name: :blocks_scope_children_index)
+
+    create index(:blocks, [:scope],
+             where: "scope = 'children'",
+             name: :blocks_scope_children_index
+           )
   end
 end

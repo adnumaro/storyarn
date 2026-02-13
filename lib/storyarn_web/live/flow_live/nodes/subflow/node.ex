@@ -37,8 +37,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
 
     exit_nodes =
       case node.data["referenced_flow_id"] do
-        nil -> []
-        "" -> []
+        nil ->
+          []
+
+        "" ->
+          []
+
         flow_id ->
           case NodeCrud.safe_to_integer(flow_id) do
             nil -> []
@@ -96,7 +100,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
         {:error, gettext("A flow cannot reference itself.")}
 
       Flows.has_circular_reference?(current_flow_id, parsed) ->
-        {:error, gettext("Circular reference detected. This flow is already referenced by the target.")}
+        {:error,
+         gettext("Circular reference detected. This flow is already referenced by the target.")}
 
       true ->
         :ok

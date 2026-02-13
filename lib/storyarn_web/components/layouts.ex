@@ -122,7 +122,9 @@ defmodule StoryarnWeb.Layouts do
     default: [],
     doc: "screenplays with preloaded children for the tree"
 
-  attr :active_tool, :atom, default: :sheets, doc: "active tool (:sheets, :flows, or :screenplays)"
+  attr :active_tool, :atom,
+    default: :sheets,
+    doc: "active tool (:sheets, :flows, or :screenplays)"
 
   attr :current_path, :string, default: "", doc: "current path for navigation highlighting"
 

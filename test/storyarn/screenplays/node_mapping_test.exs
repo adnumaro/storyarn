@@ -5,7 +5,16 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
 
   # Helper to build element structs for testing
   defp el(attrs) do
-    defaults = %{id: 1, type: "action", content: "", data: %{}, position: 0, depth: 0, branch: nil}
+    defaults = %{
+      id: 1,
+      type: "action",
+      content: "",
+      data: %{},
+      position: 0,
+      depth: 0,
+      branch: nil
+    }
+
     struct(Storyarn.Screenplays.ScreenplayElement, Map.merge(defaults, attrs))
   end
 
@@ -145,7 +154,18 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
 
   describe "group_to_node_attrs/2 conditional" do
     test "maps conditional to condition node" do
-      condition = %{"logic" => "all", "rules" => [%{"id" => "r1", "sheet" => "mc", "variable" => "health", "operator" => "greater_than", "value" => "50"}]}
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "id" => "r1",
+            "sheet" => "mc",
+            "variable" => "health",
+            "operator" => "greater_than",
+            "value" => "50"
+          }
+        ]
+      }
 
       group = %{
         type: :conditional,
@@ -164,7 +184,15 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
 
   describe "group_to_node_attrs/2 instruction" do
     test "maps instruction to instruction node" do
-      assignments = [%{"id" => "a1", "sheet" => "mc", "variable" => "gold", "operator" => "add", "value" => "10"}]
+      assignments = [
+        %{
+          "id" => "a1",
+          "sheet" => "mc",
+          "variable" => "gold",
+          "operator" => "add",
+          "value" => "10"
+        }
+      ]
 
       group = %{
         type: :instruction,
@@ -208,7 +236,11 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
             type: "dual_dialogue",
             data: %{
               "left" => %{"character" => "ALICE", "parenthetical" => nil, "dialogue" => "Hello!"},
-              "right" => %{"character" => "BOB", "parenthetical" => nil, "dialogue" => "Hi there!"}
+              "right" => %{
+                "character" => "BOB",
+                "parenthetical" => nil,
+                "dialogue" => "Hi there!"
+              }
             }
           })
         ],
@@ -239,8 +271,16 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
             id: 2,
             type: "dual_dialogue",
             data: %{
-              "left" => %{"character" => "ALICE", "parenthetical" => "whispering", "dialogue" => "Psst."},
-              "right" => %{"character" => "BOB", "parenthetical" => "shouting", "dialogue" => "WHAT?"}
+              "left" => %{
+                "character" => "ALICE",
+                "parenthetical" => "whispering",
+                "dialogue" => "Psst."
+              },
+              "right" => %{
+                "character" => "BOB",
+                "parenthetical" => "shouting",
+                "dialogue" => "WHAT?"
+              }
             }
           })
         ],
@@ -274,7 +314,12 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
 
   describe "group_to_node_attrs/2 non-mappeable" do
     test "returns nil for non-mappeable groups" do
-      group = %{type: :non_mappeable, elements: [el(%{id: 1, type: "note", content: "A note"})], group_id: nil}
+      group = %{
+        type: :non_mappeable,
+        elements: [el(%{id: 1, type: "note", content: "A note"})],
+        group_id: nil
+      }
+
       assert NodeMapping.group_to_node_attrs(group) == nil
     end
   end
@@ -291,8 +336,20 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
             type: "response",
             data: %{
               "choices" => [
-                %{"id" => "c1", "text" => "Go left", "condition" => nil, "instruction" => nil, "linked_screenplay_id" => 42},
-                %{"id" => "c2", "text" => "Go right", "condition" => nil, "instruction" => nil, "linked_screenplay_id" => nil}
+                %{
+                  "id" => "c1",
+                  "text" => "Go left",
+                  "condition" => nil,
+                  "instruction" => nil,
+                  "linked_screenplay_id" => 42
+                },
+                %{
+                  "id" => "c2",
+                  "text" => "Go right",
+                  "condition" => nil,
+                  "instruction" => nil,
+                  "linked_screenplay_id" => nil
+                }
               ]
             }
           })
@@ -316,7 +373,13 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
             type: "response",
             data: %{
               "choices" => [
-                %{"id" => "c1", "text" => "Option", "condition" => nil, "instruction" => nil, "linked_screenplay_id" => 99}
+                %{
+                  "id" => "c1",
+                  "text" => "Option",
+                  "condition" => nil,
+                  "instruction" => nil,
+                  "linked_screenplay_id" => 99
+                }
               ]
             }
           })
@@ -455,9 +518,21 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
   describe "groups_to_node_attrs/1" do
     test "converts full group list, skipping non-mappeable" do
       groups = [
-        %{type: :scene_heading, elements: [el(%{id: 1, type: "scene_heading", content: "INT. OFFICE - DAY"})], group_id: nil},
-        %{type: :action, elements: [el(%{id: 2, type: "action", content: "A desk."})], group_id: nil},
-        %{type: :non_mappeable, elements: [el(%{id: 3, type: "note", content: "Remember to revise"})], group_id: nil},
+        %{
+          type: :scene_heading,
+          elements: [el(%{id: 1, type: "scene_heading", content: "INT. OFFICE - DAY"})],
+          group_id: nil
+        },
+        %{
+          type: :action,
+          elements: [el(%{id: 2, type: "action", content: "A desk."})],
+          group_id: nil
+        },
+        %{
+          type: :non_mappeable,
+          elements: [el(%{id: 3, type: "note", content: "Remember to revise"})],
+          group_id: nil
+        },
         %{
           type: :dialogue_group,
           elements: [
@@ -466,7 +541,11 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
           ],
           group_id: "g1"
         },
-        %{type: :transition, elements: [el(%{id: 6, type: "transition", content: "CUT TO:"})], group_id: nil}
+        %{
+          type: :transition,
+          elements: [el(%{id: 6, type: "transition", content: "CUT TO:"})],
+          group_id: nil
+        }
       ]
 
       result = NodeMapping.groups_to_node_attrs(groups)

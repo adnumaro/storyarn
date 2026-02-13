@@ -114,5 +114,4 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
   end
 
   defp maybe_add_labels(condition, false), do: condition
-
 end

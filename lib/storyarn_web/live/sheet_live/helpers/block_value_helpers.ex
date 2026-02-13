@@ -127,7 +127,16 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockValueHelpers do
     if existing do
       add_existing_option(block, existing, current_content, sheet_id, project_id)
     else
-      create_new_option(block, block_id, key, value, current_options, current_content, sheet_id, project_id)
+      create_new_option(
+        block,
+        block_id,
+        key,
+        value,
+        current_options,
+        current_content,
+        sheet_id,
+        project_id
+      )
     end
   end
 
@@ -147,7 +156,16 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockValueHelpers do
     end
   end
 
-  defp create_new_option(block, block_id, key, value, current_options, current_content, sheet_id, project_id) do
+  defp create_new_option(
+         block,
+         block_id,
+         key,
+         value,
+         current_options,
+         current_content,
+         sheet_id,
+         project_id
+       ) do
     new_options = current_options ++ [%{"key" => key, "value" => value}]
     new_content = [key | current_content]
 

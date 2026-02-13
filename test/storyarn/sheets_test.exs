@@ -15,7 +15,8 @@ defmodule Storyarn.SheetsTest do
       project = project_fixture(user)
       asset = image_asset_fixture(project, user)
 
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Test Sheet", avatar_asset_id: asset.id})
+      {:ok, sheet} =
+        Sheets.create_sheet(project, %{name: "Test Sheet", avatar_asset_id: asset.id})
 
       assert sheet.avatar_asset_id == asset.id
     end
@@ -35,7 +36,9 @@ defmodule Storyarn.SheetsTest do
       user = user_fixture()
       project = project_fixture(user)
       asset = image_asset_fixture(project, user)
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Test Sheet", avatar_asset_id: asset.id})
+
+      {:ok, sheet} =
+        Sheets.create_sheet(project, %{name: "Test Sheet", avatar_asset_id: asset.id})
 
       {:ok, updated} = Sheets.update_sheet(sheet, %{avatar_asset_id: nil})
 
@@ -46,7 +49,9 @@ defmodule Storyarn.SheetsTest do
       user = user_fixture()
       project = project_fixture(user)
       asset = image_asset_fixture(project, user)
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Test Sheet", avatar_asset_id: asset.id})
+
+      {:ok, sheet} =
+        Sheets.create_sheet(project, %{name: "Test Sheet", avatar_asset_id: asset.id})
 
       loaded_sheet = Sheets.get_sheet(project.id, sheet.id)
 
@@ -58,7 +63,9 @@ defmodule Storyarn.SheetsTest do
       user = user_fixture()
       project = project_fixture(user)
       asset = image_asset_fixture(project, user)
-      {:ok, _sheet} = Sheets.create_sheet(project, %{name: "Test Sheet", avatar_asset_id: asset.id})
+
+      {:ok, _sheet} =
+        Sheets.create_sheet(project, %{name: "Test Sheet", avatar_asset_id: asset.id})
 
       [sheet] = Sheets.list_sheets_tree(project.id)
 
@@ -228,7 +235,8 @@ defmodule Storyarn.SheetsTest do
       child3 = sheet_fixture(project, %{name: "Child 3", parent_id: parent.id, position: 2})
 
       # Reorder: [2, 3, 1]
-      {:ok, sheets} = Sheets.reorder_sheets(project.id, parent.id, [child2.id, child3.id, child1.id])
+      {:ok, sheets} =
+        Sheets.reorder_sheets(project.id, parent.id, [child2.id, child3.id, child1.id])
 
       assert length(sheets) == 3
       assert Enum.at(sheets, 0).id == child2.id
@@ -563,7 +571,8 @@ defmodule Storyarn.SheetsTest do
       project2 = project_fixture(user)
       sheet = sheet_fixture(project1, %{name: "Target Sheet"})
 
-      assert {:error, :not_found} = Sheets.validate_reference_target("sheet", sheet.id, project2.id)
+      assert {:error, :not_found} =
+               Sheets.validate_reference_target("sheet", sheet.id, project2.id)
     end
 
     test "returns {:error, :not_found} for flow in different project" do
@@ -582,7 +591,8 @@ defmodule Storyarn.SheetsTest do
 
       {:ok, _} = Sheets.delete_sheet(sheet)
 
-      assert {:error, :not_found} = Sheets.validate_reference_target("sheet", sheet.id, project.id)
+      assert {:error, :not_found} =
+               Sheets.validate_reference_target("sheet", sheet.id, project.id)
     end
 
     test "returns {:error, :not_found} for non-existent target" do
@@ -1180,9 +1190,12 @@ defmodule Storyarn.SheetsTest do
     test "does not regenerate when explicit shortcut provided" do
       user = user_fixture()
       project = project_fixture(user)
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Original", shortcut: "custom-shortcut"})
 
-      {:ok, updated} = Sheets.update_sheet(sheet, %{name: "New Name", shortcut: "custom-shortcut"})
+      {:ok, sheet} =
+        Sheets.create_sheet(project, %{name: "Original", shortcut: "custom-shortcut"})
+
+      {:ok, updated} =
+        Sheets.update_sheet(sheet, %{name: "New Name", shortcut: "custom-shortcut"})
 
       assert updated.shortcut == "custom-shortcut"
     end

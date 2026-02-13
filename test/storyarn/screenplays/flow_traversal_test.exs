@@ -32,7 +32,10 @@ defmodule Storyarn.Screenplays.FlowTraversalTest do
       nodes = [
         build_node(1, "entry"),
         build_node(2, "dialogue", %{
-          "responses" => [%{"id" => "c1", "text" => "Go left"}, %{"id" => "c2", "text" => "Go right"}]
+          "responses" => [
+            %{"id" => "c1", "text" => "Go left"},
+            %{"id" => "c2", "text" => "Go right"}
+          ]
         }),
         build_node(3, "dialogue"),
         build_node(4, "dialogue")

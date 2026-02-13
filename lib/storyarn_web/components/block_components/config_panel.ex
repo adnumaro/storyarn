@@ -126,7 +126,9 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
               {gettext("Re-sync with source")}
             </button>
             <p class="text-xs text-base-content/50 mt-1">
-              {gettext("Resets the property definition to match the source. Your value will be preserved.")}
+              {gettext(
+                "Resets the property definition to match the source. Your value will be preserved."
+              )}
             </p>
           </div>
 

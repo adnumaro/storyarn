@@ -101,7 +101,11 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
   describe "create_inherited_instances/2" do
     setup :setup_hierarchy
 
-    test "creates instances on child sheets", %{parent: parent, child: child, grandchild: grandchild} do
+    test "creates instances on child sheets", %{
+      parent: parent,
+      child: child,
+      grandchild: grandchild
+    } do
       block = inheritable_block_fixture(parent, label: "Strength")
 
       # The block was auto-propagated at creation time.
@@ -150,7 +154,8 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       block = inheritable_block_fixture(parent, label: "Health")
 
       # Update the parent block's config
-      {:ok, updated} = Sheets.update_block_config(block, %{"label" => "Vitality", "placeholder" => ""})
+      {:ok, updated} =
+        Sheets.update_block_config(block, %{"label" => "Vitality", "placeholder" => ""})
 
       # sync_definition_change is called automatically by update_block_config
       child_blocks = Sheets.list_blocks(child.id)
@@ -163,7 +168,11 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       block = inheritable_block_fixture(parent, label: "Score", type: "number")
 
       # Update parent block type
-      {:ok, updated} = Sheets.update_block(block, %{type: "text", config: %{"label" => "Score", "placeholder" => ""}})
+      {:ok, updated} =
+        Sheets.update_block(block, %{
+          type: "text",
+          config: %{"label" => "Score", "placeholder" => ""}
+        })
 
       # Since scope changed from children -> children isn't happening via update_block,
       # let's call sync directly
@@ -185,7 +194,8 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       {:ok, _} = PropertyInheritance.detach_block(instance)
 
       # Update parent
-      {:ok, _updated_parent} = Sheets.update_block_config(block, %{"label" => "Shield", "placeholder" => ""})
+      {:ok, _updated_parent} =
+        Sheets.update_block_config(block, %{"label" => "Shield", "placeholder" => ""})
 
       # Detached instance should NOT be updated
       detached = Sheets.get_block(instance.id)
@@ -514,7 +524,8 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       unrelated = sheet_fixture(project, %{name: "Unrelated"})
 
       # Try to propagate to both valid and invalid sheets
-      {:ok, _count} = PropertyInheritance.propagate_to_descendants(block, [child.id, unrelated.id])
+      {:ok, _count} =
+        PropertyInheritance.propagate_to_descendants(block, [child.id, unrelated.id])
 
       # Only valid descendants should get instances
       child_blocks = Sheets.list_blocks(child.id)
@@ -549,7 +560,8 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
     test "update_block syncs definition to instances", %{parent: parent, child: child} do
       block = inheritable_block_fixture(parent, label: "Syncable")
 
-      {:ok, _} = Sheets.update_block_config(block, %{"label" => "Synced Label", "placeholder" => ""})
+      {:ok, _} =
+        Sheets.update_block_config(block, %{"label" => "Synced Label", "placeholder" => ""})
 
       child_blocks = Sheets.list_blocks(child.id)
       instance = Enum.find(child_blocks, &(&1.inherited_from_block_id == block.id))
@@ -653,9 +665,10 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       restored_blocks = Sheets.list_blocks(restored_sheet.id)
 
       # The inherited block should be detached since its source is gone
-      orphaned = Enum.find(restored_blocks, fn b ->
-        b.detached == true
-      end)
+      orphaned =
+        Enum.find(restored_blocks, fn b ->
+          b.detached == true
+        end)
 
       assert orphaned || is_list(restored_blocks)
       # The key point: no crash occurred during restore

@@ -279,7 +279,10 @@ defmodule Storyarn.Screenplays.TiptapSerialization do
   end
 
   defp wrap_marks(html, []), do: html
-  defp wrap_marks(html, [%{"type" => "bold"} | rest]), do: wrap_marks("<strong>#{html}</strong>", rest)
+
+  defp wrap_marks(html, [%{"type" => "bold"} | rest]),
+    do: wrap_marks("<strong>#{html}</strong>", rest)
+
   defp wrap_marks(html, [%{"type" => "italic"} | rest]), do: wrap_marks("<em>#{html}</em>", rest)
   defp wrap_marks(html, [%{"type" => "strike"} | rest]), do: wrap_marks("<s>#{html}</s>", rest)
   defp wrap_marks(html, [_ | rest]), do: wrap_marks(html, rest)

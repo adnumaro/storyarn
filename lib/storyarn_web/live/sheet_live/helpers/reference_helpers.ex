@@ -32,7 +32,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
     block = Sheets.get_block_in_project!(block_id, project_id)
 
     with {target_id_int, ""} <- Integer.parse(target_id),
-         {:ok, _target} <- Sheets.validate_reference_target(target_type, target_id_int, project_id),
+         {:ok, _target} <-
+           Sheets.validate_reference_target(target_type, target_id_int, project_id),
          {:ok, _block} <-
            Sheets.update_block_value(block, %{
              "target_type" => target_type,
@@ -116,7 +117,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
     block = Sheets.get_block_in_project!(block_id, project_id)
 
     with {target_id_int, ""} <- Integer.parse(target_id),
-         {:ok, _target} <- Sheets.validate_reference_target(target_type, target_id_int, project_id),
+         {:ok, _target} <-
+           Sheets.validate_reference_target(target_type, target_id_int, project_id),
          {:ok, _block} <-
            Sheets.update_block_value(block, %{
              "target_type" => target_type,

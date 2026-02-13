@@ -339,7 +339,13 @@ defmodule Storyarn.Flows.Evaluator.Engine do
         case data["referenced_flow_id"] do
           nil ->
             state =
-              add_console(state, :error, node.id, label, "Exit has flow_reference mode but no referenced_flow_id")
+              add_console(
+                state,
+                :error,
+                node.id,
+                label,
+                "Exit has flow_reference mode but no referenced_flow_id"
+              )
 
             {:finished, %{state | status: :finished}}
 
@@ -355,7 +361,15 @@ defmodule Storyarn.Flows.Evaluator.Engine do
           state = add_console(state, :info, node.id, label, "Exit → return to caller")
           {:flow_return, state}
         else
-          state = add_console(state, :info, node.id, label, "Exit → caller return (no caller, finishing)")
+          state =
+            add_console(
+              state,
+              :info,
+              node.id,
+              label,
+              "Exit → caller return (no caller, finishing)"
+            )
+
           {:finished, %{state | status: :finished}}
         end
 
@@ -561,7 +575,9 @@ defmodule Storyarn.Flows.Evaluator.Engine do
 
     case conn do
       nil ->
-        state = add_console(state, :error, node_id, label, "No connection from response #{only.id}")
+        state =
+          add_console(state, :error, node_id, label, "No connection from response #{only.id}")
+
         {:finished, %{state | status: :finished}}
 
       conn ->
@@ -642,7 +658,13 @@ defmodule Storyarn.Flows.Evaluator.Engine do
       {:halt, {rule["id"], acc_state}}
     else
       acc_state =
-        add_console(acc_state, :info, node_id, label, "Switch → case \"#{rule_label}\" did not match")
+        add_console(
+          acc_state,
+          :info,
+          node_id,
+          label,
+          "Switch → case \"#{rule_label}\" did not match"
+        )
 
       {:cont, {nil, acc_state}}
     end

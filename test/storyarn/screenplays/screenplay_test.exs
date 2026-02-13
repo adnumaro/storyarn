@@ -40,7 +40,9 @@ defmodule Storyarn.Screenplays.ScreenplayTest do
     end
 
     test "accepts shortcut with dots" do
-      changeset = Screenplay.create_changeset(%Screenplay{}, %{name: "Test", shortcut: "act.intro"})
+      changeset =
+        Screenplay.create_changeset(%Screenplay{}, %{name: "Test", shortcut: "act.intro"})
+
       assert changeset.valid?
     end
 
@@ -60,14 +62,19 @@ defmodule Storyarn.Screenplays.ScreenplayTest do
     end
 
     test "accepts description" do
-      changeset = Screenplay.create_changeset(%Screenplay{}, %{name: "Test", description: "A scene"})
+      changeset =
+        Screenplay.create_changeset(%Screenplay{}, %{name: "Test", description: "A scene"})
+
       assert changeset.valid?
       assert get_change(changeset, :description) == "A scene"
     end
 
     test "rejects description longer than 2000 characters" do
       long_desc = String.duplicate("a", 2001)
-      changeset = Screenplay.create_changeset(%Screenplay{}, %{name: "Test", description: long_desc})
+
+      changeset =
+        Screenplay.create_changeset(%Screenplay{}, %{name: "Test", description: long_desc})
+
       refute changeset.valid?
     end
 

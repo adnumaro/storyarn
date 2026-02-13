@@ -391,7 +391,8 @@ defmodule Storyarn.Flows.NodeCrud do
     flow_id_str = to_string(flow_id)
 
     from(n in FlowNode,
-      join: f in Flow, on: n.flow_id == f.id,
+      join: f in Flow,
+      on: n.flow_id == f.id,
       where: f.project_id == ^project_id and is_nil(f.deleted_at),
       where:
         (n.type == "subflow" and fragment("?->>'referenced_flow_id' = ?", n.data, ^flow_id_str)) or
@@ -419,9 +420,15 @@ defmodule Storyarn.Flows.NodeCrud do
 
   defp do_check_circular(source_flow_id, current_flow_id, visited, depth) do
     cond do
-      depth > 20 -> true
-      current_flow_id == source_flow_id -> true
-      MapSet.member?(visited, current_flow_id) -> false
+      depth > 20 ->
+        true
+
+      current_flow_id == source_flow_id ->
+        true
+
+      MapSet.member?(visited, current_flow_id) ->
+        false
+
       true ->
         visited = MapSet.put(visited, current_flow_id)
         referenced_flow_ids = get_referenced_flow_ids(current_flow_id)
@@ -604,8 +611,12 @@ defmodule Storyarn.Flows.NodeCrud do
       |> Map.put("referenced_flow_name", flow.name)
       |> Map.put("referenced_flow_shortcut", flow.shortcut)
     else
-      nil -> data
-      "" -> data
+      nil ->
+        data
+
+      "" ->
+        data
+
       %Flow{} ->
         mark_stale_reference(data)
 
@@ -637,5 +648,4 @@ defmodule Storyarn.Flows.NodeCrud do
   end
 
   def safe_to_integer(_), do: nil
-
 end
