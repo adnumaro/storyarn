@@ -14,6 +14,8 @@
  */
 
 import { Editor } from "@tiptap/core";
+import { Plugin, PluginKey } from "prosemirror-state";
+import { Decoration, DecorationSet } from "prosemirror-view";
 import StarterKit from "@tiptap/starter-kit";
 
 // Custom screenplay nodes
@@ -58,6 +60,49 @@ function suppressedDispatch(editor, tr) {
   editor.view.dispatch(tr);
   requestAnimationFrame(() => {
     if (bridge) bridge.storage.suppressUpdate = false;
+  });
+}
+
+/** ProseMirror plugin that applies a node decoration via transaction meta. */
+const highlightPluginKey = new PluginKey("highlightElement");
+
+function createHighlightPlugin() {
+  return new Plugin({
+    key: highlightPluginKey,
+    state: {
+      init() {
+        return DecorationSet.empty;
+      },
+      apply(tr, set) {
+        const id = tr.getMeta(highlightPluginKey);
+        if (id !== undefined) {
+          if (id === null) return DecorationSet.empty;
+
+          let targetPos = null;
+          tr.doc.forEach((node, pos) => {
+            if (targetPos !== null) return;
+            if (node.attrs.elementId === id) targetPos = pos;
+          });
+
+          if (targetPos !== null) {
+            const node = tr.doc.nodeAt(targetPos);
+            const deco = Decoration.node(
+              targetPos,
+              targetPos + node.nodeSize,
+              { class: "sp-highlight-flash" },
+            );
+            return DecorationSet.create(tr.doc, [deco]);
+          }
+          return DecorationSet.empty;
+        }
+        return set.map(tr.mapping, tr.doc);
+      },
+    },
+    props: {
+      decorations(state) {
+        return highlightPluginKey.getState(state);
+      },
+    },
   });
 }
 
@@ -181,6 +226,36 @@ export const ScreenplayEditor = {
       if (this._destroyed || !this.editor) return;
       this.editor.commands.focus("end");
     });
+
+    // Scroll to and highlight a specific element (navigated from a backlink).
+    // Uses a ProseMirror decoration so the class survives re-renders.
+    const highlightId = parseInt(this.el.dataset.highlightElement, 10);
+    if (highlightId) {
+      // Register the decoration plugin
+      this.editor.registerPlugin(createHighlightPlugin());
+
+      // Dispatch a transaction that triggers the decoration
+      const tr = this.editor.state.tr.setMeta(highlightPluginKey, highlightId);
+      this.editor.view.dispatch(tr);
+
+      // Scroll after ProseMirror applies the decoration to the DOM
+      requestAnimationFrame(() => {
+        if (this._destroyed || !this.editor) return;
+
+        let targetPos = null;
+        this.editor.state.doc.forEach((node, pos) => {
+          if (targetPos !== null) return;
+          if (node.attrs.elementId === highlightId) targetPos = pos;
+        });
+
+        if (targetPos !== null) {
+          const domNode = this.editor.view.nodeDOM(targetPos);
+          if (domNode) {
+            domNode.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }
+      });
+    }
 
     // Server pushes updated element data after interactive block mutations.
     // Find the node by elementId and update its `data` attribute so the

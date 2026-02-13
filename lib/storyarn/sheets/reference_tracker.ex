@@ -126,6 +126,58 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   @doc """
+  Updates references from a screenplay element.
+
+  Deletes all existing references from this element and creates new ones
+  based on the current element state (character sheet_id + inline mentions).
+  """
+  @spec update_screenplay_element_references(map()) :: :ok
+  def update_screenplay_element_references(%{
+        id: element_id,
+        type: type,
+        data: data,
+        content: content
+      }) do
+    delete_screenplay_element_references(element_id)
+
+    references =
+      extract_screenplay_element_refs(type, data, content)
+      |> Enum.uniq_by(fn ref -> {ref.type, ref.id, ref.context} end)
+
+    for ref <- references do
+      target_id = parse_id(ref.id)
+
+      if target_id do
+        %EntityReference{}
+        |> EntityReference.changeset(%{
+          source_type: "screenplay_element",
+          source_id: element_id,
+          target_type: ref.type,
+          target_id: target_id,
+          context: ref.context
+        })
+        |> Repo.insert(on_conflict: :nothing)
+      end
+    end
+
+    :ok
+  end
+
+  def update_screenplay_element_references(_element), do: :ok
+
+  @doc """
+  Deletes all references from a screenplay element.
+  Called when an element is deleted.
+  """
+  @spec delete_screenplay_element_references(any()) :: {integer(), nil}
+  def delete_screenplay_element_references(element_id) do
+    from(r in EntityReference,
+      where: r.source_type == "screenplay_element" and r.source_id == ^element_id
+    )
+    |> Repo.delete_all()
+  end
+
+  @doc """
   Gets all references pointing to a target (backlinks).
 
   Returns references grouped by source type with additional context.
@@ -153,99 +205,136 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   """
   @spec get_backlinks_with_sources(String.t(), any(), integer()) :: [map()]
   def get_backlinks_with_sources(target_type, target_id, project_id) do
-    alias Storyarn.Flows.{Flow, FlowNode}
+    block_backlinks = query_block_backlinks(target_type, target_id, project_id)
+    flow_backlinks = query_flow_node_backlinks(target_type, target_id, project_id)
+    screenplay_backlinks = query_screenplay_element_backlinks(target_type, target_id, project_id)
+
+    (block_backlinks ++ flow_backlinks ++ screenplay_backlinks)
+    |> Enum.sort_by(& &1.inserted_at, {:desc, NaiveDateTime})
+  end
+
+  defp query_block_backlinks(target_type, target_id, project_id) do
     alias Storyarn.Sheets.{Block, Sheet}
 
-    # Single query for block references with JOINs
-    block_refs =
-      from(r in EntityReference,
-        join: b in Block,
-        on: r.source_type == "block" and r.source_id == b.id,
-        join: s in Sheet,
-        on: b.sheet_id == s.id,
-        where: r.target_type == ^target_type and r.target_id == ^target_id,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at),
-        select: %{
-          id: r.id,
-          source_type: r.source_type,
-          source_id: r.source_id,
-          context: r.context,
-          inserted_at: r.inserted_at,
-          block_type: b.type,
-          block_label: fragment("?->>'label'", b.config),
-          sheet_id: s.id,
-          sheet_name: s.name,
-          sheet_shortcut: s.shortcut
-        },
-        order_by: [desc: r.inserted_at]
-      )
-      |> Repo.all()
-
-    # Single query for flow node references with JOINs
-    flow_node_refs =
-      from(r in EntityReference,
-        join: n in FlowNode,
-        on: r.source_type == "flow_node" and r.source_id == n.id,
-        join: f in Flow,
-        on: n.flow_id == f.id,
-        where: r.target_type == ^target_type and r.target_id == ^target_id,
-        where: f.project_id == ^project_id,
-        select: %{
-          id: r.id,
-          source_type: r.source_type,
-          source_id: r.source_id,
-          context: r.context,
-          inserted_at: r.inserted_at,
-          node_type: n.type,
-          flow_id: f.id,
-          flow_name: f.name,
-          flow_shortcut: f.shortcut
-        },
-        order_by: [desc: r.inserted_at]
-      )
-      |> Repo.all()
-
-    # Transform to expected format
-    block_backlinks =
-      Enum.map(block_refs, fn ref ->
-        %{
-          id: ref.id,
-          source_type: "block",
-          source_id: ref.source_id,
-          context: ref.context,
-          inserted_at: ref.inserted_at,
-          source_info: %{
-            type: :sheet,
-            sheet_id: ref.sheet_id,
-            sheet_name: ref.sheet_name,
-            sheet_shortcut: ref.sheet_shortcut,
-            block_type: ref.block_type,
-            block_label: ref.block_label
-          }
+    from(r in EntityReference,
+      join: b in Block,
+      on: r.source_type == "block" and r.source_id == b.id,
+      join: s in Sheet,
+      on: b.sheet_id == s.id,
+      where: r.target_type == ^target_type and r.target_id == ^target_id,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at),
+      select: %{
+        id: r.id,
+        source_type: r.source_type,
+        source_id: r.source_id,
+        context: r.context,
+        inserted_at: r.inserted_at,
+        block_type: b.type,
+        block_label: fragment("?->>'label'", b.config),
+        sheet_id: s.id,
+        sheet_name: s.name,
+        sheet_shortcut: s.shortcut
+      },
+      order_by: [desc: r.inserted_at]
+    )
+    |> Repo.all()
+    |> Enum.map(fn ref ->
+      %{
+        id: ref.id,
+        source_type: "block",
+        source_id: ref.source_id,
+        context: ref.context,
+        inserted_at: ref.inserted_at,
+        source_info: %{
+          type: :sheet,
+          sheet_id: ref.sheet_id,
+          sheet_name: ref.sheet_name,
+          sheet_shortcut: ref.sheet_shortcut,
+          block_type: ref.block_type,
+          block_label: ref.block_label
         }
-      end)
+      }
+    end)
+  end
 
-    flow_backlinks =
-      Enum.map(flow_node_refs, fn ref ->
-        %{
-          id: ref.id,
-          source_type: "flow_node",
-          source_id: ref.source_id,
-          context: ref.context,
-          inserted_at: ref.inserted_at,
-          source_info: %{
-            type: :flow,
-            flow_id: ref.flow_id,
-            flow_name: ref.flow_name,
-            flow_shortcut: ref.flow_shortcut,
-            node_type: ref.node_type
-          }
+  defp query_flow_node_backlinks(target_type, target_id, project_id) do
+    alias Storyarn.Flows.{Flow, FlowNode}
+
+    from(r in EntityReference,
+      join: n in FlowNode,
+      on: r.source_type == "flow_node" and r.source_id == n.id,
+      join: f in Flow,
+      on: n.flow_id == f.id,
+      where: r.target_type == ^target_type and r.target_id == ^target_id,
+      where: f.project_id == ^project_id,
+      select: %{
+        id: r.id,
+        source_type: r.source_type,
+        source_id: r.source_id,
+        context: r.context,
+        inserted_at: r.inserted_at,
+        node_type: n.type,
+        flow_id: f.id,
+        flow_name: f.name,
+        flow_shortcut: f.shortcut
+      },
+      order_by: [desc: r.inserted_at]
+    )
+    |> Repo.all()
+    |> Enum.map(fn ref ->
+      %{
+        id: ref.id,
+        source_type: "flow_node",
+        source_id: ref.source_id,
+        context: ref.context,
+        inserted_at: ref.inserted_at,
+        source_info: %{
+          type: :flow,
+          flow_id: ref.flow_id,
+          flow_name: ref.flow_name,
+          flow_shortcut: ref.flow_shortcut,
+          node_type: ref.node_type
         }
-      end)
+      }
+    end)
+  end
 
-    # Combine and sort by inserted_at desc
-    (block_backlinks ++ flow_backlinks)
-    |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
+  defp query_screenplay_element_backlinks(target_type, target_id, project_id) do
+    from(r in EntityReference,
+      join: e in Storyarn.Screenplays.ScreenplayElement,
+      on: r.source_type == "screenplay_element" and r.source_id == e.id,
+      join: s in Storyarn.Screenplays.Screenplay,
+      on: e.screenplay_id == s.id,
+      where: r.target_type == ^target_type and r.target_id == ^target_id,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
+      select: %{
+        id: r.id,
+        source_type: r.source_type,
+        source_id: r.source_id,
+        context: r.context,
+        inserted_at: r.inserted_at,
+        element_type: e.type,
+        screenplay_id: s.id,
+        screenplay_name: s.name
+      },
+      order_by: [desc: r.inserted_at]
+    )
+    |> Repo.all()
+    |> Enum.map(fn ref ->
+      %{
+        id: ref.id,
+        source_type: "screenplay_element",
+        source_id: ref.source_id,
+        context: ref.context,
+        inserted_at: ref.inserted_at,
+        source_info: %{
+          type: :screenplay,
+          screenplay_id: ref.screenplay_id,
+          screenplay_name: ref.screenplay_name,
+          element_type: ref.element_type
+        }
+      }
+    end)
   end
 
   @doc """
@@ -289,6 +378,13 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     from(r in EntityReference,
       where: r.target_type == "sheet",
       where: fragment("NOT EXISTS (SELECT 1 FROM sheets WHERE id = ?)", r.target_id)
+    )
+    |> Repo.delete_all()
+
+    # Clean up references where source screenplay element no longer exists
+    from(r in EntityReference,
+      where: r.source_type == "screenplay_element",
+      where: fragment("NOT EXISTS (SELECT 1 FROM screenplay_elements WHERE id = ?)", r.source_id)
     )
     |> Repo.delete_all()
 
@@ -367,6 +463,32 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     if type && id do
       %{type: type, id: id, context: "content"}
     end
+  end
+
+  defp extract_screenplay_element_refs(type, data, content) do
+    refs = []
+
+    # Character elements: track sheet_id reference
+    refs =
+      if type == "character" && is_map(data) do
+        case data["sheet_id"] do
+          nil -> refs
+          sheet_id -> [%{type: "sheet", id: sheet_id, context: "character"} | refs]
+        end
+      else
+        refs
+      end
+
+    # Any element with HTML content: extract inline mentions
+    refs =
+      if is_binary(content) && content != "" do
+        mentions = extract_mentions_from_html(content)
+        mentions ++ refs
+      else
+        refs
+      end
+
+    refs
   end
 
   defp extract_flow_node_refs(data) do

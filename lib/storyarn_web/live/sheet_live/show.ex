@@ -141,6 +141,7 @@ defmodule StoryarnWeb.SheetLive.Show do
           module={ReferencesTab}
           id="references-tab"
           project={@project}
+          workspace={@workspace}
           sheet={@sheet}
           blocks={@blocks}
         />

@@ -28,6 +28,7 @@ defmodule StoryarnWeb.SheetLive.Components.ReferencesTab do
         id="backlinks-section"
         sheet={@sheet}
         project={@project}
+        workspace={@workspace}
       />
     </div>
     """

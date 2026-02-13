@@ -197,6 +197,7 @@ export const DualDialogue = Node.create({
 
       return {
         dom,
+        stopEvent: (event) => dom.contains(event.target) && event.target !== dom,
         update: (updatedNode) => {
           if (updatedNode.type.name !== "dualDialogue") return false;
           node = updatedNode;

@@ -178,6 +178,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
             data-read-mode={to_string(@read_mode)}
             data-variables={Jason.encode!(@project_variables)}
             data-linked-pages={Jason.encode!(@linked_pages)}
+            data-highlight-element={@highlight_element_id}
             phx-update="ignore"
           >
           </div>
@@ -224,8 +225,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           |> assign(:link_status, :unlinked)
           |> assign(:linked_flow, nil)
           |> assign(:linked_pages, %{})
+          |> assign(:highlight_element_id, nil)
 
-        socket = if connected?(socket), do: load_connected_data(socket, screenplay), else: socket
+        socket =
+          if connected?(socket), do: load_connected_data(socket, screenplay), else: socket
 
         {:ok, socket}
 
@@ -254,6 +257,11 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     |> assign(:link_status, link_status)
     |> assign(:linked_flow, linked_flow)
     |> assign(:linked_pages, load_linked_pages(screenplay))
+  end
+
+  @impl true
+  def handle_params(params, _uri, socket) do
+    {:noreply, assign(socket, :highlight_element_id, parse_int(params["element"]))}
   end
 
   # ---------------------------------------------------------------------------
@@ -651,6 +659,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     reorder_after_sync(screenplay, ordered_ids)
 
     elements = Screenplays.list_elements(screenplay.id)
+    Enum.each(elements, &Sheets.update_screenplay_element_references/1)
     {:noreply, assign_elements(socket, elements)}
   end
 
@@ -669,7 +678,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     existing
     |> Enum.filter(&(&1.type in @editor_types))
     |> Enum.reject(&(&1.id in client_ids))
-    |> Enum.each(&Screenplays.delete_element/1)
+    |> Enum.each(fn el ->
+      Sheets.delete_screenplay_element_references(el.id)
+      Screenplays.delete_element(el)
+    end)
   end
 
   defp upsert_client_elements(screenplay, client_elements, existing_by_id) do
@@ -727,6 +739,8 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   defp persist_element_deletion(socket, element, prev) do
+    Sheets.delete_screenplay_element_references(element.id)
+
     case Screenplays.delete_element(element) do
       {:ok, _} ->
         reloaded = Screenplays.list_elements(socket.assigns.screenplay.id)
@@ -874,7 +888,11 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   defp do_import_fountain(socket, _content), do: {:noreply, socket}
 
   defp delete_all_elements(elements) do
-    Enum.each(elements, fn el -> {:ok, _} = Screenplays.delete_element(el) end)
+    Enum.each(elements, fn el ->
+      Sheets.delete_screenplay_element_references(el.id)
+      {:ok, _} = Screenplays.delete_element(el)
+    end)
+
     {:ok, :deleted}
   end
 
@@ -1019,6 +1037,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
     case Screenplays.update_element(element, %{content: name, data: data}) do
       {:ok, updated} ->
+        Sheets.update_screenplay_element_references(updated)
         {:noreply, update_element_in_list(socket, updated)}
 
       {:error, _} ->
@@ -1036,6 +1055,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
         case Screenplays.update_element(element, %{content: "", data: data}) do
           {:ok, updated} ->
+            Sheets.update_screenplay_element_references(updated)
             {:noreply, update_element_in_list(socket, updated)}
 
           {:error, _} ->
@@ -1459,6 +1479,13 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
       {side, sanitized}
     end)
+  end
+
+  defp sanitize_element_data("character", data) when is_map(data) do
+    case data["sheet_id"] do
+      nil -> %{}
+      sheet_id -> %{"sheet_id" => sheet_id}
+    end
   end
 
   defp sanitize_element_data(_type, _data), do: %{}

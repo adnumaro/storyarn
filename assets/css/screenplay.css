@@ -1078,3 +1078,20 @@
   color: var(--color-base-content);
 }
 
+/* ---------------------------------------------------------------------------
+   Backlink scroll-to highlight flash
+   --------------------------------------------------------------------------- */
+
+@keyframes sp-flash {
+  0% {
+    background-color: oklch(0.85 0.15 85);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.sp-highlight-flash {
+  animation: sp-flash 1.5s ease-out 0.4s both;
+}
+

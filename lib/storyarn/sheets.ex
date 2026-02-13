@@ -557,4 +557,18 @@ defmodule Storyarn.Sheets do
   """
   @spec count_backlinks(String.t(), id()) :: integer()
   defdelegate count_backlinks(target_type, target_id), to: ReferenceTracker
+
+  @doc """
+  Updates references from a screenplay element.
+  Called after element content is saved to track character sheet refs and mentions.
+  """
+  @spec update_screenplay_element_references(map()) :: :ok
+  defdelegate update_screenplay_element_references(element), to: ReferenceTracker
+
+  @doc """
+  Deletes all references from a screenplay element.
+  Called when an element is deleted.
+  """
+  @spec delete_screenplay_element_references(id()) :: {integer(), nil}
+  defdelegate delete_screenplay_element_references(element_id), to: ReferenceTracker
 end

@@ -27,7 +27,12 @@ defmodule StoryarnWeb.SheetLive.Components.BacklinksSection do
           <.empty_backlinks_state />
         <% else %>
           <div class="space-y-2">
-            <.backlink_row :for={backlink <- @backlinks} backlink={backlink} />
+            <.backlink_row
+              :for={backlink <- @backlinks}
+              backlink={backlink}
+              workspace={@workspace}
+              project={@project}
+            />
           </div>
         <% end %>
       <% end %>
@@ -92,6 +97,8 @@ defmodule StoryarnWeb.SheetLive.Components.BacklinksSection do
   end
 
   attr :backlink, :map, required: true
+  attr :workspace, :map, required: true
+  attr :project, :map, required: true
 
   defp backlink_row(assigns) do
     source_info = assigns.backlink.source_info
@@ -101,17 +108,27 @@ defmodule StoryarnWeb.SheetLive.Components.BacklinksSection do
       |> assign(:source_info, source_info)
       |> assign(:is_sheet, source_info[:type] == :sheet)
       |> assign(:is_flow, source_info[:type] == :flow)
+      |> assign(:is_screenplay, source_info[:type] == :screenplay)
+      |> assign(
+        :href,
+        backlink_href(source_info, assigns.workspace, assigns.project, assigns.backlink.source_id)
+      )
 
     ~H"""
-    <div class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-200/50 group">
+    <.link
+      navigate={@href}
+      class="flex items-center gap-3 p-3 rounded-lg hover:bg-base-200/50 group cursor-pointer"
+    >
       <%!-- Source type icon --%>
       <div class={[
         "flex-shrink-0 size-8 rounded flex items-center justify-center",
         @is_sheet && "bg-primary/20 text-primary",
-        @is_flow && "bg-secondary/20 text-secondary"
+        @is_flow && "bg-secondary/20 text-secondary",
+        @is_screenplay && "bg-accent/20 text-accent"
       ]}>
         <.icon :if={@is_sheet} name="file-text" class="size-4" />
         <.icon :if={@is_flow} name="git-branch" class="size-4" />
+        <.icon :if={@is_screenplay} name="book-open" class="size-4" />
       </div>
 
       <div class="flex-1 min-w-0">
@@ -122,6 +139,9 @@ defmodule StoryarnWeb.SheetLive.Components.BacklinksSection do
           </span>
           <span :if={@is_flow} class="font-medium truncate">
             {@source_info.flow_name}
+          </span>
+          <span :if={@is_screenplay} class="font-medium truncate">
+            {@source_info.screenplay_name}
           </span>
           <%= if @is_sheet && @source_info.sheet_shortcut do %>
             <span class="text-xs text-base-content/50">#{@source_info.sheet_shortcut}</span>
@@ -140,6 +160,9 @@ defmodule StoryarnWeb.SheetLive.Components.BacklinksSection do
           <%= if @is_flow do %>
             <span class="badge badge-xs badge-ghost mr-1">{@source_info.node_type}</span>
           <% end %>
+          <%= if @is_screenplay do %>
+            <span class="badge badge-xs badge-ghost mr-1">{@source_info.element_type}</span>
+          <% end %>
         </div>
       </div>
 
@@ -147,7 +170,24 @@ defmodule StoryarnWeb.SheetLive.Components.BacklinksSection do
       <div class="text-xs text-base-content/40">
         {Calendar.strftime(@backlink.inserted_at, "%b %d")}
       </div>
-    </div>
+    </.link>
     """
+  end
+
+  defp backlink_href(%{type: :sheet, sheet_id: sheet_id}, workspace, project, _source_id) do
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet_id}"
+  end
+
+  defp backlink_href(%{type: :flow, flow_id: flow_id}, workspace, project, _source_id) do
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow_id}"
+  end
+
+  defp backlink_href(
+         %{type: :screenplay, screenplay_id: screenplay_id},
+         workspace,
+         project,
+         source_id
+       ) do
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/screenplays/#{screenplay_id}?element=#{source_id}"
   end
 end

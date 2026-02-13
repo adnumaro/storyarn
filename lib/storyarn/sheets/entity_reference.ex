@@ -7,6 +7,7 @@ defmodule Storyarn.Sheets.EntityReference do
   ## Source Types
   - "block" - A block in a sheet (e.g., reference block, mention in rich_text)
   - "flow_node" - A node in a flow (e.g., speaker reference, mention in dialogue)
+  - "screenplay_element" - An element in a screenplay (e.g., character sheet ref, inline mention)
 
   ## Target Types
   - "sheet" - Reference to a sheet
@@ -23,7 +24,7 @@ defmodule Storyarn.Sheets.EntityReference do
 
   @type t :: %__MODULE__{}
 
-  @source_types ~w(block flow_node)
+  @source_types ~w(block flow_node screenplay_element)
   @target_types ~w(sheet flow)
 
   schema "entity_references" do
