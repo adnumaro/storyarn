@@ -12,6 +12,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Screenplays
+  alias Storyarn.Screenplays.CharacterExtension
   alias Storyarn.Screenplays.ContentUtils
   alias Storyarn.Screenplays.Screenplay
   alias Storyarn.Screenplays.TiptapSerialization
@@ -891,10 +892,12 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       case result do
         {:ok, _} ->
           elements = Screenplays.list_elements(screenplay.id)
+          elements = create_character_sheets_from_import(socket.assigns.project, elements)
 
           {:noreply,
            socket
            |> assign_elements(elements)
+           |> refresh_sheets_map()
            |> push_editor_content(elements)
            |> put_flash(:info, gettext("Fountain file imported successfully."))}
 
@@ -923,6 +926,80 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       end)
 
     {:ok, created}
+  end
+
+  defp create_character_sheets_from_import(project, elements) do
+    # Build a set of positions that have dialogue/parenthetical right after them.
+    # A real character cue is ALWAYS followed by dialogue or parenthetical.
+    followed_by_dialogue =
+      elements
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.reduce(MapSet.new(), fn [a, b], acc ->
+        if a.type == "character" and b.type in ~w(dialogue parenthetical) do
+          MapSet.put(acc, a.id)
+        else
+          acc
+        end
+      end)
+
+    character_elements =
+      Enum.filter(elements, &(&1.type == "character" and &1.id in followed_by_dialogue))
+
+    unique_names =
+      character_elements
+      |> Enum.map(&CharacterExtension.base_name(&1.content))
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.filter(&valid_character_sheet_name?/1)
+      |> Enum.uniq()
+
+    name_to_sheet =
+      Map.new(unique_names, fn name ->
+        case Sheets.create_sheet(project, %{name: name}) do
+          {:ok, sheet} -> {name, sheet}
+          {:error, _} -> {name, nil}
+        end
+      end)
+      |> Enum.reject(fn {_, v} -> is_nil(v) end)
+      |> Map.new()
+
+    Enum.map(elements, fn el ->
+      if el.type == "character" and el.id in followed_by_dialogue do
+        base = CharacterExtension.base_name(el.content)
+        sheet = Map.get(name_to_sheet, base)
+
+        if sheet do
+          data = Map.put(el.data || %{}, "sheet_id", sheet.id)
+
+          case Screenplays.update_element(el, %{data: data}) do
+            {:ok, updated} -> updated
+            {:error, _} -> el
+          end
+        else
+          el
+        end
+      else
+        el
+      end
+    end)
+  end
+
+  defp refresh_sheets_map(socket) do
+    all_sheets = Sheets.list_all_sheets(socket.assigns.project.id)
+    assign(socket, :sheets_map, Map.new(all_sheets, &{&1.id, &1}))
+  end
+
+  # Filter out names that are clearly not characters (misclassified transitions,
+  # scene descriptions, action lines). Real character names don't end with
+  # punctuation like : . , and don't contain scene heading markers.
+  defp valid_character_sheet_name?(name) do
+    trimmed = String.trim(name)
+
+    trimmed != "" and
+      not String.ends_with?(trimmed, ":") and
+      not String.ends_with?(trimmed, ".") and
+      not String.ends_with?(trimmed, ",") and
+      not String.starts_with?(trimmed, ">") and
+      not Regex.match?(~r"\b(EXT|INT|EST)\b[./]", trimmed)
   end
 
   defp do_update_screenplay_condition(socket, id, condition) do

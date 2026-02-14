@@ -110,55 +110,110 @@ defmodule Storyarn.Screenplays.Import.Fountain do
   defp parse_body(""), do: []
 
   defp parse_body(text) do
-    text
-    |> String.trim()
-    |> split_paragraphs()
-    |> classify_paragraphs()
+    text = String.trim(text)
+    if text == "", do: [], else: do_parse_body(text)
   end
 
-  defp split_paragraphs(text) do
+  defp do_parse_body(text) do
+    paragraphs = split_paragraphs_with_indent(text)
+    profile = detect_indent_profile(paragraphs)
+
+    Enum.flat_map(paragraphs, fn {indent, content} ->
+      classify_one(indent, content, profile)
+    end)
+  end
+
+  defp split_paragraphs_with_indent(text) do
     Regex.split(~r/\n\s*\n/, text)
-    |> Enum.map(&String.trim/1)
-    |> Enum.reject(&(&1 == ""))
+    |> Enum.map(fn raw ->
+      first_line = raw |> String.split("\n") |> hd()
+      {leading_spaces(first_line), String.trim(raw)}
+    end)
+    |> Enum.reject(fn {_, c} -> c == "" end)
   end
 
-  defp classify_paragraphs(paragraphs) do
-    classify_paragraphs(paragraphs, [])
+  defp leading_spaces(line) do
+    byte_size(line) - byte_size(String.trim_leading(line))
   end
 
-  defp classify_paragraphs([], acc), do: Enum.reverse(acc)
+  # Detect indent profile for the document.
+  # Returns nil for non-indented docs, or %{action: n, dialogue: n, character: n}
+  defp detect_indent_profile(paragraphs) do
+    indents = Enum.map(paragraphs, &elem(&1, 0))
+    min_indent = Enum.min(indents, fn -> 0 end)
+    max_indent = Enum.max(indents, fn -> 0 end)
 
-  defp classify_paragraphs([paragraph | rest], acc) do
-    {elements, remaining} = classify_paragraph(paragraph, rest)
-    classify_paragraphs(remaining, Enum.reverse(elements) ++ acc)
+    if max_indent - min_indent <= 10, do: nil, else: build_indent_profile(paragraphs, min_indent)
+  end
+
+  defp build_indent_profile(paragraphs, min_indent) do
+    # ALL CAPS short lines well above base indent → character names
+    char_indents =
+      paragraphs
+      |> Enum.filter(fn {indent, content} ->
+        first = content |> String.split("\n") |> hd()
+
+        indent > min_indent + 5 and all_upper?(first) and
+          String.length(first) < 50 and String.length(first) > 1
+      end)
+      |> Enum.map(&elem(&1, 0))
+
+    if char_indents == [] do
+      nil
+    else
+      {char_level, _} = char_indents |> Enum.frequencies() |> Enum.max_by(&elem(&1, 1))
+      # Dialogue sits between action and character indent
+      dialogue_min = min_indent + 3
+      char_min = max(div(char_level + min_indent, 2), min_indent + 5)
+
+      %{action_max: dialogue_min, dialogue_min: dialogue_min, character_min: char_min}
+    end
   end
 
   # -- Single paragraph classification ----------------------------------------
 
-  # Classification pipeline: try each detector in order, return first match.
-  # Split into structural types and text types to keep cyclomatic complexity low.
-  defp classify_paragraph(paragraph, rest) do
-    classify_structural(paragraph, rest) || classify_text(paragraph, rest)
+  defp classify_one(indent, paragraph, profile) do
+    classify_structural(paragraph) || classify_text(indent, paragraph, profile)
   end
 
-  defp classify_structural(paragraph, rest) do
+  defp classify_structural(paragraph) do
     cond do
-      page_break?(paragraph) -> {[make_el("page_break", "")], rest}
-      section?(paragraph) -> {[make_section(paragraph)], rest}
-      note?(paragraph) -> {[make_note(paragraph)], rest}
-      forced_scene_heading?(paragraph) -> {[make_forced_heading(paragraph)], rest}
-      scene_heading?(paragraph) -> {[make_el("scene_heading", paragraph)], rest}
+      page_break?(paragraph) -> [make_el("page_break", "")]
+      section?(paragraph) -> [make_section(paragraph)]
+      note?(paragraph) -> [make_note(paragraph)]
+      forced_scene_heading?(paragraph) -> [make_forced_heading(paragraph)]
+      scene_heading?(paragraph) -> [make_el("scene_heading", paragraph)]
       true -> nil
     end
   end
 
-  defp classify_text(paragraph, rest) do
+  defp classify_text(indent, paragraph, profile) do
+    first_line = paragraph |> String.split("\n") |> hd() |> String.trim()
+
     cond do
-      forced_transition?(paragraph) -> {[make_forced_transition(paragraph)], rest}
-      transition?(paragraph) -> {[make_el("transition", paragraph)], rest}
-      character_paragraph?(paragraph) -> parse_dialogue_block(paragraph, rest)
-      forced_action?(paragraph) -> {[make_forced_action(paragraph)], rest}
-      true -> {[make_el("action", paragraph)], rest}
+      forced_transition?(paragraph) ->
+        [make_forced_transition(paragraph)]
+
+      transition?(paragraph) ->
+        [make_el("transition", paragraph)]
+
+      centered_text?(paragraph) ->
+        [make_centered(paragraph)]
+
+      character_paragraph?(indent, paragraph, profile) ->
+        parse_dialogue_elements(paragraph)
+
+      # Indented doc: lines between action and character zones → dialogue/parenthetical
+      profile != nil and indent >= profile.dialogue_min and indent < profile.character_min ->
+        if String.starts_with?(first_line, "("),
+          do: [make_el("parenthetical", paragraph)],
+          else: [make_el("dialogue", paragraph)]
+
+      forced_action?(paragraph) ->
+        [make_forced_action(paragraph)]
+
+      true ->
+        [make_el("action", paragraph)]
     end
   end
 
@@ -177,11 +232,27 @@ defmodule Storyarn.Screenplays.Import.Fountain do
     do: String.starts_with?(p, ">") and not String.ends_with?(p, "<")
 
   defp transition?(p),
-    do: Regex.match?(@transition_pattern, p) and all_upper?(p)
+    do: (Regex.match?(@transition_pattern, p) or String.trim(p) == "FADE IN:") and all_upper?(p)
 
-  defp character_paragraph?(paragraph) do
-    lines = String.split(paragraph, "\n") |> Enum.map(&String.trim/1)
-    character_line?(hd(lines))
+  defp centered_text?(p),
+    do: String.starts_with?(p, ">") and String.ends_with?(p, "<")
+
+  defp character_paragraph?(indent, paragraph, profile) do
+    lines =
+      paragraph
+      |> String.split("\n")
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+
+    first = hd(lines)
+
+    if profile != nil do
+      # Indented document: indent is the primary signal
+      indent >= profile.character_min and character_line?(first)
+    else
+      # Non-indented (plain Fountain): require dialogue in same paragraph
+      length(lines) > 1 and character_line?(first)
+    end
   end
 
   defp forced_action?(p), do: String.starts_with?(p, "!")
@@ -214,6 +285,16 @@ defmodule Storyarn.Screenplays.Import.Fountain do
     make_el("action", text)
   end
 
+  defp make_centered(paragraph) do
+    text =
+      paragraph
+      |> String.trim_leading(">")
+      |> String.trim_trailing("<")
+      |> String.trim()
+
+    make_el("action", text)
+  end
+
   # -- Character/dialogue parsing (state machine) ----------------------------
 
   defp character_line?(line) do
@@ -221,6 +302,12 @@ defmodule Storyarn.Screenplays.Import.Fountain do
     clean = strip_dual_marker(line)
 
     cond do
+      clean == "" -> false
+      # Trailing punctuation → not a character (transitions, descriptions, exclamations)
+      String.ends_with?(clean, ":") -> false
+      String.ends_with?(clean, ".") -> false
+      String.ends_with?(clean, "!") -> false
+      String.ends_with?(clean, ",") -> false
       String.starts_with?(clean, "@") -> true
       all_upper?(clean) and not Regex.match?(@transition_pattern, clean) -> true
       true -> false
@@ -233,7 +320,7 @@ defmodule Storyarn.Screenplays.Import.Fountain do
       else: line
   end
 
-  defp parse_dialogue_block(paragraph, rest) do
+  defp parse_dialogue_elements(paragraph) do
     lines = String.split(paragraph, "\n") |> Enum.map(&String.trim/1)
     {char_name, dual?} = parse_character_name(hd(lines))
 
@@ -249,13 +336,10 @@ defmodule Storyarn.Screenplays.Import.Fountain do
     inline_lines = tl(lines) |> Enum.reject(&(&1 == ""))
 
     if inline_lines == [] do
-      # Single-line character paragraph — look at next paragraphs for dialogue
-      {dialogue_elements, remaining} = collect_dialogue(rest, [])
-      {[char_el | dialogue_elements], remaining}
+      # Indented document: character alone in paragraph, dialogue is next paragraph
+      [char_el]
     else
-      # Multi-line paragraph — extract dialogue from within (standard Fountain)
-      inline_elements = parse_inline_dialogue(inline_lines)
-      {[char_el | inline_elements], rest}
+      [char_el | parse_inline_dialogue(inline_lines)]
     end
   end
 
@@ -284,38 +368,6 @@ defmodule Storyarn.Screenplays.Import.Fountain do
     else
       {line, false}
     end
-  end
-
-  defp collect_dialogue([], acc), do: {Enum.reverse(acc), []}
-
-  defp collect_dialogue([paragraph | rest], acc) do
-    trimmed = String.trim(paragraph)
-
-    cond do
-      String.starts_with?(trimmed, "(") and not has_dialogue?(acc) ->
-        el = make_el("parenthetical", trimmed)
-        collect_dialogue(rest, [el | acc])
-
-      not has_dialogue?(acc) and not looks_like_new_element?(trimmed) ->
-        el = make_el("dialogue", trimmed)
-        {Enum.reverse([el | acc]), rest}
-
-      true ->
-        {Enum.reverse(acc), [paragraph | rest]}
-    end
-  end
-
-  defp has_dialogue?(acc) do
-    Enum.any?(acc, &(&1.type == "dialogue"))
-  end
-
-  defp looks_like_new_element?(text) do
-    String.starts_with?(text, "#") or
-      String.starts_with?(text, ">") or
-      String.starts_with?(text, "[[") or
-      String.starts_with?(text, "===") or
-      forced_scene_heading?(text) or
-      Regex.match?(@scene_heading_pattern, text)
   end
 
   # -- Section parsing --------------------------------------------------------

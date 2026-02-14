@@ -112,8 +112,8 @@ defmodule Storyarn.Screenplays.Import.FountainTest do
   # -------------------------------------------------------------------------
 
   describe "character and dialogue" do
-    test "character followed by dialogue" do
-      text = "INT. OFFICE - DAY\n\nJOHN\n\nHello there."
+    test "character followed by dialogue (same paragraph)" do
+      text = "INT. OFFICE - DAY\n\nJOHN\nHello there."
       result = Fountain.parse(text)
 
       types = Enum.map(result, & &1.type)
@@ -127,8 +127,17 @@ defmodule Storyarn.Screenplays.Import.FountainTest do
       assert dial.content == "Hello there."
     end
 
+    test "standalone all-caps line without dialogue is action, not character" do
+      text = "INT. OFFICE - DAY\n\nJOHN\n\nHe walks out."
+      result = Fountain.parse(text)
+
+      types = Enum.map(result, & &1.type)
+      refute "character" in types
+      assert Enum.count(result, &(&1.type == "action")) == 2
+    end
+
     test "character with parenthetical and dialogue" do
-      text = "JOHN\n\n(whispering)\n\nHello there."
+      text = "JOHN\n(whispering)\nHello there."
       result = Fountain.parse(text)
 
       types = Enum.map(result, & &1.type)
@@ -138,14 +147,14 @@ defmodule Storyarn.Screenplays.Import.FountainTest do
     end
 
     test "character with extensions (V.O.)" do
-      text = "JOHN (V.O.)\n\nHello there."
+      text = "JOHN (V.O.)\nHello there."
       result = Fountain.parse(text)
       char = Enum.find(result, &(&1.type == "character"))
       assert char.content == "JOHN (V.O.)"
     end
 
     test "forced character with @" do
-      text = "@McCOY\n\nWhat do you think?"
+      text = "@McCOY\nWhat do you think?"
       result = Fountain.parse(text)
       char = Enum.find(result, &(&1.type == "character"))
       assert char.content == "McCOY"
@@ -168,6 +177,26 @@ defmodule Storyarn.Screenplays.Import.FountainTest do
       text = "> FADE TO BLACK"
       result = Fountain.parse(text)
       assert [%{type: "transition", content: "FADE TO BLACK"}] = result
+    end
+
+    test "FADE IN: is recognized as transition" do
+      text = "Title: My Script\n\nFADE IN:\n\nINT. OFFICE - DAY"
+      result = Fountain.parse(text)
+      trans = Enum.find(result, &(&1.type == "transition"))
+      assert trans
+      assert trans.content == "FADE IN:"
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  # Centered text
+  # -------------------------------------------------------------------------
+
+  describe "centered text" do
+    test "> TEXT < is classified as action" do
+      text = "> THE END <"
+      result = Fountain.parse(text)
+      assert [%{type: "action", content: "THE END"}] = result
     end
   end
 
@@ -216,7 +245,7 @@ defmodule Storyarn.Screenplays.Import.FountainTest do
 
   describe "dual dialogue" do
     test "character with ^ marker" do
-      text = "ALICE\n\nHello!\n\nBOB ^\n\nHi there!"
+      text = "ALICE\nHello!\n\nBOB ^\nHi there!"
       result = Fountain.parse(text)
 
       # Should have two characters and two dialogues
@@ -259,24 +288,8 @@ defmodule Storyarn.Screenplays.Import.FountainTest do
 
   describe "complete document" do
     test "full fountain script" do
-      text = """
-      Title: My Script
-      Author: Me
-
-      INT. OFFICE - DAY
-
-      JOHN walks into the room.
-
-      JOHN
-
-      Hello, world!
-
-      CUT TO:
-
-      EXT. PARK - NIGHT
-
-      It's dark outside.
-      """
+      text =
+        "Title: My Script\nAuthor: Me\n\nINT. OFFICE - DAY\n\nJOHN walks into the room.\n\nJOHN\nHello, world!\n\nCUT TO:\n\nEXT. PARK - NIGHT\n\nIt's dark outside."
 
       result = Fountain.parse(text)
 
@@ -303,7 +316,7 @@ defmodule Storyarn.Screenplays.Import.FountainTest do
       alias Storyarn.Screenplays.Export.Fountain, as: FountainExport
 
       input =
-        "INT. OFFICE - DAY\n\nJOHN walks into the room.\n\nJOHN\n\nHello there.\n\nCUT TO:\n\nEXT. PARK - NIGHT\n\nIt is dark outside."
+        "INT. OFFICE - DAY\n\nJOHN walks into the room.\n\nJOHN\nHello there.\n\nCUT TO:\n\nEXT. PARK - NIGHT\n\nIt is dark outside."
 
       parsed = Fountain.parse(input)
       output = FountainExport.export(parsed)
@@ -358,6 +371,55 @@ defmodule Storyarn.Screenplays.Import.FountainTest do
 
     test "nil-like input" do
       assert Fountain.parse(nil) == []
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  # Indented screenplay detection
+  # -------------------------------------------------------------------------
+
+  describe "indented screenplay" do
+    test "all-caps at low indent is action, not character" do
+      text =
+        "Title: Test\n\n" <>
+          "                         FADE IN:\n\n" <>
+          "A RIVER.\n\n" <>
+          "We're underwater.\n\n" <>
+          "                    EDWARD (V.O.)\n" <>
+          "        There are some fish that\n" <>
+          "        cannot be caught.\n\n" <>
+          "TWO OVERSIZED HANDS reach into the water."
+
+      result = Fountain.parse(text)
+
+      # EDWARD should be a character
+      char = Enum.find(result, &(&1.type == "character"))
+      assert char
+      assert char.content =~ "EDWARD"
+
+      # Low-indent ALL CAPS should NOT be characters
+      contents = result |> Enum.filter(&(&1.type == "character")) |> Enum.map(& &1.content)
+      refute Enum.any?(contents, &(&1 =~ "FADE"))
+      refute Enum.any?(contents, &(&1 =~ "TWO OVERSIZED"))
+
+      # Indented text after character should be dialogue
+      dial = Enum.find(result, &(&1.type == "dialogue"))
+      assert dial
+      assert dial.content =~ "fish"
+    end
+
+    test "punctuation-ending names rejected even at high indent" do
+      text =
+        "                    TITLE OVER:\n" <>
+          "        Some text.\n\n" <>
+          "                    JOHN\n" <>
+          "        Hello there."
+
+      result = Fountain.parse(text)
+
+      chars = Enum.filter(result, &(&1.type == "character"))
+      assert length(chars) == 1
+      assert hd(chars).content == "JOHN"
     end
   end
 end
