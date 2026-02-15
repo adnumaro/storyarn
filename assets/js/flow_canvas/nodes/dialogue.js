@@ -2,8 +2,8 @@
  * Dialogue node type definition.
  */
 import { html } from "lit";
-import { Lock, Zap, MessageSquare } from "lucide";
-import { createIconSvg, createIconHTML } from "../node_config.js";
+import { MessageSquare } from "lucide";
+import { createIconSvg } from "../node_config.js";
 import {
   nodeShell,
   defaultHeader,
@@ -11,10 +11,6 @@ import {
   renderPreview,
   renderSockets,
 } from "./render_helpers.js";
-
-// Pre-create indicator icons
-const LOCK_ICON = createIconHTML(Lock);
-const ZAP_ICON = createIconHTML(Zap);
 
 export default {
   config: {
@@ -68,14 +64,6 @@ export default {
 
   getIndicators(data) {
     const indicators = [];
-    if (data.input_condition)
-      indicators.push({ svg: LOCK_ICON, title: "Has input condition", class: "input-condition" });
-    if (data.output_instruction)
-      indicators.push({
-        svg: ZAP_ICON,
-        title: "Has output instruction",
-        class: "output-instruction",
-      });
     if (data.audio_asset_id) indicators.push({ type: "audio", title: "Has audio" });
     return indicators;
   },
@@ -86,12 +74,13 @@ export default {
   },
 
   getOutputBadges(key, data) {
-    const badges = [];
     const response = data.responses?.find((r) => r.id === key);
-    if (!response?.text) {
+    if (!response) return [];
+    const badges = [];
+    if (!response.text) {
       badges.push({ type: "error", title: "Empty response text" });
     }
-    if (response?.condition) {
+    if (response.condition) {
       badges.push({ text: "?", class: "condition-badge", title: "Has condition" });
     }
     return badges;

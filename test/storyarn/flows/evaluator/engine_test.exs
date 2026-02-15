@@ -580,86 +580,6 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
   end
 
   # =============================================================================
-  # Dialogue — input_condition and output_instruction
-  # =============================================================================
-
-  describe "dialogue input_condition" do
-    test "logs warning when input condition fails" do
-      condition_json =
-        Jason.encode!(%{
-          "logic" => "all",
-          "rules" => [
-            %{
-              "id" => "rule1",
-              "sheet" => "mc.jaime",
-              "variable" => "health",
-              "operator" => "greater_than",
-              "value" => "200"
-            }
-          ]
-        })
-
-      nodes = %{
-        1 => node(1, "entry"),
-        2 =>
-          node(2, "dialogue", %{
-            "text" => "Guarded dialogue",
-            "input_condition" => condition_json,
-            "responses" => []
-          }),
-        3 => node(3, "exit")
-      }
-
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
-      variables = %{"mc.jaime.health" => var(80, "number")}
-      state = Engine.init(variables, 1)
-
-      {:ok, state} = Engine.step(state, nodes, conns)
-      {:ok, state} = Engine.step(state, nodes, conns)
-
-      assert Enum.any?(state.console, &(&1.message =~ "Input condition failed"))
-    end
-  end
-
-  describe "dialogue output_instruction" do
-    test "executes output instruction and mutates variables" do
-      instruction_json =
-        Jason.encode!([
-          %{
-            "id" => "a1",
-            "sheet" => "mc.jaime",
-            "variable" => "health",
-            "operator" => "subtract",
-            "value" => "20",
-            "value_type" => "literal",
-            "value_sheet" => nil
-          }
-        ])
-
-      nodes = %{
-        1 => node(1, "entry"),
-        2 =>
-          node(2, "dialogue", %{
-            "text" => "With instruction",
-            "output_instruction" => instruction_json,
-            "responses" => []
-          }),
-        3 => node(3, "exit")
-      }
-
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
-      variables = %{"mc.jaime.health" => var(100, "number")}
-      state = Engine.init(variables, 1)
-
-      {:ok, state} = Engine.step(state, nodes, conns)
-      {:ok, state} = Engine.step(state, nodes, conns)
-
-      assert state.variables["mc.jaime.health"].value == 80.0
-      assert Enum.any?(state.console, &(&1.message =~ "Output instruction"))
-    end
-  end
-
-  # =============================================================================
   # Condition node — boolean mode
   # =============================================================================
 
@@ -1410,46 +1330,6 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       refs = Enum.map(state.history, & &1.variable_ref)
       assert "mc.jaime.health" in refs
       assert "world.quest_started" in refs
-    end
-
-    test "dialogue output_instruction populates history" do
-      instruction_json =
-        Jason.encode!([
-          %{
-            "id" => "a1",
-            "sheet" => "mc.jaime",
-            "variable" => "health",
-            "operator" => "subtract",
-            "value" => "20",
-            "value_type" => "literal",
-            "value_sheet" => nil
-          }
-        ])
-
-      nodes = %{
-        1 => node(1, "entry"),
-        2 =>
-          node(2, "dialogue", %{
-            "text" => "With output instruction",
-            "output_instruction" => instruction_json,
-            "responses" => []
-          }),
-        3 => node(3, "exit")
-      }
-
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
-      variables = %{"mc.jaime.health" => var(100, "number")}
-      state = Engine.init(variables, 1)
-
-      {:ok, state} = Engine.step(state, nodes, conns)
-      {:ok, state} = Engine.step(state, nodes, conns)
-
-      assert length(state.history) == 1
-      [entry] = state.history
-      assert entry.variable_ref == "mc.jaime.health"
-      assert entry.old_value == 100
-      assert entry.new_value == 80.0
-      assert entry.source == :instruction
     end
 
     test "response instruction populates history" do

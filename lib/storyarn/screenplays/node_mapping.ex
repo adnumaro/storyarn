@@ -100,8 +100,6 @@ defmodule Storyarn.Screenplays.NodeMapping do
       "audio_asset_id" => nil,
       "technical_id" => "",
       "localization_id" => "",
-      "input_condition" => "",
-      "output_instruction" => "",
       "responses" => map_responses(response)
     }
 
@@ -151,8 +149,6 @@ defmodule Storyarn.Screenplays.NodeMapping do
         "audio_asset_id" => nil,
         "technical_id" => "",
         "localization_id" => "",
-        "input_condition" => "",
-        "output_instruction" => "",
         "responses" => []
       },
       element_ids: [element.id],
@@ -199,8 +195,6 @@ defmodule Storyarn.Screenplays.NodeMapping do
         "audio_asset_id" => nil,
         "technical_id" => "",
         "localization_id" => "",
-        "input_condition" => "",
-        "output_instruction" => "",
         "responses" => map_responses(element)
       },
       element_ids: [element.id],
@@ -261,8 +255,6 @@ defmodule Storyarn.Screenplays.NodeMapping do
           "audio_asset_id" => nil,
           "technical_id" => "",
           "localization_id" => "",
-          "input_condition" => "",
-          "output_instruction" => "",
           "responses" => [],
           "dual_dialogue" => right
         }),

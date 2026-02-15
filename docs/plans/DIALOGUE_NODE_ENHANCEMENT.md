@@ -45,10 +45,6 @@ def default_node_data("dialogue") do
     "technical_id" => "",
     "localization_id" => generate_localization_id(),
 
-    # === LOGIC ===
-    "input_condition" => "",
-    "output_instruction" => "",
-
     # === RESPONSES ===
     "responses" => []
   }
@@ -148,11 +144,6 @@ end
 - Add/remove cases in properties panel
 - Default case (empty value) supported
 - Database migration completed
-
-**Dialogue Logic Fields:**
-- `input_condition` - Visibility guard (🔒 indicator)
-- `output_instruction` - Side effect on exit (⚡ indicator)
-- Collapsible "Logic" section in properties
 
 **Response Logic:**
 - `condition` - Uses visual condition builder
@@ -310,8 +301,6 @@ Improve visual representation of dialogue nodes on canvas.
 **Visual Indicators Summary:**
 | Indicator | Meaning | Location |
 |-----------|---------|----------|
-| 🔒 | Has input_condition | Header right |
-| ⚡ | Has output_instruction | Header right |
 | 🔊 | Has audio attached | Header right |
 | [?] | Response has condition | Response label |
 | 📎 | Has references (Phase 6) | Header right |
@@ -355,8 +344,6 @@ The JSON export should include all dialogue fields:
         "audio_asset_id": "asset_789",
         "technical_id": "main_merchant_1",
         "localization_id": "dialogue.main.abc123",
-        "input_condition": "reputation > 50",
-        "output_instruction": "set('met_merchant', true)",
         "template_id": null,
         "template_properties": {},
         "references": [],
@@ -406,12 +393,8 @@ The JSON export should include all dialogue fields:
 - [x] Word count displays accurately
 
 **Logic:**
-- [x] Input condition saves and loads
-- [x] Output instruction saves and loads
 - [x] Response condition builder works
 - [x] Response instruction saves and loads
-- [x] 🔒 indicator shows when input_condition set
-- [x] ⚡ indicator shows when output_instruction set
 - [x] [?] badge shows on responses with conditions
 
 **Condition Node:**

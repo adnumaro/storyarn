@@ -102,7 +102,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
   end
 
   @doc """
-  Executes assignments from a JSON string (as stored in dialogue node output_instruction).
+  Executes assignments from a JSON string.
 
   Parses the string first, then executes.
   """

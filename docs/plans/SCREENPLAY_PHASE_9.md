@@ -439,8 +439,6 @@ defp map_dual_dialogue(element) do
       "audio_asset_id" => nil,
       "technical_id" => "",
       "localization_id" => "",
-      "input_condition" => "",
-      "output_instruction" => "",
       "responses" => [],
       "dual_dialogue" => %{
         "text" => right["dialogue"] || "",

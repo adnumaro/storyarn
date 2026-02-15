@@ -3,7 +3,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   Dialogue node type definition.
 
   The primary conversation node. Supports speaker, text, stage directions,
-  responses, audio, conditions, instructions, and technical fields.
+  responses, audio, and technical fields.
 
   Also contains all dialogue-specific event handlers:
   - Response CRUD (add, remove, update text/condition/instruction)
@@ -34,8 +34,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
       "audio_asset_id" => nil,
       "technical_id" => "",
       "localization_id" => generate_localization_id(),
-      "input_condition" => "",
-      "output_instruction" => "",
       "responses" => []
     }
   end
@@ -48,8 +46,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     "audio_asset_id" => nil,
     "technical_id" => "",
     "localization_id" => "",
-    "input_condition" => "",
-    "output_instruction" => "",
     "responses" => []
   }
 

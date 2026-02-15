@@ -19,8 +19,6 @@ The current `DIALOGUE_NODE_ENHANCEMENT.md` proposes conditions in **three locati
 | Location          | Field                          | Purpose                           |
 |-------------------|--------------------------------|-----------------------------------|
 | Connection (edge) | `condition`, `condition_order` | Routing logic                     |
-| Dialogue node     | `input_condition`              | Node availability                 |
-| Dialogue node     | `output_instruction`           | Side effects on exit              |
 | Response          | `condition`, `instruction`     | Response availability and effects |
 
 **Problem**: Conditions on connections duplicate the functionality of Condition nodes and contradict industry patterns.
@@ -69,45 +67,12 @@ The current `DIALOGUE_NODE_ENHANCEMENT.md` proposes conditions in **three locati
 
 ---
 
-### 3. Keep Input Condition on Dialogue Nodes
-
-**Rationale**:
-- Matches articy's "input pin" pattern
-- Determines node **availability**, not routing
-- Different semantic meaning from Condition nodes:
-  - Condition node = "Which path to take?"
-  - Input condition = "Is this content available?"
-
-**Use cases**:
-- `has_item("key")` - Only show if player has item
-- `reputation > 50` - Only show if reputation is high enough
-- `!talked_to_merchant` - Only show if hasn't talked yet
-
-**Keep as-is**: The `input_condition` field with 🔒 indicator is correct.
-
----
-
-### 4. Keep Output Instruction on Dialogue Nodes
-
-**Rationale**:
-- Matches articy's "output pin" pattern
-- Side effects that **always** execute when leaving the node
-- Clear semantic: "What happens after this dialogue?"
-
-**Keep as-is**: The `output_instruction` field with ⚡ indicator is correct.
-
----
-
-### 5. Keep Condition/Instruction on Responses
+### 3. Keep Condition/Instruction on Responses
 
 **Rationale**:
 - Responses are "mini-choices" within a dialogue node
 - Need their own availability conditions
 - Need their own side effects when selected
-
-**Semantic difference**:
-- `output_instruction` = Always executes on exit
-- `response.instruction` = Only executes if that response is chosen
 
 **Keep as-is**: The response `condition` and `instruction` fields are correct.
 
@@ -124,12 +89,6 @@ The current `DIALOGUE_NODE_ENHANCEMENT.md` proposes conditions in **three locati
 │ Route based on   │ Condition Node (switch/case)                         │
 │ game state       │ → Visible, explicit, multiple outputs                │
 ├──────────────────┼──────────────────────────────────────────────────────┤
-│ Hide/show a      │ input_condition on Dialogue node                     │
-│ dialogue node    │ → 🔒 indicator                                       │
-├──────────────────┼──────────────────────────────────────────────────────┤
-│ Execute action   │ output_instruction on Dialogue node                  │
-│ after dialogue   │ → ⚡ indicator                                       │
-├──────────────────┼──────────────────────────────────────────────────────┤
 │ Hide/show a      │ condition on Response                                │
 │ response option  │ → [?] indicator                                      │
 ├──────────────────┼──────────────────────────────────────────────────────┤
@@ -143,9 +102,8 @@ The current `DIALOGUE_NODE_ENHANCEMENT.md` proposes conditions in **three locati
 
 ## Visual Indicators Summary
 
-| Elementn       | Has Condition                | Has Instruction        |
+| Element        | Has Condition                | Has Instruction        |
 |----------------|------------------------------|------------------------|
-| Dialogue node  | 🔒 (input_condition)         | ⚡ (output_instruction) |
 | Response       | [?] badge                    | (no indicator needed)  |
 | Condition node | Expression visible in header | N/A                    |
 | Connection     | None (simple line)           | None                   |
@@ -203,8 +161,6 @@ end
 | Feature                       | Status   | Reason                             |
 |-------------------------------|----------|------------------------------------|
 | Condition node (switch/case)  | KEEP     | Industry standard, high visibility |
-| `dialogue.input_condition`    | KEEP     | Matches articy input pins          |
-| `dialogue.output_instruction` | KEEP     | Matches articy output pins         |
 | `response.condition`          | KEEP     | Standard for dialogue choices      |
 | `response.instruction`        | KEEP     | Standard for choice effects        |
 | All visual indicators         | KEEP     | Improves discoverability           |

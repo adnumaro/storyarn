@@ -123,8 +123,6 @@ Sheets.list_project_variables(project_id)
   "audio_asset_id" => nil,
   "technical_id" => "",
   "localization_id" => "",
-  "input_condition" => "",         # Visibility guard
-  "output_instruction" => "",      # Side effect on exit
   "responses" => [%{"id" => "", "text" => "", "condition" => "", "instruction" => ""}]
 }
 ```
@@ -137,7 +135,7 @@ Sheets.list_project_variables(project_id)
 }
 ```
 
-**Visual indicators:** 🔒 (input_condition) | ⚡ (output_instruction) | 🔊 (audio) | [?] (response condition)
+**Visual indicators:** 🔊 (audio) | [?] (response condition)
 
 **Key files (per-node-type architecture):**
 ```

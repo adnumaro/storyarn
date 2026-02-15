@@ -206,13 +206,6 @@ export const storyarnNodeStyles = css`
     opacity: 0.9;
   }
 
-  .logic-indicator.input-condition {
-    color: rgba(255, 255, 255, 0.9);
-  }
-
-  .logic-indicator.output-instruction {
-    color: rgba(255, 255, 255, 0.9);
-  }
 
   :host(.nav-highlight) .node {
     animation: nav-pulse 0.6s ease-in-out 4;

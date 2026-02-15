@@ -597,10 +597,6 @@ resp_crawl = Seed.rid()
         "<p>Your body screams in protest. Every joint a declaration of war against consciousness.</p>",
       "stage_directions" => "The detective drags himself upright.",
       "technical_id" => "PRO_CRAWL_01",
-      "output_instruction" =>
-        Seed.instruction_json([
-          %{sheet: "char.detective", variable: "health", operator: "subtract", value: "1"}
-        ]),
       "responses" => [
         %{
           "id" => resp_crawl,
@@ -632,10 +628,6 @@ resp_crawl = Seed.rid()
       "text" => "<p>The darkness takes you back. This time it feels permanent.</p>",
       "stage_directions" => "GAME OVER.",
       "technical_id" => "PRO_SLEEP_01",
-      "output_instruction" =>
-        Seed.instruction_json([
-          %{sheet: "char.detective", variable: "is_alive", operator: "set_false"}
-        ]),
       "responses" => []
     }
   })
@@ -857,10 +849,6 @@ not_enough_case = Seed.cid()
         "<p>\"Good work, detective. We have enough to proceed to the next phase of the investigation.\"</p>",
       "stage_directions" => "Kim nods approvingly.",
       "technical_id" => "CH1_ENOUGH_01",
-      "output_instruction" =>
-        Seed.instruction_json([
-          %{sheet: "char.kim", variable: "respect", operator: "add", value: "10"}
-        ]),
       "responses" => []
     }
   })
@@ -1076,10 +1064,6 @@ resp_ask_kim_badge = Seed.rid()
       "text" =>
         "<p>\"No.\" A pause. \"But I'll note it in my report. We'll sort it out after the case.\"</p>",
       "technical_id" => "QB_KIM_BADGE",
-      "output_instruction" =>
-        Seed.instruction_json([
-          %{sheet: "char.kim", variable: "trust", operator: "subtract", value: "5"}
-        ]),
       "responses" => []
     }
   })
@@ -1146,15 +1130,6 @@ resp_refuse = Seed.rid()
         "<p>Evrart leans back in his chair, which groans under the effort. \"I need you to open a door for me, officer. Just a little door. Nothing illegal.\"</p>",
       "stage_directions" => "His smile does not reach his eyes.",
       "technical_id" => "QE_PITCH_01",
-      "input_condition" =>
-        Seed.condition_json("all", [
-          %{
-            sheet: "char.evrart",
-            variable: "quest_completed",
-            operator: "is_false",
-            value: nil
-          }
-        ]),
       "responses" => [
         %{
           "id" => resp_accept,
@@ -1351,10 +1326,6 @@ resp_case_back = Seed.rid()
         "<p>\"The victim is a mercenary. Corporate security, likely Wild Pines. He was hanged — not suicide. The belt marks suggest he was dragged.\"</p><p>\"Whoever did this wanted to send a message.\"</p>",
       "stage_directions" => "Kim flips through his notes.",
       "technical_id" => "DK_CASE_01",
-      "output_instruction" =>
-        Seed.instruction_json([
-          %{sheet: "items.evidence", variable: "witness_testimony", operator: "set_true"}
-        ]),
       "responses" => [
         %{
           "id" => resp_case_back,
@@ -1380,11 +1351,6 @@ resp_personal_back = Seed.rid()
         "<p>\"I've been with Precinct 57 for fifteen years.\" He adjusts his glasses. \"Before that... well. That's a longer story.\"</p>",
       "stage_directions" => "Kim's expression softens briefly.",
       "technical_id" => "DK_PERSONAL_01",
-      "output_instruction" =>
-        Seed.instruction_json([
-          %{sheet: "char.kim", variable: "trust", operator: "add", value: "5"},
-          %{sheet: "char.kim", variable: "mood", operator: "set", value: "pleased"}
-        ]),
       "responses" => [
         %{
           "id" => resp_personal_back,
@@ -1572,11 +1538,6 @@ resp_gentle_lie = Seed.rid()
         "<p>Her composure cracks, just for a moment. \"I... Fine. I was with him that evening. But I didn't kill him. I couldn't have.\"</p>",
       "stage_directions" => "She stubs out the cigarette with trembling fingers.",
       "technical_id" => "DKL_PRESSURE_01",
-      "output_instruction" =>
-        Seed.instruction_json([
-          %{sheet: "char.klaasje", variable: "told_truth", operator: "set_true"},
-          %{sheet: "char.klaasje", variable: "trust", operator: "add", value: "5"}
-        ]),
       "responses" => []
     }
   })
@@ -1592,10 +1553,6 @@ resp_gentle_lie = Seed.rid()
       "text" =>
         "<p>Her eyes widen. \"Where did you—\" She catches herself. \"That doesn't prove anything. Anyone could have worn that armor.\"</p>",
       "technical_id" => "DKL_EVIDENCE_01",
-      "output_instruction" =>
-        Seed.instruction_json([
-          %{sheet: "char.klaasje", variable: "trust", operator: "subtract", value: "15"}
-        ]),
       "responses" => []
     }
   })

@@ -453,13 +453,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     data = node.data || %{}
     label = node_label(node)
 
-    # 1. Evaluate input_condition if present (logs warning if failed)
-    state = evaluate_input_condition(data, state, node.id, label)
-
-    # 2. Execute output_instruction if present
-    state = execute_output_instruction(data, state, node.id, label)
-
-    # 3. Handle responses
+    # Handle responses
     responses = data["responses"] || []
     handle_dialogue_responses(responses, state, node.id, label, connections)
   end
@@ -694,67 +688,6 @@ defmodule Storyarn.Flows.Evaluator.Engine do
   # =============================================================================
   # Dialogue helpers
   # =============================================================================
-
-  defp evaluate_input_condition(data, state, node_id, label) do
-    input_condition = data["input_condition"]
-
-    if is_binary(input_condition) and input_condition != "" do
-      {result, rule_results} = ConditionEval.evaluate_string(input_condition, state.variables)
-
-      if result do
-        state
-      else
-        detail = format_rule_summary(rule_results)
-
-        add_console_with_rules(
-          state,
-          :warning,
-          node_id,
-          label,
-          "Input condition failed#{detail}",
-          rule_results
-        )
-      end
-    else
-      state
-    end
-  end
-
-  defp execute_output_instruction(data, state, node_id, label) do
-    output_instruction = data["output_instruction"]
-
-    if is_binary(output_instruction) and output_instruction != "" do
-      {:ok, new_variables, changes, errors} =
-        InstructionExec.execute_string(output_instruction, state.variables)
-
-      state = %{state | variables: new_variables}
-
-      state =
-        Enum.reduce(changes, state, fn change, acc ->
-          add_console(
-            acc,
-            :info,
-            node_id,
-            label,
-            "Output instruction: #{change.variable_ref}: #{format_value(change.old_value)} → #{format_value(change.new_value)}"
-          )
-        end)
-
-      state = add_history_entries(state, node_id, label, changes, :instruction)
-
-      Enum.reduce(errors, state, fn error, acc ->
-        add_console(
-          acc,
-          :error,
-          node_id,
-          label,
-          "Output instruction error: #{error.variable_ref}: #{error.reason}"
-        )
-      end)
-    else
-      state
-    end
-  end
 
   defp execute_response_instruction(instruction_json, state, node_id) do
     {:ok, new_variables, changes, errors} =

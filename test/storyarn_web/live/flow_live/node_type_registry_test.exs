@@ -79,8 +79,6 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistryTest do
       assert Map.has_key?(data, "audio_asset_id")
       assert Map.has_key?(data, "technical_id")
       assert Map.has_key?(data, "localization_id")
-      assert Map.has_key?(data, "input_condition")
-      assert Map.has_key?(data, "output_instruction")
       assert Map.has_key?(data, "responses")
       assert is_list(data["responses"])
     end
