@@ -153,54 +153,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
       </details>
       <details
         class="collapse collapse-arrow bg-base-200 mt-2"
-        open={Map.get(@panel_sections, "logic", has_logic_fields?(@form))}
-      >
-        <summary
-          class="collapse-title text-sm font-medium flex items-center gap-2 cursor-pointer"
-          phx-click="toggle_panel_section"
-          phx-value-section="logic"
-          onclick="event.preventDefault()"
-        >
-          <.icon name="zap" class="size-4" />
-          {gettext("Logic")}
-          <span :if={has_logic_fields?(@form)} class="badge badge-warning badge-xs"></span>
-        </summary>
-        <div class="collapse-content space-y-3">
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text text-xs">{gettext("Input Condition")}</span>
-            </label>
-            <input
-              type="text"
-              name={@form[:input_condition].name}
-              value={@form[:input_condition].value || ""}
-              disabled={!@can_edit}
-              placeholder={gettext("e.g., reputation > 50")}
-              class="input input-sm input-bordered font-mono text-xs"
-            />
-            <p class="text-xs text-base-content/60 mt-1">
-              {gettext("Node is only reachable when this condition is true.")}
-            </p>
-          </div>
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text text-xs">{gettext("Output Instruction")}</span>
-            </label>
-            <textarea
-              name={@form[:output_instruction].name}
-              disabled={!@can_edit}
-              placeholder={gettext("e.g., set(\"talked_to_merchant\", true)")}
-              rows={2}
-              class="textarea textarea-sm textarea-bordered font-mono text-xs"
-            >{@form[:output_instruction].value || ""}</textarea>
-            <p class="text-xs text-base-content/60 mt-1">
-              {gettext("Executed when leaving this node (any response).")}
-            </p>
-          </div>
-        </div>
-      </details>
-      <details
-        class="collapse collapse-arrow bg-base-200 mt-2"
         open={Map.get(@panel_sections, "technical", false)}
       >
         <summary
@@ -414,11 +366,4 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
       (instruction != nil and instruction != "")
   end
 
-  defp has_logic_fields?(form) do
-    input_condition = form[:input_condition] && form[:input_condition].value
-    output_instruction = form[:output_instruction] && form[:output_instruction].value
-
-    (input_condition && input_condition != "") ||
-      (output_instruction && output_instruction != "")
-  end
 end
