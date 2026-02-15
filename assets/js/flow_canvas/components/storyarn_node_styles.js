@@ -306,4 +306,17 @@ export const storyarnNodeStyles = css`
     opacity: 1;
     color: oklch(var(--p));
   }
+
+  /* Simplified LOD — compact node */
+  .node.simplified {
+    min-width: 120px;
+  }
+
+  .node.simplified .content {
+    padding: 2px 0;
+  }
+
+  .node.simplified .socket-row {
+    padding: 2px 0;
+  }
 `;

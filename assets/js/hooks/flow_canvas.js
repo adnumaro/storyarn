@@ -19,6 +19,7 @@ import {
   createLockHandler,
   createNavigationHandler,
 } from "../flow_canvas/handlers/index.js";
+import { createLodController } from "../flow_canvas/lod_controller.js";
 
 export const FlowCanvas = {
   mounted() {
@@ -58,10 +59,12 @@ export const FlowCanvas = {
     this.lockHandler.init();
     this.editorHandlers.init();
 
-    // Create and configure plugins
+    // Create and configure plugins (socket deferral pipe reads these flags)
     this.connectionDataMap = new Map();
     this.nodeMap = new Map();
     this._loadingFromServerCount = 0;
+    this._deferSocketCalc = false;
+    this._deferredSockets = [];
 
     const plugins = createPlugins(container, this);
     this.editor = plugins.editor;
@@ -70,14 +73,48 @@ export const FlowCanvas = {
     this.minimap = plugins.minimap;
     this.render = plugins.render;
 
-    // Load initial flow data
+    // Start in simplified LOD so nodes render ~12 elements instead of ~50.
+    // zoomAt (100ms after finalizeSetup) fires a "zoomed" event that triggers
+    // a batched transition to full LOD if the zoom level warrants it.
+    this.currentLod = "simplified";
+    this.lodController = createLodController(this, "simplified");
+
+    // Load initial flow data in 3 phases to minimize forced reflows:
+    //   1. Add nodes  — socket positions deferred (no reflows)
+    //   2. Flush sockets — no connections yet (ONE reflow, no DOM write-backs)
+    //   3. Add connections — positions cached (no reflows)
     this.hubsMap = {};
     if (flowData.nodes) {
-      await this.loadFlow(flowData);
+      this._deferSocketCalc = true;
+      this.enterLoadingFromServer();
+
+      for (const nodeData of flowData.nodes) {
+        await this.addNodeToEditor(nodeData);
+      }
+
+      this._deferSocketCalc = false;
+      await this.flushDeferredSockets();
+
+      for (const connData of flowData.connections || []) {
+        await this.addConnectionToEditor(connData);
+      }
+
+      this.exitLoadingFromServer();
     }
+
+    // Register minimap after bulk loading (avoids per-node minimap updates)
+    this.area.use(this.minimap);
 
     // Set up event handlers
     setupEventHandlers(this);
+
+    // Wire LOD zoom watching (after setupEventHandlers, before finalizeSetup)
+    this.area.addPipe((context) => {
+      if (context.type === "zoomed") {
+        this.lodController.onZoom();
+      }
+      return context;
+    });
 
     // Initialize keyboard handler after editor is ready
     this.keyboardHandler = createKeyboardHandler(this, this.lockHandler);
@@ -93,6 +130,15 @@ export const FlowCanvas = {
 
     // Canvas is ready — hide the root layout loading overlay
     document.getElementById("page-loader")?.classList.add("hidden");
+  },
+
+  async flushDeferredSockets() {
+    const deferred = this._deferredSockets;
+    this._deferredSockets = [];
+
+    for (const ctx of deferred) {
+      await this.area.emit(ctx);
+    }
   },
 
   async loadFlow(flowData) {
@@ -114,10 +160,19 @@ export const FlowCanvas = {
     node.id = `node-${nodeData.id}`;
 
     await this.editor.addNode(node);
-    await this.area.translate(node.id, {
-      x: nodeData.position?.x || 0,
-      y: nodeData.position?.y || 0,
-    });
+
+    const x = nodeData.position?.x || 0;
+    const y = nodeData.position?.y || 0;
+
+    if (this._deferSocketCalc) {
+      // Bulk load: set position directly on the view, bypassing area pipe chain.
+      // Skips nodetranslated events (minimap, position watcher, socket invalidation)
+      // which are all wasted during initial load.
+      const view = this.area.nodeViews.get(node.id);
+      if (view) view.translate(x, y);
+    } else {
+      await this.area.translate(node.id, { x, y });
+    }
 
     this.nodeMap.set(nodeData.id, node);
     return node;
@@ -209,6 +264,7 @@ export const FlowCanvas = {
   },
 
   destroyed() {
+    this.lodController?.destroy();
     this.cursorHandler?.destroy();
     this.keyboardHandler?.destroy();
     this.editorHandlers?.destroy();

@@ -43,6 +43,7 @@ export function createPlugins(container, hook) {
                 .emit=${emit}
                 .sheetsMap=${hook.sheetsMap}
                 .hubsMap=${hook.hubsMap}
+                .lod=${hook.currentLod || "full"}
               ></storyarn-node>
             `;
           };
@@ -70,9 +71,26 @@ export function createPlugins(container, hook) {
 
   // Register plugins
   editor.use(area);
+
+  // Intercept socket "rendered" events during bulk load to prevent per-socket
+  // forced reflows in getElementCenter(). Events are queued and flushed in a
+  // single batch after all nodes are added (before connections).
+  // MUST be added BEFORE area.use(connection) — the connection plugin calls
+  // DOMSocketPosition.attach() which adds BaseSocketPosition's pipe to area.
+  // Our pipe must precede it to block events before getElementCenter() runs.
+  area.addPipe((context) => {
+    if (hook._deferSocketCalc && context.type === "rendered" && context.data?.type === "socket") {
+      hook._deferredSockets.push(context);
+      return undefined;
+    }
+    return context;
+  });
+
   area.use(connection);
   area.use(render);
-  area.use(minimap);
+  // Minimap is NOT registered here — deferred until after initial load
+  // to avoid per-node minimap updates during bulk addNode (1820 wasted updates).
+  // Caller must do area.use(minimap) after loading completes.
 
   return { editor, area, connection, minimap, render };
 }
