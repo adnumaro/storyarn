@@ -17,7 +17,8 @@ const DEBOUNCE_MS = 500;
 /** Serialize the current doc and push to the server. */
 function pushSync(editor, hook) {
   const elements = docToElements(editor);
-  hook.pushEvent("sync_editor_content", { elements });
+  // pushEvent may return a rejected promise if the LiveView is disconnected
+  Promise.resolve(hook.pushEvent("sync_editor_content", { elements })).catch(() => {});
 }
 
 export const LiveViewBridge = Extension.create({
