@@ -7,7 +7,6 @@ import { html } from "lit";
 import { NodeEditor } from "rete";
 import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
 import { ConnectionPlugin, Presets as ConnectionPresets } from "rete-connection-plugin";
-import { MinimapPlugin } from "rete-minimap-plugin";
 
 /**
  * Creates and configures all Rete.js plugins.
@@ -19,7 +18,7 @@ export function createPlugins(container, hook) {
   const editor = new NodeEditor();
   const area = new AreaPlugin(container);
   const connection = new ConnectionPlugin();
-  const minimap = new MinimapPlugin();
+  const minimap = null;
   const render = new LitPlugin();
 
   // Configure connection plugin
@@ -121,32 +120,6 @@ reteStyles.textContent = `
     background-image:
       radial-gradient(circle at center, oklch(var(--bc, 0.8 0 0) / 0.08) 1.5px, transparent 1.5px);
     background-size: 24px 24px;
-  }
-
-  .rete-minimap {
-    position: absolute;
-    right: 16px;
-    bottom: 16px;
-    width: 180px;
-    height: 120px;
-    background: oklch(var(--b1, 0.25 0 0) / 0.9);
-    border: 1px solid oklch(var(--bc, 0.8 0 0) / 0.2);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
-    overflow: hidden;
-    z-index: 10;
-    backdrop-filter: blur(8px);
-  }
-
-  .rete-minimap .mini-node {
-    border-radius: 2px;
-    opacity: 0.8;
-  }
-
-  .rete-minimap .mini-viewport {
-    border: 2px solid oklch(var(--p, 0.6 0.2 250));
-    background: oklch(var(--p, 0.6 0.2 250) / 0.1);
-    border-radius: 3px;
   }
 `;
 document.head.appendChild(reteStyles);

@@ -102,8 +102,6 @@ export const FlowCanvas = {
       this.exitLoadingFromServer();
     }
 
-    // Register minimap after bulk loading (avoids per-node minimap updates)
-    this.area.use(this.minimap);
 
     // Set up event handlers
     setupEventHandlers(this);
