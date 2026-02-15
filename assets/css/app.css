@@ -390,6 +390,73 @@
   color: var(--color-primary);
 }
 
+/* Dialogue screenplay editor — form controls */
+
+.dialogue-sp-select {
+  font-family: inherit;
+  font-size: inherit;
+  text-transform: uppercase;
+  font-weight: bold;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  padding: 2px 4px;
+  color: inherit;
+  width: fit-content;
+}
+
+.dialogue-sp-select:hover {
+  color: var(--color-primary);
+}
+
+.sp-character-ref .dialogue-sp-select {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: color-mix(in oklch, var(--color-primary) 20%, transparent);
+}
+
+.dialogue-sp-input {
+  font-family: inherit;
+  font-size: inherit;
+  font-style: italic;
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 2px 4px;
+  color: inherit;
+  opacity: 0.6;
+}
+
+.dialogue-sp-input::placeholder {
+  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+  opacity: 1;
+}
+
+/* TipTap in dialogue screenplay mode */
+.tiptap-dialogue-screenplay .ProseMirror {
+  border: none;
+  background: transparent;
+  padding: 0;
+  min-height: 200px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  outline: none;
+}
+
+.tiptap-dialogue-screenplay .ProseMirror:hover,
+.tiptap-dialogue-screenplay .ProseMirror:focus {
+  border: none;
+  outline: none;
+}
+
+.tiptap-dialogue-screenplay .ProseMirror p {
+  margin: 0;
+}
+
 /* Condition Builder - Sentence-Flow UI (mirrors instruction builder) */
 .condition-builder .condition-rule-row {
   display: flex;

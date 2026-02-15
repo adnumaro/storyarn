@@ -12,10 +12,11 @@ export const TiptapEditor = {
 
     // Create editor container
     const editorEl = document.createElement("div");
-    editorEl.className =
-      mode === "screenplay"
-        ? "tiptap-content tiptap-screenplay prose prose-lg max-w-none"
-        : "tiptap-content prose prose-sm max-w-none";
+    const classMap = {
+      "screenplay": "tiptap-content tiptap-screenplay prose prose-lg max-w-none",
+      "dialogue-screenplay": "tiptap-content tiptap-dialogue-screenplay",
+    };
+    editorEl.className = classMap[mode] || "tiptap-content prose prose-sm max-w-none";
     this.el.appendChild(editorEl);
 
     // Determine which event to push based on whether this is a block or node editor
@@ -73,7 +74,7 @@ export const TiptapEditor = {
     });
 
     // Create toolbar if editable and not in screenplay mode
-    if (editable && mode !== "screenplay") {
+    if (editable && mode !== "screenplay" && mode !== "dialogue-screenplay") {
       this.createToolbar();
     }
   },
