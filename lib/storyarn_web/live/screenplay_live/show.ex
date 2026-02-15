@@ -91,7 +91,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
               title={gettext("Export as Fountain")}
               download
             >
-              <.icon name="download" class="size-4" />
+              <.icon name="upload" class="size-4" />
             </a>
             <button
               :if={@can_edit}
@@ -101,7 +101,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
               id="screenplay-import-btn"
               phx-hook="FountainImport"
             >
-              <.icon name="upload" class="size-4" />
+              <.icon name="download" class="size-4" />
             </button>
             <span class="screenplay-toolbar-separator"></span>
             <%= case @link_status do %>
