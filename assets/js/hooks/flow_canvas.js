@@ -103,6 +103,11 @@ export const FlowCanvas = {
     }
 
 
+    // Register minimap after all nodes/connections are loaded
+    if (this.minimap) {
+      this.area.use(this.minimap);
+    }
+
     // Set up event handlers
     setupEventHandlers(this);
 

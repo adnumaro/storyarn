@@ -7,6 +7,7 @@ import { html } from "lit";
 import { NodeEditor } from "rete";
 import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
 import { ConnectionPlugin, Presets as ConnectionPresets } from "rete-connection-plugin";
+import { MinimapPlugin } from "rete-minimap-plugin";
 
 /**
  * Creates and configures all Rete.js plugins.
@@ -18,7 +19,7 @@ export function createPlugins(container, hook) {
   const editor = new NodeEditor();
   const area = new AreaPlugin(container);
   const connection = new ConnectionPlugin();
-  const minimap = null;
+  const minimap = new MinimapPlugin();
   const render = new LitPlugin();
 
   // Configure connection plugin
@@ -68,6 +69,9 @@ export function createPlugins(container, hook) {
     }),
   );
 
+  // Minimap render preset
+  render.addPreset(LitPresets.minimap.setup({ size: 200 }));
+
   // Register plugins
   editor.use(area);
 
@@ -87,9 +91,8 @@ export function createPlugins(container, hook) {
 
   area.use(connection);
   area.use(render);
-  // Minimap is NOT registered here — deferred until after initial load
-  // to avoid per-node minimap updates during bulk addNode (1820 wasted updates).
-  // Caller must do area.use(minimap) after loading completes.
+  // Minimap is deferred — caller must do area.use(minimap) after initial load
+  // to avoid per-node minimap updates during bulk addNode.
 
   return { editor, area, connection, minimap, render };
 }
@@ -108,6 +111,11 @@ export async function finalizeSetup(area, editor, hasNodes) {
   if (hasNodes) {
     setTimeout(async () => {
       await AreaExtensions.zoomAt(area, editor.getNodes());
+      // Second zoomAt after a frame so Lit's <rete-minimap> Shadow DOM
+      // is committed and its container query resolves for node scaling.
+      requestAnimationFrame(async () => {
+        await AreaExtensions.zoomAt(area, editor.getNodes());
+      });
     }, 100);
   }
 }

@@ -10,6 +10,9 @@ import { NODE_CONFIGS, getNodeDef } from "./node_config.js";
  * for our narrative flow editor.
  */
 export class FlowNode extends ClassicPreset.Node {
+  width = 190;
+  height = 130;
+
   /**
    * @param {string} type - Node type (dialogue, hub, condition, instruction, jump)
    * @param {string|number} id - Database ID of the node
