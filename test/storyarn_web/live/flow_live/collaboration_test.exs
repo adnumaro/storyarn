@@ -9,6 +9,12 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
   alias Storyarn.Collaboration
   alias Storyarn.Repo
 
+  # Simulates the FlowLoader JS hook: triggers the event + waits for start_async
+  defp load_flow(view) do
+    render_click(view, "load_flow_data", %{})
+    render_async(view)
+  end
+
   describe "Flow Editor Collaboration" do
     setup :register_and_log_in_user
 
@@ -16,11 +22,14 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       project = project_fixture(user) |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
-      {:ok, view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
+
+      # Simulate FlowLoader hook + wait for async data load
+      html = load_flow(view)
 
       # Canvas should have collaboration data attributes
       assert html =~ "data-user-id=\"#{user.id}\""
@@ -42,6 +51,8 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
 
+      load_flow(view)
+
       # Simulate node selection
       render_click(view, "node_selected", %{"id" => node.id})
 
@@ -60,6 +71,8 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
+
+      load_flow(view)
 
       # Select then deselect node
       render_click(view, "node_selected", %{"id" => node.id})
@@ -84,6 +97,8 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
 
+      load_flow(view)
+
       # Try to delete the locked node
       html = render_click(view, "delete_node", %{"id" => node.id})
 
@@ -101,6 +116,8 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
 
+      load_flow(view)
+
       # Should not crash when receiving cursor_moved event
       render_click(view, "cursor_moved", %{"x" => 100.0, "y" => 200.0})
     end
@@ -117,6 +134,8 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
+
+      load_flow(view)
 
       # Create a node
       render_click(view, "add_node", %{"type" => "hub"})
@@ -138,6 +157,8 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
+
+      load_flow(view)
 
       # Delete the node
       render_click(view, "delete_node", %{"id" => node.id})
@@ -164,6 +185,8 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
         )
+
+      load_flow(view)
 
       # Try to delete (should be blocked)
       html = render_click(view, "delete_node", %{"id" => node.id})

@@ -30,6 +30,7 @@ import { BannerUpload } from "./hooks/banner_upload";
 import { EditableShortcut } from "./hooks/editable_shortcut";
 import { EditableTitle } from "./hooks/editable_title";
 import { FlowCanvas } from "./hooks/flow_canvas";
+import { FlowLoader } from "./hooks/flow_loader";
 import { ReferenceSearch } from "./hooks/reference_search";
 import { DialogueScreenplayEditor } from "./hooks/dialogue_screenplay_editor";
 import { ScreenplayEditor } from "./hooks/screenplay_editor";
@@ -70,6 +71,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     TriStateCheckbox,
     TwoStateCheckbox,
     FlowCanvas,
+    FlowLoader,
     InstructionBuilder,
     ColorPicker,
     ConditionBuilder,

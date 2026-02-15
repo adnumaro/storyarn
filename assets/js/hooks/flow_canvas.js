@@ -90,6 +90,9 @@ export const FlowCanvas = {
     if (flowData.nodes?.length > 0) {
       await this.rebuildHubsMap();
     }
+
+    // Canvas is ready — hide the root layout loading overlay
+    document.getElementById("page-loader")?.classList.add("hidden");
   },
 
   async loadFlow(flowData) {
@@ -219,5 +222,8 @@ export const FlowCanvas = {
     if (this.area) {
       this.area.destroy();
     }
+
+    // Ensure overlay is hidden when leaving the flow page
+    document.getElementById("page-loader")?.classList.add("hidden");
   },
 };

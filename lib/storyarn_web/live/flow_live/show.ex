@@ -40,6 +40,15 @@ defmodule StoryarnWeb.FlowLive.Show do
   @node_types FlowNode.node_types() |> Enum.reject(&(&1 == "entry"))
 
   @impl true
+  def render(%{loading: true} = assigns) do
+    ~H"""
+    <%!-- Minimal shell: the root-layout overlay (#page-loader) provides the
+         animated spinner. This hidden div just hosts the FlowLoader hook
+         that triggers the deferred data fetch. --%>
+    <div id="flow-loader" phx-hook="FlowLoader" class="hidden"></div>
+    """
+  end
+
   def render(assigns) do
     ~H"""
     <div class="h-screen flex flex-col">
@@ -245,7 +254,8 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   defp mount_with_project(socket, workspace_slug, project_slug, flow_id, project, membership) do
-    case Flows.get_flow(project.id, flow_id) do
+    # Use brief (no preloads) for the loading screen — fast query
+    case Flows.get_flow_brief(project.id, flow_id) do
       nil ->
         {:ok,
          socket
@@ -253,8 +263,19 @@ defmodule StoryarnWeb.FlowLive.Show do
          |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/flows")}
 
       flow ->
-        socket = setup_flow_view(socket, project, membership, flow)
-        socket = maybe_restore_debug_session(socket)
+        project = Repo.preload(project, :workspace)
+        can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+
+        socket =
+          socket
+          |> assign(:loading, true)
+          |> assign(:project, project)
+          |> assign(:workspace, project.workspace)
+          |> assign(:membership, membership)
+          |> assign(:flow, flow)
+          |> assign(:can_edit, can_edit)
+          |> assign(:from_flow, nil)
+
         {:ok, socket}
     end
   end
@@ -310,62 +331,11 @@ defmodule StoryarnWeb.FlowLive.Show do
     })
   end
 
-  defp setup_flow_view(socket, project, membership, flow) do
-    project = Repo.preload(project, :workspace)
-    can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
-    flow_data = Flows.serialize_for_canvas(flow)
-    all_sheets = Sheets.list_all_sheets(project.id)
-    flow_hubs = Flows.list_hubs(flow.id)
-    audio_assets = Assets.list_assets(project.id, content_type: "audio/")
-    project_variables = Sheets.list_project_variables(project.id)
-    user = socket.assigns.current_scope.user
-
-    CollaborationHelpers.setup_collaboration(socket, flow, user)
-    {online_users, node_locks} = CollaborationHelpers.get_initial_collab_state(socket, flow)
-
-    socket
-    |> assign(:project, project)
-    |> assign(:workspace, project.workspace)
-    |> assign(:membership, membership)
-    |> assign(:flow, flow)
-    |> assign(:flow_data, flow_data)
-    |> assign(:can_edit, can_edit)
-    |> assign(:node_types, @node_types)
-    |> assign(:all_sheets, all_sheets)
-    |> assign(:flow_hubs, flow_hubs)
-    |> assign(:audio_assets, audio_assets)
-    |> assign(:project_variables, project_variables)
-    |> assign(:selected_node, nil)
-    |> assign(:node_form, nil)
-    |> assign(:referencing_jumps, [])
-    |> assign(:available_flows, [])
-    |> assign(:subflow_exits, [])
-    |> assign(:outcome_tags_suggestions, [])
-    |> assign(:referencing_flows, [])
-    |> assign(:from_flow, nil)
-    |> assign(:editing_mode, nil)
-    |> assign(:save_status, :idle)
-    |> assign(:preview_show, false)
-    |> assign(:preview_node, nil)
-    |> assign(:online_users, online_users)
-    |> assign(:node_locks, node_locks)
-    |> assign(:collab_toast, nil)
-    |> assign(:remote_cursors, %{})
-    |> assign(:panel_sections, %{})
-    |> assign(:debug_state, nil)
-    |> assign(:debug_panel_open, false)
-    |> assign(:debug_active_tab, "console")
-    |> assign(:debug_nodes, %{})
-    |> assign(:debug_connections, [])
-    |> assign(:debug_speed, 800)
-    |> assign(:debug_auto_playing, false)
-    |> assign(:debug_editing_var, nil)
-    |> assign(:debug_var_filter, "")
-    |> assign(:debug_var_changed_only, false)
-    |> assign(:debug_auto_timer, nil)
+  @impl true
+  def handle_params(_params, _url, %{assigns: %{loading: true}} = socket) do
+    {:noreply, socket}
   end
 
-  @impl true
   def handle_params(params, _url, socket) do
     socket =
       socket
@@ -405,6 +375,27 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
 
   @impl true
+  # Triggered by the FlowLoader hook after the browser has painted the spinner.
+  def handle_event("load_flow_data", _params, socket) do
+    %{flow: flow, project: project} = socket.assigns
+
+    socket =
+      start_async(socket, :load_flow_data, fn ->
+        full_flow = Flows.get_flow!(project.id, flow.id)
+
+        %{
+          flow: full_flow,
+          flow_data: Flows.serialize_for_canvas(full_flow),
+          all_sheets: Sheets.list_all_sheets(project.id),
+          flow_hubs: Flows.list_hubs(flow.id),
+          audio_assets: Assets.list_assets(project.id, content_type: "audio/"),
+          project_variables: Sheets.list_project_variables(project.id)
+        }
+      end)
+
+    {:noreply, socket}
+  end
+
   def handle_event("add_node", params, socket) do
     with_auth(:edit_content, socket, fn -> GenericNodeHandlers.handle_add_node(params, socket) end)
   end
@@ -809,6 +800,67 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
   # Handle Info (thin delegation)
   # ===========================================================================
+
+  @impl true
+  def handle_async(:load_flow_data, {:ok, data}, socket) do
+    # Replace the brief flow with the fully-preloaded one
+    flow = data.flow
+    user = socket.assigns.current_scope.user
+
+    CollaborationHelpers.setup_collaboration(socket, flow, user)
+    {online_users, node_locks} = CollaborationHelpers.get_initial_collab_state(socket, flow)
+
+    socket =
+      socket
+      |> assign(:flow, flow)
+      |> assign(:flow_data, data.flow_data)
+      |> assign(:node_types, @node_types)
+      |> assign(:all_sheets, data.all_sheets)
+      |> assign(:flow_hubs, data.flow_hubs)
+      |> assign(:audio_assets, data.audio_assets)
+      |> assign(:project_variables, data.project_variables)
+      |> assign(:selected_node, nil)
+      |> assign(:node_form, nil)
+      |> assign(:referencing_jumps, [])
+      |> assign(:available_flows, [])
+      |> assign(:subflow_exits, [])
+      |> assign(:outcome_tags_suggestions, [])
+      |> assign(:referencing_flows, [])
+      |> assign(:editing_mode, nil)
+      |> assign(:save_status, :idle)
+      |> assign(:preview_show, false)
+      |> assign(:preview_node, nil)
+      |> assign(:online_users, online_users)
+      |> assign(:node_locks, node_locks)
+      |> assign(:collab_toast, nil)
+      |> assign(:remote_cursors, %{})
+      |> assign(:panel_sections, %{})
+      |> assign(:debug_state, nil)
+      |> assign(:debug_panel_open, false)
+      |> assign(:debug_active_tab, "console")
+      |> assign(:debug_nodes, %{})
+      |> assign(:debug_connections, [])
+      |> assign(:debug_speed, 800)
+      |> assign(:debug_auto_playing, false)
+      |> assign(:debug_editing_var, nil)
+      |> assign(:debug_var_filter, "")
+      |> assign(:debug_var_changed_only, false)
+      |> assign(:debug_auto_timer, nil)
+      |> assign(:loading, false)
+
+    socket = maybe_restore_debug_session(socket)
+
+    {:noreply, socket}
+  end
+
+  def handle_async(:load_flow_data, {:exit, _reason}, socket) do
+    %{workspace: workspace, project: project} = socket.assigns
+
+    {:noreply,
+     socket
+     |> put_flash(:error, gettext("Could not load flow data."))
+     |> redirect(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows")}
+  end
 
   @impl true
   def handle_info(:reset_save_status, socket),
