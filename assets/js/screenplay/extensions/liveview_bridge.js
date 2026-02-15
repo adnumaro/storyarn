@@ -60,6 +60,7 @@ export const LiveViewBridge = Extension.create({
 
   onUpdate() {
     if (this.storage.suppressUpdate || this.storage.destroyed) return;
+    if (!this.editor.isEditable) return;
 
     const hook = this.options.liveViewHook;
     if (!hook) return;

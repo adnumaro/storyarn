@@ -87,19 +87,28 @@ defmodule Storyarn.Screenplays.ElementCrud do
   Each element's position is set to its index in the list.
   """
   def reorder_elements(screenplay_id, element_ids) when is_list(element_ids) do
-    Repo.transaction(fn ->
-      element_ids
-      |> Enum.with_index()
-      |> Enum.each(fn {element_id, index} ->
-        from(e in ScreenplayElement,
-          where: e.id == ^element_id and e.screenplay_id == ^screenplay_id
-        )
-        |> Repo.update_all(set: [position: index])
-      end)
+    if element_ids == [] do
+      {:ok, list_elements(screenplay_id)}
+    else
+      ids = Enum.map(element_ids, &to_integer/1)
+      positions = Enum.to_list(0..(length(ids) - 1))
 
-      list_elements(screenplay_id)
-    end)
+      Repo.query!(
+        """
+        UPDATE screenplay_elements AS e
+        SET position = v.new_position
+        FROM unnest($1::bigint[], $2::int[]) AS v(id, new_position)
+        WHERE e.id = v.id AND e.screenplay_id = $3
+        """,
+        [ids, positions, screenplay_id]
+      )
+
+      {:ok, list_elements(screenplay_id)}
+    end
   end
+
+  defp to_integer(v) when is_integer(v), do: v
+  defp to_integer(v) when is_binary(v), do: String.to_integer(v)
 
   @doc """
   Splits an element at a cursor position, inserting a new element of the given type.
