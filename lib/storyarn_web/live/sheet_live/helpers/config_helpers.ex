@@ -71,7 +71,9 @@ defmodule StoryarnWeb.SheetLive.Helpers.ConfigHelpers do
     new_option = %{"key" => "option-#{length(options) + 1}", "value" => ""}
     new_options = options ++ [new_option]
 
-    case Sheets.update_block_config(block, %{"options" => new_options}) do
+    merged_config = Map.put(block.config || %{}, "options", new_options)
+
+    case Sheets.update_block_config(block, merged_config) do
       {:ok, updated_block} ->
         blocks = load_blocks_with_references(socket.assigns.sheet.id, socket.assigns.project.id)
 
@@ -97,8 +99,9 @@ defmodule StoryarnWeb.SheetLive.Helpers.ConfigHelpers do
         block = socket.assigns.configuring_block
         options = get_in(block.config, ["options"]) || []
         new_options = List.delete_at(options, idx)
+        merged_config = Map.put(block.config || %{}, "options", new_options)
 
-        case Sheets.update_block_config(block, %{"options" => new_options}) do
+        case Sheets.update_block_config(block, merged_config) do
           {:ok, updated_block} ->
             blocks =
               load_blocks_with_references(socket.assigns.sheet.id, socket.assigns.project.id)
@@ -163,7 +166,9 @@ defmodule StoryarnWeb.SheetLive.Helpers.ConfigHelpers do
             %{"key" => key, "value" => value}
           end)
 
-        case Sheets.update_block_config(block, %{"options" => new_options}) do
+        merged_config = Map.put(block.config || %{}, "options", new_options)
+
+        case Sheets.update_block_config(block, merged_config) do
           {:ok, updated_block} ->
             blocks =
               load_blocks_with_references(socket.assigns.sheet.id, socket.assigns.project.id)
