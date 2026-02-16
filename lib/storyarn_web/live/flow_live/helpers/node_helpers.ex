@@ -8,6 +8,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers, only: [default_node_data: 1]
 
   alias Storyarn.Flows
+  alias Storyarn.Flows.FlowNode
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
@@ -274,6 +275,62 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     end
   end
 
+  @doc """
+  Restores a soft-deleted node and its valid connections.
+  Returns {:noreply, socket} tuple.
+  """
+  @spec restore_node(Phoenix.LiveView.Socket.t(), any()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def restore_node(socket, node_id) do
+    case Flows.restore_node(socket.assigns.flow.id, node_id) do
+      {:ok, %FlowNode{} = node} ->
+        socket = reload_flow_data(socket)
+        {node_data, connections} = build_restored_node_payload(socket, node)
+
+        {:noreply,
+         socket
+         |> push_event("node_restored", %{node: node_data, connections: connections})
+         |> CollaborationHelpers.broadcast_change(:node_restored, %{
+           node_data: node_data,
+           connections: connections
+         })}
+
+      {:ok, :already_active} ->
+        {:noreply, socket}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           Gettext.gettext(StoryarnWeb.Gettext, "Could not restore node.")
+         )}
+    end
+  end
+
+  defp build_restored_node_payload(socket, node) do
+    node_data = %{
+      id: node.id,
+      type: node.type,
+      position: %{x: node.position_x, y: node.position_y},
+      data: canvas_data(node)
+    }
+
+    # Use flow_data.connections (already serialized by reload_flow_data)
+    # and filter to connections involving this node where both endpoints are active.
+    active_node_ids = socket.assigns.flow_data.nodes |> Enum.map(& &1.id) |> MapSet.new()
+
+    connections =
+      socket.assigns.flow_data.connections
+      |> Enum.filter(fn c ->
+        (c.source_node_id == node.id or c.target_node_id == node.id) and
+          MapSet.member?(active_node_ids, c.source_node_id) and
+          MapSet.member?(active_node_ids, c.target_node_id)
+      end)
+
+    {node_data, connections}
+  end
+
   defp perform_node_deletion(socket, node_id) do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
 
@@ -306,7 +363,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          socket
          |> assign(:selected_node, nil)
          |> assign(:node_form, nil)
-         |> push_event("node_removed", %{id: node_id})
+         |> push_event("node_removed", %{id: node_id, self: true})
          |> CollaborationHelpers.broadcast_change(:node_deleted, %{node_id: node_id})}
 
       {:error, :cannot_delete_entry_node} ->

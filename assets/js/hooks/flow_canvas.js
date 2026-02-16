@@ -23,11 +23,17 @@ import { createLodController } from "../flow_canvas/lod_controller.js";
 
 export const FlowCanvas = {
   mounted() {
-    this.initEditor();
-  },
+    // Define isLoadingFromServer as a live getter on the instance.
+    // LiveView's Object.assign copies getters as static values, so we must
+    // re-define it here to ensure it reads _loadingFromServerCount dynamically.
+    Object.defineProperty(this, "isLoadingFromServer", {
+      get() {
+        return this._loadingFromServerCount > 0;
+      },
+      configurable: true,
+    });
 
-  get isLoadingFromServer() {
-    return this._loadingFromServerCount > 0;
+    this.initEditor();
   },
 
   enterLoadingFromServer() {
@@ -70,6 +76,7 @@ export const FlowCanvas = {
     this.editor = plugins.editor;
     this.area = plugins.area;
     this.connection = plugins.connection;
+    this.history = plugins.history;
     this.minimap = plugins.minimap;
     this.render = plugins.render;
 
@@ -102,8 +109,11 @@ export const FlowCanvas = {
       this.exitLoadingFromServer();
     }
 
-
-    // Register minimap after all nodes/connections are loaded
+    // Register history and minimap after all nodes/connections are loaded
+    // to avoid recording bulk-load operations in undo history.
+    if (this.history) {
+      this.area.use(this.history);
+    }
     if (this.minimap) {
       this.area.use(this.minimap);
     }

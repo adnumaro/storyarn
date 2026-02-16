@@ -10,23 +10,25 @@ defmodule Storyarn.Flows.NodeCrud do
 
   def list_nodes(flow_id) do
     from(n in FlowNode,
-      where: n.flow_id == ^flow_id,
+      where: n.flow_id == ^flow_id and is_nil(n.deleted_at),
       order_by: [asc: n.inserted_at]
     )
     |> Repo.all()
   end
 
   def get_node(flow_id, node_id) do
-    FlowNode
-    |> where(flow_id: ^flow_id, id: ^node_id)
-    |> preload([:outgoing_connections, :incoming_connections])
+    from(n in FlowNode,
+      where: n.flow_id == ^flow_id and n.id == ^node_id and is_nil(n.deleted_at),
+      preload: [:outgoing_connections, :incoming_connections]
+    )
     |> Repo.one()
   end
 
   def get_node!(flow_id, node_id) do
-    FlowNode
-    |> where(flow_id: ^flow_id, id: ^node_id)
-    |> preload([:outgoing_connections, :incoming_connections])
+    from(n in FlowNode,
+      where: n.flow_id == ^flow_id and n.id == ^node_id and is_nil(n.deleted_at),
+      preload: [:outgoing_connections, :incoming_connections]
+    )
     |> Repo.one!()
   end
 
@@ -73,14 +75,14 @@ defmodule Storyarn.Flows.NodeCrud do
 
   defp has_entry_node?(flow_id) do
     from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.type == "entry"
+      where: n.flow_id == ^flow_id and n.type == "entry" and is_nil(n.deleted_at)
     )
     |> Repo.exists?()
   end
 
   defp last_exit_node?(node) do
     from(n in FlowNode,
-      where: n.flow_id == ^node.flow_id and n.type == "exit"
+      where: n.flow_id == ^node.flow_id and n.type == "exit" and is_nil(n.deleted_at)
     )
     |> Repo.aggregate(:count, :id) <= 1
   end
@@ -91,7 +93,7 @@ defmodule Storyarn.Flows.NodeCrud do
   def hub_id_exists?(flow_id, hub_id, exclude_node_id) do
     query =
       from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "hub",
+        where: n.flow_id == ^flow_id and n.type == "hub" and is_nil(n.deleted_at),
         where: fragment("?->>'hub_id' = ?", n.data, ^hub_id)
       )
 
@@ -111,7 +113,7 @@ defmodule Storyarn.Flows.NodeCrud do
   """
   def list_hubs(flow_id) do
     from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.type == "hub",
+      where: n.flow_id == ^flow_id and n.type == "hub" and is_nil(n.deleted_at),
       select: %{
         id: n.id,
         hub_id: fragment("?->>'hub_id'", n.data),
@@ -128,7 +130,7 @@ defmodule Storyarn.Flows.NodeCrud do
   """
   def get_hub_by_hub_id(flow_id, hub_id) do
     from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.type == "hub",
+      where: n.flow_id == ^flow_id and n.type == "hub" and is_nil(n.deleted_at),
       where: fragment("?->>'hub_id' = ?", n.data, ^hub_id)
     )
     |> Repo.one()
@@ -137,7 +139,7 @@ defmodule Storyarn.Flows.NodeCrud do
   defp generate_hub_id(flow_id) do
     max_suffix =
       from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "hub",
+        where: n.flow_id == ^flow_id and n.type == "hub" and is_nil(n.deleted_at),
         where: fragment("?->>'hub_id' ~ '^hub_[0-9]+$'", n.data),
         select:
           fragment("max(cast(substring(?->>'hub_id' from 'hub_([0-9]+)') as integer))", n.data)
@@ -229,6 +231,23 @@ defmodule Storyarn.Flows.NodeCrud do
 
   def delete_node(%FlowNode{} = node), do: do_delete_node(node)
 
+  @doc """
+  Restores a soft-deleted node by clearing its deleted_at timestamp.
+  Returns {:ok, :already_active} if the node is not deleted (idempotent for redo safety).
+  """
+  def restore_node(flow_id, node_id) do
+    case Repo.get(FlowNode, node_id) do
+      %FlowNode{flow_id: ^flow_id, deleted_at: deleted_at} = node when not is_nil(deleted_at) ->
+        node |> FlowNode.restore_changeset() |> Repo.update()
+
+      %FlowNode{flow_id: ^flow_id, deleted_at: nil} ->
+        {:ok, :already_active}
+
+      _ ->
+        {:error, :not_found}
+    end
+  end
+
   defp do_delete_node(node) do
     Repo.transaction(fn ->
       orphaned_count = maybe_clear_orphaned_jumps(node)
@@ -236,7 +255,7 @@ defmodule Storyarn.Flows.NodeCrud do
       ReferenceTracker.delete_flow_node_references(node.id)
       VariableReferenceTracker.delete_references(node.id)
 
-      case Repo.delete(node) do
+      case node |> FlowNode.soft_delete_changeset() |> Repo.update() do
         {:ok, deleted_node} -> {deleted_node, %{orphaned_jumps: orphaned_count}}
         {:error, changeset} -> Repo.rollback(changeset)
       end
@@ -308,7 +327,7 @@ defmodule Storyarn.Flows.NodeCrud do
   """
   def list_referencing_jumps(flow_id, hub_id) when is_binary(hub_id) and hub_id != "" do
     from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.type == "jump",
+      where: n.flow_id == ^flow_id and n.type == "jump" and is_nil(n.deleted_at),
       where: fragment("?->>'target_hub_id' = ?", n.data, ^hub_id),
       order_by: [asc: n.position_y, asc: n.position_x],
       select: %{id: n.id, position_x: n.position_x, position_y: n.position_y}
@@ -320,7 +339,7 @@ defmodule Storyarn.Flows.NodeCrud do
 
   def count_nodes_by_type(flow_id) do
     from(n in FlowNode,
-      where: n.flow_id == ^flow_id,
+      where: n.flow_id == ^flow_id and is_nil(n.deleted_at),
       group_by: n.type,
       select: {n.type, count(n.id)}
     )
@@ -335,7 +354,7 @@ defmodule Storyarn.Flows.NodeCrud do
   """
   def list_exit_nodes_for_flow(flow_id) do
     from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.type == "exit",
+      where: n.flow_id == ^flow_id and n.type == "exit" and is_nil(n.deleted_at),
       select: %{
         id: n.id,
         label: fragment("?->>'label'", n.data),

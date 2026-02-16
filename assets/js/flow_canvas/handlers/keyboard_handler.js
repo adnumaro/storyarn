@@ -2,6 +2,12 @@
  * Keyboard shortcuts handler for the flow canvas.
  */
 
+/** Returns true if the element is an editable form field or contentEditable. */
+function isEditable(el) {
+  const tag = el.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+}
+
 /**
  * Creates the keyboard handler with methods bound to the hook context.
  * @param {Object} hook - The FlowCanvas hook instance
@@ -66,6 +72,22 @@ export function createKeyboardHandler(hook, lockHandler) {
           hook.pushEvent("debug_reset", {});
           return;
         }
+      }
+
+      // Undo — Ctrl+Z / Cmd+Z
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        if (isEditable(e.target)) return;
+        e.preventDefault();
+        hook.history?.undo();
+        return;
+      }
+
+      // Redo — Ctrl+Y / Cmd+Y / Ctrl+Shift+Z / Cmd+Shift+Z
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
+        if (isEditable(e.target)) return;
+        e.preventDefault();
+        hook.history?.redo();
+        return;
       }
 
       // Ignore when typing in inputs for non-debug shortcuts

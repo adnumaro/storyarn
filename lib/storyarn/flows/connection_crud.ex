@@ -8,10 +8,14 @@ defmodule Storyarn.Flows.ConnectionCrud do
 
   def list_connections(flow_id) do
     from(c in FlowConnection,
-      where: c.flow_id == ^flow_id,
-      order_by: [asc: c.inserted_at]
+      join: sn in FlowNode,
+      on: c.source_node_id == sn.id,
+      join: tn in FlowNode,
+      on: c.target_node_id == tn.id,
+      where: c.flow_id == ^flow_id and is_nil(sn.deleted_at) and is_nil(tn.deleted_at),
+      order_by: [asc: c.inserted_at],
+      preload: [:source_node, :target_node]
     )
-    |> preload([:source_node, :target_node])
     |> Repo.all()
   end
 

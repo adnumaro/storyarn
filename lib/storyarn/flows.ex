@@ -236,6 +236,13 @@ defmodule Storyarn.Flows do
   defdelegate delete_node(node), to: NodeCrud
 
   @doc """
+  Restores a soft-deleted node by clearing its deleted_at timestamp.
+  """
+  @spec restore_node(integer(), integer()) ::
+          {:ok, flow_node()} | {:ok, :already_active} | {:error, atom()}
+  defdelegate restore_node(flow_id, node_id), to: NodeCrud
+
+  @doc """
   Returns a changeset for tracking node changes.
   """
   @spec change_node(flow_node(), attrs()) :: changeset()

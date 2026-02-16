@@ -88,6 +88,7 @@ export function setupEventHandlers(hook) {
   hook.handleEvent("flow_updated", (data) => hook.editorHandlers.handleFlowUpdated(data));
   hook.handleEvent("node_added", (data) => hook.editorHandlers.handleNodeAdded(data));
   hook.handleEvent("node_removed", (data) => hook.editorHandlers.handleNodeRemoved(data));
+  hook.handleEvent("node_restored", (data) => hook.editorHandlers.handleNodeRestored(data));
   // Serialize node_updated events to prevent race conditions when
   // multiple response additions/deletions trigger concurrent rebuilds
   hook._nodeUpdateQueue = Promise.resolve();

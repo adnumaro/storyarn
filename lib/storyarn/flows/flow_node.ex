@@ -42,6 +42,7 @@ defmodule Storyarn.Flows.FlowNode do
           position_y: float(),
           data: map(),
           source: String.t(),
+          deleted_at: DateTime.t() | nil,
           flow_id: integer() | nil,
           flow: Flow.t() | Ecto.Association.NotLoaded.t() | nil,
           outgoing_connections: [FlowConnection.t()] | Ecto.Association.NotLoaded.t(),
@@ -56,6 +57,7 @@ defmodule Storyarn.Flows.FlowNode do
     field :position_y, :float, default: 0.0
     field :data, :map, default: %{}
     field :source, :string, default: "manual"
+    field :deleted_at, :utc_datetime
 
     belongs_to :flow, Flow
     has_many :outgoing_connections, FlowConnection, foreign_key: :source_node_id
@@ -107,5 +109,20 @@ defmodule Storyarn.Flows.FlowNode do
   def data_changeset(node, attrs) do
     node
     |> cast(attrs, [:data])
+  end
+
+  @doc """
+  Changeset for soft-deleting a node by setting deleted_at.
+  """
+  def soft_delete_changeset(node) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    change(node, deleted_at: now)
+  end
+
+  @doc """
+  Changeset for restoring a soft-deleted node by clearing deleted_at.
+  """
+  def restore_changeset(node) do
+    change(node, deleted_at: nil)
   end
 end

@@ -7,7 +7,10 @@ import { html } from "lit";
 import { NodeEditor } from "rete";
 import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
 import { ConnectionPlugin, Presets as ConnectionPresets } from "rete-connection-plugin";
+import { HistoryPlugin } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
+
+import { createFlowHistoryPreset } from "./history_preset.js";
 
 /**
  * Creates and configures all Rete.js plugins.
@@ -19,6 +22,7 @@ export function createPlugins(container, hook) {
   const editor = new NodeEditor();
   const area = new AreaPlugin(container);
   const connection = new ConnectionPlugin();
+  const history = new HistoryPlugin({ timing: 200 });
   const minimap = new MinimapPlugin();
   const render = new LitPlugin();
 
@@ -91,10 +95,14 @@ export function createPlugins(container, hook) {
 
   area.use(connection);
   area.use(render);
-  // Minimap is deferred — caller must do area.use(minimap) after initial load
-  // to avoid per-node minimap updates during bulk addNode.
+  // History preset — wires pipes on the editor and area for connection/drag tracking.
+  // Needs hook reference for isLoadingFromServer guard.
+  history.addPreset(createFlowHistoryPreset(hook));
 
-  return { editor, area, connection, minimap, render };
+  // Minimap and history are deferred — caller must do area.use() after initial load
+  // to avoid per-node updates during bulk addNode.
+
+  return { editor, area, connection, history, minimap, render };
 }
 
 /**

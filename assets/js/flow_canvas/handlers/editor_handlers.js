@@ -4,6 +4,7 @@
 
 import { ClassicPreset } from "rete";
 import { FlowNode } from "../flow_node.js";
+import { DeleteNodeAction } from "../history_preset.js";
 import { getNodeDef } from "../node_config.js";
 
 /**
@@ -45,6 +46,9 @@ export function createEditorHandlers(hook) {
      * @param {Object} data - Flow data with nodes and connections
      */
     async handleFlowUpdated(data) {
+      // Clear history — stale after full refresh
+      hook.history?.clear();
+
       for (const conn of [...hook.editor.getConnections()]) {
         await hook.editor.removeConnection(conn.id);
       }
@@ -62,7 +66,12 @@ export function createEditorHandlers(hook) {
      * @param {Object} data - Node data
      */
     async handleNodeAdded(data) {
-      await hook.addNodeToEditor(data);
+      hook.enterLoadingFromServer();
+      try {
+        await hook.addNodeToEditor(data);
+      } finally {
+        hook.exitLoadingFromServer();
+      }
       if (data.type === "hub" || data.type === "jump") await hook.rebuildHubsMap();
     },
 
@@ -73,14 +82,60 @@ export function createEditorHandlers(hook) {
     async handleNodeRemoved(data) {
       const node = hook.nodeMap.get(data.id);
       if (node) {
+        // Record in history if this user initiated the delete (not a redo replay)
+        if (data.self && hook._historyTriggeredDelete !== data.id) {
+          hook.history?.add(new DeleteNodeAction(hook, data.id));
+        }
+        if (hook._historyTriggeredDelete === data.id) {
+          hook._historyTriggeredDelete = null;
+        }
+
         const needsHubRebuild = node.nodeType === "hub" || node.nodeType === "jump";
-        await hook.editor.removeNode(node.id);
+        hook.enterLoadingFromServer();
+        try {
+          // Explicitly remove connections first — removeNode doesn't reliably
+          // clean them from Rete's internal state (same pattern as rebuildNode).
+          const connections = [...hook.editor.getConnections()];
+          for (const conn of connections) {
+            if (conn.source === node.id || conn.target === node.id) {
+              hook.connectionDataMap.delete(conn.id);
+              await hook.editor.removeConnection(conn.id);
+            }
+          }
+          await hook.editor.removeNode(node.id);
+        } finally {
+          hook.exitLoadingFromServer();
+        }
         hook.nodeMap.delete(data.id);
         if (hook.selectedNodeId === data.id) {
           hook.selectedNodeId = null;
         }
         if (needsHubRebuild) await hook.rebuildHubsMap();
       }
+    },
+
+    /**
+     * Handles node restored event from server (undo of delete).
+     * Re-adds the node and its valid connections to the editor.
+     * @param {Object} data - Data with node and connections
+     */
+    async handleNodeRestored(data) {
+      hook.enterLoadingFromServer();
+      try {
+        const node = await hook.addNodeToEditor(data.node);
+        // Force re-render so sockets are positioned before wiring connections
+        // (same pattern as rebuildNode)
+        if (node) await hook.area.update("node", node.id);
+        for (const conn of data.connections || []) {
+          // Skip connections that already exist in the editor (defensive)
+          if (!hook.editor.getConnection(`conn-${conn.id}`)) {
+            await hook.addConnectionToEditor(conn);
+          }
+        }
+      } finally {
+        hook.exitLoadingFromServer();
+      }
+      if (data.node.type === "hub" || data.node.type === "jump") await hook.rebuildHubsMap();
     },
 
     /**

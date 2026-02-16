@@ -473,6 +473,12 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  def handle_event("restore_node", %{"id" => node_id}, socket) do
+    with_auth(:edit_content, socket, fn ->
+      NodeHelpers.restore_node(socket, node_id)
+    end)
+  end
+
   def handle_event("duplicate_node", params, socket) do
     with_auth(:edit_content, socket, fn ->
       GenericNodeHandlers.handle_duplicate_node(params, socket)
