@@ -164,6 +164,8 @@ defmodule StoryarnWeb.SheetLive.Show do
           project={@project}
           workspace={@workspace}
           sheet={@sheet}
+          can_edit={@can_edit}
+          current_user={@current_scope.user}
         />
 
         <%!-- Tab Content: History (LiveComponent) --%>
@@ -383,6 +385,11 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_info({:banner, :error, message}, socket) do
+    {:noreply, put_flash(socket, :error, message)}
+  end
+
+  # Handle messages from AudioTab LiveComponent
+  def handle_info({:audio_tab, :error, message}, socket) do
     {:noreply, put_flash(socket, :error, message)}
   end
 

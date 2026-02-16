@@ -21,6 +21,8 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTabTest do
         project={@project}
         workspace={@workspace}
         sheet={@sheet}
+        can_edit={@can_edit}
+        current_user={@current_user}
       />
       """
     end
@@ -30,17 +32,21 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTabTest do
        assign(socket,
          project: session["project"],
          workspace: session["workspace"],
-         sheet: session["sheet"]
+         sheet: session["sheet"],
+         can_edit: session["can_edit"] || false,
+         current_user: session["current_user"]
        )}
     end
   end
 
-  defp mount_tab(conn, project, workspace, sheet) do
+  defp mount_tab(conn, project, workspace, sheet, opts \\ []) do
     live_isolated(conn, TestLive,
       session: %{
         "project" => project,
         "workspace" => workspace,
-        "sheet" => sheet
+        "sheet" => sheet,
+        "can_edit" => Keyword.get(opts, :can_edit, false),
+        "current_user" => Keyword.get(opts, :current_user)
       }
     )
   end
