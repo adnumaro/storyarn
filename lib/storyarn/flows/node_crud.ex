@@ -337,6 +337,26 @@ defmodule Storyarn.Flows.NodeCrud do
 
   def list_referencing_jumps(_flow_id, _hub_id), do: []
 
+  @doc """
+  Lists all dialogue nodes where a given sheet is the speaker, across a project.
+  Returns nodes with their flow preloaded (for navigation links and display).
+  """
+  def list_dialogue_nodes_by_speaker(project_id, sheet_id) do
+    sheet_id_str = to_string(sheet_id)
+
+    from(n in FlowNode,
+      join: f in Flow,
+      on: n.flow_id == f.id,
+      where: f.project_id == ^project_id,
+      where: n.type == "dialogue",
+      where: is_nil(n.deleted_at),
+      where: fragment("?->>'speaker_sheet_id' = ?", n.data, ^sheet_id_str),
+      preload: [flow: f],
+      order_by: [asc: f.name, asc: n.inserted_at]
+    )
+    |> Repo.all()
+  end
+
   def count_nodes_by_type(flow_id) do
     from(n in FlowNode,
       where: n.flow_id == ^flow_id and is_nil(n.deleted_at),

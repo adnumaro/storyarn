@@ -949,4 +949,97 @@ defmodule Storyarn.FlowsTest do
       assert Enum.any?(results, &(&1.id == parent.id))
     end
   end
+
+  describe "list_dialogue_nodes_by_speaker/2" do
+    import Storyarn.SheetsFixtures
+
+    test "returns dialogue nodes with matching speaker_sheet_id" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project)
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"speaker_sheet_id" => sheet.id, "text" => "Hello"}
+        })
+
+      results = Flows.list_dialogue_nodes_by_speaker(project.id, sheet.id)
+
+      assert length(results) == 1
+      assert hd(results).id == node.id
+    end
+
+    test "preloads flow association" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project)
+      flow = flow_fixture(project, %{name: "My Flow"})
+
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"speaker_sheet_id" => sheet.id, "text" => "Hi"}
+      })
+
+      [result] = Flows.list_dialogue_nodes_by_speaker(project.id, sheet.id)
+
+      assert result.flow.id == flow.id
+      assert result.flow.name == "My Flow"
+    end
+
+    test "excludes soft-deleted nodes" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project)
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"speaker_sheet_id" => sheet.id, "text" => "Gone"}
+        })
+
+      Flows.delete_node(node)
+
+      assert Flows.list_dialogue_nodes_by_speaker(project.id, sheet.id) == []
+    end
+
+    test "excludes nodes from other projects" do
+      user = user_fixture()
+      project1 = project_fixture(user)
+      project2 = project_fixture(user)
+      sheet = sheet_fixture(project1)
+      flow = flow_fixture(project2)
+
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"speaker_sheet_id" => sheet.id, "text" => "Wrong project"}
+      })
+
+      assert Flows.list_dialogue_nodes_by_speaker(project1.id, sheet.id) == []
+    end
+
+    test "excludes non-dialogue node types" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project)
+      flow = flow_fixture(project)
+
+      node_fixture(flow, %{
+        type: "condition",
+        data: %{"speaker_sheet_id" => sheet.id, "expression" => ""}
+      })
+
+      assert Flows.list_dialogue_nodes_by_speaker(project.id, sheet.id) == []
+    end
+
+    test "returns empty list when no matches" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project)
+
+      assert Flows.list_dialogue_nodes_by_speaker(project.id, sheet.id) == []
+    end
+  end
 end

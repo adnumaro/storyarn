@@ -249,6 +249,13 @@ defmodule Storyarn.Flows do
   defdelegate change_node(node, attrs \\ %{}), to: NodeCrud
 
   @doc """
+  Lists all dialogue nodes where a given sheet is the speaker, across a project.
+  Returns nodes with their flow preloaded.
+  """
+  @spec list_dialogue_nodes_by_speaker(integer(), integer()) :: [flow_node()]
+  defdelegate list_dialogue_nodes_by_speaker(project_id, sheet_id), to: NodeCrud
+
+  @doc """
   Counts nodes by type for a flow.
   """
   @spec count_nodes_by_type(integer()) :: map()

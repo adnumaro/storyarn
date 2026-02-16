@@ -10,6 +10,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Sheets
+  alias StoryarnWeb.SheetLive.Components.AudioTab
   alias StoryarnWeb.SheetLive.Components.Banner
   alias StoryarnWeb.SheetLive.Components.ContentTab
   alias StoryarnWeb.SheetLive.Components.HistoryTab
@@ -112,6 +113,15 @@ defmodule StoryarnWeb.SheetLive.Show do
           </button>
           <button
             role="tab"
+            class={["tab", @current_tab == "audio" && "tab-active"]}
+            phx-click="switch_tab"
+            phx-value-tab="audio"
+          >
+            <.icon name="volume-2" class="size-4 mr-2" />
+            {gettext("Audio")}
+          </button>
+          <button
+            role="tab"
             class={["tab", @current_tab == "history" && "tab-active"]}
             phx-click="switch_tab"
             phx-value-tab="history"
@@ -144,6 +154,16 @@ defmodule StoryarnWeb.SheetLive.Show do
           workspace={@workspace}
           sheet={@sheet}
           blocks={@blocks}
+        />
+
+        <%!-- Tab Content: Audio (LiveComponent) --%>
+        <.live_component
+          :if={@current_tab == "audio"}
+          module={AudioTab}
+          id="audio-tab"
+          project={@project}
+          workspace={@workspace}
+          sheet={@sheet}
         />
 
         <%!-- Tab Content: History (LiveComponent) --%>
@@ -230,7 +250,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   @impl true
   def handle_event("switch_tab", %{"tab" => tab}, socket)
-      when tab in ["content", "references", "history"] do
+      when tab in ["content", "references", "audio", "history"] do
     {:noreply, assign(socket, :current_tab, tab)}
   end
 
