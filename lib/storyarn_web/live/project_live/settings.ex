@@ -130,12 +130,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
                 "If you renamed sheet shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
               )}
             </p>
-            <.button
-              phx-click="repair_variable_references"
-              data-confirm={
-                gettext("This will update node data across the entire project. Continue?")
-              }
-            >
+            <.button phx-click={show_modal("repair-refs-confirm")}>
               {gettext("Repair variable references")}
             </.button>
           </div>
@@ -150,18 +145,30 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             <p class="text-sm mb-4">
               {gettext("Once you delete a project, there is no going back. Please be certain.")}
             </p>
-            <.button
-              variant="error"
-              phx-click="delete_project"
-              data-confirm={
-                gettext("Are you sure you want to delete this project? This action cannot be undone.")
-              }
-            >
+            <.button variant="error" phx-click={show_modal("delete-project-confirm")}>
               {gettext("Delete Project")}
             </.button>
           </div>
         </section>
       </div>
+
+      <.confirm_modal
+        id="repair-refs-confirm"
+        title={gettext("Repair variable references?")}
+        message={gettext("This will update node data across the entire project.")}
+        confirm_text={gettext("Continue")}
+        on_confirm={JS.push("repair_variable_references")}
+      />
+
+      <.confirm_modal
+        id="delete-project-confirm"
+        title={gettext("Delete project?")}
+        message={gettext("This action cannot be undone.")}
+        confirm_text={gettext("Delete")}
+        confirm_variant="error"
+        icon="alert-triangle"
+        on_confirm={JS.push("delete_project")}
+      />
     </Layouts.project>
     """
   end

@@ -68,6 +68,17 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
             navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays"}
           />
         </.modal>
+
+        <.confirm_modal
+          :if={@can_edit}
+          id="delete-screenplay-confirm"
+          title={gettext("Delete screenplay?")}
+          message={gettext("Are you sure you want to delete this screenplay?")}
+          confirm_text={gettext("Delete")}
+          confirm_variant="error"
+          icon="alert-triangle"
+          on_confirm={JS.push("confirm_delete")}
+        />
       </div>
     </Layouts.project>
     """
@@ -118,9 +129,10 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
                 <button
                   type="button"
                   class="text-error"
-                  phx-click="delete"
-                  phx-value-id={@screenplay.id}
-                  data-confirm={gettext("Are you sure you want to delete this screenplay?")}
+                  phx-click={
+                    JS.push("set_pending_delete", value: %{id: @screenplay.id})
+                    |> show_modal("delete-screenplay-confirm")
+                  }
                   onclick="event.stopPropagation();"
                 >
                   <.icon name="trash-2" class="size-4" />
@@ -188,6 +200,30 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
   end
 
   @impl true
+  def handle_event("set_pending_delete", %{"id" => id}, socket) do
+    {:noreply, assign(socket, :pending_delete_id, id)}
+  end
+
+  def handle_event("set_pending_delete_screenplay", %{"id" => id}, socket) do
+    {:noreply, assign(socket, :pending_delete_id, id)}
+  end
+
+  def handle_event("confirm_delete", _params, socket) do
+    if id = socket.assigns[:pending_delete_id] do
+      handle_event("delete", %{"id" => id}, socket)
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("confirm_delete_screenplay", _params, socket) do
+    if id = socket.assigns[:pending_delete_id] do
+      handle_event("delete", %{"id" => id}, socket)
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("delete", %{"id" => screenplay_id}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->

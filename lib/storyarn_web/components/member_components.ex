@@ -7,6 +7,8 @@ defmodule StoryarnWeb.Components.MemberComponents do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Phoenix.LiveView.JS
+
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.UIComponents
 
@@ -129,15 +131,23 @@ defmodule StoryarnWeb.Components.MemberComponents do
         <% else %>
           <.role_badge role={@member.role} />
         <% end %>
-        <.link
+        <button
           :if={@can_remove}
-          phx-click={@on_remove}
-          phx-value-id={@member.id}
+          type="button"
           class="btn btn-ghost btn-sm text-error"
-          data-confirm={gettext("Are you sure you want to remove this member?")}
+          phx-click={show_modal("remove-member-#{@member.id}")}
         >
           <.icon name="x" class="size-4" />
-        </.link>
+        </button>
+        <.confirm_modal
+          :if={@can_remove}
+          id={"remove-member-#{@member.id}"}
+          title={gettext("Remove member?")}
+          message={gettext("Are you sure you want to remove this member?")}
+          confirm_text={gettext("Remove")}
+          confirm_variant="error"
+          on_confirm={JS.push(@on_remove, value: %{id: @member.id})}
+        />
       </div>
     </div>
     """
@@ -177,15 +187,23 @@ defmodule StoryarnWeb.Components.MemberComponents do
       <div class="flex items-center gap-2">
         <.role_badge role={@invitation.role} />
         <span class="badge badge-ghost badge-sm">{gettext("Pending")}</span>
-        <.link
+        <button
           :if={@can_revoke && @on_revoke}
-          phx-click={@on_revoke}
-          phx-value-id={@invitation.id}
+          type="button"
           class="btn btn-ghost btn-sm text-error"
-          data-confirm={gettext("Are you sure you want to revoke this invitation?")}
+          phx-click={show_modal("revoke-invitation-#{@invitation.id}")}
         >
           <.icon name="x" class="size-4" />
-        </.link>
+        </button>
+        <.confirm_modal
+          :if={@can_revoke && @on_revoke}
+          id={"revoke-invitation-#{@invitation.id}"}
+          title={gettext("Revoke invitation?")}
+          message={gettext("Are you sure you want to revoke this invitation?")}
+          confirm_text={gettext("Revoke")}
+          confirm_variant="error"
+          on_confirm={JS.push(@on_revoke, value: %{id: @invitation.id})}
+        />
       </div>
     </div>
     """

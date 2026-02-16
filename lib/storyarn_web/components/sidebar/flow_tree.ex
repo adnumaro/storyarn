@@ -9,6 +9,8 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Phoenix.LiveView.JS
+
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.TreeComponents
 
@@ -74,6 +76,17 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
           />
         </div>
       </div>
+
+      <.confirm_modal
+        :if={@can_edit}
+        id="delete-flow-sidebar-confirm"
+        title={gettext("Delete flow?")}
+        message={gettext("Are you sure you want to delete this flow?")}
+        confirm_text={gettext("Delete")}
+        confirm_variant="error"
+        icon="alert-triangle"
+        on_confirm={JS.push("confirm_delete_flow")}
+      />
     </div>
     """
   end
@@ -196,8 +209,10 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
           <button
             type="button"
             class="text-error"
-            phx-click="delete_flow"
-            phx-value-id={@flow_id}
+            phx-click={
+              JS.push("set_pending_delete_flow", value: %{id: @flow_id})
+              |> show_modal("delete-flow-sidebar-confirm")
+            }
             onclick="event.stopPropagation();"
           >
             <.icon name="trash-2" class="size-4" />

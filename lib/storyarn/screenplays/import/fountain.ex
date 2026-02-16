@@ -188,8 +188,6 @@ defmodule Storyarn.Screenplays.Import.Fountain do
   end
 
   defp classify_text(indent, paragraph, profile) do
-    first_line = paragraph |> String.split("\n") |> hd() |> String.trim()
-
     cond do
       forced_transition?(paragraph) ->
         [make_forced_transition(paragraph)]
@@ -203,11 +201,8 @@ defmodule Storyarn.Screenplays.Import.Fountain do
       character_paragraph?(indent, paragraph, profile) ->
         parse_dialogue_elements(paragraph)
 
-      # Indented doc: lines between action and character zones → dialogue/parenthetical
-      profile != nil and indent >= profile.dialogue_min and indent < profile.character_min ->
-        if String.starts_with?(first_line, "("),
-          do: [make_el("parenthetical", paragraph)],
-          else: [make_el("dialogue", paragraph)]
+      indented_dialogue_zone?(indent, profile) ->
+        classify_indented_dialogue(paragraph)
 
       forced_action?(paragraph) ->
         [make_forced_action(paragraph)]
@@ -215,6 +210,19 @@ defmodule Storyarn.Screenplays.Import.Fountain do
       true ->
         [make_el("action", paragraph)]
     end
+  end
+
+  defp indented_dialogue_zone?(_indent, nil), do: false
+
+  defp indented_dialogue_zone?(indent, profile),
+    do: indent >= profile.dialogue_min and indent < profile.character_min
+
+  defp classify_indented_dialogue(paragraph) do
+    first_line = paragraph |> String.split("\n") |> hd() |> String.trim()
+
+    if String.starts_with?(first_line, "("),
+      do: [make_el("parenthetical", paragraph)],
+      else: [make_el("dialogue", paragraph)]
   end
 
   defp page_break?(p), do: p == "===" or String.starts_with?(p, "===")
@@ -303,16 +311,15 @@ defmodule Storyarn.Screenplays.Import.Fountain do
 
     cond do
       clean == "" -> false
-      # Trailing punctuation → not a character (transitions, descriptions, exclamations)
-      String.ends_with?(clean, ":") -> false
-      String.ends_with?(clean, ".") -> false
-      String.ends_with?(clean, "!") -> false
-      String.ends_with?(clean, ",") -> false
+      ends_with_punctuation?(clean) -> false
       String.starts_with?(clean, "@") -> true
       all_upper?(clean) and not Regex.match?(@transition_pattern, clean) -> true
       true -> false
     end
   end
+
+  defp ends_with_punctuation?(text),
+    do: String.ends_with?(text, [":", ".", "!", ","])
 
   defp strip_dual_marker(line) do
     if String.ends_with?(line, "^"),

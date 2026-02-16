@@ -7,6 +7,8 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Phoenix.LiveView.JS
+
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers
 
@@ -81,9 +83,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           :if={@can_edit && @node.type != "entry"}
           type="button"
           class="btn btn-error btn-outline btn-sm w-full"
-          phx-click="delete_node"
-          phx-value-id={@node.id}
-          data-confirm={gettext("Are you sure you want to delete this node?")}
+          phx-click={show_modal("delete-node-confirm")}
         >
           <.icon name="trash-2" class="size-4 mr-2" />
           {gettext("Delete Node")}
@@ -92,6 +92,16 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           {gettext("Entry nodes cannot be deleted.")}
         </p>
       </div>
+
+      <.confirm_modal
+        :if={@can_edit && @node.type != "entry"}
+        id="delete-node-confirm"
+        title={gettext("Delete node?")}
+        confirm_text={gettext("Delete")}
+        confirm_variant="error"
+        icon="alert-triangle"
+        on_confirm={JS.push("delete_node", value: %{id: @node.id})}
+      />
     </aside>
     """
   end

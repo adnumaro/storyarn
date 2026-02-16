@@ -9,6 +9,8 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Phoenix.LiveView.JS
+
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.TreeComponents
 
@@ -74,6 +76,17 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
           />
         </div>
       </div>
+
+      <.confirm_modal
+        :if={@can_edit}
+        id="delete-screenplay-sidebar-confirm"
+        title={gettext("Delete screenplay?")}
+        message={gettext("Are you sure you want to delete this screenplay?")}
+        confirm_text={gettext("Delete")}
+        confirm_variant="error"
+        icon="alert-triangle"
+        on_confirm={JS.push("confirm_delete_screenplay")}
+      />
     </div>
     """
   end
@@ -192,9 +205,10 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
           <button
             type="button"
             class="text-error"
-            phx-click="delete_screenplay"
-            phx-value-id={@screenplay_id}
-            data-confirm={gettext("Are you sure you want to delete this screenplay?")}
+            phx-click={
+              JS.push("set_pending_delete_screenplay", value: %{id: @screenplay_id})
+              |> show_modal("delete-screenplay-sidebar-confirm")
+            }
             onclick="event.stopPropagation();"
           >
             <.icon name="trash-2" class="size-4" />

@@ -102,9 +102,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       assert html =~ "pending@example.com"
 
-      view
-      |> element("[phx-click='revoke_invitation'][phx-value-id='#{invitation.id}']")
-      |> render_click()
+      render_click(view, "revoke_invitation", %{id: to_string(invitation.id)})
 
       assert render(view) =~ "Invitation revoked"
       refute render(view) =~ "pending@example.com"
@@ -120,9 +118,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       assert html =~ "removeme@example.com"
 
-      view
-      |> element("[phx-click='remove_member'][phx-value-id='#{membership.id}']")
-      |> render_click()
+      render_click(view, "remove_member", %{id: to_string(membership.id)})
 
       assert render(view) =~ "Member removed"
       refute render(view) =~ "removeme@example.com"
@@ -134,9 +130,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
 
-      view
-      |> element("button", "Delete Project")
-      |> render_click()
+      render_click(view, "delete_project")
 
       {path, flash} = assert_redirect(view)
       assert path == "/workspaces/#{project.workspace.slug}"

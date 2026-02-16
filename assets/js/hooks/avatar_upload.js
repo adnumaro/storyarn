@@ -11,14 +11,24 @@ export const AvatarUpload = {
 
       // Validate file type
       if (!file.type.startsWith("image/")) {
-        alert("Please select an image file.");
+        const target = this.el.dataset.target;
+        if (target) {
+          this.pushEventTo(target, "upload_validation_error", { message: "Please select an image file." });
+        } else {
+          this.pushEvent("upload_validation_error", { message: "Please select an image file." });
+        }
         return;
       }
 
       // Validate file size (max 5MB)
       const maxSize = 5 * 1024 * 1024;
       if (file.size > maxSize) {
-        alert("Image must be less than 5MB.");
+        const target = this.el.dataset.target;
+        if (target) {
+          this.pushEventTo(target, "upload_validation_error", { message: "Image must be less than 5MB." });
+        } else {
+          this.pushEvent("upload_validation_error", { message: "Image must be less than 5MB." });
+        }
         return;
       }
 

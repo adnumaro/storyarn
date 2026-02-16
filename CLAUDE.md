@@ -258,6 +258,16 @@ button.appendChild(createElement(Plus, { width: 12, height: 12 }));
 - DOM element appends (hooks, builders): `createElement(Icon, { width, height })` directly
 - Always pre-create icon constants at module level — never inside `render()`
 
+## Dialog & Confirmation Policy
+
+**NEVER use browser-native dialogs.** No `window.confirm()`, `window.alert()`, `window.prompt()`, or `data-confirm`.
+
+- **Confirmations:** `<.confirm_modal>` + `show_modal(id)` trigger
+- **Modals:** `<.modal>` from `core_components.ex`
+- **Validation errors from JS hooks:** `this.pushEvent(...)` → `put_flash` on server
+
+Reference implementation: `project_live/trash.ex`
+
 ## Storyarn-Specific Patterns
 
 **Layouts** (3 independent, not nested):

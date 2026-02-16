@@ -62,6 +62,17 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
 
       <%!-- Create Version Modal --%>
       <.create_version_modal :if={@show_create_version_modal} target={@myself} />
+
+      <.confirm_modal
+        :if={@can_edit}
+        id="delete-version-confirm"
+        title={gettext("Delete version?")}
+        message={gettext("Are you sure you want to delete this version?")}
+        confirm_text={gettext("Delete")}
+        confirm_variant="error"
+        icon="alert-triangle"
+        on_confirm={JS.push("confirm_delete_version", target: @myself)}
+      />
     </section>
     """
   end
@@ -109,6 +120,18 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
     with_authorization(socket, fn socket ->
       restore_version(socket, version_number)
     end)
+  end
+
+  def handle_event("set_pending_delete_version", %{"version" => version_number}, socket) do
+    {:noreply, assign(socket, :pending_delete_version, version_number)}
+  end
+
+  def handle_event("confirm_delete_version", _params, socket) do
+    if version = socket.assigns[:pending_delete_version] do
+      handle_event("delete_version", %{"version" => to_string(version)}, socket)
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("delete_version", %{"version" => version_number}, socket) do
@@ -371,10 +394,13 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
           type="button"
           class="btn btn-ghost btn-xs tooltip text-error"
           data-tip={gettext("Delete version")}
-          phx-click="delete_version"
-          phx-value-version={@version.version_number}
-          phx-target={@target}
-          data-confirm={gettext("Are you sure you want to delete this version?")}
+          phx-click={
+            JS.push("set_pending_delete_version",
+              value: %{version: @version.version_number},
+              target: @target
+            )
+            |> show_modal("delete-version-confirm")
+          }
         >
           <.icon name="trash-2" class="size-4" />
         </button>

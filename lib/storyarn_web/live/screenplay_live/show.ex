@@ -616,6 +616,18 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # Sidebar event handlers
   # ---------------------------------------------------------------------------
 
+  def handle_event("set_pending_delete_screenplay", %{"id" => id}, socket) do
+    {:noreply, assign(socket, :pending_delete_id, id)}
+  end
+
+  def handle_event("confirm_delete_screenplay", _params, socket) do
+    if id = socket.assigns[:pending_delete_id] do
+      handle_event("delete_screenplay", %{"id" => id}, socket)
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("delete_screenplay", %{"id" => screenplay_id}, socket) do
     with_edit_permission(socket, fn ->
       do_delete_screenplay(socket, screenplay_id)
@@ -929,58 +941,70 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   defp create_character_sheets_from_import(project, elements) do
-    # Build a set of positions that have dialogue/parenthetical right after them.
-    # A real character cue is ALWAYS followed by dialogue or parenthetical.
-    followed_by_dialogue =
-      elements
-      |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.reduce(MapSet.new(), fn [a, b], acc ->
-        if a.type == "character" and b.type in ~w(dialogue parenthetical) do
-          MapSet.put(acc, a.id)
-        else
-          acc
-        end
-      end)
+    followed_by_dialogue = character_ids_followed_by_dialogue(elements)
+    character_elements = Enum.filter(elements, &character_with_dialogue?(&1, followed_by_dialogue))
 
-    character_elements =
-      Enum.filter(elements, &(&1.type == "character" and &1.id in followed_by_dialogue))
-
-    unique_names =
-      character_elements
-      |> Enum.map(&CharacterExtension.base_name(&1.content))
-      |> Enum.reject(&(&1 == ""))
-      |> Enum.filter(&valid_character_sheet_name?/1)
-      |> Enum.uniq()
-
-    name_to_sheet =
-      Map.new(unique_names, fn name ->
-        case Sheets.create_sheet(project, %{name: name}) do
-          {:ok, sheet} -> {name, sheet}
-          {:error, _} -> {name, nil}
-        end
-      end)
-      |> Enum.reject(fn {_, v} -> is_nil(v) end)
-      |> Map.new()
+    name_to_sheet = create_sheets_for_characters(project, character_elements)
 
     Enum.map(elements, fn el ->
-      if el.type == "character" and el.id in followed_by_dialogue do
-        base = CharacterExtension.base_name(el.content)
-        sheet = Map.get(name_to_sheet, base)
-
-        if sheet do
-          data = Map.put(el.data || %{}, "sheet_id", sheet.id)
-
-          case Screenplays.update_element(el, %{data: data}) do
-            {:ok, updated} -> updated
-            {:error, _} -> el
-          end
-        else
-          el
-        end
-      else
-        el
-      end
+      maybe_link_character_sheet(el, followed_by_dialogue, name_to_sheet)
     end)
+  end
+
+  # Build a set of element IDs where a character cue is followed by dialogue/parenthetical.
+  defp character_ids_followed_by_dialogue(elements) do
+    elements
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.reduce(MapSet.new(), fn [a, b], acc ->
+      if a.type == "character" and b.type in ~w(dialogue parenthetical),
+        do: MapSet.put(acc, a.id),
+        else: acc
+    end)
+  end
+
+  defp character_with_dialogue?(el, followed_set),
+    do: el.type == "character" and el.id in followed_set
+
+  defp create_sheets_for_characters(project, character_elements) do
+    character_elements
+    |> Enum.map(&CharacterExtension.base_name(&1.content))
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.filter(&valid_character_sheet_name?/1)
+    |> Enum.uniq()
+    |> Map.new(&create_sheet_for_name(project, &1))
+    |> Enum.reject(fn {_, v} -> is_nil(v) end)
+    |> Map.new()
+  end
+
+  defp create_sheet_for_name(project, name) do
+    case Sheets.create_sheet(project, %{name: name}) do
+      {:ok, sheet} -> {name, sheet}
+      {:error, _} -> {name, nil}
+    end
+  end
+
+  defp maybe_link_character_sheet(el, followed_set, name_to_sheet) do
+    if character_with_dialogue?(el, followed_set),
+      do: link_sheet_to_element(el, name_to_sheet),
+      else: el
+  end
+
+  defp link_sheet_to_element(el, name_to_sheet) do
+    base = CharacterExtension.base_name(el.content)
+
+    case Map.get(name_to_sheet, base) do
+      nil -> el
+      sheet -> update_element_sheet(el, sheet)
+    end
+  end
+
+  defp update_element_sheet(el, sheet) do
+    data = Map.put(el.data || %{}, "sheet_id", sheet.id)
+
+    case Screenplays.update_element(el, %{data: data}) do
+      {:ok, updated} -> updated
+      {:error, _} -> el
+    end
   end
 
   defp refresh_sheets_map(socket) do

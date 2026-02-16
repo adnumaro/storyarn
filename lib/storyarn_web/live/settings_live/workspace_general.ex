@@ -96,12 +96,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
             </p>
             <button
               type="button"
-              phx-click="delete"
-              data-confirm={
-                gettext(
-                  "Are you sure you want to delete this workspace? This action cannot be undone."
-                )
-              }
+              phx-click={show_modal("delete-workspace-confirm")}
               class="btn btn-error btn-sm"
             >
               {gettext("Delete Workspace")}
@@ -109,6 +104,16 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
           </div>
         </section>
       </div>
+
+      <.confirm_modal
+        id="delete-workspace-confirm"
+        title={gettext("Delete workspace?")}
+        message={gettext("This action cannot be undone.")}
+        confirm_text={gettext("Delete")}
+        confirm_variant="error"
+        icon="alert-triangle"
+        on_confirm={JS.push("delete")}
+      />
     </Layouts.settings>
     """
   end

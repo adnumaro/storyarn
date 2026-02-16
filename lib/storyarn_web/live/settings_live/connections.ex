@@ -96,13 +96,28 @@ defmodule StoryarnWeb.SettingsLive.Connections do
         <%= if @identity do %>
           <%= if @has_password || @identities_count > 1 do %>
             <.link
+              id={"unlink-#{@provider}"}
               href={~p"/auth/#{@provider}/unlink"}
               method="delete"
-              class="btn btn-sm btn-ghost text-error"
-              data-confirm={gettext("Are you sure you want to unlink this account?")}
+              class="hidden"
             >
               {gettext("Unlink")}
             </.link>
+            <button
+              type="button"
+              class="btn btn-sm btn-ghost text-error"
+              phx-click={show_modal("unlink-#{@provider}-confirm")}
+            >
+              {gettext("Unlink")}
+            </button>
+            <.confirm_modal
+              id={"unlink-#{@provider}-confirm"}
+              title={gettext("Unlink account?")}
+              message={gettext("Are you sure you want to unlink this account?")}
+              confirm_text={gettext("Unlink")}
+              confirm_variant="error"
+              on_confirm={JS.dispatch("click", to: "#unlink-#{@provider}")}
+            />
           <% else %>
             <span
               class="text-sm text-base-content/50 tooltip"

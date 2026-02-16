@@ -91,6 +91,11 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
     end
   end
 
+  def handle_event("upload_validation_error", %{"message" => message}, socket) do
+    send(self(), {:sheet_avatar, :error, message})
+    {:noreply, socket}
+  end
+
   def handle_event(
         "upload_avatar",
         %{"filename" => filename, "content_type" => content_type, "data" => data},

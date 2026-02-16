@@ -149,6 +149,11 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
     end
   end
 
+  def handle_event("upload_validation_error", %{"message" => message}, socket) do
+    send(self(), {:banner, :error, message})
+    {:noreply, socket}
+  end
+
   def handle_event(
         "upload_banner",
         %{"filename" => filename, "content_type" => content_type, "data" => data},

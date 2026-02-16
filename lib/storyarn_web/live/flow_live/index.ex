@@ -67,6 +67,17 @@ defmodule StoryarnWeb.FlowLive.Index do
             navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows"}
           />
         </.modal>
+
+        <.confirm_modal
+          :if={@can_edit}
+          id="delete-flow-confirm"
+          title={gettext("Delete flow?")}
+          message={gettext("Are you sure you want to delete this flow?")}
+          confirm_text={gettext("Delete")}
+          confirm_variant="error"
+          icon="alert-triangle"
+          on_confirm={JS.push("confirm_delete")}
+        />
       </div>
     </Layouts.project>
     """
@@ -133,9 +144,10 @@ defmodule StoryarnWeb.FlowLive.Index do
                 <button
                   type="button"
                   class="text-error"
-                  phx-click="delete"
-                  phx-value-id={@flow.id}
-                  data-confirm={gettext("Are you sure you want to delete this flow?")}
+                  phx-click={
+                    JS.push("set_pending_delete", value: %{id: @flow.id})
+                    |> show_modal("delete-flow-confirm")
+                  }
                   onclick="event.stopPropagation();"
                 >
                   <.icon name="trash-2" class="size-4" />
@@ -203,6 +215,30 @@ defmodule StoryarnWeb.FlowLive.Index do
   end
 
   @impl true
+  def handle_event("set_pending_delete", %{"id" => id}, socket) do
+    {:noreply, assign(socket, :pending_delete_id, id)}
+  end
+
+  def handle_event("set_pending_delete_flow", %{"id" => id}, socket) do
+    {:noreply, assign(socket, :pending_delete_id, id)}
+  end
+
+  def handle_event("confirm_delete", _params, socket) do
+    if id = socket.assigns[:pending_delete_id] do
+      handle_event("delete", %{"id" => id}, socket)
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("confirm_delete_flow", _params, socket) do
+    if id = socket.assigns[:pending_delete_id] do
+      handle_event("delete", %{"id" => id}, socket)
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("delete", %{"id" => flow_id}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
