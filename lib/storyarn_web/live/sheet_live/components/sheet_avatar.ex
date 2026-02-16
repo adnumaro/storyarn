@@ -122,7 +122,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
     project = socket.assigns.project
     user = socket.assigns.current_user
     sheet = socket.assigns.sheet
-    safe_filename = sanitize_filename(filename)
+    safe_filename = Assets.sanitize_filename(filename)
     key = Assets.generate_key(project, safe_filename)
 
     asset_attrs = %{
@@ -146,11 +146,4 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
     end
   end
 
-  defp sanitize_filename(filename) do
-    filename
-    |> String.split(~r/[\/\\]/)
-    |> List.last()
-    |> String.replace(~r/[^\w\-\.]/, "_")
-    |> String.slice(0, 255)
-  end
 end

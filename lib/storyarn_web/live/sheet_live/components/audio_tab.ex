@@ -78,7 +78,9 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
 
   @impl true
   def handle_event("select_audio", %{"node-id" => node_id, "audio_asset_id" => ""}, socket) do
-    update_node_audio(socket, node_id, nil)
+    with_authorization(socket, fn socket ->
+      update_node_audio(socket, node_id, nil)
+    end)
   end
 
   def handle_event(
@@ -86,12 +88,16 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
         %{"node-id" => node_id, "audio_asset_id" => asset_id_str},
         socket
       ) do
-    asset_id = String.to_integer(asset_id_str)
-    update_node_audio(socket, node_id, asset_id)
+    with_authorization(socket, fn socket ->
+      asset_id = String.to_integer(asset_id_str)
+      update_node_audio(socket, node_id, asset_id)
+    end)
   end
 
   def handle_event("remove_audio", %{"node-id" => node_id}, socket) do
-    update_node_audio(socket, node_id, nil)
+    with_authorization(socket, fn socket ->
+      update_node_audio(socket, node_id, nil)
+    end)
   end
 
   def handle_event("upload_started", %{"node_id" => node_id}, socket) do
@@ -117,15 +123,29 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
         },
         socket
       ) do
-    [_header, base64_data] = String.split(data, ",", parts: 2)
+    with_authorization(socket, fn socket ->
+      [_header, base64_data] = String.split(data, ",", parts: 2)
 
-    case Base.decode64(base64_data) do
-      {:ok, binary_data} ->
-        process_upload(socket, node_id, filename, content_type, binary_data)
+      case Base.decode64(base64_data) do
+        {:ok, binary_data} ->
+          process_upload(socket, node_id, filename, content_type, binary_data)
 
-      :error ->
-        send(self(), {:audio_tab, :error, gettext("Invalid file data.")})
-        {:noreply, assign(socket, :uploading_node_id, nil)}
+        :error ->
+          send(self(), {:audio_tab, :error, gettext("Invalid file data.")})
+          {:noreply, assign(socket, :uploading_node_id, nil)}
+      end
+    end)
+  end
+
+  # ===========================================================================
+  # Private: Authorization
+  # ===========================================================================
+
+  defp with_authorization(socket, fun) do
+    if socket.assigns.can_edit do
+      fun.(socket)
+    else
+      {:noreply, put_flash(socket, :error, gettext("You don't have permission to edit."))}
     end
   end
 
@@ -155,27 +175,34 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
   end
 
   defp process_upload(socket, node_id, filename, content_type, binary_data) do
-    project = socket.assigns.project
-    user = socket.assigns.current_user
-    safe_filename = sanitize_filename(filename)
-    key = Assets.generate_key(project, safe_filename)
+    alias Storyarn.Assets.Asset
 
-    asset_attrs = %{
-      filename: safe_filename,
-      content_type: content_type,
-      size: byte_size(binary_data),
-      key: key
-    }
+    if Asset.allowed_content_type?(content_type) do
+      project = socket.assigns.project
+      user = socket.assigns.current_user
+      safe_filename = Assets.sanitize_filename(filename)
+      key = Assets.generate_key(project, safe_filename)
 
-    with {:ok, url} <- Storage.upload(key, binary_data, content_type),
-         {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
-      audio_assets = [asset | socket.assigns.audio_assets]
-      socket = assign(socket, audio_assets: audio_assets, uploading_node_id: nil)
-      update_node_audio(socket, node_id, asset.id)
+      asset_attrs = %{
+        filename: safe_filename,
+        content_type: content_type,
+        size: byte_size(binary_data),
+        key: key
+      }
+
+      with {:ok, url} <- Storage.upload(key, binary_data, content_type),
+           {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
+        audio_assets = [asset | socket.assigns.audio_assets]
+        socket = assign(socket, audio_assets: audio_assets, uploading_node_id: nil)
+        update_node_audio(socket, node_id, asset.id)
+      else
+        {:error, _reason} ->
+          send(self(), {:audio_tab, :error, gettext("Could not upload audio file.")})
+          {:noreply, assign(socket, :uploading_node_id, nil)}
+      end
     else
-      {:error, _reason} ->
-        send(self(), {:audio_tab, :error, gettext("Could not upload audio file.")})
-        {:noreply, assign(socket, :uploading_node_id, nil)}
+      send(self(), {:audio_tab, :error, gettext("Unsupported file type.")})
+      {:noreply, assign(socket, :uploading_node_id, nil)}
     end
   end
 
@@ -380,8 +407,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
   defp truncate_html(html, max) do
     text =
       html
-      |> String.replace(~r/<[^>]+>/, "")
-      |> String.replace(~r/&nbsp;/, " ")
+      |> HtmlSanitizeEx.strip_tags()
       |> String.trim()
 
     if String.length(text) > max do
@@ -391,11 +417,4 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
     end
   end
 
-  defp sanitize_filename(filename) do
-    filename
-    |> String.split(~r/[\/\\]/)
-    |> List.last()
-    |> String.replace(~r/[^\w\-\.]/, "_")
-    |> String.slice(0, 255)
-  end
 end

@@ -111,73 +111,77 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
   # Private functions
 
   defp upload_avatar_file(socket, filename, content_type, binary_data) do
-    project = socket.assigns.project
-    user = socket.assigns.current_scope.user
-    sheet = socket.assigns.sheet
-    safe_filename = sanitize_filename(filename)
-    key = Assets.generate_key(project, safe_filename)
+    alias Storyarn.Assets.Asset
 
-    asset_attrs = %{
-      filename: safe_filename,
-      content_type: content_type,
-      size: byte_size(binary_data),
-      key: key
-    }
+    if Asset.allowed_content_type?(content_type) do
+      project = socket.assigns.project
+      user = socket.assigns.current_scope.user
+      sheet = socket.assigns.sheet
+      safe_filename = Assets.sanitize_filename(filename)
+      key = Assets.generate_key(project, safe_filename)
 
-    with {:ok, url} <- Assets.Storage.upload(key, binary_data, content_type),
-         {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
-         {:ok, updated_sheet} <- Sheets.update_sheet(sheet, %{avatar_asset_id: asset.id}) do
-      updated_sheet = Repo.preload(updated_sheet, :avatar_asset)
-      sheets_tree = Sheets.list_sheets_tree(project.id)
+      asset_attrs = %{
+        filename: safe_filename,
+        content_type: content_type,
+        size: byte_size(binary_data),
+        key: key
+      }
 
-      {:noreply,
-       socket
-       |> assign(:sheet, updated_sheet)
-       |> assign(:sheets_tree, sheets_tree)
-       |> assign(:save_status, :saved)
-       |> schedule_save_status_reset()}
+      with {:ok, url} <- Assets.Storage.upload(key, binary_data, content_type),
+           {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
+           {:ok, updated_sheet} <- Sheets.update_sheet(sheet, %{avatar_asset_id: asset.id}) do
+        updated_sheet = Repo.preload(updated_sheet, :avatar_asset)
+        sheets_tree = Sheets.list_sheets_tree(project.id)
+
+        {:noreply,
+         socket
+         |> assign(:sheet, updated_sheet)
+         |> assign(:sheets_tree, sheets_tree)
+         |> assign(:save_status, :saved)
+         |> schedule_save_status_reset()}
+      else
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not upload avatar."))}
+      end
     else
-      {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not upload avatar."))}
+      {:noreply, put_flash(socket, :error, gettext("Unsupported file type."))}
     end
   end
 
   defp upload_banner_file(socket, filename, content_type, binary_data) do
-    project = socket.assigns.project
-    user = socket.assigns.current_scope.user
-    sheet = socket.assigns.sheet
-    safe_filename = sanitize_filename(filename)
-    key = Assets.generate_key(project, safe_filename)
+    alias Storyarn.Assets.Asset
 
-    asset_attrs = %{
-      filename: safe_filename,
-      content_type: content_type,
-      size: byte_size(binary_data),
-      key: key
-    }
+    if Asset.allowed_content_type?(content_type) do
+      project = socket.assigns.project
+      user = socket.assigns.current_scope.user
+      sheet = socket.assigns.sheet
+      safe_filename = Assets.sanitize_filename(filename)
+      key = Assets.generate_key(project, safe_filename)
 
-    with {:ok, url} <- Assets.Storage.upload(key, binary_data, content_type),
-         {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
-         {:ok, updated_sheet} <- Sheets.update_sheet(sheet, %{banner_asset_id: asset.id}) do
-      updated_sheet = Repo.preload(updated_sheet, [:avatar_asset, :banner_asset])
+      asset_attrs = %{
+        filename: safe_filename,
+        content_type: content_type,
+        size: byte_size(binary_data),
+        key: key
+      }
 
-      {:noreply,
-       socket
-       |> assign(:sheet, updated_sheet)
-       |> assign(:save_status, :saved)
-       |> schedule_save_status_reset()}
+      with {:ok, url} <- Assets.Storage.upload(key, binary_data, content_type),
+           {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
+           {:ok, updated_sheet} <- Sheets.update_sheet(sheet, %{banner_asset_id: asset.id}) do
+        updated_sheet = Repo.preload(updated_sheet, [:avatar_asset, :banner_asset])
+
+        {:noreply,
+         socket
+         |> assign(:sheet, updated_sheet)
+         |> assign(:save_status, :saved)
+         |> schedule_save_status_reset()}
+      else
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, gettext("Could not upload banner."))}
+      end
     else
-      {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not upload banner."))}
+      {:noreply, put_flash(socket, :error, gettext("Unsupported file type."))}
     end
-  end
-
-  defp sanitize_filename(filename) do
-    filename
-    |> String.split(~r/[\/\\]/)
-    |> List.last()
-    |> String.replace(~r/[^\w\-\.]/, "_")
-    |> String.slice(0, 255)
   end
 
   defp schedule_save_status_reset(socket) do

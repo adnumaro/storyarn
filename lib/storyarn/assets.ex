@@ -72,7 +72,9 @@ defmodule Storyarn.Assets do
     case Keyword.get(opts, :search) do
       nil -> query
       "" -> query
-      term -> where(query, [a], ilike(a.filename, ^"%#{term}%"))
+      term ->
+        escaped = sanitize_like_term(term)
+        where(query, [a], ilike(a.filename, ^"%#{escaped}%"))
     end
   end
 
@@ -293,9 +295,25 @@ defmodule Storyarn.Assets do
     length(usages.flow_nodes) + length(usages.sheet_avatars) + length(usages.sheet_banners)
   end
 
-  defp sanitize_filename(filename) do
+  @doc """
+  Sanitizes a filename for safe storage.
+
+  Strips path components, replaces unsafe characters, downcases, and limits length.
+  """
+  @spec sanitize_filename(String.t()) :: String.t()
+  def sanitize_filename(filename) do
     filename
+    |> String.split(~r/[\/\\]/)
+    |> List.last()
     |> String.replace(~r/[^\w\.\-]/, "_")
     |> String.downcase()
+    |> String.slice(0, 255)
+  end
+
+  defp sanitize_like_term(term) do
+    term
+    |> String.replace("\\", "\\\\")
+    |> String.replace("%", "\\%")
+    |> String.replace("_", "\\_")
   end
 end

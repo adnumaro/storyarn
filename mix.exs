@@ -76,6 +76,7 @@ defmodule Storyarn.MixProject do
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
       {:floki, "~> 0.36"},
+      {:html_sanitize_ex, "~> 1.4"},
       {:hammer, "~> 6.2"},
       {:hammer_backend_redis, "~> 6.1"},
       {:dns_cluster, "~> 0.2.0"},

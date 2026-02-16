@@ -121,22 +121,23 @@ end
 └─────────────────────────────────────────────────────┘
 ```
 
-#### 1.2 Files to Create/Modify
+#### 1.2 Files Created/Modified
 
 | File | Action | Description |
 |------|--------|-------------|
-| `lib/storyarn_web/components/audio_picker.ex` | CREATE | LiveComponent for audio selection/upload |
-| `lib/storyarn_web/components/audio_helpers.ex` | CREATE | Shared audio upload logic |
-| `assets/js/hooks/audio_upload.js` | CREATE | JS hook for file selection |
+| `lib/storyarn_web/components/audio_picker.ex` | CREATED | LiveComponent for audio selection/upload |
+| `assets/js/hooks/audio_upload.js` | CREATED | JS hook for file selection |
+
+> Note: `audio_helpers.ex` was not created as a separate file. Upload logic lives inline in AudioPicker and each consumer component.
 
 #### 1.3 Tasks
 
-- [ ] Create AudioPicker LiveComponent with select dropdown
-- [ ] Add upload button with file input (hidden, triggered by button)
-- [ ] Implement upload logic (reuse pattern from AssetHelpers)
-- [ ] Add audio preview player when asset selected
-- [ ] Add "Remove" button to unlink (not delete) asset
-- [ ] Add loading state during upload
+- [x] Create AudioPicker LiveComponent with select dropdown
+- [x] Add upload button with file input (hidden, triggered by button)
+- [x] Implement upload logic (reuse pattern from AssetHelpers)
+- [x] Add audio preview player when asset selected
+- [x] Add "Remove" button to unlink (not delete) asset
+- [x] Add loading state during upload
 
 ---
 
@@ -159,20 +160,20 @@ Replace current audio select with AudioPicker component.
 />
 ```
 
-#### 2.2 Files to Modify
+#### 2.2 Files Modified
 
 | File | Action | Description |
 |------|--------|-------------|
-| `lib/storyarn_web/live/flow_live/components/properties_panels.ex` | MODIFY | Replace audio section with AudioPicker |
-| `lib/storyarn_web/live/flow_live/show.ex` | MODIFY | Add handlers for audio_selected, audio_uploaded |
+| `lib/storyarn_web/live/flow_live/components/properties_panels.ex` | MODIFIED | Replaced audio section with AudioPicker |
+| `lib/storyarn_web/live/flow_live/show.ex` | MODIFIED | Added handlers for audio_selected, audio_uploaded |
 
 #### 2.3 Tasks
 
-- [ ] Pass project to properties_panels component
-- [ ] Replace audio `<details>` section with AudioPicker
-- [ ] Add `handle_info` for audio selection/upload events
-- [ ] Update node data when audio changes
-- [ ] Test upload + select workflows
+- [x] Pass project to properties_panels component
+- [x] Replace audio `<details>` section with AudioPicker
+- [x] Add `handle_info` for audio selection/upload events
+- [x] Update node data when audio changes
+- [x] Test upload + select workflows
 
 ---
 
@@ -236,22 +237,25 @@ def list_assets_for_speaker(project_id, sheet_id) do
 end
 ```
 
-#### 3.3 Files to Create/Modify
+#### 3.3 Files Created/Modified
 
 | File | Action | Description |
 |------|--------|-------------|
-| `lib/storyarn_web/live/sheet_live/components/audio_tab.ex` | CREATE | New tab component |
-| `lib/storyarn_web/live/sheet_live/show.ex` | MODIFY | Add Audio tab |
-| `lib/storyarn/assets.ex` | MODIFY | Add list_assets_for_speaker/2 |
+| `lib/storyarn_web/live/sheet_live/components/audio_tab.ex` | CREATED | New tab component |
+| `lib/storyarn_web/live/sheet_live/show.ex` | MODIFIED | Added Audio tab |
+| `lib/storyarn/flows.ex` | MODIFIED | Added `list_dialogue_nodes_by_speaker/2` |
+
+> Note: `list_assets_for_speaker/2` was not added to Assets context. Instead, AudioTab queries dialogue nodes directly via `Flows.list_dialogue_nodes_by_speaker/2` and resolves audio assets inline.
 
 #### 3.4 Tasks
 
-- [ ] Add `list_assets_for_speaker/2` to Assets context
-- [ ] Create AudioTab LiveComponent
-- [ ] Display assets with usage info (which flow, which node)
-- [ ] Add AudioPicker for uploading new voice assets
-- [ ] Add "Audio" tab button in Page show.ex
-- [ ] Wire up tab switching
+- [x] Query dialogue nodes by speaker via Flows context
+- [x] Create AudioTab LiveComponent
+- [x] Display voice lines with text preview and audio status
+- [x] Add inline audio upload and select per voice line
+- [x] Add deep-linking to flow editor nodes
+- [x] Add "Audio" tab button in Sheet show.ex
+- [x] Wire up tab switching
 
 ---
 
@@ -334,59 +338,47 @@ defp list_dialogue_nodes_using_asset(asset_id) do
 end
 ```
 
-#### 4.4 Files to Create
+#### 4.4 Files Created
 
 | File | Action | Description |
 |------|--------|-------------|
-| `lib/storyarn_web/live/assets_live/index.ex` | CREATE | Main assets page |
-| `lib/storyarn_web/live/assets_live/components/asset_grid.ex` | CREATE | Grid/list view component |
-| `lib/storyarn_web/live/assets_live/components/asset_details.ex` | CREATE | Detail panel component |
-| `lib/storyarn_web/live/assets_live/components/asset_uploader.ex` | CREATE | Upload component (no linking) |
+| `lib/storyarn_web/live/asset_live/index.ex` | CREATED | Main assets page (grid, detail panel, upload, delete — all in one LiveView) |
+| `assets/js/hooks/asset_upload.js` | CREATED | JS hook for asset file selection |
+
+> Note: Separate `asset_grid.ex`, `asset_details.ex`, and `asset_uploader.ex` components were not created. The grid, detail panel, and upload logic are implemented as private function components and helpers within `index.ex` for simplicity.
 
 #### 4.5 Tasks
 
-- [ ] Create route for assets page
-- [ ] Create AssetsLive.Index with grid layout
-- [ ] Implement type filtering (All, Images, Audio, Documents)
-- [ ] Implement search
-- [ ] Create detail panel showing usages
-- [ ] Create standalone uploader (upload only, no linking)
-- [ ] Add delete with confirmation (warn if asset is in use)
-- [ ] Add sidebar entry in project navigation
+- [x] Create route for assets page
+- [x] Create AssetLive.Index with grid layout
+- [x] Implement type filtering (All, Images, Audio)
+- [x] Implement search
+- [x] Create detail panel showing usages (flow nodes, sheet avatars, sheet banners)
+- [x] Implement upload via JS hook (base64)
+- [x] Add delete with confirmation (warn if asset is in use)
+- [x] Add sidebar entry in project navigation
 
 ---
 
 ## File Summary
 
-### New Files (10)
+### New Files (4)
 
 ```
-lib/storyarn_web/components/
-├── audio_picker.ex              # Shared audio select + upload
-└── audio_helpers.ex             # Upload logic
-
-lib/storyarn_web/live/sheet_live/components/
-└── audio_tab.ex                 # Sheet audio tab
-
-lib/storyarn_web/live/assets_live/
-├── index.ex                     # Assets tool main page
-└── components/
-    ├── asset_grid.ex            # Grid/list view
-    ├── asset_details.ex         # Detail panel
-    └── asset_uploader.ex        # Standalone uploader
-
-assets/js/hooks/
-└── audio_upload.js              # File selection hook
+lib/storyarn_web/components/audio_picker.ex              # Shared audio select + upload
+lib/storyarn_web/live/sheet_live/components/audio_tab.ex # Sheet audio tab (voice lines)
+lib/storyarn_web/live/asset_live/index.ex                # Assets tool (grid, detail, upload, delete)
+assets/js/hooks/audio_upload.js                          # JS hook for audio file selection
 ```
 
 ### Modified Files (5)
 
 ```
-lib/storyarn/assets.ex                                    # Add usage queries
-lib/storyarn_web/live/flow_live/components/properties_panels.ex  # Use AudioPicker
-lib/storyarn_web/live/flow_live/show.ex                   # Handle audio events
-lib/storyarn_web/live/sheet_live/show.ex                   # Add Audio tab
-lib/storyarn_web/router.ex                                # Add assets route
+lib/storyarn/assets.ex                                         # Usage queries, sanitize_filename (public)
+lib/storyarn_web/live/flow_live/components/properties_panels.ex # Use AudioPicker
+lib/storyarn_web/live/flow_live/show.ex                        # Handle audio events
+lib/storyarn_web/live/sheet_live/show.ex                       # Add Audio tab
+lib/storyarn_web/router.ex                                     # Add assets route
 ```
 
 ---
@@ -428,37 +420,37 @@ Phase 4: Assets Tool
 ## Testing Checklist
 
 ### Phase 1: AudioPicker
-- [ ] Can select existing audio from dropdown
-- [ ] Can upload new audio file
-- [ ] Upload creates asset in database
-- [ ] Upload stores file in storage (local/R2)
-- [ ] Preview player shows for selected audio
-- [ ] Remove button unlinks asset (doesn't delete)
-- [ ] Loading state shows during upload
+- [x] Can select existing audio from dropdown
+- [x] Can upload new audio file
+- [x] Upload creates asset in database
+- [x] Upload stores file in storage (local/R2)
+- [x] Preview player shows for selected audio
+- [x] Remove button unlinks asset (doesn't delete)
+- [x] Loading state shows during upload
 
 ### Phase 2: Flow Editor
-- [ ] AudioPicker renders in properties panel
-- [ ] Selecting audio updates node data
-- [ ] Uploading audio creates asset + updates node
-- [ ] Audio indicator shows on canvas node
-- [ ] Existing dialogues with audio still work
+- [x] AudioPicker renders in properties panel
+- [x] Selecting audio updates node data
+- [x] Uploading audio creates asset + updates node
+- [x] Audio indicator shows on canvas node
+- [x] Existing dialogues with audio still work
 
-### Phase 3: Page Audio Tab
-- [ ] Tab appears in page view
-- [ ] Shows all audio assets where page is speaker
-- [ ] Shows which flow/node each asset is used in
-- [ ] Can upload new voice asset from tab
-- [ ] Clicking flow name navigates to flow
+### Phase 3: Sheet Audio Tab
+- [x] Tab appears in sheet view
+- [x] Shows all voice lines where sheet is speaker
+- [x] Shows text preview and audio status per line
+- [x] Can upload/select audio inline per voice line
+- [x] Deep-links to flow editor nodes
 
 ### Phase 4: Assets Tool
-- [ ] Page loads and shows all project assets
-- [ ] Type filters work (All, Images, Audio, Documents)
-- [ ] Search filters by filename
-- [ ] Selecting asset shows detail panel
-- [ ] Detail panel shows all usages
-- [ ] Can upload new asset
-- [ ] Can delete asset (with warning if in use)
-- [ ] Deleting removes from storage
+- [x] Page loads and shows all project assets
+- [x] Type filters work (All, Images, Audio)
+- [x] Search filters by filename
+- [x] Selecting asset shows detail panel
+- [x] Detail panel shows all usages
+- [x] Can upload new asset
+- [x] Can delete asset (with warning if in use)
+- [x] Deleting removes from storage
 
 ---
 

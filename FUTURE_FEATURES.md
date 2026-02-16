@@ -963,4 +963,20 @@ Inspired by World Anvil's secrets/visibility system, but adapted for game develo
 
 ---
 
+## Assets — Enhancements
+
+> **Dependency:** Assets Tool (implemented)
+> **Priority:** Low — quality-of-life improvements
+> **Related:** `docs/plans/ASSETS_IMPLEMENTATION_PLAN.md`
+
+- Bulk upload
+- Drag & drop reordering
+- Asset folders/organization
+- Asset versioning
+- Waveform visualization for audio
+- Duration metadata extraction
+- Automatic transcription
+
+---
+
 *This document will be updated as features are designed and prioritized.*

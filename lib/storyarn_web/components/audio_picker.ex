@@ -185,35 +185,42 @@ defmodule StoryarnWeb.Components.AudioPicker do
   # ===========================================================================
 
   defp process_upload(socket, filename, content_type, binary_data) do
-    project = socket.assigns.project
-    user = socket.assigns.current_user
-    safe_filename = sanitize_filename(filename)
-    key = Assets.generate_key(project, safe_filename)
+    alias Storyarn.Assets.Asset
 
-    asset_attrs = %{
-      filename: safe_filename,
-      content_type: content_type,
-      size: byte_size(binary_data),
-      key: key
-    }
+    if Asset.allowed_content_type?(content_type) do
+      project = socket.assigns.project
+      user = socket.assigns.current_user
+      safe_filename = Assets.sanitize_filename(filename)
+      key = Assets.generate_key(project, safe_filename)
 
-    with {:ok, url} <- Storage.upload(key, binary_data, content_type),
-         {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
-      audio_assets = [asset | socket.assigns.audio_assets]
+      asset_attrs = %{
+        filename: safe_filename,
+        content_type: content_type,
+        size: byte_size(binary_data),
+        key: key
+      }
 
-      send(self(), {:audio_picker, :selected, asset.id})
+      with {:ok, url} <- Storage.upload(key, binary_data, content_type),
+           {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
+        audio_assets = [asset | socket.assigns.audio_assets]
 
-      {:noreply,
-       assign(socket,
-         audio_assets: audio_assets,
-         selected_asset: asset,
-         selected_asset_id: asset.id,
-         uploading: false
-       )}
+        send(self(), {:audio_picker, :selected, asset.id})
+
+        {:noreply,
+         assign(socket,
+           audio_assets: audio_assets,
+           selected_asset: asset,
+           selected_asset_id: asset.id,
+           uploading: false
+         )}
+      else
+        {:error, _reason} ->
+          send(self(), {:audio_picker, :error, gettext("Could not upload audio file.")})
+          {:noreply, assign(socket, :uploading, false)}
+      end
     else
-      {:error, _reason} ->
-        send(self(), {:audio_picker, :error, gettext("Could not upload audio file.")})
-        {:noreply, assign(socket, :uploading, false)}
+      send(self(), {:audio_picker, :error, gettext("Unsupported file type.")})
+      {:noreply, assign(socket, :uploading, false)}
     end
   end
 
@@ -223,11 +230,4 @@ defmodule StoryarnWeb.Components.AudioPicker do
     Enum.find(assets, &(to_string(&1.id) == to_string(id)))
   end
 
-  defp sanitize_filename(filename) do
-    filename
-    |> String.split(~r/[\/\\]/)
-    |> List.last()
-    |> String.replace(~r/[^\w\-\.]/, "_")
-    |> String.slice(0, 255)
-  end
 end

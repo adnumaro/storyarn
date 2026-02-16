@@ -444,44 +444,45 @@ defmodule StoryarnWeb.AssetLive.Index do
   end
 
   defp do_upload(socket, filename, content_type, binary_data) do
-    project = socket.assigns.project
-    user = socket.assigns.current_scope.user
-    safe_filename = sanitize_filename(filename)
-    key = Assets.generate_key(project, safe_filename)
+    if Asset.allowed_content_type?(content_type) do
+      project = socket.assigns.project
+      user = socket.assigns.current_scope.user
+      safe_filename = Assets.sanitize_filename(filename)
+      key = Assets.generate_key(project, safe_filename)
 
-    asset_attrs = %{
-      filename: safe_filename,
-      content_type: content_type,
-      size: byte_size(binary_data),
-      key: key
-    }
+      asset_attrs = %{
+        filename: safe_filename,
+        content_type: content_type,
+        size: byte_size(binary_data),
+        key: key
+      }
 
-    with {:ok, url} <- Storage.upload(key, binary_data, content_type),
-         {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
-      type_counts = Assets.count_assets_by_type(project.id)
-      usages = Assets.get_asset_usages(project.id, asset.id)
+      with {:ok, url} <- Storage.upload(key, binary_data, content_type),
+           {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
+        type_counts = Assets.count_assets_by_type(project.id)
+        usages = Assets.get_asset_usages(project.id, asset.id)
 
-      {:noreply,
-       socket
-       |> assign(:uploading, false)
-       |> assign(:type_counts, type_counts)
-       |> assign(:selected_asset, asset)
-       |> assign(:asset_usages, usages)
-       |> load_assets()
-       |> put_flash(:info, gettext("Asset uploaded successfully."))}
-    else
-      {:error, reason} ->
         {:noreply,
          socket
          |> assign(:uploading, false)
-         |> put_flash(:error, upload_error_message(reason))}
+         |> assign(:type_counts, type_counts)
+         |> assign(:selected_asset, asset)
+         |> assign(:asset_usages, usages)
+         |> load_assets()
+         |> put_flash(:info, gettext("Asset uploaded successfully."))}
+      else
+        {:error, reason} ->
+          {:noreply,
+           socket
+           |> assign(:uploading, false)
+           |> put_flash(:error, upload_error_message(reason))}
+      end
+    else
+      {:noreply,
+       socket
+       |> assign(:uploading, false)
+       |> put_flash(:error, gettext("Unsupported file type."))}
     end
-  end
-
-  defp sanitize_filename(filename) do
-    filename
-    |> String.replace(~r/[^\w\.\-]/, "_")
-    |> String.downcase()
   end
 
   defp upload_error_message(%Ecto.Changeset{}), do: gettext("Could not save asset.")
