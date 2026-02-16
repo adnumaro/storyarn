@@ -25,6 +25,7 @@ import { hooks as colocatedHooks } from "phoenix-colocated/storyarn";
 import { LiveSocket } from "phoenix_live_view";
 import topbar from "topbar";
 
+import { AudioUpload } from "./hooks/audio_upload";
 import { AvatarUpload } from "./hooks/avatar_upload";
 import { BannerUpload } from "./hooks/banner_upload";
 import { EditableShortcut } from "./hooks/editable_shortcut";
@@ -58,6 +59,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
   params: { _csrf_token: csrfToken },
   hooks: {
     ...colocatedHooks,
+    AudioUpload,
     AvatarUpload,
     BannerUpload,
     ColumnSortable,

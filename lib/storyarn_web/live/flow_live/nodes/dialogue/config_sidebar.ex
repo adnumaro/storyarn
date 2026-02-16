@@ -20,7 +20,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
   attr :can_edit, :boolean, default: false
   attr :all_sheets, :list, default: []
   attr :flow_hubs, :list, default: []
-  attr :audio_assets, :list, default: []
+  attr :project, :map, required: true
+  attr :current_user, :map, required: true
   attr :panel_sections, :map, default: %{}
   attr :project_variables, :list, default: []
   attr :referencing_jumps, :list, default: []
@@ -30,22 +31,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
       [{"", gettext("Select speaker...")}] ++
         Enum.map(assigns.all_sheets, fn sheet -> {sheet.name, sheet.id} end)
 
-    audio_options =
-      [{"", gettext("No audio")}] ++
-        Enum.map(assigns.audio_assets, fn asset -> {asset.filename, asset.id} end)
-
-    selected_audio =
-      if assigns.form[:audio_asset_id] && assigns.form[:audio_asset_id].value do
-        Enum.find(assigns.audio_assets, fn a ->
-          to_string(a.id) == to_string(assigns.form[:audio_asset_id].value)
-        end)
-      end
-
-    assigns =
-      assigns
-      |> assign(:speaker_options, speaker_options)
-      |> assign(:audio_options, audio_options)
-      |> assign(:selected_audio, selected_audio)
+    assigns = assign(assigns, :speaker_options, speaker_options)
 
     ~H"""
     <.form for={@form} phx-change="update_node_data" phx-debounce="500">
@@ -110,47 +96,32 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
           </p>
         </div>
       </details>
-      <details
-        class="collapse collapse-arrow bg-base-200 mt-2"
-        open={Map.get(@panel_sections, "audio", @selected_audio != nil)}
+    </.form>
+    <details
+      class="collapse collapse-arrow bg-base-200 mt-2"
+      open={Map.get(@panel_sections, "audio", @form[:audio_asset_id] && @form[:audio_asset_id].value != nil)}
+    >
+      <summary
+        class="collapse-title text-sm font-medium flex items-center gap-2 cursor-pointer"
+        phx-click="toggle_panel_section"
+        phx-value-section="audio"
+        onclick="event.preventDefault()"
       >
-        <summary
-          class="collapse-title text-sm font-medium flex items-center gap-2 cursor-pointer"
-          phx-click="toggle_panel_section"
-          phx-value-section="audio"
-          onclick="event.preventDefault()"
-        >
-          <.icon name="volume-2" class="size-4" />
-          {gettext("Audio")}
-          <span :if={@selected_audio} class="badge badge-primary badge-xs">1</span>
-        </summary>
-        <div class="collapse-content">
-          <.input
-            field={@form[:audio_asset_id]}
-            type="select"
-            options={@audio_options}
-            disabled={!@can_edit}
-          />
-          <div
-            :if={@selected_audio}
-            class="mt-3 p-3 bg-base-100 rounded-lg border border-base-300"
-          >
-            <p
-              class="text-xs text-base-content/60 mb-2 truncate"
-              title={@selected_audio.filename}
-            >
-              {gettext("Preview:")} {@selected_audio.filename}
-            </p>
-            <audio controls class="w-full h-8">
-              <source src={@selected_audio.url} type={@selected_audio.content_type} />
-              {gettext("Your browser does not support audio playback.")}
-            </audio>
-          </div>
-          <p :if={!@selected_audio} class="text-xs text-base-content/60 mt-2">
-            {gettext("Attach voice-over or ambient audio to this dialogue.")}
-          </p>
-        </div>
-      </details>
+        <.icon name="volume-2" class="size-4" />
+        {gettext("Audio")}
+      </summary>
+      <div class="collapse-content">
+        <.live_component
+          module={StoryarnWeb.Components.AudioPicker}
+          id={"audio-picker-#{@node.id}"}
+          project={@project}
+          current_user={@current_user}
+          selected_asset_id={@form[:audio_asset_id] && @form[:audio_asset_id].value}
+          can_edit={@can_edit}
+        />
+      </div>
+    </details>
+    <.form for={@form} phx-change="update_node_data" phx-debounce="500">
       <details
         class="collapse collapse-arrow bg-base-200 mt-2"
         open={Map.get(@panel_sections, "technical", false)}

@@ -17,7 +17,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.ConfigSidebar do
   attr :can_edit, :boolean, default: false
   attr :all_sheets, :list, default: []
   attr :flow_hubs, :list, default: []
-  attr :audio_assets, :list, default: []
+  attr :project, :map, required: true
+  attr :current_user, :map, required: true
   attr :panel_sections, :map, default: %{}
   attr :project_variables, :list, default: []
   attr :referencing_jumps, :list, default: []

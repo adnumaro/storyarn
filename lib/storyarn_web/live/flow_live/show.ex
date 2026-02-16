@@ -13,7 +13,6 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   alias StoryarnWeb.FlowLive.Components.ScreenplayEditor
 
-  alias Storyarn.Assets
   alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.DebugSessionStore
@@ -193,7 +192,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           can_edit={@can_edit}
           all_sheets={@all_sheets}
           flow_hubs={@flow_hubs}
-          audio_assets={@audio_assets}
+          project={@project}
+          current_user={@current_scope.user}
           panel_sections={@panel_sections}
           project_variables={@project_variables}
           referencing_jumps={@referencing_jumps}
@@ -388,7 +388,6 @@ defmodule StoryarnWeb.FlowLive.Show do
           flow_data: Flows.serialize_for_canvas(full_flow),
           all_sheets: Sheets.list_all_sheets(project.id),
           flow_hubs: Flows.list_hubs(flow.id),
-          audio_assets: Assets.list_assets(project.id, content_type: "audio/"),
           project_variables: Sheets.list_project_variables(project.id)
         }
       end)
@@ -823,7 +822,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:node_types, @node_types)
       |> assign(:all_sheets, data.all_sheets)
       |> assign(:flow_hubs, data.flow_hubs)
-      |> assign(:audio_assets, data.audio_assets)
       |> assign(:project_variables, data.project_variables)
       |> assign(:selected_node, nil)
       |> assign(:node_form, nil)
@@ -901,6 +899,22 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_info({:remote_change, action, payload}, socket),
     do: CollaborationEventHandlers.handle_remote_change(action, payload, socket)
+
+  def handle_info({:audio_picker, :selected, asset_id}, socket) do
+    case socket.assigns.selected_node do
+      nil ->
+        {:noreply, socket}
+
+      node ->
+        NodeHelpers.persist_node_update(socket, node.id, fn data ->
+          Map.put(data, "audio_asset_id", asset_id)
+        end)
+    end
+  end
+
+  def handle_info({:audio_picker, :error, message}, socket) do
+    {:noreply, put_flash(socket, :error, message)}
+  end
 
   # ===========================================================================
   # Private Helpers

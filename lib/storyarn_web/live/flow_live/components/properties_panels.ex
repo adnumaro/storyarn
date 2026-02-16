@@ -19,7 +19,8 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :can_edit, :boolean, default: false
   attr :all_sheets, :list, default: []
   attr :flow_hubs, :list, default: []
-  attr :audio_assets, :list, default: []
+  attr :project, :map, required: true
+  attr :current_user, :map, required: true
   attr :panel_sections, :map, default: %{}
   attr :project_variables, :list, default: []
   attr :referencing_jumps, :list, default: []
@@ -48,7 +49,8 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           can_edit={@can_edit}
           all_sheets={@all_sheets}
           flow_hubs={@flow_hubs}
-          audio_assets={@audio_assets}
+          project={@project}
+          current_user={@current_user}
           panel_sections={@panel_sections}
           project_variables={@project_variables}
           referencing_jumps={@referencing_jumps}
@@ -111,7 +113,8 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   attr :can_edit, :boolean, default: false
   attr :all_sheets, :list, default: []
   attr :flow_hubs, :list, default: []
-  attr :audio_assets, :list, default: []
+  attr :project, :map, required: true
+  attr :current_user, :map, required: true
   attr :panel_sections, :map, default: %{}
   attr :project_variables, :list, default: []
   attr :referencing_jumps, :list, default: []
