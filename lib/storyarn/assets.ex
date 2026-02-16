@@ -225,6 +225,74 @@ defmodule Storyarn.Assets do
     String.replace(asset_key, "/assets/", "/thumbnails/")
   end
 
+  @doc """
+  Returns a map of usage references for an asset within its project.
+
+  Checks:
+  - Flow nodes with `data->>'audio_asset_id'` matching the asset (excludes soft-deleted)
+  - Sheets with `avatar_asset_id` matching the asset (excludes soft-deleted)
+  - Sheets with `banner_asset_id` matching the asset (excludes soft-deleted)
+
+  Returns:
+      %{
+        flow_nodes: [%{node: node, flow: flow}],
+        sheet_avatars: [sheet],
+        sheet_banners: [sheet]
+      }
+  """
+  @spec get_asset_usages(integer(), integer()) :: %{
+          flow_nodes: [map()],
+          sheet_avatars: [Storyarn.Sheets.Sheet.t()],
+          sheet_banners: [Storyarn.Sheets.Sheet.t()]
+        }
+  def get_asset_usages(project_id, asset_id) do
+    alias Storyarn.Flows.{Flow, FlowNode}
+    alias Storyarn.Sheets.Sheet
+
+    asset_id_str = to_string(asset_id)
+
+    flow_nodes =
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where: f.project_id == ^project_id,
+        where: is_nil(n.deleted_at),
+        where: fragment("?->>'audio_asset_id' = ?", n.data, ^asset_id_str),
+        order_by: [asc: f.name],
+        select: %{node_id: n.id, node_type: n.type, flow_id: f.id, flow_name: f.name}
+      )
+      |> Repo.all()
+
+    sheet_avatars =
+      from(s in Sheet,
+        where: s.project_id == ^project_id,
+        where: is_nil(s.deleted_at),
+        where: s.avatar_asset_id == ^asset_id,
+        order_by: [asc: s.name]
+      )
+      |> Repo.all()
+
+    sheet_banners =
+      from(s in Sheet,
+        where: s.project_id == ^project_id,
+        where: is_nil(s.deleted_at),
+        where: s.banner_asset_id == ^asset_id,
+        order_by: [asc: s.name]
+      )
+      |> Repo.all()
+
+    %{flow_nodes: flow_nodes, sheet_avatars: sheet_avatars, sheet_banners: sheet_banners}
+  end
+
+  @doc """
+  Returns the total number of usage references for an asset.
+  """
+  @spec count_asset_usages(integer(), integer()) :: non_neg_integer()
+  def count_asset_usages(project_id, asset_id) do
+    usages = get_asset_usages(project_id, asset_id)
+    length(usages.flow_nodes) + length(usages.sheet_avatars) + length(usages.sheet_banners)
+  end
+
   defp sanitize_filename(filename) do
     filename
     |> String.replace(~r/[^\w\.\-]/, "_")

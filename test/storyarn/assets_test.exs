@@ -222,6 +222,101 @@ defmodule Storyarn.AssetsTest do
     end
   end
 
+  describe "get_asset_usages/2" do
+    setup do
+      user = user_fixture()
+      project = project_fixture(user)
+      %{project: project, user: user}
+    end
+
+    test "returns flow node usages for audio assets", %{project: project, user: user} do
+      import Storyarn.FlowsFixtures
+
+      audio = audio_asset_fixture(project, user)
+      flow = flow_fixture(project, %{name: "Intro Flow"})
+
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"audio_asset_id" => audio.id, "text" => "Hello"}
+      })
+
+      usages = Assets.get_asset_usages(project.id, audio.id)
+
+      assert length(usages.flow_nodes) == 1
+      assert hd(usages.flow_nodes).flow_name == "Intro Flow"
+    end
+
+    test "returns sheet avatar usages", %{project: project, user: user} do
+      import Storyarn.SheetsFixtures
+
+      image = image_asset_fixture(project, user)
+      sheet = sheet_fixture(project, %{name: "Hero", avatar_asset_id: image.id})
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert length(usages.sheet_avatars) == 1
+      assert hd(usages.sheet_avatars).id == sheet.id
+    end
+
+    test "returns sheet banner usages", %{project: project, user: user} do
+      import Storyarn.SheetsFixtures
+
+      image = image_asset_fixture(project, user)
+      sheet = sheet_fixture(project, %{name: "Hero", banner_asset_id: image.id})
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert length(usages.sheet_banners) == 1
+      assert hd(usages.sheet_banners).id == sheet.id
+    end
+
+    test "returns empty when asset is unused", %{project: project, user: user} do
+      asset = asset_fixture(project, user)
+
+      usages = Assets.get_asset_usages(project.id, asset.id)
+
+      assert usages.flow_nodes == []
+      assert usages.sheet_avatars == []
+      assert usages.sheet_banners == []
+    end
+
+    test "excludes soft-deleted nodes", %{project: project, user: user} do
+      import Storyarn.FlowsFixtures
+
+      audio = audio_asset_fixture(project, user)
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"audio_asset_id" => audio.id, "text" => "Hello"}
+        })
+
+      # Soft-delete the node
+      Storyarn.Flows.FlowNode.soft_delete_changeset(node)
+      |> Storyarn.Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, audio.id)
+
+      assert usages.flow_nodes == []
+    end
+
+    test "excludes soft-deleted sheets", %{project: project, user: user} do
+      import Storyarn.SheetsFixtures
+
+      image = image_asset_fixture(project, user)
+      sheet = sheet_fixture(project, %{name: "Hero", avatar_asset_id: image.id})
+
+      # Soft-delete the sheet via raw changeset
+      Ecto.Changeset.change(sheet, deleted_at: DateTime.utc_now() |> DateTime.truncate(:second))
+      |> Storyarn.Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert usages.sheet_avatars == []
+    end
+  end
+
   describe "Asset schema" do
     test "image?/1 returns true for image content types" do
       assert Asset.image?(%Asset{content_type: "image/jpeg"})

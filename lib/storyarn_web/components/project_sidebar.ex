@@ -72,6 +72,12 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
             icon="file-text"
             active={sheets_tool_page?(@current_path, @workspace.slug, @project.slug)}
           />
+          <.tree_link
+            label={gettext("Assets")}
+            href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/assets"}
+            icon="image"
+            active={assets_page?(@current_path, @workspace.slug, @project.slug)}
+          />
         </div>
 
         <%!-- Dynamic content section based on active tool --%>
@@ -140,5 +146,9 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
 
   defp sheets_tool_page?(path, workspace_slug, project_slug) do
     String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets")
+  end
+
+  defp assets_page?(path, workspace_slug, project_slug) do
+    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/assets")
   end
 end

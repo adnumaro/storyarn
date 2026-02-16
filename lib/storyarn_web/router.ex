@@ -122,6 +122,11 @@ defmodule StoryarnWeb.Router do
            SheetLive.Show,
            :edit
 
+      # Assets
+      live "/workspaces/:workspace_slug/projects/:project_slug/assets",
+           AssetLive.Index,
+           :index
+
       # Trash
       live "/workspaces/:workspace_slug/projects/:project_slug/trash",
            ProjectLive.Trash,
