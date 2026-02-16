@@ -164,26 +164,27 @@ Massive worldbuilding platform for TTRPG and fiction writers. 28 article templat
 
 | Feature                      | Storyarn                     | articy:draft X                      | Arcweave    | Yarn Spinner  | World Anvil  |
 |------------------------------|------------------------------|-------------------------------------|-------------|---------------|--------------|
-| Dedicated screenplay editor  | Y (full, TipTap)             | P (Document View)                   | N (planned) | N             | N            |
-| Industry-standard formatting | Y (Courier Prime, US Letter) | P (basic screenplay)                | N           | N             | N            |
-| Element types                | 18                           | ~4 (chapter, line, stage dir, menu) | —           | —             | —            |
-| Scene heading auto-detect    | Y                            | N                                   | N           | N             | —            |
-| Transition auto-detect       | Y                            | N                                   | N           | N             | —            |
-| Character CONT'D             | Y                            | N                                   | N           | N             | —            |
-| Slash command palette        | Y                            | N                                   | N           | N             | —            |
-| Smart type progression       | Y (Enter cycles types)       | P (Ctrl+Enter)                      | N           | N             | —            |
-| Tab cycling block types      | Y                            | P (Tab fields)                      | N           | N             | —            |
-| Inline condition builder     | Y (atom blocks)              | N                                   | N           | N             | —            |
-| Inline instruction builder   | Y (atom blocks)              | N                                   | N           | N             | —            |
-| Inline response builder      | Y (atom blocks)              | N                                   | N           | N             | —            |
-| Bidirectional flow sync      | Y (to/from flow)             | N (one-way drag)                    | N           | N             | —            |
-| Fountain import              | Y                            | N (Final Draft .fdx)                | N           | N             | —            |
-| Fountain export              | Y                            | N (Word export)                     | N           | N             | —            |
-| Read mode                    | Y                            | N                                   | N           | N             | —            |
-| Character sheet linking      | Y (auto-creates sheets)      | Y (entity reference)                | N           | N             | —            |
-| Page tree (branching)        | Y                            | N                                   | N           | N             | —            |
-| Dual dialogue                | Y                            | N                                   | N           | N             | —            |
-| Title page                   | Y                            | N                                   | N           | N             | —            |
+| Dedicated screenplay editor  | Y (full, TipTap)                    | Y (Document View)                          | N (planned) | N             | N            |
+| Industry-standard formatting | Y (Courier Prime, US Letter, margins) | P (word-processor-like)                  | N           | N             | N            |
+| Element types                | 18                                  | ~4 (chapter, fragment, stage dir, menu)  | —           | —             | —            |
+| Scene heading auto-detect    | Y                                   | N                                        | N           | N             | —            |
+| Transition auto-detect       | Y                                   | N                                        | N           | N             | —            |
+| Character CONT'D             | Y                                   | N                                        | N           | N             | —            |
+| Slash command palette        | Y                                   | N                                        | N           | N             | —            |
+| Smart type progression       | Y (Enter cycles types)              | P (Ctrl+Enter new line)                  | N           | N             | —            |
+| Tab cycling block types      | Y (6-type cycle)                    | P (Tab cycles fields within fragment)    | N           | N             | —            |
+| Inline condition builder     | Y (atom blocks)                     | N                                        | N           | N             | —            |
+| Inline instruction builder   | Y (atom blocks)                     | N                                        | N           | N             | —            |
+| Inline response builder      | Y (atom blocks)                     | N                                        | N           | N             | —            |
+| Bidirectional flow sync      | Y (to/from flow)                    | N (one-way drag, creates separate copy)  | N           | N             | —            |
+| Screenplay import            | Y (Fountain .fountain/.txt)         | Y (Final Draft .fdx)                     | N           | N             | —            |
+| Screenplay export            | Y (Fountain .fountain)              | Y (Word .docx)                           | N           | N             | —            |
+| Auto-create entities on import | Y (sheets from Fountain chars)    | P (maps to existing entities)            | N           | N             | —            |
+| Read mode                    | Y                                   | N                                        | N           | N             | —            |
+| Character sheet linking      | Y (auto-creates sheets)             | Y (entity auto-complete)                 | N           | N             | —            |
+| Page tree (branching)        | Y                                   | N                                        | N           | N             | —            |
+| Dual dialogue                | Y                                   | N                                        | N           | N             | —            |
+| Title page                   | Y                                   | N                                        | N           | N             | —            |
 
 ### 3.8 Debug / Simulation / Testing
 
@@ -305,14 +306,33 @@ Massive worldbuilding platform for TTRPG and fiction writers. 28 article templat
 
 ### 4.2 Screenplay Editing
 
-**Storyarn is unmatched** in this category. No competitor offers a comparable screenplay editor:
+Both Storyarn and articy:draft X have dedicated screenplay/document writing views. The key differences lie in **depth, formatting fidelity, and flow integration**:
 
-- **articy:draft** has a basic "Document View" with screenplay-like formatting, but it's a secondary feature with limited element types, no bidirectional flow sync, no Fountain format, and no industry-standard formatting conventions.
+**articy:draft X — Document View:**
+- Word-processor-like writing for linear dialogue sequences
+- ~4 element types: dialogue chapters (containers), dialogue fragments (lines), stage directions, menu text
+- Speaker auto-complete from project entities
+- Keyboard shortcuts: Ctrl+Enter (new line), Tab (cycle fields)
+- Final Draft (.fdx) import — can import as document or convert directly to flow nodes
+- Word (.docx) export
+- **One-way flow conversion** — drag chapters from Document View into Flow View, but they become **separate copies** (changes don't sync back)
+
+**Storyarn — Screenplay Editor:**
+- Full industry-standard formatting (Courier Prime font, US Letter dimensions, proper margins per element type)
+- 18 element types covering standard screenplay (scene heading, action, character, dialogue, parenthetical, transition, dual dialogue), interactive (condition, instruction, response atom blocks), and utility (note, section, page break, title page, hub/jump markers)
+- **Bidirectional flow sync** — push changes to flow and pull changes from flow; nodes and elements stay linked
+- Fountain (.fountain) import with **auto-character-sheet creation** and export
+- Smart typing: auto-detection (INT./EXT. → scene heading, FADE IN: → transition), Enter cycles types, Tab cycles block types, CONT'D auto-badges
+- Slash command palette for element insertion
+- Page tree for branching screenplay narratives (response choices link to child pages)
+- Interactive atom blocks: inline condition/instruction/response builders embedded in the screenplay
+- Read mode hides interactive blocks for clean reading
+
+**Key takeaway:** articy's Document View is a dialogue-writing shortcut that feeds into flows one-way. Storyarn's Screenplay Editor is a full screenwriting tool with bidirectional sync, industry formatting, and interactive narrative elements inline. The import story is different but comparable — articy imports Final Draft (.fdx, the dominant paid format), Storyarn imports Fountain (.fountain, the open-source standard).
+
 - **Arcweave** has "screenplay formatting" on their roadmap but hasn't shipped it yet.
-- **Yarn Spinner** uses text-based scripting that resembles a screenplay but has no formatting, no standard element types, and no export to industry formats.
+- **Yarn Spinner** uses text-based scripting that looks like a screenplay but has no formatting, standard elements, or export to industry formats.
 - **World Anvil** has Manuscripts for novel writing but no screenplay format.
-
-Storyarn's 18 element types, bidirectional flow sync, Fountain import/export, auto-detection, smart typing, inline interactive atom blocks (condition/instruction/response builders), page tree for branching narratives, and character sheet auto-linking represent a unique and comprehensive offering.
 
 ### 4.3 Entity/Character Database
 
@@ -383,12 +403,12 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 ### 5.1 Unique Differentiators (Features No Competitor Has)
 
 1. **Full Industry-Standard Screenplay Editor with Bidirectional Flow Sync**
-   - 18 element types (vs articy's ~4, others 0)
-   - Bidirectional sync between screenplay and flow (articy is one-way drag-and-drop with separate copies)
-   - Interactive atom blocks (condition/instruction/response builders inline in screenplay)
-   - Fountain import with auto-character-sheet creation
-   - Page tree for branching screenplay narratives
-   - Smart typing, auto-detection, CONT'D, dual dialogue, slash commands
+   - 18 element types vs articy's ~4 (articy has Document View for dialogue writing, but not industry-standard screenplay formatting)
+   - Bidirectional sync between screenplay and flow (articy is one-way drag, creates separate copies that don't sync)
+   - Interactive atom blocks (condition/instruction/response builders inline in screenplay) — no competitor has this
+   - Fountain import with auto-character-sheet creation (articy imports Final Draft .fdx instead)
+   - Page tree for branching screenplay narratives — unique to Storyarn
+   - Smart typing, auto-detection, CONT'D, dual dialogue, slash commands, title page
 
 2. **GUI-Based Variable System with Per-Entity Namespacing**
    - Variables are sheet blocks, not global declarations — `mc.jaime.health` vs `GameState.playerLevel`
@@ -489,8 +509,10 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 **Storyarn wins on:**
 - Web-based, no install, works anywhere
 - Real-time collaboration (cursors, locking, notifications vs SVN partitions)
-- Screenplay editor (full industry-standard vs basic Document View)
-- Bidirectional flow-screenplay sync (vs one-way copy)
+- Screenplay depth (18 element types, industry formatting, dual dialogue, title page, interactive atom blocks vs ~4 element types in Document View)
+- Bidirectional flow-screenplay sync (vs one-way drag that creates separate copies)
+- Fountain import with auto-character-sheet creation (vs Final Draft import)
+- Page tree for branching screenplay narratives
 - GUI variable builders (vs mandatory scripting)
 - Debug breakpoints and step-back
 - Auto-play with speed control
@@ -509,13 +531,14 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 - Location editor (2D vector maps)
 - Plugin system (MDK) with .NET API
 - Export formats (JSON, XML, Excel, Word)
+- Final Draft (.fdx) import (industry-standard paid format)
 - Offline support
 - Industry track record (AAA titles)
 - Pin-level scripting (conditions on inputs, instructions on outputs)
 - Seen/unseen visit tracking
 - AI features (dialogue, barks, preview images, ElevenLabs VO)
 
-**Verdict:** Storyarn is more accessible and collaborative; articy is deeper and more feature-complete. Storyarn's screenplay editor is a clear win, but articy's engine integration, localization, and scripting are must-have gaps to close.
+**Verdict:** Storyarn is more accessible and collaborative; articy is deeper and more feature-complete. Both have screenplay writing, but Storyarn's is significantly more capable (18 types, bidirectional sync, interactive elements, industry formatting). articy counters with Final Draft import (the dominant paid format) and Word export. articy's engine integration, localization, and scripting are must-have gaps to close.
 
 ---
 
