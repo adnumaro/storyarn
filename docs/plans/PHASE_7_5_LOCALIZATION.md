@@ -4,13 +4,15 @@
 >
 > **Priority:** High - Critical differentiator for game development teams
 >
-> **Last Updated:** February 2, 2026
+> **Status:** Implemented (core complete, polish items pending)
+>
+> **Last Updated:** February 17, 2026
 
 ## Overview
 
 This phase adds a comprehensive localization system that enables:
 - Multiple language support per project
-- Localization state tracking (draft, in progress, final, needs review)
+- Localization state tracking (pending, draft, in progress, review, final)
 - Voice-over (VO) tracking and assignment
 - Export/Import workflows for external translation teams
 - Machine translation integration (DeepL)
@@ -22,68 +24,108 @@ This phase adds a comprehensive localization system that enables:
 
 ## Architecture
 
-### Domain Model
+### Domain Model (as implemented)
 
 ```
-project_languages            # NEW TABLE
-├── id
-├── project_id (FK)
-├── locale_code              # "en", "es", "de", "ja", etc.
-├── name                     # "English", "Spanish", etc.
-├── is_source                # boolean - the source/reference language
-├── position                 # ordering in UI
+project_languages
+├── id (integer, PK)
+├── project_id (FK → projects, on_delete: delete_all)
+├── locale_code (string, size: 10, not null)
+├── name (string, not null)
+├── is_source (boolean, default: false, not null)
+├── position (integer, default: 0)
 └── timestamps
 
-localized_texts              # NEW TABLE
-├── id
-├── project_id (FK)
-├── source_type              # "flow_node" | "page_block" | "page_name"
-├── source_id                # UUID of the source entity
-├── source_field             # "text" | "content" | "name" | "option_0", etc.
-├── source_text              # Original text (from source language)
-├── locale_code              # Target language
-├── translated_text          # The translation
-├── status                   # "pending" | "draft" | "in_progress" | "review" | "final"
-├── vo_status                # "none" | "needed" | "recorded" | "approved"
-├── vo_asset_id (FK)         # Link to recorded audio file
-├── translator_notes         # Notes for translators
-├── reviewer_notes           # Notes from review process
-├── character_id (FK)        # For dialogue - who speaks this line (for reports)
-├── word_count               # Cached word count
-├── last_translated_at
-├── last_reviewed_at
-├── translated_by_id (FK)
-├── reviewed_by_id (FK)
+localized_texts
+├── id (integer, PK)
+├── project_id (FK → projects, on_delete: delete_all)
+├── source_type (string, not null)       # "flow_node" | "block" | "sheet" | "flow"
+├── source_id (integer, not null)
+├── source_field (string, not null)      # "text" | "value.content" | "name" | "response.{id}.text", etc.
+├── source_text (text)
+├── source_text_hash (string, size: 64)  # SHA-256 for change detection
+├── locale_code (string, size: 10, not null)
+├── translated_text (text)
+├── status (string, default: "pending")  # pending | draft | in_progress | review | final
+├── vo_status (string, default: "none")  # none | needed | recorded | approved
+├── vo_asset_id (FK → assets, on_delete: nilify_all)
+├── translator_notes (text)
+├── reviewer_notes (text)
+├── speaker_sheet_id (FK → sheets, on_delete: nilify_all)  # for dialogue lines
+├── word_count (integer)
+├── machine_translated (boolean, default: false)
+├── last_translated_at (utc_datetime)
+├── last_reviewed_at (utc_datetime)
+├── translated_by_id (FK → users, on_delete: nilify_all)
+├── reviewed_by_id (FK → users, on_delete: nilify_all)
 └── timestamps
 
-localization_glossary        # NEW TABLE (optional, for consistency)
-├── id
-├── project_id (FK)
-├── term                     # "Eldoria", "mana", "the Void"
-├── locale_code
-├── translation              # How this term should be translated
-├── context                  # Usage notes
-├── do_not_translate         # boolean - for proper nouns
+localization_glossary_entries
+├── id (integer, PK)
+├── project_id (FK → projects, on_delete: delete_all)
+├── source_term (string, not null)
+├── source_locale (string, size: 10, not null)
+├── target_term (string)
+├── target_locale (string, size: 10, not null)
+├── context (text)
+├── do_not_translate (boolean, default: false)
+└── timestamps
+
+translation_provider_configs
+├── id (integer, PK)
+├── project_id (FK → projects, on_delete: delete_all)
+├── provider (string, not null, default: "deepl")
+├── api_key_encrypted (binary)           # Cloak-encrypted
+├── api_endpoint (string)
+├── settings (map, default: %{})
+├── is_active (boolean, default: true)
+├── deepl_glossary_ids (map, default: %{})
 └── timestamps
 ```
 
-### Integration Points
+### Integration Points (as implemented)
 
 ```
 Localizable Content Sources:
-├── Flow Nodes
-│   ├── dialogue.data.text           # Main dialogue line
-│   ├── dialogue.data.speaker_name   # If custom (not from page)
-│   ├── choice.data.options[].text   # Choice option texts
-│   └── choice.data.prompt           # Choice prompt text
+├── Flow Nodes (source_type: "flow_node")
+│   ├── dialogue → text, stage_directions, menu_text
+│   ├── dialogue → response.{id}.text (per response)
+│   ├── scene → description
+│   └── exit → label
 │
-├── Page Blocks
-│   ├── text.value.content
-│   ├── rich_text.value.content
-│   └── select.config.options[].label
+├── Blocks (source_type: "block")
+│   ├── text → config.label, value.content
+│   ├── select → config.label, config.options.{key}
+│   └── other → config.label
 │
-└── Page Metadata
-    └── page.name                     # Page titles can be localized
+├── Sheets (source_type: "sheet")
+│   └── name, description
+│
+└── Flows (source_type: "flow")
+    └── name, description
+```
+
+### Module Structure
+
+```
+lib/storyarn/localization/
+├── localization.ex              # Facade (defdelegate to submodules)
+├── project_language.ex          # Schema + changesets
+├── localized_text.ex            # Schema + changesets (create, update, source_update)
+├── glossary_entry.ex            # Schema + changesets
+├── provider_config.ex           # Schema + changeset (Cloak encryption)
+├── language_crud.ex             # Language CRUD + ensure_source_language
+├── text_crud.ex                 # Text CRUD with filters, pagination, upsert
+├── glossary_crud.ex             # Glossary CRUD with language-pair queries
+├── text_extractor.ex            # Auto-extraction hooks + bulk extract_all
+├── batch_translator.ex          # Batch/single translation orchestrator
+├── export_import.ex             # XLSX/CSV export + CSV import
+├── reports.ex                   # Analytics queries
+├── languages.ex                 # Static language list (44 languages)
+├── html_handler.ex              # Rich text preprocessing for DeepL
+├── translation_provider.ex      # Behaviour definition
+└── providers/
+    └── deepl.ex                 # DeepL API implementation
 ```
 
 ---
@@ -93,63 +135,50 @@ Localizable Content Sources:
 ### 7.5.L.1 Project Languages
 
 #### Database & Schema
-- [ ] Create `project_languages` table (migration)
-- [ ] Add unique index on `(project_id, locale_code)`
-- [ ] Add index on `(project_id, is_source)`
-- [ ] Ensure exactly one `is_source = true` per project
+- [x] Create `project_languages` table (migration `20260216120000`)
+- [x] Add unique index on `(project_id, locale_code)`
+- [x] Add partial unique index on `(project_id)` where `is_source = true`
+- [x] Static language list (44 languages) in `Languages` module
 
 #### Context Functions
-- [ ] `Localization.list_languages/1` - List project languages
-- [ ] `Localization.add_language/2` - Add language to project
-- [ ] `Localization.remove_language/2` - Remove language (cascade translations)
-- [ ] `Localization.set_source_language/2` - Change source language
-- [ ] `Localization.reorder_languages/2` - Change display order
+- [x] `Localization.list_languages/1` - List project languages
+- [x] `Localization.add_language/2` - Add language to project
+- [x] `Localization.remove_language/1` - Remove language
+- [x] `Localization.set_source_language/1` - Change source language
+- [x] `Localization.reorder_languages/2` - Change display order
+- [x] `Localization.ensure_source_language/1` - Auto-create from workspace source_locale
+- [x] `Localization.get_source_language/1`, `get_target_languages/1`, `get_language_by_locale/2`
 
-#### UI: Project Settings > Languages
-- [ ] Language list with drag-to-reorder
-- [ ] "Add Language" button with locale picker
-- [ ] Source language indicator (star/badge)
-- [ ] Remove language (with confirmation - deletes translations)
-- [ ] Common locales: EN, ES, DE, FR, IT, PT, JA, KO, ZH-CN, ZH-TW, RU, PL
+#### UI: Localization Page (inline management)
+- [x] Source language badge (read-only, inherited from workspace)
+- [x] Target language chips with remove button
+- [x] "Add Language" dropdown with predefined `<select>` (no free text)
+- [x] Remove language with confirmation modal
+- [x] Workspace Settings: source locale `<select>` (field `source_locale` on workspaces table)
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ PROJECT SETTINGS > Languages                                    │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│ Source Language                                                 │
-│ ┌─────────────────────────────────────────────────────────────┐ │
-│ │ ⭐ English (en)                              [Change]       │ │
-│ └─────────────────────────────────────────────────────────────┘ │
-│                                                                 │
-│ Translation Languages                          [+ Add Language] │
-│ ┌─────────────────────────────────────────────────────────────┐ │
-│ │ [≡] Spanish (es)           Progress: 45%           [🗑️]    │ │
-│ │ [≡] German (de)            Progress: 12%           [🗑️]    │ │
-│ │ [≡] Japanese (ja)          Progress: 0%            [🗑️]    │ │
-│ └─────────────────────────────────────────────────────────────┘ │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Design change:** Language management moved from Project Settings to the Localization page itself. Source language is inherited from workspace, not configurable per-project.
 
 ---
 
 ### 7.5.L.2 Localized Texts Table
 
 #### Database & Schema
-- [ ] Create `localized_texts` table (migration)
-- [ ] Add indexes for common queries:
-  - `(project_id, locale_code, status)`
-  - `(source_type, source_id)`
-  - `(character_id, locale_code)`
-- [ ] Add unique constraint on `(source_type, source_id, source_field, locale_code)`
+- [x] Create `localized_texts` table (migration `20260216120000`)
+- [x] Indexes: `(project_id, locale_code, status)`, `(source_type, source_id)`, `(speaker_sheet_id, locale_code)`
+- [x] Partial index: `(project_id, locale_code)` where `status != 'final'`
+- [x] Unique constraint on `(source_type, source_id, source_field, locale_code)`
 
 #### Automatic Text Extraction
-- [ ] Hook into flow node save → extract localizable texts
-- [ ] Hook into page block save → extract localizable texts
-- [ ] Sync source_text when source content changes
-- [ ] Mark translations as "needs_review" when source changes
-- [ ] Delete localized_texts when source is deleted
+- [x] Hook into flow node save → `TextExtractor.extract_flow_node/1` (in `NodeCrud`)
+- [x] Hook into block save → `TextExtractor.extract_block/1` (in `BlockCrud`)
+- [x] Hook into sheet save → `TextExtractor.extract_sheet/1` (in `SheetCrud`)
+- [x] Hook into flow save → `TextExtractor.extract_flow/1` (in `FlowCrud`)
+- [x] Sync source_text via hash comparison (`source_text_hash`)
+- [x] Downgrade `final` → `review` when source text changes
+- [x] Delete localized_texts when source is deleted
+- [x] Cleanup removed fields (e.g., deleted responses)
+- [x] Bulk `extract_all/1` for syncing all existing project content
+- [x] Auto-extract on adding a target language
 
 #### Status Workflow
 ```
@@ -160,7 +189,6 @@ Localizable Content Sources:
      └──────────────── (source changed) ────────────┘
 ```
 
-**Status Definitions:**
 | Status | Description |
 |--------|-------------|
 | pending | No translation exists yet |
@@ -173,431 +201,159 @@ Localizable Content Sources:
 
 ### 7.5.L.3 Localization View
 
-A dedicated view to manage all localizable content.
-
-#### UI: Main Localization Interface
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ LOCALIZATION                                          [Export ▼] [Import]   │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ Language: [Spanish (es) ▼]    Filter: [All Status ▼] [All Sources ▼]       │
-│ Character: [All ▼]            Search: [🔍                              ]    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ Progress: ████████░░░░░░░░░░░░ 234/520 (45%)                               │
-│ Final: 180 │ Review: 24 │ In Progress: 30 │ Pending: 286                   │
-├───────────────────────────────┬─────────────────────────────────────────────┤
-│ Source (English)              │ Translation (Spanish)          │ Status    │
-├───────────────────────────────┼─────────────────────────────────┼───────────┤
-│ 💬 "Hello, traveler!"         │ "¡Hola, viajero!"              │ ✅ Final  │
-│    Jaime @ Act1/TavernEntry   │                                │ 🎤 VO ✓   │
-├───────────────────────────────┼─────────────────────────────────┼───────────┤
-│ 💬 "I've been waiting for     │ "Te he estado esperando. Los   │ 🟡 Review │
-│    you. The dark times are    │ tiempos oscuros se acercan."   │ 🎤 Needed │
-│    coming."                   │                                │           │
-│    Elena @ Act1/Prophecy      │ [Translator note: Check tone]  │           │
-├───────────────────────────────┼─────────────────────────────────┼───────────┤
-│ ❓ "Accept the quest"         │                                │ ⬜ Pending│
-│    Choice @ Act1/QuestOffer   │ [Click to translate...]        │           │
-├───────────────────────────────┼─────────────────────────────────┼───────────┤
-│ 📄 "Jaime the Brave"          │ "Jaime el Valiente"            │ ✅ Final  │
-│    Page name                  │                                │           │
-└───────────────────────────────┴─────────────────────────────────┴───────────┘
-```
-
-#### Implementation Tasks
-- [ ] LiveView: `LocalizationLive.Index`
-- [ ] Filters: status, source type, character, search
-- [ ] Inline editing of translations
-- [ ] Status change dropdown
-- [ ] VO status indicators
-- [ ] Link to source (click to open flow/page)
+#### Implementation
+- [x] LiveView: `LocalizationLive.Index`
+- [x] Filters: status, source type, search
+- [x] Pagination (50 per page)
+- [x] Progress bar per language
+- [x] Batch translate button
+- [x] Single-text translate button (per row)
+- [x] Export buttons (XLSX, CSV)
+- [x] Sync button (re-extract all content)
+- [x] Source language badge + target language chips (inline management)
+- [ ] Inline editing of translations (currently navigates to Edit page)
 - [ ] Keyboard navigation (arrow keys, Enter to edit)
-- [ ] Pagination/virtual scroll for large projects
 
 ---
 
 ### 7.5.L.4 Translation Editor
 
-Detailed editor for individual translations.
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ TRANSLATION EDITOR                                              [← Back]    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ Source: Flow Node > Act 1 > Tavern Entry > Dialogue                        │
-│ Character: Jaime                                         [Open in Flow →]   │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│ SOURCE (English)                                                            │
-│ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │ Hello, traveler! I've been expecting you. The prophecy spoke of        │ │
-│ │ someone like you arriving on this very day.                            │ │
-│ └─────────────────────────────────────────────────────────────────────────┘ │
-│ Words: 23 │ Characters: 142                                                 │
-│                                                                             │
-│ TRANSLATION (Spanish)                              Status: [Review ▼]       │
-│ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │ ¡Hola, viajero! Te estaba esperando. La profecía hablaba de alguien   │ │
-│ │ como tú llegando precisamente hoy.                                     │ │
-│ └─────────────────────────────────────────────────────────────────────────┘ │
-│ Words: 21 │ Characters: 138 │ Ratio: 97%                                    │
-│                                                                             │
-│ [🤖 Translate with DeepL]  [📋 Copy Source]  [↩️ Revert]                    │
-│                                                                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ VOICE OVER                                                                  │
-│ Status: [Needed ▼]                                                          │
-│ Actor: [                    ]                                               │
-│ Audio: [No file uploaded]                              [Upload Audio]       │
-│ Notes for actor: [                                                    ]     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ NOTES                                                                       │
-│ Translator: [Keep the enthusiastic tone                              ]      │
-│ Reviewer:   [Approved - matches character voice                      ]      │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ GLOSSARY MATCHES                                                            │
-│ • "prophecy" → "profecía" (consistent with project glossary)               │
-│ • "traveler" → "viajero" (do not use "viajante")                           │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ HISTORY                                                                     │
-│ • Feb 2, 10:30 - Status changed to Review (by Maria)                       │
-│ • Feb 2, 09:15 - Translation edited (by Juan)                              │
-│ • Feb 1, 18:00 - Auto-translated with DeepL                                │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-#### Implementation Tasks
-- [ ] LiveView: `LocalizationLive.Edit`
-- [ ] Side-by-side source/translation view
-- [ ] Character/word count display
-- [ ] Length ratio indicator (for UI fitting)
-- [ ] Status dropdown with workflow enforcement
-- [ ] VO section with audio upload
-- [ ] Notes fields (translator, reviewer)
+#### Implementation
+- [x] LiveView: `LocalizationLive.Edit`
+- [x] Side-by-side source/translation view
+- [x] Word count display
+- [x] Status dropdown
+- [x] "Translate with DeepL" button
+- [x] Translator notes field
+- [x] Machine-translated indicator
+- [ ] VO section with audio upload/playback
 - [ ] Glossary term highlighting
-- [ ] History log
+- [ ] History/audit log
+- [ ] Length ratio indicator
 
 ---
 
 ### 7.5.L.5 Export/Import
 
-Standard workflow for external translation teams.
+#### Export (implemented)
+- [x] Export endpoint: `GET /workspaces/:ws/projects/:proj/localization/export/:format/:locale`
+- [x] Excel (.xlsx) generation via `Elixlsx`
+- [x] CSV generation
+- [x] Filter by status, source_type (query params)
 
-#### Export Format (Excel/CSV)
-
-```csv
-id,source_type,source_id,source_field,character,location,source_text,translation,status,vo_status,translator_notes,max_length
-abc123,flow_node,uuid-1,text,Jaime,Act1/Tavern,"Hello, traveler!","¡Hola, viajero!",final,recorded,,50
-def456,flow_node,uuid-2,text,Elena,Act1/Prophecy,"The dark times...","",pending,needed,"Keep serious tone",100
-```
-
-#### Export Options
-- [ ] Format: Excel (.xlsx) or CSV
-- [ ] Languages: Select which to export
-- [ ] Filter: By status, source type, character
-- [ ] Include: VO columns, notes, context
-- [ ] Context columns: character name, location path
-
-#### Import Process
-- [ ] Upload Excel/CSV file
+#### Import (backend only)
+- [x] CSV parsing and validation (`ExportImport.import_csv/1`)
+- [x] Match by composite key (source_type, source_id, source_field, locale_code)
+- [ ] Import LiveView with file upload UI
 - [ ] Preview changes before applying
-- [ ] Match by ID (required column)
-- [ ] Update only: translated_text, status, notes
-- [ ] Conflict handling: skip, overwrite, mark for review
-- [ ] Import report: success/error counts
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ IMPORT TRANSLATIONS                                                         │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│ File: translations_spanish_v2.xlsx                     [Choose File]        │
-│                                                                             │
-│ Preview (first 10 rows):                                                    │
-│ ┌─────────────────────────┬─────────────────────────┬──────────────────────┐│
-│ │ Source                  │ New Translation         │ Status               ││
-│ ├─────────────────────────┼─────────────────────────┼──────────────────────┤│
-│ │ "Hello, traveler!"      │ "¡Hola, viajero!"       │ ✅ Updated           ││
-│ │ "The dark times..."     │ "Los tiempos oscuros.." │ ✅ New               ││
-│ │ "Accept quest"          │ "Acepta misión"         │ ⚠️ Source changed   ││
-│ └─────────────────────────┴─────────────────────────┴──────────────────────┘│
-│                                                                             │
-│ On conflict: ○ Skip  ● Overwrite  ○ Mark for review                        │
-│                                                                             │
-│ Summary: 234 updates, 12 new, 3 conflicts, 1 error                         │
-│                                                                             │
-│                                        [Cancel] [Import 249 translations]   │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-#### Implementation Tasks
-- [ ] Export endpoint: `GET /projects/:id/localization/export`
-- [ ] Excel generation with proper formatting (use `Elixlsx` or similar)
-- [ ] CSV generation
-- [ ] Import LiveView with preview
-- [ ] File parsing and validation
-- [ ] Batch update with conflict detection
-- [ ] Import history/audit log
+- [ ] Conflict handling options (skip, overwrite, mark for review)
 
 ---
 
 ### 7.5.L.6 Machine Translation (DeepL)
 
 #### Integration
-- [ ] DeepL API client module
-- [ ] Project-level API key configuration (or workspace-level)
-- [ ] Translate single text
-- [ ] Batch translate (with rate limiting)
-- [ ] Preserve formatting/variables in text
+- [x] DeepL API client module (`Providers.DeepL`)
+- [x] Project-level API key configuration (encrypted via Cloak)
+- [x] Translate single text (`BatchTranslator.translate_single/2`)
+- [x] Batch translate with chunking (50 texts/request) (`BatchTranslator.translate_batch/3`)
+- [x] Preserve `{placeholders}` via `translate="no"` spans (`HtmlHandler`)
+- [x] HTML tag handling for rich text
 
 #### UI Integration
-- [ ] "Translate with DeepL" button in editor
-- [ ] "Auto-translate all pending" in localization view
-- [ ] Set status to "draft" after machine translation
-- [ ] Show "Machine translated" indicator
+- [x] "Translate with DeepL" button in editor
+- [x] "Translate all" batch button in localization view
+- [x] Set status to "draft" after machine translation
+- [x] `machine_translated` flag tracked
 
-#### Configuration
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ PROJECT SETTINGS > Localization                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│ DeepL Integration                                               │
-│ API Key: [••••••••••••••••••••••••]              [Test] [Save]  │
-│ Status: ✅ Connected (Free tier, 450,000/500,000 chars used)    │
-│                                                                 │
-│ Auto-translate Settings                                         │
-│ ☐ Auto-translate new content to all languages                   │
-│ ☑ Mark auto-translated content as "draft"                       │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
+#### Configuration (Project Settings)
+- [x] API key input (password field, shows masked if exists)
+- [x] Tier selection (Free vs Pro endpoint)
+- [x] "Test Connection" button with usage display
+- [x] Save provider config
 
 ---
 
 ### 7.5.L.7 Localization Report
 
-Analytics for project managers and producers.
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ LOCALIZATION REPORT                              [Export PDF] [Export CSV]  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│ OVERVIEW                                                                    │
-│ ┌─────────────────────────────────────────────────────────────────────────┐ │
-│ │ Total strings: 520  │  Total words: 12,450  │  Total characters: 68,200│ │
-│ └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                             │
-│ PROGRESS BY LANGUAGE                                                        │
-│ ┌──────────────┬──────────┬──────────┬──────────┬──────────┬─────────────┐ │
-│ │ Language     │ Pending  │ Draft    │ Progress │ Review   │ Final       │ │
-│ ├──────────────┼──────────┼──────────┼──────────┼──────────┼─────────────┤ │
-│ │ Spanish (es) │ 50       │ 80       │ 40       │ 100      │ 250 (48%)   │ │
-│ │ German (de)  │ 300      │ 100      │ 20       │ 50       │ 50 (10%)    │ │
-│ │ Japanese(ja) │ 500      │ 10       │ 5        │ 5        │ 0 (0%)      │ │
-│ └──────────────┴──────────┴──────────┴──────────┴──────────┴─────────────┘ │
-│                                                                             │
-│ WORD COUNT BY CHARACTER (for VO budgeting)                                  │
-│ ┌──────────────┬──────────┬──────────┬──────────┬──────────┬─────────────┐ │
-│ │ Character    │ Lines    │ Words EN │ Words ES │ Words DE │ VO Status   │ │
-│ ├──────────────┼──────────┼──────────┼──────────┼──────────┼─────────────┤ │
-│ │ Jaime        │ 145      │ 2,340    │ 2,450    │ 2,100    │ 80% done    │ │
-│ │ Elena        │ 89       │ 1,560    │ 1,620    │ 1,480    │ 45% done    │ │
-│ │ Narrator     │ 234      │ 5,200    │ 5,400    │ 4,900    │ 0% done     │ │
-│ │ (NPCs)       │ 52       │ 850      │ 890      │ 820      │ 100% done   │ │
-│ └──────────────┴──────────┴──────────┴──────────┴──────────┴─────────────┘ │
-│                                                                             │
-│ RECENT ACTIVITY                                                             │
-│ • Today: 45 translations added, 12 moved to final                          │
-│ • This week: 234 translations, 89 finalizations                            │
-│ • Estimated completion (at current pace): 3 weeks                          │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-#### Implementation Tasks
-- [ ] LiveView: `LocalizationLive.Report`
-- [ ] Progress calculations per language
-- [ ] Word/line counts per character
-- [ ] VO progress tracking
-- [ ] Export to PDF (summary report)
-- [ ] Export to CSV (detailed data)
+#### Implementation
+- [x] LiveView: `LocalizationLive.Report`
+- [x] Progress by language (progress bars, percentages, status breakdown)
+- [x] Word counts by speaker (table with line counts + word counts)
+- [x] VO progress stats (none, needed, recorded, approved)
+- [x] Content breakdown by source type (badges)
+- [ ] Export to PDF
+- [ ] Recent activity / estimated completion
 
 ---
 
-### 7.5.L.8 Glossary (Optional)
+### 7.5.L.8 Glossary
 
-Maintain consistent terminology across translations.
-
-#### Implementation Tasks
-- [ ] Create `localization_glossary` table
-- [ ] CRUD for glossary terms
-- [ ] "Do not translate" flag for proper nouns
+#### Implementation
+- [x] Create `localization_glossary_entries` table (migration `20260216120000`)
+- [x] CRUD for glossary entries (per source/target language pair)
+- [x] "Do not translate" flag for proper nouns
+- [x] Context/notes field
+- [x] DeepL glossary sync (`deepl_glossary_ids` on provider config)
 - [ ] Highlight glossary terms in translation editor
-- [ ] Suggest translations based on glossary
 - [ ] Export glossary for external teams
 
 ---
 
-## Database Migrations
+## Routes
 
-### Migration 1: Project Languages
-
-```elixir
-create table(:project_languages) do
-  add :project_id, references(:projects, on_delete: :delete_all), null: false
-  add :locale_code, :string, null: false
-  add :name, :string, null: false
-  add :is_source, :boolean, default: false
-  add :position, :integer, default: 0
-
-  timestamps()
-end
-
-create unique_index(:project_languages, [:project_id, :locale_code])
-create index(:project_languages, [:project_id, :is_source])
 ```
+# LiveView routes
+GET /workspaces/:ws/projects/:proj/localization           → LocalizationLive.Index
+GET /workspaces/:ws/projects/:proj/localization/report     → LocalizationLive.Report
+GET /workspaces/:ws/projects/:proj/localization/:id        → LocalizationLive.Edit
 
-### Migration 2: Localized Texts
-
-```elixir
-create table(:localized_texts) do
-  add :project_id, references(:projects, on_delete: :delete_all), null: false
-  add :source_type, :string, null: false
-  add :source_id, :binary_id, null: false
-  add :source_field, :string, null: false
-  add :source_text, :text
-  add :locale_code, :string, null: false
-  add :translated_text, :text
-  add :status, :string, default: "pending"
-  add :vo_status, :string, default: "none"
-  add :vo_asset_id, references(:assets, on_delete: :nilify_all)
-  add :translator_notes, :text
-  add :reviewer_notes, :text
-  add :character_id, references(:pages, on_delete: :nilify_all)
-  add :word_count, :integer
-  add :last_translated_at, :utc_datetime
-  add :last_reviewed_at, :utc_datetime
-  add :translated_by_id, references(:users, on_delete: :nilify_all)
-  add :reviewed_by_id, references(:users, on_delete: :nilify_all)
-
-  timestamps()
-end
-
-create unique_index(:localized_texts,
-  [:source_type, :source_id, :source_field, :locale_code],
-  name: :localized_texts_source_locale_unique)
-create index(:localized_texts, [:project_id, :locale_code, :status])
-create index(:localized_texts, [:character_id, :locale_code])
-```
-
-### Migration 3: Glossary (Optional)
-
-```elixir
-create table(:localization_glossary) do
-  add :project_id, references(:projects, on_delete: :delete_all), null: false
-  add :term, :string, null: false
-  add :locale_code, :string, null: false
-  add :translation, :string
-  add :context, :text
-  add :do_not_translate, :boolean, default: false
-
-  timestamps()
-end
-
-create unique_index(:localization_glossary, [:project_id, :term, :locale_code])
+# Controller route
+GET /workspaces/:ws/projects/:proj/localization/export/:format/:locale → LocalizationExportController
 ```
 
 ---
 
-## Implementation Order
+## Testing
 
-| Order | Task | Dependencies | Testable Outcome |
-|-------|------|--------------|------------------|
-| 1 | Project languages table + CRUD | None | Can add languages to project |
-| 2 | Project settings UI for languages | Task 1 | UI to manage languages |
-| 3 | Localized texts table | Task 1 | Schema ready |
-| 4 | Auto-extraction hooks (flow nodes) | Task 3 | Texts extracted on save |
-| 5 | Auto-extraction hooks (page blocks) | Task 3 | Texts extracted on save |
-| 6 | Basic localization view (list) | Tasks 3-5 | Can see all texts |
-| 7 | Inline translation editing | Task 6 | Can translate in list view |
-| 8 | Translation editor (detailed) | Task 6 | Full editor works |
-| 9 | Status workflow | Task 7 | Status changes work |
-| 10 | Export to Excel/CSV | Task 6 | Can export for external teams |
-| 11 | Import from Excel/CSV | Task 10 | Can import translations |
-| 12 | DeepL integration | Task 8 | Machine translation works |
-| 13 | Localization report | Tasks 3-5 | Report view works |
-| 14 | VO tracking | Task 8, Assets | Audio upload works |
-| 15 | Glossary | Task 8 | Glossary CRUD works |
+### Unit Tests (implemented)
+- [x] Text extraction from nodes/blocks/sheets/flows (`text_extractor_test.exs`)
+- [x] HTML handler preprocessing (`html_handler_test.exs`)
+- [x] Batch translator with mocks (`batch_translator_test.exs`)
+- [x] Export/import format validation (`export_import_test.exs`)
+- [x] Glossary CRUD (`glossary_crud_test.exs`)
+- [x] Reports queries (`reports_test.exs`)
 
----
+### Integration Tests (implemented)
+- [x] Project language CRUD (79 test cases in `localization_test.exs`)
+- [x] Localized text CRUD with filters/pagination (54 test cases)
+- [x] Upsert logic and source-change detection
+- [x] Deletion cascades
 
-## Testing Strategy
+### Fixtures
+- [x] `LocalizationFixtures` — `language_fixture/2`, `source_language_fixture/2`, `localized_text_fixture/2`
 
-### Unit Tests
-- [ ] Locale code validation
-- [ ] Status workflow transitions
-- [ ] Word count calculation
-- [ ] Text extraction from nodes/blocks
-- [ ] Export/import format validation
-
-### Integration Tests
-- [ ] Add language to project
-- [ ] Auto-extract texts when saving flow node
-- [ ] Update translation and change status
-- [ ] Export and reimport translations
-- [ ] DeepL translation request
-
-### E2E Tests
-- [ ] Full localization workflow: add language → translate → export → import
-- [ ] VO upload and playback
-- [ ] Report generation
+### Not tested
+- [ ] E2E: full localization workflow (add language → translate → export → import)
+- [ ] E2E: VO upload and playback
+- [ ] E2E: report generation
 
 ---
 
-## Export Considerations
+## Remaining Work
 
-When exporting project to JSON for game engines:
-
-```json
-{
-  "localization": {
-    "languages": ["en", "es", "de"],
-    "source_language": "en",
-    "strings": {
-      "dlg_001": {
-        "en": "Hello, traveler!",
-        "es": "¡Hola, viajero!",
-        "de": "Hallo, Reisender!"
-      },
-      "dlg_002": {
-        "en": "The dark times are coming.",
-        "es": "Los tiempos oscuros se acercan.",
-        "de": "Die dunklen Zeiten kommen."
-      }
-    },
-    "voice_over": {
-      "dlg_001": {
-        "en": "assets/vo/en/dlg_001.wav",
-        "es": "assets/vo/es/dlg_001.wav"
-      }
-    }
-  },
-  "flows": {
-    "nodes": [
-      {
-        "type": "dialogue",
-        "data": {
-          "text_key": "dlg_001",
-          "speaker": "#mc.jaime"
-        }
-      }
-    ]
-  }
-}
-```
+| Item | Category | Effort |
+|------|----------|--------|
+| Import UI (upload, preview, conflict handling) | Export/Import | Medium |
+| VO section in editor (upload, playback, status) | Translation Editor | Medium |
+| Inline editing in list view | Localization View | Medium |
+| History/audit log for translations | Translation Editor | Medium |
+| Keyboard navigation (arrow keys, Enter) | Localization View | Small |
+| Glossary term highlighting in editor | Translation Editor | Small |
+| Glossary export for external teams | Glossary | Small |
+| PDF export for reports | Report | Small |
+| Recent activity in report | Report | Small |
+| Length ratio indicator in editor | Translation Editor | Small |
 
 ---
 
@@ -610,7 +366,7 @@ When exporting project to JSON for game engines:
    - Recommendation: Defer to future - use separate strings for now
 
 3. **Variables in text:** How to handle `{player_name}` style variables?
-   - Recommendation: Preserve as-is, document for translators
+   - Decision: Preserved as-is; `HtmlHandler` wraps them in `translate="no"` spans for DeepL
 
 4. **VO file naming:** Convention for audio file names?
    - Recommendation: `{locale}/{text_key}.{ext}` e.g., `es/dlg_001.wav`
@@ -619,15 +375,17 @@ When exporting project to JSON for game engines:
 
 ## Success Criteria
 
-- [ ] Projects can have multiple languages configured
-- [ ] All dialogue and text content auto-extracted for translation
-- [ ] Translators can work in dedicated localization view
-- [ ] Status workflow tracks translation progress
-- [ ] Export/Import works with Excel for external teams
-- [ ] DeepL integration provides initial translations
-- [ ] Reports show progress per language and character word counts
-- [ ] VO status tracked separately from text translation
-- [ ] Export includes localization data for game engines
+- [x] Projects can have multiple languages configured
+- [x] All dialogue and text content auto-extracted for translation
+- [x] Translators can work in dedicated localization view
+- [x] Status workflow tracks translation progress
+- [x] Export works with Excel/CSV for external teams
+- [x] DeepL integration provides initial translations
+- [x] Reports show progress per language and character word counts
+- [x] VO status tracked separately from text translation (schema-level)
+- [ ] Import UI for external teams to upload translations back
+- [ ] VO upload/playback in translation editor
+- [ ] Export includes localization data for game engines (JSON export)
 
 ---
 
@@ -635,22 +393,25 @@ When exporting project to JSON for game engines:
 
 | Feature | articy:draft | Storyarn |
 |---------|--------------|----------|
-| Language management | Built-in | Built-in |
+| Language management | Built-in | Built-in (inline in Localization page) |
 | Translation states | 3 states | 5 states (more granular) |
-| DeepL integration | Yes | Yes |
-| Excel export/import | Yes | Yes |
-| VO tracking | Basic | Full (status + assets) |
+| DeepL integration | Yes | Yes (with glossary sync) |
+| Excel export/import | Yes | Yes (export done, import backend only) |
+| VO tracking | Basic | Schema ready (UI pending) |
 | Per-character reports | Word count only | Words + lines + VO status |
-| Glossary | No | Yes |
-| Inline editing | Limited | Full (in list view) |
+| Glossary | No | Yes (CRUD + DeepL sync) |
+| Inline editing | Limited | Via dedicated editor page |
 | Web-based | No (desktop) | Yes (collaborative) |
+| Source change detection | Manual | Automatic (hash-based, downgrades status) |
+| Bulk text extraction | Manual | Automatic hooks + manual Sync button |
 
 **Key Advantages:**
 - More granular status workflow for professional pipelines
-- Full VO asset management with audio upload
-- Character-based analytics for budgeting
+- Automatic source change detection with hash comparison
+- Character-based analytics for VO budgeting
 - Web-based = multiple translators can work simultaneously
+- Glossary integration with DeepL API
 
 ---
 
-*This phase can be implemented independently of 7.5 Pages/Flows enhancements.*
+*This phase was implemented independently of other enhancements. Migration: `20260216120000_create_localization_tables.exs` + `20260216130000_add_source_locale_to_workspaces.exs`*

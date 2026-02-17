@@ -4,6 +4,7 @@ defmodule Storyarn.Flows.NodeCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.{Flow, FlowNode, VariableReferenceTracker}
+  alias Storyarn.Localization.TextExtractor
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets.ReferenceTracker
@@ -216,6 +217,7 @@ defmodule Storyarn.Flows.NodeCrud do
       {:ok, updated_node} ->
         ReferenceTracker.update_flow_node_references(updated_node)
         VariableReferenceTracker.update_references(updated_node)
+        TextExtractor.extract_flow_node(updated_node)
         {:ok, updated_node}
 
       error ->
@@ -254,6 +256,7 @@ defmodule Storyarn.Flows.NodeCrud do
 
       ReferenceTracker.delete_flow_node_references(node.id)
       VariableReferenceTracker.delete_references(node.id)
+      TextExtractor.delete_flow_node_texts(node.id)
 
       case node |> FlowNode.soft_delete_changeset() |> Repo.update() do
         {:ok, deleted_node} -> {deleted_node, %{orphaned_jumps: orphaned_count}}

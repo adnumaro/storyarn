@@ -78,6 +78,12 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
             icon="image"
             active={assets_page?(@current_path, @workspace.slug, @project.slug)}
           />
+          <.tree_link
+            label={gettext("Localization")}
+            href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization"}
+            icon="languages"
+            active={localization_page?(@current_path, @workspace.slug, @project.slug)}
+          />
         </div>
 
         <%!-- Dynamic content section based on active tool --%>
@@ -150,5 +156,9 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
 
   defp assets_page?(path, workspace_slug, project_slug) do
     String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/assets")
+  end
+
+  defp localization_page?(path, workspace_slug, project_slug) do
+    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/localization")
   end
 end

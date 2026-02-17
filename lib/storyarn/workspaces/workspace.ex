@@ -19,6 +19,7 @@ defmodule Storyarn.Workspaces.Workspace do
           slug: String.t() | nil,
           banner_url: String.t() | nil,
           color: String.t() | nil,
+          source_locale: String.t() | nil,
           owner_id: integer() | nil,
           owner: User.t() | Ecto.Association.NotLoaded.t() | nil,
           memberships: [WorkspaceMembership.t()] | Ecto.Association.NotLoaded.t(),
@@ -34,6 +35,7 @@ defmodule Storyarn.Workspaces.Workspace do
     field :slug, :string
     field :banner_url, :string
     field :color, :string
+    field :source_locale, :string, default: "en"
 
     belongs_to :owner, User
     has_many :memberships, WorkspaceMembership
@@ -48,7 +50,7 @@ defmodule Storyarn.Workspaces.Workspace do
   """
   def create_changeset(workspace, attrs) do
     workspace
-    |> cast(attrs, [:name, :description, :slug, :banner_url, :color])
+    |> cast(attrs, [:name, :description, :slug, :banner_url, :color, :source_locale])
     |> validate_required([:name, :slug])
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:description, max: 1000)
@@ -61,7 +63,7 @@ defmodule Storyarn.Workspaces.Workspace do
   """
   def update_changeset(workspace, attrs) do
     workspace
-    |> cast(attrs, [:name, :description, :banner_url, :color])
+    |> cast(attrs, [:name, :description, :banner_url, :color, :source_locale])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:description, max: 1000)

@@ -4,6 +4,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   import Ecto.Query, warn: false
   require Logger
 
+  alias Storyarn.Localization.TextExtractor
   alias Storyarn.Repo
   alias Storyarn.Sheets.{Block, PropertyInheritance, ReferenceTracker, Sheet}
 
@@ -154,9 +155,15 @@ defmodule Storyarn.Sheets.BlockCrud do
     end)
     |> Repo.transaction()
     |> case do
-      {:ok, %{block: block}} -> {:ok, block}
-      {:error, :block, changeset, _} -> {:error, changeset}
-      {:error, _, reason, _} -> {:error, reason}
+      {:ok, %{block: updated_block}} ->
+        TextExtractor.extract_block(updated_block)
+        {:ok, updated_block}
+
+      {:error, :block, changeset, _} ->
+        {:error, changeset}
+
+      {:error, _, reason, _} ->
+        {:error, reason}
     end
   end
 
@@ -175,6 +182,11 @@ defmodule Storyarn.Sheets.BlockCrud do
           {:error, reason} -> Logger.error("Failed to sync config change: #{inspect(reason)}")
         end
 
+        TextExtractor.extract_block(updated_block)
+
+      {:ok, updated_block} ->
+        TextExtractor.extract_block(updated_block)
+
       _ ->
         :ok
     end
@@ -186,8 +198,9 @@ defmodule Storyarn.Sheets.BlockCrud do
   Soft-deletes a block by setting deleted_at timestamp.
   """
   def delete_block(%Block{} = block) do
-    # Clean up references before soft-deleting
+    # Clean up references and localization texts before soft-deleting
     ReferenceTracker.delete_block_references(block.id)
+    TextExtractor.delete_block_texts(block.id)
 
     # If this is a parent block with scope: "children", soft-delete all instances
     if block.scope == "children" do

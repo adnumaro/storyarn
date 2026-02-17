@@ -7,6 +7,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   import StoryarnWeb.Components.MemberComponents
 
   alias Storyarn.Flows
+  alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -121,6 +122,60 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
         <div class="divider" />
 
+        <%!-- Localization Section --%>
+        <section>
+          <h3 class="text-lg font-semibold mb-4">{gettext("Localization")}</h3>
+
+          <%!-- DeepL Configuration --%>
+          <div class="card bg-base-200 p-4">
+            <h4 class="font-medium mb-3">{gettext("Translation Provider (DeepL)")}</h4>
+
+            <.form
+              for={@provider_form}
+              id="provider-config-form"
+              phx-submit="save_provider_config"
+            >
+              <.input
+                field={@provider_form[:api_key_encrypted]}
+                type="password"
+                label={gettext("API Key")}
+                placeholder={if @has_api_key, do: "••••••••", else: ""}
+              />
+              <.input
+                field={@provider_form[:api_endpoint]}
+                type="select"
+                label={gettext("API Tier")}
+                options={[
+                  {gettext("Free (api-free.deepl.com)"), "https://api-free.deepl.com"},
+                  {gettext("Pro (api.deepl.com)"), "https://api.deepl.com"}
+                ]}
+              />
+              <div class="flex items-center gap-3 mt-3">
+                <.button variant="primary" phx-disable-with={gettext("Saving...")}>
+                  {gettext("Save")}
+                </.button>
+                <.button
+                  :if={@has_api_key}
+                  type="button"
+                  phx-click="test_provider_connection"
+                  phx-disable-with={gettext("Testing...")}
+                >
+                  {gettext("Test Connection")}
+                </.button>
+              </div>
+            </.form>
+
+            <div :if={@provider_usage} class="mt-3 text-sm opacity-70">
+              {gettext("Usage: %{used} / %{limit} characters",
+                used: format_number(@provider_usage.character_count),
+                limit: format_number(@provider_usage.character_limit)
+              )}
+            </div>
+          </div>
+        </section>
+
+        <div class="divider" />
+
         <%!-- Maintenance Section --%>
         <section>
           <h3 class="text-lg font-semibold mb-4">{gettext("Maintenance")}</h3>
@@ -194,6 +249,8 @@ defmodule StoryarnWeb.ProjectLive.Settings do
           project_changeset = Projects.change_project(project)
           invite_changeset = invite_changeset(%{})
 
+          provider_config = get_provider_config(project.id)
+
           socket =
             socket
             |> assign(:project, project)
@@ -205,6 +262,9 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             |> assign(:pending_invitations, pending_invitations)
             |> assign(:project_form, to_form(project_changeset))
             |> assign(:invite_form, to_form(invite_changeset, as: "invite"))
+            |> assign(:provider_form, to_form(provider_changeset(provider_config), as: "provider"))
+            |> assign(:has_api_key, provider_config != nil && provider_config.api_key_encrypted != nil)
+            |> assign(:provider_usage, nil)
 
           {:ok, socket}
         else
@@ -331,6 +391,123 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       {:error, :unauthorized} ->
         {:noreply,
          put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Localization Event Handlers
+  # ---------------------------------------------------------------------------
+
+  def handle_event("save_provider_config", %{"provider" => params}, socket) do
+    case authorize(socket, :manage_project) do
+      :ok ->
+        do_save_provider_config(socket, params)
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  def handle_event("test_provider_connection", _params, socket) do
+    case authorize(socket, :manage_project) do
+      :ok ->
+        do_test_provider_connection(socket)
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Localization Private Helpers
+  # ---------------------------------------------------------------------------
+
+  defp get_provider_config(project_id) do
+    Repo.get_by(ProviderConfig, project_id: project_id, provider: "deepl")
+  end
+
+  defp provider_changeset(nil) do
+    ProviderConfig.changeset(%ProviderConfig{api_endpoint: "https://api-free.deepl.com"}, %{})
+  end
+
+  defp provider_changeset(%ProviderConfig{} = config) do
+    ProviderConfig.changeset(config, %{})
+  end
+
+  defp do_test_provider_connection(socket) do
+    config = get_provider_config(socket.assigns.project.id)
+
+    if config && config.api_key_encrypted do
+      case Storyarn.Localization.Providers.DeepL.get_usage(config) do
+        {:ok, usage} ->
+          {:noreply,
+           socket
+           |> assign(:provider_usage, usage)
+           |> put_flash(:info, gettext("Connection successful."))}
+
+        {:error, :invalid_api_key} ->
+          {:noreply, put_flash(socket, :error, gettext("Invalid API key."))}
+
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, gettext("Connection failed. Check your API key and endpoint."))}
+      end
+    else
+      {:noreply, put_flash(socket, :error, gettext("No API key configured."))}
+    end
+  end
+
+  defp format_number(n) when is_integer(n) do
+    n
+    |> Integer.to_string()
+    |> String.graphemes()
+    |> Enum.reverse()
+    |> Enum.chunk_every(3)
+    |> Enum.join(",")
+    |> String.reverse()
+  end
+
+  defp format_number(n), do: to_string(n)
+
+  defp do_save_provider_config(socket, params) do
+    project = socket.assigns.project
+    existing = get_provider_config(project.id)
+
+    # Don't overwrite API key if the field is empty (user didn't change it)
+    params =
+      if params["api_key_encrypted"] == "" do
+        Map.delete(params, "api_key_encrypted")
+      else
+        params
+      end
+
+    result =
+      case existing do
+        nil ->
+          %ProviderConfig{project_id: project.id}
+          |> ProviderConfig.changeset(Map.put(params, "provider", "deepl"))
+          |> Repo.insert()
+
+        config ->
+          config
+          |> ProviderConfig.changeset(params)
+          |> Repo.update()
+      end
+
+    case result do
+      {:ok, config} ->
+        socket =
+          socket
+          |> assign(:provider_form, to_form(provider_changeset(config), as: "provider"))
+          |> assign(:has_api_key, config.api_key_encrypted != nil)
+          |> put_flash(:info, gettext("Provider settings saved."))
+
+        {:noreply, socket}
+
+      {:error, changeset} ->
+        {:noreply,
+         assign(socket, :provider_form, to_form(changeset |> Map.put(:action, :validate), as: "provider"))}
     end
   end
 

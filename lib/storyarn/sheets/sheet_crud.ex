@@ -3,6 +3,7 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Localization.TextExtractor
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
@@ -39,9 +40,17 @@ defmodule Storyarn.Sheets.SheetCrud do
     # Auto-generate shortcut if sheet has no shortcut and name is being updated
     attrs = maybe_generate_shortcut_on_update(sheet, attrs)
 
-    sheet
-    |> Sheet.update_changeset(attrs)
-    |> Repo.update()
+    result =
+      sheet
+      |> Sheet.update_changeset(attrs)
+      |> Repo.update()
+
+    case result do
+      {:ok, updated_sheet} -> TextExtractor.extract_sheet(updated_sheet)
+      _ -> :ok
+    end
+
+    result
   end
 
   @doc """
@@ -66,7 +75,13 @@ defmodule Storyarn.Sheets.SheetCrud do
       if descendant_ids != [] do
         from(s in Sheet, where: s.id in ^descendant_ids)
         |> Repo.update_all(set: [deleted_at: now])
+
+        # Clean up localization texts for descendants
+        Enum.each(descendant_ids, &TextExtractor.delete_sheet_texts/1)
       end
+
+      # Clean up localization texts for this sheet
+      TextExtractor.delete_sheet_texts(sheet.id)
 
       # Soft delete the sheet itself
       sheet

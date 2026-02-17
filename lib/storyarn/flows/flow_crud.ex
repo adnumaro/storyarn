@@ -5,6 +5,7 @@ defmodule Storyarn.Flows.FlowCrud do
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows.{Flow, FlowNode, NodeCrud, TreeOperations}
+  alias Storyarn.Localization.TextExtractor
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
@@ -183,9 +184,17 @@ defmodule Storyarn.Flows.FlowCrud do
     # Auto-generate shortcut if flow has no shortcut and name is being updated
     attrs = maybe_generate_shortcut_on_update(flow, attrs)
 
-    flow
-    |> Flow.update_changeset(attrs)
-    |> Repo.update()
+    result =
+      flow
+      |> Flow.update_changeset(attrs)
+      |> Repo.update()
+
+    case result do
+      {:ok, updated_flow} -> TextExtractor.extract_flow(updated_flow)
+      _ -> :ok
+    end
+
+    result
   end
 
   @doc """
@@ -195,6 +204,9 @@ defmodule Storyarn.Flows.FlowCrud do
   def delete_flow(%Flow{} = flow) do
     result =
       Repo.transaction(fn ->
+        # Clean up localization texts
+        TextExtractor.delete_flow_texts(flow.id)
+
         # Soft delete the flow itself
         {:ok, deleted_flow} =
           flow

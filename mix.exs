@@ -91,6 +91,9 @@ defmodule Storyarn.MixProject do
       # Image processing (libvips - much safer than ImageMagick)
       {:image, "~> 0.62"},
 
+      # Excel export for localization
+      {:elixlsx, "~> 0.6"},
+
       # Code quality & security
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},

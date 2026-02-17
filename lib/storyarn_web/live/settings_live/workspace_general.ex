@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
 
+  alias Storyarn.Localization.Languages
   alias Storyarn.Workspaces
 
   @impl true
@@ -74,6 +75,17 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
               label={gettext("Banner URL")}
               placeholder="https://example.com/banner.jpg"
             />
+
+            <.input
+              field={@form[:source_locale]}
+              type="select"
+              label={gettext("Source language")}
+              options={Languages.options_for_select()}
+              prompt={gettext("Select language...")}
+            />
+            <p class="text-xs opacity-60 -mt-2 mb-2">
+              {gettext("Default source language for new projects in this workspace.")}
+            </p>
 
             <div class="flex justify-end">
               <.button type="submit" variant="primary" phx-disable-with={gettext("Saving...")}>
