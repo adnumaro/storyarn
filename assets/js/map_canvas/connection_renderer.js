@@ -10,7 +10,6 @@
 import L from "leaflet";
 import "leaflet-polylinedecorator/src/L.Symbol.js";
 import "leaflet-polylinedecorator/src/L.PolylineDecorator.js";
-import "leaflet-textpath";
 import { toLatLng } from "./coordinate_utils.js";
 
 const DEFAULT_COLOR = "#6b7280";
@@ -46,8 +45,8 @@ export function createConnectionLine(conn, pinMarkers, w, h) {
   // Arrow decorators (added to map by handler after line.addTo)
   line._arrows = buildArrows(line, conn);
 
-  // Path label (follows curvature via leaflet-textpath)
-  applyLabel(line, conn.label, conn.color);
+  // Path label (deferred — added to map by handler via addLabelToLayer)
+  line._labelData = { text: conn.label, color: conn.color };
 
   return line;
 }
@@ -69,7 +68,8 @@ export function updateConnectionLine(line, conn) {
   replaceArrows(line, conn);
 
   // Update path label
-  applyLabel(line, conn.label, conn.color);
+  line._labelData = { text: conn.label, color: conn.color };
+  applyLabel(line);
 }
 
 /**
@@ -77,15 +77,11 @@ export function updateConnectionLine(line, conn) {
  */
 export function updateConnectionEndpoints(line, pinMarkers) {
   rebuildLatLngs(line, pinMarkers);
-  // Forward decorator auto-updates (references the polyline).
-  // Reverse decorator uses static coords — rebuild it.
-  if (line._arrows?.reverse) {
-    const map = line._map;
-    line._arrows.reverse.remove();
-    const reversed = [...line.getLatLngs()].reverse();
-    line._arrows.reverse = makeArrowDecorator(reversed, line.connData);
-    if (map) line._arrows.reverse.addTo(map);
-  }
+  // Rebuild all arrows — the forward decorator does not reliably auto-update
+  // when setLatLngs() is called during pin drag.
+  replaceArrows(line, line.connData);
+  // Reposition label at new midpoint
+  applyLabel(line);
 }
 
 /**
@@ -109,17 +105,20 @@ export function setConnectionSelected(line, selected) {
  */
 export function removeConnectionLine(line) {
   removeArrows(line);
+  removeLabel(line);
   line.remove();
 }
 
 /**
- * Adds a line's arrow decorators to a layer/map.
+ * Adds a line's arrow decorators and label to a layer/map.
  * Called by the handler after line.addTo().
  */
 export function addArrowsToLayer(line, layer) {
   if (!line._arrows) return;
   if (line._arrows.forward) line._arrows.forward.addTo(layer);
   if (line._arrows.reverse) line._arrows.reverse.addTo(layer);
+  // Now that the line is on a map, create the label marker
+  applyLabel(line);
 }
 
 // =============================================================================
@@ -148,9 +147,10 @@ function buildArrows(line, conn) {
 function replaceArrows(line, conn) {
   removeArrows(line);
   line._arrows = buildArrows(line, conn);
-  // Re-add to map if the line is already on one
+  // Re-add to map if the line is already on one (arrows only — no label)
   if (line._map) {
-    addArrowsToLayer(line, line._map);
+    if (line._arrows.forward) line._arrows.forward.addTo(line._map);
+    if (line._arrows.reverse) line._arrows.reverse.addTo(line._map);
   }
 }
 
@@ -194,40 +194,112 @@ function makeArrowDecorator(pathOrLatLngs, conn) {
 }
 
 // =============================================================================
-// Path label (leaflet-textpath)
+// Path label — cartographic style (custom DivIcon marker at midpoint)
 // =============================================================================
 
 /**
- * Applies or clears text along a connection polyline.
+ * Creates or updates the label marker at the path midpoint.
  *
- * IMPORTANT: setText() does NOT clear previous text when updating (known bug
- * makinacorpus/Leaflet.TextPath#78). Must call setText(null) first.
- *
- * setText() auto-re-renders when setLatLngs() is called (hooks into _updatePath),
- * so waypoint drags update the text position automatically.
+ * Cartographic rules:
+ * - Centered on the path's midpoint
+ * - Offset above the line (never overlapping)
+ * - Text angle follows the path segment but is never upside-down
+ *   (normalized to −90°…+90° so it always reads naturally)
  */
-function applyLabel(line, label, color) {
-  const text = label && label.trim() !== "" ? label.trim() : null;
+function applyLabel(line) {
+  removeLabel(line);
 
-  // Always clear first (bug #78: setText doesn't erase previous text)
-  line.setText(null);
+  const data = line._labelData;
+  const text = data?.text?.trim();
+  if (!text) return;
 
-  if (text) {
-    line.setText(text, {
-      repeat: false,
-      below: false,
-      offset: 6,
-      orientation: "auto",
-      attributes: {
-        "font-size": "11",
-        "font-weight": "600",
-        fill: color || DEFAULT_COLOR,
-        stroke: "white",
-        "stroke-width": "3",
-        "paint-order": "stroke fill",
-      },
-    });
+  const map = line._map;
+  if (!map) return;
+
+  const latLngs = line.getLatLngs();
+  if (latLngs.length < 2) return;
+
+  const { point: midLatLng, angle } = pathMidpointAndAngle(latLngs, map);
+
+  const color = data.color || DEFAULT_COLOR;
+  const escapedText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+  const icon = L.divIcon({
+    className: "",
+    html:
+      `<div style="` +
+      `position:absolute;` +
+      `transform:translate(-50%,-100%) rotate(${angle}deg);` +
+      `transform-origin:center bottom;` +
+      `white-space:nowrap;` +
+      `font-size:11px;font-weight:600;` +
+      `color:${color};` +
+      `text-shadow:-1px 0 white,1px 0 white,0 -1px white,0 1px white,` +
+      `-1px -1px white,1px -1px white,-1px 1px white,1px 1px white;` +
+      `pointer-events:none;padding-bottom:4px;` +
+      `">${escapedText}</div>`,
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+  });
+
+  line._labelMarker = L.marker(midLatLng, {
+    icon,
+    interactive: false,
+    zIndexOffset: -100,
+  }).addTo(map);
+}
+
+function removeLabel(line) {
+  if (line._labelMarker) {
+    line._labelMarker.remove();
+    line._labelMarker = null;
   }
+}
+
+/**
+ * Finds the geographic midpoint of a polyline and the readable angle (degrees)
+ * of the segment at that point.
+ */
+function pathMidpointAndAngle(latLngs, map) {
+  // Compute cumulative pixel distances per segment
+  const pts = latLngs.map((ll) => map.latLngToContainerPoint(ll));
+  const segLens = [];
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const d = pts[i].distanceTo(pts[i - 1]);
+    segLens.push(d);
+    total += d;
+  }
+
+  // Walk to the halfway pixel distance
+  let remaining = total / 2;
+  let segIdx = 0;
+  for (; segIdx < segLens.length - 1; segIdx++) {
+    if (remaining <= segLens[segIdx]) break;
+    remaining -= segLens[segIdx];
+  }
+
+  // Interpolation ratio within the segment
+  const ratio = segLens[segIdx] > 0 ? remaining / segLens[segIdx] : 0;
+
+  // Midpoint in geographic coords
+  const lat =
+    latLngs[segIdx].lat +
+    (latLngs[segIdx + 1].lat - latLngs[segIdx].lat) * ratio;
+  const lng =
+    latLngs[segIdx].lng +
+    (latLngs[segIdx + 1].lng - latLngs[segIdx].lng) * ratio;
+
+  // Angle of the segment in screen space (y-down)
+  const dx = pts[segIdx + 1].x - pts[segIdx].x;
+  const dy = pts[segIdx + 1].y - pts[segIdx].y;
+  let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
+  // Normalize to −90°…+90° so text is never upside-down
+  if (angle > 90) angle -= 180;
+  if (angle < -90) angle += 180;
+
+  return { point: L.latLng(lat, lng), angle: Math.round(angle * 10) / 10 };
 }
 
 // =============================================================================

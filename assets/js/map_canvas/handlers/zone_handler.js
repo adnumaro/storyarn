@@ -670,10 +670,22 @@ export function createZoneHandler(hook, i18n = {}) {
     return min;
   }
 
+  /** Recalculates all polygon vertices from stored percentage coords (after canvas resize). */
+  function repositionAll() {
+    for (const polygon of polygons.values()) {
+      const zone = polygon.zoneData;
+      const latLngs = (zone.vertices || []).map((v) =>
+        toLatLng(v.x, v.y, hook.canvasWidth, hook.canvasHeight),
+      );
+      polygon.setLatLngs(latLngs);
+    }
+  }
+
   return {
     init,
     destroy,
     renderZones,
+    repositionAll,
     selectZone,
     deselectAll,
     getPolygon,

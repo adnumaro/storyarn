@@ -533,10 +533,19 @@ export function createConnectionHandler(hook, i18n = {}) {
     }
   }
 
+  /** Rebuilds all connection line geometries (after canvas resize / pin reposition). */
+  function repositionAll() {
+    const pinMarkers = hook.pinHandler.markers;
+    for (const line of lines.values()) {
+      updateConnectionEndpoints(line, pinMarkers);
+    }
+  }
+
   return {
     init,
     destroy,
     renderConnections,
+    repositionAll,
     selectConnection,
     deselectAll,
     updateEndpointsForPin,

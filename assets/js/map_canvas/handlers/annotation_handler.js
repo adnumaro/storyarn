@@ -6,7 +6,7 @@
 
 import L from "leaflet";
 import { createAnnotationMarker, setAnnotationSelected, updateAnnotationMarker } from "../annotation_renderer.js";
-import { toPercent } from "../coordinate_utils.js";
+import { toPercent, toLatLng } from "../coordinate_utils.js";
 import {
   editPropertiesItem,
   bringToFrontItem,
@@ -223,10 +223,19 @@ export function createAnnotationHandler(hook, i18n = {}) {
     return min;
   }
 
+  /** Recalculates all marker positions from stored percentage coords (after canvas resize). */
+  function repositionAll() {
+    for (const marker of markers.values()) {
+      const ann = marker.annotationData;
+      marker.setLatLng(toLatLng(ann.position_x, ann.position_y, hook.canvasWidth, hook.canvasHeight));
+    }
+  }
+
   return {
     init,
     destroy,
     renderAnnotations,
+    repositionAll,
     selectAnnotation,
     deselectAll,
     setDimmed,

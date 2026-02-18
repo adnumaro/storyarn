@@ -6,7 +6,7 @@
 
 import L from "leaflet";
 import { createPinMarker, setPinSelected, updatePinMarker } from "../pin_renderer.js";
-import { toPercent } from "../coordinate_utils.js";
+import { toPercent, toLatLng } from "../coordinate_utils.js";
 import {
   editPropertiesItem,
   bringToFrontItem,
@@ -282,10 +282,19 @@ export function createPinHandler(hook, i18n = {}) {
     return min;
   }
 
+  /** Recalculates all marker positions from stored percentage coords (after canvas resize). */
+  function repositionAll() {
+    for (const marker of markers.values()) {
+      const pin = marker.pinData;
+      marker.setLatLng(toLatLng(pin.position_x, pin.position_y, hook.canvasWidth, hook.canvasHeight));
+    }
+  }
+
   return {
     init,
     destroy,
     renderPins,
+    repositionAll,
     selectPin,
     deselectAll,
     setDimmed,

@@ -53,6 +53,12 @@ export function initMap(hook) {
           hook.initialBounds = newBounds;
           map.setMaxBounds(null);
           map.fitBounds(newBounds);
+
+          // Reposition all elements that were placed with the old default dimensions
+          if (hook.pinHandler) hook.pinHandler.repositionAll();
+          if (hook.zoneHandler) hook.zoneHandler.repositionAll();
+          if (hook.connectionHandler) hook.connectionHandler.repositionAll();
+          if (hook.annotationHandler) hook.annotationHandler.repositionAll();
         }
       };
       img.src = data.background_url;
