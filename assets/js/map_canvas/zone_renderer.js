@@ -5,6 +5,7 @@
  */
 
 import L from "leaflet";
+import { createElement, Map as MapIcon } from "lucide";
 import { toLatLng } from "./coordinate_utils.js";
 
 const DEFAULT_FILL_COLOR = "#3b82f6";
@@ -90,8 +91,7 @@ export function createZoneLabelMarker(zone, w, h) {
   if (!zone.name) return null;
 
   const center = computeCentroid(zone.vertices, w, h);
-  const span = document.createElement("span");
-  span.textContent = zone.name;
+  const span = buildLabelSpan(zone);
 
   return L.marker(center, {
     icon: L.divIcon({
@@ -114,7 +114,13 @@ export function updateZoneLabelMarker(marker, zone, w, h) {
   if (!zone.name) return false;
 
   const span = marker.getElement()?.querySelector("span");
-  if (span) span.textContent = zone.name;
+  if (span) {
+    // textContent clears all children, then re-append icon if needed
+    span.textContent = zone.name;
+    if (zoneHasChildMap(zone)) {
+      span.appendChild(createMapIndicatorIcon());
+    }
+  }
 
   const center = computeCentroid(zone.vertices, w, h);
   marker.setLatLng(center);
@@ -141,6 +147,31 @@ function computeCentroid(vertices, w, h) {
  */
 function verticesToLatLngs(vertices, w, h) {
   return (vertices || []).map((v) => toLatLng(v.x, v.y, w, h));
+}
+
+/**
+ * Builds a label <span> with zone name and optional child-map icon.
+ * Uses textContent for the name (XSS-safe), then appends a Lucide SVG element.
+ */
+function buildLabelSpan(zone) {
+  const span = document.createElement("span");
+  span.textContent = zone.name;
+
+  if (zoneHasChildMap(zone)) {
+    span.appendChild(createMapIndicatorIcon());
+  }
+
+  return span;
+}
+
+/** Returns true when the zone is linked to a child map. */
+function zoneHasChildMap(zone) {
+  return zone.target_type === "map" && zone.target_id;
+}
+
+/** Creates a small Lucide Map icon element for the zone label. */
+function createMapIndicatorIcon() {
+  return createElement(MapIcon, { width: 10, height: 10 });
 }
 
 /**

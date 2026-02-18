@@ -4,7 +4,7 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
   """
 
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_navigate: 2, put_flash: 3]
+  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, put_flash: 3]
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
@@ -114,11 +114,27 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
   end
 
   def handle_navigate_to_target(%{"type" => "map", "id" => id}, socket) do
-    {:noreply,
-     push_navigate(socket,
-       to:
-         ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/maps/#{id}"
-     )}
+    project = socket.assigns.project
+
+    case Maps.get_map_brief(project.id, id) do
+      nil ->
+        # Target map was deleted — clear the stale zone reference
+        socket = clear_stale_zone_target(socket, id)
+
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("maps", "The target map no longer exists. The reference has been cleared.")
+         )}
+
+      _map ->
+        {:noreply,
+         push_navigate(socket,
+           to:
+             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}/maps/#{id}"
+         )}
+    end
   end
 
   def handle_navigate_to_target(_params, socket) do
@@ -221,6 +237,27 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
       )
     else
       reload_maps_tree(socket)
+    end
+  end
+
+  # Clears target_type/target_id on any zone that references a deleted map,
+  # then refreshes socket state so the JS gets the updated zone data.
+  defp clear_stale_zone_target(socket, deleted_map_id) do
+    case Maps.get_zone_linking_to_map(socket.assigns.map.id, deleted_map_id) do
+      nil ->
+        socket
+
+      zone ->
+        case Maps.update_zone(zone, %{target_type: nil, target_id: nil}) do
+          {:ok, updated} ->
+            socket
+            |> assign(:zones, replace_in_list(socket.assigns.zones, updated))
+            |> maybe_update_selected_element("zone", updated)
+            |> push_event("zone_updated", serialize_zone(updated))
+
+          {:error, _} ->
+            socket
+        end
     end
   end
 end

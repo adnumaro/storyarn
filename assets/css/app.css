@@ -534,13 +534,19 @@
   border: none !important;
 }
 .map-zone-label span {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 3px;
   white-space: nowrap;
   font-size: 0.75rem;
   font-weight: 600;
   color: white;
   text-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.5);
   transform: translateX(-50%);
+}
+.map-zone-label span svg {
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
 }
 
 .map-annotation-marker {

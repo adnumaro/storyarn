@@ -87,12 +87,18 @@ msgstr ""
 msgid "Basic Blocks"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:762
+#: lib/storyarn_web/live/sheet_live/helpers/content_tab_helpers.ex:111
 #, elixir-autogen, elixir-format
 msgid "Block is already in a column group."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:756
+#: lib/storyarn_web/live/sheet_live/handlers/block_crud_handlers.ex:57
+#: lib/storyarn_web/live/sheet_live/handlers/block_crud_handlers.ex:83
+#: lib/storyarn_web/live/sheet_live/handlers/config_panel_handlers.ex:31
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:33
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:66
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:202
+#: lib/storyarn_web/live/sheet_live/helpers/content_tab_helpers.ex:105
 #, elixir-autogen, elixir-format
 msgid "Block not found."
 msgstr ""
@@ -180,7 +186,7 @@ msgstr ""
 msgid "Could not add option."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:798
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:246
 #, elixir-autogen, elixir-format
 msgid "Could not change scope."
 msgstr ""
@@ -191,12 +197,12 @@ msgstr ""
 msgid "Could not clear reference."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:222
+#: lib/storyarn_web/live/sheet_live/handlers/block_crud_handlers.ex:42
 #, elixir-autogen, elixir-format
 msgid "Could not create block."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:779
+#: lib/storyarn_web/live/sheet_live/handlers/block_crud_handlers.ex:173
 #, elixir-autogen, elixir-format
 msgid "Could not create column group."
 msgstr ""
@@ -215,7 +221,7 @@ msgstr ""
 msgid "Could not create version."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:259
+#: lib/storyarn_web/live/sheet_live/handlers/block_crud_handlers.ex:93
 #: lib/storyarn_web/live/sheet_live/helpers/block_helpers.ex:90
 #, elixir-autogen, elixir-format
 msgid "Could not delete block."
@@ -233,12 +239,12 @@ msgstr ""
 msgid "Could not delete version."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:535
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:50
 #, elixir-autogen, elixir-format
 msgid "Could not detach property."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:576
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:103
 #, elixir-autogen, elixir-format
 msgid "Could not hide property."
 msgstr ""
@@ -249,7 +255,7 @@ msgstr ""
 msgid "Could not move sheet."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:828
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:276
 #, elixir-autogen, elixir-format
 msgid "Could not propagate property."
 msgstr ""
@@ -266,8 +272,8 @@ msgstr ""
 msgid "Could not remove banner."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:276
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:304
+#: lib/storyarn_web/live/sheet_live/handlers/block_crud_handlers.ex:114
+#: lib/storyarn_web/live/sheet_live/handlers/block_crud_handlers.ex:142
 #: lib/storyarn_web/live/sheet_live/helpers/block_helpers.ex:106
 #, elixir-autogen, elixir-format
 msgid "Could not reorder blocks."
@@ -279,7 +285,7 @@ msgstr ""
 msgid "Could not restore version."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:433
+#: lib/storyarn_web/live/sheet_live/handlers/config_panel_handlers.ex:57
 #: lib/storyarn_web/live/sheet_live/helpers/config_helpers.ex:58
 #, elixir-autogen, elixir-format
 msgid "Could not save configuration."
@@ -301,12 +307,12 @@ msgstr ""
 msgid "Could not set reference."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:454
+#: lib/storyarn_web/live/sheet_live/handlers/config_panel_handlers.ex:81
 #, elixir-autogen, elixir-format
 msgid "Could not toggle constant."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:594
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:120
 #, elixir-autogen, elixir-format
 msgid "Could not unhide property."
 msgstr ""
@@ -316,7 +322,7 @@ msgstr ""
 msgid "Could not update audio."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:241
+#: lib/storyarn_web/live/sheet_live/handlers/block_crud_handlers.ex:67
 #: lib/storyarn_web/live/sheet_live/helpers/config_helpers.ex:143
 #, elixir-autogen, elixir-format
 msgid "Could not update block."
@@ -343,7 +349,7 @@ msgstr ""
 msgid "Could not update multi-select."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:646
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:188
 #, elixir-autogen, elixir-format
 msgid "Could not update required flag."
 msgstr ""
@@ -444,7 +450,7 @@ msgstr ""
 msgid "Divider"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:759
+#: lib/storyarn_web/live/sheet_live/helpers/content_tab_helpers.ex:108
 #, elixir-autogen, elixir-format
 msgid "Divider blocks cannot be placed in columns."
 msgstr ""
@@ -505,7 +511,7 @@ msgstr ""
 msgid "Inherited by children"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:893
+#: lib/storyarn_web/live/sheet_live/components/inherited_block_components.ex:31
 #, elixir-autogen, elixir-format
 msgid "Inherited from"
 msgstr ""
@@ -539,7 +545,7 @@ msgstr ""
 msgid "Invalid reference type."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:674
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:223
 #, elixir-autogen, elixir-format
 msgid "Invalid sheet selection."
 msgstr ""
@@ -740,7 +746,7 @@ msgstr ""
 msgid "Outdated"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:50
+#: lib/storyarn_web/live/sheet_live/components/own_blocks_components.ex:31
 #, elixir-autogen, elixir-format
 msgid "Own Properties"
 msgstr ""
@@ -765,27 +771,27 @@ msgstr ""
 msgid "Propagate \"%{name}\" to existing children?"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:531
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:46
 #, elixir-autogen, elixir-format
 msgid "Property detached. Changes to the source won't affect this copy."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:573
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:100
 #, elixir-autogen, elixir-format
 msgid "Property hidden from children."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:824
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:272
 #, elixir-autogen, elixir-format
 msgid "Property propagated to %{count} pages."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:555
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:78
 #, elixir-autogen, elixir-format
 msgid "Property re-synced with source."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:591
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:117
 #, elixir-autogen, elixir-format
 msgid "Property visible to children again."
 msgstr ""
@@ -852,7 +858,7 @@ msgid "Renamed sheet"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/config_panel.ex:109
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:926
+#: lib/storyarn_web/live/sheet_live/components/inherited_block_components.ex:68
 #, elixir-autogen, elixir-format
 msgid "Required"
 msgstr ""
@@ -942,17 +948,17 @@ msgstr ""
 msgid "Shortcut %{error}"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:558
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:81
 #, elixir-autogen, elixir-format
 msgid "Source block no longer exists."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:614
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:149
 #, elixir-autogen, elixir-format
 msgid "Source sheet not found."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:941
+#: lib/storyarn_web/live/sheet_live/components/children_sheets_section.ex:25
 #, elixir-autogen, elixir-format
 msgid "Subsheets"
 msgstr ""
@@ -1009,7 +1015,7 @@ msgstr ""
 msgid "Type"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:114
+#: lib/storyarn_web/live/sheet_live/components/own_blocks_components.ex:121
 #, elixir-autogen, elixir-format
 msgid "Type / to add a block"
 msgstr ""
@@ -1133,7 +1139,7 @@ msgid "You don't have access to this project."
 msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:148
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:687
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:425
 #: lib/storyarn_web/live/sheet_live/components/versions_section.ex:156
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
@@ -1170,4 +1176,24 @@ msgstr ""
 #: lib/storyarn_web/live/sheet_live/components/versions_section.ex:440
 #, elixir-autogen, elixir-format
 msgid "optional"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/map_appearances_section.ex:17
+#, elixir-autogen, elixir-format
+msgid "Appears on Maps"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/map_appearances_section.ex:109
+#, elixir-autogen, elixir-format
+msgid "Create a pin or zone referencing this sheet to see it here."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:135
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Source block not found."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/map_appearances_section.ex:106
+#, elixir-autogen, elixir-format
+msgid "This sheet doesn't appear on any maps yet."
 msgstr ""

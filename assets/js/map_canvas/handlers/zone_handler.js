@@ -106,17 +106,24 @@ export function createZoneHandler(hook, i18n = {}) {
       hook.pushEvent("select_element", { type: "zone", id: polygon.zoneData.id });
     });
 
-    // Double-click → navigate to target map (drill-down)
+    // Double-click → navigate to child map, or create one if none exists
     polygon.on("dblclick", (e) => {
       L.DomEvent.stopPropagation(e);
       L.DomEvent.preventDefault(e);
 
-      // Only navigate if not in a zone draw tool and target is a map
       const isZoneTool = hook.isZoneTool && hook.isZoneTool(hook.currentTool);
-      if (!isZoneTool && polygon.zoneData.target_type === "map" && polygon.zoneData.target_id) {
+      if (isZoneTool) return;
+
+      if (polygon.zoneData.target_type === "map" && polygon.zoneData.target_id) {
+        // Navigate to existing child map
         hook.pushEvent("navigate_to_target", {
           type: "map",
           id: polygon.zoneData.target_id,
+        });
+      } else if (hook.editMode) {
+        // No child map yet — create one (server validates zone has a name)
+        hook.pushEvent("create_child_map_from_zone", {
+          zone_id: String(polygon.zoneData.id),
         });
       }
     });
