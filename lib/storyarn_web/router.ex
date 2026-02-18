@@ -154,6 +154,11 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/new", FlowLive.Index, :new
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id", FlowLive.Show, :show
 
+      # Maps (world builder)
+      live "/workspaces/:workspace_slug/projects/:project_slug/maps", MapLive.Index, :index
+      live "/workspaces/:workspace_slug/projects/:project_slug/maps/new", MapLive.Index, :new
+      live "/workspaces/:workspace_slug/projects/:project_slug/maps/:id", MapLive.Show, :show
+
       # Screenplays (block-based screenplay editor)
       live "/workspaces/:workspace_slug/projects/:project_slug/screenplays",
            ScreenplayLive.Index,

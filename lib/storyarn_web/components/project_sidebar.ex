@@ -12,6 +12,7 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
   import StoryarnWeb.Components.TreeComponents
 
   alias StoryarnWeb.Components.Sidebar.FlowTree
+  alias StoryarnWeb.Components.Sidebar.MapTree
   alias StoryarnWeb.Components.Sidebar.ScreenplayTree
   alias StoryarnWeb.Components.Sidebar.SheetTree
 
@@ -20,11 +21,13 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
   attr :sheets_tree, :list, default: []
   attr :flows_tree, :list, default: []
   attr :screenplays_tree, :list, default: []
+  attr :maps_tree, :list, default: []
   attr :active_tool, :atom, default: :sheets
   attr :current_path, :string, required: true
   attr :selected_sheet_id, :string, default: nil
   attr :selected_flow_id, :string, default: nil
   attr :selected_screenplay_id, :string, default: nil
+  attr :selected_map_id, :string, default: nil
   attr :can_edit, :boolean, default: false
 
   def project_sidebar(assigns) do
@@ -61,6 +64,12 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
             active={flows_page?(@current_path, @workspace.slug, @project.slug)}
           />
           <.tree_link
+            label={gettext("Maps")}
+            href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/maps"}
+            icon="map"
+            active={maps_page?(@current_path, @workspace.slug, @project.slug)}
+          />
+          <.tree_link
             label={gettext("Screenplays")}
             href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays"}
             icon="scroll-text"
@@ -94,6 +103,14 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
               workspace={@workspace}
               project={@project}
               selected_flow_id={@selected_flow_id}
+              can_edit={@can_edit}
+            />
+          <% @active_tool == :maps -> %>
+            <MapTree.maps_section
+              maps_tree={@maps_tree}
+              workspace={@workspace}
+              project={@project}
+              selected_map_id={@selected_map_id}
               can_edit={@can_edit}
             />
           <% @active_tool == :screenplays -> %>
@@ -134,31 +151,16 @@ defmodule StoryarnWeb.Components.ProjectSidebar do
     """
   end
 
-  defp settings_page?(path, workspace_slug, project_slug) do
-    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/settings")
-  end
+  defp settings_page?(path, ws, proj), do: section_active?(path, ws, proj, "settings")
+  defp trash_page?(path, ws, proj), do: section_active?(path, ws, proj, "trash")
+  defp flows_page?(path, ws, proj), do: section_active?(path, ws, proj, "flows")
+  defp maps_page?(path, ws, proj), do: section_active?(path, ws, proj, "maps")
+  defp screenplays_page?(path, ws, proj), do: section_active?(path, ws, proj, "screenplays")
+  defp sheets_tool_page?(path, ws, proj), do: section_active?(path, ws, proj, "sheets")
+  defp assets_page?(path, ws, proj), do: section_active?(path, ws, proj, "assets")
+  defp localization_page?(path, ws, proj), do: section_active?(path, ws, proj, "localization")
 
-  defp trash_page?(path, workspace_slug, project_slug) do
-    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/trash")
-  end
-
-  defp flows_page?(path, workspace_slug, project_slug) do
-    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows")
-  end
-
-  defp screenplays_page?(path, workspace_slug, project_slug) do
-    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/screenplays")
-  end
-
-  defp sheets_tool_page?(path, workspace_slug, project_slug) do
-    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets")
-  end
-
-  defp assets_page?(path, workspace_slug, project_slug) do
-    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/assets")
-  end
-
-  defp localization_page?(path, workspace_slug, project_slug) do
-    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/localization")
+  defp section_active?(path, workspace_slug, project_slug, section) do
+    String.contains?(path, "/workspaces/#{workspace_slug}/projects/#{project_slug}/#{section}")
   end
 end

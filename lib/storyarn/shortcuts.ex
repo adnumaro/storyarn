@@ -9,6 +9,7 @@ defmodule Storyarn.Shortcuts do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.Flow
+  alias Storyarn.Maps.Map, as: MapSchema
   alias Storyarn.Repo
   alias Storyarn.Screenplays.Screenplay
   alias Storyarn.Sheets.Sheet
@@ -19,47 +20,25 @@ defmodule Storyarn.Shortcuts do
   Returns a slugified version of the name, with a numeric suffix if needed
   to ensure uniqueness within the project (e.g., "sheet", "sheet-1", "sheet-2").
   """
-  def generate_sheet_shortcut(name, project_id, exclude_sheet_id \\ nil) do
+  def generate_sheet_shortcut(name, project_id, exclude_id \\ nil),
+    do: generate_unique(name, &list_sheet_shortcuts(project_id, &1), exclude_id)
+
+  def generate_flow_shortcut(name, project_id, exclude_id \\ nil),
+    do: generate_unique(name, &list_flow_shortcuts(project_id, &1), exclude_id)
+
+  def generate_screenplay_shortcut(name, project_id, exclude_id \\ nil),
+    do: generate_unique(name, &list_screenplay_shortcuts(project_id, &1), exclude_id)
+
+  def generate_map_shortcut(name, project_id, exclude_id \\ nil),
+    do: generate_unique(name, &list_map_shortcuts(project_id, &1), exclude_id)
+
+  defp generate_unique(name, list_fn, exclude_id) do
     base_shortcut = slugify(name)
 
     if base_shortcut == "" do
       nil
     else
-      existing = list_sheet_shortcuts(project_id, exclude_sheet_id)
-      find_unique_shortcut(base_shortcut, existing)
-    end
-  end
-
-  @doc """
-  Generates a unique shortcut for a flow based on its name.
-
-  Returns a slugified version of the name, with a numeric suffix if needed
-  to ensure uniqueness within the project (e.g., "flow", "flow-1", "flow-2").
-  """
-  def generate_flow_shortcut(name, project_id, exclude_flow_id \\ nil) do
-    base_shortcut = slugify(name)
-
-    if base_shortcut == "" do
-      nil
-    else
-      existing = list_flow_shortcuts(project_id, exclude_flow_id)
-      find_unique_shortcut(base_shortcut, existing)
-    end
-  end
-
-  @doc """
-  Generates a unique shortcut for a screenplay based on its name.
-
-  Returns a slugified version of the name, with a numeric suffix if needed
-  to ensure uniqueness within the project (e.g., "screenplay", "screenplay-1").
-  """
-  def generate_screenplay_shortcut(name, project_id, exclude_screenplay_id \\ nil) do
-    base_shortcut = slugify(name)
-
-    if base_shortcut == "" do
-      nil
-    else
-      existing = list_screenplay_shortcuts(project_id, exclude_screenplay_id)
+      existing = list_fn.(exclude_id)
       find_unique_shortcut(base_shortcut, existing)
     end
   end
@@ -125,6 +104,7 @@ defmodule Storyarn.Shortcuts do
       from(f in Flow,
         where:
           f.project_id == ^project_id and
+            is_nil(f.deleted_at) and
             not is_nil(f.shortcut),
         select: f.shortcut
       )
@@ -152,6 +132,26 @@ defmodule Storyarn.Shortcuts do
     query =
       if exclude_screenplay_id do
         where(query, [s], s.id != ^exclude_screenplay_id)
+      else
+        query
+      end
+
+    Repo.all(query)
+  end
+
+  defp list_map_shortcuts(project_id, exclude_map_id) do
+    query =
+      from(m in MapSchema,
+        where:
+          m.project_id == ^project_id and
+            is_nil(m.deleted_at) and
+            not is_nil(m.shortcut),
+        select: m.shortcut
+      )
+
+    query =
+      if exclude_map_id do
+        where(query, [m], m.id != ^exclude_map_id)
       else
         query
       end

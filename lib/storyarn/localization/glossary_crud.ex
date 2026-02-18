@@ -3,10 +3,10 @@ defmodule Storyarn.Localization.GlossaryCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
-  alias Storyarn.Localization.GlossaryEntry
 
   # =============================================================================
   # Queries

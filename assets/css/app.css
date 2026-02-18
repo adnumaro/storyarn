@@ -34,6 +34,9 @@
 /* Screenplay editor styles */
 @import "./screenplay.css";
 
+/* Leaflet.js core styles (PNG-free copy, see leaflet.css header) */
+@import "./leaflet.css";
+
 /* This file is for your main application CSS */
 
 /* SortableJS styles */
@@ -499,5 +502,180 @@
   color: color-mix(in oklch, var(--color-base-content) 25%, transparent);
   font-weight: 400;
   font-style: italic;
+}
+
+/* Map Canvas - Pin markers */
+.map-pin-marker {
+  background: none !important;
+  border: none !important;
+}
+
+.map-pin-selected .map-pin-marker > div,
+.map-pin-selected > div {
+  outline: 3px solid var(--color-primary, #3b82f6);
+  outline-offset: 2px;
+}
+
+/* Map Canvas - Freeform zone close target (first vertex) */
+.map-zone-close-target {
+  animation: zone-close-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes zone-close-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.7; }
+}
+
+.map-annotation-marker {
+  background: none !important;
+  border: none !important;
+}
+
+.map-annotation-selected .map-annotation-label {
+  outline: 2px solid var(--color-primary, #3b82f6);
+  outline-offset: 2px;
+}
+
+/* Map Canvas - Connection drawing pin states */
+.map-pin-connectable .map-pin-marker > div,
+.map-pin-connectable > div {
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary, #3b82f6) 40%, transparent),
+              0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: box-shadow 0.15s ease;
+}
+
+.map-pin-source .map-pin-marker > div,
+.map-pin-source > div {
+  box-shadow: 0 0 0 3px var(--color-primary, #3b82f6),
+              0 0 12px color-mix(in oklch, var(--color-primary, #3b82f6) 50%, transparent);
+}
+
+.map-pin-target .map-pin-marker > div,
+.map-pin-target > div {
+  box-shadow: 0 0 0 3px var(--color-success, #22c55e),
+              0 0 8px color-mix(in oklch, var(--color-success, #22c55e) 40%, transparent);
+}
+
+/* Map Canvas - Search focus flash animation */
+.map-element-flash {
+  animation: map-element-flash-anim 1.5s ease-out;
+}
+
+@keyframes map-element-flash-anim {
+  0%   { filter: brightness(1.6) drop-shadow(0 0 8px var(--color-primary, #3b82f6)); }
+  25%  { filter: brightness(1); }
+  50%  { filter: brightness(1.6) drop-shadow(0 0 8px var(--color-primary, #3b82f6)); }
+  75%  { filter: brightness(1); }
+  100% { filter: brightness(1); }
+}
+
+/* Map Canvas - Mini-map */
+.map-minimap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.map-minimap-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--color-base-300, #d1d5db);
+  background: var(--color-base-100, #fff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  color: var(--color-base-content, #1f2937);
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.map-minimap-toggle:hover {
+  opacity: 1;
+}
+
+.map-minimap-canvas {
+  border-radius: 6px;
+  border: 1px solid var(--color-base-300, #d1d5db);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  background: var(--color-base-200, #f3f4f6);
+}
+
+/* Ruler measurement labels */
+.map-ruler-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f97316;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #f97316;
+  border-radius: 4px;
+  padding: 1px 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== Map Dock ===== */
+
+.dock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: var(--color-base-content, #1f2937);
+  border: none;
+  background: transparent;
+}
+
+.dock-btn:hover {
+  background-color: var(--color-base-200, #f3f4f6);
+}
+
+.dock-btn-active {
+  background-color: var(--color-primary, #7c3aed) !important;
+  color: var(--color-primary-content, #fff) !important;
+}
+
+/* Hover bounce animation — items pop up out of the dock */
+.dock-item {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dock-item:hover {
+  transform: translateY(-3px);
+}
+
+/* Hover mega-tooltip (delayed appearance) */
+.dock-tooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  padding: 10px 12px;
+  background: var(--color-base-100, #fff);
+  border: 1px solid var(--color-base-300, #d1d5db);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s 0.4s;
+  z-index: 10;
+}
+
+.dock-item:hover .dock-tooltip {
+  opacity: 1;
+}
+
+/* Hide tooltip when dropdown is open (for items with both) */
+.dock-item:focus-within .dock-tooltip {
+  opacity: 0;
+  transition-delay: 0s;
 }
 

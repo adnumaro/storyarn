@@ -3,9 +3,9 @@ defmodule Storyarn.Localization.TextCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Localization.LocalizedText
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
-  alias Storyarn.Localization.LocalizedText
 
   # =============================================================================
   # Queries

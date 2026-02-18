@@ -14,4 +14,19 @@ defmodule Storyarn.Shared.MapUtils do
       {k, v} -> {k, v}
     end)
   end
+
+  @doc """
+  Parses a value to an integer, returning nil for empty/unparseable values.
+  """
+  @spec parse_int(any()) :: integer() | nil
+  def parse_int(""), do: nil
+  def parse_int(nil), do: nil
+  def parse_int(val) when is_integer(val), do: val
+
+  def parse_int(str) when is_binary(str) do
+    case Integer.parse(str) do
+      {int, ""} -> int
+      _ -> nil
+    end
+  end
 end
