@@ -671,6 +671,32 @@ defmodule StoryarnWeb.MapLive.Show do
   end
 
   # ---------------------------------------------------------------------------
+  # Keyboard shortcut actions — delegate to ElementHandlers
+  # ---------------------------------------------------------------------------
+
+  def handle_event("delete_selected", _params, socket) do
+    with_auth(socket, :edit_content, fn ->
+      ElementHandlers.handle_delete_selected(socket)
+    end)
+  end
+
+  def handle_event("duplicate_selected", _params, socket) do
+    with_auth(socket, :edit_content, fn ->
+      ElementHandlers.handle_duplicate_selected(socket)
+    end)
+  end
+
+  def handle_event("copy_selected", _params, socket) do
+    ElementHandlers.handle_copy_selected(socket)
+  end
+
+  def handle_event("paste_element", params, socket) do
+    with_auth(socket, :edit_content, fn ->
+      ElementHandlers.handle_paste_element(params, socket)
+    end)
+  end
+
+  # ---------------------------------------------------------------------------
   # Undo / Redo — delegate to UndoRedoHandlers
   # ---------------------------------------------------------------------------
 

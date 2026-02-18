@@ -265,18 +265,98 @@ export const MapCanvas = {
       }
     });
 
-    // Keyboard shortcuts (Ctrl+Z undo, Ctrl+Shift+Z / Ctrl+Y redo)
+    // Clipboard: store copied element data in localStorage
+    this.handleEvent("element_copied", (data) => {
+      localStorage.setItem("storyarn_map_clipboard", JSON.stringify(data));
+    });
+
+    // Keyboard shortcuts
     this._keydownHandler = (e) => {
       if (!this.editMode) return;
-      const mod = e.metaKey || e.ctrlKey;
-      if (!mod) return;
 
-      if (e.key === "z" && !e.shiftKey) {
+      const mod = e.metaKey || e.ctrlKey;
+      const inInput =
+        e.target.tagName === "INPUT" ||
+        e.target.tagName === "TEXTAREA" ||
+        e.target.isContentEditable;
+
+      // --- Modifier shortcuts (Cmd/Ctrl) ---
+      if (mod) {
+        // Undo: Cmd+Z
+        if (e.key === "z" && !e.shiftKey) {
+          e.preventDefault();
+          this.pushEvent("undo", {});
+          return;
+        }
+        // Redo: Cmd+Shift+Z or Cmd+Y
+        if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+          e.preventDefault();
+          this.pushEvent("redo", {});
+          return;
+        }
+        // Duplicate: Cmd+Shift+D
+        if (e.shiftKey && (e.key === "D" || e.key === "d")) {
+          e.preventDefault();
+          this.pushEvent("duplicate_selected", {});
+          return;
+        }
+        // Copy: Cmd+Shift+C
+        if (e.shiftKey && (e.key === "C" || e.key === "c")) {
+          e.preventDefault();
+          this.pushEvent("copy_selected", {});
+          return;
+        }
+        // Paste: Cmd+Shift+V
+        if (e.shiftKey && (e.key === "V" || e.key === "v")) {
+          e.preventDefault();
+          const raw = localStorage.getItem("storyarn_map_clipboard");
+          if (raw) {
+            try {
+              this.pushEvent("paste_element", JSON.parse(raw));
+            } catch (_) {
+              // ignore invalid clipboard data
+            }
+          }
+          return;
+        }
+        return;
+      }
+
+      // --- Non-modifier shortcuts (skip when typing in inputs) ---
+      if (inInput) return;
+
+      // Delete/Backspace → delete selected element
+      if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
-        this.pushEvent("undo", {});
-      } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
-        e.preventDefault();
-        this.pushEvent("redo", {});
+        this.pushEvent("delete_selected", {});
+        return;
+      }
+
+      // Escape → deselect (zone/connection handlers catch Escape during drawing first)
+      if (e.key === "Escape") {
+        this.pushEvent("deselect", {});
+        return;
+      }
+
+      // Tool shortcuts: Shift + letter (no Cmd/Ctrl)
+      if (e.shiftKey && !e.altKey) {
+        const toolMap = {
+          V: "select",
+          H: "pan",
+          R: "rectangle",
+          T: "triangle",
+          C: "circle",
+          F: "freeform",
+          P: "pin",
+          N: "annotation",
+          L: "connector",
+          M: "ruler",
+        };
+        const tool = toolMap[e.key];
+        if (tool) {
+          e.preventDefault();
+          this.pushEvent("set_tool", { tool });
+        }
       }
     };
     document.addEventListener("keydown", this._keydownHandler);

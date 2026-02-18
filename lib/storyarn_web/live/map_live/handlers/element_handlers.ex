@@ -301,6 +301,55 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   end
 
   # ---------------------------------------------------------------------------
+  # Keyboard shortcut handlers (delete / duplicate / copy / paste)
+  # ---------------------------------------------------------------------------
+
+  def handle_delete_selected(socket) do
+    case {socket.assigns.selected_type, socket.assigns.selected_element} do
+      {nil, _} -> {:noreply, socket}
+      {"pin", pin} -> do_delete_pin(socket, pin)
+      {"zone", zone} -> do_delete_zone(socket, zone)
+      {"connection", conn} -> do_delete_connection(socket, conn)
+      {"annotation", ann} -> do_delete_annotation(socket, ann)
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_duplicate_selected(socket) do
+    case {socket.assigns.selected_type, socket.assigns.selected_element} do
+      {nil, _} -> {:noreply, socket}
+      {"pin", pin} -> do_duplicate_pin(socket, pin)
+      {"zone", zone} -> do_duplicate_zone(socket, zone)
+      {"annotation", ann} -> do_duplicate_annotation(socket, ann)
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_copy_selected(socket) do
+    case {socket.assigns.selected_type, socket.assigns.selected_element} do
+      {nil, _} ->
+        {:noreply, socket}
+
+      {type, element} ->
+        data = serialize_element_for_clipboard(type, element)
+        {:noreply, push_event(socket, "element_copied", data)}
+    end
+  end
+
+  def handle_paste_element(%{"type" => type, "attrs" => attrs}, socket) do
+    attrs = shift_paste_position(attrs)
+
+    case type do
+      "pin" -> do_create_pin_from_clipboard(socket, attrs)
+      "zone" -> do_create_zone_from_clipboard(socket, attrs)
+      "annotation" -> do_create_annotation_from_clipboard(socket, attrs)
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_paste_element(_params, socket), do: {:noreply, socket}
+
+  # ---------------------------------------------------------------------------
   # Private do_* helpers
   # ---------------------------------------------------------------------------
 
@@ -564,6 +613,232 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("maps", "Could not delete annotation."))}
+    end
+  end
+
+  defp do_duplicate_pin(socket, %{locked: true}) do
+    {:noreply, put_flash(socket, :error, dgettext("maps", "Cannot duplicate a locked element."))}
+  end
+
+  defp do_duplicate_pin(socket, pin) do
+    attrs = %{
+      "position_x" => min(pin.position_x + 5, 100.0),
+      "position_y" => min(pin.position_y + 5, 100.0),
+      "label" => pin.label <> " (copy)",
+      "pin_type" => pin.pin_type,
+      "icon" => pin.icon,
+      "color" => pin.color,
+      "size" => pin.size,
+      "tooltip" => pin.tooltip,
+      "layer_id" => pin.layer_id
+    }
+
+    case Maps.create_pin(socket.assigns.map.id, attrs) do
+      {:ok, new_pin} ->
+        {:noreply,
+         socket
+         |> assign(:pins, socket.assigns.pins ++ [new_pin])
+         |> assign(:selected_type, "pin")
+         |> assign(:selected_element, new_pin)
+         |> push_event("pin_created", serialize_pin(new_pin))
+         |> push_event("element_selected", %{type: "pin", id: new_pin.id})
+         |> put_flash(:info, dgettext("maps", "Pin duplicated."))}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not duplicate pin."))}
+    end
+  end
+
+  defp do_duplicate_annotation(socket, %{locked: true}) do
+    {:noreply, put_flash(socket, :error, dgettext("maps", "Cannot duplicate a locked element."))}
+  end
+
+  defp do_duplicate_annotation(socket, annotation) do
+    attrs = %{
+      "text" => annotation.text <> " (copy)",
+      "position_x" => min(annotation.position_x + 5, 100.0),
+      "position_y" => min(annotation.position_y + 5, 100.0),
+      "font_size" => annotation.font_size,
+      "color" => annotation.color,
+      "layer_id" => annotation.layer_id
+    }
+
+    case Maps.create_annotation(socket.assigns.map.id, attrs) do
+      {:ok, new_ann} ->
+        {:noreply,
+         socket
+         |> assign(:annotations, socket.assigns.annotations ++ [new_ann])
+         |> assign(:selected_type, "annotation")
+         |> assign(:selected_element, new_ann)
+         |> push_event("annotation_created", serialize_annotation(new_ann))
+         |> push_event("element_selected", %{type: "annotation", id: new_ann.id})
+         |> put_flash(:info, dgettext("maps", "Annotation duplicated."))}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("maps", "Could not duplicate annotation."))}
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Clipboard serialization & paste helpers
+  # ---------------------------------------------------------------------------
+
+  defp serialize_element_for_clipboard("pin", pin) do
+    %{
+      type: "pin",
+      attrs: %{
+        position_x: pin.position_x,
+        position_y: pin.position_y,
+        label: pin.label,
+        pin_type: pin.pin_type,
+        icon: pin.icon,
+        color: pin.color,
+        size: pin.size,
+        tooltip: pin.tooltip
+      }
+    }
+  end
+
+  defp serialize_element_for_clipboard("zone", zone) do
+    %{
+      type: "zone",
+      attrs: %{
+        name: zone.name,
+        vertices: zone.vertices,
+        fill_color: zone.fill_color,
+        border_color: zone.border_color,
+        border_width: zone.border_width,
+        border_style: zone.border_style,
+        opacity: zone.opacity
+      }
+    }
+  end
+
+  defp serialize_element_for_clipboard("annotation", annotation) do
+    %{
+      type: "annotation",
+      attrs: %{
+        text: annotation.text,
+        position_x: annotation.position_x,
+        position_y: annotation.position_y,
+        font_size: annotation.font_size,
+        color: annotation.color
+      }
+    }
+  end
+
+  defp serialize_element_for_clipboard(_type, _element), do: %{type: "unknown", attrs: %{}}
+
+  defp shift_paste_position(attrs) do
+    attrs
+    |> shift_field("position_x")
+    |> shift_field("position_y")
+    |> shift_vertices()
+  end
+
+  defp shift_field(attrs, key) do
+    case Map.get(attrs, key) do
+      val when is_number(val) -> Map.put(attrs, key, min(val + 5, 100.0))
+      _ -> attrs
+    end
+  end
+
+  defp shift_vertices(%{"vertices" => verts} = attrs) when is_list(verts) do
+    shifted =
+      Enum.map(verts, fn v ->
+        %{
+          "x" => min((v["x"] || 0) + 5, 100.0),
+          "y" => min((v["y"] || 0) + 5, 100.0)
+        }
+      end)
+
+    Map.put(attrs, "vertices", shifted)
+  end
+
+  defp shift_vertices(attrs), do: attrs
+
+  defp do_create_pin_from_clipboard(socket, attrs) do
+    pin_attrs = %{
+      "position_x" => attrs["position_x"] || 50.0,
+      "position_y" => attrs["position_y"] || 50.0,
+      "label" => attrs["label"] || dgettext("maps", "New Pin"),
+      "pin_type" => attrs["pin_type"] || "location",
+      "icon" => attrs["icon"],
+      "color" => attrs["color"],
+      "size" => attrs["size"],
+      "tooltip" => attrs["tooltip"],
+      "layer_id" => socket.assigns.active_layer_id
+    }
+
+    case Maps.create_pin(socket.assigns.map.id, pin_attrs) do
+      {:ok, pin} ->
+        {:noreply,
+         socket
+         |> assign(:pins, socket.assigns.pins ++ [pin])
+         |> assign(:selected_type, "pin")
+         |> assign(:selected_element, pin)
+         |> push_event("pin_created", serialize_pin(pin))
+         |> push_event("element_selected", %{type: "pin", id: pin.id})
+         |> put_flash(:info, dgettext("maps", "Pin pasted."))}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not paste pin."))}
+    end
+  end
+
+  defp do_create_zone_from_clipboard(socket, attrs) do
+    zone_attrs = %{
+      "name" => (attrs["name"] || dgettext("maps", "New Zone")) <> " (paste)",
+      "vertices" => attrs["vertices"] || [],
+      "fill_color" => attrs["fill_color"],
+      "border_color" => attrs["border_color"],
+      "border_width" => attrs["border_width"],
+      "border_style" => attrs["border_style"],
+      "opacity" => attrs["opacity"],
+      "layer_id" => socket.assigns.active_layer_id
+    }
+
+    case Maps.create_zone(socket.assigns.map.id, zone_attrs) do
+      {:ok, zone} ->
+        {:noreply,
+         socket
+         |> assign(:zones, socket.assigns.zones ++ [zone])
+         |> assign(:selected_type, "zone")
+         |> assign(:selected_element, zone)
+         |> push_event("zone_created", serialize_zone(zone))
+         |> push_event("element_selected", %{type: "zone", id: zone.id})
+         |> put_flash(:info, dgettext("maps", "Zone pasted."))}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not paste zone."))}
+    end
+  end
+
+  defp do_create_annotation_from_clipboard(socket, attrs) do
+    ann_attrs = %{
+      "text" => attrs["text"] || dgettext("maps", "Note"),
+      "position_x" => attrs["position_x"] || 50.0,
+      "position_y" => attrs["position_y"] || 50.0,
+      "font_size" => attrs["font_size"] || "md",
+      "color" => attrs["color"],
+      "layer_id" => socket.assigns.active_layer_id
+    }
+
+    case Maps.create_annotation(socket.assigns.map.id, ann_attrs) do
+      {:ok, annotation} ->
+        {:noreply,
+         socket
+         |> assign(:annotations, socket.assigns.annotations ++ [annotation])
+         |> assign(:selected_type, "annotation")
+         |> assign(:selected_element, annotation)
+         |> push_event("annotation_created", serialize_annotation(annotation))
+         |> push_event("element_selected", %{type: "annotation", id: annotation.id})
+         |> put_flash(:info, dgettext("maps", "Annotation pasted."))}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("maps", "Could not paste annotation."))}
     end
   end
 
