@@ -116,9 +116,7 @@ defmodule Storyarn.Localization.Providers.DeepL do
 
     # DeepL expects TSV format for entries
     entries_tsv =
-      entries
-      |> Enum.map(fn {source, target} -> "#{source}\t#{target}" end)
-      |> Enum.join("\n")
+      Enum.map_join(entries, "\n", fn {source, target} -> "#{source}\t#{target}" end)
 
     case Req.post("#{base_url}/v2/glossaries",
            headers: [{"Authorization", "DeepL-Auth-Key #{api_key}"}],

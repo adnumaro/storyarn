@@ -189,13 +189,13 @@ lib/storyarn/localization/
      └──────────────── (source changed) ────────────┘
 ```
 
-| Status | Description |
-|--------|-------------|
-| pending | No translation exists yet |
-| draft | Initial translation (possibly machine-translated) |
-| in_progress | Translator is working on it |
-| review | Translation complete, awaiting review |
-| final | Approved and ready for export |
+| Status      | Description                                       |
+|-------------|---------------------------------------------------|
+| pending     | No translation exists yet                         |
+| draft       | Initial translation (possibly machine-translated) |
+| in_progress | Translator is working on it                       |
+| review      | Translation complete, awaiting review             |
+| final       | Approved and ready for export                     |
 
 ---
 
@@ -342,18 +342,18 @@ GET /workspaces/:ws/projects/:proj/localization/export/:format/:locale → Local
 
 ## Remaining Work
 
-| Item | Category | Effort |
-|------|----------|--------|
-| Import UI (upload, preview, conflict handling) | Export/Import | Medium |
-| VO section in editor (upload, playback, status) | Translation Editor | Medium |
-| Inline editing in list view | Localization View | Medium |
-| History/audit log for translations | Translation Editor | Medium |
-| Keyboard navigation (arrow keys, Enter) | Localization View | Small |
-| Glossary term highlighting in editor | Translation Editor | Small |
-| Glossary export for external teams | Glossary | Small |
-| PDF export for reports | Report | Small |
-| Recent activity in report | Report | Small |
-| Length ratio indicator in editor | Translation Editor | Small |
+| Item                                            | Category           | Effort   |
+|-------------------------------------------------|--------------------|----------|
+| Import UI (upload, preview, conflict handling)  | Export/Import      | Medium   |
+| VO section in editor (upload, playback, status) | Translation Editor | Medium   |
+| Inline editing in list view                     | Localization View  | Medium   |
+| History/audit log for translations              | Translation Editor | Medium   |
+| Keyboard navigation (arrow keys, Enter)         | Localization View  | Small    |
+| Glossary term highlighting in editor            | Translation Editor | Small    |
+| Glossary export for external teams              | Glossary           | Small    |
+| PDF export for reports                          | Report             | Small    |
+| Recent activity in report                       | Report             | Small    |
+| Length ratio indicator in editor                | Translation Editor | Small    |
 
 ---
 
@@ -391,19 +391,19 @@ GET /workspaces/:ws/projects/:proj/localization/export/:format/:locale → Local
 
 ## Comparison: articy:draft vs Storyarn
 
-| Feature | articy:draft | Storyarn |
-|---------|--------------|----------|
-| Language management | Built-in | Built-in (inline in Localization page) |
-| Translation states | 3 states | 5 states (more granular) |
-| DeepL integration | Yes | Yes (with glossary sync) |
-| Excel export/import | Yes | Yes (export done, import backend only) |
-| VO tracking | Basic | Schema ready (UI pending) |
-| Per-character reports | Word count only | Words + lines + VO status |
-| Glossary | No | Yes (CRUD + DeepL sync) |
-| Inline editing | Limited | Via dedicated editor page |
-| Web-based | No (desktop) | Yes (collaborative) |
-| Source change detection | Manual | Automatic (hash-based, downgrades status) |
-| Bulk text extraction | Manual | Automatic hooks + manual Sync button |
+| Feature                 | articy:draft    | Storyarn                                  |
+|-------------------------|-----------------|-------------------------------------------|
+| Language management     | Built-in        | Built-in (inline in Localization page)    |
+| Translation states      | 3 states        | 5 states (more granular)                  |
+| DeepL integration       | Yes             | Yes (with glossary sync)                  |
+| Excel export/import     | Yes             | Yes (export done, import backend only)    |
+| VO tracking             | Basic           | Schema ready (UI pending)                 |
+| Per-character reports   | Word count only | Words + lines + VO status                 |
+| Glossary                | No              | Yes (CRUD + DeepL sync)                   |
+| Inline editing          | Limited         | Via dedicated editor page                 |
+| Web-based               | No (desktop)    | Yes (collaborative)                       |
+| Source change detection | Manual          | Automatic (hash-based, downgrades status) |
+| Bulk text extraction    | Manual          | Automatic hooks + manual Sync button      |
 
 **Key Advantages:**
 - More granular status workflow for professional pipelines

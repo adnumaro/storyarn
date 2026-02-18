@@ -53,26 +53,7 @@ defmodule Storyarn.Localization.BatchTranslator do
     with {:ok, config} <- get_provider_config(project_id),
          {:ok, source_lang} <- get_source_locale(project_id),
          text when not is_nil(text) <- TextCrud.get_text(text_id) do
-      source_text = text.source_text
-
-      if source_text && String.trim(source_text) != "" do
-        case DeepL.translate([source_text], source_lang, text.locale_code, config) do
-          {:ok, [%{text: translated}]} ->
-            now = DateTime.utc_now() |> DateTime.truncate(:second)
-
-            TextCrud.update_text(text, %{
-              "translated_text" => translated,
-              "status" => "draft",
-              "machine_translated" => true,
-              "last_translated_at" => now
-            })
-
-          {:error, reason} ->
-            {:error, reason}
-        end
-      else
-        {:error, :empty_source_text}
-      end
+      do_translate_single(text, source_lang, config)
     else
       nil -> {:error, :text_not_found}
       error -> error
@@ -82,6 +63,29 @@ defmodule Storyarn.Localization.BatchTranslator do
   # =============================================================================
   # Private
   # =============================================================================
+
+  defp do_translate_single(text, source_lang, config) do
+    source_text = text.source_text
+
+    if source_text && String.trim(source_text) != "" do
+      case DeepL.translate([source_text], source_lang, text.locale_code, config) do
+        {:ok, [%{text: translated}]} ->
+          now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+          TextCrud.update_text(text, %{
+            "translated_text" => translated,
+            "status" => "draft",
+            "machine_translated" => true,
+            "last_translated_at" => now
+          })
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    else
+      {:error, :empty_source_text}
+    end
+  end
 
   defp do_batch_translate(texts, source_lang, target_locale, config) do
     # Filter out nil/empty texts — track their indices

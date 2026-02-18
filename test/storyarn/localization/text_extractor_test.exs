@@ -242,7 +242,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
       flow = flow_fixture(project)
       {:ok, _updated} = Flows.update_flow(flow, %{name: "Chapter 1"})
 
-      assert length(Localization.get_texts_for_source("flow", flow.id)) >= 1
+      assert Localization.get_texts_for_source("flow", flow.id) != []
 
       {:ok, _} = Flows.delete_flow(flow)
       assert Localization.get_texts_for_source("flow", flow.id) == []

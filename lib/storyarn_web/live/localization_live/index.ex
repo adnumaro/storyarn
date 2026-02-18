@@ -476,34 +476,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   def handle_event("add_target_language", %{"locale_code" => code}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        name = Languages.name(code)
-
-        case Localization.add_language(socket.assigns.project, %{
-               "locale_code" => code,
-               "name" => name,
-               "is_source" => false
-             }) do
-          {:ok, _lang} ->
-            # Extract all existing content for the new language
-            {:ok, count} = Localization.extract_all(socket.assigns.project.id)
-            socket = reload_languages(socket)
-
-            msg =
-              if count > 0,
-                do:
-                  ngettext(
-                    "Language added. Extracted %{count} text.",
-                    "Language added. Extracted %{count} texts.",
-                    count,
-                    count: count
-                  ),
-                else: gettext("Language added.")
-
-            {:noreply, put_flash(socket, :info, msg)}
-
-          {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, gettext("Failed to add language."))}
-        end
+        do_add_target_language(socket, code)
 
       {:error, :unauthorized} ->
         {:noreply,
@@ -730,4 +703,39 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   defp source_type_icon("flow"), do: "git-branch"
   defp source_type_icon("screenplay"), do: "clapperboard"
   defp source_type_icon(_), do: "box"
+
+  defp do_add_target_language(socket, code) do
+    name = Languages.name(code)
+
+    case Localization.add_language(socket.assigns.project, %{
+           "locale_code" => code,
+           "name" => name,
+           "is_source" => false
+         }) do
+      {:ok, _lang} ->
+        count =
+          case Localization.extract_all(socket.assigns.project.id) do
+            {:ok, c} -> c
+            {:error, _} -> 0
+          end
+
+        socket = reload_languages(socket)
+
+        msg =
+          if count > 0,
+            do:
+              ngettext(
+                "Language added. Extracted %{count} text.",
+                "Language added. Extracted %{count} texts.",
+                count,
+                count: count
+              ),
+            else: gettext("Language added.")
+
+        {:noreply, put_flash(socket, :info, msg)}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, gettext("Failed to add language."))}
+    end
+  end
 end

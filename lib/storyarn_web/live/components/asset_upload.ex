@@ -141,7 +141,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
           <progress class="progress progress-primary w-full h-1" value={@entry.progress} max="100" />
         </div>
         <p
-          :for={err <- Phoenix.Component.upload_errors(@uploads, @entry)}
+          :for={err <- Phoenix.Component.upload_errors(@uploads.asset, @entry)}
           class="text-xs text-error mt-1"
         >
           {error_to_string(err)}

@@ -130,18 +130,7 @@ defmodule Storyarn.Localization.ExportImport do
           {updated, skipped, errors} =
             data_lines
             |> Enum.with_index(2)
-            |> Enum.reduce({0, 0, []}, fn {line, line_num}, {upd, skip, errs} ->
-              fields = parse_csv_line(line)
-              id = Enum.at(fields, id_col)
-              translation = if translation_col, do: Enum.at(fields, translation_col)
-              status = if status_col, do: Enum.at(fields, status_col)
-
-              case import_row(id, translation, status) do
-                :ok -> {upd + 1, skip, errs}
-                :skip -> {upd, skip + 1, errs}
-                {:error, reason} -> {upd, skip, [{line_num, reason} | errs]}
-              end
-            end)
+            |> Enum.reduce({0, 0, []}, &reduce_csv_row(&1, &2, id_col, translation_col, status_col))
 
           {:ok, %{updated: updated, skipped: skipped, errors: Enum.reverse(errors)}}
         else
@@ -157,37 +146,55 @@ defmodule Storyarn.Localization.ExportImport do
   # Private
   # =============================================================================
 
+  defp reduce_csv_row({line, line_num}, {upd, skip, errs}, id_col, translation_col, status_col) do
+    fields = parse_csv_line(line)
+    id = Enum.at(fields, id_col)
+    translation = if translation_col, do: Enum.at(fields, translation_col)
+    status = if status_col, do: Enum.at(fields, status_col)
+
+    case import_row(id, translation, status) do
+      :ok -> {upd + 1, skip, errs}
+      :skip -> {upd, skip + 1, errs}
+      {:error, reason} -> {upd, skip, [{line_num, reason} | errs]}
+    end
+  end
+
   defp import_row(id_str, translation, status) do
     with {id, ""} <- Integer.parse(id_str || ""),
          text when not is_nil(text) <- TextCrud.get_text(id) do
-      attrs = %{}
-
-      attrs =
-        if translation && String.trim(translation) != "" do
-          Map.put(attrs, "translated_text", translation)
-        else
-          attrs
-        end
-
-      attrs =
-        if status && status in ~w(pending draft in_progress review final) do
-          Map.put(attrs, "status", status)
-        else
-          attrs
-        end
-
-      if attrs == %{} do
-        :skip
-      else
-        case TextCrud.update_text(text, attrs) do
-          {:ok, _} -> :ok
-          {:error, reason} -> {:error, reason}
-        end
-      end
+      attrs = build_import_attrs(translation, status)
+      apply_import_attrs(text, attrs)
     else
       nil -> {:error, :text_not_found}
       :error -> {:error, :invalid_id}
       _ -> :skip
+    end
+  end
+
+  defp build_import_attrs(translation, status) do
+    %{}
+    |> maybe_put_translation(translation)
+    |> maybe_put_status(status)
+  end
+
+  defp maybe_put_translation(attrs, translation) when is_binary(translation) do
+    if String.trim(translation) != "", do: Map.put(attrs, "translated_text", translation), else: attrs
+  end
+
+  defp maybe_put_translation(attrs, _), do: attrs
+
+  defp maybe_put_status(attrs, status) when status in ~w(pending draft in_progress review final) do
+    Map.put(attrs, "status", status)
+  end
+
+  defp maybe_put_status(attrs, _), do: attrs
+
+  defp apply_import_attrs(_text, attrs) when attrs == %{}, do: :skip
+
+  defp apply_import_attrs(text, attrs) do
+    case TextCrud.update_text(text, attrs) do
+      {:ok, _} -> :ok
+      {:error, reason} -> {:error, reason}
     end
   end
 
