@@ -210,6 +210,14 @@ export const MapCanvas = {
       this.annotationHandler.clearDimming();
     });
 
+    this.handleEvent("focus_annotation_text", () => {
+      // Delay to let the DOM update with the new panel
+      requestAnimationFrame(() => {
+        const el = document.getElementById("annotation-text-input");
+        if (el) { el.focus(); el.select(); }
+      });
+    });
+
     this.handleEvent("focus_element", ({ type, id }) => {
       if (type === "pin") this.pinHandler.focusPin(id);
       else if (type === "zone") this.zoneHandler.focusZone(id);

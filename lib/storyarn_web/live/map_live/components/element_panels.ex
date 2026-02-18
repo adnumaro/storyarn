@@ -162,6 +162,7 @@ defmodule StoryarnWeb.MapLive.Components.ElementPanels do
       <div>
         <label class="label text-xs font-medium">{dgettext("maps", "Text")}</label>
         <textarea
+          id="annotation-text-input"
           phx-blur="update_annotation"
           phx-value-id={@annotation.id}
           phx-value-field="text"

@@ -31,7 +31,11 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
         {:noreply,
          socket
          |> assign(:pins, socket.assigns.pins ++ [pin])
-         |> push_event("pin_created", serialize_pin(pin))}
+         |> assign(:selected_type, "pin")
+         |> assign(:selected_element, pin)
+         |> push_event("pin_created", serialize_pin(pin))
+         |> push_event("element_selected", %{type: "pin", id: pin.id})
+         |> reset_tool_to_select()}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create pin."))}
@@ -135,7 +139,11 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
         {:noreply,
          socket
          |> assign(:zones, socket.assigns.zones ++ [zone])
-         |> push_event("zone_created", serialize_zone(zone))}
+         |> assign(:selected_type, "zone")
+         |> assign(:selected_element, zone)
+         |> push_event("zone_created", serialize_zone(zone))
+         |> push_event("element_selected", %{type: "zone", id: zone.id})
+         |> reset_tool_to_select()}
 
       {:error, changeset} ->
         msg = zone_error_message(changeset)
@@ -252,7 +260,12 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
         {:noreply,
          socket
          |> assign(:annotations, socket.assigns.annotations ++ [annotation])
-         |> push_event("annotation_created", serialize_annotation(annotation))}
+         |> assign(:selected_type, "annotation")
+         |> assign(:selected_element, annotation)
+         |> push_event("annotation_created", serialize_annotation(annotation))
+         |> push_event("element_selected", %{type: "annotation", id: annotation.id})
+         |> push_event("focus_annotation_text", %{})
+         |> reset_tool_to_select()}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create annotation."))}
@@ -552,5 +565,11 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("maps", "Could not delete annotation."))}
     end
+  end
+
+  defp reset_tool_to_select(socket) do
+    socket
+    |> assign(:active_tool, :select)
+    |> push_event("tool_changed", %{tool: "select"})
   end
 end

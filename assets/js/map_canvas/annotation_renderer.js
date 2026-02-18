@@ -10,9 +10,9 @@ import { toLatLng } from "./coordinate_utils.js";
 
 // Font size → CSS values
 const FONT_SIZES = {
-  sm: { fontSize: "9px", padding: "2px 5px" },
-  md: { fontSize: "11px", padding: "3px 6px" },
-  lg: { fontSize: "14px", padding: "4px 8px" },
+  sm: { fontSize: "11px", padding: "2px 6px" },
+  md: { fontSize: "14px", padding: "4px 8px" },
+  lg: { fontSize: "16px", padding: "5px 10px" },
 };
 
 const DEFAULT_COLOR = "#fbbf24";
