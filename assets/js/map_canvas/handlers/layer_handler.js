@@ -123,7 +123,7 @@ export function createLayerHandler(hook) {
     // Annotations
     if (hook.annotationHandler) {
       for (const [annId, marker] of hook.annotationHandler.markers) {
-        const ann = marker.annData;
+        const ann = marker.annotationData;
         const shouldHide = isElementHidden(ann.layer_id, hasFog, fogLayerIds);
         toggleLayer(hook.annotationLayer, marker, shouldHide);
       }

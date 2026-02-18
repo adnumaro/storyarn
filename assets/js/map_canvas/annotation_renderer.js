@@ -10,9 +10,9 @@ import { toLatLng } from "./coordinate_utils.js";
 
 // Font size → CSS values
 const FONT_SIZES = {
-  sm: { fontSize: "11px", padding: "2px 6px" },
-  md: { fontSize: "14px", padding: "4px 8px" },
-  lg: { fontSize: "18px", padding: "6px 10px" },
+  sm: { fontSize: "9px", padding: "2px 5px" },
+  md: { fontSize: "11px", padding: "3px 6px" },
+  lg: { fontSize: "14px", padding: "4px 8px" },
 };
 
 const DEFAULT_COLOR = "#fbbf24";
@@ -92,7 +92,31 @@ function buildAnnotationHtml(annotation) {
   const text = escapeHtml(annotation.text || "");
   const lockPrefix = annotation.locked ? LOCK_ICON_SVG : "";
 
-  return `<div class="map-annotation-label" style="font-size:${dims.fontSize};padding:${dims.padding};background:${color}20;border:1px solid ${color};border-radius:4px;color:${color};white-space:pre-wrap;max-width:200px;cursor:grab;font-weight:500;line-height:1.3">${lockPrefix}${text}</div>`;
+  // Post-it style: wrapper holds the clipped body + the solid fold triangle
+  const fold = 12;
+  return (
+    `<div class="map-annotation-label" style="position:relative;cursor:grab;min-width:120px;max-width:300px;">` +
+    // Body with clipped top-right corner
+    `<div style="` +
+    `font-size:${dims.fontSize};padding:${dims.padding};padding-right:calc(${dims.padding.split(" ")[1] || dims.padding} + ${fold}px);` +
+    `background:${color};opacity:0.25;position:absolute;inset:0;` +
+    `clip-path:polygon(0 0, calc(100% - ${fold}px) 0, 100% ${fold}px, 100% 100%, 0 100%);` +
+    `"></div>` +
+    // Text layer (same padding, transparent bg)
+    `<div style="` +
+    `position:relative;` +
+    `font-size:${dims.fontSize};padding:${dims.padding};padding-right:calc(${dims.padding.split(" ")[1] || dims.padding} + ${fold}px);` +
+    `color:${color};font-weight:500;line-height:1.3;white-space:pre-wrap;` +
+    `">${lockPrefix}${text}</div>` +
+    // Fold triangle — solid color, sits at top-right
+    `<span style="` +
+    `position:absolute;top:0;right:0;` +
+    `width:${fold}px;height:${fold}px;` +
+    `background:${color};` +
+    `clip-path:polygon(0 0, 100% 100%, 0 100%);` +
+    `"></span>` +
+    `</div>`
+  );
 }
 
 /** Strips non-hex characters from a CSS color value. */
