@@ -77,7 +77,7 @@ defmodule StoryarnWeb.MapLive.Components.MapHeader do
             class="btn btn-ghost btn-sm gap-2"
             title={dgettext("maps", "Export map")}
           >
-            <.icon name="download" class="size-4" />
+            <.icon name="upload" class="size-4" />
             {dgettext("maps", "Export")}
           </div>
           <ul

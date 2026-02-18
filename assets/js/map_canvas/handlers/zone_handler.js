@@ -193,12 +193,6 @@ export function createZoneHandler(hook, i18n = {}) {
       // Only show edit/duplicate when not locked
       if (!data.locked) {
         items.push({
-          label: i18n.edit_vertices || "Edit Vertices",
-          action: () => {
-            hook.pushEvent("select_element", { type: "zone", id: zoneId });
-          },
-        });
-        items.push({
           label: i18n.duplicate || "Duplicate",
           action: () => hook.pushEvent("duplicate_zone", { id: String(zoneId) }),
         });
