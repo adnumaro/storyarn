@@ -27,7 +27,7 @@ defmodule StoryarnWeb.MapLive.Show do
             class="btn btn-ghost btn-sm gap-2"
           >
             <.icon name="chevron-left" class="size-4" />
-            {gettext("Maps")}
+            {dgettext("maps", "Maps")}
           </.link>
         </div>
         <div class="flex-1 flex items-center gap-3 ml-4">
@@ -39,7 +39,7 @@ defmodule StoryarnWeb.MapLive.Show do
               contenteditable="true"
               phx-hook="EditableTitle"
               phx-update="ignore"
-              data-placeholder={gettext("Untitled")}
+              data-placeholder={dgettext("maps", "Untitled")}
               data-name={@map.name}
             >
               {@map.name}
@@ -59,10 +59,10 @@ defmodule StoryarnWeb.MapLive.Show do
               tabindex="0"
               role="button"
               class="btn btn-ghost btn-sm gap-2"
-              title={gettext("Export map")}
+              title={dgettext("maps", "Export map")}
             >
               <.icon name="download" class="size-4" />
-              {gettext("Export")}
+              {dgettext("maps", "Export")}
             </div>
             <ul
               tabindex="0"
@@ -71,13 +71,13 @@ defmodule StoryarnWeb.MapLive.Show do
               <li>
                 <button type="button" phx-click="export_map" phx-value-format="png" class="text-sm">
                   <.icon name="image" class="size-4" />
-                  {gettext("Export as PNG")}
+                  {dgettext("maps", "Export as PNG")}
                 </button>
               </li>
               <li>
                 <button type="button" phx-click="export_map" phx-value-format="svg" class="text-sm">
                   <.icon name="file-code" class="size-4" />
-                  {gettext("Export as SVG")}
+                  {dgettext("maps", "Export as SVG")}
                 </button>
               </li>
             </ul>
@@ -89,10 +89,10 @@ defmodule StoryarnWeb.MapLive.Show do
             type="button"
             phx-click="toggle_edit_mode"
             class={"btn btn-sm gap-2 #{if @edit_mode, do: "btn-primary", else: "btn-ghost"}"}
-            title={if @edit_mode, do: gettext("Switch to View mode"), else: gettext("Switch to Edit mode")}
+            title={if @edit_mode, do: dgettext("maps", "Switch to View mode"), else: dgettext("maps", "Switch to Edit mode")}
           >
             <.icon name={if @edit_mode, do: "pencil", else: "eye"} class="size-4" />
-            {if @edit_mode, do: gettext("Edit"), else: gettext("View")}
+            {if @edit_mode, do: dgettext("maps", "Edit"), else: dgettext("maps", "View")}
           </button>
         </div>
       </header>
@@ -123,7 +123,7 @@ defmodule StoryarnWeb.MapLive.Show do
                     type="text"
                     name="query"
                     value={@search_query}
-                    placeholder={gettext("Search elements...")}
+                    placeholder={dgettext("maps", "Search elements...")}
                     phx-debounce="300"
                     autocomplete="off"
                     class="flex-1 bg-transparent text-sm border-none outline-none placeholder:text-base-content/30 p-0"
@@ -144,11 +144,11 @@ defmodule StoryarnWeb.MapLive.Show do
                 <button
                   :for={
                     {label, value} <- [
-                      {gettext("All"), "all"},
-                      {gettext("Pins"), "pin"},
-                      {gettext("Zones"), "zone"},
-                      {gettext("Notes"), "annotation"},
-                      {gettext("Lines"), "connection"}
+                      {dgettext("maps", "All"), "all"},
+                      {dgettext("maps", "Pins"), "pin"},
+                      {dgettext("maps", "Zones"), "zone"},
+                      {dgettext("maps", "Notes"), "annotation"},
+                      {dgettext("maps", "Lines"), "connection"}
                     ]
                   }
                   type="button"
@@ -183,7 +183,7 @@ defmodule StoryarnWeb.MapLive.Show do
                 :if={@search_query != "" && @search_results == []}
                 class="px-3 py-2 text-xs text-base-content/50 border-t border-base-300"
               >
-                {gettext("No results found")}
+                {dgettext("maps", "No results found")}
               </div>
             </div>
 
@@ -191,14 +191,14 @@ defmodule StoryarnWeb.MapLive.Show do
             <div class="bg-base-100 rounded-lg border border-base-300 shadow-md px-3 py-1.5">
               <div class="flex items-center justify-between mb-1">
                 <span class="text-xs font-medium text-base-content/60">
-                  <.icon name="layers" class="size-3.5 inline-block mr-1" />{gettext("Layers")}
+                  <.icon name="layers" class="size-3.5 inline-block mr-1" />{dgettext("maps", "Layers")}
                 </span>
                 <div :if={@can_edit and @edit_mode} class="flex items-center gap-1 shrink-0">
                   <button
                     type="button"
                     phx-click="create_layer"
                     class="btn btn-ghost btn-xs btn-square"
-                    title={gettext("Add layer")}
+                    title={dgettext("maps", "Add layer")}
                   >
                     <.icon name="plus" class="size-3.5" />
                   </button>
@@ -212,7 +212,7 @@ defmodule StoryarnWeb.MapLive.Show do
                     phx-click="toggle_layer_visibility"
                     phx-value-id={layer.id}
                     class="btn btn-ghost btn-xs btn-square shrink-0"
-                    title={gettext("Toggle visibility")}
+                    title={dgettext("maps", "Toggle visibility")}
                   >
                     <.icon
                       name={if(layer.visible, do: "eye", else: "eye-off")}
@@ -245,7 +245,7 @@ defmodule StoryarnWeb.MapLive.Show do
                         else: "btn-ghost"
                       )
                     ]}
-                    title={gettext("Set as active layer")}
+                    title={dgettext("maps", "Set as active layer")}
                   >
                     <span class={"text-xs truncate #{unless layer.visible, do: "opacity-40 line-through"}"}>
                       {layer.name}
@@ -254,7 +254,7 @@ defmodule StoryarnWeb.MapLive.Show do
                       :if={layer.fog_enabled}
                       name="cloud-fog"
                       class="size-3 opacity-50 shrink-0"
-                      title={gettext("Fog of War enabled")}
+                      title={dgettext("maps", "Fog of War enabled")}
                     />
                   </button>
                   <%!-- Kebab menu for rename/delete --%>
@@ -263,7 +263,7 @@ defmodule StoryarnWeb.MapLive.Show do
                       tabindex="0"
                       role="button"
                       class="btn btn-ghost btn-xs btn-square opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                      title={gettext("Layer options")}
+                      title={dgettext("maps", "Layer options")}
                     >
                       <.icon name="ellipsis-vertical" class="size-3" />
                     </div>
@@ -278,7 +278,7 @@ defmodule StoryarnWeb.MapLive.Show do
                           class="text-sm"
                         >
                           <.icon name="pencil" class="size-3.5" />
-                          {gettext("Rename")}
+                          {dgettext("maps", "Rename")}
                         </button>
                       </li>
                       <li>
@@ -300,8 +300,8 @@ defmodule StoryarnWeb.MapLive.Show do
                             class="size-3.5"
                           />
                           {if(layer.fog_enabled,
-                            do: gettext("Disable Fog"),
-                            else: gettext("Enable Fog")
+                            do: dgettext("maps", "Disable Fog"),
+                            else: dgettext("maps", "Enable Fog")
                           )}
                         </button>
                       </li>
@@ -316,7 +316,7 @@ defmodule StoryarnWeb.MapLive.Show do
                           disabled={length(@layers) <= 1}
                         >
                           <.icon name="trash-2" class="size-3.5" />
-                          {gettext("Delete")}
+                          {dgettext("maps", "Delete")}
                         </button>
                       </li>
                     </ul>
@@ -336,7 +336,7 @@ defmodule StoryarnWeb.MapLive.Show do
             class="absolute bottom-32 left-1/2 -translate-x-1/2 z-[1001] w-72 bg-base-100 rounded-lg border border-base-300 shadow-lg overflow-hidden"
           >
             <div class="p-2 border-b border-base-300 flex items-center justify-between">
-              <span class="text-xs font-medium">{gettext("Select a sheet")}</span>
+              <span class="text-xs font-medium">{dgettext("maps", "Select a sheet")}</span>
               <button
                 type="button"
                 phx-click="cancel_sheet_picker"
@@ -434,7 +434,7 @@ defmodule StoryarnWeb.MapLive.Show do
           <div class="p-3 border-b border-base-300">
             <h2 class="font-medium text-sm flex items-center gap-2">
               <.icon name="settings" class="size-4" />
-              {gettext("Map Properties")}
+              {dgettext("maps", "Map Properties")}
             </h2>
           </div>
 
@@ -453,9 +453,9 @@ defmodule StoryarnWeb.MapLive.Show do
       <.confirm_modal
         :if={@can_edit}
         id="delete-map-show-confirm"
-        title={gettext("Delete map?")}
-        message={gettext("Are you sure you want to delete this map?")}
-        confirm_text={gettext("Delete")}
+        title={dgettext("maps", "Delete map?")}
+        message={dgettext("maps", "Are you sure you want to delete this map?")}
+        confirm_text={dgettext("maps", "Delete")}
         confirm_variant="error"
         icon="alert-triangle"
         on_confirm={JS.push("confirm_delete_map")}
@@ -464,13 +464,13 @@ defmodule StoryarnWeb.MapLive.Show do
       <.confirm_modal
         :if={@can_edit}
         id="delete-layer-confirm"
-        title={gettext("Delete layer?")}
+        title={dgettext("maps", "Delete layer?")}
         message={
-          gettext(
+          dgettext("maps", 
             "This layer will be deleted. All elements on this layer will be moved to no layer."
           )
         }
-        confirm_text={gettext("Delete")}
+        confirm_text={dgettext("maps", "Delete")}
         confirm_variant="error"
         icon="alert-triangle"
         on_confirm={JS.push("confirm_delete_layer")}
@@ -502,7 +502,7 @@ defmodule StoryarnWeb.MapLive.Show do
           nil ->
             {:ok,
              socket
-             |> put_flash(:error, gettext("Map not found."))
+             |> put_flash(:error, dgettext("maps", "Map not found."))
              |> redirect(
                to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/maps"
              )}
@@ -514,7 +514,7 @@ defmodule StoryarnWeb.MapLive.Show do
       {:error, _reason} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("You don't have access to this project."))
+         |> put_flash(:error, dgettext("maps", "You don't have access to this project."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -555,17 +555,17 @@ defmodule StoryarnWeb.MapLive.Show do
     |> assign(:project_sheets, Storyarn.Sheets.list_sheets_tree(project.id))
     |> assign(:project_flows, Storyarn.Flows.list_flows(project.id))
     |> assign(:canvas_i18n, %{
-      edit_properties: gettext("Edit Properties"),
-      connect_to: gettext("Connect To\u2026"),
-      edit_vertices: gettext("Edit Vertices"),
-      duplicate: gettext("Duplicate"),
-      bring_to_front: gettext("Bring to Front"),
-      send_to_back: gettext("Send to Back"),
-      lock: gettext("Lock"),
-      unlock: gettext("Unlock"),
-      delete: gettext("Delete"),
-      add_pin: gettext("Add Pin Here"),
-      add_annotation: gettext("Add Annotation Here")
+      edit_properties: dgettext("maps", "Edit Properties"),
+      connect_to: dgettext("maps", "Connect To\u2026"),
+      edit_vertices: dgettext("maps", "Edit Vertices"),
+      duplicate: dgettext("maps", "Duplicate"),
+      bring_to_front: dgettext("maps", "Bring to Front"),
+      send_to_back: dgettext("maps", "Send to Back"),
+      lock: dgettext("maps", "Lock"),
+      unlock: dgettext("maps", "Unlock"),
+      delete: dgettext("maps", "Delete"),
+      add_pin: dgettext("maps", "Add Pin Here"),
+      add_annotation: dgettext("maps", "Add Annotation Here")
     })
   end
 
@@ -590,12 +590,12 @@ defmodule StoryarnWeb.MapLive.Show do
              |> reload_maps_tree()}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not save map name."))}
+            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not save map name."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -632,7 +632,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -756,7 +756,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -772,7 +772,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -788,7 +788,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -802,7 +802,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -816,7 +816,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -861,7 +861,7 @@ defmodule StoryarnWeb.MapLive.Show do
         attrs = %{
           "position_x" => x,
           "position_y" => y,
-          "label" => gettext("New Pin"),
+          "label" => dgettext("maps", "New Pin"),
           "pin_type" => "location",
           "layer_id" => socket.assigns.active_layer_id
         }
@@ -874,12 +874,12 @@ defmodule StoryarnWeb.MapLive.Show do
              |> push_event("pin_created", serialize_pin(pin))}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create pin."))}
+            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create pin."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -908,7 +908,7 @@ defmodule StoryarnWeb.MapLive.Show do
        |> push_event("tool_changed", %{tool: "pin"})
        |> push_event("pending_sheet_changed", %{active: true})}
     else
-      {:noreply, put_flash(socket, :error, gettext("Sheet not found."))}
+      {:noreply, put_flash(socket, :error, dgettext("maps", "Sheet not found."))}
     end
   end
 
@@ -917,7 +917,7 @@ defmodule StoryarnWeb.MapLive.Show do
       :ok -> do_create_pin_from_sheet(socket, x, y)
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -935,7 +935,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -947,7 +947,7 @@ defmodule StoryarnWeb.MapLive.Show do
     case authorize(socket, :edit_content) do
       :ok ->
         name = params["name"]
-        name = if name == "" or is_nil(name), do: gettext("New Zone"), else: name
+        name = if name == "" or is_nil(name), do: dgettext("maps", "New Zone"), else: name
 
         attrs = %{
           "name" => name,
@@ -969,7 +969,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -980,21 +980,21 @@ defmodule StoryarnWeb.MapLive.Show do
   def handle_event("create_layer", _params, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        case Maps.create_layer(socket.assigns.map.id, %{name: gettext("New Layer")}) do
+        case Maps.create_layer(socket.assigns.map.id, %{name: dgettext("maps", "New Layer")}) do
           {:ok, layer} ->
             {:noreply,
              socket
              |> push_event("layer_created", %{id: layer.id, name: layer.name})
-             |> put_flash(:info, gettext("Layer created."))
+             |> put_flash(:info, dgettext("maps", "Layer created."))
              |> reload_map()}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create layer."))}
+            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create layer."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1012,7 +1012,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1029,7 +1029,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1048,7 +1048,7 @@ defmodule StoryarnWeb.MapLive.Show do
       {:error, :unauthorized} ->
         {:noreply,
          socket
-         |> put_flash(:error, gettext("You don't have permission to perform this action."))
+         |> put_flash(:error, dgettext("maps", "You don't have permission to perform this action."))
          |> assign(:renaming_layer_id, nil)}
     end
   end
@@ -1075,7 +1075,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1102,12 +1102,12 @@ defmodule StoryarnWeb.MapLive.Show do
              |> push_event("background_changed", %{url: nil})}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not remove background."))}
+            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not remove background."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1125,12 +1125,12 @@ defmodule StoryarnWeb.MapLive.Show do
              |> assign(:map_data, build_map_data(updated, socket.assigns.can_edit))}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not update map scale."))}
+            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update map scale."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1155,12 +1155,12 @@ defmodule StoryarnWeb.MapLive.Show do
              |> push_event("pin_updated", serialize_pin(updated))}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not remove pin icon."))}
+            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not remove pin icon."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1178,7 +1178,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1192,7 +1192,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1206,7 +1206,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1224,7 +1224,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1252,12 +1252,12 @@ defmodule StoryarnWeb.MapLive.Show do
              |> push_event("connection_created", serialize_connection(conn))}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create connection."))}
+            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create connection."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1271,7 +1271,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1283,7 +1283,7 @@ defmodule StoryarnWeb.MapLive.Show do
     case authorize(socket, :edit_content) do
       :ok ->
         attrs = %{
-          "text" => params["text"] || gettext("Note"),
+          "text" => params["text"] || dgettext("maps", "Note"),
           "position_x" => x,
           "position_y" => y,
           "font_size" => params["font_size"] || "md",
@@ -1299,12 +1299,12 @@ defmodule StoryarnWeb.MapLive.Show do
              |> push_event("annotation_created", serialize_annotation(annotation))}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create annotation."))}
+            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create annotation."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1321,7 +1321,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1335,7 +1335,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1349,7 +1349,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1427,7 +1427,7 @@ defmodule StoryarnWeb.MapLive.Show do
   def handle_event("create_map", _params, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        case Maps.create_map(socket.assigns.project, %{name: gettext("Untitled")}) do
+        case Maps.create_map(socket.assigns.project, %{name: dgettext("maps", "Untitled")}) do
           {:ok, new_map} ->
             {:noreply,
              push_navigate(socket,
@@ -1436,19 +1436,19 @@ defmodule StoryarnWeb.MapLive.Show do
              )}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create map."))}
+            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create map."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("create_child_map", %{"parent-id" => parent_id}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        attrs = %{name: gettext("Untitled"), parent_id: parent_id}
+        attrs = %{name: dgettext("maps", "Untitled"), parent_id: parent_id}
 
         case Maps.create_map(socket.assigns.project, attrs) do
           {:ok, new_map} ->
@@ -1459,12 +1459,12 @@ defmodule StoryarnWeb.MapLive.Show do
              )}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create map."))}
+            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create map."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1490,7 +1490,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -1508,12 +1508,12 @@ defmodule StoryarnWeb.MapLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
   defp do_create_pin_from_sheet(socket, _x, _y) when is_nil(socket.assigns.pending_sheet_for_pin) do
-    {:noreply, put_flash(socket, :error, gettext("No sheet selected."))}
+    {:noreply, put_flash(socket, :error, dgettext("maps", "No sheet selected."))}
   end
 
   defp do_create_pin_from_sheet(socket, x, y) do
@@ -1544,7 +1544,7 @@ defmodule StoryarnWeb.MapLive.Show do
          |> push_event("pending_sheet_changed", %{active: false})}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not create pin."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create pin."))}
     end
   end
 
@@ -1563,11 +1563,11 @@ defmodule StoryarnWeb.MapLive.Show do
     case Maps.update_layer(layer, %{"name" => name}) do
       {:ok, _updated} ->
         socket
-        |> put_flash(:info, gettext("Layer renamed."))
+        |> put_flash(:info, dgettext("maps", "Layer renamed."))
         |> reload_map()
 
       {:error, _} ->
-        put_flash(socket, :error, gettext("Could not rename layer."))
+        put_flash(socket, :error, dgettext("maps", "Could not rename layer."))
     end
   end
 
@@ -1586,10 +1586,10 @@ defmodule StoryarnWeb.MapLive.Show do
          |> assign(:map, updated)
          |> assign(:show_background_upload, false)
          |> push_event("background_changed", %{url: asset.url})
-         |> put_flash(:info, gettext("Background image updated."))}
+         |> put_flash(:info, dgettext("maps", "Background image updated."))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not update background."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update background."))}
     end
   end
 
@@ -1606,10 +1606,10 @@ defmodule StoryarnWeb.MapLive.Show do
              |> update_pin_in_list(updated)
              |> assign(:show_pin_icon_upload, false)
              |> push_event("pin_updated", serialize_pin(updated))
-             |> put_flash(:info, gettext("Pin icon updated."))}
+             |> put_flash(:info, dgettext("maps", "Pin icon updated."))}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not update pin icon."))}
+            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update pin icon."))}
         end
 
       _ ->
@@ -1642,25 +1642,25 @@ defmodule StoryarnWeb.MapLive.Show do
   defp search_pins(pins, q) do
     pins
     |> Enum.filter(&matches_text?(&1.label, q))
-    |> Enum.map(&%{type: "pin", id: &1.id, label: &1.label || gettext("Pin")})
+    |> Enum.map(&%{type: "pin", id: &1.id, label: &1.label || dgettext("maps", "Pin")})
   end
 
   defp search_zones(zones, q) do
     zones
     |> Enum.filter(&matches_text?(&1.name, q))
-    |> Enum.map(&%{type: "zone", id: &1.id, label: &1.name || gettext("Zone")})
+    |> Enum.map(&%{type: "zone", id: &1.id, label: &1.name || dgettext("maps", "Zone")})
   end
 
   defp search_annotations(annotations, q) do
     annotations
     |> Enum.filter(&matches_text?(&1.text, q))
-    |> Enum.map(&%{type: "annotation", id: &1.id, label: &1.text || gettext("Note")})
+    |> Enum.map(&%{type: "annotation", id: &1.id, label: &1.text || dgettext("maps", "Note")})
   end
 
   defp search_connections(connections, q) do
     connections
     |> Enum.filter(&matches_text?(&1.label, q))
-    |> Enum.map(&%{type: "connection", id: &1.id, label: &1.label || gettext("Connection")})
+    |> Enum.map(&%{type: "connection", id: &1.id, label: &1.label || dgettext("maps", "Connection")})
   end
 
   defp matches_text?(nil, _q), do: false
@@ -1673,7 +1673,7 @@ defmodule StoryarnWeb.MapLive.Show do
   defp search_result_icon(_), do: "search"
 
   defp after_map_deleted(socket, deleted_map_id) do
-    socket = put_flash(socket, :info, gettext("Map moved to trash."))
+    socket = put_flash(socket, :info, dgettext("maps", "Map moved to trash."))
 
     if to_string(deleted_map_id) == to_string(socket.assigns.map.id) do
       push_navigate(socket,
@@ -1824,13 +1824,13 @@ defmodule StoryarnWeb.MapLive.Show do
   defp zone_error_message(%Ecto.Changeset{} = changeset) do
     if Keyword.has_key?(changeset.errors, :vertices) do
       {msg, _} = Keyword.fetch!(changeset.errors, :vertices)
-      gettext("Invalid zone: %{reason}", reason: msg)
+      dgettext("maps", "Invalid zone: %{reason}", reason: msg)
     else
-      gettext("Could not create zone.")
+      dgettext("maps", "Could not create zone.")
     end
   end
 
-  defp zone_error_message(_), do: gettext("Could not create zone.")
+  defp zone_error_message(_), do: dgettext("maps", "Could not create zone.")
 
   defp default_layer_id(nil), do: nil
   defp default_layer_id([]), do: nil
@@ -1889,12 +1889,12 @@ defmodule StoryarnWeb.MapLive.Show do
   defp do_move_pin(socket, pin, x, y) do
     case Maps.move_pin(pin, x, y) do
       {:ok, _updated} -> {:noreply, socket}
-      {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not move pin."))}
+      {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move pin."))}
     end
   end
 
   defp do_delete_pin(socket, %{locked: true}) do
-    {:noreply, put_flash(socket, :error, gettext("Cannot delete a locked element."))}
+    {:noreply, put_flash(socket, :error, dgettext("maps", "Cannot delete a locked element."))}
   end
 
   defp do_delete_pin(socket, pin) do
@@ -1906,11 +1906,11 @@ defmodule StoryarnWeb.MapLive.Show do
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
          |> push_event("pin_deleted", %{id: pin.id})
-         |> put_flash(:info, gettext("Pin deleted. Press Ctrl+Z to undo."))
+         |> put_flash(:info, dgettext("maps", "Pin deleted. Press Ctrl+Z to undo."))
          |> reload_map()}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete pin."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not delete pin."))}
     end
   end
 
@@ -1948,7 +1948,7 @@ defmodule StoryarnWeb.MapLive.Show do
          |> push_event("pin_updated", serialize_pin(updated))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not update pin."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update pin."))}
     end
   end
 
@@ -1962,7 +1962,7 @@ defmodule StoryarnWeb.MapLive.Show do
          |> push_event("zone_updated", serialize_zone(updated))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not update zone."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update zone."))}
     end
   end
 
@@ -1976,7 +1976,7 @@ defmodule StoryarnWeb.MapLive.Show do
          |> push_event("connection_updated", serialize_connection(updated))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not update connection."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update connection."))}
     end
   end
 
@@ -1990,7 +1990,7 @@ defmodule StoryarnWeb.MapLive.Show do
          |> push_event("annotation_updated", serialize_annotation(updated))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not update annotation."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update annotation."))}
     end
   end
 
@@ -2003,7 +2003,7 @@ defmodule StoryarnWeb.MapLive.Show do
          |> push_event("connection_updated", serialize_connection(updated))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not update waypoints."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update waypoints."))}
     end
   end
 
@@ -2016,7 +2016,7 @@ defmodule StoryarnWeb.MapLive.Show do
          |> push_event("connection_updated", serialize_connection(updated))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not clear waypoints."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not clear waypoints."))}
     end
   end
 
@@ -2029,7 +2029,7 @@ defmodule StoryarnWeb.MapLive.Show do
          |> reload_map()}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not toggle layer visibility."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not toggle layer visibility."))}
     end
   end
 
@@ -2051,7 +2051,7 @@ defmodule StoryarnWeb.MapLive.Show do
          |> reload_map()}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not update fog settings."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update fog settings."))}
     end
   end
 
@@ -2061,14 +2061,14 @@ defmodule StoryarnWeb.MapLive.Show do
         {:noreply,
          socket
          |> push_event("layer_deleted", %{id: layer.id})
-         |> put_flash(:info, gettext("Layer deleted."))
+         |> put_flash(:info, dgettext("maps", "Layer deleted."))
          |> reload_map()}
 
       {:error, :cannot_delete_last_layer} ->
-        {:noreply, put_flash(socket, :error, gettext("Cannot delete the last layer of a map."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Cannot delete the last layer of a map."))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete layer."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not delete layer."))}
     end
   end
 
@@ -2095,10 +2095,10 @@ defmodule StoryarnWeb.MapLive.Show do
          socket
          |> assign(:zones, socket.assigns.zones ++ [new_zone])
          |> push_event("zone_created", serialize_zone(new_zone))
-         |> put_flash(:info, gettext("Zone duplicated."))}
+         |> put_flash(:info, dgettext("maps", "Zone duplicated."))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not duplicate zone."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not duplicate zone."))}
     end
   end
 
@@ -2111,18 +2111,18 @@ defmodule StoryarnWeb.MapLive.Show do
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
          |> push_event("connection_deleted", %{id: connection.id})
-         |> put_flash(:info, gettext("Connection deleted. Press Ctrl+Z to undo."))
+         |> put_flash(:info, dgettext("maps", "Connection deleted. Press Ctrl+Z to undo."))
          |> reload_map()}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete connection."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not delete connection."))}
     end
   end
 
   defp do_delete_current_map(socket, map, map_id) do
     case Maps.delete_map(map) do
       {:ok, _} -> {:noreply, after_map_deleted(socket, map_id)}
-      {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not delete map."))}
+      {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("maps", "Could not delete map."))}
     end
   end
 
@@ -2132,12 +2132,12 @@ defmodule StoryarnWeb.MapLive.Show do
 
     case Maps.move_map_to_position(map, new_parent_id, position) do
       {:ok, _} -> {:noreply, reload_maps_tree(socket)}
-      {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not move map."))}
+      {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move map."))}
     end
   end
 
   defp do_delete_zone(socket, %{locked: true}) do
-    {:noreply, put_flash(socket, :error, gettext("Cannot delete a locked element."))}
+    {:noreply, put_flash(socket, :error, dgettext("maps", "Cannot delete a locked element."))}
   end
 
   defp do_delete_zone(socket, zone) do
@@ -2149,11 +2149,11 @@ defmodule StoryarnWeb.MapLive.Show do
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
          |> push_event("zone_deleted", %{id: zone.id})
-         |> put_flash(:info, gettext("Zone deleted. Press Ctrl+Z to undo."))
+         |> put_flash(:info, dgettext("maps", "Zone deleted. Press Ctrl+Z to undo."))
          |> reload_map()}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete zone."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not delete zone."))}
     end
   end
 
@@ -2162,12 +2162,12 @@ defmodule StoryarnWeb.MapLive.Show do
   defp do_move_annotation(socket, annotation, x, y) do
     case Maps.move_annotation(annotation, x, y) do
       {:ok, _updated} -> {:noreply, socket}
-      {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not move annotation."))}
+      {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move annotation."))}
     end
   end
 
   defp do_delete_annotation(socket, %{locked: true}) do
-    {:noreply, put_flash(socket, :error, gettext("Cannot delete a locked element."))}
+    {:noreply, put_flash(socket, :error, dgettext("maps", "Cannot delete a locked element."))}
   end
 
   defp do_delete_annotation(socket, annotation) do
@@ -2180,10 +2180,10 @@ defmodule StoryarnWeb.MapLive.Show do
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
          |> push_event("annotation_deleted", %{id: annotation.id})
-         |> put_flash(:info, gettext("Annotation deleted. Press Ctrl+Z to undo."))}
+         |> put_flash(:info, dgettext("maps", "Annotation deleted. Press Ctrl+Z to undo."))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete annotation."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not delete annotation."))}
     end
   end
 
@@ -2203,11 +2203,11 @@ defmodule StoryarnWeb.MapLive.Show do
   defp panel_icon("annotation"), do: "sticky-note"
   defp panel_icon(_), do: "settings"
 
-  defp panel_title("pin"), do: gettext("Pin Properties")
-  defp panel_title("zone"), do: gettext("Zone Properties")
-  defp panel_title("connection"), do: gettext("Connection Properties")
-  defp panel_title("annotation"), do: gettext("Annotation Properties")
-  defp panel_title(_), do: gettext("Properties")
+  defp panel_title("pin"), do: dgettext("maps", "Pin Properties")
+  defp panel_title("zone"), do: dgettext("maps", "Zone Properties")
+  defp panel_title("connection"), do: dgettext("maps", "Connection Properties")
+  defp panel_title("annotation"), do: dgettext("maps", "Annotation Properties")
+  defp panel_title(_), do: dgettext("maps", "Properties")
 
   defp maybe_update_selected_element(socket, type, updated) do
     if socket.assigns.selected_type == type &&
@@ -2316,11 +2316,11 @@ defmodule StoryarnWeb.MapLive.Show do
          socket
          |> assign(:pins, socket.assigns.pins ++ [new_pin])
          |> push_event("pin_created", serialize_pin(new_pin))
-         |> put_flash(:info, gettext("Undo: pin restored.")),
+         |> put_flash(:info, dgettext("maps", "Undo: pin restored.")),
          new_pin}
 
       {:error, _} ->
-        {:error, put_flash(socket, :error, gettext("Could not undo."))}
+        {:error, put_flash(socket, :error, dgettext("maps", "Could not undo."))}
     end
   end
 
@@ -2345,11 +2345,11 @@ defmodule StoryarnWeb.MapLive.Show do
          socket
          |> assign(:zones, socket.assigns.zones ++ [new_zone])
          |> push_event("zone_created", serialize_zone(new_zone))
-         |> put_flash(:info, gettext("Undo: zone restored.")),
+         |> put_flash(:info, dgettext("maps", "Undo: zone restored.")),
          new_zone}
 
       {:error, _} ->
-        {:error, put_flash(socket, :error, gettext("Could not undo."))}
+        {:error, put_flash(socket, :error, dgettext("maps", "Could not undo."))}
     end
   end
 
@@ -2370,11 +2370,11 @@ defmodule StoryarnWeb.MapLive.Show do
          socket
          |> assign(:connections, socket.assigns.connections ++ [new_conn])
          |> push_event("connection_created", serialize_connection(new_conn))
-         |> put_flash(:info, gettext("Undo: connection restored.")),
+         |> put_flash(:info, dgettext("maps", "Undo: connection restored.")),
          new_conn}
 
       {:error, _} ->
-        {:error, put_flash(socket, :error, gettext("Could not undo."))}
+        {:error, put_flash(socket, :error, dgettext("maps", "Could not undo."))}
     end
   end
 
@@ -2394,11 +2394,11 @@ defmodule StoryarnWeb.MapLive.Show do
          socket
          |> assign(:annotations, socket.assigns.annotations ++ [new_ann])
          |> push_event("annotation_created", serialize_annotation(new_ann))
-         |> put_flash(:info, gettext("Undo: annotation restored.")),
+         |> put_flash(:info, dgettext("maps", "Undo: annotation restored.")),
          new_ann}
 
       {:error, _} ->
-        {:error, put_flash(socket, :error, gettext("Could not undo."))}
+        {:error, put_flash(socket, :error, dgettext("maps", "Could not undo."))}
     end
   end
 

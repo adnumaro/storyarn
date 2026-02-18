@@ -30,9 +30,9 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
               </div>
             </div>
             <div>
-              <h3 class="font-semibold text-lg">{@speaker || gettext("Narrator")}</h3>
+              <h3 class="font-semibold text-lg">{@speaker || dgettext("flows", "Narrator")}</h3>
               <p class="text-xs text-base-content/60">
-                {gettext("Node %{id}", id: @current_node.id)}
+                {dgettext("flows", "Node %{id}", id: @current_node.id)}
               </p>
             </div>
           </div>
@@ -44,7 +44,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
 
           <%!-- Response buttons --%>
           <div :if={@responses != []} class="space-y-2">
-            <p class="text-sm font-medium text-base-content/70">{gettext("Responses:")}</p>
+            <p class="text-sm font-medium text-base-content/70">{dgettext("flows", "Responses:")}</p>
             <div class="flex flex-col gap-2">
               <button
                 :for={response <- @responses}
@@ -74,7 +74,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
               phx-target={@myself}
               class="btn btn-primary btn-sm w-full"
             >
-              {gettext("Continue")}
+              {dgettext("flows", "Continue")}
               <.icon name="arrow-right" class="size-4 ml-1" />
             </button>
           </div>
@@ -83,7 +83,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
           <div :if={@responses == [] && !@has_next} class="pt-2">
             <div class="alert alert-info">
               <.icon name="info" class="size-5" />
-              <span>{gettext("End of dialogue branch")}</span>
+              <span>{dgettext("flows", "End of dialogue branch")}</span>
             </div>
           </div>
 
@@ -97,7 +97,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
               class="btn btn-ghost btn-sm"
             >
               <.icon name="arrow-left" class="size-4 mr-1" />
-              {gettext("Back")}
+              {dgettext("flows", "Back")}
             </button>
             <div :if={@history == []}></div>
 
@@ -107,13 +107,13 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
               phx-target={@myself}
               class="btn btn-ghost btn-sm"
             >
-              {gettext("Close")}
+              {dgettext("flows", "Close")}
             </button>
           </div>
         </div>
 
         <div :if={!@current_node && @show} class="text-center py-8">
-          <p class="text-base-content/60">{gettext("No node selected for preview.")}</p>
+          <p class="text-base-content/60">{dgettext("flows", "No node selected for preview.")}</p>
         </div>
       </.modal>
     </div>

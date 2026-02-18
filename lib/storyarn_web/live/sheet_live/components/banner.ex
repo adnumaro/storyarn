@@ -30,7 +30,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
             <div class="flex gap-2">
               <label class="btn btn-sm btn-ghost bg-base-100/80 hover:bg-base-100">
                 <.icon name="image" class="size-4" />
-                {gettext("Change")}
+                {dgettext("sheets", "Change")}
                 <input
                   type="file"
                   accept="image/*"
@@ -48,7 +48,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
                 phx-target={@myself}
               >
                 <.icon name="trash-2" class="size-4" />
-                {gettext("Remove")}
+                {dgettext("sheets", "Remove")}
               </button>
             </div>
           </div>
@@ -74,7 +74,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
             >
               <label class="btn btn-sm btn-ghost bg-base-100/80 hover:bg-base-100">
                 <.icon name="image" class="size-4" />
-                {gettext("Add cover")}
+                {dgettext("sheets", "Add cover")}
                 <input
                   type="file"
                   accept="image/*"
@@ -100,7 +100,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
           <div :if={@can_edit} class="flex items-center gap-2 mb-4">
             <label class="btn btn-ghost btn-sm text-base-content/50 hover:text-base-content">
               <.icon name="image" class="size-4" />
-              {gettext("Add cover")}
+              {dgettext("sheets", "Add cover")}
               <input
                 type="file"
                 accept="image/*"
@@ -144,7 +144,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
         {:noreply, assign(socket, :sheet, updated_sheet)}
 
       {:error, _changeset} ->
-        send(self(), {:banner, :error, gettext("Could not remove banner.")})
+        send(self(), {:banner, :error, dgettext("sheets", "Could not remove banner.")})
         {:noreply, socket}
     end
   end
@@ -167,7 +167,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
         upload_banner_file(socket, filename, content_type, binary_data)
 
       :error ->
-        send(self(), {:banner, :error, gettext("Invalid file data.")})
+        send(self(), {:banner, :error, dgettext("sheets", "Invalid file data.")})
         {:noreply, socket}
     end
   end
@@ -198,7 +198,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
       {:noreply, assign(socket, :sheet, updated_sheet)}
     else
       {:error, _reason} ->
-        send(self(), {:banner, :error, gettext("Could not upload banner.")})
+        send(self(), {:banner, :error, dgettext("sheets", "Could not upload banner.")})
         {:noreply, socket}
     end
   end

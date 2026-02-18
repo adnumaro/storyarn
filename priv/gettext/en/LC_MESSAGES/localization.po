@@ -1,0 +1,484 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: en\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/storyarn_web/live/localization_live/edit.ex:47
+#, elixir-autogen, elixir-format
+msgid "%{count} words"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:186
+#, elixir-autogen, elixir-format
+msgid "%{done} / %{total} final"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:64
+#, elixir-autogen, elixir-format
+msgid "%{done}/%{total}"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:103
+#, elixir-autogen, elixir-format
+msgid "Add Language"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:155
+#, elixir-autogen, elixir-format
+msgid "Add a target language above to start translating."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:83
+#, elixir-autogen, elixir-format
+msgid "Add notes for reviewers..."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:203
+#, elixir-autogen, elixir-format
+msgid "All statuses"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:217
+#, elixir-autogen, elixir-format
+msgid "All types"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:131
+#, elixir-autogen, elixir-format
+msgid "Approved"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:34
+#, elixir-autogen, elixir-format
+msgid "Back"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:35
+#, elixir-autogen, elixir-format
+msgid "Back to Translations"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:694
+#, elixir-autogen, elixir-format
+msgid "Block"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:239
+#, elixir-autogen, elixir-format
+msgid "Blocks"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:54
+#, elixir-autogen, elixir-format
+msgid "CSV (.csv)"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:497
+#, elixir-autogen, elixir-format
+msgid "Cannot remove the source language."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:139
+#, elixir-autogen, elixir-format
+msgid "Content Breakdown"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:558
+#, elixir-autogen, elixir-format
+msgid "DeepL quota exceeded."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:70
+#: lib/storyarn_web/live/localization_live/index.ex:680
+#, elixir-autogen, elixir-format
+msgid "Draft"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:24
+#, elixir-autogen, elixir-format
+msgid "Edit Translation"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:61
+#, elixir-autogen, elixir-format
+msgid "Enter translation..."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:49
+#, elixir-autogen, elixir-format
+msgid "Excel (.xlsx)"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:44
+#, elixir-autogen, elixir-format
+msgid "Export"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:738
+#, elixir-autogen, elixir-format
+msgid "Failed to add language."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:73
+#: lib/storyarn_web/live/localization_live/index.ex:683
+#, elixir-autogen, elixir-format
+msgid "Final"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:696
+#, elixir-autogen, elixir-format
+msgid "Flow"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:241
+#, elixir-autogen, elixir-format
+msgid "Flows"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:71
+#: lib/storyarn_web/live/localization_live/index.ex:681
+#, elixir-autogen, elixir-format
+msgid "In Progress"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:733
+#, elixir-autogen, elixir-format
+msgid "Language added."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:727
+#, elixir-autogen, elixir-format
+msgid "Language added. Extracted %{count} text."
+msgid_plural "Language added. Extracted %{count} texts."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:495
+#, elixir-autogen, elixir-format
+msgid "Language removed."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:110
+#, elixir-autogen, elixir-format
+msgid "Last translated: %{time}"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:93
+#, elixir-autogen, elixir-format
+msgid "Lines"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:28
+#, elixir-autogen, elixir-format
+msgid "Localization"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:25
+#, elixir-autogen, elixir-format
+msgid "Localization Report"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:282
+#, elixir-autogen, elixir-format
+msgid "MT"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:107
+#, elixir-autogen, elixir-format
+msgid "Machine translated"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:30
+#, elixir-autogen, elixir-format
+msgid "Manage translations for your project content"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:123
+#, elixir-autogen, elixir-format
+msgid "Needed"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:104
+#, elixir-autogen, elixir-format
+msgid "No speaker"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:45
+#, elixir-autogen, elixir-format
+msgid "No target languages configured."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:242
+#, elixir-autogen, elixir-format
+msgid "No translations found matching your filters."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:693
+#, elixir-autogen, elixir-format
+msgid "Node"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:238
+#, elixir-autogen, elixir-format
+msgid "Nodes"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:119
+#, elixir-autogen, elixir-format
+msgid "None"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:276
+#, elixir-autogen, elixir-format
+msgid "Not translated"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:325
+#, elixir-autogen, elixir-format
+msgid "Page %{page} of %{total}"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:69
+#: lib/storyarn_web/live/localization_live/index.ex:679
+#, elixir-autogen, elixir-format
+msgid "Pending"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:42
+#, elixir-autogen, elixir-format
+msgid "Progress by Language"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:164
+#: lib/storyarn_web/live/localization_live/index.ex:417
+#: lib/storyarn_web/live/localization_live/report.ex:192
+#, elixir-autogen, elixir-format
+msgid "Project not found."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:555
+#, elixir-autogen, elixir-format
+msgid "Rate limited by DeepL. Try again later."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:126
+#, elixir-autogen, elixir-format
+msgid "Re-extract all translatable content from flows, sheets, and blocks"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:127
+#, elixir-autogen, elixir-format
+msgid "Recorded"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:145
+#, elixir-autogen, elixir-format
+msgid "Remove"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:93
+#, elixir-autogen, elixir-format
+msgid "Remove language"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:137
+#, elixir-autogen, elixir-format
+msgid "Remove language?"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:39
+#, elixir-autogen, elixir-format
+msgid "Report"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:72
+#: lib/storyarn_web/live/localization_live/index.ex:682
+#, elixir-autogen, elixir-format
+msgid "Review"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:88
+#, elixir-autogen, elixir-format
+msgid "Save"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:87
+#, elixir-autogen, elixir-format
+msgid "Saving..."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:697
+#, elixir-autogen, elixir-format
+msgid "Screenplay"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:242
+#, elixir-autogen, elixir-format
+msgid "Screenplays"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:232
+#, elixir-autogen, elixir-format
+msgid "Search in source or translation..."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:108
+#, elixir-autogen, elixir-format
+msgid "Select language..."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:695
+#, elixir-autogen, elixir-format
+msgid "Sheet"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:240
+#, elixir-autogen, elixir-format
+msgid "Sheets"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:42
+#, elixir-autogen, elixir-format
+msgid "Source"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:251
+#, elixir-autogen, elixir-format
+msgid "Source Text"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:92
+#, elixir-autogen, elixir-format
+msgid "Speaker"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:101
+#, elixir-autogen, elixir-format
+msgid "Speaker #%{id}"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:67
+#: lib/storyarn_web/live/localization_live/index.ex:253
+#, elixir-autogen, elixir-format
+msgid "Status"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:129
+#, elixir-autogen, elixir-format
+msgid "Sync"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:516
+#, elixir-autogen, elixir-format
+msgid "Synced %{count} text entry."
+msgid_plural "Synced %{count} text entries."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:124
+#, elixir-autogen, elixir-format
+msgid "Syncing..."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:139
+#, elixir-autogen, elixir-format
+msgid "This will remove %{name} (%{code}) and all its translations from this project."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:66
+#, elixir-autogen, elixir-format
+msgid "Translate All Pending"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:97
+#: lib/storyarn_web/live/localization_live/index.ex:303
+#, elixir-autogen, elixir-format
+msgid "Translate with DeepL"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:544
+#, elixir-autogen, elixir-format
+msgid "Translated %{count} string."
+msgid_plural "Translated %{count} strings."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:94
+#: lib/storyarn_web/live/localization_live/index.ex:62
+#, elixir-autogen, elixir-format
+msgid "Translating..."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:54
+#: lib/storyarn_web/live/localization_live/index.ex:252
+#, elixir-autogen, elixir-format
+msgid "Translation"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:207
+#: lib/storyarn_web/live/localization_live/index.ex:580
+#, elixir-autogen, elixir-format
+msgid "Translation complete."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:213
+#: lib/storyarn_web/live/localization_live/index.ex:561
+#: lib/storyarn_web/live/localization_live/index.ex:585
+#, elixir-autogen, elixir-format
+msgid "Translation failed: %{reason}"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:27
+#, elixir-autogen, elixir-format
+msgid "Translation progress and statistics"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:182
+#, elixir-autogen, elixir-format
+msgid "Translation saved."
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:81
+#, elixir-autogen, elixir-format
+msgid "Translator Notes"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:250
+#, elixir-autogen, elixir-format
+msgid "Type"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:116
+#, elixir-autogen, elixir-format
+msgid "Voice-Over Progress"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/report.ex:73
+#, elixir-autogen, elixir-format
+msgid "Word Counts by Speaker"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/index.ex:254
+#: lib/storyarn_web/live/localization_live/report.ex:94
+#, elixir-autogen, elixir-format
+msgid "Words"
+msgstr ""
+
+#: lib/storyarn_web/live/localization_live/edit.ex:192
+#: lib/storyarn_web/live/localization_live/edit.ex:218
+#: lib/storyarn_web/live/localization_live/index.ex:483
+#: lib/storyarn_web/live/localization_live/index.ex:502
+#: lib/storyarn_web/live/localization_live/index.ex:528
+#: lib/storyarn_web/live/localization_live/index.ex:566
+#: lib/storyarn_web/live/localization_live/index.ex:590
+#, elixir-autogen, elixir-format
+msgid "You don't have permission to perform this action."
+msgstr ""

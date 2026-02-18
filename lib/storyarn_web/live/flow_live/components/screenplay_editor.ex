@@ -45,7 +45,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
         <div class="flex-none">
           <button type="button" class="btn btn-ghost btn-sm gap-2" phx-click={@on_open_sidebar}>
             <.icon name="panel-right" class="size-4" />
-            {gettext("Open Sidebar")}
+            {dgettext("flows", "Open Sidebar")}
           </button>
         </div>
         <div class="flex-1"></div>
@@ -65,7 +65,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
               <.form for={@form} phx-change="update_speaker" phx-target={@myself} class="inline-block">
                 <select name="speaker_sheet_id" class="dialogue-sp-select">
                   <option value="" selected={@form[:speaker_sheet_id].value in [nil, ""]}>
-                    {gettext("SELECT SPEAKER")}
+                    {dgettext("flows", "SELECT SPEAKER")}
                   </option>
                   <option
                     :for={{name, id} <- @speaker_options}
@@ -78,7 +78,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
               </.form>
             <% else %>
               <span class="sp-character-content">
-                {@speaker_name || gettext("SPEAKER")}
+                {@speaker_name || dgettext("flows", "SPEAKER")}
               </span>
             <% end %>
           </div>
@@ -97,7 +97,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
                   id="screenplay-stage-directions"
                   name="stage_directions"
                   value={@form[:stage_directions].value || ""}
-                  placeholder={gettext("(stage directions)")}
+                  placeholder={dgettext("flows", "(stage directions)")}
                   class="dialogue-sp-input"
                 />
               </.form>
@@ -118,7 +118,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
               data-node-id={@node.id}
               data-content={@form[:text].value || ""}
               data-editable={to_string(@can_edit)}
-              data-placeholder={gettext("Enter dialogue text...")}
+              data-placeholder={dgettext("flows", "Enter dialogue text...")}
               data-mode="dialogue-screenplay"
               class="min-h-[200px] focus:outline-none"
             >
@@ -132,7 +132,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
             style="margin-top: 32px;"
           >
             <div class="sp-interactive-header">
-              <span class="sp-interactive-label">{gettext("Responses")}</span>
+              <span class="sp-interactive-label">{dgettext("flows", "Responses")}</span>
             </div>
             <div
               :for={response <- @form[:responses].value || []}
@@ -142,11 +142,11 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
                 <.icon name="corner-down-right" class="size-3" />
               </span>
               <span class="sp-choice-text">
-                {response["text"] || gettext("(empty response)")}
+                {response["text"] || dgettext("flows", "(empty response)")}
               </span>
             </div>
             <p class="sp-choice-empty" style="margin-top: 8px;">
-              {gettext("Edit responses in the sidebar panel.")}
+              {dgettext("flows", "Edit responses in the sidebar panel.")}
             </p>
           </div>
         </div>
@@ -161,12 +161,12 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
           </span>
           <span>
             <.icon name="file-text" class="size-3 inline mr-1" />
-            {ngettext("%{count} word", "%{count} words", @word_count, count: @word_count)}
+            {dngettext("flows", "%{count} word", "%{count} words", @word_count, count: @word_count)}
           </span>
         </div>
         <div class="flex items-center gap-2">
           <span class="kbd kbd-xs">Esc</span>
-          <span>{gettext("to close")}</span>
+          <span>{dgettext("flows", "to close")}</span>
         </div>
       </footer>
     </div>

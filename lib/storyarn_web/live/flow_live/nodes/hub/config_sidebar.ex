@@ -28,25 +28,25 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.ConfigSidebar do
       <.input
         field={@form[:label]}
         type="text"
-        label={gettext("Label")}
-        placeholder={gettext("e.g., Merchant conversation")}
+        label={dgettext("flows", "Label")}
+        placeholder={dgettext("flows", "e.g., Merchant conversation")}
         disabled={!@can_edit}
       />
       <.input
         field={@form[:hub_id]}
         type="text"
-        label={gettext("Hub ID") <> " *"}
-        placeholder={gettext("e.g., merchant_done")}
+        label={dgettext("flows", "Hub ID") <> " *"}
+        placeholder={dgettext("flows", "e.g., merchant_done")}
         disabled={!@can_edit}
       />
       <p class="text-xs text-base-content/60 mt-1 mb-4">
-        {gettext("Required. Unique identifier for Jump nodes to target this Hub.")}
+        {dgettext("flows", "Required. Unique identifier for Jump nodes to target this Hub.")}
       </p>
     </.form>
 
     <div class="mb-4">
       <label class="label">
-        <span class="label-text text-xs font-medium">{gettext("Color")}</span>
+        <span class="label-text text-xs font-medium">{dgettext("flows", "Color")}</span>
       </label>
       <.color_picker
         id={"hub-color-#{@node.id}"}
@@ -59,12 +59,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.ConfigSidebar do
 
     <div class="mt-6">
       <h3 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">
-        {gettext("Referencing Jumps")}
+        {dgettext("flows", "Referencing Jumps")}
         <span class="text-base-content/40 ml-1">({length(@referencing_jumps)})</span>
       </h3>
       <%= if @referencing_jumps == [] do %>
         <p class="text-xs text-base-content/40 italic">
-          {gettext("No Jump nodes target this Hub yet.")}
+          {dgettext("flows", "No Jump nodes target this Hub yet.")}
         </p>
       <% else %>
         <div class="space-y-1">
@@ -87,7 +87,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.ConfigSidebar do
           phx-value-id={@node.id}
         >
           <.icon name="search" class="size-3 mr-1" />
-          {gettext("Locate all")}
+          {dgettext("flows", "Locate all")}
         </button>
       <% end %>
     </div>

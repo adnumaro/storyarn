@@ -24,9 +24,9 @@ defmodule StoryarnWeb.FlowLive.Index do
     >
       <div class="max-w-4xl mx-auto">
         <.header>
-          {gettext("Flows")}
+          {dgettext("flows", "Flows")}
           <:subtitle>
-            {gettext("Create visual narrative flows and dialogue trees")}
+            {dgettext("flows", "Create visual narrative flows and dialogue trees")}
           </:subtitle>
           <:actions :if={@can_edit}>
             <.link
@@ -34,13 +34,13 @@ defmodule StoryarnWeb.FlowLive.Index do
               class="btn btn-primary"
             >
               <.icon name="plus" class="size-4 mr-2" />
-              {gettext("New Flow")}
+              {dgettext("flows", "New Flow")}
             </.link>
           </:actions>
         </.header>
 
         <.empty_state :if={@flows == []} icon="git-branch">
-          {gettext("No flows yet. Create your first flow to get started.")}
+          {dgettext("flows", "No flows yet. Create your first flow to get started.")}
         </.empty_state>
 
         <div :if={@flows != []} class="mt-6 space-y-2">
@@ -63,7 +63,7 @@ defmodule StoryarnWeb.FlowLive.Index do
             module={StoryarnWeb.FlowLive.Form}
             id="new-flow-form"
             project={@project}
-            title={gettext("New Flow")}
+            title={dgettext("flows", "New Flow")}
             navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows"}
           />
         </.modal>
@@ -71,9 +71,9 @@ defmodule StoryarnWeb.FlowLive.Index do
         <.confirm_modal
           :if={@can_edit}
           id="delete-flow-confirm"
-          title={gettext("Delete flow?")}
-          message={gettext("Are you sure you want to delete this flow?")}
-          confirm_text={gettext("Delete")}
+          title={dgettext("flows", "Delete flow?")}
+          message={dgettext("flows", "Are you sure you want to delete this flow?")}
+          confirm_text={dgettext("flows", "Delete")}
           confirm_variant="error"
           icon="alert-triangle"
           on_confirm={JS.push("confirm_delete")}
@@ -106,9 +106,9 @@ defmodule StoryarnWeb.FlowLive.Index do
                 <span
                   :if={@flow.is_main}
                   class="badge badge-primary badge-xs"
-                  title={gettext("Main flow")}
+                  title={dgettext("flows", "Main flow")}
                 >
-                  {gettext("Main")}
+                  {dgettext("flows", "Main")}
                 </span>
               </h3>
               <p :if={@flow.description} class="text-sm text-base-content/60 truncate">
@@ -137,7 +137,7 @@ defmodule StoryarnWeb.FlowLive.Index do
                   onclick="event.stopPropagation();"
                 >
                   <.icon name="star" class="size-4" />
-                  {gettext("Set as main")}
+                  {dgettext("flows", "Set as main")}
                 </button>
               </li>
               <li>
@@ -151,7 +151,7 @@ defmodule StoryarnWeb.FlowLive.Index do
                   onclick="event.stopPropagation();"
                 >
                   <.icon name="trash-2" class="size-4" />
-                  {gettext("Delete")}
+                  {dgettext("flows", "Delete")}
                 </button>
               </li>
             </ul>
@@ -193,7 +193,7 @@ defmodule StoryarnWeb.FlowLive.Index do
       {:error, _reason} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("You don't have access to this project."))
+         |> put_flash(:error, dgettext("flows", "You don't have access to this project."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -207,7 +207,7 @@ defmodule StoryarnWeb.FlowLive.Index do
   def handle_info({StoryarnWeb.FlowLive.Form, {:saved, flow}}, socket) do
     {:noreply,
      socket
-     |> put_flash(:info, gettext("Flow created successfully."))
+     |> put_flash(:info, dgettext("flows", "Flow created successfully."))
      |> push_navigate(
        to:
          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow.id}"
@@ -248,16 +248,16 @@ defmodule StoryarnWeb.FlowLive.Index do
           {:ok, _} ->
             {:noreply,
              socket
-             |> put_flash(:info, gettext("Flow moved to trash."))
+             |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
              |> reload_flows()}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not delete flow."))}
+            {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("flows", "You don't have permission to perform this action."))}
     end
   end
 
@@ -274,16 +274,16 @@ defmodule StoryarnWeb.FlowLive.Index do
           {:ok, _} ->
             {:noreply,
              socket
-             |> put_flash(:info, gettext("Flow set as main."))
+             |> put_flash(:info, dgettext("flows", "Flow set as main."))
              |> reload_flows()}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not set main flow."))}
+            {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("flows", "You don't have permission to perform this action."))}
     end
   end
 
@@ -294,7 +294,7 @@ defmodule StoryarnWeb.FlowLive.Index do
   def handle_event("create_flow", _params, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        case Flows.create_flow(socket.assigns.project, %{name: gettext("Untitled")}) do
+        case Flows.create_flow(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
           {:ok, new_flow} ->
             {:noreply,
              push_navigate(socket,
@@ -303,19 +303,19 @@ defmodule StoryarnWeb.FlowLive.Index do
              )}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create flow."))}
+            {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("flows", "You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("create_child_flow", %{"parent-id" => parent_id}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        attrs = %{name: gettext("Untitled"), parent_id: parent_id}
+        attrs = %{name: dgettext("flows", "Untitled"), parent_id: parent_id}
 
         case Flows.create_flow(socket.assigns.project, attrs) do
           {:ok, new_flow} ->
@@ -326,12 +326,12 @@ defmodule StoryarnWeb.FlowLive.Index do
              )}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create flow."))}
+            {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("flows", "You don't have permission to perform this action."))}
     end
   end
 
@@ -351,19 +351,19 @@ defmodule StoryarnWeb.FlowLive.Index do
             {:noreply, reload_flows(socket)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not move flow."))}
+            {:noreply, put_flash(socket, :error, dgettext("flows", "Could not move flow."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("flows", "You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("create_sheet", _params, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        case Sheets.create_sheet(socket.assigns.project, %{name: gettext("Untitled")}) do
+        case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
           {:ok, new_sheet} ->
             {:noreply,
              push_navigate(socket,
@@ -372,12 +372,12 @@ defmodule StoryarnWeb.FlowLive.Index do
              )}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create sheet."))}
+            {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create sheet."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("flows", "You don't have permission to perform this action."))}
     end
   end
 

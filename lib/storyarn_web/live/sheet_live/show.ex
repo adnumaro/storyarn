@@ -100,7 +100,7 @@ defmodule StoryarnWeb.SheetLive.Show do
             phx-value-tab="content"
           >
             <.icon name="file-text" class="size-4 mr-2" />
-            {gettext("Content")}
+            {dgettext("sheets", "Content")}
           </button>
           <button
             role="tab"
@@ -109,7 +109,7 @@ defmodule StoryarnWeb.SheetLive.Show do
             phx-value-tab="references"
           >
             <.icon name="link" class="size-4 mr-2" />
-            {gettext("References")}
+            {dgettext("sheets", "References")}
           </button>
           <button
             role="tab"
@@ -118,7 +118,7 @@ defmodule StoryarnWeb.SheetLive.Show do
             phx-value-tab="audio"
           >
             <.icon name="volume-2" class="size-4 mr-2" />
-            {gettext("Audio")}
+            {dgettext("sheets", "Audio")}
           </button>
           <button
             role="tab"
@@ -127,7 +127,7 @@ defmodule StoryarnWeb.SheetLive.Show do
             phx-value-tab="history"
           >
             <.icon name="clock" class="size-4 mr-2" />
-            {gettext("History")}
+            {dgettext("sheets", "History")}
           </button>
         </div>
 
@@ -200,7 +200,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       {:error, _reason} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("You don't have access to this project."))
+         |> put_flash(:error, dgettext("sheets", "You don't have access to this project."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -210,7 +210,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       nil ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("Sheet not found."))
+         |> put_flash(:error, dgettext("sheets", "Sheet not found."))
          |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets")}
 
       sheet ->
@@ -282,7 +282,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   def handle_event("create_sheet", _params, socket) do
     with_authorization(socket, :edit_content, fn socket ->
-      attrs = %{name: gettext("Untitled")}
+      attrs = %{name: dgettext("sheets", "Untitled")}
 
       case Sheets.create_sheet(socket.assigns.project, attrs) do
         {:ok, new_sheet} ->
@@ -293,7 +293,7 @@ defmodule StoryarnWeb.SheetLive.Show do
            )}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not create sheet."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
       end
     end)
   end
@@ -328,7 +328,7 @@ defmodule StoryarnWeb.SheetLive.Show do
          |> schedule_save_status_reset()}
 
       {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not update color."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update color."))}
     end
   end
 

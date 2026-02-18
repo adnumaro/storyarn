@@ -24,23 +24,23 @@ defmodule StoryarnWeb.MapLive.Form do
         <.input
           field={@form[:name]}
           type="text"
-          label={gettext("Name")}
-          placeholder={gettext("World Map")}
+          label={dgettext("maps", "Name")}
+          placeholder={dgettext("maps", "World Map")}
           required
         />
         <.input
           field={@form[:description]}
           type="textarea"
-          label={gettext("Description")}
-          placeholder={gettext("Describe this map...")}
+          label={dgettext("maps", "Description")}
+          placeholder={dgettext("maps", "Describe this map...")}
           rows={3}
         />
         <div class="modal-action">
           <.link patch={@navigate} class="btn btn-ghost">
-            {gettext("Cancel")}
+            {dgettext("maps", "Cancel")}
           </.link>
-          <.button variant="primary" phx-disable-with={gettext("Creating...")}>
-            {gettext("Create Map")}
+          <.button variant="primary" phx-disable-with={dgettext("maps", "Creating...")}>
+            {dgettext("maps", "Create Map")}
           </.button>
         </div>
       </.form>

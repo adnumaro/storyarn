@@ -27,7 +27,7 @@ defmodule StoryarnWeb.ScreenplayExportController do
       _ ->
         conn
         |> put_status(:not_found)
-        |> text(gettext("Not found"))
+        |> text(dgettext("screenplays", "Not found"))
     end
   end
 

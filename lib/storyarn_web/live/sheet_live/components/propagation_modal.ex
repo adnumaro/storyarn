@@ -18,13 +18,13 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
     <div class="modal modal-open">
       <div class="modal-box max-w-lg">
         <h3 class="font-bold text-lg">
-          {gettext("Propagate \"%{name}\" to existing children?",
+          {dgettext("sheets", "Propagate \"%{name}\" to existing children?",
             name: @block.config["label"] || @block.type
           )}
         </h3>
 
         <p class="py-2 text-sm text-base-content/70">
-          {gettext(
+          {dgettext("sheets", 
             "This property will automatically appear in all new children. For existing children:"
           )}
         </p>
@@ -39,7 +39,7 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
             phx-target={@myself}
           />
           <span class="font-medium text-sm">
-            {gettext("Select all (%{count} pages)", count: length(@descendants))}
+            {dgettext("sheets", "Select all (%{count} pages)", count: length(@descendants))}
           </span>
         </label>
 
@@ -54,7 +54,7 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
         </div>
 
         <p class="text-xs text-base-content/50 mt-2">
-          {gettext("Unselected pages won't get this property but can add it manually later.")}
+          {dgettext("sheets", "Unselected pages won't get this property but can add it manually later.")}
         </p>
 
         <%!-- Actions --%>
@@ -65,7 +65,7 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
             phx-click="cancel_propagation"
             phx-target={@target}
           >
-            {gettext("Cancel")}
+            {dgettext("sheets", "Cancel")}
           </button>
           <button
             type="button"
@@ -75,7 +75,7 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
             phx-target={@target}
             disabled={@selected_ids == []}
           >
-            {gettext("Propagate")}
+            {dgettext("sheets", "Propagate")}
           </button>
         </div>
       </div>

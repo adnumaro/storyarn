@@ -24,23 +24,23 @@ defmodule StoryarnWeb.ProjectLive.Form do
         <.input
           field={@form[:name]}
           type="text"
-          label={gettext("Project Name")}
-          placeholder={gettext("My Narrative Project")}
+          label={dgettext("projects", "Project Name")}
+          placeholder={dgettext("projects", "My Narrative Project")}
           required
         />
         <.input
           field={@form[:description]}
           type="textarea"
-          label={gettext("Description")}
-          placeholder={gettext("A brief description of your project")}
+          label={dgettext("projects", "Description")}
+          placeholder={dgettext("projects", "A brief description of your project")}
           rows={3}
         />
         <div class="modal-action">
           <.link patch={@navigate} class="btn btn-ghost">
-            {gettext("Cancel")}
+            {dgettext("projects", "Cancel")}
           </.link>
-          <.button variant="primary" phx-disable-with={gettext("Saving...")}>
-            {gettext("Create Project")}
+          <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
+            {dgettext("projects", "Create Project")}
           </.button>
         </div>
       </.form>

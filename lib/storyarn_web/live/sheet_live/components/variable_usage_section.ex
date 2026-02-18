@@ -15,7 +15,7 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
       <section :if={@variable_blocks != []}>
         <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
           <.icon name="database" class="size-5" />
-          {gettext("Variable Usage")}
+          {dgettext("sheets", "Variable Usage")}
           <span :if={@total_refs > 0} class="badge badge-sm">{@total_refs}</span>
         </h2>
 
@@ -27,7 +27,7 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
           <%= if @total_refs == 0 do %>
             <div class="bg-base-200/50 rounded-lg p-6 text-center">
               <p class="text-base-content/70 text-sm">
-                {gettext("No variables on this sheet are used in any flow yet.")}
+                {dgettext("sheets", "No variables on this sheet are used in any flow yet.")}
               </p>
             </div>
           <% else %>
@@ -135,7 +135,7 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
       <div :if={@usage.writes != []} class="mb-2">
         <span class="text-xs font-semibold text-warning flex items-center gap-1 mb-1">
           <.icon name="pencil" class="size-3" />
-          {gettext("Modified by")}
+          {dgettext("sheets", "Modified by")}
         </span>
         <div class="ml-4 space-y-0.5">
           <.usage_ref_row
@@ -153,7 +153,7 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
       <div :if={@usage.reads != []}>
         <span class="text-xs font-semibold text-info flex items-center gap-1 mb-1">
           <.icon name="eye" class="size-3" />
-          {gettext("Read by")}
+          {dgettext("sheets", "Read by")}
         </span>
         <div class="ml-4 space-y-0.5">
           <.usage_ref_row
@@ -198,10 +198,10 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
       <span
         :if={@ref[:stale]}
         class="badge badge-xs badge-warning gap-1"
-        title={gettext("Reference may be outdated")}
+        title={dgettext("sheets", "Reference may be outdated")}
       >
         <.icon name="alert-triangle" class="size-3" />
-        {gettext("Outdated")}
+        {dgettext("sheets", "Outdated")}
       </span>
     </.link>
     """

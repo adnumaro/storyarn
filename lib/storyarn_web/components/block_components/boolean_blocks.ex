@@ -30,9 +30,9 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
     is_constant = assigns.block.is_constant || false
 
     # Custom labels with defaults
-    true_label = non_empty_or_default(config["true_label"], gettext("Yes"))
-    false_label = non_empty_or_default(config["false_label"], gettext("No"))
-    neutral_label = non_empty_or_default(config["neutral_label"], gettext("Neutral"))
+    true_label = non_empty_or_default(config["true_label"], dgettext("sheets", "Yes"))
+    false_label = non_empty_or_default(config["false_label"], dgettext("sheets", "No"))
+    neutral_label = non_empty_or_default(config["neutral_label"], dgettext("sheets", "Neutral"))
 
     # Convert target to a CSS selector for the JS hook
     target_selector = if assigns.target, do: "#content-tab", else: nil

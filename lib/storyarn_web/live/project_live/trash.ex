@@ -21,9 +21,9 @@ defmodule StoryarnWeb.ProjectLive.Trash do
     >
       <div class="max-w-3xl mx-auto">
         <.header>
-          {gettext("Trash")}
+          {dgettext("projects", "Trash")}
           <:subtitle>
-            {gettext("Deleted sheets are kept for 30 days before being permanently removed.")}
+            {dgettext("projects", "Deleted sheets are kept for 30 days before being permanently removed.")}
           </:subtitle>
           <:actions>
             <.button
@@ -32,7 +32,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
               phx-click={show_modal("empty-trash-confirm")}
             >
               <.icon name="trash-2" class="size-4 mr-2" />
-              {gettext("Empty Trash")}
+              {dgettext("projects", "Empty Trash")}
             </.button>
           </:actions>
         </.header>
@@ -41,9 +41,9 @@ defmodule StoryarnWeb.ProjectLive.Trash do
           <%= if @trashed_sheets == [] do %>
             <.empty_state
               icon="trash-2"
-              title={gettext("Trash is empty")}
+              title={dgettext("projects", "Trash is empty")}
             >
-              {gettext("Deleted sheets will appear here.")}
+              {dgettext("projects", "Deleted sheets will appear here.")}
             </.empty_state>
           <% else %>
             <div class="space-y-2">
@@ -60,10 +60,10 @@ defmodule StoryarnWeb.ProjectLive.Trash do
       <%!-- Confirmation modals --%>
       <.confirm_modal
         id="delete-sheet-confirm"
-        title={gettext("Delete permanently?")}
-        message={gettext("This sheet will be permanently deleted. This action cannot be undone.")}
-        confirm_text={gettext("Delete")}
-        cancel_text={gettext("Cancel")}
+        title={dgettext("projects", "Delete permanently?")}
+        message={dgettext("projects", "This sheet will be permanently deleted. This action cannot be undone.")}
+        confirm_text={dgettext("projects", "Delete")}
+        cancel_text={dgettext("projects", "Cancel")}
         confirm_variant="error"
         icon="alert-triangle"
         on_confirm={JS.push("confirm_delete_permanently")}
@@ -71,12 +71,12 @@ defmodule StoryarnWeb.ProjectLive.Trash do
 
       <.confirm_modal
         id="empty-trash-confirm"
-        title={gettext("Empty trash?")}
+        title={dgettext("projects", "Empty trash?")}
         message={
-          gettext("All items in trash will be permanently deleted. This action cannot be undone.")
+          dgettext("projects", "All items in trash will be permanently deleted. This action cannot be undone.")
         }
-        confirm_text={gettext("Empty Trash")}
-        cancel_text={gettext("Cancel")}
+        confirm_text={dgettext("projects", "Empty Trash")}
+        cancel_text={dgettext("projects", "Cancel")}
         confirm_variant="error"
         icon="alert-triangle"
         on_confirm={JS.push("empty_trash")}
@@ -108,7 +108,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
         <div class="min-w-0">
           <p class="font-medium truncate">{@sheet.name}</p>
           <p class="text-sm text-base-content/60">
-            {gettext("Deleted %{time_ago}", time_ago: format_time_ago(@sheet.deleted_at))}
+            {dgettext("projects", "Deleted %{time_ago}", time_ago: format_time_ago(@sheet.deleted_at))}
           </p>
         </div>
       </div>
@@ -121,7 +121,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
           phx-value-id={@sheet.id}
         >
           <.icon name="undo-2" class="size-4 mr-1" />
-          {gettext("Restore")}
+          {dgettext("projects", "Restore")}
         </button>
         <button
           type="button"
@@ -132,7 +132,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
           }
         >
           <.icon name="trash-2" class="size-4 mr-1" />
-          {gettext("Delete")}
+          {dgettext("projects", "Delete")}
         </button>
       </div>
     </div>
@@ -145,20 +145,20 @@ defmodule StoryarnWeb.ProjectLive.Trash do
 
     cond do
       diff < 60 ->
-        gettext("just now")
+        dgettext("projects", "just now")
 
       diff < 3600 ->
         minutes = div(diff, 60)
 
-        ngettext("%{count} minute ago", "%{count} minutes ago", minutes, count: minutes)
+        dngettext("projects", "%{count} minute ago", "%{count} minutes ago", minutes, count: minutes)
 
       diff < 86_400 ->
         hours = div(diff, 3600)
-        ngettext("%{count} hour ago", "%{count} hours ago", hours, count: hours)
+        dngettext("projects", "%{count} hour ago", "%{count} hours ago", hours, count: hours)
 
       true ->
         days = div(diff, 86_400)
-        ngettext("%{count} day ago", "%{count} days ago", days, count: days)
+        dngettext("projects", "%{count} day ago", "%{count} days ago", days, count: days)
     end
   end
 
@@ -195,7 +195,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
       {:error, :not_found} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("Project not found."))
+         |> put_flash(:error, dgettext("projects", "Project not found."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -208,7 +208,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
     end
   end
 
@@ -227,7 +227,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
     end
   end
 
@@ -238,7 +238,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
     end
   end
 
@@ -255,15 +255,15 @@ defmodule StoryarnWeb.ProjectLive.Trash do
             socket
             |> assign(:trashed_sheets, trashed_sheets)
             |> assign(:sheets_tree, sheets_tree)
-            |> put_flash(:info, gettext("Sheet restored successfully."))
+            |> put_flash(:info, dgettext("projects", "Sheet restored successfully."))
 
           {:noreply, socket}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Failed to restore sheet."))}
+          {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to restore sheet."))}
       end
     else
-      {:noreply, put_flash(socket, :error, gettext("Sheet not found."))}
+      {:noreply, put_flash(socket, :error, dgettext("projects", "Sheet not found."))}
     end
   end
 
@@ -279,15 +279,15 @@ defmodule StoryarnWeb.ProjectLive.Trash do
             socket
             |> assign(:trashed_sheets, trashed_sheets)
             |> assign(:sheet_to_delete, nil)
-            |> put_flash(:info, gettext("Sheet permanently deleted."))
+            |> put_flash(:info, dgettext("projects", "Sheet permanently deleted."))
 
           {:noreply, socket}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Failed to delete sheet."))}
+          {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to delete sheet."))}
       end
     else
-      {:noreply, put_flash(socket, :error, gettext("Sheet not found."))}
+      {:noreply, put_flash(socket, :error, dgettext("projects", "Sheet not found."))}
     end
   end
 
@@ -306,13 +306,13 @@ defmodule StoryarnWeb.ProjectLive.Trash do
       if errors == 0 do
         socket
         |> assign(:trashed_sheets, [])
-        |> put_flash(:info, gettext("Trash emptied successfully."))
+        |> put_flash(:info, dgettext("projects", "Trash emptied successfully."))
       else
         trashed_sheets = Sheets.list_trashed_sheets(project_id)
 
         socket
         |> assign(:trashed_sheets, trashed_sheets)
-        |> put_flash(:error, gettext("Some sheets could not be deleted."))
+        |> put_flash(:error, dgettext("projects", "Some sheets could not be deleted."))
       end
 
     {:noreply, socket}

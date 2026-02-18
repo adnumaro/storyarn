@@ -26,16 +26,16 @@ defmodule StoryarnWeb.FlowLive.Nodes.Entry.ConfigSidebar do
       <div class="text-center py-4">
         <.icon name="play" class="size-8 text-success mx-auto mb-2" />
         <p class="text-sm text-base-content/60">
-          {gettext("This is the entry point of the flow.")}
+          {dgettext("flows", "This is the entry point of the flow.")}
         </p>
         <p class="text-xs text-base-content/50 mt-2">
-          {gettext("Connect this node to the first node in your flow.")}
+          {dgettext("flows", "Connect this node to the first node in your flow.")}
         </p>
       </div>
 
       <div :if={@referencing_flows != []}>
         <h3 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">
-          {gettext("Referenced By")}
+          {dgettext("flows", "Referenced By")}
           <span class="text-base-content/40 ml-1">({length(@referencing_flows)})</span>
         </h3>
         <div class="space-y-1">

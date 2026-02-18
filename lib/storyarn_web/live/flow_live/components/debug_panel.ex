@@ -53,10 +53,10 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
       >
         <.icon name="layers" class="size-3 shrink-0" />
         <span :for={frame <- Enum.reverse(@debug_state.call_stack)} class="flex items-center gap-1">
-          <span class="text-info/60">{frame[:flow_name] || gettext("Flow")}</span>
+          <span class="text-info/60">{frame[:flow_name] || dgettext("flows", "Flow")}</span>
           <.icon name="chevron-right" class="size-2.5 text-info/40" />
         </span>
-        <span class="font-medium">{@debug_current_flow_name || gettext("Current")}</span>
+        <span class="font-medium">{@debug_current_flow_name || dgettext("flows", "Current")}</span>
       </div>
       <%!-- Controls bar --%>
       <div class="flex items-center gap-2 px-3 py-1.5 border-b border-base-300 shrink-0">
@@ -66,7 +66,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             type="button"
             class="btn btn-ghost btn-xs btn-square"
             phx-click="debug_play"
-            title={gettext("Auto-play")}
+            title={dgettext("flows", "Auto-play")}
             disabled={@debug_state.status == :finished}
           >
             <.icon name="fast-forward" class="size-3.5" />
@@ -76,7 +76,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             type="button"
             class="btn btn-accent btn-xs btn-square"
             phx-click="debug_pause"
-            title={gettext("Pause")}
+            title={dgettext("flows", "Pause")}
           >
             <.icon name="pause" class="size-3.5" />
           </button>
@@ -85,7 +85,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             type="button"
             class="btn btn-ghost btn-xs btn-square"
             phx-click="debug_step"
-            title={gettext("Step")}
+            title={dgettext("flows", "Step")}
             disabled={@debug_state.status in [:finished] or @debug_auto_playing}
           >
             <.icon name="play" class="size-3.5" />
@@ -94,7 +94,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             type="button"
             class="btn btn-ghost btn-xs btn-square"
             phx-click="debug_step_back"
-            title={gettext("Step Back")}
+            title={dgettext("flows", "Step Back")}
             disabled={@debug_state.snapshots == [] or @debug_auto_playing}
           >
             <.icon name="undo-2" class="size-3.5" />
@@ -103,7 +103,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             type="button"
             class="btn btn-ghost btn-xs btn-square"
             phx-click="debug_reset"
-            title={gettext("Reset")}
+            title={dgettext("flows", "Reset")}
             disabled={@debug_auto_playing}
           >
             <.icon name="rotate-ccw" class="size-3.5" />
@@ -113,7 +113,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             type="button"
             class="btn btn-ghost btn-xs btn-square text-error"
             phx-click="debug_stop"
-            title={gettext("Stop")}
+            title={dgettext("flows", "Stop")}
           >
             <.icon name="square" class="size-3.5" />
           </button>
@@ -125,7 +125,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             {status_label(@debug_state.status)}
           </span>
           <span class="text-xs text-base-content/40 tabular-nums">
-            {gettext("Step %{count}", count: @debug_state.step_count)}
+            {dgettext("flows", "Step %{count}", count: @debug_state.step_count)}
           </span>
           <.start_node_select
             start_node_id={@debug_state.start_node_id}
@@ -146,7 +146,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             phx-change="debug_set_speed"
             name="speed"
             class="range range-xs w-16"
-            title={gettext("%{ms}ms per step", ms: @debug_speed)}
+            title={dgettext("flows", "%{ms}ms per step", ms: @debug_speed)}
           />
           <span class="text-xs text-base-content/30 tabular-nums w-10">
             {format_speed(@debug_speed)}
@@ -162,7 +162,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             phx-click="debug_tab_change"
             phx-value-tab="console"
           >
-            {gettext("Console")}
+            {dgettext("flows", "Console")}
           </button>
           <button
             type="button"
@@ -171,7 +171,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             phx-click="debug_tab_change"
             phx-value-tab="variables"
           >
-            {gettext("Variables")}
+            {dgettext("flows", "Variables")}
           </button>
           <button
             type="button"
@@ -180,7 +180,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             phx-click="debug_tab_change"
             phx-value-tab="history"
           >
-            {gettext("History")}
+            {dgettext("flows", "History")}
           </button>
           <button
             type="button"
@@ -189,7 +189,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             phx-click="debug_tab_change"
             phx-value-tab="path"
           >
-            {gettext("Path")}
+            {dgettext("flows", "Path")}
           </button>
         </div>
       </div>
@@ -244,12 +244,12 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
 
     ~H"""
     <form phx-change="debug_change_start_node" class="flex items-center gap-1">
-      <span class="text-xs text-base-content/30">{gettext("Start:")}</span>
+      <span class="text-xs text-base-content/30">{dgettext("flows", "Start:")}</span>
       <select
         name="node_id"
         class="select select-xs select-ghost text-xs h-6 min-h-0 pl-1 pr-5 font-normal"
         disabled={@disabled}
-        title={gettext("Change start node (resets session)")}
+        title={dgettext("flows", "Change start node (resets session)")}
       >
         <option
           :for={{id, node} <- @nodes}
@@ -368,7 +368,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             type="text"
             name="filter"
             value={@var_filter}
-            placeholder={gettext("Filter variables...")}
+            placeholder={dgettext("flows", "Filter variables...")}
             phx-change="debug_var_filter"
             phx-debounce="150"
             class="input input-xs input-bordered w-full pl-7"
@@ -381,24 +381,24 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             if(@var_changed_only, do: "btn-accent", else: "btn-ghost")
           ]}
           phx-click="debug_var_toggle_changed"
-          title={gettext("Show only changed variables")}
+          title={dgettext("flows", "Show only changed variables")}
         >
           <.icon name="diff" class="size-3" />
-          {gettext("Changed")}
+          {dgettext("flows", "Changed")}
         </button>
         <span class="text-xs text-base-content/30 tabular-nums ml-auto">
-          {gettext("%{shown} of %{total}", shown: @filtered_count, total: @total_count)}
+          {dgettext("flows", "%{shown} of %{total}", shown: @filtered_count, total: @total_count)}
         </span>
       </div>
 
       <table class="table table-xs table-pin-rows">
         <thead>
           <tr class="text-base-content/50">
-            <th class="font-medium">{gettext("Variable")}</th>
-            <th class="font-medium w-16">{gettext("Type")}</th>
-            <th class="font-medium w-20 text-right">{gettext("Initial")}</th>
-            <th class="font-medium w-20 text-right">{gettext("Previous")}</th>
-            <th class="font-medium w-24 text-right">{gettext("Current")}</th>
+            <th class="font-medium">{dgettext("flows", "Variable")}</th>
+            <th class="font-medium w-16">{dgettext("flows", "Type")}</th>
+            <th class="font-medium w-20 text-right">{dgettext("flows", "Initial")}</th>
+            <th class="font-medium w-20 text-right">{dgettext("flows", "Previous")}</th>
+            <th class="font-medium w-24 text-right">{dgettext("flows", "Current")}</th>
           </tr>
         </thead>
         <tbody class="font-mono">
@@ -423,7 +423,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
                   class="cursor-pointer hover:bg-base-300 rounded px-1 -mx-1"
                   phx-click="debug_edit_variable"
                   phx-value-key={key}
-                  title={gettext("Click to edit")}
+                  title={dgettext("flows", "Click to edit")}
                 >
                   <span :if={var.value != var.initial_value} class={var_source_color(var.source)}>
                     ◆
@@ -442,13 +442,13 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
         :if={@sorted_vars == [] and @total_count == 0}
         class="flex items-center justify-center h-24 text-base-content/30"
       >
-        {gettext("No variables in this project")}
+        {dgettext("flows", "No variables in this project")}
       </div>
       <div
         :if={@sorted_vars == [] and @total_count > 0}
         class="flex items-center justify-center h-24 text-base-content/30"
       >
-        {gettext("No matching variables")}
+        {dgettext("flows", "No matching variables")}
       </div>
     </div>
     """
@@ -525,17 +525,17 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
       <table :if={@history != []} class="table table-xs table-pin-rows">
         <thead>
           <tr class="text-base-content/50">
-            <th class="font-medium w-16">{gettext("Time")}</th>
-            <th class="font-medium">{gettext("Node")}</th>
-            <th class="font-medium">{gettext("Change")}</th>
-            <th class="font-medium w-14">{gettext("Source")}</th>
+            <th class="font-medium w-16">{dgettext("flows", "Time")}</th>
+            <th class="font-medium">{dgettext("flows", "Node")}</th>
+            <th class="font-medium">{dgettext("flows", "Change")}</th>
+            <th class="font-medium w-14">{dgettext("flows", "Source")}</th>
           </tr>
         </thead>
         <tbody class="font-mono">
           <tr :for={entry <- @history} class="hover:bg-base-200">
             <td class="text-base-content/30 tabular-nums">{format_ts(entry.ts)}</td>
             <td class="truncate max-w-32" title={entry.node_label}>
-              {if entry.node_label != "", do: entry.node_label, else: gettext("(user override)")}
+              {if entry.node_label != "", do: entry.node_label, else: dgettext("flows", "(user override)")}
             </td>
             <td class="truncate max-w-64">
               <span class="text-base-content/40">{entry.variable_ref}:</span>
@@ -553,7 +553,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
       </table>
 
       <div :if={@history == []} class="flex items-center justify-center h-24 text-base-content/30">
-        {gettext("No variable changes yet")}
+        {dgettext("flows", "No variable changes yet")}
       </div>
     </div>
     """
@@ -563,8 +563,8 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   defp history_source_class(:user_override), do: "badge-info"
   defp history_source_class(_), do: "badge-ghost"
 
-  defp history_source_label(:instruction), do: gettext("instr")
-  defp history_source_label(:user_override), do: gettext("user")
+  defp history_source_label(:instruction), do: dgettext("flows", "instr")
+  defp history_source_label(:user_override), do: dgettext("flows", "user")
   defp history_source_label(_), do: ""
 
   # ===========================================================================
@@ -593,7 +593,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
     ~H"""
     <div class="text-xs">
       <div :if={@entries == []} class="flex items-center justify-center h-24 text-base-content/30">
-        {gettext("No steps yet")}
+        {dgettext("flows", "No steps yet")}
       </div>
       <div :for={entry <- @entries} class="contents">
         <%!-- Flow separator --%>
@@ -608,8 +608,8 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           />
           <span class="text-[10px]">
             {if entry.direction == :enter,
-              do: gettext("Entering sub-flow"),
-              else: gettext("Returned to parent")}
+              do: dgettext("flows", "Entering sub-flow"),
+              else: dgettext("flows", "Returned to parent")}
           </span>
           <div class="flex-1 border-t border-info/20"></div>
         </div>
@@ -629,8 +629,8 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             phx-value-node_id={entry.node_id}
             title={
               if MapSet.member?(@breakpoints, entry.node_id),
-                do: gettext("Remove breakpoint"),
-                else: gettext("Set breakpoint")
+                do: dgettext("flows", "Remove breakpoint"),
+                else: dgettext("flows", "Set breakpoint")
             }
           >
             <span class={[
@@ -733,7 +733,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   defp response_choices(assigns) do
     ~H"""
     <div class="px-3 py-2 border-t border-base-300 bg-base-200/50">
-      <p class="text-xs text-base-content/50 mb-1.5">{gettext("Choose a response:")}</p>
+      <p class="text-xs text-base-content/50 mb-1.5">{dgettext("flows", "Choose a response:")}</p>
       <div class="flex flex-wrap gap-1.5">
         <button
           :for={resp <- @choices.responses}
@@ -745,7 +745,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           phx-click="debug_choose_response"
           phx-value-id={resp.id}
           disabled={!resp.valid}
-          title={if(!resp.valid, do: gettext("Condition not met"))}
+          title={if(!resp.valid, do: dgettext("flows", "Condition not met"))}
         >
           {clean_response_text(resp.text)}
         </button>
@@ -793,9 +793,9 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   defp status_badge_class(:finished), do: "badge-neutral"
   defp status_badge_class(_), do: "badge-info"
 
-  defp status_label(:paused), do: gettext("Paused")
-  defp status_label(:waiting_input), do: gettext("Waiting")
-  defp status_label(:finished), do: gettext("Finished")
+  defp status_label(:paused), do: dgettext("flows", "Paused")
+  defp status_label(:waiting_input), do: dgettext("flows", "Waiting")
+  defp status_label(:finished), do: dgettext("flows", "Finished")
   defp status_label(_), do: ""
 
   defp level_bg(:warning), do: "bg-warning/5"
@@ -833,8 +833,8 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   defp format_value(value), do: EvalHelpers.format_value(value)
 
   defp clean_response_text(text) when is_binary(text) do
-    EvalHelpers.strip_html(text, 40) || gettext("(empty)")
+    EvalHelpers.strip_html(text, 40) || dgettext("flows", "(empty)")
   end
 
-  defp clean_response_text(_), do: gettext("(empty)")
+  defp clean_response_text(_), do: dgettext("flows", "(empty)")
 end

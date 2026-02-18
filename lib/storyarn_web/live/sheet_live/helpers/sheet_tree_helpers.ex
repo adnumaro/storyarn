@@ -25,7 +25,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
         handle_sheet_deleted(socket, sheet)
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete sheet."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
     end
   end
 
@@ -47,10 +47,10 @@ defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
 
       {:error, :would_create_cycle} ->
         {:noreply,
-         put_flash(socket, :error, gettext("Cannot move a sheet into its own children."))}
+         put_flash(socket, :error, dgettext("sheets", "Cannot move a sheet into its own children."))}
 
       {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not move sheet."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
     end
   end
 
@@ -61,7 +61,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
   @spec create_child_sheet(Phoenix.LiveView.Socket.t(), any()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def create_child_sheet(socket, parent_id) do
-    attrs = %{name: gettext("New Sheet"), parent_id: parent_id}
+    attrs = %{name: dgettext("sheets", "New Sheet"), parent_id: parent_id}
 
     case Sheets.create_sheet(socket.assigns.project, attrs) do
       {:ok, new_sheet} ->
@@ -76,7 +76,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
          )}
 
       {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not create sheet."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
     end
   end
 
@@ -113,7 +113,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
   # Private functions
 
   defp handle_sheet_deleted(socket, deleted_sheet) do
-    socket = put_flash(socket, :info, gettext("Sheet deleted successfully."))
+    socket = put_flash(socket, :info, dgettext("sheets", "Sheet deleted successfully."))
 
     if deleted_sheet.id == socket.assigns.sheet.id do
       {:noreply,

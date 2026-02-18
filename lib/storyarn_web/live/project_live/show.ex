@@ -30,7 +30,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
               class="btn btn-ghost btn-sm"
             >
               <.icon name="settings" class="size-4 mr-1" />
-              {gettext("Settings")}
+              {dgettext("projects", "Settings")}
             </.link>
           </:actions>
         </.header>
@@ -38,8 +38,8 @@ defmodule StoryarnWeb.ProjectLive.Show do
 
       <div class="text-center py-12 text-base-content/70">
         <.icon name="file-text" class="size-12 mx-auto mb-4 text-base-content/30" />
-        <p>{gettext("Project workspace coming soon!")}</p>
-        <p class="text-sm mt-2">{gettext("This is where you'll design your narrative flows.")}</p>
+        <p>{dgettext("projects", "Project workspace coming soon!")}</p>
+        <p class="text-sm mt-2">{dgettext("projects", "This is where you'll design your narrative flows.")}</p>
       </div>
     </Layouts.project>
     """
@@ -71,7 +71,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
       {:error, :not_found} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("Project not found."))
+         |> put_flash(:error, dgettext("projects", "Project not found."))
          |> redirect(to: ~p"/workspaces")}
     end
   end

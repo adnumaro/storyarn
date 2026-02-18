@@ -320,7 +320,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
 
     case find_entry_node(nodes_map) do
       nil ->
-        {:noreply, put_flash(socket, :error, gettext("No entry node found in this flow."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "No entry node found in this flow."))}
 
       entry_node_id ->
         variables = build_variables(project.id)

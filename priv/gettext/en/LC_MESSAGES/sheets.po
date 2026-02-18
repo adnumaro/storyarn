@@ -1,0 +1,1173 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: en\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/storyarn_web/live/sheet_live/index.ex:75
+#, elixir-autogen, elixir-format
+msgid "%{count} subsheet"
+msgid_plural "%{count} subsheets"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:176
+#, elixir-autogen, elixir-format
+msgid "(derived from label)"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:331
+#, elixir-autogen, elixir-format
+msgid "(empty dialogue)"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:121
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:155
+#, elixir-autogen, elixir-format
+msgid "Add child sheet"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/banner.ex:77
+#: lib/storyarn_web/live/sheet_live/components/banner.ex:103
+#, elixir-autogen, elixir-format
+msgid "Add cover"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/select_blocks.ex:134
+#, elixir-autogen, elixir-format
+msgid "Add more..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:422
+#, elixir-autogen, elixir-format
+msgid "Add option"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:405
+#, elixir-autogen, elixir-format
+msgid "Added %{count} block"
+msgid_plural "Added %{count} blocks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:303
+#, elixir-autogen, elixir-format
+msgid "Allowed Types"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:70
+#, elixir-autogen, elixir-format
+msgid "Are you sure you want to delete this version?"
+msgstr ""
+
+#: lib/storyarn_web/components/audio_picker.ex:100
+#, elixir-autogen, elixir-format
+msgid "Attach voice-over or ambient audio."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/show.ex:121
+#, elixir-autogen, elixir-format
+msgid "Audio"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/backlinks_section.ex:17
+#, elixir-autogen, elixir-format
+msgid "Backlinks"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:55
+#, elixir-autogen, elixir-format
+msgid "Basic Blocks"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:762
+#, elixir-autogen, elixir-format
+msgid "Block is already in a column group."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:756
+#, elixir-autogen, elixir-format
+msgid "Block not found."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:124
+#, elixir-autogen, elixir-format
+msgid "Boolean"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:156
+#: lib/storyarn_web/live/sheet_live/components/propagation_modal.ex:68
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:457
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:50
+#: lib/storyarn_web/live/sheet_live/index.ex:184
+#, elixir-autogen, elixir-format
+msgid "Cannot move a sheet into its own children."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/banner.ex:33
+#, elixir-autogen, elixir-format
+msgid "Change"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:357
+#, elixir-autogen, elixir-format
+msgid "Changed avatar"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:363
+#, elixir-autogen, elixir-format
+msgid "Changed banner"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:352
+#, elixir-autogen, elixir-format
+msgid "Changed shortcut"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:93
+#, elixir-autogen, elixir-format
+msgid "Changes to this property's definition will sync to all children."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/reference_blocks.ex:141
+#, elixir-autogen, elixir-format
+msgid "Clear reference"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_color.ex:16
+#, elixir-autogen, elixir-format
+msgid "Color"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components.ex:206
+#, elixir-autogen, elixir-format
+msgid "Configure"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:29
+#, elixir-autogen, elixir-format
+msgid "Configure Block"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:150
+#, elixir-autogen, elixir-format
+msgid "Constants are not accessible as variables in flow scripts."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/show.ex:103
+#, elixir-autogen, elixir-format
+msgid "Content"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/block_helpers.ex:37
+#, elixir-autogen, elixir-format
+msgid "Could not add block."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/block_value_helpers.ex:181
+#, elixir-autogen, elixir-format
+msgid "Could not add option."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:798
+#, elixir-autogen, elixir-format
+msgid "Could not change scope."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:81
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:160
+#, elixir-autogen, elixir-format
+msgid "Could not clear reference."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:222
+#, elixir-autogen, elixir-format
+msgid "Could not create block."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:779
+#, elixir-autogen, elixir-format
+msgid "Could not create column group."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:79
+#: lib/storyarn_web/live/sheet_live/index.ex:137
+#: lib/storyarn_web/live/sheet_live/index.ex:212
+#: lib/storyarn_web/live/sheet_live/show.ex:296
+#, elixir-autogen, elixir-format
+msgid "Could not create sheet."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:189
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:85
+#, elixir-autogen, elixir-format
+msgid "Could not create version."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:259
+#: lib/storyarn_web/live/sheet_live/helpers/block_helpers.ex:90
+#, elixir-autogen, elixir-format
+msgid "Could not delete block."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:28
+#: lib/storyarn_web/live/sheet_live/index.ex:159
+#, elixir-autogen, elixir-format
+msgid "Could not delete sheet."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:266
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:53
+#, elixir-autogen, elixir-format
+msgid "Could not delete version."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:535
+#, elixir-autogen, elixir-format
+msgid "Could not detach property."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:576
+#, elixir-autogen, elixir-format
+msgid "Could not hide property."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:53
+#: lib/storyarn_web/live/sheet_live/index.ex:187
+#, elixir-autogen, elixir-format
+msgid "Could not move sheet."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:828
+#, elixir-autogen, elixir-format
+msgid "Could not propagate property."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_avatar.ex:89
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:31
+#, elixir-autogen, elixir-format
+msgid "Could not remove avatar."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/banner.ex:147
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:91
+#, elixir-autogen, elixir-format
+msgid "Could not remove banner."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:276
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:304
+#: lib/storyarn_web/live/sheet_live/helpers/block_helpers.ex:106
+#, elixir-autogen, elixir-format
+msgid "Could not reorder blocks."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:235
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:138
+#, elixir-autogen, elixir-format
+msgid "Could not restore version."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:433
+#: lib/storyarn_web/live/sheet_live/helpers/config_helpers.ex:58
+#, elixir-autogen, elixir-format
+msgid "Could not save configuration."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_title.ex:122
+#, elixir-autogen, elixir-format
+msgid "Could not save shortcut."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:54
+#, elixir-autogen, elixir-format
+msgid "Could not set avatar."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:60
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:140
+#, elixir-autogen, elixir-format
+msgid "Could not set reference."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:454
+#, elixir-autogen, elixir-format
+msgid "Could not toggle constant."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:594
+#, elixir-autogen, elixir-format
+msgid "Could not unhide property."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:169
+#, elixir-autogen, elixir-format
+msgid "Could not update audio."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:241
+#: lib/storyarn_web/live/sheet_live/helpers/config_helpers.ex:143
+#, elixir-autogen, elixir-format
+msgid "Could not update block."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/block_value_helpers.ex:106
+#, elixir-autogen, elixir-format
+msgid "Could not update boolean value."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/show.ex:331
+#, elixir-autogen, elixir-format
+msgid "Could not update color."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/block_value_helpers.ex:78
+#, elixir-autogen, elixir-format
+msgid "Could not update content."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/block_value_helpers.ex:38
+#: lib/storyarn_web/live/sheet_live/helpers/block_value_helpers.ex:155
+#, elixir-autogen, elixir-format
+msgid "Could not update multi-select."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:646
+#, elixir-autogen, elixir-format
+msgid "Could not update required flag."
+msgstr ""
+
+#: lib/storyarn_web/components/audio_picker.ex:218
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:200
+#, elixir-autogen, elixir-format
+msgid "Could not upload audio file."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_avatar.ex:144
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:144
+#, elixir-autogen, elixir-format
+msgid "Could not upload avatar."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/banner.ex:201
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:180
+#, elixir-autogen, elixir-format
+msgid "Could not upload banner."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:31
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:423
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:461
+#, elixir-autogen, elixir-format
+msgid "Create Version"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:334
+#, elixir-autogen, elixir-format
+msgid "Create a version to save the current state of this sheet."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:28
+#, elixir-autogen, elixir-format
+msgid "Create and organize your project's content"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:365
+#, elixir-autogen, elixir-format
+msgid "Current"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:337
+#, elixir-autogen, elixir-format
+msgid "Custom Labels"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:114
+#, elixir-autogen, elixir-format
+msgid "Date"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components.ex:221
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:71
+#, elixir-autogen, elixir-format
+msgid "Delete"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:396
+#, elixir-autogen, elixir-format
+msgid "Delete version"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:69
+#, elixir-autogen, elixir-format
+msgid "Delete version?"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:447
+#, elixir-autogen, elixir-format
+msgid "Describe what this version captures..."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:440
+#, elixir-autogen, elixir-format
+msgid "Description"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components.ex:180
+#, elixir-autogen, elixir-format
+msgid "Detach property"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:54
+#, elixir-autogen, elixir-format
+msgid "Detached"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:256
+#, elixir-autogen, elixir-format
+msgid "Dialogue nodes using this sheet as speaker will appear here."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:146
+#, elixir-autogen, elixir-format
+msgid "Divider"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:759
+#, elixir-autogen, elixir-format
+msgid "Divider blocks cannot be placed in columns."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components.ex:59
+#, elixir-autogen, elixir-format
+msgid "Drag to reorder"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:164
+#, elixir-autogen, elixir-format
+msgid "Enter label..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:194
+#, elixir-autogen, elixir-format
+msgid "Enter placeholder..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:358
+#, elixir-autogen, elixir-format
+msgid "False"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:50
+#, elixir-autogen, elixir-format
+msgid "Filter sheets..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:326
+#, elixir-autogen, elixir-format
+msgid "Flows"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components.ex:156
+#: lib/storyarn_web/components/block_components.ex:174
+#, elixir-autogen, elixir-format
+msgid "Go to source"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components.ex:190
+#, elixir-autogen, elixir-format
+msgid "Hide for children"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/show.ex:130
+#, elixir-autogen, elixir-format
+msgid "History"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:51
+#, elixir-autogen, elixir-format
+msgid "Inherited"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components.ex:69
+#, elixir-autogen, elixir-format
+msgid "Inherited by children"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:893
+#, elixir-autogen, elixir-format
+msgid "Inherited from"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:336
+#, elixir-autogen, elixir-format
+msgid "Initial version with %{count} block"
+msgid_plural "Initial version with %{count} blocks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/components/audio_picker.ex:178
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:134
+#: lib/storyarn_web/live/sheet_live/components/banner.ex:170
+#: lib/storyarn_web/live/sheet_live/components/sheet_avatar.ex:112
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:70
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:107
+#, elixir-autogen, elixir-format
+msgid "Invalid file data."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:51
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:131
+#, elixir-autogen, elixir-format
+msgid "Invalid reference ID."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:57
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:137
+#, elixir-autogen, elixir-format
+msgid "Invalid reference type."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:674
+#, elixir-autogen, elixir-format
+msgid "Invalid sheet selection."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:395
+#, elixir-autogen, elixir-format
+msgid "Key"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:157
+#: lib/storyarn_web/components/block_components/config_panel.ex:402
+#, elixir-autogen, elixir-format
+msgid "Label"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:137
+#, elixir-autogen, elixir-format
+msgid "Layout"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:372
+#, elixir-autogen, elixir-format
+msgid "Leave empty to use defaults."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:58
+#, elixir-autogen, elixir-format
+msgid "Load more"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:112
+#, elixir-autogen, elixir-format
+msgid "Mark this property as required for children."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:229
+#, elixir-autogen, elixir-format
+msgid "Max"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:256
+#, elixir-autogen, elixir-format
+msgid "Max Date"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:201
+#, elixir-autogen, elixir-format
+msgid "Max Length"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:270
+#, elixir-autogen, elixir-format
+msgid "Max Selections"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:217
+#, elixir-autogen, elixir-format
+msgid "Min"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:245
+#, elixir-autogen, elixir-format
+msgid "Min Date"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:285
+#, elixir-autogen, elixir-format
+msgid "Mode"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:418
+#, elixir-autogen, elixir-format
+msgid "Modified %{count} block"
+msgid_plural "Modified %{count} blocks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:138
+#, elixir-autogen, elixir-format
+msgid "Modified by"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:193
+#, elixir-autogen, elixir-format
+msgid "Move to Trash"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:104
+#, elixir-autogen, elixir-format
+msgid "Multi Select"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/boolean_blocks.ex:35
+#: lib/storyarn_web/components/block_components/config_panel.ex:367
+#, elixir-autogen, elixir-format
+msgid "Neutral"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:369
+#, elixir-autogen, elixir-format
+msgid "Neutral/Unknown"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:33
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:64
+#: lib/storyarn_web/live/sheet_live/index.ex:33
+#: lib/storyarn_web/live/sheet_live/index.ex:197
+#, elixir-autogen, elixir-format
+msgid "New Sheet"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/boolean_blocks.ex:34
+#: lib/storyarn_web/components/block_components/config_panel.ex:356
+#, elixir-autogen, elixir-format
+msgid "No"
+msgstr ""
+
+#: lib/storyarn_web/components/audio_picker.ex:41
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:368
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:396
+#, elixir-autogen, elixir-format
+msgid "No audio"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/backlinks_section.ex:91
+#, elixir-autogen, elixir-format
+msgid "No backlinks yet"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:423
+#, elixir-autogen, elixir-format
+msgid "No changes detected"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:208
+#: lib/storyarn_web/components/block_components/config_panel.ex:277
+#, elixir-autogen, elixir-format
+msgid "No limit"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:236
+#, elixir-autogen, elixir-format
+msgid "No max"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:224
+#, elixir-autogen, elixir-format
+msgid "No min"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:56
+#, elixir-autogen, elixir-format
+msgid "No sheets yet"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:40
+#, elixir-autogen, elixir-format
+msgid "No sheets yet. Create your first sheet to get started."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:362
+#, elixir-autogen, elixir-format
+msgid "No summary"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:30
+#, elixir-autogen, elixir-format
+msgid "No variables on this sheet are used in any flow yet."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:332
+#, elixir-autogen, elixir-format
+msgid "No versions yet"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:254
+#, elixir-autogen, elixir-format
+msgid "No voice lines"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:84
+#, elixir-autogen, elixir-format
+msgid "Number"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:338
+#, elixir-autogen, elixir-format
+msgid "Open in flow editor"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:380
+#, elixir-autogen, elixir-format
+msgid "Options"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:204
+#, elixir-autogen, elixir-format
+msgid "Outdated"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:50
+#, elixir-autogen, elixir-format
+msgid "Own Properties"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:187
+#, elixir-autogen, elixir-format
+msgid "Placeholder"
+msgstr ""
+
+#: lib/storyarn_web/components/audio_picker.ex:81
+#, elixir-autogen, elixir-format
+msgid "Preview:"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/propagation_modal.ex:78
+#, elixir-autogen, elixir-format
+msgid "Propagate"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/propagation_modal.ex:21
+#, elixir-autogen, elixir-format
+msgid "Propagate \"%{name}\" to existing children?"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:531
+#, elixir-autogen, elixir-format
+msgid "Property detached. Changes to the source won't affect this copy."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:573
+#, elixir-autogen, elixir-format
+msgid "Property hidden from children."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:824
+#, elixir-autogen, elixir-format
+msgid "Property propagated to %{count} pages."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:555
+#, elixir-autogen, elixir-format
+msgid "Property re-synced with source."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:591
+#, elixir-autogen, elixir-format
+msgid "Property visible to children again."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:126
+#, elixir-autogen, elixir-format
+msgid "Re-sync with source"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:156
+#, elixir-autogen, elixir-format
+msgid "Read by"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:134
+#, elixir-autogen, elixir-format
+msgid "Reference"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:201
+#, elixir-autogen, elixir-format
+msgid "Reference may be outdated"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/reference_blocks.ex:74
+#, elixir-autogen, elixir-format
+msgid "Reference not found (deleted?)"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:54
+#: lib/storyarn_web/live/sheet_live/helpers/reference_helpers.ex:134
+#, elixir-autogen, elixir-format
+msgid "Reference target not found."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/show.ex:112
+#, elixir-autogen, elixir-format
+msgid "References"
+msgstr ""
+
+#: lib/storyarn_web/components/audio_picker.ex:95
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:361
+#: lib/storyarn_web/live/sheet_live/components/banner.ex:51
+#: lib/storyarn_web/live/sheet_live/components/sheet_avatar.ex:55
+#, elixir-autogen, elixir-format
+msgid "Remove"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_color.ex:20
+#, elixir-autogen, elixir-format
+msgid "Remove color"
+msgstr ""
+
+#: lib/storyarn/sheets/versioning.ex:411
+#, elixir-autogen, elixir-format
+msgid "Removed %{count} block"
+msgid_plural "Removed %{count} blocks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn/sheets/versioning.ex:351
+#, elixir-autogen, elixir-format
+msgid "Renamed sheet"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:109
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:926
+#, elixir-autogen, elixir-format
+msgid "Required"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:129
+#, elixir-autogen, elixir-format
+msgid "Resets the property definition to match the source. Your value will be preserved."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:386
+#, elixir-autogen, elixir-format
+msgid "Restore this version"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:231
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:161
+#, elixir-autogen, elixir-format
+msgid "Restored to version %{number}"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:74
+#, elixir-autogen, elixir-format
+msgid "Rich Text"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:24
+#: lib/storyarn_web/components/block_components/config_panel.ex:62
+#, elixir-autogen, elixir-format
+msgid "Scope"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/reference_blocks.ex:114
+#, elixir-autogen, elixir-format
+msgid "Search sheets and flows..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:94
+#, elixir-autogen, elixir-format
+msgid "Select"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/reference_blocks.ex:44
+#, elixir-autogen, elixir-format
+msgid "Select a reference..."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/propagation_modal.ex:42
+#, elixir-autogen, elixir-format
+msgid "Select all (%{count} pages)"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:330
+#, elixir-autogen, elixir-format
+msgid "Select which types can be referenced."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/select_blocks.ex:16
+#, elixir-autogen, elixir-format
+msgid "Select..."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:116
+#: lib/storyarn_web/live/sheet_live/index.ex:155
+#, elixir-autogen, elixir-format
+msgid "Sheet deleted successfully."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/show.ex:213
+#, elixir-autogen, elixir-format
+msgid "Sheet not found."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:316
+#: lib/storyarn_web/components/sidebar/sheet_tree.ex:27
+#: lib/storyarn_web/live/sheet_live/index.ex:26
+#, elixir-autogen, elixir-format
+msgid "Sheets"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/backlinks_section.ex:93
+#, elixir-autogen, elixir-format
+msgid "Sheets and flows that reference this sheet will appear here."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_title.ex:121
+#, elixir-autogen, elixir-format
+msgid "Shortcut %{error}"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:558
+#, elixir-autogen, elixir-format
+msgid "Source block no longer exists."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:614
+#, elixir-autogen, elixir-format
+msgid "Source sheet not found."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:941
+#, elixir-autogen, elixir-format
+msgid "Subsheets"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:64
+#, elixir-autogen, elixir-format
+msgid "Text"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:50
+#: lib/storyarn_web/components/block_components/config_panel.ex:89
+#, elixir-autogen, elixir-format
+msgid "This page and all children"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:37
+#: lib/storyarn_web/components/block_components/config_panel.ex:76
+#, elixir-autogen, elixir-format
+msgid "This page only"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/propagation_modal.ex:27
+#, elixir-autogen, elixir-format
+msgid "This property will automatically appear in all new children. For existing children:"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:292
+#, elixir-autogen, elixir-format
+msgid "Three states (Yes/Neutral/No)"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:427
+#, elixir-autogen, elixir-format
+msgid "Title"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:296
+#, elixir-autogen, elixir-format
+msgid "Tri-state allows a neutral/unknown value."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:348
+#, elixir-autogen, elixir-format
+msgid "True"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:289
+#, elixir-autogen, elixir-format
+msgid "Two states (Yes/No)"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:46
+#, elixir-autogen, elixir-format
+msgid "Type"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:114
+#, elixir-autogen, elixir-format
+msgid "Type / to add a block"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/select_blocks.ex:133
+#, elixir-autogen, elixir-format
+msgid "Type and press Enter to add..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/reference_blocks.ex:128
+#, elixir-autogen, elixir-format
+msgid "Type to search..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components.ex:134
+#, elixir-autogen, elixir-format
+msgid "Unknown block type"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/propagation_modal.ex:57
+#, elixir-autogen, elixir-format
+msgid "Unselected pages won't get this property but can add it manually later."
+msgstr ""
+
+#: lib/storyarn_web/components/audio_picker.ex:222
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:204
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:147
+#: lib/storyarn_web/live/sheet_live/helpers/asset_helpers.ex:183
+#, elixir-autogen, elixir-format
+msgid "Unsupported file type."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_title.ex:23
+#: lib/storyarn_web/live/sheet_live/index.ex:126
+#: lib/storyarn_web/live/sheet_live/show.ex:285
+#, elixir-autogen, elixir-format
+msgid "Untitled"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:380
+#, elixir-autogen, elixir-format
+msgid "Upload"
+msgstr ""
+
+#: lib/storyarn_web/components/audio_picker.ex:59
+#, elixir-autogen, elixir-format
+msgid "Upload audio"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_avatar.ex:35
+#, elixir-autogen, elixir-format
+msgid "Upload avatar"
+msgstr ""
+
+#: lib/storyarn_web/components/audio_picker.ex:59
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:380
+#, elixir-autogen, elixir-format
+msgid "Uploading..."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:147
+#, elixir-autogen, elixir-format
+msgid "Use as constant"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:180
+#, elixir-autogen, elixir-format
+msgid "Use this name to reference the value in flows."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/config_panel.ex:172
+#, elixir-autogen, elixir-format
+msgid "Variable Name"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:18
+#, elixir-autogen, elixir-format
+msgid "Variable Usage"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:21
+#, elixir-autogen, elixir-format
+msgid "Version History"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:186
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:82
+#, elixir-autogen, elixir-format
+msgid "Version created."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:263
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:50
+#, elixir-autogen, elixir-format
+msgid "Version deleted."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:198
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:244
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:21
+#: lib/storyarn_web/live/sheet_live/helpers/versioning_helpers.ex:36
+#, elixir-autogen, elixir-format
+msgid "Version not found."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:20
+#, elixir-autogen, elixir-format
+msgid "Voice Lines"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/boolean_blocks.ex:33
+#: lib/storyarn_web/components/block_components/config_panel.ex:346
+#, elixir-autogen, elixir-format
+msgid "Yes"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:113
+#: lib/storyarn_web/live/sheet_live/show.ex:203
+#, elixir-autogen, elixir-format
+msgid "You don't have access to this project."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:148
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:687
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:156
+#, elixir-autogen, elixir-format
+msgid "You don't have permission to edit."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:141
+#: lib/storyarn_web/live/sheet_live/index.ex:163
+#: lib/storyarn_web/live/sheet_live/index.ex:191
+#: lib/storyarn_web/live/sheet_live/index.ex:216
+#, elixir-autogen, elixir-format
+msgid "You don't have permission to perform this action."
+msgstr ""
+
+#: lib/storyarn_web/components/audio_picker.ex:85
+#, elixir-autogen, elixir-format
+msgid "Your browser does not support audio playback."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_title.ex:41
+#, elixir-autogen, elixir-format
+msgid "add-shortcut"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:374
+#, elixir-autogen, elixir-format
+msgid "by"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:434
+#, elixir-autogen, elixir-format
+msgid "e.g., Before major refactor"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/versions_section.ex:440
+#, elixir-autogen, elixir-format
+msgid "optional"
+msgstr ""

@@ -69,7 +69,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           phx-click="open_screenplay"
         >
           <.icon name="maximize-2" class="size-4 mr-2" />
-          {gettext("Open Screenplay")}
+          {dgettext("flows", "Open Screenplay")}
         </button>
         <button
           :if={@node.type == "dialogue"}
@@ -79,7 +79,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           phx-value-id={@node.id}
         >
           <.icon name="play" class="size-4 mr-2" />
-          {gettext("Preview from here")}
+          {dgettext("flows", "Preview from here")}
         </button>
         <button
           :if={@can_edit && @node.type != "entry"}
@@ -88,18 +88,18 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
           phx-click={show_modal("delete-node-confirm")}
         >
           <.icon name="trash-2" class="size-4 mr-2" />
-          {gettext("Delete Node")}
+          {dgettext("flows", "Delete Node")}
         </button>
         <p :if={@node.type == "entry"} class="text-xs text-base-content/60 text-center">
-          {gettext("Entry nodes cannot be deleted.")}
+          {dgettext("flows", "Entry nodes cannot be deleted.")}
         </p>
       </div>
 
       <.confirm_modal
         :if={@can_edit && @node.type != "entry"}
         id="delete-node-confirm"
-        title={gettext("Delete node?")}
-        confirm_text={gettext("Delete")}
+        title={dgettext("flows", "Delete node?")}
+        confirm_text={dgettext("flows", "Delete")}
         confirm_variant="error"
         icon="alert-triangle"
         on_confirm={JS.push("delete_node", value: %{id: @node.id})}
@@ -135,7 +135,7 @@ defmodule StoryarnWeb.FlowLive.Components.PropertiesPanels do
   defp default_sidebar(assigns) do
     ~H"""
     <p class="text-sm text-base-content/60">
-      {gettext("No properties for this node type.")}
+      {dgettext("flows", "No properties for this node type.")}
     </p>
     """
   end

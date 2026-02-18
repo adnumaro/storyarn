@@ -48,16 +48,16 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
        |> schedule_save_status_reset()}
     else
       :error ->
-        {:noreply, put_flash(socket, :error, gettext("Invalid reference ID."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid reference ID."))}
 
       {:error, :not_found} ->
-        {:noreply, put_flash(socket, :error, gettext("Reference target not found."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Reference target not found."))}
 
       {:error, :invalid_type} ->
-        {:noreply, put_flash(socket, :error, gettext("Invalid reference type."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid reference type."))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not set reference."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not set reference."))}
     end
   end
 
@@ -78,7 +78,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
          |> schedule_save_status_reset()}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not clear reference."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not clear reference."))}
     end
   end
 
@@ -128,16 +128,16 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
       {:ok, blocks}
     else
       :error ->
-        {:error, gettext("Invalid reference ID.")}
+        {:error, dgettext("sheets", "Invalid reference ID.")}
 
       {:error, :not_found} ->
-        {:error, gettext("Reference target not found.")}
+        {:error, dgettext("sheets", "Reference target not found.")}
 
       {:error, :invalid_type} ->
-        {:error, gettext("Invalid reference type.")}
+        {:error, dgettext("sheets", "Invalid reference type.")}
 
       {:error, _} ->
-        {:error, gettext("Could not set reference.")}
+        {:error, dgettext("sheets", "Could not set reference.")}
     end
   end
 
@@ -157,7 +157,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
         {:ok, blocks}
 
       {:error, _} ->
-        {:error, gettext("Could not clear reference.")}
+        {:error, dgettext("sheets", "Could not clear reference.")}
     end
   end
 

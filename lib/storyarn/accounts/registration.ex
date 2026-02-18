@@ -51,7 +51,7 @@ defmodule Storyarn.Accounts.Registration do
 
   defp default_workspace_name(user) do
     display_name = user.display_name || extract_name_from_email(user.email)
-    gettext("%{name}'s workspace", name: display_name)
+    dgettext("identity", "%{name}'s workspace", name: display_name)
   end
 
   defp extract_name_from_email(email) do

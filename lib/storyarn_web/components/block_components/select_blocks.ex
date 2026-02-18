@@ -13,7 +13,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
 
   def select_block(assigns) do
     label = get_in(assigns.block.config, ["label"]) || ""
-    placeholder = get_in(assigns.block.config, ["placeholder"]) || gettext("Select...")
+    placeholder = get_in(assigns.block.config, ["placeholder"]) || dgettext("sheets", "Select...")
     options = get_in(assigns.block.config, ["options"]) || []
     content = get_in(assigns.block.value, ["content"])
     display_value = find_option_label(options, content)
@@ -130,8 +130,8 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
     end)
   end
 
-  defp resolve_placeholder("", []), do: gettext("Type and press Enter to add...")
-  defp resolve_placeholder("", _selected), do: gettext("Add more...")
+  defp resolve_placeholder("", []), do: dgettext("sheets", "Type and press Enter to add...")
+  defp resolve_placeholder("", _selected), do: dgettext("sheets", "Add more...")
   defp resolve_placeholder(placeholder, _selected), do: placeholder
 
   defp find_option_label(options, key) do

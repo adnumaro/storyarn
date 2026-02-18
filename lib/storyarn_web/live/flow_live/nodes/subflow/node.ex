@@ -18,7 +18,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
 
   def type, do: "subflow"
   def icon_name, do: "box"
-  def label, do: gettext("Subflow")
+  def label, do: dgettext("flows", "Subflow")
 
   def default_data, do: %{"referenced_flow_id" => nil}
 
@@ -94,14 +94,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
 
     cond do
       is_nil(parsed) ->
-        {:error, gettext("Invalid flow reference.")}
+        {:error, dgettext("flows", "Invalid flow reference.")}
 
       parsed == current_flow_id ->
-        {:error, gettext("A flow cannot reference itself.")}
+        {:error, dgettext("flows", "A flow cannot reference itself.")}
 
       Flows.has_circular_reference?(current_flow_id, parsed) ->
         {:error,
-         gettext("Circular reference detected. This flow is already referenced by the target.")}
+         dgettext("flows", "Circular reference detected. This flow is already referenced by the target.")}
 
       true ->
         :ok

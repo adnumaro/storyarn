@@ -34,7 +34,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
       {:error, _} ->
         {:noreply,
          socket
-         |> put_flash(:error, gettext("Could not add block."))
+         |> put_flash(:error, dgettext("sheets", "Could not add block."))
          |> assign(:show_block_menu, false)}
     end
   end
@@ -87,7 +87,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
          |> assign(:configuring_block, nil)}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete block."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete block."))}
     end
   end
 
@@ -103,7 +103,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
         {:noreply, assign(socket, :blocks, blocks)}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not reorder blocks."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reorder blocks."))}
     end
   end
 

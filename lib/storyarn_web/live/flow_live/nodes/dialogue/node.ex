@@ -23,7 +23,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
   def type, do: "dialogue"
   def icon_name, do: "message-square"
-  def label, do: gettext("Dialogue")
+  def label, do: dgettext("flows", "Dialogue")
 
   def default_data do
     %{
@@ -84,7 +84,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     response_number = length(responses) + 1
 
     NodeHelpers.persist_node_update(socket, node_id, fn data ->
-      default_text = Gettext.gettext(StoryarnWeb.Gettext, "Response %{n}", n: response_number)
+      default_text = Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Response %{n}", n: response_number)
 
       new_response = %{
         "id" => new_id,

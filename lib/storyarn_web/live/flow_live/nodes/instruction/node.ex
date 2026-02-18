@@ -12,7 +12,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.Node do
 
   def type, do: "instruction"
   def icon_name, do: "zap"
-  def label, do: gettext("Instruction")
+  def label, do: dgettext("flows", "Instruction")
 
   def default_data, do: %{"assignments" => [], "description" => ""}
 

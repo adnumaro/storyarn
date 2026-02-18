@@ -23,21 +23,21 @@ defmodule StoryarnWeb.SheetLive.Index do
     >
       <div class="text-center mb-8">
         <.header>
-          {gettext("Sheets")}
+          {dgettext("sheets", "Sheets")}
           <:subtitle>
-            {gettext("Create and organize your project's content")}
+            {dgettext("sheets", "Create and organize your project's content")}
           </:subtitle>
           <:actions :if={@can_edit}>
             <button type="button" class="btn btn-primary" phx-click="create_sheet">
               <.icon name="plus" class="size-4 mr-2" />
-              {gettext("New Sheet")}
+              {dgettext("sheets", "New Sheet")}
             </button>
           </:actions>
         </.header>
       </div>
 
       <.empty_state :if={@sheets_tree == []} icon="file-text">
-        {gettext("No sheets yet. Create your first sheet to get started.")}
+        {dgettext("sheets", "No sheets yet. Create your first sheet to get started.")}
       </.empty_state>
 
       <div :if={@sheets_tree != []} class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -72,7 +72,7 @@ defmodule StoryarnWeb.SheetLive.Index do
           <div>
             <h3 class="card-title text-lg">{@sheet.name}</h3>
             <p :if={@children_count > 0} class="text-sm text-base-content/50">
-              {ngettext("%{count} subsheet", "%{count} subsheets", @children_count)}
+              {dngettext("sheets", "%{count} subsheet", "%{count} subsheets", @children_count)}
             </p>
           </div>
         </div>
@@ -110,7 +110,7 @@ defmodule StoryarnWeb.SheetLive.Index do
       {:error, _reason} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("You don't have access to this project."))
+         |> put_flash(:error, dgettext("sheets", "You don't have access to this project."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -123,7 +123,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   @impl true
   def handle_event("create_sheet", _params, socket) do
     if socket.assigns.can_edit do
-      attrs = %{name: gettext("Untitled")}
+      attrs = %{name: dgettext("sheets", "Untitled")}
 
       case Sheets.create_sheet(socket.assigns.project, attrs) do
         {:ok, new_sheet} ->
@@ -134,11 +134,11 @@ defmodule StoryarnWeb.SheetLive.Index do
            )}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not create sheet."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
       end
     else
       {:noreply,
-       put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+       put_flash(socket, :error, dgettext("sheets", "You don't have permission to perform this action."))}
     end
   end
 
@@ -152,15 +152,15 @@ defmodule StoryarnWeb.SheetLive.Index do
 
           {:noreply,
            socket
-           |> put_flash(:info, gettext("Sheet deleted successfully."))
+           |> put_flash(:info, dgettext("sheets", "Sheet deleted successfully."))
            |> assign(:sheets_tree, sheets_tree)}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not delete sheet."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
       end
     else
       {:noreply,
-       put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+       put_flash(socket, :error, dgettext("sheets", "You don't have permission to perform this action."))}
     end
   end
 
@@ -181,20 +181,20 @@ defmodule StoryarnWeb.SheetLive.Index do
 
         {:error, :would_create_cycle} ->
           {:noreply,
-           put_flash(socket, :error, gettext("Cannot move a sheet into its own children."))}
+           put_flash(socket, :error, dgettext("sheets", "Cannot move a sheet into its own children."))}
 
         {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not move sheet."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
       end
     else
       {:noreply,
-       put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+       put_flash(socket, :error, dgettext("sheets", "You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("create_child_sheet", %{"parent-id" => parent_id}, socket) do
     if socket.assigns.can_edit do
-      attrs = %{name: gettext("New Sheet"), parent_id: parent_id}
+      attrs = %{name: dgettext("sheets", "New Sheet"), parent_id: parent_id}
 
       case Sheets.create_sheet(socket.assigns.project, attrs) do
         {:ok, new_sheet} ->
@@ -209,11 +209,11 @@ defmodule StoryarnWeb.SheetLive.Index do
            )}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not create sheet."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
       end
     else
       {:noreply,
-       put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+       put_flash(socket, :error, dgettext("sheets", "You don't have permission to perform this action."))}
     end
   end
 end

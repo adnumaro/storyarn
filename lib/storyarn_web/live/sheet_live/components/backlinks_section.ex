@@ -14,7 +14,7 @@ defmodule StoryarnWeb.SheetLive.Components.BacklinksSection do
     <section>
       <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
         <.icon name="arrow-left" class="size-5" />
-        {gettext("Backlinks")}
+        {dgettext("sheets", "Backlinks")}
         <%= if @backlinks && length(@backlinks) > 0 do %>
           <span class="badge badge-sm">{length(@backlinks)}</span>
         <% end %>
@@ -88,9 +88,9 @@ defmodule StoryarnWeb.SheetLive.Components.BacklinksSection do
     ~H"""
     <div class="bg-base-200/50 rounded-lg p-8 text-center">
       <.icon name="link" class="size-12 mx-auto text-base-content/30 mb-4" />
-      <p class="text-base-content/70 mb-2">{gettext("No backlinks yet")}</p>
+      <p class="text-base-content/70 mb-2">{dgettext("sheets", "No backlinks yet")}</p>
       <p class="text-sm text-base-content/50">
-        {gettext("Sheets and flows that reference this sheet will appear here.")}
+        {dgettext("sheets", "Sheets and flows that reference this sheet will appear here.")}
       </p>
     </div>
     """

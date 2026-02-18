@@ -26,13 +26,13 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
     ~H"""
     <div>
       <div class="flex items-center justify-between mb-1">
-        <.tree_section label={gettext("Screenplays")} />
+        <.tree_section label={dgettext("screenplays", "Screenplays")} />
         <button
           :if={@can_edit}
           type="button"
           phx-click="create_screenplay"
           class="btn btn-ghost btn-xs"
-          title={gettext("New Screenplay")}
+          title={dgettext("screenplays", "New Screenplay")}
         >
           <.icon name="plus" class="size-3" />
         </button>
@@ -49,13 +49,13 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
         <input
           type="text"
           data-tree-search-input
-          placeholder={gettext("Filter screenplays...")}
+          placeholder={dgettext("screenplays", "Filter screenplays...")}
           class="input input-xs input-bordered w-full"
         />
       </div>
 
       <div :if={@screenplays_tree == []} class="text-sm text-base-content/50 px-4 py-2">
-        {gettext("No screenplays yet")}
+        {dgettext("screenplays", "No screenplays yet")}
       </div>
 
       <%!-- Tree container with sortable support --%>
@@ -80,9 +80,9 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
       <.confirm_modal
         :if={@can_edit}
         id="delete-screenplay-sidebar-confirm"
-        title={gettext("Delete screenplay?")}
-        message={gettext("Are you sure you want to delete this screenplay?")}
-        confirm_text={gettext("Delete")}
+        title={dgettext("screenplays", "Delete screenplay?")}
+        message={dgettext("screenplays", "Are you sure you want to delete this screenplay?")}
+        confirm_text={dgettext("screenplays", "Delete")}
         confirm_variant="error"
         icon="alert-triangle"
         on_confirm={JS.push("confirm_delete_screenplay")}
@@ -136,7 +136,7 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
             phx-click="create_child_screenplay"
             phx-value-parent-id={@screenplay.id}
             class="btn btn-ghost btn-xs btn-square"
-            title={gettext("Add child screenplay")}
+            title={dgettext("screenplays", "Add child screenplay")}
             onclick="event.preventDefault(); event.stopPropagation();"
           >
             <.icon name="plus" class="size-3" />
@@ -172,7 +172,7 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
             phx-click="create_child_screenplay"
             phx-value-parent-id={@screenplay.id}
             class="btn btn-ghost btn-xs btn-square"
-            title={gettext("Add child screenplay")}
+            title={dgettext("screenplays", "Add child screenplay")}
             onclick="event.preventDefault(); event.stopPropagation();"
           >
             <.icon name="plus" class="size-3" />
@@ -212,7 +212,7 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
             onclick="event.stopPropagation();"
           >
             <.icon name="trash-2" class="size-4" />
-            {gettext("Move to Trash")}
+            {dgettext("screenplays", "Move to Trash")}
           </button>
         </li>
       </ul>

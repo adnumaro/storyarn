@@ -38,7 +38,7 @@ defmodule StoryarnWeb.Components.AudioPicker do
     <div>
       <form :if={@can_edit} phx-change="select_audio" phx-target={@myself}>
         <select name="audio_asset_id" class="select select-sm select-bordered w-full">
-          <option value="">{gettext("No audio")}</option>
+          <option value="">{dgettext("sheets", "No audio")}</option>
           <option
             :for={asset <- @audio_assets}
             value={asset.id}
@@ -56,7 +56,7 @@ defmodule StoryarnWeb.Components.AudioPicker do
         ]}>
           <span :if={@uploading} class="loading loading-spinner loading-xs"></span>
           <.icon :if={!@uploading} name="upload" class="size-3" />
-          {if @uploading, do: gettext("Uploading..."), else: gettext("Upload audio")}
+          {if @uploading, do: dgettext("sheets", "Uploading..."), else: dgettext("sheets", "Upload audio")}
           <input
             type="file"
             accept="audio/*"
@@ -78,11 +78,11 @@ defmodule StoryarnWeb.Components.AudioPicker do
           class="text-xs text-base-content/60 mb-2 truncate"
           title={@selected_asset.filename}
         >
-          {gettext("Preview:")} {@selected_asset.filename}
+          {dgettext("sheets", "Preview:")} {@selected_asset.filename}
         </p>
         <audio controls class="w-full h-8">
           <source src={@selected_asset.url} type={@selected_asset.content_type} />
-          {gettext("Your browser does not support audio playback.")}
+          {dgettext("sheets", "Your browser does not support audio playback.")}
         </audio>
         <button
           :if={@can_edit}
@@ -92,12 +92,12 @@ defmodule StoryarnWeb.Components.AudioPicker do
           class="btn btn-ghost btn-xs text-error mt-2"
         >
           <.icon name="x" class="size-3" />
-          {gettext("Remove")}
+          {dgettext("sheets", "Remove")}
         </button>
       </div>
 
       <p :if={!@selected_asset && @can_edit && !@uploading} class="text-xs text-base-content/60 mt-2">
-        {gettext("Attach voice-over or ambient audio.")}
+        {dgettext("sheets", "Attach voice-over or ambient audio.")}
       </p>
     </div>
     """
@@ -175,7 +175,7 @@ defmodule StoryarnWeb.Components.AudioPicker do
         process_upload(socket, filename, content_type, binary_data)
 
       :error ->
-        send(self(), {:audio_picker, :error, gettext("Invalid file data.")})
+        send(self(), {:audio_picker, :error, dgettext("sheets", "Invalid file data.")})
         {:noreply, assign(socket, :uploading, false)}
     end
   end
@@ -215,11 +215,11 @@ defmodule StoryarnWeb.Components.AudioPicker do
          )}
       else
         {:error, _reason} ->
-          send(self(), {:audio_picker, :error, gettext("Could not upload audio file.")})
+          send(self(), {:audio_picker, :error, dgettext("sheets", "Could not upload audio file.")})
           {:noreply, assign(socket, :uploading, false)}
       end
     else
-      send(self(), {:audio_picker, :error, gettext("Unsupported file type.")})
+      send(self(), {:audio_picker, :error, dgettext("sheets", "Unsupported file type.")})
       {:noreply, assign(socket, :uploading, false)}
     end
   end

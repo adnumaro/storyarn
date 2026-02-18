@@ -57,10 +57,10 @@ defmodule StoryarnWeb.MapLive.Components.Legend do
         type="button"
         phx-click="toggle_legend"
         class="btn btn-sm bg-base-100 border-base-300 shadow-md gap-1.5"
-        title={gettext("Show legend")}
+        title={dgettext("maps", "Show legend")}
       >
         <.icon name="list" class="size-4" />
-        {gettext("Legend")}
+        {dgettext("maps", "Legend")}
       </button>
 
       <%!-- Expanded: full legend panel --%>
@@ -71,7 +71,7 @@ defmodule StoryarnWeb.MapLive.Components.Legend do
         <div class="px-3 py-2 border-b border-base-300 flex items-center justify-between shrink-0">
           <span class="text-xs font-medium flex items-center gap-1.5">
             <.icon name="list" class="size-3.5" />
-            {gettext("Legend")}
+            {dgettext("maps", "Legend")}
           </span>
           <button
             type="button"
@@ -86,7 +86,7 @@ defmodule StoryarnWeb.MapLive.Components.Legend do
           <%!-- Pin groups --%>
           <div :if={@pin_groups != []}>
             <div class="text-[10px] font-semibold text-base-content/40 uppercase tracking-wider mb-1">
-              {gettext("Pins")}
+              {dgettext("maps", "Pins")}
             </div>
             <div :for={group <- @pin_groups} class="flex items-center gap-2 py-0.5">
               <div
@@ -103,7 +103,7 @@ defmodule StoryarnWeb.MapLive.Components.Legend do
           <%!-- Zone groups --%>
           <div :if={@zone_groups != []}>
             <div class="text-[10px] font-semibold text-base-content/40 uppercase tracking-wider mb-1">
-              {gettext("Zones")}
+              {dgettext("maps", "Zones")}
             </div>
             <div :for={group <- @zone_groups} class="flex items-center gap-2 py-0.5">
               <div
@@ -118,7 +118,7 @@ defmodule StoryarnWeb.MapLive.Components.Legend do
           <%!-- Connection groups --%>
           <div :if={@connection_groups != []}>
             <div class="text-[10px] font-semibold text-base-content/40 uppercase tracking-wider mb-1">
-              {gettext("Connections")}
+              {dgettext("maps", "Connections")}
             </div>
             <div :for={group <- @connection_groups} class="flex items-center gap-2 py-0.5">
               <svg class="w-5 h-3 shrink-0" viewBox="0 0 20 12">

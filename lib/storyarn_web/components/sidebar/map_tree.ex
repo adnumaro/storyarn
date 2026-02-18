@@ -26,13 +26,13 @@ defmodule StoryarnWeb.Components.Sidebar.MapTree do
     ~H"""
     <div>
       <div class="flex items-center justify-between mb-1">
-        <.tree_section label={gettext("Maps")} />
+        <.tree_section label={dgettext("maps", "Maps")} />
         <button
           :if={@can_edit}
           type="button"
           phx-click="create_map"
           class="btn btn-ghost btn-xs"
-          title={gettext("New Map")}
+          title={dgettext("maps", "New Map")}
         >
           <.icon name="plus" class="size-3" />
         </button>
@@ -49,13 +49,13 @@ defmodule StoryarnWeb.Components.Sidebar.MapTree do
         <input
           type="text"
           data-tree-search-input
-          placeholder={gettext("Filter maps...")}
+          placeholder={dgettext("maps", "Filter maps...")}
           class="input input-xs input-bordered w-full"
         />
       </div>
 
       <div :if={@maps_tree == []} class="text-sm text-base-content/50 px-4 py-2">
-        {gettext("No maps yet")}
+        {dgettext("maps", "No maps yet")}
       </div>
 
       <%!-- Tree container with sortable support --%>
@@ -80,9 +80,9 @@ defmodule StoryarnWeb.Components.Sidebar.MapTree do
       <.confirm_modal
         :if={@can_edit}
         id="delete-map-sidebar-confirm"
-        title={gettext("Delete map?")}
-        message={gettext("Are you sure you want to delete this map?")}
-        confirm_text={gettext("Delete")}
+        title={dgettext("maps", "Delete map?")}
+        message={dgettext("maps", "Are you sure you want to delete this map?")}
+        confirm_text={dgettext("maps", "Delete")}
         confirm_variant="error"
         icon="alert-triangle"
         on_confirm={JS.push("confirm_delete_map")}
@@ -131,7 +131,7 @@ defmodule StoryarnWeb.Components.Sidebar.MapTree do
             phx-click="create_child_map"
             phx-value-parent-id={@map.id}
             class="btn btn-ghost btn-xs btn-square"
-            title={gettext("Add child map")}
+            title={dgettext("maps", "Add child map")}
             onclick="event.preventDefault(); event.stopPropagation();"
           >
             <.icon name="plus" class="size-3" />
@@ -165,7 +165,7 @@ defmodule StoryarnWeb.Components.Sidebar.MapTree do
             phx-click="create_child_map"
             phx-value-parent-id={@map.id}
             class="btn btn-ghost btn-xs btn-square"
-            title={gettext("Add child map")}
+            title={dgettext("maps", "Add child map")}
             onclick="event.preventDefault(); event.stopPropagation();"
           >
             <.icon name="plus" class="size-3" />
@@ -205,7 +205,7 @@ defmodule StoryarnWeb.Components.Sidebar.MapTree do
             onclick="event.stopPropagation();"
           >
             <.icon name="trash-2" class="size-4" />
-            {gettext("Move to Trash")}
+            {dgettext("maps", "Move to Trash")}
           </button>
         </li>
       </ul>

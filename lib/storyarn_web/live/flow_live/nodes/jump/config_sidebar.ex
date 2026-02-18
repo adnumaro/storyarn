@@ -21,7 +21,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Jump.ConfigSidebar do
 
   def config_sidebar(assigns) do
     hub_options =
-      [{"", gettext("Select target hub...")}] ++
+      [{"", dgettext("flows", "Select target hub...")}] ++
         Enum.map(assigns.flow_hubs, fn hub ->
           display =
             if hub.label && hub.label != "" do
@@ -40,12 +40,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Jump.ConfigSidebar do
       <.input
         field={@form[:target_hub_id]}
         type="select"
-        label={gettext("Target Hub")}
+        label={dgettext("flows", "Target Hub")}
         options={@hub_options}
         disabled={!@can_edit}
       />
       <p class="text-xs text-base-content/60 mt-1 mb-4">
-        {gettext("Select a Hub node to jump to within this flow.")}
+        {dgettext("flows", "Select a Hub node to jump to within this flow.")}
       </p>
       <button
         :if={@form[:target_hub_id].value && @form[:target_hub_id].value != ""}
@@ -55,12 +55,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Jump.ConfigSidebar do
         phx-value-id={@node.id}
       >
         <.icon name="search" class="size-4 mr-2" />
-        {gettext("Locate target Hub")}
+        {dgettext("flows", "Locate target Hub")}
       </button>
       <%= if length(@hub_options) <= 1 do %>
         <div class="alert alert-warning text-sm">
           <.icon name="alert-triangle" class="size-4" />
-          <span>{gettext("No Hub nodes in this flow. Create a Hub first.")}</span>
+          <span>{dgettext("flows", "No Hub nodes in this flow. Create a Hub first.")}</span>
         </div>
       <% end %>
     </.form>

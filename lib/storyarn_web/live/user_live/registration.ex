@@ -14,33 +14,33 @@ defmodule StoryarnWeb.UserLive.Registration do
       <div class="mx-auto max-w-sm">
         <div class="text-center">
           <.header>
-            {gettext("Register for an account")}
+            {dgettext("identity", "Register for an account")}
             <:subtitle>
-              {gettext("Already registered?")}
+              {dgettext("identity", "Already registered?")}
               <.link navigate={~p"/users/log-in"} class="font-semibold text-brand hover:underline">
-                {gettext("Log in")}
+                {dgettext("identity", "Log in")}
               </.link>
-              {gettext("to your account now.")}
+              {dgettext("identity", "to your account now.")}
             </:subtitle>
           </.header>
         </div>
 
         <.oauth_buttons class="mb-4" />
 
-        <div class="divider">{gettext("or register with email")}</div>
+        <div class="divider">{dgettext("identity", "or register with email")}</div>
 
         <.form for={@form} id="registration_form" phx-submit="save" phx-change="validate">
           <.input
             field={@form[:email]}
             type="email"
-            label={gettext("Email")}
+            label={dgettext("identity", "Email")}
             autocomplete="username"
             required
             phx-mounted={JS.focus()}
           />
 
-          <.button phx-disable-with={gettext("Creating account...")} class="btn btn-primary w-full">
-            {gettext("Create an account")}
+          <.button phx-disable-with={dgettext("identity", "Creating account...")} class="btn btn-primary w-full">
+            {dgettext("identity", "Create an account")}
           </.button>
         </.form>
       </div>
@@ -71,7 +71,7 @@ defmodule StoryarnWeb.UserLive.Registration do
       {:error, :rate_limited} ->
         {:noreply,
          socket
-         |> put_flash(:error, gettext("Too many registration attempts. Please try again later."))
+         |> put_flash(:error, dgettext("identity", "Too many registration attempts. Please try again later."))
          |> push_navigate(to: ~p"/users/register")}
     end
   end
@@ -96,7 +96,7 @@ defmodule StoryarnWeb.UserLive.Registration do
          socket
          |> put_flash(
            :info,
-           gettext("An email was sent to %{email}, please access it to confirm your account.",
+           dgettext("identity", "An email was sent to %{email}, please access it to confirm your account.",
              email: user.email
            )
          )

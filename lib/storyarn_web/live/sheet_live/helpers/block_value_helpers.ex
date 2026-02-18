@@ -35,7 +35,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockValueHelpers do
         {:ok, blocks}
 
       {:error, _} ->
-        {:error, gettext("Could not update multi-select.")}
+        {:error, dgettext("sheets", "Could not update multi-select.")}
     end
   end
 
@@ -75,7 +75,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockValueHelpers do
         {:ok, blocks}
 
       {:error, _} ->
-        {:error, gettext("Could not update content.")}
+        {:error, dgettext("sheets", "Could not update content.")}
     end
   end
 
@@ -103,7 +103,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockValueHelpers do
         {:ok, blocks}
 
       {:error, _} ->
-        {:error, gettext("Could not update boolean value.")}
+        {:error, dgettext("sheets", "Could not update boolean value.")}
     end
   end
 
@@ -152,7 +152,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockValueHelpers do
   defp update_and_load_blocks(block, new_content, sheet_id, project_id) do
     case Sheets.update_block_value(block, %{"content" => new_content}) do
       {:ok, _} -> load_blocks_result(sheet_id, project_id)
-      {:error, _} -> {:error, gettext("Could not update multi-select.")}
+      {:error, _} -> {:error, dgettext("sheets", "Could not update multi-select.")}
     end
   end
 
@@ -178,7 +178,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockValueHelpers do
          {:ok, _} <- Sheets.update_block_value(updated_block, %{"content" => new_content}) do
       load_blocks_result(sheet_id, project_id)
     else
-      _ -> {:error, gettext("Could not add option.")}
+      _ -> {:error, dgettext("sheets", "Could not add option.")}
     end
   end
 

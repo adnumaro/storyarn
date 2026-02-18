@@ -24,13 +24,13 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
     ~H"""
     <div>
       <div class="flex items-center justify-between mb-1">
-        <.tree_section label={gettext("Sheets")} />
+        <.tree_section label={dgettext("sheets", "Sheets")} />
         <button
           :if={@can_edit}
           type="button"
           phx-click="create_sheet"
           class="btn btn-ghost btn-xs"
-          title={gettext("New Sheet")}
+          title={dgettext("sheets", "New Sheet")}
         >
           <.icon name="plus" class="size-3" />
         </button>
@@ -47,13 +47,13 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
         <input
           type="text"
           data-tree-search-input
-          placeholder={gettext("Filter sheets...")}
+          placeholder={dgettext("sheets", "Filter sheets...")}
           class="input input-xs input-bordered w-full"
         />
       </div>
 
       <div :if={@sheets_tree == []} class="text-sm text-base-content/50 px-4 py-2">
-        {gettext("No sheets yet")}
+        {dgettext("sheets", "No sheets yet")}
       </div>
 
       <%!-- Tree container with sortable support --%>
@@ -118,7 +118,7 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
             phx-click="create_child_sheet"
             phx-value-parent-id={@sheet.id}
             class="btn btn-ghost btn-xs btn-square"
-            title={gettext("Add child sheet")}
+            title={dgettext("sheets", "Add child sheet")}
             onclick="event.preventDefault(); event.stopPropagation();"
           >
             <.icon name="plus" class="size-3" />
@@ -152,7 +152,7 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
             phx-click="create_child_sheet"
             phx-value-parent-id={@sheet.id}
             class="btn btn-ghost btn-xs btn-square"
-            title={gettext("Add child sheet")}
+            title={dgettext("sheets", "Add child sheet")}
             onclick="event.preventDefault(); event.stopPropagation();"
           >
             <.icon name="plus" class="size-3" />
@@ -190,7 +190,7 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
             onclick="event.stopPropagation();"
           >
             <.icon name="trash-2" class="size-4" />
-            {gettext("Move to Trash")}
+            {dgettext("sheets", "Move to Trash")}
           </button>
         </li>
       </ul>

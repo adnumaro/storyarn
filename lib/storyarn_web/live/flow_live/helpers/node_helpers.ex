@@ -62,7 +62,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.gettext(StoryarnWeb.Gettext, "Hub ID is required.")
+           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Hub ID is required.")
          )}
 
       {:error, :hub_id_not_unique} ->
@@ -70,7 +70,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.gettext(StoryarnWeb.Gettext, "Hub ID already exists in this flow.")
+           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Hub ID already exists in this flow.")
          )}
 
       {:error, _} ->
@@ -112,7 +112,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.gettext(StoryarnWeb.Gettext, "Could not create node.")
+           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Could not create node.")
          )}
     end
   end
@@ -171,7 +171,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.gettext(StoryarnWeb.Gettext, "Could not duplicate node.")
+           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Could not duplicate node.")
          )}
     end
   end
@@ -200,7 +200,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
        Phoenix.LiveView.put_flash(
          socket,
          :error,
-         Gettext.gettext(StoryarnWeb.Gettext, "This node is being edited by another user.")
+         Gettext.dgettext(StoryarnWeb.Gettext, "flows", "This node is being edited by another user.")
        )}
     else
       perform_node_deletion(socket, node_id)
@@ -232,8 +232,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     socket
     |> put_flash(
       :info,
-      Gettext.ngettext(
-        StoryarnWeb.Gettext,
+      Gettext.dngettext(StoryarnWeb.Gettext, "flows",
         "%{count} Jump node updated.",
         "%{count} Jump nodes updated.",
         renamed_count,
@@ -303,7 +302,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.gettext(StoryarnWeb.Gettext, "Could not restore node.")
+           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Could not restore node.")
          )}
     end
   end
@@ -345,8 +344,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          |> assign(:node_form, nil)
          |> put_flash(
            :warning,
-           Gettext.ngettext(
-             StoryarnWeb.Gettext,
+           Gettext.dngettext(StoryarnWeb.Gettext, "flows",
              "%{count} Jump node lost its target.",
              "%{count} Jump nodes lost their target.",
              count,
@@ -371,7 +369,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.gettext(StoryarnWeb.Gettext, "The Entry node cannot be deleted.")
+           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "The Entry node cannot be deleted.")
          )}
 
       {:error, :cannot_delete_last_exit} ->
@@ -379,7 +377,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.gettext(StoryarnWeb.Gettext, "A flow must have at least one Exit node.")
+           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "A flow must have at least one Exit node.")
          )}
 
       {:error, _} ->
@@ -387,7 +385,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.gettext(StoryarnWeb.Gettext, "Could not delete node.")
+           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Could not delete node.")
          )}
     end
   end

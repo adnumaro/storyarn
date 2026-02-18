@@ -21,7 +21,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
     >
       <div class="max-w-4xl mx-auto">
         <.header>
-          {gettext("Edit Translation")}
+          {dgettext("localization", "Edit Translation")}
           <:subtitle>
             <span class="font-mono text-sm">{@text.source_type}/{@text.source_field}</span>
           </:subtitle>
@@ -31,7 +31,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
               class="btn btn-ghost btn-sm"
             >
               <.icon name="arrow-left" class="size-4 mr-1" />
-              {gettext("Back")}
+              {dgettext("localization", "Back")}
             </.link>
           </:actions>
         </.header>
@@ -39,38 +39,38 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
         <div class="grid grid-cols-2 gap-6 mt-6">
           <%!-- Source text --%>
           <div>
-            <h4 class="font-medium text-sm mb-2 opacity-70">{gettext("Source")}</h4>
+            <h4 class="font-medium text-sm mb-2 opacity-70">{dgettext("localization", "Source")}</h4>
             <div class="bg-base-200 rounded-lg p-4 min-h-32">
               <div class="prose prose-sm">{raw(@text.source_text || "")}</div>
             </div>
             <div class="text-xs opacity-50 mt-1">
-              {gettext("%{count} words", count: @text.word_count || 0)}
+              {dgettext("localization", "%{count} words", count: @text.word_count || 0)}
             </div>
           </div>
 
           <%!-- Translation --%>
           <div>
             <h4 class="font-medium text-sm mb-2 opacity-70">
-              {gettext("Translation")} ({@text.locale_code})
+              {dgettext("localization", "Translation")} ({@text.locale_code})
             </h4>
             <.form for={@form} id="translation-form" phx-submit="save_translation">
               <.input
                 field={@form[:translated_text]}
                 type="textarea"
                 rows={6}
-                placeholder={gettext("Enter translation...")}
+                placeholder={dgettext("localization", "Enter translation...")}
               />
               <div class="flex items-center gap-3 mt-3">
                 <.input
                   field={@form[:status]}
                   type="select"
-                  label={gettext("Status")}
+                  label={dgettext("localization", "Status")}
                   options={[
-                    {gettext("Pending"), "pending"},
-                    {gettext("Draft"), "draft"},
-                    {gettext("In Progress"), "in_progress"},
-                    {gettext("Review"), "review"},
-                    {gettext("Final"), "final"}
+                    {dgettext("localization", "Pending"), "pending"},
+                    {dgettext("localization", "Draft"), "draft"},
+                    {dgettext("localization", "In Progress"), "in_progress"},
+                    {dgettext("localization", "Review"), "review"},
+                    {dgettext("localization", "Final"), "final"}
                   ]}
                 />
               </div>
@@ -78,23 +78,23 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
                 <.input
                   field={@form[:translator_notes]}
                   type="textarea"
-                  label={gettext("Translator Notes")}
+                  label={dgettext("localization", "Translator Notes")}
                   rows={2}
-                  placeholder={gettext("Add notes for reviewers...")}
+                  placeholder={dgettext("localization", "Add notes for reviewers...")}
                 />
               </div>
               <div class="flex items-center gap-3 mt-4">
-                <.button variant="primary" phx-disable-with={gettext("Saving...")}>
-                  {gettext("Save")}
+                <.button variant="primary" phx-disable-with={dgettext("localization", "Saving...")}>
+                  {dgettext("localization", "Save")}
                 </.button>
                 <.button
                   :if={@has_provider}
                   type="button"
                   phx-click="translate_with_deepl"
-                  phx-disable-with={gettext("Translating...")}
+                  phx-disable-with={dgettext("localization", "Translating...")}
                 >
                   <.icon name="sparkles" class="size-4 mr-1" />
-                  {gettext("Translate with DeepL")}
+                  {dgettext("localization", "Translate with DeepL")}
                 </.button>
               </div>
             </.form>
@@ -104,10 +104,10 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
         <%!-- Metadata --%>
         <div class="mt-6 text-sm opacity-60">
           <span :if={@text.machine_translated} class="badge badge-sm badge-outline mr-2">
-            {gettext("Machine translated")}
+            {dgettext("localization", "Machine translated")}
           </span>
           <span :if={@text.last_translated_at}>
-            {gettext("Last translated: %{time}", time: Calendar.strftime(@text.last_translated_at, "%Y-%m-%d %H:%M"))}
+            {dgettext("localization", "Last translated: %{time}", time: Calendar.strftime(@text.last_translated_at, "%Y-%m-%d %H:%M"))}
           </span>
         </div>
       </div>
@@ -161,7 +161,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
       {:error, :not_found} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("Project not found."))
+         |> put_flash(:error, dgettext("localization", "Project not found."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -179,7 +179,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
               socket
               |> assign(:text, updated_text)
               |> assign(:form, build_form(updated_text))
-              |> put_flash(:info, gettext("Translation saved."))
+              |> put_flash(:info, dgettext("localization", "Translation saved."))
 
             {:noreply, socket}
 
@@ -189,7 +189,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
     end
   end
 
@@ -204,18 +204,18 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
               socket
               |> assign(:text, updated_text)
               |> assign(:form, build_form(updated_text))
-              |> put_flash(:info, gettext("Translation complete."))
+              |> put_flash(:info, dgettext("localization", "Translation complete."))
 
             {:noreply, socket}
 
           {:error, reason} ->
             {:noreply,
-             put_flash(socket, :error, gettext("Translation failed: %{reason}", reason: inspect(reason)))}
+             put_flash(socket, :error, dgettext("localization", "Translation failed: %{reason}", reason: inspect(reason)))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
     end
   end
 

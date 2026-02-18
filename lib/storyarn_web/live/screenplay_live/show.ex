@@ -56,7 +56,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
               contenteditable="true"
               phx-hook="EditableTitle"
               phx-update="ignore"
-              data-placeholder={gettext("Untitled")}
+              data-placeholder={dgettext("screenplays", "Untitled")}
               data-name={@screenplay.name}
             >
             {@screenplay.name}
@@ -67,19 +67,19 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           </div>
           <div class="screenplay-toolbar-right">
             <span class="screenplay-toolbar-badge" id="screenplay-element-count">
-              {ngettext("%{count} element", "%{count} elements", length(@elements))}
+              {dngettext("screenplays", "%{count} element", "%{count} elements", length(@elements))}
             </span>
             <span
               :if={Screenplay.draft?(@screenplay)}
               class="screenplay-toolbar-badge screenplay-toolbar-draft"
             >
-              {gettext("Draft")}
+              {dgettext("screenplays", "Draft")}
             </span>
             <button
               type="button"
               class={["sp-toolbar-btn", @read_mode && "sp-toolbar-btn-active"]}
               phx-click="toggle_read_mode"
-              title={if @read_mode, do: gettext("Exit read mode"), else: gettext("Read mode")}
+              title={if @read_mode, do: dgettext("screenplays", "Exit read mode"), else: dgettext("screenplays", "Read mode")}
             >
               <.icon name={if @read_mode, do: "pencil", else: "book-open"} class="size-4" />
             </button>
@@ -88,7 +88,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
                 ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays/#{@screenplay.id}/export/fountain"
               }
               class="sp-toolbar-btn"
-              title={gettext("Export as Fountain")}
+              title={dgettext("screenplays", "Export as Fountain")}
               download
             >
               <.icon name="upload" class="size-4" />
@@ -97,7 +97,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
               :if={@can_edit}
               type="button"
               class="sp-toolbar-btn"
-              title={gettext("Import Fountain")}
+              title={dgettext("screenplays", "Import Fountain")}
               id="screenplay-import-btn"
               phx-hook="FountainImport"
             >
@@ -112,7 +112,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
                   phx-click="create_flow_from_screenplay"
                 >
                   <.icon name="git-branch" class="size-3.5" />
-                  {gettext("Create Flow")}
+                  {dgettext("screenplays", "Create Flow")}
                 </button>
               <% :linked -> %>
                 <button
@@ -126,19 +126,19 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
                   :if={@can_edit}
                   class="sp-sync-btn"
                   phx-click="sync_to_flow"
-                  title={gettext("Push screenplay to flow")}
+                  title={dgettext("screenplays", "Push screenplay to flow")}
                 >
                   <.icon name="upload" class="size-3.5" />
-                  {gettext("To Flow")}
+                  {dgettext("screenplays", "To Flow")}
                 </button>
                 <button
                   :if={@can_edit}
                   class="sp-sync-btn"
                   phx-click="sync_from_flow"
-                  title={gettext("Update screenplay from flow")}
+                  title={dgettext("screenplays", "Update screenplay from flow")}
                 >
                   <.icon name="download" class="size-3.5" />
-                  {gettext("From Flow")}
+                  {dgettext("screenplays", "From Flow")}
                 </button>
                 <button
                   :if={@can_edit}
@@ -151,8 +151,8 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
                 <span class="sp-sync-badge sp-sync-warning">
                   <.icon name="alert-triangle" class="size-3" />
                   {if status == :flow_deleted,
-                    do: gettext("Flow trashed"),
-                    else: gettext("Flow missing")}
+                    do: dgettext("screenplays", "Flow trashed"),
+                    else: dgettext("screenplays", "Flow missing")}
                 </span>
                 <button
                   :if={@can_edit}
@@ -160,7 +160,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
                   phx-click="unlink_flow"
                 >
                   <.icon name="unlink" class="size-3.5" />
-                  {gettext("Unlink")}
+                  {dgettext("screenplays", "Unlink")}
                 </button>
             <% end %>
           </div>
@@ -239,7 +239,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       {:error, _reason} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("You don't have access to this project."))
+         |> put_flash(:error, dgettext("screenplays", "You don't have access to this project."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -540,7 +540,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
            |> reload_screenplays_tree()}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not save screenplay name."))}
+          {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not save screenplay name."))}
       end
     end)
   end
@@ -559,10 +559,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
          |> assign(:screenplay, screenplay)
          |> assign(:link_status, :linked)
          |> assign(:linked_flow, flow)
-         |> put_flash(:info, gettext("Flow created and synced."))}
+         |> put_flash(:info, dgettext("screenplays", "Flow created and synced."))}
       else
         {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not create flow."))}
+          {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not create flow."))}
       end
     end)
   end
@@ -590,10 +590,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
            |> assign(:screenplay, updated)
            |> assign(:link_status, :unlinked)
            |> assign(:linked_flow, nil)
-           |> put_flash(:info, gettext("Flow unlinked."))}
+           |> put_flash(:info, dgettext("screenplays", "Flow unlinked."))}
 
         {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not unlink flow."))}
+          {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not unlink flow."))}
       end
     end)
   end
@@ -789,7 +789,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         {:noreply, socket}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete element."))}
+        {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not delete element."))}
     end
   end
 
@@ -825,7 +825,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         {:noreply, push_element_data_updated(socket, updated)}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not update dual dialogue."))}
+        {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not update dual dialogue."))}
     end
   end
 
@@ -851,7 +851,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
             {:noreply, push_element_data_updated(socket, updated)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not toggle parenthetical."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not toggle parenthetical."))}
         end
     end
   end
@@ -876,7 +876,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
              |> push_element_data_updated(updated)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not update title page."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not update title page."))}
         end
     end
   end
@@ -887,7 +887,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     parsed = Screenplays.parse_fountain(content)
 
     if parsed == [] do
-      {:noreply, put_flash(socket, :error, gettext("No content found in imported file."))}
+      {:noreply, put_flash(socket, :error, dgettext("screenplays", "No content found in imported file."))}
     else
       screenplay = socket.assigns.screenplay
 
@@ -911,10 +911,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
            |> assign_elements(elements)
            |> refresh_sheets_map()
            |> push_editor_content(elements)
-           |> put_flash(:info, gettext("Fountain file imported successfully."))}
+           |> put_flash(:info, dgettext("screenplays", "Fountain file imported successfully."))}
 
         {:error, _step, _reason, _changes} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not import file."))}
+          {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not import file."))}
       end
     end
   end
@@ -1043,7 +1043,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
              |> push_element_data_updated(updated)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not save condition."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not save condition."))}
         end
     end
   end
@@ -1065,7 +1065,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
              |> push_element_data_updated(updated)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not save instruction."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not save instruction."))}
         end
     end
   end
@@ -1089,7 +1089,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
              |> push_element_data_updated(updated)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not add choice."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not add choice."))}
         end
     end
   end
@@ -1112,7 +1112,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
              |> push_element_data_updated(updated)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not remove choice."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not remove choice."))}
         end
     end
   end
@@ -1161,20 +1161,20 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         {:noreply, update_element_in_list(socket, updated)}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not set character sheet."))}
+        {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not set character sheet."))}
     end
   end
 
   defp do_sync_to_flow(socket) do
     if socket.assigns.link_status != :linked do
-      {:noreply, put_flash(socket, :error, gettext("Screenplay is not linked to a flow."))}
+      {:noreply, put_flash(socket, :error, dgettext("screenplays", "Screenplay is not linked to a flow."))}
     else
       case Screenplays.sync_to_flow(socket.assigns.screenplay) do
         {:ok, _flow} ->
-          {:noreply, put_flash(socket, :info, gettext("Screenplay synced to flow."))}
+          {:noreply, put_flash(socket, :info, dgettext("screenplays", "Screenplay synced to flow."))}
 
         {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not sync screenplay."))}
+          {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not sync screenplay."))}
       end
     end
   end
@@ -1183,7 +1183,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     screenplay = socket.assigns.screenplay
 
     if socket.assigns.link_status != :linked do
-      {:noreply, put_flash(socket, :error, gettext("Screenplay is not linked to a flow."))}
+      {:noreply, put_flash(socket, :error, dgettext("screenplays", "Screenplay is not linked to a flow."))}
     else
       case Screenplays.sync_from_flow(screenplay) do
         {:ok, _screenplay} ->
@@ -1193,13 +1193,13 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
            socket
            |> assign_elements(elements)
            |> push_editor_content(elements)
-           |> put_flash(:info, gettext("Screenplay updated from flow."))}
+           |> put_flash(:info, dgettext("screenplays", "Screenplay updated from flow."))}
 
         {:error, :no_entry_node} ->
-          {:noreply, put_flash(socket, :error, gettext("Flow has no entry node."))}
+          {:noreply, put_flash(socket, :error, dgettext("screenplays", "Flow has no entry node."))}
 
         {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not sync from flow."))}
+          {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not sync from flow."))}
       end
     end
   end
@@ -1207,7 +1207,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   defp do_delete_screenplay(socket, screenplay_id) do
     case Screenplays.get_screenplay(socket.assigns.project.id, screenplay_id) do
       nil ->
-        {:noreply, put_flash(socket, :error, gettext("Screenplay not found."))}
+        {:noreply, put_flash(socket, :error, dgettext("screenplays", "Screenplay not found."))}
 
       screenplay ->
         persist_screenplay_deletion(socket, screenplay)
@@ -1220,24 +1220,24 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         if to_string(screenplay.id) == to_string(socket.assigns.screenplay.id) do
           {:noreply,
            socket
-           |> put_flash(:info, gettext("Screenplay moved to trash."))
+           |> put_flash(:info, dgettext("screenplays", "Screenplay moved to trash."))
            |> push_navigate(to: screenplays_path(socket))}
         else
           {:noreply,
            socket
-           |> put_flash(:info, gettext("Screenplay moved to trash."))
+           |> put_flash(:info, dgettext("screenplays", "Screenplay moved to trash."))
            |> reload_screenplays_tree()}
         end
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete screenplay."))}
+        {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not delete screenplay."))}
     end
   end
 
   defp do_move_to_parent(socket, item_id, new_parent_id, position) do
     case Screenplays.get_screenplay(socket.assigns.project.id, item_id) do
       nil ->
-        {:noreply, put_flash(socket, :error, gettext("Screenplay not found."))}
+        {:noreply, put_flash(socket, :error, dgettext("screenplays", "Screenplay not found."))}
 
       screenplay ->
         new_parent_id = parse_int(new_parent_id)
@@ -1248,7 +1248,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
             {:noreply, reload_screenplays_tree(socket)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not move screenplay."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not move screenplay."))}
         end
     end
   end
@@ -1276,16 +1276,16 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
              |> push_event("linked_pages_updated", %{linked_pages: new_linked_pages})
              |> push_element_data_updated(updated_element)
              |> reload_screenplays_tree()
-             |> put_flash(:info, gettext("Linked page created."))}
+             |> put_flash(:info, dgettext("screenplays", "Linked page created."))}
 
           {:error, :choice_not_found} ->
-            {:noreply, put_flash(socket, :error, gettext("Choice not found."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Choice not found."))}
 
           {:error, :already_linked} ->
-            {:noreply, put_flash(socket, :error, gettext("Choice already has a linked page."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Choice already has a linked page."))}
 
           {:error, _reason} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create linked page."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not create linked page."))}
         end
     end
   end
@@ -1325,7 +1325,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
              |> push_element_data_updated(updated_element)}
 
           {:error, _reason} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not unlink choice."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not unlink choice."))}
         end
     end
   end
@@ -1351,10 +1351,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
              |> push_event("linked_pages_updated", %{linked_pages: new_linked_pages})
              |> push_element_data_updated(updated_element)
              |> reload_screenplays_tree()
-             |> put_flash(:info, gettext("Linked pages created."))}
+             |> put_flash(:info, dgettext("screenplays", "Linked pages created."))}
 
           {:error, _reason} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create linked pages."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not create linked pages."))}
         end
     end
   end
@@ -1401,20 +1401,20 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("screenplays", "You don't have permission to perform this action."))}
     end
   end
 
   defp do_create_screenplay(socket, extra_attrs) do
     with_edit_permission(socket, fn ->
-      attrs = Map.merge(%{name: gettext("Untitled")}, extra_attrs)
+      attrs = Map.merge(%{name: dgettext("screenplays", "Untitled")}, extra_attrs)
 
       case Screenplays.create_screenplay(socket.assigns.project, attrs) do
         {:ok, new_screenplay} ->
           {:noreply, push_navigate(socket, to: screenplays_path(socket, new_screenplay.id))}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not create screenplay."))}
+          {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
       end
     end)
   end
@@ -1530,7 +1530,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
          |> push_element_data_updated(updated)}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not update choice."))}
+        {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not update choice."))}
     end
   end
 

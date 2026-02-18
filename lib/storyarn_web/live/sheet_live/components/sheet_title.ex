@@ -20,7 +20,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
         contenteditable="true"
         phx-hook="EditableTitle"
         phx-update="ignore"
-        data-placeholder={gettext("Untitled")}
+        data-placeholder={dgettext("sheets", "Untitled")}
         data-name={@sheet.name}
         data-target={@myself}
       >
@@ -38,7 +38,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
           contenteditable="true"
           phx-hook="EditableShortcut"
           phx-update="ignore"
-          data-placeholder={gettext("add-shortcut")}
+          data-placeholder={dgettext("sheets", "add-shortcut")}
           data-shortcut={@sheet.shortcut || ""}
           data-target={@myself}
         >
@@ -118,8 +118,8 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
 
   defp format_shortcut_error(changeset) do
     case changeset.errors[:shortcut] do
-      {msg, _opts} -> gettext("Shortcut %{error}", error: msg)
-      nil -> gettext("Could not save shortcut.")
+      {msg, _opts} -> dgettext("sheets", "Shortcut %{error}", error: msg)
+      nil -> dgettext("sheets", "Could not save shortcut.")
     end
   end
 end

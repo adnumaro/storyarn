@@ -12,7 +12,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Entry.Node do
 
   def type, do: "entry"
   def icon_name, do: "play"
-  def label, do: gettext("Entry")
+  def label, do: dgettext("flows", "Entry")
   def default_data, do: %{}
 
   def extract_form_data(_data), do: %{}

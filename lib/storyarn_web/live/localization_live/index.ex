@@ -25,9 +25,9 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     >
       <div class="max-w-6xl mx-auto">
         <.header>
-          {gettext("Localization")}
+          {dgettext("localization", "Localization")}
           <:subtitle>
-            {gettext("Manage translations for your project content")}
+            {dgettext("localization", "Manage translations for your project content")}
           </:subtitle>
           <:actions :if={@can_edit && @target_languages != []}>
             <div class="flex items-center gap-2">
@@ -36,22 +36,22 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                 class="btn btn-sm btn-ghost"
               >
                 <.icon name="bar-chart-3" class="size-4 mr-1" />
-                {gettext("Report")}
+                {dgettext("localization", "Report")}
               </.link>
               <div :if={@selected_locale} class="dropdown dropdown-end">
                 <div tabindex="0" role="button" class="btn btn-sm btn-ghost">
                   <.icon name="download" class="size-4 mr-1" />
-                  {gettext("Export")}
+                  {dgettext("localization", "Export")}
                 </div>
                 <ul tabindex="0" class="dropdown-content menu bg-base-200 rounded-box z-10 w-40 p-2 shadow-sm">
                   <li>
                     <a href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/xlsx/#{@selected_locale}"}>
-                      {gettext("Excel (.xlsx)")}
+                      {dgettext("localization", "Excel (.xlsx)")}
                     </a>
                   </li>
                   <li>
                     <a href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/csv/#{@selected_locale}"}>
-                      {gettext("CSV (.csv)")}
+                      {dgettext("localization", "CSV (.csv)")}
                     </a>
                   </li>
                 </ul>
@@ -59,11 +59,11 @@ defmodule StoryarnWeb.LocalizationLive.Index do
               <.button
                 :if={@has_provider}
                 phx-click="translate_batch"
-                phx-disable-with={gettext("Translating...")}
+                phx-disable-with={dgettext("localization", "Translating...")}
                 variant="primary"
               >
                 <.icon name="languages" class="size-4 mr-1" />
-                {gettext("Translate All Pending")}
+                {dgettext("localization", "Translate All Pending")}
               </.button>
             </div>
           </:actions>
@@ -90,7 +90,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                 :if={@can_edit}
                 phx-click={show_modal("remove-language-#{lang.id}")}
                 class="ml-0.5 hover:text-error cursor-pointer"
-                title={gettext("Remove language")}
+                title={dgettext("localization", "Remove language")}
               >
                 <.icon name="x" class="size-3" />
               </button>
@@ -100,12 +100,12 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             <div :if={@can_edit} class="dropdown">
               <div tabindex="0" role="button" class="btn btn-ghost btn-xs gap-1">
                 <.icon name="plus" class="size-3.5" />
-                {gettext("Add Language")}
+                {dgettext("localization", "Add Language")}
               </div>
               <div tabindex="0" class="dropdown-content bg-base-200 rounded-box z-10 w-64 p-3 shadow-sm">
                 <form phx-change="add_target_language">
                   <select name="locale_code" class="select select-bordered select-sm w-full">
-                    <option value="">{gettext("Select language...")}</option>
+                    <option value="">{dgettext("localization", "Select language...")}</option>
                     <option
                       :for={{label, code} <- language_picker_options(assigns)}
                       value={code}
@@ -121,12 +121,12 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             <button
               :if={@can_edit && @target_languages != []}
               phx-click="sync_texts"
-              phx-disable-with={gettext("Syncing...")}
+              phx-disable-with={dgettext("localization", "Syncing...")}
               class="btn btn-ghost btn-xs gap-1"
-              title={gettext("Re-extract all translatable content from flows, sheets, and blocks")}
+              title={dgettext("localization", "Re-extract all translatable content from flows, sheets, and blocks")}
             >
               <.icon name="refresh-cw" class="size-3.5" />
-              {gettext("Sync")}
+              {dgettext("localization", "Sync")}
             </button>
           </div>
 
@@ -134,15 +134,15 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           <.confirm_modal
             :for={lang <- @target_languages}
             id={"remove-language-#{lang.id}"}
-            title={gettext("Remove language?")}
+            title={dgettext("localization", "Remove language?")}
             message={
-              gettext(
+              dgettext("localization", 
                 "This will remove %{name} (%{code}) and all its translations from this project.",
                 name: lang.name,
                 code: lang.locale_code
               )
             }
-            confirm_text={gettext("Remove")}
+            confirm_text={dgettext("localization", "Remove")}
             confirm_variant="error"
             icon="trash-2"
             on_confirm={JS.push("remove_language", value: %{id: lang.id})}
@@ -152,7 +152,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         <%!-- No target languages yet --%>
         <div :if={@target_languages == []} class="mt-4">
           <.empty_state icon="globe">
-            {gettext("Add a target language above to start translating.")}
+            {dgettext("localization", "Add a target language above to start translating.")}
           </.empty_state>
         </div>
 
@@ -183,7 +183,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                 max={max(@progress.total, 1)}
               />
               <span class="text-sm opacity-70">
-                {gettext("%{done} / %{total} final",
+                {dgettext("localization", "%{done} / %{total} final",
                   done: @progress.final,
                   total: @progress.total
                 )}
@@ -200,7 +200,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
               phx-change="change_filter"
             >
               <option value="" selected={@filter_status == nil}>
-                {gettext("All statuses")}
+                {dgettext("localization", "All statuses")}
               </option>
               <option :for={s <- ~w(pending draft in_progress review final)} value={s} selected={@filter_status == s}>
                 {status_label(s)}
@@ -214,7 +214,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
               phx-change="change_filter"
             >
               <option value="" selected={@filter_source_type == nil}>
-                {gettext("All types")}
+                {dgettext("localization", "All types")}
               </option>
               <option :for={t <- ~w(flow_node block sheet flow)} value={t} selected={@filter_source_type == t}>
                 {source_type_label(t)}
@@ -229,7 +229,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                   type="text"
                   name="search"
                   value={@search}
-                  placeholder={gettext("Search in source or translation...")}
+                  placeholder={dgettext("localization", "Search in source or translation...")}
                   phx-debounce="300"
                   class="grow"
                 />
@@ -239,7 +239,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
           <%!-- Empty state --%>
           <.empty_state :if={@texts == []} icon="file-text">
-            {gettext("No translations found matching your filters.")}
+            {dgettext("localization", "No translations found matching your filters.")}
           </.empty_state>
 
           <%!-- Translation table --%>
@@ -247,11 +247,11 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             <table class="table table-sm">
               <thead>
                 <tr>
-                  <th class="w-12">{gettext("Type")}</th>
-                  <th>{gettext("Source Text")}</th>
-                  <th>{gettext("Translation")}</th>
-                  <th class="w-28">{gettext("Status")}</th>
-                  <th class="w-16">{gettext("Words")}</th>
+                  <th class="w-12">{dgettext("localization", "Type")}</th>
+                  <th>{dgettext("localization", "Source Text")}</th>
+                  <th>{dgettext("localization", "Translation")}</th>
+                  <th class="w-28">{dgettext("localization", "Status")}</th>
+                  <th class="w-16">{dgettext("localization", "Words")}</th>
                   <th :if={@can_edit} class="w-20"></th>
                 </tr>
               </thead>
@@ -273,13 +273,13 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                       {strip_html(text.translated_text)}
                     </div>
                     <div :if={!text.translated_text} class="text-sm opacity-30 italic">
-                      {gettext("Not translated")}
+                      {dgettext("localization", "Not translated")}
                     </div>
                     <span
                       :if={text.machine_translated}
                       class="badge badge-xs badge-outline opacity-60"
                     >
-                      {gettext("MT")}
+                      {dgettext("localization", "MT")}
                     </span>
                   </td>
                   <td>
@@ -300,7 +300,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                       phx-click="translate_single"
                       phx-value-id={text.id}
                       class="btn btn-ghost btn-xs"
-                      title={gettext("Translate with DeepL")}
+                      title={dgettext("localization", "Translate with DeepL")}
                     >
                       <.icon name="sparkles" class="size-3.5" />
                     </button>
@@ -322,7 +322,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                 «
               </button>
               <button class="join-item btn btn-sm btn-disabled">
-                {gettext("Page %{page} of %{total}",
+                {dgettext("localization", "Page %{page} of %{total}",
                   page: @page,
                   total: ceil(@total_count / @page_size)
                 )}
@@ -414,7 +414,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       {:error, :not_found} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("Project not found."))
+         |> put_flash(:error, dgettext("localization", "Project not found."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -480,7 +480,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
     end
   end
 
@@ -492,14 +492,14 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         if lang && !lang.is_source do
           {:ok, _} = Localization.remove_language(lang)
           socket = reload_languages(socket)
-          {:noreply, put_flash(socket, :info, gettext("Language removed."))}
+          {:noreply, put_flash(socket, :info, dgettext("localization", "Language removed."))}
         else
-          {:noreply, put_flash(socket, :error, gettext("Cannot remove the source language."))}
+          {:noreply, put_flash(socket, :error, dgettext("localization", "Cannot remove the source language."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
     end
   end
 
@@ -513,7 +513,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           |> reload_languages()
           |> put_flash(
             :info,
-            ngettext(
+            dngettext("localization", 
               "Synced %{count} text entry.",
               "Synced %{count} text entries.",
               count,
@@ -525,7 +525,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
     end
   end
 
@@ -541,7 +541,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
               |> load_texts()
               |> put_flash(
                 :info,
-                ngettext(
+                dngettext("localization", 
                   "Translated %{count} string.",
                   "Translated %{count} strings.",
                   count,
@@ -552,18 +552,18 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             {:noreply, socket}
 
           {:error, :rate_limited} ->
-            {:noreply, put_flash(socket, :error, gettext("Rate limited by DeepL. Try again later."))}
+            {:noreply, put_flash(socket, :error, dgettext("localization", "Rate limited by DeepL. Try again later."))}
 
           {:error, :quota_exceeded} ->
-            {:noreply, put_flash(socket, :error, gettext("DeepL quota exceeded."))}
+            {:noreply, put_flash(socket, :error, dgettext("localization", "DeepL quota exceeded."))}
 
           {:error, reason} ->
-            {:noreply, put_flash(socket, :error, gettext("Translation failed: %{reason}", reason: inspect(reason)))}
+            {:noreply, put_flash(socket, :error, dgettext("localization", "Translation failed: %{reason}", reason: inspect(reason)))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
     end
   end
 
@@ -577,17 +577,17 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             socket =
               socket
               |> load_texts()
-              |> put_flash(:info, gettext("Translation complete."))
+              |> put_flash(:info, dgettext("localization", "Translation complete."))
 
             {:noreply, socket}
 
           {:error, reason} ->
-            {:noreply, put_flash(socket, :error, gettext("Translation failed: %{reason}", reason: inspect(reason)))}
+            {:noreply, put_flash(socket, :error, dgettext("localization", "Translation failed: %{reason}", reason: inspect(reason)))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
     end
   end
 
@@ -676,11 +676,11 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
   defp strip_html(text), do: ContentUtils.strip_html(text)
 
-  defp status_label("pending"), do: gettext("Pending")
-  defp status_label("draft"), do: gettext("Draft")
-  defp status_label("in_progress"), do: gettext("In Progress")
-  defp status_label("review"), do: gettext("Review")
-  defp status_label("final"), do: gettext("Final")
+  defp status_label("pending"), do: dgettext("localization", "Pending")
+  defp status_label("draft"), do: dgettext("localization", "Draft")
+  defp status_label("in_progress"), do: dgettext("localization", "In Progress")
+  defp status_label("review"), do: dgettext("localization", "Review")
+  defp status_label("final"), do: dgettext("localization", "Final")
   defp status_label(other), do: other
 
   defp status_class("pending"), do: "badge-ghost"
@@ -690,11 +690,11 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   defp status_class("final"), do: "badge-success"
   defp status_class(_), do: "badge-ghost"
 
-  defp source_type_label("flow_node"), do: gettext("Node")
-  defp source_type_label("block"), do: gettext("Block")
-  defp source_type_label("sheet"), do: gettext("Sheet")
-  defp source_type_label("flow"), do: gettext("Flow")
-  defp source_type_label("screenplay"), do: gettext("Screenplay")
+  defp source_type_label("flow_node"), do: dgettext("localization", "Node")
+  defp source_type_label("block"), do: dgettext("localization", "Block")
+  defp source_type_label("sheet"), do: dgettext("localization", "Sheet")
+  defp source_type_label("flow"), do: dgettext("localization", "Flow")
+  defp source_type_label("screenplay"), do: dgettext("localization", "Screenplay")
   defp source_type_label(other), do: other
 
   defp source_type_icon("flow_node"), do: "message-square"
@@ -724,18 +724,18 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         msg =
           if count > 0,
             do:
-              ngettext(
+              dngettext("localization", 
                 "Language added. Extracted %{count} text.",
                 "Language added. Extracted %{count} texts.",
                 count,
                 count: count
               ),
-            else: gettext("Language added.")
+            else: dgettext("localization", "Language added.")
 
         {:noreply, put_flash(socket, :info, msg)}
 
       {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Failed to add language."))}
+        {:noreply, put_flash(socket, :error, dgettext("localization", "Failed to add language."))}
     end
   end
 end

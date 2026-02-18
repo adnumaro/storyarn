@@ -23,7 +23,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.ConfigSidebar do
 
   def config_sidebar(assigns) do
     flow_options =
-      [{"", gettext("Select a flow...")}] ++
+      [{"", dgettext("flows", "Select a flow...")}] ++
         Enum.map(assigns.available_flows, fn flow ->
           display =
             if flow.shortcut && flow.shortcut != "" do
@@ -46,7 +46,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.ConfigSidebar do
     ~H"""
     <div class="space-y-4">
       <div>
-        <label class="label text-sm font-medium">{gettext("Referenced Flow")}</label>
+        <label class="label text-sm font-medium">{dgettext("flows", "Referenced Flow")}</label>
         <form phx-change="update_subflow_reference">
           <select
             class="select select-bordered select-sm w-full"
@@ -63,22 +63,22 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.ConfigSidebar do
           </select>
         </form>
         <p class="text-xs text-base-content/60 mt-1">
-          {gettext("Select a flow to reference. Double-click the node to navigate to it.")}
+          {dgettext("flows", "Select a flow to reference. Double-click the node to navigate to it.")}
         </p>
       </div>
 
       <div :if={@node.data["stale_reference"]} class="alert alert-error text-sm">
         <.icon name="alert-triangle" class="size-4" />
-        <span>{gettext("Referenced flow has been deleted.")}</span>
+        <span>{dgettext("flows", "Referenced flow has been deleted.")}</span>
       </div>
 
       <div :if={@current_ref_str != "" && !@node.data["stale_reference"]}>
         <h3 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">
-          {gettext("Exit Nodes")}
+          {dgettext("flows", "Exit Nodes")}
           <span class="text-base-content/40 ml-1">({length(@subflow_exits)})</span>
         </h3>
         <p :if={@subflow_exits == []} class="text-xs text-base-content/40 italic">
-          {gettext("No Exit nodes in the referenced flow.")}
+          {dgettext("flows", "No Exit nodes in the referenced flow.")}
         </p>
         <div :if={@subflow_exits != []} class="space-y-1">
           <div
@@ -92,7 +92,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.ConfigSidebar do
             <span class="opacity-60">
               {exit_mode_icon(exit_node[:exit_mode] || "terminal")}
             </span>
-            <span class="truncate">{exit_node.label || gettext("Unnamed exit")}</span>
+            <span class="truncate">{exit_node.label || dgettext("flows", "Unnamed exit")}</span>
           </div>
         </div>
       </div>
@@ -105,12 +105,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.ConfigSidebar do
         phx-value-flow-id={@current_ref_str}
       >
         <.icon name="external-link" class="size-4 mr-2" />
-        {gettext("Open Subflow")}
+        {dgettext("flows", "Open Subflow")}
       </button>
 
       <div :if={length(@flow_options) <= 1} class="alert alert-warning text-sm">
         <.icon name="alert-triangle" class="size-4" />
-        <span>{gettext("No other flows in this project. Create another flow first.")}</span>
+        <span>{dgettext("flows", "No other flows in this project. Create another flow first.")}</span>
       </div>
     </div>
     """

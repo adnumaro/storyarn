@@ -28,7 +28,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          |> schedule_save_status_reset()}
 
       {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not remove avatar."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove avatar."))}
     end
   end
 
@@ -51,7 +51,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          |> schedule_save_status_reset()}
 
       {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not set avatar."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not set avatar."))}
     end
   end
 
@@ -67,7 +67,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
         upload_avatar_file(socket, filename, content_type, binary_data)
 
       :error ->
-        {:noreply, put_flash(socket, :error, gettext("Invalid file data."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}
     end
   end
 
@@ -88,7 +88,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          |> schedule_save_status_reset()}
 
       {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not remove banner."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove banner."))}
     end
   end
 
@@ -104,7 +104,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
         upload_banner_file(socket, filename, content_type, binary_data)
 
       :error ->
-        {:noreply, put_flash(socket, :error, gettext("Invalid file data."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}
     end
   end
 
@@ -141,10 +141,10 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          |> schedule_save_status_reset()}
       else
         {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not upload avatar."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload avatar."))}
       end
     else
-      {:noreply, put_flash(socket, :error, gettext("Unsupported file type."))}
+      {:noreply, put_flash(socket, :error, dgettext("sheets", "Unsupported file type."))}
     end
   end
 
@@ -177,10 +177,10 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          |> schedule_save_status_reset()}
       else
         {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not upload banner."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload banner."))}
       end
     else
-      {:noreply, put_flash(socket, :error, gettext("Unsupported file type."))}
+      {:noreply, put_flash(socket, :error, dgettext("sheets", "Unsupported file type."))}
     end
   end
 

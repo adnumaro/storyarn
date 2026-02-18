@@ -26,13 +26,13 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
     ~H"""
     <div>
       <div class="flex items-center justify-between mb-1">
-        <.tree_section label={gettext("Flows")} />
+        <.tree_section label={dgettext("flows", "Flows")} />
         <button
           :if={@can_edit}
           type="button"
           phx-click="create_flow"
           class="btn btn-ghost btn-xs"
-          title={gettext("New Flow")}
+          title={dgettext("flows", "New Flow")}
         >
           <.icon name="plus" class="size-3" />
         </button>
@@ -49,13 +49,13 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
         <input
           type="text"
           data-tree-search-input
-          placeholder={gettext("Filter flows...")}
+          placeholder={dgettext("flows", "Filter flows...")}
           class="input input-xs input-bordered w-full"
         />
       </div>
 
       <div :if={@flows_tree == []} class="text-sm text-base-content/50 px-4 py-2">
-        {gettext("No flows yet")}
+        {dgettext("flows", "No flows yet")}
       </div>
 
       <%!-- Tree container with sortable support --%>
@@ -80,9 +80,9 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
       <.confirm_modal
         :if={@can_edit}
         id="delete-flow-sidebar-confirm"
-        title={gettext("Delete flow?")}
-        message={gettext("Are you sure you want to delete this flow?")}
-        confirm_text={gettext("Delete")}
+        title={dgettext("flows", "Delete flow?")}
+        message={dgettext("flows", "Are you sure you want to delete this flow?")}
+        confirm_text={dgettext("flows", "Delete")}
         confirm_variant="error"
         icon="alert-triangle"
         on_confirm={JS.push("confirm_delete_flow")}
@@ -131,7 +131,7 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
             phx-click="create_child_flow"
             phx-value-parent-id={@flow.id}
             class="btn btn-ghost btn-xs btn-square"
-            title={gettext("Add child flow")}
+            title={dgettext("flows", "Add child flow")}
             onclick="event.preventDefault(); event.stopPropagation();"
           >
             <.icon name="plus" class="size-3" />
@@ -165,7 +165,7 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
             phx-click="create_child_flow"
             phx-value-parent-id={@flow.id}
             class="btn btn-ghost btn-xs btn-square"
-            title={gettext("Add child flow")}
+            title={dgettext("flows", "Add child flow")}
             onclick="event.preventDefault(); event.stopPropagation();"
           >
             <.icon name="plus" class="size-3" />
@@ -202,7 +202,7 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
             onclick="event.stopPropagation();"
           >
             <.icon name="star" class="size-4" />
-            {gettext("Set as main")}
+            {dgettext("flows", "Set as main")}
           </button>
         </li>
         <li>
@@ -216,7 +216,7 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
             onclick="event.stopPropagation();"
           >
             <.icon name="trash-2" class="size-4" />
-            {gettext("Move to Trash")}
+            {dgettext("flows", "Move to Trash")}
           </button>
         </li>
       </ul>

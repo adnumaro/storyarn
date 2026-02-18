@@ -24,23 +24,23 @@ defmodule StoryarnWeb.FlowLive.Form do
         <.input
           field={@form[:name]}
           type="text"
-          label={gettext("Name")}
-          placeholder={gettext("Main Story")}
+          label={dgettext("flows", "Name")}
+          placeholder={dgettext("flows", "Main Story")}
           required
         />
         <.input
           field={@form[:description]}
           type="textarea"
-          label={gettext("Description")}
-          placeholder={gettext("Describe the purpose of this flow...")}
+          label={dgettext("flows", "Description")}
+          placeholder={dgettext("flows", "Describe the purpose of this flow...")}
           rows={3}
         />
         <div class="modal-action">
           <.link patch={@navigate} class="btn btn-ghost">
-            {gettext("Cancel")}
+            {dgettext("flows", "Cancel")}
           </.link>
-          <.button variant="primary" phx-disable-with={gettext("Creating...")}>
-            {gettext("Create Flow")}
+          <.button variant="primary" phx-disable-with={dgettext("flows", "Creating...")}>
+            {dgettext("flows", "Create Flow")}
           </.button>
         </div>
       </.form>

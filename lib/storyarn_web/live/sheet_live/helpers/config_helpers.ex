@@ -55,7 +55,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ConfigHelpers do
          |> assign(:save_status, :saved)}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not save configuration."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not save configuration."))}
     end
   end
 
@@ -140,7 +140,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ConfigHelpers do
          |> assign(:configuring_block, updated_block)}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not update block."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update block."))}
     end
   end
 

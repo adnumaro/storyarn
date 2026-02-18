@@ -56,7 +56,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
         <button
           type="button"
           class="drag-handle p-1 cursor-grab active:cursor-grabbing text-base-content/50 hover:text-base-content"
-          title={gettext("Drag to reorder")}
+          title={dgettext("sheets", "Drag to reorder")}
         >
           <.icon name="grip-vertical" class="size-4" />
         </button>
@@ -66,7 +66,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
       <div
         :if={Map.get(@block, :scope) == "children"}
         class="absolute -right-1 top-1 lg:opacity-0 lg:group-hover:opacity-100"
-        title={gettext("Inherited by children")}
+        title={dgettext("sheets", "Inherited by children")}
       >
         <.icon name="arrow-down" class="size-3 text-info/60" />
       </div>
@@ -131,7 +131,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
               target={@target}
             />
           <% _ -> %>
-            <div class="text-base-content/50">{gettext("Unknown block type")}</div>
+            <div class="text-base-content/50">{dgettext("sheets", "Unknown block type")}</div>
         <% end %>
       </div>
     </div>
@@ -153,7 +153,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
       :if={@is_inherited}
       type="button"
       class="btn btn-ghost btn-xs btn-square tooltip tooltip-left"
-      data-tip={gettext("Go to source")}
+      data-tip={dgettext("sheets", "Go to source")}
       phx-click="navigate_to_source"
       phx-value-id={@block.id}
       phx-target={@target}
@@ -171,13 +171,13 @@ defmodule StoryarnWeb.Components.BlockComponents do
         <li :if={@is_inherited}>
           <button phx-click="navigate_to_source" phx-value-id={@block.id} phx-target={@target}>
             <.icon name="arrow-up-right" class="size-4" />
-            {gettext("Go to source")}
+            {dgettext("sheets", "Go to source")}
           </button>
         </li>
         <li :if={@is_inherited}>
           <button phx-click="detach_inherited_block" phx-value-id={@block.id} phx-target={@target}>
             <.icon name="scissors" class="size-4" />
-            {gettext("Detach property")}
+            {dgettext("sheets", "Detach property")}
           </button>
         </li>
         <li :if={@is_inherited}>
@@ -187,7 +187,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
             phx-target={@target}
           >
             <.icon name="eye-off" class="size-4" />
-            {gettext("Hide for children")}
+            {dgettext("sheets", "Hide for children")}
           </button>
         </li>
 
@@ -203,7 +203,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
             phx-target={@target}
           >
             <.icon name="settings" class="size-4" />
-            {gettext("Configure")}
+            {dgettext("sheets", "Configure")}
           </button>
         </li>
 
@@ -218,7 +218,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
             phx-target={@target}
           >
             <.icon name="trash-2" class="size-4" />
-            {gettext("Delete")}
+            {dgettext("sheets", "Delete")}
           </button>
         </li>
       </ul>

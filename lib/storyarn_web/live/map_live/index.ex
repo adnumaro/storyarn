@@ -24,9 +24,9 @@ defmodule StoryarnWeb.MapLive.Index do
     >
       <div class="max-w-4xl mx-auto">
         <.header>
-          {gettext("Maps")}
+          {dgettext("maps", "Maps")}
           <:subtitle>
-            {gettext("Create maps to visualize your world")}
+            {dgettext("maps", "Create maps to visualize your world")}
           </:subtitle>
           <:actions :if={@can_edit}>
             <.link
@@ -34,13 +34,13 @@ defmodule StoryarnWeb.MapLive.Index do
               class="btn btn-primary"
             >
               <.icon name="plus" class="size-4 mr-2" />
-              {gettext("New Map")}
+              {dgettext("maps", "New Map")}
             </.link>
           </:actions>
         </.header>
 
         <.empty_state :if={@maps == []} icon="map">
-          {gettext("No maps yet. Create your first map to get started.")}
+          {dgettext("maps", "No maps yet. Create your first map to get started.")}
         </.empty_state>
 
         <div :if={@maps != []} class="mt-6 space-y-2">
@@ -63,7 +63,7 @@ defmodule StoryarnWeb.MapLive.Index do
             module={StoryarnWeb.MapLive.Form}
             id="new-map-form"
             project={@project}
-            title={gettext("New Map")}
+            title={dgettext("maps", "New Map")}
             navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/maps"}
           />
         </.modal>
@@ -71,9 +71,9 @@ defmodule StoryarnWeb.MapLive.Index do
         <.confirm_modal
           :if={@can_edit}
           id="delete-map-confirm"
-          title={gettext("Delete map?")}
-          message={gettext("Are you sure you want to delete this map?")}
-          confirm_text={gettext("Delete")}
+          title={dgettext("maps", "Delete map?")}
+          message={dgettext("maps", "Are you sure you want to delete this map?")}
+          confirm_text={dgettext("maps", "Delete")}
           confirm_variant="error"
           icon="alert-triangle"
           on_confirm={JS.push("confirm_delete")}
@@ -106,7 +106,7 @@ defmodule StoryarnWeb.MapLive.Index do
                 <span
                   :if={@map.shortcut}
                   class="badge badge-ghost badge-xs font-mono"
-                  title={gettext("Shortcut")}
+                  title={dgettext("maps", "Shortcut")}
                 >
                   #{@map.shortcut}
                 </span>
@@ -140,7 +140,7 @@ defmodule StoryarnWeb.MapLive.Index do
                   onclick="event.stopPropagation();"
                 >
                   <.icon name="trash-2" class="size-4" />
-                  {gettext("Delete")}
+                  {dgettext("maps", "Delete")}
                 </button>
               </li>
             </ul>
@@ -182,7 +182,7 @@ defmodule StoryarnWeb.MapLive.Index do
       {:error, _reason} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("You don't have access to this project."))
+         |> put_flash(:error, dgettext("maps", "You don't have access to this project."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -196,7 +196,7 @@ defmodule StoryarnWeb.MapLive.Index do
   def handle_info({StoryarnWeb.MapLive.Form, {:saved, map}}, socket) do
     {:noreply,
      socket
-     |> put_flash(:info, gettext("Map created successfully."))
+     |> put_flash(:info, dgettext("maps", "Map created successfully."))
      |> push_navigate(
        to:
          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/maps/#{map.id}"
@@ -220,20 +220,20 @@ defmodule StoryarnWeb.MapLive.Index do
     case authorize(socket, :edit_content) do
       :ok ->
         case Maps.get_map(socket.assigns.project.id, map_id) do
-          nil -> {:noreply, put_flash(socket, :error, gettext("Map not found."))}
+          nil -> {:noreply, put_flash(socket, :error, dgettext("maps", "Map not found."))}
           map -> do_delete_map(socket, map)
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("create_map", _params, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        case Maps.create_map(socket.assigns.project, %{name: gettext("Untitled")}) do
+        case Maps.create_map(socket.assigns.project, %{name: dgettext("maps", "Untitled")}) do
           {:ok, new_map} ->
             {:noreply,
              push_navigate(socket,
@@ -242,19 +242,19 @@ defmodule StoryarnWeb.MapLive.Index do
              )}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create map."))}
+            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create map."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("create_child_map", %{"parent-id" => parent_id}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        attrs = %{name: gettext("Untitled"), parent_id: parent_id}
+        attrs = %{name: dgettext("maps", "Untitled"), parent_id: parent_id}
 
         case Maps.create_map(socket.assigns.project, attrs) do
           {:ok, new_map} ->
@@ -265,12 +265,12 @@ defmodule StoryarnWeb.MapLive.Index do
              )}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create map."))}
+            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create map."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -282,13 +282,13 @@ defmodule StoryarnWeb.MapLive.Index do
     case authorize(socket, :edit_content) do
       :ok ->
         case Maps.get_map(socket.assigns.project.id, item_id) do
-          nil -> {:noreply, put_flash(socket, :error, gettext("Map not found."))}
+          nil -> {:noreply, put_flash(socket, :error, dgettext("maps", "Map not found."))}
           map -> do_move_map(socket, map, new_parent_id, position)
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
     end
   end
 
@@ -297,11 +297,11 @@ defmodule StoryarnWeb.MapLive.Index do
       {:ok, _} ->
         {:noreply,
          socket
-         |> put_flash(:info, gettext("Map moved to trash."))
+         |> put_flash(:info, dgettext("maps", "Map moved to trash."))
          |> reload_maps()}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete map."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not delete map."))}
     end
   end
 
@@ -311,7 +311,7 @@ defmodule StoryarnWeb.MapLive.Index do
 
     case Maps.move_map_to_position(map, new_parent_id, position) do
       {:ok, _} -> {:noreply, reload_maps(socket)}
-      {:error, _} -> {:noreply, put_flash(socket, :error, gettext("Could not move map."))}
+      {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move map."))}
     end
   end
 

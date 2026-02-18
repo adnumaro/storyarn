@@ -1,0 +1,403 @@
+## This file is a PO Template file.
+##
+## "msgid"s here are often extracted from source code.
+## Add new messages manually only if they're dynamic
+## messages that can't be statically extracted.
+##
+## Run "mix gettext.extract" to bring this file up to
+## date. Leave "msgstr"s empty as changing them here has no
+## effect: edit them in PO (.po) files instead.
+#
+msgid ""
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:70
+#, elixir-autogen, elixir-format
+msgid "%{count} element"
+msgid_plural "%{count} elements"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:139
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:175
+#, elixir-autogen, elixir-format
+msgid "Add child screenplay"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:84
+#: lib/storyarn_web/live/screenplay_live/index.ex:76
+#, elixir-autogen, elixir-format
+msgid "Are you sure you want to delete this screenplay?"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/form.ex:40
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1285
+#, elixir-autogen, elixir-format
+msgid "Choice already has a linked page."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1282
+#, elixir-autogen, elixir-format
+msgid "Choice not found."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1092
+#, elixir-autogen, elixir-format
+msgid "Could not add choice."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:565
+#, elixir-autogen, elixir-format
+msgid "Could not create flow."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1288
+#, elixir-autogen, elixir-format
+msgid "Could not create linked page."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1357
+#, elixir-autogen, elixir-format
+msgid "Could not create linked pages."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/index.ex:267
+#: lib/storyarn_web/live/screenplay_live/index.ex:290
+#: lib/storyarn_web/live/screenplay_live/show.ex:1417
+#, elixir-autogen, elixir-format
+msgid "Could not create screenplay."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:792
+#, elixir-autogen, elixir-format
+msgid "Could not delete element."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/index.ex:240
+#: lib/storyarn_web/live/screenplay_live/show.ex:1233
+#, elixir-autogen, elixir-format
+msgid "Could not delete screenplay."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:917
+#, elixir-autogen, elixir-format
+msgid "Could not import file."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/index.ex:315
+#: lib/storyarn_web/live/screenplay_live/show.ex:1251
+#, elixir-autogen, elixir-format
+msgid "Could not move screenplay."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1115
+#, elixir-autogen, elixir-format
+msgid "Could not remove choice."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1046
+#, elixir-autogen, elixir-format
+msgid "Could not save condition."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1068
+#, elixir-autogen, elixir-format
+msgid "Could not save instruction."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:543
+#, elixir-autogen, elixir-format
+msgid "Could not save screenplay name."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1164
+#, elixir-autogen, elixir-format
+msgid "Could not set character sheet."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1202
+#, elixir-autogen, elixir-format
+msgid "Could not sync from flow."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1177
+#, elixir-autogen, elixir-format
+msgid "Could not sync screenplay."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:854
+#, elixir-autogen, elixir-format
+msgid "Could not toggle parenthetical."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1328
+#, elixir-autogen, elixir-format
+msgid "Could not unlink choice."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:596
+#, elixir-autogen, elixir-format
+msgid "Could not unlink flow."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1533
+#, elixir-autogen, elixir-format
+msgid "Could not update choice."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:828
+#, elixir-autogen, elixir-format
+msgid "Could not update dual dialogue."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:879
+#, elixir-autogen, elixir-format
+msgid "Could not update title page."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:115
+#, elixir-autogen, elixir-format
+msgid "Create Flow"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/form.ex:43
+#, elixir-autogen, elixir-format
+msgid "Create Screenplay"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/form.ex:42
+#, elixir-autogen, elixir-format
+msgid "Creating..."
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:85
+#: lib/storyarn_web/live/screenplay_live/index.ex:77
+#: lib/storyarn_web/live/screenplay_live/index.ex:139
+#, elixir-autogen, elixir-format
+msgid "Delete"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:83
+#: lib/storyarn_web/live/screenplay_live/index.ex:75
+#, elixir-autogen, elixir-format
+msgid "Delete screenplay?"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/form.ex:35
+#, elixir-autogen, elixir-format
+msgid "Describe the purpose of this screenplay..."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/form.ex:34
+#, elixir-autogen, elixir-format
+msgid "Description"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:76
+#, elixir-autogen, elixir-format
+msgid "Draft"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:82
+#, elixir-autogen, elixir-format
+msgid "Exit read mode"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:91
+#, elixir-autogen, elixir-format
+msgid "Export as Fountain"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:52
+#, elixir-autogen, elixir-format
+msgid "Filter screenplays..."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:562
+#, elixir-autogen, elixir-format
+msgid "Flow created and synced."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1199
+#, elixir-autogen, elixir-format
+msgid "Flow has no entry node."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:155
+#, elixir-autogen, elixir-format
+msgid "Flow missing"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:154
+#, elixir-autogen, elixir-format
+msgid "Flow trashed"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:593
+#, elixir-autogen, elixir-format
+msgid "Flow unlinked."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:914
+#, elixir-autogen, elixir-format
+msgid "Fountain file imported successfully."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:141
+#, elixir-autogen, elixir-format
+msgid "From Flow"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:100
+#, elixir-autogen, elixir-format
+msgid "Import Fountain"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1279
+#, elixir-autogen, elixir-format
+msgid "Linked page created."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1354
+#, elixir-autogen, elixir-format
+msgid "Linked pages created."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/form.ex:28
+#, elixir-autogen, elixir-format
+msgid "Main Story"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:215
+#, elixir-autogen, elixir-format
+msgid "Move to Trash"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/form.ex:27
+#, elixir-autogen, elixir-format
+msgid "Name"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:35
+#: lib/storyarn_web/live/screenplay_live/index.ex:36
+#: lib/storyarn_web/live/screenplay_live/index.ex:67
+#, elixir-autogen, elixir-format
+msgid "New Screenplay"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:890
+#, elixir-autogen, elixir-format
+msgid "No content found in imported file."
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:58
+#, elixir-autogen, elixir-format
+msgid "No screenplays yet"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/index.ex:42
+#, elixir-autogen, elixir-format
+msgid "No screenplays yet. Create your first screenplay to get started."
+msgstr ""
+
+#: lib/storyarn_web/controllers/screenplay_export_controller.ex:30
+#, elixir-autogen, elixir-format
+msgid "Not found"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:129
+#, elixir-autogen, elixir-format
+msgid "Push screenplay to flow"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:82
+#, elixir-autogen, elixir-format
+msgid "Read mode"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/index.ex:195
+#, elixir-autogen, elixir-format
+msgid "Screenplay created successfully."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1170
+#: lib/storyarn_web/live/screenplay_live/show.ex:1186
+#, elixir-autogen, elixir-format
+msgid "Screenplay is not linked to a flow."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/index.ex:236
+#: lib/storyarn_web/live/screenplay_live/show.ex:1223
+#: lib/storyarn_web/live/screenplay_live/show.ex:1228
+#, elixir-autogen, elixir-format
+msgid "Screenplay moved to trash."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1210
+#: lib/storyarn_web/live/screenplay_live/show.ex:1240
+#, elixir-autogen, elixir-format
+msgid "Screenplay not found."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1174
+#, elixir-autogen, elixir-format
+msgid "Screenplay synced to flow."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:1196
+#, elixir-autogen, elixir-format
+msgid "Screenplay updated from flow."
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:29
+#: lib/storyarn_web/live/screenplay_live/index.ex:26
+#, elixir-autogen, elixir-format
+msgid "Screenplays"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:132
+#, elixir-autogen, elixir-format
+msgid "To Flow"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:163
+#, elixir-autogen, elixir-format
+msgid "Unlink"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/index.ex:257
+#: lib/storyarn_web/live/screenplay_live/index.ex:279
+#: lib/storyarn_web/live/screenplay_live/show.ex:59
+#: lib/storyarn_web/live/screenplay_live/show.ex:1410
+#, elixir-autogen, elixir-format
+msgid "Untitled"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/show.ex:138
+#, elixir-autogen, elixir-format
+msgid "Update screenplay from flow"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/index.ex:28
+#, elixir-autogen, elixir-format
+msgid "Write and format screenplays with industry-standard formatting"
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/index.ex:181
+#: lib/storyarn_web/live/screenplay_live/show.ex:242
+#, elixir-autogen, elixir-format
+msgid "You don't have access to this project."
+msgstr ""
+
+#: lib/storyarn_web/live/screenplay_live/index.ex:245
+#: lib/storyarn_web/live/screenplay_live/index.ex:272
+#: lib/storyarn_web/live/screenplay_live/index.ex:295
+#: lib/storyarn_web/live/screenplay_live/index.ex:320
+#: lib/storyarn_web/live/screenplay_live/show.ex:1404
+#, elixir-autogen, elixir-format
+msgid "You don't have permission to perform this action."
+msgstr ""

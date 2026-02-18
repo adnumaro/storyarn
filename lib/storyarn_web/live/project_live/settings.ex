@@ -25,9 +25,9 @@ defmodule StoryarnWeb.ProjectLive.Settings do
     >
       <div class="text-center mb-8">
         <.header>
-          {gettext("Project Settings")}
+          {dgettext("projects", "Project Settings")}
           <:subtitle>
-            {gettext("Manage your project details and team members")}
+            {dgettext("projects", "Manage your project details and team members")}
           </:subtitle>
         </.header>
       </div>
@@ -35,7 +35,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       <div class="space-y-8 max-w-2xl mx-auto">
         <%!-- Project Details Section --%>
         <section>
-          <h3 class="text-lg font-semibold mb-4">{gettext("Project Details")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Project Details")}</h3>
           <.form
             for={@project_form}
             id="project-form"
@@ -45,17 +45,17 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             <.input
               field={@project_form[:name]}
               type="text"
-              label={gettext("Project Name")}
+              label={dgettext("projects", "Project Name")}
               required
             />
             <.input
               field={@project_form[:description]}
               type="textarea"
-              label={gettext("Description")}
+              label={dgettext("projects", "Description")}
               rows={3}
             />
-            <.button variant="primary" phx-disable-with={gettext("Saving...")}>
-              {gettext("Save Changes")}
+            <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
+              {dgettext("projects", "Save Changes")}
             </.button>
           </.form>
         </section>
@@ -64,7 +64,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
         <%!-- Team Members Section --%>
         <section>
-          <h3 class="text-lg font-semibold mb-4">{gettext("Team Members")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Team Members")}</h3>
           <div class="space-y-3 mb-6">
             <.member_row
               :for={member <- @members}
@@ -77,14 +77,14 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
           <%!-- Invite Form --%>
           <div class="card bg-base-200 p-4">
-            <h4 class="font-medium mb-3">{gettext("Invite a new member")}</h4>
+            <h4 class="font-medium mb-3">{dgettext("projects", "Invite a new member")}</h4>
             <.form for={@invite_form} id="invite-form" phx-submit="send_invitation">
               <div class="flex gap-3 items-end">
                 <div class="flex-1">
                   <.input
                     field={@invite_form[:email]}
                     type="email"
-                    label={gettext("Email address")}
+                    label={dgettext("projects", "Email address")}
                     placeholder="colleague@example.com"
                     required
                   />
@@ -93,15 +93,15 @@ defmodule StoryarnWeb.ProjectLive.Settings do
                   <.input
                     field={@invite_form[:role]}
                     type="select"
-                    label={gettext("Role")}
+                    label={dgettext("projects", "Role")}
                     options={[
-                      {gettext("Editor"), "editor"},
-                      {gettext("Viewer"), "viewer"}
+                      {dgettext("projects", "Editor"), "editor"},
+                      {dgettext("projects", "Viewer"), "viewer"}
                     ]}
                   />
                 </div>
                 <.button variant="primary" class="mb-2">
-                  {gettext("Send Invite")}
+                  {dgettext("projects", "Send Invite")}
                 </.button>
               </div>
             </.form>
@@ -110,7 +110,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
         <%!-- Pending Invitations Section --%>
         <section :if={@pending_invitations != []}>
-          <h3 class="text-lg font-semibold mb-4">{gettext("Pending Invitations")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Pending Invitations")}</h3>
           <div class="space-y-2">
             <.invitation_row
               :for={invitation <- @pending_invitations}
@@ -124,11 +124,11 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
         <%!-- Localization Section --%>
         <section>
-          <h3 class="text-lg font-semibold mb-4">{gettext("Localization")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Localization")}</h3>
 
           <%!-- DeepL Configuration --%>
           <div class="card bg-base-200 p-4">
-            <h4 class="font-medium mb-3">{gettext("Translation Provider (DeepL)")}</h4>
+            <h4 class="font-medium mb-3">{dgettext("projects", "Translation Provider (DeepL)")}</h4>
 
             <.form
               for={@provider_form}
@@ -138,35 +138,35 @@ defmodule StoryarnWeb.ProjectLive.Settings do
               <.input
                 field={@provider_form[:api_key_encrypted]}
                 type="password"
-                label={gettext("API Key")}
+                label={dgettext("projects", "API Key")}
                 placeholder={if @has_api_key, do: "••••••••", else: ""}
               />
               <.input
                 field={@provider_form[:api_endpoint]}
                 type="select"
-                label={gettext("API Tier")}
+                label={dgettext("projects", "API Tier")}
                 options={[
-                  {gettext("Free (api-free.deepl.com)"), "https://api-free.deepl.com"},
-                  {gettext("Pro (api.deepl.com)"), "https://api.deepl.com"}
+                  {dgettext("projects", "Free (api-free.deepl.com)"), "https://api-free.deepl.com"},
+                  {dgettext("projects", "Pro (api.deepl.com)"), "https://api.deepl.com"}
                 ]}
               />
               <div class="flex items-center gap-3 mt-3">
-                <.button variant="primary" phx-disable-with={gettext("Saving...")}>
-                  {gettext("Save")}
+                <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
+                  {dgettext("projects", "Save")}
                 </.button>
                 <.button
                   :if={@has_api_key}
                   type="button"
                   phx-click="test_provider_connection"
-                  phx-disable-with={gettext("Testing...")}
+                  phx-disable-with={dgettext("projects", "Testing...")}
                 >
-                  {gettext("Test Connection")}
+                  {dgettext("projects", "Test Connection")}
                 </.button>
               </div>
             </.form>
 
             <div :if={@provider_usage} class="mt-3 text-sm opacity-70">
-              {gettext("Usage: %{used} / %{limit} characters",
+              {dgettext("projects", "Usage: %{used} / %{limit} characters",
                 used: format_number(@provider_usage.character_count),
                 limit: format_number(@provider_usage.character_limit)
               )}
@@ -178,15 +178,15 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
         <%!-- Maintenance Section --%>
         <section>
-          <h3 class="text-lg font-semibold mb-4">{gettext("Maintenance")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Maintenance")}</h3>
           <div class="card bg-base-200 p-4">
             <p class="text-sm mb-3">
-              {gettext(
+              {dgettext("projects", 
                 "If you renamed sheet shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
               )}
             </p>
             <.button phx-click={show_modal("repair-refs-confirm")}>
-              {gettext("Repair variable references")}
+              {dgettext("projects", "Repair variable references")}
             </.button>
           </div>
         </section>
@@ -195,13 +195,13 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
         <%!-- Danger Zone --%>
         <section>
-          <h3 class="text-lg font-semibold mb-4 text-error">{gettext("Danger Zone")}</h3>
+          <h3 class="text-lg font-semibold mb-4 text-error">{dgettext("projects", "Danger Zone")}</h3>
           <div class="card bg-error/10 border border-error/30 p-4">
             <p class="text-sm mb-4">
-              {gettext("Once you delete a project, there is no going back. Please be certain.")}
+              {dgettext("projects", "Once you delete a project, there is no going back. Please be certain.")}
             </p>
             <.button variant="error" phx-click={show_modal("delete-project-confirm")}>
-              {gettext("Delete Project")}
+              {dgettext("projects", "Delete Project")}
             </.button>
           </div>
         </section>
@@ -209,17 +209,17 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
       <.confirm_modal
         id="repair-refs-confirm"
-        title={gettext("Repair variable references?")}
-        message={gettext("This will update node data across the entire project.")}
-        confirm_text={gettext("Continue")}
+        title={dgettext("projects", "Repair variable references?")}
+        message={dgettext("projects", "This will update node data across the entire project.")}
+        confirm_text={dgettext("projects", "Continue")}
         on_confirm={JS.push("repair_variable_references")}
       />
 
       <.confirm_modal
         id="delete-project-confirm"
-        title={gettext("Delete project?")}
-        message={gettext("This action cannot be undone.")}
-        confirm_text={gettext("Delete")}
+        title={dgettext("projects", "Delete project?")}
+        message={dgettext("projects", "This action cannot be undone.")}
+        confirm_text={dgettext("projects", "Delete")}
         confirm_variant="error"
         icon="alert-triangle"
         on_confirm={JS.push("delete_project")}
@@ -270,14 +270,14 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         else
           {:ok,
            socket
-           |> put_flash(:error, gettext("You don't have permission to manage this project."))
+           |> put_flash(:error, dgettext("projects", "You don't have permission to manage this project."))
            |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}")}
         end
 
       {:error, :not_found} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("Project not found."))
+         |> put_flash(:error, dgettext("projects", "Project not found."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -312,7 +312,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
               socket
               |> assign(:project, project)
               |> assign(:project_form, to_form(project_changeset))
-              |> put_flash(:info, gettext("Project updated successfully."))
+              |> put_flash(:info, dgettext("projects", "Project updated successfully."))
 
             {:noreply, socket}
 
@@ -322,7 +322,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
     end
   end
 
@@ -333,7 +333,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
     end
   end
 
@@ -344,7 +344,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
     end
   end
 
@@ -355,7 +355,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
     end
   end
 
@@ -366,7 +366,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
     end
   end
 
@@ -379,18 +379,18 @@ defmodule StoryarnWeb.ProjectLive.Settings do
           {:ok, _} ->
             socket =
               socket
-              |> put_flash(:info, gettext("Project deleted."))
+              |> put_flash(:info, dgettext("projects", "Project deleted."))
               |> push_navigate(to: ~p"/workspaces/#{workspace.slug}")
 
             {:noreply, socket}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Failed to delete project."))}
+            {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to delete project."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
     end
   end
 
@@ -405,7 +405,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
     end
   end
 
@@ -416,7 +416,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
     end
   end
 
@@ -445,16 +445,16 @@ defmodule StoryarnWeb.ProjectLive.Settings do
           {:noreply,
            socket
            |> assign(:provider_usage, usage)
-           |> put_flash(:info, gettext("Connection successful."))}
+           |> put_flash(:info, dgettext("projects", "Connection successful."))}
 
         {:error, :invalid_api_key} ->
-          {:noreply, put_flash(socket, :error, gettext("Invalid API key."))}
+          {:noreply, put_flash(socket, :error, dgettext("projects", "Invalid API key."))}
 
         {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, gettext("Connection failed. Check your API key and endpoint."))}
+          {:noreply, put_flash(socket, :error, dgettext("projects", "Connection failed. Check your API key and endpoint."))}
       end
     else
-      {:noreply, put_flash(socket, :error, gettext("No API key configured."))}
+      {:noreply, put_flash(socket, :error, dgettext("projects", "No API key configured."))}
     end
   end
 
@@ -501,7 +501,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
           socket
           |> assign(:provider_form, to_form(provider_changeset(config), as: "provider"))
           |> assign(:has_api_key, config.api_key_encrypted != nil)
-          |> put_flash(:info, gettext("Provider settings saved."))
+          |> put_flash(:info, dgettext("projects", "Provider settings saved."))
 
         {:noreply, socket}
 
@@ -519,14 +519,14 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         {:noreply, put_flash(socket, :info, repair_message(count))}
 
       {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, gettext("Failed to repair variable references."))}
+        {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to repair variable references."))}
     end
   end
 
-  defp repair_message(0), do: gettext("All variable references are up to date.")
+  defp repair_message(0), do: dgettext("projects", "All variable references are up to date.")
 
   defp repair_message(count) do
-    ngettext(
+    dngettext("projects", 
       "Repaired %{count} node.",
       "Repaired %{count} nodes.",
       count,
@@ -548,25 +548,25 @@ defmodule StoryarnWeb.ProjectLive.Settings do
           socket
           |> assign(:pending_invitations, pending_invitations)
           |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
-          |> put_flash(:info, gettext("Invitation sent successfully."))
+          |> put_flash(:info, dgettext("projects", "Invitation sent successfully."))
 
         {:noreply, socket}
 
       {:error, :already_member} ->
         {:noreply,
-         put_flash(socket, :error, gettext("This email is already a member of the project."))}
+         put_flash(socket, :error, dgettext("projects", "This email is already a member of the project."))}
 
       {:error, :already_invited} ->
         {:noreply,
-         put_flash(socket, :error, gettext("An invitation has already been sent to this email."))}
+         put_flash(socket, :error, dgettext("projects", "An invitation has already been sent to this email."))}
 
       {:error, :rate_limited} ->
         {:noreply,
-         put_flash(socket, :error, gettext("Too many invitations. Please try again later."))}
+         put_flash(socket, :error, dgettext("projects", "Too many invitations. Please try again later."))}
 
       {:error, _changeset} ->
         {:noreply,
-         put_flash(socket, :error, gettext("Failed to send invitation. Please try again."))}
+         put_flash(socket, :error, dgettext("projects", "Failed to send invitation. Please try again."))}
     end
   end
 
@@ -580,11 +580,11 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       socket =
         socket
         |> assign(:pending_invitations, pending_invitations)
-        |> put_flash(:info, gettext("Invitation revoked."))
+        |> put_flash(:info, dgettext("projects", "Invitation revoked."))
 
       {:noreply, socket}
     else
-      {:noreply, put_flash(socket, :error, gettext("Invitation not found."))}
+      {:noreply, put_flash(socket, :error, dgettext("projects", "Invitation not found."))}
     end
   end
 
@@ -599,15 +599,15 @@ defmodule StoryarnWeb.ProjectLive.Settings do
           socket =
             socket
             |> assign(:members, members)
-            |> put_flash(:info, gettext("Member removed."))
+            |> put_flash(:info, dgettext("projects", "Member removed."))
 
           {:noreply, socket}
 
         {:error, :cannot_remove_owner} ->
-          {:noreply, put_flash(socket, :error, gettext("Cannot remove the project owner."))}
+          {:noreply, put_flash(socket, :error, dgettext("projects", "Cannot remove the project owner."))}
       end
     else
-      {:noreply, put_flash(socket, :error, gettext("Member not found."))}
+      {:noreply, put_flash(socket, :error, dgettext("projects", "Member not found."))}
     end
   end
 end

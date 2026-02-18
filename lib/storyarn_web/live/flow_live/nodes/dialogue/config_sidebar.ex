@@ -28,7 +28,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
 
   def config_sidebar(assigns) do
     speaker_options =
-      [{"", gettext("Select speaker...")}] ++
+      [{"", dgettext("flows", "Select speaker...")}] ++
         Enum.map(assigns.all_sheets, fn sheet -> {sheet.name, sheet.id} end)
 
     assigns = assign(assigns, :speaker_options, speaker_options)
@@ -38,22 +38,22 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
       <.input
         field={@form[:speaker_sheet_id]}
         type="select"
-        label={gettext("Speaker")}
+        label={dgettext("flows", "Speaker")}
         options={@speaker_options}
         disabled={!@can_edit}
       />
       <.input
         field={@form[:stage_directions]}
         type="textarea"
-        label={gettext("Stage Directions")}
-        placeholder={gettext("(whispering)")}
+        label={dgettext("flows", "Stage Directions")}
+        placeholder={dgettext("flows", "(whispering)")}
         disabled={!@can_edit}
         rows={2}
         class="italic font-mono text-sm"
       />
       <div class="form-control mt-4">
         <label class="label">
-          <span class="label-text">{gettext("Text")}</span>
+          <span class="label-text">{dgettext("flows", "Text")}</span>
         </label>
         <div
           id={"dialogue-text-editor-#{@node.id}"}
@@ -82,17 +82,17 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
           phx-value-section="menu_text"
           onclick="event.preventDefault()"
         >
-          {gettext("Menu Text")}
+          {dgettext("flows", "Menu Text")}
         </summary>
         <div class="collapse-content">
           <.input
             field={@form[:menu_text]}
             type="text"
-            placeholder={gettext("Short text shown in response menus")}
+            placeholder={dgettext("flows", "Short text shown in response menus")}
             disabled={!@can_edit}
           />
           <p class="text-xs text-base-content/60 mt-1">
-            {gettext("Optional shorter text to display in dialogue choice menus.")}
+            {dgettext("flows", "Optional shorter text to display in dialogue choice menus.")}
           </p>
         </div>
       </details>
@@ -108,7 +108,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
         onclick="event.preventDefault()"
       >
         <.icon name="volume-2" class="size-4" />
-        {gettext("Audio")}
+        {dgettext("flows", "Audio")}
       </summary>
       <div class="collapse-content">
         <.live_component
@@ -133,12 +133,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
           onclick="event.preventDefault()"
         >
           <.icon name="hash" class="size-4" />
-          {gettext("Technical")}
+          {dgettext("flows", "Technical")}
         </summary>
         <div class="collapse-content space-y-3">
           <div class="form-control">
             <label class="label">
-              <span class="label-text text-xs">{gettext("Technical ID")}</span>
+              <span class="label-text text-xs">{dgettext("flows", "Technical ID")}</span>
             </label>
             <div class="join w-full">
               <input
@@ -146,7 +146,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
                 name={@form[:technical_id].name}
                 value={@form[:technical_id].value || ""}
                 disabled={!@can_edit}
-                placeholder={gettext("auto_generated_id")}
+                placeholder={dgettext("flows", "auto_generated_id")}
                 class="input input-sm input-bordered join-item flex-1 font-mono text-xs"
               />
               <button
@@ -155,18 +155,18 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
                 phx-click="generate_technical_id"
                 onclick="event.stopPropagation()"
                 class="btn btn-sm btn-ghost join-item"
-                title={gettext("Generate ID")}
+                title={dgettext("flows", "Generate ID")}
               >
                 <.icon name="refresh-cw" class="size-3" />
               </button>
             </div>
             <p class="text-xs text-base-content/60 mt-1">
-              {gettext("Unique identifier for export and game integration.")}
+              {dgettext("flows", "Unique identifier for export and game integration.")}
             </p>
           </div>
           <div class="form-control">
             <label class="label">
-              <span class="label-text text-xs">{gettext("Localization ID")}</span>
+              <span class="label-text text-xs">{dgettext("flows", "Localization ID")}</span>
             </label>
             <div class="join w-full">
               <input
@@ -174,7 +174,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
                 name={@form[:localization_id].name}
                 value={@form[:localization_id].value || ""}
                 disabled={!@can_edit}
-                placeholder={gettext("dlg_001")}
+                placeholder={dgettext("flows", "dlg_001")}
                 class="input input-sm input-bordered join-item flex-1 font-mono text-xs"
               />
               <button
@@ -182,18 +182,18 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
                 data-copy-text={@form[:localization_id].value || ""}
                 onclick="event.stopPropagation()"
                 class="btn btn-sm btn-ghost join-item"
-                title={gettext("Copy to clipboard")}
+                title={dgettext("flows", "Copy to clipboard")}
               >
                 <.icon name="copy" class="size-3" />
               </button>
             </div>
             <p class="text-xs text-base-content/60 mt-1">
-              {gettext("ID for localization tools (Crowdin, Lokalise).")}
+              {dgettext("flows", "ID for localization tools (Crowdin, Lokalise).")}
             </p>
           </div>
           <div class="divider my-1"></div>
           <div class="flex items-center justify-between text-xs text-base-content/70">
-            <span>{gettext("Word count")}</span>
+            <span>{dgettext("flows", "Word count")}</span>
             <span class="font-mono badge badge-ghost badge-sm">
               {word_count(@form[:text].value)}
             </span>
@@ -217,7 +217,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
     ~H"""
     <div class="form-control mt-4">
       <label class="label">
-        <span class="label-text">{gettext("Responses")}</span>
+        <span class="label-text">{dgettext("flows", "Responses")}</span>
       </label>
       <div class="space-y-2">
         <.response_item
@@ -235,11 +235,11 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
           class="btn btn-ghost btn-sm gap-1 w-full border border-dashed border-base-300"
         >
           <.icon name="plus" class="size-4" />
-          {gettext("Add response")}
+          {dgettext("flows", "Add response")}
         </button>
       </div>
       <p :if={(@form[:responses].value || []) == []} class="text-xs text-base-content/60 mt-1">
-        {gettext("No responses means a simple dialogue with one output.")}
+        {dgettext("flows", "No responses means a simple dialogue with one output.")}
       </p>
     </div>
     """
@@ -272,7 +272,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
           phx-value-response-id={@response["id"]}
           phx-value-node-id={@node.id}
           disabled={!@can_edit}
-          placeholder={gettext("Response text...")}
+          placeholder={dgettext("flows", "Response text...")}
           class="input input-sm input-bordered flex-1"
         />
         <button
@@ -282,14 +282,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
           phx-value-response-id={@response["id"]}
           phx-value-node-id={@node.id}
           class="btn btn-ghost btn-xs btn-square text-error"
-          title={gettext("Remove response")}
+          title={dgettext("flows", "Remove response")}
         >
           <.icon name="x" class="size-3" />
         </button>
       </div>
       <details class="collapse collapse-arrow bg-base-100">
         <summary class="collapse-title text-xs py-1 min-h-0 cursor-pointer">
-          {gettext("Advanced")}
+          {dgettext("flows", "Advanced")}
           <span :if={has_advanced_settings?(@response)} class="badge badge-warning badge-xs ml-1">
           </span>
         </summary>
@@ -298,7 +298,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
           <div class="space-y-1">
             <div class="flex items-center gap-1 text-xs text-base-content/60">
               <.icon name="git-branch" class="size-3" />
-              <span>{gettext("Condition")}</span>
+              <span>{dgettext("flows", "Condition")}</span>
             </div>
             <.condition_builder
               id={"response-condition-#{@response["id"]}"}
@@ -319,7 +319,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
               phx-value-response-id={@response["id"]}
               phx-value-node-id={@node.id}
               disabled={!@can_edit}
-              placeholder={gettext("Instruction (optional)")}
+              placeholder={dgettext("flows", "Instruction (optional)")}
               class="input input-xs input-bordered flex-1 font-mono text-xs"
             />
           </div>

@@ -7,11 +7,11 @@ defmodule StoryarnWeb.UserSessionController do
   alias StoryarnWeb.UserAuth
 
   def create(conn, %{"_action" => "confirmed"} = params) do
-    create(conn, params, gettext("User confirmed successfully."))
+    create(conn, params, dgettext("identity", "User confirmed successfully."))
   end
 
   def create(conn, params) do
-    create(conn, params, gettext("Welcome back!"))
+    create(conn, params, dgettext("identity", "Welcome back!"))
   end
 
   # magic link login
@@ -26,7 +26,7 @@ defmodule StoryarnWeb.UserSessionController do
 
       _ ->
         conn
-        |> put_flash(:error, gettext("The link is invalid or it has expired."))
+        |> put_flash(:error, dgettext("identity", "The link is invalid or it has expired."))
         |> redirect(to: ~p"/users/log-in")
     end
   end
@@ -45,14 +45,14 @@ defmodule StoryarnWeb.UserSessionController do
         else
           # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
           conn
-          |> put_flash(:error, gettext("Invalid email or password"))
+          |> put_flash(:error, dgettext("identity", "Invalid email or password"))
           |> put_flash(:email, String.slice(email, 0, 160))
           |> redirect(to: ~p"/users/log-in")
         end
 
       {:error, :rate_limited} ->
         conn
-        |> put_flash(:error, gettext("Too many login attempts. Please try again later."))
+        |> put_flash(:error, dgettext("identity", "Too many login attempts. Please try again later."))
         |> redirect(to: ~p"/users/log-in")
     end
   end
@@ -97,23 +97,23 @@ defmodule StoryarnWeb.UserSessionController do
 
           conn
           |> put_session(:user_return_to, ~p"/users/settings/security")
-          |> create(params, gettext("Password updated successfully!"))
+          |> create(params, dgettext("identity", "Password updated successfully!"))
 
         {:error, changeset} ->
           conn
-          |> put_flash(:error, gettext("Failed to update password."))
+          |> put_flash(:error, dgettext("identity", "Failed to update password."))
           |> render(:new, changeset: changeset)
       end
     else
       conn
-      |> put_flash(:error, gettext("Please re-authenticate to change your password."))
+      |> put_flash(:error, dgettext("identity", "Please re-authenticate to change your password."))
       |> redirect(to: ~p"/users/settings/security")
     end
   end
 
   def delete(conn, _params) do
     conn
-    |> put_flash(:info, gettext("Logged out successfully."))
+    |> put_flash(:info, dgettext("identity", "Logged out successfully."))
     |> UserAuth.log_out_user()
   end
 end

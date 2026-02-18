@@ -45,7 +45,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          |> assign(:save_status, :saved)}
 
       {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not save flow name."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not save flow name."))}
     end
   end
 
@@ -178,7 +178,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   @spec handle_create_sheet(Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_create_sheet(socket) do
-    case Sheets.create_sheet(socket.assigns.project, %{name: gettext("Untitled")}) do
+    case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
       {:ok, new_sheet} ->
         {:noreply,
          push_navigate(socket,
@@ -187,7 +187,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          )}
 
       {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not create sheet."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create sheet."))}
     end
   end
 
@@ -277,8 +277,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   defp format_shortcut_error(changeset) do
     case changeset.errors[:shortcut] do
-      {msg, _opts} -> gettext("Shortcut %{error}", error: msg)
-      nil -> gettext("Could not save shortcut.")
+      {msg, _opts} -> dgettext("flows", "Shortcut %{error}", error: msg)
+      nil -> dgettext("flows", "Could not save shortcut.")
     end
   end
 
@@ -298,7 +298,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
         put_flash(
           socket,
           :info,
-          gettext("This node is being edited by %{user}",
+          dgettext("flows", "This node is being edited by %{user}",
             user: FormHelpers.get_email_name(lock_info.user_email)
           )
         )

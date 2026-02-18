@@ -13,16 +13,16 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
         <%= if @invitation do %>
           <.icon name="mail-open" class="size-16 mx-auto text-primary mb-6" />
           <.header>
-            {gettext("You've been invited!")}
+            {dgettext("projects", "You've been invited!")}
             <:subtitle>
-              {gettext("You've been invited to join a project on Storyarn")}
+              {dgettext("projects", "You've been invited to join a project on Storyarn")}
             </:subtitle>
           </.header>
 
           <div class="card bg-base-200 mt-8 p-6">
             <h3 class="text-xl font-bold mb-2">{@invitation.project.name}</h3>
             <p class="text-sm text-base-content/70 mb-4">
-              {gettext("Invited by")} {@inviter_name} {gettext("as")}
+              {dgettext("projects", "Invited by")} {@inviter_name} {dgettext("projects", "as")}
               <span class="badge badge-secondary badge-sm ml-1">{@invitation.role}</span>
             </p>
 
@@ -32,47 +32,47 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
               <%= if @email_matches do %>
                 <div class="space-y-3">
                   <.button variant="primary" class="w-full" phx-click="accept">
-                    {gettext("Accept Invitation")}
+                    {dgettext("projects", "Accept Invitation")}
                   </.button>
                   <.link navigate={~p"/workspaces"} class="btn btn-ghost w-full">
-                    {gettext("Decline")}
+                    {dgettext("projects", "Decline")}
                   </.link>
                 </div>
               <% else %>
                 <div class="alert alert-warning">
                   <.icon name="triangle-alert" class="size-5" />
                   <span>
-                    {gettext("This invitation was sent to")} <strong>{@invitation.email}</strong>. {gettext(
+                    {dgettext("projects", "This invitation was sent to")} <strong>{@invitation.email}</strong>. {dgettext("projects", 
                       "You're logged in as"
                     )} <strong>{@current_scope.user.email}</strong>.
                   </span>
                 </div>
                 <p class="mt-4 text-sm text-base-content/70">
-                  {gettext("Please log in with the correct email address to accept this invitation.")}
+                  {dgettext("projects", "Please log in with the correct email address to accept this invitation.")}
                 </p>
               <% end %>
             <% else %>
               <p class="text-sm text-base-content/70 mb-4">
-                {gettext("Please log in or create an account to accept this invitation.")}
+                {dgettext("projects", "Please log in or create an account to accept this invitation.")}
               </p>
               <.link
                 navigate={~p"/users/log-in?return_to=#{@return_path}"}
                 class="btn btn-primary w-full"
               >
-                {gettext("Log in to accept")}
+                {dgettext("projects", "Log in to accept")}
               </.link>
             <% end %>
           </div>
         <% else %>
           <.icon name="x-circle" class="size-16 mx-auto text-error mb-6" />
           <.header>
-            {gettext("Invalid Invitation")}
+            {dgettext("projects", "Invalid Invitation")}
             <:subtitle>
-              {gettext("This invitation link is invalid or has expired.")}
+              {dgettext("projects", "This invitation link is invalid or has expired.")}
             </:subtitle>
           </.header>
           <.link navigate={~p"/"} class="btn btn-primary mt-8">
-            {gettext("Go to Homepage")}
+            {dgettext("projects", "Go to Homepage")}
           </.link>
         <% end %>
       </div>
@@ -129,18 +129,18 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
       {:ok, _membership} ->
         socket =
           socket
-          |> put_flash(:info, gettext("Welcome to the project!"))
+          |> put_flash(:info, dgettext("projects", "Welcome to the project!"))
           |> push_navigate(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}")
 
         {:noreply, socket}
 
       {:error, :email_mismatch} ->
-        {:noreply, put_flash(socket, :error, gettext("Your email doesn't match the invitation."))}
+        {:noreply, put_flash(socket, :error, dgettext("projects", "Your email doesn't match the invitation."))}
 
       {:error, :already_member} ->
         socket =
           socket
-          |> put_flash(:info, gettext("You're already a member of this project."))
+          |> put_flash(:info, dgettext("projects", "You're already a member of this project."))
           |> push_navigate(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}")
 
         {:noreply, socket}
@@ -148,7 +148,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
       {:error, :already_accepted} ->
         socket =
           socket
-          |> put_flash(:info, gettext("This invitation has already been accepted."))
+          |> put_flash(:info, dgettext("projects", "This invitation has already been accepted."))
           |> push_navigate(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}")
 
         {:noreply, socket}
@@ -158,12 +158,12 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
          put_flash(
            socket,
            :error,
-           gettext("This invitation has expired. Please request a new one.")
+           dgettext("projects", "This invitation has expired. Please request a new one.")
          )}
 
       {:error, _} ->
         {:noreply,
-         put_flash(socket, :error, gettext("Failed to accept invitation. Please try again."))}
+         put_flash(socket, :error, dgettext("projects", "Failed to accept invitation. Please try again."))}
     end
   end
 end

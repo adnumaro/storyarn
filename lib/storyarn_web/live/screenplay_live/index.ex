@@ -23,9 +23,9 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
     >
       <div class="max-w-4xl mx-auto">
         <.header>
-          {gettext("Screenplays")}
+          {dgettext("screenplays", "Screenplays")}
           <:subtitle>
-            {gettext("Write and format screenplays with industry-standard formatting")}
+            {dgettext("screenplays", "Write and format screenplays with industry-standard formatting")}
           </:subtitle>
           <:actions :if={@can_edit}>
             <.link
@@ -33,13 +33,13 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
               class="btn btn-primary"
             >
               <.icon name="plus" class="size-4 mr-2" />
-              {gettext("New Screenplay")}
+              {dgettext("screenplays", "New Screenplay")}
             </.link>
           </:actions>
         </.header>
 
         <.empty_state :if={@screenplays == []} icon="scroll-text">
-          {gettext("No screenplays yet. Create your first screenplay to get started.")}
+          {dgettext("screenplays", "No screenplays yet. Create your first screenplay to get started.")}
         </.empty_state>
 
         <div :if={@screenplays != []} class="mt-6 space-y-2">
@@ -64,7 +64,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
             module={StoryarnWeb.ScreenplayLive.Form}
             id="new-screenplay-form"
             project={@project}
-            title={gettext("New Screenplay")}
+            title={dgettext("screenplays", "New Screenplay")}
             navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays"}
           />
         </.modal>
@@ -72,9 +72,9 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
         <.confirm_modal
           :if={@can_edit}
           id="delete-screenplay-confirm"
-          title={gettext("Delete screenplay?")}
-          message={gettext("Are you sure you want to delete this screenplay?")}
-          confirm_text={gettext("Delete")}
+          title={dgettext("screenplays", "Delete screenplay?")}
+          message={dgettext("screenplays", "Are you sure you want to delete this screenplay?")}
+          confirm_text={dgettext("screenplays", "Delete")}
           confirm_variant="error"
           icon="alert-triangle"
           on_confirm={JS.push("confirm_delete")}
@@ -136,7 +136,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
                   onclick="event.stopPropagation();"
                 >
                   <.icon name="trash-2" class="size-4" />
-                  {gettext("Delete")}
+                  {dgettext("screenplays", "Delete")}
                 </button>
               </li>
             </ul>
@@ -178,7 +178,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
       {:error, _reason} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("You don't have access to this project."))
+         |> put_flash(:error, dgettext("screenplays", "You don't have access to this project."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -192,7 +192,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
   def handle_info({StoryarnWeb.ScreenplayLive.Form, {:saved, screenplay}}, socket) do
     {:noreply,
      socket
-     |> put_flash(:info, gettext("Screenplay created successfully."))
+     |> put_flash(:info, dgettext("screenplays", "Screenplay created successfully."))
      |> push_navigate(
        to:
          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/screenplays/#{screenplay.id}"
@@ -233,16 +233,16 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
           {:ok, _} ->
             {:noreply,
              socket
-             |> put_flash(:info, gettext("Screenplay moved to trash."))
+             |> put_flash(:info, dgettext("screenplays", "Screenplay moved to trash."))
              |> reload_screenplays()}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not delete screenplay."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not delete screenplay."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("screenplays", "You don't have permission to perform this action."))}
     end
   end
 
@@ -254,7 +254,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
     case authorize(socket, :edit_content) do
       :ok ->
         case Screenplays.create_screenplay(socket.assigns.project, %{
-               name: gettext("Untitled")
+               name: dgettext("screenplays", "Untitled")
              }) do
           {:ok, new_screenplay} ->
             {:noreply,
@@ -264,19 +264,19 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
              )}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create screenplay."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("screenplays", "You don't have permission to perform this action."))}
     end
   end
 
   def handle_event("create_child_screenplay", %{"parent-id" => parent_id}, socket) do
     case authorize(socket, :edit_content) do
       :ok ->
-        attrs = %{name: gettext("Untitled"), parent_id: parent_id}
+        attrs = %{name: dgettext("screenplays", "Untitled"), parent_id: parent_id}
 
         case Screenplays.create_screenplay(socket.assigns.project, attrs) do
           {:ok, new_screenplay} ->
@@ -287,12 +287,12 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
              )}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not create screenplay."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("screenplays", "You don't have permission to perform this action."))}
     end
   end
 
@@ -312,12 +312,12 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
             {:noreply, reload_screenplays(socket)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not move screenplay."))}
+            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not move screenplay."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("screenplays", "You don't have permission to perform this action."))}
     end
   end
 

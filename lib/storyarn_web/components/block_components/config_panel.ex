@@ -26,7 +26,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
     <div class="fixed inset-y-0 right-0 w-80 bg-base-200 shadow-xl z-50 flex flex-col">
       <%!-- Header --%>
       <div class="flex items-center justify-between p-4 border-b border-base-300">
-        <h3 class="font-semibold">{gettext("Configure Block")}</h3>
+        <h3 class="font-semibold">{dgettext("sheets", "Configure Block")}</h3>
         <button
           type="button"
           class="btn btn-ghost btn-sm btn-square"
@@ -43,15 +43,15 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
           <%!-- Block Type (read-only) --%>
           <div>
             <label class="label">
-              <span class="label-text">{gettext("Type")}</span>
+              <span class="label-text">{dgettext("sheets", "Type")}</span>
             </label>
             <div class="flex items-center gap-2">
               <div class="badge badge-neutral">{@block.type}</div>
               <div :if={@is_inherited} class="badge badge-info badge-outline badge-sm">
-                {gettext("Inherited")}
+                {dgettext("sheets", "Inherited")}
               </div>
               <div :if={@is_detached} class="badge badge-warning badge-outline badge-sm">
-                {gettext("Detached")}
+                {dgettext("sheets", "Detached")}
               </div>
             </div>
           </div>
@@ -59,7 +59,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
           <%!-- Scope selector (only for non-inherited blocks) --%>
           <div :if={!@is_inherited && @block.type != "divider"}>
             <label class="label">
-              <span class="label-text">{gettext("Scope")}</span>
+              <span class="label-text">{dgettext("sheets", "Scope")}</span>
             </label>
             <div class="flex flex-col gap-2">
               <label class="flex items-center gap-2 cursor-pointer text-sm">
@@ -73,7 +73,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                   phx-value-scope="self"
                   phx-target={@target}
                 />
-                <span>{gettext("This page only")}</span>
+                <span>{dgettext("sheets", "This page only")}</span>
               </label>
               <label class="flex items-center gap-2 cursor-pointer text-sm">
                 <input
@@ -86,11 +86,11 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                   phx-value-scope="children"
                   phx-target={@target}
                 />
-                <span>{gettext("This page and all children")}</span>
+                <span>{dgettext("sheets", "This page and all children")}</span>
               </label>
             </div>
             <p :if={@scope == "children"} class="text-xs text-base-content/50 mt-1">
-              {gettext("Changes to this property's definition will sync to all children.")}
+              {dgettext("sheets", "Changes to this property's definition will sync to all children.")}
             </p>
           </div>
 
@@ -106,10 +106,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                 phx-click="toggle_required"
                 phx-target={@target}
               />
-              <span class="label-text">{gettext("Required")}</span>
+              <span class="label-text">{dgettext("sheets", "Required")}</span>
             </label>
             <p class="text-xs text-base-content/50 ml-12">
-              {gettext("Mark this property as required for children.")}
+              {dgettext("sheets", "Mark this property as required for children.")}
             </p>
           </div>
 
@@ -123,10 +123,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
               phx-target={@target}
             >
               <.icon name="link" class="size-4" />
-              {gettext("Re-sync with source")}
+              {dgettext("sheets", "Re-sync with source")}
             </button>
             <p class="text-xs text-base-content/50 mt-1">
-              {gettext(
+              {dgettext("sheets", 
                 "Resets the property definition to match the source. Your value will be preserved."
               )}
             </p>
@@ -144,24 +144,24 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                 phx-click="toggle_constant"
                 phx-target={@target}
               />
-              <span class="label-text">{gettext("Use as constant")}</span>
+              <span class="label-text">{dgettext("sheets", "Use as constant")}</span>
             </label>
             <p class="text-xs text-base-content/50 ml-12">
-              {gettext("Constants are not accessible as variables in flow scripts.")}
+              {dgettext("sheets", "Constants are not accessible as variables in flow scripts.")}
             </p>
           </div>
 
           <%!-- Label field (for all types except divider) --%>
           <div :if={@block.type != "divider"}>
             <label class="label">
-              <span class="label-text">{gettext("Label")}</span>
+              <span class="label-text">{dgettext("sheets", "Label")}</span>
             </label>
             <input
               type="text"
               name="config[label]"
               value={@label}
               class="input input-bordered w-full"
-              placeholder={gettext("Enter label...")}
+              placeholder={dgettext("sheets", "Enter label...")}
               required
             />
           </div>
@@ -169,43 +169,43 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
           <%!-- Variable name (below label, derived from it) --%>
           <div :if={@can_be_variable and not @is_constant}>
             <label class="label">
-              <span class="label-text text-xs">{gettext("Variable Name")}</span>
+              <span class="label-text text-xs">{dgettext("sheets", "Variable Name")}</span>
             </label>
             <div class="flex items-center gap-2">
               <code class="flex-1 px-3 py-2 bg-base-300 rounded text-sm font-mono">
-                {if @variable_name, do: @variable_name, else: gettext("(derived from label)")}
+                {if @variable_name, do: @variable_name, else: dgettext("sheets", "(derived from label)")}
               </code>
             </div>
             <p class="text-xs text-base-content/50 mt-1">
-              {gettext("Use this name to reference the value in flows.")}
+              {dgettext("sheets", "Use this name to reference the value in flows.")}
             </p>
           </div>
 
           <%!-- Placeholder field --%>
           <div :if={@block.type in ["text", "number", "select", "rich_text", "multi_select"]}>
             <label class="label">
-              <span class="label-text">{gettext("Placeholder")}</span>
+              <span class="label-text">{dgettext("sheets", "Placeholder")}</span>
             </label>
             <input
               type="text"
               name="config[placeholder]"
               value={@placeholder}
               class="input input-bordered w-full"
-              placeholder={gettext("Enter placeholder...")}
+              placeholder={dgettext("sheets", "Enter placeholder...")}
             />
           </div>
 
           <%!-- Max Length (for text and rich_text) --%>
           <div :if={@block.type in ["text", "rich_text"]}>
             <label class="label">
-              <span class="label-text">{gettext("Max Length")}</span>
+              <span class="label-text">{dgettext("sheets", "Max Length")}</span>
             </label>
             <input
               type="number"
               name="config[max_length]"
               value={@max_length}
               class="input input-bordered w-full"
-              placeholder={gettext("No limit")}
+              placeholder={dgettext("sheets", "No limit")}
               min="1"
             />
           </div>
@@ -214,26 +214,26 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
           <div :if={@block.type == "number"} class="grid grid-cols-2 gap-2">
             <div>
               <label class="label">
-                <span class="label-text">{gettext("Min")}</span>
+                <span class="label-text">{dgettext("sheets", "Min")}</span>
               </label>
               <input
                 type="number"
                 name="config[min]"
                 value={@min}
                 class="input input-bordered w-full"
-                placeholder={gettext("No min")}
+                placeholder={dgettext("sheets", "No min")}
               />
             </div>
             <div>
               <label class="label">
-                <span class="label-text">{gettext("Max")}</span>
+                <span class="label-text">{dgettext("sheets", "Max")}</span>
               </label>
               <input
                 type="number"
                 name="config[max]"
                 value={@max}
                 class="input input-bordered w-full"
-                placeholder={gettext("No max")}
+                placeholder={dgettext("sheets", "No max")}
               />
             </div>
           </div>
@@ -242,7 +242,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
           <div :if={@block.type == "date"} class="grid grid-cols-2 gap-2">
             <div>
               <label class="label">
-                <span class="label-text">{gettext("Min Date")}</span>
+                <span class="label-text">{dgettext("sheets", "Min Date")}</span>
               </label>
               <input
                 type="date"
@@ -253,7 +253,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
             </div>
             <div>
               <label class="label">
-                <span class="label-text">{gettext("Max Date")}</span>
+                <span class="label-text">{dgettext("sheets", "Max Date")}</span>
               </label>
               <input
                 type="date"
@@ -267,14 +267,14 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
           <%!-- Max Options (for multi_select) --%>
           <div :if={@block.type == "multi_select"}>
             <label class="label">
-              <span class="label-text">{gettext("Max Selections")}</span>
+              <span class="label-text">{dgettext("sheets", "Max Selections")}</span>
             </label>
             <input
               type="number"
               name="config[max_options]"
               value={@max_options}
               class="input input-bordered w-full"
-              placeholder={gettext("No limit")}
+              placeholder={dgettext("sheets", "No limit")}
               min="1"
             />
           </div>
@@ -282,25 +282,25 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
           <%!-- Mode selector (for boolean) --%>
           <div :if={@block.type == "boolean"}>
             <label class="label">
-              <span class="label-text">{gettext("Mode")}</span>
+              <span class="label-text">{dgettext("sheets", "Mode")}</span>
             </label>
             <select name="config[mode]" class="select select-bordered w-full">
               <option value="two_state" selected={@mode == "two_state"}>
-                {gettext("Two states (Yes/No)")}
+                {dgettext("sheets", "Two states (Yes/No)")}
               </option>
               <option value="tri_state" selected={@mode == "tri_state"}>
-                {gettext("Three states (Yes/Neutral/No)")}
+                {dgettext("sheets", "Three states (Yes/Neutral/No)")}
               </option>
             </select>
             <p class="text-xs text-base-content/50 mt-1">
-              {gettext("Tri-state allows a neutral/unknown value.")}
+              {dgettext("sheets", "Tri-state allows a neutral/unknown value.")}
             </p>
           </div>
 
           <%!-- Allowed reference types (for reference) --%>
           <div :if={@block.type == "reference"} class="space-y-2">
             <label class="label">
-              <span class="label-text">{gettext("Allowed Types")}</span>
+              <span class="label-text">{dgettext("sheets", "Allowed Types")}</span>
             </label>
             <%!-- Hidden field to ensure key is always present --%>
             <input type="hidden" name="config[allowed_types][]" value="" />
@@ -313,7 +313,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                   checked={"sheet" in @allowed_types}
                   class="checkbox checkbox-sm"
                 />
-                <span class="label-text">{gettext("Sheets")}</span>
+                <span class="label-text">{dgettext("sheets", "Sheets")}</span>
               </label>
               <label class="label cursor-pointer justify-start gap-3">
                 <input
@@ -323,18 +323,18 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                   checked={"flow" in @allowed_types}
                   class="checkbox checkbox-sm"
                 />
-                <span class="label-text">{gettext("Flows")}</span>
+                <span class="label-text">{dgettext("sheets", "Flows")}</span>
               </label>
             </div>
             <p class="text-xs text-base-content/50">
-              {gettext("Select which types can be referenced.")}
+              {dgettext("sheets", "Select which types can be referenced.")}
             </p>
           </div>
 
           <%!-- Custom labels (for boolean) --%>
           <div :if={@block.type == "boolean"} class="space-y-2">
             <label class="label">
-              <span class="label-text">{gettext("Custom Labels")}</span>
+              <span class="label-text">{dgettext("sheets", "Custom Labels")}</span>
             </label>
             <div class="grid grid-cols-2 gap-2">
               <div>
@@ -343,9 +343,9 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                   name="config[true_label]"
                   value={@true_label}
                   class="input input-bordered input-sm w-full"
-                  placeholder={gettext("Yes")}
+                  placeholder={dgettext("sheets", "Yes")}
                 />
-                <span class="text-xs text-base-content/50">{gettext("True")}</span>
+                <span class="text-xs text-base-content/50">{dgettext("sheets", "True")}</span>
               </div>
               <div>
                 <input
@@ -353,9 +353,9 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                   name="config[false_label]"
                   value={@false_label}
                   class="input input-bordered input-sm w-full"
-                  placeholder={gettext("No")}
+                  placeholder={dgettext("sheets", "No")}
                 />
-                <span class="text-xs text-base-content/50">{gettext("False")}</span>
+                <span class="text-xs text-base-content/50">{dgettext("sheets", "False")}</span>
               </div>
             </div>
             <div :if={@mode == "tri_state"}>
@@ -364,12 +364,12 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                 name="config[neutral_label]"
                 value={@neutral_label}
                 class="input input-bordered input-sm w-full"
-                placeholder={gettext("Neutral")}
+                placeholder={dgettext("sheets", "Neutral")}
               />
-              <span class="text-xs text-base-content/50">{gettext("Neutral/Unknown")}</span>
+              <span class="text-xs text-base-content/50">{dgettext("sheets", "Neutral/Unknown")}</span>
             </div>
             <p class="text-xs text-base-content/50">
-              {gettext("Leave empty to use defaults.")}
+              {dgettext("sheets", "Leave empty to use defaults.")}
             </p>
           </div>
         </form>
@@ -377,7 +377,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
         <%!-- Options (for select and multi_select) - Outside form to avoid nested form issues --%>
         <div :if={@block.type in ["select", "multi_select"]} class="mt-4">
           <label class="label">
-            <span class="label-text">{gettext("Options")}</span>
+            <span class="label-text">{dgettext("sheets", "Options")}</span>
           </label>
           <div class="space-y-2">
             <div :for={{opt, idx} <- Enum.with_index(@options)} class="flex items-center gap-2">
@@ -392,14 +392,14 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                   name="key"
                   value={opt["key"]}
                   class="input input-bordered input-sm w-20"
-                  placeholder={gettext("Key")}
+                  placeholder={dgettext("sheets", "Key")}
                 />
                 <input
                   type="text"
                   name="value"
                   value={opt["value"]}
                   class="input input-bordered input-sm flex-1"
-                  placeholder={gettext("Label")}
+                  placeholder={dgettext("sheets", "Label")}
                 />
               </form>
               <button
@@ -419,7 +419,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
               phx-target={@target}
             >
               <.icon name="plus" class="size-4" />
-              {gettext("Add option")}
+              {dgettext("sheets", "Add option")}
             </button>
           </div>
         </div>

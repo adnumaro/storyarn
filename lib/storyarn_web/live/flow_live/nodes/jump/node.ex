@@ -9,7 +9,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Jump.Node do
 
   def type, do: "jump"
   def icon_name, do: "log-out"
-  def label, do: gettext("Jump")
+  def label, do: dgettext("flows", "Jump")
 
   def default_data, do: %{"target_hub_id" => ""}
 

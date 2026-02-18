@@ -47,7 +47,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
       <div :if={@can_toggle_lock} class="flex items-center justify-between pb-2 border-b border-base-300">
         <label class="label text-xs font-medium flex items-center gap-1.5">
           <.icon name={if @pin.locked, do: "lock", else: "unlock"} class="size-3.5" />
-          {if @pin.locked, do: gettext("Locked"), else: gettext("Unlocked")}
+          {if @pin.locked, do: dgettext("maps", "Locked"), else: dgettext("maps", "Unlocked")}
         </label>
         <input
           type="checkbox"
@@ -62,7 +62,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Label (phx-blur — no form needed) --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Label")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Label")}</label>
         <input
           type="text"
           value={@pin.label || ""}
@@ -76,7 +76,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Type --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Type")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Type")}</label>
         <form phx-change="update_pin" phx-submit="noop">
           <input type="hidden" name="element_id" value={@pin.id} />
           <input type="hidden" name="field" value="pin_type" />
@@ -94,7 +94,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Color --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Color")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Color")}</label>
         <form phx-change="update_pin" phx-submit="noop">
           <input type="hidden" name="element_id" value={@pin.id} />
           <input type="hidden" name="field" value="color" />
@@ -110,7 +110,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Size --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Size")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Size")}</label>
         <form phx-change="update_pin" phx-submit="noop">
           <input type="hidden" name="element_id" value={@pin.id} />
           <input type="hidden" name="field" value="size" />
@@ -128,7 +128,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Tooltip (phx-blur — no form needed) --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Tooltip")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Tooltip")}</label>
         <input
           type="text"
           value={@pin.tooltip || ""}
@@ -142,7 +142,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Layer --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Layer")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Layer")}</label>
         <form phx-change="update_pin" phx-submit="noop">
           <input type="hidden" name="element_id" value={@pin.id} />
           <input type="hidden" name="field" value="layer_id" />
@@ -152,7 +152,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
             disabled={!@can_edit}
           >
             <option value="" selected={is_nil(@pin.layer_id)}>
-              {gettext("None")}
+              {dgettext("maps", "None")}
             </option>
             <option :for={layer <- @layers} value={layer.id} selected={layer.id == @pin.layer_id}>
               {layer.name}
@@ -164,14 +164,14 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
       <%!-- Custom Icon --%>
       <div :if={@can_edit} class="pt-2 border-t border-base-300 space-y-2">
         <label class="label text-xs font-medium">
-          <.icon name="image" class="size-3 inline-block mr-1" />{gettext("Custom Icon")}
+          <.icon name="image" class="size-3 inline-block mr-1" />{dgettext("maps", "Custom Icon")}
         </label>
 
         <div :if={pin_icon_set?(@pin)} class="space-y-2">
           <div class="rounded border border-base-300 overflow-hidden bg-base-200 flex items-center justify-center p-2">
             <img
               src={pin_icon_url(@pin)}
-              alt={gettext("Pin icon")}
+              alt={dgettext("maps", "Pin icon")}
               class="max-h-16 max-w-16 object-contain"
             />
           </div>
@@ -182,7 +182,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
               class="btn btn-ghost btn-xs flex-1"
             >
               <.icon name="refresh-cw" class="size-3" />
-              {gettext("Change")}
+              {dgettext("maps", "Change")}
             </button>
             <button
               type="button"
@@ -190,7 +190,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
               class="btn btn-error btn-outline btn-xs flex-1"
             >
               <.icon name="trash-2" class="size-3" />
-              {gettext("Remove")}
+              {dgettext("maps", "Remove")}
             </button>
           </div>
         </div>
@@ -202,7 +202,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
             class="btn btn-ghost btn-xs w-full border border-dashed border-base-300"
           >
             <.icon name="image-plus" class="size-3.5" />
-            {gettext("Upload Icon")}
+            {dgettext("maps", "Upload Icon")}
           </button>
         </div>
 
@@ -241,7 +241,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
           class="btn btn-error btn-sm btn-outline w-full"
         >
           <.icon name="trash-2" class="size-4" />
-          {gettext("Delete Pin")}
+          {dgettext("maps", "Delete Pin")}
         </button>
       </div>
     </div>
@@ -269,7 +269,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
       <div :if={@can_toggle_lock} class="flex items-center justify-between pb-2 border-b border-base-300">
         <label class="label text-xs font-medium flex items-center gap-1.5">
           <.icon name={if @zone.locked, do: "lock", else: "unlock"} class="size-3.5" />
-          {if @zone.locked, do: gettext("Locked"), else: gettext("Unlocked")}
+          {if @zone.locked, do: dgettext("maps", "Locked"), else: dgettext("maps", "Unlocked")}
         </label>
         <input
           type="checkbox"
@@ -284,7 +284,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Name (phx-blur — no form needed) --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Name")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Name")}</label>
         <input
           type="text"
           value={@zone.name || ""}
@@ -298,7 +298,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Fill Color --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Fill Color")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Fill Color")}</label>
         <form phx-change="update_zone" phx-submit="noop">
           <input type="hidden" name="element_id" value={@zone.id} />
           <input type="hidden" name="field" value="fill_color" />
@@ -314,7 +314,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Border Color --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Border Color")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Border Color")}</label>
         <form phx-change="update_zone" phx-submit="noop">
           <input type="hidden" name="element_id" value={@zone.id} />
           <input type="hidden" name="field" value="border_color" />
@@ -331,7 +331,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
       <%!-- Opacity --%>
       <div>
         <label class="label text-xs font-medium">
-          {gettext("Opacity")}
+          {dgettext("maps", "Opacity")}
           <span class="text-base-content/50 ml-1">{format_opacity(@zone.opacity)}</span>
         </label>
         <form phx-change="update_zone" phx-submit="noop">
@@ -352,7 +352,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Border Style --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Border Style")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Border Style")}</label>
         <form phx-change="update_zone" phx-submit="noop">
           <input type="hidden" name="element_id" value={@zone.id} />
           <input type="hidden" name="field" value="border_style" />
@@ -370,7 +370,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Border Width --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Border Width")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Border Width")}</label>
         <form phx-change="update_zone" phx-submit="noop">
           <input type="hidden" name="element_id" value={@zone.id} />
           <input type="hidden" name="field" value="border_width" />
@@ -388,7 +388,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Tooltip (phx-blur — no form needed) --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Tooltip")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Tooltip")}</label>
         <input
           type="text"
           value={@zone.tooltip || ""}
@@ -402,7 +402,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Layer --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Layer")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Layer")}</label>
         <form phx-change="update_zone" phx-submit="noop">
           <input type="hidden" name="element_id" value={@zone.id} />
           <input type="hidden" name="field" value="layer_id" />
@@ -412,7 +412,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
             disabled={!@can_edit}
           >
             <option value="" selected={is_nil(@zone.layer_id)}>
-              {gettext("None")}
+              {dgettext("maps", "None")}
             </option>
             <option :for={layer <- @layers} value={layer.id} selected={layer.id == @zone.layer_id}>
               {layer.name}
@@ -442,7 +442,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
           class="btn btn-error btn-sm btn-outline w-full"
         >
           <.icon name="trash-2" class="size-4" />
-          {gettext("Delete Zone")}
+          {dgettext("maps", "Delete Zone")}
         </button>
       </div>
     </div>
@@ -465,7 +465,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
     <div class="space-y-4">
       <%!-- Label (phx-blur — no form needed) --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Label")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Label")}</label>
         <input
           type="text"
           value={@connection.label || ""}
@@ -479,7 +479,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Line Style --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Line Style")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Line Style")}</label>
         <form phx-change="update_connection" phx-submit="noop">
           <input type="hidden" name="element_id" value={@connection.id} />
           <input type="hidden" name="field" value="line_style" />
@@ -497,7 +497,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Color --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Color")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Color")}</label>
         <form phx-change="update_connection" phx-submit="noop">
           <input type="hidden" name="element_id" value={@connection.id} />
           <input type="hidden" name="field" value="color" />
@@ -513,7 +513,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Bidirectional (phx-click — no form needed) --%>
       <div class="flex items-center justify-between">
-        <label class="label text-xs font-medium">{gettext("Bidirectional")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Bidirectional")}</label>
         <input
           type="checkbox"
           checked={@connection.bidirectional}
@@ -528,10 +528,10 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Waypoints --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Path")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Path")}</label>
         <div class="flex items-center justify-between">
           <span class="text-xs text-base-content/60">
-            {ngettext("%{count} waypoint", "%{count} waypoints", length(@connection.waypoints || []),
+            {dngettext("maps", "%{count} waypoint", "%{count} waypoints", length(@connection.waypoints || []),
               count: length(@connection.waypoints || []))}
           </span>
           <button
@@ -542,11 +542,11 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
             class="btn btn-ghost btn-xs"
           >
             <.icon name="undo-2" class="size-3" />
-            {gettext("Straighten")}
+            {dgettext("maps", "Straighten")}
           </button>
         </div>
         <p :if={@can_edit} class="text-xs text-base-content/40 mt-1">
-          {gettext("Double-click the line to add waypoints.")}
+          {dgettext("maps", "Double-click the line to add waypoints.")}
         </p>
       </div>
 
@@ -558,7 +558,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
           class="btn btn-error btn-sm btn-outline w-full"
         >
           <.icon name="trash-2" class="size-4" />
-          {gettext("Delete Connection")}
+          {dgettext("maps", "Delete Connection")}
         </button>
       </div>
     </div>
@@ -585,7 +585,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
       <div :if={@can_toggle_lock} class="flex items-center justify-between pb-2 border-b border-base-300">
         <label class="label text-xs font-medium flex items-center gap-1.5">
           <.icon name={if @annotation.locked, do: "lock", else: "unlock"} class="size-3.5" />
-          {if @annotation.locked, do: gettext("Locked"), else: gettext("Unlocked")}
+          {if @annotation.locked, do: dgettext("maps", "Locked"), else: dgettext("maps", "Unlocked")}
         </label>
         <input
           type="checkbox"
@@ -600,7 +600,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Text (phx-blur — no form needed) --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Text")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Text")}</label>
         <textarea
           phx-blur="update_annotation"
           phx-value-id={@annotation.id}
@@ -614,7 +614,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Font Size --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Font Size")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Font Size")}</label>
         <form phx-change="update_annotation" phx-submit="noop">
           <input type="hidden" name="element_id" value={@annotation.id} />
           <input type="hidden" name="field" value="font_size" />
@@ -632,7 +632,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Color --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Color")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Color")}</label>
         <form phx-change="update_annotation" phx-submit="noop">
           <input type="hidden" name="element_id" value={@annotation.id} />
           <input type="hidden" name="field" value="color" />
@@ -648,7 +648,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Layer --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Layer")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Layer")}</label>
         <form phx-change="update_annotation" phx-submit="noop">
           <input type="hidden" name="element_id" value={@annotation.id} />
           <input type="hidden" name="field" value="layer_id" />
@@ -658,7 +658,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
             disabled={!@can_edit}
           >
             <option value="" selected={is_nil(@annotation.layer_id)}>
-              {gettext("None")}
+              {dgettext("maps", "None")}
             </option>
             <option :for={layer <- @layers} value={layer.id} selected={layer.id == @annotation.layer_id}>
               {layer.name}
@@ -675,7 +675,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
           class="btn btn-error btn-sm btn-outline w-full"
         >
           <.icon name="trash-2" class="size-4" />
-          {gettext("Delete Annotation")}
+          {dgettext("maps", "Delete Annotation")}
         </button>
       </div>
     </div>
@@ -703,7 +703,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
     ~H"""
     <div class="pt-2 border-t border-base-300 space-y-2">
       <label class="label text-xs font-medium">
-        <.icon name="link" class="size-3 inline-block mr-1" />{gettext("Link to")}
+        <.icon name="link" class="size-3 inline-block mr-1" />{dgettext("maps", "Link to")}
       </label>
 
       <%!-- Target type select --%>
@@ -715,7 +715,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
           class="select select-sm select-bordered w-full"
           disabled={!@can_edit}
         >
-          <option value="" selected={is_nil(@target_type)}>{gettext("None")}</option>
+          <option value="" selected={is_nil(@target_type)}>{dgettext("maps", "None")}</option>
           <option :for={t <- @target_types} value={t} selected={t == @target_type}>
             {target_type_label(t)}
           </option>
@@ -731,7 +731,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
           class="select select-sm select-bordered w-full"
           disabled={!@can_edit}
         >
-          <option value="" selected={is_nil(@target_id)}>{gettext("Select...")}</option>
+          <option value="" selected={is_nil(@target_id)}>{dgettext("maps", "Select...")}</option>
           <option
             :for={item <- target_items(@target_type, @project_maps, @project_sheets, @project_flows)}
             value={item.id}
@@ -772,13 +772,13 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
     <div class="space-y-4">
       <%!-- Background image --%>
       <div>
-        <label class="label text-xs font-medium">{gettext("Background Image")}</label>
+        <label class="label text-xs font-medium">{dgettext("maps", "Background Image")}</label>
 
         <div :if={background_set?(@map)} class="space-y-2">
           <div class="rounded border border-base-300 overflow-hidden">
             <img
               src={background_asset_url(@map)}
-              alt={gettext("Map background")}
+              alt={dgettext("maps", "Map background")}
               class="w-full h-32 object-cover"
             />
           </div>
@@ -789,7 +789,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
               class="btn btn-ghost btn-xs flex-1"
             >
               <.icon name="refresh-cw" class="size-3" />
-              {gettext("Change")}
+              {dgettext("maps", "Change")}
             </button>
             <button
               type="button"
@@ -797,7 +797,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
               class="btn btn-error btn-outline btn-xs flex-1"
             >
               <.icon name="trash-2" class="size-3" />
-              {gettext("Remove")}
+              {dgettext("maps", "Remove")}
             </button>
           </div>
         </div>
@@ -809,7 +809,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
             class="btn btn-ghost btn-sm w-full border border-dashed border-base-300"
           >
             <.icon name="image-plus" class="size-4" />
-            {gettext("Upload Background")}
+            {dgettext("maps", "Upload Background")}
           </button>
         </div>
       </div>
@@ -830,11 +830,11 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
       <%!-- Map scale --%>
       <div class="pt-2 border-t border-base-300 space-y-2">
         <label class="label text-xs font-medium">
-          <.icon name="ruler" class="size-3 inline-block mr-1" />{gettext("Map Scale")}
+          <.icon name="ruler" class="size-3 inline-block mr-1" />{dgettext("maps", "Map Scale")}
         </label>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="text-xs text-base-content/50">{gettext("Total width")}</label>
+            <label class="text-xs text-base-content/50">{dgettext("maps", "Total width")}</label>
             <input
               type="number"
               min="0"
@@ -847,7 +847,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
             />
           </div>
           <div>
-            <label class="text-xs text-base-content/50">{gettext("Unit")}</label>
+            <label class="text-xs text-base-content/50">{dgettext("maps", "Unit")}</label>
             <input
               type="text"
               value={@map.scale_unit || ""}
@@ -859,7 +859,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
           </div>
         </div>
         <p :if={@map.scale_value && @map.scale_unit} class="text-xs text-base-content/40">
-          {gettext("1 map width = %{value} %{unit}",
+          {dgettext("maps", "1 map width = %{value} %{unit}",
             value: format_scale_value(@map.scale_value),
             unit: @map.scale_unit
           )}
@@ -868,7 +868,7 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
 
       <%!-- Map dimensions (read-only info) --%>
       <div class="pt-2 border-t border-base-300">
-        <label class="label text-xs font-medium text-base-content/60">{gettext("Dimensions")}</label>
+        <label class="label text-xs font-medium text-base-content/60">{dgettext("maps", "Dimensions")}</label>
         <p class="text-xs text-base-content/50">
           {(@map.width || 1000)} &times; {(@map.height || 1000)} px
         </p>
@@ -893,37 +893,37 @@ defmodule StoryarnWeb.MapLive.Components.PropertiesPanel do
   defp pin_icon_url(%{icon_asset: %{url: url}}) when is_binary(url), do: url
   defp pin_icon_url(_), do: nil
 
-  defp pin_type_label("location"), do: gettext("Location")
-  defp pin_type_label("character"), do: gettext("Character")
-  defp pin_type_label("event"), do: gettext("Event")
-  defp pin_type_label("custom"), do: gettext("Custom")
+  defp pin_type_label("location"), do: dgettext("maps", "Location")
+  defp pin_type_label("character"), do: dgettext("maps", "Character")
+  defp pin_type_label("event"), do: dgettext("maps", "Event")
+  defp pin_type_label("custom"), do: dgettext("maps", "Custom")
   defp pin_type_label(other), do: other
 
-  defp pin_size_label("sm"), do: gettext("Small")
-  defp pin_size_label("md"), do: gettext("Medium")
-  defp pin_size_label("lg"), do: gettext("Large")
+  defp pin_size_label("sm"), do: dgettext("maps", "Small")
+  defp pin_size_label("md"), do: dgettext("maps", "Medium")
+  defp pin_size_label("lg"), do: dgettext("maps", "Large")
   defp pin_size_label(other), do: other
 
   defp border_style_label(style), do: style_label(style)
   defp line_style_label(style), do: style_label(style)
 
-  defp style_label("solid"), do: gettext("Solid")
-  defp style_label("dashed"), do: gettext("Dashed")
-  defp style_label("dotted"), do: gettext("Dotted")
+  defp style_label("solid"), do: dgettext("maps", "Solid")
+  defp style_label("dashed"), do: dgettext("maps", "Dashed")
+  defp style_label("dotted"), do: dgettext("maps", "Dotted")
   defp style_label(other), do: other
 
-  defp font_size_label("sm"), do: gettext("Small")
-  defp font_size_label("md"), do: gettext("Medium")
-  defp font_size_label("lg"), do: gettext("Large")
+  defp font_size_label("sm"), do: dgettext("maps", "Small")
+  defp font_size_label("md"), do: dgettext("maps", "Medium")
+  defp font_size_label("lg"), do: dgettext("maps", "Large")
   defp font_size_label(other), do: other
 
   defp format_opacity(nil), do: "30%"
   defp format_opacity(val), do: "#{round(val * 100)}%"
 
-  defp target_type_label("sheet"), do: gettext("Sheet")
-  defp target_type_label("flow"), do: gettext("Flow")
-  defp target_type_label("map"), do: gettext("Map")
-  defp target_type_label("url"), do: gettext("URL")
+  defp target_type_label("sheet"), do: dgettext("maps", "Sheet")
+  defp target_type_label("flow"), do: dgettext("maps", "Flow")
+  defp target_type_label("map"), do: dgettext("maps", "Map")
+  defp target_type_label("url"), do: dgettext("maps", "URL")
   defp target_type_label(other), do: other
 
   defp target_items("map", maps, _sheets, _flows), do: maps

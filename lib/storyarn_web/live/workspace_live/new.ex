@@ -14,7 +14,7 @@ defmodule StoryarnWeb.WorkspaceLive.New do
 
     {:ok,
      socket
-     |> assign(:page_title, gettext("New Workspace"))
+     |> assign(:page_title, dgettext("workspaces", "New Workspace"))
      |> assign(:form, to_form(changeset))}
   end
 
@@ -24,9 +24,9 @@ defmodule StoryarnWeb.WorkspaceLive.New do
     <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
       <div class="max-w-lg mx-auto py-8">
         <.header>
-          {gettext("Create a new workspace")}
+          {dgettext("workspaces", "Create a new workspace")}
           <:subtitle>
-            {gettext("Workspaces help you organize projects for different teams or purposes.")}
+            {dgettext("workspaces", "Workspaces help you organize projects for different teams or purposes.")}
           </:subtitle>
         </.header>
 
@@ -34,24 +34,24 @@ defmodule StoryarnWeb.WorkspaceLive.New do
           <.input
             field={@form[:name]}
             type="text"
-            label={gettext("Workspace name")}
-            placeholder={gettext("My Workspace")}
+            label={dgettext("workspaces", "Workspace name")}
+            placeholder={dgettext("workspaces", "My Workspace")}
             required
           />
 
           <.input
             field={@form[:description]}
             type="textarea"
-            label={gettext("Description")}
-            placeholder={gettext("What is this workspace for?")}
+            label={dgettext("workspaces", "Description")}
+            placeholder={dgettext("workspaces", "What is this workspace for?")}
           />
 
           <div class="flex justify-end gap-2 pt-4">
             <.link navigate={~p"/workspaces"} class="btn btn-ghost">
-              {gettext("Cancel")}
+              {dgettext("workspaces", "Cancel")}
             </.link>
-            <.button type="submit" phx-disable-with={gettext("Creating...")}>
-              {gettext("Create Workspace")}
+            <.button type="submit" phx-disable-with={dgettext("workspaces", "Creating...")}>
+              {dgettext("workspaces", "Create Workspace")}
             </.button>
           </div>
         </.form>
@@ -72,7 +72,7 @@ defmodule StoryarnWeb.WorkspaceLive.New do
       {:ok, workspace} ->
         {:noreply,
          socket
-         |> put_flash(:info, gettext("Workspace created successfully."))
+         |> put_flash(:info, dgettext("workspaces", "Workspace created successfully."))
          |> push_navigate(to: ~p"/workspaces/#{workspace.slug}")}
 
       {:error, %Ecto.Changeset{} = changeset} ->

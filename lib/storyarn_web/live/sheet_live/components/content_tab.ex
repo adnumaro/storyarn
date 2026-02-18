@@ -47,7 +47,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         :if={@inherited_groups != []}
         class="text-xs text-base-content/50 uppercase tracking-wider mt-6 mb-2 px-2 sm:px-8 md:px-16"
       >
-        {gettext("Own Properties")}
+        {dgettext("sheets", "Own Properties")}
       </div>
 
       <div
@@ -111,7 +111,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           phx-target={@myself}
         >
           <.icon name="plus" class="size-4 opacity-0 group-hover:opacity-100" />
-          <span class="text-sm">{gettext("Type / to add a block")}</span>
+          <span class="text-sm">{dgettext("sheets", "Type / to add a block")}</span>
         </div>
 
         <.block_menu :if={@show_block_menu} target={@myself} scope={@block_scope} />
@@ -219,7 +219,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
            |> reload_blocks()}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not create block."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create block."))}
       end
     end)
   end
@@ -238,7 +238,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           {:noreply, reload_blocks(socket)}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not update block."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update block."))}
       end
     end)
   end
@@ -256,7 +256,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           {:noreply, reload_blocks(socket)}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not delete block."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete block."))}
       end
     end)
   end
@@ -273,7 +273,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           {:noreply, reload_blocks(socket)}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not reorder blocks."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reorder blocks."))}
       end
     end)
   end
@@ -301,7 +301,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           {:noreply, reload_blocks(socket)}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not reorder blocks."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reorder blocks."))}
       end
     end)
   end
@@ -430,7 +430,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
            |> reload_blocks()}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not save configuration."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not save configuration."))}
       end
     end)
   end
@@ -451,7 +451,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
            |> reload_blocks()}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not toggle constant."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not toggle constant."))}
       end
     end)
   end
@@ -528,11 +528,11 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
            |> reload_blocks()
            |> put_flash(
              :info,
-             gettext("Property detached. Changes to the source won't affect this copy.")
+             dgettext("sheets", "Property detached. Changes to the source won't affect this copy.")
            )}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not detach property."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not detach property."))}
       end
     end)
   end
@@ -552,10 +552,10 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
            socket
            |> assign(:configuring_block, nil)
            |> reload_blocks()
-           |> put_flash(:info, gettext("Property re-synced with source."))}
+           |> put_flash(:info, dgettext("sheets", "Property re-synced with source."))}
 
         {:error, :source_not_found} ->
-          {:noreply, put_flash(socket, :error, gettext("Source block no longer exists."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Source block no longer exists."))}
       end
     end)
   end
@@ -570,10 +570,10 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           {:noreply,
            socket
            |> assign(:sheet, updated_sheet)
-           |> put_flash(:info, gettext("Property hidden from children."))}
+           |> put_flash(:info, dgettext("sheets", "Property hidden from children."))}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not hide property."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not hide property."))}
       end
     end)
   end
@@ -588,10 +588,10 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           {:noreply,
            socket
            |> assign(:sheet, updated_sheet)
-           |> put_flash(:info, gettext("Property visible to children again."))}
+           |> put_flash(:info, dgettext("sheets", "Property visible to children again."))}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not unhide property."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not unhide property."))}
       end
     end)
   end
@@ -611,7 +611,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
          to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{source_sheet.id}"
        )}
     else
-      {:noreply, put_flash(socket, :error, gettext("Source sheet not found."))}
+      {:noreply, put_flash(socket, :error, dgettext("sheets", "Source sheet not found."))}
     end
   end
 
@@ -643,7 +643,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
            |> reload_blocks()}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not update required flag."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update required flag."))}
       end
     end)
   end
@@ -671,7 +671,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           do_propagate_property(socket, block, sheet_ids)
 
         _ ->
-          {:noreply, put_flash(socket, :error, gettext("Invalid sheet selection."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid sheet selection."))}
       end
     end)
   end
@@ -684,7 +684,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     if socket.assigns.can_edit do
       fun.(socket)
     else
-      {:noreply, put_flash(socket, :error, gettext("You don't have permission to edit."))}
+      {:noreply, put_flash(socket, :error, dgettext("sheets", "You don't have permission to edit."))}
     end
   end
 
@@ -753,13 +753,13 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   defp validate_column_group_blocks(blocks) do
     cond do
       Enum.any?(blocks, &is_nil/1) ->
-        {:error, gettext("Block not found.")}
+        {:error, dgettext("sheets", "Block not found.")}
 
       Enum.any?(blocks, fn b -> b.type == "divider" end) ->
-        {:error, gettext("Divider blocks cannot be placed in columns.")}
+        {:error, dgettext("sheets", "Divider blocks cannot be placed in columns.")}
 
       Enum.any?(blocks, fn b -> b.column_group_id != nil end) ->
-        {:error, gettext("Block is already in a column group.")}
+        {:error, dgettext("sheets", "Block is already in a column group.")}
 
       true ->
         :ok
@@ -776,7 +776,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         {:noreply, reload_blocks(socket)}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not create column group."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create column group."))}
     end
   end
 
@@ -795,7 +795,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         {:noreply, socket}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not change scope."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not change scope."))}
     end
   end
 
@@ -821,11 +821,11 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
          |> assign(:propagation_block, nil)
          |> put_flash(
            :info,
-           gettext("Property propagated to %{count} pages.", count: count)
+           dgettext("sheets", "Property propagated to %{count} pages.", count: count)
          )}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not propagate property."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not propagate property."))}
     end
   end
 
@@ -890,7 +890,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     <div class="flex items-center gap-1.5 mb-1 ml-1">
       <.icon name="arrow-up-right" class="size-3 text-info/60" />
       <span class="text-[10px] text-base-content/40 uppercase tracking-wider">
-        {gettext("Inherited from")}
+        {dgettext("sheets", "Inherited from")}
       </span>
       <.link
         navigate={
@@ -923,7 +923,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       <div
         :if={@block.required}
         class="absolute top-1 left-2 text-error text-xs font-bold"
-        title={gettext("Required")}
+        title={dgettext("sheets", "Required")}
       >
         *
       </div>
@@ -938,7 +938,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   defp children_sheets_section(assigns) do
     ~H"""
     <div class="mt-12 pt-8 border-t border-base-300">
-      <h2 class="text-lg font-semibold mb-4">{gettext("Subsheets")}</h2>
+      <h2 class="text-lg font-semibold mb-4">{dgettext("sheets", "Subsheets")}</h2>
       <div class="space-y-2">
         <.link
           :for={child <- @children}

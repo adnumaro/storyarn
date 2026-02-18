@@ -28,22 +28,22 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.ConfigSidebar do
 
   def config_sidebar(assigns) do
     location_options =
-      [{"", gettext("Select location...")}] ++
+      [{"", dgettext("flows", "Select location...")}] ++
         Enum.map(assigns.all_sheets, fn sheet -> {sheet.name, sheet.id} end)
 
     int_ext_options = [
-      {gettext("INT."), "int"},
-      {gettext("EXT."), "ext"},
-      {gettext("INT./EXT."), "int_ext"}
+      {dgettext("flows", "INT."), "int"},
+      {dgettext("flows", "EXT."), "ext"},
+      {dgettext("flows", "INT./EXT."), "int_ext"}
     ]
 
     time_of_day_options = [
-      {gettext("Not set"), ""},
-      {gettext("Day"), "day"},
-      {gettext("Night"), "night"},
-      {gettext("Morning"), "morning"},
-      {gettext("Evening"), "evening"},
-      {gettext("Continuous"), "continuous"}
+      {dgettext("flows", "Not set"), ""},
+      {dgettext("flows", "Day"), "day"},
+      {dgettext("flows", "Night"), "night"},
+      {dgettext("flows", "Morning"), "morning"},
+      {dgettext("flows", "Evening"), "evening"},
+      {dgettext("flows", "Continuous"), "continuous"}
     ]
 
     assigns =
@@ -59,7 +59,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.ConfigSidebar do
         <.input
           field={@form[:location_sheet_id]}
           type="select"
-          label={gettext("Location")}
+          label={dgettext("flows", "Location")}
           options={@location_options}
           disabled={!@can_edit}
         />
@@ -69,14 +69,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.ConfigSidebar do
           <.input
             field={@form[:int_ext]}
             type="select"
-            label={gettext("Int / Ext")}
+            label={dgettext("flows", "Int / Ext")}
             options={@int_ext_options}
             disabled={!@can_edit}
           />
           <.input
             field={@form[:time_of_day]}
             type="select"
-            label={gettext("Time of Day")}
+            label={dgettext("flows", "Time of Day")}
             options={@time_of_day_options}
             disabled={!@can_edit}
           />
@@ -86,8 +86,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.ConfigSidebar do
         <.input
           field={@form[:sub_location]}
           type="text"
-          label={gettext("Sub-location")}
-          placeholder={gettext("e.g., Lobby, Rooftop, Room 1")}
+          label={dgettext("flows", "Sub-location")}
+          placeholder={dgettext("flows", "e.g., Lobby, Rooftop, Room 1")}
           disabled={!@can_edit}
           class="mt-4"
         />
@@ -96,8 +96,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.ConfigSidebar do
         <.input
           field={@form[:description]}
           type="textarea"
-          label={gettext("Description")}
-          placeholder={gettext("Action lines, transition notes...")}
+          label={dgettext("flows", "Description")}
+          placeholder={dgettext("flows", "Action lines, transition notes...")}
           disabled={!@can_edit}
           rows={3}
           class="mt-4"
@@ -116,12 +116,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.ConfigSidebar do
           onclick="event.preventDefault()"
         >
           <.icon name="hash" class="size-4" />
-          {gettext("Advanced")}
+          {dgettext("flows", "Advanced")}
         </summary>
         <div class="collapse-content space-y-3">
           <div class="form-control">
             <label class="label">
-              <span class="label-text text-xs">{gettext("Technical ID")}</span>
+              <span class="label-text text-xs">{dgettext("flows", "Technical ID")}</span>
             </label>
             <div class="join w-full">
               <.form
@@ -135,7 +135,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.ConfigSidebar do
                   name={@form[:technical_id].name}
                   value={@form[:technical_id].value || ""}
                   disabled={!@can_edit}
-                  placeholder={gettext("e.g., ch1_int_hotel_1")}
+                  placeholder={dgettext("flows", "e.g., ch1_int_hotel_1")}
                   class="input input-sm input-bordered w-full font-mono text-xs"
                 />
               </.form>
@@ -145,13 +145,13 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.ConfigSidebar do
                 phx-click="generate_technical_id"
                 onclick="event.stopPropagation()"
                 class="btn btn-sm btn-ghost join-item"
-                title={gettext("Generate ID")}
+                title={dgettext("flows", "Generate ID")}
               >
                 <.icon name="refresh-cw" class="size-3" />
               </button>
             </div>
             <p class="text-xs text-base-content/60 mt-1">
-              {gettext("Unique identifier for export and game integration.")}
+              {dgettext("flows", "Unique identifier for export and game integration.")}
             </p>
           </div>
         </div>

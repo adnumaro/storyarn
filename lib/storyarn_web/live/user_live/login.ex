@@ -13,16 +13,16 @@ defmodule StoryarnWeb.UserLive.Login do
       <div class="mx-auto max-w-sm space-y-4">
         <div class="text-center">
           <.header>
-            <p>{gettext("Log in")}</p>
+            <p>{dgettext("identity", "Log in")}</p>
             <:subtitle>
               <%= if @current_scope do %>
-                {gettext("You need to reauthenticate to perform sensitive actions on your account.")}
+                {dgettext("identity", "You need to reauthenticate to perform sensitive actions on your account.")}
               <% else %>
-                {gettext("Don't have an account?")} <.link
+                {dgettext("identity", "Don't have an account?")} <.link
                   navigate={~p"/users/register"}
                   class="font-semibold text-brand hover:underline"
                   phx-no-format
-                >{gettext("Sign up")}</.link> {gettext("for an account now.")}
+                >{dgettext("identity", "Sign up")}</.link> {dgettext("identity", "for an account now.")}
               <% end %>
             </:subtitle>
           </.header>
@@ -31,16 +31,16 @@ defmodule StoryarnWeb.UserLive.Login do
         <div :if={local_mail_adapter?()} class="alert alert-info">
           <.icon name="info" class="size-6 shrink-0" />
           <div>
-            <p>{gettext("You are running the local mail adapter.")}</p>
+            <p>{dgettext("identity", "You are running the local mail adapter.")}</p>
             <p>
-              {gettext("To see sent emails, visit")} <.link href="/dev/mailbox" class="underline">{gettext("the mailbox sheet")}</.link>.
+              {dgettext("identity", "To see sent emails, visit")} <.link href="/dev/mailbox" class="underline">{dgettext("identity", "the mailbox sheet")}</.link>.
             </p>
           </div>
         </div>
 
         <.oauth_buttons class="mb-4" />
 
-        <div class="divider">{gettext("or continue with email")}</div>
+        <div class="divider">{dgettext("identity", "or continue with email")}</div>
 
         <.form
           :let={f}
@@ -53,17 +53,17 @@ defmodule StoryarnWeb.UserLive.Login do
             readonly={!!@current_scope}
             field={f[:email]}
             type="email"
-            label={gettext("Email")}
+            label={dgettext("identity", "Email")}
             autocomplete="email"
             required
             phx-mounted={JS.focus()}
           />
           <.button class="btn btn-primary w-full">
-            {gettext("Log in with email")} <span aria-hidden="true">→</span>
+            {dgettext("identity", "Log in with email")} <span aria-hidden="true">→</span>
           </.button>
         </.form>
 
-        <div class="divider">{gettext("or")}</div>
+        <div class="divider">{dgettext("identity", "or")}</div>
 
         <.form
           :let={f}
@@ -77,21 +77,21 @@ defmodule StoryarnWeb.UserLive.Login do
             readonly={!!@current_scope}
             field={f[:email]}
             type="email"
-            label={gettext("Email")}
+            label={dgettext("identity", "Email")}
             autocomplete="email"
             required
           />
           <.input
             field={@form[:password]}
             type="password"
-            label={gettext("Password")}
+            label={dgettext("identity", "Password")}
             autocomplete="current-password"
           />
           <.button class="btn btn-primary w-full" name={@form[:remember_me].name} value="true">
-            {gettext("Log in and stay logged in")} <span aria-hidden="true">→</span>
+            {dgettext("identity", "Log in and stay logged in")} <span aria-hidden="true">→</span>
           </.button>
           <.button class="btn btn-primary btn-soft w-full mt-2">
-            {gettext("Log in only this time")}
+            {dgettext("identity", "Log in only this time")}
           </.button>
         </.form>
       </div>
@@ -126,7 +126,7 @@ defmodule StoryarnWeb.UserLive.Login do
         end
 
         info =
-          gettext(
+          dgettext("identity", 
             "If your email is in our system, you will receive instructions for logging in shortly."
           )
 
@@ -138,7 +138,7 @@ defmodule StoryarnWeb.UserLive.Login do
       {:error, :rate_limited} ->
         {:noreply,
          socket
-         |> put_flash(:error, gettext("Too many requests. Please try again later."))
+         |> put_flash(:error, dgettext("identity", "Too many requests. Please try again later."))
          |> push_navigate(to: ~p"/users/log-in")}
     end
   end

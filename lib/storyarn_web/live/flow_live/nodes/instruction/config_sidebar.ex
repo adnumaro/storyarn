@@ -35,12 +35,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.ConfigSidebar do
       <%!-- Description field --%>
       <div class="form-control">
         <label class="label">
-          <span class="label-text text-xs">{gettext("Description")}</span>
+          <span class="label-text text-xs">{dgettext("flows", "Description")}</span>
         </label>
         <input
           type="text"
           value={@description}
-          placeholder={gettext("e.g., Reward player for quest completion")}
+          placeholder={dgettext("flows", "e.g., Reward player for quest completion")}
           class="input input-sm input-bordered w-full text-xs"
           disabled={!@can_edit}
           phx-blur="update_node_field"
@@ -51,7 +51,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.ConfigSidebar do
       <%!-- Assignments builder --%>
       <div class="space-y-2">
         <label class="label">
-          <span class="label-text text-xs">{gettext("Assignments")}</span>
+          <span class="label-text text-xs">{dgettext("flows", "Assignments")}</span>
         </label>
         <.instruction_builder
           id={"instruction-builder-#{@node.id}"}
@@ -60,7 +60,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.ConfigSidebar do
           can_edit={@can_edit}
         />
         <p :if={@assignments == [] && @can_edit} class="text-xs text-base-content/50">
-          {gettext("Add assignments to set variable values when this node executes.")}
+          {dgettext("flows", "Add assignments to set variable values when this node executes.")}
         </p>
       </div>
     </div>

@@ -43,36 +43,36 @@ defmodule StoryarnWeb.Components.InstructionBuilder do
   def translations do
     %{
       operator_verbs: %{
-        "set" => gettext("Set"),
-        "add" => gettext("Add"),
-        "subtract" => gettext("Subtract"),
-        "set_true" => gettext("Set"),
-        "set_false" => gettext("Set"),
-        "toggle" => gettext("Toggle"),
-        "clear" => gettext("Clear")
+        "set" => dgettext("flows", "Set"),
+        "add" => dgettext("flows", "Add"),
+        "subtract" => dgettext("flows", "Subtract"),
+        "set_true" => dgettext("flows", "Set"),
+        "set_false" => dgettext("flows", "Set"),
+        "toggle" => dgettext("flows", "Toggle"),
+        "clear" => dgettext("flows", "Clear")
       },
       operator_dropdown_labels: %{
-        "set" => gettext("Set \u2026 to"),
-        "add" => gettext("Add \u2026 to"),
-        "subtract" => gettext("Subtract \u2026 from"),
-        "set_true" => gettext("Set \u2026 to true"),
-        "set_false" => gettext("Set \u2026 to false"),
-        "toggle" => gettext("Toggle"),
-        "clear" => gettext("Clear")
+        "set" => dgettext("flows", "Set \u2026 to"),
+        "add" => dgettext("flows", "Add \u2026 to"),
+        "subtract" => dgettext("flows", "Subtract \u2026 from"),
+        "set_true" => dgettext("flows", "Set \u2026 to true"),
+        "set_false" => dgettext("flows", "Set \u2026 to false"),
+        "toggle" => dgettext("flows", "Toggle"),
+        "clear" => dgettext("flows", "Clear")
       },
       sentence_texts: %{
-        "to" => gettext("to"),
-        "from" => gettext("from"),
-        "to true" => gettext("to true"),
-        "to false" => gettext("to false")
+        "to" => dgettext("flows", "to"),
+        "from" => dgettext("flows", "from"),
+        "to true" => dgettext("flows", "to true"),
+        "to false" => dgettext("flows", "to false")
       },
-      add_assignment: gettext("Add assignment"),
-      no_assignments: gettext("No assignments"),
-      placeholder_sheet: gettext("sheet"),
-      placeholder_variable: gettext("variable"),
-      placeholder_value: gettext("value"),
-      switch_to_literal: gettext("Switch to literal value"),
-      switch_to_variable_ref: gettext("Switch to variable reference")
+      add_assignment: dgettext("flows", "Add assignment"),
+      no_assignments: dgettext("flows", "No assignments"),
+      placeholder_sheet: dgettext("flows", "sheet"),
+      placeholder_variable: dgettext("flows", "variable"),
+      placeholder_value: dgettext("flows", "value"),
+      switch_to_literal: dgettext("flows", "Switch to literal value"),
+      switch_to_variable_ref: dgettext("flows", "Switch to variable reference")
     }
   end
 end

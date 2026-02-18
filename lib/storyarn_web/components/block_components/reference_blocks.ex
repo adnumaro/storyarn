@@ -41,7 +41,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
             <%= if @has_reference && @reference_target do %>
               <.reference_display target={@reference_target} />
             <% else %>
-              <span class="text-base-content/50">{gettext("Select a reference...")}</span>
+              <span class="text-base-content/50">{dgettext("sheets", "Select a reference...")}</span>
             <% end %>
             <.icon name="chevron-down" class="size-4 text-base-content/50" />
           </div>
@@ -71,7 +71,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
       <%= if @has_reference && is_nil(@reference_target) do %>
         <div class="text-error text-sm mt-1 flex items-center gap-1">
           <.icon name="alert-triangle" class="size-4" />
-          {gettext("Reference not found (deleted?)")}
+          {dgettext("sheets", "Reference not found (deleted?)")}
         </div>
       <% end %>
     </div>
@@ -111,7 +111,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
       <input
         type="text"
         class="input input-bordered input-sm w-full"
-        placeholder={gettext("Search sheets and flows...")}
+        placeholder={dgettext("sheets", "Search sheets and flows...")}
         phx-keyup="search_references"
         phx-value-block-id={@block_id}
         phx-debounce="300"
@@ -125,7 +125,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
         data-block-id={@block_id}
       >
         <div class="text-center text-base-content/50 py-4 text-sm">
-          {gettext("Type to search...")}
+          {dgettext("sheets", "Type to search...")}
         </div>
       </div>
       <%= if @target_type && @target_id do %>
@@ -138,7 +138,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
             phx-target={@target}
           >
             <.icon name="x" class="size-4" />
-            {gettext("Clear reference")}
+            {dgettext("sheets", "Clear reference")}
           </button>
         </div>
       <% end %>

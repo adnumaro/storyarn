@@ -18,7 +18,7 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold flex items-center gap-2">
           <.icon name="history" class="size-5" />
-          {gettext("Version History")}
+          {dgettext("sheets", "Version History")}
         </h2>
         <button
           :if={@can_edit}
@@ -28,7 +28,7 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
           phx-target={@myself}
         >
           <.icon name="plus" class="size-4" />
-          {gettext("Create Version")}
+          {dgettext("sheets", "Create Version")}
         </button>
       </div>
 
@@ -55,7 +55,7 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
             phx-target={@myself}
           >
             <.icon name="chevron-down" class="size-4" />
-            {gettext("Load more")}
+            {dgettext("sheets", "Load more")}
           </button>
         <% end %>
       <% end %>
@@ -66,9 +66,9 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
       <.confirm_modal
         :if={@can_edit}
         id="delete-version-confirm"
-        title={gettext("Delete version?")}
-        message={gettext("Are you sure you want to delete this version?")}
-        confirm_text={gettext("Delete")}
+        title={dgettext("sheets", "Delete version?")}
+        message={dgettext("sheets", "Are you sure you want to delete this version?")}
+        confirm_text={dgettext("sheets", "Delete")}
         confirm_variant="error"
         icon="alert-triangle"
         on_confirm={JS.push("confirm_delete_version", target: @myself)}
@@ -153,7 +153,7 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
     if socket.assigns.can_edit do
       fun.(socket)
     else
-      {:noreply, put_flash(socket, :error, gettext("You don't have permission to edit."))}
+      {:noreply, put_flash(socket, :error, dgettext("sheets", "You don't have permission to edit."))}
     end
   end
 
@@ -183,10 +183,10 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
 
         notify_parent(:sheet_updated, updated_sheet)
         notify_parent(:saved)
-        {:noreply, put_flash(socket, :info, gettext("Version created."))}
+        {:noreply, put_flash(socket, :info, dgettext("sheets", "Version created."))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not create version."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create version."))}
     end
   end
 
@@ -195,7 +195,7 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
 
     case Sheets.get_version(socket.assigns.sheet.id, version_number) do
       nil ->
-        {:noreply, put_flash(socket, :error, gettext("Version not found."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Version not found."))}
 
       version ->
         restore_from_version(socket, version)
@@ -228,11 +228,11 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
          })
          |> put_flash(
            :info,
-           gettext("Restored to version %{number}", number: version.version_number)
+           dgettext("sheets", "Restored to version %{number}", number: version.version_number)
          )}
 
       {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not restore version."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not restore version."))}
     end
   end
 
@@ -241,7 +241,7 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
 
     case Sheets.get_version(socket.assigns.sheet.id, version_number) do
       nil ->
-        {:noreply, put_flash(socket, :error, gettext("Version not found."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Version not found."))}
 
       version ->
         do_delete_version(socket, version)
@@ -260,10 +260,10 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
           |> load_versions(1)
 
         notify_parent(:sheet_updated, sheet)
-        {:noreply, put_flash(socket, :info, gettext("Version deleted."))}
+        {:noreply, put_flash(socket, :info, dgettext("sheets", "Version deleted."))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not delete version."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete version."))}
     end
   end
 
@@ -329,9 +329,9 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
     ~H"""
     <div class="bg-base-200/50 rounded-lg p-8 text-center">
       <.icon name="clock" class="size-12 mx-auto text-base-content/30 mb-4" />
-      <p class="text-base-content/70 mb-2">{gettext("No versions yet")}</p>
+      <p class="text-base-content/70 mb-2">{dgettext("sheets", "No versions yet")}</p>
       <p class="text-sm text-base-content/50">
-        {gettext("Create a version to save the current state of this sheet.")}
+        {dgettext("sheets", "Create a version to save the current state of this sheet.")}
       </p>
     </div>
     """
@@ -359,10 +359,10 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium">
-            {@version.title || @version.change_summary || gettext("No summary")}
+            {@version.title || @version.change_summary || dgettext("sheets", "No summary")}
           </span>
           <span :if={@is_current} class="badge badge-primary badge-sm">
-            {gettext("Current")}
+            {dgettext("sheets", "Current")}
           </span>
         </div>
         <p :if={@version.description} class="text-sm text-base-content/70 mt-0.5">
@@ -371,7 +371,7 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
         <div class="flex items-center gap-2 text-xs text-base-content/60 mt-0.5">
           <span>{format_version_date(@version.inserted_at)}</span>
           <span :if={@version.changed_by}>
-            · {gettext("by")} {@version.changed_by.display_name || @version.changed_by.email}
+            · {dgettext("sheets", "by")} {@version.changed_by.display_name || @version.changed_by.email}
           </span>
         </div>
       </div>
@@ -383,7 +383,7 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
           :if={!@is_current}
           type="button"
           class="btn btn-ghost btn-xs tooltip"
-          data-tip={gettext("Restore this version")}
+          data-tip={dgettext("sheets", "Restore this version")}
           phx-click="restore_version"
           phx-value-version={@version.version_number}
           phx-target={@target}
@@ -393,7 +393,7 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
         <button
           type="button"
           class="btn btn-ghost btn-xs tooltip text-error"
-          data-tip={gettext("Delete version")}
+          data-tip={dgettext("sheets", "Delete version")}
           phx-click={
             JS.push("set_pending_delete_version",
               value: %{version: @version.version_number},
@@ -420,31 +420,31 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
       phx-target={@target}
     >
       <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">{gettext("Create Version")}</h3>
+        <h3 class="font-bold text-lg mb-4">{dgettext("sheets", "Create Version")}</h3>
         <form phx-submit="create_version" phx-target={@target}>
           <div class="mb-4">
             <label class="label" for="version-title">
-              <span class="label-text">{gettext("Title")}</span>
+              <span class="label-text">{dgettext("sheets", "Title")}</span>
             </label>
             <input
               type="text"
               name="title"
               id="version-title"
               class="input input-bordered w-full"
-              placeholder={gettext("e.g., Before major refactor")}
+              placeholder={dgettext("sheets", "e.g., Before major refactor")}
               autofocus
             />
           </div>
           <div class="mb-4">
             <label class="label" for="version-description">
-              <span class="label-text">{gettext("Description")} ({gettext("optional")})</span>
+              <span class="label-text">{dgettext("sheets", "Description")} ({dgettext("sheets", "optional")})</span>
             </label>
             <textarea
               name="description"
               id="version-description"
               class="textarea textarea-bordered w-full"
               rows="3"
-              placeholder={gettext("Describe what this version captures...")}
+              placeholder={dgettext("sheets", "Describe what this version captures...")}
             ></textarea>
           </div>
           <div class="modal-action">
@@ -454,11 +454,11 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
               phx-click="hide_create_version_modal"
               phx-target={@target}
             >
-              {gettext("Cancel")}
+              {dgettext("sheets", "Cancel")}
             </button>
             <button type="submit" class="btn btn-primary">
               <.icon name="save" class="size-4" />
-              {gettext("Create Version")}
+              {dgettext("sheets", "Create Version")}
             </button>
           </div>
         </form>

@@ -31,7 +31,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
     referenced_flow_id = assigns.node.data["referenced_flow_id"]
 
     flow_options =
-      [{"", gettext("Select a flow...")}] ++
+      [{"", dgettext("flows", "Select a flow...")}] ++
         Enum.map(assigns.available_flows, fn flow ->
           display =
             if flow.shortcut && flow.shortcut != "" do
@@ -60,8 +60,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
         <.input
           field={@form[:label]}
           type="text"
-          label={gettext("Label")}
-          placeholder={gettext("e.g., Victory, Defeat")}
+          label={dgettext("flows", "Label")}
+          placeholder={dgettext("flows", "e.g., Victory, Defeat")}
           disabled={!@can_edit}
         />
       </.form>
@@ -69,7 +69,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
       <%!-- Outcome Tags --%>
       <div>
         <label class="label">
-          <span class="label-text text-xs font-medium">{gettext("Outcome Tags")}</span>
+          <span class="label-text text-xs font-medium">{dgettext("flows", "Outcome Tags")}</span>
         </label>
         <div class="flex flex-wrap gap-1 mb-2">
           <span
@@ -92,7 +92,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
           <input
             type="text"
             name="tag"
-            placeholder={gettext("Add tag...")}
+            placeholder={dgettext("flows", "Add tag...")}
             class="input input-sm input-bordered flex-1 text-xs"
             list="outcome-tag-suggestions"
             autocomplete="off"
@@ -105,14 +105,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
           <option :for={tag <- @outcome_tags_suggestions} value={tag} />
         </datalist>
         <p class="text-xs text-base-content/60 mt-1">
-          {gettext("Free-form tags for game engine consumption.")}
+          {dgettext("flows", "Free-form tags for game engine consumption.")}
         </p>
       </div>
 
       <%!-- Outcome Color --%>
       <div>
         <label class="label">
-          <span class="label-text text-xs font-medium">{gettext("Color")}</span>
+          <span class="label-text text-xs font-medium">{dgettext("flows", "Color")}</span>
         </label>
         <.color_picker
           id={"exit-color-#{@node.id}"}
@@ -126,7 +126,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
       <%!-- Exit Mode --%>
       <div>
         <label class="label">
-          <span class="label-text text-xs font-medium">{gettext("Exit Mode")}</span>
+          <span class="label-text text-xs font-medium">{dgettext("flows", "Exit Mode")}</span>
         </label>
         <div class="space-y-1">
           <label class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-base-200">
@@ -140,7 +140,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
               disabled={!@can_edit}
               class="radio radio-xs"
             />
-            <span class="text-xs">{gettext("Terminal (end)")}</span>
+            <span class="text-xs">{dgettext("flows", "Terminal (end)")}</span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-base-200">
             <input
@@ -154,7 +154,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
               class="radio radio-xs"
             />
             <span class="text-xs inline-flex items-center gap-1">
-              {gettext("Continue to flow")} <.icon name="arrow-right" class="size-3" />
+              {dgettext("flows", "Continue to flow")} <.icon name="arrow-right" class="size-3" />
             </span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-base-200">
@@ -169,7 +169,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
               class="radio radio-xs"
             />
             <span class="text-xs inline-flex items-center gap-1">
-              {gettext("Return to caller")} <.icon name="corner-down-left" class="size-3" />
+              {dgettext("flows", "Return to caller")} <.icon name="corner-down-left" class="size-3" />
             </span>
           </label>
         </div>
@@ -177,7 +177,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
 
       <%!-- Flow Reference (only when flow_reference mode) --%>
       <div :if={@exit_mode == "flow_reference"}>
-        <label class="label text-sm font-medium">{gettext("Target Flow")}</label>
+        <label class="label text-sm font-medium">{dgettext("flows", "Target Flow")}</label>
         <form phx-change="update_exit_reference">
           <select
             class="select select-bordered select-sm w-full"
@@ -196,7 +196,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
 
         <div :if={@node.data["stale_reference"]} class="alert alert-error text-sm mt-2">
           <.icon name="alert-triangle" class="size-4" />
-          <span>{gettext("Referenced flow has been deleted.")}</span>
+          <span>{dgettext("flows", "Referenced flow has been deleted.")}</span>
         </div>
 
         <button
@@ -207,14 +207,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
           phx-value-flow-id={@current_ref_str}
         >
           <.icon name="external-link" class="size-3 mr-1" />
-          {gettext("Open Flow")}
+          {dgettext("flows", "Open Flow")}
         </button>
       </div>
 
       <%!-- Technical ID --%>
       <div class="form-control">
         <label class="label">
-          <span class="label-text text-xs">{gettext("Technical ID")}</span>
+          <span class="label-text text-xs">{dgettext("flows", "Technical ID")}</span>
         </label>
         <div class="join w-full">
           <.form for={@form} phx-change="update_node_data" phx-debounce="500" class="flex-1 join-item">
@@ -223,7 +223,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
               name={@form[:technical_id].name}
               value={@form[:technical_id].value || ""}
               disabled={!@can_edit}
-              placeholder={gettext("e.g., victory_ending_1")}
+              placeholder={dgettext("flows", "e.g., victory_ending_1")}
               class="input input-sm input-bordered w-full font-mono text-xs"
             />
           </.form>
@@ -233,20 +233,20 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.ConfigSidebar do
             phx-click="generate_technical_id"
             onclick="event.stopPropagation()"
             class="btn btn-sm btn-ghost join-item"
-            title={gettext("Generate ID")}
+            title={dgettext("flows", "Generate ID")}
           >
             <.icon name="refresh-cw" class="size-3" />
           </button>
         </div>
         <p class="text-xs text-base-content/60 mt-1">
-          {gettext("Unique identifier for export and game integration.")}
+          {dgettext("flows", "Unique identifier for export and game integration.")}
         </p>
       </div>
 
       <%!-- Referenced By --%>
       <div :if={@referencing_flows != []}>
         <h3 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">
-          {gettext("Referenced By")}
+          {dgettext("flows", "Referenced By")}
           <span class="text-base-content/40 ml-1">({length(@referencing_flows)})</span>
         </h3>
         <div class="space-y-1">

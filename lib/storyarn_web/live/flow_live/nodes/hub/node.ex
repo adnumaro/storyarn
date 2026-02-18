@@ -14,7 +14,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.Node do
 
   def type, do: "hub"
   def icon_name, do: "log-in"
-  def label, do: gettext("Hub")
+  def label, do: dgettext("flows", "Hub")
 
   def default_data, do: %{"hub_id" => "", "label" => "", "color" => "#8b5cf6"}
 

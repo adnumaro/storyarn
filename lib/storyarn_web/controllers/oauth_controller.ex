@@ -18,7 +18,7 @@ defmodule StoryarnWeb.OAuthController do
         conn
         |> put_flash(
           :info,
-          gettext("Successfully authenticated with %{provider}.", provider: provider)
+          dgettext("identity", "Successfully authenticated with %{provider}.", provider: provider)
         )
         |> UserAuth.log_in_user(user)
 
@@ -26,7 +26,7 @@ defmodule StoryarnWeb.OAuthController do
         errors = format_changeset_errors(changeset)
 
         conn
-        |> put_flash(:error, gettext("Could not authenticate: %{errors}", errors: errors))
+        |> put_flash(:error, dgettext("identity", "Could not authenticate: %{errors}", errors: errors))
         |> redirect(to: ~p"/users/log-in")
     end
   end
@@ -37,7 +37,7 @@ defmodule StoryarnWeb.OAuthController do
     conn
     |> put_flash(
       :error,
-      gettext("Failed to authenticate with %{provider}: %{message}",
+      dgettext("identity", "Failed to authenticate with %{provider}: %{message}",
         provider: provider,
         message: message
       )
@@ -64,7 +64,7 @@ defmodule StoryarnWeb.OAuthController do
         conn
         |> put_flash(
           :info,
-          gettext("Successfully linked %{provider} account.", provider: provider)
+          dgettext("identity", "Successfully linked %{provider} account.", provider: provider)
         )
         |> redirect(to: ~p"/users/settings")
 
@@ -72,7 +72,7 @@ defmodule StoryarnWeb.OAuthController do
         errors = format_changeset_errors(changeset)
 
         conn
-        |> put_flash(:error, gettext("Could not link account: %{errors}", errors: errors))
+        |> put_flash(:error, dgettext("identity", "Could not link account: %{errors}", errors: errors))
         |> redirect(to: ~p"/users/settings")
     end
   end
@@ -83,7 +83,7 @@ defmodule StoryarnWeb.OAuthController do
     conn
     |> put_flash(
       :error,
-      gettext("Failed to link %{provider}: %{message}", provider: provider, message: message)
+      dgettext("identity", "Failed to link %{provider}: %{message}", provider: provider, message: message)
     )
     |> redirect(to: ~p"/users/settings")
   end
@@ -99,20 +99,20 @@ defmodule StoryarnWeb.OAuthController do
         conn
         |> put_flash(
           :info,
-          gettext("Successfully unlinked %{provider} account.", provider: provider)
+          dgettext("identity", "Successfully unlinked %{provider} account.", provider: provider)
         )
         |> redirect(to: ~p"/users/settings")
 
       {:error, :not_found} ->
         conn
-        |> put_flash(:error, gettext("No %{provider} account linked.", provider: provider))
+        |> put_flash(:error, dgettext("identity", "No %{provider} account linked.", provider: provider))
         |> redirect(to: ~p"/users/settings")
 
       {:error, :cannot_unlink_only_auth_method} ->
         conn
         |> put_flash(
           :error,
-          gettext("Cannot unlink your only authentication method. Set a password first.")
+          dgettext("identity", "Cannot unlink your only authentication method. Set a password first.")
         )
         |> redirect(to: ~p"/users/settings")
     end

@@ -22,7 +22,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
           {:ok,
            socket
-           |> assign(:page_title, gettext("Workspace Members"))
+           |> assign(:page_title, dgettext("workspaces", "Workspace Members"))
            |> assign(:current_path, ~p"/users/settings/workspaces/#{slug}/members")
            |> assign(:workspace, workspace)
            |> assign(:membership, membership)
@@ -32,14 +32,14 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         else
           {:ok,
            socket
-           |> put_flash(:error, gettext("You don't have permission to manage this workspace."))
+           |> put_flash(:error, dgettext("workspaces", "You don't have permission to manage this workspace."))
            |> push_navigate(to: ~p"/users/settings")}
         end
 
       {:error, :not_found} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("Workspace not found."))
+         |> put_flash(:error, dgettext("workspaces", "Workspace not found."))
          |> push_navigate(to: ~p"/users/settings")}
     end
   end
@@ -62,13 +62,13 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
       workspaces={@workspaces}
       current_path={@current_path}
     >
-      <:title>{gettext("Members")}</:title>
-      <:subtitle>{gettext("Manage team members for %{name}", name: @workspace.name)}</:subtitle>
+      <:title>{dgettext("workspaces", "Members")}</:title>
+      <:subtitle>{dgettext("workspaces", "Manage team members for %{name}", name: @workspace.name)}</:subtitle>
 
       <div class="space-y-8">
         <%!-- Team Members Section --%>
         <section>
-          <h3 class="text-lg font-semibold mb-4">{gettext("Team Members")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("workspaces", "Team Members")}</h3>
           <div class="space-y-3">
             <.member_row
               :for={member <- @members}
@@ -78,9 +78,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
               on_remove="remove_member"
               on_role_change="change_role"
               role_options={[
-                {gettext("Admin"), "admin"},
-                {gettext("Member"), "member"},
-                {gettext("Viewer"), "viewer"}
+                {dgettext("workspaces", "Admin"), "admin"},
+                {dgettext("workspaces", "Member"), "member"},
+                {dgettext("workspaces", "Viewer"), "viewer"}
               ]}
             />
           </div>
@@ -90,14 +90,14 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
         <%!-- Invite Form --%>
         <section>
-          <h3 class="text-lg font-semibold mb-4">{gettext("Invite a new member")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("workspaces", "Invite a new member")}</h3>
           <.form for={@invite_form} id="invite-form" phx-submit="send_invitation">
             <div class="flex gap-3 items-end">
               <div class="flex-1">
                 <.input
                   field={@invite_form[:email]}
                   type="email"
-                  label={gettext("Email address")}
+                  label={dgettext("workspaces", "Email address")}
                   placeholder="colleague@example.com"
                   required
                 />
@@ -106,16 +106,16 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
                 <.input
                   field={@invite_form[:role]}
                   type="select"
-                  label={gettext("Role")}
+                  label={dgettext("workspaces", "Role")}
                   options={[
-                    {gettext("Admin"), "admin"},
-                    {gettext("Member"), "member"},
-                    {gettext("Viewer"), "viewer"}
+                    {dgettext("workspaces", "Admin"), "admin"},
+                    {dgettext("workspaces", "Member"), "member"},
+                    {dgettext("workspaces", "Viewer"), "viewer"}
                   ]}
                 />
               </div>
               <.button variant="primary" class="mb-2">
-                {gettext("Send Invite")}
+                {dgettext("workspaces", "Send Invite")}
               </.button>
             </div>
           </.form>
@@ -124,7 +124,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         <%!-- Pending Invitations Section --%>
         <section :if={@pending_invitations != []}>
           <div class="divider" />
-          <h3 class="text-lg font-semibold mb-4">{gettext("Pending Invitations")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("workspaces", "Pending Invitations")}</h3>
           <div class="space-y-2">
             <.invitation_row
               :for={invitation <- @pending_invitations}
@@ -146,7 +146,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("workspaces", "You don't have permission to perform this action."))}
     end
   end
 
@@ -158,7 +158,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to perform this action."))}
+         put_flash(socket, :error, dgettext("workspaces", "You don't have permission to perform this action."))}
     end
   end
 
@@ -166,7 +166,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   def handle_event("change_role", %{"role" => role, "member-id" => member_id}, socket) do
     if socket.assigns.membership.role != "owner" do
       {:noreply,
-       put_flash(socket, :error, gettext("Only the workspace owner can change member roles."))}
+       put_flash(socket, :error, dgettext("workspaces", "Only the workspace owner can change member roles."))}
     else
       do_change_role(socket, member_id, role)
     end
@@ -176,7 +176,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   def handle_event("remove_member", %{"id" => id}, socket) do
     if socket.assigns.membership.role != "owner" do
       {:noreply,
-       put_flash(socket, :error, gettext("Only the workspace owner can remove members."))}
+       put_flash(socket, :error, dgettext("workspaces", "Only the workspace owner can remove members."))}
     else
       do_remove_member(socket, id)
     end
@@ -198,25 +198,25 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
           socket
           |> assign(:pending_invitations, pending_invitations)
           |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
-          |> put_flash(:info, gettext("Invitation sent successfully."))
+          |> put_flash(:info, dgettext("workspaces", "Invitation sent successfully."))
 
         {:noreply, socket}
 
       {:error, :already_member} ->
         {:noreply,
-         put_flash(socket, :error, gettext("This email is already a member of the workspace."))}
+         put_flash(socket, :error, dgettext("workspaces", "This email is already a member of the workspace."))}
 
       {:error, :already_invited} ->
         {:noreply,
-         put_flash(socket, :error, gettext("An invitation has already been sent to this email."))}
+         put_flash(socket, :error, dgettext("workspaces", "An invitation has already been sent to this email."))}
 
       {:error, :rate_limited} ->
         {:noreply,
-         put_flash(socket, :error, gettext("Too many invitations. Please try again later."))}
+         put_flash(socket, :error, dgettext("workspaces", "Too many invitations. Please try again later."))}
 
       {:error, _changeset} ->
         {:noreply,
-         put_flash(socket, :error, gettext("Failed to send invitation. Please try again."))}
+         put_flash(socket, :error, dgettext("workspaces", "Failed to send invitation. Please try again."))}
     end
   end
 
@@ -230,11 +230,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
       socket =
         socket
         |> assign(:pending_invitations, pending_invitations)
-        |> put_flash(:info, gettext("Invitation revoked."))
+        |> put_flash(:info, dgettext("workspaces", "Invitation revoked."))
 
       {:noreply, socket}
     else
-      {:noreply, put_flash(socket, :error, gettext("Invitation not found."))}
+      {:noreply, put_flash(socket, :error, dgettext("workspaces", "Invitation not found."))}
     end
   end
 
@@ -244,7 +244,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
     if member && member.role != "owner" do
       perform_role_update(socket, member, role)
     else
-      {:noreply, put_flash(socket, :error, gettext("Member not found."))}
+      {:noreply, put_flash(socket, :error, dgettext("workspaces", "Member not found."))}
     end
   end
 
@@ -256,15 +256,15 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         socket =
           socket
           |> assign(:members, members)
-          |> put_flash(:info, gettext("Role updated successfully."))
+          |> put_flash(:info, dgettext("workspaces", "Role updated successfully."))
 
         {:noreply, socket}
 
       {:error, :cannot_change_owner_role} ->
-        {:noreply, put_flash(socket, :error, gettext("Cannot change the owner's role."))}
+        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Cannot change the owner's role."))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Failed to update role."))}
+        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Failed to update role."))}
     end
   end
 
@@ -274,7 +274,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
     if member && member.role != "owner" do
       perform_member_removal(socket, member)
     else
-      {:noreply, put_flash(socket, :error, gettext("Member not found."))}
+      {:noreply, put_flash(socket, :error, dgettext("workspaces", "Member not found."))}
     end
   end
 
@@ -286,12 +286,12 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         socket =
           socket
           |> assign(:members, members)
-          |> put_flash(:info, gettext("Member removed."))
+          |> put_flash(:info, dgettext("workspaces", "Member removed."))
 
         {:noreply, socket}
 
       {:error, :cannot_remove_owner} ->
-        {:noreply, put_flash(socket, :error, gettext("Cannot remove the workspace owner."))}
+        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Cannot remove the workspace owner."))}
     end
   end
 end

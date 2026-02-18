@@ -57,13 +57,13 @@ defmodule StoryarnWeb.Components.AssetUpload do
           <div :if={@uploads.asset.entries == []}>
             <.icon name="cloud-upload" class="size-12 mx-auto text-base-content/30 mb-2" />
             <p class="text-base-content/70 mb-2">
-              {gettext("Drag and drop files here, or")}
+              {dgettext("assets", "Drag and drop files here, or")}
             </p>
             <label for={@uploads.asset.ref} class="btn btn-primary btn-sm cursor-pointer">
-              {gettext("Browse Files")}
+              {dgettext("assets", "Browse Files")}
             </label>
             <p class="text-xs text-base-content/50 mt-2">
-              {gettext("Max file size: %{size}MB", size: div(@max_file_size, 1024 * 1024))}
+              {dgettext("assets", "Max file size: %{size}MB", size: div(@max_file_size, 1024 * 1024))}
             </p>
           </div>
 
@@ -84,20 +84,20 @@ defmodule StoryarnWeb.Components.AssetUpload do
             phx-click="cancel_all"
             phx-target={@myself}
           >
-            {gettext("Cancel")}
+            {dgettext("assets", "Cancel")}
           </button>
           <button
             type="submit"
             class="btn btn-primary btn-sm"
             disabled={not upload_valid?(@uploads.asset)}
           >
-            {gettext("Upload")}
+            {dgettext("assets", "Upload")}
           </button>
         </div>
       </form>
 
       <div :if={@uploaded_assets != []} class="mt-4">
-        <h4 class="text-sm font-medium mb-2">{gettext("Uploaded")}</h4>
+        <h4 class="text-sm font-medium mb-2">{dgettext("assets", "Uploaded")}</h4>
         <div class="grid grid-cols-4 gap-2">
           <div
             :for={asset <- @uploaded_assets}
@@ -220,9 +220,9 @@ defmodule StoryarnWeb.Components.AssetUpload do
       |> update(:uploaded_assets, &(&1 ++ uploaded_assets))
 
     if uploaded_assets != [] do
-      {:noreply, put_flash(socket, :info, gettext("Files uploaded successfully."))}
+      {:noreply, put_flash(socket, :info, dgettext("assets", "Files uploaded successfully."))}
     else
-      {:noreply, put_flash(socket, :error, gettext("Failed to upload files."))}
+      {:noreply, put_flash(socket, :error, dgettext("assets", "Failed to upload files."))}
     end
   end
 
@@ -288,8 +288,8 @@ defmodule StoryarnWeb.Components.AssetUpload do
   defp format_size(bytes) when bytes < 1024 * 1024, do: "#{Float.round(bytes / 1024, 1)} KB"
   defp format_size(bytes), do: "#{Float.round(bytes / (1024 * 1024), 1)} MB"
 
-  defp error_to_string(:too_large), do: gettext("File is too large")
-  defp error_to_string(:too_many_files), do: gettext("Too many files")
-  defp error_to_string(:not_accepted), do: gettext("File type not accepted")
+  defp error_to_string(:too_large), do: dgettext("assets", "File is too large")
+  defp error_to_string(:too_many_files), do: dgettext("assets", "Too many files")
+  defp error_to_string(:not_accepted), do: dgettext("assets", "File type not accepted")
   defp error_to_string(err), do: inspect(err)
 end

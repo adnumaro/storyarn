@@ -15,7 +15,7 @@ defmodule StoryarnWeb.SettingsLive.Connections do
 
     socket =
       socket
-      |> assign(:page_title, gettext("Connected Accounts"))
+      |> assign(:page_title, dgettext("settings", "Connected Accounts"))
       |> assign(:current_path, ~p"/users/settings/connections")
       |> assign(:identities, identities)
       |> assign(:has_password, !is_nil(user.hashed_password))
@@ -32,8 +32,8 @@ defmodule StoryarnWeb.SettingsLive.Connections do
       workspaces={@workspaces}
       current_path={@current_path}
     >
-      <:title>{gettext("Connected Accounts")}</:title>
-      <:subtitle>{gettext("Link your social accounts for easier sign-in")}</:subtitle>
+      <:title>{dgettext("settings", "Connected Accounts")}</:title>
+      <:subtitle>{dgettext("settings", "Link your social accounts for easier sign-in")}</:subtitle>
 
       <div class="space-y-4">
         <.oauth_provider_row
@@ -60,11 +60,11 @@ defmodule StoryarnWeb.SettingsLive.Connections do
       </div>
 
       <div class="mt-8 p-4 rounded-lg bg-base-200">
-        <h4 class="font-medium mb-2">{gettext("Why connect accounts?")}</h4>
+        <h4 class="font-medium mb-2">{dgettext("settings", "Why connect accounts?")}</h4>
         <ul class="text-sm text-base-content/70 space-y-1">
-          <li>• {gettext("Sign in faster without typing your password")}</li>
-          <li>• {gettext("Access your account even if you forget your password")}</li>
-          <li>• {gettext("Keep your account secure with multiple authentication methods")}</li>
+          <li>• {dgettext("settings", "Sign in faster without typing your password")}</li>
+          <li>• {dgettext("settings", "Access your account even if you forget your password")}</li>
+          <li>• {dgettext("settings", "Keep your account secure with multiple authentication methods")}</li>
         </ul>
       </div>
     </Layouts.settings>
@@ -88,7 +88,7 @@ defmodule StoryarnWeb.SettingsLive.Connections do
             {@identity.provider_email || @identity.provider_name}
           </p>
           <p :if={!@identity} class="text-sm text-base-content/50">
-            {gettext("Not connected")}
+            {dgettext("settings", "Not connected")}
           </p>
         </div>
       </div>
@@ -101,34 +101,34 @@ defmodule StoryarnWeb.SettingsLive.Connections do
               method="delete"
               class="hidden"
             >
-              {gettext("Unlink")}
+              {dgettext("settings", "Unlink")}
             </.link>
             <button
               type="button"
               class="btn btn-sm btn-ghost text-error"
               phx-click={show_modal("unlink-#{@provider}-confirm")}
             >
-              {gettext("Unlink")}
+              {dgettext("settings", "Unlink")}
             </button>
             <.confirm_modal
               id={"unlink-#{@provider}-confirm"}
-              title={gettext("Unlink account?")}
-              message={gettext("Are you sure you want to unlink this account?")}
-              confirm_text={gettext("Unlink")}
+              title={dgettext("settings", "Unlink account?")}
+              message={dgettext("settings", "Are you sure you want to unlink this account?")}
+              confirm_text={dgettext("settings", "Unlink")}
               confirm_variant="error"
               on_confirm={JS.dispatch("click", to: "#unlink-#{@provider}")}
             />
           <% else %>
             <span
               class="text-sm text-base-content/50 tooltip"
-              data-tip={gettext("Set a password before unlinking")}
+              data-tip={dgettext("settings", "Set a password before unlinking")}
             >
-              {gettext("Connected")}
+              {dgettext("settings", "Connected")}
             </span>
           <% end %>
         <% else %>
           <.link href={~p"/auth/#{@provider}/link"} class="btn btn-sm btn-outline">
-            {gettext("Connect")}
+            {dgettext("settings", "Connect")}
           </.link>
         <% end %>
       </div>

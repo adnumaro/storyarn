@@ -32,7 +32,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
               <li>
                 <label class="cursor-pointer">
                   <.icon name="upload" class="size-4" />
-                  {gettext("Upload avatar")}
+                  {dgettext("sheets", "Upload avatar")}
                   <input
                     type="file"
                     accept="image/*"
@@ -52,7 +52,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
                   phx-target={@myself}
                 >
                   <.icon name="trash-2" class="size-4" />
-                  {gettext("Remove")}
+                  {dgettext("sheets", "Remove")}
                 </button>
               </li>
             </ul>
@@ -86,7 +86,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
         {:noreply, assign(socket, :sheet, updated_sheet)}
 
       {:error, _changeset} ->
-        send(self(), {:sheet_avatar, :error, gettext("Could not remove avatar.")})
+        send(self(), {:sheet_avatar, :error, dgettext("sheets", "Could not remove avatar.")})
         {:noreply, socket}
     end
   end
@@ -109,7 +109,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
         upload_avatar_file(socket, filename, content_type, binary_data)
 
       :error ->
-        send(self(), {:sheet_avatar, :error, gettext("Invalid file data.")})
+        send(self(), {:sheet_avatar, :error, dgettext("sheets", "Invalid file data.")})
         {:noreply, socket}
     end
   end
@@ -141,7 +141,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
       {:noreply, assign(socket, :sheet, updated_sheet)}
     else
       {:error, _reason} ->
-        send(self(), {:sheet_avatar, :error, gettext("Could not upload avatar.")})
+        send(self(), {:sheet_avatar, :error, dgettext("sheets", "Could not upload avatar.")})
         {:noreply, socket}
     end
   end

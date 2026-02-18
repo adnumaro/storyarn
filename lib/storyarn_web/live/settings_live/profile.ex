@@ -13,10 +13,10 @@ defmodule StoryarnWeb.SettingsLive.Profile do
     socket =
       case Accounts.update_user_email(socket.assigns.current_scope.user, token) do
         {:ok, _user} ->
-          put_flash(socket, :info, gettext("Email changed successfully."))
+          put_flash(socket, :info, dgettext("settings", "Email changed successfully."))
 
         {:error, :transaction_aborted} ->
-          put_flash(socket, :error, gettext("Email change link is invalid or it has expired."))
+          put_flash(socket, :error, dgettext("settings", "Email change link is invalid or it has expired."))
       end
 
     {:ok, push_navigate(socket, to: ~p"/users/settings")}
@@ -30,7 +30,7 @@ defmodule StoryarnWeb.SettingsLive.Profile do
 
     socket =
       socket
-      |> assign(:page_title, gettext("Profile Settings"))
+      |> assign(:page_title, dgettext("settings", "Profile Settings"))
       |> assign(:current_path, ~p"/users/settings")
       |> assign(:current_email, user.email)
       |> assign(:email_form, to_form(email_changeset))
@@ -48,13 +48,13 @@ defmodule StoryarnWeb.SettingsLive.Profile do
       workspaces={@workspaces}
       current_path={@current_path}
     >
-      <:title>{gettext("Profile")}</:title>
-      <:subtitle>{gettext("Manage your personal information and email address")}</:subtitle>
+      <:title>{dgettext("settings", "Profile")}</:title>
+      <:subtitle>{dgettext("settings", "Manage your personal information and email address")}</:subtitle>
 
       <div class="space-y-8">
         <%!-- Profile Section --%>
         <section>
-          <h3 class="text-lg font-semibold mb-4">{gettext("Personal Information")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("settings", "Personal Information")}</h3>
           <.form
             for={@profile_form}
             id="profile_form"
@@ -65,12 +65,12 @@ defmodule StoryarnWeb.SettingsLive.Profile do
             <.input
               field={@profile_form[:display_name]}
               type="text"
-              label={gettext("Display Name")}
-              placeholder={gettext("How you want to be called")}
+              label={dgettext("settings", "Display Name")}
+              placeholder={dgettext("settings", "How you want to be called")}
             />
             <div class="flex justify-end">
-              <.button variant="primary" phx-disable-with={gettext("Saving...")}>
-                {gettext("Save Profile")}
+              <.button variant="primary" phx-disable-with={dgettext("settings", "Saving...")}>
+                {dgettext("settings", "Save Profile")}
               </.button>
             </div>
           </.form>
@@ -80,9 +80,9 @@ defmodule StoryarnWeb.SettingsLive.Profile do
 
         <%!-- Email Section --%>
         <section>
-          <h3 class="text-lg font-semibold mb-4">{gettext("Email Address")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("settings", "Email Address")}</h3>
           <p class="text-sm text-base-content/70 mb-4">
-            {gettext("Your email is used for login and notifications.")}
+            {dgettext("settings", "Your email is used for login and notifications.")}
           </p>
           <.form
             for={@email_form}
@@ -94,13 +94,13 @@ defmodule StoryarnWeb.SettingsLive.Profile do
             <.input
               field={@email_form[:email]}
               type="email"
-              label={gettext("Email")}
+              label={dgettext("settings", "Email")}
               autocomplete="username"
               required
             />
             <div class="flex justify-end">
-              <.button variant="primary" phx-disable-with={gettext("Changing...")}>
-                {gettext("Change Email")}
+              <.button variant="primary" phx-disable-with={dgettext("settings", "Changing...")}>
+                {dgettext("settings", "Change Email")}
               </.button>
             </div>
           </.form>
@@ -126,7 +126,7 @@ defmodule StoryarnWeb.SettingsLive.Profile do
 
     case Accounts.update_user_profile(user, user_params) do
       {:ok, _user} ->
-        {:noreply, put_flash(socket, :info, gettext("Profile updated successfully."))}
+        {:noreply, put_flash(socket, :info, dgettext("settings", "Profile updated successfully."))}
 
       {:error, changeset} ->
         {:noreply, assign(socket, profile_form: to_form(changeset, action: :insert))}
@@ -155,7 +155,7 @@ defmodule StoryarnWeb.SettingsLive.Profile do
           &url(~p"/users/settings/confirm-email/#{&1}")
         )
 
-        info = gettext("A link to confirm your email change has been sent to the new address.")
+        info = dgettext("settings", "A link to confirm your email change has been sent to the new address.")
         {:noreply, socket |> put_flash(:info, info)}
 
       changeset ->

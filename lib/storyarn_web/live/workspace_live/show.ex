@@ -27,7 +27,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
       {:error, :not_found} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("Workspace not found."))
+         |> put_flash(:error, dgettext("workspaces", "Workspace not found."))
          |> push_navigate(to: ~p"/workspaces")}
     end
   end
@@ -94,7 +94,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
             <div class="form-control">
               <input
                 type="text"
-                placeholder={gettext("Search projects...")}
+                placeholder={dgettext("workspaces", "Search projects...")}
                 class="input input-sm input-bordered w-64"
                 phx-change="search"
                 phx-debounce="300"
@@ -109,7 +109,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
             class="btn btn-primary btn-sm"
           >
             <.icon name="plus" class="size-4" />
-            {gettext("New Project")}
+            {dgettext("workspaces", "New Project")}
           </.link>
         </div>
         
@@ -129,9 +129,9 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
           <.empty_state
             :if={@projects == []}
             icon="folder-open"
-            title={gettext("No projects yet")}
+            title={dgettext("workspaces", "No projects yet")}
           >
-            {gettext("Create your first project to get started")}
+            {dgettext("workspaces", "Create your first project to get started")}
           </.empty_state>
         </div>
       </div>
@@ -147,7 +147,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
           id="new-project-form"
           current_scope={@current_scope}
           workspace={@workspace}
-          title={gettext("New Project")}
+          title={dgettext("workspaces", "New Project")}
           action={:new}
           navigate={~p"/workspaces/#{@workspace.slug}"}
         />
@@ -193,10 +193,10 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     diff = DateTime.diff(DateTime.utc_now(), datetime, :second)
 
     cond do
-      diff < 60 -> gettext("just now")
-      diff < 3600 -> gettext("%{count} min ago", count: div(diff, 60))
-      diff < 86_400 -> gettext("%{count} hours ago", count: div(diff, 3600))
-      true -> gettext("%{count} days ago", count: div(diff, 86_400))
+      diff < 60 -> dgettext("workspaces", "just now")
+      diff < 3600 -> dgettext("workspaces", "%{count} min ago", count: div(diff, 60))
+      diff < 86_400 -> dgettext("workspaces", "%{count} hours ago", count: div(diff, 3600))
+      true -> dgettext("workspaces", "%{count} days ago", count: div(diff, 86_400))
     end
   end
 
@@ -209,7 +209,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   def handle_info({StoryarnWeb.ProjectLive.Form, {:saved, project}}, socket) do
     socket =
       socket
-      |> put_flash(:info, gettext("Project created successfully."))
+      |> put_flash(:info, dgettext("workspaces", "Project created successfully."))
       |> push_navigate(
         to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}"
       )

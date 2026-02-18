@@ -50,13 +50,13 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.ConfigSidebar do
             phx-click="toggle_switch_mode"
             disabled={!@can_edit}
           />
-          <span class="label-text">{gettext("Switch mode")}</span>
+          <span class="label-text">{dgettext("flows", "Switch mode")}</span>
         </label>
         <p class="text-xs text-base-content/50 ml-12">
           <%= if @switch_mode do %>
-            {gettext("Each condition creates an output. First match wins.")}
+            {dgettext("flows", "Each condition creates an output. First match wins.")}
           <% else %>
-            {gettext("Evaluates all conditions → True or False.")}
+            {dgettext("flows", "Evaluates all conditions → True or False.")}
           <% end %>
         </p>
       </div>
@@ -66,9 +66,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.ConfigSidebar do
         <label class="label">
           <span class="label-text text-xs">
             <%= if @switch_mode do %>
-              {gettext("Conditions (each = output)")}
+              {dgettext("flows", "Conditions (each = output)")}
             <% else %>
-              {gettext("Condition")}
+              {dgettext("flows", "Condition")}
             <% end %>
           </span>
         </label>
@@ -80,30 +80,30 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.ConfigSidebar do
           switch_mode={@switch_mode}
         />
         <p :if={@condition_data["rules"] == [] && !@switch_mode} class="text-xs text-base-content/50">
-          {gettext("Add rules to define when to route to True/False.")}
+          {dgettext("flows", "Add rules to define when to route to True/False.")}
         </p>
         <p :if={@condition_data["rules"] == [] && @switch_mode} class="text-xs text-base-content/50">
-          {gettext("Add conditions. Each one creates a separate output.")}
+          {dgettext("flows", "Add conditions. Each one creates a separate output.")}
         </p>
       </div>
 
       <%!-- Output info --%>
       <div class="bg-base-200 rounded-lg p-3 text-xs">
-        <p class="font-medium mb-1">{gettext("Outputs:")}</p>
+        <p class="font-medium mb-1">{dgettext("flows", "Outputs:")}</p>
         <%= if @switch_mode do %>
           <ul class="list-disc list-inside text-base-content/70 space-y-1">
             <li :for={rule <- @condition_data["rules"]}>
-              {rule["label"] || gettext("(no label)")}
+              {rule["label"] || dgettext("flows", "(no label)")}
             </li>
-            <li class="text-base-content/50 italic">{gettext("Default (no match)")}</li>
+            <li class="text-base-content/50 italic">{dgettext("flows", "Default (no match)")}</li>
           </ul>
           <p :if={@condition_data["rules"] == []} class="text-base-content/50 italic">
-            {gettext("Default (no match)")}
+            {dgettext("flows", "Default (no match)")}
           </p>
         <% else %>
           <ul class="list-disc list-inside text-base-content/70">
-            <li>{gettext("True")}</li>
-            <li>{gettext("False")}</li>
+            <li>{dgettext("flows", "True")}</li>
+            <li>{dgettext("flows", "False")}</li>
           </ul>
         <% end %>
       </div>

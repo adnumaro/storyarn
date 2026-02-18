@@ -17,7 +17,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
     <section>
       <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
         <.icon name="volume-2" class="size-5" />
-        {gettext("Voice Lines")}
+        {dgettext("sheets", "Voice Lines")}
         <%= if @voice_lines != [] do %>
           <span class="badge badge-sm">{length(@voice_lines)}</span>
         <% end %>
@@ -131,7 +131,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
           process_upload(socket, node_id, filename, content_type, binary_data)
 
         :error ->
-          send(self(), {:audio_tab, :error, gettext("Invalid file data.")})
+          send(self(), {:audio_tab, :error, dgettext("sheets", "Invalid file data.")})
           {:noreply, assign(socket, :uploading_node_id, nil)}
       end
     end)
@@ -145,7 +145,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
     if socket.assigns.can_edit do
       fun.(socket)
     else
-      {:noreply, put_flash(socket, :error, gettext("You don't have permission to edit."))}
+      {:noreply, put_flash(socket, :error, dgettext("sheets", "You don't have permission to edit."))}
     end
   end
 
@@ -166,7 +166,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
           {:noreply, reload_voice_lines(socket)}
 
         {:error, _changeset} ->
-          send(self(), {:audio_tab, :error, gettext("Could not update audio.")})
+          send(self(), {:audio_tab, :error, dgettext("sheets", "Could not update audio.")})
           {:noreply, socket}
       end
     else
@@ -197,11 +197,11 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
         update_node_audio(socket, node_id, asset.id)
       else
         {:error, _reason} ->
-          send(self(), {:audio_tab, :error, gettext("Could not upload audio file.")})
+          send(self(), {:audio_tab, :error, dgettext("sheets", "Could not upload audio file.")})
           {:noreply, assign(socket, :uploading_node_id, nil)}
       end
     else
-      send(self(), {:audio_tab, :error, gettext("Unsupported file type.")})
+      send(self(), {:audio_tab, :error, dgettext("sheets", "Unsupported file type.")})
       {:noreply, assign(socket, :uploading_node_id, nil)}
     end
   end
@@ -251,9 +251,9 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
     ~H"""
     <div class="bg-base-200/50 rounded-lg p-8 text-center">
       <.icon name="volume-x" class="size-12 mx-auto text-base-content/30 mb-4" />
-      <p class="text-base-content/70 mb-2">{gettext("No voice lines")}</p>
+      <p class="text-base-content/70 mb-2">{dgettext("sheets", "No voice lines")}</p>
       <p class="text-sm text-base-content/50">
-        {gettext("Dialogue nodes using this sheet as speaker will appear here.")}
+        {dgettext("sheets", "Dialogue nodes using this sheet as speaker will appear here.")}
       </p>
     </div>
     """
@@ -328,14 +328,14 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
           {@text_preview}
         </p>
         <p :if={@text_preview == ""} class="text-sm text-base-content/40 italic flex-1">
-          {gettext("(empty dialogue)")}
+          {dgettext("sheets", "(empty dialogue)")}
         </p>
         <.link
           navigate={
             ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@line.flow.id}?node=#{@node_id}"
           }
           class="btn btn-ghost btn-xs shrink-0"
-          title={gettext("Open in flow editor")}
+          title={dgettext("sheets", "Open in flow editor")}
         >
           <.icon name="arrow-up-right" class="size-3.5" />
         </.link>
@@ -358,14 +358,14 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
           class="btn btn-ghost btn-xs text-error mt-1"
         >
           <.icon name="x" class="size-3" />
-          {gettext("Remove")}
+          {dgettext("sheets", "Remove")}
         </button>
       <% else %>
         <%= if @can_edit do %>
           <div class="flex items-center gap-2 mt-1">
             <form phx-change="select_audio" phx-target={@myself} phx-value-node-id={@node_id}>
               <select name="audio_asset_id" class="select select-xs select-bordered">
-                <option value="">{gettext("No audio")}</option>
+                <option value="">{dgettext("sheets", "No audio")}</option>
                 <option :for={asset <- @audio_assets} value={asset.id}>
                   {asset.filename}
                 </option>
@@ -377,7 +377,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
             ]}>
               <span :if={@is_uploading} class="loading loading-spinner loading-xs"></span>
               <.icon :if={!@is_uploading} name="upload" class="size-3" />
-              {if @is_uploading, do: gettext("Uploading..."), else: gettext("Upload")}
+              {if @is_uploading, do: dgettext("sheets", "Uploading..."), else: dgettext("sheets", "Upload")}
               <input
                 type="file"
                 accept="audio/*"
@@ -393,7 +393,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
         <% else %>
           <div class="flex items-center gap-2 text-xs text-base-content/40">
             <.icon name="volume-x" class="size-3" />
-            <span>{gettext("No audio")}</span>
+            <span>{dgettext("sheets", "No audio")}</span>
           </div>
         <% end %>
       <% end %>

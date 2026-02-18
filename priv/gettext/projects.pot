@@ -1,0 +1,592 @@
+## This file is a PO Template file.
+##
+## "msgid"s here are often extracted from source code.
+## Add new messages manually only if they're dynamic
+## messages that can't be statically extracted.
+##
+## Run "mix gettext.extract" to bring this file up to
+## date. Leave "msgstr"s empty as changing them here has no
+## effect: edit them in PO (.po) files instead.
+#
+msgid ""
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:161
+#, elixir-autogen, elixir-format
+msgid "%{count} day ago"
+msgid_plural "%{count} days ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:157
+#, elixir-autogen, elixir-format
+msgid "%{count} hour ago"
+msgid_plural "%{count} hours ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:153
+#, elixir-autogen, elixir-format
+msgid "%{count} minute ago"
+msgid_plural "%{count} minutes ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/project_live/form.ex:35
+#, elixir-autogen, elixir-format
+msgid "A brief description of your project"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:141
+#, elixir-autogen, elixir-format
+msgid "API Key"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:147
+#, elixir-autogen, elixir-format
+msgid "API Tier"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:35
+#, elixir-autogen, elixir-format
+msgid "Accept Invitation"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:76
+#, elixir-autogen, elixir-format
+msgid "All items in trash will be permanently deleted. This action cannot be undone."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:526
+#, elixir-autogen, elixir-format
+msgid "All variable references are up to date."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:561
+#, elixir-autogen, elixir-format
+msgid "An invitation has already been sent to this email."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/form.ex:40
+#: lib/storyarn_web/live/project_live/trash.ex:66
+#: lib/storyarn_web/live/project_live/trash.ex:79
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:607
+#, elixir-autogen, elixir-format
+msgid "Cannot remove the project owner."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:454
+#, elixir-autogen, elixir-format
+msgid "Connection failed. Check your API key and endpoint."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:448
+#, elixir-autogen, elixir-format
+msgid "Connection successful."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:214
+#, elixir-autogen, elixir-format
+msgid "Continue"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/form.ex:43
+#, elixir-autogen, elixir-format
+msgid "Create Project"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:198
+#, elixir-autogen, elixir-format
+msgid "Danger Zone"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:38
+#, elixir-autogen, elixir-format
+msgid "Decline"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:222
+#: lib/storyarn_web/live/project_live/trash.ex:65
+#: lib/storyarn_web/live/project_live/trash.ex:135
+#, elixir-autogen, elixir-format
+msgid "Delete"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:204
+#, elixir-autogen, elixir-format
+msgid "Delete Project"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:63
+#, elixir-autogen, elixir-format
+msgid "Delete permanently?"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:220
+#, elixir-autogen, elixir-format
+msgid "Delete project?"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:111
+#, elixir-autogen, elixir-format
+msgid "Deleted %{time_ago}"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:26
+#, elixir-autogen, elixir-format
+msgid "Deleted sheets are kept for 30 days before being permanently removed."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:46
+#, elixir-autogen, elixir-format
+msgid "Deleted sheets will appear here."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/form.ex:34
+#: lib/storyarn_web/live/project_live/settings.ex:54
+#, elixir-autogen, elixir-format
+msgid "Description"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:98
+#, elixir-autogen, elixir-format
+msgid "Editor"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:87
+#, elixir-autogen, elixir-format
+msgid "Email address"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:35
+#: lib/storyarn_web/live/project_live/trash.ex:78
+#, elixir-autogen, elixir-format
+msgid "Empty Trash"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:74
+#, elixir-autogen, elixir-format
+msgid "Empty trash?"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:166
+#, elixir-autogen, elixir-format
+msgid "Failed to accept invitation. Please try again."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:388
+#, elixir-autogen, elixir-format
+msgid "Failed to delete project."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:287
+#, elixir-autogen, elixir-format
+msgid "Failed to delete sheet."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:522
+#, elixir-autogen, elixir-format
+msgid "Failed to repair variable references."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:263
+#, elixir-autogen, elixir-format
+msgid "Failed to restore sheet."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:569
+#, elixir-autogen, elixir-format
+msgid "Failed to send invitation. Please try again."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:149
+#, elixir-autogen, elixir-format
+msgid "Free (api-free.deepl.com)"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:75
+#, elixir-autogen, elixir-format
+msgid "Go to Homepage"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:184
+#, elixir-autogen, elixir-format
+msgid "If you renamed sheet shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:451
+#, elixir-autogen, elixir-format
+msgid "Invalid API key."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:69
+#, elixir-autogen, elixir-format
+msgid "Invalid Invitation"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:587
+#, elixir-autogen, elixir-format
+msgid "Invitation not found."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:583
+#, elixir-autogen, elixir-format
+msgid "Invitation revoked."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:551
+#, elixir-autogen, elixir-format
+msgid "Invitation sent successfully."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:80
+#, elixir-autogen, elixir-format
+msgid "Invite a new member"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:25
+#, elixir-autogen, elixir-format
+msgid "Invited by"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:127
+#, elixir-autogen, elixir-format
+msgid "Localization"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:62
+#, elixir-autogen, elixir-format
+msgid "Log in to accept"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:181
+#, elixir-autogen, elixir-format
+msgid "Maintenance"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:30
+#, elixir-autogen, elixir-format
+msgid "Manage your project details and team members"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:610
+#, elixir-autogen, elixir-format
+msgid "Member not found."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:602
+#, elixir-autogen, elixir-format
+msgid "Member removed."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/form.ex:28
+#, elixir-autogen, elixir-format
+msgid "My Narrative Project"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:457
+#, elixir-autogen, elixir-format
+msgid "No API key configured."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:201
+#, elixir-autogen, elixir-format
+msgid "Once you delete a project, there is no going back. Please be certain."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:113
+#, elixir-autogen, elixir-format
+msgid "Pending Invitations"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:56
+#, elixir-autogen, elixir-format
+msgid "Please log in or create an account to accept this invitation."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:51
+#, elixir-autogen, elixir-format
+msgid "Please log in with the correct email address to accept this invitation."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:150
+#, elixir-autogen, elixir-format
+msgid "Pro (api.deepl.com)"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:38
+#, elixir-autogen, elixir-format
+msgid "Project Details"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/form.ex:27
+#: lib/storyarn_web/live/project_live/settings.ex:48
+#, elixir-autogen, elixir-format
+msgid "Project Name"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:28
+#, elixir-autogen, elixir-format
+msgid "Project Settings"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:382
+#, elixir-autogen, elixir-format
+msgid "Project deleted."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:280
+#: lib/storyarn_web/live/project_live/show.ex:74
+#: lib/storyarn_web/live/project_live/trash.ex:198
+#, elixir-autogen, elixir-format
+msgid "Project not found."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:315
+#, elixir-autogen, elixir-format
+msgid "Project updated successfully."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/show.ex:41
+#, elixir-autogen, elixir-format
+msgid "Project workspace coming soon!"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:504
+#, elixir-autogen, elixir-format
+msgid "Provider settings saved."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:189
+#, elixir-autogen, elixir-format
+msgid "Repair variable references"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:212
+#, elixir-autogen, elixir-format
+msgid "Repair variable references?"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:529
+#, elixir-autogen, elixir-format
+msgid "Repaired %{count} node."
+msgid_plural "Repaired %{count} nodes."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:124
+#, elixir-autogen, elixir-format
+msgid "Restore"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:96
+#, elixir-autogen, elixir-format
+msgid "Role"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:155
+#, elixir-autogen, elixir-format
+msgid "Save"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:58
+#, elixir-autogen, elixir-format
+msgid "Save Changes"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/form.ex:42
+#: lib/storyarn_web/live/project_live/settings.ex:57
+#: lib/storyarn_web/live/project_live/settings.ex:154
+#, elixir-autogen, elixir-format
+msgid "Saving..."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:104
+#, elixir-autogen, elixir-format
+msgid "Send Invite"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/show.ex:33
+#, elixir-autogen, elixir-format
+msgid "Settings"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:266
+#: lib/storyarn_web/live/project_live/trash.ex:290
+#, elixir-autogen, elixir-format
+msgid "Sheet not found."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:282
+#, elixir-autogen, elixir-format
+msgid "Sheet permanently deleted."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:258
+#, elixir-autogen, elixir-format
+msgid "Sheet restored successfully."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:315
+#, elixir-autogen, elixir-format
+msgid "Some sheets could not be deleted."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:67
+#, elixir-autogen, elixir-format
+msgid "Team Members"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:163
+#, elixir-autogen, elixir-format
+msgid "Test Connection"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:161
+#, elixir-autogen, elixir-format
+msgid "Testing..."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:221
+#, elixir-autogen, elixir-format
+msgid "This action cannot be undone."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:557
+#, elixir-autogen, elixir-format
+msgid "This email is already a member of the project."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:151
+#, elixir-autogen, elixir-format
+msgid "This invitation has already been accepted."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:161
+#, elixir-autogen, elixir-format
+msgid "This invitation has expired. Please request a new one."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:71
+#, elixir-autogen, elixir-format
+msgid "This invitation link is invalid or has expired."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:45
+#, elixir-autogen, elixir-format
+msgid "This invitation was sent to"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/show.ex:42
+#, elixir-autogen, elixir-format
+msgid "This is where you'll design your narrative flows."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:64
+#, elixir-autogen, elixir-format
+msgid "This sheet will be permanently deleted. This action cannot be undone."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:213
+#, elixir-autogen, elixir-format
+msgid "This will update node data across the entire project."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:565
+#, elixir-autogen, elixir-format
+msgid "Too many invitations. Please try again later."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:131
+#, elixir-autogen, elixir-format
+msgid "Translation Provider (DeepL)"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:24
+#, elixir-autogen, elixir-format
+msgid "Trash"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:309
+#, elixir-autogen, elixir-format
+msgid "Trash emptied successfully."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:44
+#, elixir-autogen, elixir-format
+msgid "Trash is empty"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:169
+#, elixir-autogen, elixir-format
+msgid "Usage: %{used} / %{limit} characters"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:99
+#, elixir-autogen, elixir-format
+msgid "Viewer"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:132
+#, elixir-autogen, elixir-format
+msgid "Welcome to the project!"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:273
+#, elixir-autogen, elixir-format
+msgid "You don't have permission to manage this project."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/settings.ex:325
+#: lib/storyarn_web/live/project_live/settings.ex:336
+#: lib/storyarn_web/live/project_live/settings.ex:347
+#: lib/storyarn_web/live/project_live/settings.ex:358
+#: lib/storyarn_web/live/project_live/settings.ex:369
+#: lib/storyarn_web/live/project_live/settings.ex:393
+#: lib/storyarn_web/live/project_live/settings.ex:408
+#: lib/storyarn_web/live/project_live/settings.ex:419
+#: lib/storyarn_web/live/project_live/trash.ex:211
+#: lib/storyarn_web/live/project_live/trash.ex:230
+#: lib/storyarn_web/live/project_live/trash.ex:241
+#, elixir-autogen, elixir-format
+msgid "You don't have permission to perform this action."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:143
+#, elixir-autogen, elixir-format
+msgid "You're already a member of this project."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:45
+#, elixir-autogen, elixir-format
+msgid "You're logged in as"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:18
+#, elixir-autogen, elixir-format
+msgid "You've been invited to join a project on Storyarn"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:16
+#, elixir-autogen, elixir-format
+msgid "You've been invited!"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:138
+#, elixir-autogen, elixir-format
+msgid "Your email doesn't match the invitation."
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/invitation.ex:25
+#, elixir-autogen, elixir-format
+msgid "as"
+msgstr ""
+
+#: lib/storyarn_web/live/project_live/trash.ex:148
+#, elixir-autogen, elixir-format
+msgid "just now"
+msgstr ""

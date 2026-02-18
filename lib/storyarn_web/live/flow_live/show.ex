@@ -59,7 +59,7 @@ defmodule StoryarnWeb.FlowLive.Show do
             class="btn btn-ghost btn-sm gap-2"
           >
             <.icon name="chevron-left" class="size-4" />
-            {gettext("Flows")}
+            {dgettext("flows", "Flows")}
           </.link>
           <.link
             :if={@from_flow}
@@ -81,7 +81,7 @@ defmodule StoryarnWeb.FlowLive.Show do
               contenteditable="true"
               phx-hook="EditableTitle"
               phx-update="ignore"
-              data-placeholder={gettext("Untitled")}
+              data-placeholder={dgettext("flows", "Untitled")}
               data-name={@flow.name}
             >
               {@flow.name}
@@ -95,7 +95,7 @@ defmodule StoryarnWeb.FlowLive.Show do
                 contenteditable="true"
                 phx-hook="EditableShortcut"
                 phx-update="ignore"
-                data-placeholder={gettext("add-shortcut")}
+                data-placeholder={dgettext("flows", "add-shortcut")}
                 data-shortcut={@flow.shortcut || ""}
               >
                 {@flow.shortcut}
@@ -105,8 +105,8 @@ defmodule StoryarnWeb.FlowLive.Show do
               #{@flow.shortcut}
             </div>
           </div>
-          <span :if={@flow.is_main} class="badge badge-primary badge-sm" title={gettext("Main flow")}>
-            {gettext("Main")}
+          <span :if={@flow.is_main} class="badge badge-primary badge-sm" title={dgettext("flows", "Main flow")}>
+            {dgettext("flows", "Main")}
           </span>
         </div>
         <div class="flex-none flex items-center gap-4">
@@ -121,12 +121,12 @@ defmodule StoryarnWeb.FlowLive.Show do
             phx-click={if(@debug_panel_open, do: "debug_stop", else: "debug_start")}
           >
             <.icon name="bug" class="size-4" />
-            {if @debug_panel_open, do: gettext("Stop Debug"), else: gettext("Debug")}
+            {if @debug_panel_open, do: dgettext("flows", "Stop Debug"), else: dgettext("flows", "Debug")}
           </button>
           <div :if={@can_edit} class="dropdown dropdown-end">
             <button type="button" tabindex="0" class="btn btn-primary btn-sm gap-2">
               <.icon name="plus" class="size-4" />
-              {gettext("Add Node")}
+              {dgettext("flows", "Add Node")}
             </button>
             <ul
               tabindex="0"
@@ -248,7 +248,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       {:error, _reason} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("You don't have access to this project."))
+         |> put_flash(:error, dgettext("flows", "You don't have access to this project."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -259,7 +259,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       nil ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("Flow not found."))
+         |> put_flash(:error, dgettext("flows", "Flow not found."))
          |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/flows")}
 
       flow ->
@@ -595,7 +595,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         # Validate that the target flow belongs to the current project
         case Flows.get_flow_brief(socket.assigns.project.id, flow_id) do
           nil ->
-            {:noreply, put_flash(socket, :error, gettext("Flow not found."))}
+            {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
 
           _flow ->
             {:noreply,
@@ -606,7 +606,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         end
 
       _ ->
-        {:noreply, put_flash(socket, :error, gettext("Invalid flow ID."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Invalid flow ID."))}
     end
   end
 
@@ -664,7 +664,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       {flow_id, ""} ->
         case Flows.get_flow_brief(socket.assigns.project.id, flow_id) do
           nil ->
-            {:noreply, put_flash(socket, :error, gettext("Flow not found."))}
+            {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
 
           _flow ->
             {:noreply,
@@ -675,7 +675,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         end
 
       _ ->
-        {:noreply, put_flash(socket, :error, gettext("Invalid flow ID."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Invalid flow ID."))}
     end
   end
 
@@ -684,7 +684,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       {flow_id, ""} ->
         case Flows.get_flow_brief(socket.assigns.project.id, flow_id) do
           nil ->
-            {:noreply, put_flash(socket, :error, gettext("Flow not found."))}
+            {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
 
           _flow ->
             {:noreply,
@@ -695,7 +695,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         end
 
       _ ->
-        {:noreply, put_flash(socket, :error, gettext("Invalid flow ID."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Invalid flow ID."))}
     end
   end
 
@@ -862,7 +862,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
     {:noreply,
      socket
-     |> put_flash(:error, gettext("Could not load flow data."))
+     |> put_flash(:error, dgettext("flows", "Could not load flow data."))
      |> redirect(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows")}
   end
 
@@ -928,7 +928,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   defp unauthorized_flash(socket) do
-    put_flash(socket, :error, gettext("You don't have permission to perform this action."))
+    put_flash(socket, :error, dgettext("flows", "You don't have permission to perform this action."))
   end
 
   defp validate_hex_color(color, default) when is_binary(color) do

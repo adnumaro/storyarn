@@ -58,7 +58,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.gettext(StoryarnWeb.Gettext, "Could not create connection.")
+           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Could not create connection.")
          )}
     end
   end

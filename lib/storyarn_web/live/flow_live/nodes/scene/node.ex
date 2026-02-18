@@ -16,7 +16,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.Node do
 
   def type, do: "scene"
   def icon_name, do: "clapperboard"
-  def label, do: gettext("Scene")
+  def label, do: dgettext("flows", "Scene")
 
   def default_data do
     %{

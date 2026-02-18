@@ -22,9 +22,9 @@ defmodule StoryarnWeb.LocalizationLive.Report do
     >
       <div class="max-w-4xl mx-auto">
         <.header>
-          {gettext("Localization Report")}
+          {dgettext("localization", "Localization Report")}
           <:subtitle>
-            {gettext("Translation progress and statistics")}
+            {dgettext("localization", "Translation progress and statistics")}
           </:subtitle>
           <:actions>
             <.link
@@ -32,17 +32,17 @@ defmodule StoryarnWeb.LocalizationLive.Report do
               class="btn btn-ghost btn-sm"
             >
               <.icon name="arrow-left" class="size-4 mr-1" />
-              {gettext("Back to Translations")}
+              {dgettext("localization", "Back to Translations")}
             </.link>
           </:actions>
         </.header>
 
         <%!-- Progress by Language --%>
         <section class="mt-8">
-          <h3 class="text-lg font-semibold mb-4">{gettext("Progress by Language")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("localization", "Progress by Language")}</h3>
 
           <div :if={@language_progress == []} class="text-sm opacity-60">
-            {gettext("No target languages configured.")}
+            {dgettext("localization", "No target languages configured.")}
           </div>
 
           <div class="space-y-3">
@@ -61,7 +61,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
                 {lang.percentage}%
               </span>
               <span class="text-xs opacity-50 w-24 text-right">
-                {gettext("%{done}/%{total}", done: lang.final, total: lang.total)}
+                {dgettext("localization", "%{done}/%{total}", done: lang.final, total: lang.total)}
               </span>
             </div>
           </div>
@@ -70,7 +70,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
         <%!-- Word Counts by Speaker --%>
         <section :if={@selected_locale && @speaker_stats != []} class="mt-8">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold">{gettext("Word Counts by Speaker")}</h3>
+            <h3 class="text-lg font-semibold">{dgettext("localization", "Word Counts by Speaker")}</h3>
             <select
               name="locale"
               class="select select-bordered select-sm"
@@ -89,19 +89,19 @@ defmodule StoryarnWeb.LocalizationLive.Report do
           <table class="table table-sm">
             <thead>
               <tr>
-                <th>{gettext("Speaker")}</th>
-                <th class="text-right">{gettext("Lines")}</th>
-                <th class="text-right">{gettext("Words")}</th>
+                <th>{dgettext("localization", "Speaker")}</th>
+                <th class="text-right">{dgettext("localization", "Lines")}</th>
+                <th class="text-right">{dgettext("localization", "Words")}</th>
               </tr>
             </thead>
             <tbody>
               <tr :for={stat <- @speaker_stats}>
                 <td>
                   <span :if={stat.speaker_sheet_id}>
-                    {gettext("Speaker #%{id}", id: stat.speaker_sheet_id)}
+                    {dgettext("localization", "Speaker #%{id}", id: stat.speaker_sheet_id)}
                   </span>
                   <span :if={!stat.speaker_sheet_id} class="opacity-50 italic">
-                    {gettext("No speaker")}
+                    {dgettext("localization", "No speaker")}
                   </span>
                 </td>
                 <td class="text-right">{stat.line_count}</td>
@@ -113,22 +113,22 @@ defmodule StoryarnWeb.LocalizationLive.Report do
 
         <%!-- VO Progress --%>
         <section :if={@selected_locale} class="mt-8">
-          <h3 class="text-lg font-semibold mb-4">{gettext("Voice-Over Progress")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("localization", "Voice-Over Progress")}</h3>
           <div class="stats shadow">
             <div class="stat">
-              <div class="stat-title">{gettext("None")}</div>
+              <div class="stat-title">{dgettext("localization", "None")}</div>
               <div class="stat-value text-base-content/50">{@vo_progress.none}</div>
             </div>
             <div class="stat">
-              <div class="stat-title">{gettext("Needed")}</div>
+              <div class="stat-title">{dgettext("localization", "Needed")}</div>
               <div class="stat-value text-warning">{@vo_progress.needed}</div>
             </div>
             <div class="stat">
-              <div class="stat-title">{gettext("Recorded")}</div>
+              <div class="stat-title">{dgettext("localization", "Recorded")}</div>
               <div class="stat-value text-info">{@vo_progress.recorded}</div>
             </div>
             <div class="stat">
-              <div class="stat-title">{gettext("Approved")}</div>
+              <div class="stat-title">{dgettext("localization", "Approved")}</div>
               <div class="stat-value text-success">{@vo_progress.approved}</div>
             </div>
           </div>
@@ -136,7 +136,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
 
         <%!-- Content Type Breakdown --%>
         <section :if={@selected_locale && @type_counts != %{}} class="mt-8">
-          <h3 class="text-lg font-semibold mb-4">{gettext("Content Breakdown")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("localization", "Content Breakdown")}</h3>
           <div class="flex gap-3 flex-wrap">
             <div
               :for={{type, count} <- @type_counts}
@@ -189,7 +189,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
       {:error, :not_found} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("Project not found."))
+         |> put_flash(:error, dgettext("localization", "Project not found."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -235,10 +235,10 @@ defmodule StoryarnWeb.LocalizationLive.Report do
   defp type_icon("screenplay"), do: "clapperboard"
   defp type_icon(_), do: "box"
 
-  defp type_label("flow_node"), do: gettext("Nodes")
-  defp type_label("block"), do: gettext("Blocks")
-  defp type_label("sheet"), do: gettext("Sheets")
-  defp type_label("flow"), do: gettext("Flows")
-  defp type_label("screenplay"), do: gettext("Screenplays")
+  defp type_label("flow_node"), do: dgettext("localization", "Nodes")
+  defp type_label("block"), do: dgettext("localization", "Blocks")
+  defp type_label("sheet"), do: dgettext("localization", "Sheets")
+  defp type_label("flow"), do: dgettext("localization", "Flows")
+  defp type_label("screenplay"), do: dgettext("localization", "Screenplays")
   defp type_label(other), do: other
 end

@@ -15,7 +15,7 @@ defmodule StoryarnWeb.SettingsLive.Security do
 
     socket =
       socket
-      |> assign(:page_title, gettext("Security Settings"))
+      |> assign(:page_title, dgettext("settings", "Security Settings"))
       |> assign(:current_path, ~p"/users/settings/security")
       |> assign(:current_email, user.email)
       |> assign(:password_form, to_form(password_changeset))
@@ -33,15 +33,15 @@ defmodule StoryarnWeb.SettingsLive.Security do
       workspaces={@workspaces}
       current_path={@current_path}
     >
-      <:title>{gettext("Security")}</:title>
-      <:subtitle>{gettext("Manage your password and account security")}</:subtitle>
+      <:title>{dgettext("settings", "Security")}</:title>
+      <:subtitle>{dgettext("settings", "Manage your password and account security")}</:subtitle>
 
       <div class="space-y-8">
         <%!-- Password Section --%>
         <section>
-          <h3 class="text-lg font-semibold mb-4">{gettext("Change Password")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("settings", "Change Password")}</h3>
           <p class="text-sm text-base-content/70 mb-4">
-            {gettext("Choose a strong password that you don't use elsewhere.")}
+            {dgettext("settings", "Choose a strong password that you don't use elsewhere.")}
           </p>
           <.form
             for={@password_form}
@@ -63,19 +63,19 @@ defmodule StoryarnWeb.SettingsLive.Security do
             <.input
               field={@password_form[:password]}
               type="password"
-              label={gettext("New password")}
+              label={dgettext("settings", "New password")}
               autocomplete="new-password"
               required
             />
             <.input
               field={@password_form[:password_confirmation]}
               type="password"
-              label={gettext("Confirm new password")}
+              label={dgettext("settings", "Confirm new password")}
               autocomplete="new-password"
             />
             <div class="flex justify-end">
-              <.button variant="primary" phx-disable-with={gettext("Saving...")}>
-                {gettext("Update Password")}
+              <.button variant="primary" phx-disable-with={dgettext("settings", "Saving...")}>
+                {dgettext("settings", "Update Password")}
               </.button>
             </div>
           </.form>
@@ -85,13 +85,13 @@ defmodule StoryarnWeb.SettingsLive.Security do
 
         <%!-- Sessions Section (future) --%>
         <section>
-          <h3 class="text-lg font-semibold mb-4">{gettext("Active Sessions")}</h3>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("settings", "Active Sessions")}</h3>
           <p class="text-sm text-base-content/70 mb-4">
-            {gettext("You are currently logged in on this device.")}
+            {dgettext("settings", "You are currently logged in on this device.")}
           </p>
           <div class="alert alert-info">
             <.icon name="info" class="size-5" />
-            <span>{gettext("Session management coming soon.")}</span>
+            <span>{dgettext("settings", "Session management coming soon.")}</span>
           </div>
         </section>
       </div>

@@ -23,14 +23,14 @@ defmodule StoryarnWeb.AssetLive.Index do
     >
       <div class="max-w-4xl mx-auto">
         <.header>
-          {gettext("Assets")}
+          {dgettext("assets", "Assets")}
           <:subtitle>
-            {gettext("Manage images, audio, and other files for your project")}
+            {dgettext("assets", "Manage images, audio, and other files for your project")}
           </:subtitle>
           <:actions :if={@can_edit}>
             <label class={["btn btn-primary", @uploading && "btn-disabled"]}>
               <.icon name="upload" class="size-4 mr-2" />
-              {if @uploading, do: gettext("Uploading..."), else: gettext("Upload")}
+              {if @uploading, do: dgettext("assets", "Uploading..."), else: dgettext("assets", "Upload")}
               <input
                 type="file"
                 accept="image/*,audio/*"
@@ -64,7 +64,7 @@ defmodule StoryarnWeb.AssetLive.Index do
                 type="text"
                 name="search"
                 value={@search}
-                placeholder={gettext("Search files...")}
+                placeholder={dgettext("assets", "Search files...")}
                 phx-debounce="300"
                 class="grow"
               />
@@ -73,7 +73,7 @@ defmodule StoryarnWeb.AssetLive.Index do
         </div>
 
         <.empty_state :if={@assets == []} icon="image">
-          {gettext("No assets yet. Upload files to get started.")}
+          {dgettext("assets", "No assets yet. Upload files to get started.")}
         </.empty_state>
 
         <%!-- Asset grid + detail panel --%>
@@ -103,9 +103,9 @@ defmodule StoryarnWeb.AssetLive.Index do
         <.confirm_modal
           :if={@can_edit}
           id="delete-asset-confirm"
-          title={gettext("Delete asset?")}
+          title={dgettext("assets", "Delete asset?")}
           message={delete_confirm_message(@asset_usages)}
-          confirm_text={gettext("Delete")}
+          confirm_text={dgettext("assets", "Delete")}
           confirm_variant="error"
           icon="alert-triangle"
           on_confirm={JS.push("confirm_delete_asset")}
@@ -179,7 +179,7 @@ defmodule StoryarnWeb.AssetLive.Index do
     <div class="w-80 flex-shrink-0 border border-base-300 rounded-lg bg-base-100 p-4 space-y-4 self-start">
       <%!-- Close button --%>
       <div class="flex items-center justify-between">
-        <h3 class="font-semibold text-sm">{gettext("Details")}</h3>
+        <h3 class="font-semibold text-sm">{dgettext("assets", "Details")}</h3>
         <button type="button" phx-click="deselect_asset" class="btn btn-ghost btn-xs btn-square">
           <.icon name="x" class="size-4" />
         </button>
@@ -209,19 +209,19 @@ defmodule StoryarnWeb.AssetLive.Index do
       <%!-- Metadata --%>
       <dl class="text-sm space-y-2">
         <div>
-          <dt class="text-base-content/50">{gettext("Filename")}</dt>
+          <dt class="text-base-content/50">{dgettext("assets", "Filename")}</dt>
           <dd class="font-medium break-all">{@asset.filename}</dd>
         </div>
         <div>
-          <dt class="text-base-content/50">{gettext("Type")}</dt>
+          <dt class="text-base-content/50">{dgettext("assets", "Type")}</dt>
           <dd>{@asset.content_type}</dd>
         </div>
         <div>
-          <dt class="text-base-content/50">{gettext("Size")}</dt>
+          <dt class="text-base-content/50">{dgettext("assets", "Size")}</dt>
           <dd>{format_size(@asset.size)}</dd>
         </div>
         <div>
-          <dt class="text-base-content/50">{gettext("Uploaded")}</dt>
+          <dt class="text-base-content/50">{dgettext("assets", "Uploaded")}</dt>
           <dd>{Calendar.strftime(@asset.inserted_at, "%b %d, %Y")}</dd>
         </div>
       </dl>
@@ -230,12 +230,12 @@ defmodule StoryarnWeb.AssetLive.Index do
       <div class="border-t border-base-300 pt-4">
         <h4 class="text-sm font-medium mb-2 flex items-center gap-2">
           <.icon name="link" class="size-4" />
-          {gettext("Usage")}
+          {dgettext("assets", "Usage")}
           <span class="badge badge-xs">{@total_usages}</span>
         </h4>
 
         <div :if={@total_usages == 0} class="text-sm text-base-content/50">
-          {gettext("Not used anywhere")}
+          {dgettext("assets", "Not used anywhere")}
         </div>
 
         <ul :if={@total_usages > 0} class="text-sm space-y-1">
@@ -259,7 +259,7 @@ defmodule StoryarnWeb.AssetLive.Index do
               class="text-primary hover:underline truncate"
             >
               {sheet.name}
-              <span class="text-base-content/40">({gettext("avatar")})</span>
+              <span class="text-base-content/40">({dgettext("assets", "avatar")})</span>
             </.link>
           </li>
           <li :for={sheet <- @usages.sheet_banners} class="flex items-center gap-2">
@@ -271,7 +271,7 @@ defmodule StoryarnWeb.AssetLive.Index do
               class="text-primary hover:underline truncate"
             >
               {sheet.name}
-              <span class="text-base-content/40">({gettext("banner")})</span>
+              <span class="text-base-content/40">({dgettext("assets", "banner")})</span>
             </.link>
           </li>
         </ul>
@@ -285,7 +285,7 @@ defmodule StoryarnWeb.AssetLive.Index do
           phx-click={show_modal("delete-asset-confirm")}
         >
           <.icon name="trash-2" class="size-4" />
-          {gettext("Delete asset")}
+          {dgettext("assets", "Delete asset")}
         </button>
       </div>
     </div>
@@ -331,7 +331,7 @@ defmodule StoryarnWeb.AssetLive.Index do
       {:error, _reason} ->
         {:ok,
          socket
-         |> put_flash(:error, gettext("You don't have access to this project."))
+         |> put_flash(:error, dgettext("assets", "You don't have access to this project."))
          |> redirect(to: ~p"/workspaces")}
     end
   end
@@ -392,7 +392,7 @@ defmodule StoryarnWeb.AssetLive.Index do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, gettext("You don't have permission to delete assets."))}
+         put_flash(socket, :error, dgettext("assets", "You don't have permission to delete assets."))}
     end
   end
 
@@ -420,7 +420,7 @@ defmodule StoryarnWeb.AssetLive.Index do
         {:noreply,
          socket
          |> assign(:uploading, false)
-         |> put_flash(:error, gettext("You don't have permission to upload files."))}
+         |> put_flash(:error, dgettext("assets", "You don't have permission to upload files."))}
     end
   end
 
@@ -439,7 +439,7 @@ defmodule StoryarnWeb.AssetLive.Index do
         {:noreply,
          socket
          |> assign(:uploading, false)
-         |> put_flash(:error, gettext("Invalid file data."))}
+         |> put_flash(:error, dgettext("assets", "Invalid file data."))}
     end
   end
 
@@ -469,7 +469,7 @@ defmodule StoryarnWeb.AssetLive.Index do
          |> assign(:selected_asset, asset)
          |> assign(:asset_usages, usages)
          |> load_assets()
-         |> put_flash(:info, gettext("Asset uploaded successfully."))}
+         |> put_flash(:info, dgettext("assets", "Asset uploaded successfully."))}
       else
         {:error, reason} ->
           {:noreply,
@@ -481,12 +481,12 @@ defmodule StoryarnWeb.AssetLive.Index do
       {:noreply,
        socket
        |> assign(:uploading, false)
-       |> put_flash(:error, gettext("Unsupported file type."))}
+       |> put_flash(:error, dgettext("assets", "Unsupported file type."))}
     end
   end
 
-  defp upload_error_message(%Ecto.Changeset{}), do: gettext("Could not save asset.")
-  defp upload_error_message(_), do: gettext("Upload failed. Please try again.")
+  defp upload_error_message(%Ecto.Changeset{}), do: dgettext("assets", "Could not save asset.")
+  defp upload_error_message(_), do: dgettext("assets", "Upload failed. Please try again.")
 
   defp delete_selected_asset(socket) do
     case socket.assigns.selected_asset do
@@ -511,10 +511,10 @@ defmodule StoryarnWeb.AssetLive.Index do
              |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})
              |> assign(:type_counts, type_counts)
              |> load_assets()
-             |> put_flash(:info, gettext("Asset deleted."))}
+             |> put_flash(:info, dgettext("assets", "Asset deleted."))}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not delete asset."))}
+            {:noreply, put_flash(socket, :error, dgettext("assets", "Could not delete asset."))}
         end
     end
   end
@@ -542,9 +542,9 @@ defmodule StoryarnWeb.AssetLive.Index do
     audio_count = Map.get(type_counts, "audio", 0)
 
     [
-      {"all", gettext("All"), total},
-      {"image", gettext("Images"), image_count},
-      {"audio", gettext("Audio"), audio_count}
+      {"all", dgettext("assets", "All"), total},
+      {"image", dgettext("assets", "Images"), image_count},
+      {"audio", dgettext("assets", "Audio"), audio_count}
     ]
   end
 
@@ -561,9 +561,9 @@ defmodule StoryarnWeb.AssetLive.Index do
 
   defp type_label(%Asset{} = asset) do
     cond do
-      Asset.image?(asset) -> gettext("Image")
-      Asset.audio?(asset) -> gettext("Audio")
-      true -> gettext("File")
+      Asset.image?(asset) -> dgettext("assets", "Image")
+      Asset.audio?(asset) -> dgettext("assets", "Audio")
+      true -> dgettext("assets", "File")
     end
   end
 
@@ -572,14 +572,14 @@ defmodule StoryarnWeb.AssetLive.Index do
       length(usages.flow_nodes) + length(usages.sheet_avatars) + length(usages.sheet_banners)
 
     if total > 0 do
-      ngettext(
+      dngettext("assets", 
         "This asset is used in %{count} place. Are you sure you want to delete it?",
         "This asset is used in %{count} places. Are you sure you want to delete it?",
         total,
         count: total
       )
     else
-      gettext("Are you sure you want to delete this asset? This cannot be undone.")
+      dgettext("assets", "Are you sure you want to delete this asset? This cannot be undone.")
     end
   end
 

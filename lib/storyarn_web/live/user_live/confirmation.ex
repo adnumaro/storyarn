@@ -11,7 +11,7 @@ defmodule StoryarnWeb.UserLive.Confirmation do
     <Layouts.auth flash={@flash} current_scope={@current_scope}>
       <div class="mx-auto max-w-sm">
         <div class="text-center">
-          <.header>{gettext("Welcome %{email}", email: @user.email)}</.header>
+          <.header>{dgettext("identity", "Welcome %{email}", email: @user.email)}</.header>
         </div>
 
         <.form
@@ -27,16 +27,16 @@ defmodule StoryarnWeb.UserLive.Confirmation do
           <.button
             name={@form[:remember_me].name}
             value="true"
-            phx-disable-with={gettext("Confirming...")}
+            phx-disable-with={dgettext("identity", "Confirming...")}
             class="btn btn-primary w-full"
           >
-            {gettext("Confirm and stay logged in")}
+            {dgettext("identity", "Confirm and stay logged in")}
           </.button>
           <.button
-            phx-disable-with={gettext("Confirming...")}
+            phx-disable-with={dgettext("identity", "Confirming...")}
             class="btn btn-primary btn-soft w-full mt-2"
           >
-            {gettext("Confirm and log in only this time")}
+            {dgettext("identity", "Confirm and log in only this time")}
           </.button>
         </.form>
 
@@ -51,29 +51,29 @@ defmodule StoryarnWeb.UserLive.Confirmation do
         >
           <input type="hidden" name={@form[:token].name} value={@form[:token].value} />
           <%= if @current_scope do %>
-            <.button phx-disable-with={gettext("Logging in...")} class="btn btn-primary w-full">
-              {gettext("Log in")}
+            <.button phx-disable-with={dgettext("identity", "Logging in...")} class="btn btn-primary w-full">
+              {dgettext("identity", "Log in")}
             </.button>
           <% else %>
             <.button
               name={@form[:remember_me].name}
               value="true"
-              phx-disable-with={gettext("Logging in...")}
+              phx-disable-with={dgettext("identity", "Logging in...")}
               class="btn btn-primary w-full"
             >
-              {gettext("Keep me logged in on this device")}
+              {dgettext("identity", "Keep me logged in on this device")}
             </.button>
             <.button
-              phx-disable-with={gettext("Logging in...")}
+              phx-disable-with={dgettext("identity", "Logging in...")}
               class="btn btn-primary btn-soft w-full mt-2"
             >
-              {gettext("Log me in only this time")}
+              {dgettext("identity", "Log me in only this time")}
             </.button>
           <% end %>
         </.form>
 
         <p :if={!@user.confirmed_at} class="alert alert-outline mt-8">
-          {gettext("Tip: If you prefer passwords, you can enable them in the user settings.")}
+          {dgettext("identity", "Tip: If you prefer passwords, you can enable them in the user settings.")}
         </p>
       </div>
     </Layouts.auth>
@@ -90,7 +90,7 @@ defmodule StoryarnWeb.UserLive.Confirmation do
     else
       {:ok,
        socket
-       |> put_flash(:error, gettext("Magic link is invalid or it has expired."))
+       |> put_flash(:error, dgettext("identity", "Magic link is invalid or it has expired."))
        |> push_navigate(to: ~p"/users/log-in")}
     end
   end

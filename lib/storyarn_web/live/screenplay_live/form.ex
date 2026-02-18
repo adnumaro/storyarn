@@ -24,23 +24,23 @@ defmodule StoryarnWeb.ScreenplayLive.Form do
         <.input
           field={@form[:name]}
           type="text"
-          label={gettext("Name")}
-          placeholder={gettext("Main Story")}
+          label={dgettext("screenplays", "Name")}
+          placeholder={dgettext("screenplays", "Main Story")}
           required
         />
         <.input
           field={@form[:description]}
           type="textarea"
-          label={gettext("Description")}
-          placeholder={gettext("Describe the purpose of this screenplay...")}
+          label={dgettext("screenplays", "Description")}
+          placeholder={dgettext("screenplays", "Describe the purpose of this screenplay...")}
           rows={3}
         />
         <div class="modal-action">
           <.link patch={@navigate} class="btn btn-ghost">
-            {gettext("Cancel")}
+            {dgettext("screenplays", "Cancel")}
           </.link>
-          <.button variant="primary" phx-disable-with={gettext("Creating...")}>
-            {gettext("Create Screenplay")}
+          <.button variant="primary" phx-disable-with={dgettext("screenplays", "Creating...")}>
+            {dgettext("screenplays", "Create Screenplay")}
           </.button>
         </div>
       </.form>

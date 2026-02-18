@@ -18,7 +18,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
 
     case Sheets.get_version(socket.assigns.sheet.id, version_number) do
       nil ->
-        {:noreply, put_flash(socket, :error, gettext("Version not found."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Version not found."))}
 
       version ->
         restore_from_version(socket, version)
@@ -33,7 +33,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
 
     case Sheets.get_version(socket.assigns.sheet.id, version_number) do
       nil ->
-        {:noreply, put_flash(socket, :error, gettext("Version not found."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Version not found."))}
 
       version ->
         case Sheets.delete_version(version) do
@@ -47,10 +47,10 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
              socket
              |> assign(:sheet, sheet)
              |> assign(:versions, versions)
-             |> put_flash(:info, gettext("Version deleted."))}
+             |> put_flash(:info, dgettext("sheets", "Version deleted."))}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, gettext("Could not delete version."))}
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete version."))}
         end
     end
   end
@@ -79,10 +79,10 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
          |> assign(:sheet, updated_sheet)
          |> assign(:versions, versions)
          |> assign(:show_create_version_modal, false)
-         |> put_flash(:info, gettext("Version created."))}
+         |> put_flash(:info, dgettext("sheets", "Version created."))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not create version."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create version."))}
     end
   end
 
@@ -135,7 +135,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
         handle_successful_restore(socket, updated_sheet, version)
 
       {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not restore version."))}
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not restore version."))}
     end
   end
 
@@ -158,7 +158,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
      })
      |> put_flash(
        :info,
-       gettext("Restored to version %{number}", number: version.version_number)
+       dgettext("sheets", "Restored to version %{number}", number: version.version_number)
      )}
   end
 
