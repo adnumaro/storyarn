@@ -81,10 +81,14 @@ export function createConnectionHandler(hook, i18n = {}) {
 
     if (!line) return;
 
-    // Click → select
+    // Click → select (also used by label marker)
+    line._selectHandler = () => {
+      hook.pushEvent("select_element", { type: "connection", id: conn.id });
+    };
+
     line.on("click", (e) => {
       L.DomEvent.stopPropagation(e);
-      hook.pushEvent("select_element", { type: "connection", id: conn.id });
+      line._selectHandler();
     });
 
     // Right-click → context menu

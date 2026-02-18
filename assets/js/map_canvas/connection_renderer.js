@@ -46,7 +46,7 @@ export function createConnectionLine(conn, pinMarkers, w, h) {
   line._arrows = buildArrows(line, conn);
 
   // Path label (deferred — added to map by handler via addLabelToLayer)
-  line._labelData = { text: conn.label, color: conn.color };
+  line._labelData = { text: conn.label, color: conn.color, show: conn.show_label !== false };
 
   return line;
 }
@@ -68,7 +68,7 @@ export function updateConnectionLine(line, conn) {
   replaceArrows(line, conn);
 
   // Update path label
-  line._labelData = { text: conn.label, color: conn.color };
+  line._labelData = { text: conn.label, color: conn.color, show: conn.show_label !== false };
   applyLabel(line);
 }
 
@@ -210,6 +210,7 @@ function applyLabel(line) {
   removeLabel(line);
 
   const data = line._labelData;
+  if (!data?.show) return;
   const text = data?.text?.trim();
   if (!text) return;
 
@@ -232,11 +233,11 @@ function applyLabel(line) {
       `transform:translate(-50%,-100%) rotate(${angle}deg);` +
       `transform-origin:center bottom;` +
       `white-space:nowrap;` +
-      `font-size:11px;font-weight:600;` +
-      `color:${color};` +
-      `text-shadow:-1px 0 white,1px 0 white,0 -1px white,0 1px white,` +
-      `-1px -1px white,1px -1px white,-1px 1px white,1px 1px white;` +
-      `pointer-events:none;padding-bottom:4px;` +
+      `font-size:13px;font-weight:600;` +
+      `color:#fff;` +
+      `background:rgba(0,0,0,0.45);` +
+      `padding:1px 6px;border-radius:3px;` +
+      `cursor:pointer;margin-bottom:4px;` +
       `">${escapedText}</div>`,
     iconSize: [0, 0],
     iconAnchor: [0, 0],
@@ -244,9 +245,15 @@ function applyLabel(line) {
 
   line._labelMarker = L.marker(midLatLng, {
     icon,
-    interactive: false,
+    interactive: true,
     zIndexOffset: -100,
   }).addTo(map);
+
+  // Click on label → select the connection
+  line._labelMarker.on("click", (e) => {
+    L.DomEvent.stopPropagation(e);
+    if (line._selectHandler) line._selectHandler();
+  });
 }
 
 function removeLabel(line) {

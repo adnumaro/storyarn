@@ -73,6 +73,21 @@ defmodule StoryarnWeb.MapLive.Components.ElementPanels do
         </form>
       </div>
 
+      <%!-- Show Label --%>
+      <div class="flex items-center justify-between">
+        <label class="label text-xs font-medium">{dgettext("maps", "Show Label")}</label>
+        <input
+          type="checkbox"
+          checked={@connection.show_label}
+          phx-click="update_connection"
+          phx-value-id={@connection.id}
+          phx-value-field="show_label"
+          phx-value-toggle={to_string(!@connection.show_label)}
+          class="toggle toggle-sm"
+          disabled={!@can_edit}
+        />
+      </div>
+
       <%!-- Bidirectional (phx-click — no form needed) --%>
       <div class="flex items-center justify-between">
         <label class="label text-xs font-medium">{dgettext("maps", "Bidirectional")}</label>

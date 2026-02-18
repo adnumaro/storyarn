@@ -120,6 +120,7 @@ defmodule StoryarnWeb.MapLive.Helpers.Serializer do
       line_style: conn.line_style,
       color: conn.color,
       label: conn.label,
+      show_label: conn.show_label,
       bidirectional: conn.bidirectional,
       waypoints: conn.waypoints || []
     }

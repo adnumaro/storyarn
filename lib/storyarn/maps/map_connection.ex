@@ -37,6 +37,7 @@ defmodule Storyarn.Maps.MapConnection do
     field :color, :string
     field :label, :string
     field :bidirectional, :boolean, default: true
+    field :show_label, :boolean, default: true
     field :waypoints, {:array, :map}, default: []
 
     belongs_to :map, Map
@@ -68,7 +69,7 @@ defmodule Storyarn.Maps.MapConnection do
   """
   def update_changeset(connection, attrs) do
     connection
-    |> cast(attrs, [:line_style, :color, :label, :bidirectional, :waypoints])
+    |> cast(attrs, [:line_style, :color, :label, :bidirectional, :show_label, :waypoints])
     |> validate_inclusion(:line_style, @valid_line_styles)
     |> validate_length(:label, max: 200)
     |> validate_length(:color, max: 20)
