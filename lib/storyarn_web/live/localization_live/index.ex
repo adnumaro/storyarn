@@ -8,7 +8,9 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   alias Storyarn.Localization.Languages
   alias Storyarn.Projects
   alias Storyarn.Repo
-  alias Storyarn.Screenplays.ContentUtils
+
+  import StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
+  alias StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers
 
   @page_size 50
 
@@ -343,10 +345,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     """
   end
 
-  # =============================================================================
-  # Components
-  # =============================================================================
-
   attr :status, :string, required: true
 
   defp status_badge(assigns) do
@@ -356,10 +354,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     </span>
     """
   end
-
-  # =============================================================================
-  # Lifecycle
-  # =============================================================================
 
   @impl true
   def mount(
@@ -419,323 +413,87 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     end
   end
 
-  # =============================================================================
-  # Event Handlers
-  # =============================================================================
-
   @impl true
   def handle_event("change_locale", %{"locale" => locale}, socket) do
-    socket =
-      socket
-      |> assign(:selected_locale, locale)
-      |> assign(:page, 1)
-      |> load_texts()
-
-    {:noreply, socket}
+    {:noreply,
+     socket
+     |> assign(:selected_locale, locale)
+     |> assign(:page, 1)
+     |> load_texts()}
   end
 
   def handle_event("change_filter", params, socket) do
     status = if params["status"] == "", do: nil, else: params["status"]
     source_type = if params["source_type"] == "", do: nil, else: params["source_type"]
 
-    socket =
-      socket
-      |> assign(:filter_status, status || socket.assigns.filter_status)
-      |> assign(:filter_source_type, source_type || socket.assigns.filter_source_type)
-      |> assign(:page, 1)
-      |> load_texts()
-
-    {:noreply, socket}
+    {:noreply,
+     socket
+     |> assign(:filter_status, status || socket.assigns.filter_status)
+     |> assign(:filter_source_type, source_type || socket.assigns.filter_source_type)
+     |> assign(:page, 1)
+     |> load_texts()}
   end
 
   def handle_event("search", %{"search" => search}, socket) do
-    socket =
-      socket
-      |> assign(:search, search)
-      |> assign(:page, 1)
-      |> load_texts()
-
-    {:noreply, socket}
+    {:noreply,
+     socket
+     |> assign(:search, search)
+     |> assign(:page, 1)
+     |> load_texts()}
   end
 
   def handle_event("change_page", %{"page" => page}, socket) do
-    page = String.to_integer(page)
-
-    socket =
-      socket
-      |> assign(:page, page)
-      |> load_texts()
-
-    {:noreply, socket}
+    {:noreply,
+     socket
+     |> assign(:page, String.to_integer(page))
+     |> load_texts()}
   end
 
-  def handle_event("add_target_language", %{"locale_code" => ""}, socket) do
-    {:noreply, socket}
+  def handle_event("add_target_language", %{"locale_code" => ""}, socket),
+    do: {:noreply, socket}
+
+  def handle_event("add_target_language", params, socket) do
+    with_auth(:edit_content, socket, fn ->
+      LocalizationHandlers.handle_add_target_language(params, socket)
+    end)
   end
 
-  def handle_event("add_target_language", %{"locale_code" => code}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        do_add_target_language(socket, code)
+  def handle_event("remove_language", params, socket) do
+    with_auth(:edit_content, socket, fn ->
+      LocalizationHandlers.handle_remove_language(params, socket)
+    end)
+  end
 
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
+  def handle_event("sync_texts", params, socket) do
+    with_auth(:edit_content, socket, fn ->
+      LocalizationHandlers.handle_sync_texts(params, socket)
+    end)
+  end
+
+  def handle_event("translate_batch", params, socket) do
+    with_auth(:edit_content, socket, fn ->
+      LocalizationHandlers.handle_translate_batch(params, socket)
+    end)
+  end
+
+  def handle_event("translate_single", params, socket) do
+    with_auth(:edit_content, socket, fn ->
+      LocalizationHandlers.handle_translate_single(params, socket)
+    end)
+  end
+
+  defp with_auth(action, socket, fun) do
+    case authorize(socket, action) do
+      :ok -> fun.()
+      {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
     end
   end
 
-  def handle_event("remove_language", %{"id" => id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        lang = Localization.get_language(socket.assigns.project.id, id)
-
-        if lang && !lang.is_source do
-          {:ok, _} = Localization.remove_language(lang)
-          socket = reload_languages(socket)
-          {:noreply, put_flash(socket, :info, dgettext("localization", "Language removed."))}
-        else
-          {:noreply, put_flash(socket, :error, dgettext("localization", "Cannot remove the source language."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
-    end
-  end
-
-  def handle_event("sync_texts", _params, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        {:ok, count} = Localization.extract_all(socket.assigns.project.id)
-
-        socket =
-          socket
-          |> reload_languages()
-          |> put_flash(
-            :info,
-            dngettext("localization", 
-              "Synced %{count} text entry.",
-              "Synced %{count} text entries.",
-              count,
-              count: count
-            )
-          )
-
-        {:noreply, socket}
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
-    end
-  end
-
-  def handle_event("translate_batch", _params, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        locale = socket.assigns.selected_locale
-
-        case Localization.translate_batch(socket.assigns.project.id, locale) do
-          {:ok, %{translated: count}} ->
-            socket =
-              socket
-              |> load_texts()
-              |> put_flash(
-                :info,
-                dngettext("localization", 
-                  "Translated %{count} string.",
-                  "Translated %{count} strings.",
-                  count,
-                  count: count
-                )
-              )
-
-            {:noreply, socket}
-
-          {:error, :rate_limited} ->
-            {:noreply, put_flash(socket, :error, dgettext("localization", "Rate limited by DeepL. Try again later."))}
-
-          {:error, :quota_exceeded} ->
-            {:noreply, put_flash(socket, :error, dgettext("localization", "DeepL quota exceeded."))}
-
-          {:error, reason} ->
-            {:noreply, put_flash(socket, :error, dgettext("localization", "Translation failed: %{reason}", reason: inspect(reason)))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
-    end
-  end
-
-  def handle_event("translate_single", %{"id" => id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        text_id = String.to_integer(id)
-
-        case Localization.translate_single(socket.assigns.project.id, text_id) do
-          {:ok, _text} ->
-            socket =
-              socket
-              |> load_texts()
-              |> put_flash(:info, dgettext("localization", "Translation complete."))
-
-            {:noreply, socket}
-
-          {:error, reason} ->
-            {:noreply, put_flash(socket, :error, dgettext("localization", "Translation failed: %{reason}", reason: inspect(reason)))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
-    end
-  end
-
-  # =============================================================================
-  # Private
-  # =============================================================================
-
-  defp load_texts(socket) do
-    locale = socket.assigns.selected_locale
-
-    if locale do
-      opts =
-        [
-          locale_code: locale,
-          limit: socket.assigns.page_size,
-          offset: (socket.assigns.page - 1) * socket.assigns.page_size
-        ]
-        |> maybe_add(:status, socket.assigns.filter_status)
-        |> maybe_add(:source_type, socket.assigns.filter_source_type)
-        |> maybe_add(:search, non_blank(socket.assigns.search))
-
-      texts = Localization.list_texts(socket.assigns.project.id, opts)
-
-      count_opts =
-        [locale_code: locale]
-        |> maybe_add(:status, socket.assigns.filter_status)
-        |> maybe_add(:source_type, socket.assigns.filter_source_type)
-        |> maybe_add(:search, non_blank(socket.assigns.search))
-
-      total_count = Localization.count_texts(socket.assigns.project.id, count_opts)
-      progress = Localization.get_progress(socket.assigns.project.id, locale)
-
-      socket
-      |> assign(:texts, texts)
-      |> assign(:total_count, total_count)
-      |> assign(:progress, progress)
-    else
-      socket
-      |> assign(:texts, [])
-      |> assign(:total_count, 0)
-      |> assign(:progress, nil)
-    end
-  end
-
-  defp reload_languages(socket) do
-    project_id = socket.assigns.project.id
-    languages = Localization.list_languages(project_id)
-    target_languages = Localization.get_target_languages(project_id)
-    source_language = Localization.get_source_language(project_id)
-
-    selected_locale =
-      case target_languages do
-        [first | _] -> first.locale_code
-        [] -> nil
-      end
-
-    socket
-    |> assign(:languages, languages)
-    |> assign(:target_languages, target_languages)
-    |> assign(:source_language, source_language)
-    |> assign(:selected_locale, selected_locale)
-    |> assign(:page, 1)
-    |> load_texts()
-  end
-
-  defp language_picker_options(assigns) do
-    existing_codes = Enum.map(assigns.languages, & &1.locale_code)
-    Languages.options_for_select(exclude: existing_codes)
-  end
-
-  defp has_active_provider?(project_id) do
-    case Repo.get_by(Storyarn.Localization.ProviderConfig,
-           project_id: project_id,
-           provider: "deepl"
-         ) do
-      %{is_active: true, api_key_encrypted: key} when not is_nil(key) -> true
-      _ -> false
-    end
-  end
-
-  defp maybe_add(opts, _key, nil), do: opts
-  defp maybe_add(opts, key, value), do: Keyword.put(opts, key, value)
-
-  defp non_blank(""), do: nil
-  defp non_blank(s), do: s
-
-  defp strip_html(text), do: ContentUtils.strip_html(text)
-
-  defp status_label("pending"), do: dgettext("localization", "Pending")
-  defp status_label("draft"), do: dgettext("localization", "Draft")
-  defp status_label("in_progress"), do: dgettext("localization", "In Progress")
-  defp status_label("review"), do: dgettext("localization", "Review")
-  defp status_label("final"), do: dgettext("localization", "Final")
-  defp status_label(other), do: other
-
-  defp status_class("pending"), do: "badge-ghost"
-  defp status_class("draft"), do: "badge-warning"
-  defp status_class("in_progress"), do: "badge-info"
-  defp status_class("review"), do: "badge-secondary"
-  defp status_class("final"), do: "badge-success"
-  defp status_class(_), do: "badge-ghost"
-
-  defp source_type_label("flow_node"), do: dgettext("localization", "Node")
-  defp source_type_label("block"), do: dgettext("localization", "Block")
-  defp source_type_label("sheet"), do: dgettext("localization", "Sheet")
-  defp source_type_label("flow"), do: dgettext("localization", "Flow")
-  defp source_type_label("screenplay"), do: dgettext("localization", "Screenplay")
-  defp source_type_label(other), do: other
-
-  defp source_type_icon("flow_node"), do: "message-square"
-  defp source_type_icon("block"), do: "square"
-  defp source_type_icon("sheet"), do: "file-text"
-  defp source_type_icon("flow"), do: "git-branch"
-  defp source_type_icon("screenplay"), do: "clapperboard"
-  defp source_type_icon(_), do: "box"
-
-  defp do_add_target_language(socket, code) do
-    name = Languages.name(code)
-
-    case Localization.add_language(socket.assigns.project, %{
-           "locale_code" => code,
-           "name" => name,
-           "is_source" => false
-         }) do
-      {:ok, _lang} ->
-        count =
-          case Localization.extract_all(socket.assigns.project.id) do
-            {:ok, c} -> c
-            {:error, _} -> 0
-          end
-
-        socket = reload_languages(socket)
-
-        msg =
-          if count > 0,
-            do:
-              dngettext("localization", 
-                "Language added. Extracted %{count} text.",
-                "Language added. Extracted %{count} texts.",
-                count,
-                count: count
-              ),
-            else: dgettext("localization", "Language added.")
-
-        {:noreply, put_flash(socket, :info, msg)}
-
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, dgettext("localization", "Failed to add language."))}
-    end
+  defp unauthorized_flash(socket) do
+    put_flash(
+      socket,
+      :error,
+      dgettext("localization", "You don't have permission to perform this action.")
+    )
   end
 end

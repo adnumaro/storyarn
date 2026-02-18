@@ -333,7 +333,7 @@ defmodule Storyarn.Sheets.Versioning do
         # First version
         block_count = length(current_snapshot["blocks"] || [])
 
-        dngettext("sheets", 
+        dngettext("sheets",
           "Initial version with %{count} block",
           "Initial version with %{count} blocks",
           block_count,

@@ -575,6 +575,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
 
       # State is at exit node 11 (caller_return) in the sub-flow, with parent on call stack
       state = Engine.init(%{}, 10)
+      state = %{state | current_flow_id: 1}
       state = Engine.push_flow_context(state, 2, parent_nodes, parent_conns)
       state = %{state | current_flow_id: 42}
 
@@ -620,6 +621,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       }
 
       state = Engine.init(%{}, 10)
+      state = %{state | current_flow_id: 1}
       state = Engine.push_flow_context(state, 2, parent_nodes, parent_conns)
       state = %{state | current_flow_id: 42}
 
@@ -635,7 +637,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       # Verify stored state has correct next node
       stored = Storyarn.Flows.DebugSessionStore.take({1, 1})
       assert stored.debug_state.current_node_id == 3
-      assert stored.debug_state.current_flow_id == nil
+      assert stored.debug_state.current_flow_id == 1
     end
 
     test "finishes when return node has no outgoing connection" do
@@ -652,6 +654,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       }
 
       state = Engine.init(%{}, 10)
+      state = %{state | current_flow_id: 1}
       state = Engine.push_flow_context(state, 2, parent_nodes, parent_conns)
       state = %{state | current_flow_id: 42}
 
@@ -694,7 +697,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
 
       # Build state: grandparent pushed first, then parent
       state = Engine.init(%{}, 20)
+      state = %{state | current_flow_id: 1}
       state = Engine.push_flow_context(state, 2, gp_nodes, gp_conns)
+      state = %{state | current_flow_id: 10}
       state = Engine.push_flow_context(state, 11, parent_nodes, parent_conns)
       state = %{state | current_flow_id: 20}
 

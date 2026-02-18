@@ -5,9 +5,8 @@ defmodule StoryarnWeb.FlowLive.Show do
   use StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.CollaborationComponents
-  import StoryarnWeb.Components.SaveIndicator
-  import StoryarnWeb.FlowLive.Components.NodeTypeHelpers
   import StoryarnWeb.FlowLive.Components.DebugPanel
+  import StoryarnWeb.FlowLive.Components.FlowHeader
   import StoryarnWeb.FlowLive.Components.PropertiesPanels
   import StoryarnWeb.Layouts, only: [flash_group: 1]
 
@@ -24,6 +23,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
+  alias StoryarnWeb.FlowLive.Handlers.NavigationHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
@@ -51,97 +51,18 @@ defmodule StoryarnWeb.FlowLive.Show do
   def render(assigns) do
     ~H"""
     <div class="h-screen flex flex-col">
-      <%!-- Header --%>
-      <header class="navbar bg-base-100 border-b border-base-300 px-4 shrink-0">
-        <div class="flex-none flex items-center gap-1">
-          <.link
-            navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows"}
-            class="btn btn-ghost btn-sm gap-2"
-          >
-            <.icon name="chevron-left" class="size-4" />
-            {dgettext("flows", "Flows")}
-          </.link>
-          <.link
-            :if={@from_flow}
-            navigate={
-              ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@from_flow.id}"
-            }
-            class="btn btn-ghost btn-sm gap-1 text-base-content/60"
-          >
-            <.icon name="corner-up-left" class="size-3" />
-            {@from_flow.name}
-          </.link>
-        </div>
-        <div class="flex-1 flex items-center gap-3 ml-4">
-          <div>
-            <h1
-              :if={@can_edit}
-              id="flow-title"
-              class="text-lg font-medium outline-none rounded px-1 -mx-1 empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
-              contenteditable="true"
-              phx-hook="EditableTitle"
-              phx-update="ignore"
-              data-placeholder={dgettext("flows", "Untitled")}
-              data-name={@flow.name}
-            >
-              {@flow.name}
-            </h1>
-            <h1 :if={!@can_edit} class="text-lg font-medium">{@flow.name}</h1>
-            <div :if={@can_edit} class="flex items-center gap-1 text-xs">
-              <span class="text-base-content/50">#</span>
-              <span
-                id="flow-shortcut"
-                class="text-base-content/50 outline-none hover:text-base-content empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
-                contenteditable="true"
-                phx-hook="EditableShortcut"
-                phx-update="ignore"
-                data-placeholder={dgettext("flows", "add-shortcut")}
-                data-shortcut={@flow.shortcut || ""}
-              >
-                {@flow.shortcut}
-              </span>
-            </div>
-            <div :if={!@can_edit && @flow.shortcut} class="text-xs text-base-content/50">
-              #{@flow.shortcut}
-            </div>
-          </div>
-          <span :if={@flow.is_main} class="badge badge-primary badge-sm" title={dgettext("flows", "Main flow")}>
-            {dgettext("flows", "Main")}
-          </span>
-        </div>
-        <div class="flex-none flex items-center gap-4">
-          <.online_users users={@online_users} current_user_id={@current_scope.user.id} />
-          <.save_indicator :if={@can_edit} status={@save_status} />
-          <button
-            type="button"
-            class={[
-              "btn btn-sm gap-2",
-              if(@debug_panel_open, do: "btn-accent", else: "btn-ghost")
-            ]}
-            phx-click={if(@debug_panel_open, do: "debug_stop", else: "debug_start")}
-          >
-            <.icon name="bug" class="size-4" />
-            {if @debug_panel_open, do: dgettext("flows", "Stop Debug"), else: dgettext("flows", "Debug")}
-          </button>
-          <div :if={@can_edit} class="dropdown dropdown-end">
-            <button type="button" tabindex="0" class="btn btn-primary btn-sm gap-2">
-              <.icon name="plus" class="size-4" />
-              {dgettext("flows", "Add Node")}
-            </button>
-            <ul
-              tabindex="0"
-              class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-48 z-50 mt-2"
-            >
-              <li :for={type <- @node_types}>
-                <button type="button" phx-click="add_node" phx-value-type={type}>
-                  <.node_type_icon type={type} />
-                  {node_type_label(type)}
-                </button>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </header>
+      <.flow_header
+        flow={@flow}
+        workspace={@workspace}
+        project={@project}
+        from_flow={@from_flow}
+        can_edit={@can_edit}
+        debug_panel_open={@debug_panel_open}
+        save_status={@save_status}
+        online_users={@online_users}
+        current_user_id={@current_scope.user.id}
+        node_types={@node_types}
+      />
 
       <%!-- Collaboration Toast --%>
       <.collab_toast
@@ -590,24 +511,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   # Subflow
   def handle_event("navigate_to_subflow", %{"flow-id" => flow_id_str}, socket) do
-    case Integer.parse(flow_id_str) do
-      {flow_id, ""} ->
-        # Validate that the target flow belongs to the current project
-        case Flows.get_flow_brief(socket.assigns.project.id, flow_id) do
-          nil ->
-            {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
-
-          _flow ->
-            {:noreply,
-             push_navigate(socket,
-               to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}?from=#{socket.assigns.flow.id}"
-             )}
-        end
-
-      _ ->
-        {:noreply, put_flash(socket, :error, dgettext("flows", "Invalid flow ID."))}
-    end
+    NavigationHandlers.handle_navigate_to_flow(flow_id_str, socket)
   end
 
   def handle_event("update_subflow_reference", %{"referenced_flow_id" => ref_id}, socket) do
@@ -660,43 +564,11 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("navigate_to_exit_flow", %{"flow-id" => flow_id_str}, socket) do
-    case Integer.parse(flow_id_str) do
-      {flow_id, ""} ->
-        case Flows.get_flow_brief(socket.assigns.project.id, flow_id) do
-          nil ->
-            {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
-
-          _flow ->
-            {:noreply,
-             push_navigate(socket,
-               to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}?from=#{socket.assigns.flow.id}"
-             )}
-        end
-
-      _ ->
-        {:noreply, put_flash(socket, :error, dgettext("flows", "Invalid flow ID."))}
-    end
+    NavigationHandlers.handle_navigate_to_flow(flow_id_str, socket)
   end
 
   def handle_event("navigate_to_referencing_flow", %{"flow-id" => flow_id_str}, socket) do
-    case Integer.parse(flow_id_str) do
-      {flow_id, ""} ->
-        case Flows.get_flow_brief(socket.assigns.project.id, flow_id) do
-          nil ->
-            {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
-
-          _flow ->
-            {:noreply,
-             push_navigate(socket,
-               to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}?from=#{socket.assigns.flow.id}"
-             )}
-        end
-
-      _ ->
-        {:noreply, put_flash(socket, :error, dgettext("flows", "Invalid flow ID."))}
-    end
+    NavigationHandlers.handle_navigate_to_flow(flow_id_str, socket)
   end
 
   # Debug

@@ -14,11 +14,11 @@
 >
 > The original Phase 4+ has been superseded by a complete UX redesign:
 >
-> | Phase | Plan File | Focus | Tasks | Status |
-> |-------|-----------|-------|-------|--------|
-> | A | `WORLD_BUILDER_PHASE_A.md` | Core UX Rewrite — Edit/View modes, dock, shape presets, context menus, pins from sheets, annotations, layer management | 9 tasks | ✅ Complete |
-> | B | `WORLD_BUILDER_PHASE_B.md` | Polish & Connections — Connection feedback, curved paths, search/filter, legend, image pins | 5 tasks | ✅ Complete |
-> | C | `WORLD_BUILDER_PHASE_C.md` | Advanced — Fog of War, mini-map, ruler/distance, map export | 4 tasks | ✅ Complete |
+> | Phase  | Plan File                  | Focus                                                                                                                  | Tasks   | Status     |
+> |--------|----------------------------|------------------------------------------------------------------------------------------------------------------------|---------|------------|
+> | A      | `WORLD_BUILDER_PHASE_A.md` | Core UX Rewrite — Edit/View modes, dock, shape presets, context menus, pins from sheets, annotations, layer management | 9 tasks | ✅ Complete |
+> | B      | `WORLD_BUILDER_PHASE_B.md` | Polish & Connections — Connection feedback, curved paths, search/filter, legend, image pins                            | 5 tasks | ✅ Complete |
+> | C      | `WORLD_BUILDER_PHASE_C.md` | Advanced — Fog of War, mini-map, ruler/distance, map export                                                            | 4 tasks | ✅ Complete |
 
 ## Overview
 

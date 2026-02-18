@@ -1,13 +1,20 @@
 defmodule Storyarn.Flows.NodeCrud do
-  @moduledoc false
+  @moduledoc """
+  Facade for node CRUD operations. Delegates to specialized sub-modules:
+  - `NodeCreate` - create_node and hub/subflow creation helpers
+  - `NodeUpdate` - update_node, update_node_data, update_node_position
+  - `NodeDelete` - delete_node, restore_node
+  Query helpers (list_nodes, get_node, hub queries, subflow resolution) remain here.
+  """
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.{Flow, FlowNode, VariableReferenceTracker}
-  alias Storyarn.Localization.TextExtractor
+  alias Storyarn.Flows.{Flow, FlowNode, NodeCreate, NodeDelete, NodeUpdate}
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
-  alias Storyarn.Sheets.ReferenceTracker
+
+  # =============================================================================
+  # Query helpers
+  # =============================================================================
 
   def list_nodes(flow_id) do
     from(n in FlowNode,
@@ -35,57 +42,6 @@ defmodule Storyarn.Flows.NodeCrud do
 
   def get_node_by_id!(node_id) do
     Repo.get!(FlowNode, node_id)
-  end
-
-  def create_node(%Flow{} = flow, attrs) do
-    attrs = stringify_keys(attrs)
-
-    case attrs["type"] do
-      "entry" -> create_entry_node(flow, attrs)
-      "hub" -> create_hub_node(flow, attrs)
-      "subflow" -> validate_and_insert_subflow(flow, attrs)
-      _ -> insert_node(flow, attrs)
-    end
-  end
-
-  defp create_entry_node(flow, attrs) do
-    if has_entry_node?(flow.id) do
-      {:error, :entry_node_exists}
-    else
-      insert_node(flow, attrs)
-    end
-  end
-
-  defp create_hub_node(flow, attrs) do
-    hub_id = get_in(attrs, ["data", "hub_id"])
-    hub_id = if hub_id == nil || hub_id == "", do: generate_hub_id(flow.id), else: hub_id
-
-    if hub_id_exists?(flow.id, hub_id, nil) do
-      {:error, :hub_id_not_unique}
-    else
-      updated_data = Map.put(attrs["data"] || %{}, "hub_id", hub_id)
-      insert_node(flow, Map.put(attrs, "data", updated_data))
-    end
-  end
-
-  defp insert_node(%Flow{} = flow, attrs) do
-    %FlowNode{flow_id: flow.id}
-    |> FlowNode.create_changeset(attrs)
-    |> Repo.insert()
-  end
-
-  defp has_entry_node?(flow_id) do
-    from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.type == "entry" and is_nil(n.deleted_at)
-    )
-    |> Repo.exists?()
-  end
-
-  defp last_exit_node?(node) do
-    from(n in FlowNode,
-      where: n.flow_id == ^node.flow_id and n.type == "exit" and is_nil(n.deleted_at)
-    )
-    |> Repo.aggregate(:count, :id) <= 1
   end
 
   @doc """
@@ -135,193 +91,6 @@ defmodule Storyarn.Flows.NodeCrud do
       where: fragment("?->>'hub_id' = ?", n.data, ^hub_id)
     )
     |> Repo.one()
-  end
-
-  defp generate_hub_id(flow_id) do
-    max_suffix =
-      from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "hub" and is_nil(n.deleted_at),
-        where: fragment("?->>'hub_id' ~ '^hub_[0-9]+$'", n.data),
-        select:
-          fragment("max(cast(substring(?->>'hub_id' from 'hub_([0-9]+)') as integer))", n.data)
-      )
-      |> Repo.one()
-
-    "hub_#{(max_suffix || 0) + 1}"
-  end
-
-  defp stringify_keys(map), do: MapUtils.stringify_keys(map)
-
-  def update_node(%FlowNode{} = node, attrs) do
-    node
-    |> FlowNode.update_changeset(attrs)
-    |> Repo.update()
-  end
-
-  def update_node_position(%FlowNode{} = node, attrs) do
-    node
-    |> FlowNode.position_changeset(attrs)
-    |> Repo.update()
-  end
-
-  def update_node_data(%FlowNode{type: "hub"} = node, data) do
-    update_hub_node_data(node, data)
-  end
-
-  def update_node_data(%FlowNode{} = node, data) do
-    case do_update_node_data(node, data) do
-      {:ok, updated_node} -> {:ok, updated_node, %{renamed_jumps: 0}}
-      error -> error
-    end
-  end
-
-  defp update_hub_node_data(node, data) do
-    hub_id = data["hub_id"]
-
-    cond do
-      hub_id == nil || hub_id == "" ->
-        {:error, :hub_id_required}
-
-      hub_id_exists?(node.flow_id, hub_id, node.id) ->
-        {:error, :hub_id_not_unique}
-
-      true ->
-        do_update_hub_data(node, data, hub_id)
-    end
-  end
-
-  defp do_update_hub_data(node, data, hub_id) do
-    old_hub_id = node.data["hub_id"]
-
-    case do_update_node_data(node, data) do
-      {:ok, updated_node} ->
-        renamed_count =
-          if old_hub_id != hub_id,
-            do: cascade_hub_id_rename(node.flow_id, old_hub_id, hub_id),
-            else: 0
-
-        {:ok, updated_node, %{renamed_jumps: renamed_count}}
-
-      error ->
-        error
-    end
-  end
-
-  defp do_update_node_data(node, data) do
-    result =
-      node
-      |> FlowNode.data_changeset(%{data: data})
-      |> Repo.update()
-
-    case result do
-      {:ok, updated_node} ->
-        ReferenceTracker.update_flow_node_references(updated_node)
-        VariableReferenceTracker.update_references(updated_node)
-        TextExtractor.extract_flow_node(updated_node)
-        {:ok, updated_node}
-
-      error ->
-        error
-    end
-  end
-
-  def delete_node(%FlowNode{type: "entry"}), do: {:error, :cannot_delete_entry_node}
-
-  def delete_node(%FlowNode{type: "exit"} = node) do
-    if last_exit_node?(node), do: {:error, :cannot_delete_last_exit}, else: do_delete_node(node)
-  end
-
-  def delete_node(%FlowNode{} = node), do: do_delete_node(node)
-
-  @doc """
-  Restores a soft-deleted node by clearing its deleted_at timestamp.
-  Returns {:ok, :already_active} if the node is not deleted (idempotent for redo safety).
-  """
-  def restore_node(flow_id, node_id) do
-    case Repo.get(FlowNode, node_id) do
-      %FlowNode{flow_id: ^flow_id, deleted_at: deleted_at} = node when not is_nil(deleted_at) ->
-        node |> FlowNode.restore_changeset() |> Repo.update()
-
-      %FlowNode{flow_id: ^flow_id, deleted_at: nil} ->
-        {:ok, :already_active}
-
-      _ ->
-        {:error, :not_found}
-    end
-  end
-
-  defp do_delete_node(node) do
-    Repo.transaction(fn ->
-      orphaned_count = maybe_clear_orphaned_jumps(node)
-
-      ReferenceTracker.delete_flow_node_references(node.id)
-      VariableReferenceTracker.delete_references(node.id)
-      TextExtractor.delete_flow_node_texts(node.id)
-
-      case node |> FlowNode.soft_delete_changeset() |> Repo.update() do
-        {:ok, deleted_node} -> {deleted_node, %{orphaned_jumps: orphaned_count}}
-        {:error, changeset} -> Repo.rollback(changeset)
-      end
-    end)
-    |> unwrap_delete_result()
-  end
-
-  defp maybe_clear_orphaned_jumps(%{type: "hub"} = node) do
-    clear_orphaned_jumps(node.flow_id, node.data["hub_id"])
-  end
-
-  defp maybe_clear_orphaned_jumps(_node), do: 0
-
-  defp unwrap_delete_result({:ok, {deleted_node, meta}}), do: {:ok, deleted_node, meta}
-  defp unwrap_delete_result({:error, reason}), do: {:error, reason}
-
-  defp cascade_hub_id_rename(flow_id, old_hub_id, new_hub_id)
-       when is_binary(old_hub_id) and old_hub_id != "" do
-    now = DateTime.utc_now()
-
-    query =
-      from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "jump",
-        where: fragment("?->>'target_hub_id' = ?", n.data, ^old_hub_id),
-        update: [
-          set: [
-            data:
-              fragment("jsonb_set(?, '{target_hub_id}', to_jsonb(?::text))", n.data, ^new_hub_id),
-            updated_at: ^now
-          ]
-        ]
-      )
-
-    {count, _} = Repo.update_all(query, [])
-    count
-  end
-
-  defp cascade_hub_id_rename(_, _, _), do: 0
-
-  defp clear_orphaned_jumps(flow_id, hub_id) when is_binary(hub_id) and hub_id != "" do
-    now = DateTime.utc_now()
-
-    query =
-      from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "jump",
-        where: fragment("?->>'target_hub_id' = ?", n.data, ^hub_id),
-        update: [
-          set: [
-            data: fragment("jsonb_set(?, '{target_hub_id}', '\"\"'::jsonb)", n.data),
-            updated_at: ^now
-          ]
-        ]
-      )
-
-    {count, _} = Repo.update_all(query, [])
-
-    count
-  end
-
-  defp clear_orphaned_jumps(_flow_id, _hub_id), do: 0
-
-  def change_node(%FlowNode{} = node, attrs \\ %{}) do
-    FlowNode.update_changeset(node, attrs)
   end
 
   @doc """
@@ -452,84 +221,9 @@ defmodule Storyarn.Flows.NodeCrud do
     |> Repo.all()
   end
 
-  @doc """
-  Checks if setting source_flow_id to reference target_flow_id would create a circular reference.
-  Walks the subflow reference graph from target_flow_id to detect cycles.
-  """
-  def has_circular_reference?(source_flow_id, target_flow_id) do
-    do_check_circular(source_flow_id, target_flow_id, MapSet.new(), 0)
-  end
-
-  defp do_check_circular(source_flow_id, current_flow_id, visited, depth) do
-    cond do
-      depth > 20 ->
-        true
-
-      current_flow_id == source_flow_id ->
-        true
-
-      MapSet.member?(visited, current_flow_id) ->
-        false
-
-      true ->
-        visited = MapSet.put(visited, current_flow_id)
-        referenced_flow_ids = get_referenced_flow_ids(current_flow_id)
-
-        Enum.any?(referenced_flow_ids, fn ref_id ->
-          do_check_circular(source_flow_id, ref_id, visited, depth + 1)
-        end)
-    end
-  end
-
-  defp get_referenced_flow_ids(flow_id) do
-    # Subflow references
-    subflow_refs =
-      from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "subflow",
-        where: not is_nil(fragment("?->>'referenced_flow_id'", n.data)),
-        where: fragment("?->>'referenced_flow_id' ~ '^[0-9]+$'", n.data),
-        select: fragment("(?->>'referenced_flow_id')::integer", n.data)
-      )
-      |> Repo.all()
-
-    # Exit flow references
-    exit_refs =
-      from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "exit",
-        where: fragment("?->>'exit_mode'", n.data) == "flow_reference",
-        where: not is_nil(fragment("?->>'referenced_flow_id'", n.data)),
-        where: fragment("?->>'referenced_flow_id' ~ '^[0-9]+$'", n.data),
-        select: fragment("(?->>'referenced_flow_id')::integer", n.data)
-      )
-      |> Repo.all()
-
-    (subflow_refs ++ exit_refs) |> Enum.reject(&is_nil/1) |> Enum.uniq()
-  end
-
-  defp validate_and_insert_subflow(%Flow{} = flow, attrs) do
-    referenced_flow_id = get_in(attrs, ["data", "referenced_flow_id"])
-
-    cond do
-      # Allow creation with nil reference (user will set it later)
-      is_nil(referenced_flow_id) || referenced_flow_id == "" ->
-        insert_node(flow, attrs)
-
-      # Reject unparseable IDs
-      is_nil(safe_to_integer(referenced_flow_id)) ->
-        {:error, :invalid_reference}
-
-      # Cannot reference the same flow
-      to_string(referenced_flow_id) == to_string(flow.id) ->
-        {:error, :self_reference}
-
-      # Check circular reference
-      has_circular_reference?(flow.id, safe_to_integer(referenced_flow_id)) ->
-        {:error, :circular_reference}
-
-      true ->
-        insert_node(flow, attrs)
-    end
-  end
+  # =============================================================================
+  # Subflow / exit data resolution
+  # =============================================================================
 
   @doc """
   Pre-fetches all referenced flow data for subflow nodes in a single batch.
@@ -690,4 +384,19 @@ defmodule Storyarn.Flows.NodeCrud do
   end
 
   def safe_to_integer(_), do: nil
+
+  # =============================================================================
+  # Delegated operations
+  # =============================================================================
+
+  defdelegate create_node(flow, attrs), to: NodeCreate
+  defdelegate has_circular_reference?(source_flow_id, target_flow_id), to: NodeCreate
+
+  defdelegate update_node(node, attrs), to: NodeUpdate
+  defdelegate update_node_position(node, attrs), to: NodeUpdate
+  defdelegate update_node_data(node, data), to: NodeUpdate
+  defdelegate change_node(node, attrs \\ %{}), to: NodeUpdate
+
+  defdelegate delete_node(node), to: NodeDelete
+  defdelegate restore_node(flow_id, node_id), to: NodeDelete
 end

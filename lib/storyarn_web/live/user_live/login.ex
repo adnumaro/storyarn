@@ -126,7 +126,7 @@ defmodule StoryarnWeb.UserLive.Login do
         end
 
         info =
-          dgettext("identity", 
+          dgettext("identity",
             "If your email is in our system, you will receive instructions for logging in shortly."
           )
 
