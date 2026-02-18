@@ -359,9 +359,9 @@ defmodule StoryarnWeb.MapLive.Show do
 
   def handle_event("export_map", _params, socket), do: {:noreply, socket}
 
-  def handle_event("toggle_edit_mode", _params, socket) do
+  def handle_event("toggle_edit_mode", params, socket) do
     with_auth(socket, :edit_content, fn ->
-      CanvasEventHandlers.handle_toggle_edit_mode(socket)
+      CanvasEventHandlers.handle_toggle_edit_mode(socket, params)
     end)
   end
 

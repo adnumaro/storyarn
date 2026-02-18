@@ -99,19 +99,27 @@ defmodule StoryarnWeb.MapLive.Components.MapHeader do
           </ul>
         </div>
 
-        <%!-- Edit/View mode toggle --%>
-        <button
-          :if={@can_edit}
-          type="button"
-          phx-click="toggle_edit_mode"
-          class={"btn btn-sm gap-2 #{if @edit_mode, do: "btn-primary", else: "btn-ghost"}"}
-          title={if @edit_mode,
-            do: dgettext("maps", "Switch to View mode"),
-            else: dgettext("maps", "Switch to Edit mode")}
-        >
-          <.icon name={if @edit_mode, do: "pencil", else: "eye"} class="size-4" />
-          {if @edit_mode, do: dgettext("maps", "Edit"), else: dgettext("maps", "View")}
-        </button>
+        <%!-- Edit/View mode switcher --%>
+        <div :if={@can_edit} class="flex rounded-lg border border-base-300 overflow-hidden">
+          <button
+            type="button"
+            phx-click="toggle_edit_mode"
+            phx-value-mode="view"
+            class={"btn btn-sm rounded-none border-0 gap-1.5 #{if !@edit_mode, do: "btn-primary", else: "btn-ghost"}"}
+          >
+            <.icon name="eye" class="size-4" />
+            {dgettext("maps", "View")}
+          </button>
+          <button
+            type="button"
+            phx-click="toggle_edit_mode"
+            phx-value-mode="edit"
+            class={"btn btn-sm rounded-none border-0 gap-1.5 #{if @edit_mode, do: "btn-primary", else: "btn-ghost"}"}
+          >
+            <.icon name="pencil" class="size-4" />
+            {dgettext("maps", "Edit")}
+          </button>
+        </div>
       </div>
     </header>
     """

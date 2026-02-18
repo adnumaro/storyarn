@@ -55,17 +55,26 @@ defmodule StoryarnWeb.MapLive.Handlers.CanvasEventHandlers do
     {:noreply, push_event(socket, "export_map", %{format: format})}
   end
 
-  @spec handle_toggle_edit_mode(Phoenix.LiveView.Socket.t()) ::
+  @spec handle_toggle_edit_mode(Phoenix.LiveView.Socket.t(), map()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_toggle_edit_mode(socket) do
-    new_mode = !socket.assigns.edit_mode
+  def handle_toggle_edit_mode(socket, params) do
+    new_mode =
+      case params do
+        %{"mode" => "edit"} -> true
+        %{"mode" => "view"} -> false
+        _ -> !socket.assigns.edit_mode
+      end
 
-    {:noreply,
-     socket
-     |> assign(:edit_mode, new_mode)
-     |> assign(:active_tool, if(new_mode, do: :select, else: :pan))
-     |> push_event("edit_mode_changed", %{edit_mode: new_mode})
-     |> push_event("tool_changed", %{tool: if(new_mode, do: "select", else: "pan")})}
+    if new_mode == socket.assigns.edit_mode do
+      {:noreply, socket}
+    else
+      {:noreply,
+       socket
+       |> assign(:edit_mode, new_mode)
+       |> assign(:active_tool, if(new_mode, do: :select, else: :pan))
+       |> push_event("edit_mode_changed", %{edit_mode: new_mode})
+       |> push_event("tool_changed", %{tool: if(new_mode, do: "select", else: "pan")})}
+    end
   end
 
   @spec handle_search_elements(map(), Phoenix.LiveView.Socket.t()) ::
