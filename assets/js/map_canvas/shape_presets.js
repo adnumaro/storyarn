@@ -49,16 +49,20 @@ export function triangleVertices(cx, cy) {
 
 /**
  * Circle vertices (regular polygon) centered on (cx, cy). Radius 10 units.
+ * Compensates for non-square maps so the shape appears circular on screen.
  * @param {number} cx - Center X (0-100)
  * @param {number} cy - Center Y (0-100)
  * @param {number} [sides=16] - Number of sides
+ * @param {number} [aspectRatio=1] - Map width / height
  */
-export function circleVertices(cx, cy, sides = CIRCLE_SIDES) {
+export function circleVertices(cx, cy, sides = CIRCLE_SIDES, aspectRatio = 1) {
+  const radiusX = CIRCLE_RADIUS;
+  const radiusY = CIRCLE_RADIUS * aspectRatio;
   return Array.from({ length: sides }, (_, i) => {
     const angle = (i / sides) * 2 * Math.PI - Math.PI / 2; // start from top
     return {
-      x: round2(clamp(cx + CIRCLE_RADIUS * Math.cos(angle))),
-      y: round2(clamp(cy + CIRCLE_RADIUS * Math.sin(angle))),
+      x: round2(clamp(cx + radiusX * Math.cos(angle))),
+      y: round2(clamp(cy + radiusY * Math.sin(angle))),
     };
   });
 }

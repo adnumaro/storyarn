@@ -8,7 +8,11 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
+  require Logger
+
   alias Storyarn.Maps
+  alias Storyarn.Maps.ZoneImageExtractor
+
   import StoryarnWeb.MapLive.Helpers.MapHelpers
   import StoryarnWeb.MapLive.Helpers.Serializer
 
@@ -71,6 +75,44 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
     end
   end
 
+  def handle_create_child_map_from_zone(%{"zone_id" => zone_id}, socket) do
+    map = socket.assigns.map
+
+    with zone when not is_nil(zone) <- Maps.get_zone(map.id, zone_id),
+         :ok <- validate_zone_has_name(zone),
+         {:ok, bg_asset, img_dims} <- ZoneImageExtractor.extract(map, zone, socket.assigns.project),
+         child_attrs <- build_child_map_attrs(zone, map, bg_asset, img_dims),
+         {:ok, child_map} <- Maps.create_map(socket.assigns.project, child_attrs),
+         {:ok, _updated_zone} <-
+           Maps.update_zone(zone, %{target_type: "map", target_id: child_map.id}) do
+      {:noreply,
+       push_navigate(socket,
+         to:
+           ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/maps/#{child_map.id}"
+       )}
+    else
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Zone not found."))}
+
+      {:error, :zone_has_no_name} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("maps", "Name the zone before creating a child map.")
+         )}
+
+      {:error, :no_background_image} ->
+        create_child_map_without_image(zone_id, map, socket)
+
+      {:error, :image_extraction_failed} ->
+        create_child_map_without_image(zone_id, map, socket)
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create child map."))}
+    end
+  end
+
   def handle_navigate_to_target(%{"type" => "map", "id" => id}, socket) do
     {:noreply,
      push_navigate(socket,
@@ -101,6 +143,71 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
     case Maps.move_map_to_position(map, new_parent_id, position) do
       {:ok, _} -> {:noreply, reload_maps_tree(socket)}
       {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move map."))}
+    end
+  end
+
+  defp validate_zone_has_name(%{name: nil}), do: {:error, :zone_has_no_name}
+  defp validate_zone_has_name(%{name: ""}), do: {:error, :zone_has_no_name}
+  defp validate_zone_has_name(_zone), do: :ok
+
+  defp build_child_map_attrs(zone, parent_map, bg_asset, {img_w, img_h}) do
+    {min_x, _min_y, max_x, _max_y} = ZoneImageExtractor.bounding_box(zone.vertices)
+    bw_percent = max_x - min_x
+
+    child_scale =
+      if parent_map.scale_value && bw_percent > 0,
+        do: parent_map.scale_value * bw_percent / 100.0,
+        else: nil
+
+    %{
+      name: zone.name,
+      parent_id: parent_map.id,
+      background_asset_id: bg_asset && bg_asset.id,
+      width: img_w,
+      height: img_h,
+      scale_value: child_scale,
+      scale_unit: parent_map.scale_unit
+    }
+  end
+
+  defp build_child_map_attrs(zone, parent_map, nil, nil) do
+    build_child_map_attrs(zone, parent_map, nil, {1000, 1000})
+  end
+
+  defp create_child_map_without_image(zone_id, map, socket) do
+    zone = Maps.get_zone(map.id, zone_id)
+
+    if zone do
+      child_attrs = build_child_map_attrs(zone, map, nil, nil)
+
+      case Maps.create_map(socket.assigns.project, child_attrs) do
+        {:ok, child_map} ->
+          case Maps.update_zone(zone, %{target_type: "map", target_id: child_map.id}) do
+            {:ok, _} -> :ok
+
+            {:error, reason} ->
+              Logger.warning(
+                "[TreeHandlers] Failed to link zone #{zone.id} to child map #{child_map.id}: #{inspect(reason)}"
+              )
+          end
+
+          {:noreply,
+           socket
+           |> put_flash(
+             :info,
+             dgettext("maps", "Child map created. Add a background image to continue.")
+           )
+           |> push_navigate(
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/maps/#{child_map.id}"
+           )}
+
+        {:error, _} ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("maps", "Could not create child map."))}
+      end
+    else
+      {:noreply, put_flash(socket, :error, dgettext("maps", "Zone not found."))}
     end
   end
 

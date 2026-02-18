@@ -143,6 +143,16 @@ defmodule Storyarn.Maps do
   defdelegate list_deleted_maps(project_id), to: MapCrud
 
   @doc """
+  Lists maps as a tree with limited zone/pin elements for the sidebar.
+  """
+  defdelegate list_maps_tree_with_elements(project_id), to: MapCrud
+
+  @doc """
+  Returns ancestors from root to direct parent, ordered top-down.
+  """
+  defdelegate list_ancestors(map), to: MapCrud
+
+  @doc """
   Returns a changeset for tracking map changes.
   """
   @spec change_map(map_record(), attrs()) :: changeset()
@@ -292,6 +302,11 @@ defmodule Storyarn.Maps do
   """
   @spec change_zone(zone(), attrs()) :: changeset()
   defdelegate change_zone(zone, attrs \\ %{}), to: ZoneCrud
+
+  @doc """
+  Finds the zone on a parent map that targets a child map.
+  """
+  defdelegate get_zone_linking_to_map(parent_map_id, child_map_id), to: ZoneCrud
 
   # =============================================================================
   # Pins

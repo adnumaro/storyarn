@@ -98,12 +98,19 @@ defmodule StoryarnWeb.Components.Sidebar.MapTree do
   attr :can_edit, :boolean, default: false
 
   def map_tree_items(assigns) do
-    has_children = TreeHelpers.has_children?(assigns.map)
+    has_child_maps = TreeHelpers.has_children?(assigns.map)
+
+    has_elements =
+      Map.get(assigns.map, :sidebar_zones, []) != [] or
+        Map.get(assigns.map, :sidebar_pins, []) != []
+
+    has_children = has_child_maps or has_elements
     is_selected = assigns.selected_map_id == to_string(assigns.map.id)
 
     is_expanded =
       has_children and
-        TreeHelpers.has_selected_recursive?(assigns.map.children, assigns.selected_map_id)
+        (has_elements or
+           TreeHelpers.has_selected_recursive?(assigns.map.children, assigns.selected_map_id))
 
     assigns =
       assigns
@@ -148,6 +155,40 @@ defmodule StoryarnWeb.Components.Sidebar.MapTree do
           selected_map_id={@selected_map_id}
           can_edit={@can_edit}
         />
+
+        <%!-- Zone element leaves --%>
+        <.element_leaves
+          items={Map.get(@map, :sidebar_zones, [])}
+          total_count={Map.get(@map, :zone_count, 0)}
+          icon="pentagon"
+          map_id={@map.id}
+          workspace={@workspace}
+          project={@project}
+          element_type="zone"
+          label_fn={& &1.name}
+          more_text={
+            dgettext("maps", "%{count} more zones\u2026",
+              count: Map.get(@map, :zone_count, 0) - length(Map.get(@map, :sidebar_zones, []))
+            )
+          }
+        />
+
+        <%!-- Pin element leaves --%>
+        <.element_leaves
+          items={Map.get(@map, :sidebar_pins, [])}
+          total_count={Map.get(@map, :pin_count, 0)}
+          icon="map-pin"
+          map_id={@map.id}
+          workspace={@workspace}
+          project={@project}
+          element_type="pin"
+          label_fn={&(&1.label || dgettext("maps", "Pin"))}
+          more_text={
+            dgettext("maps", "%{count} more pins\u2026",
+              count: Map.get(@map, :pin_count, 0) - length(Map.get(@map, :sidebar_pins, []))
+            )
+          }
+        />
       </.tree_node>
     <% else %>
       <.tree_leaf
@@ -176,6 +217,40 @@ defmodule StoryarnWeb.Components.Sidebar.MapTree do
         </:menu>
       </.tree_leaf>
     <% end %>
+    """
+  end
+
+  attr :items, :list, required: true
+  attr :total_count, :integer, required: true
+  attr :icon, :string, required: true
+  attr :map_id, :any, required: true
+  attr :workspace, :map, required: true
+  attr :project, :map, required: true
+  attr :element_type, :string, required: true
+  attr :label_fn, :any, required: true
+  attr :more_text, :string, required: true
+
+  defp element_leaves(assigns) do
+    base = ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/maps/#{assigns.map_id}"
+
+    assigns = assign(assigns, :items_with_href, Enum.map(assigns.items, fn item ->
+      {item, "#{base}?highlight=#{assigns.element_type}:#{item.id}"}
+    end))
+
+    ~H"""
+    <.tree_leaf
+      :for={{item, href} <- @items_with_href}
+      label={@label_fn.(item)}
+      icon={@icon}
+      href={href}
+      active={false}
+      item_id={"#{@element_type}-#{item.id}"}
+      item_name={@label_fn.(item)}
+      can_drag={false}
+    />
+    <div :if={@total_count > length(@items)} class="text-xs text-base-content/40 pl-8 py-0.5">
+      {@more_text}
+    </div>
     """
   end
 

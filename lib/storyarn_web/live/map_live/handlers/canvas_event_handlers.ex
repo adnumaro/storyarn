@@ -32,7 +32,7 @@ defmodule StoryarnWeb.MapLive.Handlers.CanvasEventHandlers do
     end
   end
 
-  @valid_tools ~w(select pan pin zone annotation connector ruler)a
+  @valid_tools ~w(select pan pin rectangle triangle circle freeform annotation connector ruler)a
 
   @spec handle_set_tool(String.t(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}

@@ -10,8 +10,10 @@
 import L from "leaflet";
 import {
   createZonePolygon,
+  createZoneLabelMarker,
   setZoneSelected,
   updateZonePolygon,
+  updateZoneLabelMarker,
   updateZoneVertices,
 } from "../zone_renderer.js";
 import { toLatLng, toPercent } from "../coordinate_utils.js";
@@ -37,6 +39,8 @@ const CLOSE_THRESHOLD_PX = 15;
 export function createZoneHandler(hook, i18n = {}) {
   // Map of zone ID → L.Polygon
   const polygons = new Map();
+  // Map of zone ID → L.Marker (centroid label)
+  const labelMarkers = new Map();
 
   // Vertex editor for selected zones
   const vertexEditor = createVertexEditor(hook);
@@ -70,6 +74,7 @@ export function createZoneHandler(hook, i18n = {}) {
     removeGhost();
     cancelDrag();
     polygons.clear();
+    labelMarkers.clear();
   }
 
   /** Renders all initial zones from mapData, sorted by position for z-ordering. */
@@ -197,6 +202,17 @@ export function createZoneHandler(hook, i18n = {}) {
           label: i18n.duplicate || "Duplicate",
           action: () => hook.pushEvent("duplicate_zone", { id: String(zoneId) }),
         });
+        items.push({
+          label: i18n.create_child_map || "Create child map",
+          disabled: !data.name || data.name.trim() === "",
+          tooltip: !data.name
+            ? (i18n.name_zone_first || "Name the zone first")
+            : null,
+          action: () =>
+            hook.pushEvent("create_child_map_from_zone", {
+              zone_id: String(zoneId),
+            }),
+        });
       }
 
       items.push({ separator: true });
@@ -228,6 +244,23 @@ export function createZoneHandler(hook, i18n = {}) {
 
     polygon.addTo(hook.zoneLayer);
     polygons.set(zone.id, polygon);
+
+    // Zone label at centroid
+    const label = createZoneLabelMarker(zone, hook.canvasWidth, hook.canvasHeight);
+    if (label) {
+      label.addTo(hook.zoneLayer);
+      labelMarkers.set(zone.id, label);
+    }
+  }
+
+  /** Computes shape vertices for a preset tool at a given position, applying aspect ratio for circles. */
+  function computeShapeVertices(tool, pos) {
+    const presetFn = getShapePreset(tool);
+    if (!presetFn) return null;
+    if (tool === "circle") {
+      return presetFn(pos.x, pos.y, undefined, hook.canvasWidth / hook.canvasHeight);
+    }
+    return presetFn(pos.x, pos.y);
   }
 
   /** Sets up click/dblclick/mousemove handlers for zone creation. */
@@ -240,12 +273,10 @@ export function createZoneHandler(hook, i18n = {}) {
       if (e.originalEvent._stopped) return;
 
       const tool = hook.currentTool;
-      const presetFn = getShapePreset(tool);
+      const vertices = computeShapeVertices(tool, toPercent(e.latlng, hook.canvasWidth, hook.canvasHeight));
 
-      if (presetFn) {
+      if (vertices) {
         // Shape preset: single click creates zone immediately
-        const pos = toPercent(e.latlng, hook.canvasWidth, hook.canvasHeight);
-        const vertices = presetFn(pos.x, pos.y);
         removeGhost();
         hook.pushEvent("create_zone", { name: "", vertices });
       } else {
@@ -285,14 +316,12 @@ export function createZoneHandler(hook, i18n = {}) {
     // Ghost preview for shape presets
     hook.leafletMap.on("mousemove", (e) => {
       const tool = hook.currentTool;
-      const presetFn = getShapePreset(tool);
-      if (!presetFn) {
+      const vertices = computeShapeVertices(tool, toPercent(e.latlng, hook.canvasWidth, hook.canvasHeight));
+      if (!vertices) {
         removeGhost();
         return;
       }
 
-      const pos = toPercent(e.latlng, hook.canvasWidth, hook.canvasHeight);
-      const vertices = presetFn(pos.x, pos.y);
       const latLngs = vertices.map((v) =>
         toLatLng(v.x, v.y, hook.canvasWidth, hook.canvasHeight),
       );
@@ -506,6 +535,22 @@ export function createZoneHandler(hook, i18n = {}) {
           polygon.bindTooltip(zone.tooltip, { sticky: true, className: "map-zone-tooltip" });
         }
       }
+
+      // Update zone label
+      const existingLabel = labelMarkers.get(zone.id);
+      if (existingLabel) {
+        if (!updateZoneLabelMarker(existingLabel, zone, hook.canvasWidth, hook.canvasHeight)) {
+          existingLabel.remove();
+          labelMarkers.delete(zone.id);
+        }
+      } else if (zone.name) {
+        const label = createZoneLabelMarker(zone, hook.canvasWidth, hook.canvasHeight);
+        if (label) {
+          label.addTo(hook.zoneLayer);
+          labelMarkers.set(zone.id, label);
+        }
+      }
+
       reapplyZoneOrder();
       if (hook.layerHandler) hook.layerHandler.rebuildFog();
     });
@@ -516,6 +561,11 @@ export function createZoneHandler(hook, i18n = {}) {
         polygon.zoneData = zone;
         updateZoneVertices(polygon, zone.vertices, hook.canvasWidth, hook.canvasHeight);
       }
+
+      // Reposition label to new centroid
+      const label = labelMarkers.get(zone.id);
+      if (label) updateZoneLabelMarker(label, zone, hook.canvasWidth, hook.canvasHeight);
+
       if (hook.layerHandler) hook.layerHandler.rebuildFog();
     });
 
@@ -525,6 +575,13 @@ export function createZoneHandler(hook, i18n = {}) {
         polygon.remove();
         polygons.delete(id);
       }
+
+      const label = labelMarkers.get(id);
+      if (label) {
+        label.remove();
+        labelMarkers.delete(id);
+      }
+
       if (hook.layerHandler) hook.layerHandler.rebuildFog();
     });
   }

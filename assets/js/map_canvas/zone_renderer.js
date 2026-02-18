@@ -81,6 +81,62 @@ export function setZoneSelected(polygon, selected) {
 }
 
 /**
+ * Creates a non-interactive label marker at the polygon centroid.
+ * Returns null when zone has no name.
+ *
+ * Uses textContent (not innerHTML) to avoid XSS with user-provided zone names.
+ */
+export function createZoneLabelMarker(zone, w, h) {
+  if (!zone.name) return null;
+
+  const center = computeCentroid(zone.vertices, w, h);
+  const span = document.createElement("span");
+  span.textContent = zone.name;
+
+  return L.marker(center, {
+    icon: L.divIcon({
+      className: "map-zone-label",
+      html: span.outerHTML,
+      iconSize: null,
+      iconAnchor: null,
+    }),
+    interactive: false,
+    keyboard: false,
+    zIndexOffset: -100, // below pins
+  });
+}
+
+/**
+ * Updates the label marker text and position.
+ * If zone no longer has a name, returns false (caller should remove it).
+ */
+export function updateZoneLabelMarker(marker, zone, w, h) {
+  if (!zone.name) return false;
+
+  const span = marker.getElement()?.querySelector("span");
+  if (span) span.textContent = zone.name;
+
+  const center = computeCentroid(zone.vertices, w, h);
+  marker.setLatLng(center);
+  return true;
+}
+
+/**
+ * Computes the visual centroid as the average of all vertex LatLngs.
+ */
+function computeCentroid(vertices, w, h) {
+  if (!vertices || vertices.length === 0) return L.latLng(0, 0);
+  const sum = vertices.reduce(
+    (acc, v) => {
+      const ll = toLatLng(v.x, v.y, w, h);
+      return { lat: acc.lat + ll.lat, lng: acc.lng + ll.lng };
+    },
+    { lat: 0, lng: 0 },
+  );
+  return L.latLng(sum.lat / vertices.length, sum.lng / vertices.length);
+}
+
+/**
  * Converts zone vertices array to Leaflet LatLng array.
  */
 function verticesToLatLngs(vertices, w, h) {

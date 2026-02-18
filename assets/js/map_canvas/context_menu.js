@@ -58,15 +58,25 @@ export function createContextMenu(hook) {
 
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = `flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left hover:bg-base-200 transition-colors ${
-        item.danger ? "text-error hover:bg-error/10" : "text-base-content"
+      const isDisabled = item.disabled === true;
+      btn.className = `flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left transition-colors ${
+        isDisabled
+          ? "text-base-content/30 cursor-not-allowed"
+          : item.danger
+            ? "text-error hover:bg-error/10"
+            : "text-base-content hover:bg-base-200"
       }`;
       btn.textContent = item.label;
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        hide();
-        if (item.action) item.action();
-      });
+      if (isDisabled) {
+        btn.disabled = true;
+        if (item.tooltip) btn.title = item.tooltip;
+      } else {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          hide();
+          if (item.action) item.action();
+        });
+      }
       el.appendChild(btn);
     }
 

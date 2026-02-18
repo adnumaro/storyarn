@@ -13,6 +13,7 @@ defmodule StoryarnWeb.MapLive.Components.MapHeader do
   import StoryarnWeb.Components.CoreComponents
 
   attr :map, :map, required: true
+  attr :ancestors, :list, default: []
   attr :workspace, :map, required: true
   attr :project, :map, required: true
   attr :can_edit, :boolean, required: true
@@ -31,7 +32,22 @@ defmodule StoryarnWeb.MapLive.Components.MapHeader do
         </.link>
       </div>
       <div class="flex-1 flex items-center gap-3 ml-4">
-        <div>
+        <div class="flex items-baseline gap-1">
+          <span
+            :for={{ancestor, idx} <- Enum.with_index(@ancestors)}
+            class="flex items-baseline gap-1 text-sm text-base-content/50"
+          >
+            <span :if={idx > 0} class="opacity-50">/</span>
+            <.link
+              navigate={
+                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/maps/#{ancestor.id}"
+              }
+              class="hover:text-base-content truncate max-w-[120px]"
+            >
+              {ancestor.name}
+            </.link>
+          </span>
+          <span :if={@ancestors != []} class="text-sm text-base-content/50 opacity-50">/</span>
           <h1
             :if={@can_edit}
             id="map-title"

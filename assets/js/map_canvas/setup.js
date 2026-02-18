@@ -7,7 +7,7 @@
  */
 
 import L from "leaflet";
-import { imageBounds } from "./coordinate_utils.js";
+import { imageBounds, toLatLng } from "./coordinate_utils.js";
 
 // Default dimensions when map has no explicit size
 const DEFAULT_WIDTH = 1000;
@@ -38,6 +38,25 @@ export function initMap(hook) {
   // Background image or grid placeholder
   if (data.background_url) {
     hook.backgroundOverlay = L.imageOverlay(data.background_url, bounds).addTo(map);
+
+    // If no explicit dimensions, use the image's intrinsic size once loaded
+    if (!data.width || !data.height) {
+      const img = new Image();
+      img.onload = () => {
+        const natW = img.naturalWidth;
+        const natH = img.naturalHeight;
+        if (natW && natH && (natW !== width || natH !== height)) {
+          const newBounds = imageBounds(natW, natH);
+          hook.backgroundOverlay.setBounds(newBounds);
+          hook.canvasWidth = natW;
+          hook.canvasHeight = natH;
+          hook.initialBounds = newBounds;
+          map.setMaxBounds(null);
+          map.fitBounds(newBounds);
+        }
+      };
+      img.src = data.background_url;
+    }
   } else {
     hook.gridOverlay = addGridPlaceholder(map, width, height);
   }
@@ -59,6 +78,11 @@ export function initMap(hook) {
   const fogPane = map.createPane("fogPane");
   fogPane.style.zIndex = 450;
   fogPane.style.pointerEvents = "none";
+
+  // Boundary fog overlay — darkens area outside the parent zone polygon
+  if (data.boundary_vertices && data.boundary_vertices.length >= 3) {
+    addBoundaryFog(map, data.boundary_vertices, width, height);
+  }
 
   // Layer groups for pins, zones, connections, and annotations
   hook.pinLayer = L.layerGroup().addTo(map);
@@ -110,4 +134,38 @@ export function addGridPlaceholder(map, width, height) {
 
   group.addTo(map);
   return group;
+}
+
+/**
+ * Renders a semi-transparent fog overlay outside the parent zone polygon.
+ * Uses a polygon with a hole (evenodd fill-rule) so the interior of the
+ * zone shape is transparent and everything outside is darkened.
+ */
+function addBoundaryFog(map, vertices, w, h) {
+  // Outer ring: covers the entire canvas with a generous margin
+  const margin = Math.max(w, h);
+  const outerRing = [
+    [margin, -margin],
+    [margin, w + margin],
+    [-h - margin, w + margin],
+    [-h - margin, -margin],
+  ];
+
+  // Inner ring: the zone polygon in Leaflet coordinates (must be wound
+  // in the opposite direction from the outer ring for evenodd to work)
+  const innerRing = vertices.map((v) => {
+    const ll = toLatLng(v.x, v.y, w, h);
+    return [ll.lat, ll.lng];
+  });
+
+  L.polygon([outerRing, innerRing], {
+    fillColor: "#000",
+    fillOpacity: 0.35,
+    stroke: true,
+    color: "#6b7280",
+    weight: 1.5,
+    dashArray: "6, 4",
+    interactive: false,
+    pane: "fogPane",
+  }).addTo(map);
 }

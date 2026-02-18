@@ -3,7 +3,7 @@ defmodule Storyarn.Maps.MapCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Maps.{Map, MapLayer, TreeOperations}
+  alias Storyarn.Maps.{Map, MapLayer, MapPin, MapZone, TreeOperations}
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
@@ -22,17 +22,11 @@ defmodule Storyarn.Maps.MapCrud do
   end
 
   @doc """
-  Lists maps as a tree structure.
-  Returns root-level maps with their children preloaded recursively.
+  Lists maps as a tree structure (without sidebar elements).
+  For the map editor sidebar with zone/pin previews, use `list_maps_tree_with_elements/1`.
   """
   def list_maps_tree(project_id) do
-    all_maps =
-      from(m in Map,
-        where: m.project_id == ^project_id and is_nil(m.deleted_at),
-        order_by: [asc: m.position, asc: m.name]
-      )
-      |> Repo.all()
-
+    all_maps = base_maps_query(project_id) |> Repo.all()
     build_tree(all_maps)
   end
 
@@ -45,8 +39,90 @@ defmodule Storyarn.Maps.MapCrud do
     (Elixir.Map.get(grouped, parent_id) || [])
     |> Enum.map(fn map ->
       children = build_subtree(grouped, map.id)
-      %{map | children: children}
+      Elixir.Map.put(map, :children, children)
     end)
+  end
+
+  @sidebar_element_limit 10
+
+  @doc """
+  Lists maps as a tree with limited zone/pin elements for the sidebar.
+  Each map gets :sidebar_zones, :sidebar_pins, :zone_count, :pin_count.
+  """
+  def list_maps_tree_with_elements(project_id) do
+    all_maps = base_maps_query(project_id) |> Repo.all()
+
+    map_ids = Enum.map(all_maps, & &1.id)
+
+    zones_by_map = load_sidebar_zones(map_ids)
+    pins_by_map = load_sidebar_pins(map_ids)
+    zone_counts = count_elements_by_map(MapZone, map_ids)
+    pin_counts = count_elements_by_map(MapPin, map_ids)
+
+    all_maps =
+      Enum.map(all_maps, fn map ->
+        map
+        |> Elixir.Map.from_struct()
+        |> Elixir.Map.put(:sidebar_zones, Elixir.Map.get(zones_by_map, map.id, []))
+        |> Elixir.Map.put(:sidebar_pins, Elixir.Map.get(pins_by_map, map.id, []))
+        |> Elixir.Map.put(:zone_count, Elixir.Map.get(zone_counts, map.id, 0))
+        |> Elixir.Map.put(:pin_count, Elixir.Map.get(pin_counts, map.id, 0))
+      end)
+
+    build_tree(all_maps)
+  end
+
+  defp load_sidebar_zones([]), do: %{}
+
+  defp load_sidebar_zones(map_ids) do
+    inner =
+      from(z in MapZone,
+        where: z.map_id in ^map_ids,
+        where: not is_nil(z.name) and z.name != "",
+        order_by: [asc: z.position, asc: z.name],
+        select: %{
+          id: z.id,
+          name: z.name,
+          map_id: z.map_id,
+          row: over(row_number(), partition_by: z.map_id, order_by: [asc: z.position])
+        }
+      )
+
+    from(s in subquery(inner), where: s.row <= ^@sidebar_element_limit)
+    |> Repo.all()
+    |> Enum.group_by(& &1.map_id)
+  end
+
+  defp load_sidebar_pins([]), do: %{}
+
+  defp load_sidebar_pins(map_ids) do
+    inner =
+      from(p in MapPin,
+        where: p.map_id in ^map_ids,
+        order_by: [asc: p.position, asc: p.label],
+        select: %{
+          id: p.id,
+          label: p.label,
+          map_id: p.map_id,
+          row: over(row_number(), partition_by: p.map_id, order_by: [asc: p.position])
+        }
+      )
+
+    from(s in subquery(inner), where: s.row <= ^@sidebar_element_limit)
+    |> Repo.all()
+    |> Enum.group_by(& &1.map_id)
+  end
+
+  defp count_elements_by_map(_schema, []), do: %{}
+
+  defp count_elements_by_map(schema, map_ids) do
+    from(e in schema,
+      where: e.map_id in ^map_ids,
+      group_by: e.map_id,
+      select: {e.map_id, count(e.id)}
+    )
+    |> Repo.all()
+    |> Elixir.Map.new()
   end
 
   @doc """
@@ -212,11 +288,49 @@ defmodule Storyarn.Maps.MapCrud do
     |> Repo.all()
   end
 
+  @max_ancestor_depth 50
+
+  @doc """
+  Returns ancestors from root to direct parent, ordered top-down.
+  """
+  def list_ancestors(map) do
+    do_collect_ancestors(map.parent_id, [], MapSet.new(), 0)
+  end
+
+  defp do_collect_ancestors(nil, acc, _visited, _depth), do: acc
+  defp do_collect_ancestors(_id, acc, _visited, depth) when depth > @max_ancestor_depth, do: acc
+
+  defp do_collect_ancestors(parent_id, acc, visited, depth) do
+    if MapSet.member?(visited, parent_id) do
+      acc
+    else
+      case Repo.get(Map, parent_id) do
+        nil ->
+          acc
+
+        parent ->
+          do_collect_ancestors(
+            parent.parent_id,
+            [parent | acc],
+            MapSet.put(visited, parent_id),
+            depth + 1
+          )
+      end
+    end
+  end
+
   def change_map(%Map{} = map, attrs \\ %{}) do
     Map.update_changeset(map, attrs)
   end
 
   # Private functions
+
+  defp base_maps_query(project_id) do
+    from(m in Map,
+      where: m.project_id == ^project_id and is_nil(m.deleted_at),
+      order_by: [asc: m.position, asc: m.name]
+    )
+  end
 
   defp soft_delete_children(project_id, parent_id) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)

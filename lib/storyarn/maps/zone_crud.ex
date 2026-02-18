@@ -81,4 +81,19 @@ defmodule Storyarn.Maps.ZoneCrud do
     MapZone.update_changeset(zone, attrs)
   end
 
+  @doc """
+  Finds the zone on a given map that targets a specific child map.
+  Returns `nil` if no linking zone is found.
+  """
+  def get_zone_linking_to_map(parent_map_id, child_map_id) do
+    from(z in MapZone,
+      where:
+        z.map_id == ^parent_map_id and
+          z.target_type == "map" and
+          z.target_id == ^child_map_id,
+      limit: 1
+    )
+    |> Repo.one()
+  end
+
 end

@@ -33,6 +33,7 @@ defmodule StoryarnWeb.MapLive.Show do
     <div class="h-screen flex flex-col">
       <.map_header
         map={@map}
+        ancestors={@ancestors}
         workspace={@workspace}
         project={@project}
         can_edit={@can_edit}
@@ -266,7 +267,7 @@ defmodule StoryarnWeb.MapLive.Show do
   end
 
   defp mount_map(socket, project, membership, can_edit, map) do
-    maps_tree = Maps.list_maps_tree(project.id)
+    maps_tree = Maps.list_maps_tree_with_elements(project.id)
 
     socket
     |> assign(:project, project)
@@ -274,6 +275,7 @@ defmodule StoryarnWeb.MapLive.Show do
     |> assign(:membership, membership)
     |> assign(:can_edit, can_edit)
     |> assign(:map, map)
+    |> assign(:ancestors, Maps.list_ancestors(map))
     |> assign(:maps_tree, maps_tree)
     |> assign(:layers, map.layers || [])
     |> assign(:zones, map.zones || [])
@@ -311,13 +313,29 @@ defmodule StoryarnWeb.MapLive.Show do
       unlock: dgettext("maps", "Unlock"),
       delete: dgettext("maps", "Delete"),
       add_pin: dgettext("maps", "Add Pin Here"),
-      add_annotation: dgettext("maps", "Add Annotation Here")
+      add_annotation: dgettext("maps", "Add Annotation Here"),
+      create_child_map: dgettext("maps", "Create child map"),
+      name_zone_first: dgettext("maps", "Name the zone first")
     })
   end
 
   @impl true
-  def handle_params(_params, _url, socket) do
+  def handle_params(params, _url, socket) do
+    socket =
+      case params["highlight"] do
+        "pin:" <> id -> push_event(socket, "focus_element", %{type: "pin", id: parse_highlight_id(id)})
+        "zone:" <> id -> push_event(socket, "focus_element", %{type: "zone", id: parse_highlight_id(id)})
+        _ -> socket
+      end
+
     {:noreply, socket}
+  end
+
+  defp parse_highlight_id(id) do
+    case Integer.parse(id) do
+      {int, ""} -> int
+      _ -> nil
+    end
   end
 
   @valid_tools ~w(select pan rectangle triangle circle freeform pin annotation connector ruler)
@@ -685,6 +703,12 @@ defmodule StoryarnWeb.MapLive.Show do
   def handle_event("create_child_map", params, socket) do
     with_auth(socket, :edit_content, fn ->
       TreeHandlers.handle_create_child_map(params, socket)
+    end)
+  end
+
+  def handle_event("create_child_map_from_zone", params, socket) do
+    with_auth(socket, :edit_content, fn ->
+      TreeHandlers.handle_create_child_map_from_zone(params, socket)
     end)
   end
 

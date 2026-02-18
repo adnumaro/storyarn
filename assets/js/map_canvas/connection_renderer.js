@@ -10,6 +10,7 @@
 import L from "leaflet";
 import "leaflet-polylinedecorator/src/L.Symbol.js";
 import "leaflet-polylinedecorator/src/L.PolylineDecorator.js";
+import "leaflet-textpath";
 import { toLatLng } from "./coordinate_utils.js";
 
 const DEFAULT_COLOR = "#6b7280";
@@ -45,6 +46,9 @@ export function createConnectionLine(conn, pinMarkers, w, h) {
   // Arrow decorators (added to map by handler after line.addTo)
   line._arrows = buildArrows(line, conn);
 
+  // Path label (follows curvature via leaflet-textpath)
+  applyLabel(line, conn.label, conn.color);
+
   return line;
 }
 
@@ -63,6 +67,9 @@ export function updateConnectionLine(line, conn) {
 
   // Rebuild arrows (direction or color may have changed)
   replaceArrows(line, conn);
+
+  // Update path label
+  applyLabel(line, conn.label, conn.color);
 }
 
 /**
@@ -184,6 +191,43 @@ function makeArrowDecorator(pathOrLatLngs, conn) {
       },
     ],
   });
+}
+
+// =============================================================================
+// Path label (leaflet-textpath)
+// =============================================================================
+
+/**
+ * Applies or clears text along a connection polyline.
+ *
+ * IMPORTANT: setText() does NOT clear previous text when updating (known bug
+ * makinacorpus/Leaflet.TextPath#78). Must call setText(null) first.
+ *
+ * setText() auto-re-renders when setLatLngs() is called (hooks into _updatePath),
+ * so waypoint drags update the text position automatically.
+ */
+function applyLabel(line, label, color) {
+  const text = label && label.trim() !== "" ? label.trim() : null;
+
+  // Always clear first (bug #78: setText doesn't erase previous text)
+  line.setText(null);
+
+  if (text) {
+    line.setText(text, {
+      repeat: false,
+      below: false,
+      offset: 6,
+      orientation: "auto",
+      attributes: {
+        "font-size": "11",
+        "font-weight": "600",
+        fill: color || DEFAULT_COLOR,
+        stroke: "white",
+        "stroke-width": "3",
+        "paint-order": "stroke fill",
+      },
+    });
+  }
 }
 
 // =============================================================================

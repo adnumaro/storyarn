@@ -7,6 +7,7 @@ defmodule StoryarnWeb.SheetLive.Components.ReferencesTab do
   use StoryarnWeb, :live_component
 
   alias StoryarnWeb.SheetLive.Components.BacklinksSection
+  alias StoryarnWeb.SheetLive.Components.MapAppearancesSection
   alias StoryarnWeb.SheetLive.Components.VariableUsageSection
 
   @impl true
@@ -26,6 +27,15 @@ defmodule StoryarnWeb.SheetLive.Components.ReferencesTab do
       <.live_component
         module={BacklinksSection}
         id="backlinks-section"
+        sheet={@sheet}
+        project={@project}
+        workspace={@workspace}
+      />
+
+      <%!-- Map Appearances Section --%>
+      <.live_component
+        module={MapAppearancesSection}
+        id="map-appearances-section"
         sheet={@sheet}
         project={@project}
         workspace={@workspace}

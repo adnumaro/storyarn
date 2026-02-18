@@ -8,6 +8,7 @@ defmodule StoryarnWeb.MapLive.Helpers.Serializer do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Maps
+  alias Storyarn.Maps.ZoneImageExtractor
 
   def build_map_data(map, can_edit) do
     %{
@@ -22,6 +23,7 @@ defmodule StoryarnWeb.MapLive.Helpers.Serializer do
       scale_unit: map.scale_unit,
       scale_value: map.scale_value,
       can_edit: can_edit,
+      boundary_vertices: boundary_vertices(map),
       layers: Enum.map(map.layers || [], &serialize_layer/1),
       pins: Enum.map(map.pins || [], &serialize_pin/1),
       zones: Enum.map(map.zones || [], &serialize_zone/1),
@@ -47,7 +49,7 @@ defmodule StoryarnWeb.MapLive.Helpers.Serializer do
   end
 
   def reload_maps_tree(socket) do
-    assign(socket, :maps_tree, Maps.list_maps_tree(socket.assigns.project.id))
+    assign(socket, :maps_tree, Maps.list_maps_tree_with_elements(socket.assigns.project.id))
   end
 
   def serialize_layer(layer) do
@@ -165,4 +167,18 @@ defmodule StoryarnWeb.MapLive.Helpers.Serializer do
     if default, do: default.id, else: List.first(layers).id
   end
 
+  # ---------------------------------------------------------------------------
+  # Boundary polygon for child maps
+  # ---------------------------------------------------------------------------
+
+  # When this map was created from a parent zone, compute the zone polygon
+  # in child coordinate space so the JS can render a fog overlay outside it.
+  defp boundary_vertices(%{parent_id: nil}), do: nil
+
+  defp boundary_vertices(%{parent_id: parent_id, id: map_id}) do
+    case Maps.get_zone_linking_to_map(parent_id, map_id) do
+      nil -> nil
+      zone -> ZoneImageExtractor.normalize_vertices_to_bbox(zone.vertices)
+    end
+  end
 end
