@@ -99,14 +99,14 @@ function buildAnnotationHtml(annotation) {
     // Body with clipped top-right corner
     `<div style="` +
     `font-size:${dims.fontSize};padding:${dims.padding};padding-right:calc(${dims.padding.split(" ")[1] || dims.padding} + ${fold}px);` +
-    `background:${color};opacity:0.25;position:absolute;inset:0;` +
+    `background:${color};opacity:0.55;position:absolute;inset:0;` +
     `clip-path:polygon(0 0, calc(100% - ${fold}px) 0, 100% ${fold}px, 100% 100%, 0 100%);` +
     `"></div>` +
     // Text layer (same padding, transparent bg)
     `<div style="` +
     `position:relative;` +
     `font-size:${dims.fontSize};padding:${dims.padding};padding-right:calc(${dims.padding.split(" ")[1] || dims.padding} + ${fold}px);` +
-    `color:${color};font-weight:500;line-height:1.3;white-space:pre-wrap;` +
+    `color:#111827;font-weight:600;line-height:1.3;white-space:pre-wrap;` +
     `">${lockPrefix}${text}</div>` +
     // Fold triangle — solid color, sits at top-right
     `<span style="` +
