@@ -457,6 +457,16 @@ export function createZoneHandler(hook, i18n = {}) {
     );
 
     dragPolygon.setLatLngs(newLatLngs);
+
+    // Move the label marker to the new centroid
+    const label = labelMarkers.get(dragPolygon.zoneData.id);
+    if (label) {
+      const sum = newLatLngs.reduce(
+        (acc, ll) => ({ lat: acc.lat + ll.lat, lng: acc.lng + ll.lng }),
+        { lat: 0, lng: 0 },
+      );
+      label.setLatLng(L.latLng(sum.lat / newLatLngs.length, sum.lng / newLatLngs.length));
+    }
   }
 
   /** Finishes drag: clamps vertices, persists to server. */
@@ -670,7 +680,7 @@ export function createZoneHandler(hook, i18n = {}) {
     return min;
   }
 
-  /** Recalculates all polygon vertices from stored percentage coords (after canvas resize). */
+  /** Recalculates all polygon vertices and label positions from stored percentage coords (after canvas resize). */
   function repositionAll() {
     for (const polygon of polygons.values()) {
       const zone = polygon.zoneData;
@@ -678,6 +688,16 @@ export function createZoneHandler(hook, i18n = {}) {
         toLatLng(v.x, v.y, hook.canvasWidth, hook.canvasHeight),
       );
       polygon.setLatLngs(latLngs);
+
+      // Reposition label to new centroid
+      const label = labelMarkers.get(zone.id);
+      if (label && latLngs.length > 0) {
+        const sum = latLngs.reduce(
+          (acc, ll) => ({ lat: acc.lat + ll.lat, lng: acc.lng + ll.lng }),
+          { lat: 0, lng: 0 },
+        );
+        label.setLatLng(L.latLng(sum.lat / latLngs.length, sum.lng / latLngs.length));
+      }
     }
   }
 
