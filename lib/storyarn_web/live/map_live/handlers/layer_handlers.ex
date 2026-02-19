@@ -11,12 +11,14 @@ defmodule StoryarnWeb.MapLive.Handlers.LayerHandlers do
   alias Storyarn.Maps
   import StoryarnWeb.MapLive.Helpers.MapHelpers
   import StoryarnWeb.MapLive.Helpers.Serializer
+  import StoryarnWeb.MapLive.Handlers.UndoRedoHandlers, only: [push_undo: 2]
 
   def handle_create_layer(_params, socket) do
     case Maps.create_layer(socket.assigns.map.id, %{name: dgettext("maps", "New Layer")}) do
       {:ok, layer} ->
         {:noreply,
          socket
+         |> push_undo({:create_layer, layer})
          |> push_event("layer_created", %{id: layer.id, name: layer.name})
          |> put_flash(:info, dgettext("maps", "Layer created."))
          |> reload_map()}
@@ -157,9 +159,12 @@ defmodule StoryarnWeb.MapLive.Handlers.LayerHandlers do
   defp do_update_layer_name(socket, layer, name) when name == layer.name, do: socket
 
   defp do_update_layer_name(socket, layer, name) do
+    prev_name = layer.name
+
     case Maps.update_layer(layer, %{"name" => name}) do
       {:ok, _updated} ->
         socket
+        |> push_undo({:rename_layer, layer.id, prev_name, name})
         |> put_flash(:info, dgettext("maps", "Layer renamed."))
         |> reload_map()
 
@@ -186,10 +191,13 @@ defmodule StoryarnWeb.MapLive.Handlers.LayerHandlers do
   defp normalize_fog_value(_field, value), do: value
 
   defp do_update_layer_fog(socket, layer, field, value) do
+    prev_value = Map.get(layer, String.to_existing_atom(field))
+
     case Maps.update_layer(layer, %{field => value}) do
       {:ok, updated} ->
         {:noreply,
          socket
+         |> push_undo({:update_layer_fog, layer.id, %{field => prev_value}, %{field => value}})
          |> push_event("layer_fog_changed", %{
            id: updated.id,
            fog_enabled: updated.fog_enabled,
@@ -208,6 +216,7 @@ defmodule StoryarnWeb.MapLive.Handlers.LayerHandlers do
       {:ok, _} ->
         {:noreply,
          socket
+         |> push_undo({:delete_layer, layer})
          |> push_event("layer_deleted", %{id: layer.id})
          |> put_flash(:info, dgettext("maps", "Layer deleted."))
          |> reload_map()}

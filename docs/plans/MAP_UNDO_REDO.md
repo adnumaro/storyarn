@@ -4,6 +4,8 @@
 >
 > **Priority:** High — move and vertex editing are the most destructive gaps (geometry lost with no recovery)
 >
+> **Status:** Implemented (Phases 0–5)
+>
 > **Last Updated:** February 19, 2026
 
 ## Current State
@@ -12,12 +14,12 @@ Maps use a **server-side** undo/redo system stored in socket assigns (`undo_stac
 
 Currently only **delete** operations are tracked:
 
-| Action Tuple | Undo | Redo |
-|---|---|---|
-| `{:delete_pin, pin}` | `Maps.create_pin()` (new ID) | `Maps.delete_pin()` |
-| `{:delete_zone, zone}` | `Maps.create_zone()` (new ID) | `Maps.delete_zone()` |
+| Action Tuple                 | Undo                                | Redo                       |
+|------------------------------|-------------------------------------|----------------------------|
+| `{:delete_pin, pin}`         | `Maps.create_pin()` (new ID)        | `Maps.delete_pin()`        |
+| `{:delete_zone, zone}`       | `Maps.create_zone()` (new ID)       | `Maps.delete_zone()`       |
 | `{:delete_connection, conn}` | `Maps.create_connection()` (new ID) | `Maps.delete_connection()` |
-| `{:delete_annotation, ann}` | `Maps.create_annotation()` (new ID) | `Maps.delete_annotation()` |
+| `{:delete_annotation, ann}`  | `Maps.create_annotation()` (new ID) | `Maps.delete_annotation()` |
 
 ### Key Design Constraints
 
@@ -379,24 +381,21 @@ Group by operation type with shared private helpers to keep the code DRY.
 
 ## Summary
 
-| Phase | Operations | Complexity |
-|-------|-----------|------------|
-| 1 | Pin move, annotation move (with coalescing) | Low |
-| 2 | Create pin/zone/connection/annotation, duplicate, paste | Medium |
-| 3 | Property edits for all element types, vertex reshape, waypoints | Medium |
-| 4 | Layer create/delete/rename/fog | Medium |
-| 5 | Compound actions (multi-select delete, cascading deletes) | Medium-High |
+| Phase   | Operations                                                      | Complexity  |
+|---------|-----------------------------------------------------------------|-------------|
+| 1       | Pin move, annotation move (with coalescing)                     | Low         |
+| 2       | Create pin/zone/connection/annotation, duplicate, paste         | Medium      |
+| 3       | Property edits for all element types, vertex reshape, waypoints | Medium      |
+| 4       | Layer create/delete/rename/fog                                  | Medium      |
+| 5       | Compound actions (multi-select delete, cascading deletes)       | Medium-High |
 
 ### Files Modified
 
-| File | Changes |
-|------|---------|
-| `lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex` | Add all new action handlers, compound dispatch, helper functions |
-| `lib/storyarn_web/live/map_live/handlers/element_handlers.ex` | Add `push_undo` calls to move, create, update, duplicate, paste operations |
-| `lib/storyarn_web/live/map_live/handlers/zone_handlers.ex` | Add `push_undo` calls to zone update, vertex update |
-| `lib/storyarn_web/live/map_live/handlers/connection_handlers.ex` | Add `push_undo` calls to connection update, waypoint update |
-| `lib/storyarn_web/live/map_live/handlers/annotation_handlers.ex` | Add `push_undo` calls to annotation move, update |
-| `lib/storyarn_web/live/map_live/handlers/layer_handlers.ex` | Add `push_undo` calls to layer create/delete/rename/fog |
+| File                                                             | Changes                                                                    |
+|------------------------------------------------------------------|----------------------------------------------------------------------------|
+| `lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex`  | All undo/redo action handlers, compound dispatch, ID rebasing helpers      |
+| `lib/storyarn_web/live/map_live/handlers/element_handlers.ex`    | `push_undo` calls for all element operations (pin, zone, connection, annotation) |
+| `lib/storyarn_web/live/map_live/handlers/layer_handlers.ex`      | `push_undo` calls for layer create/delete/rename/fog                       |
 
 ### Verification
 

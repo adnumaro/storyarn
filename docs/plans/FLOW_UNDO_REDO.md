@@ -10,12 +10,12 @@
 
 The flow editor uses `rete-history-plugin` with a custom preset (`history_preset.js`). History lives client-side in JavaScript. Four action classes exist:
 
-| Action | Undo | Redo |
-|--------|------|------|
-| `DragAction` | `area.translate()` to previous position | `area.translate()` to new position |
-| `AddConnectionAction` | `editor.removeConnection()` | `editor.addConnection()` |
-| `RemoveConnectionAction` | `editor.addConnection()` | `editor.removeConnection()` |
-| `DeleteNodeAction` | `pushEvent("restore_node")` — server soft-delete restore | `pushEvent("delete_node")` — server soft-delete |
+| Action                   | Undo                                                     | Redo                                            |
+|--------------------------|----------------------------------------------------------|-------------------------------------------------|
+| `DragAction`             | `area.translate()` to previous position                  | `area.translate()` to new position              |
+| `AddConnectionAction`    | `editor.removeConnection()`                              | `editor.addConnection()`                        |
+| `RemoveConnectionAction` | `editor.addConnection()`                                 | `editor.removeConnection()`                     |
+| `DeleteNodeAction`       | `pushEvent("restore_node")` — server soft-delete restore | `pushEvent("delete_node")` — server soft-delete |
 
 Everything else (node creation, duplication, all property edits) goes straight to the DB with no undo.
 
@@ -323,23 +323,23 @@ Alternatively, **skip the action silently** — if the undo stack has both a del
 
 ## Summary
 
-| Phase | Operations | Mechanism | Complexity |
-|-------|-----------|-----------|------------|
-| 1 | Node create, duplicate | `CreateNodeAction` → reuse soft-delete/restore | Low |
-| 2 | All node property edits | `NodeDataAction` + server `restore_node_data` + coalescing | Medium-High |
-| 3 | Flow name, shortcut | `FlowMetaAction` + server `restore_flow_meta` | Low |
-| 4 | Hub cascade fix, stack limits, conflict handling | Targeted `node_updated` instead of `flow_updated` | Medium |
+| Phase   | Operations                                       | Mechanism                                                  | Complexity  |
+|---------|--------------------------------------------------|------------------------------------------------------------|-------------|
+| 1       | Node create, duplicate                           | `CreateNodeAction` → reuse soft-delete/restore             | Low         |
+| 2       | All node property edits                          | `NodeDataAction` + server `restore_node_data` + coalescing | Medium-High |
+| 3       | Flow name, shortcut                              | `FlowMetaAction` + server `restore_flow_meta`              | Low         |
+| 4       | Hub cascade fix, stack limits, conflict handling | Targeted `node_updated` instead of `flow_updated`          | Medium      |
 
 ### Files Modified
 
-| File | Changes |
-|------|---------|
-| `assets/js/flow_canvas/history_preset.js` | Add `CreateNodeAction`, `NodeDataAction`, `FlowMetaAction` |
-| `assets/js/flow_canvas/handlers/editor_handlers.js` | Record create/duplicate in `handleNodeAdded` |
-| `assets/js/flow_canvas/event_bindings.js` | Handle `node_data_changed` and `flow_meta_changed` events |
-| `lib/storyarn_web/live/flow_live/helpers/node_helpers.ex` | Emit `node_data_changed` from `persist_node_update`, add `self: true` to `node_added` |
-| `lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex` | Add `restore_node_data` and `restore_flow_meta` handlers |
-| `lib/storyarn_web/live/flow_live/show.ex` | Wire new events to handlers |
+| File                                                                | Changes                                                                               |
+|---------------------------------------------------------------------|---------------------------------------------------------------------------------------|
+| `assets/js/flow_canvas/history_preset.js`                           | Add `CreateNodeAction`, `NodeDataAction`, `FlowMetaAction`                            |
+| `assets/js/flow_canvas/handlers/editor_handlers.js`                 | Record create/duplicate in `handleNodeAdded`                                          |
+| `assets/js/flow_canvas/event_bindings.js`                           | Handle `node_data_changed` and `flow_meta_changed` events                             |
+| `lib/storyarn_web/live/flow_live/helpers/node_helpers.ex`           | Emit `node_data_changed` from `persist_node_update`, add `self: true` to `node_added` |
+| `lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex` | Add `restore_node_data` and `restore_flow_meta` handlers                              |
+| `lib/storyarn_web/live/flow_live/show.ex`                           | Wire new events to handlers                                                           |
 
 ### Verification
 

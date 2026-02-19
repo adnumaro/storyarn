@@ -11,7 +11,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   alias Storyarn.Maps
   import StoryarnWeb.MapLive.Helpers.MapHelpers
   import StoryarnWeb.MapLive.Helpers.Serializer
-  import StoryarnWeb.MapLive.Handlers.UndoRedoHandlers, only: [push_undo: 2]
+  import StoryarnWeb.MapLive.Handlers.UndoRedoHandlers, only: [push_undo: 2, push_undo_coalesced: 2]
 
   # ---------------------------------------------------------------------------
   # Pin handlers
@@ -30,6 +30,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       {:ok, pin} ->
         {:noreply,
          socket
+         |> push_undo({:create_pin, pin})
          |> assign(:pins, socket.assigns.pins ++ [pin])
          |> assign(:selected_type, "pin")
          |> assign(:selected_element, pin)
@@ -138,6 +139,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       {:ok, zone} ->
         {:noreply,
          socket
+         |> push_undo({:create_zone, zone})
          |> assign(:zones, socket.assigns.zones ++ [zone])
          |> assign(:selected_type, "zone")
          |> assign(:selected_element, zone)
@@ -199,6 +201,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       {:ok, conn} ->
         {:noreply,
          socket
+         |> push_undo({:create_connection, conn})
          |> assign(:connections, socket.assigns.connections ++ [conn])
          |> push_event("connection_created", serialize_connection(conn))}
 
@@ -259,6 +262,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       {:ok, annotation} ->
         {:noreply,
          socket
+         |> push_undo({:create_annotation, annotation})
          |> assign(:annotations, socket.assigns.annotations ++ [annotation])
          |> assign(:selected_type, "annotation")
          |> assign(:selected_element, annotation)
@@ -377,6 +381,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
 
         {:noreply,
          socket
+         |> push_undo({:create_pin, pin})
          |> assign(:pins, socket.assigns.pins ++ [pin])
          |> assign(:pending_sheet_for_pin, nil)
          |> assign(:active_tool, :select)
@@ -392,9 +397,14 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   defp do_move_pin(socket, %{locked: true}, _x, _y), do: {:noreply, socket}
 
   defp do_move_pin(socket, pin, x, y) do
+    prev = %{x: pin.position_x, y: pin.position_y}
+
     case Maps.move_pin(pin, x, y) do
-      {:ok, _updated} -> {:noreply, socket}
-      {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move pin."))}
+      {:ok, _updated} ->
+        {:noreply, push_undo_coalesced(socket, {:move_pin, pin.id, prev, %{x: x, y: y}})}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move pin."))}
     end
   end
 
@@ -403,11 +413,19 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   end
 
   defp do_delete_pin(socket, pin) do
+    affected_conns =
+      Enum.filter(socket.assigns.connections, fn c ->
+        c.from_pin_id == pin.id or c.to_pin_id == pin.id
+      end)
+
     case Maps.delete_pin(pin) do
       {:ok, _} ->
+        sub_actions = Enum.map(affected_conns, &{:delete_connection, &1}) ++ [{:delete_pin, pin}]
+        action = if length(sub_actions) > 1, do: {:compound, sub_actions}, else: {:delete_pin, pin}
+
         {:noreply,
          socket
-         |> push_undo({:delete_pin, pin})
+         |> push_undo(action)
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
          |> push_event("pin_deleted", %{id: pin.id})
@@ -420,10 +438,13 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   end
 
   defp do_update_pin(socket, pin, field, value) do
+    prev_value = Map.get(pin, String.to_existing_atom(field))
+
     case Maps.update_pin(pin, %{field => value}) do
       {:ok, updated} ->
         {:noreply,
          socket
+         |> push_undo({:update_pin, pin.id, %{field => prev_value}, %{field => value}})
          |> assign(:selected_element, updated)
          |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
          |> push_event("pin_updated", serialize_pin(updated))}
@@ -436,10 +457,13 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   defp do_update_zone_vertices(socket, %{locked: true}, _vertices), do: {:noreply, socket}
 
   defp do_update_zone_vertices(socket, zone, vertices) do
+    prev_vertices = zone.vertices
+
     case Maps.update_zone_vertices(zone, %{"vertices" => vertices}) do
       {:ok, updated} ->
         {:noreply,
          socket
+         |> push_undo({:update_zone_vertices, zone.id, prev_vertices, vertices})
          |> assign(:zones, replace_in_list(socket.assigns.zones, updated))
          |> maybe_update_selected_element("zone", updated)
          |> push_event("zone_vertices_updated", serialize_zone(updated))}
@@ -451,10 +475,13 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   end
 
   defp do_update_zone(socket, zone, field, value) do
+    prev_value = Map.get(zone, String.to_existing_atom(field))
+
     case Maps.update_zone(zone, %{field => value}) do
       {:ok, updated} ->
         {:noreply,
          socket
+         |> push_undo({:update_zone, zone.id, %{field => prev_value}, %{field => value}})
          |> assign(:selected_element, updated)
          |> assign(:zones, replace_in_list(socket.assigns.zones, updated))
          |> push_event("zone_updated", serialize_zone(updated))}
@@ -485,6 +512,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       {:ok, new_zone} ->
         {:noreply,
          socket
+         |> push_undo({:create_zone, new_zone})
          |> assign(:zones, socket.assigns.zones ++ [new_zone])
          |> push_event("zone_created", serialize_zone(new_zone))
          |> put_flash(:info, dgettext("maps", "Zone duplicated."))}
@@ -516,10 +544,13 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   end
 
   defp do_update_connection(socket, conn, field, value) do
+    prev_value = Map.get(conn, String.to_existing_atom(field))
+
     case Maps.update_connection(conn, %{field => value}) do
       {:ok, updated} ->
         {:noreply,
          socket
+         |> push_undo({:update_connection, conn.id, %{field => prev_value}, %{field => value}})
          |> assign(:selected_element, updated)
          |> assign(:connections, replace_in_list(socket.assigns.connections, updated))
          |> push_event("connection_updated", serialize_connection(updated))}
@@ -530,10 +561,13 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   end
 
   defp do_update_connection_waypoints(socket, conn, waypoints) do
+    prev_waypoints = conn.waypoints || []
+
     case Maps.update_connection_waypoints(conn, %{"waypoints" => waypoints}) do
       {:ok, updated} ->
         {:noreply,
          socket
+         |> push_undo({:update_connection_waypoints, conn.id, prev_waypoints, waypoints})
          |> assign(:selected_element, updated)
          |> push_event("connection_updated", serialize_connection(updated))}
 
@@ -543,10 +577,13 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   end
 
   defp do_clear_connection_waypoints(socket, conn) do
+    prev_waypoints = conn.waypoints || []
+
     case Maps.update_connection_waypoints(conn, %{"waypoints" => []}) do
       {:ok, updated} ->
         {:noreply,
          socket
+         |> push_undo({:update_connection_waypoints, conn.id, prev_waypoints, []})
          |> assign(:selected_element, updated)
          |> push_event("connection_updated", serialize_connection(updated))}
 
@@ -573,10 +610,13 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   end
 
   defp do_update_annotation(socket, annotation, field, value) do
+    prev_value = Map.get(annotation, String.to_existing_atom(field))
+
     case Maps.update_annotation(annotation, %{field => value}) do
       {:ok, updated} ->
         {:noreply,
          socket
+         |> push_undo({:update_annotation, annotation.id, %{field => prev_value}, %{field => value}})
          |> assign(:annotations, replace_in_list(socket.assigns.annotations, updated))
          |> maybe_update_selected_element("annotation", updated)
          |> push_event("annotation_updated", serialize_annotation(updated))}
@@ -589,9 +629,14 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   defp do_move_annotation(socket, %{locked: true}, _x, _y), do: {:noreply, socket}
 
   defp do_move_annotation(socket, annotation, x, y) do
+    prev = %{x: annotation.position_x, y: annotation.position_y}
+
     case Maps.move_annotation(annotation, x, y) do
-      {:ok, _updated} -> {:noreply, socket}
-      {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move annotation."))}
+      {:ok, _updated} ->
+        {:noreply, push_undo_coalesced(socket, {:move_annotation, annotation.id, prev, %{x: x, y: y}})}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move annotation."))}
     end
   end
 
@@ -637,6 +682,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       {:ok, new_pin} ->
         {:noreply,
          socket
+         |> push_undo({:create_pin, new_pin})
          |> assign(:pins, socket.assigns.pins ++ [new_pin])
          |> assign(:selected_type, "pin")
          |> assign(:selected_element, new_pin)
@@ -667,6 +713,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       {:ok, new_ann} ->
         {:noreply,
          socket
+         |> push_undo({:create_annotation, new_ann})
          |> assign(:annotations, socket.assigns.annotations ++ [new_ann])
          |> assign(:selected_type, "annotation")
          |> assign(:selected_element, new_ann)
@@ -775,6 +822,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       {:ok, pin} ->
         {:noreply,
          socket
+         |> push_undo({:create_pin, pin})
          |> assign(:pins, socket.assigns.pins ++ [pin])
          |> assign(:selected_type, "pin")
          |> assign(:selected_element, pin)
@@ -803,6 +851,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       {:ok, zone} ->
         {:noreply,
          socket
+         |> push_undo({:create_zone, zone})
          |> assign(:zones, socket.assigns.zones ++ [zone])
          |> assign(:selected_type, "zone")
          |> assign(:selected_element, zone)
@@ -829,6 +878,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       {:ok, annotation} ->
         {:noreply,
          socket
+         |> push_undo({:create_annotation, annotation})
          |> assign(:annotations, socket.assigns.annotations ++ [annotation])
          |> assign(:selected_type, "annotation")
          |> assign(:selected_element, annotation)
