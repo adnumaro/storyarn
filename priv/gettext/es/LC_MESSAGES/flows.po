@@ -74,7 +74,7 @@ msgstr "Líneas de acción, notas de transición..."
 msgid "Add"
 msgstr "Sumar"
 
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:106
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:115
 #, elixir-autogen, elixir-format
 msgid "Add Node"
 msgstr "Agregar nodo"
@@ -241,6 +241,7 @@ msgstr "Conecta este nodo al primer nodo de tu flujo."
 msgid "Console"
 msgstr "Consola"
 
+#: lib/storyarn_web/live/flow_live/player/components/player_toolbar.ex:38
 #: lib/storyarn_web/live/flow_live/preview_component.ex:77
 #, elixir-autogen, elixir-format
 msgid "Continue"
@@ -329,7 +330,7 @@ msgstr "Actual"
 msgid "Day"
 msgstr "Día"
 
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:101
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:110
 #, elixir-autogen, elixir-format
 msgid "Debug"
 msgstr "Depuración"
@@ -484,6 +485,7 @@ msgstr "Flujo movido a la papelera."
 
 #: lib/storyarn_web/live/flow_live/handlers/navigation_handlers.ex:23
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:188
+#: lib/storyarn_web/live/flow_live/player_live.ex:94
 #: lib/storyarn_web/live/flow_live/show.ex:183
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
@@ -689,6 +691,7 @@ msgid "No conditions set"
 msgstr "Sin condiciones"
 
 #: lib/storyarn_web/live/flow_live/handlers/debug_session_handlers.ex:167
+#: lib/storyarn_web/live/flow_live/player_live.ex:139
 #, elixir-autogen, elixir-format
 msgid "No entry node found in this flow."
 msgstr "No se encontró nodo de entrada en este flujo."
@@ -1020,7 +1023,7 @@ msgstr "Retroceder"
 msgid "Stop"
 msgstr "a"
 
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:100
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:109
 #, elixir-autogen, elixir-format
 msgid "Stop Debug"
 msgstr "Detener depuración"
@@ -1175,6 +1178,7 @@ msgid "Word count"
 msgstr "Conteo de palabras"
 
 #: lib/storyarn_web/live/flow_live/index.ex:196
+#: lib/storyarn_web/live/flow_live/player_live.ex:82
 #: lib/storyarn_web/live/flow_live/show.ex:172
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
@@ -1402,4 +1406,89 @@ msgstr "variable"
 #: lib/storyarn_web/live/flow_live/handlers/debug_session_handlers.ex:222
 #, elixir-autogen, elixir-format
 msgid "Invalid number \"%{value}\", using 0"
-msgstr ""
+msgstr "Numero invalido \"%{value}\", usando 0"
+
+#: lib/storyarn_web/live/flow_live/player/components/player_toolbar.ex:57
+#, elixir-autogen, elixir-format
+msgid "Analysis"
+msgstr "Analisis"
+
+#: lib/storyarn_web/live/flow_live/player/components/player_toolbar.ex:27
+#, elixir-autogen, elixir-format
+msgid "Back (←)"
+msgstr "Atras (←)"
+
+#: lib/storyarn_web/live/flow_live/player/components/player_outcome.ex:63
+#, elixir-autogen, elixir-format
+msgid "Back to editor"
+msgstr "Volver al editor"
+
+#: lib/storyarn_web/live/flow_live/player/components/player_toolbar.ex:76
+#, elixir-autogen, elixir-format
+msgid "Back to editor (Esc)"
+msgstr "Volver al editor (Esc)"
+
+#: lib/storyarn_web/live/flow_live/player/components/player_outcome.ex:41
+#, elixir-autogen, elixir-format
+msgid "Choices: %{count}"
+msgstr "Elecciones: %{count}"
+
+#: lib/storyarn_web/live/flow_live/player/components/player_toolbar.ex:36
+#, elixir-autogen, elixir-format
+msgid "Continue (Space)"
+msgstr "Continuar (Espacio)"
+
+#: lib/storyarn_web/live/flow_live/player_live.ex:225
+#, elixir-autogen, elixir-format
+msgid "Could not select that response."
+msgstr "No se pudo seleccionar esa respuesta."
+
+#: lib/storyarn_web/live/flow_live/player_live.ex:147
+#, elixir-autogen, elixir-format
+msgid "Error advancing through flow."
+msgstr "Error al avanzar en el flujo."
+
+#: lib/storyarn_web/live/flow_live/player/components/player_slide.ex:51
+#, elixir-autogen, elixir-format
+msgid "No content to display."
+msgstr "No hay contenido que mostrar."
+
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:97
+#, elixir-autogen, elixir-format
+msgid "Play"
+msgstr "Reproducir"
+
+#: lib/storyarn_web/live/flow_live/player/components/player_outcome.ex:54
+#, elixir-autogen, elixir-format
+msgid "Play again"
+msgstr "Jugar de nuevo"
+
+#: lib/storyarn_web/live/flow_live/player/components/player_toolbar.ex:56
+#, elixir-autogen, elixir-format
+msgid "Player"
+msgstr "Jugador"
+
+#: lib/storyarn_web/live/flow_live/player/components/player_toolbar.ex:67
+#, elixir-autogen, elixir-format
+msgid "Restart"
+msgstr "Reiniciar"
+
+#: lib/storyarn_web/live/flow_live/player/components/player_outcome.ex:37
+#, elixir-autogen, elixir-format
+msgid "Steps: %{count}"
+msgstr "Pasos: %{count}"
+
+#: lib/storyarn_web/live/flow_live/player_live.ex:290
+#, elixir-autogen, elixir-format
+msgid "Target flow has no entry node."
+msgstr "El flujo destino no tiene nodo de entrada."
+
+#: lib/storyarn_web/live/flow_live/player/components/player_toolbar.ex:51
+#, elixir-autogen, elixir-format
+msgid "Toggle mode (P)"
+msgstr "Cambiar modo (P)"
+
+#: lib/storyarn_web/live/flow_live/player/components/player_outcome.ex:46
+#, elixir-autogen, elixir-format
+msgid "Variables changed: %{count}"
+msgstr "Variables cambiadas: %{count}"

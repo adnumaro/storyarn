@@ -52,6 +52,7 @@ import { DebugPanelResize } from "./hooks/debug_panel_resize";
 import { FountainImport } from "./hooks/fountain_import";
 import { MapCanvas } from "./hooks/map_canvas";
 import { FloatingToolbar } from "./hooks/floating_toolbar";
+import { StoryPlayer } from "./hooks/story_player";
 
 // Theme management (keyboard shortcuts, cross-tab sync)
 import "./theme";
@@ -88,6 +89,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ReferenceSearch,
     DialogueScreenplayEditor,
     ScreenplayEditor,
+    StoryPlayer,
   },
 });
 

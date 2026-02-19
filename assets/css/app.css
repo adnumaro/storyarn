@@ -37,6 +37,9 @@
 /* Leaflet.js core styles (PNG-free copy, see leaflet.css header) */
 @import "./leaflet.css";
 
+/* Story player styles */
+@import "./player.css";
+
 /* This file is for your main application CSS */
 
 /* SortableJS styles */

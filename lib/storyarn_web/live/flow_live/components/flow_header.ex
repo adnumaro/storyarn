@@ -87,6 +87,15 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
       <div class="flex-none flex items-center gap-4">
         <.online_users users={@online_users} current_user_id={@current_user_id} />
         <.save_indicator :if={@can_edit} status={@save_status} />
+        <.link
+          navigate={
+            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}/play"
+          }
+          class="btn btn-ghost btn-sm gap-2"
+        >
+          <.icon name="play" class="size-4" />
+          {dgettext("flows", "Play")}
+        </.link>
         <button
           type="button"
           class={[

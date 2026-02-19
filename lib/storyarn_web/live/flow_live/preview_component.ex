@@ -9,12 +9,11 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
 
   alias Storyarn.Flows
   alias Storyarn.Sheets
+  alias StoryarnWeb.FlowLive.Helpers.HtmlSanitizer
 
   # Maximum traversal depth to prevent infinite loops in cyclic flows
   @max_traversal_depth 50
 
-  # Allowed HTML tags from TipTap rich text editor output
-  @allowed_tags ~w(p br b i em strong u s del a ul ol li h1 h2 h3 h4 h5 h6 blockquote pre code span div)
 
   @impl true
   def render(assigns) do
@@ -361,46 +360,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
     |> interpolate_variables()
   end
 
-  defp sanitize_html(html) when is_binary(html) do
-    case Floki.parse_document(html) do
-      {:ok, tree} ->
-        tree
-        |> strip_unsafe_nodes()
-        |> Floki.raw_html()
-
-      _ ->
-        Phoenix.HTML.html_escape(html) |> Phoenix.HTML.safe_to_string()
-    end
-  end
-
-  defp strip_unsafe_nodes(nodes) when is_list(nodes) do
-    Enum.flat_map(nodes, &strip_unsafe_node/1)
-  end
-
-  defp strip_unsafe_node({tag, attrs, children}) do
-    if tag in @allowed_tags do
-      safe_attrs = Enum.reject(attrs, fn {k, v} -> unsafe_attr?(k, v) end)
-      [{tag, safe_attrs, strip_unsafe_nodes(children)}]
-    else
-      # Drop the tag but keep safe children (e.g., <script> is dropped, text inside kept for <div>)
-      strip_unsafe_nodes(children)
-    end
-  end
-
-  defp strip_unsafe_node(text) when is_binary(text), do: [text]
-  defp strip_unsafe_node({:comment, _}), do: []
-  defp strip_unsafe_node(_), do: []
-
-  defp unsafe_attr?(name, _value) when is_binary(name) do
-    downcased = String.downcase(name)
-    String.starts_with?(downcased, "on") || downcased in ~w(srcdoc formaction)
-  end
-
-  defp unsafe_attr?(_name, value) when is_binary(value) do
-    String.contains?(String.downcase(value), "javascript:")
-  end
-
-  defp unsafe_attr?(_name, _value), do: false
+  defp sanitize_html(html) when is_binary(html), do: HtmlSanitizer.sanitize_html(html)
 
   defp interpolate_variables(text) when is_binary(text) do
     Regex.replace(~r/\{(\w+)\}/, text, fn _, var_name ->
