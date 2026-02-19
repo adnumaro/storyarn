@@ -909,6 +909,118 @@ Currently breakpoints are a simple `MapSet.t(integer)` of node IDs — execution
 
 ---
 
+## Multi-Image Map Layers
+
+> **Dependency:** Maps system (implemented), Layers system (implemented)
+> **Priority:** Medium — closes the biggest gap vs World Anvil
+> **Competitive reference:** World Anvil (multiple image layers per map)
+
+### Concept
+
+Allow each map layer to have its own background image, so users can stack multiple images on the same map. This enables use cases like building floors, underdark/overworld, transparent overlays (political borders, climate, wind currents), and before/after views.
+
+Currently a map has a single `background_asset_id`. Layers only control element visibility and fog of war.
+
+### Use Cases
+
+1. **Building floors:** Layer 1 = ground floor, Layer 2 = second floor, Layer 3 = basement
+2. **Underdark/Overworld:** Surface map layer with an underground tunnel layer beneath
+3. **Transparent overlays:** Semi-transparent political borders, trade routes, or climate maps over a geographic base
+4. **Temporal states:** "Before the war" / "After the war" versions of the same region
+5. **GM annotations:** A private layer image with DM-only notes drawn directly on a copy of the map
+
+### Data Model
+
+```elixir
+# Migration: add_background_to_map_layers
+alter table(:map_layers) do
+  add :background_asset_id, references(:assets, on_delete: :nilify_all)
+  add :background_opacity, :float, default: 1.0
+end
+```
+
+Each layer can optionally have its own background image. The existing map-level `background_asset_id` remains as the base/default layer image. Layer images render in layer order (by `position`), each as its own `L.imageOverlay`.
+
+### UI
+
+- Layer panel: each layer row gets a small image thumbnail + upload button
+- Opacity slider per layer image (for transparent overlays)
+- When switching layer visibility, both elements AND the layer's background image toggle together
+- Existing fog of war system works naturally: fog covers the layer's image + elements
+
+### Implementation Notes
+
+- Leaflet supports multiple `L.imageOverlay` instances at different z-indexes
+- Layer background images share the same coordinate bounds as the map (same width/height)
+- Upload reuses existing `AssetUpload` live component
+- Export (PNG/SVG) must composite visible layer images in order
+
+---
+
+## Map Element Group Permissions
+
+> **Dependency:** Maps system (implemented), Layers system (implemented), Collaboration system
+> **Priority:** Low — relevant once Storyarn has GM/player session features
+> **Competitive reference:** World Anvil (Marker Groups with per-group visibility permissions)
+
+### Concept
+
+Allow map element groups (via layers or a new "marker group" concept) to have visibility permissions, so that different users or roles see different pins, zones, and annotations on the same map. This is essential for tabletop RPG sessions where the GM needs to hide certain information from players.
+
+### Use Cases
+
+1. **GM-only markers:** Secret locations, trap markers, hidden NPC positions
+2. **Player-specific knowledge:** "Elf lore" pins visible only to the elf character's player
+3. **Spoiler prevention:** Hide plot-critical locations until they're discovered in-game
+4. **Progressive reveal:** Gradually make markers visible as the party explores
+
+### Design Options
+
+**Option A: Permission tags on layers (simpler)**
+
+Extend the existing layer system with a visibility rule:
+
+```elixir
+alter table(:map_layers) do
+  add :visibility, :string, default: "all"  # "all" | "owner_only" | "role_based"
+  add :visible_to_roles, {:array, :string}, default: []  # ["gm", "player:user_id"]
+end
+```
+
+Pros: Reuses existing layer infrastructure. Users already group elements by layer.
+Cons: One layer = one permission set. Can't have mixed-permission pins on the same layer.
+
+**Option B: Marker groups (more flexible)**
+
+New entity separate from layers:
+
+```elixir
+create table(:map_marker_groups) do
+  add :map_id, references(:maps, on_delete: :delete_all), null: false
+  add :name, :string, null: false
+  add :visibility, :string, default: "all"
+  add :visible_to_roles, {:array, :string}, default: []
+  timestamps()
+end
+
+# Add to pins, zones, annotations:
+add :marker_group_id, references(:map_marker_groups, on_delete: :nilify_all)
+```
+
+Pros: Orthogonal to layers — an element can be on Layer 1 but in the "GM Secrets" group.
+Cons: Another organizational axis to manage.
+
+### Prerequisites
+
+This feature only makes sense once Storyarn has:
+- Session/campaign concept (GM running a game for players)
+- Player roles beyond project membership (GM vs player vs spectator)
+- Real-time map viewing during sessions (players see the shared map)
+
+Without these, there's no one to hide markers from. Defer until session/campaign features are designed.
+
+---
+
 ## Other Ideas (Not Yet Planned)
 
 ### Search & Query System
