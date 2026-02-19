@@ -10,9 +10,8 @@ defmodule StoryarnWeb.MapLive.Show do
   import StoryarnWeb.MapLive.Components.Legend
   import StoryarnWeb.MapLive.Components.MapHeader
   import StoryarnWeb.MapLive.Components.MapSearchPanel
-  import StoryarnWeb.MapLive.Components.PropertiesPanel
   import StoryarnWeb.MapLive.Components.MapPanel
-  import StoryarnWeb.MapLive.Components.ElementPanels
+  import StoryarnWeb.MapLive.Components.FloatingToolbar
 
   alias Storyarn.Maps
   alias Storyarn.Projects
@@ -40,10 +39,8 @@ defmodule StoryarnWeb.MapLive.Show do
         edit_mode={@edit_mode}
       />
 
-      <%!-- Canvas + Properties panel --%>
-      <div class="flex-1 flex overflow-hidden">
-        <%!-- Canvas area --%>
-        <div class="flex-1 relative overflow-hidden">
+      <%!-- Canvas area (full width — no sidebar) --%>
+      <div class="flex-1 relative overflow-hidden">
           <div
             id="map-canvas"
             phx-hook="MapCanvas"
@@ -98,7 +95,7 @@ defmodule StoryarnWeb.MapLive.Show do
           </div>
 
           <%!-- Flash messages overlay --%>
-          <div class="absolute top-2 right-2 z-[1000]">
+          <div class="absolute top-2 left-1/2 -translate-x-1/2 z-[1100]">
             <.flash_group flash={@flash} />
           </div>
 
@@ -110,91 +107,82 @@ defmodule StoryarnWeb.MapLive.Show do
             legend_open={@legend_open}
           />
 
-          <%!-- (Layer bar moved to top-left panel next to search) --%>
+          <%!-- Floating element toolbar --%>
+          <div
+            :if={@selected_element && @can_edit && @edit_mode}
+            id="floating-toolbar-content"
+            phx-hook="FloatingToolbar"
+            class="absolute z-[1050]"
+          >
+            <.floating_toolbar
+              selected_type={@selected_type}
+              selected_element={@selected_element}
+              layers={@layers}
+              can_edit={not Map.get(@selected_element || %{}, :locked, false)}
+              can_toggle_lock={true}
+              project_maps={@project_maps}
+              project_sheets={@project_sheets}
+              project_flows={@project_flows}
+            />
+          </div>
+
+          <%!-- Pin icon upload overlay --%>
+          <div
+            :if={@show_pin_icon_upload && @selected_type == "pin" && @project && @current_scope}
+            class="absolute top-3 right-3 z-[1060] w-64 bg-base-100 rounded-xl border border-base-300 shadow-xl p-3"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-medium">{dgettext("maps", "Upload Icon")}</span>
+              <button
+                type="button"
+                phx-click="toggle_pin_icon_upload"
+                class="btn btn-ghost btn-xs btn-square"
+              >
+                <.icon name="x" class="size-3" />
+              </button>
+            </div>
+            <.live_component
+              module={StoryarnWeb.Components.AssetUpload}
+              id="pin-icon-upload"
+              project={@project}
+              current_user={@current_scope.user}
+              on_upload={fn asset -> send(self(), {:pin_icon_uploaded, asset}) end}
+              accept={~w(image/jpeg image/png image/gif image/webp image/svg+xml)}
+              max_entries={1}
+              max_file_size={524_288}
+            />
+          </div>
+
+          <%!-- Map settings floating panel (gear button) --%>
+          <div
+            id="map-settings-floating"
+            class="hidden absolute top-3 right-3 z-[1000] w-72 max-h-[calc(100vh-8rem)]
+                   overflow-y-auto bg-base-100 rounded-xl border border-base-300 shadow-xl"
+            phx-click-away={JS.add_class("hidden", to: "#map-settings-floating")}
+          >
+            <div class="p-3 border-b border-base-300 flex items-center justify-between">
+              <h2 class="font-medium text-sm flex items-center gap-2">
+                <.icon name="settings" class="size-4" />
+                {dgettext("maps", "Map Settings")}
+              </h2>
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs btn-square"
+                phx-click={JS.add_class("hidden", to: "#map-settings-floating")}
+              >
+                <.icon name="x" class="size-4" />
+              </button>
+            </div>
+            <div :if={@can_edit && @edit_mode} class="p-3">
+              <.map_properties
+                map={@map}
+                show_background_upload={@show_background_upload}
+                project={@project}
+                current_user={@current_scope.user}
+              />
+            </div>
+          </div>
         </div>
-
-        <%!-- Properties panel --%>
-        <aside
-          :if={@selected_element}
-          id="properties-panel"
-          class="w-72 bg-base-100 border-l border-base-300 flex flex-col overflow-hidden shrink-0"
-        >
-          <div class="p-3 border-b border-base-300 flex items-center justify-between">
-            <h2 class="font-medium text-sm flex items-center gap-2">
-              <.icon name={panel_icon(@selected_type)} class="size-4" />
-              {panel_title(@selected_type)}
-            </h2>
-            <button
-              type="button"
-              class="btn btn-ghost btn-xs btn-square"
-              phx-click="deselect"
-            >
-              <.icon name="x" class="size-4" />
-            </button>
-          </div>
-
-          <div class="flex-1 overflow-y-auto p-3">
-            <.pin_properties
-              :if={@selected_type == "pin"}
-              pin={@selected_element}
-              layers={@layers}
-              can_edit={@can_edit and @edit_mode and not Map.get(@selected_element || %{}, :locked, false)}
-              can_toggle_lock={@can_edit and @edit_mode}
-              project_maps={@project_maps}
-              project_sheets={@project_sheets}
-              project_flows={@project_flows}
-              show_pin_icon_upload={@show_pin_icon_upload}
-              project={@project}
-              current_user={@current_scope.user}
-            />
-            <.zone_properties
-              :if={@selected_type == "zone"}
-              zone={@selected_element}
-              layers={@layers}
-              can_edit={@can_edit and @edit_mode and not Map.get(@selected_element || %{}, :locked, false)}
-              can_toggle_lock={@can_edit and @edit_mode}
-              project_maps={@project_maps}
-              project_sheets={@project_sheets}
-              project_flows={@project_flows}
-            />
-            <.connection_properties
-              :if={@selected_type == "connection"}
-              connection={@selected_element}
-              can_edit={@can_edit and @edit_mode}
-            />
-            <.annotation_properties
-              :if={@selected_type == "annotation"}
-              annotation={@selected_element}
-              layers={@layers}
-              can_edit={@can_edit and @edit_mode and not Map.get(@selected_element || %{}, :locked, false)}
-              can_toggle_lock={@can_edit and @edit_mode}
-            />
-          </div>
-        </aside>
-
-        <%!-- Map properties panel (when nothing selected) --%>
-        <aside
-          :if={!@selected_element && @can_edit && @edit_mode}
-          id="map-settings-panel"
-          class="w-72 bg-base-100 border-l border-base-300 flex flex-col overflow-hidden shrink-0"
-        >
-          <div class="p-3 border-b border-base-300">
-            <h2 class="font-medium text-sm flex items-center gap-2">
-              <.icon name="settings" class="size-4" />
-              {dgettext("maps", "Map Properties")}
-            </h2>
-          </div>
-
-          <div class="flex-1 overflow-y-auto p-3">
-            <.map_properties
-              map={@map}
-              show_background_upload={@show_background_upload}
-              project={@project}
-              current_user={@current_scope.user}
-            />
-          </div>
-        </aside>
-      </div>
 
       <%!-- Confirm modals --%>
       <.confirm_modal

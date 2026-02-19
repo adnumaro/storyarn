@@ -168,6 +168,7 @@ export function createZoneHandler(hook, i18n = {}) {
       L.DomEvent.preventDefault(e);
 
       dragging = true;
+      hook.floatingToolbar?.setDragging(true);
       dragPolygon = polygon;
       dragStartLatLng = e.latlng;
       dragOriginalLatLngs = polygon.getLatLngs()[0].map((ll) => L.latLng(ll.lat, ll.lng));
@@ -513,6 +514,7 @@ export function createZoneHandler(hook, i18n = {}) {
 
     // Clean up drag state
     dragging = false;
+    hook.floatingToolbar?.setDragging(false);
     dragPolygon = null;
     dragStartLatLng = null;
     dragOriginalLatLngs = null;

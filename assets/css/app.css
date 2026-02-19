@@ -640,6 +640,149 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
+/* ===== Map Floating Toolbar ===== */
+
+.floating-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: oklch(0.22 0.01 260);
+  border: 1px solid oklch(0.30 0.01 260);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+  color: oklch(0.85 0.01 260);
+  font-size: 0.8125rem;
+}
+
+#floating-toolbar-content {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+#floating-toolbar-content.toolbar-visible {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 4px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: oklch(0.75 0.01 260);
+  cursor: pointer;
+  transition: background-color 0.1s, color 0.1s;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: oklch(0.30 0.01 260);
+  color: oklch(0.95 0.01 260);
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.toolbar-btn-active {
+  background: oklch(0.35 0.02 260) !important;
+  color: oklch(0.95 0.01 260) !important;
+}
+
+.toolbar-separator {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: oklch(0.35 0.01 260);
+}
+
+.toolbar-input {
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid oklch(0.35 0.01 260);
+  border-radius: 5px;
+  background: oklch(0.18 0.01 260);
+  color: oklch(0.90 0.01 260);
+  font-size: 0.75rem;
+  outline: none;
+  transition: border-color 0.1s;
+}
+
+.toolbar-input:focus {
+  border-color: oklch(0.50 0.1 260);
+}
+
+.toolbar-input::placeholder {
+  color: oklch(0.45 0.01 260);
+}
+
+/* Toolbar popovers use the app's light theme (base-* vars) */
+.toolbar-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 160px;
+  background-color: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 10;
+}
+
+/* Color swatches */
+.color-swatch {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  box-shadow: 0 0 1px 1px var(--color-base-content);
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+  flex-shrink: 0;
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  .color-swatch {
+    box-shadow: 0 0 1px 1px color-mix(in oklch, var(--color-base-content) 20%, transparent);
+  }
+}
+
+.color-swatch:hover:not(:disabled) {
+  transform: scale(1.15);
+}
+
+.color-swatch-active {
+  border-color: var(--color-primary, #3b82f6);
+  box-shadow: 0 0 0 1px var(--color-base-100), 0 0 0 3px var(--color-primary, #3b82f6);
+}
+
+.color-swatch-rainbow {
+  background:
+    radial-gradient(50% 50% at 50% 50%, #ffffff 0%, transparent 100%),
+    conic-gradient(from 0deg at 50% 50%, red, #ffa800 47.73deg, #ff0 79.56deg, #0f0 121.33deg, #0ff 180.99deg, #00f 238.67deg, #f0f 294.36deg, red 360deg),
+    #c4c4c4 !important;
+  border: none !important;
+  cursor: pointer;
+}
+
+.color-swatch:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 /* ===== Map Dock ===== */
 
 .dock-btn {

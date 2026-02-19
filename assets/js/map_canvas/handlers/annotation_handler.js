@@ -84,8 +84,21 @@ export function createAnnotationHandler(hook, i18n = {}) {
       hook.contextMenu.show(containerPoint.x, containerPoint.y, items);
     });
 
+    // Double-click → inline text editing
+    marker.on("dblclick", (e) => {
+      L.DomEvent.stopPropagation(e);
+      if (!hook.editMode || annotation.locked) return;
+      enableInlineEditing(marker);
+    });
+
+    // Drag start → hide floating toolbar
+    marker.on("dragstart", () => {
+      hook.floatingToolbar?.setDragging(true);
+    });
+
     // Drag end → persist position
     marker.on("dragend", () => {
+      hook.floatingToolbar?.setDragging(false);
       const pos = toPercent(
         marker.getLatLng(),
         hook.canvasWidth,
@@ -223,6 +236,78 @@ export function createAnnotationHandler(hook, i18n = {}) {
     return min;
   }
 
+  /**
+   * Enables contentEditable inline editing on an annotation marker's text div.
+   * On blur or Enter: pushes the updated text to the server and restores normal state.
+   */
+  function enableInlineEditing(marker) {
+    if (!marker) return;
+    const el = marker.getElement();
+    if (!el) return;
+
+    const textDiv = el.querySelector("[data-annotation-text]");
+    if (!textDiv) return;
+
+    // Already editing?
+    if (textDiv.contentEditable === "true") return;
+
+    textDiv.contentEditable = "true";
+    textDiv.style.cursor = "text";
+    textDiv.style.outline = "none";
+    textDiv.focus();
+
+    // Select all text
+    const range = document.createRange();
+    range.selectNodeContents(textDiv);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    // Disable marker dragging during editing
+    if (marker.dragging) marker.dragging.disable();
+
+    const finishEditing = () => {
+      textDiv.contentEditable = "false";
+      textDiv.style.cursor = "";
+      textDiv.removeEventListener("blur", onBlur);
+      textDiv.removeEventListener("keydown", onKeyDown);
+
+      const newText = textDiv.textContent || "";
+      hook.pushEvent("update_annotation", {
+        id: String(marker.annotationData.id),
+        field: "text",
+        value: newText,
+      });
+
+      // Re-enable dragging if not locked
+      if (marker.dragging && hook.editMode && !marker.annotationData.locked) {
+        marker.dragging.enable();
+      }
+    };
+
+    const onBlur = () => finishEditing();
+    const onKeyDown = (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        textDiv.blur();
+      }
+      if (e.key === "Escape") {
+        // Revert text to original
+        textDiv.textContent = marker.annotationData.text || "";
+        textDiv.contentEditable = "false";
+        textDiv.style.cursor = "";
+        textDiv.removeEventListener("blur", onBlur);
+        textDiv.removeEventListener("keydown", onKeyDown);
+        if (marker.dragging && hook.editMode && !marker.annotationData.locked) {
+          marker.dragging.enable();
+        }
+      }
+    };
+
+    textDiv.addEventListener("blur", onBlur);
+    textDiv.addEventListener("keydown", onKeyDown);
+  }
+
   /** Recalculates all marker positions from stored percentage coords (after canvas resize). */
   function repositionAll() {
     for (const marker of markers.values()) {
@@ -243,6 +328,7 @@ export function createAnnotationHandler(hook, i18n = {}) {
     clearDimming,
     focusAnnotation,
     setEditMode,
+    enableInlineEditing,
     markers,
   };
 }

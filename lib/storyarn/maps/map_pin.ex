@@ -47,6 +47,7 @@ defmodule Storyarn.Maps.MapPin do
     field :pin_type, :string, default: "location"
     field :icon, :string
     field :color, :string
+    field :opacity, :float, default: 1.0
     field :label, :string
     field :target_type, :string
     field :target_id, :integer
@@ -84,6 +85,7 @@ defmodule Storyarn.Maps.MapPin do
       :pin_type,
       :icon,
       :color,
+      :opacity,
       :label,
       :target_type,
       :target_id,
@@ -100,6 +102,7 @@ defmodule Storyarn.Maps.MapPin do
     |> validate_number(:position_y, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
     |> validate_inclusion(:pin_type, @valid_pin_types)
     |> validate_inclusion(:size, @valid_sizes)
+    |> validate_number(:opacity, greater_than_or_equal_to: 0, less_than_or_equal_to: 1)
     |> validate_target_pair(@valid_target_types)
     |> validate_length(:label, max: 200)
     |> validate_length(:color, max: 20)

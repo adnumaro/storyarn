@@ -264,7 +264,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
          |> assign(:selected_element, annotation)
          |> push_event("annotation_created", serialize_annotation(annotation))
          |> push_event("element_selected", %{type: "annotation", id: annotation.id})
-         |> push_event("focus_annotation_text", %{})
+         |> push_event("focus_annotation_text", %{id: annotation.id})
          |> reset_tool_to_select()}
 
       {:error, _} ->

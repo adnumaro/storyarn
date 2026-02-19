@@ -27,6 +27,15 @@ const PIN_SIZES = {
 const DEFAULT_COLOR = "#3b82f6";
 const SELECTED_RING_CLASS = "map-pin-selected";
 
+/** Converts a hex color + opacity (0-1) to an rgba string. */
+function hexWithOpacity(hex, opacity) {
+  if (opacity == null || opacity >= 1) return hex;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${opacity})`;
+}
+
 /** Escapes a string for safe injection into innerHTML. */
 function escapeHtml(str) {
   const div = document.createElement("div");
@@ -124,14 +133,15 @@ const LOCK_BADGE = `<div style="position:absolute;top:-4px;right:-4px;width:14px
  */
 function buildPinHtml(pin, color, dims) {
   const safeColor = sanitizeColor(color);
+  const bgColor = hexWithOpacity(safeColor, pin.opacity);
   let inner;
 
   if (pin.icon_asset_url) {
-    inner = buildIconAssetPinHtml(pin, safeColor, dims);
+    inner = buildIconAssetPinHtml(pin, safeColor, bgColor, dims);
   } else if (pin.avatar_url) {
-    inner = buildAvatarPinHtml(pin, safeColor, dims);
+    inner = buildAvatarPinHtml(pin, safeColor, bgColor, dims);
   } else if (pin.sheet_id && !pin.avatar_url) {
-    inner = buildInitialsPinHtml(pin, safeColor, dims);
+    inner = buildInitialsPinHtml(pin, bgColor, dims);
   } else {
     const IconClass = PIN_ICONS[pin.pin_type] || PIN_ICONS.location;
     const iconSize = Math.round(dims.icon * 0.55);
@@ -146,7 +156,7 @@ function buildPinHtml(pin, color, dims) {
     wrapper.style.cssText = `
       width: ${dims.icon}px;
       height: ${dims.icon}px;
-      background: ${safeColor};
+      background: ${bgColor};
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -166,28 +176,28 @@ function buildPinHtml(pin, color, dims) {
 }
 
 /** Builds a pin with a circular avatar image. */
-function buildAvatarPinHtml(pin, color, dims) {
-  const size = dims.icon + 4;
+function buildAvatarPinHtml(pin, _borderColor, bgColor, dims) {
+  const size = dims.icon;
   const safeUrl = encodeURI(pin.avatar_url);
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;border:2px solid ${color};overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:grab;background:${color}">
-    <img src="${safeUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />
+  return `<div style="width:${size}px;height:${size}px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:grab;background:${bgColor}">
+    <img src="${safeUrl}" style="width:100%;height:100%;object-fit:cover" />
   </div>`;
 }
 
 /** Builds a pin with a custom uploaded icon image. */
-function buildIconAssetPinHtml(pin, color, dims) {
-  const size = dims.icon + 4;
+function buildIconAssetPinHtml(pin, _borderColor, bgColor, dims) {
+  const size = dims.icon;
   const safeUrl = encodeURI(pin.icon_asset_url);
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;border:2px solid ${color};overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:grab;background:${color};display:flex;align-items:center;justify-content:center">
-    <img src="${safeUrl}" style="width:${dims.icon}px;height:${dims.icon}px;object-fit:contain;border-radius:50%" />
+  return `<div style="width:${size}px;height:${size}px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:grab;background:${bgColor};display:flex;align-items:center;justify-content:center">
+    <img src="${safeUrl}" style="width:${dims.icon}px;height:${dims.icon}px;object-fit:contain" />
   </div>`;
 }
 
 /** Builds a pin with initials (sheet linked but no avatar). */
-function buildInitialsPinHtml(pin, color, dims) {
+function buildInitialsPinHtml(pin, bgColor, dims) {
   const initials = escapeHtml((pin.label || "?").slice(0, 2).toUpperCase());
   const fontSize = Math.round(dims.icon * 0.38);
-  return `<div style="width:${dims.icon}px;height:${dims.icon}px;background:${color};border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:grab">
+  return `<div style="width:${dims.icon}px;height:${dims.icon}px;background:${bgColor};border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:grab">
     <span style="color:#fff;font-size:${fontSize}px;font-weight:600;line-height:1">${initials}</span>
   </div>`;
 }

@@ -10,6 +10,8 @@ defmodule StoryarnWeb.MapLive.Components.MapHeader do
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Phoenix.LiveView.JS
+
   import StoryarnWeb.Components.CoreComponents
 
   attr :map, :map, required: true
@@ -98,6 +100,17 @@ defmodule StoryarnWeb.MapLive.Components.MapHeader do
             </li>
           </ul>
         </div>
+
+        <%!-- Map settings gear button --%>
+        <button
+          :if={@can_edit && @edit_mode}
+          type="button"
+          class="btn btn-ghost btn-sm btn-square"
+          title={dgettext("maps", "Map Settings")}
+          phx-click={JS.toggle_class("hidden", to: "#map-settings-floating")}
+        >
+          <.icon name="settings" class="size-4" />
+        </button>
 
         <%!-- Edit/View mode switcher --%>
         <div :if={@can_edit} class="flex rounded-lg border border-base-300 overflow-hidden">

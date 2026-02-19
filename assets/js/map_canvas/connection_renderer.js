@@ -89,11 +89,12 @@ export function updateConnectionEndpoints(line, pinMarkers) {
  */
 export function setConnectionSelected(line, selected) {
   if (selected) {
-    line.setStyle({ weight: SELECTED_WEIGHT, opacity: 1 });
+    const baseWeight = line.connData?.line_width || DEFAULT_WEIGHT;
+    line.setStyle({ weight: Math.max(baseWeight, SELECTED_WEIGHT), opacity: 1 });
   } else {
     const conn = line.connData;
     line.setStyle({
-      weight: DEFAULT_WEIGHT,
+      weight: conn.line_width || DEFAULT_WEIGHT,
       opacity: 0.8,
       dashArray: DASH_PATTERNS[conn.line_style] || null,
     });
@@ -316,7 +317,7 @@ function pathMidpointAndAngle(latLngs, map) {
 function buildConnectionStyle(conn) {
   return {
     color: conn.color || DEFAULT_COLOR,
-    weight: DEFAULT_WEIGHT,
+    weight: conn.line_width || DEFAULT_WEIGHT,
     dashArray: DASH_PATTERNS[conn.line_style] || null,
     opacity: 0.8,
     interactive: true,

@@ -729,7 +729,7 @@ defmodule StoryarnWeb.MapLive.ShowTest do
   describe "select_element with properties panel" do
     setup :register_and_log_in_user
 
-    test "selecting a pin shows pin properties panel", %{conn: conn, user: user} do
+    test "selecting a pin shows floating toolbar with pin data", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       map = map_fixture(project)
       pin = pin_fixture(map, %{"label" => "Castle"})
@@ -742,12 +742,12 @@ defmodule StoryarnWeb.MapLive.ShowTest do
 
       html = render_hook(view, "select_element", %{"type" => "pin", "id" => pin.id})
 
-      assert html =~ "Pin Properties"
+      assert html =~ "floating-toolbar"
       assert html =~ "Castle"
-      assert html =~ "properties-panel"
+      assert html =~ "update_pin"
     end
 
-    test "selecting a zone shows zone properties panel", %{conn: conn, user: user} do
+    test "selecting a zone shows floating toolbar with zone data", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       map = map_fixture(project)
       zone = zone_fixture(map, %{"name" => "Dark Forest"})
@@ -760,12 +760,12 @@ defmodule StoryarnWeb.MapLive.ShowTest do
 
       html = render_hook(view, "select_element", %{"type" => "zone", "id" => zone.id})
 
-      assert html =~ "Zone Properties"
+      assert html =~ "floating-toolbar"
       assert html =~ "Dark Forest"
-      assert html =~ "properties-panel"
+      assert html =~ "update_zone"
     end
 
-    test "deselect hides properties panel", %{conn: conn, user: user} do
+    test "deselect hides floating toolbar", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       map = map_fixture(project)
       pin = pin_fixture(map)
@@ -779,7 +779,7 @@ defmodule StoryarnWeb.MapLive.ShowTest do
       render_hook(view, "select_element", %{"type" => "pin", "id" => pin.id})
       html = render_hook(view, "deselect", %{})
 
-      refute html =~ "properties-panel"
+      refute html =~ "floating-toolbar"
     end
   end
 
@@ -1220,8 +1220,8 @@ defmodule StoryarnWeb.MapLive.ShowTest do
           "id" => connection.id
         })
 
-      assert html =~ "Connection Properties"
-      assert html =~ "properties-panel"
+      assert html =~ "floating-toolbar"
+      assert html =~ "update_connection"
     end
 
     test "delete_connection removes and clears selection", %{conn: conn, user: user} do
@@ -2660,9 +2660,9 @@ defmodule StoryarnWeb.MapLive.ShowTest do
           "id" => to_string(pin.id)
         })
 
-      # Properties panel should show for the selected pin
-      assert html =~ "properties-panel"
-      assert html =~ "Pin Properties"
+      # Floating toolbar should show for the selected pin
+      assert html =~ "floating-toolbar"
+      assert html =~ "update_pin"
     end
 
     test "handles non-existent element gracefully", %{conn: conn, user: user} do

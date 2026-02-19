@@ -112,6 +112,11 @@ export function createPinHandler(hook, i18n = {}) {
       hook.contextMenu.show(containerPoint.x, containerPoint.y, items);
     });
 
+    // Drag start → hide floating toolbar
+    marker.on("dragstart", () => {
+      hook.floatingToolbar?.setDragging(true);
+    });
+
     // Drag → update connected lines in real time
     marker.on("drag", () => {
       if (hook.connectionHandler) {
@@ -121,6 +126,7 @@ export function createPinHandler(hook, i18n = {}) {
 
     // Drag end → persist position
     marker.on("dragend", () => {
+      hook.floatingToolbar?.setDragging(false);
       // Final endpoint sync
       if (hook.connectionHandler) {
         hook.connectionHandler.updateEndpointsForPin(pin.id);

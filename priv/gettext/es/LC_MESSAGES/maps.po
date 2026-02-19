@@ -11,24 +11,17 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:111
-#, elixir-autogen, elixir-format
-msgid "%{count} waypoint"
-msgid_plural "%{count} waypoints"
-msgstr[0] "%{count} palabra"
-msgstr[1] ""
-
 #: lib/storyarn_web/live/map_live/components/map_panel.ex:113
 #, elixir-autogen, elixir-format
 msgid "1 map width = %{value} %{unit}"
 msgstr "1 ancho de mapa = %{value} %{unit}"
 
-#: lib/storyarn_web/live/map_live/show.ex:316
+#: lib/storyarn_web/live/map_live/show.ex:277
 #, elixir-autogen, elixir-format
 msgid "Add Annotation Here"
 msgstr "Añadir anotación aquí"
 
-#: lib/storyarn_web/live/map_live/show.ex:315
+#: lib/storyarn_web/live/map_live/show.ex:276
 #, elixir-autogen, elixir-format
 msgid "Add Pin Here"
 msgstr "Añadir marcador aquí"
@@ -72,7 +65,7 @@ msgstr "Anotación eliminada. Pulsa Ctrl+Z para deshacer."
 
 #: lib/storyarn_web/components/sidebar/map_tree.ex:84
 #: lib/storyarn_web/live/map_live/index.ex:75
-#: lib/storyarn_web/live/map_live/show.ex:204
+#: lib/storyarn_web/live/map_live/show.ex:165
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to delete this map?"
 msgstr "¿Estás seguro de que quieres eliminar este nodo?"
@@ -82,32 +75,17 @@ msgstr "¿Estás seguro de que quieres eliminar este nodo?"
 msgid "Background Image"
 msgstr "Imagen de fondo"
 
-#: lib/storyarn_web/live/map_live/show.ex:776
+#: lib/storyarn_web/live/map_live/show.ex:737
 #, elixir-autogen, elixir-format
 msgid "Background image updated."
 msgstr "Imagen de fondo actualizada."
 
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:93
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:484
 #, elixir-autogen, elixir-format
 msgid "Bidirectional"
 msgstr "Bidireccional"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:317
-#, elixir-autogen, elixir-format
-msgid "Border Color"
-msgstr "Color del borde"
-
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:355
-#, elixir-autogen, elixir-format
-msgid "Border Style"
-msgstr "Estilo del borde"
-
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:373
-#, elixir-autogen, elixir-format
-msgid "Border Width"
-msgstr "Ancho del borde"
-
-#: lib/storyarn_web/live/map_live/show.ex:310
+#: lib/storyarn_web/live/map_live/show.ex:271
 #, elixir-autogen, elixir-format
 msgid "Bring to Front"
 msgstr "Traer al frente"
@@ -130,15 +108,9 @@ msgid "Cannot delete the last layer of a map."
 msgstr "No se puede eliminar la última capa del mapa."
 
 #: lib/storyarn_web/live/map_live/components/map_panel.ex:43
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:185
 #, elixir-autogen, elixir-format
 msgid "Change"
 msgstr "Cambiar"
-
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:539
-#, elixir-autogen, elixir-format
-msgid "Character"
-msgstr "Personaje"
 
 #: lib/storyarn_web/live/map_live/components/dock.ex:243
 #, elixir-autogen, elixir-format
@@ -150,14 +122,15 @@ msgstr "Círculo"
 msgid "Click on canvas to place"
 msgstr "Haz clic en el lienzo para colocar"
 
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:62
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:211
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:97
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:298
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:463
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:553
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:178
 #, elixir-autogen, elixir-format
 msgid "Color"
 msgstr "Color"
 
-#: lib/storyarn_web/live/map_live/show.ex:307
+#: lib/storyarn_web/live/map_live/show.ex:268
 #, elixir-autogen, elixir-format
 msgid "Connect To…"
 msgstr "Conectar"
@@ -318,7 +291,7 @@ msgstr "No se pudo subir el banner."
 msgid "Could not update annotation."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/show.ex:779
+#: lib/storyarn_web/live/map_live/show.ex:740
 #, elixir-autogen, elixir-format
 msgid "Could not update background."
 msgstr "No se pudo actualizar el bloque."
@@ -338,7 +311,7 @@ msgstr "No se pudo actualizar el contenido."
 msgid "Could not update map scale."
 msgstr "No se pudo actualizar el color."
 
-#: lib/storyarn_web/live/map_live/show.ex:799
+#: lib/storyarn_web/live/map_live/show.ex:760
 #, elixir-autogen, elixir-format
 msgid "Could not update pin icon."
 msgstr "No se pudo actualizar el contenido."
@@ -373,61 +346,30 @@ msgstr "Crea mapas para visualizar tu mundo"
 msgid "Creating..."
 msgstr "Creando..."
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:541
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:88
 #, elixir-autogen, elixir-format
 msgid "Custom"
 msgstr "Etiquetas personalizadas"
-
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:167
-#, elixir-autogen, elixir-format
-msgid "Custom Icon"
-msgstr "Icono personalizado"
-
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:273
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:552
-#, elixir-autogen, elixir-format
-msgid "Dashed"
-msgstr "Discontinuo"
 
 #: lib/storyarn_web/components/sidebar/map_tree.ex:85
 #: lib/storyarn_web/live/map_live/components/layer_bar.ex:154
 #: lib/storyarn_web/live/map_live/index.ex:76
 #: lib/storyarn_web/live/map_live/index.ex:143
-#: lib/storyarn_web/live/map_live/show.ex:205
-#: lib/storyarn_web/live/map_live/show.ex:220
-#: lib/storyarn_web/live/map_live/show.ex:314
+#: lib/storyarn_web/live/map_live/show.ex:166
+#: lib/storyarn_web/live/map_live/show.ex:181
+#: lib/storyarn_web/live/map_live/show.ex:275
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr "Eliminar"
 
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:254
-#, elixir-autogen, elixir-format
-msgid "Delete Annotation"
-msgstr "Eliminar anotación"
-
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:138
-#, elixir-autogen, elixir-format
-msgid "Delete Connection"
-msgstr "eliminó una conexión"
-
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:244
-#, elixir-autogen, elixir-format
-msgid "Delete Pin"
-msgstr "Eliminar"
-
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:445
-#, elixir-autogen, elixir-format
-msgid "Delete Zone"
-msgstr "Eliminar nodo"
-
-#: lib/storyarn_web/live/map_live/show.ex:214
+#: lib/storyarn_web/live/map_live/show.ex:175
 #, elixir-autogen, elixir-format
 msgid "Delete layer?"
 msgstr "Eliminar"
 
 #: lib/storyarn_web/components/sidebar/map_tree.ex:83
 #: lib/storyarn_web/live/map_live/index.ex:74
-#: lib/storyarn_web/live/map_live/show.ex:203
+#: lib/storyarn_web/live/map_live/show.ex:164
 #, elixir-autogen, elixir-format
 msgid "Delete map?"
 msgstr "Eliminar"
@@ -452,17 +394,6 @@ msgstr "Dimensiones"
 msgid "Disable Fog"
 msgstr "Desactivar niebla"
 
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:274
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:553
-#, elixir-autogen, elixir-format
-msgid "Dotted"
-msgstr "Punteado"
-
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:126
-#, elixir-autogen, elixir-format
-msgid "Double-click the line to add waypoints."
-msgstr "Haz doble clic en la línea para añadir puntos de ruta."
-
 #: lib/storyarn_web/live/map_live/components/dock.ex:157
 #, elixir-autogen, elixir-format
 msgid "Draw connections between two pins. Click the source pin, then the target."
@@ -473,22 +404,22 @@ msgstr "Traza conexiones entre dos marcadores. Haz clic en el marcador de origen
 msgid "Draw shapes to define areas on the map"
 msgstr "Dibuja formas para definir áreas en el mapa"
 
-#: lib/storyarn_web/live/map_live/show.ex:309
+#: lib/storyarn_web/live/map_live/show.ex:270
 #, elixir-autogen, elixir-format
 msgid "Duplicate"
 msgstr "Duplicar"
 
-#: lib/storyarn_web/live/map_live/components/map_header.ex:120
+#: lib/storyarn_web/live/map_live/components/map_header.ex:133
 #, elixir-autogen, elixir-format
 msgid "Edit"
 msgstr "Editor"
 
-#: lib/storyarn_web/live/map_live/show.ex:306
+#: lib/storyarn_web/live/map_live/show.ex:267
 #, elixir-autogen, elixir-format
 msgid "Edit Properties"
 msgstr "Editar propiedades"
 
-#: lib/storyarn_web/live/map_live/show.ex:308
+#: lib/storyarn_web/live/map_live/show.ex:269
 #, elixir-autogen, elixir-format
 msgid "Edit Vertices"
 msgstr "Editar vértices"
@@ -498,32 +429,27 @@ msgstr "Editar vértices"
 msgid "Enable Fog"
 msgstr "Activar niebla"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:540
-#, elixir-autogen, elixir-format
-msgid "Event"
-msgstr "Evento"
-
-#: lib/storyarn_web/live/map_live/components/map_header.ex:81
+#: lib/storyarn_web/live/map_live/components/map_header.ex:83
 #, elixir-autogen, elixir-format
 msgid "Export"
 msgstr "Exportar"
 
-#: lib/storyarn_web/live/map_live/components/map_header.ex:90
+#: lib/storyarn_web/live/map_live/components/map_header.ex:92
 #, elixir-autogen, elixir-format
 msgid "Export as PNG"
 msgstr "Exportar como PNG"
 
-#: lib/storyarn_web/live/map_live/components/map_header.ex:96
+#: lib/storyarn_web/live/map_live/components/map_header.ex:98
 #, elixir-autogen, elixir-format
 msgid "Export as SVG"
 msgstr "Exportar como SVG"
 
-#: lib/storyarn_web/live/map_live/components/map_header.ex:78
+#: lib/storyarn_web/live/map_live/components/map_header.ex:80
 #, elixir-autogen, elixir-format
 msgid "Export map"
 msgstr "Exportar mapa"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:301
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:113
 #, elixir-autogen, elixir-format
 msgid "Fill Color"
 msgstr "Color de relleno"
@@ -533,7 +459,7 @@ msgstr "Color de relleno"
 msgid "Filter maps..."
 msgstr "Filtrar flujos..."
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:560
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:526
 #, elixir-autogen, elixir-format
 msgid "Flow"
 msgstr "Flujos"
@@ -542,11 +468,6 @@ msgstr "Flujos"
 #, elixir-autogen, elixir-format
 msgid "Fog of War enabled"
 msgstr "Niebla de guerra activada"
-
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:193
-#, elixir-autogen, elixir-format
-msgid "Font Size"
-msgstr "Tamaño de fuente"
 
 #: lib/storyarn_web/live/map_live/components/dock.ex:117
 #, elixir-autogen, elixir-format
@@ -568,21 +489,14 @@ msgstr "Desde ficha"
 msgid "Invalid zone: %{reason}"
 msgstr "Zona no válida: %{reason}"
 
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:30
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:65
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:248
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:427
 #, elixir-autogen, elixir-format
 msgid "Label"
 msgstr "Etiqueta"
 
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:269
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:546
-#, elixir-autogen, elixir-format
-msgid "Large"
-msgstr "Grande"
-
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:227
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:145
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:405
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:275
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:290
 #, elixir-autogen, elixir-format
 msgid "Layer"
 msgstr "Capa"
@@ -618,11 +532,6 @@ msgstr "Capas"
 msgid "Legend"
 msgstr "Leyenda"
 
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:44
-#, elixir-autogen, elixir-format
-msgid "Line Style"
-msgstr "Estilo de línea"
-
 #: lib/storyarn_web/live/map_live/components/map_search_panel.ex:53
 #, elixir-autogen, elixir-format
 msgid "Lines"
@@ -633,37 +542,26 @@ msgstr "Líneas"
 msgid "Link a character or item"
 msgstr "Vincular un personaje o elemento"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:473
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:199
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:373
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:342
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:364
 #, elixir-autogen, elixir-format
 msgid "Link to"
 msgstr "Vincular a"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:538
-#, elixir-autogen, elixir-format
-msgid "Location"
-msgstr "ID de localización"
-
-#: lib/storyarn_web/live/map_live/show.ex:312
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:154
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:328
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:583
+#: lib/storyarn_web/live/map_live/show.ex:273
 #, elixir-autogen, elixir-format
 msgid "Lock"
 msgstr "Bloquear"
 
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:163
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:50
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:272
-#, elixir-autogen, elixir-format
-msgid "Locked"
-msgstr "Bloqueado"
-
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:561
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:527
 #, elixir-autogen, elixir-format
 msgid "Map"
 msgstr "Mapa"
-
-#: lib/storyarn_web/live/map_live/show.ex:184
-#, elixir-autogen, elixir-format
-msgid "Map Properties"
-msgstr "Propiedades del mapa"
 
 #: lib/storyarn_web/live/map_live/components/map_panel.ex:84
 #, elixir-autogen, elixir-format
@@ -688,13 +586,13 @@ msgstr "Mapa movido a la papelera."
 
 #: lib/storyarn_web/live/map_live/index.ex:223
 #: lib/storyarn_web/live/map_live/index.ex:285
-#: lib/storyarn_web/live/map_live/show.ex:252
+#: lib/storyarn_web/live/map_live/show.ex:213
 #, elixir-autogen, elixir-format
 msgid "Map not found."
 msgstr "Miembro no encontrado."
 
 #: lib/storyarn_web/components/sidebar/map_tree.ex:29
-#: lib/storyarn_web/live/map_live/components/map_header.ex:31
+#: lib/storyarn_web/live/map_live/components/map_header.ex:33
 #: lib/storyarn_web/live/map_live/index.ex:27
 #, elixir-autogen, elixir-format
 msgid "Maps"
@@ -705,18 +603,12 @@ msgstr "Mapas"
 msgid "Measure distances between two points on the map"
 msgstr "Mide distancias entre dos puntos del mapa"
 
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:268
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:545
-#, elixir-autogen, elixir-format
-msgid "Medium"
-msgstr "Mediano"
-
 #: lib/storyarn_web/components/sidebar/map_tree.ex:283
 #, elixir-autogen, elixir-format
 msgid "Move to Trash"
 msgstr "Mover a la papelera"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:287
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:99
 #: lib/storyarn_web/live/map_live/form.ex:27
 #, elixir-autogen, elixir-format
 msgid "Name"
@@ -766,10 +658,7 @@ msgstr "No se han encontrado resultados"
 msgid "No sheet selected."
 msgstr "Aún no hay fichas"
 
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:237
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:155
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:415
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:485
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:301
 #, elixir-autogen, elixir-format
 msgid "None"
 msgstr "No"
@@ -786,7 +675,7 @@ msgstr "No"
 msgid "Notes"
 msgstr "Notas"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:334
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:237
 #, elixir-autogen, elixir-format
 msgid "Opacity"
 msgstr "Opacidad"
@@ -801,11 +690,6 @@ msgstr "Panorámica"
 #, elixir-autogen, elixir-format
 msgid "Pan and scroll around the map"
 msgstr "Navega y desplázate por el mapa"
-
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:108
-#, elixir-autogen, elixir-format
-msgid "Path"
-msgstr "Ruta"
 
 #: lib/storyarn_web/components/sidebar/map_tree.ex:185
 #: lib/storyarn_web/live/map_live/components/dock.ex:136
@@ -825,12 +709,7 @@ msgstr "Propiedades del marcador"
 msgid "Pin deleted. Press Ctrl+Z to undo."
 msgstr "Marcador eliminado. Pulsa Ctrl+Z para deshacer."
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:174
-#, elixir-autogen, elixir-format
-msgid "Pin icon"
-msgstr "Icono del marcador"
-
-#: lib/storyarn_web/live/map_live/show.ex:796
+#: lib/storyarn_web/live/map_live/show.ex:757
 #, elixir-autogen, elixir-format
 msgid "Pin icon updated."
 msgstr "Icono del marcador actualizado."
@@ -867,7 +746,6 @@ msgid "Rectangle"
 msgstr "Rectángulo"
 
 #: lib/storyarn_web/live/map_live/components/map_panel.ex:51
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:193
 #, elixir-autogen, elixir-format
 msgid "Remove"
 msgstr "Eliminar"
@@ -894,7 +772,7 @@ msgstr "Buscar proyectos..."
 msgid "Select"
 msgstr "Selección"
 
-#: lib/storyarn_web/live/map_live/show.ex:86
+#: lib/storyarn_web/live/map_live/show.ex:83
 #, elixir-autogen, elixir-format
 msgid "Select a sheet"
 msgstr "Selección"
@@ -904,12 +782,7 @@ msgstr "Selección"
 msgid "Select elements on the canvas"
 msgstr "Selecciona elementos en el lienzo"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:501
-#, elixir-autogen, elixir-format
-msgid "Select..."
-msgstr "Seleccionar..."
-
-#: lib/storyarn_web/live/map_live/show.ex:311
+#: lib/storyarn_web/live/map_live/show.ex:272
 #, elixir-autogen, elixir-format
 msgid "Send to Back"
 msgstr "Enviar al fondo"
@@ -919,7 +792,7 @@ msgstr "Enviar al fondo"
 msgid "Set as active layer"
 msgstr "Establecer como capa activa"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:559
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:525
 #, elixir-autogen, elixir-format
 msgid "Sheet"
 msgstr "Fichas"
@@ -939,34 +812,7 @@ msgstr "Atajo"
 msgid "Show legend"
 msgstr "Mostrar leyenda"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:113
-#, elixir-autogen, elixir-format
-msgid "Size"
-msgstr "Tamaño"
-
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:267
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:544
-#, elixir-autogen, elixir-format
-msgid "Small"
-msgstr "Pequeño"
-
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:272
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:551
-#, elixir-autogen, elixir-format
-msgid "Solid"
-msgstr "Sólido"
-
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:122
-#, elixir-autogen, elixir-format
-msgid "Straighten"
-msgstr "Alinear"
-
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:178
-#, elixir-autogen, elixir-format
-msgid "Text"
-msgstr "Texto"
-
-#: lib/storyarn_web/live/map_live/show.ex:216
+#: lib/storyarn_web/live/map_live/show.ex:177
 #, elixir-autogen, elixir-format
 msgid "This layer will be deleted. All elements on this layer will be moved to no layer."
 msgstr "Esta capa se eliminará. Todos los elementos de esta capa perderán su capa asignada."
@@ -976,8 +822,8 @@ msgstr "Esta capa se eliminará. Todos los elementos de esta capa perderán su c
 msgid "Toggle visibility"
 msgstr "Alternar visibilidad"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:131
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:391
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:183
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:357
 #, elixir-autogen, elixir-format
 msgid "Tooltip"
 msgstr "Descripción emergente"
@@ -992,12 +838,12 @@ msgstr "Ancho total"
 msgid "Triangle"
 msgstr "Naranja"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:79
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:260
 #, elixir-autogen, elixir-format
 msgid "Type"
 msgstr "Tipo"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:562
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:528
 #, elixir-autogen, elixir-format
 msgid "URL"
 msgstr "URL"
@@ -1027,19 +873,15 @@ msgstr "Deshacer: zona restaurada."
 msgid "Unit"
 msgstr "Unidad"
 
-#: lib/storyarn_web/live/map_live/show.ex:313
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:154
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:328
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:583
+#: lib/storyarn_web/live/map_live/show.ex:274
 #, elixir-autogen, elixir-format
 msgid "Unlock"
 msgstr "Desbloquear"
 
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:163
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:50
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:272
-#, elixir-autogen, elixir-format
-msgid "Unlocked"
-msgstr "Desbloqueado"
-
-#: lib/storyarn_web/live/map_live/components/map_header.ex:58
+#: lib/storyarn_web/live/map_live/components/map_header.ex:60
 #: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:20
 #: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:34
 #: lib/storyarn_web/live/map_live/index.ex:236
@@ -1053,12 +895,7 @@ msgstr "Sin título"
 msgid "Upload Background"
 msgstr "Subir fondo"
 
-#: lib/storyarn_web/live/map_live/components/properties_panel.ex:205
-#, elixir-autogen, elixir-format
-msgid "Upload Icon"
-msgstr "Subir"
-
-#: lib/storyarn_web/live/map_live/components/map_header.ex:111
+#: lib/storyarn_web/live/map_live/components/map_header.ex:124
 #, elixir-autogen, elixir-format
 msgid "View"
 msgstr "Visor"
@@ -1069,7 +906,7 @@ msgid "World Map"
 msgstr "Mapa del mundo"
 
 #: lib/storyarn_web/live/map_live/index.ex:185
-#: lib/storyarn_web/live/map_live/show.ex:264
+#: lib/storyarn_web/live/map_live/show.ex:225
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
 msgstr "No tienes acceso a este proyecto."
@@ -1078,7 +915,7 @@ msgstr "No tienes acceso a este proyecto."
 #: lib/storyarn_web/live/map_live/index.ex:250
 #: lib/storyarn_web/live/map_live/index.ex:273
 #: lib/storyarn_web/live/map_live/index.ex:291
-#: lib/storyarn_web/live/map_live/show.ex:819
+#: lib/storyarn_web/live/map_live/show.ex:780
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."
@@ -1177,7 +1014,7 @@ msgstr "No se pudo actualizar el contenido."
 msgid "Could not paste zone."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/show.ex:317
+#: lib/storyarn_web/live/map_live/show.ex:278
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Create child map"
 msgstr "Crear mapa"
@@ -1187,7 +1024,7 @@ msgstr "Crear mapa"
 msgid "Name the zone before creating a child map."
 msgstr "Nombra la zona antes de crear un mapa hijo."
 
-#: lib/storyarn_web/live/map_live/show.ex:318
+#: lib/storyarn_web/live/map_live/show.ex:279
 #, elixir-autogen, elixir-format
 msgid "Name the zone first"
 msgstr "Nombra la zona primero"
@@ -1207,7 +1044,7 @@ msgstr "Zona duplicada."
 msgid "Pin pasted."
 msgstr "Marcador pegado."
 
-#: lib/storyarn_web/live/map_live/components/element_panels.ex:78
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:473
 #, elixir-autogen, elixir-format
 msgid "Show Label"
 msgstr "Mostrar etiqueta"
@@ -1227,3 +1064,77 @@ msgstr "Zona no encontrada."
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Zone pasted."
 msgstr "Zonas"
+
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:419
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:455
+#, elixir-autogen, elixir-format
+msgid "Back"
+msgstr ""
+
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:121
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Border"
+msgstr "Color del borde"
+
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:399
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Change Icon"
+msgstr "Cambiar"
+
+#: lib/storyarn_web/live/map_live/components/map_header.ex:109
+#: lib/storyarn_web/live/map_live/show.ex:139
+#, elixir-autogen, elixir-format
+msgid "Map Settings"
+msgstr ""
+
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:167
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:341
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:498
+#, elixir-autogen, elixir-format
+msgid "More"
+msgstr ""
+
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:351
+#, elixir-autogen, elixir-format
+msgid "No link"
+msgstr ""
+
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:524
+#, elixir-autogen, elixir-format
+msgid "No waypoints"
+msgstr ""
+
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:379
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Remove link"
+msgstr "Eliminar"
+
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:521
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Straighten path"
+msgstr "Alinear"
+
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:150
+#, elixir-autogen, elixir-format
+msgid "Style"
+msgstr ""
+
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:196
+#, elixir-autogen, elixir-format
+msgid "Width"
+msgstr ""
+
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex
+#, elixir-autogen, elixir-format
+msgid "Location"
+msgstr "Ubicacion"
+
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex
+#, elixir-autogen, elixir-format
+msgid "Character"
+msgstr "Personaje"
+
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex
+#, elixir-autogen, elixir-format
+msgid "Event"
+msgstr "Evento"

@@ -17,6 +17,7 @@ import { createContextMenu } from "../map_canvas/context_menu.js";
 import { createMinimap } from "../map_canvas/minimap.js";
 import { createRuler } from "../map_canvas/ruler.js";
 import { exportPNG, exportSVG } from "../map_canvas/exporter.js";
+import { createFloatingToolbar } from "../map_canvas/floating_toolbar.js";
 
 export const MapCanvas = {
   mounted() {
@@ -32,6 +33,7 @@ export const MapCanvas = {
     if (this._keydownHandler) {
       document.removeEventListener("keydown", this._keydownHandler);
     }
+    if (this.floatingToolbar) this.floatingToolbar.hide();
     if (this.ruler) this.ruler.destroy();
     if (this.minimap) this.minimap.destroy();
     if (this.contextMenu) this.contextMenu.destroy();
@@ -79,6 +81,15 @@ export const MapCanvas = {
     // Context menu (shared across all handlers)
     this.contextMenu = createContextMenu(this);
 
+    // Floating toolbar (positioned above selected element)
+    this.floatingToolbar = createFloatingToolbar(this);
+    // Expose on DOM element so the FloatingToolbar hook can access it
+    this.el.__floatingToolbar = this.floatingToolbar;
+
+    // Reposition toolbar on map move/zoom
+    map.on("move", () => this.floatingToolbar?.reposition());
+    map.on("zoom", () => this.floatingToolbar?.reposition());
+
     // Prevent browser context menu on canvas, show our own on empty canvas
     this.el.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -111,6 +122,10 @@ export const MapCanvas = {
 
     // Map click for deselection (when clicking empty canvas)
     map.on("click", (e) => {
+      // Ignore clicks that originated from the floating toolbar or its popovers
+      const toolbar = document.getElementById("floating-toolbar-content");
+      if (toolbar && e.originalEvent && toolbar.contains(e.originalEvent.target)) return;
+
       // Only deselect if in select or pan mode (other tools use clicks for creation)
       if (this.currentTool === "select" || this.currentTool === "pan") {
         this.pushEvent("deselect", {});
@@ -118,6 +133,7 @@ export const MapCanvas = {
         this.zoneHandler.deselectAll();
         this.connectionHandler.deselectAll();
         this.annotationHandler.deselectAll();
+        this.floatingToolbar?.hide();
       }
     });
 
@@ -153,6 +169,7 @@ export const MapCanvas = {
         this.connectionHandler.clearAllPinStates();
         this.ruler.clear();
         this.currentTool = "pan";
+        this.floatingToolbar?.hide();
       }
       // Toggle dragging on existing elements
       this.pinHandler.setEditMode(edit_mode);
@@ -177,6 +194,11 @@ export const MapCanvas = {
       } else if (type === "annotation") {
         this.annotationHandler.selectAnnotation(id);
       }
+
+      // Show floating toolbar and close map settings panel
+      this.floatingToolbar?.show(type, id);
+      const settingsPanel = document.getElementById("map-settings-floating");
+      if (settingsPanel) settingsPanel.classList.add("hidden");
     });
 
     this.handleEvent("element_deselected", () => {
@@ -184,6 +206,7 @@ export const MapCanvas = {
       this.zoneHandler.deselectAll();
       this.connectionHandler.deselectAll();
       this.annotationHandler.deselectAll();
+      this.floatingToolbar?.hide();
     });
 
     // Wire search highlight events
@@ -210,11 +233,13 @@ export const MapCanvas = {
       this.annotationHandler.clearDimming();
     });
 
-    this.handleEvent("focus_annotation_text", () => {
-      // Delay to let the DOM update with the new panel
+    this.handleEvent("focus_annotation_text", ({ id }) => {
       requestAnimationFrame(() => {
-        const el = document.getElementById("annotation-text-input");
-        if (el) { el.focus(); el.select(); }
+        const annId = id || this.annotationHandler?.selectedId;
+        if (annId && this.annotationHandler?.enableInlineEditing) {
+          const marker = this.annotationHandler.markers.get(annId);
+          if (marker) this.annotationHandler.enableInlineEditing(marker);
+        }
       });
     });
 
@@ -335,6 +360,7 @@ export const MapCanvas = {
       // Escape → deselect (zone/connection handlers catch Escape during drawing first)
       if (e.key === "Escape") {
         this.pushEvent("deselect", {});
+        this.floatingToolbar?.hide();
         return;
       }
 

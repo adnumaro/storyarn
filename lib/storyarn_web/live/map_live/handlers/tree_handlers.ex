@@ -198,14 +198,7 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
 
       case Maps.create_map(socket.assigns.project, child_attrs) do
         {:ok, child_map} ->
-          case Maps.update_zone(zone, %{target_type: "map", target_id: child_map.id}) do
-            {:ok, _} -> :ok
-
-            {:error, reason} ->
-              Logger.warning(
-                "[TreeHandlers] Failed to link zone #{zone.id} to child map #{child_map.id}: #{inspect(reason)}"
-              )
-          end
+          link_zone_to_child_map(zone, child_map)
 
           {:noreply,
            socket
@@ -224,6 +217,17 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
       end
     else
       {:noreply, put_flash(socket, :error, dgettext("maps", "Zone not found."))}
+    end
+  end
+
+  defp link_zone_to_child_map(zone, child_map) do
+    case Maps.update_zone(zone, %{target_type: "map", target_id: child_map.id}) do
+      {:ok, _} -> :ok
+
+      {:error, reason} ->
+        Logger.warning(
+          "[TreeHandlers] Failed to link zone #{zone.id} to child map #{child_map.id}: #{inspect(reason)}"
+        )
     end
   end
 

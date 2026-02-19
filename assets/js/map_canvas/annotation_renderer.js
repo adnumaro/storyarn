@@ -103,7 +103,7 @@ function buildAnnotationHtml(annotation) {
     `clip-path:polygon(0 0, calc(100% - ${fold}px) 0, 100% ${fold}px, 100% 100%, 0 100%);` +
     `"></div>` +
     // Text layer (same padding, transparent bg)
-    `<div style="` +
+    `<div data-annotation-text style="` +
     `position:relative;` +
     `font-size:${dims.fontSize};padding:${dims.padding};padding-right:calc(${dims.padding.split(" ")[1] || dims.padding} + ${fold}px);` +
     `color:#111827;font-weight:600;line-height:1.3;white-space:pre-wrap;` +
