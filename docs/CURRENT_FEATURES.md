@@ -1,6 +1,6 @@
 # Storyarn — Current Features
 
-> **Last updated:** 2026-02-16
+> **Last updated:** 2026-02-19
 > **Stack:** Elixir 1.15+ / Phoenix 1.8 / LiveView 1.1 / PostgreSQL / Redis / Tailwind v4 / daisyUI
 
 ---
@@ -12,6 +12,8 @@
 3. [Flows](#3-flows)
 4. [Screenplay](#4-screenplay)
 5. [Assets](#5-assets)
+6. [Maps](#6-maps)
+7. [Localization](#7-localization)
 
 ---
 
@@ -62,7 +64,7 @@
 
 ### 1.5 Navigation & Layout
 
-- **Five independent layouts:** app (sidebar), project (tool sidebar), auth (centered), public (landing), settings (nav sidebar)
+- **Five independent layouts:** app (sidebar), project (tool sidebar), auth (centered), public (landing), settings (nav sidebar). The Story Player uses `layout: false` and renders its own fullscreen layout inline.
 - **Workspace sidebar** — fixed sidebar with workspace list, colored dot indicators, "New workspace" button, user dropdown with avatar/initials
 - **Project sidebar** — tools section (Flows, Screenplays, Sheets, Assets), dynamic tree section (switches based on active tool), trash + settings links
 - **Tree components** — hierarchical navigation for sheets, flows, and screenplays with drag-and-drop reordering
@@ -71,18 +73,45 @@
 
 ### 1.6 Collaboration (Real-Time)
 
-- **Presence** — Phoenix Presence tracks online users per flow; avatar ring with tooltip in header; join/leave toast notifications
-- **Cursor tracking** — real-time mouse cursor positions broadcast via PubSub (50ms throttle); colored SVG cursors with username labels; fade to 30% opacity after 3s inactivity
-- **Node locking** — ETS-backed GenServer; 30-second auto-expiry; lock on node selection, release on deselect; lock indicator badge on locked nodes; prevents editing/deleting nodes locked by others
-- **Remote changes** — node add/move/delete/restore and connection add/delete broadcast to all collaborators; toast notifications for remote actions
-- **User colors** — deterministic 12-color palette based on user ID
+**Scope:** Flow Editor only. Sheets, maps, and screenplays have no collaboration infrastructure.
 
-### 1.7 Internationalization
+**PubSub topics per flow:** `flow:{id}:presence`, `flow:{id}:cursors`, `flow:{id}:locks`, `flow:{id}:changes`.
 
-- **Gettext** — all user-facing text externalized
-- **Locales** — `en` (default), `es`
-- **Translation domains** — `default` (UI), `errors` (validation), `emails` (notifications)
-- **Locale plug** — sets locale on every request
+- **Presence** — Phoenix Presence tracks online users per flow; up to 5 avatar rings in header (stacked circles with colored border); overflow `+N` badge; current user excluded from display; join/leave toast notifications
+- **Cursor tracking** — real-time mouse cursor positions broadcast via PubSub (50ms client throttle); screen-to-canvas coordinate transform for pan/zoom-aware positioning; colored SVG cursors with email-derived username labels; fade to 30% opacity after 3s inactivity; pauses on WebSocket disconnect, resumes on reconnect
+- **Node locking** — ETS-backed GenServer (`Storyarn.Collaboration.Locks`); 30-second auto-expiry with 10-second cleanup sweep; lock on node selection, release on deselect/Escape/navigation; lock indicator badge (lock icon + username pill) on locked nodes (not shown for your own lock); prevents editing/deleting/duplicating nodes locked by others; `release_all` on disconnect
+- **Remote changes** — structural changes only: node add/move/delete/restore and connection add/delete broadcast to all collaborators; node data edits (text, conditions, etc.) are NOT broadcast in real-time; toast notifications (3s auto-dismiss) at bottom-left for remote actions
+- **User colors** — deterministic 12-color palette (Tailwind 500 variants) based on `user_id rem 12`; matching light palette (300 variants) available for trails
+- **Disconnect/reconnect** — canvas fades to 50% opacity + pointer-events-none on disconnect; restored on reconnect with `request_flow_refresh` to resync state
+
+### 1.7 Internationalization (UI)
+
+- **Gettext backend** — `StoryarnWeb.Gettext` with `otp_app: :storyarn`; all user-facing text externalized via `gettext/1`, `dgettext/2`, `ngettext/3`, `dngettext/4`
+- **Locales** — `en` (default), `es`; configured in `config/config.exs` as `locales: ~w(en es)`
+- **Locale detection plug** (`StoryarnWeb.Plugs.Locale`) — priority: URL param (`?locale=es`) → session (`:locale` key) → `Accept-Language` header (first tag, region stripped) → default `"en"`; writes resolved locale back to session for persistence
+- **13 translation domains** — one per feature area:
+
+| Domain | Scope | Approx. strings |
+|---|---|---|
+| `default` | Generic UI, layouts, flash, core components | 57 |
+| `errors` | Ecto changeset validation errors | 24 |
+| `identity` | Auth, login, registration, sessions | 56 |
+| `flows` | Flow editor — nodes, connections, sidebar, debugger, player | 285 |
+| `maps` | Map canvas — pins, zones, annotations, toolbar, settings | 214 |
+| `sheets` | Sheet editor — blocks, variables, versions | 220 |
+| `projects` | Projects — CRUD, membership, invitations, trash | 111 |
+| `workspaces` | Workspaces — CRUD, membership, invitations | 90 |
+| `localization` | Content localization feature (game text translation) | 93 |
+| `screenplays` | Screenplay editor — elements, toolbar, export | 74 |
+| `settings` | User/workspace settings pages | 42 |
+| `assets` | Asset library — uploads, management | 45 |
+| `emails` | Email notification templates | 5 |
+
+- **Spanish coverage** — ~98.7% (~1,299 of ~1,316 strings translated); 16 real gaps across `maps` (10), `localization` (3), `sheets` (3)
+- **Client-side i18n** — no JS i18n library; translated strings injected from server via `data-i18n` JSON attribute (used by map canvas hooks for context menu labels, with English string fallbacks); flow canvas renders translated text via server-rendered HTML
+- **Date/number formatting** — `Calendar.strftime` (English month names only, not locale-aware); no locale-aware number or currency formatting
+- **No locale switcher UI** — locale change only via `?locale=` URL parameter (persists in session); no dropdown, menu item, or settings page option
+- **LiveView limitation** — `Gettext.put_locale` runs in the HTTP plug only; LiveView WebSocket mounts do not re-set the locale from session (may default to `"en"` during live events)
 
 ### 1.8 Email Notifications
 
@@ -119,17 +148,17 @@
 
 Nine block types:
 
-| Type | Variable-capable | Config | Value |
-|------|:---:|---|---|
-| `text` | Yes | label, placeholder | string content |
-| `rich_text` | Yes | label | HTML content (TipTap with `@mentions`) |
-| `number` | Yes | label, placeholder | numeric content |
-| `select` | Yes | label, placeholder, options `[{key, value}]` | selected key |
-| `multi_select` | Yes | label, placeholder, options `[{key, value}]` | array of keys |
-| `boolean` | Yes | label, mode (`two_state`) | true/false/nil |
-| `date` | Yes | label | date value |
-| `divider` | No | — | — |
-| `reference` | No | label, allowed_types `["sheet","flow"]` | target_type + target_id |
+| Type           | Variable-capable  | Config                                       | Value                                  |
+|----------------|:-----------------:|----------------------------------------------|----------------------------------------|
+| `text`         |        Yes        | label, placeholder                           | string content                         |
+| `rich_text`    |        Yes        | label                                        | HTML content (TipTap with `@mentions`) |
+| `number`       |        Yes        | label, placeholder                           | numeric content                        |
+| `select`       |        Yes        | label, placeholder, options `[{key, value}]` | selected key                           |
+| `multi_select` |        Yes        | label, placeholder, options `[{key, value}]` | array of keys                          |
+| `boolean`      |        Yes        | label, mode (`two_state`)                    | true/false/nil                         |
+| `date`         |        Yes        | label                                        | date value                             |
+| `divider`      |        No         | —                                            | —                                      |
+| `reference`    |        No         | label, allowed_types `["sheet","flow"]`      | target_type + target_id                |
 
 - **Variable exposure** — blocks are variables unless type is `divider`/`reference` OR `is_constant: true`
 - **Variable name** — auto-generated from label via slugify (e.g., "Health Points" → `health_points`); unique per sheet (suffixed `_2`, `_3` on collision)
@@ -290,42 +319,77 @@ Nine block types:
 
 ### 3.4 Canvas
 
-- **Rete.js** graph engine with Lit (Shadow DOM) rendering
-- **Zoom & pan** — mouse wheel zoom, drag to pan, fit-view on load
-- **Grid** — radial dot background (24px spacing)
-- **Minimap** — 200px plugin, registered after initial load to avoid per-node overhead
-- **Level of Detail (LOD)** — two tiers: `full` (zoom > 0.45) and `simplified` (zoom < 0.40); hysteresis band prevents flicker; batched DOM updates (50 nodes/frame)
-- **Node selection** — click to select + open sidebar; Ctrl+Click for multi-select
+- **Rete.js** graph engine with Lit (Shadow DOM) rendering via LitElement custom elements (`StoryarnNode`, `StoryarnSocket`, `StoryarnConnection`)
+- **Zoom & pan** — mouse wheel zoom, drag to pan on empty area, auto fit-view on initial load (called twice: 100ms delay + requestAnimationFrame for minimap DOM). No dedicated "Fit All" button or keyboard shortcut.
+- **Grid** — radial dot background (24px spacing, 1.5px dots at 8% base-content opacity, theme-aware via daisyUI `--b2`/`--bc` CSS variables)
+- **Minimap** — 200px Rete minimap plugin, registered after initial load to avoid per-node overhead; click/drag to pan; viewport rectangle indicator; explicitly removed on destroy
+- **Level of Detail (LOD)** — two tiers: `full` (zoom > 0.45) and `simplified` (zoom < 0.40); hysteresis band prevents flicker; batched DOM updates (50 nodes/frame); lock indicators re-attached after transition; simplified nodes: colored header + type label + bare sockets only (120px min-width vs 180px full)
+- **Node selection** — click to select + open sidebar + acquire collaboration lock; Ctrl+Click for multi-select (accumulating mode); double-click opens preferred editing mode (dialogue → screenplay editor, subflow/exit → navigate to referenced flow)
 - **Node creation** — "Add Node" dropdown in header; all types except entry; random offset positioning
-- **Node movement** — drag with 300ms debounced position save
+- **Node movement** — drag with 300ms debounced position save via `node_moved` event
 - **Node duplication** — Ctrl/Cmd+D; per-type data cleanup (clears technical IDs, generates new localization IDs, etc.); +50px offset
-- **Node deletion** — Delete/Backspace key; cannot delete entry or last exit; soft-delete with connection cascade; lock check
+- **Node deletion** — Delete/Backspace key; cannot delete entry or last exit; soft-delete with connection cascade; lock check; hub deletion cascades to clear orphaned jump target references
+- **Connections** — drag from output socket to input socket; sockets show crosshair cursor + scale(1.3) + primary color on hover; 20px invisible hit area under 2px visible stroke for easier selection; bezier curve with midpoint label rendering; default stroke: `oklch(--bc/0.4)` 2px, hover: primary color 3px
+- **Node visual states** — `.selected` (blue ring), `.nav-highlight` (4-cycle pulse in hub color, 2500ms), `.debug-current` (pulsing primary border), `.debug-visited` (success border), `.debug-waiting` (pulsing warning border), `.debug-error` (error border + shadow), `.debug-breakpoint` (red 8px dot top-right)
 - **Performance** — deferred flow load (spinner overlay → async fetch), 3-phase bulk load (nodes → sockets → connections), LOD system, node update queue, debounced position push
 
 ### 3.5 Undo/Redo
 
-- Rete.js History plugin with custom action types:
-  - **DragAction** — tracks position changes; coalesces rapid drags on same node
-  - **AddConnectionAction** / **RemoveConnectionAction** — undo/redo connection operations
-  - **DeleteNodeAction** — undo restores node server-side; redo re-deletes
-- History cleared on full flow refresh
-- Not recorded during server bulk loads
-- **Keyboard** — Ctrl/Cmd+Z (undo), Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z (redo)
+Rete.js History plugin (`rete-history-plugin`) with `timing: 200` ms and a custom preset containing four action types. Keyboard-only access (no toolbar buttons).
+
+**Keyboard:** Ctrl/Cmd+Z (undo), Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z (redo). Blocked when focus is on `INPUT`, `TEXTAREA`, `SELECT`, or `contentEditable` elements.
+
+**Action types:**
+
+| Action | Captured data | Undo | Redo | Server event |
+|---|---|---|---|---|
+| `DragAction` | `nodeId`, `prev {x,y}`, `next {x,y}` | `area.translate(nodeId, prev)` → triggers existing `node_moved` debounce pipeline (300ms) | `area.translate(nodeId, next)` → same pipeline | `node_moved` (indirect, via `nodetranslated` handler) |
+| `AddConnectionAction` | Full connection snapshot | `editor.removeConnection(id)` → `connection_deleted` | `editor.addConnection(conn)` → `connection_created` (skipped if either endpoint node deleted) | `connection_deleted` / `connection_created` |
+| `RemoveConnectionAction` | Full connection snapshot | `editor.addConnection(conn)` → `connection_created` (skipped if either endpoint node deleted) | `editor.removeConnection(id)` → `connection_deleted` | `connection_created` / `connection_deleted` |
+| `DeleteNodeAction` | Hook ref, database node ID | Pushes `restore_node` → server clears `deleted_at`, re-adds node + valid connections via `node_restored` event; idempotent (`{:ok, :already_active}` if already restored) | Sets `_historyTriggeredDelete` flag, pushes `delete_node` → server soft-deletes; flag prevents double-recording in history | `restore_node` / `delete_node` |
+
+**Drag coalescing:** When a `nodetranslated` event fires while the node is in the `picked` set (user actively dragging), the preset checks `history.getRecent(400)` for an existing `DragAction` on the same node. If found, updates its `next` position and resets its timestamp instead of creating a new entry. Programmatic translates (from undo/redo or server-push) are skipped because the node is not in `picked`.
+
+**History suppression during bulk loads** — two complementary mechanisms:
+1. `isLoadingFromServer` reference counter — all preset pipe handlers check this flag and skip recording when > 0
+2. Deferred plugin registration — `area.use(history)` is called only **after** all initial nodes and connections are loaded, so the preset pipes don't even exist during first load
+
+**History clearing:** `history.clear()` is called on every `flow_updated` server event (full flow refresh due to hub deletion cascading to orphaned jumps, or collaborator bulk changes).
+
+**What is NOT tracked:** Node creation, node duplication, node data edits (text, conditions, responses), connection rebuilds during `rebuildNode`, and programmatic translates outside of user drags
 
 ### 3.6 Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| Ctrl/Cmd+Z | Undo |
-| Ctrl/Cmd+Y / Ctrl/Cmd+Shift+Z | Redo |
-| Delete / Backspace | Delete selected node |
-| Ctrl/Cmd+D | Duplicate selected node |
-| Escape | Deselect node |
-| Ctrl/Cmd+Shift+D | Toggle debug mode |
-| F10 | Debug: step forward |
-| F9 | Debug: step back |
-| F5 | Debug: toggle auto-play/pause |
-| F6 | Debug: reset |
+All canvas shortcuts are blocked when focus is in `INPUT`, `TEXTAREA`, `SELECT`, or `contentEditable` elements (prevents conflicts with sidebar text editors). Debug and toggle shortcuts fire regardless of focus.
+
+**Canvas shortcuts** (blocked in text inputs):
+
+| Shortcut                      | Action                                     | Condition                          |
+|-------------------------------|--------------------------------------------|------------------------------------|
+| Ctrl/Cmd+Z                    | Undo                                       | —                                  |
+| Ctrl/Cmd+Y / Ctrl/Cmd+Shift+Z | Redo                                       | —                                  |
+| Delete / Backspace            | Delete selected node                       | Node selected, not locked by other |
+| Ctrl/Cmd+D                    | Duplicate selected node                    | Node selected                      |
+| Escape                        | Deselect node, close sidebar, release lock | Node selected                      |
+
+**Debug shortcuts** (always fire, requires debug session active via `[data-debug-active]`):
+
+| Shortcut         | Action                   |
+|------------------|--------------------------|
+| Ctrl/Cmd+Shift+D | Toggle debug mode on/off |
+| F10              | Step forward             |
+| F9               | Step back                |
+| F5               | Toggle auto-play/pause   |
+| F6               | Reset                    |
+
+**Global app shortcuts** (defined in `theme.js`, fire app-wide outside text inputs):
+
+| Shortcut   | Action                    |
+|------------|---------------------------|
+| D          | Toggle dark/light theme   |
+| E          | Navigate to user settings |
+
+Note: There are no toolbar buttons for undo/redo — keyboard-only access. Multi-select (`Ctrl+Click`) accumulates selection but Delete/Duplicate operate on single selected node only. Copy/paste is not supported in the flow canvas (available in maps only).
 
 ### 3.7 Properties Panel (Sidebar)
 
@@ -402,7 +466,53 @@ Nine block types:
 - Canvas display — triangle-alert icon on stale condition/instruction nodes
 - **Repair tool** — bulk-fixes stale references across all project flows (available in project settings)
 
-### 3.12 Other Features
+### 3.12 Story Player
+
+Full-screen cinematic playback mode for flows. Route: `/workspaces/:ws/projects/:proj/flows/:id/play`. Launched from the flow editor header via a "Play" button.
+
+**Architecture:** `PlayerLive` (layout: false) → `PlayerEngine` (auto-advance loop) → `Slide` (pure render-data builder) → components (`PlayerSlide`, `PlayerChoices`, `PlayerToolbar`, `PlayerOutcome`).
+
+**Engine (`PlayerEngine.step_until_interactive/3`):**
+- Thin loop wrapper over `Evaluator.Engine.step/3` — the same pure-functional state machine used by the debugger
+- Auto-advances through non-interactive nodes: `entry`, `hub`, `condition`, `instruction`, `jump`, `subflow`
+- Stops at: `dialogue` (`:waiting_input`), `exit` (`:finished`), errors, and cross-flow signals (`:flow_jump`, `:flow_return`)
+- Safety limit: 100 auto-steps per call; returns `{:error, state, skipped_nodes}` if exceeded
+- Returns `skipped_nodes` list of `{node_id, node_type}` tuples for future journey tracking
+
+**Slide types:**
+
+| Type        | Node        | Fields                                                                                                                                                          |
+|-------------|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `:dialogue` | `dialogue`  | Speaker name/initials/color (resolved from sheet), sanitized+interpolated text, stage directions, menu text, responses (id, text, valid, number, has_condition) |
+| `:scene`    | `scene`     | Setting (INT/EXT), location name (from sheet), sub-location, time of day, sanitized+interpolated description                                                    |
+| `:outcome`  | `exit`      | Label (falls back to strip_html of text, then "The End"), outcome color, outcome tags, step count, variables changed count, choices made count                  |
+| `:empty`    | nil/unknown | Fallback "No content to display"                                                                                                                                |
+
+**Variable interpolation:** `{reference.name}` patterns in dialogue text and scene descriptions are replaced with styled spans. Known variables get `.player-var` (purple badge), unknown get `.player-var-unknown` (orange badge). Values are HTML-escaped; lists are comma-joined.
+
+**HTML sanitization:** Shared `HtmlSanitizer` module — allows 27 tags (p, br, em, strong, b, i, u, s, span, a, ul, ol, li, blockquote, code, pre, sub, sup, del, h1–h6, div). Strips `on*` event handlers, `style`/`srcdoc`/`formaction` attributes, and `javascript:` URIs. Disallowed tags unwrapped (children preserved). HTML comments removed.
+
+**Two player modes:**
+- **Player** (default, `eye` icon) — mimics end-user experience; invalid (condition-blocked) responses hidden
+- **Analysis** (`scan-eye` icon) — shows ALL responses; invalid ones greyed out with red badge, disabled; `shield-question` icon on conditioned responses
+
+**Outcome screen:** Accent color bar, title from exit label, outcome tag badges, stats row (steps / choices / variables changed), "Play again" + "Back to editor" buttons.
+
+**Cross-flow navigation:** Full support for multi-flow playback via `Engine.push_flow_context/4` and `pop_flow_context/1`. Nested jumps handled recursively. Session state bridged across LiveView remounts via `DebugSessionStore` (Agent-based, 5-min TTL, one-shot store/take, keyed by `{user_id, project_id}`). Player sessions distinguished from debugger sessions by presence of `:player_mode` key.
+
+**Step back:** `Engine.step_back/1` via state snapshots. Returns to the previous interactive node state.
+
+**Keyboard shortcuts** (`StoryPlayer` JS hook, global `keydown` listener):
+
+| Key                        | Action                            |
+|----------------------------|-----------------------------------|
+| Space / Enter / ArrowRight | Continue (advance to next node)   |
+| ArrowLeft / Backspace      | Go back (step back)               |
+| 1–9                        | Select Nth visible response       |
+| P                          | Toggle player/analysis mode       |
+| Escape                     | Exit player (back to flow editor) |
+
+### 3.13 Other Features
 
 - **Inline editable title** — contenteditable h1, saves on blur/enter
 - **Inline editable shortcut** — contenteditable span with validation
@@ -461,13 +571,13 @@ Nine block types:
 
 ### 4.3 Keyboard Shortcuts & Smart Typing
 
-| Key | Behavior |
-|-----|----------|
-| Enter | Split block, create next block with smart type progression (scene_heading→action, character→dialogue, dialogue→action, transition→scene_heading) |
-| Tab | Cycle block type forward: action → sceneHeading → character → dialogue → parenthetical → transition |
-| Shift+Tab | Cycle backward |
-| Backspace (empty non-action) | Convert to action first |
-| Escape | Blur editor |
+| Key                          | Behavior                                                                                                                                         |
+|------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| Enter                        | Split block, create next block with smart type progression (scene_heading→action, character→dialogue, dialogue→action, transition→scene_heading) |
+| Tab                          | Cycle block type forward: action → sceneHeading → character → dialogue → parenthetical → transition                                              |
+| Shift+Tab                    | Cycle backward                                                                                                                                   |
+| Backspace (empty non-action) | Convert to action first                                                                                                                          |
+| Escape                       | Blur editor                                                                                                                                      |
 
 ### 4.4 Slash Command Palette
 
@@ -666,13 +776,13 @@ Input rules automatically convert block types as the user types:
 
 ### 5.8 File Size Limits
 
-| Context | Accepts | Max Size |
-|---------|---------|----------|
-| Asset library (general) | Images + Audio | 20 MB |
-| Audio picker (flow editor) | Audio only | 20 MB |
-| Audio tab (sheet) | Audio only | 20 MB |
-| Sheet avatar | Images only | 5 MB |
-| Sheet banner | Images only | 10 MB |
+| Context                    | Accepts        | Max Size   |
+|----------------------------|----------------|------------|
+| Asset library (general)    | Images + Audio | 20 MB      |
+| Audio picker (flow editor) | Audio only     | 20 MB      |
+| Audio tab (sheet)          | Audio only     | 20 MB      |
+| Sheet avatar               | Images only    | 5 MB       |
+| Sheet banner               | Images only    | 10 MB      |
 
 ### 5.9 Sheet Integration
 
@@ -689,3 +799,379 @@ Input rules automatically convert block types as the user types:
 - **Count by type** — `%{"image" => N, "audio" => N}` (SQL group by MIME prefix)
 - **Total storage size** — sum of all asset sizes per project (in bytes)
 - **Usage tracking** — queries all references across flow nodes, sheet avatars, and sheet banners; excludes soft-deleted entities
+
+---
+
+## 6. Maps
+
+### 6.1 Core Data Model
+
+- **Map** — name (max 200), shortcut (project-unique), description (max 2000), width/height (pixels), scale_value/scale_unit (for ruler), position (sibling order)
+- **Tree structure** — self-referential `parent_id`; maps can nest arbitrarily deep
+- **Background image** — `background_asset_id` FK to assets; displayed as Leaflet image overlay
+- **Soft delete** — `deleted_at` timestamp; recursive child soft-delete; trash, restore, permanent delete
+- **Coordinate system** — all positions stored as **percentages (0–100%)** of map dimensions, making layouts resolution-independent
+
+### 6.2 Element Types
+
+**Layers** — ordered visibility groups; every map auto-creates a default layer; each layer has: name, visible toggle, position, fog of war settings (fog_enabled, fog_color, fog_opacity). Cannot delete last layer; deleting a layer nullifies `layer_id` on its elements.
+
+**Zones** — polygonal regions defined by 3–100 vertices (percentage coords). Four drawing shapes:
+- **Rectangle** — drag bounding box → 4 vertices
+- **Triangle** — drag base → 3 vertices
+- **Circle** — drag radius → approximated as 32-point polygon
+- **Freeform** — click points, close by clicking near first point or pressing Escape
+
+Zone fields: name (max 200), vertices, fill_color, fill_opacity (0–1), stroke_color, stroke_style (solid/dashed/dotted), stroke_width (0–10), tooltip (max 500), locked, target_type (sheet/flow/map), target_id. Vertex editing mode allows individual vertex drag.
+
+**Pins** — point markers with types: `location`, `character`, `event`, `custom`. Fields: label (max 200), position_x/y (%), pin_type, icon (Lucide name), color, opacity (0–1), size (sm/md/lg), tooltip (max 500), locked, target_type (sheet/flow/map/url), target_id, sheet_id (direct sheet link), icon_asset_id (custom uploaded icon, max 512KB). Sheet-linked pins display the sheet's avatar image.
+
+**Connections** — lines between two pins with: line_style (solid/dashed/dotted), line_width (0–10), color, label (max 200), bidirectional toggle, show_label toggle, waypoints (max 50 `{x,y}` percentage coords). Self-connections prevented. Both pins must belong to same map.
+
+**Annotations** — free-floating text labels: text (1–500 chars), position_x/y (%), font_size (sm/md/lg), color, locked.
+
+### 6.3 Canvas
+
+- **Leaflet.js** with `L.CRS.Simple` (flat image coordinate space, no geographic projection)
+- **Pan/zoom** — native Leaflet; scroll to zoom, drag to pan
+- **Minimap** — bottom-right thumbnail Leaflet instance with red viewport rectangle; click to navigate; reset-zoom and toggle buttons
+- **Background** — uploaded image as Leaflet image overlay; settings panel for upload/change/remove
+
+### 6.4 Canvas Tools (Dock)
+
+Bottom dock in edit mode, 10 tools in 5 groups:
+
+| Tool           | Shortcut  | Description                                                          |
+|----------------|-----------|----------------------------------------------------------------------|
+| Select         | Shift+V   | Click to select, drag to move                                        |
+| Pan            | Shift+H   | Drag map, scroll to zoom                                             |
+| Rectangle zone | Shift+R   | Draw rectangular zone                                                |
+| Triangle zone  | Shift+T   | Draw triangular zone                                                 |
+| Circle zone    | Shift+C   | Draw circular zone                                                   |
+| Freeform zone  | Shift+F   | Click polygon points, close to finish                                |
+| Free Pin       | Shift+P   | Click canvas to place pin                                            |
+| From Sheet     | —         | Open sheet picker, then click to place character pin linked to sheet |
+| Annotation     | Shift+N   | Click canvas to place text note (auto-focuses for inline editing)    |
+| Connector      | Shift+L   | Click source pin, then target pin to create connection               |
+| Ruler          | Shift+M   | Click two points to measure distance                                 |
+
+Dock hidden in view mode.
+
+### 6.5 Floating Element Toolbar
+
+FigJam-style floating toolbar above selected element. Content varies by type:
+
+**Zone:** Name input, fill color (swatches + opacity slider), border (style/width/color), layer picker, lock toggle, More (...): tooltip, link-to target picker (sheet/flow/map)
+
+**Pin:** Label input, type picker (location/character/event/custom with icons), color + opacity, size (S/M/L pills), layer picker, lock toggle, More (...): tooltip, link-to (sheet/flow/map/url), change icon (upload overlay)
+
+**Connection:** Label input, line style (style/width/color), show-label toggle, bidirectional toggle, More (...): straighten path (clears waypoints)
+
+**Annotation:** Color swatch, size (S/M/L), layer picker, lock toggle
+
+### 6.6 Color System
+
+Two preset rows: vivid (12 Tailwind colors + black) and pastel (11 pastels + white) plus a custom color picker (native browser input). All stored as hex (`#RGB`, `#RRGGBB`, or `#RRGGBBAA`).
+
+### 6.7 Layer System
+
+Top-left layer bar overlay on canvas:
+- Visibility toggle (eye/eye-off) per layer
+- Click layer name to set as active (new elements assigned to active layer)
+- Fog of War indicator (cloud-fog icon) when enabled
+- Kebab menu: rename (inline), enable/disable fog, delete (protected — cannot delete last layer)
+- Reorder layers via `reorder_layers` event
+
+### 6.8 Zone → Child Map Drill-Down
+
+Double-click a named zone → `create_child_map_from_zone`:
+1. Zone must have a name (error if blank)
+2. `ZoneImageExtractor` crops parent's background to zone's bounding box, upscales to min 1000px, sharpens (sigma=1.5), saves as WebP asset
+3. Creates child map with: zone name, parent_id, extracted background, computed dimensions, proportional scale_value
+4. Updates zone with `target_type: "map"`, `target_id: child_map.id`
+5. Navigates to child map
+
+If no background image, creates 1000x1000px child map without background. Child maps display a boundary polygon fog overlay (zone vertices normalized to child coordinate space).
+
+### 6.9 Keyboard Shortcuts
+
+All shortcuts require edit mode and are blocked in text inputs.
+
+| Shortcut                      | Action                                               |
+|-------------------------------|------------------------------------------------------|
+| Delete / Backspace            | Delete selected element                              |
+| Escape                        | Deselect; cancel in-progress zone/connection drawing |
+| Ctrl/Cmd+Z                    | Undo                                                 |
+| Ctrl/Cmd+Shift+Z / Ctrl/Cmd+Y | Redo                                                 |
+| Ctrl/Cmd+Shift+D              | Duplicate selected element                           |
+| Ctrl/Cmd+Shift+C              | Copy selected element (to localStorage)              |
+| Ctrl/Cmd+Shift+V              | Paste (from localStorage, +5% offset)                |
+| Shift+V/H/R/T/C/F/P/N/L/M     | Switch tool (see dock table above)                   |
+
+### 6.10 Undo/Redo
+
+Server-side undo/redo. Stacks stored in socket assigns, max depth 50 each.
+
+**Tracked operations** (delete only):
+
+| Operation         | Undo                                 | Redo                         |
+|-------------------|--------------------------------------|------------------------------|
+| Delete pin        | Recreates pin with all fields        | Re-deletes the recreated pin |
+| Delete zone       | Recreates zone with all fields       | Re-deletes                   |
+| Delete connection | Recreates connection with all fields | Re-deletes                   |
+| Delete annotation | Recreates annotation with all fields | Re-deletes                   |
+
+Undo clears redo stack. Flash messages: "Pin deleted. Press Ctrl+Z to undo." / "Undo: pin restored."
+
+Note: Create, move, and edit operations are NOT tracked in undo history (only deletes).
+
+### 6.11 Copy/Paste & Duplicate
+
+- **Copy** (Ctrl/Cmd+Shift+C) → stores element data in `localStorage` key `"storyarn_map_clipboard"`
+- **Paste** (Ctrl/Cmd+Shift+V) → creates copy at +5% offset in both axes; respects active layer
+- **Duplicate** (Ctrl/Cmd+Shift+D or context menu) → same as copy+paste; label gets " (copy)" suffix; sheet/target links NOT copied
+- Connections cannot be copied/pasted/duplicated
+- Locked elements cannot be duplicated
+
+### 6.12 Context Menu
+
+Right-click on empty canvas: "Add Pin Here", "Add Annotation Here"
+
+Right-click on element: Edit Properties, Connect To..., Edit Vertices (zones only), Duplicate, Bring to Front, Send to Back, Lock/Unlock, Delete
+
+### 6.13 Locking
+
+Zones, pins, and annotations can be locked via the floating toolbar toggle. Locked elements cannot be dragged, deleted, or duplicated (error flash shown).
+
+### 6.14 Search Panel
+
+Top-left below layer bar:
+- Search input with 300ms debounce, case-insensitive match on label/name/text
+- Type filter tabs (when query non-empty): All / Pins / Zones / Notes / Lines
+- Results list (clickable to focus + select)
+- Non-matching elements dimmed on canvas; matching elements remain bright
+
+### 6.15 Legend
+
+Auto-generated bottom-right panel. Groups:
+- **Pins** by `(pin_type, color)` — icon + type label + count
+- **Zones** by `fill_color` — swatch + count
+- **Connections** by `(line_style, color)` — line preview + count
+
+Only shown when map has at least one element. Click to expand/collapse.
+
+### 6.16 Ruler Tool
+
+Click two points to measure distance. Displays:
+- Orange dashed line with circle markers at endpoints
+- Midpoint label: real-world distance if scale configured (e.g., "42 km"), otherwise percentage of map width
+- Multiple measurements simultaneously; Escape or tool switch clears all
+- Measurements are ephemeral (not persisted)
+
+### 6.17 Export
+
+- **PNG** — `html2canvas` at 2x retina scale; Leaflet controls hidden during capture; downloads as `{map_name}.png`
+- **SVG** — custom serializer: zones → `<polygon>`, connections → `<polyline>` + label `<text>`, pins → `<circle>` + `<text>`, annotations → `<text>`; hidden layers excluded; downloads as `{map_name}.svg`
+
+### 6.18 Map Settings
+
+Gear icon in header opens floating panel:
+- **Background Image:** upload (JPEG/PNG/GIF/WebP, no SVG), change, remove
+- **Map Scale:** scale_value (number) + scale_unit (string) — defines "1 map width = N units" for ruler
+- **Dimensions:** read-only width x height px display
+
+### 6.19 Header & Navigation
+
+- Back link to maps index
+- **Breadcrumb** showing ancestor map names (clickable, up to depth 50)
+- **Editable map name** (contenteditable, saves on blur)
+- **Shortcut badge** (`#shortcut`)
+- **Export dropdown** (PNG / SVG)
+- **Map Settings** gear button (edit mode only)
+- **View/Edit mode toggle** (segmented control; only for users with `edit_content` permission)
+- **Highlight from URL** — `?highlight=pin:ID` or `?highlight=zone:ID` focuses and selects element on load
+
+### 6.20 Hierarchical Map Tree
+
+Sidebar tree with:
+- Expand/collapse nodes
+- Up to 10 zones + 10 pins previewed per map; overflow as "N more zones…" / "N more pins…"
+- Drag-to-reorder among siblings
+- "Add child map" per node
+- "Move to Trash" per node
+- Filter/search input ("Filter maps…")
+- Zone → child map drill-down links
+
+### 6.21 Backlinks
+
+`Maps.get_elements_for_target(target_type, target_id)` returns all zones and pins across all maps that link to a given sheet/flow/map — used for "Appears on these maps" views.
+
+### 6.22 Authorization
+
+All edit operations gated by `ProjectMembership.can?(role, :edit_content)` via `with_auth/3` helper.
+
+**View-only users can:** view map, pan/zoom, search elements, export.
+
+**View-only users cannot:** create/edit/delete elements, manage layers, change settings/background, access dock or floating toolbar.
+
+### 6.23 Collaboration
+
+No real-time collaboration for maps. No presence, cursor sharing, or conflict resolution. Last write wins at DB level.
+
+---
+
+## 7. Localization
+
+Content localization system for translating game text (dialogue, descriptions, labels) into multiple languages. Completely separate from the UI i18n system (Section 1.7). Built on automatic text extraction, manual editing, machine translation via DeepL, export/import, glossary management, and reporting.
+
+### 7.1 Core Data Model
+
+**ProjectLanguage** — one record per locale per project:
+- `locale_code` (BCP 47, 2–10 chars, e.g., "en", "zh-CN"), `name` (display name, 1–100), `is_source` (boolean, exactly one per project enforced via partial unique index), `position` (sort order)
+- Unique constraint: `(project_id, locale_code)`
+
+**LocalizedText** — one row per translatable field per locale:
+- **Source fields:** `source_type` (one of: `flow_node`, `block`, `sheet`, `flow`, `screenplay`), `source_id`, `source_field` (e.g., `text`, `response.r1_123.text`), `source_text` (original content, may contain HTML), `source_text_hash` (SHA-256 for change detection), `word_count` (auto-computed, HTML stripped)
+- **Translation fields:** `locale_code`, `translated_text`, `status` (workflow: `pending` → `draft` → `in_progress` → `review` → `final`), `machine_translated` (boolean), `last_translated_at`, `translated_by_id` (user FK)
+- **Review fields:** `translator_notes`, `reviewer_notes`, `last_reviewed_at`, `reviewed_by_id` (user FK)
+- **Voice-over fields:** `vo_status` (`none` → `needed` → `recorded` → `approved`), `vo_asset_id` (FK to audio asset)
+- **Speaker tracking:** `speaker_sheet_id` (FK to sheet, for word-count-by-speaker reporting)
+- Composite unique key: `(source_type, source_id, source_field, locale_code)`
+- **Auto-downgrade rule:** when `upsert_text` detects `source_text_hash` changed and current status is `final`, it auto-downgrades to `review`
+
+**GlossaryEntry** — per-project terminology definitions:
+- `source_term`, `source_locale`, `target_term` (nil = use source as-is), `target_locale`, `context` (usage notes), `do_not_translate` (boolean, for proper nouns)
+- Unique constraint: `(project_id, source_term, source_locale, target_locale)`
+
+**ProviderConfig** — machine translation provider settings:
+- `provider` ("deepl" only currently), `api_key_encrypted` (Cloak encryption), `api_endpoint` (free vs pro), `is_active`, `settings` (JSON), `deepl_glossary_ids` (map of language-pair → DeepL glossary ID)
+- Unique constraint: `(project_id, provider)`
+
+### 7.2 Automatic Text Extraction
+
+`Localization.extract_all/1` performs a full project re-sync. Additionally, extraction runs **automatically** on every relevant CRUD operation:
+
+**Triggers and extracted fields:**
+
+| Entity | Trigger | Fields extracted |
+|---|---|---|
+| Dialogue node | Node create/update | `text` (rich HTML), `stage_directions`, `menu_text`, per-response `response.<id>.text` |
+| Scene node | Node create/update | `description` |
+| Exit node | Node create/update | `label` |
+| Flow | Flow create/update | `name`, `description` |
+| Sheet | Sheet create/update | `name`, `description` |
+| Text block | Block create/update | `config.label`, `value.content` |
+| Select block | Block create/update | `config.label`, per-option `config.options.<key>` |
+| Other blocks | Block create/update | `config.label` only |
+
+**Cleanup:** Entity deletions trigger `delete_texts_for_source/2`. Response removal triggers `delete_texts_for_source_field/3` to clean orphaned field-level rows.
+
+**Dialogue speaker tracking:** For dialogue node texts, `speaker_sheet_id` is stored on each localized text row to enable word-count-by-speaker reporting.
+
+### 7.3 Language Management
+
+- **Source language** — auto-created from `workspace.source_locale` on first visit (`ensure_source_language/1`); displayed as primary badge with flag icon; cannot be removed
+- **Target languages** — added via "Add Language" dropdown (filters out already-added locales); adding a language triggers immediate `extract_all` to populate `localized_text` rows for the new locale
+- **Language registry** — static list of ~44 languages covering all DeepL-supported targets plus major game localization markets; each entry: `{code, name, native, region}`
+- **Set source language** — atomic transaction: unset old source, set new source
+- **Remove language** — deletes language record and all its translations (with confirmation modal)
+- **Reorder languages** — bulk position update by ordered ID list
+
+### 7.4 Translation Index Page
+
+Route: `/workspaces/:ws/projects/:proj/localization`
+
+- **Language bar** — source language (primary badge), target languages as chips with inline remove button
+- **Locale selector** — dropdown to switch between target locales for the translation table
+- **Progress bar** — shows `final / total` count with percentage for selected locale
+- **Filters** — status filter (pending/draft/in_progress/review/final), source type filter (flow_node/block/sheet/flow/screenplay), full-text search (300ms debounce)
+- **Translation table** — columns: source text (truncated), translated text (truncated), MT badge (if machine translated), status badge (color-coded), word count
+- **Per-row actions** — edit link (pencil icon), single-translate button (sparkles icon, shown only when DeepL configured and no translation exists yet)
+- **Batch actions** — "Translate All Pending" button (shown only when DeepL provider active), "Sync" button (re-runs full extraction)
+- **Export dropdown** — Excel (.xlsx) and CSV (.csv) download
+- **Report link** — navigates to analytics page
+- **Pagination** — page size 50, previous/next buttons
+
+### 7.5 Translation Edit Page
+
+Route: `/workspaces/:ws/projects/:proj/localization/:id`
+
+- **Two-column layout** — left: source text (read-only, rendered as HTML via `raw/1`) with word count below; right: translation editor
+- **Form fields** — `translated_text` (textarea), `status` (select with all 5 workflow statuses), `translator_notes` (textarea)
+- **Save** — updates text + sets `last_translated_at` to now
+- **"Translate with DeepL"** button — calls `translate_single/2`, refreshes form (only shown when DeepL configured)
+- **Metadata row** — machine_translated badge, last_translated_at timestamp
+- **Header subtitle** — shows `source_type/source_field` in monospace
+
+### 7.6 Machine Translation (DeepL)
+
+- **Provider architecture** — `TranslationProvider` behaviour with callbacks: `translate/5`, `get_usage/1`, `supported_languages/1`, `create_glossary/5` (optional), `delete_glossary/2` (optional)
+- **DeepL adapter** — uses `Req` HTTP client; supports both free (`api-free.deepl.com`) and pro endpoints
+- **Batch translation** — `translate_batch/3` sends all `status: "pending"` texts for a locale in chunks of 50; sets `machine_translated: true` and `status: "draft"` on success
+- **Single translation** — `translate_single/2` translates one text by ID
+- **HTML handling** — if text contains `<`, uses `tag_handling: "html"` in DeepL API
+- **Variable preservation** — `HtmlHandler.pre_translate/1` wraps `{variable_name}` patterns in `<span translate="no">` before sending to DeepL; `post_translate/1` strips those spans from the response
+- **Glossary integration** — per-language-pair glossary IDs stored in `ProviderConfig.deepl_glossary_ids`; glossary terms sent as TSV format
+- **Error handling** — specific atoms: `:rate_limited` (429), `:quota_exceeded` (456), `:invalid_api_key` (403)
+- **API key encryption** — stored via Cloak (`Storyarn.Shared.EncryptedBinary`)
+
+### 7.7 Glossary
+
+- **Entries** — source_term + source_locale → target_term + target_locale pairs, with optional context notes and "do not translate" flag
+- **CRUD** — create, update (target_term/context/do_not_translate), delete
+- **Filtering** — by locale pair and search term
+- **DeepL integration** — `get_glossary_entries_for_pair/3` returns `[{source, target}]` tuples formatted for the DeepL glossary API
+
+### 7.8 Export/Import
+
+**Export:**
+- **Excel (.xlsx)** — `export_xlsx/2` generates binary Excel file; includes ID, source_type, source_field, source_text, translated_text, status columns
+- **CSV** — `export_csv/2` generates CSV string; same columns
+- **Filtered exports** — export controller accepts optional `status` and `source_type` query params for filtered downloads
+- **Download** — via `LocalizationExportController`; sets content-type + `content-disposition: attachment`; filename: `{project-slug}_translations_{locale}.xlsx`
+
+**Import:**
+- **CSV import** — `import_csv/1` reads ID column, updates `translated_text` and `status` columns by `localized_text.id`
+- No upload UI yet — function exists in `ExportImport` module but no LiveView form wired
+
+### 7.9 Reports
+
+Route: `/workspaces/:ws/projects/:proj/localization/report`
+
+Four sections:
+
+1. **Progress by Language** — progress bar per target language showing `final / total` count and percentage
+2. **Word Counts by Speaker** — table with speaker sheet name (or "No speaker"), line count, word count; locale selector to switch view
+3. **Voice-Over Progress** — stat cards for `none` / `needed` / `recorded` / `approved` counts for selected locale
+4. **Content Breakdown** — badges showing counts per source type (Nodes, Blocks, Sheets, Flows, Screenplays)
+
+### 7.10 Translation Workflow
+
+```
+pending → draft → in_progress → review → final
+```
+
+- **pending** — newly extracted, no translation yet
+- **draft** — machine translated or initial human translation
+- **in_progress** — translator actively working
+- **review** — translation complete, awaiting review
+- **final** — reviewed and approved
+- **Auto-downgrade** — if source text changes after reaching `final`, status reverts to `review`
+
+### 7.11 Voice-Over Tracking
+
+```
+none → needed → recorded → approved
+```
+
+- Each `localized_text` row tracks voice-over status independently
+- `vo_asset_id` links to an uploaded audio asset for the recorded line
+- Report page aggregates VO progress statistics per locale
+
+### 7.12 Integration with `localization_id`
+
+The `localization_id` field on dialogue nodes (e.g., `dialogue.a3f2b1`) is a **separate concept** — it's a human-readable key for **external localization tools** (Crowdin, Lokalise), not used internally by the localization system. Auto-generated on node creation, regenerated on duplicate, editable in the sidebar. Also emitted in screenplay exports for external pipeline integration.
+
+### 7.13 Sidebar Integration
+
+Localization appears as a top-level tool link in the project sidebar (Lucide `languages` icon), alongside Flows, Screenplays, Sheets, and Assets. Active state matched on any path under `/localization` (index, edit, report).

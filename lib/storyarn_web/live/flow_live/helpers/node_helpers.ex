@@ -36,9 +36,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   def persist_node_update(socket, node_id, update_fn) do
     # 1. ALWAYS read fresh from DB (never from socket.assigns.selected_node)
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
+    old_data = node.data || %{}
 
     # 2. Apply caller's transform
-    new_data = update_fn.(node.data || %{})
+    new_data = update_fn.(old_data)
 
     # 3. Write to DB
     case Flows.update_node_data(node, new_data) do
@@ -54,6 +55,19 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
           |> assign(:save_status, :saved)
           |> maybe_refresh_referencing_jumps(updated_node)
           |> push_node_or_flow_update(updated_node, renamed_count)
+
+        # Push undo snapshot only when no cascade occurred.
+        # Hub rename cascade triggers flow_updated → history.clear() anyway.
+        socket =
+          if renamed_count == 0 do
+            push_event(socket, "node_data_changed", %{
+              id: node_id,
+              prev_data: old_data,
+              new_data: new_data
+            })
+          else
+            socket
+          end
 
         {:noreply, socket}
 
@@ -104,7 +118,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
         {:noreply,
          socket
          |> reload_flow_data()
-         |> push_event("node_added", node_data)
+         |> push_event("node_added", Map.put(node_data, :self, true))
          |> CollaborationHelpers.broadcast_change(:node_added, %{node_data: node_data})}
 
       {:error, _} ->
@@ -163,7 +177,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
         {:noreply,
          socket
          |> reload_flow_data()
-         |> push_event("node_added", node_data)
+         |> push_event("node_added", Map.put(node_data, :self, true))
          |> CollaborationHelpers.broadcast_change(:node_added, %{node_data: node_data})}
 
       {:error, _} ->
@@ -303,6 +317,55 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
            socket,
            :error,
            Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Could not restore node.")
+         )}
+    end
+  end
+
+  @doc """
+  Restores a node's data to a specific snapshot (for undo/redo).
+  Pushes node_updated (NOT node_data_changed) to avoid feedback loops.
+  """
+  @spec restore_node_data(Phoenix.LiveView.Socket.t(), any(), map()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def restore_node_data(socket, node_id, data) do
+    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+
+    case Flows.update_node_data(node, data) do
+      {:ok, updated_node, _meta} ->
+        form = FormHelpers.node_data_to_form(updated_node)
+        schedule_save_status_reset()
+
+        {:noreply,
+         socket
+         |> reload_flow_data()
+         |> assign(:selected_node, updated_node)
+         |> assign(:node_form, form)
+         |> assign(:save_status, :saved)
+         |> maybe_refresh_referencing_jumps(updated_node)
+         |> push_event("node_updated", %{id: node_id, data: canvas_data(updated_node)})}
+
+      {:error, :hub_id_required} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Hub ID is required.")
+         )}
+
+      {:error, :hub_id_not_unique} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Hub ID already exists in this flow.")
+         )}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Could not restore node data.")
          )}
     end
   end

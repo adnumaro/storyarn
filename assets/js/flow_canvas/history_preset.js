@@ -108,6 +108,84 @@ class DeleteNodeAction {
 }
 
 /**
+ * Undo/redo action for node creation.
+ * Undo deletes the node; redo restores it.
+ */
+class CreateNodeAction {
+  constructor(hook, nodeId) {
+    this.hook = hook;
+    this.nodeId = nodeId;
+  }
+
+  async undo() {
+    this.hook._historyTriggeredDelete = this.nodeId;
+    this.hook.pushEvent("delete_node", { id: this.nodeId });
+  }
+
+  async redo() {
+    this.hook.pushEvent("restore_node", { id: this.nodeId });
+  }
+}
+
+/**
+ * Undo/redo action for flow metadata (name, shortcut) changes.
+ * Undo restores the previous value; redo restores the new one.
+ */
+const FLOW_META_COALESCE_MS = 2000;
+
+class FlowMetaAction {
+  constructor(hook, field, prevValue, newValue) {
+    this.hook = hook;
+    this.field = field;
+    this.prevValue = prevValue;
+    this.newValue = newValue;
+  }
+
+  async undo() {
+    this.hook.pushEvent("restore_flow_meta", {
+      field: this.field,
+      value: this.prevValue,
+    });
+  }
+
+  async redo() {
+    this.hook.pushEvent("restore_flow_meta", {
+      field: this.field,
+      value: this.newValue,
+    });
+  }
+}
+
+/**
+ * Undo/redo action for node data (property) changes.
+ * Undo restores the previous data snapshot; redo restores the new one.
+ */
+const NODE_DATA_COALESCE_MS = 1000;
+
+class NodeDataAction {
+  constructor(hook, nodeId, prevData, newData) {
+    this.hook = hook;
+    this.nodeId = nodeId;
+    this.prevData = prevData;
+    this.newData = newData;
+  }
+
+  async undo() {
+    this.hook.pushEvent("restore_node_data", {
+      id: this.nodeId,
+      data: this.prevData,
+    });
+  }
+
+  async redo() {
+    this.hook.pushEvent("restore_node_data", {
+      id: this.nodeId,
+      data: this.newData,
+    });
+  }
+}
+
+/**
  * Creates a custom history preset for the flow canvas.
  * @param {Object} hook - The FlowCanvas hook instance (for isLoadingFromServer)
  * @returns {{ connect: (history: HistoryPlugin) => void }}
@@ -196,4 +274,11 @@ export function createFlowHistoryPreset(hook) {
   };
 }
 
-export { DeleteNodeAction };
+export {
+  CreateNodeAction,
+  DeleteNodeAction,
+  FlowMetaAction,
+  FLOW_META_COALESCE_MS,
+  NodeDataAction,
+  NODE_DATA_COALESCE_MS,
+};

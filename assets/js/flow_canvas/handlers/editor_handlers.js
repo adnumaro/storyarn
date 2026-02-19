@@ -4,7 +4,14 @@
 
 import { ClassicPreset } from "rete";
 import { FlowNode } from "../flow_node.js";
-import { DeleteNodeAction } from "../history_preset.js";
+import {
+  CreateNodeAction,
+  DeleteNodeAction,
+  FlowMetaAction,
+  FLOW_META_COALESCE_MS,
+  NodeDataAction,
+  NODE_DATA_COALESCE_MS,
+} from "../history_preset.js";
 import { getNodeDef } from "../node_config.js";
 
 /**
@@ -71,6 +78,10 @@ export function createEditorHandlers(hook) {
         await hook.addNodeToEditor(data);
       } finally {
         hook.exitLoadingFromServer();
+      }
+      // Record undo for self-initiated creates (not collaborator broadcasts)
+      if (data.self && hook.history) {
+        hook.history.add(new CreateNodeAction(hook, data.id));
       }
       if (data.type === "hub" || data.type === "jump") await hook.rebuildHubsMap();
     },
@@ -303,8 +314,50 @@ export function createEditorHandlers(hook) {
     },
 
     /**
+     * Handles node data changed event from server (for undo/redo tracking).
+     * Coalesces rapid changes within NODE_DATA_COALESCE_MS window.
+     * @param {Object} data - Data with id, prev_data, new_data
+     */
+    handleNodeDataChanged(data) {
+      if (!hook.history) return;
+      const { id, prev_data: prevData, new_data: newData } = data;
+
+      const recent = hook.history
+        .getRecent(NODE_DATA_COALESCE_MS)
+        .filter((r) => r.action instanceof NodeDataAction && r.action.nodeId === id);
+
+      if (recent[0]) {
+        recent[0].action.newData = newData;
+        recent[0].time = Date.now();
+      } else {
+        hook.history.add(new NodeDataAction(hook, id, prevData, newData));
+      }
+    },
+
+    /**
+     * Handles flow metadata changed event from server (for undo/redo tracking).
+     * Coalesces rapid changes within FLOW_META_COALESCE_MS window.
+     * @param {Object} data - Data with field, prev, new
+     */
+    handleFlowMetaChanged(data) {
+      if (!hook.history) return;
+      const { field, prev, new: newValue } = data;
+
+      const recent = hook.history
+        .getRecent(FLOW_META_COALESCE_MS)
+        .filter((r) => r.action instanceof FlowMetaAction && r.action.field === field);
+
+      if (recent[0]) {
+        recent[0].action.newValue = newValue;
+        recent[0].time = Date.now();
+      } else {
+        hook.history.add(new FlowMetaAction(hook, field, prev, newValue));
+      }
+    },
+
+    /**
      * Handles connection updated event from server.
-     * @param {Object} data - Data with id, label
+     * @param {Object} data - Data with id, label, condition
      */
     handleConnectionUpdated(data) {
       const connId = `conn-${data.id}`;

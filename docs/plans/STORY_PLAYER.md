@@ -105,22 +105,22 @@ end
 
 ### What gets reused directly (no changes needed)
 
-| Module | Used for |
-|--------|----------|
-| `Evaluator.Engine` | `init/2`, `step/3`, `step_back/1`, `choose_response/3`, `set_variable/3`, `reset/1` |
-| `Evaluator.State` | Full state struct |
-| `Evaluator.EngineHelpers` | `advance_to`, `follow_output`, `find_connection`, `add_console`, `add_history_entries` |
-| `Evaluator.ConditionEval` | Condition evaluation (boolean, switch, per-rule) |
-| `Evaluator.InstructionExec` | Variable mutation (all operators) |
-| `NodeEvaluators.DialogueEvaluator` | Response condition evaluation, instruction execution, auto-select |
-| `NodeEvaluators.ConditionNodeEvaluator` | Boolean and switch mode evaluation |
-| `NodeEvaluators.InstructionEvaluator` | Assignment execution |
-| `NodeEvaluators.ExitEvaluator` | Terminal, flow_reference, caller_return |
-| `DebugExecutionHandlers.build_nodes_map/1` | Build `%{id => node}` map from DB |
-| `DebugExecutionHandlers.build_connections/1` | Build connection list from DB |
-| `DebugExecutionHandlers.find_entry_node/1` | Find entry node in map |
-| `DebugSessionStore` | Cross-flow state persistence (5-min TTL Agent) |
-| `Sheets.list_project_variables/1` | Load all project variables |
+| Module                                       | Used for                                                                               |
+|----------------------------------------------|----------------------------------------------------------------------------------------|
+| `Evaluator.Engine`                           | `init/2`, `step/3`, `step_back/1`, `choose_response/3`, `set_variable/3`, `reset/1`    |
+| `Evaluator.State`                            | Full state struct                                                                      |
+| `Evaluator.EngineHelpers`                    | `advance_to`, `follow_output`, `find_connection`, `add_console`, `add_history_entries` |
+| `Evaluator.ConditionEval`                    | Condition evaluation (boolean, switch, per-rule)                                       |
+| `Evaluator.InstructionExec`                  | Variable mutation (all operators)                                                      |
+| `NodeEvaluators.DialogueEvaluator`           | Response condition evaluation, instruction execution, auto-select                      |
+| `NodeEvaluators.ConditionNodeEvaluator`      | Boolean and switch mode evaluation                                                     |
+| `NodeEvaluators.InstructionEvaluator`        | Assignment execution                                                                   |
+| `NodeEvaluators.ExitEvaluator`               | Terminal, flow_reference, caller_return                                                |
+| `DebugExecutionHandlers.build_nodes_map/1`   | Build `%{id => node}` map from DB                                                      |
+| `DebugExecutionHandlers.build_connections/1` | Build connection list from DB                                                          |
+| `DebugExecutionHandlers.find_entry_node/1`   | Find entry node in map                                                                 |
+| `DebugSessionStore`                          | Cross-flow state persistence (5-min TTL Agent)                                         |
+| `Sheets.list_project_variables/1`            | Load all project variables                                                             |
 
 ---
 
@@ -234,21 +234,21 @@ end
 
 ### Slide building for each node type
 
-| Node type | Slide behavior |
-|-----------|---------------|
-| `entry` | Auto-advance (no slide) |
-| `dialogue` (no responses) | Show slide with "Continue" button |
-| `dialogue` (with responses) | Show slide with response buttons; wait for choice |
-| `dialogue` (auto-select: 1 valid) | Show slide briefly (configurable: 0ms = skip, or show with auto-advance) |
-| `condition` | Auto-advance (no slide); result logged to journey |
-| `instruction` | Auto-advance (no slide); variable changes logged |
-| `hub` | Auto-advance (no slide) |
-| `jump` | Auto-advance (no slide) |
-| `scene` | Show scene header slide briefly (configurable duration), then auto-advance |
-| `subflow` | Auto-advance + visual "entering sub-flow" transition |
-| `exit` (terminal) | Show outcome slide |
-| `exit` (flow_reference) | Auto-advance to target flow |
-| `exit` (caller_return) | Auto-advance back to caller |
+| Node type                         | Slide behavior                                                             |
+|-----------------------------------|----------------------------------------------------------------------------|
+| `entry`                           | Auto-advance (no slide)                                                    |
+| `dialogue` (no responses)         | Show slide with "Continue" button                                          |
+| `dialogue` (with responses)       | Show slide with response buttons; wait for choice                          |
+| `dialogue` (auto-select: 1 valid) | Show slide briefly (configurable: 0ms = skip, or show with auto-advance)   |
+| `condition`                       | Auto-advance (no slide); result logged to journey                          |
+| `instruction`                     | Auto-advance (no slide); variable changes logged                           |
+| `hub`                             | Auto-advance (no slide)                                                    |
+| `jump`                            | Auto-advance (no slide)                                                    |
+| `scene`                           | Show scene header slide briefly (configurable duration), then auto-advance |
+| `subflow`                         | Auto-advance + visual "entering sub-flow" transition                       |
+| `exit` (terminal)                 | Show outcome slide                                                         |
+| `exit` (flow_reference)           | Auto-advance to target flow                                                |
+| `exit` (caller_return)            | Auto-advance back to caller                                                |
 
 ### Auto-advance logic
 
@@ -430,31 +430,31 @@ Click any journey point to jump back to that position (using `step_back` repeate
 
 ## Keyboard Shortcuts
 
-| Key | Action |
-|-----|--------|
-| `Space` / `Enter` | Continue / Advance |
-| `1`-`9` | Select response by number |
-| `←` / `Backspace` | Go back one step |
-| `→` | Same as Continue |
-| `Escape` | Exit player (back to editor) |
-| `N` | Toggle navigator panel |
-| `V` | Toggle variables overlay |
-| `M` | Toggle mute |
-| `P` | Toggle player/analysis mode |
-| `A` | Toggle auto-play |
+| Key               | Action                       |
+|-------------------|------------------------------|
+| `Space` / `Enter` | Continue / Advance           |
+| `1`-`9`           | Select response by number    |
+| `←` / `Backspace` | Go back one step             |
+| `→`               | Same as Continue             |
+| `Escape`          | Exit player (back to editor) |
+| `N`               | Toggle navigator panel       |
+| `V`               | Toggle variables overlay     |
+| `M`               | Toggle mute                  |
+| `P`               | Toggle player/analysis mode  |
+| `A`               | Toggle auto-play             |
 
 ---
 
 ## Analysis Mode vs Player Mode
 
-| Aspect | Player Mode | Analysis Mode |
-|--------|-------------|---------------|
-| Invalid responses | Hidden | Shown with red styling + ✗ icon |
-| Condition details | Hidden | Shown as tooltip on invalid responses |
-| Response condition badge | Hidden | Shown as `[?]` badge |
-| Variable changes | Hidden | Shown as toast notification on auto-advance |
-| Condition node outcome | Hidden | Shown as brief flash ("Condition → true") |
-| Instruction node effect | Hidden | Shown as brief flash ("health: 100 → 90") |
+| Aspect                   | Player Mode   | Analysis Mode                               |
+|--------------------------|---------------|---------------------------------------------|
+| Invalid responses        | Hidden        | Shown with red styling + ✗ icon             |
+| Condition details        | Hidden        | Shown as tooltip on invalid responses       |
+| Response condition badge | Hidden        | Shown as `[?]` badge                        |
+| Variable changes         | Hidden        | Shown as toast notification on auto-advance |
+| Condition node outcome   | Hidden        | Shown as brief flash ("Condition → true")   |
+| Instruction node effect  | Hidden        | Shown as brief flash ("health: 100 → 90")   |
 
 Toggle via toolbar button or `P` key. Default: Player Mode.
 
@@ -894,28 +894,28 @@ Key scenarios:
 
 ## Comparison: Storyarn Story Player vs articy:draft Presentation View
 
-| Feature | articy:draft | Storyarn (planned) |
-|---------|-------------|-------------------|
-| Slide-based presentation | ✅ | ✅ Phase 1 |
-| Condition/instruction evaluation | ✅ | ✅ Phase 1 (engine reuse) |
-| Player vs Analysis mode | ✅ | ✅ Phase 1 |
-| Record mode + journeys | ✅ | ✅ Phase 2 |
-| Navigator panel | ✅ | ✅ Phase 2 |
-| Auto-play | ✅ | ✅ Phase 2 |
-| Journey save/load | ✅ | ✅ Phase 2 |
-| Voice-over playback | ✅ | ✅ Phase 3 |
-| Language switching | ✅ | ✅ Phase 3 |
-| Variable overrides | ✅ | ✅ Phase 3 |
-| Scene headers (cinematic) | ❌ | ✅ Phase 1 (unique to Storyarn) |
-| Stage directions | ❌ | ✅ Phase 1 (unique to Storyarn) |
-| Variable interpolation in text | ❌ | ✅ Phase 1 (unique to Storyarn) |
-| Speaker portraits | Partial | ✅ Phase 3 |
-| Outcome screen with tags | ❌ | ✅ Phase 1 (unique to Storyarn) |
-| Cross-flow (subflows) | ❌ (flat flows) | ✅ Phase 1 (engine reuse) |
-| Keyboard shortcuts | ❌ | ✅ Phase 1 |
-| Step back (undo) | Via navigator | ✅ Phase 1 (snapshot-based, instant) |
-| Slide backgrounds | ✅ (per-slide) | ✅ Phase 3 |
-| Custom functions prompt | ✅ | N/A (no custom functions) |
+| Feature                          | articy:draft   | Storyarn (planned)                  |
+|----------------------------------|----------------|-------------------------------------|
+| Slide-based presentation         | ✅              | ✅ Phase 1                           |
+| Condition/instruction evaluation | ✅              | ✅ Phase 1 (engine reuse)            |
+| Player vs Analysis mode          | ✅              | ✅ Phase 1                           |
+| Record mode + journeys           | ✅              | ✅ Phase 2                           |
+| Navigator panel                  | ✅              | ✅ Phase 2                           |
+| Auto-play                        | ✅              | ✅ Phase 2                           |
+| Journey save/load                | ✅              | ✅ Phase 2                           |
+| Voice-over playback              | ✅              | ✅ Phase 3                           |
+| Language switching               | ✅              | ✅ Phase 3                           |
+| Variable overrides               | ✅              | ✅ Phase 3                           |
+| Scene headers (cinematic)        | ❌              | ✅ Phase 1 (unique to Storyarn)      |
+| Stage directions                 | ❌              | ✅ Phase 1 (unique to Storyarn)      |
+| Variable interpolation in text   | ❌              | ✅ Phase 1 (unique to Storyarn)      |
+| Speaker portraits                | Partial        | ✅ Phase 3                           |
+| Outcome screen with tags         | ❌              | ✅ Phase 1 (unique to Storyarn)      |
+| Cross-flow (subflows)            | ❌ (flat flows) | ✅ Phase 1 (engine reuse)            |
+| Keyboard shortcuts               | ❌              | ✅ Phase 1                           |
+| Step back (undo)                 | Via navigator  | ✅ Phase 1 (snapshot-based, instant) |
+| Slide backgrounds                | ✅ (per-slide)  | ✅ Phase 3                           |
+| Custom functions prompt          | ✅              | N/A (no custom functions)           |
 
 ---
 

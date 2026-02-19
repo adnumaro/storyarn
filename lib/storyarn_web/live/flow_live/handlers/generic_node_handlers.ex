@@ -34,6 +34,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_save_name(%{"name" => name}, socket) do
     flow = socket.assigns.flow
+    prev_name = flow.name
 
     case Flows.update_flow(flow, %{name: name}) do
       {:ok, updated_flow} ->
@@ -42,7 +43,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
         {:noreply,
          socket
          |> assign(:flow, updated_flow)
-         |> assign(:save_status, :saved)}
+         |> assign(:save_status, :saved)
+         |> push_event("flow_meta_changed", %{field: "name", prev: prev_name, new: name})}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("flows", "Could not save flow name."))}
@@ -53,6 +55,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_save_shortcut(%{"shortcut" => shortcut}, socket) do
     flow = socket.assigns.flow
+    prev_shortcut = flow.shortcut
     shortcut = if shortcut == "", do: nil, else: shortcut
 
     case Flows.update_flow(flow, %{shortcut: shortcut}) do
@@ -62,13 +65,67 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
         {:noreply,
          socket
          |> assign(:flow, updated_flow)
-         |> assign(:save_status, :saved)}
+         |> assign(:save_status, :saved)
+         |> push_event("flow_meta_changed", %{
+           field: "shortcut",
+           prev: prev_shortcut,
+           new: shortcut
+         })}
 
       {:error, changeset} ->
         error_msg = format_shortcut_error(changeset)
         {:noreply, put_flash(socket, :error, error_msg)}
     end
   end
+
+  @spec handle_restore_flow_meta(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_restore_flow_meta(%{"field" => "name", "value" => value}, socket) do
+    flow = socket.assigns.flow
+
+    case Flows.update_flow(flow, %{name: value}) do
+      {:ok, updated_flow} ->
+        schedule_save_status_reset()
+
+        {:noreply,
+         socket
+         |> assign(:flow, updated_flow)
+         |> assign(:save_status, :saved)
+         |> push_event("restore_page_content", %{
+           name: updated_flow.name,
+           shortcut: updated_flow.shortcut || ""
+         })}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("flows", "Could not restore flow name."))}
+    end
+  end
+
+  def handle_restore_flow_meta(%{"field" => "shortcut", "value" => value}, socket) do
+    flow = socket.assigns.flow
+    shortcut = if value == "" or is_nil(value), do: nil, else: value
+
+    case Flows.update_flow(flow, %{shortcut: shortcut}) do
+      {:ok, updated_flow} ->
+        schedule_save_status_reset()
+
+        {:noreply,
+         socket
+         |> assign(:flow, updated_flow)
+         |> assign(:save_status, :saved)
+         |> push_event("restore_page_content", %{
+           name: updated_flow.name,
+           shortcut: updated_flow.shortcut || ""
+         })}
+
+      {:error, changeset} ->
+        error_msg = format_shortcut_error(changeset)
+        {:noreply, put_flash(socket, :error, error_msg)}
+    end
+  end
+
+  def handle_restore_flow_meta(_params, socket), do: {:noreply, socket}
 
   @spec handle_node_selected(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}

@@ -27,6 +27,7 @@ defmodule StoryarnWeb.FlowLive.ShowEventsTest do
       assert function_exported?(module, :handle_update_node_text, 2)
       assert function_exported?(module, :handle_update_node_field, 2)
       assert function_exported?(module, :handle_save_shortcut, 2)
+      assert function_exported?(module, :handle_restore_flow_meta, 2)
       assert function_exported?(module, :handle_start_preview, 2)
     end
 
@@ -134,6 +135,165 @@ defmodule StoryarnWeb.FlowLive.ShowEventsTest do
       updated_flow = Storyarn.Flows.get_flow!(project.id, flow.id)
       hub_nodes = Enum.filter(updated_flow.nodes, &(&1.type == "hub"))
       assert length(hub_nodes) == 2
+    end
+  end
+
+  describe "undo/redo events through LiveView" do
+    setup :register_and_log_in_user
+
+    setup %{user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Test Flow"})
+      %{project: project, flow: flow}
+    end
+
+    test "restore_node_data reverts node data to previous snapshot",
+         %{conn: conn, project: project, flow: flow} do
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Original text", "speaker" => "NPC"}
+        })
+
+      # Update the node data first
+      {:ok, updated_node, _meta} =
+        Storyarn.Flows.update_node_data(node, %{"text" => "Modified text", "speaker" => "NPC"})
+
+      assert updated_node.data["text"] == "Modified text"
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      # Simulate undo: restore to original data
+      render_click(view, "restore_node_data", %{
+        "id" => node.id,
+        "data" => %{"text" => "Original text", "speaker" => "NPC"}
+      })
+
+      restored_node = Storyarn.Flows.get_node!(flow.id, node.id)
+      assert restored_node.data["text"] == "Original text"
+    end
+
+    test "restore_node_data rejects hub_id conflict (data unchanged)",
+         %{conn: conn, project: project, flow: flow} do
+      _hub1 =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "hub_a", "color" => "purple"}
+        })
+
+      hub2 =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "hub_b", "color" => "blue"}
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      # Try to restore hub2 with hub_a's ID — should conflict
+      render_click(view, "restore_node_data", %{
+        "id" => hub2.id,
+        "data" => %{"hub_id" => "hub_a", "color" => "blue"}
+      })
+
+      # Data should remain unchanged — restore was rejected
+      unchanged_hub2 = Storyarn.Flows.get_node!(flow.id, hub2.id)
+      assert unchanged_hub2.data["hub_id"] == "hub_b"
+    end
+
+    test "restore_flow_meta restores flow name",
+         %{conn: conn, project: project, flow: flow} do
+      # Update flow name first
+      {:ok, _} = Storyarn.Flows.update_flow(flow, %{name: "Modified Name"})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      # Simulate undo: restore original name
+      render_click(view, "restore_flow_meta", %{
+        "field" => "name",
+        "value" => "Test Flow"
+      })
+
+      restored_flow = Storyarn.Flows.get_flow!(project.id, flow.id)
+      assert restored_flow.name == "Test Flow"
+    end
+
+    test "restore_flow_meta restores flow shortcut",
+         %{conn: conn, project: project, flow: flow} do
+      {:ok, _} = Storyarn.Flows.update_flow(flow, %{shortcut: "test.shortcut"})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      # Restore shortcut to nil (empty)
+      render_click(view, "restore_flow_meta", %{
+        "field" => "shortcut",
+        "value" => ""
+      })
+
+      restored_flow = Storyarn.Flows.get_flow!(project.id, flow.id)
+      assert restored_flow.shortcut == nil
+    end
+
+    test "restore_flow_meta with unknown field is a no-op",
+         %{conn: conn, project: project, flow: flow} do
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      # Should not crash — catch-all clause returns {:noreply, socket}
+      render_click(view, "restore_flow_meta", %{
+        "field" => "unknown_field",
+        "value" => "anything"
+      })
+
+      # Flow unchanged
+      unchanged_flow = Storyarn.Flows.get_flow!(project.id, flow.id)
+      assert unchanged_flow.name == "Test Flow"
+    end
+
+    test "save_name pushes flow_meta_changed event",
+         %{conn: conn, project: project, flow: flow} do
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_click(view, "save_name", %{"name" => "New Name"})
+
+      updated_flow = Storyarn.Flows.get_flow!(project.id, flow.id)
+      assert updated_flow.name == "New Name"
+    end
+
+    test "save_shortcut pushes flow_meta_changed event",
+         %{conn: conn, project: project, flow: flow} do
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_click(view, "save_shortcut", %{"shortcut" => "new.shortcut"})
+
+      updated_flow = Storyarn.Flows.get_flow!(project.id, flow.id)
+      assert updated_flow.shortcut == "new.shortcut"
     end
   end
 

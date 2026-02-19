@@ -97,6 +97,12 @@ export function setupEventHandlers(hook) {
       .then(() => hook.editorHandlers.handleNodeUpdated(data))
       .catch((err) => console.error("node_updated handler error:", err));
   });
+  hook.handleEvent("node_data_changed", (data) =>
+    hook.editorHandlers.handleNodeDataChanged(data),
+  );
+  hook.handleEvent("flow_meta_changed", (data) =>
+    hook.editorHandlers.handleFlowMetaChanged(data),
+  );
   hook.handleEvent("connection_added", (data) => hook.editorHandlers.handleConnectionAdded(data));
   hook.handleEvent("connection_removed", (data) =>
     hook.editorHandlers.handleConnectionRemoved(data),

@@ -14,7 +14,6 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
   # Maximum traversal depth to prevent infinite loops in cyclic flows
   @max_traversal_depth 50
 
-
   @impl true
   def render(assigns) do
     ~H"""

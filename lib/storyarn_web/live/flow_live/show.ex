@@ -332,6 +332,12 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  def handle_event("restore_flow_meta", params, socket) do
+    with_auth(:edit_content, socket, fn ->
+      GenericNodeHandlers.handle_restore_flow_meta(params, socket)
+    end)
+  end
+
   def handle_event("node_selected", params, socket) do
     GenericNodeHandlers.handle_node_selected(params, socket)
   end
@@ -396,6 +402,12 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("restore_node", %{"id" => node_id}, socket) do
     with_auth(:edit_content, socket, fn ->
       NodeHelpers.restore_node(socket, node_id)
+    end)
+  end
+
+  def handle_event("restore_node_data", %{"id" => node_id, "data" => data}, socket) do
+    with_auth(:edit_content, socket, fn ->
+      NodeHelpers.restore_node_data(socket, node_id, data)
     end)
   end
 
