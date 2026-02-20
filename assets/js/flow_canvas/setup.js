@@ -7,6 +7,7 @@ import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { NodeEditor } from "rete";
 import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
+import { Presets as ArrangePresets, AutoArrangePlugin } from "rete-auto-arrange-plugin";
 import { ConnectionPlugin, Presets as ConnectionPresets } from "rete-connection-plugin";
 import { ContextMenuPlugin } from "rete-context-menu-plugin";
 import { HistoryPlugin } from "rete-history-plugin";
@@ -27,8 +28,12 @@ export function createPlugins(container, hook) {
   const connection = new ConnectionPlugin();
   const contextMenu = new ContextMenuPlugin({ items: createContextMenuItems(hook) });
   const history = new HistoryPlugin({ timing: 200 });
+  const arrange = new AutoArrangePlugin();
   const minimap = new MinimapPlugin();
   const render = new LitPlugin();
+
+  // Configure auto-arrange plugin
+  arrange.addPreset(ArrangePresets.classic.setup());
 
   // Configure connection plugin
   connection.addPreset(ConnectionPresets.classic.setup());
@@ -151,6 +156,7 @@ export function createPlugins(container, hook) {
   area.use(connection);
   area.use(render);
   area.use(contextMenu);
+  area.use(arrange);
   // History preset — wires pipes on the editor and area for connection/drag tracking.
   // Needs hook reference for isLoadingFromServer guard.
   history.addPreset(createFlowHistoryPreset(hook));
@@ -158,7 +164,7 @@ export function createPlugins(container, hook) {
   // Minimap and history are deferred — caller must do area.use() after initial load
   // to avoid per-node updates during bulk addNode.
 
-  return { editor, area, connection, history, minimap, render };
+  return { editor, area, connection, history, arrange, minimap, render };
 }
 
 /**

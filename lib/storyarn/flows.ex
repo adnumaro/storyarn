@@ -231,6 +231,13 @@ defmodule Storyarn.Flows do
   defdelegate update_node_position(node, attrs), to: NodeCrud
 
   @doc """
+  Batch-updates positions for multiple nodes in a single transaction.
+  Used by auto-layout.
+  """
+  @spec batch_update_positions(integer(), [map()]) :: {:ok, integer()} | {:error, term()}
+  defdelegate batch_update_positions(flow_id, positions), to: NodeCrud
+
+  @doc """
   Updates only the data of a node.
   """
   @spec update_node_data(flow_node(), map()) ::

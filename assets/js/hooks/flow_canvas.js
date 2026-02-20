@@ -19,6 +19,7 @@ import {
   createLockHandler,
   createNavigationHandler,
 } from "../flow_canvas/handlers/index.js";
+import { buildBatchPositions } from "../flow_canvas/history_preset.js";
 import { createLodController } from "../flow_canvas/lod_controller.js";
 import { createPlugins, finalizeSetup } from "../flow_canvas/setup.js";
 
@@ -78,6 +79,7 @@ export const FlowCanvas = {
     this.area = plugins.area;
     this.connection = plugins.connection;
     this.history = plugins.history;
+    this.arrange = plugins.arrange;
     this.minimap = plugins.minimap;
     this.render = plugins.render;
 
@@ -270,6 +272,74 @@ export const FlowCanvas = {
         node._updateTs = ts;
         await this.area.update("node", node.id);
       }
+    }
+  },
+
+  /** Snapshots current positions for all editor nodes. */
+  _snapshotPositions() {
+    const positions = new Map();
+    for (const node of this.editor.getNodes()) {
+      const view = this.area.nodeViews.get(node.id);
+      if (view) {
+        positions.set(node.id, { x: view.position.x, y: view.position.y });
+      }
+    }
+    return positions;
+  },
+
+  /** Persists a positions Map to the server via batch event. */
+  _persistBatchPositions(positionsMap) {
+    this.pushEvent("batch_update_positions", {
+      positions: buildBatchPositions(positionsMap),
+    });
+  },
+
+  async performAutoLayout() {
+    if (this._autoLayoutInProgress) return;
+    this._autoLayoutInProgress = true;
+
+    try {
+      const { ArrangeAppliers } = await import("rete-auto-arrange-plugin");
+      const { AreaExtensions } = await import("rete-area-plugin");
+
+      const prevPositions = this._snapshotPositions();
+
+      // Compute and apply layout with animation
+      const applier = new ArrangeAppliers.TransitionApplier({
+        duration: 400,
+        timingFunction: (t) => t * (2 - t),
+      });
+
+      this.enterLoadingFromServer();
+      try {
+        await this.arrange.layout({
+          applier,
+          options: {
+            "elk.algorithm": "layered",
+            "elk.direction": "RIGHT",
+            "elk.spacing.nodeNode": "60",
+            "elk.layered.spacing.nodeNodeBetweenLayers": "120",
+          },
+        });
+      } finally {
+        this.exitLoadingFromServer();
+      }
+
+      await AreaExtensions.zoomAt(this.area, this.editor.getNodes());
+
+      const newPositions = this._snapshotPositions();
+      this._persistBatchPositions(newPositions);
+
+      // Record undo action
+      if (this.history) {
+        const { AutoLayoutAction } = await import("../flow_canvas/history_preset.js");
+        this.history.add(new AutoLayoutAction(this, prevPositions, newPositions));
+      }
+    } catch (error) {
+      // biome-ignore lint/suspicious/noConsole: error feedback for unlikely ELK layout failure
+      console.error("Auto-layout failed:", error);
+    } finally {
+      this._autoLayoutInProgress = false;
     }
   },
 

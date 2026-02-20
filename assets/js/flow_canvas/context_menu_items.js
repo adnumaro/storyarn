@@ -15,6 +15,7 @@ import {
   ExternalLink,
   GitBranch,
   Hash,
+  LayoutGrid,
   Link,
   LogIn,
   LogOut,
@@ -38,6 +39,7 @@ const ICONS = {
   plus: createIconHTML(Plus, { size: ICON_SIZE }),
   play: createIconHTML(Play, { size: ICON_SIZE }),
   bug: createIconHTML(Bug, { size: ICON_SIZE }),
+  layoutGrid: createIconHTML(LayoutGrid, { size: ICON_SIZE }),
   // Node types
   dialogue: createIconHTML(MessageSquare, { size: ICON_SIZE }),
   condition: createIconHTML(GitBranch, { size: ICON_SIZE }),
@@ -106,10 +108,25 @@ export function createContextMenuItems(hook) {
             })),
           },
           {
+            label: "Play preview",
+            key: "play_preview",
+            icon: ICONS.play,
+            handler: () => {
+              const path = window.location.pathname.replace(/\/$/, "");
+              window.location.href = `${path}/play`;
+            },
+          },
+          {
             label: "Start debugging",
             key: "start_debug",
             icon: ICONS.bug,
             handler: () => hook.pushEvent("debug_start", {}),
+          },
+          {
+            label: "Auto-layout",
+            key: "auto_layout",
+            icon: ICONS.layoutGrid,
+            handler: () => hook.performAutoLayout(),
           },
         ],
       };

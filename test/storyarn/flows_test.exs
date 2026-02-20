@@ -598,6 +598,55 @@ defmodule Storyarn.FlowsTest do
       assert counts["dialogue"] == 2
       assert counts["condition"] == 1
     end
+
+    test "batch_update_positions/2 updates positions for multiple nodes" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+      node1 = node_fixture(flow, %{position_x: 0.0, position_y: 0.0})
+      node2 = node_fixture(flow, %{position_x: 0.0, position_y: 0.0})
+
+      positions = [
+        %{id: node1.id, position_x: 100.0, position_y: 200.0},
+        %{id: node2.id, position_x: 300.0, position_y: 400.0}
+      ]
+
+      assert {:ok, 2} = Flows.batch_update_positions(flow.id, positions)
+
+      updated1 = Flows.get_node!(flow.id, node1.id)
+      assert updated1.position_x == 100.0
+      assert updated1.position_y == 200.0
+
+      updated2 = Flows.get_node!(flow.id, node2.id)
+      assert updated2.position_x == 300.0
+      assert updated2.position_y == 400.0
+    end
+
+    test "batch_update_positions/2 ignores nodes from a different flow" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+      other_flow = flow_fixture(project, %{name: "Other"})
+      other_node = node_fixture(other_flow, %{position_x: 0.0, position_y: 0.0})
+
+      positions = [
+        %{id: other_node.id, position_x: 999.0, position_y: 999.0}
+      ]
+
+      assert {:ok, 1} = Flows.batch_update_positions(flow.id, positions)
+
+      unchanged = Flows.get_node!(other_flow.id, other_node.id)
+      assert unchanged.position_x == 0.0
+      assert unchanged.position_y == 0.0
+    end
+
+    test "batch_update_positions/2 handles empty positions list" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      assert {:ok, 0} = Flows.batch_update_positions(flow.id, [])
+    end
   end
 
   describe "connections" do

@@ -254,6 +254,41 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
+  @spec handle_batch_update_positions(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_batch_update_positions(%{"positions" => positions}, socket) when is_list(positions) do
+    flow = socket.assigns.flow
+
+    parsed =
+      positions
+      |> Enum.filter(fn pos ->
+        is_integer(pos["id"]) and is_number(pos["position_x"]) and is_number(pos["position_y"])
+      end)
+      |> Enum.map(fn pos ->
+        %{
+          id: pos["id"],
+          position_x: pos["position_x"] / 1,
+          position_y: pos["position_y"] / 1
+        }
+      end)
+
+    case Flows.batch_update_positions(flow.id, parsed) do
+      {:ok, _count} ->
+        schedule_save_status_reset()
+
+        {:noreply,
+         socket
+         |> assign(:save_status, :saved)
+         |> CollaborationHelpers.broadcast_change(:flow_refresh, %{})}
+
+      {:error, _reason} ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("flows", "Could not update node positions."))}
+    end
+  end
+
+  def handle_batch_update_positions(_params, socket), do: {:noreply, socket}
+
   @spec handle_node_moved(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_node_moved(%{"id" => node_id, "position_x" => x, "position_y" => y}, socket) do

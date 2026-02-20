@@ -405,6 +405,12 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  def handle_event("batch_update_positions", params, socket) do
+    with_auth(:edit_content, socket, fn ->
+      GenericNodeHandlers.handle_batch_update_positions(params, socket)
+    end)
+  end
+
   def handle_event("update_node_data", %{"node" => _} = params, socket) do
     with_auth(:edit_content, socket, fn ->
       GenericNodeHandlers.handle_update_node_data(params, socket)

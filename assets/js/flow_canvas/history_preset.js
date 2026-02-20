@@ -186,6 +186,62 @@ class NodeDataAction {
 }
 
 /**
+ * Converts a Map<reteNodeId, {x, y}> to the server batch payload format.
+ * Shared by AutoLayoutAction and performAutoLayout.
+ * @param {Map<string, {x: number, y: number}>} positionsMap
+ * @returns {Array<{id: number, position_x: number, position_y: number}>}
+ */
+function buildBatchPositions(positionsMap) {
+  const result = [];
+  for (const [reteNodeId, pos] of positionsMap) {
+    const serverId = reteNodeId.replace("node-", "");
+    const id = Number.parseInt(serverId, 10);
+    if (Number.isNaN(id)) continue;
+    result.push({ id, position_x: pos.x, position_y: pos.y });
+  }
+  return result;
+}
+
+/**
+ * Undo/redo action for auto-layout.
+ * Stores full position snapshots (before and after) for all nodes.
+ * Both operations push batch_update_positions to persist.
+ */
+class AutoLayoutAction {
+  constructor(hook, prevPositions, newPositions) {
+    this.hook = hook;
+    this.prevPositions = prevPositions;
+    this.newPositions = newPositions;
+  }
+
+  async undo() {
+    await this._applyPositions(this.prevPositions);
+  }
+
+  async redo() {
+    await this._applyPositions(this.newPositions);
+  }
+
+  async _applyPositions(positions) {
+    this.hook.enterLoadingFromServer();
+    try {
+      for (const [reteNodeId, pos] of positions) {
+        const view = this.hook.area.nodeViews.get(reteNodeId);
+        if (view) {
+          await this.hook.area.translate(reteNodeId, pos);
+        }
+      }
+    } finally {
+      this.hook.exitLoadingFromServer();
+    }
+
+    this.hook.pushEvent("batch_update_positions", {
+      positions: buildBatchPositions(positions),
+    });
+  }
+}
+
+/**
  * Creates a custom history preset for the flow canvas.
  * @param {Object} hook - The FlowCanvas hook instance (for isLoadingFromServer)
  * @returns {{ connect: (history: HistoryPlugin) => void }}
@@ -275,6 +331,8 @@ export function createFlowHistoryPreset(hook) {
 }
 
 export {
+  AutoLayoutAction,
+  buildBatchPositions,
   CreateNodeAction,
   DeleteNodeAction,
   FlowMetaAction,

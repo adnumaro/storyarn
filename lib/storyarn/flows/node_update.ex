@@ -20,6 +20,26 @@ defmodule Storyarn.Flows.NodeUpdate do
     |> Repo.update()
   end
 
+  @doc """
+  Batch-updates positions for multiple nodes in a single transaction.
+  Accepts a flow_id and a list of maps with :id, :position_x, :position_y.
+  Returns {:ok, count} with the number of updated nodes.
+  """
+  def batch_update_positions(flow_id, positions) when is_list(positions) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    Repo.transaction(fn ->
+      Enum.each(positions, fn %{id: node_id, position_x: x, position_y: y} ->
+        from(n in FlowNode,
+          where: n.id == ^node_id and n.flow_id == ^flow_id and is_nil(n.deleted_at)
+        )
+        |> Repo.update_all(set: [position_x: x, position_y: y, updated_at: now])
+      end)
+
+      length(positions)
+    end)
+  end
+
   def update_node_data(%FlowNode{type: "hub"} = node, data) do
     update_hub_node_data(node, data)
   end
