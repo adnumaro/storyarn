@@ -3,11 +3,11 @@
  */
 import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
-import { LogOut, ArrowRight } from "lucide";
-import { createIconSvg, createIconHTML } from "../node_config.js";
+import { ArrowRight, LogOut } from "lucide";
+import { createIconHTML, createIconSvg } from "../node_config.js";
 import {
-  nodeShell,
   defaultHeader,
+  nodeShell,
   renderNavLink,
   renderPreview,
   renderSockets,
@@ -31,13 +31,19 @@ export default {
     const indicators = this.getIndicators(nodeData);
     const preview = this.getPreviewText(nodeData, null, hubsMap);
 
-    return nodeShell(color, selected, html`
+    return nodeShell(
+      color,
+      selected,
+      html`
       ${defaultHeader(config, color, indicators)}
-      ${nodeData.target_hub_id && preview
-        ? renderNavLink(preview, "navigate-to-hub", "jumpDbId", node.nodeId, emit)
-        : renderPreview(preview)}
+      ${
+        nodeData.target_hub_id && preview
+          ? renderNavLink(preview, "navigate-to-hub", "jumpDbId", node.nodeId, emit)
+          : renderPreview(preview)
+      }
       <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
-    `);
+    `,
+    );
   },
 
   getPreviewText(data, _sheetsMap, hubsMap) {

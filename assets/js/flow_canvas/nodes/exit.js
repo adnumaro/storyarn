@@ -6,9 +6,15 @@
  */
 import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
-import { Square, ArrowRight, CornerDownLeft } from "lucide";
-import { createIconSvg, createIconHTML } from "../node_config.js";
-import { nodeShell, defaultHeader, renderNavLink, renderPreview, renderSockets } from "./render_helpers.js";
+import { ArrowRight, CornerDownLeft, Square } from "lucide";
+import { createIconHTML, createIconSvg } from "../node_config.js";
+import {
+  defaultHeader,
+  nodeShell,
+  renderNavLink,
+  renderPreview,
+  renderSockets,
+} from "./render_helpers.js";
 
 // Pre-create exit mode icons
 const NAV_ARROW_ICON = createIconHTML(ArrowRight, { size: 12 });
@@ -33,24 +39,39 @@ export default {
     // Flow reference nav link
     let navLink = "";
     if (nodeData.exit_mode === "flow_reference" && nodeData.referenced_flow_name) {
-      const shortcut = nodeData.referenced_flow_shortcut ? ` (#${nodeData.referenced_flow_shortcut})` : "";
+      const shortcut = nodeData.referenced_flow_shortcut
+        ? ` (#${nodeData.referenced_flow_shortcut})`
+        : "";
       const navContent = html`<span style="display:inline-flex;align-items:center;gap:4px">${unsafeSVG(NAV_ARROW_ICON)} ${nodeData.referenced_flow_name}${shortcut}</span>`;
-      navLink = renderNavLink(navContent, "navigate-to-exit-flow", "flowId", nodeData.referenced_flow_id, emit);
+      navLink = renderNavLink(
+        navContent,
+        "navigate-to-exit-flow",
+        "flowId",
+        nodeData.referenced_flow_id,
+        emit,
+      );
     }
 
     // Outcome tags
     const tags = nodeData.outcome_tags || [];
-    const tagsText = tags.length > 0
-      ? (tags.length > 3 ? tags.slice(0, 3).join(", ") + ` +${tags.length - 3}` : tags.join(", "))
-      : "";
+    const tagsText =
+      tags.length > 0
+        ? tags.length > 3
+          ? `${tags.slice(0, 3).join(", ")} +${tags.length - 3}`
+          : tags.join(", ")
+        : "";
 
-    return nodeShell(color, selected, html`
+    return nodeShell(
+      color,
+      selected,
+      html`
       ${defaultHeader(config, color, indicators)}
       ${renderPreview(preview)}
       ${navLink}
       ${tagsText ? html`<div class="node-data"><div class="node-data-text" style="opacity:0.6;font-size:0.7em">${tagsText}</div></div>` : ""}
       <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
-    `);
+    `,
+    );
   },
 
   getPreviewText(data) {

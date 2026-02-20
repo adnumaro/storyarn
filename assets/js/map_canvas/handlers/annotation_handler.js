@@ -5,15 +5,19 @@
  */
 
 import L from "leaflet";
-import { createAnnotationMarker, setAnnotationSelected, updateAnnotationMarker } from "../annotation_renderer.js";
-import { toPercent, toLatLng } from "../coordinate_utils.js";
 import {
-  editPropertiesItem,
+  createAnnotationMarker,
+  setAnnotationSelected,
+  updateAnnotationMarker,
+} from "../annotation_renderer.js";
+import {
   bringToFrontItem,
-  sendToBackItem,
-  lockToggleItem,
   deleteItem,
+  editPropertiesItem,
+  lockToggleItem,
+  sendToBackItem,
 } from "../context_menu_builder.js";
+import { toLatLng, toPercent } from "../coordinate_utils.js";
 
 const DRAG_DEBOUNCE_MS = 300;
 
@@ -42,7 +46,9 @@ export function createAnnotationHandler(hook, i18n = {}) {
   }
 
   function renderAnnotations() {
-    const annotations = (hook.mapData.annotations || []).slice().sort((a, b) => (a.position || 0) - (b.position || 0));
+    const annotations = (hook.mapData.annotations || [])
+      .slice()
+      .sort((a, b) => (a.position || 0) - (b.position || 0));
     for (const annotation of annotations) {
       addAnnotationToMap(annotation);
     }
@@ -50,7 +56,9 @@ export function createAnnotationHandler(hook, i18n = {}) {
 
   function addAnnotationToMap(annotation) {
     const canEdit = hook.editMode !== false;
-    const marker = createAnnotationMarker(annotation, hook.canvasWidth, hook.canvasHeight, { canEdit });
+    const marker = createAnnotationMarker(annotation, hook.canvasWidth, hook.canvasHeight, {
+      canEdit,
+    });
 
     // Click → select
     marker.on("click", (e) => {
@@ -99,21 +107,20 @@ export function createAnnotationHandler(hook, i18n = {}) {
     // Drag end → persist position
     marker.on("dragend", () => {
       hook.floatingToolbar?.setDragging(false);
-      const pos = toPercent(
-        marker.getLatLng(),
-        hook.canvasWidth,
-        hook.canvasHeight,
-      );
+      const pos = toPercent(marker.getLatLng(), hook.canvasWidth, hook.canvasHeight);
       const annId = annotation.id;
       if (dragTimers.has(annId)) clearTimeout(dragTimers.get(annId));
-      dragTimers.set(annId, setTimeout(() => {
-        dragTimers.delete(annId);
-        hook.pushEvent("move_annotation", {
-          id: String(marker.annotationData.id),
-          position_x: pos.x,
-          position_y: pos.y,
-        });
-      }, DRAG_DEBOUNCE_MS));
+      dragTimers.set(
+        annId,
+        setTimeout(() => {
+          dragTimers.delete(annId);
+          hook.pushEvent("move_annotation", {
+            id: String(marker.annotationData.id),
+            position_x: pos.x,
+            position_y: pos.y,
+          });
+        }, DRAG_DEBOUNCE_MS),
+      );
     });
 
     marker.addTo(hook.annotationLayer);
@@ -312,7 +319,9 @@ export function createAnnotationHandler(hook, i18n = {}) {
   function repositionAll() {
     for (const marker of markers.values()) {
       const ann = marker.annotationData;
-      marker.setLatLng(toLatLng(ann.position_x, ann.position_y, hook.canvasWidth, hook.canvasHeight));
+      marker.setLatLng(
+        toLatLng(ann.position_x, ann.position_y, hook.canvasWidth, hook.canvasHeight),
+      );
     }
   }
 

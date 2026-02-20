@@ -7,15 +7,15 @@
  *   def.getPreviewText(data);
  */
 
+import condition from "./condition.js";
+import dialogue from "./dialogue.js";
 import entry from "./entry.js";
 import exit from "./exit.js";
-import dialogue from "./dialogue.js";
 import hub from "./hub.js";
-import condition from "./condition.js";
 import instruction from "./instruction.js";
 import jump from "./jump.js";
-import subflow from "./subflow.js";
 import scene from "./scene.js";
+import subflow from "./subflow.js";
 
 const NODE_DEFS = { entry, exit, dialogue, hub, condition, instruction, jump, subflow, scene };
 

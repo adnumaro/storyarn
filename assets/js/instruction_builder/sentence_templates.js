@@ -95,12 +95,7 @@ export function expandTemplateForVariableRef(template) {
 /**
  * Operators that don't need a value input.
  */
-export const NO_VALUE_OPERATORS = new Set([
-  "set_true",
-  "set_false",
-  "toggle",
-  "clear",
-]);
+export const NO_VALUE_OPERATORS = new Set(["set_true", "set_false", "toggle", "clear"]);
 
 /**
  * Operators available per variable type.

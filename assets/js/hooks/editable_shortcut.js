@@ -76,10 +76,10 @@ export const EditableShortcut = {
     return text
       .toLowerCase()
       .replace(/[\s_]+/g, "-") // Convert spaces/underscores to hyphens
-      .replace(/[^a-z0-9.\-]/g, "") // Remove invalid characters
+      .replace(/[^a-z0-9.-]/g, "") // Remove invalid characters
       .replace(/-+/g, "-") // Collapse multiple hyphens
-      .replace(/^[.\-]+/, "") // Remove leading dots/hyphens
-      .replace(/[.\-]+$/, ""); // Remove trailing dots/hyphens
+      .replace(/^[.-]+/, "") // Remove leading dots/hyphens
+      .replace(/[.-]+$/, ""); // Remove trailing dots/hyphens
   },
 
   debounceSave() {

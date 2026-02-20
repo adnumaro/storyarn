@@ -43,7 +43,9 @@ export const ReferenceSearch = {
           phx-value-id="${result.id}"
         >
           <span class="flex-shrink-0 size-6 rounded flex items-center justify-center text-xs ${
-            result.type === "sheet" ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
+            result.type === "sheet"
+              ? "bg-primary/20 text-primary"
+              : "bg-secondary/20 text-secondary"
           }">
             ${result.type === "sheet" ? SHEET_ICON : FLOW_ICON}
           </span>

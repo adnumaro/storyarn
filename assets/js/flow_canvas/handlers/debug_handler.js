@@ -25,8 +25,8 @@ import { AreaExtensions } from "rete-area-plugin";
  * @returns {HTMLElement|null}
  */
 function findNodeElement(container, reteId, cache) {
-  let el = cache.get(reteId);
-  if (el && el.isConnected) return el;
+  const el = cache.get(reteId);
+  if (el?.isConnected) return el;
 
   for (const candidate of container.querySelectorAll("storyarn-node")) {
     if (candidate.data?.id === reteId) {
@@ -48,7 +48,7 @@ export function createDebugHandler(hook) {
   let breakpointEls = new Set();
   let activeConnView = null;
   let visitedConnViews = new Set();
-  let nodeElCache = new Map();
+  const nodeElCache = new Map();
   let lastPathLength = 0;
 
   return {

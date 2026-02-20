@@ -7,7 +7,7 @@
  */
 
 import { Node } from "@tiptap/core";
-import { createElement, Trash2, Minus, Plus } from "lucide";
+import { createElement, Minus, Plus, Trash2 } from "lucide";
 import { BASE_ATTRS } from "./base_attrs.js";
 
 export const DualDialogue = Node.create({
@@ -41,11 +41,9 @@ export const DualDialogue = Node.create({
   },
 
   addNodeView() {
-    const extension = this;
-
     return ({ node, getPos, editor }) => {
-      const hook = extension.options.liveViewHook;
-      const canEdit = extension.options.canEdit;
+      const hook = this.options.liveViewHook;
+      const canEdit = this.options.canEdit;
 
       const dom = document.createElement("div");
       dom.className = "sp-dual-dialogue-wrapper";
@@ -62,7 +60,11 @@ export const DualDialogue = Node.create({
         deleteBtn.addEventListener("click", () => {
           const pos = getPos();
           if (typeof pos === "number") {
-            editor.chain().focus().deleteRange({ from: pos, to: pos + node.nodeSize }).run();
+            editor
+              .chain()
+              .focus()
+              .deleteRange({ from: pos, to: pos + node.nodeSize })
+              .run();
           }
         });
         dom.appendChild(deleteBtn);

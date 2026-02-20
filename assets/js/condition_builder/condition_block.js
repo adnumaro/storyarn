@@ -38,7 +38,7 @@ export function createConditionBlock(opts) {
     onRemove,
   } = opts;
 
-  let currentBlock = { ...block, rules: [...(block.rules || [])] };
+  const currentBlock = { ...block, rules: [...(block.rules || [])] };
   let rows = [];
 
   render();
@@ -56,8 +56,7 @@ export function createConditionBlock(opts) {
       const labelInput = document.createElement("input");
       labelInput.type = "text";
       labelInput.maxLength = 100;
-      labelInput.className =
-        "input input-xs input-bordered w-full max-w-[200px] font-medium";
+      labelInput.className = "input input-xs input-bordered w-full max-w-[200px] font-medium";
       labelInput.placeholder = t?.placeholder_label || "label";
       labelInput.value = currentBlock.label || "";
       labelInput.addEventListener("input", () => {
@@ -191,7 +190,9 @@ export function createConditionBlock(opts) {
   }
 
   function destroyRows() {
-    rows.forEach((row) => row.destroy?.());
+    rows.forEach((row) => {
+      row.destroy?.();
+    });
     rows = [];
   }
 

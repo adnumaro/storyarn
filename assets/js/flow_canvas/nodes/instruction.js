@@ -5,9 +5,9 @@
  */
 import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
-import { Zap, TriangleAlert } from "lucide";
-import { createIconSvg, createIconHTML } from "../node_config.js";
-import { nodeShell, defaultHeader, renderPreview, renderSockets } from "./render_helpers.js";
+import { TriangleAlert, Zap } from "lucide";
+import { createIconHTML, createIconSvg } from "../node_config.js";
+import { defaultHeader, nodeShell, renderPreview, renderSockets } from "./render_helpers.js";
 
 // Pre-create stale reference warning icon
 const STALE_ICON = createIconHTML(TriangleAlert, { size: 12 });
@@ -29,11 +29,7 @@ function formatAssignment(assignment) {
   if (op === "clear") return `Clear ${ref}`;
 
   let valueDisplay;
-  if (
-    assignment.value_type === "variable_ref" &&
-    assignment.value_sheet &&
-    assignment.value
-  ) {
+  if (assignment.value_type === "variable_ref" && assignment.value_sheet && assignment.value) {
     valueDisplay = `${assignment.value_sheet}.${assignment.value}`;
   } else {
     valueDisplay = assignment.value || "?";
@@ -70,11 +66,15 @@ export default {
   render(ctx) {
     const { node, nodeData, config, selected, emit } = ctx;
     const preview = this.getPreviewText(nodeData);
-    return nodeShell(config.color, selected, html`
+    return nodeShell(
+      config.color,
+      selected,
+      html`
       ${defaultHeader(config, config.color, [])}
       ${renderPreview(preview)}
       <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
-    `);
+    `,
+    );
   },
 
   getPreviewText(data) {

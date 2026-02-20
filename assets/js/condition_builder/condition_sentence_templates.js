@@ -11,22 +11,8 @@
  * Must stay in sync with Condition.operators_for_type/1.
  */
 export const CONDITION_OPERATORS_BY_TYPE = {
-  text: [
-    "equals",
-    "not_equals",
-    "contains",
-    "starts_with",
-    "ends_with",
-    "is_empty",
-  ],
-  rich_text: [
-    "equals",
-    "not_equals",
-    "contains",
-    "starts_with",
-    "ends_with",
-    "is_empty",
-  ],
+  text: ["equals", "not_equals", "contains", "starts_with", "ends_with", "is_empty"],
+  rich_text: ["equals", "not_equals", "contains", "starts_with", "ends_with", "is_empty"],
   number: [
     "equals",
     "not_equals",
@@ -68,12 +54,7 @@ export const OPERATOR_LABELS = {
  * Operators that don't need a value input.
  * Must stay in sync with Condition.operator_requires_value?/1.
  */
-export const NO_VALUE_OPERATORS = new Set([
-  "is_empty",
-  "is_true",
-  "is_false",
-  "is_nil",
-]);
+export const NO_VALUE_OPERATORS = new Set(["is_empty", "is_true", "is_false", "is_nil"]);
 
 /**
  * Returns operators for a given variable type.

@@ -8,9 +8,9 @@
 import { ClassicPreset } from "rete";
 
 import "../flow_canvas/components/index.js";
-import { FlowNode } from "../flow_canvas/flow_node.js";
-import { createPlugins, finalizeSetup } from "../flow_canvas/setup.js";
 import { setupEventHandlers } from "../flow_canvas/event_bindings.js";
+import { createFlowFloatingToolbar } from "../flow_canvas/floating_toolbar.js";
+import { FlowNode } from "../flow_canvas/flow_node.js";
 import {
   createCursorHandler,
   createDebugHandler,
@@ -20,7 +20,7 @@ import {
   createNavigationHandler,
 } from "../flow_canvas/handlers/index.js";
 import { createLodController } from "../flow_canvas/lod_controller.js";
-import { createFlowFloatingToolbar } from "../flow_canvas/floating_toolbar.js";
+import { createPlugins, finalizeSetup } from "../flow_canvas/setup.js";
 
 export const FlowCanvas = {
   mounted() {
@@ -206,12 +206,14 @@ export const FlowCanvas = {
     // Skip connections referencing pins that no longer exist on the node
     // (e.g., a deleted dialogue response whose connection wasn't cleaned up)
     if (!sourceNode.outputs[connData.source_pin]) {
+      // biome-ignore lint/suspicious/noConsole: intentional warning for orphaned connection debugging
       console.warn(
         `Skipping connection ${connData.id}: source pin "${connData.source_pin}" not found on node ${connData.source_node_id}`,
       );
       return;
     }
     if (!targetNode.inputs[connData.target_pin]) {
+      // biome-ignore lint/suspicious/noConsole: intentional warning for orphaned connection debugging
       console.warn(
         `Skipping connection ${connData.id}: target pin "${connData.target_pin}" not found on node ${connData.target_node_id}`,
       );

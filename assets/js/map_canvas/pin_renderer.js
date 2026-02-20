@@ -5,9 +5,9 @@
  */
 
 import L from "leaflet";
-import { createElement, MapPin, User, Zap, Star, Lock } from "lucide";
-import { toLatLng } from "./coordinate_utils.js";
+import { createElement, Lock, MapPin, Star, User, Zap } from "lucide";
 import { sanitizeColor } from "./color_utils.js";
+import { toLatLng } from "./coordinate_utils.js";
 
 // Pin type → Lucide icon mapping
 const PIN_ICONS = {
@@ -124,7 +124,12 @@ export function setPinSelected(marker, selected) {
 }
 
 // Pre-create lock badge icon at module level (outerHTML for innerHTML context)
-const LOCK_BADGE_ICON = createElement(Lock, { width: 8, height: 8, color: "#fff", "stroke-width": 3 }).outerHTML;
+const LOCK_BADGE_ICON = createElement(Lock, {
+  width: 8,
+  height: 8,
+  color: "#fff",
+  "stroke-width": 3,
+}).outerHTML;
 const LOCK_BADGE = `<div style="position:absolute;top:-4px;right:-4px;width:14px;height:14px;background:#64748b;border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none">${LOCK_BADGE_ICON}</div>`;
 
 /**

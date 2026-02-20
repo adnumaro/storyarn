@@ -25,10 +25,10 @@ export async function exportPNG(hook, filename = "map") {
   if (!container) return;
 
   // Temporarily hide controls/UI that shouldn't appear in export
-  const controlElements = container.querySelectorAll(
-    ".leaflet-control-container"
-  );
-  controlElements.forEach((el) => (el.style.display = "none"));
+  const controlElements = container.querySelectorAll(".leaflet-control-container");
+  controlElements.forEach((el) => {
+    el.style.display = "none";
+  });
 
   try {
     const canvas = await html2canvas(container, {
@@ -45,7 +45,9 @@ export async function exportPNG(hook, filename = "map") {
     }, "image/png");
   } finally {
     // Restore hidden controls
-    controlElements.forEach((el) => (el.style.display = ""));
+    controlElements.forEach((el) => {
+      el.style.display = "";
+    });
   }
 }
 
@@ -66,12 +68,10 @@ export function exportSVG(hook, filename = "map") {
   const elements = [];
 
   // Background rectangle
-  elements.push(
-    `<rect width="${width}" height="${height}" fill="#f9fafb" />`
-  );
+  elements.push(`<rect width="${width}" height="${height}" fill="#f9fafb" />`);
 
   // Zones (polygons) — from zone_handler.polygons Map
-  if (hook.zoneHandler && hook.zoneHandler.polygons) {
+  if (hook.zoneHandler?.polygons) {
     for (const [, polygon] of hook.zoneHandler.polygons) {
       const zone = polygon.zoneData;
       if (!zone) continue;
@@ -94,14 +94,14 @@ export function exportSVG(hook, filename = "map") {
               : "";
 
         elements.push(
-          `<polygon points="${points}" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-width="${strokeWidth}"${dashArray} />`
+          `<polygon points="${points}" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-width="${strokeWidth}"${dashArray} />`,
         );
       }
     }
   }
 
   // Connections (polylines) — from connection_handler.lines Map
-  if (hook.connectionHandler && hook.connectionHandler.lines) {
+  if (hook.connectionHandler?.lines) {
     for (const [, line] of hook.connectionHandler.lines) {
       const conn = line.connData;
       if (!conn) continue;
@@ -111,9 +111,7 @@ export function exportSVG(hook, filename = "map") {
       if (isPinOnHiddenLayer(hook, conn.to_pin_id)) continue;
 
       const latlngs = line.getLatLngs();
-      const points = latlngs
-        .map((ll) => `${ll.lng},${-ll.lat}`)
-        .join(" ");
+      const points = latlngs.map((ll) => `${ll.lng},${-ll.lat}`).join(" ");
 
       if (points) {
         const color = sanitizeColor(conn.color || "#6b7280");
@@ -125,14 +123,14 @@ export function exportSVG(hook, filename = "map") {
               : "";
 
         elements.push(
-          `<polyline points="${points}" fill="none" stroke="${color}" stroke-width="2"${dashArray} />`
+          `<polyline points="${points}" fill="none" stroke="${color}" stroke-width="2"${dashArray} />`,
         );
 
         // Label at midpoint
         if (conn.label && latlngs.length >= 2) {
           const mid = latlngs[Math.floor(latlngs.length / 2)];
           elements.push(
-            `<text x="${mid.lng}" y="${-mid.lat}" text-anchor="middle" font-size="12" fill="${color}">${escapeXml(conn.label)}</text>`
+            `<text x="${mid.lng}" y="${-mid.lat}" text-anchor="middle" font-size="12" fill="${color}">${escapeXml(conn.label)}</text>`,
           );
         }
       }
@@ -140,7 +138,7 @@ export function exportSVG(hook, filename = "map") {
   }
 
   // Pins (circles + labels) — from pin_handler.markers Map
-  if (hook.pinHandler && hook.pinHandler.markers) {
+  if (hook.pinHandler?.markers) {
     for (const [, marker] of hook.pinHandler.markers) {
       const pin = marker.pinData;
       if (!pin) continue;
@@ -152,19 +150,19 @@ export function exportSVG(hook, filename = "map") {
       const r = (PIN_SIZE_MAP[pin.size] || 24) / 2;
 
       elements.push(
-        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" stroke="white" stroke-width="2" />`
+        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" stroke="white" stroke-width="2" />`,
       );
 
       if (pin.label) {
         elements.push(
-          `<text x="${cx}" y="${cy + r + 12}" text-anchor="middle" font-size="11" font-weight="600" fill="#374151">${escapeXml(pin.label)}</text>`
+          `<text x="${cx}" y="${cy + r + 12}" text-anchor="middle" font-size="11" font-weight="600" fill="#374151">${escapeXml(pin.label)}</text>`,
         );
       }
     }
   }
 
   // Annotations (text) — from annotation_handler.markers Map
-  if (hook.annotationHandler && hook.annotationHandler.markers) {
+  if (hook.annotationHandler?.markers) {
     for (const [, marker] of hook.annotationHandler.markers) {
       const data = marker.annotationData;
       if (!data) continue;
@@ -176,7 +174,7 @@ export function exportSVG(hook, filename = "map") {
       const fontSize = fontSizeToPixels(data.font_size);
 
       elements.push(
-        `<text x="${x}" y="${y}" font-size="${fontSize}" fill="${color}">${escapeXml(data.text || "")}</text>`
+        `<text x="${x}" y="${y}" font-size="${fontSize}" fill="${color}">${escapeXml(data.text || "")}</text>`,
       );
     }
   }
@@ -223,14 +221,17 @@ function downloadBlob(blob, filename) {
 }
 
 function escapeXml(str) {
-  return str
-    // Strip characters invalid in XML 1.0
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  return (
+    str
+      // Strip characters invalid in XML 1.0
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional stripping of XML 1.0 invalid control characters
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+  );
 }
 
 function fontSizeToPixels(size) {

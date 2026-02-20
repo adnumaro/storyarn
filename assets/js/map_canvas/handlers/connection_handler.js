@@ -16,15 +16,15 @@
 
 import L from "leaflet";
 import {
-  createConnectionLine,
-  updateConnectionLine,
-  updateConnectionEndpoints,
-  setConnectionSelected,
-  removeConnectionLine,
   addArrowsToLayer,
+  createConnectionLine,
+  removeConnectionLine,
+  setConnectionSelected,
+  updateConnectionEndpoints,
+  updateConnectionLine,
 } from "../connection_renderer.js";
-import { toPercent, toLatLng } from "../coordinate_utils.js";
-import { editPropertiesItem, deleteItem } from "../context_menu_builder.js";
+import { deleteItem, editPropertiesItem } from "../context_menu_builder.js";
+import { toLatLng, toPercent } from "../coordinate_utils.js";
 
 /**
  * Creates the connection handler attached to the hook instance.
@@ -72,12 +72,7 @@ export function createConnectionHandler(hook, i18n = {}) {
   /** Adds a single connection line to the Leaflet map. */
   function addConnectionToMap(conn) {
     const pinMarkers = hook.pinHandler.markers;
-    const line = createConnectionLine(
-      conn,
-      pinMarkers,
-      hook.canvasWidth,
-      hook.canvasHeight,
-    );
+    const line = createConnectionLine(conn, pinMarkers, hook.canvasWidth, hook.canvasHeight);
 
     if (!line) return;
 
@@ -361,11 +356,8 @@ export function createConnectionHandler(hook, i18n = {}) {
 
   /** Enables drag behavior on a waypoint handle. */
   function enableHandleDrag(handle, connId) {
-    let dragging = false;
-
     handle.on("mousedown", (e) => {
       L.DomEvent.stopPropagation(e);
-      dragging = true;
       hook.leafletMap.dragging.disable();
 
       const onMove = (moveEvent) => {
@@ -375,7 +367,6 @@ export function createConnectionHandler(hook, i18n = {}) {
       };
 
       const onUp = () => {
-        dragging = false;
         hook.leafletMap.off("mousemove", onMove);
         hook.leafletMap.off("mouseup", onUp);
         hook.updateCursor();

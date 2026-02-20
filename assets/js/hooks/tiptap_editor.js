@@ -13,7 +13,7 @@ export const TiptapEditor = {
     // Create editor container
     const editorEl = document.createElement("div");
     const classMap = {
-      "screenplay": "tiptap-content tiptap-screenplay prose prose-lg max-w-none",
+      screenplay: "tiptap-content tiptap-screenplay prose prose-lg max-w-none",
       "dialogue-screenplay": "tiptap-content tiptap-dialogue-screenplay",
     };
     editorEl.className = classMap[mode] || "tiptap-content prose prose-sm max-w-none";

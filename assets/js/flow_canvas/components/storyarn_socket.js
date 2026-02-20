@@ -2,7 +2,7 @@
  * StoryarnSocket - Custom LitElement component for rendering node sockets.
  */
 
-import { LitElement, css, html } from "lit";
+import { css, html, LitElement } from "lit";
 
 export class StoryarnSocket extends LitElement {
   static get properties() {

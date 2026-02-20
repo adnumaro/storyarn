@@ -5,15 +5,15 @@
  */
 
 import L from "leaflet";
-import { createPinMarker, setPinSelected, updatePinMarker } from "../pin_renderer.js";
-import { toPercent, toLatLng } from "../coordinate_utils.js";
 import {
-  editPropertiesItem,
   bringToFrontItem,
-  sendToBackItem,
-  lockToggleItem,
   deleteItem,
+  editPropertiesItem,
+  lockToggleItem,
+  sendToBackItem,
 } from "../context_menu_builder.js";
+import { toLatLng, toPercent } from "../coordinate_utils.js";
+import { createPinMarker, setPinSelected, updatePinMarker } from "../pin_renderer.js";
 
 const DRAG_DEBOUNCE_MS = 300;
 
@@ -45,7 +45,9 @@ export function createPinHandler(hook, i18n = {}) {
 
   /** Renders all initial pins from mapData, sorted by position for z-ordering. */
   function renderPins() {
-    const pins = (hook.mapData.pins || []).slice().sort((a, b) => (a.position || 0) - (b.position || 0));
+    const pins = (hook.mapData.pins || [])
+      .slice()
+      .sort((a, b) => (a.position || 0) - (b.position || 0));
     for (const pin of pins) {
       addPinToMap(pin);
     }
@@ -132,21 +134,20 @@ export function createPinHandler(hook, i18n = {}) {
         hook.connectionHandler.updateEndpointsForPin(pin.id);
       }
 
-      const pos = toPercent(
-        marker.getLatLng(),
-        hook.canvasWidth,
-        hook.canvasHeight,
-      );
+      const pos = toPercent(marker.getLatLng(), hook.canvasWidth, hook.canvasHeight);
       const pinId = pin.id;
       if (dragTimers.has(pinId)) clearTimeout(dragTimers.get(pinId));
-      dragTimers.set(pinId, setTimeout(() => {
-        dragTimers.delete(pinId);
-        hook.pushEvent("move_pin", {
-          id: String(marker.pinData.id),
-          position_x: pos.x,
-          position_y: pos.y,
-        });
-      }, DRAG_DEBOUNCE_MS));
+      dragTimers.set(
+        pinId,
+        setTimeout(() => {
+          dragTimers.delete(pinId);
+          hook.pushEvent("move_pin", {
+            id: String(marker.pinData.id),
+            position_x: pos.x,
+            position_y: pos.y,
+          });
+        }, DRAG_DEBOUNCE_MS),
+      );
     });
 
     marker.addTo(hook.pinLayer);
@@ -292,7 +293,9 @@ export function createPinHandler(hook, i18n = {}) {
   function repositionAll() {
     for (const marker of markers.values()) {
       const pin = marker.pinData;
-      marker.setLatLng(toLatLng(pin.position_x, pin.position_y, hook.canvasWidth, hook.canvasHeight));
+      marker.setLatLng(
+        toLatLng(pin.position_x, pin.position_y, hook.canvasWidth, hook.canvasHeight),
+      );
     }
   }
 

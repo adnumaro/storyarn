@@ -41,7 +41,7 @@ export function triangleVertices(cx, cy) {
   const hw = TRI_W / 2;
   const hh = TRI_H / 2;
   return [
-    { x: round2(clamp(cx)),      y: round2(clamp(cy - hh)) },
+    { x: round2(clamp(cx)), y: round2(clamp(cy - hh)) },
     { x: round2(clamp(cx + hw)), y: round2(clamp(cy + hh)) },
     { x: round2(clamp(cx - hw)), y: round2(clamp(cy + hh)) },
   ];
@@ -74,9 +74,13 @@ export function circleVertices(cx, cy, sides = CIRCLE_SIDES, aspectRatio = 1) {
  */
 export function getShapePreset(tool) {
   switch (tool) {
-    case "rectangle": return rectangleVertices;
-    case "triangle":  return triangleVertices;
-    case "circle":    return circleVertices;
-    default:          return null;
+    case "rectangle":
+      return rectangleVertices;
+    case "triangle":
+      return triangleVertices;
+    case "circle":
+      return circleVertices;
+    default:
+      return null;
   }
 }

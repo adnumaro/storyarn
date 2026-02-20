@@ -37,4 +37,4 @@ export function createIconSvg(icon) {
 }
 
 // Re-export from the per-type registry
-export { NODE_CONFIGS, getNodeDef } from "./nodes/index.js";
+export { getNodeDef, NODE_CONFIGS } from "./nodes/index.js";

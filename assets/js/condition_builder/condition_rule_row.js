@@ -13,12 +13,12 @@
  *          variable → auto-sets operator/clears value
  */
 
-import { createElement, ArrowRight, X } from "lucide";
+import { ArrowRight, createElement, X } from "lucide";
 import { createCombobox } from "../instruction_builder/combobox";
 import {
-  operatorsForType,
   OPERATOR_LABELS as DEFAULT_OPERATOR_LABELS,
   NO_VALUE_OPERATORS,
+  operatorsForType,
 } from "./condition_sentence_templates";
 
 /**
@@ -50,9 +50,9 @@ export function createConditionRuleRow(opts) {
     onAdvance,
   } = opts;
 
-  const operatorLabels = (t && t.operator_labels) || DEFAULT_OPERATOR_LABELS;
+  const operatorLabels = t?.operator_labels || DEFAULT_OPERATOR_LABELS;
 
-  let currentRule = { ...rule };
+  const currentRule = { ...rule };
   let comboboxes = {};
 
   render();
@@ -212,7 +212,9 @@ export function createConditionRuleRow(opts) {
   }
 
   function destroyComboboxes() {
-    Object.values(comboboxes).forEach((cb) => cb.destroy?.());
+    Object.values(comboboxes).forEach((cb) => {
+      cb.destroy?.();
+    });
     comboboxes = {};
   }
 
@@ -224,6 +226,7 @@ export function createConditionRuleRow(opts) {
     return sheet.vars.map((v) => ({
       value: v.variable_name,
       label: v.variable_name,
+      group: sheetShortcut,
       meta: v.block_type,
       blockType: v.block_type,
       options: v.options,
@@ -232,15 +235,10 @@ export function createConditionRuleRow(opts) {
 
   function getValueOptions() {
     // For select/multi_select types, show the options as a combobox
-    const selectedVar = findVariable(
-      variables,
-      currentRule.sheet,
-      currentRule.variable,
-    );
+    const selectedVar = findVariable(variables, currentRule.sheet, currentRule.variable);
     if (
       selectedVar &&
-      (selectedVar.block_type === "select" ||
-        selectedVar.block_type === "multi_select") &&
+      (selectedVar.block_type === "select" || selectedVar.block_type === "multi_select") &&
       selectedVar.options
     ) {
       return selectedVar.options.map((opt) => ({
@@ -252,11 +250,7 @@ export function createConditionRuleRow(opts) {
   }
 
   function getVariableType() {
-    const v = findVariable(
-      variables,
-      currentRule.sheet,
-      currentRule.variable,
-    );
+    const v = findVariable(variables, currentRule.sheet, currentRule.variable);
     return v ? v.block_type : null;
   }
 
@@ -277,11 +271,7 @@ export function createConditionRuleRow(opts) {
 
     if (key === "variable") {
       // Auto-detect type and set first operator
-      const selectedVar = findVariable(
-        variables,
-        currentRule.sheet,
-        option.value,
-      );
+      const selectedVar = findVariable(variables, currentRule.sheet, option.value);
       if (selectedVar) {
         const ops = operatorsForType(selectedVar.block_type);
         if (ops.length > 0) {
@@ -335,10 +325,7 @@ export function createConditionRuleRow(opts) {
 
   function findVariable(vars, sheetShortcut, variableName) {
     if (!sheetShortcut || !variableName) return null;
-    return vars.find(
-      (v) =>
-        v.sheet_shortcut === sheetShortcut && v.variable_name === variableName,
-    );
+    return vars.find((v) => v.sheet_shortcut === sheetShortcut && v.variable_name === variableName);
   }
 
   // Public API

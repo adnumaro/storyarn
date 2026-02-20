@@ -6,9 +6,9 @@
  */
 import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
-import { Box, ArrowRight, CornerDownLeft, Square } from "lucide";
-import { createIconSvg, createIconHTML } from "../node_config.js";
-import { nodeShell, defaultHeader, renderNavLink, renderSockets } from "./render_helpers.js";
+import { ArrowRight, Box, CornerDownLeft, Square } from "lucide";
+import { createIconHTML, createIconSvg } from "../node_config.js";
+import { defaultHeader, nodeShell, renderNavLink, renderSockets } from "./render_helpers.js";
 
 // Pre-create icons for nav link and exit mode labels
 const NAV_ARROW_ICON = createIconHTML(ArrowRight, { size: 12 });
@@ -31,9 +31,7 @@ export default {
    */
   createOutputs(data) {
     if (data.exit_labels?.length > 0) {
-      const relevantExits = data.exit_labels.filter(
-        (e) => e.exit_mode !== "flow_reference"
-      );
+      const relevantExits = data.exit_labels.filter((e) => e.exit_mode !== "flow_reference");
       if (relevantExits.length > 0) {
         return relevantExits.map((e) => `exit_${e.id}`);
       }
@@ -43,7 +41,7 @@ export default {
 
   formatOutputLabel(key, data) {
     if (key.startsWith("exit_")) {
-      const exitId = parseInt(key.replace("exit_", ""));
+      const exitId = parseInt(key.replace("exit_", ""), 10);
       const exit = data.exit_labels?.find((e) => e.id === exitId);
       if (exit) {
         const modeIconSvg = exit.exit_mode === "caller_return" ? RETURN_ICON : TERMINAL_ICON;
@@ -63,22 +61,34 @@ export default {
     const { node, nodeData, config, selected, emit } = ctx;
     const color = this.nodeColor(nodeData, config);
     const indicators = this.getIndicators(nodeData);
-    const preview = this.getPreviewText(nodeData);
-
     let navContent = null;
     if (nodeData.referenced_flow_name) {
-      const shortcut = nodeData.referenced_flow_shortcut ? ` (#${nodeData.referenced_flow_shortcut})` : "";
+      const shortcut = nodeData.referenced_flow_shortcut
+        ? ` (#${nodeData.referenced_flow_shortcut})`
+        : "";
       navContent = html`<span style="display:inline-flex;align-items:center;gap:4px">${unsafeSVG(NAV_ARROW_ICON)} ${nodeData.referenced_flow_name}${shortcut}</span>`;
     }
 
-    return nodeShell(color, selected, html`
+    return nodeShell(
+      color,
+      selected,
+      html`
       ${defaultHeader(config, color, indicators)}
-      ${navContent
-        ? renderNavLink(navContent, "navigate-to-subflow", "flowId", nodeData.referenced_flow_id, emit)
-        : ""}
+      ${
+        navContent
+          ? renderNavLink(
+              navContent,
+              "navigate-to-subflow",
+              "flowId",
+              nodeData.referenced_flow_id,
+              emit,
+            )
+          : ""
+      }
       ${!nodeData.referenced_flow_id ? html`<div class="node-data"><div class="node-data-text" style="opacity:0.5">No flow selected</div></div>` : ""}
       <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
-    `);
+    `,
+    );
   },
 
   getIndicators(data) {
@@ -105,6 +115,8 @@ export default {
     const oldExits = oldData?.exit_labels || [];
     const newExits = newData.exit_labels || [];
     if (oldExits.length !== newExits.length) return true;
-    return oldExits.some((e, i) => e.id !== newExits[i]?.id || e.exit_mode !== newExits[i]?.exit_mode);
+    return oldExits.some(
+      (e, i) => e.id !== newExits[i]?.id || e.exit_mode !== newExits[i]?.exit_mode,
+    );
   },
 };

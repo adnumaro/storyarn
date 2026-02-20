@@ -7,13 +7,26 @@
     "lint": "biome lint js/",
     "format": "biome format --write js/",
     "check": "biome check js/",
-    "check:fix": "biome check --write js/"
+    "check:fix": "biome check --write js/",
+    "build:grammar": "lezer-generator js/expression_editor/storyarn_expr.grammar -o js/expression_editor/parser_generated.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.0",
-    "playwright": "^1.58.0"
+    "@biomejs/biome": "^2.4.4",
+    "@lezer/generator": "^1.8.0",
+    "@lezer/lr": "^1.4.8",
+    "jsdom": "^28.1.0",
+    "playwright": "^1.58.0",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.20.0",
+    "@codemirror/commands": "^6.10.2",
+    "@codemirror/language": "^6.12.1",
+    "@codemirror/lint": "^6.9.4",
+    "@codemirror/state": "^6.5.4",
+    "@codemirror/view": "^6.39.15",
     "@floating-ui/dom": "^1.7.5",
     "@retejs/lit-plugin": "^2.0.7",
     "@tiptap/core": "^3.18.0",

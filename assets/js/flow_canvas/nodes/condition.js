@@ -6,8 +6,8 @@
 import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { GitBranch, TriangleAlert } from "lucide";
-import { createIconSvg, createIconHTML } from "../node_config.js";
-import { nodeShell, defaultHeader, renderPreview, renderSockets } from "./render_helpers.js";
+import { createIconHTML, createIconSvg } from "../node_config.js";
+import { defaultHeader, nodeShell, renderPreview, renderSockets } from "./render_helpers.js";
 
 // Pre-create stale reference warning icon
 const STALE_ICON = createIconHTML(TriangleAlert, { size: 12 });
@@ -58,7 +58,7 @@ function formatRuleShort(rule) {
     return `${rule.variable} ${operatorSymbol}`;
   }
   const strValue = String(value);
-  const truncatedValue = strValue.length > 10 ? strValue.substring(0, 10) + "…" : strValue;
+  const truncatedValue = strValue.length > 10 ? `${strValue.substring(0, 10)}…` : strValue;
   return `${rule.variable} ${operatorSymbol} ${truncatedValue}`;
 }
 
@@ -150,11 +150,15 @@ export default {
   render(ctx) {
     const { node, nodeData, config, selected, emit } = ctx;
     const preview = this.getPreviewText(nodeData);
-    return nodeShell(config.color, selected, html`
+    return nodeShell(
+      config.color,
+      selected,
+      html`
       ${defaultHeader(config, config.color, [])}
       ${renderPreview(preview)}
       <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
-    `);
+    `,
+    );
   },
 
   /**
@@ -242,8 +246,6 @@ export default {
     // Flat format comparison
     const oldRules = oldData?.condition?.rules || [];
     const newRules = newData.condition?.rules || [];
-    return (
-      oldRules.length !== newRules.length || oldRules.some((r, i) => r.id !== newRules[i]?.id)
-    );
+    return oldRules.length !== newRules.length || oldRules.some((r, i) => r.id !== newRules[i]?.id);
   },
 };

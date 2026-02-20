@@ -43,7 +43,7 @@ export const StoryPlayer = {
           if (e.key >= "1" && e.key <= "9") {
             e.preventDefault();
             this.pushEvent("choose_response_by_number", {
-              number: parseInt(e.key),
+              number: parseInt(e.key, 10),
             });
           }
       }

@@ -5,7 +5,7 @@
  * See docs/research/DIALOGUE_CONDITIONS_RESEARCH.md for details.
  */
 
-import { LitElement, css, html } from "lit";
+import { css, html, LitElement } from "lit";
 
 export class StoryarnConnection extends LitElement {
   static get properties() {

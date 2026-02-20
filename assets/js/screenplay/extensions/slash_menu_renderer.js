@@ -6,19 +6,19 @@
  */
 
 import {
-  createElement,
-  Clapperboard,
   AlignLeft,
-  User,
+  ArrowRight,
+  Clapperboard,
+  createElement,
+  GitBranch,
+  Heading,
+  List,
   MessageSquare,
   Parentheses,
-  ArrowRight,
-  GitBranch,
-  Zap,
-  List,
-  StickyNote,
-  Heading,
   Scissors,
+  StickyNote,
+  User,
+  Zap,
 } from "lucide";
 import { positionPopup } from "../utils.js";
 
@@ -160,8 +160,7 @@ export function slashMenuRenderer() {
       if (event.key === "ArrowUp") {
         event.preventDefault();
         if (currentItems.length > 0) {
-          selectedIndex =
-            (selectedIndex - 1 + currentItems.length) % currentItems.length;
+          selectedIndex = (selectedIndex - 1 + currentItems.length) % currentItems.length;
           updateHighlight();
         }
         return true;
@@ -199,4 +198,3 @@ export function slashMenuRenderer() {
     },
   };
 }
-

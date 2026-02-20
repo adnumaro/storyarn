@@ -10,8 +10,8 @@
  */
 import "vanilla-colorful/hex-color-picker.js";
 import "vanilla-colorful/hex-input.js";
-import { createElement, Pipette, ChevronDown } from "lucide";
-import { computePosition, flip, shift, offset, autoUpdate } from "@floating-ui/dom";
+import { autoUpdate, computePosition, flip, offset, shift } from "@floating-ui/dom";
+import { ChevronDown, createElement, Pipette } from "lucide";
 
 export const ColorPicker = {
   mounted() {
@@ -46,14 +46,19 @@ export const ColorPicker = {
     this.triggerHex = triggerHex;
 
     const chevron = document.createElement("span");
-    chevron.appendChild(createElement(ChevronDown, { width: 10, height: 10, "stroke-width": 2.5, style: "opacity:0.35" }));
+    chevron.appendChild(
+      createElement(ChevronDown, {
+        width: 10,
+        height: 10,
+        "stroke-width": 2.5,
+        style: "opacity:0.35",
+      }),
+    );
     chevron.style.cssText = "flex-shrink:0;display:flex;transition:transform 0.15s;";
     this.chevron = chevron;
 
     trigger.append(swatch, triggerHex, chevron);
-    trigger.addEventListener("click", () =>
-      this.open ? this.close() : this.openPanel(),
-    );
+    trigger.addEventListener("click", () => (this.open ? this.close() : this.openPanel()));
 
     // ── Dropdown panel (appended to body to escape overflow:hidden) ──
     const panel = document.createElement("div");
@@ -69,8 +74,7 @@ export const ColorPicker = {
 
     // Bottom row: [eyedropper] [swatch] [# hex-input]
     const bottomRow = document.createElement("div");
-    bottomRow.style.cssText =
-      "display:flex;align-items:center;gap:8px;margin-top:10px;";
+    bottomRow.style.cssText = "display:flex;align-items:center;gap:8px;margin-top:10px;";
 
     // Eyedropper button (only if EyeDropper API available)
     if (window.EyeDropper) {

@@ -15,16 +15,10 @@ import { Extension, InputRule } from "@tiptap/core";
 
 // Scene heading prefixes: INT. / EXT. / INT./EXT. / I/E. / EST.
 // Triggers on the space after the prefix. Case insensitive to match server.
-const SCENE_HEADING_PATTERN =
-  /^(INT\.|EXT\.|INT\.\/EXT\.|I\/E\.?|EST\.)\s$/i;
+const SCENE_HEADING_PATTERN = /^(INT\.|EXT\.|INT\.\/EXT\.|I\/E\.?|EST\.)\s$/i;
 
 // Known transitions (exact match, full block content)
-const KNOWN_TRANSITIONS = new Set([
-  "FADE IN:",
-  "FADE OUT.",
-  "FADE TO BLACK.",
-  "INTERCUT:",
-]);
+const KNOWN_TRANSITIONS = new Set(["FADE IN:", "FADE OUT.", "FADE TO BLACK.", "INTERCUT:"]);
 
 // Generic transition: ALL CAPS + "TO:" (e.g. "CUT TO:", "DISSOLVE TO:")
 const GENERIC_TRANSITION_PATTERN = /^[A-Z\s]+TO:$/;
@@ -63,11 +57,7 @@ export const AutoDetectRules = Extension.create({
           if ($from.parent.type.name !== "action") return null;
 
           const text = match[0];
-          if (
-            !KNOWN_TRANSITIONS.has(text) &&
-            !GENERIC_TRANSITION_PATTERN.test(text)
-          )
-            return null;
+          if (!KNOWN_TRANSITIONS.has(text) && !GENERIC_TRANSITION_PATTERN.test(text)) return null;
 
           const nodeType = schema.nodes.transition;
           if (!nodeType) return null;

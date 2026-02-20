@@ -6,9 +6,9 @@
  */
 
 import { Node } from "@tiptap/core";
-import { BASE_ATTRS } from "./base_attrs.js";
 import { buildInteractiveHeader } from "../builders/interactive_header.js";
 import { createTitlePageBuilder } from "../builders/title_page_builder.js";
+import { BASE_ATTRS } from "./base_attrs.js";
 
 export const TitlePage = Node.create({
   name: "titlePage",
@@ -41,11 +41,9 @@ export const TitlePage = Node.create({
   },
 
   addNodeView() {
-    const extension = this;
-
     return ({ node, getPos, editor }) => {
-      const hook = extension.options.liveViewHook;
-      const canEdit = extension.options.canEdit;
+      const hook = this.options.liveViewHook;
+      const canEdit = this.options.canEdit;
 
       // Outer wrapper
       const dom = document.createElement("div");
@@ -59,7 +57,11 @@ export const TitlePage = Node.create({
         onDelete: () => {
           const pos = getPos();
           if (typeof pos === "number") {
-            editor.chain().focus().deleteRange({ from: pos, to: pos + node.nodeSize }).run();
+            editor
+              .chain()
+              .focus()
+              .deleteRange({ from: pos, to: pos + node.nodeSize })
+              .run();
           }
         },
       });

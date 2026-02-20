@@ -111,12 +111,18 @@ export function addGridPlaceholder(map, width, height) {
 
   // Vertical lines
   for (let x = 0; x <= width; x += gridSize) {
-    gridLines.push([[0, x], [-height, x]]);
+    gridLines.push([
+      [0, x],
+      [-height, x],
+    ]);
   }
 
   // Horizontal lines
   for (let y = 0; y <= height; y += gridSize) {
-    gridLines.push([[-y, 0], [-y, width]]);
+    gridLines.push([
+      [-y, 0],
+      [-y, width],
+    ]);
   }
 
   const group = L.layerGroup();

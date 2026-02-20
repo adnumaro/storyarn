@@ -5,11 +5,11 @@ import { html } from "lit";
 import { MessageSquare } from "lucide";
 import { createIconSvg } from "../node_config.js";
 import {
-  nodeShell,
   defaultHeader,
-  speakerHeader,
+  nodeShell,
   renderPreview,
   renderSockets,
+  speakerHeader,
 } from "./render_helpers.js";
 
 export default {
@@ -35,14 +35,20 @@ export default {
       ? speakerHeader(config, color, speakerSheet, indicators)
       : defaultHeader(config, color, indicators);
 
-    return nodeShell(color, selected, html`
+    return nodeShell(
+      color,
+      selected,
+      html`
       ${headerHtml}
-      ${nodeData.stage_directions
-        ? html`<div class="stage-directions">${nodeData.stage_directions}</div>`
-        : ""}
+      ${
+        nodeData.stage_directions
+          ? html`<div class="stage-directions">${nodeData.stage_directions}</div>`
+          : ""
+      }
       ${renderPreview(preview)}
       <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
-    `);
+    `,
+    );
   },
 
   /**

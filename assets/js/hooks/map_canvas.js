@@ -6,18 +6,18 @@
  */
 
 import L from "leaflet";
-import { toPercent } from "../map_canvas/coordinate_utils.js";
-import { initMap, addGridPlaceholder } from "../map_canvas/setup.js";
-import { createPinHandler } from "../map_canvas/handlers/pin_handler.js";
-import { createZoneHandler } from "../map_canvas/handlers/zone_handler.js";
-import { createConnectionHandler } from "../map_canvas/handlers/connection_handler.js";
-import { createLayerHandler } from "../map_canvas/handlers/layer_handler.js";
-import { createAnnotationHandler } from "../map_canvas/handlers/annotation_handler.js";
 import { createContextMenu } from "../map_canvas/context_menu.js";
-import { createMinimap } from "../map_canvas/minimap.js";
-import { createRuler } from "../map_canvas/ruler.js";
+import { toPercent } from "../map_canvas/coordinate_utils.js";
 import { exportPNG, exportSVG } from "../map_canvas/exporter.js";
 import { createFloatingToolbar } from "../map_canvas/floating_toolbar.js";
+import { createAnnotationHandler } from "../map_canvas/handlers/annotation_handler.js";
+import { createConnectionHandler } from "../map_canvas/handlers/connection_handler.js";
+import { createLayerHandler } from "../map_canvas/handlers/layer_handler.js";
+import { createPinHandler } from "../map_canvas/handlers/pin_handler.js";
+import { createZoneHandler } from "../map_canvas/handlers/zone_handler.js";
+import { createMinimap } from "../map_canvas/minimap.js";
+import { createRuler } from "../map_canvas/ruler.js";
+import { addGridPlaceholder, initMap } from "../map_canvas/setup.js";
 
 export const MapCanvas = {
   mounted() {
@@ -406,7 +406,13 @@ export const MapCanvas = {
     if (!container) return;
 
     const tool = this.currentTool;
-    if (this.isZoneTool(tool) || tool === "pin" || tool === "connector" || tool === "annotation" || tool === "ruler") {
+    if (
+      this.isZoneTool(tool) ||
+      tool === "pin" ||
+      tool === "connector" ||
+      tool === "annotation" ||
+      tool === "ruler"
+    ) {
       container.style.cursor = "crosshair";
     } else if (tool === "pan") {
       container.style.cursor = "grab";

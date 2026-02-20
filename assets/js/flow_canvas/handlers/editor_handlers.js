@@ -7,10 +7,10 @@ import { FlowNode } from "../flow_node.js";
 import {
   CreateNodeAction,
   DeleteNodeAction,
-  FlowMetaAction,
   FLOW_META_COALESCE_MS,
-  NodeDataAction,
+  FlowMetaAction,
   NODE_DATA_COALESCE_MS,
+  NodeDataAction,
 } from "../history_preset.js";
 import { getNodeDef } from "../node_config.js";
 
@@ -260,13 +260,15 @@ export function createEditorHandlers(hook) {
      */
     async handleConnectionAdded(data) {
       // Check if this connection already exists locally (user created it)
-      const existingConn = hook.editor.getConnections().find(
-        (c) =>
-          hook.editor.getNode(c.source)?.nodeId === data.source_node_id &&
-          c.sourceOutput === data.source_pin &&
-          hook.editor.getNode(c.target)?.nodeId === data.target_node_id &&
-          c.targetInput === data.target_pin,
-      );
+      const existingConn = hook.editor
+        .getConnections()
+        .find(
+          (c) =>
+            hook.editor.getNode(c.source)?.nodeId === data.source_node_id &&
+            c.sourceOutput === data.source_pin &&
+            hook.editor.getNode(c.target)?.nodeId === data.target_node_id &&
+            c.targetInput === data.target_pin,
+        );
 
       if (existingConn) {
         // Connection already exists locally. Just update the connectionDataMap with server ID.

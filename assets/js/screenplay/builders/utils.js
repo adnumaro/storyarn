@@ -27,7 +27,5 @@ export function groupVariablesBySheet(variables) {
     });
   }
 
-  return Array.from(sheetMap.values()).sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
+  return Array.from(sheetMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 }

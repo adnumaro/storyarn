@@ -13,7 +13,9 @@ export const AvatarUpload = {
       if (!file.type.startsWith("image/")) {
         const target = this.el.dataset.target;
         if (target) {
-          this.pushEventTo(target, "upload_validation_error", { message: "Please select an image file." });
+          this.pushEventTo(target, "upload_validation_error", {
+            message: "Please select an image file.",
+          });
         } else {
           this.pushEvent("upload_validation_error", { message: "Please select an image file." });
         }
@@ -25,7 +27,9 @@ export const AvatarUpload = {
       if (file.size > maxSize) {
         const target = this.el.dataset.target;
         if (target) {
-          this.pushEventTo(target, "upload_validation_error", { message: "Image must be less than 5MB." });
+          this.pushEventTo(target, "upload_validation_error", {
+            message: "Image must be less than 5MB.",
+          });
         } else {
           this.pushEvent("upload_validation_error", { message: "Image must be less than 5MB." });
         }

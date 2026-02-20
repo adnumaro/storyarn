@@ -10,12 +10,12 @@
 import { createElement, X } from "lucide";
 import { createCombobox } from "./combobox";
 import {
-  getTemplate,
   expandTemplateForVariableRef,
+  getTemplate,
   NO_VALUE_OPERATORS,
-  operatorsForType,
-  OPERATOR_VERBS,
   OPERATOR_DROPDOWN_LABELS,
+  OPERATOR_VERBS,
+  operatorsForType,
 } from "./sentence_templates";
 
 /**
@@ -45,7 +45,7 @@ export function createAssignmentRow(opts) {
     onAdvance,
   } = opts;
 
-  let currentAssignment = { ...assignment };
+  const currentAssignment = { ...assignment };
   let comboboxes = {};
   let operatorDropdownCleanup = null;
 
@@ -66,9 +66,7 @@ export function createAssignmentRow(opts) {
     let template = getTemplate(operator);
 
     // Expand value slot for variable_ref if the operator requires a value
-    const hasValueSlot = template.some(
-      (t) => t.type === "slot" && t.key === "value",
-    );
+    const hasValueSlot = template.some((t) => t.type === "slot" && t.key === "value");
     if (
       hasValueSlot &&
       currentAssignment.value_type === "variable_ref" &&
@@ -78,9 +76,7 @@ export function createAssignmentRow(opts) {
     }
 
     // Track slot order for auto-advance
-    const slotKeys = template
-      .filter((t) => t.type === "slot")
-      .map((t) => t.key);
+    const slotKeys = template.filter((t) => t.type === "slot").map((t) => t.key);
 
     // Check if operator selector should be shown
     const varType = getVariableType();
@@ -112,12 +108,7 @@ export function createAssignmentRow(opts) {
         slotContainer.className = "inline-block relative";
         const placeholderKey = `placeholder_${item.key}`;
         const placeholder = t?.[placeholderKey] || item.placeholder;
-        const combobox = createSlotCombobox(
-          item.key,
-          placeholder,
-          slotContainer,
-          slotKeys,
-        );
+        const combobox = createSlotCombobox(item.key, placeholder, slotContainer, slotKeys);
         comboboxes[item.key] = combobox;
         sentenceWrap.appendChild(slotContainer);
       }
@@ -126,8 +117,7 @@ export function createAssignmentRow(opts) {
     // Value type toggle (only for operators that require a value)
     if (!NO_VALUE_OPERATORS.has(operator) && canEdit) {
       const valueSlotEl =
-        comboboxes.value_sheet?.input?.parentElement ||
-        comboboxes.value?.input?.parentElement;
+        comboboxes.value_sheet?.input?.parentElement || comboboxes.value?.input?.parentElement;
       if (valueSlotEl) {
         const toggle = createValueTypeToggle();
         sentenceWrap.insertBefore(toggle, valueSlotEl);
@@ -151,7 +141,9 @@ export function createAssignmentRow(opts) {
   }
 
   function destroyComboboxes() {
-    Object.values(comboboxes).forEach((cb) => cb.destroy?.());
+    Object.values(comboboxes).forEach((cb) => {
+      cb.destroy?.();
+    });
     comboboxes = {};
   }
 
@@ -167,8 +159,7 @@ export function createAssignmentRow(opts) {
     const currentVal = currentAssignment[key] || "";
     const displayVal = getDisplayValueForSlot(key, currentVal);
 
-    const isFreeText =
-      key === "value" && currentAssignment.value_type !== "variable_ref";
+    const isFreeText = key === "value" && currentAssignment.value_type !== "variable_ref";
 
     const combobox = createCombobox({
       container: slotContainer,
@@ -200,13 +191,12 @@ export function createAssignmentRow(opts) {
       case "variable": {
         const sheetShortcut = currentAssignment.sheet;
         if (!sheetShortcut) return [];
-        const sheet = sheetsWithVariables.find(
-          (p) => p.shortcut === sheetShortcut,
-        );
+        const sheet = sheetsWithVariables.find((p) => p.shortcut === sheetShortcut);
         if (!sheet) return [];
         return sheet.vars.map((v) => ({
           value: v.variable_name,
           label: v.variable_name,
+          group: sheetShortcut,
           meta: v.block_type,
           blockType: v.block_type,
           options: v.options,
@@ -223,6 +213,7 @@ export function createAssignmentRow(opts) {
           return sheet.vars.map((v) => ({
             value: v.variable_name,
             label: v.variable_name,
+            group: vs,
             meta: v.block_type,
           }));
         }
@@ -234,8 +225,7 @@ export function createAssignmentRow(opts) {
         );
         if (
           selectedVar &&
-          (selectedVar.block_type === "select" ||
-            selectedVar.block_type === "multi_select") &&
+          (selectedVar.block_type === "select" || selectedVar.block_type === "multi_select") &&
           selectedVar.options
         ) {
           return selectedVar.options.map((opt) => ({
@@ -251,7 +241,7 @@ export function createAssignmentRow(opts) {
     }
   }
 
-  function getDisplayValueForSlot(key, val) {
+  function getDisplayValueForSlot(_key, val) {
     if (!val) return "";
     return val;
   }
@@ -272,7 +262,7 @@ export function createAssignmentRow(opts) {
     }
   }
 
-  function handleSlotChange(key, option, slotKeys) {
+  function handleSlotChange(key, option, _slotKeys) {
     currentAssignment[key] = option.value;
 
     if (key === "sheet") {
@@ -291,11 +281,7 @@ export function createAssignmentRow(opts) {
 
     if (key === "variable") {
       // Auto-detect type and set first operator
-      const selectedVar = findVariable(
-        variables,
-        currentAssignment.sheet,
-        option.value,
-      );
+      const selectedVar = findVariable(variables, currentAssignment.sheet, option.value);
       if (selectedVar) {
         const ops = operatorsForType(selectedVar.block_type);
         if (ops.length > 0) {
@@ -406,8 +392,8 @@ export function createAssignmentRow(opts) {
     toggle.className = "value-type-toggle";
     toggle.textContent = isRef ? "{x}" : "123";
     toggle.title = isRef
-      ? (t?.switch_to_literal || "Switch to literal value")
-      : (t?.switch_to_variable_ref || "Switch to variable reference");
+      ? t?.switch_to_literal || "Switch to literal value"
+      : t?.switch_to_variable_ref || "Switch to variable reference";
 
     toggle.addEventListener("click", (e) => {
       e.preventDefault();
@@ -426,11 +412,7 @@ export function createAssignmentRow(opts) {
   }
 
   function getVariableType() {
-    const v = findVariable(
-      variables,
-      currentAssignment.sheet,
-      currentAssignment.variable,
-    );
+    const v = findVariable(variables, currentAssignment.sheet, currentAssignment.variable);
     return v ? v.block_type : null;
   }
 
@@ -440,10 +422,7 @@ export function createAssignmentRow(opts) {
 
   function findVariable(vars, sheetShortcut, variableName) {
     if (!sheetShortcut || !variableName) return null;
-    return vars.find(
-      (v) =>
-        v.sheet_shortcut === sheetShortcut && v.variable_name === variableName,
-    );
+    return vars.find((v) => v.sheet_shortcut === sheetShortcut && v.variable_name === variableName);
   }
 
   // Public API

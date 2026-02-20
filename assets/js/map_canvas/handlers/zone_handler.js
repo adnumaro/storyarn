@@ -9,23 +9,23 @@
 
 import L from "leaflet";
 import {
-  createZonePolygon,
+  bringToFrontItem,
+  deleteItem,
+  editPropertiesItem,
+  lockToggleItem,
+  sendToBackItem,
+} from "../context_menu_builder.js";
+import { toLatLng, toPercent } from "../coordinate_utils.js";
+import { getShapePreset } from "../shape_presets.js";
+import { createVertexEditor } from "../vertex_editor.js";
+import {
   createZoneLabelMarker,
+  createZonePolygon,
   setZoneSelected,
-  updateZonePolygon,
   updateZoneLabelMarker,
+  updateZonePolygon,
   updateZoneVertices,
 } from "../zone_renderer.js";
-import { toLatLng, toPercent } from "../coordinate_utils.js";
-import { createVertexEditor } from "../vertex_editor.js";
-import { getShapePreset } from "../shape_presets.js";
-import {
-  editPropertiesItem,
-  bringToFrontItem,
-  sendToBackItem,
-  lockToggleItem,
-  deleteItem,
-} from "../context_menu_builder.js";
 
 /**
  * Creates the zone handler attached to the hook instance.
@@ -79,7 +79,9 @@ export function createZoneHandler(hook, i18n = {}) {
 
   /** Renders all initial zones from mapData, sorted by position for z-ordering. */
   function renderZones() {
-    const zones = (hook.mapData.zones || []).slice().sort((a, b) => (a.position || 0) - (b.position || 0));
+    const zones = (hook.mapData.zones || [])
+      .slice()
+      .sort((a, b) => (a.position || 0) - (b.position || 0));
     for (const zone of zones) {
       addZoneToMap(zone);
     }
@@ -111,7 +113,7 @@ export function createZoneHandler(hook, i18n = {}) {
       L.DomEvent.stopPropagation(e);
       L.DomEvent.preventDefault(e);
 
-      const isZoneTool = hook.isZoneTool && hook.isZoneTool(hook.currentTool);
+      const isZoneTool = hook.isZoneTool?.(hook.currentTool);
       if (isZoneTool) return;
 
       if (polygon.zoneData.target_type === "map" && polygon.zoneData.target_id) {
@@ -207,9 +209,7 @@ export function createZoneHandler(hook, i18n = {}) {
         items.push({
           label: i18n.create_child_map || "Create child map",
           disabled: !data.name || data.name.trim() === "",
-          tooltip: !data.name
-            ? (i18n.name_zone_first || "Name the zone first")
-            : null,
+          tooltip: !data.name ? i18n.name_zone_first || "Name the zone first" : null,
           action: () =>
             hook.pushEvent("create_child_map_from_zone", {
               zone_id: String(zoneId),
@@ -238,10 +238,11 @@ export function createZoneHandler(hook, i18n = {}) {
 
     // Link cursor for zones with a target
     if (zone.target_type === "map" && zone.target_id) {
-      polygon.getElement && polygon.on("add", () => {
-        const el = polygon.getElement();
-        if (el) el.style.cursor = "pointer";
-      });
+      polygon.getElement &&
+        polygon.on("add", () => {
+          const el = polygon.getElement();
+          if (el) el.style.cursor = "pointer";
+        });
     }
 
     polygon.addTo(hook.zoneLayer);
@@ -268,14 +269,17 @@ export function createZoneHandler(hook, i18n = {}) {
   /** Sets up click/dblclick/mousemove handlers for zone creation. */
   function setupDrawingHandlers() {
     hook.leafletMap.on("click", (e) => {
-      const isZoneTool = hook.isZoneTool && hook.isZoneTool(hook.currentTool);
+      const isZoneTool = hook.isZoneTool?.(hook.currentTool);
       if (!isZoneTool) return;
 
       // Prevent if clicking on existing interactive elements
       if (e.originalEvent._stopped) return;
 
       const tool = hook.currentTool;
-      const vertices = computeShapeVertices(tool, toPercent(e.latlng, hook.canvasWidth, hook.canvasHeight));
+      const vertices = computeShapeVertices(
+        tool,
+        toPercent(e.latlng, hook.canvasWidth, hook.canvasHeight),
+      );
 
       if (vertices) {
         // Shape preset: single click creates zone immediately
@@ -318,15 +322,16 @@ export function createZoneHandler(hook, i18n = {}) {
     // Ghost preview for shape presets
     hook.leafletMap.on("mousemove", (e) => {
       const tool = hook.currentTool;
-      const vertices = computeShapeVertices(tool, toPercent(e.latlng, hook.canvasWidth, hook.canvasHeight));
+      const vertices = computeShapeVertices(
+        tool,
+        toPercent(e.latlng, hook.canvasWidth, hook.canvasHeight),
+      );
       if (!vertices) {
         removeGhost();
         return;
       }
 
-      const latLngs = vertices.map((v) =>
-        toLatLng(v.x, v.y, hook.canvasWidth, hook.canvasHeight),
-      );
+      const latLngs = vertices.map((v) => toLatLng(v.x, v.y, hook.canvasWidth, hook.canvasHeight));
 
       if (ghostPolygon) {
         ghostPolygon.setLatLngs(latLngs);
@@ -454,9 +459,7 @@ export function createZoneHandler(hook, i18n = {}) {
     const dLat = e.latlng.lat - dragStartLatLng.lat;
     const dLng = e.latlng.lng - dragStartLatLng.lng;
 
-    const newLatLngs = dragOriginalLatLngs.map(
-      (ll) => L.latLng(ll.lat + dLat, ll.lng + dLng),
-    );
+    const newLatLngs = dragOriginalLatLngs.map((ll) => L.latLng(ll.lat + dLat, ll.lng + dLng));
 
     dragPolygon.setLatLngs(newLatLngs);
 
@@ -487,7 +490,10 @@ export function createZoneHandler(hook, i18n = {}) {
     });
 
     // Clamp: if any vertex is out of bounds, compute the delta needed to bring it back
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
     for (const v of vertices) {
       if (v.x < minX) minX = v.x;
       if (v.y < minY) minY = v.y;
@@ -495,7 +501,8 @@ export function createZoneHandler(hook, i18n = {}) {
       if (v.y > maxY) maxY = v.y;
     }
 
-    let adjustX = 0, adjustY = 0;
+    let adjustX = 0,
+      adjustY = 0;
     if (minX < 0) adjustX = -minX;
     else if (maxX > 100) adjustX = 100 - maxX;
     if (minY < 0) adjustY = -minY;

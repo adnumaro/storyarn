@@ -6,7 +6,7 @@
  */
 
 import L from "leaflet";
-import { createElement, Maximize, LayoutGrid } from "lucide";
+import { createElement, LayoutGrid, Maximize } from "lucide";
 import { imageBounds } from "./coordinate_utils.js";
 
 const MINIMAP_WIDTH = 180;
@@ -35,7 +35,7 @@ export function createMinimap(hook) {
       minimapMap.remove();
       minimapMap = null;
     }
-    if (container && container.parentNode) {
+    if (container?.parentNode) {
       container.parentNode.removeChild(container);
     }
     container = null;
@@ -92,7 +92,7 @@ export function createMinimap(hook) {
       height: ${MINIMAP_HEIGHT}px;
       display: ${collapsed ? "none" : "block"};
     `;
-    mapContainer.id = "minimap-canvas-" + Date.now();
+    mapContainer.id = `minimap-canvas-${Date.now()}`;
     container.appendChild(mapContainer);
 
     hook.el.appendChild(container);

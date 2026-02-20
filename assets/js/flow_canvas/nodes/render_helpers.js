@@ -46,9 +46,11 @@ export function defaultHeader(config, nodeColor, indicators) {
 export function speakerHeader(config, nodeColor, speakerSheet, indicators) {
   return html`
     <div class="header" style="background-color: ${nodeColor}">
-      ${speakerSheet.avatar_url
-        ? html`<img src="${speakerSheet.avatar_url}" class="speaker-avatar" alt="" />`
-        : html`<span class="icon">${unsafeSVG(config.icon)}</span>`}
+      ${
+        speakerSheet.avatar_url
+          ? html`<img src="${speakerSheet.avatar_url}" class="speaker-avatar" alt="" />`
+          : html`<span class="icon">${unsafeSVG(config.icon)}</span>`
+      }
       <span class="speaker-name">${speakerSheet.name}</span>
       ${renderIndicators(indicators)}
     </div>
@@ -96,7 +98,7 @@ export function renderPreview(text) {
 /**
  * Renders a clickable navigation link block (used by hub/jump).
  */
-export function renderNavLink(text, event, detailKey, nodeId, emit) {
+export function renderNavLink(text, event, detailKey, nodeId, _emit) {
   return html`<div class="node-data">
     <div
       class="node-data-text nav-link"
@@ -128,9 +130,6 @@ export function renderNavLink(text, event, detailKey, nodeId, emit) {
 export function renderSockets(node, nodeData, def, emit) {
   const inputs = Object.entries(node.inputs || {});
   const outputs = Object.entries(node.outputs || {});
-  const hasMultipleOutputs =
-    outputs.length > 1 || (def?.config?.dynamicOutputs && outputs.length > 0 && inputs.length > 0);
-
   if (inputs.length === 1 && outputs.length === 1 && !def?.config?.dynamicOutputs) {
     const [inputKey, input] = inputs[0];
     const [outputKey, output] = outputs[0];
@@ -184,7 +183,7 @@ export function renderSockets(node, nodeData, def, emit) {
       `,
     )}
     ${outputs.map(([key, output]) => {
-      let outputLabel = def?.formatOutputLabel?.(key, nodeData) ?? key;
+      const outputLabel = def?.formatOutputLabel?.(key, nodeData) ?? key;
       const badges = def?.getOutputBadges?.(key, nodeData) || [];
       const labelTitle = typeof outputLabel === "string" ? outputLabel : key;
 

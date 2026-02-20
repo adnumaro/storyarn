@@ -18,7 +18,7 @@ export const FountainImport = {
     input.style.display = "none";
 
     input.addEventListener("change", () => {
-      const file = input.files && input.files[0];
+      const file = input.files?.[0];
       if (!file) return;
 
       const reader = new FileReader();

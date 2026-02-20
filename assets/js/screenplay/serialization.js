@@ -6,7 +6,7 @@
  * (scene_heading). This module handles the mapping in both directions.
  */
 
-import { escapeHtml, escapeAttr } from "./utils.js";
+import { escapeAttr, escapeHtml } from "./utils.js";
 
 // -- Type mapping (camelCase <-> snake_case) -----------------------------------
 
@@ -29,9 +29,7 @@ const NODE_TYPE_MAP = {
   titlePage: "title_page",
 };
 
-const REVERSE_MAP = Object.fromEntries(
-  Object.entries(NODE_TYPE_MAP).map(([k, v]) => [v, k]),
-);
+const REVERSE_MAP = Object.fromEntries(Object.entries(NODE_TYPE_MAP).map(([k, v]) => [v, k]));
 
 const ATOM_TYPES = new Set([
   "pageBreak",
@@ -116,8 +114,7 @@ function getNodeText(node) {
   // Check if we need HTML serialization (mentions, marks, hard breaks)
   let needsHtml = false;
   node.content.forEach((child) => {
-    if (child.type.name === "mention" || child.type.name === "hardBreak")
-      needsHtml = true;
+    if (child.type.name === "mention" || child.type.name === "hardBreak") needsHtml = true;
     if (child.marks && child.marks.length > 0) needsHtml = true;
   });
 
@@ -190,9 +187,7 @@ export function elementsToDoc(elements, schema) {
     };
   }
 
-  const sorted = [...elements].sort(
-    (a, b) => (a.position ?? 0) - (b.position ?? 0),
-  );
+  const sorted = [...elements].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
   const content = sorted.map((el) => {
     const tiptapType = toTiptapType(el.type);
@@ -280,13 +275,9 @@ function parseInlineNodes(childNodes, marks) {
       } else if (tag === "strong" || tag === "b") {
         nodes.push(...parseInlineNodes(child.childNodes, [...marks, "bold"]));
       } else if (tag === "em" || tag === "i") {
-        nodes.push(
-          ...parseInlineNodes(child.childNodes, [...marks, "italic"]),
-        );
+        nodes.push(...parseInlineNodes(child.childNodes, [...marks, "italic"]));
       } else if (tag === "s" || tag === "del") {
-        nodes.push(
-          ...parseInlineNodes(child.childNodes, [...marks, "strike"]),
-        );
+        nodes.push(...parseInlineNodes(child.childNodes, [...marks, "strike"]));
       } else {
         // Unknown element: recurse into children preserving marks
         nodes.push(...parseInlineNodes(child.childNodes, marks));

@@ -3,9 +3,9 @@
  */
 import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
-import { Play, Box, Square } from "lucide";
-import { createIconSvg, createIconHTML } from "../node_config.js";
-import { nodeShell, defaultHeader, renderNavLink, renderSockets } from "./render_helpers.js";
+import { Box, Play, Square } from "lucide";
+import { createIconHTML, createIconSvg } from "../node_config.js";
+import { defaultHeader, nodeShell, renderNavLink, renderSockets } from "./render_helpers.js";
 
 // Pre-create reference icons
 const SUBFLOW_REF_ICON = createIconHTML(Box, { size: 12 });
@@ -31,11 +31,15 @@ export default {
       return renderNavLink(navContent, "navigate-to-referencing-flow", "flowId", ref.flow_id, emit);
     });
 
-    return nodeShell(config.color, selected, html`
+    return nodeShell(
+      config.color,
+      selected,
+      html`
       ${defaultHeader(config, config.color, [])}
       ${navLinks}
       <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
-    `);
+    `,
+    );
   },
 
   getPreviewText(_data) {

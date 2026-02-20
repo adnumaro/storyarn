@@ -110,5 +110,4 @@ export const LiveViewBridge = Extension.create({
 
     this.storage.destroyed = true;
   },
-
 });

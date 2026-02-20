@@ -9,11 +9,11 @@ import { html } from "lit";
 import { Clapperboard } from "lucide";
 import { createIconSvg } from "../node_config.js";
 import {
-  nodeShell,
   defaultHeader,
-  speakerHeader,
+  nodeShell,
   renderPreview,
   renderSockets,
+  speakerHeader,
 } from "./render_helpers.js";
 
 export default {
@@ -45,8 +45,9 @@ export default {
       selected,
       html`
         ${headerHtml}
-        ${slugLine
-          ? html`<div class="node-data">
+        ${
+          slugLine
+            ? html`<div class="node-data">
               <div
                 class="node-data-text"
                 style="font-weight:700;font-size:0.75em;letter-spacing:0.03em"
@@ -54,7 +55,8 @@ export default {
                 ${slugLine}
               </div>
             </div>`
-          : ""}
+            : ""
+        }
         ${renderPreview(description)}
         <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
       `,
@@ -64,7 +66,7 @@ export default {
   getSlugLine(data) {
     const parts = [];
     const intExt = (data.int_ext || "").toUpperCase().replace("_", "./");
-    if (intExt) parts.push(intExt + ".");
+    if (intExt) parts.push(`${intExt}.`);
     if (data.sub_location) parts.push(data.sub_location.toUpperCase());
     if (data.time_of_day) {
       if (parts.length > 0) parts.push("-");

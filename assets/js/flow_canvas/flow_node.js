@@ -3,7 +3,7 @@
  */
 
 import { ClassicPreset } from "rete";
-import { NODE_CONFIGS, getNodeDef } from "./node_config.js";
+import { getNodeDef, NODE_CONFIGS } from "./node_config.js";
 
 /**
  * FlowNode extends the classic Rete.js Node with custom properties

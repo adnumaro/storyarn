@@ -5,7 +5,7 @@
  * linked page controls (create, navigate, unlink).
  */
 
-import { createElement, FileText, Unlink, FilePlus, GitBranch, Zap, X, Plus } from "lucide";
+import { createElement, FilePlus, FileText, GitBranch, Plus, Unlink, X, Zap } from "lucide";
 import { createConditionBuilder } from "./condition_builder_core.js";
 import { createInstructionBuilder } from "./instruction_builder_core.js";
 
@@ -42,7 +42,9 @@ export function createResponseBuilder({
   }
 
   function destroyChildren() {
-    childInstances.forEach((inst) => inst.destroy?.());
+    childInstances.forEach((inst) => {
+      inst.destroy?.();
+    });
     childInstances = [];
   }
 
@@ -56,9 +58,7 @@ export function createResponseBuilder({
     if (choices.length === 0) {
       const empty = document.createElement("div");
       empty.className = "sp-choice-empty";
-      empty.textContent = canEdit
-        ? "No choices yet. Add one below."
-        : "No choices defined";
+      empty.textContent = canEdit ? "No choices yet. Add one below." : "No choices defined";
       container.appendChild(empty);
     }
 

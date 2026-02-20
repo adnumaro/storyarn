@@ -6,10 +6,10 @@
  */
 
 import { Node } from "@tiptap/core";
-import { createElement, CheckCircle, AlertCircle, Files } from "lucide";
-import { BASE_ATTRS } from "./base_attrs.js";
+import { AlertCircle, CheckCircle, createElement, Files } from "lucide";
 import { buildInteractiveHeader } from "../builders/interactive_header.js";
 import { createResponseBuilder } from "../builders/response_builder.js";
+import { BASE_ATTRS } from "./base_attrs.js";
 
 export const Response = Node.create({
   name: "response",
@@ -45,14 +45,12 @@ export const Response = Node.create({
   },
 
   addNodeView() {
-    const extension = this;
-
     return ({ node, getPos, editor }) => {
-      const hook = extension.options.liveViewHook;
-      const canEdit = extension.options.canEdit;
-      const variables = extension.options.variables;
-      const translations = extension.options.translations;
-      let linkedPages = extension.options.linkedPages || {};
+      const hook = this.options.liveViewHook;
+      const canEdit = this.options.canEdit;
+      const variables = this.options.variables;
+      const translations = this.options.translations;
+      let linkedPages = this.options.linkedPages || {};
 
       // Outer wrapper
       const dom = document.createElement("div");
@@ -66,7 +64,11 @@ export const Response = Node.create({
         onDelete: () => {
           const pos = getPos();
           if (typeof pos === "number") {
-            editor.chain().focus().deleteRange({ from: pos, to: pos + node.nodeSize }).run();
+            editor
+              .chain()
+              .focus()
+              .deleteRange({ from: pos, to: pos + node.nodeSize })
+              .run();
           }
         },
       });
@@ -104,7 +106,7 @@ export const Response = Node.create({
           node = updatedNode;
 
           // Update linked pages from hook if available
-          if (hook && hook._linkedPages) {
+          if (hook?._linkedPages) {
             linkedPages = hook._linkedPages;
           }
 
@@ -129,7 +131,7 @@ export const Response = Node.create({
 /**
  * Update the header actions slot with status icons and generate button.
  */
-function updateHeaderActions(actionsSlot, node, canEdit, linkedPages, hook) {
+function updateHeaderActions(actionsSlot, node, canEdit, _linkedPages, hook) {
   actionsSlot.innerHTML = "";
 
   const choices = node.attrs.data?.choices || [];

@@ -89,7 +89,9 @@ export const ColumnSortable = {
   },
 
   destroySortables() {
-    this.sortables.forEach((s) => s.destroy());
+    this.sortables.forEach((s) => {
+      s.destroy();
+    });
     this.sortables = [];
   },
 
@@ -204,4 +206,3 @@ export const ColumnSortable = {
     }
   },
 };
-

@@ -13,7 +13,7 @@
  * an appendTransaction plugin automatically clears the sheetId.
  */
 
-import { Node, mergeAttributes } from "@tiptap/core";
+import { mergeAttributes, Node } from "@tiptap/core";
 import { Plugin } from "prosemirror-state";
 import { BASE_ATTRS } from "./base_attrs.js";
 
@@ -43,8 +43,7 @@ export const Character = Node.create({
         tag: 'div[data-node-type="character"]',
         // When pasting HTML with the nested span, read content from it;
         // otherwise fall back to the matched div itself.
-        contentElement: (node) =>
-          node.querySelector(".sp-character-content") || node,
+        contentElement: (node) => node.querySelector(".sp-character-content") || node,
       },
     ];
   },
@@ -68,11 +67,7 @@ export const Character = Node.create({
           let tr = null;
 
           newState.doc.forEach((node, pos) => {
-            if (
-              node.type.name === "character" &&
-              node.attrs.sheetId &&
-              node.content.size === 0
-            ) {
+            if (node.type.name === "character" && node.attrs.sheetId && node.content.size === 0) {
               if (!tr) tr = newState.tr;
               tr.setNodeMarkup(pos, undefined, {
                 ...node.attrs,

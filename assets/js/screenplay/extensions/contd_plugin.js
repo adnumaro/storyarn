@@ -71,12 +71,16 @@ function computeContdDecorations(doc) {
           // Place inside the character node (end of inline content),
           // not after the closing boundary (which would float between blocks).
           const widgetPos = pos + node.nodeSize - 1;
-          const widget = Decoration.widget(widgetPos, () => {
-            const span = document.createElement("span");
-            span.className = "sp-contd";
-            span.textContent = "(CONT'D)";
-            return span;
-          }, { side: 1 });
+          const widget = Decoration.widget(
+            widgetPos,
+            () => {
+              const span = document.createElement("span");
+              span.className = "sp-contd";
+              span.textContent = "(CONT'D)";
+              return span;
+            },
+            { side: 1 },
+          );
           decorations.push(widget);
         }
       }
@@ -91,7 +95,4 @@ function computeContdDecorations(doc) {
   return DecorationSet.create(doc, decorations);
 }
 
-export const ContdPlugin = createDecorationPlugin(
-  "contdPlugin",
-  computeContdDecorations,
-);
+export const ContdPlugin = createDecorationPlugin("contdPlugin", computeContdDecorations);

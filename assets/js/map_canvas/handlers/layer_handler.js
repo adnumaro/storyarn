@@ -107,14 +107,14 @@ export function createLayerHandler(hook) {
     const hasFog = fogLayerIds.size > 0;
 
     // Pins
-    for (const [pinId, marker] of hook.pinHandler.markers) {
+    for (const [_pinId, marker] of hook.pinHandler.markers) {
       const pin = marker.pinData;
       const shouldHide = isElementHidden(pin.layer_id, hasFog, fogLayerIds);
       toggleLayer(hook.pinLayer, marker, shouldHide);
     }
 
     // Zones
-    for (const [zoneId, polygon] of hook.zoneHandler.polygons) {
+    for (const [_zoneId, polygon] of hook.zoneHandler.polygons) {
       const zone = polygon.zoneData;
       const shouldHide = isElementHidden(zone.layer_id, hasFog, fogLayerIds);
       toggleLayer(hook.zoneLayer, polygon, shouldHide);
@@ -122,7 +122,7 @@ export function createLayerHandler(hook) {
 
     // Annotations
     if (hook.annotationHandler) {
-      for (const [annId, marker] of hook.annotationHandler.markers) {
+      for (const [_annId, marker] of hook.annotationHandler.markers) {
         const ann = marker.annotationData;
         const shouldHide = isElementHidden(ann.layer_id, hasFog, fogLayerIds);
         toggleLayer(hook.annotationLayer, marker, shouldHide);
@@ -130,7 +130,7 @@ export function createLayerHandler(hook) {
     }
 
     // Connections: hide if either pin is hidden
-    for (const [connId, line] of hook.connectionHandler.lines) {
+    for (const [_connId, line] of hook.connectionHandler.lines) {
       const conn = line.connData;
       const fromHidden = isPinHidden(conn.from_pin_id);
       const toHidden = isPinHidden(conn.to_pin_id);
@@ -172,9 +172,7 @@ export function createLayerHandler(hook) {
     clearAllFog();
 
     const layers = hook.mapData.layers || [];
-    const fogLayers = layers.filter(
-      (l) => l.fog_enabled && !hiddenLayers.has(l.id),
-    );
+    const fogLayers = layers.filter((l) => l.fog_enabled && !hiddenLayers.has(l.id));
 
     if (fogLayers.length === 0) return;
 
@@ -199,7 +197,7 @@ export function createLayerHandler(hook) {
       const zone = polygon.zoneData;
       if (zone.layer_id && fogLayerIds.has(zone.layer_id)) {
         const latLngs = polygon.getLatLngs();
-        if (latLngs && latLngs[0]) {
+        if (latLngs?.[0]) {
           const ring = Array.isArray(latLngs[0][0]) ? latLngs[0] : latLngs[0];
           holes.push(ring.map((ll) => [ll.lat, ll.lng]));
         }

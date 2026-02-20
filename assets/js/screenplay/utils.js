@@ -4,10 +4,7 @@
 
 /** Escape HTML special characters in text content. */
 export function escapeHtml(text) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 /** Escape an HTML attribute value (includes quotes). */

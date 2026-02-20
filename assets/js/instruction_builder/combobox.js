@@ -81,8 +81,7 @@ export function createCombobox(opts) {
       // Save current value on blur (confirmed: false = don't advance)
       currentValue = input.value;
       input.classList.toggle("filled", !!input.value);
-      if (onSelect)
-        onSelect({ value: input.value, label: input.value, confirmed: false });
+      if (onSelect) onSelect({ value: input.value, label: input.value, confirmed: false });
       return;
     }
     // Delay close to allow mousedown on dropdown options
@@ -122,10 +121,7 @@ export function createCombobox(opts) {
         if (!isOpen) {
           openDropdown();
         } else {
-          highlightedIndex = Math.min(
-            highlightedIndex + 1,
-            filteredOptions.length - 1,
-          );
+          highlightedIndex = Math.min(highlightedIndex + 1, filteredOptions.length - 1);
           renderDropdown();
           scrollToHighlighted();
         }
@@ -142,11 +138,7 @@ export function createCombobox(opts) {
 
       case "Enter":
         e.preventDefault();
-        if (
-          isOpen &&
-          highlightedIndex >= 0 &&
-          filteredOptions[highlightedIndex]
-        ) {
+        if (isOpen && highlightedIndex >= 0 && filteredOptions[highlightedIndex]) {
           selectOption(filteredOptions[highlightedIndex]);
         }
         break;
@@ -194,12 +186,7 @@ export function createCombobox(opts) {
         const val = (opt.value || "").toLowerCase();
         const group = (opt.group || "").toLowerCase();
         const meta = (opt.meta || "").toLowerCase();
-        return (
-          label.includes(q) ||
-          val.includes(q) ||
-          group.includes(q) ||
-          meta.includes(q)
-        );
+        return label.includes(q) || val.includes(q) || group.includes(q) || meta.includes(q);
       });
     }
     highlightedIndex = filteredOptions.length > 0 ? 0 : -1;
@@ -261,9 +248,9 @@ export function createCombobox(opts) {
       optEl.addEventListener("mouseenter", () => {
         highlightedIndex = idx;
         // Only update highlight class, don't rebuild entire dropdown
-        dropdown
-          .querySelectorAll(".combobox-option")
-          .forEach((el, i) => el.classList.toggle("highlighted", i === idx));
+        dropdown.querySelectorAll(".combobox-option").forEach((el, i) => {
+          el.classList.toggle("highlighted", i === idx);
+        });
       });
 
       dropdown.appendChild(optEl);

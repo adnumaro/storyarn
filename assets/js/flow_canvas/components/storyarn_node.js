@@ -6,9 +6,9 @@
  * (generic header + bare sockets, no labels/badges/previews).
  */
 
-import { LitElement, html } from "lit";
+import { html, LitElement } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
-import { NODE_CONFIGS, getNodeDef } from "../node_config.js";
+import { getNodeDef, NODE_CONFIGS } from "../node_config.js";
 import { storyarnNodeStyles } from "./storyarn_node_styles.js";
 
 export class StoryarnNode extends LitElement {

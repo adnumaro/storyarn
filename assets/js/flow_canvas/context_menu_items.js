@@ -208,8 +208,7 @@ export function createContextMenuItems(hook) {
             label: "Create linked flow",
             key: "create_flow",
             icon: ICONS.link,
-            handler: () =>
-              hook.pushEvent("create_linked_flow", { "node-id": String(nodeDbId) }),
+            handler: () => hook.pushEvent("create_linked_flow", { "node-id": String(nodeDbId) }),
           });
         }
         break;
@@ -222,16 +221,14 @@ export function createContextMenuItems(hook) {
             label: "Open referenced flow",
             key: "open_flow",
             icon: ICONS.externalLink,
-            handler: () =>
-              hook.pushEvent("navigate_to_subflow", { "flow-id": String(refId) }),
+            handler: () => hook.pushEvent("navigate_to_subflow", { "flow-id": String(refId) }),
           });
         } else {
           list.push({
             label: "Create linked flow",
             key: "create_flow",
             icon: ICONS.link,
-            handler: () =>
-              hook.pushEvent("create_linked_flow", { "node-id": String(nodeDbId) }),
+            handler: () => hook.pushEvent("create_linked_flow", { "node-id": String(nodeDbId) }),
           });
         }
         break;

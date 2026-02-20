@@ -80,8 +80,7 @@ function handleEnter(editor) {
   // If splitting a CHARACTER with sheetId at the start, the original block
   // becomes empty but inherits sheetId — clear it to avoid ghost references.
   const atStart = $from.parentOffset === 0;
-  const hasSheetId =
-    currentType === "character" && currentNode.attrs.sheetId;
+  const hasSheetId = currentType === "character" && currentNode.attrs.sheetId;
 
   const chain = editor
     .chain()
@@ -106,10 +105,7 @@ function handleEnter(editor) {
         if (prevPos >= 0) {
           const resolvedPrev = state.doc.resolve(prevPos);
           const prevNode = resolvedPrev.parent;
-          if (
-            prevNode.type.name === "character" &&
-            prevNode.attrs.sheetId
-          ) {
+          if (prevNode.type.name === "character" && prevNode.attrs.sheetId) {
             const prevBlockPos = resolvedPrev.before(resolvedPrev.depth);
             tr.setNodeMarkup(prevBlockPos, undefined, {
               ...prevNode.attrs,

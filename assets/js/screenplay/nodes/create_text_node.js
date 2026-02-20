@@ -6,7 +6,7 @@
  * server sync. They differ only in name, server type, and CSS class.
  */
 
-import { Node, mergeAttributes } from "@tiptap/core";
+import { mergeAttributes, Node } from "@tiptap/core";
 import { BASE_ATTRS } from "./base_attrs.js";
 
 /**

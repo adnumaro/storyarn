@@ -100,14 +100,11 @@ export function setupEventHandlers(hook) {
   hook.handleEvent("node_updated", (data) => {
     hook._nodeUpdateQueue = hook._nodeUpdateQueue
       .then(() => hook.editorHandlers.handleNodeUpdated(data))
+      // biome-ignore lint/suspicious/noConsole: intentional error logging
       .catch((err) => console.error("node_updated handler error:", err));
   });
-  hook.handleEvent("node_data_changed", (data) =>
-    hook.editorHandlers.handleNodeDataChanged(data),
-  );
-  hook.handleEvent("flow_meta_changed", (data) =>
-    hook.editorHandlers.handleFlowMetaChanged(data),
-  );
+  hook.handleEvent("node_data_changed", (data) => hook.editorHandlers.handleNodeDataChanged(data));
+  hook.handleEvent("flow_meta_changed", (data) => hook.editorHandlers.handleFlowMetaChanged(data));
   hook.handleEvent("connection_added", (data) => hook.editorHandlers.handleConnectionAdded(data));
   hook.handleEvent("connection_removed", (data) =>
     hook.editorHandlers.handleConnectionRemoved(data),
@@ -152,9 +149,7 @@ export function setupEventHandlers(hook) {
   });
 
   // Handle server events - Debug
-  hook.handleEvent("debug_highlight_node", (data) =>
-    hook.debugHandler.handleHighlightNode(data),
-  );
+  hook.handleEvent("debug_highlight_node", (data) => hook.debugHandler.handleHighlightNode(data));
   hook.handleEvent("debug_highlight_connections", (data) =>
     hook.debugHandler.handleHighlightConnections(data),
   );

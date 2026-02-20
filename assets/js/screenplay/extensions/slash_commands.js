@@ -7,27 +7,111 @@
  */
 
 import { Extension } from "@tiptap/core";
-import { Suggestion } from "@tiptap/suggestion";
 import { PluginKey } from "@tiptap/pm/state";
-import { slashMenuRenderer } from "./slash_menu_renderer.js";
+import { Suggestion } from "@tiptap/suggestion";
 import { setBlockType } from "./screenplay_keymap.js";
+import { slashMenuRenderer } from "./slash_menu_renderer.js";
 
 const COMMANDS = [
   // Screenplay
-  { type: "sceneHeading", label: "Scene Heading", desc: "INT./EXT. Location - Time", icon: "clapperboard", group: "screenplay", mode: "setNode" },
-  { type: "action", label: "Action", desc: "Narrative description", icon: "align-left", group: "screenplay", mode: "setNode" },
-  { type: "character", label: "Character", desc: "Character name (ALL CAPS)", icon: "user", group: "screenplay", mode: "setNode" },
-  { type: "dialogue", label: "Dialogue", desc: "Spoken text", icon: "message-square", group: "screenplay", mode: "setNode" },
-  { type: "parenthetical", label: "Parenthetical", desc: "(acting direction)", icon: "parentheses", group: "screenplay", mode: "setNode" },
-  { type: "transition", label: "Transition", desc: "CUT TO:, FADE IN:", icon: "arrow-right", group: "screenplay", mode: "setNode" },
+  {
+    type: "sceneHeading",
+    label: "Scene Heading",
+    desc: "INT./EXT. Location - Time",
+    icon: "clapperboard",
+    group: "screenplay",
+    mode: "setNode",
+  },
+  {
+    type: "action",
+    label: "Action",
+    desc: "Narrative description",
+    icon: "align-left",
+    group: "screenplay",
+    mode: "setNode",
+  },
+  {
+    type: "character",
+    label: "Character",
+    desc: "Character name (ALL CAPS)",
+    icon: "user",
+    group: "screenplay",
+    mode: "setNode",
+  },
+  {
+    type: "dialogue",
+    label: "Dialogue",
+    desc: "Spoken text",
+    icon: "message-square",
+    group: "screenplay",
+    mode: "setNode",
+  },
+  {
+    type: "parenthetical",
+    label: "Parenthetical",
+    desc: "(acting direction)",
+    icon: "parentheses",
+    group: "screenplay",
+    mode: "setNode",
+  },
+  {
+    type: "transition",
+    label: "Transition",
+    desc: "CUT TO:, FADE IN:",
+    icon: "arrow-right",
+    group: "screenplay",
+    mode: "setNode",
+  },
   // Interactive
-  { type: "conditional", label: "Condition", desc: "Branch based on variable", icon: "git-branch", group: "interactive", mode: "insertAtom" },
-  { type: "instruction", label: "Instruction", desc: "Modify a variable", icon: "zap", group: "interactive", mode: "insertAtom" },
-  { type: "response", label: "Responses", desc: "Player choices", icon: "list", group: "interactive", mode: "insertAtom" },
+  {
+    type: "conditional",
+    label: "Condition",
+    desc: "Branch based on variable",
+    icon: "git-branch",
+    group: "interactive",
+    mode: "insertAtom",
+  },
+  {
+    type: "instruction",
+    label: "Instruction",
+    desc: "Modify a variable",
+    icon: "zap",
+    group: "interactive",
+    mode: "insertAtom",
+  },
+  {
+    type: "response",
+    label: "Responses",
+    desc: "Player choices",
+    icon: "list",
+    group: "interactive",
+    mode: "insertAtom",
+  },
   // Utility
-  { type: "note", label: "Note", desc: "Writer's note (not exported)", icon: "sticky-note", group: "utility", mode: "setNode" },
-  { type: "section", label: "Section", desc: "Outline header", icon: "heading", group: "utility", mode: "setNode" },
-  { type: "pageBreak", label: "Page Break", desc: "Force page break", icon: "scissors", group: "utility", mode: "insertAtom" },
+  {
+    type: "note",
+    label: "Note",
+    desc: "Writer's note (not exported)",
+    icon: "sticky-note",
+    group: "utility",
+    mode: "setNode",
+  },
+  {
+    type: "section",
+    label: "Section",
+    desc: "Outline header",
+    icon: "heading",
+    group: "utility",
+    mode: "setNode",
+  },
+  {
+    type: "pageBreak",
+    label: "Page Break",
+    desc: "Force page break",
+    icon: "scissors",
+    group: "utility",
+    mode: "insertAtom",
+  },
 ];
 
 const slashPluginKey = new PluginKey("slash-commands");
@@ -54,9 +138,7 @@ export const SlashCommands = Extension.create({
           const q = query.toLowerCase();
           if (!q) return COMMANDS;
           return COMMANDS.filter(
-            (c) =>
-              c.label.toLowerCase().includes(q) ||
-              c.desc.toLowerCase().includes(q),
+            (c) => c.label.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q),
           );
         },
 

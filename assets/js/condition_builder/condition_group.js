@@ -36,7 +36,7 @@ export function createConditionGroup(opts) {
     onUngroup,
   } = opts;
 
-  let currentGroup = {
+  const currentGroup = {
     ...group,
     blocks: (group.blocks || []).map((b) => ({ ...b, rules: [...(b.rules || [])] })),
   };
@@ -131,8 +131,7 @@ export function createConditionGroup(opts) {
     if (canEdit) {
       const addBtn = document.createElement("button");
       addBtn.type = "button";
-      addBtn.className =
-        "btn btn-ghost btn-xs gap-1 border border-dashed border-base-300 mt-1";
+      addBtn.className = "btn btn-ghost btn-xs gap-1 border border-dashed border-base-300 mt-1";
       addBtn.appendChild(createElement(Plus, { width: 12, height: 12 }));
       addBtn.append(` ${t?.add_block || "Add block"}`);
       addBtn.addEventListener("click", () => {
@@ -151,7 +150,9 @@ export function createConditionGroup(opts) {
   }
 
   function destroyBlocks() {
-    blockInstances.forEach((b) => b.destroy?.());
+    blockInstances.forEach((b) => {
+      b.destroy?.();
+    });
     blockInstances = [];
   }
 

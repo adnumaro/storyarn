@@ -4,8 +4,8 @@
  * Builds the `.sp-interactive-header` DOM: icon + label + optional actions + delete button.
  */
 
-import { createElement } from "lucide";
 import * as icons from "lucide";
+import { createElement } from "lucide";
 
 /**
  * Build an interactive block header element.
@@ -23,6 +23,7 @@ export function buildInteractiveHeader(iconName, label, { canEdit, onDelete } = 
 
   // Icon
   const iconKey = iconNameToKey(iconName);
+  // biome-ignore lint/performance/noDynamicNamespaceImportAccess: icon name is resolved at runtime from user data
   const IconComponent = icons[iconKey];
   if (IconComponent) {
     const iconEl = createElement(IconComponent, { width: 16, height: 16 });

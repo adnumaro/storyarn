@@ -21,40 +21,41 @@
 import "phoenix_html";
 // Establish Phoenix Socket and LiveView configuration.
 import { Socket } from "phoenix";
-import { hooks as colocatedHooks } from "phoenix-colocated/storyarn";
 import { LiveSocket } from "phoenix_live_view";
+import { hooks as colocatedHooks } from "phoenix-colocated/storyarn";
 import topbar from "topbar";
 
 import { AssetUpload } from "./hooks/asset_upload";
 import { AudioUpload } from "./hooks/audio_upload";
 import { AvatarUpload } from "./hooks/avatar_upload";
 import { BannerUpload } from "./hooks/banner_upload";
-import { EditableShortcut } from "./hooks/editable_shortcut";
-import { EditableTitle } from "./hooks/editable_title";
-import { FlowCanvas } from "./hooks/flow_canvas";
-import { FlowLoader } from "./hooks/flow_loader";
-import { ReferenceSearch } from "./hooks/reference_search";
-import { DialogueScreenplayEditor } from "./hooks/dialogue_screenplay_editor";
-import { ScreenplayEditor } from "./hooks/screenplay_editor";
+import { ColorPicker } from "./hooks/color_picker";
 // Custom hooks
 import { ColumnSortable } from "./hooks/column_sortable";
+import { ConditionBuilder } from "./hooks/condition_builder";
+import { DebugPanelResize } from "./hooks/debug_panel_resize";
+import { DialogueScreenplayEditor } from "./hooks/dialogue_screenplay_editor";
+import { EditableShortcut } from "./hooks/editable_shortcut";
+import { EditableTitle } from "./hooks/editable_title";
+import { ExpressionEditor } from "./hooks/expression_editor";
+import { FloatingToolbar } from "./hooks/floating_toolbar";
+import { FlowCanvas } from "./hooks/flow_canvas";
+import { FlowFloatingToolbar } from "./hooks/flow_floating_toolbar";
+import { FlowLoader } from "./hooks/flow_loader";
+import { FountainImport } from "./hooks/fountain_import";
+import { InstructionBuilder } from "./hooks/instruction_builder";
+import { MapCanvas } from "./hooks/map_canvas";
+import { ReferenceSearch } from "./hooks/reference_search";
+import { ScreenplayEditor } from "./hooks/screenplay_editor";
+import { SearchableSelect } from "./hooks/searchable_select";
 import { SortableList } from "./hooks/sortable_list";
 import { SortableTree } from "./hooks/sortable_tree";
+import { StoryPlayer } from "./hooks/story_player";
 import { TiptapEditor } from "./hooks/tiptap_editor";
 import { TreeToggle } from "./hooks/tree";
 import { TreeSearch } from "./hooks/tree_search";
 import { TriStateCheckbox } from "./hooks/tri_state_checkbox";
 import { TwoStateCheckbox } from "./hooks/two_state_checkbox";
-import { InstructionBuilder } from "./hooks/instruction_builder";
-import { ColorPicker } from "./hooks/color_picker";
-import { ConditionBuilder } from "./hooks/condition_builder";
-import { DebugPanelResize } from "./hooks/debug_panel_resize";
-import { FountainImport } from "./hooks/fountain_import";
-import { MapCanvas } from "./hooks/map_canvas";
-import { FloatingToolbar } from "./hooks/floating_toolbar";
-import { FlowFloatingToolbar } from "./hooks/flow_floating_toolbar";
-import { SearchableSelect } from "./hooks/searchable_select";
-import { StoryPlayer } from "./hooks/story_player";
 
 // Theme management (keyboard shortcuts, cross-tab sync)
 import "./theme";
@@ -94,6 +95,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     DialogueScreenplayEditor,
     ScreenplayEditor,
     StoryPlayer,
+    ExpressionEditor,
   },
 });
 
@@ -132,6 +134,7 @@ window.addEventListener("click", async (event) => {
           setTimeout(() => icon.classList.remove("text-success"), 1000);
         }
       } catch (err) {
+        // biome-ignore lint/suspicious/noConsole: intentional error logging
         console.error("Failed to copy to clipboard:", err);
       }
     }

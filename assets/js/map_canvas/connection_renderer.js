@@ -166,7 +166,7 @@ function removeArrows(line) {
  * Pixel distance from the pin where the arrow is drawn.
  * Uses pixel offset so it stays fixed regardless of zoom.
  */
-const ARROW_OFFSET_PX = '10%';
+const ARROW_OFFSET_PX = "10%";
 
 function makeArrowDecorator(pathOrLatLngs, conn) {
   const color = conn.color || DEFAULT_COLOR;
@@ -223,7 +223,7 @@ function applyLabel(line) {
 
   const { point: midLatLng, angle } = pathMidpointAndAngle(latLngs, map);
 
-  const color = data.color || DEFAULT_COLOR;
+  const _color = data.color || DEFAULT_COLOR;
   const escapedText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
   const icon = L.divIcon({
@@ -291,12 +291,8 @@ function pathMidpointAndAngle(latLngs, map) {
   const ratio = segLens[segIdx] > 0 ? remaining / segLens[segIdx] : 0;
 
   // Midpoint in geographic coords
-  const lat =
-    latLngs[segIdx].lat +
-    (latLngs[segIdx + 1].lat - latLngs[segIdx].lat) * ratio;
-  const lng =
-    latLngs[segIdx].lng +
-    (latLngs[segIdx + 1].lng - latLngs[segIdx].lng) * ratio;
+  const lat = latLngs[segIdx].lat + (latLngs[segIdx + 1].lat - latLngs[segIdx].lat) * ratio;
+  const lng = latLngs[segIdx].lng + (latLngs[segIdx + 1].lng - latLngs[segIdx].lng) * ratio;
 
   // Angle of the segment in screen space (y-down)
   const dx = pts[segIdx + 1].x - pts[segIdx].x;
@@ -346,12 +342,6 @@ function rebuildLatLngs(line, pinMarkers) {
   const toMarker = markers.get(conn.to_pin_id);
   if (!fromMarker || !toMarker) return;
 
-  const latLngs = buildLatLngs(
-    fromMarker,
-    toMarker,
-    conn.waypoints,
-    line._canvasW,
-    line._canvasH,
-  );
+  const latLngs = buildLatLngs(fromMarker, toMarker, conn.waypoints, line._canvasW, line._canvasH);
   line.setLatLngs(latLngs);
 }

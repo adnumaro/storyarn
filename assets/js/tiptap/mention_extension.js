@@ -3,10 +3,10 @@
  * Fetches suggestions from the server via LiveView events.
  */
 
-import { FileText, Zap } from "lucide";
 import Mention from "@tiptap/extension-mention";
+import { FileText, Zap } from "lucide";
 import { createIconHTML } from "../flow_canvas/node_config.js";
-import { escapeHtml, escapeAttr, positionPopup } from "../screenplay/utils.js";
+import { escapeAttr, escapeHtml, positionPopup } from "../screenplay/utils.js";
 
 // Pre-create icon HTML strings for mention popup
 const SHEET_ICON_SM = createIconHTML(FileText, { size: 14 });
@@ -92,9 +92,7 @@ export function createMentionExtension(hookOrOptions) {
             .command(({ tr, dispatch }) => {
               if (dispatch) {
                 // Replace entire block content with uppercase sheet name
-                const nameText = editor.schema.text(
-                  (item.name || item.label || "").toUpperCase(),
-                );
+                const nameText = editor.schema.text((item.name || item.label || "").toUpperCase());
                 tr.replaceWith(blockStart, blockEnd, nameText);
 
                 // Set sheetId attribute on the CHARACTER block node

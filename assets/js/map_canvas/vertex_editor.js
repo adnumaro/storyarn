@@ -41,7 +41,7 @@ export function createVertexEditor(hook) {
   let activePolygon = null;
   let vertexMarkers = [];
   let midpointMarkers = [];
-  let vertexGroup = L.layerGroup().addTo(hook.leafletMap);
+  const vertexGroup = L.layerGroup().addTo(hook.leafletMap);
 
   /**
    * Shows vertex handles for the given polygon.
