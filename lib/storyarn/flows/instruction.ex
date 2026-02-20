@@ -31,11 +31,11 @@ defmodule Storyarn.Flows.Instruction do
   - `"variable_ref"` — references another variable via `value_sheet` + `value`
   """
 
-  @number_operators ~w(set add subtract)
-  @boolean_operators ~w(set_true set_false toggle)
-  @text_operators ~w(set clear)
-  @select_operators ~w(set)
-  @date_operators ~w(set)
+  @number_operators ~w(set add subtract set_if_unset)
+  @boolean_operators ~w(set_true set_false toggle set_if_unset)
+  @text_operators ~w(set clear set_if_unset)
+  @select_operators ~w(set set_if_unset)
+  @date_operators ~w(set set_if_unset)
 
   @all_operators Enum.uniq(
                    @number_operators ++
@@ -77,6 +77,7 @@ defmodule Storyarn.Flows.Instruction do
   def operator_label("set_false"), do: "= false"
   def operator_label("toggle"), do: "toggle"
   def operator_label("clear"), do: "clear"
+  def operator_label("set_if_unset"), do: "?="
   def operator_label(op), do: op
 
   @doc """

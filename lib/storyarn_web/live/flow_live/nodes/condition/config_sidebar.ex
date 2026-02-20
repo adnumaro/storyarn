@@ -8,7 +8,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.ConfigSidebar do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.Components.ConditionBuilder
+  import StoryarnWeb.Components.ExpressionEditor
 
   alias Storyarn.Flows.Condition
 
@@ -73,12 +73,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.ConfigSidebar do
             <% end %>
           </span>
         </label>
-        <.condition_builder
-          id={"condition-builder-#{@node.id}"}
+        <.expression_editor
+          id={"condition-expr-#{@node.id}"}
+          mode="condition"
           condition={@condition_data}
           variables={@project_variables}
           can_edit={@can_edit}
           switch_mode={@switch_mode}
+          active_tab={Map.get(@panel_sections, "tab_condition-expr-#{@node.id}", "builder")}
         />
         <p :if={!Condition.has_rules?(@condition_data) && !@switch_mode} class="text-xs text-base-content/50">
           {dgettext("flows", "Add rules to define when to route to True/False.")}

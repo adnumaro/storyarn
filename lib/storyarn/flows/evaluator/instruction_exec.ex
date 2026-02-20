@@ -139,6 +139,11 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
   # Select / multi_select / date — all use set
   defp apply_operator("set", _old, value, _type), do: value
 
+  # Set if unset — only set when current value is nil
+  defp apply_operator("set_if_unset", nil, value, "number"), do: parse_number(value)
+  defp apply_operator("set_if_unset", nil, value, _type), do: value
+  defp apply_operator("set_if_unset", old, _value, _type), do: old
+
   # Fallback
   defp apply_operator(_operator, _old, value, _type), do: value
 

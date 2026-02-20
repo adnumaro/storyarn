@@ -49,6 +49,33 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
     end)
   end
 
+  @doc """
+  Execute structured response assignments and update state.
+  """
+  def execute_response_assignments(assignments, state, node_id) do
+    {:ok, new_variables, changes, errors} =
+      InstructionExec.execute(assignments, state.variables)
+
+    state = %{state | variables: new_variables}
+
+    state =
+      Enum.reduce(changes, state, fn change, acc ->
+        EngineHelpers.add_console(
+          acc,
+          :info,
+          node_id,
+          "",
+          "Response instruction: #{change.variable_ref}: #{EngineHelpers.format_value(change.old_value)} → #{EngineHelpers.format_value(change.new_value)}"
+        )
+      end)
+
+    state = EngineHelpers.add_history_entries(state, node_id, "", changes, :instruction)
+
+    Enum.reduce(errors, state, fn error, acc ->
+      EngineHelpers.add_console(acc, :error, node_id, "", "Response instruction error: #{error.reason}")
+    end)
+  end
+
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
@@ -81,10 +108,15 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
       )
 
     state =
-      if is_binary(only[:instruction]) and only[:instruction] != "" do
-        execute_response_instruction(only.instruction, state, node_id)
-      else
-        state
+      cond do
+        is_list(only[:instruction_assignments]) and only[:instruction_assignments] != [] ->
+          execute_response_assignments(only.instruction_assignments, state, node_id)
+
+        is_binary(only[:instruction]) and only[:instruction] != "" ->
+          execute_response_instruction(only.instruction, state, node_id)
+
+        true ->
+          state
       end
 
     conn =
@@ -136,7 +168,8 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
         text: resp["text"] || "",
         valid: valid,
         rule_details: rule_results,
-        instruction: resp["instruction"]
+        instruction: resp["instruction"],
+        instruction_assignments: resp["instruction_assignments"] || []
       }
     end)
   end

@@ -26,7 +26,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
 
   use StoryarnWeb, :live_component
 
-  import StoryarnWeb.Components.ConditionBuilder
+  import StoryarnWeb.Components.ExpressionEditor
 
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
@@ -253,25 +253,27 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
           <div class="mt-2 space-y-2 pl-6">
             <div>
               <label class="label text-xs">{dgettext("flows", "Condition")}</label>
-              <.condition_builder
-                id={"response-condition-#{response["id"]}"}
+              <.expression_editor
+                id={"response-cond-expr-#{response["id"]}"}
+                mode="condition"
                 condition={response["condition"] || %{}}
                 variables={@project_variables}
                 can_edit={@can_edit}
-                switch_mode={false}
                 context={%{"response-id" => response["id"], "node-id" => to_string(@node.id)}}
+                active_tab={Map.get(@panel_sections, "tab_response-cond-expr-#{response["id"]}", "builder")}
               />
             </div>
             <div>
               <label class="label text-xs">{dgettext("flows", "Instruction")}</label>
-              <input
-                type="text"
-                value={response["instruction"] || ""}
-                placeholder={dgettext("flows", "Instruction…")}
-                phx-blur="update_response_instruction"
-                phx-value-response-id={response["id"]}
-                phx-value-node-id={@node.id}
-                class="input input-sm input-bordered w-full"
+              <.expression_editor
+                id={"response-inst-expr-#{response["id"]}"}
+                mode="instruction"
+                assignments={response["instruction_assignments"] || []}
+                variables={@project_variables}
+                can_edit={@can_edit}
+                context={%{"response-id" => response["id"], "node-id" => to_string(@node.id)}}
+                event_name="update_response_instruction_builder"
+                active_tab={Map.get(@panel_sections, "tab_response-inst-expr-#{response["id"]}", "builder")}
               />
             </div>
           </div>
@@ -539,12 +541,6 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
     end
   end
 
-  defp has_advanced?(response) do
-    condition = response["condition"]
-    instruction = response["instruction"]
-
-    (condition != nil and condition != "" and condition != %{}) or
-      (instruction != nil and instruction != "")
-  end
+  defp has_advanced?(response), do: NodeTypeHelpers.response_has_advanced?(response)
 
 end

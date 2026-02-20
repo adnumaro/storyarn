@@ -91,7 +91,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
         "id" => new_id,
         "text" => default_text,
         "condition" => nil,
-        "instruction" => nil
+        "instruction" => nil,
+        "instruction_assignments" => []
       }
 
       Map.update(data, "responses", [new_response], &(&1 ++ [new_response]))
@@ -136,13 +137,22 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     update_response_field(socket, node_id, response_id, "condition", value)
   end
 
-  @doc "Updates response instruction."
+  @doc "Updates response instruction (legacy plain text)."
   def handle_update_response_instruction(
         %{"response-id" => response_id, "node-id" => node_id, "value" => instruction},
         socket
       ) do
     value = if instruction == "", do: nil, else: instruction
     update_response_field(socket, node_id, response_id, "instruction", value)
+  end
+
+  @doc "Updates response instruction assignments (structured builder data)."
+  def handle_update_response_instruction_builder(
+        %{"assignments" => assignments, "response-id" => response_id, "node-id" => node_id},
+        socket
+      ) do
+    sanitized = Storyarn.Flows.Instruction.sanitize(assignments)
+    update_response_field(socket, node_id, response_id, "instruction_assignments", sanitized)
   end
 
   # -- Technical ID generation --

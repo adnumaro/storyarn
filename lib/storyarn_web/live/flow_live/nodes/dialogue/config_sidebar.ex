@@ -9,9 +9,10 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.Components.ConditionBuilder
+  import StoryarnWeb.Components.ExpressionEditor
   import StoryarnWeb.Components.CoreComponents
-  import StoryarnWeb.FlowLive.Components.NodeTypeHelpers, only: [word_count: 1]
+  import StoryarnWeb.FlowLive.Components.NodeTypeHelpers,
+    only: [word_count: 1, response_has_advanced?: 1]
 
   alias Storyarn.Flows.Condition
 
@@ -71,6 +72,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
         node={@node}
         can_edit={@can_edit}
         project_variables={@project_variables}
+        panel_sections={@panel_sections}
       />
       <details
         class="collapse collapse-arrow bg-base-200 mt-4"
@@ -212,6 +214,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
   attr :node, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :project_variables, :list, default: []
+  attr :panel_sections, :map, default: %{}
 
   def dialogue_responses_form(assigns) do
     ~H"""
@@ -226,6 +229,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
           node={@node}
           can_edit={@can_edit}
           project_variables={@project_variables}
+          panel_sections={@panel_sections}
         />
         <button
           :if={@can_edit}
@@ -249,6 +253,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
   attr :node, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :project_variables, :list, default: []
+  attr :panel_sections, :map, default: %{}
 
   defp response_item(assigns) do
     raw_condition = assigns.response["condition"] || ""
@@ -300,27 +305,32 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
               <.icon name="git-branch" class="size-3" />
               <span>{dgettext("flows", "Condition")}</span>
             </div>
-            <.condition_builder
-              id={"response-condition-#{@response["id"]}"}
+            <.expression_editor
+              id={"response-cond-expr-#{@response["id"]}"}
+              mode="condition"
               condition={@parsed_condition}
               variables={@project_variables}
               can_edit={@can_edit}
               context={%{"response-id" => @response["id"], "node-id" => @node.id}}
+              active_tab={Map.get(@panel_sections, "tab_response-cond-expr-#{@response["id"]}", "builder")}
             />
           </div>
 
           <%!-- Instruction --%>
-          <div class="flex items-center gap-2">
-            <.icon name="zap" class="size-3 text-base-content/50 flex-shrink-0" />
-            <input
-              type="text"
-              value={@response["instruction"]}
-              phx-blur="update_response_instruction"
-              phx-value-response-id={@response["id"]}
-              phx-value-node-id={@node.id}
-              disabled={!@can_edit}
-              placeholder={dgettext("flows", "Instruction (optional)")}
-              class="input input-xs input-bordered flex-1 font-mono text-xs"
+          <div class="space-y-1">
+            <div class="flex items-center gap-1 text-xs text-base-content/60">
+              <.icon name="zap" class="size-3" />
+              <span>{dgettext("flows", "Instruction")}</span>
+            </div>
+            <.expression_editor
+              id={"response-inst-expr-#{@response["id"]}"}
+              mode="instruction"
+              assignments={@response["instruction_assignments"] || []}
+              variables={@project_variables}
+              can_edit={@can_edit}
+              context={%{"response-id" => @response["id"], "node-id" => @node.id}}
+              event_name="update_response_instruction_builder"
+              active_tab={Map.get(@panel_sections, "tab_response-inst-expr-#{@response["id"]}", "builder")}
             />
           </div>
         </div>
@@ -329,12 +339,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
     """
   end
 
-  defp has_advanced_settings?(response) do
-    condition = response["condition"]
-    instruction = response["instruction"]
-
-    (condition != nil and condition != "") or
-      (instruction != nil and instruction != "")
-  end
+  defp has_advanced_settings?(response), do: response_has_advanced?(response)
 
 end

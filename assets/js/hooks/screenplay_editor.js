@@ -14,48 +14,44 @@
  */
 
 import { Editor } from "@tiptap/core";
+import StarterKit from "@tiptap/starter-kit";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
-import StarterKit from "@tiptap/starter-kit";
-
-// Custom screenplay nodes
-import {
-  ScreenplayDoc,
-  SceneHeading,
-  Action,
-  Character,
-  Dialogue,
-  Parenthetical,
-  Transition,
-  Note,
-  Section,
-  PageBreak,
-  HubMarker,
-  JumpMarker,
-  TitlePage,
-  Conditional,
-  Instruction,
-  Response,
-  DualDialogue,
-} from "../screenplay/nodes/index.js";
-
+import { AutoDetectRules } from "../screenplay/extensions/auto_detect_rules.js";
+import { ContdPlugin } from "../screenplay/extensions/contd_plugin.js";
+import { LiveViewBridge } from "../screenplay/extensions/liveview_bridge.js";
 // Screenplay extensions
 import { ScreenplayKeymap } from "../screenplay/extensions/screenplay_keymap.js";
 import { ScreenplayPlaceholder } from "../screenplay/extensions/screenplay_placeholder.js";
 import { SlashCommands } from "../screenplay/extensions/slash_commands.js";
-import { LiveViewBridge } from "../screenplay/extensions/liveview_bridge.js";
-import { AutoDetectRules } from "../screenplay/extensions/auto_detect_rules.js";
-import { ContdPlugin } from "../screenplay/extensions/contd_plugin.js";
 import { TransitionAlignPlugin } from "../screenplay/extensions/transition_align_plugin.js";
+// Custom screenplay nodes
+import {
+  Action,
+  Character,
+  Conditional,
+  Dialogue,
+  DualDialogue,
+  HubMarker,
+  Instruction,
+  JumpMarker,
+  Note,
+  PageBreak,
+  Parenthetical,
+  Response,
+  SceneHeading,
+  ScreenplayDoc,
+  Section,
+  TitlePage,
+  Transition,
+} from "../screenplay/nodes/index.js";
 
 // Shared extensions
 import { createMentionExtension } from "../tiptap/mention_extension.js";
 
 /** Dispatch a transaction while suppressing LiveViewBridge sync. */
 function suppressedDispatch(editor, tr) {
-  const bridge = editor.extensionManager.extensions.find(
-    (e) => e.name === "liveViewBridge",
-  );
+  const bridge = editor.extensionManager.extensions.find((e) => e.name === "liveViewBridge");
   if (bridge) bridge.storage.suppressUpdate = true;
   editor.view.dispatch(tr);
   requestAnimationFrame(() => {
@@ -86,11 +82,9 @@ function createHighlightPlugin() {
 
           if (targetPos !== null) {
             const node = tr.doc.nodeAt(targetPos);
-            const deco = Decoration.node(
-              targetPos,
-              targetPos + node.nodeSize,
-              { class: "sp-highlight-flash" },
-            );
+            const deco = Decoration.node(targetPos, targetPos + node.nodeSize, {
+              class: "sp-highlight-flash",
+            });
             return DecorationSet.create(tr.doc, [deco]);
           }
           return DecorationSet.empty;
@@ -120,13 +114,19 @@ export const ScreenplayEditor = {
     let translations = {};
     try {
       variables = JSON.parse(this.el.dataset.variables || "[]");
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     try {
       linkedPages = JSON.parse(this.el.dataset.linkedPages || "{}");
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     try {
       translations = JSON.parse(this.el.dataset.translations || "{}");
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     let initialContent;
     try {
@@ -144,6 +144,7 @@ export const ScreenplayEditor = {
     });
 
     // Store hook reference so NodeViews/extensions can push events to server
+    // biome-ignore lint/complexity/noUselessThisAlias: needed — `this` changes inside Editor callbacks
     const liveViewHook = this;
 
     this.editor = new Editor({

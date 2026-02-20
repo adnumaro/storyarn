@@ -85,4 +85,21 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
   end
 
   def validate_hex_color(_, default), do: default
+
+  @doc """
+  Returns true if a response has any advanced settings
+  (condition, instruction, or instruction_assignments).
+  """
+  @spec response_has_advanced?(map()) :: boolean()
+  def response_has_advanced?(response) when is_map(response) do
+    condition = response["condition"]
+    instruction = response["instruction"]
+    instruction_assignments = response["instruction_assignments"]
+
+    (condition != nil and condition != "" and condition != %{}) or
+      (instruction != nil and instruction != "") or
+      (is_list(instruction_assignments) and instruction_assignments != [])
+  end
+
+  def response_has_advanced?(_), do: false
 end

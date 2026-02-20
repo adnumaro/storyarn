@@ -14,8 +14,8 @@
  * JS-rendered children on re-render.
  */
 
-import { createConditionBuilder } from "../screenplay/builders/condition_builder_core.js";
 import { OPERATOR_LABELS as DEFAULT_OPERATOR_LABELS } from "../condition_builder/condition_sentence_templates";
+import { createConditionBuilder } from "../screenplay/builders/condition_builder_core.js";
 import { deepEqual } from "../utils/deep_equal.js";
 
 export const ConditionBuilder = {
@@ -54,24 +54,22 @@ export const ConditionBuilder = {
         ? "update_response_condition_builder"
         : "update_condition_builder");
 
-    // Build the push callback that wraps this.pushEvent
-    const hook = this;
     const pushEvent = (name, payload) => {
-      hook._pendingPushCount++;
+      this._pendingPushCount++;
 
-      if (hook.eventName) {
+      if (this.eventName) {
         // Custom event name (screenplay editor): pass event name + context directly
-        hook.pushEvent(name, payload);
-      } else if (hook.context["response-id"]) {
+        this.pushEvent(name, payload);
+      } else if (this.context["response-id"]) {
         // Response condition: include response context
-        hook.pushEvent(resolvedEventName, {
+        this.pushEvent(resolvedEventName, {
           condition: payload.condition,
-          "response-id": hook.context["response-id"],
-          "node-id": hook.context["node-id"],
+          "response-id": this.context["response-id"],
+          "node-id": this.context["node-id"],
         });
       } else {
         // Default: just push condition
-        hook.pushEvent(resolvedEventName, { condition: payload.condition });
+        this.pushEvent(resolvedEventName, { condition: payload.condition });
       }
     };
 
@@ -103,10 +101,8 @@ export const ConditionBuilder = {
       if (this.context["response-id"]) {
         // For response conditions, find our response in the data
         const responses = data.data?.responses || [];
-        const response = responses.find(
-          (r) => r.id === this.context["response-id"],
-        );
-        if (response && response.condition) {
+        const response = responses.find((r) => r.id === this.context["response-id"]);
+        if (response?.condition) {
           try {
             newCondition = JSON.parse(response.condition);
           } catch {
@@ -134,4 +130,3 @@ export const ConditionBuilder = {
     }
   },
 };
-

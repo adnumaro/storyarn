@@ -57,7 +57,9 @@ export function createInstructionBuilder({
   }
 
   function destroyRows() {
-    rows.forEach((row) => row.destroy?.());
+    rows.forEach((row) => {
+      row.destroy?.();
+    });
     rows = [];
   }
 
@@ -106,8 +108,7 @@ export function createInstructionBuilder({
     if (canEdit) {
       const addBtn = document.createElement("button");
       addBtn.type = "button";
-      addBtn.className =
-        "btn btn-ghost btn-xs gap-1 border border-dashed border-base-300 mt-2";
+      addBtn.className = "btn btn-ghost btn-xs gap-1 border border-dashed border-base-300 mt-2";
       addBtn.appendChild(createElement(Plus, { width: 12, height: 12 }));
       addBtn.append(` ${t.add_assignment}`);
       addBtn.addEventListener("click", () => {
@@ -154,6 +155,9 @@ export function createInstructionBuilder({
     update(newAssignments) {
       currentAssignments = newAssignments || [];
       render();
+    },
+    getAssignments() {
+      return currentAssignments;
     },
   };
 }

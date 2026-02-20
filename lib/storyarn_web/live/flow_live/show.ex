@@ -125,6 +125,7 @@ defmodule StoryarnWeb.FlowLive.Show do
                   form={@node_form}
                   can_edit={@can_edit}
                   project_variables={@project_variables}
+                  panel_sections={@panel_sections}
                 />
               </div>
             </div>
@@ -159,6 +160,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         project_variables={@project_variables}
         project={@project}
         current_user={@current_scope.user}
+        panel_sections={@panel_sections}
         on_close={JS.push("close_editor")}
       />
 
@@ -505,6 +507,12 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  def handle_event("update_response_instruction_builder", params, socket) do
+    with_auth(:edit_content, socket, fn ->
+      Dialogue.Node.handle_update_response_instruction_builder(params, socket)
+    end)
+  end
+
   # Connections
   def handle_event("connection_created", params, socket) do
     with_auth(:edit_content, socket, fn ->
@@ -546,6 +554,12 @@ defmodule StoryarnWeb.FlowLive.Show do
     with_auth(:edit_content, socket, fn ->
       Instruction.Node.handle_update_instruction_builder(params, socket)
     end)
+  end
+
+  # Expression editor tab toggle (Builder ↔ Code)
+  def handle_event("toggle_expression_tab", %{"id" => id, "tab" => tab}, socket) do
+    panel_sections = Map.put(socket.assigns.panel_sections, "tab_#{id}", tab)
+    {:noreply, assign(socket, :panel_sections, panel_sections)}
   end
 
   # Subflow

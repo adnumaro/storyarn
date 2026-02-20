@@ -1038,3 +1038,40 @@
   animation: sp-flash 1.5s ease-out 0.4s both;
 }
 
+/* ---------------------------------------------------------------------------
+   Expression tab switcher — Builder | Code tabs in interactive blocks
+   --------------------------------------------------------------------------- */
+
+.sp-expr-tab {
+  padding: 2px 8px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  border-radius: 4px;
+  border: none;
+  background: none;
+  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+  cursor: pointer;
+  transition: color 0.12s, background-color 0.12s;
+}
+
+.sp-expr-tab:hover {
+  color: var(--color-base-content);
+  background-color: color-mix(in oklch, var(--color-base-content) 8%, transparent);
+}
+
+.sp-expr-tab-active {
+  color: var(--color-base-content);
+  background-color: color-mix(in oklch, var(--color-base-content) 10%, transparent);
+  font-weight: 600;
+}
+
+.sp-expr-code-container {
+  border: 1px solid var(--color-base-300);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sp-expr-code-container.hidden {
+  display: none;
+}
+

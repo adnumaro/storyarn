@@ -11,11 +11,11 @@
  * this builder — only block format is emitted.
  */
 
-import { createElement, Plus, Group } from "lucide";
+import { createElement, Group, Plus } from "lucide";
 import { createConditionBlock } from "../../condition_builder/condition_block";
 import { createConditionGroup } from "../../condition_builder/condition_group";
-import { createLogicToggle, generateId } from "../../condition_builder/condition_utils";
 import { OPERATOR_LABELS as DEFAULT_OPERATOR_LABELS } from "../../condition_builder/condition_sentence_templates";
+import { createLogicToggle, generateId } from "../../condition_builder/condition_utils";
 import { groupVariablesBySheet } from "./utils.js";
 
 const DEFAULT_TRANSLATIONS = {
@@ -94,7 +94,7 @@ export function createConditionBuilder({
   const sheetsWithVariables = groupVariablesBySheet(variables || []);
   let childInstances = [];
   let selectionMode = false;
-  let selectedBlockIds = new Set();
+  const selectedBlockIds = new Set();
 
   const t = {
     ...DEFAULT_TRANSLATIONS,
@@ -113,7 +113,9 @@ export function createConditionBuilder({
   }
 
   function destroyChildren() {
-    childInstances.forEach((inst) => inst.destroy?.());
+    childInstances.forEach((inst) => {
+      inst.destroy?.();
+    });
     childInstances = [];
   }
 
@@ -260,9 +262,7 @@ export function createConditionBuilder({
       groupBtn.className = "btn btn-primary btn-xs gap-1";
       groupBtn.disabled = selectedBlockIds.size < 2;
       groupBtn.appendChild(createElement(Group, { width: 12, height: 12 }));
-      groupBtn.append(
-        ` ${t.group_selected} (${selectedBlockIds.size})`,
-      );
+      groupBtn.append(` ${t.group_selected} (${selectedBlockIds.size})`);
       groupBtn.addEventListener("click", () => groupSelectedBlocks());
       bar.appendChild(groupBtn);
 
@@ -281,8 +281,7 @@ export function createConditionBuilder({
       // Add block button
       const addBtn = document.createElement("button");
       addBtn.type = "button";
-      addBtn.className =
-        "btn btn-ghost btn-xs gap-1 border border-dashed border-base-300";
+      addBtn.className = "btn btn-ghost btn-xs gap-1 border border-dashed border-base-300";
       addBtn.appendChild(createElement(Plus, { width: 12, height: 12 }));
       addBtn.append(` ${t.add_block}`);
       addBtn.addEventListener("click", () => {
@@ -302,9 +301,7 @@ export function createConditionBuilder({
       bar.appendChild(addBtn);
 
       // Group button (only for 2+ standalone blocks, not in switch mode)
-      const standAloneBlocks = (currentCondition.blocks || []).filter(
-        (b) => b.type === "block",
-      );
+      const standAloneBlocks = (currentCondition.blocks || []).filter((b) => b.type === "block");
       if (!switchMode && standAloneBlocks.length >= 2) {
         const groupBtn = document.createElement("button");
         groupBtn.type = "button";
@@ -382,6 +379,9 @@ export function createConditionBuilder({
     update(newCondition) {
       currentCondition = ensureBlockFormat(newCondition);
       render();
+    },
+    getCondition() {
+      return currentCondition;
     },
   };
 }

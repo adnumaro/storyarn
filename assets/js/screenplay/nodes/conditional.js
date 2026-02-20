@@ -6,9 +6,10 @@
  */
 
 import { Node } from "@tiptap/core";
-import { BASE_ATTRS } from "./base_attrs.js";
-import { buildInteractiveHeader } from "../builders/interactive_header.js";
 import { createConditionBuilder } from "../builders/condition_builder_core.js";
+import { addExpressionTabs } from "../builders/expression_tab_switcher.js";
+import { buildInteractiveHeader } from "../builders/interactive_header.js";
+import { BASE_ATTRS } from "./base_attrs.js";
 
 export const Conditional = Node.create({
   name: "conditional",
@@ -43,13 +44,11 @@ export const Conditional = Node.create({
   },
 
   addNodeView() {
-    const extension = this;
-
     return ({ node, getPos, editor }) => {
-      const hook = extension.options.liveViewHook;
-      const canEdit = extension.options.canEdit;
-      const variables = extension.options.variables;
-      const translations = extension.options.translations;
+      const hook = this.options.liveViewHook;
+      const canEdit = this.options.canEdit;
+      const variables = this.options.variables;
+      const translations = this.options.translations;
 
       // Outer wrapper
       const dom = document.createElement("div");
@@ -63,7 +62,11 @@ export const Conditional = Node.create({
         onDelete: () => {
           const pos = getPos();
           if (typeof pos === "number") {
-            editor.chain().focus().deleteRange({ from: pos, to: pos + node.nodeSize }).run();
+            editor
+              .chain()
+              .focus()
+              .deleteRange({ from: pos, to: pos + node.nodeSize })
+              .run();
           }
         },
       });
@@ -77,17 +80,33 @@ export const Conditional = Node.create({
       const condition = node.attrs.data?.condition || { logic: "all", rules: [] };
       const elementId = node.attrs.elementId;
 
+      const eventName = "update_screenplay_condition";
+      const context = { "element-id": String(elementId || "") };
+
       let builderInstance = null;
+      let tabSwitcher = null;
       if (hook) {
         builderInstance = createConditionBuilder({
           container: builderContainer,
           condition,
           variables,
           canEdit,
-          context: { "element-id": String(elementId || "") },
-          eventName: "update_screenplay_condition",
+          context,
+          eventName,
           pushEvent: (name, payload) => hook.pushEvent(name, payload),
           translations,
+        });
+
+        tabSwitcher = addExpressionTabs({
+          dom,
+          builderContainer,
+          mode: "condition",
+          getData: () => builderInstance?.getCondition?.() || condition,
+          pushEvent: (name, payload) => hook.pushEvent(name, payload),
+          eventName,
+          context,
+          variables,
+          canEdit,
         });
       }
 
@@ -104,6 +123,7 @@ export const Conditional = Node.create({
           return true;
         },
         destroy: () => {
+          tabSwitcher?.destroy();
           if (builderInstance) {
             builderInstance.destroy();
             builderInstance = null;

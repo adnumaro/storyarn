@@ -400,4 +400,44 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       assert new_vars["mc.jaime.health"].previous_value == 100
     end
   end
+
+  describe "set_if_unset operator" do
+    test "sets value when current is nil" do
+      variables = %{"mc.jaime.health" => var(nil, "number")}
+      assignments = [make_assignment("mc.jaime", "health", "set_if_unset", "100")]
+
+      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+
+      assert new_vars["mc.jaime.health"].value == 100.0
+      assert length(changes) == 1
+    end
+
+    test "does not overwrite existing value" do
+      variables = %{"mc.jaime.health" => var(50, "number")}
+      assignments = [make_assignment("mc.jaime", "health", "set_if_unset", "100")]
+
+      {:ok, new_vars, _changes, []} = InstructionExec.execute(assignments, variables)
+
+      assert new_vars["mc.jaime.health"].value == 50
+    end
+
+    test "sets string value when nil" do
+      variables = %{"mc.jaime.class" => var(nil, "select")}
+      assignments = [make_assignment("mc.jaime", "class", "set_if_unset", "warrior")]
+
+      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+
+      assert new_vars["mc.jaime.class"].value == "warrior"
+      assert length(changes) == 1
+    end
+
+    test "does not overwrite existing string" do
+      variables = %{"mc.jaime.class" => var("mage", "select")}
+      assignments = [make_assignment("mc.jaime", "class", "set_if_unset", "warrior")]
+
+      {:ok, new_vars, _changes, []} = InstructionExec.execute(assignments, variables)
+
+      assert new_vars["mc.jaime.class"].value == "mage"
+    end
+  end
 end

@@ -46,15 +46,13 @@ export const InstructionBuilder = {
     // Resolve the event name
     const resolvedEventName = this.eventName || "update_instruction_builder";
 
-    // Build the push callback that wraps this.pushEvent
-    const hook = this;
     const pushEvent = (name, payload) => {
-      hook._pendingPushCount++;
+      this._pendingPushCount++;
 
-      if (hook.eventName) {
-        hook.pushEvent(name, payload);
+      if (this.eventName) {
+        this.pushEvent(name, payload);
       } else {
-        hook.pushEvent(resolvedEventName, {
+        this.pushEvent(resolvedEventName, {
           assignments: payload.assignments,
         });
       }
@@ -95,4 +93,3 @@ export const InstructionBuilder = {
     }
   },
 };
-

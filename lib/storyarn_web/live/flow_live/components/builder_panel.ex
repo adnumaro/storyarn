@@ -8,8 +8,7 @@ defmodule StoryarnWeb.FlowLive.Components.BuilderPanel do
 
   use StoryarnWeb, :html
 
-  import StoryarnWeb.Components.ConditionBuilder
-  import StoryarnWeb.Components.InstructionBuilder
+  import StoryarnWeb.Components.ExpressionEditor
 
   alias Storyarn.Flows.Condition
 
@@ -17,6 +16,7 @@ defmodule StoryarnWeb.FlowLive.Components.BuilderPanel do
   attr :form, :any, required: true
   attr :can_edit, :boolean, required: true
   attr :project_variables, :list, default: []
+  attr :panel_sections, :map, default: %{}
 
   def builder_content(assigns) do
     ~H"""
@@ -37,19 +37,23 @@ defmodule StoryarnWeb.FlowLive.Components.BuilderPanel do
   defp render_builder("condition", assigns) do
     condition_data = assigns.node.data["condition"] || %{}
     switch_mode = assigns.node.data["switch_mode"] == true
+    expr_id = "condition-builder-#{assigns.node.id}"
 
     assigns =
       assigns
       |> assign(:condition_data, condition_data)
       |> assign(:switch_mode, switch_mode)
+      |> assign(:expr_id, expr_id)
 
     ~H"""
-    <.condition_builder
-      id={"condition-builder-#{@node.id}"}
+    <.expression_editor
+      id={@expr_id}
+      mode="condition"
       condition={@condition_data}
       variables={@project_variables}
       can_edit={@can_edit}
       switch_mode={@switch_mode}
+      active_tab={Map.get(@panel_sections, "tab_#{@expr_id}", "builder")}
     />
     <p
       :if={!Condition.has_rules?(@condition_data) && !@switch_mode}
@@ -68,15 +72,21 @@ defmodule StoryarnWeb.FlowLive.Components.BuilderPanel do
 
   defp render_builder("instruction", assigns) do
     assignments = assigns.node.data["assignments"] || []
+    expr_id = "instruction-builder-#{assigns.node.id}"
 
-    assigns = assign(assigns, :assignments, assignments)
+    assigns =
+      assigns
+      |> assign(:assignments, assignments)
+      |> assign(:expr_id, expr_id)
 
     ~H"""
-    <.instruction_builder
-      id={"instruction-builder-#{@node.id}"}
+    <.expression_editor
+      id={@expr_id}
+      mode="instruction"
       assignments={@assignments}
       variables={@project_variables}
       can_edit={@can_edit}
+      active_tab={Map.get(@panel_sections, "tab_#{@expr_id}", "builder")}
     />
     <p :if={@assignments == [] && @can_edit} class="text-xs text-base-content/50 mt-2">
       {dgettext("flows", "Add assignments to set variable values when this node executes.")}

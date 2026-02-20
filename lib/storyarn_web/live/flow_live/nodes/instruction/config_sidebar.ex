@@ -8,7 +8,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.ConfigSidebar do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.Components.InstructionBuilder
+  import StoryarnWeb.Components.ExpressionEditor
 
   attr :node, :map, required: true
   attr :form, :map, required: true
@@ -53,11 +53,13 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.ConfigSidebar do
         <label class="label">
           <span class="label-text text-xs">{dgettext("flows", "Assignments")}</span>
         </label>
-        <.instruction_builder
-          id={"instruction-builder-#{@node.id}"}
+        <.expression_editor
+          id={"instruction-expr-#{@node.id}"}
+          mode="instruction"
           assignments={@assignments}
           variables={@project_variables}
           can_edit={@can_edit}
+          active_tab={Map.get(@panel_sections, "tab_instruction-expr-#{@node.id}", "builder")}
         />
         <p :if={@assignments == [] && @can_edit} class="text-xs text-base-content/50">
           {dgettext("flows", "Add assignments to set variable values when this node executes.")}

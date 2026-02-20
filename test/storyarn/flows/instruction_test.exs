@@ -114,31 +114,31 @@ defmodule Storyarn.Flows.InstructionTest do
 
   describe "operators_for_type/1" do
     test "returns correct operators for number" do
-      assert Instruction.operators_for_type("number") == ~w(set add subtract)
+      assert Instruction.operators_for_type("number") == ~w(set add subtract set_if_unset)
     end
 
     test "returns correct operators for boolean" do
-      assert Instruction.operators_for_type("boolean") == ~w(set_true set_false toggle)
+      assert Instruction.operators_for_type("boolean") == ~w(set_true set_false toggle set_if_unset)
     end
 
     test "returns correct operators for text" do
-      assert Instruction.operators_for_type("text") == ~w(set clear)
+      assert Instruction.operators_for_type("text") == ~w(set clear set_if_unset)
     end
 
     test "returns correct operators for rich_text" do
-      assert Instruction.operators_for_type("rich_text") == ~w(set clear)
+      assert Instruction.operators_for_type("rich_text") == ~w(set clear set_if_unset)
     end
 
     test "returns correct operators for select" do
-      assert Instruction.operators_for_type("select") == ~w(set)
+      assert Instruction.operators_for_type("select") == ~w(set set_if_unset)
     end
 
     test "returns correct operators for date" do
-      assert Instruction.operators_for_type("date") == ~w(set)
+      assert Instruction.operators_for_type("date") == ~w(set set_if_unset)
     end
 
     test "returns text operators for unknown type" do
-      assert Instruction.operators_for_type("unknown") == ~w(set clear)
+      assert Instruction.operators_for_type("unknown") == ~w(set clear set_if_unset)
     end
   end
 
@@ -347,6 +347,46 @@ defmodule Storyarn.Flows.InstructionTest do
     test "returns empty list for non-list input" do
       assert Instruction.sanitize(nil) == []
       assert Instruction.sanitize("invalid") == []
+    end
+  end
+
+  describe "set_if_unset operator" do
+    test "is included in operators_for_type for all types" do
+      for type <- ~w(number boolean text rich_text select multi_select date) do
+        assert "set_if_unset" in Instruction.operators_for_type(type),
+               "set_if_unset not in operators for #{type}"
+      end
+    end
+
+    test "has correct label" do
+      assert Instruction.operator_label("set_if_unset") == "?="
+    end
+
+    test "requires a value" do
+      assert Instruction.operator_requires_value?("set_if_unset")
+    end
+
+    test "is in all_operators" do
+      # Validate via complete_assignment? which checks @all_operators
+      assert Instruction.complete_assignment?(%{
+               "sheet" => "mc.jaime",
+               "variable" => "health",
+               "operator" => "set_if_unset",
+               "value" => "100",
+               "value_type" => "literal"
+             })
+    end
+
+    test "formats correctly" do
+      assignment = %{
+        "sheet" => "mc.jaime",
+        "variable" => "health",
+        "operator" => "set_if_unset",
+        "value" => "100",
+        "value_type" => "literal"
+      }
+
+      assert Instruction.format_assignment_short(assignment) == "mc.jaime.health ?= 100"
     end
   end
 end
