@@ -8,7 +8,7 @@
 | Dependencies  | None                                                             |
 | Absorbs       | `02_CREATE_LINKED_FLOW.md` (deleted after this plan is complete) |
 | Previous      | `01_NESTED_CONDITIONS.md`                                        |
-| Next          | [`04_EXPRESSION_SYSTEM.md`](../stress_test/04_EXPRESSION_SYSTEM.md)           |
+| Next          | [`04_EXPRESSION_SYSTEM.md`](04_EXPRESSION_SYSTEM.md)           |
 | Last Updated  | February 20, 2026                                                |
 
 ---
@@ -893,4 +893,4 @@ Subtask 9: Gettext + cleanup                        ├─ Polish (parallel)
 
 ---
 
-**Next document:** [`04_EXPRESSION_SYSTEM.md`](../stress_test/04_EXPRESSION_SYSTEM.md) — Expression System: Code Editor + Visual Builder
+**Next document:** [`04_EXPRESSION_SYSTEM.md`](04_EXPRESSION_SYSTEM.md) — Expression System: Code Editor + Visual Builder

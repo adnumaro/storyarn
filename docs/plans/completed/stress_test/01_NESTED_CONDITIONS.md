@@ -10,7 +10,7 @@
 >
 > **Previous:** N/A (first document in stress test chain)
 >
-> **Next:** [`02_CREATE_LINKED_FLOW.md`](../02_CREATE_LINKED_FLOW.md)
+> **Next:** [`02_CREATE_LINKED_FLOW.md`](02_CREATE_LINKED_FLOW.md)
 >
 > **Last Updated:** February 20, 2026
 
@@ -1349,4 +1349,4 @@ end
 
 ---
 
-**Next:** [`02_CREATE_LINKED_FLOW.md`](../02_CREATE_LINKED_FLOW.md)
+**Next:** [`02_CREATE_LINKED_FLOW.md`](02_CREATE_LINKED_FLOW.md)

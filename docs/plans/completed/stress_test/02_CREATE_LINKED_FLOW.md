@@ -8,7 +8,7 @@
 >
 > **Dependencies:** None
 >
-> **Previous:** [`01_NESTED_CONDITIONS.md`](stress_test/01_NESTED_CONDITIONS.md)
+> **Previous:** [`01_NESTED_CONDITIONS.md`](01_NESTED_CONDITIONS.md)
 >
 > **Next:** [`03_DIALOGUE_UX.md`](./03_DIALOGUE_UX.md)
 >

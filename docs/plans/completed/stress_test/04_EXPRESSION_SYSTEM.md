@@ -7,7 +7,7 @@
 | Effort          | High                                                                                                                           |
 | Dependencies    | Subtask 10 (response instruction backend) depends on Gap 4 (Document 03) for the full editor UI. Subtasks 1-7 are independent. |
 | Previous        | [`03_DIALOGUE_UX.md`](./03_DIALOGUE_UX.md)                                                                                     |
-| Next            | [`05_FLOW_TAGS.md`](./05_FLOW_TAGS.md)                                                                                         |
+| Next            | [`05_FLOW_TAGS.md`](05_FLOW_TAGS.md)                                                                                         |
 
 ---
 
@@ -1254,4 +1254,4 @@ Code text  <-->  Lezer AST  <-->  Structured data (assignments[] / condition{})
 
 ---
 
-**Next document:** [`05_FLOW_TAGS.md`](./05_FLOW_TAGS.md) -- Flow Tags and Organization
+**Next document:** [`05_FLOW_TAGS.md`](05_FLOW_TAGS.md) -- Flow Tags and Organization
