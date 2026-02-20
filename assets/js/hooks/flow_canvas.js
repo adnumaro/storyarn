@@ -20,6 +20,7 @@ import {
   createNavigationHandler,
 } from "../flow_canvas/handlers/index.js";
 import { createLodController } from "../flow_canvas/lod_controller.js";
+import { createFlowFloatingToolbar } from "../flow_canvas/floating_toolbar.js";
 
 export const FlowCanvas = {
   mounted() {
@@ -120,6 +121,11 @@ export const FlowCanvas = {
 
     // Set up event handlers
     setupEventHandlers(this);
+
+    // Floating toolbar
+    this.floatingToolbar = createFlowFloatingToolbar(this);
+    // Expose floatingToolbar on parent for the FlowFloatingToolbar hook
+    this.el.parentElement.__floatingToolbar = this.floatingToolbar;
 
     // Wire LOD zoom watching (after setupEventHandlers, before finalizeSetup)
     this.area.addPipe((context) => {
@@ -277,6 +283,10 @@ export const FlowCanvas = {
   },
 
   destroyed() {
+    this.floatingToolbar?.hide();
+    if (this.el.parentElement?.__floatingToolbar) {
+      delete this.el.parentElement.__floatingToolbar;
+    }
     this.lodController?.destroy();
     this.cursorHandler?.destroy();
     this.keyboardHandler?.destroy();

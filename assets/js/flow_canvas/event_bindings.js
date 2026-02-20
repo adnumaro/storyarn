@@ -20,6 +20,8 @@ export function setupEventHandlers(hook) {
       const node = hook.editor.getNode(context.data.id);
       if (node?.nodeId) {
         hook.editorHandlers.debounceNodeMoved(node.nodeId, context.data.position);
+        // Hide toolbar during drag
+        hook.floatingToolbar?.setDragging(true);
       }
     }
     return context;
@@ -43,6 +45,9 @@ export function setupEventHandlers(hook) {
         } else {
           hook.pushEvent("node_selected", { id: node.nodeId });
         }
+
+        // Show floating toolbar
+        hook.floatingToolbar?.show(node.nodeId);
       }
     }
     return context;
@@ -162,4 +167,39 @@ export function setupEventHandlers(hook) {
   hook.handleEvent("cursor_update", (data) => hook.cursorHandler.handleCursorUpdate(data));
   hook.handleEvent("cursor_leave", (data) => hook.cursorHandler.handleCursorLeave(data));
   hook.handleEvent("locks_updated", (data) => hook.lockHandler.handleLocksUpdated(data));
+
+  // ===== Floating Toolbar — reposition on pan/zoom =====
+
+  // Reposition toolbar on canvas pan (area translate)
+  hook.area.addPipe((context) => {
+    if (context.type === "translated") {
+      hook.floatingToolbar?.reposition();
+    }
+    return context;
+  });
+
+  // Reposition toolbar on zoom
+  hook.area.addPipe((context) => {
+    if (context.type === "zoomed") {
+      hook.floatingToolbar?.reposition();
+    }
+    return context;
+  });
+
+  // Click on empty canvas — deselect node + hide toolbar
+  hook.el.addEventListener("pointerdown", (e) => {
+    // Only primary button (left click)
+    if (e.button !== 0) return;
+    const storyarnEl = e.composedPath().find((el) => el.tagName === "STORYARN-NODE");
+    if (!storyarnEl && hook.selectedNodeId) {
+      hook.pushEvent("deselect_node", {});
+      hook.selectedNodeId = null;
+      hook.floatingToolbar?.hide();
+    }
+  });
+
+  // Detect drag end — show toolbar again after node move
+  hook.el.addEventListener("pointerup", () => {
+    hook.floatingToolbar?.setDragging(false);
+  });
 }

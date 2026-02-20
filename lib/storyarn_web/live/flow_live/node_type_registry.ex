@@ -26,18 +26,6 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
     "scene" => Nodes.Scene.Node
   }
 
-  @sidebar_modules %{
-    "entry" => Nodes.Entry.ConfigSidebar,
-    "exit" => Nodes.Exit.ConfigSidebar,
-    "dialogue" => Nodes.Dialogue.ConfigSidebar,
-    "hub" => Nodes.Hub.ConfigSidebar,
-    "condition" => Nodes.Condition.ConfigSidebar,
-    "instruction" => Nodes.Instruction.ConfigSidebar,
-    "jump" => Nodes.Jump.ConfigSidebar,
-    "subflow" => Nodes.Subflow.ConfigSidebar,
-    "scene" => Nodes.Scene.ConfigSidebar
-  }
-
   @types Map.keys(@node_modules) |> Enum.sort()
 
   @doc "All known node types."
@@ -51,10 +39,6 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   @doc "Returns the node module for a given type."
   @spec node_module(String.t()) :: module() | nil
   def node_module(type), do: Map.get(@node_modules, type)
-
-  @doc "Returns the sidebar module for a given type."
-  @spec sidebar_module(String.t()) :: module() | nil
-  def sidebar_module(type), do: Map.get(@sidebar_modules, type)
 
   @doc "Returns the Lucide icon name for a node type."
   @spec icon_name(String.t()) :: String.t()
@@ -93,10 +77,10 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   end
 
   @doc "Returns the editing mode for double-click on a node type."
-  @spec on_double_click(String.t(), map()) :: :sidebar | :screenplay | {:navigate, any()}
+  @spec on_double_click(String.t(), map()) :: :toolbar | :editor | :builder | {:navigate, any()}
   def on_double_click(type, node) do
     case node_module(type) do
-      nil -> :sidebar
+      nil -> :toolbar
       mod -> mod.on_double_click(node)
     end
   end

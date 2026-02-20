@@ -252,14 +252,16 @@
   border-bottom: 1px solid color-mix(in oklch, var(--color-base-300) 30%, transparent);
 }
 
-.instruction-builder .sentence-text {
+.instruction-builder .sentence-text,
+.condition-builder .sentence-text {
   font-size: 0.875rem;
   color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
   user-select: none;
   white-space: nowrap;
 }
 
-.instruction-builder .sentence-slot {
+.instruction-builder .sentence-slot,
+.condition-builder .sentence-slot {
   font-size: 0.875rem;
   color: var(--color-base-content);
   font-weight: 500;
@@ -271,17 +273,20 @@
   padding: 0 0.125rem;
 }
 
-.instruction-builder .sentence-slot:focus {
+.instruction-builder .sentence-slot:focus,
+.condition-builder .sentence-slot:focus {
   border-bottom-style: solid;
   border-bottom-color: var(--color-primary);
 }
 
-.instruction-builder .sentence-slot.filled {
+.instruction-builder .sentence-slot.filled,
+.condition-builder .sentence-slot.filled {
   border-bottom-style: solid;
   border-bottom-color: color-mix(in oklch, var(--color-base-content) 10%, transparent);
 }
 
-.instruction-builder .sentence-slot::placeholder {
+.instruction-builder .sentence-slot::placeholder,
+.condition-builder .sentence-slot::placeholder {
   color: color-mix(in oklch, var(--color-base-content) 25%, transparent);
   font-weight: 400;
   font-style: italic;
@@ -470,41 +475,6 @@
   gap: 0.25rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid color-mix(in oklch, var(--color-base-300) 30%, transparent);
-}
-
-.condition-builder .sentence-text {
-  font-size: 0.875rem;
-  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
-  user-select: none;
-  white-space: nowrap;
-}
-
-.condition-builder .sentence-slot {
-  font-size: 0.875rem;
-  color: var(--color-base-content);
-  font-weight: 500;
-  background: transparent;
-  border: none;
-  border-bottom: 1px dashed color-mix(in oklch, var(--color-base-content) 20%, transparent);
-  outline: none;
-  min-width: 3ch;
-  padding: 0 0.125rem;
-}
-
-.condition-builder .sentence-slot:focus {
-  border-bottom-style: solid;
-  border-bottom-color: var(--color-primary);
-}
-
-.condition-builder .sentence-slot.filled {
-  border-bottom-style: solid;
-  border-bottom-color: color-mix(in oklch, var(--color-base-content) 10%, transparent);
-}
-
-.condition-builder .sentence-slot::placeholder {
-  color: color-mix(in oklch, var(--color-base-content) 25%, transparent);
-  font-weight: 400;
-  font-style: italic;
 }
 
 /* Map Canvas - Pin markers */
@@ -784,6 +754,21 @@
 .color-swatch:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* ===== Flow Floating Toolbar ===== */
+
+#flow-floating-toolbar {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+#flow-floating-toolbar.toolbar-visible {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* ===== Map Dock ===== */

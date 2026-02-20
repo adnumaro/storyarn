@@ -91,20 +91,16 @@ export function createKeyboardHandler(hook, lockHandler) {
       }
 
       // Ignore when typing in inputs for non-debug shortcuts
-      if (
-        e.target.tagName === "INPUT" ||
-        e.target.tagName === "TEXTAREA" ||
-        e.target.isContentEditable
-      ) {
-        return;
-      }
+      if (isEditable(e.target)) return;
 
-      // Delete/Backspace - delete selected node
+      // Delete/Backspace - delete selected node (not when builder panel is open)
       if ((e.key === "Delete" || e.key === "Backspace") && hook.selectedNodeId) {
+        if (document.getElementById("builder-panel-content")) return;
         e.preventDefault();
         if (lockHandler.isNodeLocked(hook.selectedNodeId)) return;
         hook.pushEvent("delete_node", { id: hook.selectedNodeId });
         hook.selectedNodeId = null;
+        hook.floatingToolbar?.hide();
         return;
       }
 
@@ -115,11 +111,38 @@ export function createKeyboardHandler(hook, lockHandler) {
         return;
       }
 
-      // Escape - deselect node
-      if (e.key === "Escape" && hook.selectedNodeId) {
+      // E — open editor/builder for selected node
+      if (e.key === "e" && !e.ctrlKey && !e.metaKey && hook.selectedNodeId) {
+        const reteNode = hook.nodeMap?.get(hook.selectedNodeId);
+        if (!reteNode) return;
+        const nodeType = reteNode.nodeType;
+
+        if (nodeType === "dialogue") {
+          e.preventDefault();
+          hook.pushEvent("open_screenplay", {});
+        } else if (nodeType === "condition" || nodeType === "instruction") {
+          e.preventDefault();
+          hook.pushEvent("open_builder", {});
+        }
+        return;
+      }
+
+      // Escape — priority chain: editor → builder → toolbar → deselect
+      if (e.key === "Escape") {
         e.preventDefault();
-        hook.pushEvent("deselect_node", {});
-        hook.selectedNodeId = null;
+
+        const editorOpen = !!document.getElementById("screenplay-editor-container");
+        const builderOpen = !!document.getElementById("builder-panel-content");
+
+        if (editorOpen) {
+          hook.pushEvent("close_editor", {});
+        } else if (builderOpen) {
+          hook.pushEvent("close_builder", {});
+        } else if (hook.selectedNodeId) {
+          hook.pushEvent("deselect_node", {});
+          hook.selectedNodeId = null;
+          hook.floatingToolbar?.hide();
+        }
         return;
       }
     },

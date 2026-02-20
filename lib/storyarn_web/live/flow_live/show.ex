@@ -5,9 +5,10 @@ defmodule StoryarnWeb.FlowLive.Show do
   use StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.CollaborationComponents
+  import StoryarnWeb.FlowLive.Components.BuilderPanel
   import StoryarnWeb.FlowLive.Components.DebugPanel
   import StoryarnWeb.FlowLive.Components.FlowHeader
-  import StoryarnWeb.FlowLive.Components.PropertiesPanels
+  import StoryarnWeb.FlowLive.Components.FlowToolbar
   import StoryarnWeb.Layouts, only: [flash_group: 1]
 
   alias StoryarnWeb.FlowLive.Components.ScreenplayEditor
@@ -89,6 +90,44 @@ defmodule StoryarnWeb.FlowLive.Show do
               data-user-color={Collaboration.user_color(@current_scope.user.id)}
             >
             </div>
+
+            <%!-- Floating Toolbar --%>
+            <div
+              id="flow-floating-toolbar"
+              phx-hook="FlowFloatingToolbar"
+              class="absolute z-30"
+            >
+              <div
+                :if={@selected_node && @editing_mode in [:toolbar, :builder]}
+                class="floating-toolbar"
+              >
+                <.node_toolbar
+                  node={@selected_node}
+                  form={@node_form}
+                  can_edit={@can_edit}
+                  all_sheets={@all_sheets}
+                  flow_hubs={@flow_hubs}
+                  available_flows={@available_flows}
+                  subflow_exits={@subflow_exits}
+                  referencing_jumps={@referencing_jumps}
+                  referencing_flows={@referencing_flows}
+                />
+              </div>
+
+              <%!-- Builder Panel (below toolbar) --%>
+              <div
+                :if={@selected_node && @editing_mode == :builder}
+                id="builder-panel-content"
+                class="mt-2 bg-base-100 border border-base-300 rounded-lg shadow-lg p-4 max-h-[60vh] overflow-y-auto w-[400px]"
+              >
+                <.builder_content
+                  node={@selected_node}
+                  form={@node_form}
+                  can_edit={@can_edit}
+                  project_variables={@project_variables}
+                />
+              </div>
+            </div>
           </div>
 
           <.debug_panel
@@ -105,38 +144,22 @@ defmodule StoryarnWeb.FlowLive.Show do
           />
         </div>
 
-        <%!-- Node Properties Panel (Sidebar mode) --%>
-        <.node_properties_panel
-          :if={@selected_node && @editing_mode == :sidebar}
-          node={@selected_node}
-          form={@node_form}
-          can_edit={@can_edit}
-          all_sheets={@all_sheets}
-          flow_hubs={@flow_hubs}
-          project={@project}
-          current_user={@current_scope.user}
-          panel_sections={@panel_sections}
-          project_variables={@project_variables}
-          referencing_jumps={@referencing_jumps}
-          available_flows={@available_flows}
-          subflow_exits={@subflow_exits}
-          outcome_tags_suggestions={@outcome_tags_suggestions}
-          referencing_flows={@referencing_flows}
-        />
       </div>
 
       <.flash_group flash={@flash} />
 
       <%!-- Screenplay Editor (fullscreen overlay) --%>
       <.live_component
-        :if={@selected_node && @editing_mode == :screenplay}
+        :if={@selected_node && @editing_mode in [:screenplay, :editor]}
         module={ScreenplayEditor}
         id={"screenplay-editor-#{@selected_node.id}"}
         node={@selected_node}
         can_edit={@can_edit}
         all_sheets={@all_sheets}
+        project_variables={@project_variables}
+        project={@project}
+        current_user={@current_scope.user}
         on_close={JS.push("close_editor")}
-        on_open_sidebar={JS.push("open_sidebar")}
       />
 
       <%!-- Preview Modal --%>
@@ -354,6 +377,14 @@ defmodule StoryarnWeb.FlowLive.Show do
     GenericNodeHandlers.handle_open_sidebar(socket)
   end
 
+  def handle_event("open_builder", _params, socket) do
+    {:noreply, assign(socket, :editing_mode, :builder)}
+  end
+
+  def handle_event("close_builder", _params, socket) do
+    {:noreply, assign(socket, :editing_mode, :toolbar)}
+  end
+
   def handle_event("close_editor", _params, socket) do
     GenericNodeHandlers.handle_close_editor(socket)
   end
@@ -474,17 +505,11 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
-  # Panel UI
-  def handle_event("toggle_panel_section", %{"section" => section}, socket) do
-    panel_sections = socket.assigns.panel_sections
-    current_state = Map.get(panel_sections, section, false)
-    updated_sections = Map.put(panel_sections, section, !current_state)
-    {:noreply, assign(socket, :panel_sections, updated_sections)}
-  end
-
   # Connections
   def handle_event("connection_created", params, socket) do
-    ConnectionHelpers.create_connection(socket, params)
+    with_auth(:edit_content, socket, fn ->
+      ConnectionHelpers.create_connection(socket, params)
+    end)
   end
 
   def handle_event(
@@ -492,7 +517,9 @@ defmodule StoryarnWeb.FlowLive.Show do
         %{"source_node_id" => source_id, "target_node_id" => target_id},
         socket
       ) do
-    ConnectionHelpers.delete_connection_by_nodes(socket, source_id, target_id)
+    with_auth(:edit_content, socket, fn ->
+      ConnectionHelpers.delete_connection_by_nodes(socket, source_id, target_id)
+    end)
   end
 
   # Condition builders
@@ -532,6 +559,26 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  # Create linked flow (exit flow_reference / subflow)
+  def handle_event("create_linked_flow", %{"node-id" => node_id_str}, socket) do
+    with_auth(:edit_content, socket, fn ->
+      node = Flows.get_node!(socket.assigns.flow.id, node_id_str)
+
+      case Flows.create_linked_flow(socket.assigns.project, socket.assigns.flow, node) do
+        {:ok, %{flow: new_flow}} ->
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}?from=#{socket.assigns.flow.id}"
+           )}
+
+        {:error, _, _reason, _changes} ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("flows", "Could not create linked flow."))}
+      end
+    end)
+  end
+
   # Exit node events
   def handle_event("update_exit_mode", %{"mode" => mode}, socket) do
     with_auth(:edit_content, socket, fn ->
@@ -567,7 +614,11 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("update_hub_color", %{"color" => color}, socket) do
     with_auth(:edit_content, socket, fn ->
       node = socket.assigns.selected_node
-      validated = validate_hex_color(color, Flows.HubColors.default_hex())
+      validated =
+        StoryarnWeb.FlowLive.Components.NodeTypeHelpers.validate_hex_color(
+          color,
+          Flows.HubColors.default_hex()
+        )
 
       NodeHelpers.persist_node_update(socket, node.id, fn data ->
         Map.put(data, "color", validated)
@@ -815,13 +866,4 @@ defmodule StoryarnWeb.FlowLive.Show do
     put_flash(socket, :error, dgettext("flows", "You don't have permission to perform this action."))
   end
 
-  defp validate_hex_color(color, default) when is_binary(color) do
-    if String.match?(color, ~r/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/) do
-      color
-    else
-      default
-    end
-  end
-
-  defp validate_hex_color(_, default), do: default
 end

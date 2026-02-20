@@ -34,7 +34,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.Node do
     assign(socket, :referencing_jumps, referencing_jumps)
   end
 
-  def on_double_click(_node), do: :sidebar
+  def on_double_click(_node), do: :toolbar
 
   @doc "Clears hub_id when duplicating (must be unique)."
   def duplicate_data_cleanup(data) do

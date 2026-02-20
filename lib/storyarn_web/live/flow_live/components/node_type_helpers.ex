@@ -59,4 +59,30 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
   end
 
   defp strip_html(_), do: ""
+
+  @doc """
+  Normalizes a text string into a valid technical/localization ID.
+  Downcases, replaces non-alphanumeric chars with underscores, trims underscores.
+  """
+  @spec normalize_for_id(String.t() | nil) :: String.t()
+  def normalize_for_id(text) when is_binary(text) do
+    text
+    |> String.downcase()
+    |> String.replace(~r/[^a-z0-9]+/, "_")
+    |> String.trim("_")
+  end
+
+  def normalize_for_id(_), do: ""
+
+  @hex_color_regex ~r/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
+
+  @doc """
+  Validates a hex color string. Returns the color if valid, otherwise the default.
+  """
+  @spec validate_hex_color(String.t() | nil, String.t()) :: String.t()
+  def validate_hex_color(color, default) when is_binary(color) do
+    if String.match?(color, @hex_color_regex), do: color, else: default
+  end
+
+  def validate_hex_color(_, default), do: default
 end

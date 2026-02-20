@@ -10,6 +10,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
 
   alias Storyarn.Flows
   alias Storyarn.Repo
+  alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
   @valid_exit_modes ~w(terminal flow_reference caller_return)
@@ -34,7 +35,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
       "label" => data["label"] || "",
       "technical_id" => data["technical_id"] || "",
       "outcome_tags" => parse_outcome_tags(data["outcome_tags"]),
-      "outcome_color" => validate_color(data["outcome_color"]),
+      "outcome_color" => NodeTypeHelpers.validate_hex_color(data["outcome_color"], "#22c55e"),
       "exit_mode" => validate_exit_mode(data["exit_mode"]),
       "referenced_flow_id" => parse_referenced_flow_id(data["referenced_flow_id"])
     }
@@ -65,7 +66,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
     end
   end
 
-  def on_double_click(_node), do: :sidebar
+  def on_double_click(_node), do: :toolbar
 
   # -- Parsing helpers --
 
@@ -87,16 +88,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
     |> String.downcase()
     |> String.replace(~r/\s+/, "_")
   end
-
-  defp validate_color(color) when is_binary(color) do
-    if String.match?(color, ~r/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/) do
-      color
-    else
-      "#22c55e"
-    end
-  end
-
-  defp validate_color(_), do: "#22c55e"
 
   defp validate_exit_mode(mode) when mode in @valid_exit_modes, do: mode
   defp validate_exit_mode(_), do: "terminal"
@@ -225,7 +216,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   @doc "Updates outcome color."
   def handle_update_outcome_color(color, socket) do
     node = socket.assigns.selected_node
-    validated_color = validate_color(color)
+    validated_color = NodeTypeHelpers.validate_hex_color(color, "#22c55e")
 
     NodeHelpers.persist_node_update(socket, node.id, fn data ->
       Map.put(data, "outcome_color", validated_color)
@@ -246,7 +237,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   # Private helpers
 
   defp count_exit_in_flow(flow, current_node_id) do
-    flow = Repo.preload(flow, :nodes)
+    flow = if Ecto.assoc_loaded?(flow.nodes), do: flow, else: Repo.preload(flow, :nodes)
 
     exit_nodes =
       flow.nodes
@@ -260,19 +251,10 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   end
 
   defp generate_exit_technical_id(flow_slug, label, exit_count) do
-    flow_part = normalize_for_id(flow_slug || "")
-    label_part = normalize_for_id(label || "")
+    flow_part = NodeTypeHelpers.normalize_for_id(flow_slug || "")
+    label_part = NodeTypeHelpers.normalize_for_id(label || "")
     flow_part = if flow_part == "", do: "flow", else: flow_part
     label_part = if label_part == "", do: "exit", else: label_part
     "#{flow_part}_#{label_part}_#{exit_count}"
   end
-
-  defp normalize_for_id(text) when is_binary(text) do
-    text
-    |> String.downcase()
-    |> String.replace(~r/[^a-z0-9]+/, "_")
-    |> String.trim("_")
-  end
-
-  defp normalize_for_id(_), do: ""
 end

@@ -26,8 +26,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   @spec handle_add_node(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_add_node(%{"type" => type}, socket) do
-    NodeHelpers.add_node(socket, type)
+  def handle_add_node(%{"type" => type} = params, socket) do
+    opts =
+      case {params["position_x"], params["position_y"]} do
+        {x, y} when is_number(x) and is_number(y) -> [position: {x, y}]
+        _ -> []
+      end
+
+    NodeHelpers.add_node(socket, type, opts)
   end
 
   @spec handle_save_name(map(), Phoenix.LiveView.Socket.t()) ::
@@ -147,7 +153,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      socket
      |> assign(:selected_node, node)
      |> assign(:node_form, form)
-     |> assign(:editing_mode, :sidebar)}
+     |> assign(:editing_mode, :toolbar)}
   end
 
   @spec handle_node_double_clicked(map(), Phoenix.LiveView.Socket.t()) ::
@@ -195,7 +201,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   @spec handle_open_sidebar(Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_open_sidebar(socket) do
-    {:noreply, assign(socket, :editing_mode, :sidebar)}
+    {:noreply, assign(socket, :editing_mode, :toolbar)}
   end
 
   @spec handle_close_editor(Phoenix.LiveView.Socket.t()) ::
@@ -251,7 +257,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   @spec handle_node_moved(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_node_moved(%{"id" => node_id, "position_x" => x, "position_y" => y}, socket) do
-    node = Flows.get_node_by_id!(node_id)
+    node = Flows.get_node!(socket.assigns.flow.id, node_id)
 
     case Flows.update_node_position(node, %{position_x: x, position_y: y}) do
       {:ok, _} ->

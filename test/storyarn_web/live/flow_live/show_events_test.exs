@@ -297,6 +297,151 @@ defmodule StoryarnWeb.FlowLive.ShowEventsTest do
     end
   end
 
+  describe "node UX redesign events" do
+    setup :register_and_log_in_user
+
+    setup %{user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Test Flow"})
+      %{project: project, flow: flow}
+    end
+
+    test "add_node with position places node at specified coordinates",
+         %{conn: conn, project: project, flow: flow} do
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_click(view, "add_node", %{
+        "type" => "hub",
+        "position_x" => 500.0,
+        "position_y" => 300.0
+      })
+
+      updated_flow = Storyarn.Flows.get_flow!(project.id, flow.id)
+      hub = Enum.find(updated_flow.nodes, &(&1.type == "hub"))
+
+      assert hub != nil
+      assert hub.position_x == 500.0
+      assert hub.position_y == 300.0
+    end
+
+    test "add_node without position uses random placement",
+         %{conn: conn, project: project, flow: flow} do
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_click(view, "add_node", %{"type" => "condition"})
+
+      updated_flow = Storyarn.Flows.get_flow!(project.id, flow.id)
+      condition = Enum.find(updated_flow.nodes, &(&1.type == "condition"))
+
+      assert condition != nil
+      assert condition.position_x >= 100.0 and condition.position_x <= 300.0
+      assert condition.position_y >= 100.0 and condition.position_y <= 300.0
+    end
+
+    test "open_builder sets editing_mode to builder",
+         %{conn: conn, project: project, flow: flow} do
+      node =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{"expression" => "", "cases" => []}
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      # Trigger async load (simulates FlowLoader JS hook)
+      render_click(view, "load_flow_data", %{})
+      render_async(view)
+
+      # Select the node first
+      render_click(view, "node_selected", %{"id" => node.id})
+      render_click(view, "open_builder", %{})
+
+      html = render(view)
+      assert html =~ "builder-panel-content"
+    end
+
+    test "close_builder reverts editing_mode to toolbar",
+         %{conn: conn, project: project, flow: flow} do
+      node =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{"expression" => "", "cases" => []}
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      # Trigger async load (simulates FlowLoader JS hook)
+      render_click(view, "load_flow_data", %{})
+      render_async(view)
+
+      render_click(view, "node_selected", %{"id" => node.id})
+      render_click(view, "open_builder", %{})
+      render_click(view, "close_builder", %{})
+
+      html = render(view)
+      refute html =~ "builder-panel-content"
+    end
+
+    test "update_hub_color changes hub node color",
+         %{conn: conn, project: project, flow: flow} do
+      node =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "test_hub", "color" => "#3b82f6"}
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_click(view, "node_selected", %{"id" => node.id})
+      render_click(view, "update_hub_color", %{"color" => "#ef4444"})
+
+      updated_node = Storyarn.Flows.get_node!(flow.id, node.id)
+      assert updated_node.data["color"] == "#ef4444"
+    end
+
+    test "create_linked_flow creates flow and navigates",
+         %{conn: conn, project: project, flow: flow} do
+      node =
+        node_fixture(flow, %{
+          type: "exit",
+          data: %{"exit_mode" => "flow_reference", "label" => "Next Chapter"}
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_click(view, "node_selected", %{"id" => node.id})
+      render_click(view, "create_linked_flow", %{"node-id" => to_string(node.id)})
+
+      # Node should now have referenced_flow_id set
+      updated_node = Storyarn.Flows.get_node!(flow.id, node.id)
+      assert updated_node.data["referenced_flow_id"] != nil
+    end
+  end
+
   describe "connection events through LiveView" do
     setup :register_and_log_in_user
 

@@ -32,6 +32,7 @@
     "rete": "^2.0.3",
     "rete-area-plugin": "^2.0.3",
     "rete-connection-plugin": "^2.0.3",
+    "rete-context-menu-plugin": "^2.0.6",
     "rete-history-plugin": "^2.1.1",
     "rete-minimap-plugin": "^2.0.3",
     "rete-render-utils": "^2.0.2",

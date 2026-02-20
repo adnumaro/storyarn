@@ -24,7 +24,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.Node do
   end
 
   def on_select(_node, socket), do: socket
-  def on_double_click(_node), do: :sidebar
+  def on_double_click(_node), do: :builder
   def duplicate_data_cleanup(data), do: data
 
   # -- Instruction-specific event handlers --

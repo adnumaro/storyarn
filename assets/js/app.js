@@ -52,6 +52,8 @@ import { DebugPanelResize } from "./hooks/debug_panel_resize";
 import { FountainImport } from "./hooks/fountain_import";
 import { MapCanvas } from "./hooks/map_canvas";
 import { FloatingToolbar } from "./hooks/floating_toolbar";
+import { FlowFloatingToolbar } from "./hooks/flow_floating_toolbar";
+import { SearchableSelect } from "./hooks/searchable_select";
 import { StoryPlayer } from "./hooks/story_player";
 
 // Theme management (keyboard shortcuts, cross-tab sync)
@@ -86,7 +88,9 @@ const liveSocket = new LiveSocket("/live", Socket, {
     FountainImport,
     MapCanvas,
     FloatingToolbar,
+    FlowFloatingToolbar,
     ReferenceSearch,
+    SearchableSelect,
     DialogueScreenplayEditor,
     ScreenplayEditor,
     StoryPlayer,

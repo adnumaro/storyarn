@@ -17,6 +17,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
   alias Storyarn.Flows
   alias Storyarn.Repo
+  alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
   # -- Type metadata --
@@ -58,8 +59,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
   def on_select(_node, socket), do: socket
 
-  @doc "Dialogue nodes open screenplay editor on double-click."
-  def on_double_click(_node), do: :screenplay
+  @doc "Dialogue nodes open fullscreen editor on double-click."
+  def on_double_click(_node), do: :editor
 
   def duplicate_data_cleanup(data) do
     data
@@ -158,10 +159,10 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     NodeHelpers.update_node_field(socket, node.id, "technical_id", technical_id)
   end
 
-  @doc "Opens screenplay mode for the selected dialogue node."
+  @doc "Opens fullscreen editor for the selected dialogue node."
   def handle_open_screenplay(socket) do
     if socket.assigns.selected_node && socket.assigns.selected_node.type == "dialogue" do
-      {:noreply, assign(socket, :editing_mode, :screenplay)}
+      {:noreply, assign(socket, :editing_mode, :editor)}
     else
       {:noreply, socket}
     end
@@ -209,7 +210,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   end
 
   defp count_speaker_in_flow(flow, speaker_sheet_id, current_node_id) do
-    flow = Repo.preload(flow, :nodes)
+    flow = if Ecto.assoc_loaded?(flow.nodes), do: flow, else: Repo.preload(flow, :nodes)
 
     same_speaker_nodes =
       flow.nodes
@@ -226,8 +227,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   end
 
   defp generate_technical_id(flow_slug, speaker_name, speaker_count) do
-    flow_part = normalize_for_id(flow_slug || "")
-    speaker_part = normalize_for_id(speaker_name || "")
+    flow_part = NodeTypeHelpers.normalize_for_id(flow_slug || "")
+    speaker_part = NodeTypeHelpers.normalize_for_id(speaker_name || "")
     flow_part = if flow_part == "", do: "dlg", else: flow_part
     speaker_part = if speaker_part == "", do: "narrator", else: speaker_part
     "#{flow_part}_#{speaker_part}_#{speaker_count}"
@@ -243,12 +244,4 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     "dialogue.#{suffix}"
   end
 
-  defp normalize_for_id(text) when is_binary(text) do
-    text
-    |> String.downcase()
-    |> String.replace(~r/[^a-z0-9]+/, "_")
-    |> String.trim("_")
-  end
-
-  defp normalize_for_id(_), do: ""
 end

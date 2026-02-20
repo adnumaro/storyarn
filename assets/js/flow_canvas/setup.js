@@ -4,12 +4,15 @@
 
 import { LitPlugin, Presets as LitPresets } from "@retejs/lit-plugin";
 import { html } from "lit";
+import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { NodeEditor } from "rete";
 import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
 import { ConnectionPlugin, Presets as ConnectionPresets } from "rete-connection-plugin";
+import { ContextMenuPlugin } from "rete-context-menu-plugin";
 import { HistoryPlugin } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
 
+import { createContextMenuItems } from "./context_menu_items.js";
 import { createFlowHistoryPreset } from "./history_preset.js";
 
 /**
@@ -22,6 +25,7 @@ export function createPlugins(container, hook) {
   const editor = new NodeEditor();
   const area = new AreaPlugin(container);
   const connection = new ConnectionPlugin();
+  const contextMenu = new ContextMenuPlugin({ items: createContextMenuItems(hook) });
   const history = new HistoryPlugin({ timing: 200 });
   const minimap = new MinimapPlugin();
   const render = new LitPlugin();
@@ -73,6 +77,57 @@ export function createPlugins(container, hook) {
     }),
   );
 
+  // Context menu render preset — custom rendering (not LitPresets.contextMenu)
+  // to avoid shadow-DOM styling issues with rete-context-menu-* elements.
+  render.addPreset({
+    update(context) {
+      if (context.data.type === "contextmenu") {
+        return { items: context.data.items, onHide: context.data.onHide };
+      }
+    },
+    render(context) {
+      if (context.data.type === "contextmenu") {
+        const { items, onHide } = context.data;
+        const renderItems = (list) =>
+          list.map((item) => {
+            const icon = item.icon
+              ? html`<span class="flow-cm-icon">${unsafeSVG(item.icon)}</span>`
+              : "";
+            if (item.subitems?.length) {
+              return html`
+                <div class="flow-cm-parent">
+                  <button
+                    class="flow-cm-item has-sub"
+                    @pointerdown=${(e) => e.stopPropagation()}
+                  >
+                    ${icon} ${item.label}
+                  </button>
+                  <div class="flow-cm-submenu">${renderItems(item.subitems)}</div>
+                </div>
+              `;
+            }
+            return html`
+              <button
+                class="flow-cm-item ${item.key === "delete" ? "danger" : ""}"
+                @click=${(e) => {
+                  e.stopPropagation();
+                  item.handler();
+                  onHide();
+                }}
+                @pointerdown=${(e) => e.stopPropagation()}
+                @wheel=${(e) => e.stopPropagation()}
+              >
+                ${icon} ${item.label}
+              </button>
+            `;
+          });
+        return html`
+          <div class="flow-context-menu">${renderItems(items)}</div>
+        `;
+      }
+    },
+  });
+
   // Minimap render preset
   render.addPreset(LitPresets.minimap.setup({ size: 200 }));
 
@@ -95,6 +150,7 @@ export function createPlugins(container, hook) {
 
   area.use(connection);
   area.use(render);
+  area.use(contextMenu);
   // History preset — wires pipes on the editor and area for connection/drag tracking.
   // Needs hook reference for isLoadingFromServer guard.
   history.addPreset(createFlowHistoryPreset(hook));
@@ -136,6 +192,80 @@ reteStyles.textContent = `
     background-image:
       radial-gradient(circle at center, oklch(var(--bc, 0.8 0 0) / 0.08) 1.5px, transparent 1.5px);
     background-size: 24px 24px;
+  }
+
+  .flow-context-menu {
+    background-color: oklch(var(--b1, 0.25 0 0));
+    border: 1px solid oklch(var(--b3, 0.18 0 0));
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    padding: 4px 0;
+    min-width: 180px;
+    margin-top: -10px;
+    margin-left: -90px;
+  }
+
+  .flow-cm-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: left;
+    color: oklch(var(--bc, 0.9 0 0));
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.1s;
+  }
+
+  .flow-cm-icon {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    opacity: 0.6;
+  }
+
+  .flow-cm-item:hover {
+    background-color: oklch(var(--b2, 0.22 0 0));
+  }
+
+  .flow-cm-item.danger {
+    color: oklch(var(--er, 0.65 0.2 25));
+  }
+
+  .flow-cm-item.danger:hover {
+    background-color: oklch(var(--er, 0.65 0.2 25) / 0.1);
+  }
+
+  .flow-cm-item.has-sub::after {
+    content: '\\25B8';
+    margin-left: auto;
+    padding-left: 12px;
+    opacity: 0.4;
+  }
+
+  .flow-cm-parent {
+    position: relative;
+  }
+
+  .flow-cm-submenu {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: -4px;
+    background-color: oklch(var(--b1, 0.25 0 0));
+    border: 1px solid oklch(var(--b3, 0.18 0 0));
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    padding: 4px 0;
+    min-width: 150px;
+  }
+
+  .flow-cm-parent:hover > .flow-cm-submenu {
+    display: block;
   }
 `;
 document.head.appendChild(reteStyles);

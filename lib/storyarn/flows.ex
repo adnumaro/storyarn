@@ -96,6 +96,14 @@ defmodule Storyarn.Flows do
   defdelegate get_flow!(project_id, flow_id), to: FlowCrud
 
   @doc """
+  Creates a child flow and assigns it to a node's referenced_flow_id.
+  Used by exit (flow_reference mode) and subflow nodes.
+  """
+  @spec create_linked_flow(Project.t(), flow(), flow_node(), keyword()) ::
+          {:ok, map()} | {:error, atom(), term(), map()}
+  defdelegate create_linked_flow(project, parent_flow, node, opts \\ []), to: FlowCrud
+
+  @doc """
   Creates a new flow in a project.
   Any flow can have children AND content (nodes). Use parent_id to create nested flows.
   """

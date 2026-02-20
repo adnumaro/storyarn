@@ -96,13 +96,19 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   Adds a new node to the flow.
   Returns {:noreply, socket} tuple.
   """
-  @spec add_node(Phoenix.LiveView.Socket.t(), String.t()) ::
+  @spec add_node(Phoenix.LiveView.Socket.t(), String.t(), keyword()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
-  def add_node(socket, type) do
+  def add_node(socket, type, opts \\ []) do
+    {pos_x, pos_y} =
+      case Keyword.get(opts, :position) do
+        {x, y} -> {x * 1.0, y * 1.0}
+        _ -> {100.0 + :rand.uniform(200), 100.0 + :rand.uniform(200)}
+      end
+
     attrs = %{
       type: type,
-      position_x: 100.0 + :rand.uniform(200),
-      position_y: 100.0 + :rand.uniform(200),
+      position_x: pos_x,
+      position_y: pos_y,
       data: default_node_data(type)
     }
 

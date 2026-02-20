@@ -55,11 +55,11 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
     |> assign(:subflow_exits, exit_nodes)
   end
 
-  @doc "Double-click navigates to the referenced flow, or opens sidebar if no reference."
+  @doc "Double-click navigates to the referenced flow, or shows toolbar if no reference."
   def on_double_click(node) do
     case node.data["referenced_flow_id"] do
-      nil -> :sidebar
-      "" -> :sidebar
+      nil -> :toolbar
+      "" -> :toolbar
       flow_id -> {:navigate, flow_id}
     end
   end

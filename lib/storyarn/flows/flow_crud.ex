@@ -130,6 +130,33 @@ defmodule Storyarn.Flows.FlowCrud do
     |> Repo.one()
   end
 
+  @doc """
+  Creates a child flow and assigns it to a node's referenced_flow_id.
+  Used by exit (flow_reference mode) and subflow nodes.
+  Returns `{:ok, %{flow: flow, node: node}}` or `{:error, step, reason, changes}`.
+  """
+  def create_linked_flow(%Project{} = project, %Flow{} = parent_flow, %FlowNode{} = node, opts \\ []) do
+    name = opts[:name] || derive_linked_flow_name(parent_flow, node)
+
+    Ecto.Multi.new()
+    |> Ecto.Multi.run(:flow, fn _repo, _ ->
+      create_flow(project, %{name: name, parent_id: parent_flow.id})
+    end)
+    |> Ecto.Multi.run(:node, fn _repo, %{flow: new_flow} ->
+      new_data = Map.put(node.data, "referenced_flow_id", new_flow.id)
+
+      node
+      |> FlowNode.data_changeset(%{data: new_data})
+      |> Repo.update()
+    end)
+    |> Repo.transaction()
+  end
+
+  defp derive_linked_flow_name(parent_flow, node) do
+    label = node.data["label"]
+    if label && label != "", do: label, else: "#{parent_flow.name} - Sub"
+  end
+
   def create_flow(%Project{} = project, attrs) do
     attrs = stringify_keys(attrs)
 
@@ -208,15 +235,15 @@ defmodule Storyarn.Flows.FlowCrud do
         TextExtractor.delete_flow_texts(flow.id)
 
         # Soft delete the flow itself
-        {:ok, deleted_flow} =
-          flow
-          |> Flow.delete_changeset()
-          |> Repo.update()
+        case flow |> Flow.delete_changeset() |> Repo.update() do
+          {:ok, deleted_flow} ->
+            # Also soft-delete all children recursively
+            soft_delete_children(flow.project_id, flow.id)
+            deleted_flow
 
-        # Also soft-delete all children recursively
-        soft_delete_children(flow.project_id, flow.id)
-
-        deleted_flow
+          {:error, changeset} ->
+            Repo.rollback(changeset)
+        end
       end)
 
     # Notify open canvases that have subflow nodes referencing this flow
@@ -283,6 +310,8 @@ defmodule Storyarn.Flows.FlowCrud do
 
     # Soft delete each child and recursively delete their children
     Enum.each(children, fn child ->
+      TextExtractor.delete_flow_texts(child.id)
+
       from(f in Flow, where: f.id == ^child.id)
       |> Repo.update_all(set: [deleted_at: now])
 

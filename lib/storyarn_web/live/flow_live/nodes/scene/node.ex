@@ -10,6 +10,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.Node do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Repo
+  alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
   # -- Type metadata --
@@ -41,7 +42,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.Node do
   end
 
   def on_select(_node, socket), do: socket
-  def on_double_click(_node), do: :sidebar
+  def on_double_click(_node), do: :toolbar
 
   def duplicate_data_cleanup(data) do
     Map.put(data, "technical_id", "")
@@ -72,7 +73,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.Node do
   end
 
   defp count_scene_in_flow(flow, current_node_id) do
-    flow = Repo.preload(flow, :nodes)
+    flow = if Ecto.assoc_loaded?(flow.nodes), do: flow, else: Repo.preload(flow, :nodes)
 
     scene_nodes =
       flow.nodes
@@ -86,21 +87,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.Node do
   end
 
   defp generate_scene_technical_id(flow_slug, int_ext, location_name, scene_count) do
-    flow_part = normalize_for_id(flow_slug || "")
-    int_ext_part = normalize_for_id(int_ext || "")
-    location_part = normalize_for_id(location_name || "")
+    flow_part = NodeTypeHelpers.normalize_for_id(flow_slug || "")
+    int_ext_part = NodeTypeHelpers.normalize_for_id(int_ext || "")
+    location_part = NodeTypeHelpers.normalize_for_id(location_name || "")
     flow_part = if flow_part == "", do: "scene", else: flow_part
     int_ext_part = if int_ext_part == "", do: "int", else: int_ext_part
     location_part = if location_part == "", do: "location", else: location_part
     "#{flow_part}_#{int_ext_part}_#{location_part}_#{scene_count}"
   end
-
-  defp normalize_for_id(text) when is_binary(text) do
-    text
-    |> String.downcase()
-    |> String.replace(~r/[^a-z0-9]+/, "_")
-    |> String.trim("_")
-  end
-
-  defp normalize_for_id(_), do: ""
 end

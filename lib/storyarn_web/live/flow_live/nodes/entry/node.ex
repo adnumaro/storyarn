@@ -25,8 +25,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Entry.Node do
     Phoenix.Component.assign(socket, :referencing_flows, referencing_flows)
   end
 
-  @doc "Entry nodes open sidebar on double-click."
-  def on_double_click(_node), do: :sidebar
+  @doc "Entry nodes show toolbar on double-click."
+  def on_double_click(_node), do: :toolbar
 
   @doc "Entry nodes cannot be duplicated, but define cleanup for safety."
   def duplicate_data_cleanup(data), do: data
