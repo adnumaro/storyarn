@@ -13,7 +13,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   import Ecto.Query
 
-  alias Storyarn.Flows.{Flow, FlowNode, VariableReference}
+  alias Storyarn.Flows.{Condition, Flow, FlowNode, VariableReference}
   alias Storyarn.Repo
   alias Storyarn.Sheets.{Block, Sheet}
 
@@ -273,7 +273,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   defp resolve_assignment_read_ref(_project_id, _assign), do: []
 
   defp extract_read_refs(node) do
-    rules = get_in(node.data, ["condition", "rules"]) || []
+    rules = Condition.extract_all_rules(node.data["condition"])
     project_id = get_project_id(node.flow_id)
 
     if project_id do
@@ -338,12 +338,24 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp repair_node_data("condition", data, refs) do
-    rules = get_in(data, ["condition", "rules"]) || []
-    read_refs = Enum.filter(refs, &(&1.kind == "read"))
+    condition = data["condition"]
 
-    updated_rules = repair_condition_rules(rules, read_refs)
+    if is_nil(condition) do
+      data
+    else
+      read_refs = Enum.filter(refs, &(&1.kind == "read"))
 
-    put_in(data, ["condition", "rules"], updated_rules)
+      updated_condition =
+        if condition["blocks"] do
+          updated_blocks = Enum.map(condition["blocks"], &repair_block(&1, read_refs))
+          Map.put(condition, "blocks", updated_blocks)
+        else
+          updated_rules = repair_condition_rules(condition["rules"] || [], read_refs)
+          Map.put(condition, "rules", updated_rules)
+        end
+
+      Map.put(data, "condition", updated_condition)
+    end
   end
 
   defp repair_node_data(_, data, _refs), do: data
@@ -408,6 +420,16 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       end
     end)
   end
+
+  defp repair_block(%{"type" => "block", "rules" => rules} = block, read_refs) do
+    Map.put(block, "rules", repair_condition_rules(rules || [], read_refs))
+  end
+
+  defp repair_block(%{"type" => "group", "blocks" => inner_blocks} = group, read_refs) do
+    Map.put(group, "blocks", Enum.map(inner_blocks || [], &repair_block(&1, read_refs)))
+  end
+
+  defp repair_block(block, _read_refs), do: block
 
   defp replace_references(node_id, refs) do
     Repo.transaction(fn ->

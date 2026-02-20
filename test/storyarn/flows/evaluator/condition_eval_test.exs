@@ -505,6 +505,194 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
   end
 
   # =============================================================================
+  # Block-format evaluation
+  # =============================================================================
+
+  describe "evaluate/2 block format" do
+    setup do
+      variables = %{
+        "mc.jaime.health" => var(80, "number"),
+        "mc.jaime.alive" => var(true, "boolean"),
+        "mc.jaime.class" => var("warrior", "select")
+      }
+
+      {:ok, variables: variables}
+    end
+
+    test "single block passes", %{variables: variables} do
+      block = %{
+        "id" => "b1",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [make_rule("mc.jaime", "health", "greater_than", "50")]
+      }
+
+      condition = %{"logic" => "all", "blocks" => [block]}
+      assert {true, [%{passed: true}]} = ConditionEval.evaluate(condition, variables)
+    end
+
+    test "single block fails", %{variables: variables} do
+      block = %{
+        "id" => "b1",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [make_rule("mc.jaime", "health", "less_than", "50")]
+      }
+
+      condition = %{"logic" => "all", "blocks" => [block]}
+      assert {false, [%{passed: false}]} = ConditionEval.evaluate(condition, variables)
+    end
+
+    test "two blocks with ALL logic — both must pass", %{variables: variables} do
+      block1 = %{
+        "id" => "b1",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [make_rule("mc.jaime", "health", "greater_than", "50")]
+      }
+
+      block2 = %{
+        "id" => "b2",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [make_rule("mc.jaime", "alive", "is_true")]
+      }
+
+      condition = %{"logic" => "all", "blocks" => [block1, block2]}
+      assert {true, results} = ConditionEval.evaluate(condition, variables)
+      assert length(results) == 2
+    end
+
+    test "two blocks with ANY logic — one passes", %{variables: variables} do
+      block1 = %{
+        "id" => "b1",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [make_rule("mc.jaime", "health", "less_than", "50")]
+      }
+
+      block2 = %{
+        "id" => "b2",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [make_rule("mc.jaime", "alive", "is_true")]
+      }
+
+      condition = %{"logic" => "any", "blocks" => [block1, block2]}
+      assert {true, results} = ConditionEval.evaluate(condition, variables)
+      assert length(results) == 2
+    end
+
+    test "group with inner blocks AND", %{variables: variables} do
+      inner1 = %{
+        "id" => "b1",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [make_rule("mc.jaime", "health", "greater_than", "50")]
+      }
+
+      inner2 = %{
+        "id" => "b2",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [make_rule("mc.jaime", "alive", "is_true")]
+      }
+
+      group = %{"id" => "g1", "type" => "group", "logic" => "all", "blocks" => [inner1, inner2]}
+      condition = %{"logic" => "all", "blocks" => [group]}
+      assert {true, results} = ConditionEval.evaluate(condition, variables)
+      assert length(results) == 2
+    end
+
+    test "group with inner blocks OR — one fails, group passes", %{variables: variables} do
+      inner1 = %{
+        "id" => "b1",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [make_rule("mc.jaime", "health", "less_than", "50")]
+      }
+
+      inner2 = %{
+        "id" => "b2",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [make_rule("mc.jaime", "alive", "is_true")]
+      }
+
+      group = %{"id" => "g1", "type" => "group", "logic" => "any", "blocks" => [inner1, inner2]}
+      condition = %{"logic" => "all", "blocks" => [group]}
+      assert {true, results} = ConditionEval.evaluate(condition, variables)
+      assert length(results) == 2
+    end
+
+    test "top-level ANY with block + group", %{variables: variables} do
+      # Block fails
+      block = %{
+        "id" => "b1",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [make_rule("mc.jaime", "health", "less_than", "10")]
+      }
+
+      # Group passes (inner block passes)
+      inner = %{
+        "id" => "b2",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [make_rule("mc.jaime", "alive", "is_true")]
+      }
+
+      group = %{"id" => "g1", "type" => "group", "logic" => "all", "blocks" => [inner]}
+      condition = %{"logic" => "any", "blocks" => [block, group]}
+      assert {true, results} = ConditionEval.evaluate(condition, variables)
+      assert length(results) == 2
+    end
+
+    test "empty blocks passes" do
+      condition = %{"logic" => "all", "blocks" => []}
+      assert {true, []} = ConditionEval.evaluate(condition, %{})
+    end
+
+    test "empty group passes", %{variables: variables} do
+      group = %{"id" => "g1", "type" => "group", "logic" => "all", "blocks" => []}
+      condition = %{"logic" => "all", "blocks" => [group]}
+      assert {true, []} = ConditionEval.evaluate(condition, variables)
+    end
+
+    test "block with incomplete rules are skipped", %{variables: variables} do
+      block = %{
+        "id" => "b1",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [%{"id" => "r1", "sheet" => "", "variable" => nil, "operator" => "equals"}]
+      }
+
+      condition = %{"logic" => "all", "blocks" => [block]}
+      assert {true, []} = ConditionEval.evaluate(condition, variables)
+    end
+
+    test "evaluate_string with block-format JSON", %{variables: variables} do
+      block = %{
+        "id" => "b1",
+        "type" => "block",
+        "logic" => "all",
+        "rules" => [
+          %{
+            "id" => "r1",
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "greater_than",
+            "value" => "50"
+          }
+        ]
+      }
+
+      json = Jason.encode!(%{"logic" => "all", "blocks" => [block]})
+      assert {true, [%{passed: true}]} = ConditionEval.evaluate_string(json, variables)
+    end
+  end
+
+  # =============================================================================
   # Rule result structure
   # =============================================================================
 

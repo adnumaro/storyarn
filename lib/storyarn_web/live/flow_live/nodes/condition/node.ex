@@ -108,9 +108,17 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
 
   defp maybe_add_labels(condition, true) do
     condition = condition || Condition.new()
-    rules = condition["rules"] || []
-    updated_rules = Enum.map(rules, fn rule -> Map.put_new(rule, "label", "") end)
-    Map.put(condition, "rules", updated_rules)
+
+    # Block format: add labels to blocks, not individual rules
+    if condition["blocks"] do
+      blocks = condition["blocks"] || []
+      updated_blocks = Enum.map(blocks, fn block -> Map.put_new(block, "label", "") end)
+      Map.put(condition, "blocks", updated_blocks)
+    else
+      rules = condition["rules"] || []
+      updated_rules = Enum.map(rules, fn rule -> Map.put_new(rule, "label", "") end)
+      Map.put(condition, "rules", updated_rules)
+    end
   end
 
   defp maybe_add_labels(condition, false), do: condition

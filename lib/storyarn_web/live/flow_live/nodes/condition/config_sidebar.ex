@@ -29,6 +29,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.ConfigSidebar do
     condition_data =
       case raw_condition do
         nil -> Condition.new()
+        %{"logic" => _, "blocks" => _} = cond_data -> cond_data
         %{"logic" => _, "rules" => _} = cond_data -> cond_data
         _ -> Condition.new()
       end
@@ -79,10 +80,10 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.ConfigSidebar do
           can_edit={@can_edit}
           switch_mode={@switch_mode}
         />
-        <p :if={@condition_data["rules"] == [] && !@switch_mode} class="text-xs text-base-content/50">
+        <p :if={!Condition.has_rules?(@condition_data) && !@switch_mode} class="text-xs text-base-content/50">
           {dgettext("flows", "Add rules to define when to route to True/False.")}
         </p>
-        <p :if={@condition_data["rules"] == [] && @switch_mode} class="text-xs text-base-content/50">
+        <p :if={!Condition.has_rules?(@condition_data) && @switch_mode} class="text-xs text-base-content/50">
           {dgettext("flows", "Add conditions. Each one creates a separate output.")}
         </p>
       </div>
@@ -92,12 +93,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.ConfigSidebar do
         <p class="font-medium mb-1">{dgettext("flows", "Outputs:")}</p>
         <%= if @switch_mode do %>
           <ul class="list-disc list-inside text-base-content/70 space-y-1">
-            <li :for={rule <- @condition_data["rules"]}>
-              {rule["label"] || dgettext("flows", "(no label)")}
+            <li :for={item <- switch_cases(@condition_data)}>
+              {item["label"] || dgettext("flows", "(no label)")}
             </li>
             <li class="text-base-content/50 italic">{dgettext("flows", "Default (no match)")}</li>
           </ul>
-          <p :if={@condition_data["rules"] == []} class="text-base-content/50 italic">
+          <p :if={switch_cases(@condition_data) == []} class="text-base-content/50 italic">
             {dgettext("flows", "Default (no match)")}
           </p>
         <% else %>
@@ -110,6 +111,10 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.ConfigSidebar do
     </div>
     """
   end
+
+  defp switch_cases(%{"blocks" => blocks}) when is_list(blocks), do: blocks
+  defp switch_cases(%{"rules" => rules}) when is_list(rules), do: rules
+  defp switch_cases(_), do: []
 
   def wrap_in_form?, do: false
 end

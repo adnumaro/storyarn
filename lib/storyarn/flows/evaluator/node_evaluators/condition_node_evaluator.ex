@@ -62,6 +62,14 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
   # ---------------------------------------------------------------------------
 
   defp evaluate_switch(node_id, label, condition, state, connections) do
+    if condition["blocks"] do
+      evaluate_switch_blocks(node_id, label, condition, state, connections)
+    else
+      evaluate_switch_rules(node_id, label, condition, state, connections)
+    end
+  end
+
+  defp evaluate_switch_rules(node_id, label, condition, state, connections) do
     rules = condition["rules"] || []
 
     {matched_pin, state} =
@@ -72,6 +80,53 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
     state = log_switch_default_if_unmatched(state, matched_pin, node_id, label)
     pin = matched_pin || "default"
     follow_switch_pin(state, node_id, label, pin, connections)
+  end
+
+  defp evaluate_switch_blocks(node_id, label, condition, state, connections) do
+    blocks = condition["blocks"] || []
+
+    {matched_pin, state} =
+      Enum.reduce_while(blocks, {nil, state}, fn block, {_pin, acc_state} ->
+        evaluate_switch_block(block, acc_state, node_id, label)
+      end)
+
+    state = log_switch_default_if_unmatched(state, matched_pin, node_id, label)
+    pin = matched_pin || "default"
+    follow_switch_pin(state, node_id, label, pin, connections)
+  end
+
+  defp evaluate_switch_block(%{"type" => "block"} = block, acc_state, node_id, label) do
+    block_condition = %{"logic" => block["logic"] || "all", "rules" => block["rules"] || []}
+    {result, _rule_results} = ConditionEval.evaluate(block_condition, acc_state.variables)
+    block_label = block["label"] || block["id"] || "unnamed"
+
+    if result do
+      acc_state =
+        EngineHelpers.add_console(
+          acc_state,
+          :info,
+          node_id,
+          label,
+          "Switch → case \"#{block_label}\" matched"
+        )
+
+      {:halt, {block["id"], acc_state}}
+    else
+      acc_state =
+        EngineHelpers.add_console(
+          acc_state,
+          :info,
+          node_id,
+          label,
+          "Switch → case \"#{block_label}\" did not match"
+        )
+
+      {:cont, {nil, acc_state}}
+    end
+  end
+
+  defp evaluate_switch_block(_, acc_state, _node_id, _label) do
+    {:cont, {nil, acc_state}}
   end
 
   defp evaluate_switch_rule(rule, acc_state, node_id, label) do

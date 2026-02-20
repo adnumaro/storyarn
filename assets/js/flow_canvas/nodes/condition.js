@@ -90,9 +90,37 @@ function getRuleErrorMessage(rule) {
   return `Incomplete: missing ${missing.join(", ")}`;
 }
 
+function countRulesInBlocks(blocks) {
+  let count = 0;
+  for (const b of blocks) {
+    if (b.type === "block") {
+      count += (b.rules || []).length;
+    } else if (b.type === "group") {
+      count += countRulesInBlocks(b.blocks || []);
+    }
+  }
+  return count;
+}
+
 function getConditionSummary(nodeData) {
   const condition = nodeData.condition;
   const switchMode = nodeData.switch_mode;
+
+  // Block format
+  if (condition?.blocks) {
+    const blocks = condition.blocks;
+    if (blocks.length === 0) {
+      return switchMode ? "No conditions" : "No condition";
+    }
+    if (switchMode) {
+      return `${blocks.length} output${blocks.length > 1 ? "s" : ""} + default`;
+    }
+    const ruleCount = countRulesInBlocks(blocks);
+    const logic = condition.logic === "all" ? "AND" : "OR";
+    return `${ruleCount} rule${ruleCount !== 1 ? "s" : ""} in ${blocks.length} block${blocks.length !== 1 ? "s" : ""} (${logic})`;
+  }
+
+  // Flat format
   if (!condition || !condition.rules || condition.rules.length === 0) {
     return switchMode ? "No conditions" : "No condition";
   }
@@ -130,11 +158,18 @@ export default {
   },
 
   /**
-   * Creates dynamic outputs based on switch mode / rules.
+   * Creates dynamic outputs based on switch mode / rules or blocks.
    */
   createOutputs(data) {
-    if (data.switch_mode && data.condition?.rules?.length > 0) {
-      return [...data.condition.rules.map((r) => r.id), "default"];
+    if (data.switch_mode) {
+      // Block format
+      if (data.condition?.blocks?.length > 0) {
+        return [...data.condition.blocks.map((b) => b.id), "default"];
+      }
+      // Flat format
+      if (data.condition?.rules?.length > 0) {
+        return [...data.condition.rules.map((r) => r.id), "default"];
+      }
     }
     return null;
   },
@@ -149,20 +184,42 @@ export default {
   },
 
   formatOutputLabel(key, data) {
-    if (data.switch_mode && data.condition?.rules?.length > 0) {
+    if (data.switch_mode) {
       if (key === "default") return "Default";
-      const rule = data.condition.rules.find((r) => r.id === key);
-      return rule?.label || formatRuleShort(rule) || key;
+      // Block format
+      if (data.condition?.blocks?.length > 0) {
+        const block = data.condition.blocks.find((b) => b.id === key);
+        if (block) return block.label || `Block ${key}`;
+        return key;
+      }
+      // Flat format
+      if (data.condition?.rules?.length > 0) {
+        const rule = data.condition.rules.find((r) => r.id === key);
+        return rule?.label || formatRuleShort(rule) || key;
+      }
     }
     return key === "true" ? "True" : key === "false" ? "False" : key;
   },
 
   getOutputBadges(key, data) {
     const badges = [];
-    if (data.switch_mode && data.condition?.rules?.length > 0 && key !== "default") {
-      const rule = data.condition.rules.find((r) => r.id === key);
-      if (rule && !isRuleComplete(rule)) {
-        badges.push({ type: "error", title: getRuleErrorMessage(rule) });
+    if (data.switch_mode && key !== "default") {
+      // Block format
+      if (data.condition?.blocks?.length > 0) {
+        const block = data.condition.blocks.find((b) => b.id === key);
+        if (block) {
+          const rules = block.rules || [];
+          const hasIncomplete = rules.some((r) => !isRuleComplete(r));
+          if (rules.length === 0 || hasIncomplete) {
+            badges.push({ type: "error", title: "Block has incomplete rules" });
+          }
+        }
+      } else if (data.condition?.rules?.length > 0) {
+        // Flat format
+        const rule = data.condition.rules.find((r) => r.id === key);
+        if (rule && !isRuleComplete(rule)) {
+          badges.push({ type: "error", title: getRuleErrorMessage(rule) });
+        }
       }
     }
     return badges;
@@ -172,6 +229,17 @@ export default {
     const oldSwitchMode = oldData?.switch_mode || false;
     const newSwitchMode = newData.switch_mode || false;
     if (oldSwitchMode !== newSwitchMode) return true;
+
+    // Block format comparison
+    const oldBlocks = oldData?.condition?.blocks;
+    const newBlocks = newData.condition?.blocks;
+    if (oldBlocks || newBlocks) {
+      const ob = oldBlocks || [];
+      const nb = newBlocks || [];
+      return ob.length !== nb.length || ob.some((b, i) => b.id !== nb[i]?.id);
+    }
+
+    // Flat format comparison
     const oldRules = oldData?.condition?.rules || [];
     const newRules = newData.condition?.rules || [];
     return (

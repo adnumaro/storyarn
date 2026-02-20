@@ -30,6 +30,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
     parsed_condition =
       case assigns.condition do
         nil -> Condition.new()
+        %{"logic" => _, "blocks" => _} = cond -> cond
         %{"logic" => _, "rules" => _} = cond -> cond
         :legacy -> Condition.new()
         _string -> Condition.new()
@@ -83,8 +84,14 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
       all: dgettext("flows", "all"),
       any: dgettext("flows", "any"),
       of_the_rules: dgettext("flows", "of the rules"),
+      of_the_blocks: dgettext("flows", "of the blocks"),
       switch_mode_info: dgettext("flows", "Each condition creates an output. First match wins."),
       add_condition: dgettext("flows", "Add condition"),
+      add_block: dgettext("flows", "Add block"),
+      group: dgettext("flows", "Group"),
+      group_selected: dgettext("flows", "Group selected"),
+      cancel: dgettext("flows", "Cancel"),
+      ungroup: dgettext("flows", "Ungroup"),
       no_conditions: dgettext("flows", "No conditions set"),
       placeholder_sheet: dgettext("flows", "sheet"),
       placeholder_variable: dgettext("flows", "variable"),

@@ -44,6 +44,21 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
   def evaluate(nil, _variables), do: {true, []}
   def evaluate(%{"rules" => []}, _variables), do: {true, []}
   def evaluate(%{"rules" => nil}, _variables), do: {true, []}
+  def evaluate(%{"blocks" => []}, _variables), do: {true, []}
+  def evaluate(%{"blocks" => nil}, _variables), do: {true, []}
+
+  def evaluate(%{"logic" => logic, "blocks" => blocks}, variables)
+      when is_list(blocks) do
+    block_evals = Enum.map(blocks, &evaluate_block(&1, variables))
+    all_rule_results = Enum.flat_map(block_evals, fn {_passed, rr} -> rr end)
+
+    if all_rule_results == [] do
+      {true, []}
+    else
+      passed_list = Enum.map(block_evals, fn {p, _} -> p end)
+      {apply_logic(logic, passed_list), all_rule_results}
+    end
+  end
 
   def evaluate(%{"logic" => logic, "rules" => rules}, variables)
       when is_list(rules) do
@@ -56,14 +71,8 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
     if rule_results == [] do
       {true, []}
     else
-      result =
-        case logic do
-          "all" -> Enum.all?(rule_results, & &1.passed)
-          "any" -> Enum.any?(rule_results, & &1.passed)
-          _ -> Enum.all?(rule_results, & &1.passed)
-        end
-
-      {result, rule_results}
+      passed_list = Enum.map(rule_results, & &1.passed)
+      {apply_logic(logic, passed_list), rule_results}
     end
   end
 
@@ -127,6 +136,43 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
         }
     end
   end
+
+  # -- Block evaluation --
+  # Returns {passed, rule_results} to avoid double evaluation.
+
+  defp evaluate_block(%{"type" => "block", "logic" => logic, "rules" => rules}, variables)
+       when is_list(rules) do
+    rule_results =
+      rules
+      |> Enum.filter(&complete_rule?/1)
+      |> Enum.map(&evaluate_rule(&1, variables))
+
+    passed =
+      if rule_results == [] do
+        true
+      else
+        apply_logic(logic, Enum.map(rule_results, & &1.passed))
+      end
+
+    {passed, rule_results}
+  end
+
+  defp evaluate_block(%{"type" => "group", "logic" => logic, "blocks" => blocks}, variables)
+       when is_list(blocks) do
+    block_evals = Enum.map(blocks, &evaluate_block(&1, variables))
+    all_rule_results = Enum.flat_map(block_evals, fn {_passed, rr} -> rr end)
+
+    passed =
+      if block_evals == [] do
+        true
+      else
+        apply_logic(logic, Enum.map(block_evals, fn {p, _} -> p end))
+      end
+
+    {passed, all_rule_results}
+  end
+
+  defp evaluate_block(_, _variables), do: {true, []}
 
   # -- Operator evaluation --
 
@@ -269,6 +315,9 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
   defp evaluate_operator(_operator, _actual, _expected, _block_type), do: false
 
   # -- Helpers --
+
+  defp apply_logic("any", booleans), do: Enum.any?(booleans)
+  defp apply_logic(_, booleans), do: Enum.all?(booleans)
 
   defp complete_rule?(%{"sheet" => sheet, "variable" => variable, "operator" => operator}) do
     is_binary(sheet) and sheet != "" and

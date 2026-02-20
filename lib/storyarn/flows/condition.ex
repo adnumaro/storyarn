@@ -3,21 +3,41 @@ defmodule Storyarn.Flows.Condition do
   Condition structure and validation for dialogue responses.
 
   A condition is stored as JSON in the response's `condition` field.
-  The structure supports compound conditions with AND/OR logic:
+  The structure supports compound conditions with AND/OR logic.
+
+  ## Flat Format (legacy, still supported)
 
   ```json
   {
-    "logic": "all",      // "all" (AND) or "any" (OR)
+    "logic": "all",
     "rules": [
       {
-        "sheet": "mc.jaime",         // sheet shortcut
-        "variable": "class",         // variable_name of the block
-        "operator": "equals",        // comparison operator
-        "value": "mage"              // value to compare against
+        "sheet": "mc.jaime",
+        "variable": "class",
+        "operator": "equals",
+        "value": "mage"
       }
     ]
   }
   ```
+
+  ## Block Format (nested conditions with grouping)
+
+  ```json
+  {
+    "logic": "any",
+    "blocks": [
+      {"id": "block_1", "type": "block", "logic": "all", "rules": [...]},
+      {"id": "group_1", "type": "group", "logic": "all", "blocks": [
+        {"id": "block_2", "type": "block", "logic": "all", "rules": [...]},
+        {"id": "block_3", "type": "block", "logic": "all", "rules": [...]}
+      ]}
+    ]
+  }
+  ```
+
+  Detection: presence of `"blocks"` key = block format. Max nesting: 1 level
+  (groups cannot contain groups).
 
   ## Operators by Block Type
 
@@ -32,6 +52,7 @@ defmodule Storyarn.Flows.Condition do
 
   Plain string conditions (legacy) are preserved as-is.
   JSON parsing failures result in `nil` condition (fail gracefully).
+  Flat format is never auto-migrated in DB — upgrade happens on first edit in JS.
   """
 
   @logic_types ["all", "any"]
@@ -116,6 +137,13 @@ defmodule Storyarn.Flows.Condition do
 
   def parse(condition_string) when is_binary(condition_string) do
     case Jason.decode(condition_string) do
+      {:ok, %{"logic" => logic, "blocks" => blocks}}
+      when logic in @logic_types and is_list(blocks) ->
+        %{
+          "logic" => logic,
+          "blocks" => Enum.map(blocks, &normalize_block/1) |> Enum.reject(&is_nil/1)
+        }
+
       {:ok, %{"logic" => logic, "rules" => rules}}
       when logic in @logic_types and is_list(rules) ->
         %{
@@ -142,6 +170,13 @@ defmodule Storyarn.Flows.Condition do
   def to_json(nil), do: nil
   def to_json(%{"rules" => []}), do: nil
   def to_json(%{"rules" => nil}), do: nil
+  def to_json(%{"blocks" => []}), do: nil
+  def to_json(%{"blocks" => nil}), do: nil
+
+  def to_json(%{"logic" => logic, "blocks" => blocks}) when is_list(blocks) do
+    normalized_blocks = Enum.map(blocks, &normalize_block/1) |> Enum.reject(&is_nil/1)
+    Jason.encode!(%{"logic" => logic, "blocks" => normalized_blocks})
+  end
 
   def to_json(%{"logic" => logic, "rules" => rules}) when is_list(rules) do
     # Keep all rules, including incomplete ones (user is editing)
@@ -222,12 +257,27 @@ defmodule Storyarn.Flows.Condition do
   end
 
   @known_keys ~w(id sheet variable operator value label)
+  @known_block_keys ~w(id type logic rules label)
+  @known_group_keys ~w(id type logic blocks)
 
   @doc """
   Sanitizes a condition map received from the JS hook.
   Keeps only known keys, normalizes rules, and validates logic.
+  Supports both flat (rules) and block-based (blocks) formats.
   """
   @spec sanitize(map()) :: map()
+  def sanitize(%{"logic" => logic, "blocks" => blocks}) when is_list(blocks) do
+    sanitized_logic = if logic in @logic_types, do: logic, else: "all"
+
+    sanitized_blocks =
+      blocks
+      |> Enum.filter(&is_map/1)
+      |> Enum.map(&sanitize_block/1)
+      |> Enum.reject(&is_nil/1)
+
+    %{"logic" => sanitized_logic, "blocks" => sanitized_blocks}
+  end
+
   def sanitize(%{"logic" => logic, "rules" => rules}) when is_list(rules) do
     sanitized_logic = if logic in @logic_types, do: logic, else: "all"
 
@@ -251,6 +301,15 @@ defmodule Storyarn.Flows.Condition do
   Returns {:ok, condition} or {:error, reason}.
   """
   @spec validate(map()) :: {:ok, map()} | {:error, String.t()}
+  def validate(%{"logic" => logic, "blocks" => blocks})
+      when logic in @logic_types and is_list(blocks) do
+    if Enum.all?(blocks, &valid_block_structure?/1) do
+      {:ok, %{"logic" => logic, "blocks" => blocks}}
+    else
+      {:error, "Invalid block structure"}
+    end
+  end
+
   def validate(%{"logic" => logic, "rules" => rules})
       when logic in @logic_types and is_list(rules) do
     if Enum.all?(rules, &valid_rule_structure?/1) do
@@ -267,8 +326,57 @@ defmodule Storyarn.Flows.Condition do
   """
   @spec has_rules?(map() | nil) :: boolean()
   def has_rules?(nil), do: false
+
+  def has_rules?(%{"blocks" => blocks}) when is_list(blocks),
+    do: Enum.any?(blocks, &block_has_rules?/1)
+
   def has_rules?(%{"rules" => rules}) when is_list(rules), do: Enum.any?(rules, &valid_rule?/1)
   def has_rules?(_), do: false
+
+  @doc """
+  Upgrades a flat-format condition to block format.
+  Wraps the existing rules into a single block.
+  Passes through block-format conditions unchanged.
+  """
+  @spec upgrade(map() | nil) :: map()
+  def upgrade(nil), do: new_block_condition()
+
+  def upgrade(%{"blocks" => _} = condition), do: condition
+
+  def upgrade(%{"logic" => logic, "rules" => rules}) when is_list(rules) do
+    block = %{
+      "id" => generate_block_id(),
+      "type" => "block",
+      "logic" => logic,
+      "rules" => rules
+    }
+
+    %{"logic" => "all", "blocks" => [block]}
+  end
+
+  def upgrade(_), do: new_block_condition()
+
+  @doc """
+  Creates an empty block-format condition.
+  """
+  @spec new_block_condition(String.t()) :: map()
+  def new_block_condition(logic \\ "all") when logic in @logic_types do
+    %{"logic" => logic, "blocks" => []}
+  end
+
+  @doc """
+  Extracts all rules from either format into a flat list.
+  Recursively traverses blocks and groups to collect every leaf rule.
+  """
+  @spec extract_all_rules(map() | nil) :: [map()]
+  def extract_all_rules(nil), do: []
+
+  def extract_all_rules(%{"blocks" => blocks}) when is_list(blocks) do
+    Enum.flat_map(blocks, &extract_block_rules/1)
+  end
+
+  def extract_all_rules(%{"rules" => rules}) when is_list(rules), do: rules
+  def extract_all_rules(_), do: []
 
   # =============================================================================
   # Private Helpers
@@ -322,4 +430,96 @@ defmodule Storyarn.Flows.Condition do
   defp generate_rule_id do
     "rule_#{:erlang.unique_integer([:positive])}"
   end
+
+  defp generate_block_id do
+    "block_#{:erlang.unique_integer([:positive])}"
+  end
+
+  # -- Block processing (shared by normalize and sanitize) --
+
+  defp process_block(%{"type" => "block", "rules" => rules} = block, mode) when is_list(rules) do
+    processed_rules =
+      rules
+      |> Enum.filter(&is_map/1)
+      |> then(fn rs ->
+        if mode == :sanitize,
+          do: Enum.map(rs, &Map.take(&1, @known_keys)),
+          else: rs
+      end)
+      |> Enum.map(&normalize_rule/1)
+      |> Enum.reject(&is_nil/1)
+
+    base = %{
+      "id" => block["id"] || generate_block_id(),
+      "type" => "block",
+      "logic" => if(block["logic"] in @logic_types, do: block["logic"], else: "all"),
+      "rules" => processed_rules
+    }
+
+    if Map.has_key?(block, "label"), do: Map.put(base, "label", block["label"]), else: base
+  end
+
+  defp process_block(%{"type" => "group", "blocks" => inner_blocks} = group, mode)
+       when is_list(inner_blocks) do
+    normalized_inner =
+      inner_blocks
+      |> Enum.filter(fn b -> is_map(b) and b["type"] == "block" end)
+      |> Enum.map(&process_block(&1, mode))
+      |> Enum.reject(&is_nil/1)
+
+    %{
+      "id" => group["id"] || generate_block_id(),
+      "type" => "group",
+      "logic" => if(group["logic"] in @logic_types, do: group["logic"], else: "all"),
+      "blocks" => normalized_inner
+    }
+  end
+
+  defp process_block(_, _mode), do: nil
+
+  defp normalize_block(block), do: process_block(block, :normalize)
+
+  defp sanitize_block(%{"type" => "block"} = block) do
+    process_block(Map.take(block, @known_block_keys), :sanitize)
+  end
+
+  defp sanitize_block(%{"type" => "group"} = group) do
+    process_block(Map.take(group, @known_group_keys), :sanitize)
+  end
+
+  defp sanitize_block(_), do: nil
+
+  # -- Block rule checking --
+
+  defp block_has_rules?(%{"type" => "block", "rules" => rules}) when is_list(rules) do
+    Enum.any?(rules, &valid_rule?/1)
+  end
+
+  defp block_has_rules?(%{"type" => "group", "blocks" => blocks}) when is_list(blocks) do
+    Enum.any?(blocks, &block_has_rules?/1)
+  end
+
+  defp block_has_rules?(_), do: false
+
+  # -- Block rule extraction --
+
+  defp extract_block_rules(%{"type" => "block", "rules" => rules}) when is_list(rules), do: rules
+
+  defp extract_block_rules(%{"type" => "group", "blocks" => blocks}) when is_list(blocks) do
+    Enum.flat_map(blocks, &extract_block_rules/1)
+  end
+
+  defp extract_block_rules(_), do: []
+
+  # -- Block structure validation --
+
+  defp valid_block_structure?(%{"type" => "block", "rules" => rules}) when is_list(rules) do
+    Enum.all?(rules, &valid_rule_structure?/1)
+  end
+
+  defp valid_block_structure?(%{"type" => "group", "blocks" => blocks}) when is_list(blocks) do
+    Enum.all?(blocks, fn b -> is_map(b) and b["type"] == "block" and valid_block_structure?(b) end)
+  end
+
+  defp valid_block_structure?(_), do: false
 end

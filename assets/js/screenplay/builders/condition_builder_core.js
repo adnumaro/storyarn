@@ -4,10 +4,17 @@
  * Used by both the ConditionBuilder LiveView hook (flow editor) and the
  * Conditional TipTap NodeView (screenplay editor). Accepts a pushEvent
  * callback instead of relying on a LiveView hook directly.
+ *
+ * Supports both flat format ({logic, rules}) and block format ({logic, blocks}).
+ * On init/update, flat conditions are auto-upgraded to block format via
+ * ensureBlockFormat(). The flat format is never sent back to the server from
+ * this builder — only block format is emitted.
  */
 
-import { createElement, Plus } from "lucide";
-import { createConditionRuleRow } from "../../condition_builder/condition_rule_row";
+import { createElement, Plus, Group } from "lucide";
+import { createConditionBlock } from "../../condition_builder/condition_block";
+import { createConditionGroup } from "../../condition_builder/condition_group";
+import { createLogicToggle, generateId } from "../../condition_builder/condition_utils";
 import { OPERATOR_LABELS as DEFAULT_OPERATOR_LABELS } from "../../condition_builder/condition_sentence_templates";
 import { groupVariablesBySheet } from "./utils.js";
 
@@ -17,8 +24,14 @@ const DEFAULT_TRANSLATIONS = {
   all: "all",
   any: "any",
   of_the_rules: "of the rules",
+  of_the_blocks: "of the blocks",
   switch_mode_info: "Each condition creates an output. First match wins.",
   add_condition: "Add condition",
+  add_block: "Add block",
+  group: "Group",
+  group_selected: "Group selected",
+  cancel: "Cancel",
+  ungroup: "Ungroup",
   no_conditions: "No conditions set",
   placeholder_sheet: "sheet",
   placeholder_variable: "variable",
@@ -28,15 +41,39 @@ const DEFAULT_TRANSLATIONS = {
 };
 
 /**
+ * Auto-upgrades a flat {logic, rules} condition to block format
+ * {logic: "all", blocks: [{type: "block", logic, rules}]}.
+ * Passes through block-format conditions unchanged.
+ */
+function ensureBlockFormat(condition) {
+  if (!condition) return { logic: "all", blocks: [] };
+  if (condition.blocks) return condition;
+  // Flat format: wrap rules into a single block
+  const rules = condition.rules || [];
+  if (rules.length === 0) return { logic: "all", blocks: [] };
+  return {
+    logic: "all",
+    blocks: [
+      {
+        id: generateId("block"),
+        type: "block",
+        logic: condition.logic || "all",
+        rules: [...rules],
+      },
+    ],
+  };
+}
+
+/**
  * Create a condition builder UI inside the given container.
  *
  * @param {Object} opts
  * @param {HTMLElement} opts.container - DOM element to render into
- * @param {Object} opts.condition - Initial condition ({logic, rules})
+ * @param {Object} opts.condition - Initial condition ({logic, rules} or {logic, blocks})
  * @param {Array} opts.variables - Flat variable list
  * @param {boolean} opts.canEdit - Whether editing is allowed
- * @param {boolean} [opts.switchMode=false] - Switch mode (each rule = an output)
- * @param {Object} opts.context - Context map for event payload (element-id, choice-id, etc.)
+ * @param {boolean} [opts.switchMode=false] - Switch mode (each block = an output)
+ * @param {Object} opts.context - Context map for event payload
  * @param {string} opts.eventName - Event name to push
  * @param {Function} opts.pushEvent - Callback: pushEvent(eventName, payload)
  * @param {Object} [opts.translations] - Optional translation overrides
@@ -53,10 +90,11 @@ export function createConditionBuilder({
   pushEvent,
   translations,
 }) {
-  let currentCondition = condition || { logic: "all", rules: [] };
+  let currentCondition = ensureBlockFormat(condition);
   const sheetsWithVariables = groupVariablesBySheet(variables || []);
-  let rows = [];
-  let addButton = null;
+  let childInstances = [];
+  let selectionMode = false;
+  let selectedBlockIds = new Set();
 
   const t = {
     ...DEFAULT_TRANSLATIONS,
@@ -74,104 +112,90 @@ export function createConditionBuilder({
     });
   }
 
-  function destroyRows() {
-    rows.forEach((row) => row.destroy?.());
-    rows = [];
+  function destroyChildren() {
+    childInstances.forEach((inst) => inst.destroy?.());
+    childInstances = [];
   }
 
   function render() {
-    destroyRows();
+    destroyChildren();
     container.innerHTML = "";
 
-    const rules = currentCondition.rules || [];
+    const blocks = currentCondition.blocks || [];
 
-    // Logic toggle (only show when 2+ rules AND not in switch mode)
-    if (rules.length >= 2 && !switchMode) {
-      container.appendChild(renderLogicToggle());
+    // Top-level AND/OR toggle (2+ blocks, not switch mode)
+    if (blocks.length >= 2 && !switchMode) {
+      const toggle = createLogicToggle({
+        logic: currentCondition.logic,
+        canEdit,
+        ofLabel: t.of_the_blocks,
+        translations: t,
+        onChange: (newLogic) => {
+          currentCondition.logic = newLogic;
+          push();
+          render();
+        },
+      });
+      toggle.classList.add("mb-2");
+      container.appendChild(toggle);
     }
 
     // Switch mode info
-    if (switchMode && rules.length > 0) {
+    if (switchMode && blocks.length > 0) {
       const info = document.createElement("p");
       info.className = "text-xs text-base-content/60 mb-2";
       info.textContent = t.switch_mode_info;
       container.appendChild(info);
     }
 
-    // Rule rows
-    const rowsContainer = document.createElement("div");
-    rowsContainer.className = "space-y-0";
-    container.appendChild(rowsContainer);
+    // Blocks and groups container
+    const blocksContainer = document.createElement("div");
+    blocksContainer.className = "space-y-2";
+    container.appendChild(blocksContainer);
 
-    rules.forEach((rule, index) => {
-      const rowEl = document.createElement("div");
-      rowsContainer.appendChild(rowEl);
+    blocks.forEach((item, index) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "relative";
 
-      const row = createConditionRuleRow({
-        container: rowEl,
-        rule,
-        variables: variables || [],
-        sheetsWithVariables,
-        canEdit,
-        switchMode,
-        translations: t,
-        onChange: (updatedRule) => {
-          currentCondition.rules[index] = updatedRule;
-          push();
-        },
-        onRemove: () => {
-          currentCondition.rules.splice(index, 1);
-          push();
-          render();
-        },
-        onAdvance: () => {
-          const nextRow = rows[index + 1];
-          if (nextRow) {
-            nextRow.focusFirstEmpty();
-          } else if (addButton) {
-            addButton.focus();
+      // Selection checkbox (for grouping mode)
+      if (selectionMode && item.type === "block") {
+        const checkWrap = document.createElement("label");
+        checkWrap.className = "flex items-start gap-2";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "checkbox checkbox-xs checkbox-primary mt-2";
+        checkbox.checked = selectedBlockIds.has(item.id);
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) {
+            selectedBlockIds.add(item.id);
+          } else {
+            selectedBlockIds.delete(item.id);
           }
-        },
-      });
+          updateSelectionUI();
+        });
+        checkWrap.appendChild(checkbox);
 
-      rows.push(row);
+        const contentEl = document.createElement("div");
+        contentEl.className = "flex-1";
+        checkWrap.appendChild(contentEl);
+        wrapper.appendChild(checkWrap);
+
+        renderBlockOrGroup(contentEl, item, index);
+      } else {
+        renderBlockOrGroup(wrapper, item, index);
+      }
+
+      blocksContainer.appendChild(wrapper);
     });
 
-    // Add rule button
+    // Action bar
     if (canEdit) {
-      const addBtn = document.createElement("button");
-      addBtn.type = "button";
-      addBtn.className =
-        "btn btn-ghost btn-xs gap-1 border border-dashed border-base-300 mt-2";
-      addBtn.appendChild(createElement(Plus, { width: 12, height: 12 }));
-      addBtn.append(` ${t.add_condition}`);
-      addBtn.addEventListener("click", () => {
-        const newRule = {
-          id: `rule_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-          sheet: null,
-          variable: null,
-          operator: "equals",
-          value: null,
-        };
-        if (switchMode) {
-          newRule.label = "";
-        }
-        currentCondition.rules.push(newRule);
-        push();
-        render();
-
-        requestAnimationFrame(() => {
-          const lastRow = rows[rows.length - 1];
-          if (lastRow) lastRow.focusFirstEmpty();
-        });
-      });
-
-      addButton = addBtn;
-      container.appendChild(addBtn);
+      container.appendChild(renderActionBar());
     }
 
     // Empty state
-    if (rules.length === 0 && !canEdit) {
+    if (blocks.length === 0 && !canEdit) {
       const empty = document.createElement("p");
       empty.className = "text-xs text-base-content/50 italic";
       empty.textContent = t.no_conditions;
@@ -179,50 +203,172 @@ export function createConditionBuilder({
     }
   }
 
-  function renderLogicToggle() {
-    const wrapper = document.createElement("div");
-    wrapper.className = "flex items-center gap-2 text-xs mb-2";
+  function renderBlockOrGroup(containerEl, item, index) {
+    if (item.type === "group") {
+      const groupInstance = createConditionGroup({
+        container: containerEl,
+        group: item,
+        variables: variables || [],
+        sheetsWithVariables,
+        canEdit,
+        translations: t,
+        onChange: (updatedGroup) => {
+          currentCondition.blocks[index] = updatedGroup;
+          push();
+        },
+        onUngroup: () => {
+          // Dissolve group into standalone blocks
+          const innerBlocks = item.blocks || [];
+          currentCondition.blocks.splice(index, 1, ...innerBlocks);
+          push();
+          render();
+        },
+      });
+      childInstances.push(groupInstance);
+    } else {
+      const blockInstance = createConditionBlock({
+        container: containerEl,
+        block: item,
+        variables: variables || [],
+        sheetsWithVariables,
+        canEdit,
+        switchMode,
+        translations: t,
+        onChange: (updatedBlock) => {
+          currentCondition.blocks[index] = updatedBlock;
+          push();
+        },
+        onRemove: () => {
+          currentCondition.blocks.splice(index, 1);
+          push();
+          render();
+        },
+      });
+      childInstances.push(blockInstance);
+    }
+  }
 
-    const matchLabel = document.createElement("span");
-    matchLabel.className = "text-base-content/60";
-    matchLabel.textContent = t.match;
-    wrapper.appendChild(matchLabel);
+  function renderActionBar() {
+    const bar = document.createElement("div");
+    bar.className = "flex items-center gap-2 mt-2";
+    bar.setAttribute("data-role", "action-bar");
 
-    const joinDiv = document.createElement("div");
-    joinDiv.className = "join";
+    if (selectionMode) {
+      // "Group selected (N)" button
+      const groupBtn = document.createElement("button");
+      groupBtn.type = "button";
+      groupBtn.className = "btn btn-primary btn-xs gap-1";
+      groupBtn.disabled = selectedBlockIds.size < 2;
+      groupBtn.appendChild(createElement(Group, { width: 12, height: 12 }));
+      groupBtn.append(
+        ` ${t.group_selected} (${selectedBlockIds.size})`,
+      );
+      groupBtn.addEventListener("click", () => groupSelectedBlocks());
+      bar.appendChild(groupBtn);
 
-    const allBtn = document.createElement("button");
-    allBtn.type = "button";
-    allBtn.className = `join-item btn btn-xs ${currentCondition.logic === "all" ? "btn-active" : ""}`;
-    allBtn.textContent = t.all;
-    allBtn.disabled = !canEdit;
-    allBtn.addEventListener("click", () => {
-      currentCondition.logic = "all";
-      push();
-      render();
+      // Cancel button
+      const cancelBtn = document.createElement("button");
+      cancelBtn.type = "button";
+      cancelBtn.className = "btn btn-ghost btn-xs";
+      cancelBtn.textContent = t.cancel;
+      cancelBtn.addEventListener("click", () => {
+        selectionMode = false;
+        selectedBlockIds.clear();
+        render();
+      });
+      bar.appendChild(cancelBtn);
+    } else {
+      // Add block button
+      const addBtn = document.createElement("button");
+      addBtn.type = "button";
+      addBtn.className =
+        "btn btn-ghost btn-xs gap-1 border border-dashed border-base-300";
+      addBtn.appendChild(createElement(Plus, { width: 12, height: 12 }));
+      addBtn.append(` ${t.add_block}`);
+      addBtn.addEventListener("click", () => {
+        const newBlock = {
+          id: generateId("block"),
+          type: "block",
+          logic: "all",
+          rules: [],
+        };
+        if (switchMode) {
+          newBlock.label = "";
+        }
+        currentCondition.blocks.push(newBlock);
+        push();
+        render();
+      });
+      bar.appendChild(addBtn);
+
+      // Group button (only for 2+ standalone blocks, not in switch mode)
+      const standAloneBlocks = (currentCondition.blocks || []).filter(
+        (b) => b.type === "block",
+      );
+      if (!switchMode && standAloneBlocks.length >= 2) {
+        const groupBtn = document.createElement("button");
+        groupBtn.type = "button";
+        groupBtn.className = "btn btn-ghost btn-xs gap-1";
+        groupBtn.appendChild(createElement(Group, { width: 12, height: 12 }));
+        groupBtn.append(` ${t.group}`);
+        groupBtn.addEventListener("click", () => {
+          selectionMode = true;
+          selectedBlockIds.clear();
+          render();
+        });
+        bar.appendChild(groupBtn);
+      }
+    }
+
+    return bar;
+  }
+
+  function updateSelectionUI() {
+    // Re-render action bar to update count
+    const existingBar = container.querySelector("[data-role='action-bar']");
+    if (existingBar) {
+      existingBar.remove();
+    }
+    if (canEdit) {
+      container.appendChild(renderActionBar());
+    }
+  }
+
+  function groupSelectedBlocks() {
+    if (selectedBlockIds.size < 2) return;
+
+    const selectedBlocks = [];
+    const remainingBlocks = [];
+
+    // Preserve order: collect selected blocks and find insertion point
+    let insertIndex = -1;
+    currentCondition.blocks.forEach((block, index) => {
+      if (block.type === "block" && selectedBlockIds.has(block.id)) {
+        selectedBlocks.push(block);
+        if (insertIndex === -1) insertIndex = index;
+      } else {
+        remainingBlocks.push(block);
+      }
     });
 
-    const anyBtn = document.createElement("button");
-    anyBtn.type = "button";
-    anyBtn.className = `join-item btn btn-xs ${currentCondition.logic === "any" ? "btn-active" : ""}`;
-    anyBtn.textContent = t.any;
-    anyBtn.disabled = !canEdit;
-    anyBtn.addEventListener("click", () => {
-      currentCondition.logic = "any";
-      push();
-      render();
-    });
+    if (selectedBlocks.length < 2) return;
 
-    joinDiv.appendChild(allBtn);
-    joinDiv.appendChild(anyBtn);
-    wrapper.appendChild(joinDiv);
+    // Create group
+    const group = {
+      id: generateId("group"),
+      type: "group",
+      logic: "all",
+      blocks: selectedBlocks,
+    };
 
-    const ofLabel = document.createElement("span");
-    ofLabel.className = "text-base-content/60";
-    ofLabel.textContent = t.of_the_rules;
-    wrapper.appendChild(ofLabel);
+    // Insert group at the position of the first selected block
+    remainingBlocks.splice(insertIndex, 0, group);
+    currentCondition.blocks = remainingBlocks;
 
-    return wrapper;
+    selectionMode = false;
+    selectedBlockIds.clear();
+    push();
+    render();
   }
 
   // Initial render
@@ -230,11 +376,11 @@ export function createConditionBuilder({
 
   return {
     destroy() {
-      destroyRows();
+      destroyChildren();
       container.innerHTML = "";
     },
     update(newCondition) {
-      currentCondition = newCondition || { logic: "all", rules: [] };
+      currentCondition = ensureBlockFormat(newCondition);
       render();
     },
   };

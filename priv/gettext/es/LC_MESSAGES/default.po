@@ -16,18 +16,18 @@ msgstr ""
 msgid "Actions"
 msgstr "Acciones"
 
-#: lib/storyarn_web/components/layouts.ex:499
-#: lib/storyarn_web/components/layouts.ex:511
+#: lib/storyarn_web/components/layouts.ex:482
+#: lib/storyarn_web/components/layouts.ex:494
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr "Intentando reconectar"
 
-#: lib/storyarn_web/components/layouts.ex:506
+#: lib/storyarn_web/components/layouts.ex:489
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr "¡Algo salió mal!"
 
-#: lib/storyarn_web/components/layouts.ex:494
+#: lib/storyarn_web/components/layouts.ex:477
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr "No podemos encontrar la conexión a internet"
