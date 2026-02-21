@@ -1,8 +1,8 @@
 # Phase 5 — Expression System UI Integration
 
 > **Status:** Pending
-> **Depends on:** [Phase 4 — Variable Generation](./04_VARIABLE_GENERATION.md)
-> **Next:** [Phase 7 — Variable Reference Tracker](./07_REFERENCE_TRACKER.md)
+> **Depends on:** [Phase 4 — Variable Generation](04_VARIABLE_GENERATION.md)
+> **Next:** [Phase 7 — Variable Reference Tracker](07_REFERENCE_TRACKER.md)
 
 > **Problem:** Table variables exist in the backend but the expression editor, condition builders, and instruction builders don't know about them. Users can't reference table variables in flow logic.
 >
@@ -413,4 +413,4 @@ Verify existing translations still render correctly with table variable names.
 
 ---
 
-[← Phase 4 — Variable Generation](./04_VARIABLE_GENERATION.md) | [Phase 7 — Variable Reference Tracker →](./07_REFERENCE_TRACKER.md)
+[← Phase 4 — Variable Generation](04_VARIABLE_GENERATION.md) | [Phase 7 — Variable Reference Tracker →](07_REFERENCE_TRACKER.md)

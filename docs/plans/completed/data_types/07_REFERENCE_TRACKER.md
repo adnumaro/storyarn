@@ -1,7 +1,7 @@
 # Phase 7 — Variable Reference Tracker Adaptation
 
 > **Status:** Pending
-> **Depends on:** [Phase 4 — Variable Generation](./04_VARIABLE_GENERATION.md)
+> **Depends on:** [Phase 4 — Variable Generation](04_VARIABLE_GENERATION.md)
 > **Next:** None (terminal phase)
 
 > **Problem:** The Variable Reference Tracker can't resolve table variable paths. When a node references `mc.jaime.attributes.strength.value`, the tracker can't find the corresponding block + column + row.
@@ -202,4 +202,4 @@ Replace the old `variable` field with the new composite path.
 
 ---
 
-[← Phase 5 — Expression System UI](./05_EXPRESSION_UI.md)
+[← Phase 5 — Expression System UI](05_EXPRESSION_UI.md)

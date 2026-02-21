@@ -205,7 +205,13 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       />
     </.form>
     <%!-- Color swatch — popover picker --%>
-    <div phx-hook="ToolbarPopover" id={"popover-hub-color-#{@node.id}"} data-width="160px" data-placement="bottom" data-offset="6">
+    <div
+      phx-hook="ToolbarPopover"
+      id={"popover-hub-color-#{@node.id}"}
+      data-width="160px"
+      data-placement="bottom"
+      data-offset="6"
+    >
       <button
         data-role="trigger"
         type="button"
@@ -318,7 +324,12 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       />
     </.form>
     <%!-- Exit Mode — popover with icon + label + description --%>
-    <div phx-hook="ToolbarPopover" id={"popover-exit-mode-#{@node.id}"} data-width="14rem" data-offset="6">
+    <div
+      phx-hook="ToolbarPopover"
+      id={"popover-exit-mode-#{@node.id}"}
+      data-width="14rem"
+      data-offset="6"
+    >
       <button
         data-role="trigger"
         type="button"
@@ -351,7 +362,13 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       </template>
     </div>
     <%!-- Color swatch — popover picker --%>
-    <div phx-hook="ToolbarPopover" id={"popover-exit-color-#{@node.id}"} data-width="160px" data-placement="bottom" data-offset="6">
+    <div
+      phx-hook="ToolbarPopover"
+      id={"popover-exit-color-#{@node.id}"}
+      data-width="160px"
+      data-placement="bottom"
+      data-offset="6"
+    >
       <button
         data-role="trigger"
         type="button"

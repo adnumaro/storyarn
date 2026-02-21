@@ -176,34 +176,56 @@ defmodule Storyarn.Sheets.SheetQueries do
   end
 
   defp list_table_variables(project_id) do
-    variable_column_types = ~w(number text boolean select multi_select date)
+    variable_column_types = ~w(number text boolean select multi_select date reference)
 
-    from(tc in TableColumn,
-      join: b in Block, on: tc.block_id == b.id,
-      join: s in Sheet, on: b.sheet_id == s.id,
-      join: tr in TableRow, on: tr.block_id == b.id,
-      where: s.project_id == ^project_id,
-      where: is_nil(s.deleted_at) and is_nil(b.deleted_at),
-      where: b.type == "table",
-      where: tc.is_constant == false,
-      where: tc.type in ^variable_column_types,
-      select: %{
-        sheet_id: s.id,
-        sheet_name: s.name,
-        sheet_shortcut: coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)),
-        block_id: b.id,
-        variable_name: fragment("? || '.' || ? || '.' || ?", b.variable_name, tr.slug, tc.slug),
-        block_type: tc.type,
-        config: tc.config,
-        table_name: b.variable_name,
-        row_name: tr.slug,
-        column_name: tc.slug
-      },
-      order_by: [asc: s.name, asc: b.position, asc: tr.position, asc: tc.position]
-    )
-    |> Repo.all()
+    raw_vars =
+      from(tc in TableColumn,
+        join: b in Block,
+        on: tc.block_id == b.id,
+        join: s in Sheet,
+        on: b.sheet_id == s.id,
+        join: tr in TableRow,
+        on: tr.block_id == b.id,
+        where: s.project_id == ^project_id,
+        where: is_nil(s.deleted_at) and is_nil(b.deleted_at),
+        where: b.type == "table",
+        where: tc.is_constant == false,
+        where: tc.type in ^variable_column_types,
+        select: %{
+          sheet_id: s.id,
+          sheet_name: s.name,
+          sheet_shortcut: coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)),
+          block_id: b.id,
+          variable_name: fragment("? || '.' || ? || '.' || ?", b.variable_name, tr.slug, tc.slug),
+          block_type: tc.type,
+          config: tc.config,
+          table_name: b.variable_name,
+          row_name: tr.slug,
+          column_name: tc.slug
+        },
+        order_by: [asc: s.name, asc: b.position, asc: tr.position, asc: tc.position]
+      )
+      |> Repo.all()
+
+    # If any reference columns exist, load project sheets for option population
+    has_references = Enum.any?(raw_vars, &(&1.block_type == "reference"))
+
+    sheet_options =
+      if has_references, do: list_sheet_options(project_id), else: []
+
+    raw_vars
+    |> Enum.map(&remap_reference_type(&1, sheet_options))
     |> Enum.map(&extract_variable_options/1)
   end
+
+  # Remaps reference columns to select/multi_select and injects sheet options
+  defp remap_reference_type(%{block_type: "reference", config: config} = var, sheet_options) do
+    effective_type = if config["multiple"], do: "multi_select", else: "select"
+    updated_config = Map.put(config || %{}, "options", sheet_options)
+    %{var | block_type: effective_type, config: updated_config}
+  end
+
+  defp remap_reference_type(var, _sheet_options), do: var
 
   defp extract_variable_options(var) do
     options = extract_options_from_config(var.block_type, var.config)
@@ -218,6 +240,25 @@ defmodule Storyarn.Sheets.SheetQueries do
   end
 
   defp extract_options_from_config(_type, _config), do: nil
+
+  @doc """
+  Returns project sheets as options for reference columns.
+  Each option has `"key"` (shortcut) and `"value"` (name).
+  """
+  @spec list_reference_options(integer()) :: [map()]
+  def list_reference_options(project_id), do: list_sheet_options(project_id)
+
+  defp list_sheet_options(project_id) do
+    from(s in Sheet,
+      where: s.project_id == ^project_id,
+      where: is_nil(s.deleted_at),
+      where: not is_nil(s.shortcut) and s.shortcut != "",
+      order_by: [asc: s.name],
+      select: %{name: s.name, shortcut: s.shortcut}
+    )
+    |> Repo.all()
+    |> Enum.map(fn s -> %{"key" => s.shortcut, "value" => s.name} end)
+  end
 
   # =============================================================================
   # Reference Validation

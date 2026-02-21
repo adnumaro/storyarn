@@ -226,6 +226,7 @@ defmodule Storyarn.Sheets.TableInheritanceTest do
       child: child
     } do
       parent_block = create_inheritable_table(parent)
+
       {:ok, extra_col} =
         Sheets.create_table_column(parent_block, %{name: "Temp", type: "text"})
 

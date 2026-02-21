@@ -113,6 +113,13 @@ defmodule Storyarn.Sheets do
   @spec list_project_variables(id()) :: [map()]
   defdelegate list_project_variables(project_id), to: SheetQueries
 
+  @doc """
+  Returns project sheets as options for reference columns.
+  Each option has `"key"` (shortcut) and `"value"` (name).
+  """
+  @spec list_reference_options(id()) :: [map()]
+  defdelegate list_reference_options(project_id), to: SheetQueries
+
   # =============================================================================
   # Sheets - CRUD Operations
   # =============================================================================

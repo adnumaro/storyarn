@@ -45,6 +45,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
               editing_block_id={@editing_block_id}
               target={@myself}
               table_data={@table_data}
+              reference_options={@reference_options}
             />
           </div>
         </div>
@@ -61,6 +62,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         target={@myself}
         component_id={@id}
         table_data={@table_data}
+        reference_options={@reference_options}
       />
 
       <%!-- Add block button / slash command --%>
@@ -124,6 +126,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
     # Batch-load table data for all table blocks (own + inherited)
     table_data = load_table_data(own_blocks, inherited_groups)
+    reference_options = load_reference_options(table_data, project_id)
 
     socket =
       socket
@@ -131,6 +134,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       |> assign(:own_blocks, own_blocks)
       |> assign(:layout_items, layout_items)
       |> assign(:table_data, table_data)
+      |> assign(:reference_options, reference_options)
 
     {:ok, socket}
   end
@@ -359,6 +363,12 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   def handle_event("reorder_table_rows", params, socket) do
     with_authorization(socket, fn socket ->
       TableHandlers.handle_reorder_rows(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("toggle_reference_multiple", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_toggle_reference_multiple(params, socket, table_helpers())
     end)
   end
 
@@ -598,12 +608,14 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
     # Batch-load table data for all table blocks (own + inherited)
     table_data = load_table_data(own_blocks, inherited_groups)
+    reference_options = load_reference_options(table_data, project_id)
 
     socket
     |> assign(:inherited_groups, inherited_groups)
     |> assign(:own_blocks, own_blocks)
     |> assign(:layout_items, layout_items)
     |> assign(:table_data, table_data)
+    |> assign(:reference_options, reference_options)
   end
 
   defp maybe_create_version(socket) do
@@ -640,6 +652,23 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     all_table_ids = own_table_ids ++ inherited_table_ids
 
     if all_table_ids != [], do: Sheets.batch_load_table_data(all_table_ids), else: %{}
+  end
+
+  defp load_reference_options(table_data, project_id) do
+    has_reference_columns =
+      Enum.any?(table_data, fn
+        {_block_id, %{columns: columns}} ->
+          Enum.any?(columns, &(&1.type == "reference"))
+
+        _ ->
+          false
+      end)
+
+    if has_reference_columns do
+      Sheets.list_reference_options(project_id)
+    else
+      []
+    end
   end
 
   # Builds the helpers map required by BlockCrudHandlers.

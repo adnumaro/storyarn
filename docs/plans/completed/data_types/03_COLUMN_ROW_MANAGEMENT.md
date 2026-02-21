@@ -1,6 +1,6 @@
 # Phase 3 — Column & Row Management
 
-> **Status:** Pending **Depends on:** [Phase 2 — Table Block UI](./02_TABLE_BLOCK_UI.md) **Next:** [Phase 6 — Inheritance](./06_INHERITANCE.md)
+> **Status:** Pending **Depends on:** [Phase 2 — Table Block UI](02_TABLE_BLOCK_UI.md) **Next:** [Phase 6 — Inheritance](06_INHERITANCE.md)
 
 > **Problem:** Users can see tables but cannot modify their structure — no adding columns, rows, or changing types.
 > 
@@ -546,4 +546,4 @@ Add column/row management strings.
 
 ---
 
-[← Phase 2 — Table Block UI](./02_TABLE_BLOCK_UI.md) | [Phase 6 — Inheritance →](./06_INHERITANCE.md)
+[← Phase 2 — Table Block UI](02_TABLE_BLOCK_UI.md) | [Phase 6 — Inheritance →](06_INHERITANCE.md)

@@ -25,6 +25,7 @@ export const CONDITION_OPERATORS_BY_TYPE = {
   select: ["equals", "not_equals", "is_nil"],
   multi_select: ["contains", "not_contains", "is_empty"],
   date: ["equals", "not_equals", "before", "after"],
+  reference: ["equals", "not_equals", "is_nil"],
 };
 
 /**

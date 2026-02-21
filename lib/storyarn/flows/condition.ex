@@ -92,6 +92,7 @@ defmodule Storyarn.Flows.Condition do
   def operators_for_type("select"), do: @select_operators
   def operators_for_type("multi_select"), do: @multi_select_operators
   def operators_for_type("date"), do: @date_operators
+  def operators_for_type("reference"), do: @select_operators
   def operators_for_type(_), do: @text_operators
 
   @doc """

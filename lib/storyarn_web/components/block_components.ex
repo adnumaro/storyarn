@@ -42,6 +42,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
   attr :editing_block_id, :any, default: nil
   attr :target, :any, default: nil
   attr :table_data, :map, default: %{}
+  attr :reference_options, :list, default: []
 
   def block_component(assigns) do
     is_editing = assigns.editing_block_id == assigns.block.id
@@ -139,6 +140,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
               schema_locked={@is_inherited && !@block.detached}
               columns={@table_data[@block.id][:columns] || []}
               rows={@table_data[@block.id][:rows] || []}
+              reference_options={@reference_options}
               target={@target}
             />
           <% _ -> %>

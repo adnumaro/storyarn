@@ -108,6 +108,7 @@ export const OPERATORS_BY_TYPE = {
   select: ["set"],
   multi_select: ["set"],
   date: ["set"],
+  reference: ["set"],
 };
 
 /**

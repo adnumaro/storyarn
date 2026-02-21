@@ -43,6 +43,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
   attr :target, :any, required: true
   attr :component_id, :string, required: true
   attr :table_data, :map, default: %{}
+  attr :reference_options, :list, default: []
 
   def blocks_container(assigns) do
     ~H"""
@@ -69,6 +70,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
                 editing_block_id={@editing_block_id}
                 target={@target}
                 table_data={@table_data}
+                reference_options={@reference_options}
               />
             </div>
           <% :column_group -> %>
@@ -93,6 +95,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
                   editing_block_id={@editing_block_id}
                   target={@target}
                   table_data={@table_data}
+                  reference_options={@reference_options}
                 />
               </div>
             </div>

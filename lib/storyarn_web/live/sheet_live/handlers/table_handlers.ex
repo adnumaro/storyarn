@@ -260,6 +260,48 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   end
 
   # ===========================================================================
+  # Reference settings
+  # ===========================================================================
+
+  @doc "Toggles the multiple flag on a reference column."
+  def handle_toggle_reference_multiple(params, socket, helpers) do
+    column_id = ContentTabHelpers.to_integer(params["column-id"])
+    column = Sheets.get_table_column!(column_id)
+
+    with :ok <- verify_column_ownership(socket, column) do
+      do_toggle_reference_multiple(column, socket, helpers)
+    end
+  end
+
+  defp do_toggle_reference_multiple(column, socket, helpers) do
+    new_multiple = !(column.config["multiple"] || false)
+    new_config = Map.put(column.config || %{}, "multiple", new_multiple)
+
+    case Sheets.update_table_column(column, %{config: new_config}) do
+      {:ok, _} ->
+        if !new_multiple, do: reset_reference_multi_cells(column)
+        save_and_reload(socket, helpers)
+
+      {:error, _} ->
+        {:noreply, err(socket, :column_update)}
+    end
+  end
+
+  defp reset_reference_multi_cells(column) do
+    rows = Sheets.list_table_rows(column.block_id)
+
+    Enum.each(rows, fn row ->
+      case row.cells[column.slug] do
+        value when is_list(value) ->
+          Sheets.update_table_cell(row, column.slug, nil)
+
+        _ ->
+          :ok
+      end
+    end)
+  end
+
+  # ===========================================================================
   # Select/Multi-Select cell events (hook-driven)
   # ===========================================================================
 

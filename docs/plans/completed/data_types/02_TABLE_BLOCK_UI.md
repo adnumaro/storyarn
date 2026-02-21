@@ -1,8 +1,8 @@
 # Phase 2 — Table Block UI: Rendering + Cell Editing
 
 > **Status:** Pending
-> **Depends on:** [Phase 1 — Domain Model](./01_DOMAIN_MODEL.md)
-> **Next:** [Phase 3 — Column & Row Management](./03_COLUMN_ROW_MANAGEMENT.md)
+> **Depends on:** [Phase 1 — Domain Model](01_DOMAIN_MODEL.md)
+> **Next:** [Phase 3 — Column & Row Management](03_COLUMN_ROW_MANAGEMENT.md)
 
 > **Problem:** Table blocks exist in the database but are invisible in the sheet editor.
 >
@@ -508,4 +508,4 @@ Run `mix gettext.extract --merge`.
 
 ---
 
-[← Phase 1 — Domain Model](./01_DOMAIN_MODEL.md) | [Phase 3 — Column & Row Management →](./03_COLUMN_ROW_MANAGEMENT.md)
+[← Phase 1 — Domain Model](01_DOMAIN_MODEL.md) | [Phase 3 — Column & Row Management →](03_COLUMN_ROW_MANAGEMENT.md)

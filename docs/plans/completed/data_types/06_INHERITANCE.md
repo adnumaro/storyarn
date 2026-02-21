@@ -1,8 +1,8 @@
 # Phase 6 — Table Block Inheritance
 
 > **Status:** Pending
-> **Depends on:** [Phase 1 — Domain Model](./01_DOMAIN_MODEL.md) + [Phase 3 — Column & Row Management](./03_COLUMN_ROW_MANAGEMENT.md)
-> **Next:** [Phase 4 — Variable Generation](./04_VARIABLE_GENERATION.md)
+> **Depends on:** [Phase 1 — Domain Model](01_DOMAIN_MODEL.md) + [Phase 3 — Column & Row Management](03_COLUMN_ROW_MANAGEMENT.md)
+> **Next:** [Phase 4 — Variable Generation](04_VARIABLE_GENERATION.md)
 
 > **Problem:** Tables can't be shared via the sheet inheritance system. A "Character Template" parent can't define an "attributes" table inherited by all character sheets.
 >
@@ -245,4 +245,4 @@ When `inherited_from_block_id != nil && !detached`:
 
 ---
 
-[← Phase 3 — Column & Row Management](./03_COLUMN_ROW_MANAGEMENT.md) | [Phase 4 — Variable Generation →](./04_VARIABLE_GENERATION.md)
+[← Phase 3 — Column & Row Management](03_COLUMN_ROW_MANAGEMENT.md) | [Phase 4 — Variable Generation →](04_VARIABLE_GENERATION.md)

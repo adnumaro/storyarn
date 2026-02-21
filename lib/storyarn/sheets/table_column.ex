@@ -13,7 +13,7 @@ defmodule Storyarn.Sheets.TableColumn do
 
   alias Storyarn.Sheets.Block
 
-  @column_types ~w(number text boolean select multi_select date)
+  @column_types ~w(number text boolean select multi_select date reference)
 
   schema "table_columns" do
     field :name, :string

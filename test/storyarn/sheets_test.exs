@@ -1379,6 +1379,7 @@ defmodule Storyarn.SheetsTest do
       user = user_fixture()
       project = project_fixture(user)
       sheet = sheet_fixture(project, %{name: "Jaime", shortcut: "mc.jaime"})
+
       # table_block_fixture auto-creates 1 default column ("Value", number) + 1 default row ("Row 1")
       table = table_block_fixture(sheet, %{label: "Attributes"})
       _col1 = table_column_fixture(table, %{name: "Strength", type: "number"})

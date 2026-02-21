@@ -1,8 +1,8 @@
 # Phase 4 — Variable Generation + Evaluator
 
 > **Status:** Pending
-> **Depends on:** [Phase 1 — Domain Model](./01_DOMAIN_MODEL.md) (can run in parallel with Phases 2-3-6 after Phase 1)
-> **Next:** [Phase 5 — Expression System UI](./05_EXPRESSION_UI.md)
+> **Depends on:** [Phase 1 — Domain Model](01_DOMAIN_MODEL.md) (can run in parallel with Phases 2-3-6 after Phase 1)
+> **Next:** [Phase 5 — Expression System UI](05_EXPRESSION_UI.md)
 
 > **Problem:** Table data exists but is invisible to the expression system. Flows cannot read or write table cell values.
 >
@@ -214,4 +214,4 @@ Verify that the evaluator can evaluate conditions and execute instructions on ta
 
 ---
 
-[← Phase 6 — Inheritance](./06_INHERITANCE.md) | [Phase 5 — Expression System UI →](./05_EXPRESSION_UI.md)
+[← Phase 6 — Inheritance](06_INHERITANCE.md) | [Phase 5 — Expression System UI →](05_EXPRESSION_UI.md)

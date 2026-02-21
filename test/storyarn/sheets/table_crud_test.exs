@@ -338,6 +338,151 @@ defmodule Storyarn.Sheets.TableCrudTest do
   end
 
   # ===========================================================================
+  # Reference Column
+  # ===========================================================================
+
+  describe "reference column" do
+    setup :setup_table
+
+    test "creates a reference column (single mode)", %{block: block} do
+      {:ok, column} =
+        Sheets.create_table_column(block, %{
+          name: "Speaker",
+          type: "reference",
+          config: %{"multiple" => false}
+        })
+
+      assert column.type == "reference"
+      assert column.slug == "speaker"
+      assert column.config["multiple"] == false
+    end
+
+    test "creates a reference column (multi mode)", %{block: block} do
+      {:ok, column} =
+        Sheets.create_table_column(block, %{
+          name: "Related",
+          type: "reference",
+          config: %{"multiple" => true}
+        })
+
+      assert column.type == "reference"
+      assert column.config["multiple"] == true
+    end
+
+    test "stores shortcut as cell value (single)", %{block: block} do
+      {:ok, _col} =
+        Sheets.create_table_column(block, %{
+          name: "Speaker",
+          type: "reference",
+          config: %{"multiple" => false}
+        })
+
+      [row] = Sheets.list_table_rows(block.id)
+      {:ok, updated} = Sheets.update_table_cell(row, "speaker", "mc.jaime")
+      assert updated.cells["speaker"] == "mc.jaime"
+    end
+
+    test "stores array as cell value (multi)", %{block: block} do
+      {:ok, _col} =
+        Sheets.create_table_column(block, %{
+          name: "Related",
+          type: "reference",
+          config: %{"multiple" => true}
+        })
+
+      [row] = Sheets.list_table_rows(block.id)
+      {:ok, updated} = Sheets.update_table_cell(row, "related", ["mc.jaime", "mc.grace"])
+      assert updated.cells["related"] == ["mc.jaime", "mc.grace"]
+    end
+
+    test "toggle multiple resets multi-value cells to nil", %{block: block} do
+      {:ok, col} =
+        Sheets.create_table_column(block, %{
+          name: "Related",
+          type: "reference",
+          config: %{"multiple" => true}
+        })
+
+      [row] = Sheets.list_table_rows(block.id)
+      {:ok, _} = Sheets.update_table_cell(row, "related", ["mc.jaime", "mc.grace"])
+
+      # Toggle from multi→single
+      new_config = Map.put(col.config, "multiple", false)
+      {:ok, _} = Sheets.update_table_column(col, %{config: new_config})
+
+      # Simulate what the handler does — reset multi-value cells
+      rows = Sheets.list_table_rows(block.id)
+
+      Enum.each(rows, fn r ->
+        case r.cells["related"] do
+          value when is_list(value) ->
+            {:ok, _} = Sheets.update_table_cell(r, "related", nil)
+
+          _ ->
+            :ok
+        end
+      end)
+
+      [updated_row] = Sheets.list_table_rows(block.id)
+      assert updated_row.cells["related"] == nil
+    end
+  end
+
+  describe "reference variable generation" do
+    setup :setup_table
+
+    test "single reference generates select variable with sheet options", %{
+      block: block,
+      project: project,
+      sheet: sheet
+    } do
+      # Set shortcut on the sheet so it appears in options
+      {:ok, _} = Sheets.update_sheet(sheet, %{shortcut: "mc.hero"})
+
+      {:ok, _col} =
+        Sheets.create_table_column(block, %{
+          name: "Speaker",
+          type: "reference",
+          config: %{"multiple" => false}
+        })
+
+      vars = Sheets.list_project_variables(project.id)
+      ref_vars = Enum.filter(vars, fn v -> v.column_name == "speaker" end)
+
+      assert ref_vars != []
+      ref_var = hd(ref_vars)
+      # Should be remapped to "select"
+      assert ref_var.block_type == "select"
+      # Options should contain the sheet
+      assert is_list(ref_var.options)
+      assert Enum.any?(ref_var.options, fn opt -> opt["key"] == "mc.hero" end)
+    end
+
+    test "multi reference generates multi_select variable", %{
+      block: block,
+      project: project,
+      sheet: sheet
+    } do
+      {:ok, _} = Sheets.update_sheet(sheet, %{shortcut: "mc.hero"})
+
+      {:ok, _col} =
+        Sheets.create_table_column(block, %{
+          name: "Allies",
+          type: "reference",
+          config: %{"multiple" => true}
+        })
+
+      vars = Sheets.list_project_variables(project.id)
+      ref_vars = Enum.filter(vars, fn v -> v.column_name == "allies" end)
+
+      assert ref_vars != []
+      ref_var = hd(ref_vars)
+      # Should be remapped to "multi_select"
+      assert ref_var.block_type == "multi_select"
+    end
+  end
+
+  # ===========================================================================
   # Integration
   # ===========================================================================
 

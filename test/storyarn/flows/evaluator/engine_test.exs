@@ -1772,8 +1772,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
 
     test "mixed regular and table variables" do
       vars = %{
-        "mc.jaime.health" =>
-          var(100, "number", sheet: "mc.jaime", name: "health"),
+        "mc.jaime.health" => var(100, "number", sheet: "mc.jaime", name: "health"),
         "mc.jaime.attributes.strength.value" =>
           var(18, "number", sheet: "mc.jaime", name: "attributes.strength.value")
       }

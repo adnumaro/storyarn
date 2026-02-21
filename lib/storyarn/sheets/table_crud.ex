@@ -406,7 +406,13 @@ defmodule Storyarn.Sheets.TableCrud do
   end
 
   # Syncs a column update (rename + type change) to non-detached inherited instances.
-  defp sync_column_to_children(parent_block_id, %TableColumn{} = column, :update, old_slug, type_changed?) do
+  defp sync_column_to_children(
+         parent_block_id,
+         %TableColumn{} = column,
+         :update,
+         old_slug,
+         type_changed?
+       ) do
     with_inheriting_instances(parent_block_id, fn instance_ids ->
       slug_changed? = column.slug != old_slug
 

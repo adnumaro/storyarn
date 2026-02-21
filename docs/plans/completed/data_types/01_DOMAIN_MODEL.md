@@ -2,7 +2,7 @@
 
 > **Status:** Pending
 > **Depends on:** None (foundation phase)
-> **Next:** [Phase 2 — Table Block UI](./02_TABLE_BLOCK_UI.md)
+> **Next:** [Phase 2 — Table Block UI](02_TABLE_BLOCK_UI.md)
 
 > **Problem:** No structured data type exists in the system. Designers must create individual flat blocks for every attribute.
 >
@@ -404,4 +404,4 @@ def table_row_fixture(block, attrs \\ %{})
 
 ---
 
-[Phase 2 — Table Block UI →](./02_TABLE_BLOCK_UI.md)
+[Phase 2 — Table Block UI →](02_TABLE_BLOCK_UI.md)
