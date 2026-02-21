@@ -33,7 +33,8 @@ export function createLintSource(mode, variables) {
     if (!text.trim()) return [];
 
     const diagnostics = [];
-    const result = mode === "assignments" ? parseAssignments(text) : parseCondition(text);
+    const result =
+      mode === "assignments" ? parseAssignments(text, variables) : parseCondition(text, variables);
 
     // Syntax errors from parser
     for (const err of result.errors) {

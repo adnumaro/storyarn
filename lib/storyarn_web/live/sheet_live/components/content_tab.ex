@@ -384,7 +384,6 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     {:noreply, socket}
   end
 
-
   def handle_event("add_table_column_option_keydown", %{"key" => "Enter"} = params, socket) do
     with_authorization(socket, fn socket ->
       TableHandlers.handle_add_column_option(params, socket, table_helpers())

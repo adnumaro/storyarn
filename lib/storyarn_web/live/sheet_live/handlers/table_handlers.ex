@@ -70,16 +70,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     row = Sheets.get_table_row!(row_id)
 
     with :ok <- verify_row_ownership(socket, row) do
-      col = find_column_by_slug(socket, row.block_id, column_slug)
-
-      if col && col.required && value_empty?(value) do
-        {:noreply, err(socket, :required_field)}
-      else
-        case Sheets.update_table_cell(row, column_slug, value) do
-          {:ok, _} -> save_and_reload(socket, helpers)
-          {:error, _} -> {:noreply, err(socket, :cell_update)}
-        end
-      end
+      update_cell_with_validation(row, column_slug, value, socket, helpers)
     end
   end
 
@@ -281,16 +272,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
     with :ok <- verify_row_ownership(socket, row) do
       value = if key == "", do: nil, else: key
-      col = find_column_by_slug(socket, row.block_id, column_slug)
-
-      if col && col.required && value_empty?(value) do
-        {:noreply, err(socket, :required_field)}
-      else
-        case Sheets.update_table_cell(row, column_slug, value) do
-          {:ok, _} -> save_and_reload(socket, helpers)
-          {:error, _} -> {:noreply, err(socket, :cell_update)}
-        end
-      end
+      update_cell_with_validation(row, column_slug, value, socket, helpers)
     end
   end
 
@@ -310,16 +292,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
           do: List.delete(current, key),
           else: current ++ [key]
 
-      col = find_column_by_slug(socket, row.block_id, column_slug)
-
-      if col && col.required && value_empty?(new_value) do
-        {:noreply, err(socket, :required_field)}
-      else
-        case Sheets.update_table_cell(row, column_slug, new_value) do
-          {:ok, _} -> save_and_reload(socket, helpers)
-          {:error, _} -> {:noreply, err(socket, :cell_update)}
-        end
-      end
+      update_cell_with_validation(row, column_slug, new_value, socket, helpers)
     end
   end
 
@@ -336,33 +309,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
       column = Sheets.get_table_column!(column_id)
 
       with :ok <- verify_column_ownership(socket, column) do
-        existing_options = (column.config || %{})["options"] || []
-        key = slugify(label)
-        new_option = %{"key" => key, "value" => label}
-        new_config = Map.put(column.config || %{}, "options", existing_options ++ [new_option])
-
-        case Sheets.update_table_column(column, %{config: new_config}) do
-          {:ok, _} ->
-            # Also select/toggle the new option in the cell
-            row = Sheets.get_table_row!(row_id)
-
-            new_cell_value =
-              if column.type == "multi_select" do
-                current = row.cells[column_slug] || []
-                current = if is_list(current), do: current, else: []
-                current ++ [key]
-              else
-                key
-              end
-
-            case Sheets.update_table_cell(row, column_slug, new_cell_value) do
-              {:ok, _} -> save_and_reload(socket, helpers)
-              {:error, _} -> save_and_reload(socket, helpers)
-            end
-
-          {:error, _} ->
-            {:noreply, err(socket, :column_update)}
-        end
+        do_add_cell_option(column, row_id, column_slug, label, socket, helpers)
       end
     end
   end
@@ -555,6 +502,51 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
       {:error, :last_row} -> {:noreply, err(socket, :row_last)}
       {:error, _} -> {:noreply, err(socket, :row_delete)}
     end
+  end
+
+  defp update_cell_with_validation(row, column_slug, value, socket, helpers) do
+    col = find_column_by_slug(socket, row.block_id, column_slug)
+
+    if col && col.required && value_empty?(value) do
+      {:noreply, err(socket, :required_field)}
+    else
+      case Sheets.update_table_cell(row, column_slug, value) do
+        {:ok, _} -> save_and_reload(socket, helpers)
+        {:error, _} -> {:noreply, err(socket, :cell_update)}
+      end
+    end
+  end
+
+  defp do_add_cell_option(column, row_id, column_slug, label, socket, helpers) do
+    key = slugify(label)
+    existing_options = (column.config || %{})["options"] || []
+    new_option = %{"key" => key, "value" => label}
+    new_config = Map.put(column.config || %{}, "options", existing_options ++ [new_option])
+
+    case Sheets.update_table_column(column, %{config: new_config}) do
+      {:ok, _} ->
+        select_new_option_in_cell(column, row_id, column_slug, key, socket, helpers)
+
+      {:error, _} ->
+        {:noreply, err(socket, :column_update)}
+    end
+  end
+
+  defp select_new_option_in_cell(column, row_id, column_slug, key, socket, helpers) do
+    row = Sheets.get_table_row!(row_id)
+
+    new_cell_value =
+      if column.type == "multi_select" do
+        current = row.cells[column_slug] || []
+        current = if is_list(current), do: current, else: []
+        current ++ [key]
+      else
+        key
+      end
+
+    # Best-effort: reload even if cell update fails (option was already added)
+    Sheets.update_table_cell(row, column_slug, new_cell_value)
+    save_and_reload(socket, helpers)
   end
 
   defp do_add_column_option(column, label, socket, helpers) do

@@ -424,17 +424,20 @@ defmodule Storyarn.Sheets.TableCrud do
         ]
       )
 
-      if slug_changed? do
-        Enum.each(instance_ids, fn instance_id ->
-          migrate_cells_key(instance_id, old_slug, column.slug)
-        end)
-      end
+      if slug_changed?, do: migrate_cells_key_for_instances(instance_ids, old_slug, column.slug)
+      if type_changed?, do: reset_cells_for_instances(instance_ids, column.slug)
+    end)
+  end
 
-      if type_changed? do
-        Enum.each(instance_ids, fn instance_id ->
-          reset_cells_for_column(instance_id, column.slug)
-        end)
-      end
+  defp migrate_cells_key_for_instances(instance_ids, old_slug, new_slug) do
+    Enum.each(instance_ids, fn instance_id ->
+      migrate_cells_key(instance_id, old_slug, new_slug)
+    end)
+  end
+
+  defp reset_cells_for_instances(instance_ids, column_slug) do
+    Enum.each(instance_ids, fn instance_id ->
+      reset_cells_for_column(instance_id, column_slug)
     end)
   end
 

@@ -226,7 +226,7 @@ export function createConditionRuleRow(opts) {
     return sheet.vars.map((v) => ({
       value: v.variable_name,
       label: v.variable_name,
-      group: sheetShortcut,
+      group: v.table_name ? v.table_name.toUpperCase() : null,
       meta: v.block_type,
       blockType: v.block_type,
       options: v.options,

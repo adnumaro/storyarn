@@ -51,8 +51,7 @@ export const TableCellSelect = {
 
     // Create floating popover (appended to body)
     this._fp = createFloatingPopover(this.trigger, {
-      class:
-        "bg-base-200 border border-base-content/20 rounded-lg shadow-lg",
+      class: "bg-base-200 border border-base-content/20 rounded-lg shadow-lg",
       width: "14rem",
     });
 
@@ -94,8 +93,9 @@ export const TableCellSelect = {
           }
         }
 
-        const target = btn.closest("[phx-target]")?.getAttribute("phx-target") ||
-                        this.el.querySelector("[phx-target]")?.getAttribute("phx-target");
+        const target =
+          btn.closest("[phx-target]")?.getAttribute("phx-target") ||
+          this.el.querySelector("[phx-target]")?.getAttribute("phx-target");
 
         if (target) {
           this.pushEventTo(target, event, payload);
@@ -132,8 +132,9 @@ export const TableCellSelect = {
           }
           payload.value = this.addInput.value;
 
-          const target = this.addInput.getAttribute("phx-target") ||
-                          this.el.querySelector("[phx-target]")?.getAttribute("phx-target");
+          const target =
+            this.addInput.getAttribute("phx-target") ||
+            this.el.querySelector("[phx-target]")?.getAttribute("phx-target");
 
           if (target) {
             this.pushEventTo(target, event, payload);

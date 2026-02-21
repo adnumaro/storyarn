@@ -53,7 +53,7 @@ export const ExpressionEditor = {
 
   _pushParsedData(text) {
     if (this.mode === "expression") {
-      const result = parseCondition(text);
+      const result = parseCondition(text, this.variables);
       if (result.errors.length > 0) return; // Don't push invalid data
 
       const condition = result.condition || { logic: "all", rules: [] };
@@ -66,7 +66,7 @@ export const ExpressionEditor = {
 
       this.pushEvent(this.eventName, payload);
     } else {
-      const result = parseAssignments(text);
+      const result = parseAssignments(text, this.variables);
       if (result.errors.length > 0) return;
 
       const assignments = result.assignments || [];

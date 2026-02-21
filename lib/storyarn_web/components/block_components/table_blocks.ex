@@ -802,12 +802,8 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
   defp resolve_multi_select_labels([], _options), do: []
 
   defp resolve_multi_select_labels(keys, options) when is_list(keys) do
-    Enum.map(keys, fn key ->
-      case Enum.find(options, fn opt -> opt["key"] == key end) do
-        nil -> key
-        opt -> opt["value"]
-      end
-    end)
+    option_map = Map.new(options, fn opt -> {opt["key"], opt["value"]} end)
+    Enum.map(keys, fn key -> Map.get(option_map, key, key) end)
   end
 
   defp resolve_multi_select_labels(_value, _options), do: []

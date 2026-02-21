@@ -69,7 +69,7 @@ function getDirectChildren(node) {
   return children;
 }
 
-function extractVariableRef(node, text) {
+function extractVariableRef(node, text, knownLookup) {
   const ids = [];
   const cursor = node.cursor();
   if (cursor.firstChild()) {
@@ -80,11 +80,34 @@ function extractVariableRef(node, text) {
     } while (cursor.nextSibling());
   }
   if (ids.length < 2) return null;
+
+  // Try matching against known variables (handles 4-level table paths)
+  // Requires both a known sheet shortcut AND a known variable key to disambiguate
+  if (knownLookup) {
+    for (let i = 1; i < ids.length; i++) {
+      const sheet = ids.slice(0, i).join(".");
+      if (!knownLookup.sheets.has(sheet)) continue;
+      const variable = ids.slice(i).join(".");
+      if (knownLookup.keys.has(`${sheet}.${variable}`)) {
+        return { sheet, variable, from: node.from, to: node.to };
+      }
+    }
+  }
+
+  // Fallback: last segment = variable, rest = sheet
   return {
     sheet: ids.slice(0, -1).join("."),
     variable: ids[ids.length - 1],
     from: node.from,
     to: node.to,
+  };
+}
+
+function buildKnownLookup(knownVariables) {
+  if (!knownVariables) return null;
+  return {
+    keys: new Set(knownVariables.map((v) => `${v.sheet_shortcut}.${v.variable_name}`)),
+    sheets: new Set(knownVariables.map((v) => v.sheet_shortcut)),
   };
 }
 
@@ -119,10 +142,13 @@ function collectErrors(tree) {
 /**
  * Parse assignment program text into Storyarn assignments array.
  * @param {string} text
+ * @param {Array<{sheet_shortcut: string, variable_name: string}>} [knownVariables]
  * @returns {{ assignments: Array, errors: Array }}
  */
-export function parseAssignments(text) {
+export function parseAssignments(text, knownVariables) {
   if (!text || !text.trim()) return { assignments: [], errors: [] };
+
+  const knownLookup = buildKnownLookup(knownVariables);
 
   const tree = generatedParser.configure({ top: "AssignmentProgram" }).parse(text);
   const errors = collectErrors(tree);
@@ -153,19 +179,19 @@ export function parseAssignments(text) {
 
   const assignments = [];
   for (const group of groups) {
-    const a = parseAssignmentGroup(group, text);
+    const a = parseAssignmentGroup(group, text, knownLookup);
     if (a) assignments.push(a);
   }
 
   return { assignments, errors };
 }
 
-function parseAssignmentGroup(children, text) {
+function parseAssignmentGroup(children, text, knownLookup) {
   // Expected: VariableRef, AssignOp, then value tokens
   const varRefChild = children.find((c) => c.name === "VariableRef");
   if (!varRefChild) return null;
 
-  const ref = extractVariableRef(varRefChild.node, text);
+  const ref = extractVariableRef(varRefChild.node, text, knownLookup);
   if (!ref) return null;
 
   // Find assignment operator
@@ -199,7 +225,7 @@ function parseAssignmentGroup(children, text) {
 
   // Variable ref value
   if (valueChild.name === "VariableRef") {
-    const valRef = extractVariableRef(valueChild.node, text);
+    const valRef = extractVariableRef(valueChild.node, text, knownLookup);
     if (valRef) {
       return {
         id: generateId("assign"),
@@ -243,20 +269,23 @@ function buildAssignment(ref, operator, value) {
 /**
  * Parse boolean expression text into Storyarn condition object.
  * @param {string} text
+ * @param {Array<{sheet_shortcut: string, variable_name: string}>} [knownVariables]
  * @returns {{ condition: Object, errors: Array }}
  */
-export function parseCondition(text) {
+export function parseCondition(text, knownVariables) {
   if (!text || !text.trim()) return { condition: { logic: "all", rules: [] }, errors: [] };
+
+  const knownLookup = buildKnownLookup(knownVariables);
 
   const tree = generatedParser.configure({ top: "ExpressionProgram" }).parse(text);
   const errors = collectErrors(tree);
   const children = getDirectChildren(tree.topNode);
 
-  const result = parseConditionChildren(children, text);
+  const result = parseConditionChildren(children, text, knownLookup);
   return { condition: result, errors };
 }
 
-function parseConditionChildren(children, text) {
+function parseConditionChildren(children, text, knownLookup) {
   // Check for OR operators — they split into "any" logic
   const hasOr = children.some((c) => c.name === "Or");
   const hasAnd = children.some((c) => c.name === "And");
@@ -266,7 +295,7 @@ function parseConditionChildren(children, text) {
     const groups = splitBy(children, "Or");
     const rules = [];
     for (const group of groups) {
-      const groupRules = parseAndGroup(group, text);
+      const groupRules = parseAndGroup(group, text, knownLookup);
       rules.push(...groupRules);
     }
     return { logic: "any", rules };
@@ -276,39 +305,39 @@ function parseConditionChildren(children, text) {
     const groups = splitBy(children, "And");
     const rules = [];
     for (const group of groups) {
-      const rule = parseSingleComparison(group, text, false);
+      const rule = parseSingleComparison(group, text, false, knownLookup);
       if (rule) rules.push(rule);
     }
     return { logic: "all", rules };
   }
 
   // Single comparison or bare value
-  const rule = parseSingleComparison(children, text, false);
+  const rule = parseSingleComparison(children, text, false, knownLookup);
   return { logic: "all", rules: rule ? [rule] : [] };
 }
 
-function parseAndGroup(children, text) {
+function parseAndGroup(children, text, knownLookup) {
   // Within an OR group, split further by AND
   const hasAnd = children.some((c) => c.name === "And");
   if (hasAnd) {
     const groups = splitBy(children, "And");
     const rules = [];
     for (const group of groups) {
-      const rule = parseSingleComparison(group, text, false);
+      const rule = parseSingleComparison(group, text, false, knownLookup);
       if (rule) rules.push(rule);
     }
     return rules;
   }
-  const rule = parseSingleComparison(children, text, false);
+  const rule = parseSingleComparison(children, text, false, knownLookup);
   return rule ? [rule] : [];
 }
 
-function parseSingleComparison(children, text, negated) {
+function parseSingleComparison(children, text, negated, knownLookup) {
   // Check for Not operator
   const notChild = children.find((c) => c.name === "Not");
   if (notChild) {
     const rest = children.filter((c) => c.name !== "Not");
-    return parseSingleComparison(rest, text, !negated);
+    return parseSingleComparison(rest, text, !negated, knownLookup);
   }
 
   // Check for ParenExpr — descend into it
@@ -319,14 +348,14 @@ function parseSingleComparison(children, text, negated) {
     const meaningful = innerChildren.filter(
       (c) => c.name !== "⚠" && c.name !== "(" && c.name !== ")",
     );
-    return parseSingleComparison(meaningful, text, negated);
+    return parseSingleComparison(meaningful, text, negated, knownLookup);
   }
 
   // Find variable ref (left side)
   const varRefChild = children.find((c) => c.name === "VariableRef");
   if (!varRefChild) return null;
 
-  const ref = extractVariableRef(varRefChild.node, text);
+  const ref = extractVariableRef(varRefChild.node, text, knownLookup);
   if (!ref) return null;
 
   // Find comparison operator
@@ -377,7 +406,7 @@ function parseSingleComparison(children, text, negated) {
   };
 
   if (valueChild.name === "VariableRef") {
-    const valRef = extractVariableRef(valueChild.node, text);
+    const valRef = extractVariableRef(valueChild.node, text, knownLookup);
     value = valRef
       ? `${valRef.sheet}.${valRef.variable}`
       : text.slice(valueChild.from, valueChild.to);

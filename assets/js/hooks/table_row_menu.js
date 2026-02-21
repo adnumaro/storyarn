@@ -42,8 +42,7 @@ export const TableRowMenu = {
 
     // Create floating popover
     this._fp = createFloatingPopover(this.trigger, {
-      class:
-        "bg-base-200 border border-base-content/20 rounded-lg shadow-lg",
+      class: "bg-base-200 border border-base-content/20 rounded-lg shadow-lg",
       width: "11rem",
       placement: "bottom-end",
     });

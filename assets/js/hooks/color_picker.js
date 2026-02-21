@@ -10,8 +10,8 @@
  */
 import "vanilla-colorful/hex-color-picker.js";
 import "vanilla-colorful/hex-input.js";
-import { createFloatingPopover } from "../utils/floating_popover";
 import { ChevronDown, createElement, Pipette } from "lucide";
+import { createFloatingPopover } from "../utils/floating_popover";
 
 export const ColorPicker = {
   mounted() {
@@ -61,7 +61,8 @@ export const ColorPicker = {
         this.chevron.style.transform = "";
       },
     });
-    this._fp.el.style.cssText += "padding:12px;border:1px solid var(--color-base-300);border-radius:0.5rem;background-color:var(--color-base-100);box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);";
+    this._fp.el.style.cssText +=
+      "padding:12px;border:1px solid var(--color-base-300);border-radius:0.5rem;background-color:var(--color-base-100);box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);";
 
     // Picker (spectrum + hue)
     this.picker = document.createElement("hex-color-picker");

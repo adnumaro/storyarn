@@ -104,12 +104,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         {:ok, 0}
       else
         {count, _} = Repo.insert_all(Block, entries)
-
-        # Copy table structure (columns + rows) for table-type parent blocks
-        if parent_block.type == "table" do
-          copy_table_structure_to_instances(parent_block)
-        end
-
+        copy_table_structure_to_instances(parent_block)
         {:ok, count}
       end
     end

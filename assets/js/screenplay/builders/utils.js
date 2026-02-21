@@ -24,6 +24,7 @@ export function groupVariablesBySheet(variables) {
       variable_name: v.variable_name,
       block_type: v.block_type,
       options: v.options,
+      table_name: v.table_name || null,
     });
   }
 

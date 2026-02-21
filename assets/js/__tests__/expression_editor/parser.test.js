@@ -249,3 +249,76 @@ describe("parseCondition", () => {
     expect(errors[0]).toHaveProperty("message");
   });
 });
+
+describe("table variable parsing", () => {
+  const TABLE_VARIABLES = [
+    { sheet_shortcut: "mc.jaime", variable_name: "health" },
+    { sheet_shortcut: "mc.jaime", variable_name: "attributes.strength.value" },
+    { sheet_shortcut: "mc.jaime", variable_name: "attributes.wisdom.value" },
+    { sheet_shortcut: "global", variable_name: "quest_progress" },
+  ];
+
+  it("parses 4-level table variable with known variables", () => {
+    const { assignments } = parseAssignments(
+      "mc.jaime.attributes.strength.value = 25",
+      TABLE_VARIABLES,
+    );
+    expect(assignments[0].sheet).toBe("mc.jaime");
+    expect(assignments[0].variable).toBe("attributes.strength.value");
+  });
+
+  it("parses regular variable unchanged with known variables", () => {
+    const { assignments } = parseAssignments("mc.jaime.health = 50", TABLE_VARIABLES);
+    expect(assignments[0].sheet).toBe("mc.jaime");
+    expect(assignments[0].variable).toBe("health");
+  });
+
+  it("falls back to last-dot split without known variables", () => {
+    const { assignments } = parseAssignments("mc.jaime.attributes.strength.value = 25");
+    // Without knownVariables, falls back to last-dot split
+    expect(assignments[0].sheet).toBe("mc.jaime.attributes.strength");
+    expect(assignments[0].variable).toBe("value");
+  });
+
+  it("condition parses 4-level table variable", () => {
+    const { condition } = parseCondition(
+      "mc.jaime.attributes.strength.value > 10",
+      TABLE_VARIABLES,
+    );
+    expect(condition.rules[0].sheet).toBe("mc.jaime");
+    expect(condition.rules[0].variable).toBe("attributes.strength.value");
+  });
+
+  it("parses variable_ref with table variable on RHS", () => {
+    const { assignments } = parseAssignments(
+      "mc.jaime.health = mc.jaime.attributes.strength.value",
+      TABLE_VARIABLES,
+    );
+    expect(assignments[0].value_type).toBe("variable_ref");
+    expect(assignments[0].value_sheet).toBe("mc.jaime");
+    expect(assignments[0].value).toBe("attributes.strength.value");
+  });
+
+  it("parses multiple assignments mixing regular and table variables", () => {
+    const { assignments } = parseAssignments(
+      "mc.jaime.health = 50; mc.jaime.attributes.strength.value = 25",
+      TABLE_VARIABLES,
+    );
+    expect(assignments).toHaveLength(2);
+    expect(assignments[0].sheet).toBe("mc.jaime");
+    expect(assignments[0].variable).toBe("health");
+    expect(assignments[1].sheet).toBe("mc.jaime");
+    expect(assignments[1].variable).toBe("attributes.strength.value");
+  });
+
+  it("condition with AND parses table variables correctly", () => {
+    const { condition } = parseCondition(
+      "mc.jaime.attributes.strength.value > 10 && mc.jaime.attributes.wisdom.value >= 5",
+      TABLE_VARIABLES,
+    );
+    expect(condition.logic).toBe("all");
+    expect(condition.rules).toHaveLength(2);
+    expect(condition.rules[0].variable).toBe("attributes.strength.value");
+    expect(condition.rules[1].variable).toBe("attributes.wisdom.value");
+  });
+});
