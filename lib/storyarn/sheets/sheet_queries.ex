@@ -171,6 +171,7 @@ defmodule Storyarn.Sheets.SheetQueries do
       order_by: [asc: s.name, asc: b.position]
     )
     |> Repo.all()
+    |> Enum.map(&extract_variable_constraints/1)
     |> Enum.map(&extract_variable_options/1)
     |> Enum.map(&Map.merge(&1, %{table_name: nil, row_name: nil, column_name: nil}))
   end
@@ -215,6 +216,7 @@ defmodule Storyarn.Sheets.SheetQueries do
 
     raw_vars
     |> Enum.map(&remap_reference_type(&1, sheet_options))
+    |> Enum.map(&extract_variable_constraints/1)
     |> Enum.map(&extract_variable_options/1)
   end
 
@@ -226,6 +228,28 @@ defmodule Storyarn.Sheets.SheetQueries do
   end
 
   defp remap_reference_type(var, _sheet_options), do: var
+
+  defp extract_variable_constraints(%{block_type: "number", config: config} = var)
+       when is_map(config),
+       do: Map.put(var, :constraints, Storyarn.Sheets.Constraints.Number.extract(config))
+
+  defp extract_variable_constraints(%{block_type: t, config: config} = var)
+       when t in ["text", "rich_text"] and is_map(config),
+       do: Map.put(var, :constraints, Storyarn.Sheets.Constraints.String.extract(config))
+
+  defp extract_variable_constraints(%{block_type: t, config: config} = var)
+       when t in ["select", "multi_select"] and is_map(config),
+       do: Map.put(var, :constraints, Storyarn.Sheets.Constraints.Selector.extract(config))
+
+  defp extract_variable_constraints(%{block_type: "date", config: config} = var)
+       when is_map(config),
+       do: Map.put(var, :constraints, Storyarn.Sheets.Constraints.Date.extract(config))
+
+  defp extract_variable_constraints(%{block_type: "boolean", config: config} = var)
+       when is_map(config),
+       do: Map.put(var, :constraints, Storyarn.Sheets.Constraints.Boolean.extract(config))
+
+  defp extract_variable_constraints(var), do: Map.put(var, :constraints, nil)
 
   defp extract_variable_options(var) do
     options = extract_options_from_config(var.block_type, var.config)

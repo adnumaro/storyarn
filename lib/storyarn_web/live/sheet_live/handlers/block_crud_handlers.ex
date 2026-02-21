@@ -17,6 +17,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Sheets
+  alias Storyarn.Sheets.Constraints.Number, as: NumberConstraints
   alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
 
   # ---------------------------------------------------------------------------
@@ -57,6 +58,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Block not found."))}
 
       block ->
+        value = maybe_clamp_number_value(block, value)
+
         case Sheets.update_block_value(block, %{"content" => value}) do
           {:ok, _updated} ->
             helpers.maybe_create_version.(socket)
@@ -177,4 +180,14 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
         {:noreply, put_flash(socket, :error, message)}
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Number constraint clamping
+  # ---------------------------------------------------------------------------
+
+  defp maybe_clamp_number_value(%{type: "number", config: config}, value) when is_binary(value) do
+    NumberConstraints.clamp_and_format(value, config)
+  end
+
+  defp maybe_clamp_number_value(_block, value), do: value
 end
