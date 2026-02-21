@@ -118,7 +118,8 @@ defmodule Storyarn.Flows.InstructionTest do
     end
 
     test "returns correct operators for boolean" do
-      assert Instruction.operators_for_type("boolean") == ~w(set_true set_false toggle set_if_unset)
+      assert Instruction.operators_for_type("boolean") ==
+               ~w(set_true set_false toggle set_if_unset)
     end
 
     test "returns correct operators for text" do

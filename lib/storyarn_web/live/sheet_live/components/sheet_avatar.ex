@@ -145,5 +145,4 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
         {:noreply, socket}
     end
   end
-
 end

@@ -88,5 +88,4 @@ defmodule Storyarn.Maps.MapLayer do
     |> validate_length(:fog_color, max: 20)
     |> validate_color(:fog_color)
   end
-
 end

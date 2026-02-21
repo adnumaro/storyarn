@@ -83,7 +83,12 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   def build(%{type: "scene"} = node, state, sheets_map, _project_id) do
     data = node.data || %{}
     location = resolve_speaker(data["location_sheet_id"], sheets_map)
-    description = interpolate_variables(HtmlSanitizer.sanitize_html(data["description"] || ""), state.variables)
+
+    description =
+      interpolate_variables(
+        HtmlSanitizer.sanitize_html(data["description"] || ""),
+        state.variables
+      )
 
     %{
       type: :scene,
@@ -162,6 +167,9 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   defp format_value(true), do: "true"
   defp format_value(false), do: "false"
   defp format_value(val) when is_list(val), do: Enum.join(val, ", ")
-  defp format_value(val) when is_binary(val), do: Phoenix.HTML.html_escape(val) |> Phoenix.HTML.safe_to_string()
+
+  defp format_value(val) when is_binary(val),
+    do: Phoenix.HTML.html_escape(val) |> Phoenix.HTML.safe_to_string()
+
   defp format_value(val), do: to_string(val)
 end

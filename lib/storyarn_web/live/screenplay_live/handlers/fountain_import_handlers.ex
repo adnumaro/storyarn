@@ -17,7 +17,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FountainImportHandlers do
     parsed = Screenplays.parse_fountain(content)
 
     if parsed == [] do
-      {:noreply, put_flash(socket, :error, dgettext("screenplays", "No content found in imported file."))}
+      {:noreply,
+       put_flash(socket, :error, dgettext("screenplays", "No content found in imported file."))}
     else
       screenplay = socket.assigns.screenplay
 
@@ -85,7 +86,9 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FountainImportHandlers do
 
   defp create_character_sheets_from_import(project, elements) do
     followed_by_dialogue = character_ids_followed_by_dialogue(elements)
-    character_elements = Enum.filter(elements, &character_with_dialogue?(&1, followed_by_dialogue))
+
+    character_elements =
+      Enum.filter(elements, &character_with_dialogue?(&1, followed_by_dialogue))
 
     name_to_sheet = create_sheets_for_characters(project, character_elements)
 

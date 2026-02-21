@@ -130,7 +130,10 @@ defmodule Storyarn.Localization.ExportImport do
           {updated, skipped, errors} =
             data_lines
             |> Enum.with_index(2)
-            |> Enum.reduce({0, 0, []}, &reduce_csv_row(&1, &2, id_col, translation_col, status_col))
+            |> Enum.reduce(
+              {0, 0, []},
+              &reduce_csv_row(&1, &2, id_col, translation_col, status_col)
+            )
 
           {:ok, %{updated: updated, skipped: skipped, errors: Enum.reverse(errors)}}
         else
@@ -178,12 +181,15 @@ defmodule Storyarn.Localization.ExportImport do
   end
 
   defp maybe_put_translation(attrs, translation) when is_binary(translation) do
-    if String.trim(translation) != "", do: Map.put(attrs, "translated_text", translation), else: attrs
+    if String.trim(translation) != "",
+      do: Map.put(attrs, "translated_text", translation),
+      else: attrs
   end
 
   defp maybe_put_translation(attrs, _), do: attrs
 
-  defp maybe_put_status(attrs, status) when status in ~w(pending draft in_progress review final) do
+  defp maybe_put_status(attrs, status)
+       when status in ~w(pending draft in_progress review final) do
     Map.put(attrs, "status", status)
   end
 
@@ -237,7 +243,10 @@ defmodule Storyarn.Localization.ExportImport do
 
   defp parse_quoted_field("\"\"" <> rest, acc), do: parse_quoted_field(rest, acc <> "\"")
   defp parse_quoted_field("\"" <> rest, acc), do: {acc, rest}
-  defp parse_quoted_field(<<char::utf8, rest::binary>>, acc), do: parse_quoted_field(rest, acc <> <<char::utf8>>)
+
+  defp parse_quoted_field(<<char::utf8, rest::binary>>, acc),
+    do: parse_quoted_field(rest, acc <> <<char::utf8>>)
+
   defp parse_quoted_field("", acc), do: {acc, ""}
 
   defp find_column_index(headers, name) do

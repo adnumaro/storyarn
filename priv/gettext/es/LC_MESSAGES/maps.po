@@ -16,12 +16,12 @@ msgstr ""
 msgid "1 map width = %{value} %{unit}"
 msgstr "1 ancho de mapa = %{value} %{unit}"
 
-#: lib/storyarn_web/live/map_live/show.ex:304
+#: lib/storyarn_web/live/map_live/show.ex:305
 #, elixir-autogen, elixir-format
 msgid "Add Annotation Here"
 msgstr "Añadir anotación aquí"
 
-#: lib/storyarn_web/live/map_live/show.ex:303
+#: lib/storyarn_web/live/map_live/show.ex:304
 #, elixir-autogen, elixir-format
 msgid "Add Pin Here"
 msgstr "Añadir marcador aquí"
@@ -37,7 +37,7 @@ msgstr "Agregar sub-flujo"
 msgid "Add layer"
 msgstr "Añadir capa"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:146
+#: lib/storyarn_web/live/map_live/components/dock.ex:154
 #, elixir-autogen, elixir-format
 msgid "Add text notes directly on the canvas"
 msgstr "Añade notas de texto directamente en el lienzo"
@@ -47,18 +47,18 @@ msgstr "Añade notas de texto directamente en el lienzo"
 msgid "All"
 msgstr "Todos"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:147
-#: lib/storyarn_web/live/map_live/components/dock.ex:246
+#: lib/storyarn_web/live/map_live/components/dock.ex:155
+#: lib/storyarn_web/live/map_live/components/dock.ex:261
 #, elixir-autogen, elixir-format
 msgid "Annotation"
 msgstr "Anotación"
 
-#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:156
+#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:162
 #, elixir-autogen, elixir-format
 msgid "Annotation Properties"
 msgstr "Propiedades de la anotación"
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:657
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:668
 #, elixir-autogen, elixir-format
 msgid "Annotation deleted. Press Ctrl+Z to undo."
 msgstr "Anotación eliminada. Pulsa Ctrl+Z para deshacer."
@@ -75,17 +75,17 @@ msgstr "¿Estás seguro de que quieres eliminar este nodo?"
 msgid "Background Image"
 msgstr "Imagen de fondo"
 
-#: lib/storyarn_web/live/map_live/show.ex:764
+#: lib/storyarn_web/live/map_live/show.ex:770
 #, elixir-autogen, elixir-format
 msgid "Background image updated."
 msgstr "Imagen de fondo actualizada."
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:460
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:478
 #, elixir-autogen, elixir-format
 msgid "Bidirectional"
 msgstr "Bidireccional"
 
-#: lib/storyarn_web/live/map_live/show.ex:298
+#: lib/storyarn_web/live/map_live/show.ex:299
 #, elixir-autogen, elixir-format
 msgid "Bring to Front"
 msgstr "Traer al frente"
@@ -95,14 +95,14 @@ msgstr "Traer al frente"
 msgid "Cancel"
 msgstr "Cancelar"
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:412
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:526
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:644
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:415
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:531
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:652
 #, elixir-autogen, elixir-format
 msgid "Cannot delete a locked element."
 msgstr "No se puede eliminar un elemento bloqueado."
 
-#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:225
+#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:230
 #, elixir-autogen, elixir-format
 msgid "Cannot delete the last layer of a map."
 msgstr "No se puede eliminar la última capa del mapa."
@@ -112,39 +112,39 @@ msgstr "No se puede eliminar la última capa del mapa."
 msgid "Change"
 msgstr "Cambiar"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:243
+#: lib/storyarn_web/live/map_live/components/dock.ex:258
 #, elixir-autogen, elixir-format
 msgid "Circle"
 msgstr "Círculo"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:179
+#: lib/storyarn_web/live/map_live/components/dock.ex:193
 #, elixir-autogen, elixir-format
 msgid "Click on canvas to place"
 msgstr "Haz clic en el lienzo para colocar"
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:290
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:529
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:190
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:295
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:558
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:208
 #, elixir-autogen, elixir-format
 msgid "Color"
 msgstr "Color"
 
-#: lib/storyarn_web/live/map_live/show.ex:295
+#: lib/storyarn_web/live/map_live/show.ex:296
 #, elixir-autogen, elixir-format
 msgid "Connect To…"
 msgstr "Conectar"
 
-#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:58
+#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:63
 #, elixir-autogen, elixir-format
 msgid "Connection"
 msgstr "Conectar"
 
-#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:155
+#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:161
 #, elixir-autogen, elixir-format
 msgid "Connection Properties"
 msgstr "Propiedades de la conexión"
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:604
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:609
 #, elixir-autogen, elixir-format
 msgid "Connection deleted. Press Ctrl+Z to undo."
 msgstr "Conexión eliminada. Pulsa Ctrl+Z para deshacer."
@@ -154,23 +154,23 @@ msgstr "Conexión eliminada. Pulsa Ctrl+Z para deshacer."
 msgid "Connections"
 msgstr "Conectar"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:158
-#: lib/storyarn_web/live/map_live/components/dock.ex:247
+#: lib/storyarn_web/live/map_live/components/dock.ex:171
+#: lib/storyarn_web/live/map_live/components/dock.ex:262
 #, elixir-autogen, elixir-format
 msgid "Connector"
 msgstr "Conectar"
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:591
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:596
 #, elixir-autogen, elixir-format
 msgid "Could not clear waypoints."
 msgstr "No se pudo crear el flujo."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:275
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:277
 #, elixir-autogen, elixir-format
 msgid "Could not create annotation."
 msgstr "No se pudo crear la versión."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:209
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:211
 #, elixir-autogen, elixir-format
 msgid "Could not create connection."
 msgstr "No se pudo crear la ficha."
@@ -182,14 +182,14 @@ msgstr "No se pudo crear el flujo."
 
 #: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:29
 #: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:45
-#: lib/storyarn_web/live/map_live/index.ex:245
-#: lib/storyarn_web/live/map_live/index.ex:268
+#: lib/storyarn_web/live/map_live/index.ex:249
+#: lib/storyarn_web/live/map_live/index.ex:276
 #, elixir-autogen, elixir-format
 msgid "Could not create map."
 msgstr "No se pudo crear el flujo."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:42
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:393
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:44
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:396
 #, elixir-autogen, elixir-format
 msgid "Could not create pin."
 msgstr "No se pudo crear la versión."
@@ -200,69 +200,69 @@ msgstr "No se pudo crear la versión."
 msgid "Could not create zone."
 msgstr "No se pudo crear el flujo."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:660
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:671
 #, elixir-autogen, elixir-format
 msgid "Could not delete annotation."
 msgstr "No se pudo eliminar la versión."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:608
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:613
 #, elixir-autogen, elixir-format
 msgid "Could not delete connection."
 msgstr "No se pudo eliminar la ficha."
 
-#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:228
+#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:233
 #, elixir-autogen, elixir-format
 msgid "Could not delete layer."
 msgstr "No se pudo eliminar el flujo."
 
-#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:151
-#: lib/storyarn_web/live/map_live/index.ex:304
+#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:155
+#: lib/storyarn_web/live/map_live/index.ex:320
 #, elixir-autogen, elixir-format
 msgid "Could not delete map."
 msgstr "No se pudo eliminar el flujo."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:436
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:441
 #, elixir-autogen, elixir-format
 msgid "Could not delete pin."
 msgstr "No se pudo eliminar la versión."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:542
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:547
 #, elixir-autogen, elixir-format
 msgid "Could not delete zone."
 msgstr "No se pudo eliminar el flujo."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:521
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:526
 #, elixir-autogen, elixir-format
 msgid "Could not duplicate zone."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:639
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:647
 #, elixir-autogen, elixir-format
 msgid "Could not move annotation."
 msgstr "No se pudo mover el flujo."
 
-#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:161
-#: lib/storyarn_web/live/map_live/index.ex:314
+#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:168
+#: lib/storyarn_web/live/map_live/index.ex:333
 #, elixir-autogen, elixir-format
 msgid "Could not move map."
 msgstr "No se pudo mover el flujo."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:407
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:410
 #, elixir-autogen, elixir-format
 msgid "Could not move pin."
 msgstr "No se pudo mover el flujo."
 
-#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:95
+#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:97
 #, elixir-autogen, elixir-format
 msgid "Could not remove background."
 msgstr "No se pudo eliminar el banner."
 
-#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:135
+#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:138
 #, elixir-autogen, elixir-format
 msgid "Could not remove pin icon."
 msgstr "No se pudo eliminar el banner."
 
-#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:172
+#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:175
 #, elixir-autogen, elixir-format
 msgid "Could not rename layer."
 msgstr "No se pudo eliminar el banner."
@@ -272,61 +272,61 @@ msgstr "No se pudo eliminar el banner."
 msgid "Could not save map name."
 msgstr "No se pudo guardar el nombre del flujo."
 
-#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:185
+#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:189
 #, elixir-autogen, elixir-format
 msgid "Could not toggle layer visibility."
 msgstr "No se pudo alternar la visibilidad de la capa."
 
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:192
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:207
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:222
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:237
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:531
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:199
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:213
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:228
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:243
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:543
 #, elixir-autogen, elixir-format
 msgid "Could not undo."
 msgstr "No se pudo subir el banner."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:625
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:632
 #, elixir-autogen, elixir-format
 msgid "Could not update annotation."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/show.ex:767
+#: lib/storyarn_web/live/map_live/show.ex:773
 #, elixir-autogen, elixir-format
 msgid "Could not update background."
 msgstr "No se pudo actualizar el bloque."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:559
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:564
 #, elixir-autogen, elixir-format
 msgid "Could not update connection."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:210
+#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:214
 #, elixir-autogen, elixir-format
 msgid "Could not update fog settings."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:111
+#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:113
 #, elixir-autogen, elixir-format
 msgid "Could not update map scale."
 msgstr "No se pudo actualizar el color."
 
-#: lib/storyarn_web/live/map_live/show.ex:787
+#: lib/storyarn_web/live/map_live/show.ex:793
 #, elixir-autogen, elixir-format
 msgid "Could not update pin icon."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:453
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:458
 #, elixir-autogen, elixir-format
 msgid "Could not update pin."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:575
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:580
 #, elixir-autogen, elixir-format
 msgid "Could not update waypoints."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:490
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:495
 #, elixir-autogen, elixir-format
 msgid "Could not update zone."
 msgstr "No se pudo actualizar el contenido."
@@ -346,8 +346,8 @@ msgstr "Crea mapas para visualizar tu mundo"
 msgid "Creating..."
 msgstr "Creando..."
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:596
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:519
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:632
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:543
 #, elixir-autogen, elixir-format
 msgid "Custom"
 msgstr "Etiquetas personalizadas"
@@ -357,8 +357,8 @@ msgstr "Etiquetas personalizadas"
 #: lib/storyarn_web/live/map_live/index.ex:76
 #: lib/storyarn_web/live/map_live/index.ex:143
 #: lib/storyarn_web/live/map_live/show.ex:193
-#: lib/storyarn_web/live/map_live/show.ex:208
-#: lib/storyarn_web/live/map_live/show.ex:302
+#: lib/storyarn_web/live/map_live/show.ex:209
+#: lib/storyarn_web/live/map_live/show.ex:303
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr "Eliminar"
@@ -385,7 +385,7 @@ msgstr "Describe este mapa..."
 msgid "Description"
 msgstr "Descripción"
 
-#: lib/storyarn_web/live/map_live/components/map_panel.ex:122
+#: lib/storyarn_web/live/map_live/components/map_panel.ex:123
 #, elixir-autogen, elixir-format
 msgid "Dimensions"
 msgstr "Dimensiones"
@@ -395,17 +395,17 @@ msgstr "Dimensiones"
 msgid "Disable Fog"
 msgstr "Desactivar niebla"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:157
+#: lib/storyarn_web/live/map_live/components/dock.ex:166
 #, elixir-autogen, elixir-format
 msgid "Draw connections between two pins. Click the source pin, then the target."
 msgstr "Traza conexiones entre dos marcadores. Haz clic en el marcador de origen y luego en el destino."
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:85
+#: lib/storyarn_web/live/map_live/components/dock.ex:86
 #, elixir-autogen, elixir-format
 msgid "Draw shapes to define areas on the map"
 msgstr "Dibuja formas para definir áreas en el mapa"
 
-#: lib/storyarn_web/live/map_live/show.ex:297
+#: lib/storyarn_web/live/map_live/show.ex:298
 #, elixir-autogen, elixir-format
 msgid "Duplicate"
 msgstr "Duplicar"
@@ -415,12 +415,12 @@ msgstr "Duplicar"
 msgid "Edit"
 msgstr "Editor"
 
-#: lib/storyarn_web/live/map_live/show.ex:294
+#: lib/storyarn_web/live/map_live/show.ex:295
 #, elixir-autogen, elixir-format
 msgid "Edit Properties"
 msgstr "Editar propiedades"
 
-#: lib/storyarn_web/live/map_live/show.ex:296
+#: lib/storyarn_web/live/map_live/show.ex:297
 #, elixir-autogen, elixir-format
 msgid "Edit Vertices"
 msgstr "Editar vértices"
@@ -460,7 +460,7 @@ msgstr "Color de relleno"
 msgid "Filter maps..."
 msgstr "Filtrar flujos..."
 
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:561
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:586
 #, elixir-autogen, elixir-format
 msgid "Flow"
 msgstr "Flujos"
@@ -470,17 +470,17 @@ msgstr "Flujos"
 msgid "Fog of War enabled"
 msgstr "Niebla de guerra activada"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:117
+#: lib/storyarn_web/live/map_live/components/dock.ex:119
 #, elixir-autogen, elixir-format
 msgid "Free Pin"
 msgstr "Marcador libre"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:244
+#: lib/storyarn_web/live/map_live/components/dock.ex:259
 #, elixir-autogen, elixir-format
 msgid "Freeform"
 msgstr "Libre"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:128
+#: lib/storyarn_web/live/map_live/components/dock.ex:132
 #, elixir-autogen, elixir-format
 msgid "From Sheet"
 msgstr "Desde ficha"
@@ -490,14 +490,14 @@ msgstr "Desde ficha"
 msgid "Invalid zone: %{reason}"
 msgstr "Zona no válida: %{reason}"
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:240
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:421
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:245
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:431
 #, elixir-autogen, elixir-format
 msgid "Label"
 msgstr "Etiqueta"
 
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:259
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:274
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:277
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:292
 #, elixir-autogen, elixir-format
 msgid "Layer"
 msgstr "Capa"
@@ -507,7 +507,7 @@ msgstr "Capa"
 msgid "Layer created."
 msgstr "Versión creada."
 
-#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:221
+#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:225
 #, elixir-autogen, elixir-format
 msgid "Layer deleted."
 msgstr "Versión eliminada."
@@ -517,7 +517,7 @@ msgstr "Versión eliminada."
 msgid "Layer options"
 msgstr "Opciones de capa"
 
-#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:168
+#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:171
 #, elixir-autogen, elixir-format
 msgid "Layer renamed."
 msgstr "Capa renombrada."
@@ -538,26 +538,26 @@ msgstr "Leyenda"
 msgid "Lines"
 msgstr "Líneas"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:129
+#: lib/storyarn_web/live/map_live/components/dock.ex:134
 #, elixir-autogen, elixir-format
 msgid "Link a character or item"
 msgstr "Vincular un personaje o elemento"
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:191
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:367
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:326
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:348
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:196
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:377
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:344
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:372
 #, elixir-autogen, elixir-format
 msgid "Link to"
 msgstr "Vincular a"
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:575
-#: lib/storyarn_web/live/map_live/show.ex:300
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:609
+#: lib/storyarn_web/live/map_live/show.ex:301
 #, elixir-autogen, elixir-format
 msgid "Lock"
 msgstr "Bloquear"
 
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:562
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:587
 #, elixir-autogen, elixir-format
 msgid "Map"
 msgstr "Mapa"
@@ -577,15 +577,15 @@ msgstr "Fondo del mapa"
 msgid "Map created successfully."
 msgstr "Flujo creado exitosamente."
 
-#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:235
-#: lib/storyarn_web/live/map_live/index.ex:300
+#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:242
+#: lib/storyarn_web/live/map_live/index.ex:316
 #, elixir-autogen, elixir-format
 msgid "Map moved to trash."
 msgstr "Mapa movido a la papelera."
 
 #: lib/storyarn_web/live/map_live/index.ex:223
-#: lib/storyarn_web/live/map_live/index.ex:285
-#: lib/storyarn_web/live/map_live/show.ex:240
+#: lib/storyarn_web/live/map_live/index.ex:297
+#: lib/storyarn_web/live/map_live/show.ex:241
 #, elixir-autogen, elixir-format
 msgid "Map not found."
 msgstr "Miembro no encontrado."
@@ -597,12 +597,12 @@ msgstr "Miembro no encontrado."
 msgid "Maps"
 msgstr "Mapas"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:168
+#: lib/storyarn_web/live/map_live/components/dock.ex:181
 #, elixir-autogen, elixir-format
 msgid "Measure distances between two points on the map"
 msgstr "Mide distancias entre dos puntos del mapa"
 
-#: lib/storyarn_web/components/sidebar/map_tree.ex:283
+#: lib/storyarn_web/components/sidebar/map_tree.ex:289
 #, elixir-autogen, elixir-format
 msgid "Move to Trash"
 msgstr "Mover a la papelera"
@@ -625,14 +625,14 @@ msgstr "Nueva capa"
 msgid "New Map"
 msgstr "Nuevo mapa"
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:24
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:812
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:26
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:822
 #, elixir-autogen, elixir-format
 msgid "New Pin"
 msgstr "Nuevo marcador"
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:130
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:840
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:132
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:850
 #, elixir-autogen, elixir-format
 msgid "New Zone"
 msgstr "Nueva zona"
@@ -652,19 +652,19 @@ msgstr "Aún no hay mapas. Crea tu primer mapa para empezar."
 msgid "No results found"
 msgstr "No se han encontrado resultados"
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:361
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:364
 #, elixir-autogen, elixir-format
 msgid "No sheet selected."
 msgstr "Aún no hay fichas"
 
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:285
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:303
 #, elixir-autogen, elixir-format
 msgid "None"
 msgstr "No"
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:253
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:869
-#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:52
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:255
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:879
+#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:56
 #, elixir-autogen, elixir-format
 msgid "Note"
 msgstr "No"
@@ -674,13 +674,13 @@ msgstr "No"
 msgid "Notes"
 msgstr "Notas"
 
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:221
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:239
 #, elixir-autogen, elixir-format
 msgid "Opacity"
 msgstr "Opacidad"
 
 #: lib/storyarn_web/live/map_live/components/dock.ex:46
-#: lib/storyarn_web/live/map_live/components/dock.ex:240
+#: lib/storyarn_web/live/map_live/components/dock.ex:255
 #, elixir-autogen, elixir-format
 msgid "Pan"
 msgstr "Panorámica"
@@ -691,24 +691,24 @@ msgid "Pan and scroll around the map"
 msgstr "Navega y desplázate por el mapa"
 
 #: lib/storyarn_web/components/sidebar/map_tree.ex:185
-#: lib/storyarn_web/live/map_live/components/dock.ex:136
-#: lib/storyarn_web/live/map_live/components/dock.ex:245
-#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:40
+#: lib/storyarn_web/live/map_live/components/dock.ex:142
+#: lib/storyarn_web/live/map_live/components/dock.ex:260
+#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:44
 #, elixir-autogen, elixir-format
 msgid "Pin"
 msgstr "Rosa"
 
-#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:153
+#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:159
 #, elixir-autogen, elixir-format
 msgid "Pin Properties"
 msgstr "Propiedades del marcador"
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:432
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:437
 #, elixir-autogen, elixir-format
 msgid "Pin deleted. Press Ctrl+Z to undo."
 msgstr "Marcador eliminado. Pulsa Ctrl+Z para deshacer."
 
-#: lib/storyarn_web/live/map_live/show.ex:784
+#: lib/storyarn_web/live/map_live/show.ex:790
 #, elixir-autogen, elixir-format
 msgid "Pin icon updated."
 msgstr "Icono del marcador actualizado."
@@ -719,27 +719,27 @@ msgstr "Icono del marcador actualizado."
 msgid "Pins"
 msgstr "Rosa"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:107
+#: lib/storyarn_web/live/map_live/components/dock.ex:109
 #, elixir-autogen, elixir-format
 msgid "Place a Pin"
 msgstr "Colocar marcador"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:118
+#: lib/storyarn_web/live/map_live/components/dock.ex:121
 #, elixir-autogen, elixir-format
 msgid "Place anywhere on the map"
 msgstr "Coloca en cualquier lugar del mapa"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:137
+#: lib/storyarn_web/live/map_live/components/dock.ex:144
 #, elixir-autogen, elixir-format
 msgid "Place markers on the map, optionally linked to a sheet"
 msgstr "Coloca marcadores en el mapa, opcionalmente vinculados a una ficha"
 
-#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:157
+#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:163
 #, elixir-autogen, elixir-format
 msgid "Properties"
 msgstr "Propiedades"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:241
+#: lib/storyarn_web/live/map_live/components/dock.ex:256
 #, elixir-autogen, elixir-format
 msgid "Rectangle"
 msgstr "Rectángulo"
@@ -754,8 +754,8 @@ msgstr "Eliminar"
 msgid "Rename"
 msgstr "Ficha renombrada"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:169
-#: lib/storyarn_web/live/map_live/components/dock.ex:248
+#: lib/storyarn_web/live/map_live/components/dock.ex:182
+#: lib/storyarn_web/live/map_live/components/dock.ex:263
 #, elixir-autogen, elixir-format
 msgid "Ruler"
 msgstr "Regla"
@@ -766,7 +766,7 @@ msgid "Search elements..."
 msgstr "Buscar proyectos..."
 
 #: lib/storyarn_web/live/map_live/components/dock.ex:39
-#: lib/storyarn_web/live/map_live/components/dock.ex:239
+#: lib/storyarn_web/live/map_live/components/dock.ex:254
 #, elixir-autogen, elixir-format
 msgid "Select"
 msgstr "Selección"
@@ -781,7 +781,7 @@ msgstr "Selección"
 msgid "Select elements on the canvas"
 msgstr "Selecciona elementos en el lienzo"
 
-#: lib/storyarn_web/live/map_live/show.ex:299
+#: lib/storyarn_web/live/map_live/show.ex:300
 #, elixir-autogen, elixir-format
 msgid "Send to Back"
 msgstr "Enviar al fondo"
@@ -791,12 +791,12 @@ msgstr "Enviar al fondo"
 msgid "Set as active layer"
 msgstr "Establecer como capa activa"
 
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:560
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:585
 #, elixir-autogen, elixir-format
 msgid "Sheet"
 msgstr "Fichas"
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:77
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:79
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr "Ficha no encontrada."
@@ -821,8 +821,8 @@ msgstr "Esta capa se eliminará. Todos los elementos de esta capa perderán su c
 msgid "Toggle visibility"
 msgstr "Alternar visibilidad"
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:174
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:350
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:179
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:360
 #, elixir-autogen, elixir-format
 msgid "Tooltip"
 msgstr "Descripción emergente"
@@ -832,37 +832,37 @@ msgstr "Descripción emergente"
 msgid "Total width"
 msgstr "Ancho total"
 
-#: lib/storyarn_web/live/map_live/components/dock.ex:242
+#: lib/storyarn_web/live/map_live/components/dock.ex:257
 #, elixir-autogen, elixir-format
 msgid "Triangle"
 msgstr "Naranja"
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:252
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:257
 #, elixir-autogen, elixir-format
 msgid "Type"
 msgstr "Tipo"
 
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:563
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:588
 #, elixir-autogen, elixir-format
 msgid "URL"
 msgstr "URL"
 
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:233
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:239
 #, elixir-autogen, elixir-format
 msgid "Undo: annotation restored."
 msgstr "Deshacer: anotación restaurada."
 
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:218
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:224
 #, elixir-autogen, elixir-format
 msgid "Undo: connection restored."
 msgstr "Deshacer: conexión restaurada."
 
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:188
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:196
 #, elixir-autogen, elixir-format
 msgid "Undo: pin restored."
 msgstr "Deshacer: marcador restaurado."
 
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:203
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:210
 #, elixir-autogen, elixir-format
 msgid "Undo: zone restored."
 msgstr "Deshacer: zona restaurada."
@@ -872,8 +872,8 @@ msgstr "Deshacer: zona restaurada."
 msgid "Unit"
 msgstr "Unidad"
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:575
-#: lib/storyarn_web/live/map_live/show.ex:301
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:609
+#: lib/storyarn_web/live/map_live/show.ex:302
 #, elixir-autogen, elixir-format
 msgid "Unlock"
 msgstr "Desbloquear"
@@ -881,8 +881,8 @@ msgstr "Desbloquear"
 #: lib/storyarn_web/live/map_live/components/map_header.ex:60
 #: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:20
 #: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:34
-#: lib/storyarn_web/live/map_live/index.ex:236
-#: lib/storyarn_web/live/map_live/index.ex:257
+#: lib/storyarn_web/live/map_live/index.ex:240
+#: lib/storyarn_web/live/map_live/index.ex:265
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr "Sin título"
@@ -903,26 +903,26 @@ msgid "World Map"
 msgstr "Mapa del mundo"
 
 #: lib/storyarn_web/live/map_live/index.ex:185
-#: lib/storyarn_web/live/map_live/show.ex:252
+#: lib/storyarn_web/live/map_live/show.ex:253
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
 msgstr "No tienes acceso a este proyecto."
 
-#: lib/storyarn_web/live/map_live/index.ex:229
-#: lib/storyarn_web/live/map_live/index.ex:250
-#: lib/storyarn_web/live/map_live/index.ex:273
-#: lib/storyarn_web/live/map_live/index.ex:291
-#: lib/storyarn_web/live/map_live/show.ex:807
+#: lib/storyarn_web/live/map_live/index.ex:232
+#: lib/storyarn_web/live/map_live/index.ex:257
+#: lib/storyarn_web/live/map_live/index.ex:284
+#: lib/storyarn_web/live/map_live/index.ex:306
+#: lib/storyarn_web/live/map_live/show.ex:816
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."
 
-#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:46
+#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:50
 #, elixir-autogen, elixir-format
 msgid "Zone"
 msgstr "Zona"
 
-#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:154
+#: lib/storyarn_web/live/map_live/helpers/map_helpers.ex:160
 #, elixir-autogen, elixir-format
 msgid "Zone Properties"
 msgstr "Propiedades de la zona"
@@ -932,12 +932,12 @@ msgstr "Propiedades de la zona"
 msgid "Zone Shapes"
 msgstr "Formas de zona"
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:538
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:543
 #, elixir-autogen, elixir-format
 msgid "Zone deleted. Press Ctrl+Z to undo."
 msgstr "Zona eliminada. Pulsa Ctrl+Z para deshacer."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:518
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:523
 #, elixir-autogen, elixir-format
 msgid "Zone duplicated."
 msgstr "Zona duplicada."
@@ -959,111 +959,111 @@ msgstr ""
 msgid "%{count} more zones…"
 msgstr ""
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:722
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:733
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Annotation duplicated."
 msgstr "Anotación"
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:887
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:897
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Annotation pasted."
 msgstr "Anotación"
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:665
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:699
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:676
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:710
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Cannot duplicate a locked element."
 msgstr "No se puede eliminar un elemento bloqueado."
 
-#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:207
+#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:214
 #, elixir-autogen, elixir-format
 msgid "Child map created. Add a background image to continue."
 msgstr "Mapa hijo creado. Añade una imagen de fondo para continuar."
 
-#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:112
-#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:216
+#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:113
+#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:222
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Could not create child map."
 msgstr "No se pudo crear el flujo."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:726
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:736
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Could not duplicate annotation."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:694
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:705
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Could not duplicate pin."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:891
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:900
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Could not paste annotation."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:834
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:844
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Could not paste pin."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:863
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:873
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Could not paste zone."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/map_live/show.ex:305
+#: lib/storyarn_web/live/map_live/show.ex:306
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Create child map"
 msgstr "Crear mapa"
 
-#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:102
+#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:103
 #, elixir-autogen, elixir-format
 msgid "Name the zone before creating a child map."
 msgstr "Nombra la zona antes de crear un mapa hijo."
 
-#: lib/storyarn_web/live/map_live/show.ex:306
+#: lib/storyarn_web/live/map_live/show.ex:307
 #, elixir-autogen, elixir-format
 msgid "Name the zone first"
 msgstr "Nombra la zona primero"
 
-#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:138
+#: lib/storyarn_web/live/map_live/handlers/layer_handlers.ex:141
 #, elixir-autogen, elixir-format
 msgid "No pin selected."
 msgstr "Ningún marcador seleccionado."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:691
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:702
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Pin duplicated."
 msgstr "Zona duplicada."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:831
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:841
 #, elixir-autogen, elixir-format
 msgid "Pin pasted."
 msgstr "Marcador pegado."
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:449
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:459
 #, elixir-autogen, elixir-format
 msgid "Show Label"
 msgstr "Mostrar etiqueta"
 
-#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:128
+#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:129
 #, elixir-autogen, elixir-format
 msgid "The target map no longer exists. The reference has been cleared."
 msgstr "El mapa destino ya no existe. Se ha limpiado la referencia."
 
-#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:95
-#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:219
+#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:96
+#: lib/storyarn_web/live/map_live/handlers/tree_handlers.ex:225
 #, elixir-autogen, elixir-format
 msgid "Zone not found."
 msgstr "Zona no encontrada."
 
-#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:860
+#: lib/storyarn_web/live/map_live/handlers/element_handlers.ex:870
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Zone pasted."
 msgstr "Zonas"
 
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:403
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:439
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:427
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:463
 #, elixir-autogen, elixir-format
 msgid "Back"
 msgstr ""
@@ -1073,7 +1073,7 @@ msgstr ""
 msgid "Border"
 msgstr "Color del borde"
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:393
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:403
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Change Icon"
 msgstr "Cambiar"
@@ -1084,29 +1084,29 @@ msgstr "Cambiar"
 msgid "Map Settings"
 msgstr ""
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:158
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:334
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:474
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:163
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:344
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:500
 #, elixir-autogen, elixir-format
 msgid "More"
 msgstr ""
 
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:335
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:359
 #, elixir-autogen, elixir-format
 msgid "No link"
 msgstr ""
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:500
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:529
 #, elixir-autogen, elixir-format
 msgid "No waypoints"
 msgstr ""
 
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:363
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:387
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Remove link"
 msgstr "Eliminar"
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:497
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:523
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Straighten path"
 msgstr "Alinear"
@@ -1116,33 +1116,33 @@ msgstr "Alinear"
 msgid "Style"
 msgstr ""
 
-#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:163
+#: lib/storyarn_web/live/map_live/components/toolbar_widgets.ex:165
 #, elixir-autogen, elixir-format
 msgid "Width"
 msgstr ""
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:593
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:629
 #, elixir-autogen, elixir-format
 msgid "Location"
 msgstr "Ubicacion"
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:594
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:630
 #, elixir-autogen, elixir-format
 msgid "Character"
 msgstr "Personaje"
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:595
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:631
 #, elixir-autogen, elixir-format
 msgid "Event"
 msgstr "Evento"
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:182
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:358
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:187
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:368
 #, elixir-autogen, elixir-format
 msgid "Hover text..."
 msgstr ""
 
-#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:439
+#: lib/storyarn_web/live/map_live/components/floating_toolbar.ex:449
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Line style"
 msgstr "Líneas"
@@ -1152,32 +1152,32 @@ msgstr "Líneas"
 msgid "Upload Icon"
 msgstr "Subir fondo"
 
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:358
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:370
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Undo: annotation creation reverted."
 msgstr "Deshacer: anotación restaurada."
 
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:335
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:344
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Undo: connection creation reverted."
 msgstr "Deshacer: conexión restaurada."
 
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:512
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:524
 #, elixir-autogen, elixir-format
 msgid "Undo: layer creation reverted."
 msgstr ""
 
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:527
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:539
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Undo: layer restored."
 msgstr "Deshacer: zona restaurada."
 
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:289
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:295
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Undo: pin creation reverted."
 msgstr "Deshacer: marcador restaurado."
 
-#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:312
+#: lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex:318
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Undo: zone creation reverted."
 msgstr "Deshacer: zona restaurada."

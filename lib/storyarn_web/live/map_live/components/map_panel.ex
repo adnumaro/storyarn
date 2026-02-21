@@ -119,9 +119,11 @@ defmodule StoryarnWeb.MapLive.Components.MapPanel do
 
       <%!-- Map dimensions (read-only info) --%>
       <div class="pt-2 border-t border-base-300">
-        <label class="label text-xs font-medium text-base-content/60">{dgettext("maps", "Dimensions")}</label>
+        <label class="label text-xs font-medium text-base-content/60">
+          {dgettext("maps", "Dimensions")}
+        </label>
         <p class="text-xs text-base-content/50">
-          {(@map.width || 1000)} &times; {(@map.height || 1000)} px
+          {@map.width || 1000} &times; {@map.height || 1000} px
         </p>
       </div>
     </div>

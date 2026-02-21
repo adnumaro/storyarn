@@ -228,7 +228,10 @@ defmodule StoryarnWeb.UserAuth do
     else
       socket =
         socket
-        |> Phoenix.LiveView.put_flash(:error, dgettext("identity", "You must log in to access this page."))
+        |> Phoenix.LiveView.put_flash(
+          :error,
+          dgettext("identity", "You must log in to access this page.")
+        )
         |> Phoenix.LiveView.redirect(to: ~p"/users/log-in")
 
       {:halt, socket}

@@ -180,9 +180,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
           </span>
           <span>
             <.icon name="file-text" class="size-3 inline mr-1" />
-            {dngettext("flows", "%{count} word", "%{count} words", @word_count,
-              count: @word_count
-            )}
+            {dngettext("flows", "%{count} word", "%{count} words", @word_count, count: @word_count)}
           </span>
           <span :if={@audio_filename}>
             <.icon name="volume-2" class="size-3 inline mr-1" />
@@ -260,7 +258,9 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
                 variables={@project_variables}
                 can_edit={@can_edit}
                 context={%{"response-id" => response["id"], "node-id" => to_string(@node.id)}}
-                active_tab={Map.get(@panel_sections, "tab_response-cond-expr-#{response["id"]}", "builder")}
+                active_tab={
+                  Map.get(@panel_sections, "tab_response-cond-expr-#{response["id"]}", "builder")
+                }
               />
             </div>
             <div>
@@ -273,7 +273,9 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
                 can_edit={@can_edit}
                 context={%{"response-id" => response["id"], "node-id" => to_string(@node.id)}}
                 event_name="update_response_instruction_builder"
-                active_tab={Map.get(@panel_sections, "tab_response-inst-expr-#{response["id"]}", "builder")}
+                active_tab={
+                  Map.get(@panel_sections, "tab_response-inst-expr-#{response["id"]}", "builder")
+                }
               />
             </div>
           </div>
@@ -542,5 +544,4 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
   end
 
   defp has_advanced?(response), do: NodeTypeHelpers.response_has_advanced?(response)
-
 end

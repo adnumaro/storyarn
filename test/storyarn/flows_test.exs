@@ -189,7 +189,9 @@ defmodule Storyarn.FlowsTest do
     test "search_flows/3 offset enables pagination" do
       user = user_fixture()
       project = project_fixture(user)
-      for i <- 1..10, do: flow_fixture(project, %{name: "Flow #{String.pad_leading("#{i}", 2, "0")}"})
+
+      for i <- 1..10,
+          do: flow_fixture(project, %{name: "Flow #{String.pad_leading("#{i}", 2, "0")}"})
 
       page1 = Flows.search_flows(project.id, "Flow", limit: 5, offset: 0)
       page2 = Flows.search_flows(project.id, "Flow", limit: 5, offset: 5)

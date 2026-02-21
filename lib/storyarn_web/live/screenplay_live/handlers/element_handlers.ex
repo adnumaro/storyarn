@@ -51,7 +51,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
         {:noreply, socket}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not delete element."))}
+        {:noreply,
+         put_flash(socket, :error, dgettext("screenplays", "Could not delete element."))}
     end
   end
 
@@ -72,7 +73,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
              |> push_element_data_updated(updated)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not save condition."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not save condition."))}
         end
     end
   end
@@ -94,7 +96,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
              |> push_element_data_updated(updated)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not save instruction."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not save instruction."))}
         end
     end
   end
@@ -118,7 +121,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
              |> push_element_data_updated(updated)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not add choice."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not add choice."))}
         end
     end
   end
@@ -141,7 +145,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
              |> push_element_data_updated(updated)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not remove choice."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not remove choice."))}
         end
     end
   end
@@ -190,7 +195,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
         {:noreply, update_element_in_list(socket, updated)}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not set character sheet."))}
+        {:noreply,
+         put_flash(socket, :error, dgettext("screenplays", "Could not set character sheet."))}
     end
   end
 
@@ -226,7 +232,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
         {:noreply, push_element_data_updated(socket, updated)}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not update dual dialogue."))}
+        {:noreply,
+         put_flash(socket, :error, dgettext("screenplays", "Could not update dual dialogue."))}
     end
   end
 
@@ -252,7 +259,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
             {:noreply, push_element_data_updated(socket, updated)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not toggle parenthetical."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not toggle parenthetical."))}
         end
     end
   end
@@ -277,7 +285,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
              |> push_element_data_updated(updated)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not update title page."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not update title page."))}
         end
     end
   end

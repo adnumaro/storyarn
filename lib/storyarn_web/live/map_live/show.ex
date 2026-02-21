@@ -41,148 +41,148 @@ defmodule StoryarnWeb.MapLive.Show do
 
       <%!-- Canvas area (full width — no sidebar) --%>
       <div class="flex-1 relative overflow-hidden">
-          <div
-            id="map-canvas"
-            phx-hook="MapCanvas"
-            phx-update="ignore"
-            data-map={Jason.encode!(@map_data)}
-            data-i18n={Jason.encode!(@canvas_i18n)}
-            class="w-full h-full"
-          >
-            <div id="map-canvas-container" class="w-full h-full"></div>
-          </div>
+        <div
+          id="map-canvas"
+          phx-hook="MapCanvas"
+          phx-update="ignore"
+          data-map={Jason.encode!(@map_data)}
+          data-i18n={Jason.encode!(@canvas_i18n)}
+          class="w-full h-full"
+        >
+          <div id="map-canvas-container" class="w-full h-full"></div>
+        </div>
 
-          <%!-- Top-left panel: Search + Layers --%>
-          <div class="absolute top-3 left-3 z-[1000] flex flex-col gap-2 w-64">
-            <.map_search_panel
-              search_query={@search_query}
-              search_filter={@search_filter}
-              search_results={@search_results}
-            />
-
-            <%!-- Layer bar --%>
-            <.layer_bar
-              layers={@layers}
-              active_layer_id={@active_layer_id}
-              renaming_layer_id={@renaming_layer_id}
-              can_edit={@can_edit}
-              edit_mode={@edit_mode}
-            />
-          </div>
-
-          <%!-- Bottom dock (edit mode only) --%>
-          <.dock :if={@edit_mode} active_tool={@active_tool} pending_sheet={@pending_sheet_for_pin} />
-
-          <%!-- Sheet picker overlay --%>
-          <div
-            :if={@show_sheet_picker}
-            id="sheet-picker"
-            class="absolute bottom-32 left-1/2 -translate-x-1/2 z-[1001] w-72 bg-base-100 rounded-lg border border-base-300 shadow-lg overflow-hidden"
-          >
-            <div class="p-2 border-b border-base-300 flex items-center justify-between">
-              <span class="text-xs font-medium">{dgettext("maps", "Select a sheet")}</span>
-              <button
-                type="button"
-                phx-click="cancel_sheet_picker"
-                class="btn btn-ghost btn-xs btn-square"
-              >
-                <.icon name="x" class="size-3" />
-              </button>
-            </div>
-            <div class="max-h-60 overflow-y-auto p-1">
-              <.sheet_picker_list sheets={flatten_sheets(@project_sheets)} />
-            </div>
-          </div>
-
-          <%!-- Flash messages overlay --%>
-          <div class="absolute top-2 left-1/2 -translate-x-1/2 z-[1100]">
-            <.flash_group flash={@flash} />
-          </div>
-
-          <%!-- Legend --%>
-          <.legend
-            pins={@pins}
-            zones={@zones}
-            connections={@connections}
-            legend_open={@legend_open}
+        <%!-- Top-left panel: Search + Layers --%>
+        <div class="absolute top-3 left-3 z-[1000] flex flex-col gap-2 w-64">
+          <.map_search_panel
+            search_query={@search_query}
+            search_filter={@search_filter}
+            search_results={@search_results}
           />
 
-          <%!-- Floating element toolbar --%>
-          <div
-            :if={@selected_element && @can_edit && @edit_mode}
-            id="floating-toolbar-content"
-            phx-hook="FloatingToolbar"
-            class="absolute z-[1050]"
-          >
-            <.floating_toolbar
-              selected_type={@selected_type}
-              selected_element={@selected_element}
-              layers={@layers}
-              can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-              can_toggle_lock={true}
-              project_maps={@project_maps}
-              project_sheets={@project_sheets}
-              project_flows={@project_flows}
-            />
-          </div>
+          <%!-- Layer bar --%>
+          <.layer_bar
+            layers={@layers}
+            active_layer_id={@active_layer_id}
+            renaming_layer_id={@renaming_layer_id}
+            can_edit={@can_edit}
+            edit_mode={@edit_mode}
+          />
+        </div>
 
-          <%!-- Pin icon upload overlay --%>
-          <div
-            :if={@show_pin_icon_upload && @selected_type == "pin" && @project && @current_scope}
-            class="absolute top-3 right-3 z-[1060] w-64 bg-base-100 rounded-xl border border-base-300 shadow-xl p-3"
-          >
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-medium">{dgettext("maps", "Upload Icon")}</span>
-              <button
-                type="button"
-                phx-click="toggle_pin_icon_upload"
-                class="btn btn-ghost btn-xs btn-square"
-              >
-                <.icon name="x" class="size-3" />
-              </button>
-            </div>
-            <.live_component
-              module={StoryarnWeb.Components.AssetUpload}
-              id="pin-icon-upload"
-              project={@project}
-              current_user={@current_scope.user}
-              on_upload={fn asset -> send(self(), {:pin_icon_uploaded, asset}) end}
-              accept={~w(image/jpeg image/png image/gif image/webp image/svg+xml)}
-              max_entries={1}
-              max_file_size={524_288}
-            />
-          </div>
+        <%!-- Bottom dock (edit mode only) --%>
+        <.dock :if={@edit_mode} active_tool={@active_tool} pending_sheet={@pending_sheet_for_pin} />
 
-          <%!-- Map settings floating panel (gear button) --%>
-          <div
-            id="map-settings-floating"
-            class="hidden absolute top-3 right-3 z-[1000] w-72 max-h-[calc(100vh-8rem)]
-                   overflow-y-auto bg-base-100 rounded-xl border border-base-300 shadow-xl"
-            phx-click-away={JS.add_class("hidden", to: "#map-settings-floating")}
-          >
-            <div class="p-3 border-b border-base-300 flex items-center justify-between">
-              <h2 class="font-medium text-sm flex items-center gap-2">
-                <.icon name="settings" class="size-4" />
-                {dgettext("maps", "Map Settings")}
-              </h2>
-              <button
-                type="button"
-                class="btn btn-ghost btn-xs btn-square"
-                phx-click={JS.add_class("hidden", to: "#map-settings-floating")}
-              >
-                <.icon name="x" class="size-4" />
-              </button>
-            </div>
-            <div :if={@can_edit && @edit_mode} class="p-3">
-              <.map_properties
-                map={@map}
-                show_background_upload={@show_background_upload}
-                project={@project}
-                current_user={@current_scope.user}
-              />
-            </div>
+        <%!-- Sheet picker overlay --%>
+        <div
+          :if={@show_sheet_picker}
+          id="sheet-picker"
+          class="absolute bottom-32 left-1/2 -translate-x-1/2 z-[1001] w-72 bg-base-100 rounded-lg border border-base-300 shadow-lg overflow-hidden"
+        >
+          <div class="p-2 border-b border-base-300 flex items-center justify-between">
+            <span class="text-xs font-medium">{dgettext("maps", "Select a sheet")}</span>
+            <button
+              type="button"
+              phx-click="cancel_sheet_picker"
+              class="btn btn-ghost btn-xs btn-square"
+            >
+              <.icon name="x" class="size-3" />
+            </button>
+          </div>
+          <div class="max-h-60 overflow-y-auto p-1">
+            <.sheet_picker_list sheets={flatten_sheets(@project_sheets)} />
           </div>
         </div>
+
+        <%!-- Flash messages overlay --%>
+        <div class="absolute top-2 left-1/2 -translate-x-1/2 z-[1100]">
+          <.flash_group flash={@flash} />
+        </div>
+
+        <%!-- Legend --%>
+        <.legend
+          pins={@pins}
+          zones={@zones}
+          connections={@connections}
+          legend_open={@legend_open}
+        />
+
+        <%!-- Floating element toolbar --%>
+        <div
+          :if={@selected_element && @can_edit && @edit_mode}
+          id="floating-toolbar-content"
+          phx-hook="FloatingToolbar"
+          class="absolute z-[1050]"
+        >
+          <.floating_toolbar
+            selected_type={@selected_type}
+            selected_element={@selected_element}
+            layers={@layers}
+            can_edit={not Map.get(@selected_element || %{}, :locked, false)}
+            can_toggle_lock={true}
+            project_maps={@project_maps}
+            project_sheets={@project_sheets}
+            project_flows={@project_flows}
+          />
+        </div>
+
+        <%!-- Pin icon upload overlay --%>
+        <div
+          :if={@show_pin_icon_upload && @selected_type == "pin" && @project && @current_scope}
+          class="absolute top-3 right-3 z-[1060] w-64 bg-base-100 rounded-xl border border-base-300 shadow-xl p-3"
+        >
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium">{dgettext("maps", "Upload Icon")}</span>
+            <button
+              type="button"
+              phx-click="toggle_pin_icon_upload"
+              class="btn btn-ghost btn-xs btn-square"
+            >
+              <.icon name="x" class="size-3" />
+            </button>
+          </div>
+          <.live_component
+            module={StoryarnWeb.Components.AssetUpload}
+            id="pin-icon-upload"
+            project={@project}
+            current_user={@current_scope.user}
+            on_upload={fn asset -> send(self(), {:pin_icon_uploaded, asset}) end}
+            accept={~w(image/jpeg image/png image/gif image/webp image/svg+xml)}
+            max_entries={1}
+            max_file_size={524_288}
+          />
+        </div>
+
+        <%!-- Map settings floating panel (gear button) --%>
+        <div
+          id="map-settings-floating"
+          class="hidden absolute top-3 right-3 z-[1000] w-72 max-h-[calc(100vh-8rem)]
+                   overflow-y-auto bg-base-100 rounded-xl border border-base-300 shadow-xl"
+          phx-click-away={JS.add_class("hidden", to: "#map-settings-floating")}
+        >
+          <div class="p-3 border-b border-base-300 flex items-center justify-between">
+            <h2 class="font-medium text-sm flex items-center gap-2">
+              <.icon name="settings" class="size-4" />
+              {dgettext("maps", "Map Settings")}
+            </h2>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs btn-square"
+              phx-click={JS.add_class("hidden", to: "#map-settings-floating")}
+            >
+              <.icon name="x" class="size-4" />
+            </button>
+          </div>
+          <div :if={@can_edit && @edit_mode} class="p-3">
+            <.map_properties
+              map={@map}
+              show_background_upload={@show_background_upload}
+              project={@project}
+              current_user={@current_scope.user}
+            />
+          </div>
+        </div>
+      </div>
 
       <%!-- Confirm modals --%>
       <.confirm_modal
@@ -201,7 +201,8 @@ defmodule StoryarnWeb.MapLive.Show do
         id="delete-layer-confirm"
         title={dgettext("maps", "Delete layer?")}
         message={
-          dgettext("maps",
+          dgettext(
+            "maps",
             "This layer will be deleted. All elements on this layer will be moved to no layer."
           )
         }
@@ -311,9 +312,14 @@ defmodule StoryarnWeb.MapLive.Show do
   def handle_params(params, _url, socket) do
     socket =
       case params["highlight"] do
-        "pin:" <> id -> push_event(socket, "focus_element", %{type: "pin", id: parse_highlight_id(id)})
-        "zone:" <> id -> push_event(socket, "focus_element", %{type: "zone", id: parse_highlight_id(id)})
-        _ -> socket
+        "pin:" <> id ->
+          push_event(socket, "focus_element", %{type: "pin", id: parse_highlight_id(id)})
+
+        "zone:" <> id ->
+          push_event(socket, "focus_element", %{type: "zone", id: parse_highlight_id(id)})
+
+        _ ->
+          socket
       end
 
     {:noreply, socket}
@@ -804,7 +810,11 @@ defmodule StoryarnWeb.MapLive.Show do
   end
 
   defp unauthorized_flash(socket) do
-    put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))
+    put_flash(
+      socket,
+      :error,
+      dgettext("maps", "You don't have permission to perform this action.")
+    )
   end
 
   attr :sheets, :list, required: true

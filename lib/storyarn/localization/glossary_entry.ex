@@ -50,7 +50,14 @@ defmodule Storyarn.Localization.GlossaryEntry do
   """
   def create_changeset(entry, attrs) do
     entry
-    |> cast(attrs, [:source_term, :source_locale, :target_term, :target_locale, :context, :do_not_translate])
+    |> cast(attrs, [
+      :source_term,
+      :source_locale,
+      :target_term,
+      :target_locale,
+      :context,
+      :do_not_translate
+    ])
     |> validate_required([:source_term, :source_locale, :target_locale])
     |> validate_length(:source_locale, min: 2, max: 10)
     |> validate_length(:target_locale, min: 2, max: 10)

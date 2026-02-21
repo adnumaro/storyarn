@@ -64,7 +64,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
         |> assign(:debug_auto_playing, false)
         |> assign(:debug_step_limit_reached, false)
 
-      {:navigating, navigated_socket} = DebugExecutionHandlers.store_and_navigate(socket, root_flow_id)
+      {:navigating, navigated_socket} =
+        DebugExecutionHandlers.store_and_navigate(socket, root_flow_id)
+
       {:noreply, navigated_socket}
     else
       new_state = Engine.reset(state)
@@ -177,7 +179,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
 
     case DebugExecutionHandlers.find_entry_node(nodes_map) do
       nil ->
-        {:noreply, put_flash(socket, :error, dgettext("flows", "No entry node found in this flow."))}
+        {:noreply,
+         put_flash(socket, :error, dgettext("flows", "No entry node found in this flow."))}
 
       entry_node_id ->
         variables = VariableHelpers.build_variables(project.id)

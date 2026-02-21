@@ -18,9 +18,9 @@ defmodule Storyarn.Repo.Migrations.CreateLocalizationTables do
     create unique_index(:project_languages, [:project_id, :locale_code])
 
     create unique_index(:project_languages, [:project_id],
-      where: "is_source = true",
-      name: :project_languages_one_source
-    )
+             where: "is_source = true",
+             name: :project_languages_one_source
+           )
 
     create index(:project_languages, [:project_id])
 
@@ -52,17 +52,18 @@ defmodule Storyarn.Repo.Migrations.CreateLocalizationTables do
       timestamps(type: :utc_datetime)
     end
 
-    create unique_index(:localized_texts,
-      [:source_type, :source_id, :source_field, :locale_code],
-      name: :localized_texts_source_locale_unique
-    )
+    create unique_index(
+             :localized_texts,
+             [:source_type, :source_id, :source_field, :locale_code],
+             name: :localized_texts_source_locale_unique
+           )
 
     create index(:localized_texts, [:project_id, :locale_code, :status])
 
     create index(:localized_texts, [:project_id, :locale_code],
-      where: "status != 'final'",
-      name: :localized_texts_incomplete
-    )
+             where: "status != 'final'",
+             name: :localized_texts_incomplete
+           )
 
     create index(:localized_texts, [:speaker_sheet_id, :locale_code])
     create index(:localized_texts, [:source_type, :source_id])
@@ -82,10 +83,11 @@ defmodule Storyarn.Repo.Migrations.CreateLocalizationTables do
       timestamps(type: :utc_datetime)
     end
 
-    create unique_index(:localization_glossary_entries,
-      [:project_id, :source_term, :source_locale, :target_locale],
-      name: :glossary_entries_unique
-    )
+    create unique_index(
+             :localization_glossary_entries,
+             [:project_id, :source_term, :source_locale, :target_locale],
+             name: :glossary_entries_unique
+           )
 
     create index(:localization_glossary_entries, [:project_id])
 

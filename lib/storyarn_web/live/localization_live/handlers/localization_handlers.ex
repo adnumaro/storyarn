@@ -33,7 +33,8 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
           {:noreply, put_flash(socket, :info, dgettext("localization", "Language removed."))}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("localization", "Could not remove language."))}
+          {:noreply,
+           put_flash(socket, :error, dgettext("localization", "Could not remove language."))}
       end
     else
       {:noreply,
@@ -99,8 +100,7 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
          )}
 
       {:error, :quota_exceeded} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("localization", "DeepL quota exceeded."))}
+        {:noreply, put_flash(socket, :error, dgettext("localization", "DeepL quota exceeded."))}
 
       {:error, reason} ->
         {:noreply,
@@ -178,8 +178,7 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
         {:noreply, put_flash(socket, :info, msg)}
 
       {:error, _changeset} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("localization", "Failed to add language."))}
+        {:noreply, put_flash(socket, :error, dgettext("localization", "Failed to add language."))}
     end
   end
 end

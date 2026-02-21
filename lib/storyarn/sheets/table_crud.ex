@@ -182,10 +182,11 @@ defmodule Storyarn.Sheets.TableCrud do
     rows_by_block = Enum.group_by(rows, & &1.block_id)
 
     Map.new(block_ids, fn block_id ->
-      {block_id, %{
-        columns: Map.get(columns_by_block, block_id, []),
-        rows: Map.get(rows_by_block, block_id, [])
-      }}
+      {block_id,
+       %{
+         columns: Map.get(columns_by_block, block_id, []),
+         rows: Map.get(rows_by_block, block_id, [])
+       }}
     end)
   end
 

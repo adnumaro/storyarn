@@ -25,7 +25,12 @@ defmodule Storyarn.Localization.Languages do
     %{code: "en-GB", name: "English (UK)", native: "English (UK)", region: :europe},
     %{code: "en-US", name: "English (US)", native: "English (US)", region: :americas},
     %{code: "es", name: "Spanish", native: "Español", region: :europe},
-    %{code: "es-419", name: "Spanish (Latin America)", native: "Español (Latinoamérica)", region: :americas},
+    %{
+      code: "es-419",
+      name: "Spanish (Latin America)",
+      native: "Español (Latinoamérica)",
+      region: :americas
+    },
     %{code: "et", name: "Estonian", native: "Eesti", region: :europe},
     %{code: "fi", name: "Finnish", native: "Suomi", region: :europe},
     %{code: "fil", name: "Filipino", native: "Filipino", region: :asia},
@@ -44,8 +49,18 @@ defmodule Storyarn.Localization.Languages do
     %{code: "nb", name: "Norwegian Bokmål", native: "Norsk bokmål", region: :europe},
     %{code: "nl", name: "Dutch", native: "Nederlands", region: :europe},
     %{code: "pl", name: "Polish", native: "Polski", region: :europe},
-    %{code: "pt-BR", name: "Portuguese (Brazil)", native: "Português (Brasil)", region: :americas},
-    %{code: "pt-PT", name: "Portuguese (Portugal)", native: "Português (Portugal)", region: :europe},
+    %{
+      code: "pt-BR",
+      name: "Portuguese (Brazil)",
+      native: "Português (Brasil)",
+      region: :americas
+    },
+    %{
+      code: "pt-PT",
+      name: "Portuguese (Portugal)",
+      native: "Português (Portugal)",
+      region: :europe
+    },
     %{code: "ro", name: "Romanian", native: "Română", region: :europe},
     %{code: "ru", name: "Russian", native: "Русский", region: :europe},
     %{code: "sk", name: "Slovak", native: "Slovenčina", region: :europe},

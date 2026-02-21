@@ -8,7 +8,9 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.CollaborationComponents
   import StoryarnWeb.Components.SaveIndicator
-  import StoryarnWeb.FlowLive.Components.NodeTypeHelpers, only: [node_type_label: 1, node_type_icon: 1]
+
+  import StoryarnWeb.FlowLive.Components.NodeTypeHelpers,
+    only: [node_type_label: 1, node_type_icon: 1]
 
   alias StoryarnWeb.FlowLive.Helpers.NavigationHistory
 

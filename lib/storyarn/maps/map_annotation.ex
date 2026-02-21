@@ -52,7 +52,16 @@ defmodule Storyarn.Maps.MapAnnotation do
 
   defp shared_changeset(annotation, attrs) do
     annotation
-    |> cast(attrs, [:text, :position_x, :position_y, :font_size, :color, :layer_id, :position, :locked])
+    |> cast(attrs, [
+      :text,
+      :position_x,
+      :position_y,
+      :font_size,
+      :color,
+      :layer_id,
+      :position,
+      :locked
+    ])
     |> validate_required([:text, :position_x, :position_y])
     |> validate_length(:text, min: 1, max: 500)
     |> validate_number(:position_x, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)

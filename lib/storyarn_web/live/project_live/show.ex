@@ -39,7 +39,9 @@ defmodule StoryarnWeb.ProjectLive.Show do
       <div class="text-center py-12 text-base-content/70">
         <.icon name="file-text" class="size-12 mx-auto mb-4 text-base-content/30" />
         <p>{dgettext("projects", "Project workspace coming soon!")}</p>
-        <p class="text-sm mt-2">{dgettext("projects", "This is where you'll design your narrative flows.")}</p>
+        <p class="text-sm mt-2">
+          {dgettext("projects", "This is where you'll design your narrative flows.")}
+        </p>
       </div>
     </Layouts.project>
     """

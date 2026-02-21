@@ -23,7 +23,12 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
       condition = %{
         "logic" => "all",
         "rules" => [
-          %{"sheet" => "mc.jaime", "variable" => "health", "operator" => "greater_than", "value" => "50"}
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "greater_than",
+            "value" => "50"
+          }
         ]
       }
 
@@ -45,7 +50,12 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
       condition = %{
         "logic" => "all",
         "rules" => [
-          %{"sheet" => "mc.jaime", "variable" => "alive", "operator" => "is_false", "value" => nil}
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "alive",
+            "operator" => "is_false",
+            "value" => nil
+          }
         ]
       }
 
@@ -56,7 +66,12 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
       condition = %{
         "logic" => "all",
         "rules" => [
-          %{"sheet" => "mc.jaime", "variable" => "health", "operator" => "greater_than", "value" => "50"},
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "greater_than",
+            "value" => "50"
+          },
           %{"sheet" => "mc.jaime", "variable" => "alive", "operator" => "is_true", "value" => nil}
         ]
       }
@@ -69,8 +84,18 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
       condition = %{
         "logic" => "any",
         "rules" => [
-          %{"sheet" => "mc.jaime", "variable" => "health", "operator" => "equals", "value" => "0"},
-          %{"sheet" => "mc.jaime", "variable" => "alive", "operator" => "is_false", "value" => nil}
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "equals",
+            "value" => "0"
+          },
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "alive",
+            "operator" => "is_false",
+            "value" => nil
+          }
         ]
       }
 
@@ -82,7 +107,12 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
       condition = %{
         "logic" => "all",
         "rules" => [
-          %{"sheet" => "mc.jaime", "variable" => "class", "operator" => "equals", "value" => "warrior"}
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "class",
+            "operator" => "equals",
+            "value" => "warrior"
+          }
         ]
       }
 
@@ -94,7 +124,12 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
       condition = %{
         "logic" => "all",
         "rules" => [
-          %{"sheet" => "global", "variable" => "progress", "operator" => "less_than", "value" => "100"}
+          %{
+            "sheet" => "global",
+            "variable" => "progress",
+            "operator" => "less_than",
+            "value" => "100"
+          }
         ]
       }
 
@@ -106,7 +141,12 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
         "logic" => "all",
         "rules" => [
           %{"sheet" => "", "variable" => "health", "operator" => "equals", "value" => "50"},
-          %{"sheet" => "mc.jaime", "variable" => "health", "operator" => "equals", "value" => "50"}
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "equals",
+            "value" => "50"
+          }
         ]
       }
 
@@ -153,7 +193,12 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
             "type" => "block",
             "logic" => "all",
             "rules" => [
-              %{"sheet" => "mc.jaime", "variable" => "health", "operator" => "greater_than", "value" => "50"}
+              %{
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "greater_than",
+                "value" => "50"
+              }
             ]
           }
         ]
@@ -171,7 +216,12 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
             "type" => "block",
             "logic" => "all",
             "rules" => [
-              %{"sheet" => "mc.jaime", "variable" => "health", "operator" => "greater_than", "value" => "50"}
+              %{
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "greater_than",
+                "value" => "50"
+              }
             ]
           },
           %{
@@ -179,7 +229,12 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
             "type" => "block",
             "logic" => "all",
             "rules" => [
-              %{"sheet" => "mc.jaime", "variable" => "alive", "operator" => "is_true", "value" => nil}
+              %{
+                "sheet" => "mc.jaime",
+                "variable" => "alive",
+                "operator" => "is_true",
+                "value" => nil
+              }
             ]
           }
         ]
@@ -198,8 +253,18 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
             "type" => "block",
             "logic" => "all",
             "rules" => [
-              %{"sheet" => "mc.jaime", "variable" => "health", "operator" => "greater_than", "value" => "50"},
-              %{"sheet" => "mc.jaime", "variable" => "alive", "operator" => "is_true", "value" => nil}
+              %{
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "greater_than",
+                "value" => "50"
+              },
+              %{
+                "sheet" => "mc.jaime",
+                "variable" => "alive",
+                "operator" => "is_true",
+                "value" => nil
+              }
             ]
           },
           %{
@@ -207,7 +272,12 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
             "type" => "block",
             "logic" => "all",
             "rules" => [
-              %{"sheet" => "global", "variable" => "override", "operator" => "is_true", "value" => nil}
+              %{
+                "sheet" => "global",
+                "variable" => "override",
+                "operator" => "is_true",
+                "value" => nil
+              }
             ]
           }
         ]
@@ -231,7 +301,12 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
                 "type" => "block",
                 "logic" => "all",
                 "rules" => [
-                  %{"sheet" => "mc.jaime", "variable" => "health", "operator" => "greater_than", "value" => "50"}
+                  %{
+                    "sheet" => "mc.jaime",
+                    "variable" => "health",
+                    "operator" => "greater_than",
+                    "value" => "50"
+                  }
                 ]
               },
               %{
@@ -239,7 +314,12 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
                 "type" => "block",
                 "logic" => "all",
                 "rules" => [
-                  %{"sheet" => "global", "variable" => "override", "operator" => "is_true", "value" => nil}
+                  %{
+                    "sheet" => "global",
+                    "variable" => "override",
+                    "operator" => "is_true",
+                    "value" => nil
+                  }
                 ]
               }
             ]
@@ -306,7 +386,8 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
         %{"sheet" => "mc.jaime", "variable" => "alive", "operator" => "set_true"}
       ]
 
-      assert ExpressionEditor.serialize_assignments_to_text(assignments) == "mc.jaime.alive = true"
+      assert ExpressionEditor.serialize_assignments_to_text(assignments) ==
+               "mc.jaime.alive = true"
     end
 
     test "serializes multiple assignments joined by newlines" do
@@ -408,7 +489,9 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
           id: "test-expr",
           mode: "condition",
           condition: nil,
-          variables: [%{sheet_shortcut: "mc.jaime", variable_name: "health", block_type: "number"}],
+          variables: [
+            %{sheet_shortcut: "mc.jaime", variable_name: "health", block_type: "number"}
+          ],
           can_edit: true,
           active_tab: "code"
         )

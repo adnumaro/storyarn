@@ -107,7 +107,9 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
             {dgettext("localization", "Machine translated")}
           </span>
           <span :if={@text.last_translated_at}>
-            {dgettext("localization", "Last translated: %{time}", time: Calendar.strftime(@text.last_translated_at, "%Y-%m-%d %H:%M"))}
+            {dgettext("localization", "Last translated: %{time}",
+              time: Calendar.strftime(@text.last_translated_at, "%Y-%m-%d %H:%M")
+            )}
           </span>
         </div>
       </div>
@@ -189,7 +191,11 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("localization", "You don't have permission to perform this action.")
+         )}
     end
   end
 
@@ -210,12 +216,20 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
 
           {:error, reason} ->
             {:noreply,
-             put_flash(socket, :error, dgettext("localization", "Translation failed: %{reason}", reason: inspect(reason)))}
+             put_flash(
+               socket,
+               :error,
+               dgettext("localization", "Translation failed: %{reason}", reason: inspect(reason))
+             )}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("localization", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("localization", "You don't have permission to perform this action.")
+         )}
     end
   end
 

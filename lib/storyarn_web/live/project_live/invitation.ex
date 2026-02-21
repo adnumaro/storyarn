@@ -42,13 +42,17 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
                 <div class="alert alert-warning">
                   <.icon name="triangle-alert" class="size-5" />
                   <span>
-                    {dgettext("projects", "This invitation was sent to")} <strong>{@invitation.email}</strong>. {dgettext("projects", 
+                    {dgettext("projects", "This invitation was sent to")} <strong>{@invitation.email}</strong>. {dgettext(
+                      "projects",
                       "You're logged in as"
                     )} <strong>{@current_scope.user.email}</strong>.
                   </span>
                 </div>
                 <p class="mt-4 text-sm text-base-content/70">
-                  {dgettext("projects", "Please log in with the correct email address to accept this invitation.")}
+                  {dgettext(
+                    "projects",
+                    "Please log in with the correct email address to accept this invitation."
+                  )}
                 </p>
               <% end %>
             <% else %>
@@ -135,7 +139,12 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
         {:noreply, socket}
 
       {:error, :email_mismatch} ->
-        {:noreply, put_flash(socket, :error, dgettext("projects", "Your email doesn't match the invitation."))}
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "Your email doesn't match the invitation.")
+         )}
 
       {:error, :already_member} ->
         socket =
@@ -163,7 +172,11 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
 
       {:error, _} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("projects", "Failed to accept invitation. Please try again."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "Failed to accept invitation. Please try again.")
+         )}
     end
   end
 end

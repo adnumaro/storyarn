@@ -17,14 +17,17 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FlowSyncHandlers do
 
   def do_sync_to_flow(socket) do
     if socket.assigns.link_status != :linked do
-      {:noreply, put_flash(socket, :error, dgettext("screenplays", "Screenplay is not linked to a flow."))}
+      {:noreply,
+       put_flash(socket, :error, dgettext("screenplays", "Screenplay is not linked to a flow."))}
     else
       case Screenplays.sync_to_flow(socket.assigns.screenplay) do
         {:ok, _flow} ->
-          {:noreply, put_flash(socket, :info, dgettext("screenplays", "Screenplay synced to flow."))}
+          {:noreply,
+           put_flash(socket, :info, dgettext("screenplays", "Screenplay synced to flow."))}
 
         {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not sync screenplay."))}
+          {:noreply,
+           put_flash(socket, :error, dgettext("screenplays", "Could not sync screenplay."))}
       end
     end
   end
@@ -33,7 +36,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FlowSyncHandlers do
     screenplay = socket.assigns.screenplay
 
     if socket.assigns.link_status != :linked do
-      {:noreply, put_flash(socket, :error, dgettext("screenplays", "Screenplay is not linked to a flow."))}
+      {:noreply,
+       put_flash(socket, :error, dgettext("screenplays", "Screenplay is not linked to a flow."))}
     else
       case Screenplays.sync_from_flow(screenplay) do
         {:ok, _screenplay} ->
@@ -46,10 +50,12 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FlowSyncHandlers do
            |> put_flash(:info, dgettext("screenplays", "Screenplay updated from flow."))}
 
         {:error, :no_entry_node} ->
-          {:noreply, put_flash(socket, :error, dgettext("screenplays", "Flow has no entry node."))}
+          {:noreply,
+           put_flash(socket, :error, dgettext("screenplays", "Flow has no entry node."))}
 
         {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not sync from flow."))}
+          {:noreply,
+           put_flash(socket, :error, dgettext("screenplays", "Could not sync from flow."))}
       end
     end
   end

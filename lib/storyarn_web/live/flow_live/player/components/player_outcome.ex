@@ -54,9 +54,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerOutcome do
           {dgettext("flows", "Play again")}
         </button>
         <.link
-          navigate={
-            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"
-          }
+          navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"}
           class="btn btn-ghost btn-sm gap-2"
         >
           <.icon name="arrow-left" class="size-4" />

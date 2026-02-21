@@ -77,7 +77,8 @@ defmodule Storyarn.Maps.ZoneImageExtractor do
 
   defp open_image(%{url: url}) do
     case resolve_path(url) do
-      {:error, _} = err -> err
+      {:error, _} = err ->
+        err
 
       path when is_binary(path) ->
         case Image.open(path) do

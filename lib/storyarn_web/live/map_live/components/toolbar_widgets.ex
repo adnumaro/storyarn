@@ -140,7 +140,9 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
                 <button
                   :for={style <- ~w(solid dashed dotted)}
                   type="button"
-                  phx-click={JS.push(@event, value: %{id: @element_id, field: @style_field, value: style})}
+                  phx-click={
+                    JS.push(@event, value: %{id: @element_id, field: @style_field, value: style})
+                  }
                   class={"toolbar-btn h-7 w-10 #{if style == @current_style, do: "toolbar-btn-active"}"}
                   disabled={@disabled}
                 >
@@ -165,7 +167,15 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
               <div class="flex items-center gap-2">
                 <button
                   type="button"
-                  phx-click={JS.push(@event, value: %{id: @element_id, field: @width_field, value: max(@current_width - 1, 0)})}
+                  phx-click={
+                    JS.push(@event,
+                      value: %{
+                        id: @element_id,
+                        field: @width_field,
+                        value: max(@current_width - 1, 0)
+                      }
+                    )
+                  }
                   class="toolbar-btn h-6 w-6 text-xs"
                   disabled={@disabled || @current_width <= 0}
                 >
@@ -174,7 +184,15 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
                 <span class="text-sm font-mono w-6 text-center">{@current_width}</span>
                 <button
                   type="button"
-                  phx-click={JS.push(@event, value: %{id: @element_id, field: @width_field, value: min(@current_width + 1, 10)})}
+                  phx-click={
+                    JS.push(@event,
+                      value: %{
+                        id: @element_id,
+                        field: @width_field,
+                        value: min(@current_width + 1, 10)
+                      }
+                    )
+                  }
                   class="toolbar-btn h-6 w-6 text-xs"
                   disabled={@disabled || @current_width >= 10}
                 >
@@ -329,7 +347,13 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
       >
         <.icon name="link" class="size-3.5" />
         <span :if={@current_type} class="text-xs max-w-[60px] truncate">
-          {target_display_name(@current_type, @current_target_id, @project_maps, @project_sheets, @project_flows)}
+          {target_display_name(
+            @current_type,
+            @current_target_id,
+            @project_maps,
+            @project_sheets,
+            @project_flows
+          )}
         </span>
         <span :if={!@current_type} class="text-xs text-base-content/40">
           {dgettext("maps", "No link")}
@@ -544,6 +568,7 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
   defp format_opacity(nil), do: "30%"
   defp format_opacity(val) when is_float(val), do: "#{round(val * 100)}%"
   defp format_opacity(val) when is_integer(val), do: "#{val * 100}%"
+
   defp format_opacity(val) when is_binary(val) do
     case Float.parse(val) do
       {f, _} -> "#{round(f * 100)}%"
@@ -576,6 +601,7 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
 
   defp target_display_name(type, target_id, maps, sheets, flows) do
     items = target_items(type, maps, sheets, flows)
+
     case Enum.find(items, fn item -> item.id == target_id end) do
       nil -> target_type_label(type)
       item -> item.name

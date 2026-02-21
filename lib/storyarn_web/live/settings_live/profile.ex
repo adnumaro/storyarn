@@ -16,7 +16,11 @@ defmodule StoryarnWeb.SettingsLive.Profile do
           put_flash(socket, :info, dgettext("settings", "Email changed successfully."))
 
         {:error, :transaction_aborted} ->
-          put_flash(socket, :error, dgettext("settings", "Email change link is invalid or it has expired."))
+          put_flash(
+            socket,
+            :error,
+            dgettext("settings", "Email change link is invalid or it has expired.")
+          )
       end
 
     {:ok, push_navigate(socket, to: ~p"/users/settings")}
@@ -49,7 +53,9 @@ defmodule StoryarnWeb.SettingsLive.Profile do
       current_path={@current_path}
     >
       <:title>{dgettext("settings", "Profile")}</:title>
-      <:subtitle>{dgettext("settings", "Manage your personal information and email address")}</:subtitle>
+      <:subtitle>
+        {dgettext("settings", "Manage your personal information and email address")}
+      </:subtitle>
 
       <div class="space-y-8">
         <%!-- Profile Section --%>
@@ -126,7 +132,8 @@ defmodule StoryarnWeb.SettingsLive.Profile do
 
     case Accounts.update_user_profile(user, user_params) do
       {:ok, _user} ->
-        {:noreply, put_flash(socket, :info, dgettext("settings", "Profile updated successfully."))}
+        {:noreply,
+         put_flash(socket, :info, dgettext("settings", "Profile updated successfully."))}
 
       {:error, changeset} ->
         {:noreply, assign(socket, profile_form: to_form(changeset, action: :insert))}
@@ -155,7 +162,12 @@ defmodule StoryarnWeb.SettingsLive.Profile do
           &url(~p"/users/settings/confirm-email/#{&1}")
         )
 
-        info = dgettext("settings", "A link to confirm your email change has been sent to the new address.")
+        info =
+          dgettext(
+            "settings",
+            "A link to confirm your email change has been sent to the new address."
+          )
+
         {:noreply, socket |> put_flash(:info, info)}
 
       changeset ->

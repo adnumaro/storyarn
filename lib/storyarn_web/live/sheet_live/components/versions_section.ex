@@ -153,7 +153,8 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
     if socket.assigns.can_edit do
       fun.(socket)
     else
-      {:noreply, put_flash(socket, :error, dgettext("sheets", "You don't have permission to edit."))}
+      {:noreply,
+       put_flash(socket, :error, dgettext("sheets", "You don't have permission to edit."))}
     end
   end
 
@@ -371,7 +372,8 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
         <div class="flex items-center gap-2 text-xs text-base-content/60 mt-0.5">
           <span>{format_version_date(@version.inserted_at)}</span>
           <span :if={@version.changed_by}>
-            · {dgettext("sheets", "by")} {@version.changed_by.display_name || @version.changed_by.email}
+            · {dgettext("sheets", "by")} {@version.changed_by.display_name ||
+              @version.changed_by.email}
           </span>
         </div>
       </div>
@@ -437,7 +439,9 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
           </div>
           <div class="mb-4">
             <label class="label" for="version-description">
-              <span class="label-text">{dgettext("sheets", "Description")} ({dgettext("sheets", "optional")})</span>
+              <span class="label-text">
+                {dgettext("sheets", "Description")} ({dgettext("sheets", "optional")})
+              </span>
             </label>
             <textarea
               name="description"

@@ -80,7 +80,8 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
 
     with zone when not is_nil(zone) <- Maps.get_zone(map.id, zone_id),
          :ok <- validate_zone_has_name(zone),
-         {:ok, bg_asset, img_dims} <- ZoneImageExtractor.extract(map, zone, socket.assigns.project),
+         {:ok, bg_asset, img_dims} <-
+           ZoneImageExtractor.extract(map, zone, socket.assigns.project),
          child_attrs <- build_child_map_attrs(zone, map, bg_asset, img_dims),
          {:ok, child_map} <- Maps.create_map(socket.assigns.project, child_attrs),
          {:ok, _updated_zone} <-
@@ -147,8 +148,11 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
 
   defp do_delete_current_map(socket, map, map_id) do
     case Maps.delete_map(map) do
-      {:ok, _} -> {:noreply, after_map_deleted(socket, map_id)}
-      {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("maps", "Could not delete map."))}
+      {:ok, _} ->
+        {:noreply, after_map_deleted(socket, map_id)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not delete map."))}
     end
   end
 
@@ -157,8 +161,11 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
     position = parse_int(position) || 0
 
     case Maps.move_map_to_position(map, new_parent_id, position) do
-      {:ok, _} -> {:noreply, reload_maps_tree(socket)}
-      {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move map."))}
+      {:ok, _} ->
+        {:noreply, reload_maps_tree(socket)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move map."))}
     end
   end
 
@@ -212,8 +219,7 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
            )}
 
         {:error, _} ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("maps", "Could not create child map."))}
+          {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create child map."))}
       end
     else
       {:noreply, put_flash(socket, :error, dgettext("maps", "Zone not found."))}
@@ -222,7 +228,8 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
 
   defp link_zone_to_child_map(zone, child_map) do
     case Maps.update_zone(zone, %{target_type: "map", target_id: child_map.id}) do
-      {:ok, _} -> :ok
+      {:ok, _} ->
+        :ok
 
       {:error, reason} ->
         Logger.warning(

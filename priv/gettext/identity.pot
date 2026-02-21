@@ -21,12 +21,12 @@ msgstr ""
 msgid "Already registered?"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:99
+#: lib/storyarn_web/live/user_live/registration.ex:105
 #, elixir-autogen, elixir-format
 msgid "An email was sent to %{email}, please access it to confirm your account."
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:115
+#: lib/storyarn_web/controllers/oauth_controller.ex:127
 #, elixir-autogen, elixir-format
 msgid "Cannot unlink your only authentication method. Set a password first."
 msgstr ""
@@ -47,54 +47,54 @@ msgstr ""
 msgid "Confirming..."
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:29
+#: lib/storyarn_web/controllers/oauth_controller.ex:31
 #, elixir-autogen, elixir-format
 msgid "Could not authenticate: %{errors}"
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:75
+#: lib/storyarn_web/controllers/oauth_controller.ex:80
 #, elixir-autogen, elixir-format
 msgid "Could not link account: %{errors}"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:43
+#: lib/storyarn_web/live/user_live/registration.ex:46
 #, elixir-autogen, elixir-format
 msgid "Create an account"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:42
+#: lib/storyarn_web/live/user_live/registration.ex:43
 #, elixir-autogen, elixir-format
 msgid "Creating account..."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:21
+#: lib/storyarn_web/live/user_live/login.ex:24
 #, elixir-autogen, elixir-format
 msgid "Don't have an account?"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:56
-#: lib/storyarn_web/live/user_live/login.ex:80
+#: lib/storyarn_web/live/user_live/login.ex:65
+#: lib/storyarn_web/live/user_live/login.ex:89
 #: lib/storyarn_web/live/user_live/registration.ex:36
 #, elixir-autogen, elixir-format
 msgid "Email"
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:40
+#: lib/storyarn_web/controllers/oauth_controller.ex:43
 #, elixir-autogen, elixir-format
 msgid "Failed to authenticate with %{provider}: %{message}"
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:86
+#: lib/storyarn_web/controllers/oauth_controller.ex:92
 #, elixir-autogen, elixir-format
 msgid "Failed to link %{provider}: %{message}"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:104
+#: lib/storyarn_web/controllers/user_session_controller.ex:107
 #, elixir-autogen, elixir-format
 msgid "Failed to update password."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:129
+#: lib/storyarn_web/live/user_live/login.ex:138
 #, elixir-autogen, elixir-format
 msgid "If your email is in our system, you will receive instructions for logging in shortly."
 msgstr ""
@@ -104,71 +104,71 @@ msgstr ""
 msgid "Invalid email or password"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:64
+#: lib/storyarn_web/live/user_live/confirmation.ex:67
 #, elixir-autogen, elixir-format
 msgid "Keep me logged in on this device"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:55
+#: lib/storyarn_web/live/user_live/confirmation.ex:58
 #: lib/storyarn_web/live/user_live/login.ex:16
 #: lib/storyarn_web/live/user_live/registration.ex:21
 #, elixir-autogen, elixir-format
 msgid "Log in"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:91
+#: lib/storyarn_web/live/user_live/login.ex:100
 #, elixir-autogen, elixir-format
 msgid "Log in and stay logged in"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:94
+#: lib/storyarn_web/live/user_live/login.ex:103
 #, elixir-autogen, elixir-format
 msgid "Log in only this time"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:62
+#: lib/storyarn_web/live/user_live/login.ex:71
 #, elixir-autogen, elixir-format
 msgid "Log in with email"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:70
+#: lib/storyarn_web/live/user_live/confirmation.ex:73
 #, elixir-autogen, elixir-format
 msgid "Log me in only this time"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:116
+#: lib/storyarn_web/controllers/user_session_controller.ex:122
 #, elixir-autogen, elixir-format
 msgid "Logged out successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:54
-#: lib/storyarn_web/live/user_live/confirmation.ex:61
-#: lib/storyarn_web/live/user_live/confirmation.ex:67
+#: lib/storyarn_web/live/user_live/confirmation.ex:55
+#: lib/storyarn_web/live/user_live/confirmation.ex:64
+#: lib/storyarn_web/live/user_live/confirmation.ex:70
 #, elixir-autogen, elixir-format
 msgid "Logging in..."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:93
+#: lib/storyarn_web/live/user_live/confirmation.ex:99
 #, elixir-autogen, elixir-format
 msgid "Magic link is invalid or it has expired."
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:108
+#: lib/storyarn_web/controllers/oauth_controller.ex:119
 #, elixir-autogen, elixir-format
 msgid "No %{provider} account linked."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:87
+#: lib/storyarn_web/live/user_live/login.ex:96
 #, elixir-autogen, elixir-format
 msgid "Password"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:100
+#: lib/storyarn_web/controllers/user_session_controller.ex:103
 #, elixir-autogen, elixir-format
 msgid "Password updated successfully!"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:109
+#: lib/storyarn_web/controllers/user_session_controller.ex:114
 #, elixir-autogen, elixir-format
 msgid "Please re-authenticate to change your password."
 msgstr ""
@@ -178,7 +178,7 @@ msgstr ""
 msgid "Register for an account"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:25
+#: lib/storyarn_web/live/user_live/login.ex:28
 #, elixir-autogen, elixir-format
 msgid "Sign up"
 msgstr ""
@@ -188,12 +188,12 @@ msgstr ""
 msgid "Successfully authenticated with %{provider}."
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:67
+#: lib/storyarn_web/controllers/oauth_controller.ex:70
 #, elixir-autogen, elixir-format
 msgid "Successfully linked %{provider} account."
 msgstr ""
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:102
+#: lib/storyarn_web/controllers/oauth_controller.ex:111
 #, elixir-autogen, elixir-format
 msgid "Successfully unlinked %{provider} account."
 msgstr ""
@@ -203,27 +203,27 @@ msgstr ""
 msgid "The link is invalid or it has expired."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirmation.ex:76
+#: lib/storyarn_web/live/user_live/confirmation.ex:79
 #, elixir-autogen, elixir-format
 msgid "Tip: If you prefer passwords, you can enable them in the user settings."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:36
+#: lib/storyarn_web/live/user_live/login.ex:42
 #, elixir-autogen, elixir-format
 msgid "To see sent emails, visit"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:55
+#: lib/storyarn_web/controllers/user_session_controller.ex:57
 #, elixir-autogen, elixir-format
 msgid "Too many login attempts. Please try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:74
+#: lib/storyarn_web/live/user_live/registration.ex:79
 #, elixir-autogen, elixir-format
 msgid "Too many registration attempts. Please try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:141
+#: lib/storyarn_web/live/user_live/login.ex:151
 #, elixir-autogen, elixir-format
 msgid "Too many requests. Please try again later."
 msgstr ""
@@ -243,18 +243,18 @@ msgstr ""
 msgid "Welcome back!"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:34
+#: lib/storyarn_web/live/user_live/login.ex:40
 #, elixir-autogen, elixir-format
 msgid "You are running the local mail adapter."
 msgstr ""
 
-#: lib/storyarn_web/user_auth.ex:231
-#: lib/storyarn_web/user_auth.ex:311
+#: lib/storyarn_web/user_auth.ex:233
+#: lib/storyarn_web/user_auth.ex:314
 #, elixir-autogen, elixir-format
 msgid "You must log in to access this page."
 msgstr ""
 
-#: lib/storyarn_web/user_auth.ex:248
+#: lib/storyarn_web/user_auth.ex:251
 #, elixir-autogen, elixir-format
 msgid "You must re-authenticate to access this page."
 msgstr ""
@@ -264,17 +264,17 @@ msgstr ""
 msgid "You need to reauthenticate to perform sensitive actions on your account."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:25
+#: lib/storyarn_web/live/user_live/login.ex:28
 #, elixir-autogen, elixir-format
 msgid "for an account now."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:66
+#: lib/storyarn_web/live/user_live/login.ex:75
 #, elixir-autogen, elixir-format
 msgid "or"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:43
+#: lib/storyarn_web/live/user_live/login.ex:52
 #, elixir-autogen, elixir-format
 msgid "or continue with email"
 msgstr ""
@@ -284,7 +284,7 @@ msgstr ""
 msgid "or register with email"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/login.ex:36
+#: lib/storyarn_web/live/user_live/login.ex:45
 #, elixir-autogen, elixir-format
 msgid "the mailbox sheet"
 msgstr ""

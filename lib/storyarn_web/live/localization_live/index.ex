@@ -34,7 +34,9 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           <:actions :if={@can_edit && @target_languages != []}>
             <div class="flex items-center gap-2">
               <.link
-                navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/report"}
+                navigate={
+                  ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/report"
+                }
                 class="btn btn-sm btn-ghost"
               >
                 <.icon name="bar-chart-3" class="size-4 mr-1" />
@@ -45,14 +47,21 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                   <.icon name="download" class="size-4 mr-1" />
                   {dgettext("localization", "Export")}
                 </div>
-                <ul tabindex="0" class="dropdown-content menu bg-base-200 rounded-box z-10 w-40 p-2 shadow-sm">
+                <ul
+                  tabindex="0"
+                  class="dropdown-content menu bg-base-200 rounded-box z-10 w-40 p-2 shadow-sm"
+                >
                   <li>
-                    <a href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/xlsx/#{@selected_locale}"}>
+                    <a href={
+                      ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/xlsx/#{@selected_locale}"
+                    }>
                       {dgettext("localization", "Excel (.xlsx)")}
                     </a>
                   </li>
                   <li>
-                    <a href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/csv/#{@selected_locale}"}>
+                    <a href={
+                      ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/csv/#{@selected_locale}"
+                    }>
                       {dgettext("localization", "CSV (.csv)")}
                     </a>
                   </li>
@@ -104,7 +113,10 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                 <.icon name="plus" class="size-3.5" />
                 {dgettext("localization", "Add Language")}
               </div>
-              <div tabindex="0" class="dropdown-content bg-base-200 rounded-box z-10 w-64 p-3 shadow-sm">
+              <div
+                tabindex="0"
+                class="dropdown-content bg-base-200 rounded-box z-10 w-64 p-3 shadow-sm"
+              >
                 <form phx-change="add_target_language">
                   <select name="locale_code" class="select select-bordered select-sm w-full">
                     <option value="">{dgettext("localization", "Select language...")}</option>
@@ -125,7 +137,12 @@ defmodule StoryarnWeb.LocalizationLive.Index do
               phx-click="sync_texts"
               phx-disable-with={dgettext("localization", "Syncing...")}
               class="btn btn-ghost btn-xs gap-1"
-              title={dgettext("localization", "Re-extract all translatable content from flows, sheets, and blocks")}
+              title={
+                dgettext(
+                  "localization",
+                  "Re-extract all translatable content from flows, sheets, and blocks"
+                )
+              }
             >
               <.icon name="refresh-cw" class="size-3.5" />
               {dgettext("localization", "Sync")}
@@ -138,7 +155,8 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             id={"remove-language-#{lang.id}"}
             title={dgettext("localization", "Remove language?")}
             message={
-              dgettext("localization", 
+              dgettext(
+                "localization",
                 "This will remove %{name} (%{code}) and all its translations from this project.",
                 name: lang.name,
                 code: lang.locale_code
@@ -204,7 +222,11 @@ defmodule StoryarnWeb.LocalizationLive.Index do
               <option value="" selected={@filter_status == nil}>
                 {dgettext("localization", "All statuses")}
               </option>
-              <option :for={s <- ~w(pending draft in_progress review final)} value={s} selected={@filter_status == s}>
+              <option
+                :for={s <- ~w(pending draft in_progress review final)}
+                value={s}
+                selected={@filter_status == s}
+              >
                 {status_label(s)}
               </option>
             </select>
@@ -218,7 +240,11 @@ defmodule StoryarnWeb.LocalizationLive.Index do
               <option value="" selected={@filter_source_type == nil}>
                 {dgettext("localization", "All types")}
               </option>
-              <option :for={t <- ~w(flow_node block sheet flow)} value={t} selected={@filter_source_type == t}>
+              <option
+                :for={t <- ~w(flow_node block sheet flow)}
+                value={t}
+                selected={@filter_source_type == t}
+              >
                 {source_type_label(t)}
               </option>
             </select>
@@ -260,7 +286,10 @@ defmodule StoryarnWeb.LocalizationLive.Index do
               <tbody>
                 <tr :for={text <- @texts} class="hover">
                   <td>
-                    <span class="badge badge-ghost badge-sm" title={source_type_label(text.source_type)}>
+                    <span
+                      class="badge badge-ghost badge-sm"
+                      title={source_type_label(text.source_type)}
+                    >
                       <.icon name={source_type_icon(text.source_type)} class="size-3" />
                     </span>
                   </td>

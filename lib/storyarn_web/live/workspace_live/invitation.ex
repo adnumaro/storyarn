@@ -42,18 +42,25 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
                 <div class="alert alert-warning">
                   <.icon name="triangle-alert" class="size-5" />
                   <span>
-                    {dgettext("workspaces", "This invitation was sent to")} <strong>{@invitation.email}</strong>. {dgettext("workspaces", 
+                    {dgettext("workspaces", "This invitation was sent to")} <strong>{@invitation.email}</strong>. {dgettext(
+                      "workspaces",
                       "You're logged in as"
                     )} <strong>{@current_scope.user.email}</strong>.
                   </span>
                 </div>
                 <p class="mt-4 text-sm text-base-content/70">
-                  {dgettext("workspaces", "Please log in with the correct email address to accept this invitation.")}
+                  {dgettext(
+                    "workspaces",
+                    "Please log in with the correct email address to accept this invitation."
+                  )}
                 </p>
               <% end %>
             <% else %>
               <p class="text-sm text-base-content/70 mb-4">
-                {dgettext("workspaces", "Please log in or create an account to accept this invitation.")}
+                {dgettext(
+                  "workspaces",
+                  "Please log in or create an account to accept this invitation."
+                )}
               </p>
               <.link
                 navigate={~p"/users/log-in?return_to=#{@return_path}"}
@@ -132,12 +139,20 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
         {:noreply, socket}
 
       {:error, :email_mismatch} ->
-        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Your email doesn't match the invitation."))}
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("workspaces", "Your email doesn't match the invitation.")
+         )}
 
       {:error, :already_member} ->
         socket =
           socket
-          |> put_flash(:info, dgettext("workspaces", "You're already a member of this workspace."))
+          |> put_flash(
+            :info,
+            dgettext("workspaces", "You're already a member of this workspace.")
+          )
           |> push_navigate(to: ~p"/workspaces/#{invitation.workspace.slug}")
 
         {:noreply, socket}
@@ -145,7 +160,10 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
       {:error, :already_accepted} ->
         socket =
           socket
-          |> put_flash(:info, dgettext("workspaces", "This invitation has already been accepted."))
+          |> put_flash(
+            :info,
+            dgettext("workspaces", "This invitation has already been accepted.")
+          )
           |> push_navigate(to: ~p"/workspaces/#{invitation.workspace.slug}")
 
         {:noreply, socket}
@@ -160,7 +178,11 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
 
       {:error, _} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("workspaces", "Failed to accept invitation. Please try again."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("workspaces", "Failed to accept invitation. Please try again.")
+         )}
     end
   end
 end

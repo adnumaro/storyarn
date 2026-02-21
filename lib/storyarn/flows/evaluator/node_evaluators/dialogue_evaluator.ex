@@ -45,7 +45,13 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
     state = EngineHelpers.add_history_entries(state, node_id, "", changes, :instruction)
 
     Enum.reduce(errors, state, fn error, acc ->
-      EngineHelpers.add_console(acc, :error, node_id, "", "Response instruction error: #{error.reason}")
+      EngineHelpers.add_console(
+        acc,
+        :error,
+        node_id,
+        "",
+        "Response instruction error: #{error.reason}"
+      )
     end)
   end
 
@@ -72,7 +78,13 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
     state = EngineHelpers.add_history_entries(state, node_id, "", changes, :instruction)
 
     Enum.reduce(errors, state, fn error, acc ->
-      EngineHelpers.add_console(acc, :error, node_id, "", "Response instruction error: #{error.reason}")
+      EngineHelpers.add_console(
+        acc,
+        :error,
+        node_id,
+        "",
+        "Response instruction error: #{error.reason}"
+      )
     end)
   end
 
@@ -81,7 +93,15 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
   # ---------------------------------------------------------------------------
 
   defp handle_dialogue_responses([], state, node_id, label, connections) do
-    state = EngineHelpers.add_console(state, :info, node_id, label, "Dialogue — no responses, following output")
+    state =
+      EngineHelpers.add_console(
+        state,
+        :info,
+        node_id,
+        label,
+        "Dialogue — no responses, following output"
+      )
+
     EngineHelpers.follow_output(state, node_id, label, connections)
   end
 
@@ -126,7 +146,13 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
     case conn do
       nil ->
         state =
-          EngineHelpers.add_console(state, :error, node_id, label, "No connection from response #{only.id}")
+          EngineHelpers.add_console(
+            state,
+            :error,
+            node_id,
+            label,
+            "No connection from response #{only.id}"
+          )
 
         {:finished, %{state | status: :finished}}
 

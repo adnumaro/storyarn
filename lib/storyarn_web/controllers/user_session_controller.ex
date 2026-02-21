@@ -52,7 +52,10 @@ defmodule StoryarnWeb.UserSessionController do
 
       {:error, :rate_limited} ->
         conn
-        |> put_flash(:error, dgettext("identity", "Too many login attempts. Please try again later."))
+        |> put_flash(
+          :error,
+          dgettext("identity", "Too many login attempts. Please try again later.")
+        )
         |> redirect(to: ~p"/users/log-in")
     end
   end
@@ -106,7 +109,10 @@ defmodule StoryarnWeb.UserSessionController do
       end
     else
       conn
-      |> put_flash(:error, dgettext("identity", "Please re-authenticate to change your password."))
+      |> put_flash(
+        :error,
+        dgettext("identity", "Please re-authenticate to change your password.")
+      )
       |> redirect(to: ~p"/users/settings/security")
     end
   end

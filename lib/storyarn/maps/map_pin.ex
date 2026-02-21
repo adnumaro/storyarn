@@ -124,5 +124,4 @@ defmodule Storyarn.Maps.MapPin do
     |> validate_number(:position_x, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
     |> validate_number(:position_y, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
   end
-
 end

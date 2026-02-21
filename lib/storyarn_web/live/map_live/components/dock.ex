@@ -82,7 +82,9 @@ defmodule StoryarnWeb.MapLive.Components.Dock do
         <%!-- Hover tooltip (hidden when dropdown opens via CSS :focus-within) --%>
         <div class="dock-tooltip">
           <div class="text-sm font-semibold mb-0.5">{dgettext("maps", "Zones")}</div>
-          <div class="text-xs text-base-content/60 leading-relaxed">{dgettext("maps", "Draw shapes to define areas on the map")}</div>
+          <div class="text-xs text-base-content/60 leading-relaxed">
+            {dgettext("maps", "Draw shapes to define areas on the map")}
+          </div>
         </div>
       </div>
 
@@ -115,7 +117,9 @@ defmodule StoryarnWeb.MapLive.Components.Dock do
               <.icon name="map-pin" class="size-4" />
               <div>
                 <div class="font-medium">{dgettext("maps", "Free Pin")}</div>
-                <div class="text-xs text-base-content/50">{dgettext("maps", "Place anywhere on the map")}</div>
+                <div class="text-xs text-base-content/50">
+                  {dgettext("maps", "Place anywhere on the map")}
+                </div>
               </div>
             </button>
             <button
@@ -126,7 +130,9 @@ defmodule StoryarnWeb.MapLive.Components.Dock do
               <.icon name="user" class="size-4" />
               <div>
                 <div class="font-medium">{dgettext("maps", "From Sheet")}</div>
-                <div class="text-xs text-base-content/50">{dgettext("maps", "Link a character or item")}</div>
+                <div class="text-xs text-base-content/50">
+                  {dgettext("maps", "Link a character or item")}
+                </div>
               </div>
             </button>
           </div>
@@ -134,7 +140,9 @@ defmodule StoryarnWeb.MapLive.Components.Dock do
         <%!-- Hover tooltip (hidden when dropdown opens via CSS :focus-within) --%>
         <div class="dock-tooltip">
           <div class="text-sm font-semibold mb-0.5">{dgettext("maps", "Pin")}</div>
-          <div class="text-xs text-base-content/60 leading-relaxed">{dgettext("maps", "Place markers on the map, optionally linked to a sheet")}</div>
+          <div class="text-xs text-base-content/60 leading-relaxed">
+            {dgettext("maps", "Place markers on the map, optionally linked to a sheet")}
+          </div>
         </div>
       </div>
 
@@ -154,7 +162,12 @@ defmodule StoryarnWeb.MapLive.Components.Dock do
         tool="connector"
         icon="cable"
         active={@active_tool == :connector}
-        tooltip={dgettext("maps", "Draw connections between two pins. Click the source pin, then the target.")}
+        tooltip={
+          dgettext(
+            "maps",
+            "Draw connections between two pins. Click the source pin, then the target."
+          )
+        }
         tooltip_title={dgettext("maps", "Connector")}
       />
 
@@ -176,7 +189,9 @@ defmodule StoryarnWeb.MapLive.Components.Dock do
       class="absolute bottom-24 left-1/2 -translate-x-1/2 z-[1000] bg-info/10 border border-info/30 rounded-lg px-3 py-1.5 text-xs text-info-content flex items-center gap-2"
     >
       <.icon name="map-pin" class="size-3.5" />
-      <span>{dgettext("maps", "Click on canvas to place")} <strong>{@pending_sheet.name}</strong></span>
+      <span>
+        {dgettext("maps", "Click on canvas to place")} <strong>{@pending_sheet.name}</strong>
+      </span>
       <button type="button" phx-click="cancel_sheet_picker" class="btn btn-ghost btn-xs btn-square">
         <.icon name="x" class="size-3" />
       </button>

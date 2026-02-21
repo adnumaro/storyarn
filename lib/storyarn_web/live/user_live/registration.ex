@@ -39,7 +39,10 @@ defmodule StoryarnWeb.UserLive.Registration do
             phx-mounted={JS.focus()}
           />
 
-          <.button phx-disable-with={dgettext("identity", "Creating account...")} class="btn btn-primary w-full">
+          <.button
+            phx-disable-with={dgettext("identity", "Creating account...")}
+            class="btn btn-primary w-full"
+          >
             {dgettext("identity", "Create an account")}
           </.button>
         </.form>
@@ -71,7 +74,10 @@ defmodule StoryarnWeb.UserLive.Registration do
       {:error, :rate_limited} ->
         {:noreply,
          socket
-         |> put_flash(:error, dgettext("identity", "Too many registration attempts. Please try again later."))
+         |> put_flash(
+           :error,
+           dgettext("identity", "Too many registration attempts. Please try again later.")
+         )
          |> push_navigate(to: ~p"/users/register")}
     end
   end
@@ -96,7 +102,9 @@ defmodule StoryarnWeb.UserLive.Registration do
          socket
          |> put_flash(
            :info,
-           dgettext("identity", "An email was sent to %{email}, please access it to confirm your account.",
+           dgettext(
+             "identity",
+             "An email was sent to %{email}, please access it to confirm your account.",
              email: user.email
            )
          )

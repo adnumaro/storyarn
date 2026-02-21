@@ -16,13 +16,19 @@ defmodule StoryarnWeb.UserLive.Login do
             <p>{dgettext("identity", "Log in")}</p>
             <:subtitle>
               <%= if @current_scope do %>
-                {dgettext("identity", "You need to reauthenticate to perform sensitive actions on your account.")}
+                {dgettext(
+                  "identity",
+                  "You need to reauthenticate to perform sensitive actions on your account."
+                )}
               <% else %>
                 {dgettext("identity", "Don't have an account?")} <.link
                   navigate={~p"/users/register"}
                   class="font-semibold text-brand hover:underline"
                   phx-no-format
-                >{dgettext("identity", "Sign up")}</.link> {dgettext("identity", "for an account now.")}
+                >{dgettext("identity", "Sign up")}</.link> {dgettext(
+                  "identity",
+                  "for an account now."
+                )}
               <% end %>
             </:subtitle>
           </.header>
@@ -33,7 +39,10 @@ defmodule StoryarnWeb.UserLive.Login do
           <div>
             <p>{dgettext("identity", "You are running the local mail adapter.")}</p>
             <p>
-              {dgettext("identity", "To see sent emails, visit")} <.link href="/dev/mailbox" class="underline">{dgettext("identity", "the mailbox sheet")}</.link>.
+              {dgettext("identity", "To see sent emails, visit")} <.link
+                href="/dev/mailbox"
+                class="underline"
+              >{dgettext("identity", "the mailbox sheet")}</.link>.
             </p>
           </div>
         </div>
@@ -126,7 +135,8 @@ defmodule StoryarnWeb.UserLive.Login do
         end
 
         info =
-          dgettext("identity",
+          dgettext(
+            "identity",
             "If your email is in our system, you will receive instructions for logging in shortly."
           )
 

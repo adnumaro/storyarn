@@ -467,7 +467,11 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("screenplays", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("screenplays", "You don't have permission to perform this action.")
+         )}
     end
   end
 

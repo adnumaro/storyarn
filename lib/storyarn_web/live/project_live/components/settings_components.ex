@@ -60,7 +60,8 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   def repair_message(0), do: dgettext("projects", "All variable references are up to date.")
 
   def repair_message(count) do
-    dngettext("projects",
+    dngettext(
+      "projects",
       "Repaired %{count} node.",
       "Repaired %{count} nodes.",
       count,

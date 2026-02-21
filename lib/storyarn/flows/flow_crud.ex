@@ -210,7 +210,12 @@ defmodule Storyarn.Flows.FlowCrud do
   Used by exit (flow_reference mode) and subflow nodes.
   Returns `{:ok, %{flow: flow, node: node}}` or `{:error, step, reason, changes}`.
   """
-  def create_linked_flow(%Project{} = project, %Flow{} = parent_flow, %FlowNode{} = node, opts \\ []) do
+  def create_linked_flow(
+        %Project{} = project,
+        %Flow{} = parent_flow,
+        %FlowNode{} = node,
+        opts \\ []
+      ) do
     name = opts[:name] || derive_linked_flow_name(parent_flow, node)
 
     Ecto.Multi.new()

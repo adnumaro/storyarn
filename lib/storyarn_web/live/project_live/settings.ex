@@ -180,7 +180,8 @@ defmodule StoryarnWeb.ProjectLive.Settings do
           <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Maintenance")}</h3>
           <div class="card bg-base-200 p-4">
             <p class="text-sm mb-3">
-              {dgettext("projects",
+              {dgettext(
+                "projects",
                 "If you renamed sheet shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
               )}
             </p>
@@ -197,7 +198,10 @@ defmodule StoryarnWeb.ProjectLive.Settings do
           <h3 class="text-lg font-semibold mb-4 text-error">{dgettext("projects", "Danger Zone")}</h3>
           <div class="card bg-error/10 border border-error/30 p-4">
             <p class="text-sm mb-4">
-              {dgettext("projects", "Once you delete a project, there is no going back. Please be certain.")}
+              {dgettext(
+                "projects",
+                "Once you delete a project, there is no going back. Please be certain."
+              )}
             </p>
             <.button variant="error" phx-click={show_modal("delete-project-confirm")}>
               {dgettext("projects", "Delete Project")}
@@ -259,15 +263,24 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             |> assign(:pending_invitations, pending_invitations)
             |> assign(:project_form, to_form(project_changeset))
             |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
-            |> assign(:provider_form, to_form(provider_changeset(provider_config), as: "provider"))
-            |> assign(:has_api_key, provider_config != nil && provider_config.api_key_encrypted != nil)
+            |> assign(
+              :provider_form,
+              to_form(provider_changeset(provider_config), as: "provider")
+            )
+            |> assign(
+              :has_api_key,
+              provider_config != nil && provider_config.api_key_encrypted != nil
+            )
             |> assign(:provider_usage, nil)
 
           {:ok, socket}
         else
           {:ok,
            socket
-           |> put_flash(:error, dgettext("projects", "You don't have permission to manage this project."))
+           |> put_flash(
+             :error,
+             dgettext("projects", "You don't have permission to manage this project.")
+           )
            |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}")}
         end
 
@@ -310,43 +323,71 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "You don't have permission to perform this action.")
+         )}
     end
   end
 
   def handle_event("send_invitation", %{"invite" => invite_params}, socket) do
     case authorize(socket, :manage_members) do
-      :ok -> do_send_invitation(socket, invite_params)
+      :ok ->
+        do_send_invitation(socket, invite_params)
+
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "You don't have permission to perform this action.")
+         )}
     end
   end
 
   def handle_event("revoke_invitation", %{"id" => id}, socket) do
     case authorize(socket, :manage_members) do
-      :ok -> do_revoke_invitation(socket, id)
+      :ok ->
+        do_revoke_invitation(socket, id)
+
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "You don't have permission to perform this action.")
+         )}
     end
   end
 
   def handle_event("remove_member", %{"id" => id}, socket) do
     case authorize(socket, :manage_members) do
-      :ok -> do_remove_member(socket, id)
+      :ok ->
+        do_remove_member(socket, id)
+
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "You don't have permission to perform this action.")
+         )}
     end
   end
 
   def handle_event("repair_variable_references", _params, socket) do
     case authorize(socket, :manage_project) do
-      :ok -> do_repair_variable_references(socket)
+      :ok ->
+        do_repair_variable_references(socket)
+
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "You don't have permission to perform this action.")
+         )}
     end
   end
 
@@ -365,30 +406,47 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             {:noreply, socket}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to delete project."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("projects", "Failed to delete project."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "You don't have permission to perform this action.")
+         )}
     end
   end
 
   def handle_event("save_provider_config", %{"provider" => params}, socket) do
     case authorize(socket, :manage_project) do
-      :ok -> do_save_provider_config(socket, params)
+      :ok ->
+        do_save_provider_config(socket, params)
+
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "You don't have permission to perform this action.")
+         )}
     end
   end
 
   def handle_event("test_provider_connection", _params, socket) do
     case authorize(socket, :manage_project) do
-      :ok -> do_test_provider_connection(socket)
+      :ok ->
+        do_test_provider_connection(socket)
+
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "You don't have permission to perform this action.")
+         )}
     end
   end
 end

@@ -10,7 +10,9 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
 
   alias Storyarn.Maps
   import StoryarnWeb.MapLive.Helpers.Serializer
-  import StoryarnWeb.MapLive.Helpers.MapHelpers, only: [replace_in_list: 2, maybe_update_selected_element: 3]
+
+  import StoryarnWeb.MapLive.Helpers.MapHelpers,
+    only: [replace_in_list: 2, maybe_update_selected_element: 3]
 
   @max_undo 50
 
@@ -80,7 +82,10 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
   def push_undo_coalesced(socket, {:move_pin, pin_id, prev, new}) do
     case socket.assigns.undo_stack do
       [{:move_pin, ^pin_id, original_prev, _} | rest] ->
-        assign(socket, undo_stack: [{:move_pin, pin_id, original_prev, new} | rest], redo_stack: [])
+        assign(socket,
+          undo_stack: [{:move_pin, pin_id, original_prev, new} | rest],
+          redo_stack: []
+        )
 
       _ ->
         push_undo(socket, {:move_pin, pin_id, prev, new})
@@ -90,7 +95,10 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
   def push_undo_coalesced(socket, {:move_annotation, ann_id, prev, new}) do
     case socket.assigns.undo_stack do
       [{:move_annotation, ^ann_id, original_prev, _} | rest] ->
-        assign(socket, undo_stack: [{:move_annotation, ann_id, original_prev, new} | rest], redo_stack: [])
+        assign(socket,
+          undo_stack: [{:move_annotation, ann_id, original_prev, new} | rest],
+          redo_stack: []
+        )
 
       _ ->
         push_undo(socket, {:move_annotation, ann_id, prev, new})
@@ -185,8 +193,7 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
          socket
          |> assign(:pins, socket.assigns.pins ++ [new_pin])
          |> push_event("pin_created", serialize_pin(new_pin))
-         |> put_flash(:info, dgettext("maps", "Undo: pin restored.")),
-         {:delete_pin, new_pin}}
+         |> put_flash(:info, dgettext("maps", "Undo: pin restored.")), {:delete_pin, new_pin}}
 
       {:error, _} ->
         {:error, put_flash(socket, :error, dgettext("maps", "Could not undo."))}
@@ -200,8 +207,7 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
          socket
          |> assign(:zones, socket.assigns.zones ++ [new_zone])
          |> push_event("zone_created", serialize_zone(new_zone))
-         |> put_flash(:info, dgettext("maps", "Undo: zone restored.")),
-         {:delete_zone, new_zone}}
+         |> put_flash(:info, dgettext("maps", "Undo: zone restored.")), {:delete_zone, new_zone}}
 
       {:error, _} ->
         {:error, put_flash(socket, :error, dgettext("maps", "Could not undo."))}
@@ -328,7 +334,10 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
           {:ok, _} ->
             {:ok,
              socket
-             |> assign(:connections, Enum.reject(socket.assigns.connections, &(&1.id == found.id)))
+             |> assign(
+               :connections,
+               Enum.reject(socket.assigns.connections, &(&1.id == found.id))
+             )
              |> assign(:selected_element, nil)
              |> assign(:selected_type, nil)
              |> push_event("connection_deleted", %{id: found.id})
@@ -351,7 +360,10 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
           {:ok, _} ->
             {:ok,
              socket
-             |> assign(:annotations, Enum.reject(socket.assigns.annotations, &(&1.id == found.id)))
+             |> assign(
+               :annotations,
+               Enum.reject(socket.assigns.annotations, &(&1.id == found.id))
+             )
              |> assign(:selected_element, nil)
              |> assign(:selected_type, nil)
              |> push_event("annotation_deleted", %{id: found.id})
@@ -560,8 +572,7 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
                fog_enabled: updated.fog_enabled,
                fog_color: updated.fog_color,
                fog_opacity: updated.fog_opacity
-             }),
-             {:update_layer_fog, layer_id, prev_attrs, new_attrs}}
+             }), {:update_layer_fog, layer_id, prev_attrs, new_attrs}}
 
           {:error, _} ->
             {:error, socket}
@@ -613,8 +624,7 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
              |> assign(:pins, Enum.reject(socket.assigns.pins, &(&1.id == found.id)))
              |> assign(:selected_element, nil)
              |> assign(:selected_type, nil)
-             |> push_event("pin_deleted", %{id: found.id}),
-             {:delete_pin, found}}
+             |> push_event("pin_deleted", %{id: found.id}), {:delete_pin, found}}
 
           {:error, _} ->
             {:error, socket}
@@ -635,8 +645,7 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
              |> assign(:zones, Enum.reject(socket.assigns.zones, &(&1.id == found.id)))
              |> assign(:selected_element, nil)
              |> assign(:selected_type, nil)
-             |> push_event("zone_deleted", %{id: found.id}),
-             {:delete_zone, found}}
+             |> push_event("zone_deleted", %{id: found.id}), {:delete_zone, found}}
 
           {:error, _} ->
             {:error, socket}
@@ -654,11 +663,13 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
           {:ok, _} ->
             {:ok,
              socket
-             |> assign(:connections, Enum.reject(socket.assigns.connections, &(&1.id == found.id)))
+             |> assign(
+               :connections,
+               Enum.reject(socket.assigns.connections, &(&1.id == found.id))
+             )
              |> assign(:selected_element, nil)
              |> assign(:selected_type, nil)
-             |> push_event("connection_deleted", %{id: found.id}),
-             {:delete_connection, found}}
+             |> push_event("connection_deleted", %{id: found.id}), {:delete_connection, found}}
 
           {:error, _} ->
             {:error, socket}
@@ -676,11 +687,13 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
           {:ok, _} ->
             {:ok,
              socket
-             |> assign(:annotations, Enum.reject(socket.assigns.annotations, &(&1.id == found.id)))
+             |> assign(
+               :annotations,
+               Enum.reject(socket.assigns.annotations, &(&1.id == found.id))
+             )
              |> assign(:selected_element, nil)
              |> assign(:selected_type, nil)
-             |> push_event("annotation_deleted", %{id: found.id}),
-             {:delete_annotation, found}}
+             |> push_event("annotation_deleted", %{id: found.id}), {:delete_annotation, found}}
 
           {:error, _} ->
             {:error, socket}
@@ -728,8 +741,7 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
         {:ok,
          socket
          |> assign(:pins, socket.assigns.pins ++ [new_pin])
-         |> push_event("pin_created", serialize_pin(new_pin)),
-         {:create_pin, new_pin}}
+         |> push_event("pin_created", serialize_pin(new_pin)), {:create_pin, new_pin}}
 
       {:error, _} ->
         {:error, socket}
@@ -742,8 +754,7 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
         {:ok,
          socket
          |> assign(:zones, socket.assigns.zones ++ [new_zone])
-         |> push_event("zone_created", serialize_zone(new_zone)),
-         {:create_zone, new_zone}}
+         |> push_event("zone_created", serialize_zone(new_zone)), {:create_zone, new_zone}}
 
       {:error, _} ->
         {:error, socket}
@@ -935,8 +946,7 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
           {:ok, _} ->
             {:ok,
              socket
-             |> push_event("layer_deleted", %{id: found.id}),
-             {:delete_layer, found}}
+             |> push_event("layer_deleted", %{id: found.id}), {:delete_layer, found}}
 
           {:error, _} ->
             {:error, socket}
@@ -972,8 +982,7 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
                fog_enabled: updated.fog_enabled,
                fog_color: updated.fog_color,
                fog_opacity: updated.fog_opacity
-             }),
-             {:update_layer_fog, layer_id, prev_attrs, new_attrs}}
+             }), {:update_layer_fog, layer_id, prev_attrs, new_attrs}}
 
           {:error, _} ->
             {:error, socket}

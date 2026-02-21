@@ -112,5 +112,4 @@ defmodule Storyarn.Maps.LayerCrud do
   def change_layer(%MapLayer{} = layer, attrs \\ %{}) do
     MapLayer.update_changeset(layer, attrs)
   end
-
 end

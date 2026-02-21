@@ -616,4 +616,4 @@ end
 | 2. UI component  | `VariableUsageBrowser` LiveComponent with grouping, filtering, and flow links        | `variable_usage_browser.ex`                 |
 | 3. Integration   | Accessible from sheet editor and project sidebar via modal                           | `sheet_live/show.ex`, test files            |
 
-**Next:** [09_CROSS_FLOW_NAVIGATION.md](../../stress_test/09_CROSS_FLOW_NAVIGATION.md)
+**Next:** [09_CROSS_FLOW_NAVIGATION.md](../../completed/stress_test/09_CROSS_FLOW_NAVIGATION.md)

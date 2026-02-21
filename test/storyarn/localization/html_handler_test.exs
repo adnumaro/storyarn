@@ -29,7 +29,9 @@ defmodule Storyarn.Localization.HtmlHandlerTest do
 
   describe "post_translate/1" do
     test "unwraps translate-no spans around placeholders" do
-      input = ~s(Hola <span translate="no">{player_name}</span>, tienes <span translate="no">{health}</span> HP)
+      input =
+        ~s(Hola <span translate="no">{player_name}</span>, tienes <span translate="no">{health}</span> HP)
+
       result = HtmlHandler.post_translate(input)
       assert result == "Hola {player_name}, tienes {health} HP"
     end

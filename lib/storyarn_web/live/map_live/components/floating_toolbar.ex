@@ -146,7 +146,12 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
       />
 
       <%!-- Lock toggle --%>
-      <.toolbar_lock_toggle element_id={@zone.id} event="update_zone" locked={@zone.locked} can_toggle_lock={@can_toggle_lock} />
+      <.toolbar_lock_toggle
+        element_id={@zone.id}
+        event="update_zone"
+        locked={@zone.locked}
+        can_toggle_lock={@can_toggle_lock}
+      />
 
       <span class="toolbar-separator" />
 
@@ -322,7 +327,12 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
       />
 
       <%!-- Lock toggle --%>
-      <.toolbar_lock_toggle element_id={@pin.id} event="update_pin" locked={@pin.locked} can_toggle_lock={@can_toggle_lock} />
+      <.toolbar_lock_toggle
+        element_id={@pin.id}
+        event="update_pin"
+        locked={@pin.locked}
+        can_toggle_lock={@can_toggle_lock}
+      />
 
       <span class="toolbar-separator" />
 
@@ -447,7 +457,15 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
         type="button"
         class={"toolbar-btn px-1.5 gap-1 #{if @connection.show_label, do: "toolbar-btn-active"}"}
         title={dgettext("maps", "Show Label")}
-        phx-click={JS.push("update_connection", value: %{id: @connection.id, field: "show_label", toggle: to_string(!@connection.show_label)})}
+        phx-click={
+          JS.push("update_connection",
+            value: %{
+              id: @connection.id,
+              field: "show_label",
+              toggle: to_string(!@connection.show_label)
+            }
+          )
+        }
         disabled={!@can_edit}
       >
         <.icon name="tag" class="size-3" />
@@ -458,7 +476,15 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
         type="button"
         class={"toolbar-btn px-1.5 gap-1 #{if @connection.bidirectional, do: "toolbar-btn-active"}"}
         title={dgettext("maps", "Bidirectional")}
-        phx-click={JS.push("update_connection", value: %{id: @connection.id, field: "bidirectional", toggle: to_string(!@connection.bidirectional)})}
+        phx-click={
+          JS.push("update_connection",
+            value: %{
+              id: @connection.id,
+              field: "bidirectional",
+              toggle: to_string(!@connection.bidirectional)
+            }
+          )
+        }
         disabled={!@can_edit}
       >
         <.icon name="arrow-left-right" class="size-3" />
@@ -496,7 +522,10 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
               <.icon name="undo-2" class="size-3" />
               {dgettext("maps", "Straighten path")}
             </button>
-            <p :if={length(@connection.waypoints || []) == 0} class="px-2 py-1 text-xs text-base-content/40">
+            <p
+              :if={length(@connection.waypoints || []) == 0}
+              class="px-2 py-1 text-xs text-base-content/40"
+            >
               {dgettext("maps", "No waypoints")}
             </p>
           </div>
@@ -552,7 +581,12 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
       />
 
       <%!-- Lock toggle --%>
-      <.toolbar_lock_toggle element_id={@annotation.id} event="update_annotation" locked={@annotation.locked} can_toggle_lock={@can_toggle_lock} />
+      <.toolbar_lock_toggle
+        element_id={@annotation.id}
+        event="update_annotation"
+        locked={@annotation.locked}
+        can_toggle_lock={@can_toggle_lock}
+      />
     </div>
     """
   end
@@ -573,7 +607,9 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
       type="button"
       class="toolbar-btn"
       title={if @locked, do: dgettext("maps", "Unlock"), else: dgettext("maps", "Lock")}
-      phx-click={JS.push(@event, value: %{id: @element_id, field: "locked", toggle: to_string(!@locked)})}
+      phx-click={
+        JS.push(@event, value: %{id: @element_id, field: "locked", toggle: to_string(!@locked)})
+      }
     >
       <.icon name={if @locked, do: "lock", else: "unlock"} class="size-3.5" />
     </button>

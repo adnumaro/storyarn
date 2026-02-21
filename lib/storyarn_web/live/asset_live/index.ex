@@ -32,7 +32,9 @@ defmodule StoryarnWeb.AssetLive.Index do
           <:actions :if={@can_edit}>
             <label class={["btn btn-primary", @uploading && "btn-disabled"]}>
               <.icon name="upload" class="size-4 mr-2" />
-              {if @uploading, do: dgettext("assets", "Uploading..."), else: dgettext("assets", "Upload")}
+              {if @uploading,
+                do: dgettext("assets", "Uploading..."),
+                else: dgettext("assets", "Upload")}
               <input
                 type="file"
                 accept="image/*,audio/*"
@@ -217,7 +219,11 @@ defmodule StoryarnWeb.AssetLive.Index do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("assets", "You don't have permission to delete assets."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("assets", "You don't have permission to delete assets.")
+         )}
     end
   end
 

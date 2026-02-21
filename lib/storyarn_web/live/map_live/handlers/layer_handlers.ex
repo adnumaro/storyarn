@@ -42,7 +42,9 @@ defmodule StoryarnWeb.MapLive.Handlers.LayerHandlers do
   def handle_update_layer_fog(%{"id" => layer_id, "field" => field} = params, socket)
       when field in ~w(fog_enabled fog_color fog_opacity) do
     case Maps.get_layer(socket.assigns.map.id, layer_id) do
-      nil -> {:noreply, socket}
+      nil ->
+        {:noreply, socket}
+
       layer ->
         value = normalize_fog_value(field, extract_field_value(params, field))
         do_update_layer_fog(socket, layer, field, value)
@@ -122,7 +124,8 @@ defmodule StoryarnWeb.MapLive.Handlers.LayerHandlers do
     if is_struct(pin, Storyarn.Maps.MapPin) do
       case Maps.update_pin(pin, %{"icon_asset_id" => nil}) do
         {:ok, updated} ->
-          updated = Storyarn.Repo.preload(updated, [:icon_asset, sheet: :avatar_asset], force: true)
+          updated =
+            Storyarn.Repo.preload(updated, [:icon_asset, sheet: :avatar_asset], force: true)
 
           {:noreply,
            socket
@@ -182,7 +185,8 @@ defmodule StoryarnWeb.MapLive.Handlers.LayerHandlers do
          |> reload_map()}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not toggle layer visibility."))}
+        {:noreply,
+         put_flash(socket, :error, dgettext("maps", "Could not toggle layer visibility."))}
     end
   end
 
@@ -222,7 +226,8 @@ defmodule StoryarnWeb.MapLive.Handlers.LayerHandlers do
          |> reload_map()}
 
       {:error, :cannot_delete_last_layer} ->
-        {:noreply, put_flash(socket, :error, dgettext("maps", "Cannot delete the last layer of a map."))}
+        {:noreply,
+         put_flash(socket, :error, dgettext("maps", "Cannot delete the last layer of a map."))}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("maps", "Could not delete layer."))}

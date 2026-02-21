@@ -142,7 +142,9 @@ defmodule StoryarnWeb.Layouts do
     default: nil,
     doc: "currently selected screenplay ID for sidebar highlighting"
 
-  attr :selected_map_id, :string, default: nil, doc: "currently selected map ID for sidebar highlighting"
+  attr :selected_map_id, :string,
+    default: nil,
+    doc: "currently selected map ID for sidebar highlighting"
 
   attr :can_edit, :boolean, default: false, doc: "whether the user can edit sheets"
 

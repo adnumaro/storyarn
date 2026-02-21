@@ -48,7 +48,13 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
     case EngineHelpers.find_connection(connections, node_id, branch) do
       nil ->
         state =
-          EngineHelpers.add_console(state, :error, node_id, label, "No connection from pin \"#{branch}\"")
+          EngineHelpers.add_console(
+            state,
+            :error,
+            node_id,
+            label,
+            "No connection from pin \"#{branch}\""
+          )
 
         {:finished, %{state | status: :finished}}
 
@@ -135,7 +141,13 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
 
     if rule_result.passed do
       acc_state =
-        EngineHelpers.add_console(acc_state, :info, node_id, label, "Switch → case \"#{rule_label}\" matched")
+        EngineHelpers.add_console(
+          acc_state,
+          :info,
+          node_id,
+          label,
+          "Switch → case \"#{rule_label}\" matched"
+        )
 
       {:halt, {rule["id"], acc_state}}
     else
@@ -153,7 +165,13 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
   end
 
   defp log_switch_default_if_unmatched(state, nil, node_id, label) do
-    EngineHelpers.add_console(state, :warning, node_id, label, "Switch — no case matched, following default")
+    EngineHelpers.add_console(
+      state,
+      :warning,
+      node_id,
+      label,
+      "Switch — no case matched, following default"
+    )
   end
 
   defp log_switch_default_if_unmatched(state, _matched_pin, _node_id, _label), do: state
@@ -165,7 +183,15 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
 
     case conn do
       nil ->
-        state = EngineHelpers.add_console(state, :error, node_id, label, "No connection from pin \"#{pin}\"")
+        state =
+          EngineHelpers.add_console(
+            state,
+            :error,
+            node_id,
+            label,
+            "No connection from pin \"#{pin}\""
+          )
+
         {:finished, %{state | status: :finished}}
 
       conn ->

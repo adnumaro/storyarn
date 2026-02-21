@@ -69,9 +69,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerToolbar do
           <.icon name="rotate-ccw" class="size-4" />
         </button>
         <.link
-          navigate={
-            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"
-          }
+          navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"}
           class="player-toolbar-btn"
           title={dgettext("flows", "Back to editor (Esc)")}
         >

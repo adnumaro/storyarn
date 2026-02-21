@@ -35,7 +35,7 @@ msgstr "¿Estás seguro de que quieres eliminar esta versión?"
 msgid "Cancel"
 msgstr "Cancelar"
 
-#: lib/storyarn_web/live/screenplay_live/handlers/linked_page_handlers.ex:39
+#: lib/storyarn_web/live/screenplay_live/handlers/linked_page_handlers.ex:43
 #, elixir-autogen, elixir-format
 msgid "Choice already has a linked page."
 msgstr "La elección ya tiene una página vinculada."
@@ -45,116 +45,116 @@ msgstr "La elección ya tiene una página vinculada."
 msgid "Choice not found."
 msgstr "Espacio de trabajo no encontrado."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:121
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:125
 #, elixir-autogen, elixir-format
 msgid "Could not add choice."
 msgstr "No se pudo agregar la opción."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:71
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:77
 #, elixir-autogen, elixir-format
 msgid "Could not create flow."
 msgstr "No se pudo crear el flujo."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/linked_page_handlers.ex:42
+#: lib/storyarn_web/live/screenplay_live/handlers/linked_page_handlers.ex:48
 #, elixir-autogen, elixir-format
 msgid "Could not create linked page."
 msgstr "No se pudo crear la ficha."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/linked_page_handlers.ex:107
+#: lib/storyarn_web/live/screenplay_live/handlers/linked_page_handlers.ex:115
 #, elixir-autogen, elixir-format
 msgid "Could not create linked pages."
 msgstr "No se pudo crear la ficha."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:73
-#: lib/storyarn_web/live/screenplay_live/index.ex:267
-#: lib/storyarn_web/live/screenplay_live/index.ex:290
+#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:76
+#: lib/storyarn_web/live/screenplay_live/index.ex:273
+#: lib/storyarn_web/live/screenplay_live/index.ex:301
 #, elixir-autogen, elixir-format
 msgid "Could not create screenplay."
 msgstr "No se pudo crear la ficha."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:54
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:55
 #, elixir-autogen, elixir-format
 msgid "Could not delete element."
 msgstr "No se pudo eliminar la ficha."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:41
-#: lib/storyarn_web/live/screenplay_live/index.ex:240
+#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:42
+#: lib/storyarn_web/live/screenplay_live/index.ex:241
 #, elixir-autogen, elixir-format
 msgid "Could not delete screenplay."
 msgstr "No se pudo eliminar la ficha."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/fountain_import_handlers.ex:47
+#: lib/storyarn_web/live/screenplay_live/handlers/fountain_import_handlers.ex:48
 #, elixir-autogen, elixir-format
 msgid "Could not import file."
 msgstr "No se pudo crear el flujo."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:59
-#: lib/storyarn_web/live/screenplay_live/index.ex:315
+#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:61
+#: lib/storyarn_web/live/screenplay_live/index.ex:331
 #, elixir-autogen, elixir-format
 msgid "Could not move screenplay."
 msgstr "No se pudo mover la ficha."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:144
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:149
 #, elixir-autogen, elixir-format
 msgid "Could not remove choice."
 msgstr "No se pudo eliminar el banner."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:75
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:77
 #, elixir-autogen, elixir-format
 msgid "Could not save condition."
 msgstr "No se pudo guardar la configuración."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:97
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:100
 #, elixir-autogen, elixir-format
 msgid "Could not save instruction."
 msgstr "No se pudo guardar el atajo."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:98
+#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:106
 #, elixir-autogen, elixir-format
 msgid "Could not save screenplay name."
 msgstr "No se pudo guardar el nombre del flujo."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:193
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:199
 #, elixir-autogen, elixir-format
 msgid "Could not set character sheet."
 msgstr "No se pudo crear la ficha."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:52
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:58
 #, elixir-autogen, elixir-format
 msgid "Could not sync from flow."
 msgstr "No se pudo mover el flujo."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:27
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:30
 #, elixir-autogen, elixir-format
 msgid "Could not sync screenplay."
 msgstr "No se pudo crear el bloque."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:255
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:263
 #, elixir-autogen, elixir-format
 msgid "Could not toggle parenthetical."
 msgstr "No se pudo alternar la constante."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/linked_page_handlers.ex:78
+#: lib/storyarn_web/live/screenplay_live/handlers/linked_page_handlers.ex:85
 #, elixir-autogen, elixir-format
 msgid "Could not unlink choice."
 msgstr "No se pudo crear el bloque."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:88
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:94
 #, elixir-autogen, elixir-format
 msgid "Could not unlink flow."
 msgstr "No se pudo eliminar el flujo."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:315
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:324
 #, elixir-autogen, elixir-format
 msgid "Could not update choice."
 msgstr "No se pudo actualizar el contenido."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:229
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:236
 #, elixir-autogen, elixir-format
 msgid "Could not update dual dialogue."
 msgstr "No se pudo actualizar el valor booleano."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:280
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:289
 #, elixir-autogen, elixir-format
 msgid "Could not update title page."
 msgstr "No se pudo actualizar la selección múltiple."
@@ -217,12 +217,12 @@ msgstr "Exportar como Fountain"
 msgid "Filter screenplays..."
 msgstr "Filtrar fichas..."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:68
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:74
 #, elixir-autogen, elixir-format
 msgid "Flow created and synced."
 msgstr "Flujo creado y sincronizado."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:49
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:54
 #, elixir-autogen, elixir-format
 msgid "Flow has no entry node."
 msgstr "El flujo no tiene nodo de entrada."
@@ -237,12 +237,12 @@ msgstr "Flujos"
 msgid "Flow trashed"
 msgstr "Flujos"
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:85
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:91
 #, elixir-autogen, elixir-format
 msgid "Flow unlinked."
 msgstr "Flujo desvinculado."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/fountain_import_handlers.ex:44
+#: lib/storyarn_web/live/screenplay_live/handlers/fountain_import_handlers.ex:45
 #, elixir-autogen, elixir-format
 msgid "Fountain file imported successfully."
 msgstr "Perfil actualizado exitosamente."
@@ -262,7 +262,7 @@ msgstr "Importar Fountain"
 msgid "Linked page created."
 msgstr "Página vinculada creada."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/linked_page_handlers.ex:104
+#: lib/storyarn_web/live/screenplay_live/handlers/linked_page_handlers.ex:111
 #, elixir-autogen, elixir-format
 msgid "Linked pages created."
 msgstr "Páginas vinculadas creadas."
@@ -289,7 +289,7 @@ msgstr "Nombre"
 msgid "New Screenplay"
 msgstr "Abrir guión"
 
-#: lib/storyarn_web/live/screenplay_live/handlers/fountain_import_handlers.ex:20
+#: lib/storyarn_web/live/screenplay_live/handlers/fountain_import_handlers.ex:21
 #, elixir-autogen, elixir-format
 msgid "No content found in imported file."
 msgstr "No se encontró contenido en el archivo importado."
@@ -324,8 +324,8 @@ msgstr "Modo lectura"
 msgid "Screenplay created successfully."
 msgstr "Espacio de trabajo creado exitosamente."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:20
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:36
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:21
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:40
 #, elixir-autogen, elixir-format
 msgid "Screenplay is not linked to a flow."
 msgstr "El guión no está vinculado a un flujo."
@@ -338,17 +338,17 @@ msgid "Screenplay moved to trash."
 msgstr "Guión movido a la papelera."
 
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:18
-#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:48
+#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:49
 #, elixir-autogen, elixir-format
 msgid "Screenplay not found."
 msgstr "Guión no encontrado."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:24
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:26
 #, elixir-autogen, elixir-format
 msgid "Screenplay synced to flow."
 msgstr "Guión sincronizado con el flujo."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:46
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:50
 #, elixir-autogen, elixir-format
 msgid "Screenplay updated from flow."
 msgstr "Guión actualizado desde el flujo."
@@ -370,9 +370,9 @@ msgid "Unlink"
 msgstr "Desvincular"
 
 #: lib/storyarn_web/live/screenplay_live/components/screenplay_toolbar.ex:32
-#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:66
-#: lib/storyarn_web/live/screenplay_live/index.ex:257
-#: lib/storyarn_web/live/screenplay_live/index.ex:279
+#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:68
+#: lib/storyarn_web/live/screenplay_live/index.ex:262
+#: lib/storyarn_web/live/screenplay_live/index.ex:289
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr "Sin título"
@@ -393,12 +393,12 @@ msgstr "Escribe y formatea guiones con el formato estándar de la industria"
 msgid "You don't have access to this project."
 msgstr "No tienes acceso a este proyecto."
 
-#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:85
-#: lib/storyarn_web/live/screenplay_live/index.ex:245
-#: lib/storyarn_web/live/screenplay_live/index.ex:272
-#: lib/storyarn_web/live/screenplay_live/index.ex:295
-#: lib/storyarn_web/live/screenplay_live/index.ex:320
-#: lib/storyarn_web/live/screenplay_live/show.ex:470
+#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:91
+#: lib/storyarn_web/live/screenplay_live/index.ex:249
+#: lib/storyarn_web/live/screenplay_live/index.ex:281
+#: lib/storyarn_web/live/screenplay_live/index.ex:309
+#: lib/storyarn_web/live/screenplay_live/index.ex:339
+#: lib/storyarn_web/live/screenplay_live/show.ex:473
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."

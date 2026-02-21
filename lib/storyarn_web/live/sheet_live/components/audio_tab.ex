@@ -145,7 +145,8 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
     if socket.assigns.can_edit do
       fun.(socket)
     else
-      {:noreply, put_flash(socket, :error, dgettext("sheets", "You don't have permission to edit."))}
+      {:noreply,
+       put_flash(socket, :error, dgettext("sheets", "You don't have permission to edit."))}
     end
   end
 
@@ -273,9 +274,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
     ~H"""
     <div>
       <.link
-        navigate={
-          ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"
-        }
+        navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"}
         class="flex items-center gap-2 mb-2 text-sm font-medium text-primary hover:underline"
       >
         <.icon name="git-branch" class="size-4" />
@@ -377,7 +376,9 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
             ]}>
               <span :if={@is_uploading} class="loading loading-spinner loading-xs"></span>
               <.icon :if={!@is_uploading} name="upload" class="size-3" />
-              {if @is_uploading, do: dgettext("sheets", "Uploading..."), else: dgettext("sheets", "Upload")}
+              {if @is_uploading,
+                do: dgettext("sheets", "Uploading..."),
+                else: dgettext("sheets", "Upload")}
               <input
                 type="file"
                 accept="audio/*"
@@ -416,5 +417,4 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
       text
     end
   end
-
 end

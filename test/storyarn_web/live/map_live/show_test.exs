@@ -616,6 +616,7 @@ defmodule StoryarnWeb.MapLive.ShowTest do
       vertices =
         Enum.map(0..15, fn i ->
           angle = i / 16 * 2 * :math.pi() - :math.pi() / 2
+
           %{
             "x" => Float.round(50.0 + 10 * :math.cos(angle), 2),
             "y" => Float.round(50.0 + 10 * :math.sin(angle), 2)
@@ -2543,7 +2544,10 @@ defmodule StoryarnWeb.MapLive.ShowTest do
 
       view |> element("#search-form") |> render_change(%{"query" => "trade"})
 
-      assert has_element?(view, "[phx-click='focus_search_result'][phx-value-id='#{conn_record.id}']")
+      assert has_element?(
+               view,
+               "[phx-click='focus_search_result'][phx-value-id='#{conn_record.id}']"
+             )
     end
 
     test "empty query clears results", %{conn: conn, user: user} do

@@ -52,7 +52,14 @@ defmodule Storyarn.Maps.TreeOperations do
            |> MapSchema.move_changeset(%{parent_id: new_parent_id, position: new_position})
            |> Repo.update() do
         {:ok, updated_map} ->
-          apply_move_result(project_id, map, updated_map, new_parent_id, new_position, old_parent_id)
+          apply_move_result(
+            project_id,
+            map,
+            updated_map,
+            new_parent_id,
+            new_position,
+            old_parent_id
+          )
 
         {:error, changeset} ->
           Repo.rollback(changeset)

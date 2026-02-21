@@ -140,7 +140,12 @@ defmodule Storyarn.Maps.MapCrud do
       )
       |> Repo.all()
     else
-      sanitized = query |> String.replace("\\", "\\\\") |> String.replace("%", "\\%") |> String.replace("_", "\\_")
+      sanitized =
+        query
+        |> String.replace("\\", "\\\\")
+        |> String.replace("%", "\\%")
+        |> String.replace("_", "\\_")
+
       search_term = "%#{sanitized}%"
 
       from(m in Map,

@@ -37,7 +37,9 @@ defmodule StoryarnWeb.FlowLive.Components.DebugHistoryTab do
           <tr :for={entry <- @history} class="hover:bg-base-200">
             <td class="text-base-content/30 tabular-nums">{format_ts(entry.ts)}</td>
             <td class="truncate max-w-32" title={entry.node_label}>
-              {if entry.node_label != "", do: entry.node_label, else: dgettext("flows", "(user override)")}
+              {if entry.node_label != "",
+                do: entry.node_label,
+                else: dgettext("flows", "(user override)")}
             </td>
             <td class="truncate max-w-64">
               <span class="text-base-content/40">{entry.variable_ref}:</span>

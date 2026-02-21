@@ -333,7 +333,8 @@ defmodule Storyarn.Sheets.Versioning do
         # First version
         block_count = length(current_snapshot["blocks"] || [])
 
-        dngettext("sheets",
+        dngettext(
+          "sheets",
           "Initial version with %{count} block",
           "Initial version with %{count} blocks",
           block_count,
@@ -348,8 +349,18 @@ defmodule Storyarn.Sheets.Versioning do
   defp diff_snapshots(old_snapshot, new_snapshot) do
     changes =
       []
-      |> check_field_change(old_snapshot, new_snapshot, "name", dgettext("sheets", "Renamed sheet"))
-      |> check_field_change(old_snapshot, new_snapshot, "shortcut", dgettext("sheets", "Changed shortcut"))
+      |> check_field_change(
+        old_snapshot,
+        new_snapshot,
+        "name",
+        dgettext("sheets", "Renamed sheet")
+      )
+      |> check_field_change(
+        old_snapshot,
+        new_snapshot,
+        "shortcut",
+        dgettext("sheets", "Changed shortcut")
+      )
       |> check_field_change(
         old_snapshot,
         new_snapshot,
@@ -402,20 +413,30 @@ defmodule Storyarn.Sheets.Versioning do
   defp maybe_add_added_blocks(changes, 0), do: changes
 
   defp maybe_add_added_blocks(changes, count) do
-    [dngettext("sheets", "Added %{count} block", "Added %{count} blocks", count, count: count) | changes]
+    [
+      dngettext("sheets", "Added %{count} block", "Added %{count} blocks", count, count: count)
+      | changes
+    ]
   end
 
   defp maybe_add_removed_blocks(changes, 0), do: changes
 
   defp maybe_add_removed_blocks(changes, count) do
-    [dngettext("sheets", "Removed %{count} block", "Removed %{count} blocks", count, count: count) | changes]
+    [
+      dngettext("sheets", "Removed %{count} block", "Removed %{count} blocks", count,
+        count: count
+      )
+      | changes
+    ]
   end
 
   defp maybe_add_modified_blocks(changes, 0), do: changes
 
   defp maybe_add_modified_blocks(changes, count) do
     [
-      dngettext("sheets", "Modified %{count} block", "Modified %{count} blocks", count, count: count)
+      dngettext("sheets", "Modified %{count} block", "Modified %{count} blocks", count,
+        count: count
+      )
       | changes
     ]
   end

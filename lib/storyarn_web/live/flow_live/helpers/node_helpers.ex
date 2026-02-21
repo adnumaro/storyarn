@@ -220,7 +220,11 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
        Phoenix.LiveView.put_flash(
          socket,
          :error,
-         Gettext.dgettext(StoryarnWeb.Gettext, "flows", "This node is being edited by another user.")
+         Gettext.dgettext(
+           StoryarnWeb.Gettext,
+           "flows",
+           "This node is being edited by another user."
+         )
        )}
     else
       perform_node_deletion(socket, node_id)
@@ -252,7 +256,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     socket
     |> put_flash(
       :info,
-      Gettext.dngettext(StoryarnWeb.Gettext, "flows",
+      Gettext.dngettext(
+        StoryarnWeb.Gettext,
+        "flows",
         "%{count} Jump node updated.",
         "%{count} Jump nodes updated.",
         renamed_count,
@@ -413,7 +419,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          |> assign(:node_form, nil)
          |> put_flash(
            :warning,
-           Gettext.dngettext(StoryarnWeb.Gettext, "flows",
+           Gettext.dngettext(
+             StoryarnWeb.Gettext,
+             "flows",
              "%{count} Jump node lost its target.",
              "%{count} Jump nodes lost their target.",
              count,
@@ -446,7 +454,11 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "A flow must have at least one Exit node.")
+           Gettext.dgettext(
+             StoryarnWeb.Gettext,
+             "flows",
+             "A flow must have at least one Exit node."
+           )
          )}
 
       {:error, _} ->

@@ -6,7 +6,15 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   alias Storyarn.Localization.TextExtractor
   alias Storyarn.Repo
-  alias Storyarn.Sheets.{Block, PropertyInheritance, ReferenceTracker, Sheet, TableColumn, TableRow}
+
+  alias Storyarn.Sheets.{
+    Block,
+    PropertyInheritance,
+    ReferenceTracker,
+    Sheet,
+    TableColumn,
+    TableRow
+  }
 
   # =============================================================================
   # Query Operations
@@ -464,7 +472,12 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   defp maybe_create_default_table_structure({:ok, %Block{type: "table"} = block}) do
     %TableColumn{block_id: block.id}
-    |> TableColumn.create_changeset(%{name: "Value", type: "number", is_constant: false, position: 0})
+    |> TableColumn.create_changeset(%{
+      name: "Value",
+      type: "number",
+      is_constant: false,
+      position: 0
+    })
     |> Repo.insert!()
 
     %TableRow{block_id: block.id}

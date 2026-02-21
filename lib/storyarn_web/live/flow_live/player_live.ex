@@ -108,7 +108,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
              socket
              |> put_flash(:error, reason)
              |> redirect(
-               to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+               to:
+                 ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
              )}
 
           {:ok, engine_state} ->
@@ -223,7 +224,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         end
 
       {:error, _state, _reason} ->
-        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not select that response."))}
+        {:noreply,
+         put_flash(socket, :error, dgettext("flows", "Could not select that response."))}
     end
   end
 
@@ -277,7 +279,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
   def handle_event("exit_player", _params, socket) do
     %{workspace: ws, project: proj, flow: flow} = socket.assigns
-    {:noreply, push_navigate(socket, to: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows/#{flow.id}")}
+
+    {:noreply,
+     push_navigate(socket, to: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows/#{flow.id}")}
   end
 
   # ===========================================================================
@@ -297,7 +301,12 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         {:noreply, put_flash(socket, :error, dgettext("flows", "Target flow has no entry node."))}
 
       entry_id ->
-        new_state = %{state | current_node_id: entry_id, current_flow_id: target_flow_id, status: :paused}
+        new_state = %{
+          state
+          | current_node_id: entry_id,
+            current_flow_id: target_flow_id,
+            status: :paused
+        }
 
         case PlayerEngine.step_until_interactive(new_state, target_nodes, target_connections) do
           {:flow_jump, stepped_state, next_flow_id, _skipped} ->
@@ -314,7 +323,13 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
             )
 
           {_status, stepped_state, _skipped} ->
-            store_and_navigate_player(socket, stepped_state, target_nodes, target_connections, target_flow_id)
+            store_and_navigate_player(
+              socket,
+              stepped_state,
+              target_nodes,
+              target_connections,
+              target_flow_id
+            )
         end
     end
   end
@@ -336,7 +351,12 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
         new_state =
           if conn do
-            %{new_state | current_node_id: conn.target_node_id, current_flow_id: parent_flow_id, status: :paused}
+            %{
+              new_state
+              | current_node_id: conn.target_node_id,
+                current_flow_id: parent_flow_id,
+                status: :paused
+            }
           else
             %{new_state | status: :finished, current_flow_id: parent_flow_id}
           end
@@ -356,7 +376,13 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
             )
 
           {_status, stepped_state, _skipped} ->
-            store_and_navigate_player(socket, stepped_state, parent_nodes, parent_connections, parent_flow_id)
+            store_and_navigate_player(
+              socket,
+              stepped_state,
+              parent_nodes,
+              parent_connections,
+              parent_flow_id
+            )
         end
 
       {:error, :empty_stack} ->
@@ -379,7 +405,10 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
       player_mode: mode
     })
 
-    {:noreply, push_navigate(socket, to: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows/#{flow_id}/play")}
+    {:noreply,
+     push_navigate(socket,
+       to: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows/#{flow_id}/play"
+     )}
   end
 
   # ===========================================================================
@@ -403,5 +432,4 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
   defp show_continue?(%{type: :scene}), do: true
   defp show_continue?(_), do: false
-
 end

@@ -184,7 +184,13 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     case conn do
       nil ->
         state =
-          EngineHelpers.add_console(state, :error, node_id, "", "No connection from response #{response_id}")
+          EngineHelpers.add_console(
+            state,
+            :error,
+            node_id,
+            "",
+            "No connection from response #{response_id}"
+          )
 
         {:error, %{state | status: :finished}, :no_connection}
 
@@ -379,7 +385,13 @@ defmodule Storyarn.Flows.Evaluator.Engine do
 
     if is_nil(target_hub_id) or target_hub_id == "" do
       state =
-        EngineHelpers.add_console(state, :error, node.id, label, "Jump node has no target_hub_id configured")
+        EngineHelpers.add_console(
+          state,
+          :error,
+          node.id,
+          label,
+          "Jump node has no target_hub_id configured"
+        )
 
       {:finished, %{state | status: :finished}}
     else
@@ -418,13 +430,25 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     case data["referenced_flow_id"] do
       nil ->
         state =
-          EngineHelpers.add_console(state, :error, node.id, label, "Subflow node has no referenced_flow_id")
+          EngineHelpers.add_console(
+            state,
+            :error,
+            node.id,
+            label,
+            "Subflow node has no referenced_flow_id"
+          )
 
         {:finished, %{state | status: :finished}}
 
       flow_id ->
         state =
-          EngineHelpers.add_console(state, :info, node.id, label, "Subflow → entering flow #{flow_id}")
+          EngineHelpers.add_console(
+            state,
+            :info,
+            node.id,
+            label,
+            "Subflow → entering flow #{flow_id}"
+          )
 
         {:flow_jump, state, flow_id}
     end

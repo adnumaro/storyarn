@@ -11,7 +11,9 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   alias Storyarn.Maps
   import StoryarnWeb.MapLive.Helpers.MapHelpers
   import StoryarnWeb.MapLive.Helpers.Serializer
-  import StoryarnWeb.MapLive.Handlers.UndoRedoHandlers, only: [push_undo: 2, push_undo_coalesced: 2]
+
+  import StoryarnWeb.MapLive.Handlers.UndoRedoHandlers,
+    only: [push_undo: 2, push_undo_coalesced: 2]
 
   # ---------------------------------------------------------------------------
   # Pin handlers
@@ -357,7 +359,8 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   # Private do_* helpers
   # ---------------------------------------------------------------------------
 
-  defp do_create_pin_from_sheet(socket, _x, _y) when is_nil(socket.assigns.pending_sheet_for_pin) do
+  defp do_create_pin_from_sheet(socket, _x, _y)
+       when is_nil(socket.assigns.pending_sheet_for_pin) do
     {:noreply, put_flash(socket, :error, dgettext("maps", "No sheet selected."))}
   end
 
@@ -421,7 +424,9 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     case Maps.delete_pin(pin) do
       {:ok, _} ->
         sub_actions = Enum.map(affected_conns, &{:delete_connection, &1}) ++ [{:delete_pin, pin}]
-        action = if length(sub_actions) > 1, do: {:compound, sub_actions}, else: {:delete_pin, pin}
+
+        action =
+          if length(sub_actions) > 1, do: {:compound, sub_actions}, else: {:delete_pin, pin}
 
         {:noreply,
          socket
@@ -616,7 +621,9 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       {:ok, updated} ->
         {:noreply,
          socket
-         |> push_undo({:update_annotation, annotation.id, %{field => prev_value}, %{field => value}})
+         |> push_undo(
+           {:update_annotation, annotation.id, %{field => prev_value}, %{field => value}}
+         )
          |> assign(:annotations, replace_in_list(socket.assigns.annotations, updated))
          |> maybe_update_selected_element("annotation", updated)
          |> push_event("annotation_updated", serialize_annotation(updated))}
@@ -633,7 +640,8 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
 
     case Maps.move_annotation(annotation, x, y) do
       {:ok, _updated} ->
-        {:noreply, push_undo_coalesced(socket, {:move_annotation, annotation.id, prev, %{x: x, y: y}})}
+        {:noreply,
+         push_undo_coalesced(socket, {:move_annotation, annotation.id, prev, %{x: x, y: y}})}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move annotation."))}
@@ -650,7 +658,10 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
         {:noreply,
          socket
          |> push_undo({:delete_annotation, annotation})
-         |> assign(:annotations, Enum.reject(socket.assigns.annotations, &(&1.id == annotation.id)))
+         |> assign(
+           :annotations,
+           Enum.reject(socket.assigns.annotations, &(&1.id == annotation.id))
+         )
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
          |> push_event("annotation_deleted", %{id: annotation.id})
@@ -722,8 +733,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
          |> put_flash(:info, dgettext("maps", "Annotation duplicated."))}
 
       {:error, _} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("maps", "Could not duplicate annotation."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not duplicate annotation."))}
     end
   end
 
@@ -887,8 +897,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
          |> put_flash(:info, dgettext("maps", "Annotation pasted."))}
 
       {:error, _} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("maps", "Could not paste annotation."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not paste annotation."))}
     end
   end
 

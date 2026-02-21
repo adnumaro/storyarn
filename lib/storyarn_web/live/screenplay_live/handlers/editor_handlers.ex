@@ -197,5 +197,4 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers do
       :error -> map
     end
   end
-
 end

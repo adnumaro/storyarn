@@ -674,8 +674,8 @@ defmodule StoryarnWeb.MapLive.UndoRedoTest do
       assert new_pin != nil
 
       assert Enum.all?(connections, fn c ->
-        c.from_pin_id == new_pin.id or c.to_pin_id == new_pin.id
-      end)
+               c.from_pin_id == new_pin.id or c.to_pin_id == new_pin.id
+             end)
     end
 
     test "redo re-deletes pin and connections after compound undo",

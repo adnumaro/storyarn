@@ -16,18 +16,18 @@ msgstr ""
 msgid "Actions"
 msgstr "Acciones"
 
-#: lib/storyarn_web/components/layouts.ex:482
-#: lib/storyarn_web/components/layouts.ex:494
+#: lib/storyarn_web/components/layouts.ex:484
+#: lib/storyarn_web/components/layouts.ex:496
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr "Intentando reconectar"
 
-#: lib/storyarn_web/components/layouts.ex:489
+#: lib/storyarn_web/components/layouts.ex:491
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr "¡Algo salió mal!"
 
-#: lib/storyarn_web/components/layouts.ex:477
+#: lib/storyarn_web/components/layouts.ex:479
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr "No podemos encontrar la conexión a internet"
@@ -53,12 +53,12 @@ msgstr "Continuar con GitHub"
 msgid "Continue with Google"
 msgstr "Continuar con Google"
 
-#: lib/storyarn_web/components/layouts.ex:289
+#: lib/storyarn_web/components/layouts.ex:291
 #, elixir-autogen, elixir-format
 msgid "Log in"
 msgstr "Iniciar sesión"
 
-#: lib/storyarn_web/components/layouts.ex:422
+#: lib/storyarn_web/components/layouts.ex:424
 #: lib/storyarn_web/components/sidebar.ex:92
 #, elixir-autogen, elixir-format
 msgid "Profile"
@@ -70,7 +70,7 @@ msgstr "Perfil"
 msgid "Saving..."
 msgstr "Guardando..."
 
-#: lib/storyarn_web/components/layouts.ex:292
+#: lib/storyarn_web/components/layouts.ex:294
 #, elixir-autogen, elixir-format
 msgid "Sign up"
 msgstr "Registrarse"
@@ -114,7 +114,7 @@ msgid_plural "%{count} more users"
 msgstr[0] "%{count} usuario más"
 msgstr[1] "%{count} usuarios más"
 
-#: lib/storyarn_web/components/layouts.ex:420
+#: lib/storyarn_web/components/layouts.ex:422
 #, elixir-autogen, elixir-format
 msgid "Account"
 msgstr "Cuenta"
@@ -124,13 +124,13 @@ msgstr "Cuenta"
 msgid "Back to Workspace"
 msgstr "Volver al espacio de trabajo"
 
-#: lib/storyarn_web/components/layouts.ex:360
-#: lib/storyarn_web/components/layouts.ex:396
+#: lib/storyarn_web/components/layouts.ex:362
+#: lib/storyarn_web/components/layouts.ex:398
 #, elixir-autogen, elixir-format
 msgid "Back to app"
 msgstr "Volver a la app"
 
-#: lib/storyarn_web/components/layouts.ex:429
+#: lib/storyarn_web/components/layouts.ex:431
 #, elixir-autogen, elixir-format
 msgid "Connected accounts"
 msgstr "Cuentas conectadas"
@@ -145,7 +145,7 @@ msgstr "Constante"
 msgid "Dark mode"
 msgstr "Modo oscuro"
 
-#: lib/storyarn_web/components/layouts.ex:285
+#: lib/storyarn_web/components/layouts.ex:287
 #, elixir-autogen, elixir-format
 msgid "Dashboard"
 msgstr "Panel"
@@ -155,7 +155,7 @@ msgstr "Panel"
 msgid "Flows"
 msgstr "Flujos"
 
-#: lib/storyarn_web/components/layouts.ex:442
+#: lib/storyarn_web/components/layouts.ex:444
 #, elixir-autogen, elixir-format
 msgid "General"
 msgstr "General"
@@ -165,7 +165,7 @@ msgstr "General"
 msgid "Log out"
 msgstr "Cerrar sesión"
 
-#: lib/storyarn_web/components/layouts.ex:447
+#: lib/storyarn_web/components/layouts.ex:449
 #, elixir-autogen, elixir-format
 msgid "Members"
 msgstr "Miembros"
@@ -191,7 +191,7 @@ msgstr "Eliminar"
 msgid "Saved"
 msgstr "Guardado"
 
-#: lib/storyarn_web/components/layouts.ex:424
+#: lib/storyarn_web/components/layouts.ex:426
 #, elixir-autogen, elixir-format
 msgid "Security"
 msgstr "Seguridad"

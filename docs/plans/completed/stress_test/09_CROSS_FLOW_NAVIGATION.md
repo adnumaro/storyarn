@@ -678,4 +678,4 @@ The tests above cover the integration points. The pure logic is thoroughly teste
 | 4. Keyboard shortcuts      | Alt+Left/Alt+Right for back/forward                        | `flow_canvas.js`                    |
 | 5. Integration tests       | Full cycle verification                                    | Integration test file               |
 
-**Next:** [10_DEBUGGER_STEP_LIMIT.md](../stress_test/10_DEBUGGER_STEP_LIMIT.md)
+**Next:** [10_DEBUGGER_STEP_LIMIT.md](10_DEBUGGER_STEP_LIMIT.md)

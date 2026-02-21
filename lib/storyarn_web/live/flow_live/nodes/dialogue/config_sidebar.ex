@@ -11,6 +11,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
 
   import StoryarnWeb.Components.ExpressionEditor
   import StoryarnWeb.Components.CoreComponents
+
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers,
     only: [word_count: 1, response_has_advanced?: 1]
 
@@ -101,7 +102,13 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
     </.form>
     <details
       class="collapse collapse-arrow bg-base-200 mt-2"
-      open={Map.get(@panel_sections, "audio", @form[:audio_asset_id] && @form[:audio_asset_id].value != nil)}
+      open={
+        Map.get(
+          @panel_sections,
+          "audio",
+          @form[:audio_asset_id] && @form[:audio_asset_id].value != nil
+        )
+      }
     >
       <summary
         class="collapse-title text-sm font-medium flex items-center gap-2 cursor-pointer"
@@ -312,7 +319,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
               variables={@project_variables}
               can_edit={@can_edit}
               context={%{"response-id" => @response["id"], "node-id" => @node.id}}
-              active_tab={Map.get(@panel_sections, "tab_response-cond-expr-#{@response["id"]}", "builder")}
+              active_tab={
+                Map.get(@panel_sections, "tab_response-cond-expr-#{@response["id"]}", "builder")
+              }
             />
           </div>
 
@@ -330,7 +339,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
               can_edit={@can_edit}
               context={%{"response-id" => @response["id"], "node-id" => @node.id}}
               event_name="update_response_instruction_builder"
-              active_tab={Map.get(@panel_sections, "tab_response-inst-expr-#{@response["id"]}", "builder")}
+              active_tab={
+                Map.get(@panel_sections, "tab_response-inst-expr-#{@response["id"]}", "builder")
+              }
             />
           </div>
         </div>
@@ -340,5 +351,4 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.ConfigSidebar do
   end
 
   defp has_advanced_settings?(response), do: response_has_advanced?(response)
-
 end

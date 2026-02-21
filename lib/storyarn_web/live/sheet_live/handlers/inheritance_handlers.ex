@@ -43,11 +43,15 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlers do
              |> helpers.reload_blocks.()
              |> put_flash(
                :info,
-               dgettext("sheets", "Property detached. Changes to the source won't affect this copy.")
+               dgettext(
+                 "sheets",
+                 "Property detached. Changes to the source won't affect this copy."
+               )
              )}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not detach property."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("sheets", "Could not detach property."))}
         end
     end
   end
@@ -78,7 +82,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlers do
              |> put_flash(:info, dgettext("sheets", "Property re-synced with source."))}
 
           {:error, :source_not_found} ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Source block no longer exists."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("sheets", "Source block no longer exists."))}
         end
     end
   end
@@ -143,7 +148,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlers do
 
           {:noreply,
            push_navigate(socket,
-             to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{source_sheet.id}"
+             to:
+               ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{source_sheet.id}"
            )}
         else
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Source sheet not found."))}
@@ -185,7 +191,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlers do
          |> helpers.reload_blocks.()}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update required flag."))}
+        {:noreply,
+         put_flash(socket, :error, dgettext("sheets", "Could not update required flag."))}
     end
   end
 

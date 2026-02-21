@@ -45,7 +45,14 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngine do
     {:finished, state, Enum.reverse(skipped)}
   end
 
-  defp do_step(%State{status: :waiting_input} = state, _nodes, _connections, _max, _count, skipped) do
+  defp do_step(
+         %State{status: :waiting_input} = state,
+         _nodes,
+         _connections,
+         _max,
+         _count,
+         skipped
+       ) do
     {:waiting_input, state, Enum.reverse(skipped)}
   end
 

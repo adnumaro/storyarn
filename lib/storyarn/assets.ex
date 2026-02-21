@@ -70,8 +70,12 @@ defmodule Storyarn.Assets do
 
   defp apply_search_filter(query, opts) do
     case Keyword.get(opts, :search) do
-      nil -> query
-      "" -> query
+      nil ->
+        query
+
+      "" ->
+        query
+
       term ->
         escaped = sanitize_like_term(term)
         where(query, [a], ilike(a.filename, ^"%#{escaped}%"))

@@ -36,7 +36,13 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluator do
     # Log errors
     state =
       Enum.reduce(errors, state, fn error, acc ->
-        EngineHelpers.add_console(acc, :error, node.id, label, "#{error.variable_ref}: #{error.reason}")
+        EngineHelpers.add_console(
+          acc,
+          :error,
+          node.id,
+          label,
+          "#{error.variable_ref}: #{error.reason}"
+        )
       end)
 
     state =

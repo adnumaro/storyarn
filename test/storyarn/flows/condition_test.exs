@@ -137,7 +137,20 @@ defmodule Storyarn.Flows.ConditionTest do
 
   describe "sanitize/1 flat format" do
     test "sanitizes flat condition" do
-      result = Condition.sanitize(%{"logic" => "all", "rules" => [%{"sheet" => "mc", "variable" => "hp", "operator" => "equals", "value" => "10", "evil_key" => "bad"}]})
+      result =
+        Condition.sanitize(%{
+          "logic" => "all",
+          "rules" => [
+            %{
+              "sheet" => "mc",
+              "variable" => "hp",
+              "operator" => "equals",
+              "value" => "10",
+              "evil_key" => "bad"
+            }
+          ]
+        })
+
       assert %{"logic" => "all", "rules" => [rule]} = result
       refute Map.has_key?(rule, "evil_key")
     end
@@ -154,7 +167,9 @@ defmodule Storyarn.Flows.ConditionTest do
 
   describe "sanitize/1 block format" do
     test "sanitizes block-format condition" do
-      block = Map.put(make_block("b1", "all", [make_rule("mc", "hp", "equals", "50")]), "evil", "bad")
+      block =
+        Map.put(make_block("b1", "all", [make_rule("mc", "hp", "equals", "50")]), "evil", "bad")
+
       condition = make_block_condition("any", [block])
 
       result = Condition.sanitize(condition)
@@ -357,7 +372,13 @@ defmodule Storyarn.Flows.ConditionTest do
 
     test "extracts rules from mixed blocks and groups" do
       standalone = make_block("b1", "all", [make_rule("mc", "hp", "equals", "50")])
-      inner = make_block("b2", "all", [make_rule("mc", "alive", "is_true"), make_rule("mc", "class", "equals", "warrior")])
+
+      inner =
+        make_block("b2", "all", [
+          make_rule("mc", "alive", "is_true"),
+          make_rule("mc", "class", "equals", "warrior")
+        ])
+
       group = make_group("g1", "all", [inner])
       condition = make_block_condition("any", [standalone, group])
       assert length(Condition.extract_all_rules(condition)) == 3

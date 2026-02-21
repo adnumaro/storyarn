@@ -82,10 +82,16 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.ConfigSidebar do
           switch_mode={@switch_mode}
           active_tab={Map.get(@panel_sections, "tab_condition-expr-#{@node.id}", "builder")}
         />
-        <p :if={!Condition.has_rules?(@condition_data) && !@switch_mode} class="text-xs text-base-content/50">
+        <p
+          :if={!Condition.has_rules?(@condition_data) && !@switch_mode}
+          class="text-xs text-base-content/50"
+        >
           {dgettext("flows", "Add rules to define when to route to True/False.")}
         </p>
-        <p :if={!Condition.has_rules?(@condition_data) && @switch_mode} class="text-xs text-base-content/50">
+        <p
+          :if={!Condition.has_rules?(@condition_data) && @switch_mode}
+          class="text-xs text-base-content/50"
+        >
           {dgettext("flows", "Add conditions. Each one creates a separate output.")}
         </p>
       </div>

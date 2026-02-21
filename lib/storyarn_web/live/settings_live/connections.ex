@@ -64,7 +64,9 @@ defmodule StoryarnWeb.SettingsLive.Connections do
         <ul class="text-sm text-base-content/70 space-y-1">
           <li>• {dgettext("settings", "Sign in faster without typing your password")}</li>
           <li>• {dgettext("settings", "Access your account even if you forget your password")}</li>
-          <li>• {dgettext("settings", "Keep your account secure with multiple authentication methods")}</li>
+          <li>
+            • {dgettext("settings", "Keep your account secure with multiple authentication methods")}
+          </li>
         </ul>
       </div>
     </Layouts.settings>

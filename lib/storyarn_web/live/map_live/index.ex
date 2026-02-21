@@ -226,7 +226,11 @@ defmodule StoryarnWeb.MapLive.Index do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("maps", "You don't have permission to perform this action.")
+         )}
     end
   end
 
@@ -247,7 +251,11 @@ defmodule StoryarnWeb.MapLive.Index do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("maps", "You don't have permission to perform this action.")
+         )}
     end
   end
 
@@ -270,7 +278,11 @@ defmodule StoryarnWeb.MapLive.Index do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("maps", "You don't have permission to perform this action.")
+         )}
     end
   end
 
@@ -288,7 +300,11 @@ defmodule StoryarnWeb.MapLive.Index do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("maps", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("maps", "You don't have permission to perform this action.")
+         )}
     end
   end
 
@@ -310,8 +326,11 @@ defmodule StoryarnWeb.MapLive.Index do
     position = MapUtils.parse_int(position) || 0
 
     case Maps.move_map_to_position(map, new_parent_id, position) do
-      {:ok, _} -> {:noreply, reload_maps(socket)}
-      {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move map."))}
+      {:ok, _} ->
+        {:noreply, reload_maps(socket)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not move map."))}
     end
   end
 

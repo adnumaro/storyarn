@@ -27,7 +27,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         else
           {:ok,
            socket
-           |> put_flash(:error, dgettext("workspaces", "You don't have permission to manage this workspace."))
+           |> put_flash(
+             :error,
+             dgettext("workspaces", "You don't have permission to manage this workspace.")
+           )
            |> push_navigate(to: ~p"/users/settings")}
         end
 
@@ -88,7 +91,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
             </p>
 
             <div class="flex justify-end">
-              <.button type="submit" variant="primary" phx-disable-with={dgettext("workspaces", "Saving...")}>
+              <.button
+                type="submit"
+                variant="primary"
+                phx-disable-with={dgettext("workspaces", "Saving...")}
+              >
                 {dgettext("workspaces", "Save Changes")}
               </.button>
             </div>
@@ -98,11 +105,14 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         <div class="divider" />
 
         <section :if={@membership.role == "owner"}>
-          <h3 class="text-lg font-semibold mb-4 text-error">{dgettext("workspaces", "Danger Zone")}</h3>
+          <h3 class="text-lg font-semibold mb-4 text-error">
+            {dgettext("workspaces", "Danger Zone")}
+          </h3>
 
           <div class="border border-error/30 rounded-lg p-4">
             <p class="text-sm text-base-content/70 mb-4">
-              {dgettext("workspaces", 
+              {dgettext(
+                "workspaces",
                 "Once you delete a workspace, there is no going back. All projects will be deleted."
               )}
             </p>
@@ -158,7 +168,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("workspaces", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("workspaces", "You don't have permission to perform this action.")
+         )}
     end
   end
 
@@ -174,11 +188,16 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
            |> push_navigate(to: ~p"/users/settings")}
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("workspaces", "Failed to delete workspace."))}
+          {:noreply,
+           put_flash(socket, :error, dgettext("workspaces", "Failed to delete workspace."))}
       end
     else
       {:noreply,
-       put_flash(socket, :error, dgettext("workspaces", "Only the workspace owner can delete the workspace."))}
+       put_flash(
+         socket,
+         :error,
+         dgettext("workspaces", "Only the workspace owner can delete the workspace.")
+       )}
     end
   end
 end

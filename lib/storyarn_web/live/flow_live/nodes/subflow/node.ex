@@ -99,7 +99,10 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
 
       Flows.has_circular_reference?(current_flow_id, parsed) ->
         {:error,
-         dgettext("flows", "Circular reference detected. This flow is already referenced by the target.")}
+         dgettext(
+           "flows",
+           "Circular reference detected. This flow is already referenced by the target."
+         )}
 
       true ->
         :ok

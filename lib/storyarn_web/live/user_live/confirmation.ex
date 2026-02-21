@@ -51,7 +51,10 @@ defmodule StoryarnWeb.UserLive.Confirmation do
         >
           <input type="hidden" name={@form[:token].name} value={@form[:token].value} />
           <%= if @current_scope do %>
-            <.button phx-disable-with={dgettext("identity", "Logging in...")} class="btn btn-primary w-full">
+            <.button
+              phx-disable-with={dgettext("identity", "Logging in...")}
+              class="btn btn-primary w-full"
+            >
               {dgettext("identity", "Log in")}
             </.button>
           <% else %>
@@ -73,7 +76,10 @@ defmodule StoryarnWeb.UserLive.Confirmation do
         </.form>
 
         <p :if={!@user.confirmed_at} class="alert alert-outline mt-8">
-          {dgettext("identity", "Tip: If you prefer passwords, you can enable them in the user settings.")}
+          {dgettext(
+            "identity",
+            "Tip: If you prefer passwords, you can enable them in the user settings."
+          )}
         </p>
       </div>
     </Layouts.auth>

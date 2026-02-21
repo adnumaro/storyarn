@@ -26,7 +26,10 @@ defmodule StoryarnWeb.WorkspaceLive.New do
         <.header>
           {dgettext("workspaces", "Create a new workspace")}
           <:subtitle>
-            {dgettext("workspaces", "Workspaces help you organize projects for different teams or purposes.")}
+            {dgettext(
+              "workspaces",
+              "Workspaces help you organize projects for different teams or purposes."
+            )}
           </:subtitle>
         </.header>
 

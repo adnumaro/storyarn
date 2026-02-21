@@ -202,5 +202,4 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
         {:noreply, socket}
     end
   end
-
 end

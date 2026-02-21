@@ -24,7 +24,8 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
         </h3>
 
         <p class="py-2 text-sm text-base-content/70">
-          {dgettext("sheets", 
+          {dgettext(
+            "sheets",
             "This property will automatically appear in all new children. For existing children:"
           )}
         </p>
@@ -54,7 +55,10 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
         </div>
 
         <p class="text-xs text-base-content/50 mt-2">
-          {dgettext("sheets", "Unselected pages won't get this property but can add it manually later.")}
+          {dgettext(
+            "sheets",
+            "Unselected pages won't get this property but can add it manually later."
+          )}
         </p>
 
         <%!-- Actions --%>

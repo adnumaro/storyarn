@@ -288,7 +288,9 @@ defmodule Storyarn.Sheets.TableCrudTest do
       table_column_fixture(block, %{name: "Description", type: "text"})
       [row] = Sheets.list_table_rows(block.id)
 
-      {:ok, updated} = Sheets.update_table_cells(row, %{"value" => 18, "description" => "Str score"})
+      {:ok, updated} =
+        Sheets.update_table_cells(row, %{"value" => 18, "description" => "Str score"})
+
       assert updated.cells["value"] == 18
       assert updated.cells["description"] == "Str score"
     end
@@ -357,7 +359,9 @@ defmodule Storyarn.Sheets.TableCrudTest do
       assert Map.has_key?(str_row.cells, "active")
 
       # Update cells
-      {:ok, str_row} = Sheets.update_table_cells(str_row, %{"value" => 18, "description" => "Physical power"})
+      {:ok, str_row} =
+        Sheets.update_table_cells(str_row, %{"value" => 18, "description" => "Physical power"})
+
       {:ok, wis_row} = Sheets.update_table_cells(wis_row, %{"value" => 15, "active" => true})
 
       assert str_row.cells["value"] == 18

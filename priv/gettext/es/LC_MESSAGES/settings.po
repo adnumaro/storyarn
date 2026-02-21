@@ -11,7 +11,7 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:158
+#: lib/storyarn_web/live/settings_live/profile.ex:166
 #, elixir-autogen, elixir-format
 msgid "A link to confirm your email change has been sent to the new address."
 msgstr "Se ha enviado un enlace para confirmar el cambio de email a la nueva dirección."
@@ -26,12 +26,12 @@ msgstr "Accede a tu cuenta incluso si olvidas tu contraseña"
 msgid "Active Sessions"
 msgstr "Sesiones activas"
 
-#: lib/storyarn_web/live/settings_live/connections.ex:116
+#: lib/storyarn_web/live/settings_live/connections.ex:118
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to unlink this account?"
 msgstr "¿Estás seguro de que quieres desvincular esta cuenta?"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:103
+#: lib/storyarn_web/live/settings_live/profile.ex:109
 #, elixir-autogen, elixir-format
 msgid "Change Email"
 msgstr "Cambiar Email"
@@ -41,7 +41,7 @@ msgstr "Cambiar Email"
 msgid "Change Password"
 msgstr "Cambiar contraseña"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:102
+#: lib/storyarn_web/live/settings_live/profile.ex:108
 #, elixir-autogen, elixir-format
 msgid "Changing..."
 msgstr "Cambiando..."
@@ -56,12 +56,12 @@ msgstr "Elige una contraseña segura que no uses en otro lugar."
 msgid "Confirm new password"
 msgstr "Confirmar nueva contraseña"
 
-#: lib/storyarn_web/live/settings_live/connections.ex:131
+#: lib/storyarn_web/live/settings_live/connections.ex:133
 #, elixir-autogen, elixir-format
 msgid "Connect"
 msgstr "Conectar"
 
-#: lib/storyarn_web/live/settings_live/connections.ex:126
+#: lib/storyarn_web/live/settings_live/connections.ex:128
 #, elixir-autogen, elixir-format
 msgid "Connected"
 msgstr "Conectado"
@@ -72,22 +72,22 @@ msgstr "Conectado"
 msgid "Connected Accounts"
 msgstr "Cuentas conectadas"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:68
+#: lib/storyarn_web/live/settings_live/profile.ex:74
 #, elixir-autogen, elixir-format
 msgid "Display Name"
 msgstr "Nombre para mostrar"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:97
+#: lib/storyarn_web/live/settings_live/profile.ex:103
 #, elixir-autogen, elixir-format
 msgid "Email"
 msgstr "Email"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:83
+#: lib/storyarn_web/live/settings_live/profile.ex:89
 #, elixir-autogen, elixir-format
 msgid "Email Address"
 msgstr "Dirección de email"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:19
+#: lib/storyarn_web/live/settings_live/profile.ex:22
 #, elixir-autogen, elixir-format
 msgid "Email change link is invalid or it has expired."
 msgstr "El enlace de cambio de email no es válido o ha expirado."
@@ -97,12 +97,12 @@ msgstr "El enlace de cambio de email no es válido o ha expirado."
 msgid "Email changed successfully."
 msgstr "Email cambiado exitosamente."
 
-#: lib/storyarn_web/live/settings_live/profile.ex:69
+#: lib/storyarn_web/live/settings_live/profile.ex:75
 #, elixir-autogen, elixir-format
 msgid "How you want to be called"
 msgstr "Cómo quieres que te llamen"
 
-#: lib/storyarn_web/live/settings_live/connections.ex:67
+#: lib/storyarn_web/live/settings_live/connections.ex:68
 #, elixir-autogen, elixir-format
 msgid "Keep your account secure with multiple authentication methods"
 msgstr "Mantén tu cuenta segura con múltiples métodos de autenticación"
@@ -117,7 +117,7 @@ msgstr "Vincula tus cuentas sociales para iniciar sesión más fácilmente"
 msgid "Manage your password and account security"
 msgstr "Gestiona tu contraseña y seguridad de la cuenta"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:52
+#: lib/storyarn_web/live/settings_live/profile.ex:57
 #, elixir-autogen, elixir-format
 msgid "Manage your personal information and email address"
 msgstr "Gestiona tu información personal y dirección de email"
@@ -127,37 +127,37 @@ msgstr "Gestiona tu información personal y dirección de email"
 msgid "New password"
 msgstr "Nueva contraseña"
 
-#: lib/storyarn_web/live/settings_live/connections.ex:91
+#: lib/storyarn_web/live/settings_live/connections.ex:93
 #, elixir-autogen, elixir-format
 msgid "Not connected"
 msgstr "No conectado"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:57
+#: lib/storyarn_web/live/settings_live/profile.ex:63
 #, elixir-autogen, elixir-format
 msgid "Personal Information"
 msgstr "Información personal"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:51
+#: lib/storyarn_web/live/settings_live/profile.ex:55
 #, elixir-autogen, elixir-format
 msgid "Profile"
 msgstr "Perfil"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:33
+#: lib/storyarn_web/live/settings_live/profile.ex:37
 #, elixir-autogen, elixir-format
 msgid "Profile Settings"
 msgstr "Configuración de perfil"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:129
+#: lib/storyarn_web/live/settings_live/profile.ex:136
 #, elixir-autogen, elixir-format
 msgid "Profile updated successfully."
 msgstr "Perfil actualizado exitosamente."
 
-#: lib/storyarn_web/live/settings_live/profile.ex:73
+#: lib/storyarn_web/live/settings_live/profile.ex:79
 #, elixir-autogen, elixir-format
 msgid "Save Profile"
 msgstr "Guardar perfil"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:72
+#: lib/storyarn_web/live/settings_live/profile.ex:78
 #: lib/storyarn_web/live/settings_live/security.ex:77
 #, elixir-autogen, elixir-format
 msgid "Saving..."
@@ -178,7 +178,7 @@ msgstr "Configuración de seguridad"
 msgid "Session management coming soon."
 msgstr "Gestión de sesiones próximamente."
 
-#: lib/storyarn_web/live/settings_live/connections.ex:124
+#: lib/storyarn_web/live/settings_live/connections.ex:126
 #, elixir-autogen, elixir-format
 msgid "Set a password before unlinking"
 msgstr "Establece una contraseña antes de desvincular"
@@ -188,14 +188,14 @@ msgstr "Establece una contraseña antes de desvincular"
 msgid "Sign in faster without typing your password"
 msgstr "Inicia sesión más rápido sin escribir tu contraseña"
 
-#: lib/storyarn_web/live/settings_live/connections.ex:104
-#: lib/storyarn_web/live/settings_live/connections.ex:111
-#: lib/storyarn_web/live/settings_live/connections.ex:117
+#: lib/storyarn_web/live/settings_live/connections.ex:106
+#: lib/storyarn_web/live/settings_live/connections.ex:113
+#: lib/storyarn_web/live/settings_live/connections.ex:119
 #, elixir-autogen, elixir-format
 msgid "Unlink"
 msgstr "Desvincular"
 
-#: lib/storyarn_web/live/settings_live/connections.ex:115
+#: lib/storyarn_web/live/settings_live/connections.ex:117
 #, elixir-autogen, elixir-format
 msgid "Unlink account?"
 msgstr "¿Desvincular cuenta?"
@@ -215,7 +215,7 @@ msgstr "¿Por qué conectar cuentas?"
 msgid "You are currently logged in on this device."
 msgstr "Actualmente tienes sesión iniciada en este dispositivo."
 
-#: lib/storyarn_web/live/settings_live/profile.ex:85
+#: lib/storyarn_web/live/settings_live/profile.ex:91
 #, elixir-autogen, elixir-format
 msgid "Your email is used for login and notifications."
 msgstr "Tu email se usa para iniciar sesión y notificaciones."

@@ -41,8 +41,7 @@ defmodule StoryarnWeb.Components.AudioPickerTest do
     end
 
     def handle_info({:audio_picker, :selected, asset_id}, socket) do
-      {:noreply,
-       assign(socket, last_event: {:selected, asset_id}, selected_asset_id: asset_id)}
+      {:noreply, assign(socket, last_event: {:selected, asset_id}, selected_asset_id: asset_id)}
     end
 
     def handle_info({:audio_picker, :error, message}, socket) do

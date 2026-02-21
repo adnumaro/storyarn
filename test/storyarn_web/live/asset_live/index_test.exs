@@ -198,7 +198,8 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       view |> element("[phx-value-type=image]") |> render_click()
 
       # Then search for "hero"
-      html = view |> form("form[phx-change='search_assets']", %{search: "hero"}) |> render_change()
+      html =
+        view |> form("form[phx-change='search_assets']", %{search: "hero"}) |> render_change()
 
       assert html =~ "hero_banner.png"
       refute html =~ "villain_portrait.png"
@@ -211,7 +212,8 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
 
-      html = view |> form("form[phx-change='search_assets']", %{search: "HERO"}) |> render_change()
+      html =
+        view |> form("form[phx-change='search_assets']", %{search: "HERO"}) |> render_change()
 
       assert html =~ "hero_banner.png"
     end
@@ -231,7 +233,10 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
 
-      html = view |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']") |> render_click()
+      html =
+        view
+        |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']")
+        |> render_click()
 
       assert html =~ "Details"
       assert html =~ "Filename"
@@ -249,7 +254,10 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
 
-      html = view |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']") |> render_click()
+      html =
+        view
+        |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']")
+        |> render_click()
 
       assert html =~ "portrait.png"
       assert html =~ "244.1 KB"
@@ -266,7 +274,10 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
 
-      html = view |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']") |> render_click()
+      html =
+        view
+        |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']")
+        |> render_click()
 
       assert html =~ "<audio"
       assert html =~ "theme.mp3"
@@ -282,7 +293,10 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
 
-      html = view |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']") |> render_click()
+      html =
+        view
+        |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']")
+        |> render_click()
 
       assert html =~ "Not used anywhere"
     end
@@ -302,7 +316,9 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
 
       html =
-        view |> element("[phx-click='select_asset'][phx-value-id='#{audio.id}']") |> render_click()
+        view
+        |> element("[phx-click='select_asset'][phx-value-id='#{audio.id}']")
+        |> render_click()
 
       assert html =~ "Battle Flow"
       assert html =~ "/flows/#{flow.id}"
@@ -318,7 +334,9 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
 
       html =
-        view |> element("[phx-click='select_asset'][phx-value-id='#{image.id}']") |> render_click()
+        view
+        |> element("[phx-click='select_asset'][phx-value-id='#{image.id}']")
+        |> render_click()
 
       assert html =~ "Hero Character"
       assert html =~ "/sheets/#{sheet.id}"

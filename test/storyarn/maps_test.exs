@@ -471,7 +471,8 @@ defmodule Storyarn.MapsTest do
       map = map_fixture(project)
       zone = zone_fixture(map)
 
-      {:ok, updated} = Maps.update_zone(zone, %{"name" => "Updated Zone", "fill_color" => "#00ff00"})
+      {:ok, updated} =
+        Maps.update_zone(zone, %{"name" => "Updated Zone", "fill_color" => "#00ff00"})
 
       assert updated.name == "Updated Zone"
       assert updated.fill_color == "#00ff00"
@@ -871,7 +872,8 @@ defmodule Storyarn.MapsTest do
       pin2 = pin_fixture(map, %{"label" => "Pin 2"})
       conn = connection_fixture(map, pin1, pin2)
 
-      {:ok, updated} = Maps.update_connection(conn, %{"label" => "New Route", "color" => "#3b82f6"})
+      {:ok, updated} =
+        Maps.update_connection(conn, %{"label" => "New Route", "color" => "#3b82f6"})
 
       assert updated.label == "New Route"
       assert updated.color == "#3b82f6"
@@ -1228,7 +1230,8 @@ defmodule Storyarn.MapsTest do
       map = map_fixture(project)
       annotation = annotation_fixture(map)
 
-      {:ok, updated} = Maps.update_annotation(annotation, %{"text" => "Updated", "color" => "#00ff00"})
+      {:ok, updated} =
+        Maps.update_annotation(annotation, %{"text" => "Updated", "color" => "#00ff00"})
 
       assert updated.text == "Updated"
       assert updated.color == "#00ff00"

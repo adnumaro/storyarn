@@ -36,10 +36,16 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.LinkedPageHandlers do
             {:noreply, put_flash(socket, :error, dgettext("screenplays", "Choice not found."))}
 
           {:error, :already_linked} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Choice already has a linked page."))}
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext("screenplays", "Choice already has a linked page.")
+             )}
 
           {:error, _reason} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not create linked page."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not create linked page."))}
         end
     end
   end
@@ -75,7 +81,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.LinkedPageHandlers do
              |> push_element_data_updated(updated_element)}
 
           {:error, _reason} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not unlink choice."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not unlink choice."))}
         end
     end
   end
@@ -104,7 +111,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.LinkedPageHandlers do
              |> put_flash(:info, dgettext("screenplays", "Linked pages created."))}
 
           {:error, _reason} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not create linked pages."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not create linked pages."))}
         end
     end
   end

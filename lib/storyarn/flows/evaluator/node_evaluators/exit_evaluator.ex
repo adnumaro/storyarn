@@ -35,14 +35,22 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ExitEvaluator do
 
           flow_id ->
             state =
-              EngineHelpers.add_console(state, :info, node.id, label, "Exit → flow reference (flow #{flow_id})")
+              EngineHelpers.add_console(
+                state,
+                :info,
+                node.id,
+                label,
+                "Exit → flow reference (flow #{flow_id})"
+              )
 
             {:flow_jump, state, flow_id}
         end
 
       "caller_return" ->
         if state.call_stack != [] do
-          state = EngineHelpers.add_console(state, :info, node.id, label, "Exit → return to caller")
+          state =
+            EngineHelpers.add_console(state, :info, node.id, label, "Exit → return to caller")
+
           {:flow_return, state}
         else
           state =

@@ -56,5 +56,4 @@ defmodule Storyarn.Maps.AnnotationCrud do
   def delete_annotation(%MapAnnotation{} = annotation) do
     Repo.delete(annotation)
   end
-
 end

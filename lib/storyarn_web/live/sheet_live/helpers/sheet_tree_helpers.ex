@@ -47,7 +47,11 @@ defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
 
       {:error, :would_create_cycle} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("sheets", "Cannot move a sheet into its own children."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("sheets", "Cannot move a sheet into its own children.")
+         )}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}

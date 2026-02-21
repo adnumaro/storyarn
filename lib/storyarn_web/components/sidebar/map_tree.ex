@@ -231,11 +231,17 @@ defmodule StoryarnWeb.Components.Sidebar.MapTree do
   attr :more_text, :string, required: true
 
   defp element_leaves(assigns) do
-    base = ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/maps/#{assigns.map_id}"
+    base =
+      ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/maps/#{assigns.map_id}"
 
-    assigns = assign(assigns, :items_with_href, Enum.map(assigns.items, fn item ->
-      {item, "#{base}?highlight=#{assigns.element_type}:#{item.id}"}
-    end))
+    assigns =
+      assign(
+        assigns,
+        :items_with_href,
+        Enum.map(assigns.items, fn item ->
+          {item, "#{base}?highlight=#{assigns.element_type}:#{item.id}"}
+        end)
+      )
 
     ~H"""
     <.tree_leaf

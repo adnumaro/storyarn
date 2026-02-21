@@ -26,8 +26,12 @@ defmodule StoryarnWeb.MapLive.Helpers.MapHelpers do
     []
     |> maybe_search(filter, "pin", fn -> search_pins(socket.assigns.pins, q) end)
     |> maybe_search(filter, "zone", fn -> search_zones(socket.assigns.zones, q) end)
-    |> maybe_search(filter, "annotation", fn -> search_annotations(socket.assigns.annotations, q) end)
-    |> maybe_search(filter, "connection", fn -> search_connections(socket.assigns.connections, q) end)
+    |> maybe_search(filter, "annotation", fn ->
+      search_annotations(socket.assigns.annotations, q)
+    end)
+    |> maybe_search(filter, "connection", fn ->
+      search_connections(socket.assigns.connections, q)
+    end)
   end
 
   def maybe_search(acc, "all", _type, fun), do: acc ++ fun.()
@@ -55,7 +59,9 @@ defmodule StoryarnWeb.MapLive.Helpers.MapHelpers do
   def search_connections(connections, q) do
     connections
     |> Enum.filter(&matches_text?(&1.label, q))
-    |> Enum.map(&%{type: "connection", id: &1.id, label: &1.label || dgettext("maps", "Connection")})
+    |> Enum.map(
+      &%{type: "connection", id: &1.id, label: &1.label || dgettext("maps", "Connection")}
+    )
   end
 
   def matches_text?(nil, _q), do: false
@@ -162,7 +168,9 @@ defmodule StoryarnWeb.MapLive.Helpers.MapHelpers do
 
   def flatten_sheets(sheets) do
     Enum.flat_map(sheets, fn sheet ->
-      children = if Map.has_key?(sheet, :children) && is_list(sheet.children), do: sheet.children, else: []
+      children =
+        if Map.has_key?(sheet, :children) && is_list(sheet.children), do: sheet.children, else: []
+
       [sheet | flatten_sheets(children)]
     end)
   end

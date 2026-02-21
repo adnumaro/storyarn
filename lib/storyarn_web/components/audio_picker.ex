@@ -56,7 +56,9 @@ defmodule StoryarnWeb.Components.AudioPicker do
         ]}>
           <span :if={@uploading} class="loading loading-spinner loading-xs"></span>
           <.icon :if={!@uploading} name="upload" class="size-3" />
-          {if @uploading, do: dgettext("sheets", "Uploading..."), else: dgettext("sheets", "Upload audio")}
+          {if @uploading,
+            do: dgettext("sheets", "Uploading..."),
+            else: dgettext("sheets", "Upload audio")}
           <input
             type="file"
             accept="audio/*"
@@ -215,7 +217,11 @@ defmodule StoryarnWeb.Components.AudioPicker do
          )}
       else
         {:error, _reason} ->
-          send(self(), {:audio_picker, :error, dgettext("sheets", "Could not upload audio file.")})
+          send(
+            self(),
+            {:audio_picker, :error, dgettext("sheets", "Could not upload audio file.")}
+          )
+
           {:noreply, assign(socket, :uploading, false)}
       end
     else
@@ -229,5 +235,4 @@ defmodule StoryarnWeb.Components.AudioPicker do
   defp find_selected_asset(assets, id) do
     Enum.find(assets, &(to_string(&1.id) == to_string(id)))
   end
-
 end

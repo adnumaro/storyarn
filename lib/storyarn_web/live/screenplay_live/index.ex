@@ -237,12 +237,17 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
              |> reload_screenplays()}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not delete screenplay."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not delete screenplay."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("screenplays", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("screenplays", "You don't have permission to perform this action.")
+         )}
     end
   end
 
@@ -264,12 +269,17 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
              )}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("screenplays", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("screenplays", "You don't have permission to perform this action.")
+         )}
     end
   end
 
@@ -287,12 +297,17 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
              )}
 
           {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("screenplays", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("screenplays", "You don't have permission to perform this action.")
+         )}
     end
   end
 
@@ -312,12 +327,17 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
             {:noreply, reload_screenplays(socket)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not move screenplay."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not move screenplay."))}
         end
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("screenplays", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("screenplays", "You don't have permission to perform this action.")
+         )}
     end
   end
 

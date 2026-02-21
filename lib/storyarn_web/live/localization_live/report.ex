@@ -39,7 +39,9 @@ defmodule StoryarnWeb.LocalizationLive.Report do
 
         <%!-- Progress by Language --%>
         <section class="mt-8">
-          <h3 class="text-lg font-semibold mb-4">{dgettext("localization", "Progress by Language")}</h3>
+          <h3 class="text-lg font-semibold mb-4">
+            {dgettext("localization", "Progress by Language")}
+          </h3>
 
           <div :if={@language_progress == []} class="text-sm opacity-60">
             {dgettext("localization", "No target languages configured.")}
@@ -70,7 +72,9 @@ defmodule StoryarnWeb.LocalizationLive.Report do
         <%!-- Word Counts by Speaker --%>
         <section :if={@selected_locale && @speaker_stats != []} class="mt-8">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold">{dgettext("localization", "Word Counts by Speaker")}</h3>
+            <h3 class="text-lg font-semibold">
+              {dgettext("localization", "Word Counts by Speaker")}
+            </h3>
             <select
               name="locale"
               class="select select-bordered select-sm"
@@ -113,7 +117,9 @@ defmodule StoryarnWeb.LocalizationLive.Report do
 
         <%!-- VO Progress --%>
         <section :if={@selected_locale} class="mt-8">
-          <h3 class="text-lg font-semibold mb-4">{dgettext("localization", "Voice-Over Progress")}</h3>
+          <h3 class="text-lg font-semibold mb-4">
+            {dgettext("localization", "Voice-Over Progress")}
+          </h3>
           <div class="stats shadow">
             <div class="stat">
               <div class="stat-title">{dgettext("localization", "None")}</div>

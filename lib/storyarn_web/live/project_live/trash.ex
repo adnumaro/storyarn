@@ -23,7 +23,10 @@ defmodule StoryarnWeb.ProjectLive.Trash do
         <.header>
           {dgettext("projects", "Trash")}
           <:subtitle>
-            {dgettext("projects", "Deleted sheets are kept for 30 days before being permanently removed.")}
+            {dgettext(
+              "projects",
+              "Deleted sheets are kept for 30 days before being permanently removed."
+            )}
           </:subtitle>
           <:actions>
             <.button
@@ -61,7 +64,12 @@ defmodule StoryarnWeb.ProjectLive.Trash do
       <.confirm_modal
         id="delete-sheet-confirm"
         title={dgettext("projects", "Delete permanently?")}
-        message={dgettext("projects", "This sheet will be permanently deleted. This action cannot be undone.")}
+        message={
+          dgettext(
+            "projects",
+            "This sheet will be permanently deleted. This action cannot be undone."
+          )
+        }
         confirm_text={dgettext("projects", "Delete")}
         cancel_text={dgettext("projects", "Cancel")}
         confirm_variant="error"
@@ -73,7 +81,10 @@ defmodule StoryarnWeb.ProjectLive.Trash do
         id="empty-trash-confirm"
         title={dgettext("projects", "Empty trash?")}
         message={
-          dgettext("projects", "All items in trash will be permanently deleted. This action cannot be undone.")
+          dgettext(
+            "projects",
+            "All items in trash will be permanently deleted. This action cannot be undone."
+          )
         }
         confirm_text={dgettext("projects", "Empty Trash")}
         cancel_text={dgettext("projects", "Cancel")}
@@ -150,7 +161,9 @@ defmodule StoryarnWeb.ProjectLive.Trash do
       diff < 3600 ->
         minutes = div(diff, 60)
 
-        dngettext("projects", "%{count} minute ago", "%{count} minutes ago", minutes, count: minutes)
+        dngettext("projects", "%{count} minute ago", "%{count} minutes ago", minutes,
+          count: minutes
+        )
 
       diff < 86_400 ->
         hours = div(diff, 3600)
@@ -208,7 +221,11 @@ defmodule StoryarnWeb.ProjectLive.Trash do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "You don't have permission to perform this action.")
+         )}
     end
   end
 
@@ -227,7 +244,11 @@ defmodule StoryarnWeb.ProjectLive.Trash do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "You don't have permission to perform this action.")
+         )}
     end
   end
 
@@ -238,7 +259,11 @@ defmodule StoryarnWeb.ProjectLive.Trash do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("projects", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "You don't have permission to perform this action.")
+         )}
     end
   end
 

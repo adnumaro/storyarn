@@ -149,7 +149,6 @@ defmodule StoryarnWeb.FlowLive.Show do
             debug_step_limit_reached={@debug_step_limit_reached}
           />
         </div>
-
       </div>
 
       <.flash_group flash={@flash} />
@@ -671,6 +670,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("update_hub_color", %{"color" => color}, socket) do
     with_auth(:edit_content, socket, fn ->
       node = socket.assigns.selected_node
+
       validated =
         StoryarnWeb.FlowLive.Components.NodeTypeHelpers.validate_hex_color(
           color,
@@ -951,7 +951,10 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   defp unauthorized_flash(socket) do
-    put_flash(socket, :error, dgettext("flows", "You don't have permission to perform this action."))
+    put_flash(
+      socket,
+      :error,
+      dgettext("flows", "You don't have permission to perform this action.")
+    )
   end
-
 end

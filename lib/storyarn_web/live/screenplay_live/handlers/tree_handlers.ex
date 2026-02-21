@@ -38,7 +38,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlers do
         end
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not delete screenplay."))}
+        {:noreply,
+         put_flash(socket, :error, dgettext("screenplays", "Could not delete screenplay."))}
     end
   end
 
@@ -56,7 +57,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlers do
             {:noreply, reload_screenplays_tree(socket)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not move screenplay."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("screenplays", "Could not move screenplay."))}
         end
     end
   end
@@ -70,7 +72,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlers do
           {:noreply, push_navigate(socket, to: screenplays_path(socket, new_screenplay.id))}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
+          {:noreply,
+           put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
       end
     end)
   end
@@ -82,7 +85,11 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlers do
 
       {:error, :unauthorized} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("screenplays", "You don't have permission to perform this action."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("screenplays", "You don't have permission to perform this action.")
+         )}
     end
   end
 
@@ -95,7 +102,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlers do
          |> reload_screenplays_tree()}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not save screenplay name."))}
+        {:noreply,
+         put_flash(socket, :error, dgettext("screenplays", "Could not save screenplay name."))}
     end
   end
 end

@@ -159,7 +159,11 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
     cond do
       flow_id == current_flow_id ->
         {:noreply,
-         Phoenix.LiveView.put_flash(socket, :error, dgettext("flows", "Cannot reference the current flow."))}
+         Phoenix.LiveView.put_flash(
+           socket,
+           :error,
+           dgettext("flows", "Cannot reference the current flow.")
+         )}
 
       Flows.has_circular_reference?(current_flow_id, flow_id) ->
         {:noreply,
@@ -170,7 +174,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
          )}
 
       is_nil(Flows.get_flow_brief(project_id, flow_id)) ->
-        {:noreply, Phoenix.LiveView.put_flash(socket, :error, dgettext("flows", "Flow not found."))}
+        {:noreply,
+         Phoenix.LiveView.put_flash(socket, :error, dgettext("flows", "Flow not found."))}
 
       true ->
         NodeHelpers.persist_node_update(socket, node.id, fn data ->

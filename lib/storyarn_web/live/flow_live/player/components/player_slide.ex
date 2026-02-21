@@ -35,8 +35,8 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
     <div class="player-slide player-slide-scene">
       <div class="player-scene-slug">
         {@slide.setting}. {@slide.location_name}
-        <span :if={@slide.sub_location != ""}> — {@slide.sub_location}</span>
-        <span :if={@slide.time_of_day != ""}> — {String.upcase(@slide.time_of_day)}</span>
+        <span :if={@slide.sub_location != ""}>{" — #{@slide.sub_location}"}</span>
+        <span :if={@slide.time_of_day != ""}>{" — #{String.upcase(@slide.time_of_day)}"}</span>
       </div>
       <div :if={@slide.description != ""} class="player-scene-description">
         {Phoenix.HTML.raw(@slide.description)}

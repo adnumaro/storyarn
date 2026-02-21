@@ -103,8 +103,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          })}
 
       {:error, _} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("flows", "Could not restore flow name."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not restore flow name."))}
     end
   end
 
@@ -256,7 +255,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   @spec handle_batch_update_positions(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_batch_update_positions(%{"positions" => positions}, socket) when is_list(positions) do
+  def handle_batch_update_positions(%{"positions" => positions}, socket)
+      when is_list(positions) do
     flow = socket.assigns.flow
 
     parsed =

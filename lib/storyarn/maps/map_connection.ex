@@ -54,8 +54,15 @@ defmodule Storyarn.Maps.MapConnection do
   def create_changeset(connection, attrs) do
     connection
     |> cast(attrs, [
-      :from_pin_id, :to_pin_id, :line_style, :line_width,
-      :color, :label, :bidirectional, :show_label, :waypoints
+      :from_pin_id,
+      :to_pin_id,
+      :line_style,
+      :line_width,
+      :color,
+      :label,
+      :bidirectional,
+      :show_label,
+      :waypoints
     ])
     |> validate_required([:from_pin_id, :to_pin_id])
     |> validate_inclusion(:line_style, @valid_line_styles)
@@ -74,7 +81,15 @@ defmodule Storyarn.Maps.MapConnection do
   """
   def update_changeset(connection, attrs) do
     connection
-    |> cast(attrs, [:line_style, :line_width, :color, :label, :bidirectional, :show_label, :waypoints])
+    |> cast(attrs, [
+      :line_style,
+      :line_width,
+      :color,
+      :label,
+      :bidirectional,
+      :show_label,
+      :waypoints
+    ])
     |> validate_inclusion(:line_style, @valid_line_styles)
     |> validate_number(:line_width, greater_than_or_equal_to: 0, less_than_or_equal_to: 10)
     |> validate_length(:label, max: 200)

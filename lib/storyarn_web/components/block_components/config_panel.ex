@@ -126,7 +126,8 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
               {dgettext("sheets", "Re-sync with source")}
             </button>
             <p class="text-xs text-base-content/50 mt-1">
-              {dgettext("sheets", 
+              {dgettext(
+                "sheets",
                 "Resets the property definition to match the source. Your value will be preserved."
               )}
             </p>
@@ -173,7 +174,9 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
             </label>
             <div class="flex items-center gap-2">
               <code class="flex-1 px-3 py-2 bg-base-300 rounded text-sm font-mono">
-                {if @variable_name, do: @variable_name, else: dgettext("sheets", "(derived from label)")}
+                {if @variable_name,
+                  do: @variable_name,
+                  else: dgettext("sheets", "(derived from label)")}
               </code>
             </div>
             <p class="text-xs text-base-content/50 mt-1">
@@ -366,7 +369,9 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
                 class="input input-bordered input-sm w-full"
                 placeholder={dgettext("sheets", "Neutral")}
               />
-              <span class="text-xs text-base-content/50">{dgettext("sheets", "Neutral/Unknown")}</span>
+              <span class="text-xs text-base-content/50">
+                {dgettext("sheets", "Neutral/Unknown")}
+              </span>
             </div>
             <p class="text-xs text-base-content/50">
               {dgettext("sheets", "Leave empty to use defaults.")}

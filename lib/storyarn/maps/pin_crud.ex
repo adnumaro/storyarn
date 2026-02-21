@@ -86,5 +86,4 @@ defmodule Storyarn.Maps.PinCrud do
   def change_pin(%MapPin{} = pin, attrs \\ %{}) do
     MapPin.update_changeset(pin, attrs)
   end
-
 end
