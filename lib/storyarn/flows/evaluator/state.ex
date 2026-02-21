@@ -20,7 +20,8 @@ defmodule Storyarn.Flows.Evaluator.State do
           block_type: String.t(),
           block_id: integer(),
           sheet_shortcut: String.t(),
-          variable_name: String.t()
+          variable_name: String.t(),
+          constraints: map() | nil
         }
 
   @type console_entry :: %{

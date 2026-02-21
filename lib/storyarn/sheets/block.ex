@@ -52,7 +52,13 @@ defmodule Storyarn.Sheets.Block do
   @default_configs %{
     "text" => %{"label" => "Label", "placeholder" => ""},
     "rich_text" => %{"label" => "Label"},
-    "number" => %{"label" => "Label", "placeholder" => "0"},
+    "number" => %{
+      "label" => "Label",
+      "placeholder" => "0",
+      "min" => nil,
+      "max" => nil,
+      "step" => nil
+    },
     "select" => %{"label" => "Label", "placeholder" => "Select...", "options" => []},
     "multi_select" => %{"label" => "Label", "placeholder" => "Select...", "options" => []},
     "divider" => %{},

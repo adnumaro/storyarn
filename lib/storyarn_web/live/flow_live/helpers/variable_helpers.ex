@@ -16,7 +16,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpers do
         block_type: var.block_type,
         block_id: var.block_id,
         sheet_shortcut: var.sheet_shortcut,
-        variable_name: var.variable_name
+        variable_name: var.variable_name,
+        constraints: var[:constraints]
       })
     end)
   end

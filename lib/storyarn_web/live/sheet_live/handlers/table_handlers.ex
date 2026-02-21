@@ -16,6 +16,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Sheets
+  alias Storyarn.Sheets.Constraints.Number, as: NumberConstraints
   alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
 
   # ===========================================================================
@@ -270,6 +271,32 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
     with :ok <- verify_column_ownership(socket, column) do
       do_toggle_reference_multiple(column, socket, helpers)
+    end
+  end
+
+  # ===========================================================================
+  # Number constraint settings
+  # ===========================================================================
+
+  @doc "Updates a number constraint (min, max, or step) on a column."
+  def handle_update_number_constraint(params, socket, helpers) do
+    column_id = ContentTabHelpers.to_integer(params["column-id"])
+    field = params["field"]
+    value = params["value"]
+    column = Sheets.get_table_column!(column_id)
+
+    with :ok <- verify_column_ownership(socket, column),
+         true <- field in ~w(min max step) do
+      parsed = NumberConstraints.parse_constraint(value)
+      new_config = Map.put(column.config || %{}, field, parsed)
+
+      case Sheets.update_table_column(column, %{config: new_config}) do
+        {:ok, _} -> save_and_reload(socket, helpers)
+        {:error, _} -> {:noreply, err(socket, :column_update)}
+      end
+    else
+      false -> {:noreply, socket}
+      other -> other
     end
   end
 
@@ -552,12 +579,19 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     if col && col.required && value_empty?(value) do
       {:noreply, err(socket, :required_field)}
     else
-      case Sheets.update_table_cell(row, column_slug, value) do
+      final_value = maybe_clamp_cell(value, col)
+
+      case Sheets.update_table_cell(row, column_slug, final_value) do
         {:ok, _} -> save_and_reload(socket, helpers)
         {:error, _} -> {:noreply, err(socket, :cell_update)}
       end
     end
   end
+
+  defp maybe_clamp_cell(value, %{type: "number", config: config}) when is_binary(value),
+    do: NumberConstraints.clamp_and_format(value, config)
+
+  defp maybe_clamp_cell(value, _col), do: value
 
   defp do_add_cell_option(column, row_id, column_slug, label, socket, helpers) do
     key = slugify(label)

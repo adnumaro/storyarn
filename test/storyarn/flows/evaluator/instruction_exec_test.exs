@@ -4,7 +4,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
   alias Storyarn.Flows.Evaluator.InstructionExec
 
   # Helper to build a variable entry
-  defp var(value, block_type) do
+  defp var(value, block_type, opts \\ []) do
     %{
       value: value,
       initial_value: value,
@@ -13,7 +13,8 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       block_type: block_type,
       block_id: 1,
       sheet_shortcut: "test",
-      variable_name: "var"
+      variable_name: "var",
+      constraints: Keyword.get(opts, :constraints)
     }
   end
 
@@ -438,6 +439,116 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       {:ok, new_vars, _changes, []} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.class"].value == "mage"
+    end
+  end
+
+  # =============================================================================
+  # Constraint clamping
+  # =============================================================================
+
+  describe "constraint clamping" do
+    test "add instruction clamped at max" do
+      constraints = %{"min" => 0, "max" => 100, "step" => nil}
+
+      variables = %{
+        "mc.jaime.health" => var(95, "number", constraints: constraints)
+      }
+
+      assignments = [make_assignment("mc.jaime", "health", "add", "10")]
+      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+
+      assert new_vars["mc.jaime.health"].value == 100
+      assert [%{new_value: 100}] = changes
+    end
+
+    test "subtract instruction clamped at min" do
+      constraints = %{"min" => 0, "max" => 100, "step" => nil}
+
+      variables = %{
+        "mc.jaime.health" => var(5, "number", constraints: constraints)
+      }
+
+      assignments = [make_assignment("mc.jaime", "health", "subtract", "10")]
+      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+
+      assert new_vars["mc.jaime.health"].value == 0
+      assert [%{new_value: 0}] = changes
+    end
+
+    test "set instruction clamped at max" do
+      constraints = %{"min" => 0, "max" => 100, "step" => nil}
+
+      variables = %{
+        "mc.jaime.health" => var(50, "number", constraints: constraints)
+      }
+
+      assignments = [make_assignment("mc.jaime", "health", "set", "999")]
+      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+
+      assert new_vars["mc.jaime.health"].value == 100
+    end
+
+    test "set instruction clamped at min" do
+      constraints = %{"min" => 0, "max" => 100, "step" => nil}
+
+      variables = %{
+        "mc.jaime.health" => var(50, "number", constraints: constraints)
+      }
+
+      assignments = [make_assignment("mc.jaime", "health", "set", "-50")]
+      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+
+      assert new_vars["mc.jaime.health"].value == 0
+    end
+
+    test "no constraints allows any value" do
+      variables = %{
+        "mc.jaime.health" => var(100, "number")
+      }
+
+      assignments = [make_assignment("mc.jaime", "health", "add", "999")]
+      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+
+      assert new_vars["mc.jaime.health"].value == 1099
+    end
+
+    test "only min constraint (no max)" do
+      constraints = %{"min" => 0, "max" => nil, "step" => nil}
+
+      variables = %{
+        "mc.jaime.health" => var(5, "number", constraints: constraints)
+      }
+
+      assignments = [make_assignment("mc.jaime", "health", "subtract", "20")]
+      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+
+      assert new_vars["mc.jaime.health"].value == 0
+    end
+
+    test "only max constraint (no min)" do
+      constraints = %{"min" => nil, "max" => 100, "step" => nil}
+
+      variables = %{
+        "mc.jaime.health" => var(90, "number", constraints: constraints)
+      }
+
+      assignments = [make_assignment("mc.jaime", "health", "add", "20")]
+      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+
+      assert new_vars["mc.jaime.health"].value == 100
+    end
+
+    test "value within range not clamped" do
+      constraints = %{"min" => 0, "max" => 100, "step" => nil}
+
+      variables = %{
+        "mc.jaime.health" => var(50, "number", constraints: constraints)
+      }
+
+      assignments = [make_assignment("mc.jaime", "health", "add", "10")]
+      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+
+      assert new_vars["mc.jaime.health"].value == 60
     end
   end
 end

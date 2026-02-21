@@ -398,6 +398,15 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
             </button>
           </li>
 
+          <%!-- Constraints → slides to number-settings panel (only for number columns) --%>
+          <li :if={@column.type == "number"}>
+            <button type="button" data-navigate="number-settings">
+              <.icon name="sliders-horizontal" class="size-3.5 opacity-60" />
+              <span class="flex-1 text-sm">{dgettext("sheets", "Constraints")}</span>
+              <.icon name="chevron-right" class="size-3.5 opacity-40" />
+            </button>
+          </li>
+
           <%!-- Separator + Delete --%>
           <div class="my-1 border-t border-base-300"></div>
 
@@ -530,6 +539,67 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
           </li>
         </ul>
       </div>
+
+      <%!-- ========== Number Settings Panel ========== --%>
+      <div class="col-dropdown-panel" data-panel="number-settings">
+        <ul class="menu p-0">
+          <li class="mb-1">
+            <button type="button" data-back class="text-xs font-medium opacity-70">
+              <.icon name="arrow-left" class="size-3.5" />
+              <span>{dgettext("sheets", "Constraints")}</span>
+            </button>
+          </li>
+        </ul>
+        <div class="border-t border-base-300 mb-2"></div>
+        <div class="space-y-2 px-2 pb-2">
+          <div>
+            <label class="text-xs font-medium opacity-70">
+              {dgettext("sheets", "Min value")}
+            </label>
+            <input
+              type="number"
+              value={@column.config["min"]}
+              placeholder={dgettext("sheets", "No limit")}
+              class="input input-xs input-bordered w-full mt-0.5"
+              phx-blur="update_number_constraint"
+              phx-value-column-id={@column.id}
+              phx-value-field="min"
+              phx-target={@target}
+            />
+          </div>
+          <div>
+            <label class="text-xs font-medium opacity-70">
+              {dgettext("sheets", "Max value")}
+            </label>
+            <input
+              type="number"
+              value={@column.config["max"]}
+              placeholder={dgettext("sheets", "No limit")}
+              class="input input-xs input-bordered w-full mt-0.5"
+              phx-blur="update_number_constraint"
+              phx-value-column-id={@column.id}
+              phx-value-field="max"
+              phx-target={@target}
+            />
+          </div>
+          <div>
+            <label class="text-xs font-medium opacity-70">
+              {dgettext("sheets", "Step")}
+            </label>
+            <input
+              type="number"
+              value={@column.config["step"]}
+              placeholder="1"
+              min="0.001"
+              class="input input-xs input-bordered w-full mt-0.5"
+              phx-blur="update_number_constraint"
+              phx-value-column-id={@column.id}
+              phx-value-field="step"
+              phx-target={@target}
+            />
+          </div>
+        </div>
+      </div>
     </div>
     """
   end
@@ -545,6 +615,9 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
         <input
           type="number"
           value={@value}
+          min={@column.config["min"]}
+          max={@column.config["max"]}
+          step={@column.config["step"] || "any"}
           class="absolute inset-0 px-2 text-sm bg-transparent border-0 rounded-none outline-none focus:outline-none"
           phx-blur="update_table_cell"
           phx-value-row-id={@row.id}

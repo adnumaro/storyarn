@@ -1500,5 +1500,76 @@ defmodule Storyarn.SheetsTest do
       strength_var = Enum.find(table_vars, &(&1.column_name == "strength"))
       assert strength_var.variable_name == "attributes.row_1.strength"
     end
+
+    test "block variable includes constraints when set" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Health", "min" => 0, "max" => 100, "step" => 1}
+      })
+
+      [var] = Sheets.list_project_variables(project.id)
+
+      assert var.constraints == %{"min" => 0, "max" => 100, "step" => 1}
+    end
+
+    test "block variable has nil constraints when none set" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc"})
+      block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
+
+      [var] = Sheets.list_project_variables(project.id)
+
+      assert var.constraints == nil
+    end
+
+    test "non-number block variable has nil constraints" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc"})
+      block_fixture(sheet, %{type: "text", config: %{"label" => "Name"}})
+
+      [var] = Sheets.list_project_variables(project.id)
+
+      assert var.constraints == nil
+    end
+
+    test "table variable includes constraints from column config" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc.jaime"})
+      table = table_block_fixture(sheet, %{label: "Stats"})
+
+      _col =
+        table_column_fixture(table, %{
+          name: "Health",
+          type: "number",
+          config: %{"min" => 0, "max" => 10}
+        })
+
+      vars = Sheets.list_project_variables(project.id)
+      table_vars = Enum.filter(vars, &(&1.table_name != nil))
+
+      health_var = Enum.find(table_vars, &(&1.column_name == "health"))
+      assert health_var.constraints == %{"min" => 0, "max" => 10, "step" => nil}
+    end
+
+    test "table non-number column has nil constraints" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc.jaime"})
+      table = table_block_fixture(sheet, %{label: "Stats"})
+      _col = table_column_fixture(table, %{name: "Name", type: "text"})
+
+      vars = Sheets.list_project_variables(project.id)
+      table_vars = Enum.filter(vars, &(&1.table_name != nil))
+
+      name_var = Enum.find(table_vars, &(&1.column_name == "name"))
+      assert name_var.constraints == nil
+    end
   end
 end

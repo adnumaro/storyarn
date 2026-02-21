@@ -372,6 +372,12 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     end)
   end
 
+  def handle_event("update_number_constraint", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_update_number_constraint(params, socket, table_helpers())
+    end)
+  end
+
   def handle_event("select_table_cell", params, socket) do
     with_authorization(socket, fn socket ->
       TableHandlers.handle_select_table_cell(params, socket, table_helpers())

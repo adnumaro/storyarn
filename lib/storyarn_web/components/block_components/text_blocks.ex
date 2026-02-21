@@ -107,6 +107,9 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
         type="number"
         value={@content}
         placeholder={@placeholder}
+        min={@block.config["min"]}
+        max={@block.config["max"]}
+        step={@block.config["step"] || "any"}
         class="input input-bordered w-full"
         phx-blur="update_block_value"
         phx-value-id={@block.id}

@@ -241,6 +241,21 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
             </div>
           </div>
 
+          <%!-- Step (for number) --%>
+          <div :if={@block.type == "number"}>
+            <label class="label">
+              <span class="label-text">{dgettext("sheets", "Step")}</span>
+            </label>
+            <input
+              type="number"
+              name="config[step]"
+              value={@step}
+              class="input input-bordered w-full"
+              placeholder="1"
+              min="0.001"
+            />
+          </div>
+
           <%!-- Date Range (for date) --%>
           <div :if={@block.type == "date"} class="grid grid-cols-2 gap-2">
             <div>
@@ -452,6 +467,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
     |> assign(:max_length, config["max_length"])
     |> assign(:min, config["min"])
     |> assign(:max, config["max"])
+    |> assign(:step, config["step"])
     |> assign(:max_options, config["max_options"])
   end
 
