@@ -614,4 +614,4 @@ end
 
 If Flow Tags are implemented first, the `search_flows/3` function already accepts a `:tag` option. The "Show more" UI can include a tag filter dropdown alongside the search input, combining text search with tag filtering for powerful navigation across 800+ flows.
 
-**Next document:** [08_VARIABLE_USAGE_INDEX.md](./08_VARIABLE_USAGE_INDEX.md)
+**Next document:** [08_VARIABLE_USAGE_INDEX.md](../../pending/stress_test/08_VARIABLE_USAGE_INDEX.md)

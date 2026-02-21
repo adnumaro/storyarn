@@ -957,4 +957,4 @@ end
 | 4. Tree Badges + Filter | Tags visible in sidebar, filterable      | Yes (discovery UX)          |
 | 5. Search by Tag        | Search respects tag filter               | Yes (power search)          |
 
-**Next document:** [06_AUTO_LAYOUT.md](06_AUTO_LAYOUT.md)
+**Next document:** [06_AUTO_LAYOUT.md](../../completed/stress_test/06_AUTO_LAYOUT.md)
