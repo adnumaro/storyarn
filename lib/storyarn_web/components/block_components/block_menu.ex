@@ -52,7 +52,9 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
         </div>
       </div>
 
-      <div class="text-xs text-base-content/50 px-2 py-1 uppercase">{dgettext("sheets", "Basic Blocks")}</div>
+      <div class="text-xs text-base-content/50 px-2 py-1 uppercase">
+        {dgettext("sheets", "Basic Blocks")}
+      </div>
       <button
         type="button"
         class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
@@ -134,7 +136,23 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
         <span>{dgettext("sheets", "Reference")}</span>
       </button>
 
-      <div class="text-xs text-base-content/50 px-2 py-1 uppercase mt-2">{dgettext("sheets", "Layout")}</div>
+      <div class="text-xs text-base-content/50 px-2 py-1 uppercase mt-2">
+        {dgettext("sheets", "Structured Data")}
+      </div>
+      <button
+        type="button"
+        class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
+        phx-click="add_block"
+        phx-value-type="table"
+        phx-target={@target}
+      >
+        <.icon name="table-2" class="size-4" />
+        <span>{dgettext("sheets", "Table")}</span>
+      </button>
+
+      <div class="text-xs text-base-content/50 px-2 py-1 uppercase mt-2">
+        {dgettext("sheets", "Layout")}
+      </div>
       <button
         type="button"
         class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"

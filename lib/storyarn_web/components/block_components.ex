@@ -20,6 +20,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
   import StoryarnWeb.Components.BlockComponents.LayoutBlocks
   import StoryarnWeb.Components.BlockComponents.BooleanBlocks
   import StoryarnWeb.Components.BlockComponents.ReferenceBlocks
+  import StoryarnWeb.Components.BlockComponents.TableBlocks
 
   # Re-export public components
   defdelegate block_menu(assigns), to: StoryarnWeb.Components.BlockComponents.BlockMenu
@@ -40,6 +41,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
   attr :can_edit, :boolean, default: false
   attr :editing_block_id, :any, default: nil
   attr :target, :any, default: nil
+  attr :table_data, :map, default: %{}
 
   def block_component(assigns) do
     is_editing = assigns.editing_block_id == assigns.block.id
@@ -128,6 +130,14 @@ defmodule StoryarnWeb.Components.BlockComponents do
               block={@block}
               can_edit={@can_edit}
               reference_target={@block.reference_target}
+              target={@target}
+            />
+          <% "table" -> %>
+            <.table_block
+              block={@block}
+              can_edit={@can_edit}
+              columns={@table_data[@block.id][:columns] || []}
+              rows={@table_data[@block.id][:rows] || []}
               target={@target}
             />
           <% _ -> %>

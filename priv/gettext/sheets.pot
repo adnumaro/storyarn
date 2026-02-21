@@ -108,7 +108,7 @@ msgstr ""
 msgid "Boolean"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/block_menu.ex:156
+#: lib/storyarn_web/components/block_components/block_menu.ex:170
 #: lib/storyarn_web/live/sheet_live/components/propagation_modal.ex:68
 #: lib/storyarn_web/live/sheet_live/components/versions_section.ex:457
 #, elixir-autogen, elixir-format
@@ -156,7 +156,7 @@ msgstr ""
 msgid "Color"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components.ex:206
+#: lib/storyarn_web/components/block_components.ex:216
 #, elixir-autogen, elixir-format
 msgid "Configure"
 msgstr ""
@@ -404,7 +404,7 @@ msgstr ""
 msgid "Date"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components.ex:221
+#: lib/storyarn_web/components/block_components.ex:231
 #: lib/storyarn_web/live/sheet_live/components/versions_section.ex:71
 #, elixir-autogen, elixir-format
 msgid "Delete"
@@ -430,7 +430,7 @@ msgstr ""
 msgid "Description"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components.ex:180
+#: lib/storyarn_web/components/block_components.ex:190
 #, elixir-autogen, elixir-format
 msgid "Detach property"
 msgstr ""
@@ -445,17 +445,12 @@ msgstr ""
 msgid "Dialogue nodes using this sheet as speaker will appear here."
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/block_menu.ex:146
+#: lib/storyarn_web/components/block_components/block_menu.ex:160
 #, elixir-autogen, elixir-format
 msgid "Divider"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/content_tab_helpers.ex:108
-#, elixir-autogen, elixir-format
-msgid "Divider blocks cannot be placed in columns."
-msgstr ""
-
-#: lib/storyarn_web/components/block_components.ex:59
+#: lib/storyarn_web/components/block_components.ex:61
 #, elixir-autogen, elixir-format
 msgid "Drag to reorder"
 msgstr ""
@@ -485,13 +480,13 @@ msgstr ""
 msgid "Flows"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components.ex:156
-#: lib/storyarn_web/components/block_components.ex:174
+#: lib/storyarn_web/components/block_components.ex:166
+#: lib/storyarn_web/components/block_components.ex:184
 #, elixir-autogen, elixir-format
 msgid "Go to source"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components.ex:190
+#: lib/storyarn_web/components/block_components.ex:200
 #, elixir-autogen, elixir-format
 msgid "Hide for children"
 msgstr ""
@@ -506,7 +501,7 @@ msgstr ""
 msgid "Inherited"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components.ex:69
+#: lib/storyarn_web/components/block_components.ex:71
 #, elixir-autogen, elixir-format
 msgid "Inherited by children"
 msgstr ""
@@ -561,7 +556,7 @@ msgstr ""
 msgid "Label"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/block_menu.ex:137
+#: lib/storyarn_web/components/block_components/block_menu.ex:151
 #, elixir-autogen, elixir-format
 msgid "Layout"
 msgstr ""
@@ -659,6 +654,7 @@ msgstr ""
 
 #: lib/storyarn_web/components/block_components/boolean_blocks.ex:34
 #: lib/storyarn_web/components/block_components/config_panel.ex:356
+#: lib/storyarn_web/components/block_components/table_blocks.ex:261
 #, elixir-autogen, elixir-format
 msgid "No"
 msgstr ""
@@ -858,7 +854,7 @@ msgid "Renamed sheet"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/config_panel.ex:109
-#: lib/storyarn_web/live/sheet_live/components/inherited_block_components.ex:68
+#: lib/storyarn_web/live/sheet_live/components/inherited_block_components.ex:70
 #, elixir-autogen, elixir-format
 msgid "Required"
 msgstr ""
@@ -916,6 +912,7 @@ msgid "Select which types can be referenced."
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/select_blocks.ex:16
+#: lib/storyarn_web/components/block_components/table_blocks.ex:188
 #, elixir-autogen, elixir-format
 msgid "Select..."
 msgstr ""
@@ -1015,7 +1012,7 @@ msgstr ""
 msgid "Type"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/own_blocks_components.ex:121
+#: lib/storyarn_web/live/sheet_live/components/own_blocks_components.ex:124
 #, elixir-autogen, elixir-format
 msgid "Type / to add a block"
 msgstr ""
@@ -1030,7 +1027,7 @@ msgstr ""
 msgid "Type to search..."
 msgstr ""
 
-#: lib/storyarn_web/components/block_components.ex:134
+#: lib/storyarn_web/components/block_components.ex:144
 #, elixir-autogen, elixir-format
 msgid "Unknown block type"
 msgstr ""
@@ -1128,6 +1125,7 @@ msgstr ""
 
 #: lib/storyarn_web/components/block_components/boolean_blocks.ex:33
 #: lib/storyarn_web/components/block_components/config_panel.ex:346
+#: lib/storyarn_web/components/block_components/table_blocks.ex:255
 #, elixir-autogen, elixir-format
 msgid "Yes"
 msgstr ""
@@ -1139,7 +1137,7 @@ msgid "You don't have access to this project."
 msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:148
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:425
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:506
 #: lib/storyarn_web/live/sheet_live/components/versions_section.ex:156
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
@@ -1196,4 +1194,47 @@ msgstr ""
 #: lib/storyarn_web/live/sheet_live/components/map_appearances_section.ex:106
 #, elixir-autogen, elixir-format
 msgid "This sheet doesn't appear on any maps yet."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/table_blocks.ex:61
+#, elixir-autogen, elixir-format
+msgid "%{rows} row, %{columns} column"
+msgid_plural "%{rows} rows, %{columns} columns"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/components/block_components/table_blocks.ex:104
+#, elixir-autogen, elixir-format
+msgid "Collapse"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:318
+#, elixir-autogen, elixir-format
+msgid "Could not toggle table."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:299
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:340
+#, elixir-autogen, elixir-format
+msgid "Could not update cell."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:138
+#, elixir-autogen, elixir-format
+msgid "Structured Data"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/block_menu.ex:148
+#, elixir-autogen, elixir-format
+msgid "Table"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/helpers/content_tab_helpers.ex:108
+#, elixir-autogen, elixir-format
+msgid "This block type cannot be placed in columns."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/table_blocks.ex:198
+#, elixir-autogen, elixir-format
+msgid "comma-separated"
 msgstr ""

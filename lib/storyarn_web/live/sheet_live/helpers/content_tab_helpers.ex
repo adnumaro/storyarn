@@ -85,7 +85,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ContentTabHelpers do
 
     if block do
       column_group_id =
-        if block.type == "divider", do: nil, else: item["column_group_id"]
+        if block.type in ["divider", "table"], do: nil, else: item["column_group_id"]
 
       column_index =
         if column_group_id == nil, do: 0, else: item["column_index"] || 0
@@ -104,8 +104,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.ContentTabHelpers do
       Enum.any?(blocks, &is_nil/1) ->
         {:error, dgettext("sheets", "Block not found.")}
 
-      Enum.any?(blocks, fn b -> b.type == "divider" end) ->
-        {:error, dgettext("sheets", "Divider blocks cannot be placed in columns.")}
+      Enum.any?(blocks, fn b -> b.type in ["divider", "table"] end) ->
+        {:error, dgettext("sheets", "This block type cannot be placed in columns.")}
 
       Enum.any?(blocks, fn b -> b.column_group_id != nil end) ->
         {:error, dgettext("sheets", "Block is already in a column group.")}

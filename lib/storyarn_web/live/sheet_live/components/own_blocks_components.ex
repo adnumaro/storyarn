@@ -42,6 +42,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
   attr :editing_block_id, :any, default: nil
   attr :target, :any, required: true
   attr :component_id, :string, required: true
+  attr :table_data, :map, default: %{}
 
   def blocks_container(assigns) do
     ~H"""
@@ -67,6 +68,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
                 can_edit={@can_edit}
                 editing_block_id={@editing_block_id}
                 target={@target}
+                table_data={@table_data}
               />
             </div>
           <% :column_group -> %>
@@ -90,6 +92,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
                   can_edit={@can_edit}
                   editing_block_id={@editing_block_id}
                   target={@target}
+                  table_data={@table_data}
                 />
               </div>
             </div>

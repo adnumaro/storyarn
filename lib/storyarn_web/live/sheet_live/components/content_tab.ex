@@ -43,6 +43,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
               can_edit={@can_edit}
               editing_block_id={@editing_block_id}
               target={@myself}
+              table_data={@table_data}
             />
           </div>
         </div>
@@ -58,6 +59,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         editing_block_id={@editing_block_id}
         target={@myself}
         component_id={@id}
+        table_data={@table_data}
       />
 
       <%!-- Add block button / slash command --%>
@@ -119,11 +121,15 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
     layout_items = ContentTabHelpers.group_blocks_for_layout(own_blocks)
 
+    # Batch-load table data for all table blocks (own + inherited)
+    table_data = load_table_data(own_blocks, inherited_groups)
+
     socket =
       socket
       |> assign(:inherited_groups, inherited_groups)
       |> assign(:own_blocks, own_blocks)
       |> assign(:layout_items, layout_items)
+      |> assign(:table_data, table_data)
 
     {:ok, socket}
   end
@@ -258,6 +264,87 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     with_authorization(socket, fn socket ->
       result = BlockHelpers.set_boolean_block_value(socket, block_id, value)
       handle_block_result(socket, result)
+    end)
+  end
+
+  # ===========================================================================
+  # Table Block Events
+  # ===========================================================================
+
+  def handle_event("update_table_cell", params, socket) do
+    with_authorization(socket, fn socket ->
+      row_id = ContentTabHelpers.to_integer(params["row-id"])
+      column_slug = params["column-slug"]
+
+      value =
+        if params["type"] == "multi_select" do
+          (params["value"] || "")
+          |> String.split(",")
+          |> Enum.map(&String.trim/1)
+          |> Enum.reject(&(&1 == ""))
+        else
+          params["value"]
+        end
+
+      row = Sheets.get_table_row!(row_id)
+
+      if not Map.has_key?(socket.assigns.table_data, row.block_id) do
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update cell."))}
+      else
+        case Sheets.update_table_cell(row, column_slug, value) do
+          {:ok, _} ->
+            maybe_create_version(socket)
+            notify_parent(socket, :saved)
+            {:noreply, reload_blocks(socket)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update cell."))}
+        end
+      end
+    end)
+  end
+
+  def handle_event("toggle_table_collapse", %{"block-id" => block_id}, socket) do
+    with_authorization(socket, fn socket ->
+      block_id = ContentTabHelpers.to_integer(block_id)
+      project_id = socket.assigns.project.id
+      block = Sheets.get_block_in_project!(block_id, project_id)
+      collapsed = block.config["collapsed"] || false
+      new_config = Map.put(block.config || %{}, "collapsed", !collapsed)
+
+      case Sheets.update_block_config(block, new_config) do
+        {:ok, _} ->
+          {:noreply, reload_blocks(socket)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not toggle table."))}
+      end
+    end)
+  end
+
+  def handle_event("toggle_table_cell_boolean", params, socket) do
+    with_authorization(socket, fn socket ->
+      row_id = ContentTabHelpers.to_integer(params["row-id"])
+      column_slug = params["column-slug"]
+
+      row = Sheets.get_table_row!(row_id)
+
+      if not Map.has_key?(socket.assigns.table_data, row.block_id) do
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update cell."))}
+      else
+        current = row.cells[column_slug]
+        new_value = if current == true, do: false, else: true
+
+        case Sheets.update_table_cell(row, column_slug, new_value) do
+          {:ok, _} ->
+            maybe_create_version(socket)
+            notify_parent(socket, :saved)
+            {:noreply, reload_blocks(socket)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update cell."))}
+        end
+      end
     end)
   end
 
@@ -422,7 +509,8 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     if socket.assigns.can_edit do
       fun.(socket)
     else
-      {:noreply, put_flash(socket, :error, dgettext("sheets", "You don't have permission to edit."))}
+      {:noreply,
+       put_flash(socket, :error, dgettext("sheets", "You don't have permission to edit."))}
     end
   end
 
@@ -450,10 +538,14 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     own_blocks = ContentTabHelpers.enrich_with_references(own_blocks, project_id)
     layout_items = ContentTabHelpers.group_blocks_for_layout(own_blocks)
 
+    # Batch-load table data for all table blocks (own + inherited)
+    table_data = load_table_data(own_blocks, inherited_groups)
+
     socket
     |> assign(:inherited_groups, inherited_groups)
     |> assign(:own_blocks, own_blocks)
     |> assign(:layout_items, layout_items)
+    |> assign(:table_data, table_data)
   end
 
   defp maybe_create_version(socket) do
@@ -475,6 +567,23 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     }
   end
 
+  defp load_table_data(own_blocks, inherited_groups) do
+    own_table_ids =
+      own_blocks
+      |> Enum.filter(&(&1.type == "table"))
+      |> Enum.map(& &1.id)
+
+    inherited_table_ids =
+      inherited_groups
+      |> Enum.flat_map(& &1.blocks)
+      |> Enum.filter(&(&1.type == "table"))
+      |> Enum.map(& &1.id)
+
+    all_table_ids = own_table_ids ++ inherited_table_ids
+
+    if all_table_ids != [], do: Sheets.batch_load_table_data(all_table_ids), else: %{}
+  end
+
   # Builds the helpers map required by BlockCrudHandlers.
   defp block_crud_helpers do
     %{
@@ -483,5 +592,4 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       notify_parent: &notify_parent/2
     }
   end
-
 end
