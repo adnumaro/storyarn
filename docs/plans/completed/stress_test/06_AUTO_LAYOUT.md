@@ -550,4 +550,4 @@ The auto-arrange plugin can be used after importing flows. The import workflow i
 
 For programmatic layout without a browser, `elkjs` can be used directly in a Node.js script with the same ELK options.
 
-**Next document:** [07_BETTER_SEARCH.md](./07_BETTER_SEARCH.md)
+**Next document:** [07_BETTER_SEARCH.md](../../stress_test/07_BETTER_SEARCH.md)
