@@ -176,6 +176,128 @@ defmodule Storyarn.FlowsTest do
 
       assert length(results) == 2
     end
+
+    test "search_flows/3 respects custom limit" do
+      user = user_fixture()
+      project = project_fixture(user)
+      for i <- 1..10, do: flow_fixture(project, %{name: "Flow #{i}"})
+
+      assert length(Flows.search_flows(project.id, "Flow", limit: 5)) == 5
+      assert length(Flows.search_flows(project.id, "Flow", limit: 3)) == 3
+    end
+
+    test "search_flows/3 offset enables pagination" do
+      user = user_fixture()
+      project = project_fixture(user)
+      for i <- 1..10, do: flow_fixture(project, %{name: "Flow #{String.pad_leading("#{i}", 2, "0")}"})
+
+      page1 = Flows.search_flows(project.id, "Flow", limit: 5, offset: 0)
+      page2 = Flows.search_flows(project.id, "Flow", limit: 5, offset: 5)
+
+      assert length(page1) == 5
+      assert length(page2) == 5
+
+      page1_ids = MapSet.new(Enum.map(page1, & &1.id))
+      page2_ids = MapSet.new(Enum.map(page2, & &1.id))
+      assert MapSet.disjoint?(page1_ids, page2_ids)
+    end
+
+    test "search_flows/3 offset beyond results returns empty" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _flow = flow_fixture(project, %{name: "Only One"})
+
+      assert Flows.search_flows(project.id, "Only", offset: 100) == []
+    end
+
+    test "search_flows/3 exclude_id filters out specified flow" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow1 = flow_fixture(project, %{name: "Flow A"})
+      _flow2 = flow_fixture(project, %{name: "Flow B"})
+
+      results = Flows.search_flows(project.id, "Flow", exclude_id: flow1.id)
+      ids = Enum.map(results, & &1.id)
+      refute flow1.id in ids
+    end
+
+    test "search_flows/3 empty query with pagination" do
+      user = user_fixture()
+      project = project_fixture(user)
+      for i <- 1..10, do: flow_fixture(project, %{name: "Flow #{i}"})
+
+      page1 = Flows.search_flows(project.id, "", limit: 5, offset: 0)
+      page2 = Flows.search_flows(project.id, "", limit: 5, offset: 5)
+
+      assert length(page1) == 5
+      assert length(page2) == 5
+    end
+
+    test "search_flows_deep/3 finds flows by node dialogue text" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Hive Scene 7"})
+      node_fixture(flow, %{data: %{"text" => "Annah whispers about the Hive."}})
+
+      results = Flows.search_flows_deep(project.id, "Annah whispers")
+      ids = Enum.map(results, & &1.id)
+      assert flow.id in ids
+    end
+
+    test "search_flows_deep/3 finds flows by name AND node content" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow_by_name = flow_fixture(project, %{name: "Annah Dialogue"})
+      flow_by_content = flow_fixture(project, %{name: "Hive Scene"})
+      node_fixture(flow_by_content, %{data: %{"text" => "Annah speaks quietly."}})
+      _unrelated = flow_fixture(project, %{name: "Morte Intro"})
+
+      results = Flows.search_flows_deep(project.id, "Annah")
+      ids = Enum.map(results, & &1.id)
+      assert flow_by_name.id in ids
+      assert flow_by_content.id in ids
+      refute Enum.any?(results, &(&1.name == "Morte Intro"))
+    end
+
+    test "search_flows_deep/3 finds flows by technical_id" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Tech Flow"})
+      node_fixture(flow, %{data: %{"text" => "Hello", "technical_id" => "dlg_annah_01"}})
+
+      results = Flows.search_flows_deep(project.id, "dlg_annah_01")
+      ids = Enum.map(results, & &1.id)
+      assert flow.id in ids
+    end
+
+    test "search_flows_deep/3 finds flows by hub_id" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Hub Flow"})
+      node_fixture(flow, %{type: "hub", data: %{"hub_id" => "central-plaza", "label" => "Plaza"}})
+
+      results = Flows.search_flows_deep(project.id, "central-plaza")
+      ids = Enum.map(results, & &1.id)
+      assert flow.id in ids
+    end
+
+    test "search_flows_deep/3 empty query falls back to regular search" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _flow = flow_fixture(project, %{name: "Any Flow"})
+
+      results = Flows.search_flows_deep(project.id, "")
+      assert results != []
+    end
+
+    test "search_flows_deep/3 respects limit and offset" do
+      user = user_fixture()
+      project = project_fixture(user)
+      for i <- 1..5, do: flow_fixture(project, %{name: "Deep #{i}"})
+
+      assert length(Flows.search_flows_deep(project.id, "Deep", limit: 2)) == 2
+      assert length(Flows.search_flows_deep(project.id, "Deep", limit: 2, offset: 4)) == 1
+    end
   end
 
   describe "nodes" do

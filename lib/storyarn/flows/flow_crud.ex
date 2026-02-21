@@ -57,33 +57,108 @@ defmodule Storyarn.Flows.FlowCrud do
     end)
   end
 
+  @default_search_limit 25
+
+  @doc "Returns the default search limit used by search_flows/3 and search_flows_deep/3."
+  def default_search_limit, do: @default_search_limit
+
   @doc """
   Searches flows by name or shortcut for reference selection.
-  Returns flows matching the query, limited to 10 results.
   Excludes soft-deleted flows.
-  """
-  def search_flows(project_id, query) when is_binary(query) do
-    query = String.trim(query)
 
-    if query == "" do
-      # Return recent flows if no query
+  ## Options
+    - `:limit` - Max results (default #{@default_search_limit})
+    - `:offset` - Skip N results (default 0)
+    - `:exclude_id` - Flow ID to exclude from results (e.g., current flow)
+  """
+  def search_flows(project_id, query, opts \\ []) when is_binary(query) do
+    limit = Keyword.get(opts, :limit, @default_search_limit)
+    offset = Keyword.get(opts, :offset, 0)
+    exclude_id = Keyword.get(opts, :exclude_id)
+    query_str = String.trim(query)
+
+    base =
       from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at),
+        where: f.project_id == ^project_id and is_nil(f.deleted_at)
+      )
+
+    base = maybe_exclude_flow(base, exclude_id)
+
+    if query_str == "" do
+      from(f in base,
         order_by: [desc: f.updated_at],
-        limit: 10
+        limit: ^limit,
+        offset: ^offset
       )
       |> Repo.all()
     else
-      search_term = "%#{query}%"
+      search_term = "%#{query_str}%"
 
-      from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at),
+      from(f in base,
         where: ilike(f.name, ^search_term) or ilike(f.shortcut, ^search_term),
         order_by: [asc: f.name],
-        limit: 10
+        limit: ^limit,
+        offset: ^offset
       )
       |> Repo.all()
     end
+  end
+
+  defp maybe_exclude_flow(query, nil), do: query
+  defp maybe_exclude_flow(query, id), do: from(f in query, where: f.id != ^id)
+
+  @doc """
+  Deep search: searches flow names/shortcuts AND node content (dialogue text,
+  labels, technical IDs, hub IDs, expressions, stage directions, menu text, locations).
+
+  Uses JSONB text search on the flow_nodes.data column via a subquery.
+
+  ## Options
+    - `:limit` - Max results (default #{@default_search_limit})
+    - `:offset` - Skip N results (default 0)
+    - `:exclude_id` - Flow ID to exclude from results
+  """
+  def search_flows_deep(project_id, query, opts \\ []) when is_binary(query) do
+    query_str = String.trim(query)
+
+    if query_str == "" do
+      search_flows(project_id, query_str, opts)
+    else
+      limit = Keyword.get(opts, :limit, @default_search_limit)
+      offset = Keyword.get(opts, :offset, 0)
+      exclude_id = Keyword.get(opts, :exclude_id)
+      search_term = "%#{query_str}%"
+
+      from(f in Flow,
+        where: f.project_id == ^project_id and is_nil(f.deleted_at),
+        where:
+          ilike(f.name, ^search_term) or
+            ilike(f.shortcut, ^search_term) or
+            f.id in subquery(node_content_subquery(project_id, search_term)),
+        order_by: [asc: f.name],
+        limit: ^limit,
+        offset: ^offset
+      )
+      |> maybe_exclude_flow(exclude_id)
+      |> Repo.all()
+    end
+  end
+
+  # Subquery matching node JSONB data fields against a search term.
+  @searchable_jsonb_keys ~w(text label technical_id hub_id expression stage_directions menu_text location)
+  defp node_content_subquery(project_id, search_term) do
+    conditions =
+      Enum.reduce(@searchable_jsonb_keys, dynamic(false), fn key, acc ->
+        dynamic([n], ^acc or ilike(fragment("?->>?", n.data, ^key), ^search_term))
+      end)
+
+    from(n in FlowNode,
+      join: fl in Flow,
+      on: n.flow_id == fl.id,
+      where: fl.project_id == ^project_id and is_nil(fl.deleted_at) and is_nil(n.deleted_at),
+      where: ^conditions,
+      select: n.flow_id
+    )
   end
 
   def get_flow(project_id, flow_id) do

@@ -31,9 +31,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
     project_id = socket.assigns.project.id
     current_flow_id = socket.assigns.flow.id
 
-    available_flows =
-      Flows.list_flows(project_id)
-      |> Enum.reject(&(&1.id == current_flow_id))
+    available_flows = Flows.search_flows(project_id, "", exclude_id: current_flow_id)
 
     exit_nodes =
       case node.data["referenced_flow_id"] do

@@ -55,10 +55,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
 
     case node.data["exit_mode"] do
       "flow_reference" ->
-        available_flows =
-          Flows.list_flows(project_id)
-          |> Enum.reject(&(&1.id == flow_id))
-
+        available_flows = Flows.search_flows(project_id, "", exclude_id: flow_id)
         Phoenix.Component.assign(socket, :available_flows, available_flows)
 
       _ ->
@@ -132,10 +129,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
         project_id = socket.assigns.project.id
         current_flow_id = socket.assigns.flow.id
 
-        available_flows =
-          Flows.list_flows(project_id)
-          |> Enum.reject(&(&1.id == current_flow_id))
-
+        available_flows = Flows.search_flows(project_id, "", exclude_id: current_flow_id)
         {:noreply, Phoenix.Component.assign(socket, :available_flows, available_flows)}
       else
         {:noreply, socket}

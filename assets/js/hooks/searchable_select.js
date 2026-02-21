@@ -54,8 +54,19 @@ export const SearchableSelect = {
     };
     this.trigger.addEventListener("click", this._onTriggerClick);
 
-    // Filter on input
-    this._onSearchInput = () => this.filter();
+    // Filter on input — server-side or client-side
+    this.serverSearchEvent = this.el.dataset.serverSearch || null;
+    if (this.serverSearchEvent) {
+      this._debounceTimer = null;
+      this._onSearchInput = () => {
+        clearTimeout(this._debounceTimer);
+        this._debounceTimer = setTimeout(() => {
+          this.pushEvent(this.serverSearchEvent, { query: this.search.value || "" });
+        }, 300);
+      };
+    } else {
+      this._onSearchInput = () => this.filter();
+    }
     this.search.addEventListener("input", this._onSearchInput);
 
     // Close when an option is clicked (event delegation)
@@ -86,6 +97,7 @@ export const SearchableSelect = {
   },
 
   _teardownLocal() {
+    if (this._debounceTimer) clearTimeout(this._debounceTimer);
     if (this.trigger && this._onTriggerClick) {
       this.trigger.removeEventListener("click", this._onTriggerClick);
     }
@@ -122,6 +134,10 @@ export const SearchableSelect = {
       item.style.display = match ? "" : "none";
       if (match) visible++;
     });
+
+    // Hide "Show more" during client-side filtering with a query
+    const loadMore = this.list.querySelector('[data-role="load-more"]');
+    if (loadMore) loadMore.style.display = q ? "none" : "";
 
     if (this.empty) {
       this.empty.style.display = visible === 0 ? "" : "none";

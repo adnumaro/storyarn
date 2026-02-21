@@ -19,6 +19,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   attr :all_sheets, :list, default: []
   attr :flow_hubs, :list, default: []
   attr :available_flows, :list, default: []
+  attr :flow_search_has_more, :boolean, default: false
+  attr :flow_search_deep, :boolean, default: false
   attr :subflow_exits, :list, default: []
   attr :referencing_jumps, :list, default: []
   attr :referencing_flows, :list, default: []
@@ -446,6 +448,11 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       placeholder={dgettext("flows", "Select flow…")}
       event="update_subflow_reference"
       event_params_fn={fn value -> %{referenced_flow_id: value} end}
+      server_search_event="search_available_flows"
+      has_more={@flow_search_has_more}
+      load_more_event="search_flows_more"
+      deep_search={@flow_search_deep}
+      deep_search_event="toggle_deep_search"
     />
     <span :if={!@can_edit && @selected_flow_name} class="text-xs truncate max-w-[120px]">
       {@selected_flow_name}
@@ -549,9 +556,19 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       assigns
       |> assign(:options_with_params, options_with_params)
       |> assign(:clear_params, clear_params)
+      |> assign_new(:server_search_event, fn -> nil end)
+      |> assign_new(:has_more, fn -> false end)
+      |> assign_new(:load_more_event, fn -> nil end)
+      |> assign_new(:deep_search, fn -> false end)
+      |> assign_new(:deep_search_event, fn -> nil end)
 
     ~H"""
-    <div id={@id} phx-hook="SearchableSelect" class="relative">
+    <div
+      id={@id}
+      phx-hook="SearchableSelect"
+      class="relative"
+      {if @server_search_event, do: [{"data-server-search", @server_search_event}], else: []}
+    >
       <button
         data-role="trigger"
         type="button"
@@ -570,6 +587,20 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
             class="input input-xs input-bordered w-full"
             autocomplete="off"
           />
+          <label
+            :if={@deep_search_event}
+            class="flex items-center gap-1.5 mt-1 cursor-pointer select-none"
+          >
+            <input
+              type="checkbox"
+              class="toggle toggle-xs toggle-primary"
+              checked={@deep_search}
+              phx-click={@deep_search_event}
+            />
+            <span class="text-[11px] text-base-content/50">
+              {dgettext("flows", "Search in content")}
+            </span>
+          </label>
         </div>
         <div data-role="list" class="max-h-48 overflow-y-auto p-1">
           <button
@@ -590,6 +621,15 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
             class={"flex items-center w-full px-2 py-1.5 rounded text-xs hover:bg-base-200 truncate #{if to_string(value) == to_string(@selected_value), do: "font-semibold text-primary"}"}
           >
             {label}
+          </button>
+          <button
+            :if={@has_more && @load_more_event}
+            type="button"
+            data-role="load-more"
+            phx-click={@load_more_event}
+            class="flex items-center justify-center w-full px-2 py-1.5 rounded text-xs text-primary hover:bg-base-200"
+          >
+            {dgettext("flows", "Show more…")}
           </button>
         </div>
         <div

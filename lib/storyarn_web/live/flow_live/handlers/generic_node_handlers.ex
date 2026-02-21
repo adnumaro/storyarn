@@ -289,6 +289,60 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   def handle_batch_update_positions(_params, socket), do: {:noreply, socket}
 
+  @search_limit Flows.default_search_limit()
+
+  @spec handle_search_available_flows(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_search_available_flows(%{"query" => query}, socket) when is_binary(query) do
+    project_id = socket.assigns.project.id
+    current_flow_id = socket.assigns.flow.id
+
+    results = search_flows(socket, project_id, query, exclude_id: current_flow_id)
+
+    {:noreply,
+     socket
+     |> assign(:available_flows, results)
+     |> assign(:flow_search_query, query)
+     |> assign(:flow_search_offset, @search_limit)
+     |> assign(:flow_search_has_more, length(results) >= @search_limit)}
+  end
+
+  def handle_search_available_flows(_params, socket), do: {:noreply, socket}
+
+  @spec handle_toggle_deep_search(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_toggle_deep_search(socket) do
+    deep = !socket.assigns[:flow_search_deep]
+    socket = assign(socket, :flow_search_deep, deep)
+
+    # Re-run the current search with the new mode
+    query = socket.assigns[:flow_search_query] || ""
+    handle_search_available_flows(%{"query" => query}, socket)
+  end
+
+  @spec handle_search_flows_more(Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_search_flows_more(socket) do
+    project_id = socket.assigns.project.id
+    current_flow_id = socket.assigns.flow.id
+    query = socket.assigns[:flow_search_query] || ""
+    offset = socket.assigns[:flow_search_offset] || 0
+
+    more = search_flows(socket, project_id, query, offset: offset, exclude_id: current_flow_id)
+
+    {:noreply,
+     socket
+     |> assign(:available_flows, (socket.assigns[:available_flows] || []) ++ more)
+     |> assign(:flow_search_offset, offset + @search_limit)
+     |> assign(:flow_search_has_more, length(more) >= @search_limit)}
+  end
+
+  defp search_flows(socket, project_id, query, opts) do
+    if socket.assigns[:flow_search_deep],
+      do: Flows.search_flows_deep(project_id, query, opts),
+      else: Flows.search_flows(project_id, query, opts)
+  end
+
   @spec handle_node_moved(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_node_moved(%{"id" => node_id, "position_x" => x, "position_y" => y}, socket) do

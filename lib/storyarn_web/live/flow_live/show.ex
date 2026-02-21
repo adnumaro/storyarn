@@ -108,6 +108,8 @@ defmodule StoryarnWeb.FlowLive.Show do
                   all_sheets={@all_sheets}
                   flow_hubs={@flow_hubs}
                   available_flows={@available_flows}
+                  flow_search_has_more={@flow_search_has_more}
+                  flow_search_deep={@flow_search_deep}
                   subflow_exits={@subflow_exits}
                   referencing_jumps={@referencing_jumps}
                   referencing_flows={@referencing_flows}
@@ -409,6 +411,18 @@ defmodule StoryarnWeb.FlowLive.Show do
     with_auth(:edit_content, socket, fn ->
       GenericNodeHandlers.handle_batch_update_positions(params, socket)
     end)
+  end
+
+  def handle_event("search_available_flows", params, socket) do
+    GenericNodeHandlers.handle_search_available_flows(params, socket)
+  end
+
+  def handle_event("search_flows_more", _params, socket) do
+    GenericNodeHandlers.handle_search_flows_more(socket)
+  end
+
+  def handle_event("toggle_deep_search", _params, socket) do
+    GenericNodeHandlers.handle_toggle_deep_search(socket)
   end
 
   def handle_event("update_node_data", %{"node" => _} = params, socket) do
@@ -782,6 +796,10 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:node_form, nil)
       |> assign(:referencing_jumps, [])
       |> assign(:available_flows, [])
+      |> assign(:flow_search_query, "")
+      |> assign(:flow_search_offset, 0)
+      |> assign(:flow_search_has_more, false)
+      |> assign(:flow_search_deep, false)
       |> assign(:subflow_exits, [])
       |> assign(:outcome_tags_suggestions, [])
       |> assign(:referencing_flows, [])

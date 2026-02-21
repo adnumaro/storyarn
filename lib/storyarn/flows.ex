@@ -60,12 +60,22 @@ defmodule Storyarn.Flows do
   @spec list_flows_by_parent(integer(), integer() | nil) :: [flow()]
   defdelegate list_flows_by_parent(project_id, parent_id), to: FlowCrud
 
+  @doc "Returns the default search limit used by search_flows/3 and search_flows_deep/3."
+  defdelegate default_search_limit(), to: FlowCrud
+
   @doc """
   Searches flows by name or shortcut for reference selection.
-  Returns flows matching the query, limited to 10 results.
+  Accepts opts: [limit: 25, offset: 0, exclude_id: nil].
   """
-  @spec search_flows(integer(), String.t()) :: [flow()]
-  defdelegate search_flows(project_id, query), to: FlowCrud
+  @spec search_flows(integer(), String.t(), keyword()) :: [flow()]
+  defdelegate search_flows(project_id, query, opts \\ []), to: FlowCrud
+
+  @doc """
+  Deep search: searches flow names/shortcuts and node content.
+  Accepts opts: [limit: 25, offset: 0, exclude_id: nil].
+  """
+  @spec search_flows_deep(integer(), String.t(), keyword()) :: [flow()]
+  defdelegate search_flows_deep(project_id, query, opts \\ []), to: FlowCrud
 
   @doc """
   Gets a single flow by ID within a project.
