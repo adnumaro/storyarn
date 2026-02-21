@@ -82,4 +82,45 @@ defmodule Storyarn.SheetsFixtures do
     {:ok, block} = Sheets.create_block(sheet, block_attrs)
     block
   end
+
+  @doc """
+  Creates a table block with preloaded default column and row.
+  """
+  def table_block_fixture(sheet, attrs \\ %{}) do
+    label = attrs[:label] || unique_block_label()
+
+    block_attrs = %{
+      type: "table",
+      config: %{"label" => label, "collapsed" => false}
+    }
+
+    {:ok, block} = Sheets.create_block(sheet, block_attrs)
+    Storyarn.Repo.preload(block, [:table_columns, :table_rows])
+  end
+
+  @doc """
+  Creates an additional column on a table block.
+  """
+  def table_column_fixture(block, attrs \\ %{}) do
+    attrs =
+      Enum.into(attrs, %{
+        name: "Column #{System.unique_integer([:positive])}"
+      })
+
+    {:ok, column} = Sheets.create_table_column(block, attrs)
+    column
+  end
+
+  @doc """
+  Creates an additional row on a table block.
+  """
+  def table_row_fixture(block, attrs \\ %{}) do
+    attrs =
+      Enum.into(attrs, %{
+        name: "Row #{System.unique_integer([:positive])}"
+      })
+
+    {:ok, row} = Sheets.create_table_row(block, attrs)
+    row
+  end
 end

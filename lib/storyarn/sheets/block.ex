@@ -47,7 +47,7 @@ defmodule Storyarn.Sheets.Block do
 
   alias Storyarn.Sheets.Sheet
 
-  @block_types ~w(text rich_text number select multi_select divider date boolean reference)
+  @block_types ~w(text rich_text number select multi_select divider date boolean reference table)
 
   @default_configs %{
     "text" => %{"label" => "Label", "placeholder" => ""},
@@ -58,7 +58,8 @@ defmodule Storyarn.Sheets.Block do
     "divider" => %{},
     "date" => %{"label" => "Label"},
     "boolean" => %{"label" => "Label", "mode" => "two_state"},
-    "reference" => %{"label" => "Label", "allowed_types" => ["sheet", "flow"]}
+    "reference" => %{"label" => "Label", "allowed_types" => ["sheet", "flow"]},
+    "table" => %{"label" => "Label", "collapsed" => false}
   }
 
   @default_values %{
@@ -70,7 +71,8 @@ defmodule Storyarn.Sheets.Block do
     "divider" => %{},
     "date" => %{"content" => nil},
     "boolean" => %{"content" => nil},
-    "reference" => %{"target_type" => nil, "target_id" => nil}
+    "reference" => %{"target_type" => nil, "target_id" => nil},
+    "table" => %{}
   }
 
   # Block types that cannot be variables (no meaningful value to expose)
@@ -118,6 +120,8 @@ defmodule Storyarn.Sheets.Block do
     belongs_to :sheet, Sheet
     belongs_to :inherited_from_block, __MODULE__
     has_many :inherited_instances, __MODULE__, foreign_key: :inherited_from_block_id
+    has_many :table_columns, Storyarn.Sheets.TableColumn, foreign_key: :block_id
+    has_many :table_rows, Storyarn.Sheets.TableRow, foreign_key: :block_id
 
     timestamps(type: :utc_datetime)
   end

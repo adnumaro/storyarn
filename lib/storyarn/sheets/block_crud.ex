@@ -6,7 +6,7 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   alias Storyarn.Localization.TextExtractor
   alias Storyarn.Repo
-  alias Storyarn.Sheets.{Block, PropertyInheritance, ReferenceTracker, Sheet}
+  alias Storyarn.Sheets.{Block, PropertyInheritance, ReferenceTracker, Sheet, TableColumn, TableRow}
 
   # =============================================================================
   # Query Operations
@@ -84,6 +84,9 @@ defmodule Storyarn.Sheets.BlockCrud do
     # If block has scope: "children" and is not itself an inherited instance,
     # auto-create instances on all descendant sheets
     maybe_propagate_to_descendants(result, sheet.id)
+
+    # If block is a table, auto-create 1 default column + 1 default row
+    maybe_create_default_table_structure(result)
 
     result
   end
@@ -458,6 +461,18 @@ defmodule Storyarn.Sheets.BlockCrud do
       :ok
     end
   end
+
+  defp maybe_create_default_table_structure({:ok, %Block{type: "table"} = block}) do
+    %TableColumn{block_id: block.id}
+    |> TableColumn.create_changeset(%{name: "Value", type: "number", is_constant: false, position: 0})
+    |> Repo.insert!()
+
+    %TableRow{block_id: block.id}
+    |> TableRow.create_changeset(%{name: "Row 1", position: 0, cells: %{"value" => nil}})
+    |> Repo.insert!()
+  end
+
+  defp maybe_create_default_table_structure(_result), do: :ok
 
   defp find_unique_with_suffix(base_name, existing_names, suffix) do
     candidate = "#{base_name}_#{suffix}"

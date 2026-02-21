@@ -19,6 +19,7 @@ defmodule Storyarn.Sheets do
     SheetCrud,
     SheetQueries,
     SheetVersion,
+    TableCrud,
     TreeOperations,
     Versioning
   }
@@ -374,6 +375,31 @@ defmodule Storyarn.Sheets do
   """
   @spec change_block(block(), attrs()) :: changeset()
   defdelegate change_block(block, attrs \\ %{}), to: BlockCrud
+
+  # =============================================================================
+  # Table Columns
+  # =============================================================================
+
+  defdelegate list_table_columns(block_id), to: TableCrud, as: :list_columns
+  defdelegate get_table_column!(id), to: TableCrud, as: :get_column!
+  defdelegate create_table_column(block, attrs), to: TableCrud, as: :create_column
+  defdelegate update_table_column(column, attrs), to: TableCrud, as: :update_column
+  defdelegate delete_table_column(column), to: TableCrud, as: :delete_column
+  defdelegate reorder_table_columns(block_id, ids), to: TableCrud, as: :reorder_columns
+
+  # =============================================================================
+  # Table Rows
+  # =============================================================================
+
+  defdelegate list_table_rows(block_id), to: TableCrud, as: :list_rows
+  defdelegate get_table_row!(id), to: TableCrud, as: :get_row!
+  defdelegate create_table_row(block, attrs), to: TableCrud, as: :create_row
+  defdelegate update_table_row(row, attrs), to: TableCrud, as: :update_row
+  defdelegate delete_table_row(row), to: TableCrud, as: :delete_row
+  defdelegate reorder_table_rows(block_id, ids), to: TableCrud, as: :reorder_rows
+  defdelegate update_table_cell(row, column_slug, value), to: TableCrud, as: :update_cell
+  defdelegate update_table_cells(row, cells_map), to: TableCrud, as: :update_cells
+  defdelegate batch_load_table_data(block_ids), to: TableCrud
 
   # =============================================================================
   # Versioning
