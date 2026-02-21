@@ -8,6 +8,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
 
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
+  attr :schema_locked, :boolean, default: false
   attr :columns, :list, default: []
   attr :rows, :list, default: []
   attr :target, :any, default: nil
@@ -18,6 +19,9 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
     is_constant = assigns.block.is_constant || false
     row_count = length(assigns.rows)
     col_count = length(assigns.columns)
+    # can_manage: allowed to modify table structure (add/delete/rename columns/rows)
+    # When schema_locked, structure is locked but cell values are still editable
+    can_manage = assigns.can_edit && !assigns.schema_locked
 
     summary =
       dngettext(
@@ -36,6 +40,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
       |> assign(:is_constant, is_constant)
       |> assign(:row_count, row_count)
       |> assign(:col_count, col_count)
+      |> assign(:can_manage, can_manage)
       |> assign(:summary, summary)
 
     ~H"""
@@ -47,17 +52,19 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
         is_constant={@is_constant}
         collapsed={@collapsed}
         can_edit={@can_edit}
+        can_manage={@can_manage}
         summary={@summary}
         target={@target}
       />
 
       <%!-- Table grid (only when expanded) --%>
       <.expanded_table
-        :if={!@collapsed || !@can_edit}
+        :if={!@collapsed || !@can_manage}
         block={@block}
         columns={@columns}
         rows={@rows}
         can_edit={@can_edit}
+        can_manage={@can_manage}
         target={@target}
       />
     </div>
@@ -71,7 +78,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
   defp table_header(assigns) do
     ~H"""
     <button
-      :if={@can_edit}
+      :if={@can_manage}
       type="button"
       class="flex items-center gap-1.5 text-sm mb-1 transition-colors group/header"
       phx-click="toggle_table_collapse"
@@ -89,8 +96,8 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
       <span class="text-base-content/70">{@label}</span>
       <span :if={@collapsed} class="text-base-content/40">({@summary})</span>
     </button>
-    <%!-- Read-only: no collapse, just label --%>
-    <label :if={!@can_edit && @label != ""} class="text-sm text-base-content/70 mb-1 flex items-center gap-1.5">
+    <%!-- Read-only or schema-locked: no collapse, just label --%>
+    <label :if={!@can_manage && @label != ""} class="text-sm text-base-content/70 mb-1 flex items-center gap-1.5">
       <.icon name="table-2" class="size-3.5 text-base-content/50" />
       <span>{@label}</span>
     </label>
@@ -110,9 +117,9 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
         <div class="border border-base-content/20 rounded-lg overflow-x-auto">
           <table
             class="table table-sm table-fixed w-full [&_:is(th,td)]:border-base-content/20 [&_:is(th,td)]:border-r [&_:is(th,td):last-child]:border-r-0"
-            id={@can_edit && "table-resize-#{@block.id}"}
-            phx-hook={@can_edit && "TableColumnResize"}
-            data-phx-target={@can_edit && @target}
+            id={@can_manage && "table-resize-#{@block.id}"}
+            phx-hook={@can_manage && "TableColumnResize"}
+            data-phx-target={@can_manage && @target}
           >
             <colgroup>
               <col style="width: 8rem;" />
@@ -131,7 +138,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
                 <th :for={col <- @columns} class="font-medium text-base-content/70 relative overflow-hidden">
                   <%!-- Editable: floating dropdown with management options --%>
                   <div
-                    :if={@can_edit}
+                    :if={@can_manage}
                     phx-hook="TableColumnDropdown"
                     id={"col-dropdown-#{col.id}"}
                     data-phx-target={@target}
@@ -158,8 +165,8 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
                       target={@target}
                     />
                   </div>
-                  <%!-- Read-only: plain text --%>
-                  <div :if={!@can_edit} class="min-w-0">
+                  <%!-- Read-only or schema-locked: plain text --%>
+                  <div :if={!@can_manage} class="min-w-0">
                     <span class="flex items-center gap-1.5 max-w-full">
                       <.icon name={type_icon(col.type)} class="size-3.5 opacity-50 shrink-0" />
                       <span class="truncate">{col.name}</span>
@@ -167,9 +174,9 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
                     </span>
                     <span class="text-[10px] font-normal text-base-content/30 truncate max-w-full">{col.slug}</span>
                   </div>
-                  <%!-- Resize handle (edit mode only) --%>
+                  <%!-- Resize handle (manage mode only) --%>
                   <div
-                    :if={@can_edit}
+                    :if={@can_manage}
                     data-resize-handle
                     data-col-id={col.id}
                     class="absolute top-0 -right-px w-1 h-full cursor-col-resize z-10 hover:bg-primary/40 transition-colors"
@@ -179,16 +186,16 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
             </thead>
             <tbody
               id={"table-rows-#{@block.id}"}
-              phx-hook={(@can_edit && "TableRowSortable") || nil}
+              phx-hook={(@can_manage && "TableRowSortable") || nil}
               data-block-id={@block.id}
-              data-phx-target={(@can_edit && @target) || nil}
+              data-phx-target={(@can_manage && @target) || nil}
             >
               <tr :for={row <- @rows} data-row-id={row.id} class="group/row">
                 <%!-- Row label cell (with handle positioned outside) --%>
                 <td class="relative sticky left-0 z-10 bg-base-100 font-medium text-base-content/60 text-sm focus-within:border-primary focus-within:border-2">
                   <%!-- Row handle: grip (drag) + menu (delete) — on hover, over the left border --%>
                   <div
-                    :if={@can_edit}
+                    :if={@can_manage}
                     phx-hook="TableRowMenu"
                     id={"row-menu-#{row.id}"}
                     data-phx-target={@target}
@@ -218,7 +225,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
                     </template>
                   </div>
 
-                  <label :if={@can_edit} class="block cursor-text">
+                  <label :if={@can_manage} class="block cursor-text">
                     <input
                       type="text"
                       value={row.name}
@@ -231,7 +238,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
                     />
                     <span class="text-[10px] text-base-content/30 px-1">{row.slug}</span>
                   </label>
-                  <div :if={!@can_edit}>
+                  <div :if={!@can_manage}>
                     <span>{row.name}</span>
                     <div class="text-[10px] text-base-content/30">{row.slug}</div>
                   </div>
@@ -257,7 +264,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
 
         <%!-- Add column bar — absolute, outside right edge --%>
         <button
-          :if={@can_edit}
+          :if={@can_manage}
           type="button"
           phx-click="add_table_column"
           phx-value-block-id={@block.id}
@@ -271,7 +278,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
 
       <%!-- Add row bar — visible on hover near the bottom of the table --%>
       <button
-        :if={@can_edit}
+        :if={@can_manage}
         type="button"
         phx-click="add_table_row"
         phx-value-block-id={@block.id}

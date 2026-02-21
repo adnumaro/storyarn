@@ -89,12 +89,13 @@ defmodule Storyarn.Sheets.BlockCrud do
       |> ensure_unique_variable_name(sheet.id, nil)
       |> Repo.insert()
 
+    # If block is a table, auto-create 1 default column + 1 default row
+    # (must happen BEFORE propagation so table structure exists when copied to children)
+    maybe_create_default_table_structure(result)
+
     # If block has scope: "children" and is not itself an inherited instance,
     # auto-create instances on all descendant sheets
     maybe_propagate_to_descendants(result, sheet.id)
-
-    # If block is a table, auto-create 1 default column + 1 default row
-    maybe_create_default_table_structure(result)
 
     result
   end

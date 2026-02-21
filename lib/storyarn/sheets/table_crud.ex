@@ -29,7 +29,7 @@ defmodule Storyarn.Sheets.TableCrud do
   Creates a new column on a table block.
   Auto-generates slug, auto-assigns position, and adds empty cell to all existing rows.
   """
-  def create_column(%Block{id: block_id, type: "table"}, attrs) do
+  def create_column(%Block{id: block_id, type: "table"} = block, attrs) do
     position = attrs[:position] || next_column_position(block_id)
     existing_slugs = list_column_slugs(block_id)
 
@@ -47,17 +47,24 @@ defmodule Storyarn.Sheets.TableCrud do
         changeset
       end
 
-    Multi.new()
-    |> Multi.insert(:column, changeset)
-    |> Multi.run(:add_cells, fn _repo, %{column: column} ->
-      add_cell_to_all_rows(block_id, column.slug)
-      {:ok, :done}
-    end)
-    |> Repo.transaction()
-    |> case do
-      {:ok, %{column: column}} -> {:ok, column}
-      {:error, :column, changeset, _} -> {:error, changeset}
-    end
+    result =
+      Multi.new()
+      |> Multi.insert(:column, changeset)
+      |> Multi.run(:add_cells, fn _repo, %{column: column} ->
+        add_cell_to_all_rows(block_id, column.slug)
+        {:ok, :done}
+      end)
+      |> Multi.run(:sync_children, fn _repo, %{column: column} ->
+        sync_column_to_children(block, column, :create)
+        {:ok, :done}
+      end)
+      |> Repo.transaction()
+      |> case do
+        {:ok, %{column: column}} -> {:ok, column}
+        {:error, :column, changeset, _} -> {:error, changeset}
+      end
+
+    result
   end
 
   @doc """
@@ -109,6 +116,13 @@ defmodule Storyarn.Sheets.TableCrud do
         multi
       end
 
+    # Sync to children within the same transaction
+    multi =
+      Multi.run(multi, :sync_children, fn _repo, %{column: updated_column} ->
+        sync_column_to_children(column.block_id, updated_column, :update, old_slug, type_changed?)
+        {:ok, :done}
+      end)
+
     multi
     |> Repo.transaction()
     |> case do
@@ -130,6 +144,10 @@ defmodule Storyarn.Sheets.TableCrud do
       {:error, :last_column}
     else
       Multi.new()
+      |> Multi.run(:sync_children, fn _repo, _changes ->
+        sync_column_to_children(column.block_id, column, :delete)
+        {:ok, :done}
+      end)
       |> Multi.delete(:column, column)
       |> Multi.run(:remove_cells, fn _repo, _changes ->
         remove_cell_from_all_rows(column.block_id, column.slug)
@@ -212,7 +230,7 @@ defmodule Storyarn.Sheets.TableCrud do
   Creates a new row on a table block.
   Auto-generates slug, auto-assigns position, initializes cells for all columns.
   """
-  def create_row(%Block{id: block_id, type: "table"}, attrs) do
+  def create_row(%Block{id: block_id, type: "table"} = block, attrs) do
     position = attrs[:position] || next_row_position(block_id)
     existing_slugs = list_row_slugs(block_id)
 
@@ -239,14 +257,25 @@ defmodule Storyarn.Sheets.TableCrud do
         changeset
       end
 
-    case Repo.insert(changeset) do
-      {:ok, row} -> {:ok, row}
-      {:error, changeset} -> {:error, changeset}
-    end
+    result =
+      Multi.new()
+      |> Multi.insert(:row, changeset)
+      |> Multi.run(:sync_children, fn _repo, %{row: row} ->
+        sync_row_to_children(block, row, :create)
+        {:ok, :done}
+      end)
+      |> Repo.transaction()
+      |> case do
+        {:ok, %{row: row}} -> {:ok, row}
+        {:error, :row, changeset, _} -> {:error, changeset}
+      end
+
+    result
   end
 
   @doc "Updates a row (rename → re-slug)."
   def update_row(%TableRow{} = row, attrs) do
+    old_slug = row.slug
     changeset = TableRow.update_changeset(row, attrs)
     new_slug = Ecto.Changeset.get_field(changeset, :slug)
 
@@ -259,7 +288,17 @@ defmodule Storyarn.Sheets.TableCrud do
         changeset
       end
 
-    Repo.update(changeset)
+    Multi.new()
+    |> Multi.update(:row, changeset)
+    |> Multi.run(:sync_children, fn _repo, %{row: updated_row} ->
+      sync_row_to_children(row.block_id, updated_row, :update, old_slug)
+      {:ok, :done}
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{row: row}} -> {:ok, row}
+      {:error, :row, changeset, _} -> {:error, changeset}
+    end
   end
 
   @doc "Deletes a row. Prevents deletion of the last row."
@@ -271,7 +310,17 @@ defmodule Storyarn.Sheets.TableCrud do
     if row_count <= 1 do
       {:error, :last_row}
     else
-      Repo.delete(row)
+      Multi.new()
+      |> Multi.run(:sync_children, fn _repo, _changes ->
+        sync_row_to_children(row.block_id, row, :delete)
+        {:ok, :done}
+      end)
+      |> Multi.delete(:row, row)
+      |> Repo.transaction()
+      |> case do
+        {:ok, %{row: row}} -> {:ok, row}
+        {:error, :row, changeset, _} -> {:error, changeset}
+      end
     end
   end
 
@@ -307,6 +356,165 @@ defmodule Storyarn.Sheets.TableCrud do
     row
     |> TableRow.cells_changeset(%{cells: new_cells})
     |> Repo.update()
+  end
+
+  # =============================================================================
+  # Child Sync (Table Inheritance) — Private
+  # =============================================================================
+
+  # Syncs a column creation to non-detached inherited instances.
+  defp sync_column_to_children(%Block{} = parent_block, %TableColumn{} = column, :create) do
+    with_inheriting_instances(parent_block, fn instance_ids ->
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+      col_entries =
+        Enum.map(instance_ids, fn instance_id ->
+          %{
+            name: column.name,
+            slug: column.slug,
+            type: column.type,
+            is_constant: column.is_constant,
+            required: column.required,
+            position: column.position,
+            config: column.config,
+            block_id: instance_id,
+            inserted_at: now,
+            updated_at: now
+          }
+        end)
+
+      Repo.insert_all(TableColumn, col_entries)
+
+      Enum.each(instance_ids, fn instance_id ->
+        add_cell_to_all_rows(instance_id, column.slug)
+      end)
+    end)
+  end
+
+  # Syncs a column deletion to non-detached inherited instances.
+  defp sync_column_to_children(parent_block_id, %TableColumn{} = column, :delete) do
+    with_inheriting_instances(parent_block_id, fn instance_ids ->
+      from(c in TableColumn,
+        where: c.block_id in ^instance_ids and c.slug == ^column.slug
+      )
+      |> Repo.delete_all()
+
+      Enum.each(instance_ids, fn instance_id ->
+        remove_cell_from_all_rows(instance_id, column.slug)
+      end)
+    end)
+  end
+
+  # Syncs a column update (rename + type change) to non-detached inherited instances.
+  defp sync_column_to_children(parent_block_id, %TableColumn{} = column, :update, old_slug, type_changed?) do
+    with_inheriting_instances(parent_block_id, fn instance_ids ->
+      slug_changed? = column.slug != old_slug
+
+      from(c in TableColumn,
+        where: c.block_id in ^instance_ids and c.slug == ^old_slug
+      )
+      |> Repo.update_all(
+        set: [
+          name: column.name,
+          slug: column.slug,
+          type: column.type,
+          is_constant: column.is_constant,
+          required: column.required,
+          config: column.config
+        ]
+      )
+
+      if slug_changed? do
+        Enum.each(instance_ids, fn instance_id ->
+          migrate_cells_key(instance_id, old_slug, column.slug)
+        end)
+      end
+
+      if type_changed? do
+        Enum.each(instance_ids, fn instance_id ->
+          reset_cells_for_column(instance_id, column.slug)
+        end)
+      end
+    end)
+  end
+
+  # Syncs a row creation to non-detached inherited instances.
+  defp sync_row_to_children(%Block{} = parent_block, %TableRow{} = row, :create) do
+    with_inheriting_instances(parent_block, fn instance_ids ->
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+      row_entries =
+        Enum.map(instance_ids, fn instance_id ->
+          %{
+            name: row.name,
+            slug: row.slug,
+            position: row.position,
+            cells: row.cells,
+            block_id: instance_id,
+            inserted_at: now,
+            updated_at: now
+          }
+        end)
+
+      Repo.insert_all(TableRow, row_entries)
+    end)
+  end
+
+  # Syncs a row deletion to non-detached inherited instances.
+  defp sync_row_to_children(parent_block_id, %TableRow{} = row, :delete) do
+    with_inheriting_instances(parent_block_id, fn instance_ids ->
+      from(r in TableRow,
+        where: r.block_id in ^instance_ids and r.slug == ^row.slug
+      )
+      |> Repo.delete_all()
+    end)
+  end
+
+  # Syncs a row rename to non-detached inherited instances.
+  # Does NOT overwrite cell values (children may have overridden them).
+  defp sync_row_to_children(parent_block_id, %TableRow{} = row, :update, old_slug) do
+    with_inheriting_instances(parent_block_id, fn instance_ids ->
+      from(r in TableRow,
+        where: r.block_id in ^instance_ids and r.slug == ^old_slug
+      )
+      |> Repo.update_all(set: [name: row.name, slug: row.slug])
+    end)
+  end
+
+  # Resolves non-detached instance block IDs and calls the function if any exist.
+  # Accepts either a %Block{} struct (avoids extra query) or a block_id integer.
+  defp with_inheriting_instances(%Block{} = parent_block, fun) do
+    if parent_block.scope == "children" do
+      do_with_inheriting_instances(parent_block.id, fun)
+    end
+
+    :ok
+  end
+
+  defp with_inheriting_instances(parent_block_id, fun) when is_integer(parent_block_id) do
+    parent_block = Repo.get(Block, parent_block_id)
+
+    if parent_block && parent_block.scope == "children" do
+      do_with_inheriting_instances(parent_block_id, fun)
+    end
+
+    :ok
+  end
+
+  defp do_with_inheriting_instances(parent_block_id, fun) do
+    instance_ids =
+      from(b in Block,
+        where:
+          b.inherited_from_block_id == ^parent_block_id and
+            b.detached == false and
+            is_nil(b.deleted_at),
+        select: b.id
+      )
+      |> Repo.all()
+
+    if instance_ids != [] do
+      fun.(instance_ids)
+    end
   end
 
   # =============================================================================
@@ -405,7 +613,6 @@ defmodule Storyarn.Sheets.TableCrud do
   end
 
   # Migrates JSONB cell keys when a column is renamed.
-  # Called within Multi.run (already in a transaction), so updates directly.
   defp migrate_cells_key(block_id, old_slug, new_slug) do
     rows = Repo.all(from(r in TableRow, where: r.block_id == ^block_id))
 
@@ -422,7 +629,6 @@ defmodule Storyarn.Sheets.TableCrud do
   end
 
   # Resets cell values to nil for a specific column across all rows.
-  # Called within Multi.run (already in a transaction), so updates directly.
   defp reset_cells_for_column(block_id, column_slug) do
     rows = Repo.all(from(r in TableRow, where: r.block_id == ^block_id))
 

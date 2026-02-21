@@ -136,6 +136,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
             <.table_block
               block={@block}
               can_edit={@can_edit}
+              schema_locked={@is_inherited && !@block.detached}
               columns={@table_data[@block.id][:columns] || []}
               rows={@table_data[@block.id][:rows] || []}
               target={@target}

@@ -10,7 +10,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Sheets.{Block, BlockCrud, EntityReference, Sheet}
+  alias Storyarn.Sheets.{Block, BlockCrud, EntityReference, Sheet, TableColumn, TableRow}
 
   # =============================================================================
   # Resolution
@@ -104,6 +104,12 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         {:ok, 0}
       else
         {count, _} = Repo.insert_all(Block, entries)
+
+        # Copy table structure (columns + rows) for table-type parent blocks
+        if parent_block.type == "table" do
+          copy_table_structure_to_instances(parent_block)
+        end
+
         {:ok, count}
       end
     end
@@ -189,10 +195,21 @@ defmodule Storyarn.Sheets.PropertyInheritance do
             Map.put(updates, :variable_name, nil)
           end
 
-        block
-        |> Ecto.Changeset.change(updates)
-        |> BlockCrud.ensure_unique_variable_name_public(block.sheet_id, block.id)
-        |> Repo.update()
+        result =
+          block
+          |> Ecto.Changeset.change(updates)
+          |> BlockCrud.ensure_unique_variable_name_public(block.sheet_id, block.id)
+          |> Repo.update()
+
+        # For table blocks, reset table structure from source
+        case result do
+          {:ok, reattached} when reattached.type == "table" ->
+            reset_table_structure_from_source(reattached.id, source.id)
+            result
+
+          _ ->
+            result
+        end
     end
   end
 
@@ -589,6 +606,12 @@ defmodule Storyarn.Sheets.PropertyInheritance do
       end)
 
     {count, _} = Repo.insert_all(Block, entries)
+
+    # Copy table structure for any table-type parent blocks
+    inheritable_blocks
+    |> Enum.filter(&(&1.type == "table"))
+    |> Enum.each(&copy_table_structure_to_instances/1)
+
     {:ok, count}
   end
 
@@ -624,5 +647,90 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   defp resolve_unique_variable(base_name, taken_names) do
     unique = BlockCrud.find_unique_variable_name(base_name, taken_names)
     {unique, MapSet.put(taken_names, unique)}
+  end
+
+  # =============================================================================
+  # Table Structure Inheritance
+  # =============================================================================
+
+  # Copies table columns and rows from a parent block to all its non-detached instances
+  # that don't already have columns (idempotent).
+  defp copy_table_structure_to_instances(%Block{type: "table"} = parent_block) do
+    {source_columns, source_rows} = load_table_structure(parent_block.id)
+    instances = list_non_detached_instances(parent_block.id)
+
+    for instance <- instances do
+      existing_count =
+        from(c in TableColumn, where: c.block_id == ^instance.id, select: count())
+        |> Repo.one()
+
+      if existing_count == 0 do
+        insert_table_structure(instance.id, source_columns, source_rows)
+      end
+    end
+
+    :ok
+  end
+
+  defp copy_table_structure_to_instances(_), do: :ok
+
+  # Resets table structure on an instance block to match the source block.
+  defp reset_table_structure_from_source(instance_block_id, source_block_id) do
+    Repo.delete_all(from(c in TableColumn, where: c.block_id == ^instance_block_id))
+    Repo.delete_all(from(r in TableRow, where: r.block_id == ^instance_block_id))
+
+    {source_columns, source_rows} = load_table_structure(source_block_id)
+    insert_table_structure(instance_block_id, source_columns, source_rows)
+  end
+
+  defp load_table_structure(block_id) do
+    columns =
+      from(c in TableColumn, where: c.block_id == ^block_id, order_by: c.position)
+      |> Repo.all()
+
+    rows =
+      from(r in TableRow, where: r.block_id == ^block_id, order_by: r.position)
+      |> Repo.all()
+
+    {columns, rows}
+  end
+
+  defp insert_table_structure(target_block_id, source_columns, source_rows) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    col_entries =
+      Enum.map(source_columns, fn col ->
+        %{
+          name: col.name,
+          slug: col.slug,
+          type: col.type,
+          is_constant: col.is_constant,
+          required: col.required,
+          position: col.position,
+          config: col.config,
+          block_id: target_block_id,
+          inserted_at: now,
+          updated_at: now
+        }
+      end)
+
+    if col_entries != [], do: Repo.insert_all(TableColumn, col_entries)
+
+    row_entries =
+      Enum.map(source_rows, fn row ->
+        %{
+          name: row.name,
+          slug: row.slug,
+          position: row.position,
+          cells: row.cells,
+          block_id: target_block_id,
+          inserted_at: now,
+          updated_at: now
+        }
+      end)
+
+    if row_entries != [], do: Repo.insert_all(TableRow, row_entries)
+
+    :ok
   end
 end
