@@ -54,6 +54,7 @@ import { StoryPlayer } from "./hooks/story_player";
 import { TableCellCheckbox } from "./hooks/table_cell_checkbox";
 import { TableCellSelect } from "./hooks/table_cell_select";
 import { TableColumnDropdown } from "./hooks/table_column_dropdown";
+import { TableColumnResize } from "./hooks/table_column_resize";
 import { TableRowMenu } from "./hooks/table_row_menu";
 import { TableRowSortable } from "./hooks/table_row_sortable";
 import { TiptapEditor } from "./hooks/tiptap_editor";
@@ -105,6 +106,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     TableCellCheckbox,
     TableCellSelect,
     TableColumnDropdown,
+    TableColumnResize,
     TableRowMenu,
     TableRowSortable,
     ToolbarPopover,

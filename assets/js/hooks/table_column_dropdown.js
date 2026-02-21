@@ -8,11 +8,16 @@
  * Re-pushes all events from the cloned template since elements
  * are outside the LiveView DOM tree.
  *
+ * Supports Notion-style sub-panels (main → type, main → options)
+ * via show/hide with data-active attribute + CSS animation.
+ *
  * Expected DOM structure:
  *   <div phx-hook="TableColumnDropdown" id="..." data-phx-target="#content-tab">
  *     <div data-role="trigger">icon + name + chevron</div>
  *     <template data-role="popover-template">
- *       ... column dropdown menu content ...
+ *       <div class="col-dropdown-panel" data-panel="main" data-active>...</div>
+ *       <div class="col-dropdown-panel" data-panel="type">...</div>
+ *       <div class="col-dropdown-panel" data-panel="options">...</div>
  *     </template>
  *   </div>
  */
@@ -25,10 +30,14 @@ export const TableColumnDropdown = {
 
   updated() {
     const wasOpen = this._fp?.isOpen;
+    const prevPanel = this._currentPanel || "main";
     this._destroyPopover();
     this.setup();
     if (wasOpen && this._fp) {
       this._fp.open();
+      if (prevPanel !== "main") {
+        this._showPanel(prevPanel);
+      }
     }
   },
 
@@ -36,19 +45,26 @@ export const TableColumnDropdown = {
     this.trigger = this.el.querySelector('[data-role="trigger"]');
     this.template = this.el.querySelector('[data-role="popover-template"]');
     this._target = this.el.dataset.phxTarget || null;
+    this._currentPanel = "main";
 
     if (!this.trigger || !this.template) return;
 
-    // Create floating popover
+    // Create floating popover with onClose to reset panel
     this._fp = createFloatingPopover(this.trigger, {
-      class: "bg-base-200 border border-base-content/20 rounded-lg shadow-lg p-3",
-      width: "14rem",
+      class: "bg-base-200 border border-base-content/20 rounded-lg shadow-lg p-2",
+      width: "12rem",
       placement: "bottom-end",
+      onClose: () => this._showPanel("main"),
     });
 
-    // Clone template content
-    const content = this.template.content.cloneNode(true);
-    this._fp.el.appendChild(content);
+    // Clone children from the hidden source div into the popover.
+    // We use a hidden <div> (not <template>) so LiveView can patch its
+    // content on re-renders, keeping the dropdown state fresh.
+    const fragment = document.createDocumentFragment();
+    for (const child of this.template.children) {
+      fragment.appendChild(child.cloneNode(true));
+    }
+    this._fp.el.appendChild(fragment);
 
     // Trigger click toggles
     this._onTriggerClick = (e) => {
@@ -63,6 +79,20 @@ export const TableColumnDropdown = {
 
     // Re-push events from cloned buttons
     this._onPopoverClick = (e) => {
+      // Handle panel navigation
+      const navBtn = e.target.closest("[data-navigate]");
+      if (navBtn) {
+        this._showPanel(navBtn.dataset.navigate);
+        return;
+      }
+
+      const backBtn = e.target.closest("[data-back]");
+      if (backBtn) {
+        this._showPanel("main");
+        return;
+      }
+
+      // Handle regular events
       const btn = e.target.closest("[data-event]");
       if (!btn || btn.disabled) return;
 
@@ -79,15 +109,6 @@ export const TableColumnDropdown = {
       }
 
       this._push(event, payload);
-
-      // If the button also needs to show a modal, do it after close
-      const modalId = btn.dataset.modalId;
-      if (modalId) {
-        this._fp.close();
-        const dialog = document.getElementById(modalId);
-        if (dialog) dialog.showModal();
-        return;
-      }
 
       // Close dropdown for most actions, but not for toggles or type changes
       if (btn.dataset.closeOnClick !== "false") {
@@ -162,6 +183,22 @@ export const TableColumnDropdown = {
     }
   },
 
+  /**
+   * Show a panel by name, hide all others.
+   * @param {string} panelName - "main", "type", or "options"
+   */
+  _showPanel(panelName) {
+    if (!this._fp) return;
+    this._currentPanel = panelName;
+    this._fp.el.querySelectorAll("[data-panel]").forEach((panel) => {
+      if (panel.dataset.panel === panelName) {
+        panel.setAttribute("data-active", "");
+      } else {
+        panel.removeAttribute("data-active");
+      }
+    });
+  },
+
   /** Push event to the LiveComponent target (or fallback to LiveView). */
   _push(event, payload) {
     if (this._target) {
@@ -177,6 +214,7 @@ export const TableColumnDropdown = {
     }
     this._fp?.destroy();
     this._fp = null;
+    this._currentPanel = "main";
   },
 
   destroyed() {

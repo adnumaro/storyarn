@@ -105,7 +105,6 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       |> assign_new(:configuring_block, fn -> nil end)
       |> assign_new(:block_scope, fn -> "self" end)
       |> assign_new(:propagation_block, fn -> nil end)
-      |> assign_new(:table_pending, fn -> nil end)
 
     # Split blocks into inherited and own groups using optimized batch query
     {inherited_groups, own_blocks} =
@@ -273,6 +272,12 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   # Table Block Events
   # ===========================================================================
 
+  def handle_event("resize_table_column", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_resize_column(params, socket)
+    end)
+  end
+
   def handle_event("update_table_cell", params, socket) do
     with_authorization(socket, fn socket ->
       TableHandlers.handle_update_cell(params, socket, table_helpers())
@@ -327,15 +332,9 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     end)
   end
 
-  def handle_event("prepare_delete_column", params, socket) do
+  def handle_event("delete_table_column", params, socket) do
     with_authorization(socket, fn socket ->
-      TableHandlers.handle_prepare_delete_column(params, socket, table_helpers())
-    end)
-  end
-
-  def handle_event("execute_delete_column", _params, socket) do
-    with_authorization(socket, fn socket ->
-      TableHandlers.handle_execute_delete_column(socket, table_helpers())
+      TableHandlers.handle_delete_column(params, socket, table_helpers())
     end)
   end
 
@@ -351,15 +350,9 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     end)
   end
 
-  def handle_event("prepare_delete_row", params, socket) do
+  def handle_event("delete_table_row", params, socket) do
     with_authorization(socket, fn socket ->
-      TableHandlers.handle_prepare_delete_row(params, socket, table_helpers())
-    end)
-  end
-
-  def handle_event("execute_delete_row", _params, socket) do
-    with_authorization(socket, fn socket ->
-      TableHandlers.handle_execute_delete_row(socket, table_helpers())
+      TableHandlers.handle_delete_row(params, socket, table_helpers())
     end)
   end
 
@@ -391,9 +384,6 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     {:noreply, socket}
   end
 
-  def handle_event("cancel_table_confirm", _params, socket) do
-    TableHandlers.handle_cancel_confirm(socket)
-  end
 
   def handle_event("add_table_column_option_keydown", %{"key" => "Enter"} = params, socket) do
     with_authorization(socket, fn socket ->

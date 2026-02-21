@@ -88,13 +88,6 @@ export const TableRowMenu = {
 
       // Close the menu
       this._fp.close();
-
-      // If the button also needs to show a modal
-      const modalId = btn.dataset.modalId;
-      if (modalId) {
-        const dialog = document.getElementById(modalId);
-        if (dialog) dialog.showModal();
-      }
     };
     this._fp.el.addEventListener("click", this._onPopoverClick);
   },

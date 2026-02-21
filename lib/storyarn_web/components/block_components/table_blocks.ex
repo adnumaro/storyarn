@@ -4,10 +4,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.Components.CoreComponents,
-    only: [block_label: 1, icon: 1, confirm_modal: 1]
-
-  alias Phoenix.LiveView.JS
+  import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
 
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
@@ -22,6 +19,16 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
     row_count = length(assigns.rows)
     col_count = length(assigns.columns)
 
+    summary =
+      dngettext(
+        "sheets",
+        "%{rows} row, %{columns} column",
+        "%{rows} rows, %{columns} columns",
+        row_count,
+        rows: row_count,
+        columns: col_count
+      )
+
     assigns =
       assigns
       |> assign(:label, label)
@@ -29,60 +36,64 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
       |> assign(:is_constant, is_constant)
       |> assign(:row_count, row_count)
       |> assign(:col_count, col_count)
+      |> assign(:summary, summary)
 
     ~H"""
     <div class="py-1">
-      <.block_label label={@label} is_constant={@is_constant} />
+      <%!-- Unified header: chevron + table icon + label (+ summary when collapsed) --%>
+      <.table_header
+        block={@block}
+        label={@label}
+        is_constant={@is_constant}
+        collapsed={@collapsed}
+        can_edit={@can_edit}
+        summary={@summary}
+        target={@target}
+      />
 
-      <%= if @collapsed && @can_edit do %>
-        <.collapsed_table
-          block={@block}
-          row_count={@row_count}
-          col_count={@col_count}
-          target={@target}
-        />
-      <% else %>
-        <.expanded_table
-          block={@block}
-          columns={@columns}
-          rows={@rows}
-          can_edit={@can_edit}
-          target={@target}
-        />
-      <% end %>
+      <%!-- Table grid (only when expanded) --%>
+      <.expanded_table
+        :if={!@collapsed || !@can_edit}
+        block={@block}
+        columns={@columns}
+        rows={@rows}
+        can_edit={@can_edit}
+        target={@target}
+      />
     </div>
     """
   end
 
   # =============================================================================
-  # Collapsed View
+  # Unified Table Header
   # =============================================================================
 
-  defp collapsed_table(assigns) do
-    summary =
-      dngettext(
-        "sheets",
-        "%{rows} row, %{columns} column",
-        "%{rows} rows, %{columns} columns",
-        assigns.row_count,
-        rows: assigns.row_count,
-        columns: assigns.col_count
-      )
-
-    assigns = assign(assigns, :summary, summary)
-
+  defp table_header(assigns) do
     ~H"""
     <button
+      :if={@can_edit}
       type="button"
-      class="flex items-center gap-2 py-2 px-3 rounded-lg border border-base-300 bg-base-200/30 hover:bg-base-200/60 w-full text-left text-sm transition-colors"
+      class="flex items-center gap-1.5 text-sm mb-1 transition-colors group/header"
       phx-click="toggle_table_collapse"
       phx-value-block-id={@block.id}
       phx-target={@target}
     >
-      <.icon name="table-2" class="size-4 text-base-content/60" />
-      <span class="text-base-content/60">({@summary})</span>
-      <.icon name="chevron-right" class="size-3 text-base-content/40 ml-auto" />
+      <.icon
+        name={if @collapsed, do: "chevron-right", else: "chevron-down"}
+        class="size-3 text-base-content/40 group-hover/header:text-base-content/70"
+      />
+      <.icon name="table-2" class="size-3.5 text-base-content/50" />
+      <span :if={@is_constant} class="text-error tooltip tooltip-right" data-tip={gettext("Constant")}>
+        <.icon name="lock" class="size-3" />
+      </span>
+      <span class="text-base-content/70">{@label}</span>
+      <span :if={@collapsed} class="text-base-content/40">({@summary})</span>
     </button>
+    <%!-- Read-only: no collapse, just label --%>
+    <label :if={!@can_edit && @label != ""} class="text-sm text-base-content/70 mb-1 flex items-center gap-1.5">
+      <.icon name="table-2" class="size-3.5 text-base-content/50" />
+      <span>{@label}</span>
+    </label>
     """
   end
 
@@ -92,204 +103,185 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
 
   defp expanded_table(assigns) do
     ~H"""
-    <div>
-      <%!-- Collapse toggle --%>
-      <button
-        :if={@can_edit}
-        type="button"
-        class="flex items-center gap-1 text-xs text-base-content/40 hover:text-base-content/70 mb-1 transition-colors"
-        phx-click="toggle_table_collapse"
-        phx-value-block-id={@block.id}
-        phx-target={@target}
-      >
-        <.icon name="chevron-down" class="size-3" />
-        <span>{dgettext("sheets", "Collapse")}</span>
-      </button>
+    <div class="group/table">
 
       <%!-- Table grid --%>
-      <div class="overflow-x-clip border border-base-content/20 rounded-lg">
-        <table class="table table-sm w-full [&_:is(th,td)]:border-base-content/20 [&_:is(th,td)]:border-r [&_:is(th,td):last-child]:border-r-0">
-          <thead>
-            <tr class="bg-base-content/5 border-b border-base-content/20">
-              <%!-- Row label header (wider when editable for drag handle) --%>
-              <th class={["font-medium text-base-content/60", (@can_edit && "w-40") || "w-32"]}></th>
+      <div class="relative">
+        <div class="border border-base-content/20 rounded-lg overflow-x-auto">
+          <table
+            class="table table-sm table-fixed w-full [&_:is(th,td)]:border-base-content/20 [&_:is(th,td)]:border-r [&_:is(th,td):last-child]:border-r-0"
+            id={@can_edit && "table-resize-#{@block.id}"}
+            phx-hook={@can_edit && "TableColumnResize"}
+            data-phx-target={@can_edit && @target}
+          >
+            <colgroup>
+              <col style="width: 8rem;" />
+              <col
+                :for={col <- @columns}
+                data-col-id={col.id}
+                style={"width: #{column_width(col)}px;"}
+              />
+            </colgroup>
+            <thead>
+              <tr class="bg-base-content/5 border-b border-base-content/20 [&>th:first-child]:rounded-tl-lg [&>th:last-child]:rounded-tr-lg">
+                <%!-- Row label header --%>
+                <th class="font-medium text-base-content/60 sticky left-0 z-10 bg-base-200"></th>
 
-              <%!-- Column headers --%>
-              <th :for={col <- @columns} class="font-medium text-base-content/70">
-                <%!-- Editable: floating dropdown with management options --%>
-                <div
-                  :if={@can_edit}
-                  phx-hook="TableColumnDropdown"
-                  id={"col-dropdown-#{col.id}"}
-                  data-phx-target={@target}
-                >
-                  <button
-                    type="button"
-                    data-role="trigger"
-                    class="flex items-center gap-1.5 cursor-pointer hover:text-base-content"
+                <%!-- Column headers --%>
+                <th :for={col <- @columns} class="font-medium text-base-content/70 relative overflow-hidden">
+                  <%!-- Editable: floating dropdown with management options --%>
+                  <div
+                    :if={@can_edit}
+                    phx-hook="TableColumnDropdown"
+                    id={"col-dropdown-#{col.id}"}
+                    data-phx-target={@target}
+                    data-col-state={column_state_hash(col)}
+                    class="min-w-0"
                   >
-                    <.icon name={type_icon(col.type)} class="size-3.5 opacity-50" />
-                    {col.name}
-                    <span :if={col.required} class="text-error text-xs">*</span>
-                    <.icon name="chevron-down" class="size-3 opacity-40" />
-                  </button>
-                  <.column_dropdown_template
+                    <button
+                      type="button"
+                      data-role="trigger"
+                      class="flex flex-col items-start cursor-pointer hover:text-base-content w-full min-w-0"
+                    >
+                      <span class="flex items-center gap-1.5 max-w-full">
+                        <.icon name={type_icon(col.type)} class="size-3.5 opacity-50 shrink-0" />
+                        <span class="truncate">{col.name}</span>
+                        <span :if={col.required} class="text-error text-xs shrink-0">*</span>
+                        <.icon name="chevron-down" class="size-3 opacity-40 shrink-0" />
+                      </span>
+                      <span class="text-[10px] font-normal text-base-content/30 truncate max-w-full">{col.slug}</span>
+                    </button>
+                    <.column_dropdown_template
+                      column={col}
+                      columns={@columns}
+                      block={@block}
+                      target={@target}
+                    />
+                  </div>
+                  <%!-- Read-only: plain text --%>
+                  <div :if={!@can_edit} class="min-w-0">
+                    <span class="flex items-center gap-1.5 max-w-full">
+                      <.icon name={type_icon(col.type)} class="size-3.5 opacity-50 shrink-0" />
+                      <span class="truncate">{col.name}</span>
+                      <span :if={col.required} class="text-error text-xs shrink-0">*</span>
+                    </span>
+                    <span class="text-[10px] font-normal text-base-content/30 truncate max-w-full">{col.slug}</span>
+                  </div>
+                  <%!-- Resize handle (edit mode only) --%>
+                  <div
+                    :if={@can_edit}
+                    data-resize-handle
+                    data-col-id={col.id}
+                    class="absolute top-0 -right-px w-1 h-full cursor-col-resize z-10 hover:bg-primary/40 transition-colors"
+                  />
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              id={"table-rows-#{@block.id}"}
+              phx-hook={(@can_edit && "TableRowSortable") || nil}
+              data-block-id={@block.id}
+              data-phx-target={(@can_edit && @target) || nil}
+            >
+              <tr :for={row <- @rows} data-row-id={row.id} class="group/row">
+                <%!-- Row label cell (with handle positioned outside) --%>
+                <td class="relative sticky left-0 z-10 bg-base-100 font-medium text-base-content/60 text-sm focus-within:border-primary focus-within:border-2">
+                  <%!-- Row handle: grip (drag) + menu (delete) — on hover, over the left border --%>
+                  <div
+                    :if={@can_edit}
+                    phx-hook="TableRowMenu"
+                    id={"row-menu-#{row.id}"}
+                    data-phx-target={@target}
+                    class="absolute right-full top-0 h-full flex items-center pr-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity z-20"
+                  >
+                    <button
+                      data-role="trigger"
+                      type="button"
+                      class="cursor-grab row-drag-handle p-0.5 rounded hover:bg-base-content/10"
+                    >
+                      <.icon name="grip-vertical" class="size-3.5 text-base-content/40" />
+                    </button>
+                    <template data-role="popover-template">
+                      <ul class="menu p-2">
+                        <li>
+                          <button
+                            disabled={length(@rows) <= 1}
+                            data-event="delete_table_row"
+                            data-params={Jason.encode!(%{"row-id" => row.id})}
+                            class="text-error disabled:opacity-30"
+                          >
+                            <.icon name="trash-2" class="size-3" />
+                            {dgettext("sheets", "Delete")}
+                          </button>
+                        </li>
+                      </ul>
+                    </template>
+                  </div>
+
+                  <label :if={@can_edit} class="block cursor-text">
+                    <input
+                      type="text"
+                      value={row.name}
+                      class="w-full px-1 py-0.5 text-sm font-medium bg-transparent border-0 outline-none focus:outline-none"
+                      phx-blur="rename_table_row"
+                      phx-keydown="rename_table_row_keydown"
+                      phx-key="Enter"
+                      phx-value-row-id={row.id}
+                      phx-target={@target}
+                    />
+                    <span class="text-[10px] text-base-content/30 px-1">{row.slug}</span>
+                  </label>
+                  <div :if={!@can_edit}>
+                    <span>{row.name}</span>
+                    <div class="text-[10px] text-base-content/30">{row.slug}</div>
+                  </div>
+                </td>
+
+                <%!-- Data cells — relative + h-1 so absolute-inset children fill the cell --%>
+                <td
+                  :for={col <- @columns}
+                  class="!p-0 relative h-1 focus-within:border-primary focus-within:border-2"
+                >
+                  <.table_cell
                     column={col}
-                    columns={@columns}
-                    block={@block}
+                    row={row}
+                    value={row.cells[col.slug]}
+                    can_edit={@can_edit}
                     target={@target}
                   />
-                </div>
-                <%!-- Read-only: plain text --%>
-                <span :if={!@can_edit} class="flex items-center gap-1.5">
-                  <.icon name={type_icon(col.type)} class="size-3.5 opacity-50" />
-                  {col.name}
-                  <span :if={col.required} class="text-error text-xs">*</span>
-                </span>
-              </th>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-              <%!-- Add column button --%>
-              <th :if={@can_edit} class="w-10">
-                <button
-                  type="button"
-                  phx-click="add_table_column"
-                  phx-value-block-id={@block.id}
-                  phx-target={@target}
-                  class="btn btn-ghost btn-xs btn-circle"
-                >
-                  <.icon name="plus" class="size-3" />
-                </button>
-              </th>
-            </tr>
-          </thead>
-          <tbody
-            id={"table-rows-#{@block.id}"}
-            phx-hook={(@can_edit && "TableRowSortable") || nil}
-            data-block-id={@block.id}
-            data-phx-target={(@can_edit && @target) || nil}
-          >
-            <tr :for={row <- @rows} data-row-id={row.id} class="group/row">
-              <%!-- Row label cell --%>
-              <td class="sticky left-0 z-10 bg-base-100 font-medium text-base-content/60 text-sm focus-within:border-primary focus-within:border-2">
-                <div :if={@can_edit} class="flex items-center gap-1">
-                  <.icon
-                    name="grip-vertical"
-                    class="size-3 opacity-30 cursor-grab row-drag-handle shrink-0"
-                  />
-                  <input
-                    type="text"
-                    value={row.name}
-                    class="input input-ghost input-sm w-full px-1 font-medium focus:outline-none focus:shadow-none focus:border-transparent"
-                    phx-blur="rename_table_row"
-                    phx-keydown="rename_table_row_keydown"
-                    phx-key="Enter"
-                    phx-value-row-id={row.id}
-                    phx-target={@target}
-                  />
-                </div>
-                <span :if={!@can_edit}>{row.name}</span>
-              </td>
-
-              <%!-- Data cells --%>
-              <td
-                :for={col <- @columns}
-                class="!p-0 focus-within:border-primary focus-within:border-2"
-              >
-                <.table_cell
-                  column={col}
-                  row={row}
-                  value={row.cells[col.slug]}
-                  can_edit={@can_edit}
-                  target={@target}
-                />
-              </td>
-
-              <%!-- Row actions (delete) --%>
-              <td :if={@can_edit} class="w-8">
-                <div
-                  phx-hook="TableRowMenu"
-                  id={"row-menu-#{row.id}"}
-                  data-phx-target={@target}
-                >
-                  <button
-                    data-role="trigger"
-                    type="button"
-                    class="btn btn-ghost btn-xs opacity-0 group-hover/row:opacity-100"
-                  >
-                    <.icon name="more-vertical" class="size-3" />
-                  </button>
-                  <template data-role="popover-template">
-                    <ul class="menu p-2">
-                      <li>
-                        <button
-                          disabled={length(@rows) <= 1}
-                          data-event="prepare_delete_row"
-                          data-params={Jason.encode!(%{"row-id" => row.id})}
-                          data-modal-id={"table-delete-row-#{@block.id}"}
-                          class="text-error disabled:opacity-30"
-                        >
-                          <.icon name="trash-2" class="size-3" />
-                          {dgettext("sheets", "Delete")}
-                        </button>
-                      </li>
-                    </ul>
-                  </template>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <%!-- Add column bar — absolute, outside right edge --%>
+        <button
+          :if={@can_edit}
+          type="button"
+          phx-click="add_table_column"
+          phx-value-block-id={@block.id}
+          phx-target={@target}
+          class="absolute left-full top-0 h-full flex items-center justify-center w-6 ml-2 rounded-lg border border-base-content/10 bg-base-content/[0.02] hover:bg-base-content/5 text-base-content/30 hover:text-base-content/50 transition-all cursor-pointer opacity-0 group-hover/table:opacity-100 tooltip tooltip-right"
+          data-tip={dgettext("sheets", "Add column")}
+        >
+          <.icon name="plus" class="size-3.5" />
+        </button>
       </div>
 
-      <%!-- Add row button --%>
+      <%!-- Add row bar — visible on hover near the bottom of the table --%>
       <button
         :if={@can_edit}
         type="button"
         phx-click="add_table_row"
         phx-value-block-id={@block.id}
         phx-target={@target}
-        class="btn btn-ghost btn-xs gap-1 mt-1"
+        class="flex items-center justify-center w-full h-6 mt-2 rounded-lg border border-base-content/10 bg-base-content/[0.02] hover:bg-base-content/5 text-base-content/30 hover:text-base-content/50 transition-all cursor-pointer opacity-0 group-hover/table:opacity-100 tooltip"
+        data-tip={dgettext("sheets", "Add row")}
       >
-        <.icon name="plus" class="size-3" />
-        <span>{dgettext("sheets", "+ New")}</span>
+        <.icon name="plus" class="size-3.5" />
       </button>
 
-      <%!-- Confirmation modals --%>
-      <.confirm_modal
-        :if={@can_edit}
-        id={"table-delete-col-#{@block.id}"}
-        title={dgettext("sheets", "Delete column?")}
-        message={
-          dgettext(
-            "sheets",
-            "This will remove the column and all its data. This cannot be undone."
-          )
-        }
-        confirm_text={dgettext("sheets", "Delete")}
-        confirm_variant="error"
-        icon="trash-2"
-        icon_class="text-error"
-        on_confirm={JS.push("execute_delete_column", target: @target)}
-        on_cancel={JS.push("cancel_table_confirm", target: @target)}
-      />
-
-      <.confirm_modal
-        :if={@can_edit}
-        id={"table-delete-row-#{@block.id}"}
-        title={dgettext("sheets", "Delete row?")}
-        message={
-          dgettext(
-            "sheets",
-            "This will remove the row and all its cell data. This cannot be undone."
-          )
-        }
-        confirm_text={dgettext("sheets", "Delete")}
-        confirm_variant="error"
-        icon="trash-2"
-        icon_class="text-error"
-        on_confirm={JS.push("execute_delete_row", target: @target)}
-        on_cancel={JS.push("cancel_table_confirm", target: @target)}
-      />
     </div>
     """
   end
@@ -299,163 +291,189 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
   # =============================================================================
 
   defp column_dropdown_template(assigns) do
-    ~H"""
-    <template data-role="popover-template">
-      <ul class="menu p-0">
-        <%!-- Rename input --%>
-        <li class="mb-2">
-          <input
-            type="text"
-            data-role="rename-input"
-            data-rename-event="rename_table_column"
-            data-column-id={@column.id}
-            value={@column.name}
-            class="input input-ghost input-sm w-full h-full rounded-none focus:outline-none focus:shadow-none focus:border-transparent"
-          />
-        </li>
-
-        <%!-- Constant toggle --%>
-        <li class="mb-1">
-          <button
-            type="button"
-            class={@column.is_constant && "active"}
-            data-event="toggle_table_column_constant"
-            data-params={Jason.encode!(%{"column-id" => @column.id})}
-            data-close-on-click="false"
-          >
-            <.icon name="lock" class="size-3.5 opacity-60" />
-            <div class="flex-1">
-              <div class="flex items-center justify-between">
-                <span class="text-sm">{dgettext("sheets", "Constant")}</span>
-                <.icon
-                  :if={@column.is_constant}
-                  name="check"
-                  class="size-3.5 opacity-60"
-                />
-              </div>
-              <span class="text-xs text-base-content/50 block">
-                {dgettext("sheets", "Won't generate a variable")}
-              </span>
-            </div>
-          </button>
-        </li>
-
-        <%!-- Required toggle --%>
-        <li class="mb-1">
-          <button
-            type="button"
-            class={@column.required && "active"}
-            data-event="toggle_table_column_required"
-            data-params={Jason.encode!(%{"column-id" => @column.id})}
-            data-close-on-click="false"
-          >
-            <.icon name="asterisk" class="size-3.5 opacity-60" />
-            <div class="flex-1">
-              <div class="flex items-center justify-between">
-                <span class="text-sm">{dgettext("sheets", "Required")}</span>
-                <.icon
-                  :if={@column.required}
-                  name="check"
-                  class="size-3.5 opacity-60"
-                />
-              </div>
-              <span class="text-xs text-base-content/50 block">
-                {dgettext("sheets", "Value cannot be empty")}
-              </span>
-            </div>
-          </button>
-        </li>
-
-        <%!-- Type selection --%>
-        <li class="menu-title text-xs">{dgettext("sheets", "Type")}</li>
-        <li :for={type <- ~w(number text boolean select multi_select date)}>
-          <button
-            type="button"
-            class={@column.type == type && "active"}
-            data-event={if @column.type != type, do: "change_table_column_type"}
-            data-params={
-              if @column.type != type,
-                do: Jason.encode!(%{"column-id" => @column.id, "new-type" => type})
-            }
-            data-close-on-click="false"
-          >
-            <.icon name={type_icon(type)} class="size-3.5 opacity-60" />
-            <span class="text-sm">{type_label(type)}</span>
-            <.icon :if={@column.type == type} name="check" class="size-3.5 ml-auto opacity-60" />
-          </button>
-        </li>
-
-        <%!-- Options management for select/multi_select --%>
-        <.column_options_template
-          :if={@column.type in ["select", "multi_select"]}
-          column={@column}
-          target={@target}
-        />
-
-        <%!-- Delete column --%>
-        <li class="mt-2 border-t border-base-300 pt-2">
-          <button
-            disabled={length(@columns) <= 1}
-            data-event="prepare_delete_column"
-            data-params={Jason.encode!(%{"column-id" => @column.id})}
-            data-modal-id={"table-delete-col-#{@block.id}"}
-            class="text-error disabled:opacity-30"
-          >
-            <.icon name="trash-2" class="size-3" />
-            {dgettext("sheets", "Delete column")}
-          </button>
-        </li>
-      </ul>
-    </template>
-    """
-  end
-
-  # =============================================================================
-  # Select Options Section (in column dropdown)
-  # =============================================================================
-
-  defp column_options_template(assigns) do
     options = (assigns.column.config || %{})["options"] || []
     assigns = assign(assigns, :options, options)
 
     ~H"""
-    <div class="mt-2 border-t border-base-300 pt-2">
-      <div class="text-xs font-medium text-base-content/50 mb-1 px-2">
-        {dgettext("sheets", "Options")}
-      </div>
-      <div
-        :for={{opt, idx} <- Enum.with_index(@options)}
-        class="flex items-center gap-1 mb-1 px-1"
-      >
-        <input
-          type="text"
-          data-role="option-input"
-          data-blur-event="update_table_column_option"
-          data-param-column-id={@column.id}
-          data-param-index={idx}
-          value={opt["value"]}
-          class="input input-bordered input-xs flex-1"
-        />
-        <button
-          type="button"
-          data-event="remove_table_column_option"
-          data-params={Jason.encode!(%{"column-id" => @column.id, "key" => opt["key"]})}
-          data-close-on-click="false"
-          class="btn btn-ghost btn-xs btn-circle"
-        >
-          <.icon name="x" class="size-3" />
-        </button>
-      </div>
-      <div class="px-1">
-        <input
-          type="text"
-          data-role="add-option-input"
-          data-keydown-event="add_table_column_option_keydown"
-          data-column-id={@column.id}
-          placeholder={dgettext("sheets", "+ Add option")}
-          class="input input-bordered input-xs w-full"
-        />
-      </div>
+    <div data-role="popover-template" hidden>
+      <%!-- ========== Main Panel ========== --%>
+      <div class="col-dropdown-panel" data-panel="main" data-active>
+            <ul class="menu p-0">
+              <%!-- Rename input with type icon --%>
+              <li class="mb-2">
+                <div class="flex items-center gap-1.5 px-2">
+                  <.icon name={type_icon(@column.type)} class="size-3.5 opacity-50 shrink-0" />
+                  <input
+                    type="text"
+                    data-role="rename-input"
+                    data-rename-event="rename_table_column"
+                    data-column-id={@column.id}
+                    value={@column.name}
+                    class="input input-ghost input-sm w-full h-full rounded-none focus:outline-none focus:shadow-none focus:border-transparent px-0"
+                  />
+                </div>
+              </li>
+
+              <%!-- Constant toggle (compact single-line) --%>
+              <li>
+                <button
+                  type="button"
+                  data-event="toggle_table_column_constant"
+                  data-params={Jason.encode!(%{"column-id" => @column.id})}
+                  data-close-on-click="false"
+                >
+                  <.icon name="lock" class="size-3.5 opacity-60" />
+                  <span class="flex-1 text-sm">{dgettext("sheets", "Constant")}</span>
+                  <.icon
+                    :if={@column.is_constant}
+                    name="check"
+                    class="size-3.5 opacity-60"
+                  />
+                </button>
+              </li>
+
+              <%!-- Required toggle (compact single-line) --%>
+              <li>
+                <button
+                  type="button"
+                  data-event="toggle_table_column_required"
+                  data-params={Jason.encode!(%{"column-id" => @column.id})}
+                  data-close-on-click="false"
+                >
+                  <.icon name="asterisk" class="size-3.5 opacity-60" />
+                  <span class="flex-1 text-sm">{dgettext("sheets", "Required")}</span>
+                  <.icon
+                    :if={@column.required}
+                    name="check"
+                    class="size-3.5 opacity-60"
+                  />
+                </button>
+              </li>
+
+              <%!-- Separator --%>
+              <div class="my-1 border-t border-base-300"></div>
+
+              <%!-- Change type → slides to type panel --%>
+              <li>
+                <button type="button" data-navigate="type">
+                  <.icon name="arrow-left-right" class="size-3.5 opacity-60" />
+                  <span class="flex-1 text-sm">{dgettext("sheets", "Change type")}</span>
+                  <.icon name="chevron-right" class="size-3.5 opacity-40" />
+                </button>
+              </li>
+
+              <%!-- Options → slides to options panel (only for select types) --%>
+              <li :if={@column.type in ["select", "multi_select"]}>
+                <button type="button" data-navigate="options">
+                  <.icon name="settings" class="size-3.5 opacity-60" />
+                  <span class="flex-1 text-sm">{dgettext("sheets", "Options")}</span>
+                  <.icon name="chevron-right" class="size-3.5 opacity-40" />
+                </button>
+              </li>
+
+              <%!-- Separator + Delete --%>
+              <div class="my-1 border-t border-base-300"></div>
+
+              <li>
+                <button
+                  disabled={length(@columns) <= 1}
+                  data-event="delete_table_column"
+                  data-params={Jason.encode!(%{"column-id" => @column.id})}
+                  class="text-error disabled:opacity-30"
+                >
+                  <.icon name="trash-2" class="size-3.5" />
+                  <span class="text-sm">{dgettext("sheets", "Delete column")}</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <%!-- ========== Type Panel ========== --%>
+          <div class="col-dropdown-panel" data-panel="type">
+            <ul class="menu p-0">
+              <%!-- Back button header --%>
+              <li class="mb-1">
+                <button type="button" data-back class="text-xs font-medium opacity-70">
+                  <.icon name="arrow-left" class="size-3.5" />
+                  <span>{dgettext("sheets", "Change type")}</span>
+                </button>
+              </li>
+
+              <div class="border-t border-base-300 mb-1"></div>
+
+              <%!-- Type list --%>
+              <li :for={type <- ~w(number text boolean select multi_select date)}>
+                <button
+                  type="button"
+                  class={@column.type == type && "active"}
+                  data-event={if @column.type != type, do: "change_table_column_type"}
+                  data-params={
+                    if @column.type != type,
+                      do: Jason.encode!(%{"column-id" => @column.id, "new-type" => type})
+                  }
+                  data-close-on-click="false"
+                >
+                  <.icon name={type_icon(type)} class="size-3.5 opacity-60" />
+                  <span class="flex-1 text-sm">{type_label(type)}</span>
+                  <.icon
+                    :if={@column.type == type}
+                    name="check"
+                    class="size-3.5 opacity-60"
+                  />
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <%!-- ========== Options Panel ========== --%>
+          <div class="col-dropdown-panel" data-panel="options">
+            <ul class="menu p-0">
+              <%!-- Back button header --%>
+              <li class="mb-1">
+                <button type="button" data-back class="text-xs font-medium opacity-70">
+                  <.icon name="arrow-left" class="size-3.5" />
+                  <span>{dgettext("sheets", "Options")}</span>
+                </button>
+              </li>
+
+              <div class="border-t border-base-300 mb-1"></div>
+            </ul>
+
+            <%!-- Option inputs --%>
+            <div
+              :for={{opt, idx} <- Enum.with_index(@options)}
+              class="flex items-center gap-1 mb-1 px-1"
+            >
+              <input
+                type="text"
+                data-role="option-input"
+                data-blur-event="update_table_column_option"
+                data-param-column-id={@column.id}
+                data-param-index={idx}
+                value={opt["value"]}
+                class="input input-bordered input-xs flex-1"
+              />
+              <button
+                type="button"
+                data-event="remove_table_column_option"
+                data-params={Jason.encode!(%{"column-id" => @column.id, "key" => opt["key"]})}
+                data-close-on-click="false"
+                class="btn btn-ghost btn-xs btn-circle"
+              >
+                <.icon name="x" class="size-3" />
+              </button>
+            </div>
+            <div class="px-1">
+              <input
+                type="text"
+                data-role="add-option-input"
+                data-keydown-event="add_table_column_option_keydown"
+                data-column-id={@column.id}
+                placeholder={dgettext("sheets", "+ Add option")}
+                class="input input-bordered input-xs w-full"
+              />
+            </div>
+          </div>
     </div>
     """
   end
@@ -471,7 +489,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
         <input
           type="number"
           value={@value}
-          class="input input-ghost input-sm w-full h-full rounded-none focus:outline-none focus:shadow-none focus:border-transparent"
+          class="absolute inset-0 px-2 text-sm bg-transparent border-0 rounded-none outline-none focus:outline-none"
           phx-blur="update_table_cell"
           phx-value-row-id={@row.id}
           phx-value-column-slug={@column.slug}
@@ -481,14 +499,14 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
         <input
           type="text"
           value={@value}
-          class="input input-ghost input-sm w-full h-full rounded-none focus:outline-none focus:shadow-none focus:border-transparent"
+          class="absolute inset-0 px-2 text-sm bg-transparent border-0 rounded-none outline-none focus:outline-none"
           phx-blur="update_table_cell"
           phx-value-row-id={@row.id}
           phx-value-column-slug={@column.slug}
           phx-target={@target}
         />
       <% "boolean" -> %>
-        <label class="flex items-center justify-center cursor-pointer py-1">
+        <label class="absolute inset-0 flex items-center justify-center cursor-pointer">
           <input
             type="checkbox"
             checked={@value == true}
@@ -508,12 +526,12 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
           phx-hook="TableCellSelect"
           id={"table-cell-select-#{@row.id}-#{@column.slug}"}
           data-mode="select"
-          class="w-full"
+          class="absolute inset-0"
         >
           <button
             type="button"
             data-role="trigger"
-            class="flex items-center gap-1 w-full px-2 py-1 text-sm text-left cursor-pointer hover:bg-base-200/50 min-h-[2rem]"
+            class="flex items-center gap-1 w-full h-full px-2 text-sm text-left cursor-pointer hover:bg-base-200/50"
           >
             <span :if={selected_label} class="truncate">{selected_label}</span>
             <span :if={!selected_label} class="text-base-content/40 truncate">
@@ -595,12 +613,12 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
           phx-hook="TableCellSelect"
           id={"table-cell-select-#{@row.id}-#{@column.slug}"}
           data-mode="multi_select"
-          class="w-full"
+          class="absolute inset-0"
         >
           <button
             type="button"
             data-role="trigger"
-            class="flex items-center gap-1 w-full px-2 py-1 text-sm text-left cursor-pointer hover:bg-base-200/50 min-h-[2rem]"
+            class="flex items-center gap-1 w-full h-full px-2 text-sm text-left cursor-pointer hover:bg-base-200/50"
           >
             <div :if={selected_labels != []} class="flex flex-wrap gap-1">
               <span
@@ -673,7 +691,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
         <input
           type="date"
           value={@value}
-          class="input input-ghost input-sm w-full h-full rounded-none focus:outline-none focus:shadow-none focus:border-transparent"
+          class="absolute inset-0 px-2 text-sm bg-transparent border-0 rounded-none outline-none focus:outline-none"
           phx-blur="update_table_cell"
           phx-value-row-id={@row.id}
           phx-value-column-slug={@column.slug}
@@ -786,6 +804,14 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
   end
 
   defp resolve_multi_select_labels(_value, _options), do: []
+
+  defp column_width(col) do
+    (col.config || %{})["width"] || 150
+  end
+
+  defp column_state_hash(col) do
+    :erlang.phash2({col.type, col.is_constant, col.required, col.config})
+  end
 
   defp type_icon("number"), do: "hash"
   defp type_icon("text"), do: "type"

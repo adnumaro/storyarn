@@ -201,7 +201,7 @@ msgstr ""
 
 #: lib/storyarn_web/components/instruction_builder.ex:52
 #: lib/storyarn_web/components/instruction_builder.ex:61
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:614
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:594
 #, elixir-autogen, elixir-format
 msgid "Clear"
 msgstr ""
@@ -257,7 +257,7 @@ msgstr ""
 msgid "Continue"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:662
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:643
 #: lib/storyarn_web/live/flow_live/nodes/exit/config_sidebar.ex:157
 #, elixir-autogen, elixir-format
 msgid "Continue to flow"
@@ -850,7 +850,7 @@ msgstr ""
 msgid "Responses:"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:663
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:644
 #: lib/storyarn_web/live/flow_live/nodes/exit/config_sidebar.ex:172
 #, elixir-autogen, elixir-format
 msgid "Return to caller"
@@ -1503,14 +1503,14 @@ msgid_plural "%{count} assignments"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:471
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:450
 #, elixir-autogen, elixir-format
 msgid "%{count} exit"
 msgid_plural "%{count} exits"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:249
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:242
 #, elixir-autogen, elixir-format
 msgid "%{count} jump"
 msgid_plural "%{count} jumps"
@@ -1558,7 +1558,7 @@ msgstr ""
 msgid "Condition Builder"
 msgstr "Condition Builder"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:668
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:649
 #, elixir-autogen, elixir-format
 msgid "Continues into another flow"
 msgstr "Continues into another flow"
@@ -1575,7 +1575,7 @@ msgstr "Could not create linked flow."
 msgid "Edit"
 msgstr "Edit"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:665
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:646
 #, elixir-autogen, elixir-format
 msgid "Ends the flow entirely"
 msgstr ""
@@ -1590,8 +1590,8 @@ msgstr "Entry point"
 msgid "Generate technical ID"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:212
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:229
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:213
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:224
 #, elixir-autogen, elixir-format
 msgid "Hub color"
 msgstr ""
@@ -1602,7 +1602,7 @@ msgid "Instruction Builder"
 msgstr "Instruction Builder"
 
 #: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:196
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:323
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:316
 #, elixir-autogen, elixir-format
 msgid "Label…"
 msgstr "Label…"
@@ -1612,34 +1612,34 @@ msgstr "Label…"
 msgid "Localization key"
 msgstr "Localization key"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:290
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:283
 #, elixir-autogen, elixir-format
 msgid "Locate target hub"
 msgstr "Locate target hub"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:503
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:482
 #, elixir-autogen, elixir-format
 msgid "Location…"
 msgstr "Location…"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:640
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:621
 #, elixir-autogen, elixir-format
 msgid "No matches"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:537
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:516
 #, elixir-autogen, elixir-format
 msgid "No toolbar for this type"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:414
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:466
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:393
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:445
 #, elixir-autogen, elixir-format
 msgid "Open referenced flow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:372
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:389
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:359
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:370
 #, elixir-autogen, elixir-format
 msgid "Outcome color"
 msgstr ""
@@ -1649,17 +1649,17 @@ msgstr ""
 msgid "Response text…"
 msgstr "Response text…"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:671
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:652
 #, elixir-autogen, elixir-format
 msgid "Returns to the calling subflow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:586
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:564
 #, elixir-autogen, elixir-format
 msgid "Search…"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:448
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:427
 #, elixir-autogen, elixir-format
 msgid "Select flow…"
 msgstr "Select flow…"
@@ -1679,17 +1679,17 @@ msgstr "Short text shown in menus…"
 msgid "Speaker…"
 msgstr "Speaker…"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:277
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:270
 #, elixir-autogen, elixir-format
 msgid "Target hub…"
 msgstr "Target hub…"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:661
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:642
 #, elixir-autogen, elixir-format
 msgid "Terminal"
 msgstr "Terminal"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:526
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:505
 #, elixir-autogen, elixir-format
 msgid "Time…"
 msgstr "Time…"
@@ -1714,12 +1714,12 @@ msgstr "Code"
 msgid "Could not update node positions."
 msgstr "Could not update node positions."
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:601
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:580
 #, elixir-autogen, elixir-format
 msgid "Search in content"
 msgstr "Search in content"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:632
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:613
 #, elixir-autogen, elixir-format
 msgid "Show more…"
 msgstr "Show more…"

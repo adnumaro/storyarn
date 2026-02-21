@@ -11,13 +11,42 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     - `:notify_parent`       - fn(socket, status) -> any
   """
 
-  import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
 
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
+
+  # ===========================================================================
+  # Column resize (silent — no save indicator flash)
+  # ===========================================================================
+
+  @doc "Persists a column width after drag-resize. No reload, no save indicator."
+  def handle_resize_column(params, socket) do
+    column_id = ContentTabHelpers.to_integer(params["column-id"])
+    column = Sheets.get_table_column!(column_id)
+
+    with :ok <- verify_column_ownership(socket, column),
+         {:ok, width} <- sanitize_width(params["width"]) do
+      new_config = Map.put(column.config || %{}, "width", width)
+
+      case Sheets.update_table_column(column, %{config: new_config}) do
+        {:ok, _} -> {:noreply, socket}
+        {:error, _} -> {:noreply, socket}
+      end
+    else
+      :invalid_width -> {:noreply, socket}
+      other -> other
+    end
+  end
+
+  defp sanitize_width(w) when is_number(w) do
+    width = w |> max(80) |> min(2000) |> round()
+    {:ok, width}
+  end
+
+  defp sanitize_width(_), do: :invalid_width
 
   # ===========================================================================
   # Existing table events (extracted from ContentTab)
@@ -178,30 +207,13 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     end
   end
 
-  @doc "Prepares a column deletion (stores pending action for confirmation)."
-  def handle_prepare_delete_column(params, socket, _helpers) do
+  @doc "Deletes a table column directly."
+  def handle_delete_column(params, socket, helpers) do
     column_id = ContentTabHelpers.to_integer(params["column-id"])
+    column = Sheets.get_table_column!(column_id)
 
-    {:noreply,
-     assign(socket, :table_pending, %{
-       action: :delete_column,
-       column_id: column_id
-     })}
-  end
-
-  @doc "Executes a confirmed column deletion."
-  def handle_execute_delete_column(socket, helpers) do
-    case socket.assigns.table_pending do
-      %{action: :delete_column, column_id: column_id} ->
-        column = Sheets.get_table_column!(column_id)
-        socket = assign(socket, :table_pending, nil)
-
-        with :ok <- verify_column_ownership(socket, column) do
-          do_delete_column(column, socket, helpers)
-        end
-
-      _ ->
-        {:noreply, assign(socket, :table_pending, nil)}
+    with :ok <- verify_column_ownership(socket, column) do
+      do_delete_column(column, socket, helpers)
     end
   end
 
@@ -233,30 +245,13 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     {:noreply, socket}
   end
 
-  @doc "Prepares a row deletion (stores pending action for confirmation)."
-  def handle_prepare_delete_row(params, socket, _helpers) do
+  @doc "Deletes a table row directly."
+  def handle_delete_row(params, socket, helpers) do
     row_id = ContentTabHelpers.to_integer(params["row-id"])
+    row = Sheets.get_table_row!(row_id)
 
-    {:noreply,
-     assign(socket, :table_pending, %{
-       action: :delete_row,
-       row_id: row_id
-     })}
-  end
-
-  @doc "Executes a confirmed row deletion."
-  def handle_execute_delete_row(socket, helpers) do
-    case socket.assigns.table_pending do
-      %{action: :delete_row, row_id: row_id} ->
-        row = Sheets.get_table_row!(row_id)
-        socket = assign(socket, :table_pending, nil)
-
-        with :ok <- verify_row_ownership(socket, row) do
-          do_delete_row(row, socket, helpers)
-        end
-
-      _ ->
-        {:noreply, assign(socket, :table_pending, nil)}
+    with :ok <- verify_row_ownership(socket, row) do
+      do_delete_row(row, socket, helpers)
     end
   end
 
@@ -433,15 +428,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
         {:error, _} -> {:noreply, err(socket, :column_update)}
       end
     end
-  end
-
-  # ===========================================================================
-  # Confirmation cancel
-  # ===========================================================================
-
-  @doc "Cancels a pending table confirmation action."
-  def handle_cancel_confirm(socket) do
-    {:noreply, assign(socket, :table_pending, nil)}
   end
 
   # ===========================================================================

@@ -292,6 +292,31 @@
   font-style: italic;
 }
 
+/* Table column resize handle — wider hit target */
+[data-resize-handle]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 7px;
+  height: 100%;
+}
+
+/* Column dropdown — sliding sub-panels (Notion-style) */
+.col-dropdown-panel {
+  display: none;
+}
+
+.col-dropdown-panel[data-active] {
+  display: block;
+  animation: col-panel-in 0.15s ease;
+}
+
+@keyframes col-panel-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 /* Combobox dropdown — appended to body, NOT scoped to .instruction-builder */
 .combobox-dropdown {
   z-index: 9999;
