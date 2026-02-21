@@ -4,7 +4,10 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.Components.CoreComponents, only: [block_label: 1, icon: 1]
+  import StoryarnWeb.Components.CoreComponents,
+    only: [block_label: 1, icon: 1, confirm_modal: 1, show_modal: 2]
+
+  alias Phoenix.LiveView.JS
 
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
@@ -108,17 +111,70 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
         <table class="table table-sm w-full">
           <thead>
             <tr class="bg-base-200">
-              <th class="font-medium text-base-content/60 w-32"></th>
+              <%!-- Row label header (wider when editable for drag handle) --%>
+              <th class={["font-medium text-base-content/60", (@can_edit && "w-40") || "w-32"]}></th>
+
+              <%!-- Column headers --%>
               <th :for={col <- @columns} class="font-medium text-base-content/70">
-                {col.name}
+                <%!-- Editable: dropdown with management options --%>
+                <div :if={@can_edit} class="dropdown dropdown-end">
+                  <div
+                    tabindex="0"
+                    role="button"
+                    class="flex items-center gap-1 cursor-pointer hover:text-base-content"
+                  >
+                    {col.name}
+                    <.icon name="chevron-down" class="size-3 opacity-40" />
+                  </div>
+                  <.column_dropdown column={col} columns={@columns} block={@block} target={@target} />
+                </div>
+                <%!-- Read-only: plain text --%>
+                <span :if={!@can_edit}>{col.name}</span>
+              </th>
+
+              <%!-- Add column button --%>
+              <th :if={@can_edit} class="w-10">
+                <button
+                  type="button"
+                  phx-click="add_table_column"
+                  phx-value-block-id={@block.id}
+                  phx-target={@target}
+                  class="btn btn-ghost btn-xs btn-circle"
+                >
+                  <.icon name="plus" class="size-3" />
+                </button>
               </th>
             </tr>
           </thead>
-          <tbody>
-            <tr :for={row <- @rows} class="even:bg-base-200/30">
+          <tbody
+            id={"table-rows-#{@block.id}"}
+            phx-hook={(@can_edit && "TableRowSortable") || nil}
+            data-block-id={@block.id}
+            data-phx-target={(@can_edit && @target) || nil}
+          >
+            <tr :for={row <- @rows} data-row-id={row.id} class="group/row even:bg-base-200/30">
+              <%!-- Row label cell --%>
               <td class="sticky left-0 z-10 bg-base-100 font-medium text-base-content/60 text-sm border-r border-base-300">
-                {row.name}
+                <div :if={@can_edit} class="flex items-center gap-1">
+                  <.icon
+                    name="grip-vertical"
+                    class="size-3 opacity-30 cursor-grab row-drag-handle shrink-0"
+                  />
+                  <input
+                    type="text"
+                    value={row.name}
+                    class="input input-ghost input-sm w-full px-1 font-medium"
+                    phx-blur="rename_table_row"
+                    phx-keydown="rename_table_row_keydown"
+                    phx-key="Enter"
+                    phx-value-row-id={row.id}
+                    phx-target={@target}
+                  />
+                </div>
+                <span :if={!@can_edit}>{row.name}</span>
               </td>
+
+              <%!-- Data cells --%>
               <td :for={col <- @columns} class="p-1">
                 <.table_cell
                   column={col}
@@ -128,9 +184,256 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
                   target={@target}
                 />
               </td>
+
+              <%!-- Row actions (delete) --%>
+              <td :if={@can_edit} class="w-8">
+                <div class="dropdown dropdown-end">
+                  <button
+                    tabindex="0"
+                    class="btn btn-ghost btn-xs opacity-0 group-hover/row:opacity-100"
+                  >
+                    <.icon name="more-vertical" class="size-3" />
+                  </button>
+                  <ul
+                    tabindex="0"
+                    class="dropdown-content z-50 menu p-2 shadow-lg bg-base-200 rounded-box w-44"
+                  >
+                    <li>
+                      <button
+                        disabled={length(@rows) <= 1}
+                        phx-click={
+                          JS.push("prepare_delete_row",
+                            value: %{"row-id" => row.id},
+                            target: @target
+                          )
+                          |> show_modal("table-delete-row-#{@block.id}")
+                        }
+                        class="text-error disabled:opacity-30"
+                      >
+                        <.icon name="trash-2" class="size-3" />
+                        {dgettext("sheets", "Delete")}
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <%!-- Add row button --%>
+      <button
+        :if={@can_edit}
+        type="button"
+        phx-click="add_table_row"
+        phx-value-block-id={@block.id}
+        phx-target={@target}
+        class="btn btn-ghost btn-xs gap-1 mt-1"
+      >
+        <.icon name="plus" class="size-3" />
+        <span>{dgettext("sheets", "+ New")}</span>
+      </button>
+
+      <%!-- Confirmation modals --%>
+      <.confirm_modal
+        :if={@can_edit}
+        id={"table-type-confirm-#{@block.id}"}
+        title={dgettext("sheets", "Change column type?")}
+        message={
+          dgettext(
+            "sheets",
+            "All cell values in this column will be reset. This cannot be undone."
+          )
+        }
+        confirm_text={dgettext("sheets", "Change type")}
+        confirm_variant="warning"
+        icon="alert-triangle"
+        icon_class="text-warning"
+        on_confirm={JS.push("execute_column_type_change", target: @target)}
+        on_cancel={JS.push("cancel_table_confirm", target: @target)}
+      />
+
+      <.confirm_modal
+        :if={@can_edit}
+        id={"table-delete-col-#{@block.id}"}
+        title={dgettext("sheets", "Delete column?")}
+        message={
+          dgettext(
+            "sheets",
+            "This will remove the column and all its data. This cannot be undone."
+          )
+        }
+        confirm_text={dgettext("sheets", "Delete")}
+        confirm_variant="error"
+        icon="trash-2"
+        icon_class="text-error"
+        on_confirm={JS.push("execute_delete_column", target: @target)}
+        on_cancel={JS.push("cancel_table_confirm", target: @target)}
+      />
+
+      <.confirm_modal
+        :if={@can_edit}
+        id={"table-delete-row-#{@block.id}"}
+        title={dgettext("sheets", "Delete row?")}
+        message={
+          dgettext(
+            "sheets",
+            "This will remove the row and all its cell data. This cannot be undone."
+          )
+        }
+        confirm_text={dgettext("sheets", "Delete")}
+        confirm_variant="error"
+        icon="trash-2"
+        icon_class="text-error"
+        on_confirm={JS.push("execute_delete_row", target: @target)}
+        on_cancel={JS.push("cancel_table_confirm", target: @target)}
+      />
+    </div>
+    """
+  end
+
+  # =============================================================================
+  # Column Header Dropdown
+  # =============================================================================
+
+  defp column_dropdown(assigns) do
+    ~H"""
+    <ul tabindex="0" class="dropdown-content z-50 menu p-3 shadow-lg bg-base-200 rounded-box w-56">
+      <%!-- Rename input --%>
+      <li class="mb-2">
+        <input
+          type="text"
+          value={@column.name}
+          class="input input-bordered input-sm w-full"
+          phx-blur="rename_table_column"
+          phx-keydown="rename_table_column"
+          phx-key="Enter"
+          phx-value-column-id={@column.id}
+          phx-target={@target}
+        />
+      </li>
+
+      <%!-- Type radios --%>
+      <li class="menu-title text-xs">{dgettext("sheets", "Type")}</li>
+      <li :for={type <- ~w(number text boolean select multi_select date)}>
+        <label class="flex items-center gap-2">
+          <input
+            type="radio"
+            name={"col-type-#{@column.id}"}
+            value={type}
+            checked={@column.type == type}
+            phx-click={
+              if @column.type != type,
+                do:
+                  JS.push("prepare_column_type_change",
+                    value: %{"column-id" => @column.id, "new-type" => type},
+                    target: @target
+                  )
+                  |> show_modal("table-type-confirm-#{@block.id}"),
+                else: %JS{}
+            }
+            class="radio radio-xs"
+          />
+          <span class="text-sm">{type_label(type)}</span>
+        </label>
+      </li>
+
+      <%!-- Options management for select/multi_select --%>
+      <.column_options_section
+        :if={@column.type in ["select", "multi_select"]}
+        column={@column}
+        target={@target}
+      />
+
+      <%!-- Constant checkbox --%>
+      <li class="mt-2 border-t border-base-300 pt-2">
+        <label class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={@column.is_constant}
+            class="checkbox checkbox-xs"
+            phx-click="toggle_table_column_constant"
+            phx-value-column-id={@column.id}
+            phx-target={@target}
+          />
+          <div>
+            <span class="text-sm">{dgettext("sheets", "Constant")}</span>
+            <span class="text-xs text-base-content/50 block">
+              {dgettext("sheets", "Won't generate a variable")}
+            </span>
+          </div>
+        </label>
+      </li>
+
+      <%!-- Delete column --%>
+      <li class="mt-2 border-t border-base-300 pt-2">
+        <button
+          disabled={length(@columns) <= 1}
+          phx-click={
+            JS.push("prepare_delete_column",
+              value: %{"column-id" => @column.id},
+              target: @target
+            )
+            |> show_modal("table-delete-col-#{@block.id}")
+          }
+          class="text-error disabled:opacity-30"
+        >
+          <.icon name="trash-2" class="size-3" />
+          {dgettext("sheets", "Delete column")}
+        </button>
+      </li>
+    </ul>
+    """
+  end
+
+  # =============================================================================
+  # Select Options Section (in column dropdown)
+  # =============================================================================
+
+  defp column_options_section(assigns) do
+    options = (assigns.column.config || %{})["options"] || []
+    assigns = assign(assigns, :options, options)
+
+    ~H"""
+    <div class="mt-2 border-t border-base-300 pt-2">
+      <div class="text-xs font-medium text-base-content/50 mb-1 px-2">
+        {dgettext("sheets", "Options")}
+      </div>
+      <div
+        :for={{opt, idx} <- Enum.with_index(@options)}
+        class="flex items-center gap-1 mb-1 px-1"
+      >
+        <input
+          type="text"
+          value={opt["value"]}
+          class="input input-bordered input-xs flex-1"
+          phx-blur="update_table_column_option"
+          phx-value-column-id={@column.id}
+          phx-value-index={idx}
+          phx-target={@target}
+        />
+        <button
+          type="button"
+          phx-click="remove_table_column_option"
+          phx-value-column-id={@column.id}
+          phx-value-key={opt["key"]}
+          phx-target={@target}
+          class="btn btn-ghost btn-xs btn-circle"
+        >
+          <.icon name="x" class="size-3" />
+        </button>
+      </div>
+      <div class="px-1">
+        <input
+          type="text"
+          placeholder={dgettext("sheets", "+ Add option")}
+          class="input input-bordered input-xs w-full"
+          phx-keydown="add_table_column_option_keydown"
+          phx-key="Enter"
+          phx-value-column-id={@column.id}
+          phx-target={@target}
+        />
       </div>
     </div>
     """
@@ -308,4 +611,12 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
   defp format_multi_select(nil), do: ""
   defp format_multi_select(values) when is_list(values), do: Enum.join(values, ", ")
   defp format_multi_select(_), do: ""
+
+  defp type_label("number"), do: dgettext("sheets", "Number")
+  defp type_label("text"), do: dgettext("sheets", "Text")
+  defp type_label("boolean"), do: dgettext("sheets", "Boolean")
+  defp type_label("select"), do: dgettext("sheets", "Select")
+  defp type_label("multi_select"), do: dgettext("sheets", "Multi Select")
+  defp type_label("date"), do: dgettext("sheets", "Date")
+  defp type_label(type), do: type
 end

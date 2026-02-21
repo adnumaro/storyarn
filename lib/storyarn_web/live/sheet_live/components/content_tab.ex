@@ -15,6 +15,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   alias StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers
   alias StoryarnWeb.SheetLive.Handlers.ConfigPanelHandlers
   alias StoryarnWeb.SheetLive.Handlers.InheritanceHandlers
+  alias StoryarnWeb.SheetLive.Handlers.TableHandlers
   alias StoryarnWeb.SheetLive.Helpers.BlockHelpers
   alias StoryarnWeb.SheetLive.Helpers.ConfigHelpers
   alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
@@ -104,6 +105,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       |> assign_new(:configuring_block, fn -> nil end)
       |> assign_new(:block_scope, fn -> "self" end)
       |> assign_new(:propagation_block, fn -> nil end)
+      |> assign_new(:table_pending, fn -> nil end)
 
     # Split blocks into inherited and own groups using optimized batch query
     {inherited_groups, own_blocks} =
@@ -273,78 +275,123 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
   def handle_event("update_table_cell", params, socket) do
     with_authorization(socket, fn socket ->
-      row_id = ContentTabHelpers.to_integer(params["row-id"])
-      column_slug = params["column-slug"]
-
-      value =
-        if params["type"] == "multi_select" do
-          (params["value"] || "")
-          |> String.split(",")
-          |> Enum.map(&String.trim/1)
-          |> Enum.reject(&(&1 == ""))
-        else
-          params["value"]
-        end
-
-      row = Sheets.get_table_row!(row_id)
-
-      if not Map.has_key?(socket.assigns.table_data, row.block_id) do
-        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update cell."))}
-      else
-        case Sheets.update_table_cell(row, column_slug, value) do
-          {:ok, _} ->
-            maybe_create_version(socket)
-            notify_parent(socket, :saved)
-            {:noreply, reload_blocks(socket)}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update cell."))}
-        end
-      end
+      TableHandlers.handle_update_cell(params, socket, table_helpers())
     end)
   end
 
-  def handle_event("toggle_table_collapse", %{"block-id" => block_id}, socket) do
+  def handle_event("toggle_table_collapse", params, socket) do
     with_authorization(socket, fn socket ->
-      block_id = ContentTabHelpers.to_integer(block_id)
-      project_id = socket.assigns.project.id
-      block = Sheets.get_block_in_project!(block_id, project_id)
-      collapsed = block.config["collapsed"] || false
-      new_config = Map.put(block.config || %{}, "collapsed", !collapsed)
-
-      case Sheets.update_block_config(block, new_config) do
-        {:ok, _} ->
-          {:noreply, reload_blocks(socket)}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not toggle table."))}
-      end
+      TableHandlers.handle_toggle_collapse(params, socket, table_helpers())
     end)
   end
 
   def handle_event("toggle_table_cell_boolean", params, socket) do
     with_authorization(socket, fn socket ->
-      row_id = ContentTabHelpers.to_integer(params["row-id"])
-      column_slug = params["column-slug"]
+      TableHandlers.handle_toggle_cell_boolean(params, socket, table_helpers())
+    end)
+  end
 
-      row = Sheets.get_table_row!(row_id)
+  def handle_event("add_table_column", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_add_column(params, socket, table_helpers())
+    end)
+  end
 
-      if not Map.has_key?(socket.assigns.table_data, row.block_id) do
-        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update cell."))}
-      else
-        current = row.cells[column_slug]
-        new_value = if current == true, do: false, else: true
+  def handle_event("add_table_row", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_add_row(params, socket, table_helpers())
+    end)
+  end
 
-        case Sheets.update_table_cell(row, column_slug, new_value) do
-          {:ok, _} ->
-            maybe_create_version(socket)
-            notify_parent(socket, :saved)
-            {:noreply, reload_blocks(socket)}
+  def handle_event("rename_table_column", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_rename_column(params, socket, table_helpers())
+    end)
+  end
 
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update cell."))}
-        end
-      end
+  def handle_event("prepare_column_type_change", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_prepare_type_change(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("execute_column_type_change", _params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_execute_type_change(socket, table_helpers())
+    end)
+  end
+
+  def handle_event("toggle_table_column_constant", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_toggle_column_constant(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("prepare_delete_column", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_prepare_delete_column(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("execute_delete_column", _params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_execute_delete_column(socket, table_helpers())
+    end)
+  end
+
+  def handle_event("rename_table_row", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_rename_row(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("rename_table_row_keydown", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_rename_row_keydown(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("prepare_delete_row", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_prepare_delete_row(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("execute_delete_row", _params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_execute_delete_row(socket, table_helpers())
+    end)
+  end
+
+  def handle_event("reorder_table_rows", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_reorder_rows(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("cancel_table_confirm", _params, socket) do
+    TableHandlers.handle_cancel_confirm(socket)
+  end
+
+  def handle_event("add_table_column_option_keydown", %{"key" => "Enter"} = params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_add_column_option(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("add_table_column_option_keydown", _params, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("remove_table_column_option", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_remove_column_option(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("update_table_column_option", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_update_column_option(params, socket, table_helpers())
     end)
   end
 
@@ -586,6 +633,15 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
   # Builds the helpers map required by BlockCrudHandlers.
   defp block_crud_helpers do
+    %{
+      reload_blocks: &reload_blocks/1,
+      maybe_create_version: &maybe_create_version/1,
+      notify_parent: &notify_parent/2
+    }
+  end
+
+  # Builds the helpers map required by TableHandlers.
+  defp table_helpers do
     %{
       reload_blocks: &reload_blocks/1,
       maybe_create_version: &maybe_create_version/1,

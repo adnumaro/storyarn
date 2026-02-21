@@ -562,7 +562,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
   attr :message, :string, default: nil
   attr :confirm_text, :string, default: "Confirm"
   attr :cancel_text, :string, default: "Cancel"
-  attr :confirm_variant, :string, values: ~w(primary error), default: "primary"
+  attr :confirm_variant, :string, values: ~w(primary error warning), default: "primary"
   attr :on_confirm, JS, required: true
   attr :on_cancel, JS, default: %JS{}
   attr :icon, :string, default: nil
@@ -602,7 +602,8 @@ defmodule StoryarnWeb.Components.CoreComponents do
             class={[
               "btn",
               @confirm_variant == "error" && "btn-error",
-              @confirm_variant == "primary" && "btn-primary"
+              @confirm_variant == "primary" && "btn-primary",
+              @confirm_variant == "warning" && "btn-warning"
             ]}
             phx-click={@on_confirm |> hide_modal(@id)}
           >

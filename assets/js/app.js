@@ -51,6 +51,7 @@ import { SearchableSelect } from "./hooks/searchable_select";
 import { SortableList } from "./hooks/sortable_list";
 import { SortableTree } from "./hooks/sortable_tree";
 import { StoryPlayer } from "./hooks/story_player";
+import { TableRowSortable } from "./hooks/table_row_sortable";
 import { TiptapEditor } from "./hooks/tiptap_editor";
 import { TreeToggle } from "./hooks/tree";
 import { TreeSearch } from "./hooks/tree_search";
@@ -96,6 +97,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ScreenplayEditor,
     StoryPlayer,
     ExpressionEditor,
+    TableRowSortable,
   },
 });
 

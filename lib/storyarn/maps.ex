@@ -224,7 +224,8 @@ defmodule Storyarn.Maps do
   Deletes a layer. Returns `{:error, :cannot_delete_last_layer}` if it's the only layer.
   Zones and pins on this layer have their layer_id nullified.
   """
-  @spec delete_layer(layer()) :: {:ok, layer()} | {:error, :cannot_delete_last_layer | changeset()}
+  @spec delete_layer(layer()) ::
+          {:ok, layer()} | {:error, :cannot_delete_last_layer | changeset()}
   defdelegate delete_layer(layer), to: LayerCrud
 
   @doc """
@@ -461,7 +462,8 @@ defmodule Storyarn.Maps do
   @spec update_annotation(annotation(), attrs()) :: {:ok, annotation()} | {:error, changeset()}
   defdelegate update_annotation(annotation, attrs), to: AnnotationCrud
 
-  @spec move_annotation(annotation(), float(), float()) :: {:ok, annotation()} | {:error, changeset()}
+  @spec move_annotation(annotation(), float(), float()) ::
+          {:ok, annotation()} | {:error, changeset()}
   defdelegate move_annotation(annotation, position_x, position_y), to: AnnotationCrud
 
   @spec delete_annotation(annotation()) :: {:ok, annotation()} | {:error, changeset()}
