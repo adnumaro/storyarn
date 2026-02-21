@@ -8,6 +8,7 @@
  */
 
 import { createElement, X } from "lucide";
+import { createFloatingPopover } from "../utils/floating_popover";
 import { createCombobox } from "./combobox";
 import {
   expandTemplateForVariableRef,
@@ -335,8 +336,11 @@ export function createAssignmentRow(opts) {
     btn.textContent = t?.operator_verbs?.[currentOp] || OPERATOR_VERBS[currentOp] || currentOp;
     btn.title = "Change operator";
 
-    const dropdown = document.createElement("div");
-    dropdown.className = "operator-dropdown hidden";
+    // Floating popover for operator dropdown
+    const fp = createFloatingPopover(btn, {
+      class: "operator-dropdown",
+      width: "10rem",
+    });
 
     for (const op of availableOps) {
       const optEl = document.createElement("div");
@@ -355,33 +359,28 @@ export function createAssignmentRow(opts) {
           currentAssignment.value_type = "literal";
         }
         notifyChange();
-        dropdown.classList.add("hidden");
+        fp.close();
         render();
       });
-      dropdown.appendChild(optEl);
+      fp.el.appendChild(optEl);
     }
 
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      dropdown.classList.toggle("hidden");
-    });
-
-    // Close on outside click
-    const outsideClickHandler = (e) => {
-      if (!wrapper.contains(e.target)) {
-        dropdown.classList.add("hidden");
+      if (fp.isOpen) {
+        fp.close();
+      } else {
+        fp.open();
       }
-    };
-    document.addEventListener("mousedown", outsideClickHandler);
+    });
 
     // Store cleanup function
     operatorDropdownCleanup = () => {
-      document.removeEventListener("mousedown", outsideClickHandler);
+      fp.destroy();
     };
 
     wrapper.appendChild(btn);
-    wrapper.appendChild(dropdown);
     return wrapper;
   }
 

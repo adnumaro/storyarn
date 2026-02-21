@@ -268,6 +268,41 @@ button.appendChild(createElement(Plus, { width: 12, height: 12 }));
 
 Reference implementation: `project_live/trash.ex`
 
+## Popover & Dropdown Positioning Policy
+
+**NEVER use raw CSS absolute/relative positioning for popovers/dropdowns.** They break inside `overflow:hidden/clip` containers (tables, sidebars, etc.).
+
+**ALWAYS use `@floating-ui/dom`** via the shared utility:
+
+```javascript
+import { createFloatingPopover } from "../utils/floating_popover";
+
+// Creates a container appended to document.body (escapes overflow)
+// Positioned with floating-ui (auto-repositions on scroll/resize)
+const fp = createFloatingPopover(triggerEl, {
+  class: "bg-base-200 border border-base-content/20 rounded-lg shadow-lg",
+  width: "14rem",
+  placement: "bottom-start",  // default
+  offset: 4,                  // default
+});
+
+fp.el.appendChild(content);   // populate the container
+fp.open();                     // show + start autoUpdate
+fp.close();                    // hide + stop autoUpdate
+fp.destroy();                  // remove from DOM + cleanup
+```
+
+**HEEx pattern:** Use `<template data-role="popover-template">` for server-rendered content that the hook clones into the body-appended container. Since cloned elements are outside the LiveView DOM tree, the hook must re-push `phx-click`/`phx-keydown` events via `this.pushEvent()`/`this.pushEventTo()`.
+
+**Reference implementations:**
+- `hooks/table_cell_select.js` — Full pattern with `<template>` + event re-pushing
+- `hooks/color_picker.js` — Uses floating-ui directly (builds DOM in JS)
+- `utils/floating_popover.js` — The shared utility
+
+**Known technical debt** (DaisyUI CSS dropdowns, not yet migrated):
+- `SearchableSelect` hook — CSS absolute, breaks in overflow containers
+- DaisyUI `.dropdown` class usage in sidebar trees, block menus, table column headers
+
 ## Storyarn-Specific Patterns
 
 **Layouts** (3 independent, not nested):

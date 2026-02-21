@@ -309,21 +309,21 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     end)
   end
 
-  def handle_event("prepare_column_type_change", params, socket) do
+  def handle_event("change_table_column_type", params, socket) do
     with_authorization(socket, fn socket ->
-      TableHandlers.handle_prepare_type_change(params, socket, table_helpers())
-    end)
-  end
-
-  def handle_event("execute_column_type_change", _params, socket) do
-    with_authorization(socket, fn socket ->
-      TableHandlers.handle_execute_type_change(socket, table_helpers())
+      TableHandlers.handle_change_column_type(params, socket, table_helpers())
     end)
   end
 
   def handle_event("toggle_table_column_constant", params, socket) do
     with_authorization(socket, fn socket ->
       TableHandlers.handle_toggle_column_constant(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("toggle_table_column_required", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_toggle_column_required(params, socket, table_helpers())
     end)
   end
 
@@ -367,6 +367,28 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     with_authorization(socket, fn socket ->
       TableHandlers.handle_reorder_rows(params, socket, table_helpers())
     end)
+  end
+
+  def handle_event("select_table_cell", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_select_table_cell(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("toggle_table_cell_multi_select", params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_toggle_table_cell_multi_select(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("add_table_cell_option", %{"key" => "Enter"} = params, socket) do
+    with_authorization(socket, fn socket ->
+      TableHandlers.handle_add_table_cell_option(params, socket, table_helpers())
+    end)
+  end
+
+  def handle_event("add_table_cell_option", _params, socket) do
+    {:noreply, socket}
   end
 
   def handle_event("cancel_table_confirm", _params, socket) do

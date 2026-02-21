@@ -51,8 +51,13 @@ import { SearchableSelect } from "./hooks/searchable_select";
 import { SortableList } from "./hooks/sortable_list";
 import { SortableTree } from "./hooks/sortable_tree";
 import { StoryPlayer } from "./hooks/story_player";
+import { TableCellCheckbox } from "./hooks/table_cell_checkbox";
+import { TableCellSelect } from "./hooks/table_cell_select";
+import { TableColumnDropdown } from "./hooks/table_column_dropdown";
+import { TableRowMenu } from "./hooks/table_row_menu";
 import { TableRowSortable } from "./hooks/table_row_sortable";
 import { TiptapEditor } from "./hooks/tiptap_editor";
+import { ToolbarPopover } from "./hooks/toolbar_popover";
 import { TreeToggle } from "./hooks/tree";
 import { TreeSearch } from "./hooks/tree_search";
 import { TriStateCheckbox } from "./hooks/tri_state_checkbox";
@@ -97,7 +102,12 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ScreenplayEditor,
     StoryPlayer,
     ExpressionEditor,
+    TableCellCheckbox,
+    TableCellSelect,
+    TableColumnDropdown,
+    TableRowMenu,
     TableRowSortable,
+    ToolbarPopover,
   },
 });
 

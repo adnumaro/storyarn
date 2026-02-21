@@ -20,6 +20,7 @@ defmodule Storyarn.Sheets.TableColumn do
     field :slug, :string
     field :type, :string, default: "number"
     field :is_constant, :boolean, default: false
+    field :required, :boolean, default: false
     field :position, :integer, default: 0
     field :config, :map, default: %{}
 
@@ -34,7 +35,7 @@ defmodule Storyarn.Sheets.TableColumn do
   @doc "Changeset for creating a new table column."
   def create_changeset(column, attrs) do
     column
-    |> cast(attrs, [:name, :type, :is_constant, :position, :config, :block_id])
+    |> cast(attrs, [:name, :type, :is_constant, :required, :position, :config, :block_id])
     |> validate_required([:name, :type])
     |> validate_inclusion(:type, @column_types)
     |> generate_slug()
@@ -44,7 +45,7 @@ defmodule Storyarn.Sheets.TableColumn do
   @doc "Changeset for updating a table column."
   def update_changeset(column, attrs) do
     column
-    |> cast(attrs, [:name, :type, :is_constant, :config])
+    |> cast(attrs, [:name, :type, :is_constant, :required, :config])
     |> validate_inclusion(:type, @column_types)
     |> maybe_regenerate_slug()
   end

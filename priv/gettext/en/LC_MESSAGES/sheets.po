@@ -104,7 +104,7 @@ msgid "Block not found."
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:126
-#: lib/storyarn_web/components/block_components/table_blocks.ex:620
+#: lib/storyarn_web/components/block_components/table_blocks.ex:808
 #, elixir-autogen, elixir-format
 msgid "Boolean"
 msgstr ""
@@ -401,15 +401,15 @@ msgid "Custom Labels"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:116
-#: lib/storyarn_web/components/block_components/table_blocks.ex:623
+#: lib/storyarn_web/components/block_components/table_blocks.ex:811
 #, elixir-autogen, elixir-format
 msgid "Date"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components.ex:231
-#: lib/storyarn_web/components/block_components/table_blocks.ex:215
-#: lib/storyarn_web/components/block_components/table_blocks.ex:268
-#: lib/storyarn_web/components/block_components/table_blocks.ex:286
+#: lib/storyarn_web/components/block_components/table_blocks.ex:220
+#: lib/storyarn_web/components/block_components/table_blocks.ex:255
+#: lib/storyarn_web/components/block_components/table_blocks.ex:273
 #: lib/storyarn_web/live/sheet_live/components/versions_section.ex:71
 #, elixir-autogen, elixir-format
 msgid "Delete"
@@ -634,7 +634,7 @@ msgid "Move to Trash"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:106
-#: lib/storyarn_web/components/block_components/table_blocks.ex:622
+#: lib/storyarn_web/components/block_components/table_blocks.ex:810
 #, elixir-autogen, elixir-format
 msgid "Multi Select"
 msgstr ""
@@ -660,7 +660,7 @@ msgstr ""
 
 #: lib/storyarn_web/components/block_components/boolean_blocks.ex:34
 #: lib/storyarn_web/components/block_components/config_panel.ex:359
-#: lib/storyarn_web/components/block_components/table_blocks.ex:566
+#: lib/storyarn_web/components/block_components/table_blocks.ex:736
 #, elixir-autogen, elixir-format
 msgid "No"
 msgstr ""
@@ -729,7 +729,7 @@ msgid "No voice lines"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:86
-#: lib/storyarn_web/components/block_components/table_blocks.ex:618
+#: lib/storyarn_web/components/block_components/table_blocks.ex:806
 #, elixir-autogen, elixir-format
 msgid "Number"
 msgstr ""
@@ -740,7 +740,7 @@ msgid "Open in flow editor"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/config_panel.ex:385
-#: lib/storyarn_web/components/block_components/table_blocks.ex:404
+#: lib/storyarn_web/components/block_components/table_blocks.ex:424
 #, elixir-autogen, elixir-format
 msgid "Options"
 msgstr ""
@@ -862,6 +862,7 @@ msgid "Renamed sheet"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/config_panel.ex:109
+#: lib/storyarn_web/components/block_components/table_blocks.ex:349
 #: lib/storyarn_web/live/sheet_live/components/inherited_block_components.ex:70
 #, elixir-autogen, elixir-format
 msgid "Required"
@@ -900,7 +901,7 @@ msgid "Search sheets and flows..."
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:96
-#: lib/storyarn_web/components/block_components/table_blocks.ex:621
+#: lib/storyarn_web/components/block_components/table_blocks.ex:809
 #, elixir-autogen, elixir-format
 msgid "Select"
 msgstr ""
@@ -921,7 +922,8 @@ msgid "Select which types can be referenced."
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/select_blocks.ex:16
-#: lib/storyarn_web/components/block_components/table_blocks.ex:493
+#: lib/storyarn_web/components/block_components/table_blocks.ex:522
+#: lib/storyarn_web/components/block_components/table_blocks.ex:618
 #, elixir-autogen, elixir-format
 msgid "Select..."
 msgstr ""
@@ -970,7 +972,7 @@ msgid "Subsheets"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:66
-#: lib/storyarn_web/components/block_components/table_blocks.ex:619
+#: lib/storyarn_web/components/block_components/table_blocks.ex:807
 #, elixir-autogen, elixir-format
 msgid "Text"
 msgstr ""
@@ -1018,7 +1020,7 @@ msgid "Two states (Yes/No)"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/config_panel.ex:46
-#: lib/storyarn_web/components/block_components/table_blocks.ex:321
+#: lib/storyarn_web/components/block_components/table_blocks.ex:364
 #, elixir-autogen, elixir-format
 msgid "Type"
 msgstr ""
@@ -1136,7 +1138,7 @@ msgstr ""
 
 #: lib/storyarn_web/components/block_components/boolean_blocks.ex:33
 #: lib/storyarn_web/components/block_components/config_panel.ex:349
-#: lib/storyarn_web/components/block_components/table_blocks.ex:560
+#: lib/storyarn_web/components/block_components/table_blocks.ex:730
 #, elixir-autogen, elixir-format
 msgid "Yes"
 msgstr ""
@@ -1148,7 +1150,7 @@ msgid "You don't have access to this project."
 msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:149
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:560
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:582
 #: lib/storyarn_web/live/sheet_live/components/versions_section.ex:157
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
@@ -1234,142 +1236,155 @@ msgstr ""
 msgid "This block type cannot be placed in columns."
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/table_blocks.ex:503
-#, elixir-autogen, elixir-format
-msgid "comma-separated"
-msgstr ""
-
-#: lib/storyarn_web/components/block_components/table_blocks.ex:433
+#: lib/storyarn_web/components/block_components/table_blocks.ex:453
 #, elixir-autogen, elixir-format
 msgid "+ Add option"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/table_blocks.ex:236
+#: lib/storyarn_web/components/block_components/table_blocks.ex:241
 #, elixir-autogen, elixir-format
 msgid "+ New"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/table_blocks.ex:245
-#, elixir-autogen, elixir-format
-msgid "All cell values in this column will be reset. This cannot be undone."
-msgstr ""
-
-#: lib/storyarn_web/components/block_components/table_blocks.ex:243
-#, elixir-autogen, elixir-format
-msgid "Change column type?"
-msgstr ""
-
-#: lib/storyarn_web/components/block_components/table_blocks.ex:250
-#, elixir-autogen, elixir-format
-msgid "Change type"
-msgstr ""
-
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:96
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:102
 #, elixir-autogen, elixir-format
 msgid "Column %{n}"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/table_blocks.ex:364
+#: lib/storyarn_web/components/block_components/table_blocks.ex:320
 #, elixir-autogen, elixir-format
 msgid "Constant"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/table_blocks.ex:386
+#: lib/storyarn_web/components/block_components/table_blocks.ex:406
 #, elixir-autogen, elixir-format
 msgid "Delete column"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/table_blocks.ex:261
+#: lib/storyarn_web/components/block_components/table_blocks.ex:248
 #, elixir-autogen, elixir-format
 msgid "Delete column?"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/table_blocks.ex:279
+#: lib/storyarn_web/components/block_components/table_blocks.ex:266
 #, elixir-autogen, elixir-format
 msgid "Delete row?"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:111
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:117
 #, elixir-autogen, elixir-format
 msgid "Row %{n}"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/table_blocks.ex:263
+#: lib/storyarn_web/components/block_components/table_blocks.ex:250
 #, elixir-autogen, elixir-format
 msgid "This will remove the column and all its data. This cannot be undone."
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/table_blocks.ex:281
+#: lib/storyarn_web/components/block_components/table_blocks.ex:268
 #, elixir-autogen, elixir-format
 msgid "This will remove the row and all its cell data. This cannot be undone."
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/table_blocks.ex:366
+#: lib/storyarn_web/components/block_components/table_blocks.ex:328
 #, elixir-autogen, elixir-format
 msgid "Won't generate a variable"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:399
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:499
 #, elixir-autogen, elixir-format
 msgid "Cannot delete the last column."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:411
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:511
 #, elixir-autogen, elixir-format
 msgid "Cannot delete the last row."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:384
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:484
 #, elixir-autogen, elixir-format
 msgid "Could not add column."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:402
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:502
 #, elixir-autogen, elixir-format
 msgid "Could not add row."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:393
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:493
 #, elixir-autogen, elixir-format
 msgid "Could not change column type."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:396
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:496
 #, elixir-autogen, elixir-format
 msgid "Could not delete column."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:408
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:508
 #, elixir-autogen, elixir-format
 msgid "Could not delete row."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:390
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:490
 #, elixir-autogen, elixir-format
 msgid "Could not rename column."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:405
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:505
 #, elixir-autogen, elixir-format
 msgid "Could not rename row."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:414
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:514
 #, elixir-autogen, elixir-format
 msgid "Could not reorder rows."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:64
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:70
 #, elixir-autogen, elixir-format
 msgid "Could not toggle table."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:381
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:481
 #, elixir-autogen, elixir-format
 msgid "Could not update cell."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:387
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:487
 #, elixir-autogen, elixir-format
 msgid "Could not update column."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/table_blocks.ex:580
+#: lib/storyarn_web/components/block_components/table_blocks.ex:663
+#, elixir-autogen, elixir-format, fuzzy
+msgid "+ New option"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/table_blocks.ex:551
+#, elixir-autogen, elixir-format
+msgid "Clear"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/table_blocks.ex:593
+#: lib/storyarn_web/components/block_components/table_blocks.ex:676
+#, elixir-autogen, elixir-format
+msgid "No matches"
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/table_blocks.ex:535
+#: lib/storyarn_web/components/block_components/table_blocks.ex:631
+#, elixir-autogen, elixir-format
+msgid "Search..."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex:517
+#, elixir-autogen, elixir-format
+msgid "This field is required."
+msgstr ""
+
+#: lib/storyarn_web/components/block_components/table_blocks.ex:357
+#, elixir-autogen, elixir-format
+msgid "Value cannot be empty"
 msgstr ""

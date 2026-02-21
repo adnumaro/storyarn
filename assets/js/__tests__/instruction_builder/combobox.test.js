@@ -135,7 +135,7 @@ describe("createCombobox", () => {
     it("opens dropdown on focus", () => {
       cb = createCombobox({ container: el, options: FLAT_OPTIONS });
       fire(cb.input, "focus");
-      expect(dropdown().classList.contains("hidden")).toBe(false);
+      expect(dropdown().style.display).toBe("block");
     });
 
     it("renders all options when opened", () => {
@@ -151,7 +151,7 @@ describe("createCombobox", () => {
         disabled: true,
       });
       fire(cb.input, "focus");
-      expect(dropdown().classList.contains("hidden")).toBe(true);
+      expect(dropdown().style.display).not.toBe("block");
     });
   });
 
@@ -361,10 +361,10 @@ describe("createCombobox", () => {
     it("closes dropdown on Escape", () => {
       cb = createCombobox({ container: el, options: FLAT_OPTIONS });
       fire(cb.input, "focus");
-      expect(dropdown().classList.contains("hidden")).toBe(false);
+      expect(dropdown().style.display).toBe("block");
 
       fireKeydown(cb.input, "Escape");
-      expect(dropdown().classList.contains("hidden")).toBe(true);
+      expect(dropdown().style.display).not.toBe("block");
     });
   });
 
@@ -423,7 +423,7 @@ describe("createCombobox", () => {
         freeText: true,
       });
       fire(cb.input, "focus");
-      expect(dropdown().classList.contains("hidden")).toBe(true);
+      expect(dropdown().style.display).not.toBe("block");
     });
 
     it("fires onSelect with confirmed:false on blur", () => {

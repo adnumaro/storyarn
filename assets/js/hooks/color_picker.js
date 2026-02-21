@@ -1,7 +1,7 @@
 /**
  * ColorPicker hook — Figma-style dropdown color picker.
  * Trigger: swatch + editable hex. Dropdown: spectrum + hue + eyedropper + hex input.
- * Positioning handled by @floating-ui/dom.
+ * Positioning handled by createFloatingPopover utility.
  *
  * Attributes:
  *   data-color   — initial hex color
@@ -10,18 +10,12 @@
  */
 import "vanilla-colorful/hex-color-picker.js";
 import "vanilla-colorful/hex-input.js";
-import { autoUpdate, computePosition, flip, offset, shift } from "@floating-ui/dom";
+import { createFloatingPopover } from "../utils/floating_popover";
 import { ChevronDown, createElement, Pipette } from "lucide";
 
 export const ColorPicker = {
   mounted() {
-    this.open = false;
-    this._cleanupAutoUpdate = null;
     this.render();
-    this._onClickOutside = (e) => {
-      if (this.open && !this.el.contains(e.target) && !this.panel.contains(e.target)) this.close();
-    };
-    document.addEventListener("mousedown", this._onClickOutside);
   },
 
   render() {
@@ -58,13 +52,16 @@ export const ColorPicker = {
     this.chevron = chevron;
 
     trigger.append(swatch, triggerHex, chevron);
-    trigger.addEventListener("click", () => (this.open ? this.close() : this.openPanel()));
+    trigger.addEventListener("click", () => (this._fp.isOpen ? this.close() : this.openPanel()));
 
-    // ── Dropdown panel (appended to body to escape overflow:hidden) ──
-    const panel = document.createElement("div");
-    panel.style.cssText =
-      "position:fixed;width:240px;z-index:9999;padding:12px;border:1px solid var(--color-base-300);border-radius:0.5rem;background-color:var(--color-base-100);box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);display:none;";
-    this.panel = panel;
+    // ── Floating popover panel ──
+    this._fp = createFloatingPopover(trigger, {
+      width: "240px",
+      onClose: () => {
+        this.chevron.style.transform = "";
+      },
+    });
+    this._fp.el.style.cssText += "padding:12px;border:1px solid var(--color-base-300);border-radius:0.5rem;background-color:var(--color-base-100);box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);";
 
     // Picker (spectrum + hue)
     this.picker = document.createElement("hex-color-picker");
@@ -116,8 +113,7 @@ export const ColorPicker = {
     this.hexInput.appendChild(innerInput);
 
     bottomRow.append(inputSwatch, hashLabel, this.hexInput);
-    panel.append(this.picker, bottomRow);
-    document.body.appendChild(panel);
+    this._fp.el.append(this.picker, bottomRow);
     this.el.appendChild(trigger);
 
     // ── Sync ──
@@ -150,33 +146,15 @@ export const ColorPicker = {
   },
 
   openPanel() {
-    this.open = true;
-    this.panel.style.display = "block";
     this.chevron.style.transform = "rotate(180deg)";
-
-    // Floating UI handles positioning + auto-repositioning on scroll/resize
-    this._cleanupAutoUpdate = autoUpdate(this.trigger, this.panel, () => {
-      computePosition(this.trigger, this.panel, {
-        placement: "bottom-start",
-        strategy: "fixed",
-        middleware: [offset(4), flip(), shift({ padding: 8 })],
-      }).then(({ x, y }) => {
-        Object.assign(this.panel.style, { left: `${x}px`, top: `${y}px` });
-      });
-    });
+    this._fp.open();
   },
 
   close() {
-    this.open = false;
-    this.panel.style.display = "none";
-    this.chevron.style.transform = "";
-    this._cleanupAutoUpdate?.();
-    this._cleanupAutoUpdate = null;
+    this._fp.close();
   },
 
   destroyed() {
-    document.removeEventListener("mousedown", this._onClickOutside);
-    this._cleanupAutoUpdate?.();
-    this.panel?.remove();
+    this._fp?.destroy();
   },
 };

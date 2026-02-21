@@ -4,13 +4,15 @@
  * A reusable dropdown with search-as-you-type filtering.
  * Options can be grouped (e.g., variables grouped by sheet).
  *
- * The dropdown is appended to document.body to escape any
- * overflow:hidden/auto containers in the panel.
+ * Uses createFloatingPopover for positioning (appended to body,
+ * auto-repositions on scroll/resize, escapes overflow containers).
  *
  * For freeText mode (literal value inputs), onSelect fires only on
  * blur or Enter — NOT on every keystroke. The option includes a
  * `confirmed` flag: true for Enter/click, false for blur.
  */
+
+import { createFloatingPopover } from "../utils/floating_popover";
 
 /**
  * Creates a combobox instance attached to a container element.
@@ -55,10 +57,13 @@ export function createCombobox(opts) {
   adjustInputWidth(input);
   container.appendChild(input);
 
-  // Create dropdown — appended to body to escape overflow containers
-  const dropdown = document.createElement("div");
-  dropdown.className = "combobox-dropdown hidden";
-  document.body.appendChild(dropdown);
+  // Create floating popover for dropdown (escapes overflow containers)
+  const fp = createFloatingPopover(input, {
+    class: "combobox-dropdown",
+    width: `${Math.max(200, input.offsetWidth)}px`,
+  });
+  // The dropdown element is fp.el
+  const dropdown = fp.el;
 
   if (currentValue) {
     input.classList.add("filled");
@@ -72,8 +77,8 @@ export function createCombobox(opts) {
     input.select();
     isOpen = true;
     filterOptions("");
-    dropdown.classList.remove("hidden");
-    positionDropdown();
+    dropdown.style.width = `${Math.max(200, input.offsetWidth)}px`;
+    fp.open();
   });
 
   input.addEventListener("blur", () => {
@@ -90,6 +95,8 @@ export function createCombobox(opts) {
 
   input.addEventListener("input", () => {
     adjustInputWidth(input);
+    // Update width to match input
+    dropdown.style.width = `${Math.max(200, input.offsetWidth)}px`;
     if (freeText) {
       // Only update local state — don't fire onSelect until blur/Enter
       currentValue = input.value;
@@ -154,26 +161,20 @@ export function createCombobox(opts) {
     }
   });
 
-  // Close dropdown when any scrollable ancestor scrolls
-  const scrollHandler = () => {
-    if (isOpen) closeDropdown();
-  };
-  window.addEventListener("scroll", scrollHandler, true);
-
   // --- Methods ---
 
   function openDropdown() {
     if (disabled || freeText) return;
     isOpen = true;
     filterOptions(input.value);
-    dropdown.classList.remove("hidden");
-    positionDropdown();
+    dropdown.style.width = `${Math.max(200, input.offsetWidth)}px`;
+    fp.open();
   }
 
   function closeDropdown() {
     isOpen = false;
     highlightedIndex = -1;
-    dropdown.classList.add("hidden");
+    fp.close();
   }
 
   function filterOptions(query) {
@@ -264,31 +265,10 @@ export function createCombobox(opts) {
     }
   }
 
-  function positionDropdown() {
-    // Position dropdown in viewport coordinates (since it's on body)
-    const rect = input.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-
-    dropdown.style.position = "fixed";
-    dropdown.style.left = `${rect.left}px`;
-    dropdown.style.width = `${Math.max(rect.width, 200)}px`;
-
-    if (spaceBelow < 200) {
-      dropdown.style.bottom = `${window.innerHeight - rect.top + 4}px`;
-      dropdown.style.top = "auto";
-    } else {
-      dropdown.style.top = `${rect.bottom + 4}px`;
-      dropdown.style.bottom = "auto";
-    }
-  }
-
   // --- Cleanup ---
   function destroy() {
     closeDropdown();
-    window.removeEventListener("scroll", scrollHandler, true);
-    if (dropdown.parentNode) {
-      dropdown.parentNode.removeChild(dropdown);
-    }
+    fp.destroy();
   }
 
   // --- Public API ---

@@ -41,9 +41,15 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     row = Sheets.get_table_row!(row_id)
 
     with :ok <- verify_row_ownership(socket, row) do
-      case Sheets.update_table_cell(row, column_slug, value) do
-        {:ok, _} -> save_and_reload(socket, helpers)
-        {:error, _} -> {:noreply, err(socket, :cell_update)}
+      col = find_column_by_slug(socket, row.block_id, column_slug)
+
+      if col && col.required && value_empty?(value) do
+        {:noreply, err(socket, :required_field)}
+      else
+        case Sheets.update_table_cell(row, column_slug, value) do
+          {:ok, _} -> save_and_reload(socket, helpers)
+          {:error, _} -> {:noreply, err(socket, :cell_update)}
+        end
       end
     end
   end
@@ -135,32 +141,14 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     end
   end
 
-  @doc "Prepares a column type change (stores pending action for confirmation)."
-  def handle_prepare_type_change(params, socket, _helpers) do
+  @doc "Changes a column type directly (no confirmation)."
+  def handle_change_column_type(params, socket, helpers) do
     column_id = ContentTabHelpers.to_integer(params["column-id"])
     new_type = params["new-type"]
+    column = Sheets.get_table_column!(column_id)
 
-    {:noreply,
-     assign(socket, :table_pending, %{
-       action: :type_change,
-       column_id: column_id,
-       new_type: new_type
-     })}
-  end
-
-  @doc "Executes a confirmed column type change."
-  def handle_execute_type_change(socket, helpers) do
-    case socket.assigns.table_pending do
-      %{action: :type_change, column_id: column_id, new_type: new_type} ->
-        column = Sheets.get_table_column!(column_id)
-        socket = assign(socket, :table_pending, nil)
-
-        with :ok <- verify_column_ownership(socket, column) do
-          do_change_column_type(column, new_type, socket, helpers)
-        end
-
-      _ ->
-        {:noreply, assign(socket, :table_pending, nil)}
+    with :ok <- verify_column_ownership(socket, column) do
+      do_change_column_type(column, new_type, socket, helpers)
     end
   end
 
@@ -171,6 +159,19 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
     with :ok <- verify_column_ownership(socket, column) do
       case Sheets.update_table_column(column, %{is_constant: !column.is_constant}) do
+        {:ok, _} -> save_and_reload(socket, helpers)
+        {:error, _} -> {:noreply, err(socket, :column_update)}
+      end
+    end
+  end
+
+  @doc "Toggles the required flag on a column."
+  def handle_toggle_column_required(params, socket, helpers) do
+    column_id = ContentTabHelpers.to_integer(params["column-id"])
+    column = Sheets.get_table_column!(column_id)
+
+    with :ok <- verify_column_ownership(socket, column) do
+      case Sheets.update_table_column(column, %{required: !column.required}) do
         {:ok, _} -> save_and_reload(socket, helpers)
         {:error, _} -> {:noreply, err(socket, :column_update)}
       end
@@ -268,6 +269,105 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
       case Sheets.reorder_table_rows(block_id, row_ids) do
         {:ok, _} -> save_and_reload(socket, helpers)
         {:error, _} -> {:noreply, err(socket, :row_reorder)}
+      end
+    end
+  end
+
+  # ===========================================================================
+  # Select/Multi-Select cell events (hook-driven)
+  # ===========================================================================
+
+  @doc "Sets a select cell value to the given key (or clears it)."
+  def handle_select_table_cell(params, socket, helpers) do
+    row_id = ContentTabHelpers.to_integer(params["row-id"])
+    column_slug = params["column-slug"]
+    key = params["key"]
+    row = Sheets.get_table_row!(row_id)
+
+    with :ok <- verify_row_ownership(socket, row) do
+      value = if key == "", do: nil, else: key
+      col = find_column_by_slug(socket, row.block_id, column_slug)
+
+      if col && col.required && value_empty?(value) do
+        {:noreply, err(socket, :required_field)}
+      else
+        case Sheets.update_table_cell(row, column_slug, value) do
+          {:ok, _} -> save_and_reload(socket, helpers)
+          {:error, _} -> {:noreply, err(socket, :cell_update)}
+        end
+      end
+    end
+  end
+
+  @doc "Toggles a key in a multi-select cell (add if absent, remove if present)."
+  def handle_toggle_table_cell_multi_select(params, socket, helpers) do
+    row_id = ContentTabHelpers.to_integer(params["row-id"])
+    column_slug = params["column-slug"]
+    key = params["key"]
+    row = Sheets.get_table_row!(row_id)
+
+    with :ok <- verify_row_ownership(socket, row) do
+      current = row.cells[column_slug] || []
+      current = if is_list(current), do: current, else: []
+
+      new_value =
+        if key in current,
+          do: List.delete(current, key),
+          else: current ++ [key]
+
+      col = find_column_by_slug(socket, row.block_id, column_slug)
+
+      if col && col.required && value_empty?(new_value) do
+        {:noreply, err(socket, :required_field)}
+      else
+        case Sheets.update_table_cell(row, column_slug, new_value) do
+          {:ok, _} -> save_and_reload(socket, helpers)
+          {:error, _} -> {:noreply, err(socket, :cell_update)}
+        end
+      end
+    end
+  end
+
+  @doc "Adds a new option to a column and selects/toggles it in the cell."
+  def handle_add_table_cell_option(params, socket, helpers) do
+    column_id = ContentTabHelpers.to_integer(params["column-id"])
+    row_id = ContentTabHelpers.to_integer(params["row-id"])
+    column_slug = params["column-slug"]
+    label = String.trim(params["value"] || "")
+
+    if label == "" do
+      {:noreply, socket}
+    else
+      column = Sheets.get_table_column!(column_id)
+
+      with :ok <- verify_column_ownership(socket, column) do
+        existing_options = (column.config || %{})["options"] || []
+        key = slugify(label)
+        new_option = %{"key" => key, "value" => label}
+        new_config = Map.put(column.config || %{}, "options", existing_options ++ [new_option])
+
+        case Sheets.update_table_column(column, %{config: new_config}) do
+          {:ok, _} ->
+            # Also select/toggle the new option in the cell
+            row = Sheets.get_table_row!(row_id)
+
+            new_cell_value =
+              if column.type == "multi_select" do
+                current = row.cells[column_slug] || []
+                current = if is_list(current), do: current, else: []
+                current ++ [key]
+              else
+                key
+              end
+
+            case Sheets.update_table_cell(row, column_slug, new_cell_value) do
+              {:ok, _} -> save_and_reload(socket, helpers)
+              {:error, _} -> save_and_reload(socket, helpers)
+            end
+
+          {:error, _} ->
+            {:noreply, err(socket, :column_update)}
+        end
       end
     end
   end
@@ -412,6 +512,23 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   defp err(socket, :row_reorder),
     do: put_flash(socket, :error, dgettext("sheets", "Could not reorder rows."))
+
+  defp err(socket, :required_field),
+    do: put_flash(socket, :error, dgettext("sheets", "This field is required."))
+
+  # Looks up a column from socket.assigns.table_data by block_id + slug
+  defp find_column_by_slug(socket, block_id, slug) do
+    case Map.get(socket.assigns.table_data, block_id) do
+      nil -> nil
+      %{columns: columns} -> Enum.find(columns, fn c -> c.slug == slug end)
+      _ -> nil
+    end
+  end
+
+  defp value_empty?(nil), do: true
+  defp value_empty?(""), do: true
+  defp value_empty?([]), do: true
+  defp value_empty?(_), do: false
 
   # ===========================================================================
   # Private helpers — extracted operations (reduce nesting)

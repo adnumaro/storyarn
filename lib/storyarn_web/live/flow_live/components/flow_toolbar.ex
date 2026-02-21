@@ -205,25 +205,20 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       />
     </.form>
     <%!-- Color swatch — popover picker --%>
-    <div class="relative">
+    <div phx-hook="ToolbarPopover" id={"popover-hub-color-#{@node.id}"} data-width="160px" data-placement="bottom" data-offset="6">
       <button
+        data-role="trigger"
         type="button"
         class="toolbar-btn"
         title={dgettext("flows", "Hub color")}
         disabled={!@can_edit}
-        phx-click={JS.toggle(to: "#popover-hub-color-#{@node.id}", display: "block")}
       >
         <span
           class="inline-block size-4 rounded-full border border-white/20 shrink-0"
           style={"background:#{@color}"}
         />
       </button>
-      <div
-        id={"popover-hub-color-#{@node.id}"}
-        class="toolbar-popover"
-        style="display:none"
-        phx-click-away={JS.hide(to: "#popover-hub-color-#{@node.id}")}
-      >
+      <template data-role="popover-template">
         <div class="p-2">
           <div class="text-xs font-medium text-base-content/60 mb-1.5">
             {dgettext("flows", "Hub color")}
@@ -232,10 +227,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
             <button
               :for={swatch <- row}
               type="button"
-              phx-click={
-                JS.push("update_hub_color", value: %{color: swatch})
-                |> JS.hide(to: "#popover-hub-color-#{@node.id}")
-              }
+              data-event="update_hub_color"
+              data-params={Jason.encode!(%{color: swatch})}
               class={"color-swatch #{if swatch == @color, do: "color-swatch-active"}"}
               style={"background:#{swatch}"}
               title={swatch}
@@ -243,7 +236,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
             />
           </div>
         </div>
-      </div>
+      </template>
     </div>
     <span :if={@jump_count > 0} class="badge badge-xs badge-ghost">
       {dngettext("flows", "%{count} jump", "%{count} jumps", @jump_count, count: @jump_count)}
@@ -325,31 +318,24 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       />
     </.form>
     <%!-- Exit Mode — popover with icon + label + description --%>
-    <div class="relative">
+    <div phx-hook="ToolbarPopover" id={"popover-exit-mode-#{@node.id}"} data-width="14rem" data-offset="6">
       <button
+        data-role="trigger"
         type="button"
         class="toolbar-btn gap-1 px-1.5"
         disabled={!@can_edit}
-        phx-click={JS.toggle(to: "#popover-exit-mode-#{@node.id}", display: "block")}
       >
         <.exit_mode_icon mode={@exit_mode} />
         <span class="text-xs">{exit_mode_label(@exit_mode)}</span>
         <.icon name="chevron-down" class="size-3 opacity-50" />
       </button>
-      <div
-        id={"popover-exit-mode-#{@node.id}"}
-        class="toolbar-popover w-56"
-        style="display:none"
-        phx-click-away={JS.hide(to: "#popover-exit-mode-#{@node.id}")}
-      >
+      <template data-role="popover-template">
         <div class="p-1">
           <button
             :for={mode <- ~w(terminal flow_reference caller_return)}
             type="button"
-            phx-click={
-              JS.push("update_exit_mode", value: %{mode: mode})
-              |> JS.hide(to: "#popover-exit-mode-#{@node.id}")
-            }
+            data-event="update_exit_mode"
+            data-params={Jason.encode!(%{mode: mode})}
             class={"flex items-center gap-2.5 w-full px-2.5 py-2 rounded-md text-left hover:bg-base-200 #{if @exit_mode == mode, do: "bg-base-200 font-medium"}"}
             disabled={!@can_edit}
           >
@@ -362,28 +348,23 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
             </div>
           </button>
         </div>
-      </div>
+      </template>
     </div>
     <%!-- Color swatch — popover picker --%>
-    <div class="relative">
+    <div phx-hook="ToolbarPopover" id={"popover-exit-color-#{@node.id}"} data-width="160px" data-placement="bottom" data-offset="6">
       <button
+        data-role="trigger"
         type="button"
         class="toolbar-btn"
         title={dgettext("flows", "Outcome color")}
         disabled={!@can_edit}
-        phx-click={JS.toggle(to: "#popover-exit-color-#{@node.id}", display: "block")}
       >
         <span
           class="inline-block size-4 rounded-full border border-white/20 shrink-0"
           style={"background:#{@color}"}
         />
       </button>
-      <div
-        id={"popover-exit-color-#{@node.id}"}
-        class="toolbar-popover"
-        style="display:none"
-        phx-click-away={JS.hide(to: "#popover-exit-color-#{@node.id}")}
-      >
+      <template data-role="popover-template">
         <div class="p-2">
           <div class="text-xs font-medium text-base-content/60 mb-1.5">
             {dgettext("flows", "Outcome color")}
@@ -392,10 +373,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
             <button
               :for={swatch <- row}
               type="button"
-              phx-click={
-                JS.push("update_outcome_color", value: %{color: swatch})
-                |> JS.hide(to: "#popover-exit-color-#{@node.id}")
-              }
+              data-event="update_outcome_color"
+              data-params={Jason.encode!(%{color: swatch})}
               class={"color-swatch #{if swatch == @color, do: "color-swatch-active"}"}
               style={"background:#{swatch}"}
               title={swatch}
@@ -403,7 +382,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
             />
           </div>
         </div>
-      </div>
+      </template>
     </div>
     <button
       :if={@has_ref}
@@ -566,7 +545,6 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
     <div
       id={@id}
       phx-hook="SearchableSelect"
-      class="relative"
       {if @server_search_event, do: [{"data-server-search", @server_search_event}], else: []}
     >
       <button
@@ -578,7 +556,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
         <span :if={!@selected_label} class="text-xs opacity-50">{@placeholder}</span>
         <.icon name="chevron-down" class="size-3 opacity-50 shrink-0" />
       </button>
-      <div data-role="popover" class="toolbar-popover w-56" style="display:none">
+      <template data-role="popover-template">
         <div class="p-2 pb-1">
           <input
             data-role="search"
@@ -593,9 +571,10 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
           >
             <input
               type="checkbox"
+              data-role="deep-search-toggle"
               class="toggle toggle-xs toggle-primary"
               checked={@deep_search}
-              phx-click={@deep_search_event}
+              data-event={@deep_search_event}
             />
             <span class="text-[11px] text-base-content/50">
               {dgettext("flows", "Search in content")}
@@ -606,7 +585,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
           <button
             :if={@selected_value}
             type="button"
-            phx-click={JS.push(@event, value: @clear_params)}
+            data-event={@event}
+            data-params={Jason.encode!(@clear_params)}
             data-search-text=""
             class="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs text-base-content/50 hover:bg-base-200"
           >
@@ -616,7 +596,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
           <button
             :for={{label, value, params} <- @options_with_params}
             type="button"
-            phx-click={JS.push(@event, value: params)}
+            data-event={@event}
+            data-params={Jason.encode!(params)}
             data-search-text={String.downcase(label)}
             class={"flex items-center w-full px-2 py-1.5 rounded text-xs hover:bg-base-200 truncate #{if to_string(value) == to_string(@selected_value), do: "font-semibold text-primary"}"}
           >
@@ -626,7 +607,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
             :if={@has_more && @load_more_event}
             type="button"
             data-role="load-more"
-            phx-click={@load_more_event}
+            data-event={@load_more_event}
             class="flex items-center justify-center w-full px-2 py-1.5 rounded text-xs text-primary hover:bg-base-200"
           >
             {dgettext("flows", "Show more…")}
@@ -639,7 +620,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
         >
           {dgettext("flows", "No matches")}
         </div>
-      </div>
+      </template>
     </div>
     """
   end
