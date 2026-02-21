@@ -29,6 +29,20 @@ export function createKeyboardHandler(hook, lockHandler) {
      * @param {KeyboardEvent} e - The keyboard event
      */
     handleKeyboard(e) {
+      // Navigation history: Alt+Left / Alt+Right (works even in inputs)
+      if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          hook.pushEvent("nav_back", {});
+          return;
+        }
+        if (e.key === "ArrowRight") {
+          e.preventDefault();
+          hook.pushEvent("nav_forward", {});
+          return;
+        }
+      }
+
       // Debug shortcuts — work even when typing in inputs (except Ctrl+Shift+D toggle)
       const debugActive = !!hook.el
         .closest("[id]")

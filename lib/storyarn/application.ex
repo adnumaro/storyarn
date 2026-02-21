@@ -16,6 +16,7 @@ defmodule Storyarn.Application do
       Storyarn.Collaboration.Presence,
       Storyarn.Collaboration.Locks,
       Storyarn.Flows.DebugSessionStore,
+      Storyarn.Flows.NavigationHistoryStore,
       # Start to serve requests, typically the last entry
       StoryarnWeb.Endpoint
     ]

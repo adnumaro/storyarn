@@ -179,6 +179,10 @@ defmodule StoryarnWeb.FlowLive.Index do
         flows_tree = Flows.list_flows_tree(project.id)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
 
+        # Leaving the flow editor — clear navigation history for this user/project
+        user_id = socket.assigns.current_scope.user.id
+        Flows.NavigationHistoryStore.clear({user_id, project.id})
+
         socket =
           socket
           |> assign(:project, project)

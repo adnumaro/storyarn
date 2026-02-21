@@ -17,6 +17,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Flows
   alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.NavigationHistoryStore
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -28,6 +29,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
+  alias StoryarnWeb.FlowLive.Helpers.NavigationHistory
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
   alias StoryarnWeb.FlowLive.Nodes.Condition
   alias StoryarnWeb.FlowLive.Nodes.Dialogue
@@ -56,7 +58,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         flow={@flow}
         workspace={@workspace}
         project={@project}
-        from_flow={@from_flow}
+        nav_history={@nav_history}
         can_edit={@can_edit}
         debug_panel_open={@debug_panel_open}
         save_status={@save_status}
@@ -222,7 +224,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:membership, membership)
           |> assign(:flow, flow)
           |> assign(:can_edit, can_edit)
-          |> assign(:from_flow, nil)
+          |> assign(:nav_history, nil)
 
         {:ok, socket}
     end
@@ -285,12 +287,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_params(params, _url, socket) do
-    socket =
-      socket
-      |> maybe_navigate_to_node(params["node"])
-      |> maybe_set_from_flow(params["from"])
-
-    {:noreply, socket}
+    {:noreply, maybe_navigate_to_node(socket, params["node"])}
   end
 
   defp maybe_navigate_to_node(socket, nil), do: socket
@@ -299,22 +296,6 @@ defmodule StoryarnWeb.FlowLive.Show do
     case Integer.parse(node_id) do
       {id, ""} -> push_event(socket, "navigate_to_node", %{node_db_id: id})
       _ -> socket
-    end
-  end
-
-  defp maybe_set_from_flow(socket, nil), do: assign(socket, :from_flow, nil)
-
-  defp maybe_set_from_flow(socket, from_id) do
-    case Integer.parse(from_id) do
-      {id, ""} -> resolve_from_flow(socket, id)
-      _ -> assign(socket, :from_flow, nil)
-    end
-  end
-
-  defp resolve_from_flow(socket, id) do
-    case Flows.get_flow_brief(socket.assigns.project.id, id) do
-      nil -> assign(socket, :from_flow, nil)
-      flow -> assign(socket, :from_flow, flow)
     end
   end
 
@@ -587,6 +568,46 @@ defmodule StoryarnWeb.FlowLive.Show do
     NavigationHandlers.handle_navigate_to_flow(flow_id_str, socket)
   end
 
+  def handle_event("nav_back", _params, %{assigns: %{nav_history: nil}} = socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("nav_back", _params, socket) do
+    case NavigationHistory.back(socket.assigns.nav_history) do
+      {:ok, entry, updated_history} ->
+        store_nav_history(socket, updated_history)
+
+        {:noreply,
+         push_navigate(socket,
+           to:
+             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{entry.flow_id}"
+         )}
+
+      :at_start ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("nav_forward", _params, %{assigns: %{nav_history: nil}} = socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("nav_forward", _params, socket) do
+    case NavigationHistory.forward(socket.assigns.nav_history) do
+      {:ok, entry, updated_history} ->
+        store_nav_history(socket, updated_history)
+
+        {:noreply,
+         push_navigate(socket,
+           to:
+             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{entry.flow_id}"
+         )}
+
+      :at_end ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_event("update_subflow_reference", %{"referenced_flow_id" => ref_id}, socket) do
     with_auth(:edit_content, socket, fn ->
       Subflow.Node.handle_update_reference(ref_id, socket)
@@ -603,7 +624,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           {:noreply,
            push_navigate(socket,
              to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}?from=#{socket.assigns.flow.id}"
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
            )}
 
         {:error, _, _reason, _changes} ->
@@ -825,7 +846,10 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:debug_auto_timer, nil)
       |> assign(:loading, false)
 
-    socket = maybe_restore_debug_session(socket)
+    socket =
+      socket
+      |> maybe_restore_nav_history()
+      |> maybe_restore_debug_session()
 
     {:noreply, socket}
   end
@@ -892,6 +916,25 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
   # Private Helpers
   # ===========================================================================
+
+  defp maybe_restore_nav_history(socket) do
+    user_id = socket.assigns.current_scope.user.id
+    project_id = socket.assigns.project.id
+    flow = socket.assigns.flow
+    key = {user_id, project_id}
+
+    history = NavigationHistoryStore.get(key) || NavigationHistory.new(flow.id, flow.name)
+    history = NavigationHistory.push(history, flow.id, flow.name)
+    NavigationHistoryStore.put(key, history)
+
+    assign(socket, :nav_history, history)
+  end
+
+  defp store_nav_history(socket, history) do
+    user_id = socket.assigns.current_scope.user.id
+    project_id = socket.assigns.project.id
+    NavigationHistoryStore.put({user_id, project_id}, history)
+  end
 
   defp with_auth(action, socket, fun) do
     case authorize(socket, action) do

@@ -176,7 +176,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
         {:noreply,
          push_navigate(socket,
            to:
-             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}?from=#{socket.assigns.flow.id}"
+             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
          )}
 
       mode ->

@@ -74,7 +74,7 @@ msgstr "Líneas de acción, notas de transición..."
 msgid "Add"
 msgstr "Sumar"
 
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:115
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:129
 #, elixir-autogen, elixir-format
 msgid "Add Node"
 msgstr "Agregar nodo"
@@ -291,7 +291,7 @@ msgstr "No se pudo crear la ficha."
 msgid "Could not delete flow."
 msgstr "No se pudo eliminar el flujo."
 
-#: lib/storyarn_web/live/flow_live/show.ex:838
+#: lib/storyarn_web/live/flow_live/show.ex:862
 #, elixir-autogen, elixir-format
 msgid "Could not load flow data."
 msgstr "No se pudo subir el avatar."
@@ -306,7 +306,7 @@ msgstr "No se pudo mover el flujo."
 msgid "Could not save flow name."
 msgstr "No se pudo guardar el nombre del flujo."
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:431
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:433
 #, elixir-autogen, elixir-format
 msgid "Could not save shortcut."
 msgstr "No se pudo guardar el atajo."
@@ -342,7 +342,7 @@ msgstr "Actual"
 msgid "Day"
 msgstr "Día"
 
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:110
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:124
 #, elixir-autogen, elixir-format
 msgid "Debug"
 msgstr "Depuración"
@@ -477,7 +477,7 @@ msgstr "Flujo movido a la papelera."
 #: lib/storyarn_web/live/flow_live/handlers/navigation_handlers.ex:23
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:173
 #: lib/storyarn_web/live/flow_live/player_live.ex:95
-#: lib/storyarn_web/live/flow_live/show.ex:210
+#: lib/storyarn_web/live/flow_live/show.ex:212
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr "Flujo no encontrado."
@@ -488,7 +488,7 @@ msgid "Flow set as main."
 msgstr "Flujo establecido como principal."
 
 #: lib/storyarn_web/components/sidebar/flow_tree.ex:29
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:33
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:35
 #: lib/storyarn_web/live/flow_live/index.ex:27
 #, elixir-autogen, elixir-format
 msgid "Flows"
@@ -596,7 +596,7 @@ msgstr "Localizar Hub destino"
 msgid "Location"
 msgstr "ID de localización"
 
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:84
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:98
 #: lib/storyarn_web/live/flow_live/index.ex:111
 #, elixir-autogen, elixir-format
 msgid "Main"
@@ -607,7 +607,7 @@ msgstr "Principal"
 msgid "Main Story"
 msgstr "Historia principal"
 
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:82
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:96
 #: lib/storyarn_web/live/flow_live/index.ex:109
 #, elixir-autogen, elixir-format
 msgid "Main flow"
@@ -945,7 +945,7 @@ msgstr "Asignar … a verdadero"
 msgid "Short text shown in response menus"
 msgstr "Texto corto mostrado en menús de respuesta"
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:430
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:432
 #, elixir-autogen, elixir-format
 msgid "Shortcut %{error}"
 msgstr "Atajo %{error}"
@@ -995,7 +995,7 @@ msgstr "Retroceder"
 msgid "Stop"
 msgstr "a"
 
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:109
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:123
 #, elixir-autogen, elixir-format
 msgid "Stop Debug"
 msgstr "Detener depuración"
@@ -1073,7 +1073,7 @@ msgstr "Texto"
 msgid "This is the entry point of the flow."
 msgstr "Este es el punto de entrada del flujo."
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:451
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:453
 #, elixir-autogen, elixir-format
 msgid "This node is being edited by %{user}"
 msgstr "Este nodo está siendo editado por %{user}"
@@ -1121,7 +1121,7 @@ msgstr "Identificador único para exportación e integración con juegos."
 msgid "Unnamed exit"
 msgstr "Salida sin nombre"
 
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:55
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:69
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:244
 #: lib/storyarn_web/live/flow_live/index.ex:297
 #: lib/storyarn_web/live/flow_live/index.ex:318
@@ -1152,7 +1152,7 @@ msgstr "Conteo de palabras"
 
 #: lib/storyarn_web/live/flow_live/index.ex:196
 #: lib/storyarn_web/live/flow_live/player_live.ex:83
-#: lib/storyarn_web/live/flow_live/show.ex:199
+#: lib/storyarn_web/live/flow_live/show.ex:201
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
 msgstr "No tienes acceso a este proyecto."
@@ -1163,12 +1163,12 @@ msgstr "No tienes acceso a este proyecto."
 #: lib/storyarn_web/live/flow_live/index.ex:334
 #: lib/storyarn_web/live/flow_live/index.ex:359
 #: lib/storyarn_web/live/flow_live/index.ex:380
-#: lib/storyarn_web/live/flow_live/show.ex:904
+#: lib/storyarn_web/live/flow_live/show.ex:947
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."
 
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:69
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:83
 #, elixir-autogen, elixir-format
 msgid "add-shortcut"
 msgstr "agregar-atajo"
@@ -1426,7 +1426,7 @@ msgstr "Error al avanzar en el flujo."
 msgid "No content to display."
 msgstr "No hay contenido que mostrar."
 
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:97
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:111
 #, elixir-autogen, elixir-format
 msgid "Play"
 msgstr "Reproducir"
@@ -1563,7 +1563,7 @@ msgstr "Editor de condiciones"
 msgid "Continues into another flow"
 msgstr "Continúa a otro flujo"
 
-#: lib/storyarn_web/live/flow_live/show.ex:611
+#: lib/storyarn_web/live/flow_live/show.ex:632
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr "No se pudo crear el flujo enlazado."
@@ -1733,3 +1733,13 @@ msgstr "mc.jaime.health = 50"
 #, elixir-autogen, elixir-format
 msgid "mc.jaime.health > 50"
 msgstr "mc.jaime.health > 50"
+
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:44
+#, elixir-autogen, elixir-format
+msgid "Alt+Left"
+msgstr "Alt+Izq"
+
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:54
+#, elixir-autogen, elixir-format
+msgid "Alt+Right"
+msgstr "Alt+Der"

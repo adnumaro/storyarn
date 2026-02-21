@@ -10,10 +10,12 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
   import StoryarnWeb.Components.SaveIndicator
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers, only: [node_type_label: 1, node_type_icon: 1]
 
+  alias StoryarnWeb.FlowLive.Helpers.NavigationHistory
+
   attr :flow, :map, required: true
   attr :workspace, :map, required: true
   attr :project, :map, required: true
-  attr :from_flow, :map, default: nil
+  attr :nav_history, :map, default: nil
   attr :can_edit, :boolean, required: true
   attr :debug_panel_open, :boolean, default: false
   attr :save_status, :atom, default: :idle
@@ -32,16 +34,28 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
           <.icon name="chevron-left" class="size-4" />
           {dgettext("flows", "Flows")}
         </.link>
-        <.link
-          :if={@from_flow}
-          navigate={
-            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@from_flow.id}"
-          }
-          class="btn btn-ghost btn-sm gap-1 text-base-content/60"
+        <% back_entry = @nav_history && NavigationHistory.peek_back(@nav_history) %>
+        <% forward_entry = @nav_history && NavigationHistory.peek_forward(@nav_history) %>
+        <button
+          :if={back_entry}
+          type="button"
+          class="btn btn-ghost btn-sm gap-1 text-base-content/60 max-w-[180px]"
+          phx-click="nav_back"
+          title={dgettext("flows", "Alt+Left")}
         >
-          <.icon name="corner-up-left" class="size-3" />
-          {@from_flow.name}
-        </.link>
+          <.icon name="arrow-left" class="size-3.5 shrink-0" />
+          <span class="truncate">{back_entry.flow_name}</span>
+        </button>
+        <button
+          :if={forward_entry}
+          type="button"
+          class="btn btn-ghost btn-sm gap-1 text-base-content/60 max-w-[180px]"
+          phx-click="nav_forward"
+          title={dgettext("flows", "Alt+Right")}
+        >
+          <span class="truncate">{forward_entry.flow_name}</span>
+          <.icon name="arrow-right" class="size-3.5 shrink-0" />
+        </button>
       </div>
       <div class="flex-1 flex items-center gap-3 ml-4">
         <div>

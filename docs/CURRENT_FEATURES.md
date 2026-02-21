@@ -451,8 +451,9 @@ Note: There are no toolbar buttons for undo/redo — keyboard-only access. Multi
 
 ### 3.10 Cross-Flow Navigation
 
-- Breadcrumb "Flows" link; "Back to {flow}" button when navigated via `?from=` param
-- Subflow double-click navigates with `?from=` param for return
+- Breadcrumb "Flows" link; Back/Forward buttons with full navigation history (Agent-persisted across remounts)
+- Subflow double-click navigates to target flow (history tracked automatically)
+- Keyboard shortcuts: Alt+Left (back), Alt+Right (forward)
 - Exit flow_reference navigates to target flow
 - Entry shows referencing flows (clickable navigation)
 - Hub ↔ Jump bidirectional zoom-and-highlight navigation
