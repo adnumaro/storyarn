@@ -1272,4 +1272,608 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       assert hd(refs).kind == "read"
     end
   end
+
+  # -- Table variable tests --
+
+  describe "update_references with table variable instruction nodes" do
+    setup ctx do
+      table_block = table_block_fixture(ctx.sheet, %{label: "Attributes"})
+      strength_row = table_row_fixture(table_block, %{name: "Strength"})
+      value_column = table_column_fixture(table_block, %{name: "Value", type: "number"})
+
+      # Also add a second cell for multi-cell tests
+      wisdom_row = table_row_fixture(table_block, %{name: "Wisdom"})
+
+      Map.merge(ctx, %{
+        table_block: table_block,
+        strength_row: strength_row,
+        wisdom_row: wisdom_row,
+        value_column: value_column
+      })
+    end
+
+    test "creates write ref for table variable assignment", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "assign_1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      refs = Repo.all(VariableReference)
+      assert length(refs) == 1
+
+      ref = hd(refs)
+      assert ref.flow_node_id == node.id
+      assert ref.block_id == ctx.table_block.id
+      assert ref.kind == "write"
+      assert ref.source_sheet == "mc.jaime"
+      assert ref.source_variable == "attributes.strength.value"
+    end
+
+    test "creates read ref for table variable_ref", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "assign_1",
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "attributes.strength.value",
+                "value_type" => "variable_ref",
+                "value_sheet" => "mc.jaime"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      refs = Repo.all(VariableReference) |> Enum.sort_by(& &1.kind)
+      assert length(refs) == 2
+
+      read_ref = Enum.find(refs, &(&1.kind == "read"))
+      write_ref = Enum.find(refs, &(&1.kind == "write"))
+
+      assert read_ref.block_id == ctx.table_block.id
+      assert read_ref.source_variable == "attributes.strength.value"
+      assert write_ref.block_id == ctx.health_block.id
+    end
+
+    test "multiple cells from same table block are stored as separate refs", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "assign_1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              },
+              %{
+                "id" => "assign_2",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.wisdom.value",
+                "operator" => "set",
+                "value" => "8",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      refs = Repo.all(VariableReference)
+      assert length(refs) == 2
+
+      # Both point to same block_id (the table block)
+      assert Enum.all?(refs, &(&1.block_id == ctx.table_block.id))
+      assert Enum.all?(refs, &(&1.kind == "write"))
+
+      variables = Enum.map(refs, & &1.source_variable) |> Enum.sort()
+      assert variables == ["attributes.strength.value", "attributes.wisdom.value"]
+    end
+  end
+
+  describe "update_references with table variable condition nodes" do
+    setup ctx do
+      table_block = table_block_fixture(ctx.sheet, %{label: "Attributes"})
+      strength_row = table_row_fixture(table_block, %{name: "Strength"})
+      _value_column = table_column_fixture(table_block, %{name: "Value", type: "number"})
+
+      Map.merge(ctx, %{
+        table_block: table_block,
+        strength_row: strength_row
+      })
+    end
+
+    test "creates read ref from condition rule with table variable", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "condition",
+          data: %{
+            "condition" => %{
+              "logic" => "all",
+              "rules" => [
+                %{
+                  "id" => "rule_1",
+                  "sheet" => "mc.jaime",
+                  "variable" => "attributes.strength.value",
+                  "operator" => "greater_than",
+                  "value" => "5"
+                }
+              ]
+            }
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      refs = Repo.all(VariableReference)
+      assert length(refs) == 1
+
+      ref = hd(refs)
+      assert ref.block_id == ctx.table_block.id
+      assert ref.kind == "read"
+      assert ref.source_variable == "attributes.strength.value"
+    end
+  end
+
+  describe "list_stale_node_ids with table variables" do
+    setup ctx do
+      table_block = table_block_fixture(ctx.sheet, %{label: "Attributes"})
+      strength_row = table_row_fixture(table_block, %{name: "Strength"})
+      _value_column = table_column_fixture(table_block, %{name: "Value", type: "number"})
+
+      Map.merge(ctx, %{
+        table_block: table_block,
+        strength_row: strength_row
+      })
+    end
+
+    test "fresh table ref is not stale", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
+      assert MapSet.size(stale_ids) == 0
+    end
+
+    test "stale after sheet rename", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+      Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
+
+      stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
+      assert MapSet.member?(stale_ids, node.id)
+    end
+
+    test "stale after table block rename", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename the table block label → changes variable_name
+      Storyarn.Sheets.update_block(ctx.table_block, %{
+        config: %{"label" => "Stats", "collapsed" => false}
+      })
+
+      stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
+      assert MapSet.member?(stale_ids, node.id)
+    end
+
+    test "stale after row rename", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename the row → changes slug
+      Storyarn.Sheets.update_table_row(ctx.strength_row, %{name: "Power"})
+
+      stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
+      assert MapSet.member?(stale_ids, node.id)
+    end
+
+    test "stale after column rename", ctx do
+      extra_col = table_column_fixture(ctx.table_block, %{name: "Score", type: "number"})
+
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.score",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Rename the column → changes slug
+      Storyarn.Sheets.update_table_column(extra_col, %{name: "Points"})
+
+      stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
+      assert MapSet.member?(stale_ids, node.id)
+    end
+
+    test "mixed regular + table: only stale one is flagged", ctx do
+      table_node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      regular_node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a2",
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(table_node)
+      VariableReferenceTracker.update_references(regular_node)
+
+      # Rename the table block → only table ref becomes stale
+      Storyarn.Sheets.update_block(ctx.table_block, %{
+        config: %{"label" => "Stats", "collapsed" => false}
+      })
+
+      stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
+      assert MapSet.member?(stale_ids, table_node.id)
+      refute MapSet.member?(stale_ids, regular_node.id)
+    end
+  end
+
+  describe "check_stale_references with table variables" do
+    setup ctx do
+      table_block = table_block_fixture(ctx.sheet, %{label: "Attributes"})
+      strength_row = table_row_fixture(table_block, %{name: "Strength"})
+      _value_column = table_column_fixture(table_block, %{name: "Value", type: "number"})
+
+      Map.merge(ctx, %{
+        table_block: table_block,
+        strength_row: strength_row
+      })
+    end
+
+    test "stale: false when fresh", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      refs = VariableReferenceTracker.check_stale_references(ctx.table_block.id, ctx.project.id)
+      assert length(refs) == 1
+      assert hd(refs).stale == false
+    end
+
+    test "stale: true after table block rename", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      Storyarn.Sheets.update_block(ctx.table_block, %{
+        config: %{"label" => "Stats", "collapsed" => false}
+      })
+
+      refs = VariableReferenceTracker.check_stale_references(ctx.table_block.id, ctx.project.id)
+      assert length(refs) == 1
+      assert hd(refs).stale == true
+    end
+  end
+
+  describe "repair_stale_references with table variables" do
+    setup ctx do
+      table_block = table_block_fixture(ctx.sheet, %{label: "Attributes"})
+      strength_row = table_row_fixture(table_block, %{name: "Strength"})
+      _value_column = table_column_fixture(table_block, %{name: "Value", type: "number"})
+
+      Map.merge(ctx, %{
+        table_block: table_block,
+        strength_row: strength_row
+      })
+    end
+
+    test "repairs table ref after sheet rename", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+      Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
+
+      {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert count == 1
+
+      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      assignment = hd(updated_node.data["assignments"])
+      assert assignment["sheet"] == "mc.renamed"
+      assert assignment["variable"] == "attributes.strength.value"
+    end
+
+    test "repairs table ref after table block rename", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      Storyarn.Sheets.update_block(ctx.table_block, %{
+        config: %{"label" => "Stats", "collapsed" => false}
+      })
+
+      {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert count == 1
+
+      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      assignment = hd(updated_node.data["assignments"])
+      assert assignment["sheet"] == "mc.jaime"
+      # table_name part replaced, row/col slugs preserved
+      assert assignment["variable"] == "stats.strength.value"
+    end
+
+    test "repair is idempotent for table refs", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+      Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
+
+      {:ok, 1} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      {:ok, 0} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+    end
+
+    test "mixed regular + table refs repaired correctly", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              },
+              %{
+                "id" => "a2",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+      Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
+
+      {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert count == 1
+
+      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      [a1, a2] = updated_node.data["assignments"]
+
+      # Both get sheet renamed
+      assert a1["sheet"] == "mc.renamed"
+      assert a1["variable"] == "health"
+      assert a2["sheet"] == "mc.renamed"
+      assert a2["variable"] == "attributes.strength.value"
+    end
+
+    test "repairs condition read ref with table variable after sheet rename", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "condition",
+          data: %{
+            "condition" => %{
+              "logic" => "all",
+              "rules" => [
+                %{
+                  "id" => "r1",
+                  "sheet" => "mc.jaime",
+                  "variable" => "attributes.strength.value",
+                  "operator" => "greater_than",
+                  "value" => "5"
+                }
+              ]
+            }
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+      Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
+
+      {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert count == 1
+
+      updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
+      rule = hd(updated_node.data["condition"]["rules"])
+      assert rule["sheet"] == "mc.renamed"
+      assert rule["variable"] == "attributes.strength.value"
+    end
+  end
 end

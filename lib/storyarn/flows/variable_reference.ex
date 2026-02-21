@@ -45,6 +45,6 @@ defmodule Storyarn.Flows.VariableReference do
     |> cast(attrs, [:flow_node_id, :block_id, :kind, :source_sheet, :source_variable])
     |> validate_required([:flow_node_id, :block_id, :kind, :source_sheet, :source_variable])
     |> validate_inclusion(:kind, ["read", "write"])
-    |> unique_constraint([:flow_node_id, :block_id, :kind])
+    |> unique_constraint([:flow_node_id, :block_id, :kind, :source_variable])
   end
 end

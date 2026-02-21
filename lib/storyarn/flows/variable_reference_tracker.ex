@@ -15,7 +15,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   alias Storyarn.Flows.{Condition, Flow, FlowNode, VariableReference}
   alias Storyarn.Repo
-  alias Storyarn.Sheets.{Block, Sheet}
+  alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
 
   @doc """
   Updates variable references for a node after its data changes.
@@ -122,7 +122,31 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         node_data: n.data,
         source_sheet: vr.source_sheet,
         source_variable: vr.source_variable,
-        stale: vr.source_sheet != s.shortcut or vr.source_variable != b.variable_name
+        stale:
+          fragment(
+            """
+            CASE WHEN ? = 'table' THEN
+              ? != ? OR NOT EXISTS (
+                SELECT 1 FROM table_rows tr
+                JOIN table_columns tc ON tc.block_id = tr.block_id
+                WHERE tr.block_id = ?
+                  AND ? = ? || '.' || tr.slug || '.' || tc.slug
+              )
+            ELSE
+              ? != ? OR ? != ?
+            END
+            """,
+            b.type,
+            vr.source_sheet,
+            s.shortcut,
+            b.id,
+            vr.source_variable,
+            b.variable_name,
+            vr.source_sheet,
+            s.shortcut,
+            vr.source_variable,
+            b.variable_name
+          )
       },
       order_by: [asc: vr.kind, asc: f.name]
     )
@@ -165,6 +189,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         }
       )
       |> Repo.all()
+      |> Enum.map(&compute_table_current_variable/1)
 
     # Group by node_id to batch repairs per node
     repairs_by_node =
@@ -199,6 +224,12 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   """
   @spec list_stale_node_ids(integer()) :: MapSet.t()
   def list_stale_node_ids(flow_id) do
+    regular_ids = list_stale_regular_node_ids(flow_id)
+    table_ids = list_stale_table_node_ids(flow_id)
+    MapSet.union(regular_ids, table_ids)
+  end
+
+  defp list_stale_regular_node_ids(flow_id) do
     from(vr in VariableReference,
       join: n in FlowNode,
       on: n.id == vr.flow_node_id,
@@ -209,7 +240,45 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       where: n.flow_id == ^flow_id,
       where: is_nil(s.deleted_at),
       where: is_nil(b.deleted_at),
+      where: b.type != "table",
       where: vr.source_sheet != s.shortcut or vr.source_variable != b.variable_name,
+      distinct: true,
+      select: n.id
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  defp list_stale_table_node_ids(flow_id) do
+    table_cell_exists =
+      from(tr in TableRow,
+        join: tc in TableColumn,
+        on: tc.block_id == tr.block_id,
+        where:
+          parent_as(:vr).source_variable ==
+            fragment(
+              "? || '.' || ? || '.' || ?",
+              parent_as(:block).variable_name,
+              tr.slug,
+              tc.slug
+            ),
+        select: 1
+      )
+
+    from(vr in VariableReference,
+      as: :vr,
+      join: n in FlowNode,
+      on: n.id == vr.flow_node_id,
+      join: b in Block,
+      as: :block,
+      on: b.id == vr.block_id,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      where: n.flow_id == ^flow_id,
+      where: is_nil(s.deleted_at),
+      where: is_nil(b.deleted_at),
+      where: b.type == "table",
+      where: vr.source_sheet != s.shortcut or not exists(table_cell_exists),
       distinct: true,
       select: n.id
     )
@@ -308,6 +377,18 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   defp resolve_block(project_id, sheet_shortcut, variable_name)
        when is_binary(sheet_shortcut) and sheet_shortcut != "" and
               is_binary(variable_name) and variable_name != "" do
+    case String.split(variable_name, ".", parts: 3) do
+      [table_name, row_slug, column_slug] ->
+        resolve_table_block(project_id, sheet_shortcut, table_name, row_slug, column_slug)
+
+      _ ->
+        resolve_regular_block(project_id, sheet_shortcut, variable_name)
+    end
+  end
+
+  defp resolve_block(_, _, _), do: nil
+
+  defp resolve_regular_block(project_id, sheet_shortcut, variable_name) do
     from(b in Block,
       join: s in Sheet,
       on: s.id == b.sheet_id,
@@ -322,7 +403,27 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     |> Repo.one()
   end
 
-  defp resolve_block(_, _, _), do: nil
+  defp resolve_table_block(project_id, sheet_shortcut, table_name, row_slug, column_slug) do
+    from(b in Block,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      join: tr in TableRow,
+      on: tr.block_id == b.id,
+      join: tc in TableColumn,
+      on: tc.block_id == b.id,
+      where: s.project_id == ^project_id,
+      where: s.shortcut == ^sheet_shortcut,
+      where: b.variable_name == ^table_name,
+      where: b.type == "table",
+      where: tr.slug == ^row_slug,
+      where: tc.slug == ^column_slug,
+      where: is_nil(s.deleted_at),
+      where: is_nil(b.deleted_at),
+      select: b.id,
+      limit: 1
+    )
+    |> Repo.one()
+  end
 
   # Repairs node data by replacing stale shortcut/variable references with current values.
   # Uses deterministic matching via source_sheet/source_variable stored in the reference.
@@ -431,12 +532,25 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   defp repair_block(block, _read_refs), do: block
 
+  # For table blocks, the repair query returns current_variable = b.variable_name (e.g. "attributes")
+  # but the source_variable is a composite path (e.g. "attributes.strength.value").
+  # We reconstruct the full path using the current table name + the original row/col slugs.
+  defp compute_table_current_variable(%{source_variable: sv, current_variable: cv} = ref) do
+    case String.split(sv, ".", parts: 3) do
+      [_old_table, row_slug, col_slug] ->
+        %{ref | current_variable: "#{cv}.#{row_slug}.#{col_slug}"}
+
+      _ ->
+        ref
+    end
+  end
+
   defp replace_references(node_id, refs) do
     Repo.transaction(fn ->
       from(vr in VariableReference, where: vr.flow_node_id == ^node_id)
       |> Repo.delete_all()
 
-      unique_refs = Enum.uniq_by(refs, fn r -> {r.block_id, r.kind} end)
+      unique_refs = Enum.uniq_by(refs, fn r -> {r.block_id, r.kind, r.source_variable} end)
       now = DateTime.utc_now() |> DateTime.truncate(:second)
 
       entries =
