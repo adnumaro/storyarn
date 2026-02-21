@@ -1374,5 +1374,130 @@ defmodule Storyarn.SheetsTest do
       assert var.block_type == "select"
       assert var.options == ["Warrior", "Mage"]
     end
+
+    test "table generates variables for non-constant cells" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "Jaime", shortcut: "mc.jaime"})
+      # table_block_fixture auto-creates 1 default column ("Value", number) + 1 default row ("Row 1")
+      table = table_block_fixture(sheet, %{label: "Attributes"})
+      _col1 = table_column_fixture(table, %{name: "Strength", type: "number"})
+      _col2 = table_column_fixture(table, %{name: "Agility", type: "number"})
+      _row = table_row_fixture(table, %{name: "Extra"})
+
+      vars = Sheets.list_project_variables(project.id)
+      table_vars = Enum.filter(vars, &(&1.table_name != nil))
+
+      # 3 columns (default "Value" + "Strength" + "Agility") × 2 rows (default "Row 1" + "Extra") = 6
+      assert length(table_vars) == 6
+
+      var_names = Enum.map(table_vars, & &1.variable_name)
+      assert "attributes.row_1.strength" in var_names
+      assert "attributes.row_1.agility" in var_names
+      assert "attributes.extra.strength" in var_names
+      assert "attributes.extra.agility" in var_names
+    end
+
+    test "table constant columns excluded from variables" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "Jaime", shortcut: "mc.jaime"})
+      # Auto-creates default column "Value" (number, non-constant) + default row "Row 1"
+      table = table_block_fixture(sheet, %{label: "Stats"})
+      _col_var = table_column_fixture(table, %{name: "HP", type: "number"})
+      _col_const = table_column_fixture(table, %{name: "Label", type: "text", is_constant: true})
+
+      vars = Sheets.list_project_variables(project.id)
+      table_vars = Enum.filter(vars, &(&1.table_name != nil))
+
+      # Default "Value" + "HP" = 2 non-constant columns × 1 default row = 2 vars
+      # "Label" is constant so excluded
+      assert length(table_vars) == 2
+      col_names = Enum.map(table_vars, & &1.column_name) |> Enum.sort()
+      assert col_names == ["hp", "value"]
+    end
+
+    test "regular vars have nil table fields" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc"})
+      block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
+
+      [var] = Sheets.list_project_variables(project.id)
+
+      assert var.table_name == nil
+      assert var.row_name == nil
+      assert var.column_name == nil
+    end
+
+    test "table variables have table fields populated" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "Jaime", shortcut: "mc.jaime"})
+      # Auto-creates default column "Value" (number) + default row "Row 1"
+      table = table_block_fixture(sheet, %{label: "Attributes"})
+      _col = table_column_fixture(table, %{name: "Strength", type: "number"})
+
+      vars = Sheets.list_project_variables(project.id)
+      table_vars = Enum.filter(vars, &(&1.table_name != nil))
+
+      # 2 columns (default "Value" + "Strength") × 1 row (default "Row 1") = 2
+      assert length(table_vars) == 2
+
+      strength_var = Enum.find(table_vars, &(&1.column_name == "strength"))
+      assert strength_var.table_name == "attributes"
+      assert strength_var.row_name == "row_1"
+      assert strength_var.column_name == "strength"
+    end
+
+    test "table select column options included" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "Jaime", shortcut: "mc.jaime"})
+      # Auto-creates default column "Value" (number) + default row "Row 1"
+      table = table_block_fixture(sheet, %{label: "Traits"})
+
+      _col =
+        table_column_fixture(table, %{
+          name: "Class",
+          type: "select",
+          config: %{"options" => ["Warrior", "Mage", "Thief"]}
+        })
+
+      vars = Sheets.list_project_variables(project.id)
+      table_vars = Enum.filter(vars, &(&1.table_name != nil))
+
+      # 2 columns (default "Value" + "Class") × 1 row (default "Row 1") = 2
+      assert length(table_vars) == 2
+
+      class_var = Enum.find(table_vars, &(&1.column_name == "class"))
+      assert class_var.options == ["Warrior", "Mage", "Thief"]
+    end
+
+    test "mixed regular and table variables returned together" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "Jaime", shortcut: "mc.jaime"})
+
+      # Regular variable
+      block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
+
+      # Table variable (auto-creates default "Value" column + "Row 1" row)
+      table = table_block_fixture(sheet, %{label: "Attributes"})
+      _col = table_column_fixture(table, %{name: "Strength", type: "number"})
+
+      vars = Sheets.list_project_variables(project.id)
+
+      regular_vars = Enum.filter(vars, &(&1.table_name == nil))
+      table_vars = Enum.filter(vars, &(&1.table_name != nil))
+
+      assert length(regular_vars) == 1
+      # 2 columns (default "Value" + "Strength") × 1 row = 2
+      assert length(table_vars) == 2
+      assert hd(regular_vars).variable_name == "health"
+
+      strength_var = Enum.find(table_vars, &(&1.column_name == "strength"))
+      assert strength_var.variable_name == "attributes.row_1.strength"
+    end
   end
 end

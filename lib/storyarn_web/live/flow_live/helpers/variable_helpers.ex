@@ -25,5 +25,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpers do
   defp default_value("boolean"), do: false
   defp default_value("text"), do: ""
   defp default_value("rich_text"), do: ""
+  defp default_value("date"), do: nil
   defp default_value(_), do: nil
 end

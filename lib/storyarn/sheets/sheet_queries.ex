@@ -9,7 +9,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Sheets.{Block, Sheet}
+  alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
 
   # =============================================================================
   # Tree Operations
@@ -142,8 +142,10 @@ defmodule Storyarn.Sheets.SheetQueries do
 
   @spec list_project_variables(integer()) :: [map()]
   def list_project_variables(project_id) do
-    alias Storyarn.Sheets.Block
+    list_block_variables(project_id) ++ list_table_variables(project_id)
+  end
 
+  defp list_block_variables(project_id) do
     variable_types = ~w(text rich_text number select multi_select boolean date)
 
     from(b in Block,
@@ -167,6 +169,37 @@ defmodule Storyarn.Sheets.SheetQueries do
         config: b.config
       },
       order_by: [asc: s.name, asc: b.position]
+    )
+    |> Repo.all()
+    |> Enum.map(&extract_variable_options/1)
+    |> Enum.map(&Map.merge(&1, %{table_name: nil, row_name: nil, column_name: nil}))
+  end
+
+  defp list_table_variables(project_id) do
+    variable_column_types = ~w(number text boolean select multi_select date)
+
+    from(tc in TableColumn,
+      join: b in Block, on: tc.block_id == b.id,
+      join: s in Sheet, on: b.sheet_id == s.id,
+      join: tr in TableRow, on: tr.block_id == b.id,
+      where: s.project_id == ^project_id,
+      where: is_nil(s.deleted_at) and is_nil(b.deleted_at),
+      where: b.type == "table",
+      where: tc.is_constant == false,
+      where: tc.type in ^variable_column_types,
+      select: %{
+        sheet_id: s.id,
+        sheet_name: s.name,
+        sheet_shortcut: coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)),
+        block_id: b.id,
+        variable_name: fragment("? || '.' || ? || '.' || ?", b.variable_name, tr.slug, tc.slug),
+        block_type: tc.type,
+        config: tc.config,
+        table_name: b.variable_name,
+        row_name: tr.slug,
+        column_name: tc.slug
+      },
+      order_by: [asc: s.name, asc: b.position, asc: tr.position, asc: tc.position]
     )
     |> Repo.all()
     |> Enum.map(&extract_variable_options/1)

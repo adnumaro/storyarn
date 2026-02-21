@@ -1694,6 +1694,180 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
   end
 
   # =============================================================================
+  # Table variable support
+  # =============================================================================
+
+  describe "table variable support" do
+    test "condition evaluates table variable" do
+      vars = %{
+        "mc.jaime.attributes.strength.value" =>
+          var(18, "number", sheet: "mc.jaime", name: "attributes.strength.value")
+      }
+
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "id" => "rule1",
+            "sheet" => "mc.jaime",
+            "variable" => "attributes.strength.value",
+            "operator" => "greater_than",
+            "value" => "10"
+          }
+        ]
+      }
+
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "condition", %{"condition" => condition, "switch_mode" => false}),
+        3 => node(3, "exit"),
+        4 => node(4, "exit")
+      }
+
+      conns = [
+        conn(1, "default", 2),
+        conn(2, "true", 3),
+        conn(2, "false", 4)
+      ]
+
+      state = Engine.init(vars, 1)
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert state.current_node_id == 3
+    end
+
+    test "instruction mutates table variable" do
+      vars = %{
+        "mc.jaime.attributes.strength.value" =>
+          var(18, "number", sheet: "mc.jaime", name: "attributes.strength.value")
+      }
+
+      nodes = %{
+        1 => node(1, "entry"),
+        2 =>
+          node(2, "instruction", %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "add",
+                "value" => "5",
+                "value_type" => "literal",
+                "value_sheet" => nil
+              }
+            ]
+          }),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      state = Engine.init(vars, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:ok, state} = Engine.step(state, nodes, conns)
+
+      assert state.variables["mc.jaime.attributes.strength.value"].value == 23.0
+    end
+
+    test "mixed regular and table variables" do
+      vars = %{
+        "mc.jaime.health" =>
+          var(100, "number", sheet: "mc.jaime", name: "health"),
+        "mc.jaime.attributes.strength.value" =>
+          var(18, "number", sheet: "mc.jaime", name: "attributes.strength.value")
+      }
+
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "id" => "rule1",
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "greater_than",
+            "value" => "50"
+          }
+        ]
+      }
+
+      nodes = %{
+        1 => node(1, "entry"),
+        2 => node(2, "condition", %{"condition" => condition, "switch_mode" => false}),
+        3 =>
+          node(3, "instruction", %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "add",
+                "value" => "2",
+                "value_type" => "literal",
+                "value_sheet" => nil
+              }
+            ]
+          }),
+        4 => node(4, "exit"),
+        5 => node(5, "exit")
+      }
+
+      conns = [
+        conn(1, "default", 2),
+        conn(2, "true", 3),
+        conn(2, "false", 5),
+        conn(3, "default", 4)
+      ]
+
+      state = Engine.init(vars, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert state.current_node_id == 3
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert state.variables["mc.jaime.attributes.strength.value"].value == 20.0
+      assert state.variables["mc.jaime.health"].value == 100
+    end
+
+    test "variable_ref between table variables" do
+      vars = %{
+        "mc.jaime.attributes.charisma.value" =>
+          var(12, "number", sheet: "mc.jaime", name: "attributes.charisma.value"),
+        "mc.morte.attributes.charisma.value" =>
+          var(16, "number", sheet: "mc.morte", name: "attributes.charisma.value")
+      }
+
+      nodes = %{
+        1 => node(1, "entry"),
+        2 =>
+          node(2, "instruction", %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.charisma.value",
+                "operator" => "set",
+                "value" => "attributes.charisma.value",
+                "value_type" => "variable_ref",
+                "value_sheet" => "mc.morte"
+              }
+            ]
+          }),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "default", 3)]
+      state = Engine.init(vars, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:ok, state} = Engine.step(state, nodes, conns)
+
+      assert state.variables["mc.jaime.attributes.charisma.value"].value == 16.0
+    end
+  end
+
+  # =============================================================================
   # Execution log
   # =============================================================================
 
