@@ -150,7 +150,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
       debug_auto_playing: socket.assigns.debug_auto_playing,
       debug_editing_var: nil,
       debug_var_filter: socket.assigns.debug_var_filter,
-      debug_var_changed_only: socket.assigns.debug_var_changed_only
+      debug_var_changed_only: socket.assigns.debug_var_changed_only,
+      debug_step_limit_reached: socket.assigns[:debug_step_limit_reached] || false
     }
 
     DebugSessionStore.store({user_id, project_id}, debug_assigns)
@@ -297,11 +298,28 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     end
   end
 
-  defp apply_step_result({_status, state}, socket),
-    do: {:continue, assign(socket, :debug_state, state)}
+  defp apply_step_result({:step_limit, state}, socket) do
+    {:continue,
+     socket
+     |> assign(:debug_state, state)
+     |> assign(:debug_step_limit_reached, true)
+     |> cancel_auto_timer()
+     |> assign(:debug_auto_playing, false)}
+  end
 
-  defp apply_step_result({:error, state, _reason}, socket),
-    do: {:continue, assign(socket, :debug_state, state)}
+  defp apply_step_result({_status, state}, socket) do
+    {:continue,
+     socket
+     |> assign(:debug_state, state)
+     |> assign(:debug_step_limit_reached, false)}
+  end
+
+  defp apply_step_result({:error, state, _reason}, socket) do
+    {:continue,
+     socket
+     |> assign(:debug_state, state)
+     |> assign(:debug_step_limit_reached, false)}
+  end
 
   defp find_active_connection([], _), do: nil
   defp find_active_connection([_single], _), do: nil

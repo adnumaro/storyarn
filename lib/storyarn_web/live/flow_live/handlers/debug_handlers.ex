@@ -17,6 +17,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
   defdelegate handle_debug_set_variable(params, socket), to: DebugSessionHandlers
   defdelegate handle_debug_var_filter(params, socket), to: DebugSessionHandlers
   defdelegate handle_debug_var_toggle_changed(socket), to: DebugSessionHandlers
+  defdelegate handle_debug_continue_past_limit(socket), to: DebugSessionHandlers
   defdelegate handle_debug_toggle_breakpoint(params, socket), to: DebugSessionHandlers
 
   # Execution

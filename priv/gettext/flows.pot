@@ -18,7 +18,7 @@ msgid_plural "%{count} words"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:156
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:157
 #, elixir-autogen, elixir-format
 msgid "%{ms}ms per step"
 msgstr ""
@@ -153,7 +153,7 @@ msgstr ""
 msgid "Audio"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:76
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:77
 #, elixir-autogen, elixir-format
 msgid "Auto-play"
 msgstr ""
@@ -179,7 +179,7 @@ msgstr ""
 msgid "Change"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:259
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:280
 #, elixir-autogen, elixir-format
 msgid "Change start node (resets session)"
 msgstr ""
@@ -246,7 +246,7 @@ msgstr ""
 msgid "Connect this node to the first node in your flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:172
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:173
 #, elixir-autogen, elixir-format
 msgid "Console"
 msgstr ""
@@ -274,29 +274,29 @@ msgstr ""
 msgid "Copy to clipboard"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:306
-#: lib/storyarn_web/live/flow_live/index.ex:329
+#: lib/storyarn_web/live/flow_live/index.ex:310
+#: lib/storyarn_web/live/flow_live/index.ex:333
 #, elixir-autogen, elixir-format
 msgid "Could not create flow."
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:253
-#: lib/storyarn_web/live/flow_live/index.ex:375
+#: lib/storyarn_web/live/flow_live/index.ex:379
 #, elixir-autogen, elixir-format
 msgid "Could not create sheet."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:255
+#: lib/storyarn_web/live/flow_live/index.ex:259
 #, elixir-autogen, elixir-format
 msgid "Could not delete flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:862
+#: lib/storyarn_web/live/flow_live/show.ex:869
 #, elixir-autogen, elixir-format
 msgid "Could not load flow data."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:354
+#: lib/storyarn_web/live/flow_live/index.ex:358
 #, elixir-autogen, elixir-format
 msgid "Could not move flow."
 msgstr ""
@@ -311,7 +311,7 @@ msgstr ""
 msgid "Could not save shortcut."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:281
+#: lib/storyarn_web/live/flow_live/index.ex:285
 #, elixir-autogen, elixir-format
 msgid "Could not set main flow."
 msgstr ""
@@ -331,7 +331,7 @@ msgstr ""
 msgid "Creating..."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:66
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:67
 #: lib/storyarn_web/live/flow_live/components/debug_variables_tab.ex:87
 #, elixir-autogen, elixir-format
 msgid "Current"
@@ -454,22 +454,22 @@ msgstr ""
 msgid "Filter variables..."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:296
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:317
 #, elixir-autogen, elixir-format
 msgid "Finished"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:63
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:64
 #, elixir-autogen, elixir-format
 msgid "Flow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:210
+#: lib/storyarn_web/live/flow_live/index.ex:214
 #, elixir-autogen, elixir-format
 msgid "Flow created successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:251
+#: lib/storyarn_web/live/flow_live/index.ex:255
 #, elixir-autogen, elixir-format
 msgid "Flow moved to trash."
 msgstr ""
@@ -477,12 +477,12 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/handlers/navigation_handlers.ex:23
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:173
 #: lib/storyarn_web/live/flow_live/player_live.ex:95
-#: lib/storyarn_web/live/flow_live/show.ex:212
+#: lib/storyarn_web/live/flow_live/show.ex:213
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:277
+#: lib/storyarn_web/live/flow_live/index.ex:281
 #, elixir-autogen, elixir-format
 msgid "Flow set as main."
 msgstr ""
@@ -506,7 +506,7 @@ msgstr ""
 msgid "Generate ID"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:190
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:191
 #, elixir-autogen, elixir-format
 msgid "History"
 msgstr ""
@@ -681,7 +681,7 @@ msgstr ""
 msgid "No conditions set"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/debug_session_handlers.ex:167
+#: lib/storyarn_web/live/flow_live/handlers/debug_session_handlers.ex:180
 #: lib/storyarn_web/live/flow_live/player_live.ex:140
 #, elixir-autogen, elixir-format
 msgid "No entry node found in this flow."
@@ -772,17 +772,17 @@ msgstr ""
 msgid "Outputs:"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:199
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:200
 #, elixir-autogen, elixir-format
 msgid "Path"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:86
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:87
 #, elixir-autogen, elixir-format
 msgid "Pause"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:294
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:315
 #, elixir-autogen, elixir-format
 msgid "Paused"
 msgstr ""
@@ -829,7 +829,7 @@ msgstr ""
 msgid "Required. Unique identifier for Jump nodes to target this Hub."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:113
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:114
 #, elixir-autogen, elixir-format
 msgid "Reset"
 msgstr ""
@@ -970,27 +970,27 @@ msgstr ""
 msgid "Stage Directions"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:254
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:275
 #, elixir-autogen, elixir-format
 msgid "Start:"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:95
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:96
 #, elixir-autogen, elixir-format
 msgid "Step"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:135
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:136
 #, elixir-autogen, elixir-format
 msgid "Step %{count}"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:104
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:105
 #, elixir-autogen, elixir-format
 msgid "Step Back"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:123
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:124
 #, elixir-autogen, elixir-format
 msgid "Stop"
 msgstr ""
@@ -1123,9 +1123,9 @@ msgstr ""
 
 #: lib/storyarn_web/live/flow_live/components/flow_header.ex:69
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:244
-#: lib/storyarn_web/live/flow_live/index.ex:297
-#: lib/storyarn_web/live/flow_live/index.ex:318
-#: lib/storyarn_web/live/flow_live/index.ex:366
+#: lib/storyarn_web/live/flow_live/index.ex:301
+#: lib/storyarn_web/live/flow_live/index.ex:322
+#: lib/storyarn_web/live/flow_live/index.ex:370
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr ""
@@ -1135,12 +1135,12 @@ msgstr ""
 msgid "Variable"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:181
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:182
 #, elixir-autogen, elixir-format
 msgid "Variables"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:295
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:316
 #, elixir-autogen, elixir-format
 msgid "Waiting"
 msgstr ""
@@ -1150,20 +1150,20 @@ msgstr ""
 msgid "Word count"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:196
+#: lib/storyarn_web/live/flow_live/index.ex:200
 #: lib/storyarn_web/live/flow_live/player_live.ex:83
-#: lib/storyarn_web/live/flow_live/show.ex:201
+#: lib/storyarn_web/live/flow_live/show.ex:202
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:260
-#: lib/storyarn_web/live/flow_live/index.ex:286
-#: lib/storyarn_web/live/flow_live/index.ex:311
-#: lib/storyarn_web/live/flow_live/index.ex:334
-#: lib/storyarn_web/live/flow_live/index.ex:359
-#: lib/storyarn_web/live/flow_live/index.ex:380
-#: lib/storyarn_web/live/flow_live/show.ex:947
+#: lib/storyarn_web/live/flow_live/index.ex:264
+#: lib/storyarn_web/live/flow_live/index.ex:290
+#: lib/storyarn_web/live/flow_live/index.ex:315
+#: lib/storyarn_web/live/flow_live/index.ex:338
+#: lib/storyarn_web/live/flow_live/index.ex:363
+#: lib/storyarn_web/live/flow_live/index.ex:384
+#: lib/storyarn_web/live/flow_live/show.ex:954
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to perform this action."
 msgstr ""
@@ -1376,7 +1376,7 @@ msgstr ""
 msgid "variable"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/debug_session_handlers.ex:198
+#: lib/storyarn_web/live/flow_live/handlers/debug_session_handlers.ex:211
 #, elixir-autogen, elixir-format
 msgid "Invalid number \"%{value}\", using 0"
 msgstr ""
@@ -1563,7 +1563,7 @@ msgstr ""
 msgid "Continues into another flow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:632
+#: lib/storyarn_web/live/flow_live/show.ex:634
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr ""
@@ -1742,4 +1742,14 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/components/flow_header.ex:54
 #, elixir-autogen, elixir-format
 msgid "Alt+Right"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:221
+#, elixir-autogen, elixir-format
+msgid "Continue (+1000 steps)"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/debug_panel.ex:212
+#, elixir-autogen, elixir-format
+msgid "Step limit (%{count}) reached — possible infinite loop."
 msgstr ""

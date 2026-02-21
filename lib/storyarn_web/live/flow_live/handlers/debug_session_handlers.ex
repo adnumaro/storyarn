@@ -62,6 +62,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
         |> assign(:debug_nodes, root_frame.nodes)
         |> assign(:debug_connections, root_frame.connections)
         |> assign(:debug_auto_playing, false)
+        |> assign(:debug_step_limit_reached, false)
 
       {:navigating, navigated_socket} = DebugExecutionHandlers.store_and_navigate(socket, root_flow_id)
       {:noreply, navigated_socket}
@@ -73,6 +74,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
        |> DebugExecutionHandlers.cancel_auto_timer()
        |> assign(:debug_state, new_state)
        |> assign(:debug_auto_playing, false)
+       |> assign(:debug_step_limit_reached, false)
        |> push_event("debug_clear_highlights", %{})
        |> DebugExecutionHandlers.push_debug_canvas(new_state)}
     end
@@ -85,6 +87,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
      |> assign(:debug_state, nil)
      |> assign(:debug_panel_open, false)
      |> assign(:debug_auto_playing, false)
+     |> assign(:debug_step_limit_reached, false)
      |> assign(:debug_nodes, %{})
      |> assign(:debug_connections, [])
      |> push_event("debug_clear_highlights", %{})}
@@ -132,6 +135,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
 
   def handle_debug_var_toggle_changed(socket) do
     {:noreply, assign(socket, :debug_var_changed_only, !socket.assigns.debug_var_changed_only)}
+  end
+
+  def handle_debug_continue_past_limit(socket) do
+    state = socket.assigns.debug_state
+    new_state = Engine.extend_step_limit(state)
+
+    {:noreply,
+     socket
+     |> assign(:debug_state, new_state)
+     |> assign(:debug_step_limit_reached, false)}
   end
 
   def handle_debug_toggle_breakpoint(%{"node_id" => node_id_str}, socket) do

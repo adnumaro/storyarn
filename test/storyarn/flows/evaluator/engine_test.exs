@@ -1096,7 +1096,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
   # =============================================================================
 
   describe "max steps" do
-    test "stops after max_steps" do
+    test "pauses with :step_limit after max_steps" do
       nodes = %{
         1 => node(1, "hub"),
         2 => node(2, "hub")
@@ -1107,19 +1107,71 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       state = Engine.init(%{}, 1)
       state = %{state | max_steps: 5}
 
-      # Step until max
+      # Step until limit
       {result, state} =
         Enum.reduce_while(1..10, {:ok, state}, fn _i, {_status, s} ->
           case Engine.step(s, nodes, conns) do
             {:ok, new_s} -> {:cont, {:ok, new_s}}
-            {:error, new_s, :max_steps} -> {:halt, {:max_steps, new_s}}
+            {:step_limit, new_s} -> {:halt, {:step_limit, new_s}}
             other -> {:halt, other}
           end
         end)
 
-      assert result == :max_steps
-      assert state.status == :finished
-      assert Enum.any?(state.console, &(&1.message =~ "Max steps"))
+      assert result == :step_limit
+      assert state.status == :paused
+      assert state.step_count == 5
+      assert Enum.any?(state.console, &(&1.message =~ "Step limit"))
+      refute state.status == :finished
+    end
+
+    test "extend_step_limit increases max_steps by 1000" do
+      state = Engine.init(%{}, 1)
+      state = %{state | max_steps: 5, step_count: 5}
+
+      state = Engine.extend_step_limit(state)
+
+      assert state.max_steps == 1005
+      assert Enum.any?(state.console, &(&1.message =~ "extended to 1005"))
+    end
+
+    test "can continue stepping after extend_step_limit" do
+      nodes = %{
+        1 => node(1, "hub"),
+        2 => node(2, "exit")
+      }
+
+      conns = [conn(1, "default", 2)]
+      state = Engine.init(%{}, 1)
+      state = %{state | max_steps: 2}
+
+      # First step: hub → advances to node 2 (step_count: 0 → 1)
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert state.step_count == 1
+
+      # Move back to node 1 for the limit test
+      state = %{state | current_node_id: 1}
+
+      # Second step: hits limit (step_count 1, but 2nd call increments to 2 = max)
+      # Actually, the guard fires BEFORE stepping: step_count(1) < max_steps(2), so it steps.
+      # We need step_count to already be at max. Set it directly:
+      state = %{state | step_count: 2}
+
+      # Now step_count(2) >= max_steps(2), triggers step_limit
+      {:step_limit, state} = Engine.step(state, nodes, conns)
+      assert state.status == :paused
+
+      # Extend and continue
+      state = Engine.extend_step_limit(state)
+      assert state.max_steps == 1002
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      assert state.current_node_id == 2
+      assert state.step_count == 3
+    end
+
+    test "state initializes with max_steps 1000" do
+      state = Engine.init(%{}, 1)
+      assert state.max_steps == 1000
     end
   end
 

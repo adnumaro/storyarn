@@ -37,6 +37,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   attr :debug_var_filter, :string, default: ""
   attr :debug_var_changed_only, :boolean, default: false
   attr :debug_current_flow_name, :string, default: nil
+  attr :debug_step_limit_reached, :boolean, default: false
 
   def debug_panel(assigns) do
     ~H"""
@@ -199,6 +200,26 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
             {dgettext("flows", "Path")}
           </button>
         </div>
+      </div>
+
+      <%!-- Step limit prompt --%>
+      <div
+        :if={@debug_step_limit_reached}
+        class="flex items-center gap-3 px-3 py-2 bg-warning/10 border-b border-warning/20 shrink-0"
+      >
+        <.icon name="alert-triangle" class="size-4 text-warning shrink-0" />
+        <span class="text-xs text-warning">
+          {dgettext("flows", "Step limit (%{count}) reached — possible infinite loop.",
+            count: @debug_state.max_steps
+          )}
+        </span>
+        <button
+          type="button"
+          class="btn btn-warning btn-xs"
+          phx-click="debug_continue_past_limit"
+        >
+          {dgettext("flows", "Continue (+1000 steps)")}
+        </button>
       </div>
 
       <%!-- Tab content --%>

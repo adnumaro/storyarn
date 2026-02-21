@@ -85,6 +85,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
           | {:finished, State.t()}
           | {:flow_jump, State.t(), integer()}
           | {:flow_return, State.t()}
+          | {:step_limit, State.t()}
           | {:error, State.t(), atom()}
   def step(%State{status: :finished} = state, _nodes, _connections) do
     {:finished, state}
@@ -97,9 +98,15 @@ defmodule Storyarn.Flows.Evaluator.Engine do
   def step(%State{step_count: count, max_steps: max} = state, _nodes, _connections)
       when count >= max do
     state =
-      EngineHelpers.add_console(state, :error, nil, "", "Max steps (#{max}) reached — possible infinite loop")
+      EngineHelpers.add_console(
+        state,
+        :warning,
+        nil,
+        "",
+        "Step limit (#{max}) reached — possible infinite loop. Continue or reset."
+      )
 
-    {:error, %{state | status: :finished}, :max_steps}
+    {:step_limit, %{state | status: :paused}}
   end
 
   def step(%State{current_node_id: node_id} = state, nodes, connections) do
@@ -234,6 +241,19 @@ defmodule Storyarn.Flows.Evaluator.Engine do
   def reset(%State{} = state) do
     new_state = init(state.initial_variables, state.start_node_id)
     %{new_state | breakpoints: state.breakpoints, current_flow_id: state.current_flow_id}
+  end
+
+  @doc """
+  Extend the step limit by 1000 steps.
+  Called when the user chooses to continue past the step limit.
+  """
+  @spec extend_step_limit(State.t()) :: State.t()
+  def extend_step_limit(%State{} = state) do
+    new_max = state.max_steps + 1000
+
+    state
+    |> EngineHelpers.add_console(:info, nil, "", "Step limit extended to #{new_max}")
+    |> Map.put(:max_steps, new_max)
   end
 
   # =============================================================================

@@ -146,6 +146,7 @@ defmodule StoryarnWeb.FlowLive.Show do
             debug_var_filter={@debug_var_filter}
             debug_var_changed_only={@debug_var_changed_only}
             debug_current_flow_name={@flow.name}
+            debug_step_limit_reached={@debug_step_limit_reached}
           />
         </div>
 
@@ -258,6 +259,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         |> assign(:debug_editing_var, debug_assigns.debug_editing_var)
         |> assign(:debug_var_filter, debug_assigns.debug_var_filter)
         |> assign(:debug_var_changed_only, debug_assigns.debug_var_changed_only)
+        |> assign(:debug_step_limit_reached, debug_assigns[:debug_step_limit_reached] || false)
         |> push_debug_canvas_events(debug_assigns.debug_state)
     end
   end
@@ -758,6 +760,10 @@ defmodule StoryarnWeb.FlowLive.Show do
     DebugHandlers.handle_debug_toggle_breakpoint(params, socket)
   end
 
+  def handle_event("debug_continue_past_limit", _params, socket) do
+    DebugHandlers.handle_debug_continue_past_limit(socket)
+  end
+
   # Collaboration & Preview
   def handle_event("cursor_moved", params, socket) do
     CollaborationEventHandlers.handle_cursor_moved(params, socket)
@@ -844,6 +850,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:debug_var_filter, "")
       |> assign(:debug_var_changed_only, false)
       |> assign(:debug_auto_timer, nil)
+      |> assign(:debug_step_limit_reached, false)
       |> assign(:loading, false)
 
     socket =

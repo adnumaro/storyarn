@@ -104,7 +104,7 @@ defmodule Storyarn.Flows.Evaluator.State do
     execution_log: [],
     pending_choices: nil,
     step_count: 0,
-    max_steps: 500,
+    max_steps: 1000,
     breakpoints: MapSet.new(),
     call_stack: [],
     current_flow_id: nil
