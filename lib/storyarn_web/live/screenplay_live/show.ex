@@ -152,7 +152,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("delete_element", %{"id" => id}, socket) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_delete_element(socket, id)
     end)
   end
@@ -162,7 +162,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("sync_editor_content", %{"elements" => client_elements}, socket) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       EditorHandlers.do_sync_editor_content(socket, client_elements)
     end)
   end
@@ -176,7 +176,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "condition" => condition},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_update_screenplay_condition(socket, id, condition)
     end)
   end
@@ -186,13 +186,13 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "assignments" => assignments},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_update_screenplay_instruction(socket, id, assignments)
     end)
   end
 
   def handle_event("add_response_choice", %{"element-id" => id}, socket) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_add_response_choice(socket, id)
     end)
   end
@@ -202,7 +202,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "choice-id" => choice_id},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_remove_response_choice(socket, id, choice_id)
     end)
   end
@@ -212,7 +212,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "choice-id" => choice_id, "value" => text},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_update_response_choice_text(socket, id, choice_id, text)
     end)
   end
@@ -222,7 +222,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "choice-id" => choice_id},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_toggle_choice_condition(socket, id, choice_id)
     end)
   end
@@ -232,7 +232,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "choice-id" => choice_id},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_toggle_choice_instruction(socket, id, choice_id)
     end)
   end
@@ -242,7 +242,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "choice-id" => choice_id, "condition" => condition},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.update_choice_field(socket, id, choice_id, fn choice ->
         Map.put(choice, "condition", Storyarn.Flows.Condition.sanitize(condition))
       end)
@@ -254,7 +254,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "choice-id" => choice_id, "assignments" => assignments},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.update_choice_field(socket, id, choice_id, fn choice ->
         Map.put(choice, "instruction", Storyarn.Flows.Instruction.sanitize(assignments))
       end)
@@ -270,7 +270,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "side" => side, "field" => field, "value" => value},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_update_dual_dialogue(socket, id, side, field, value)
     end)
   end
@@ -280,7 +280,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "side" => side},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_toggle_dual_parenthetical(socket, id, side)
     end)
   end
@@ -294,7 +294,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "field" => field, "value" => value},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_update_title_page(socket, id, field, value)
     end)
   end
@@ -304,7 +304,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("import_fountain", %{"content" => content}, socket) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       FountainImportHandlers.do_import_fountain(socket, content)
     end)
   end
@@ -318,7 +318,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => eid, "choice-id" => cid},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       LinkedPageHandlers.do_create_linked_page(socket, eid, cid)
     end)
   end
@@ -336,13 +336,13 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => eid, "choice-id" => cid},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       LinkedPageHandlers.do_unlink_choice_screenplay(socket, eid, cid)
     end)
   end
 
   def handle_event("generate_all_linked_pages", %{"element-id" => eid}, socket) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       LinkedPageHandlers.do_generate_all_linked_pages(socket, eid)
     end)
   end
@@ -356,7 +356,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   def handle_event("set_character_sheet", %{"id" => id, "sheet_id" => sheet_id}, socket) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_set_character_sheet(socket, id, parse_int(sheet_id))
     end)
   end
@@ -374,23 +374,33 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("save_name", params, socket) do
-    with_edit_permission(socket, fn -> TreeHandlers.handle_save_name(params, socket) end)
+    with_authorization(socket, :edit_content, fn _socket ->
+      TreeHandlers.handle_save_name(params, socket)
+    end)
   end
 
   def handle_event("create_flow_from_screenplay", _params, socket) do
-    with_edit_permission(socket, fn -> FlowSyncHandlers.do_create_flow_from_screenplay(socket) end)
+    with_authorization(socket, :edit_content, fn _socket ->
+      FlowSyncHandlers.do_create_flow_from_screenplay(socket)
+    end)
   end
 
   def handle_event("sync_to_flow", _params, socket) do
-    with_edit_permission(socket, fn -> FlowSyncHandlers.do_sync_to_flow(socket) end)
+    with_authorization(socket, :edit_content, fn _socket ->
+      FlowSyncHandlers.do_sync_to_flow(socket)
+    end)
   end
 
   def handle_event("sync_from_flow", _params, socket) do
-    with_edit_permission(socket, fn -> FlowSyncHandlers.do_sync_from_flow(socket) end)
+    with_authorization(socket, :edit_content, fn _socket ->
+      FlowSyncHandlers.do_sync_from_flow(socket)
+    end)
   end
 
   def handle_event("unlink_flow", _params, socket) do
-    with_edit_permission(socket, fn -> FlowSyncHandlers.do_unlink_flow(socket) end)
+    with_authorization(socket, :edit_content, fn _socket ->
+      FlowSyncHandlers.do_unlink_flow(socket)
+    end)
   end
 
   def handle_event("navigate_to_flow", _params, socket) do
@@ -414,7 +424,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   def handle_event("delete_screenplay", %{"id" => screenplay_id}, socket) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.do_delete_screenplay(socket, screenplay_id)
     end)
   end
@@ -432,7 +442,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
         socket
       ) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.do_move_to_parent(socket, item_id, new_parent_id, position)
     end)
   end
@@ -458,21 +468,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     |> assign(:link_status, link_status)
     |> assign(:linked_flow, linked_flow)
     |> assign(:linked_pages, LinkedPageHandlers.load_linked_pages(screenplay))
-  end
-
-  defp with_edit_permission(socket, fun) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        fun.()
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("screenplays", "You don't have permission to perform this action.")
-         )}
-    end
   end
 
   defp screenplay_translations do

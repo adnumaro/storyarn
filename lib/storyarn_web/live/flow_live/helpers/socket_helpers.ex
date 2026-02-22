@@ -33,7 +33,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   @doc """
   Schedules a message to reset the save status indicator after 2 seconds.
   """
-  @spec schedule_save_status_reset() :: reference()
   def schedule_save_status_reset do
     Process.send_after(self(), :reset_save_status, 2000)
   end

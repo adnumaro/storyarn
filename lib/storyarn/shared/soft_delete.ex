@@ -13,6 +13,17 @@ defmodule Storyarn.Shared.SoftDelete do
   alias Storyarn.Shared.TimeHelpers
 
   @doc """
+  Lists soft-deleted entities for a project, ordered by deletion time (most recent first).
+  """
+  def list_deleted(schema, project_id) do
+    from(s in schema,
+      where: s.project_id == ^project_id and not is_nil(s.deleted_at),
+      order_by: [desc: s.deleted_at]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
   Recursively soft-deletes all children of a parent entity.
 
   Finds all non-deleted children of the given schema matching `project_id` and

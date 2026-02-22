@@ -12,6 +12,7 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
 
   alias Storyarn.Maps
   alias Storyarn.Maps.ZoneImageExtractor
+  alias Storyarn.Shared.MapUtils
 
   import StoryarnWeb.MapLive.Helpers.MapHelpers
   import StoryarnWeb.MapLive.Helpers.Serializer
@@ -157,8 +158,8 @@ defmodule StoryarnWeb.MapLive.Handlers.TreeHandlers do
   end
 
   defp do_move_map_in_show(socket, map, new_parent_id, position) do
-    new_parent_id = parse_int(new_parent_id)
-    position = parse_int(position) || 0
+    new_parent_id = MapUtils.parse_int(new_parent_id)
+    position = MapUtils.parse_int(position) || 0
 
     case Maps.move_map_to_position(map, new_parent_id, position) do
       {:ok, _} ->

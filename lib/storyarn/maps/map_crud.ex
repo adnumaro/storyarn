@@ -311,13 +311,7 @@ defmodule Storyarn.Maps.MapCrud do
   @doc """
   Lists all soft-deleted maps for a project (trash).
   """
-  def list_deleted_maps(project_id) do
-    from(m in Map,
-      where: m.project_id == ^project_id and not is_nil(m.deleted_at),
-      order_by: [desc: m.deleted_at]
-    )
-    |> Repo.all()
-  end
+  def list_deleted_maps(project_id), do: SoftDelete.list_deleted(Map, project_id)
 
   @max_ancestor_depth 50
 
@@ -400,26 +394,11 @@ defmodule Storyarn.Maps.MapCrud do
   end
 
   defp maybe_generate_shortcut_on_update(%Map{} = map, attrs) do
-    attrs = stringify_keys(attrs)
-
-    cond do
-      Elixir.Map.has_key?(attrs, "shortcut") ->
-        attrs
-
-      ShortcutHelpers.name_changing?(attrs, map) ->
-        shortcut = Shortcuts.generate_map_shortcut(attrs["name"], map.project_id, map.id)
-        Elixir.Map.put(attrs, "shortcut", shortcut)
-
-      ShortcutHelpers.missing_shortcut?(map) ->
-        ShortcutHelpers.generate_shortcut_from_name(
-          map,
-          attrs,
-          &Shortcuts.generate_map_shortcut/3
-        )
-
-      true ->
-        attrs
-    end
+    ShortcutHelpers.maybe_generate_shortcut_on_update(
+      map,
+      attrs,
+      &Shortcuts.generate_map_shortcut/3
+    )
   end
 
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)

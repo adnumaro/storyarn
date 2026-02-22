@@ -332,23 +332,25 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("add_node", params, socket) do
-    with_auth(:edit_content, socket, fn -> GenericNodeHandlers.handle_add_node(params, socket) end)
+    with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_add_node(params, socket)
+    end)
   end
 
   def handle_event("save_name", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_save_name(params, socket)
     end)
   end
 
   def handle_event("save_shortcut", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_save_shortcut(params, socket)
     end)
   end
 
   def handle_event("restore_flow_meta", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_restore_flow_meta(params, socket)
     end)
   end
@@ -386,17 +388,19 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("create_sheet", _params, socket) do
-    with_auth(:edit_content, socket, fn -> GenericNodeHandlers.handle_create_sheet(socket) end)
+    with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_create_sheet(socket)
+    end)
   end
 
   def handle_event("node_moved", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_node_moved(params, socket)
     end)
   end
 
   def handle_event("batch_update_positions", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_batch_update_positions(params, socket)
     end)
   end
@@ -414,7 +418,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("update_node_data", %{"node" => _} = params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_update_node_data(params, socket)
     end)
   end
@@ -425,7 +429,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("update_node_text", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_update_node_text(params, socket)
     end)
   end
@@ -435,31 +439,31 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("delete_node", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_delete_node(params, socket)
     end)
   end
 
   def handle_event("restore_node", %{"id" => node_id}, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       NodeHelpers.restore_node(socket, node_id)
     end)
   end
 
   def handle_event("restore_node_data", %{"id" => node_id, "data" => data}, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       NodeHelpers.restore_node_data(socket, node_id, data)
     end)
   end
 
   def handle_event("duplicate_node", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_duplicate_node(params, socket)
     end)
   end
 
   def handle_event("generate_technical_id", _params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       node = socket.assigns.selected_node
 
       cond do
@@ -479,51 +483,51 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("update_node_field", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_update_node_field(params, socket)
     end)
   end
 
   # Responses (dialogue-specific)
   def handle_event("add_response", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       Dialogue.Node.handle_add_response(params, socket)
     end)
   end
 
   def handle_event("remove_response", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       Dialogue.Node.handle_remove_response(params, socket)
     end)
   end
 
   def handle_event("update_response_text", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       Dialogue.Node.handle_update_response_text(params, socket)
     end)
   end
 
   def handle_event("update_response_condition", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       Dialogue.Node.handle_update_response_condition(params, socket)
     end)
   end
 
   def handle_event("update_response_instruction", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       Dialogue.Node.handle_update_response_instruction(params, socket)
     end)
   end
 
   def handle_event("update_response_instruction_builder", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       Dialogue.Node.handle_update_response_instruction_builder(params, socket)
     end)
   end
 
   # Connections
   def handle_event("connection_created", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ConnectionHelpers.create_connection(socket, params)
     end)
   end
@@ -533,33 +537,33 @@ defmodule StoryarnWeb.FlowLive.Show do
         %{"source_node_id" => source_id, "target_node_id" => target_id},
         socket
       ) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ConnectionHelpers.delete_connection_by_nodes(socket, source_id, target_id)
     end)
   end
 
   # Condition builders
   def handle_event("update_response_condition_builder", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       Condition.Node.handle_update_response_condition_builder(params, socket)
     end)
   end
 
   def handle_event("update_condition_builder", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       Condition.Node.handle_update_condition_builder(params, socket)
     end)
   end
 
   def handle_event("toggle_switch_mode", _params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       Condition.Node.handle_toggle_switch_mode(socket)
     end)
   end
 
   # Instruction builder
   def handle_event("update_instruction_builder", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       Instruction.Node.handle_update_instruction_builder(params, socket)
     end)
   end
@@ -616,14 +620,14 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("update_subflow_reference", %{"referenced_flow_id" => ref_id}, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       Subflow.Node.handle_update_reference(ref_id, socket)
     end)
   end
 
   # Create linked flow (exit flow_reference / subflow)
   def handle_event("create_linked_flow", %{"node-id" => node_id_str}, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       node = Flows.get_node!(socket.assigns.flow.id, node_id_str)
 
       case Flows.create_linked_flow(socket.assigns.project, socket.assigns.flow, node) do
@@ -643,38 +647,38 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   # Exit node events
   def handle_event("update_exit_mode", %{"mode" => mode}, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ExitNode.Node.handle_update_exit_mode(mode, socket)
     end)
   end
 
   def handle_event("update_exit_reference", %{"flow-id" => flow_id}, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ExitNode.Node.handle_update_exit_reference(flow_id, socket)
     end)
   end
 
   def handle_event("add_outcome_tag", %{"tag" => tag}, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ExitNode.Node.handle_add_outcome_tag(tag, socket)
     end)
   end
 
   def handle_event("remove_outcome_tag", %{"tag" => tag}, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ExitNode.Node.handle_remove_outcome_tag(tag, socket)
     end)
   end
 
   def handle_event("update_outcome_color", %{"color" => color}, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ExitNode.Node.handle_update_outcome_color(color, socket)
     end)
   end
 
   # Interaction node events
   def handle_event("interaction_select_map", params, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       Interaction.Node.handle_select_map(params, socket)
     end)
   end
@@ -695,7 +699,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   # Hub color picker
   def handle_event("update_hub_color", %{"color" => color}, socket) do
-    with_auth(:edit_content, socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       node = socket.assigns.selected_node
 
       validated =
@@ -986,20 +990,5 @@ defmodule StoryarnWeb.FlowLive.Show do
     user_id = socket.assigns.current_scope.user.id
     project_id = socket.assigns.project.id
     NavigationHistoryStore.put({user_id, project_id}, history)
-  end
-
-  defp with_auth(action, socket, fun) do
-    case authorize(socket, action) do
-      :ok -> fun.()
-      {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
-    end
-  end
-
-  defp unauthorized_flash(socket) do
-    put_flash(
-      socket,
-      :error,
-      dgettext("flows", "You don't have permission to perform this action.")
-    )
   end
 end

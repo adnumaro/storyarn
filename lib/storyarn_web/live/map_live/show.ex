@@ -342,7 +342,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
   @impl true
   def handle_event("save_name", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       CanvasEventHandlers.handle_save_name(params, socket)
     end)
   end
@@ -360,7 +360,7 @@ defmodule StoryarnWeb.MapLive.Show do
   def handle_event("export_map", _params, socket), do: {:noreply, socket}
 
   def handle_event("toggle_edit_mode", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       CanvasEventHandlers.handle_toggle_edit_mode(socket, params)
     end)
   end
@@ -403,55 +403,55 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("update_pin", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_pin(params, socket)
     end)
   end
 
   def handle_event("update_zone", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone(params, socket)
     end)
   end
 
   def handle_event("update_connection", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_connection(params, socket)
     end)
   end
 
   def handle_event("update_connection_waypoints", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_connection_waypoints(params, socket)
     end)
   end
 
   def handle_event("clear_connection_waypoints", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_clear_connection_waypoints(params, socket)
     end)
   end
 
   def handle_event("set_pending_delete_pin", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_set_pending_delete_pin(params, socket)
     end)
   end
 
   def handle_event("set_pending_delete_zone", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_set_pending_delete_zone(params, socket)
     end)
   end
 
   def handle_event("set_pending_delete_connection", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_set_pending_delete_connection(params, socket)
     end)
   end
 
   def handle_event("confirm_delete_element", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_confirm_delete_element(params, socket)
     end)
   end
@@ -461,7 +461,7 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_pin", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_create_pin(params, socket)
     end)
   end
@@ -479,13 +479,13 @@ defmodule StoryarnWeb.MapLive.Show do
   end
 
   def handle_event("create_pin_from_sheet", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_create_pin_from_sheet(params, socket)
     end)
   end
 
   def handle_event("move_pin", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_move_pin(params, socket)
     end)
   end
@@ -495,7 +495,7 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_zone", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_create_zone(params, socket)
     end)
   end
@@ -505,7 +505,7 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_layer", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_create_layer(params, socket)
     end)
   end
@@ -515,13 +515,13 @@ defmodule StoryarnWeb.MapLive.Show do
   end
 
   def handle_event("toggle_layer_visibility", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_toggle_layer_visibility(params, socket)
     end)
   end
 
   def handle_event("update_layer_fog", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_update_layer_fog(params, socket)
     end)
   end
@@ -531,25 +531,25 @@ defmodule StoryarnWeb.MapLive.Show do
   end
 
   def handle_event("rename_layer", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_rename_layer(params, socket)
     end)
   end
 
   def handle_event("set_pending_delete_layer", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_set_pending_delete_layer(params, socket)
     end)
   end
 
   def handle_event("confirm_delete_layer", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_confirm_delete_layer(params, socket)
     end)
   end
 
   def handle_event("delete_layer", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_delete_layer(params, socket)
     end)
   end
@@ -567,13 +567,13 @@ defmodule StoryarnWeb.MapLive.Show do
   end
 
   def handle_event("remove_background", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_remove_background(params, socket)
     end)
   end
 
   def handle_event("update_map_scale", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_update_map_scale(params, socket)
     end)
   end
@@ -583,7 +583,7 @@ defmodule StoryarnWeb.MapLive.Show do
   end
 
   def handle_event("remove_pin_icon", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_remove_pin_icon(params, socket)
     end)
   end
@@ -593,37 +593,37 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("update_zone_vertices", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone_vertices(params, socket)
     end)
   end
 
   def handle_event("duplicate_zone", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_duplicate_zone(params, socket)
     end)
   end
 
   def handle_event("delete_zone", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_delete_zone(params, socket)
     end)
   end
 
   def handle_event("update_zone_action_type", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone_action_type(params, socket)
     end)
   end
 
   def handle_event("update_zone_assignments", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone_assignments(params, socket)
     end)
   end
 
   def handle_event("update_zone_action_data", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone_action_data(params, socket)
     end)
   end
@@ -639,7 +639,7 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("delete_pin", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_delete_pin(params, socket)
     end)
   end
@@ -649,13 +649,13 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_connection", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_create_connection(params, socket)
     end)
   end
 
   def handle_event("delete_connection", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_delete_connection(params, socket)
     end)
   end
@@ -665,31 +665,31 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_annotation", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_create_annotation(params, socket)
     end)
   end
 
   def handle_event("update_annotation", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_annotation(params, socket)
     end)
   end
 
   def handle_event("move_annotation", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_move_annotation(params, socket)
     end)
   end
 
   def handle_event("delete_annotation", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_delete_annotation(params, socket)
     end)
   end
 
   def handle_event("set_pending_delete_annotation", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_set_pending_delete_annotation(params, socket)
     end)
   end
@@ -699,13 +699,13 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("delete_selected", _params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_delete_selected(socket)
     end)
   end
 
   def handle_event("duplicate_selected", _params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_duplicate_selected(socket)
     end)
   end
@@ -715,7 +715,7 @@ defmodule StoryarnWeb.MapLive.Show do
   end
 
   def handle_event("paste_element", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_paste_element(params, socket)
     end)
   end
@@ -725,13 +725,13 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("undo", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       UndoRedoHandlers.handle_undo(params, socket)
     end)
   end
 
   def handle_event("redo", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       UndoRedoHandlers.handle_redo(params, socket)
     end)
   end
@@ -763,19 +763,19 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_map", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.handle_create_map(params, socket)
     end)
   end
 
   def handle_event("create_child_map", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.handle_create_child_map(params, socket)
     end)
   end
 
   def handle_event("create_child_map_from_zone", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.handle_create_child_map_from_zone(params, socket)
     end)
   end
@@ -789,13 +789,13 @@ defmodule StoryarnWeb.MapLive.Show do
   end
 
   def handle_event("delete_map", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.handle_delete_map(params, socket)
     end)
   end
 
   def handle_event("move_to_parent", params, socket) do
-    with_auth(socket, :edit_content, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.handle_move_to_parent(params, socket)
     end)
   end
@@ -849,21 +849,6 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
-
-  defp with_auth(socket, action, fun) do
-    case authorize(socket, action) do
-      :ok -> fun.()
-      {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
-    end
-  end
-
-  defp unauthorized_flash(socket) do
-    put_flash(
-      socket,
-      :error,
-      dgettext("maps", "You don't have permission to perform this action.")
-    )
-  end
 
   attr :sheets, :list, required: true
 

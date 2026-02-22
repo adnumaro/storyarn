@@ -8,7 +8,7 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Localization.TextExtractor
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.{MapUtils, NameNormalizer, SearchHelpers, ShortcutHelpers, SoftDelete}
+  alias Storyarn.Shared.{MapUtils, SearchHelpers, ShortcutHelpers, SoftDelete}
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Shortcuts
 
@@ -41,12 +41,15 @@ defmodule Storyarn.Flows.FlowCrud do
     build_tree(all_flows, nil)
   end
 
-  defp build_tree(all_flows, parent_id) do
-    all_flows
-    |> Enum.filter(&(&1.parent_id == parent_id))
-    |> Enum.map(fn flow ->
-      children = build_tree(all_flows, flow.id)
-      %{flow | children: children}
+  defp build_tree(all_items, root_parent_id) do
+    grouped = Enum.group_by(all_items, & &1.parent_id)
+    build_subtree(grouped, root_parent_id)
+  end
+
+  defp build_subtree(grouped, parent_id) do
+    (Map.get(grouped, parent_id) || [])
+    |> Enum.map(fn item ->
+      %{item | children: build_subtree(grouped, item.id)}
     end)
   end
 
@@ -352,13 +355,7 @@ defmodule Storyarn.Flows.FlowCrud do
   @doc """
   Lists all soft-deleted flows for a project (trash).
   """
-  def list_deleted_flows(project_id) do
-    from(f in Flow,
-      where: f.project_id == ^project_id and not is_nil(f.deleted_at),
-      order_by: [desc: f.deleted_at]
-    )
-    |> Repo.all()
-  end
+  def list_deleted_flows(project_id), do: SoftDelete.list_deleted(Flow, project_id)
 
   defp notify_affected_subflows(deleted_flow_id, project_id) do
     affected = NodeCrud.list_subflow_nodes_referencing(deleted_flow_id, project_id)
@@ -401,42 +398,12 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   defp maybe_generate_shortcut_on_update(%Flow{} = flow, attrs) do
-    attrs = stringify_keys(attrs)
-
-    cond do
-      Map.has_key?(attrs, "shortcut") ->
-        attrs
-
-      ShortcutHelpers.name_changing?(attrs, flow) ->
-        referenced? = ReferenceTracker.count_backlinks("flow", flow.id) > 0
-
-        shortcut =
-          NameNormalizer.maybe_regenerate(
-            flow.shortcut,
-            attrs["name"],
-            referenced?,
-            &NameNormalizer.shortcutify/1
-          )
-
-        shortcut =
-          if shortcut != flow.shortcut do
-            Shortcuts.generate_flow_shortcut(attrs["name"], flow.project_id, flow.id)
-          else
-            shortcut
-          end
-
-        Map.put(attrs, "shortcut", shortcut)
-
-      ShortcutHelpers.missing_shortcut?(flow) ->
-        ShortcutHelpers.generate_shortcut_from_name(
-          flow,
-          attrs,
-          &Shortcuts.generate_flow_shortcut/3
-        )
-
-      true ->
-        attrs
-    end
+    ShortcutHelpers.maybe_generate_shortcut_on_update(
+      flow,
+      attrs,
+      &Shortcuts.generate_flow_shortcut/3,
+      check_backlinks_fn: &(ReferenceTracker.count_backlinks("flow", &1.id) > 0)
+    )
   end
 
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)

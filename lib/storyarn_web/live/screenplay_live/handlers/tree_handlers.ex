@@ -64,7 +64,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlers do
   end
 
   def do_create_screenplay(socket, extra_attrs) do
-    with_edit_permission(socket, fn ->
+    with_authorization(socket, :edit_content, fn _socket ->
       attrs = Map.merge(%{name: dgettext("screenplays", "Untitled")}, extra_attrs)
 
       case Screenplays.create_screenplay(socket.assigns.project, attrs) do
@@ -76,21 +76,6 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlers do
            put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
       end
     end)
-  end
-
-  def with_edit_permission(socket, fun) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        fun.()
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("screenplays", "You don't have permission to perform this action.")
-         )}
-    end
   end
 
   def handle_save_name(%{"name" => name}, socket) do

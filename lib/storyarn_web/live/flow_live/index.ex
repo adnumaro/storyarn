@@ -7,6 +7,7 @@ defmodule StoryarnWeb.FlowLive.Index do
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Repo
+  alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
 
   @impl true
@@ -326,8 +327,8 @@ defmodule StoryarnWeb.FlowLive.Index do
       ) do
     with_authorization(socket, :edit_content, fn socket ->
       flow = Flows.get_flow!(socket.assigns.project.id, item_id)
-      new_parent_id = parse_int(new_parent_id)
-      position = parse_int(position) || 0
+      new_parent_id = MapUtils.parse_int(new_parent_id)
+      position = MapUtils.parse_int(position) || 0
 
       case Flows.move_flow_to_position(flow, new_parent_id, position) do
         {:ok, _} ->
@@ -353,17 +354,6 @@ defmodule StoryarnWeb.FlowLive.Index do
           {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create sheet."))}
       end
     end)
-  end
-
-  defp parse_int(""), do: nil
-  defp parse_int(nil), do: nil
-  defp parse_int(val) when is_integer(val), do: val
-
-  defp parse_int(str) when is_binary(str) do
-    case Integer.parse(str) do
-      {int, ""} -> int
-      _ -> nil
-    end
   end
 
   # Helper to reload flows after changes

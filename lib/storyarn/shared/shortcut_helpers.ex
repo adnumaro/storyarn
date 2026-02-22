@@ -61,6 +61,62 @@ defmodule Storyarn.Shared.ShortcutHelpers do
   end
 
   @doc """
+  Handles shortcut regeneration on update.
+
+  `generator_fn` is called as `generator_fn.(name, project_id, entity_id)`.
+
+  ## Options
+
+    * `:check_backlinks_fn` - When provided, called as `check_backlinks_fn.(entity)`.
+      Must return a boolean. When true and the entity is referenced, the shortcut is
+      preserved (not regenerated) to avoid breaking existing references.
+  """
+  def maybe_generate_shortcut_on_update(entity, attrs, generator_fn, opts \\ []) do
+    attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
+    check_backlinks_fn = Keyword.get(opts, :check_backlinks_fn)
+
+    cond do
+      Map.has_key?(attrs, "shortcut") ->
+        attrs
+
+      name_changing?(attrs, entity) ->
+        if check_backlinks_fn do
+          regenerate_with_backlink_check(entity, attrs, generator_fn, check_backlinks_fn)
+        else
+          shortcut = generator_fn.(attrs["name"], entity.project_id, entity.id)
+          Map.put(attrs, "shortcut", shortcut)
+        end
+
+      missing_shortcut?(entity) ->
+        generate_shortcut_from_name(entity, attrs, generator_fn)
+
+      true ->
+        attrs
+    end
+  end
+
+  defp regenerate_with_backlink_check(entity, attrs, generator_fn, check_backlinks_fn) do
+    referenced? = check_backlinks_fn.(entity)
+
+    shortcut =
+      Storyarn.Shared.NameNormalizer.maybe_regenerate(
+        entity.shortcut,
+        attrs["name"],
+        referenced?,
+        &Storyarn.Shared.NameNormalizer.shortcutify/1
+      )
+
+    shortcut =
+      if shortcut != entity.shortcut do
+        generator_fn.(attrs["name"], entity.project_id, entity.id)
+      else
+        shortcut
+      end
+
+    Map.put(attrs, "shortcut", shortcut)
+  end
+
+  @doc """
   Auto-assigns position if not provided in attrs.
 
   `position_fn` is called as `position_fn.(project_id, parent_id)`.

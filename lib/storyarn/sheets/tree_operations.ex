@@ -1,8 +1,6 @@
 defmodule Storyarn.Sheets.TreeOperations do
   @moduledoc false
 
-  import Ecto.Query, warn: false
-
   alias Storyarn.Repo
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.Sheet
@@ -28,55 +26,34 @@ defmodule Storyarn.Sheets.TreeOperations do
   Returns `{:ok, sheet}` with the moved sheet or `{:error, reason}`.
   """
   def move_sheet_to_position(%Sheet{} = sheet, new_parent_id, new_position) do
-    Repo.transaction(fn ->
-      old_parent_id = sheet.parent_id
-      project_id = sheet.project_id
-
-      # Update the sheet's parent and position
-      {:ok, updated_sheet} =
-        sheet
-        |> Sheet.move_changeset(%{parent_id: new_parent_id, position: new_position})
-        |> Repo.update()
-
-      # Get all siblings in the destination container (including the moved sheet)
-      siblings = list_sheets_by_parent(project_id, new_parent_id)
-
-      # Build the new order: insert the moved sheet at the desired position
-      siblings_without_moved = Enum.reject(siblings, &(&1.id == sheet.id))
-
-      new_order =
-        siblings_without_moved
-        |> List.insert_at(new_position, updated_sheet)
-        |> Enum.map(& &1.id)
-
-      # Update positions in destination container
-      new_order
-      |> Enum.with_index()
-      |> Enum.each(fn {sheet_id, index} ->
-        SharedTree.update_position_only(Sheet, sheet_id, index)
-      end)
-
-      # If parent changed, also reorder the source container
-      if old_parent_id != new_parent_id do
-        SharedTree.reorder_source_container(
-          Sheet,
-          project_id,
-          old_parent_id,
-          &list_sheets_by_parent/2
-        )
-      end
-
-      # Return the sheet with updated position
-      Repo.get!(Sheet, sheet.id)
-    end)
+    if new_parent_id && descendant?(new_parent_id, sheet.id) do
+      {:error, :cyclic_parent}
+    else
+      SharedTree.move_to_position(
+        Sheet,
+        sheet,
+        new_parent_id,
+        new_position,
+        &list_sheets_by_parent/2
+      )
+    end
   end
 
   defp list_sheets_by_parent(project_id, parent_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
-      order_by: [asc: s.position, asc: s.name]
-    )
-    |> SharedTree.add_parent_filter(parent_id)
-    |> Repo.all()
+    SharedTree.list_by_parent(Sheet, project_id, parent_id)
+  end
+
+  # Walks upward from id through parent_id links.
+  # Returns true if potential_ancestor_id is found in the chain.
+  defp descendant?(id, potential_ancestor_id, depth \\ 0)
+  defp descendant?(_id, _potential_ancestor_id, depth) when depth > 100, do: false
+
+  defp descendant?(id, potential_ancestor_id, depth) do
+    case Repo.get(Sheet, id) do
+      nil -> false
+      %Sheet{id: ^potential_ancestor_id} -> true
+      %Sheet{parent_id: nil} -> false
+      %Sheet{parent_id: parent_id} -> descendant?(parent_id, potential_ancestor_id, depth + 1)
+    end
   end
 end

@@ -6,7 +6,8 @@ defmodule Storyarn.Sheets.SheetCrud do
   alias Storyarn.Localization.TextExtractor
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.{MapUtils, NameNormalizer, ShortcutHelpers, TimeHelpers}
+  alias Storyarn.Shared.{MapUtils, ShortcutHelpers, TimeHelpers}
+  alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.{PropertyInheritance, ReferenceTracker, Sheet}
   alias Storyarn.Shortcuts
 
@@ -207,20 +208,7 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   defp next_position(project_id, parent_id) do
-    query =
-      from(s in Sheet,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at),
-        select: max(s.position)
-      )
-
-    query =
-      if is_nil(parent_id) do
-        where(query, [s], is_nil(s.parent_id))
-      else
-        where(query, [s], s.parent_id == ^parent_id)
-      end
-
-    (Repo.one(query) || -1) + 1
+    SharedTree.next_position(Sheet, project_id, parent_id)
   end
 
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)
@@ -236,42 +224,11 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   defp maybe_generate_shortcut_on_update(%Sheet{} = sheet, attrs) do
-    attrs = stringify_keys(attrs)
-
-    cond do
-      Map.has_key?(attrs, "shortcut") ->
-        attrs
-
-      ShortcutHelpers.name_changing?(attrs, sheet) ->
-        referenced? = ReferenceTracker.count_backlinks("sheet", sheet.id) > 0
-
-        shortcut =
-          NameNormalizer.maybe_regenerate(
-            sheet.shortcut,
-            attrs["name"],
-            referenced?,
-            &NameNormalizer.shortcutify/1
-          )
-
-        # Only check uniqueness if the shortcut actually changed
-        shortcut =
-          if shortcut != sheet.shortcut do
-            Shortcuts.generate_sheet_shortcut(attrs["name"], sheet.project_id, sheet.id)
-          else
-            shortcut
-          end
-
-        Map.put(attrs, "shortcut", shortcut)
-
-      ShortcutHelpers.missing_shortcut?(sheet) ->
-        ShortcutHelpers.generate_shortcut_from_name(
-          sheet,
-          attrs,
-          &Shortcuts.generate_sheet_shortcut/3
-        )
-
-      true ->
-        attrs
-    end
+    ShortcutHelpers.maybe_generate_shortcut_on_update(
+      sheet,
+      attrs,
+      &Shortcuts.generate_sheet_shortcut/3,
+      check_backlinks_fn: &(ReferenceTracker.count_backlinks("sheet", &1.id) > 0)
+    )
   end
 end

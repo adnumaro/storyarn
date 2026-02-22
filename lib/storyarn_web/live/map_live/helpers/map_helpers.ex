@@ -108,17 +108,6 @@ defmodule StoryarnWeb.MapLive.Helpers.MapHelpers do
 
   def parse_scale_field(_field, value), do: value
 
-  def parse_int(""), do: nil
-  def parse_int(nil), do: nil
-  def parse_int(val) when is_integer(val), do: val
-
-  def parse_int(str) when is_binary(str) do
-    case Integer.parse(str) do
-      {int, ""} -> int
-      _ -> nil
-    end
-  end
-
   # ---------------------------------------------------------------------------
   # Field / list helpers
   # ---------------------------------------------------------------------------

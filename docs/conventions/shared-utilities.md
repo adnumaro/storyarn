@@ -13,7 +13,7 @@ Centralizes ALL name-to-identifier conversions. Handles Unicode transliteration 
 | `slugify/1` | `"My Workspace!"` → `"my-workspace"` | URL slugs (separator: `-`) |
 | `variablify/1` | `"Health Points"` → `"health_points"` | Variable names (separator: `_`) |
 | `shortcutify/1` | `"MC.Jaime"` → `"mc.jaime"` | Sheet/flow/map shortcuts (separator: `.`) |
-| `generate_unique_slug/3` | `(Schema, scope, name)` → `"my-workspace"` or `"my-workspace-a1b2c3d4"` | Unique slugs with collision suffix |
+| `generate_unique_slug/4` | `(Schema, scope, name, suffix \\ nil)` → `"my-workspace"` or `"my-workspace-a1b2c3d4"` | Unique slugs with collision suffix |
 | `maybe_regenerate/4` | `(current, new_name, referenced?, normalize_fn)` → `String.t()` | Smart rename: skips if entity has backlinks |
 
 **Pipeline:** NFD decomposition → strip combining marks → lowercase → filter allowed chars → collapse separators → trim
@@ -44,15 +44,16 @@ Shortcut lifecycle management shared by ALL CRUD modules (FlowCrud, SheetCrud, M
 | `missing_shortcut?/1` | Returns true if entity shortcut is nil/empty |
 | `generate_shortcut_from_name/3` | Generates shortcut from name using generator function |
 | `maybe_assign_position/4` | Auto-assigns next position if not in attrs |
+| `maybe_generate_shortcut_on_update/4` | Handles shortcut regeneration on update (with optional backlink check) |
 
 ```elixir
 # On entity create - auto-generate shortcut
 attrs = ShortcutHelpers.maybe_generate_shortcut(attrs, project_id, nil, &generate_shortcut/3)
 
-# On entity update - check if name changed
-if ShortcutHelpers.name_changing?(attrs, entity) do
-  # regenerate shortcut if not referenced
-end
+# On entity update - regenerate shortcut with backlink protection
+attrs = ShortcutHelpers.maybe_generate_shortcut_on_update(entity, attrs, &generate_shortcut/3,
+  check_backlinks_fn: &has_backlinks?/1
+)
 ```
 
 ---
@@ -111,7 +112,7 @@ Centralized Ecto validators. Do NOT write custom regex for these.
 
 | Function | Purpose | Pattern |
 |----------|---------|---------|
-| `validate_shortcut/2` | Shortcut format (1-50 chars) | `^[a-z0-9][a-z0-9.\-]*[a-z0-9]$` |
+| `validate_shortcut/1-2` | Shortcut format (1-50 chars), optional `opts` for custom `:message` | `^[a-z0-9][a-z0-9.\-]*[a-z0-9]$\|^[a-z0-9]$` |
 | `validate_email_format/1` | Email format | `^[^@,;\s]+@[^@,;\s]+$` |
 | `shortcut_format/0` | Returns shortcut regex | For reference |
 | `email_format/0` | Returns email regex | For reference |
@@ -132,12 +133,12 @@ Map transformation utilities for handling mixed atom/string key maps from forms 
 
 | Function | Purpose |
 |----------|---------|
-| `stringify_keys/1` | Recursively convert atom keys to strings (handles nested maps and lists) |
+| `stringify_keys/1` | Convert top-level atom keys to strings (NOT recursive — nested maps keep their keys) |
 | `parse_int/1` | Safe integer parsing: `"42"` → `42`, `42` → `42`, `nil` → `nil` |
 
 ```elixir
 MapUtils.stringify_keys(%{name: "test", nested: %{key: "val"}})
-# => %{"name" => "test", "nested" => %{"key" => "val"}}
+# => %{"name" => "test", "nested" => %{key: "val"}}  (inner map NOT converted)
 
 MapUtils.parse_int("42")  # => 42
 MapUtils.parse_int(nil)   # => nil
@@ -245,7 +246,25 @@ def handle_event("save", params, socket) do
 end
 ```
 
-Actions: `:edit_content`, `:manage_project`, `:manage_members`, `:manage_workspace`
+Actions: `:edit_content`, `:manage_project`, `:manage_members`, `:manage_workspace`, `:manage_workspace_members`
+
+---
+
+## `StoryarnWeb.Helpers.SaveStatusTimer`
+
+**File:** `lib/storyarn_web/helpers/save_status_timer.ex`
+
+Schedules a delayed reset of the save status indicator for LiveViews.
+
+| Function | Purpose |
+|----------|---------|
+| `schedule_reset/1-2` | Sends `:reset_save_status` after `timeout_ms` (default 4000ms). Returns socket for piping. |
+
+```elixir
+socket
+|> assign(:save_status, :saved)
+|> SaveStatusTimer.schedule_reset()
+```
 
 ---
 

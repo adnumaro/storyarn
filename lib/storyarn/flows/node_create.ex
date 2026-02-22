@@ -76,7 +76,7 @@ defmodule Storyarn.Flows.NodeCreate do
         insert_node(flow, attrs)
 
       # Reject unparseable IDs
-      is_nil(safe_to_integer(referenced_flow_id)) ->
+      is_nil(NodeCrud.safe_to_integer(referenced_flow_id)) ->
         {:error, :invalid_reference}
 
       # Cannot reference the same flow
@@ -84,7 +84,7 @@ defmodule Storyarn.Flows.NodeCreate do
         {:error, :self_reference}
 
       # Check circular reference
-      has_circular_reference?(flow.id, safe_to_integer(referenced_flow_id)) ->
+      has_circular_reference?(flow.id, NodeCrud.safe_to_integer(referenced_flow_id)) ->
         {:error, :circular_reference}
 
       true ->
@@ -147,15 +147,4 @@ defmodule Storyarn.Flows.NodeCreate do
   end
 
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)
-
-  defp safe_to_integer(value) when is_integer(value), do: value
-
-  defp safe_to_integer(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {int, ""} -> int
-      _ -> nil
-    end
-  end
-
-  defp safe_to_integer(_), do: nil
 end

@@ -43,12 +43,15 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
     build_tree(all, nil)
   end
 
-  defp build_tree(all, parent_id) do
-    all
-    |> Enum.filter(&(&1.parent_id == parent_id))
-    |> Enum.map(fn screenplay ->
-      children = build_tree(all, screenplay.id)
-      %{screenplay | children: children}
+  defp build_tree(all_items, root_parent_id) do
+    grouped = Enum.group_by(all_items, & &1.parent_id)
+    build_subtree(grouped, root_parent_id)
+  end
+
+  defp build_subtree(grouped, parent_id) do
+    (Map.get(grouped, parent_id) || [])
+    |> Enum.map(fn item ->
+      %{item | children: build_subtree(grouped, item.id)}
     end)
   end
 
@@ -169,13 +172,7 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   @doc """
   Lists all soft-deleted screenplays for a project (trash).
   """
-  def list_deleted_screenplays(project_id) do
-    from(s in Screenplay,
-      where: s.project_id == ^project_id and not is_nil(s.deleted_at),
-      order_by: [desc: s.deleted_at]
-    )
-    |> Repo.all()
-  end
+  def list_deleted_screenplays(project_id), do: SoftDelete.list_deleted(Screenplay, project_id)
 
   # Private functions
 
@@ -190,32 +187,11 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   end
 
   defp maybe_generate_shortcut_on_update(%Screenplay{} = screenplay, attrs) do
-    attrs = stringify_keys(attrs)
-
-    cond do
-      Map.has_key?(attrs, "shortcut") ->
-        attrs
-
-      ShortcutHelpers.name_changing?(attrs, screenplay) ->
-        shortcut =
-          Shortcuts.generate_screenplay_shortcut(
-            attrs["name"],
-            screenplay.project_id,
-            screenplay.id
-          )
-
-        Map.put(attrs, "shortcut", shortcut)
-
-      ShortcutHelpers.missing_shortcut?(screenplay) ->
-        ShortcutHelpers.generate_shortcut_from_name(
-          screenplay,
-          attrs,
-          &Shortcuts.generate_screenplay_shortcut/3
-        )
-
-      true ->
-        attrs
-    end
+    ShortcutHelpers.maybe_generate_shortcut_on_update(
+      screenplay,
+      attrs,
+      &Shortcuts.generate_screenplay_shortcut/3
+    )
   end
 
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)

@@ -25,44 +25,42 @@ defmodule Storyarn.Screenplays.TreeOperations do
   Moves a screenplay to a new parent at a specific position.
   """
   def move_screenplay_to_position(%Screenplay{} = screenplay, new_parent_id, new_position) do
-    Repo.transaction(fn ->
-      old_parent_id = screenplay.parent_id
-      project_id = screenplay.project_id
-
-      updated =
-        case screenplay
-             |> Screenplay.move_changeset(%{parent_id: new_parent_id, position: new_position})
-             |> Repo.update() do
-          {:ok, s} -> s
-          {:error, changeset} -> Repo.rollback(changeset)
-        end
-
-      # Rebuild positions in destination container
-      siblings = list_screenplays_by_parent(project_id, new_parent_id)
-      siblings_without_moved = Enum.reject(siblings, &(&1.id == screenplay.id))
-
-      siblings_without_moved
-      |> List.insert_at(new_position, updated)
-      |> Enum.map(& &1.id)
-      |> Enum.with_index()
-      |> Enum.each(fn {id, index} ->
-        SharedTree.update_position_only(Screenplay, id, index)
-      end)
-
-      # If parent changed, reorder source container
-      if old_parent_id != new_parent_id do
-        SharedTree.reorder_source_container(
-          Screenplay,
-          project_id,
-          old_parent_id,
-          &list_screenplays_by_parent/2
-        )
-      end
-
-      Repo.get!(Screenplay, screenplay.id)
-    end)
+    if new_parent_id && descendant?(new_parent_id, screenplay.id) do
+      {:error, :cyclic_parent}
+    else
+      SharedTree.move_to_position(
+        Screenplay,
+        screenplay,
+        new_parent_id,
+        new_position,
+        &list_screenplays_by_parent/2
+      )
+    end
   end
 
+  # Walks upward from id through parent_id links.
+  # Returns true if potential_ancestor_id is found in the chain.
+  defp descendant?(id, potential_ancestor_id, depth \\ 0)
+  defp descendant?(_id, _potential_ancestor_id, depth) when depth > 100, do: false
+
+  defp descendant?(id, potential_ancestor_id, depth) do
+    case Repo.get(Screenplay, id) do
+      nil ->
+        false
+
+      %Screenplay{id: ^potential_ancestor_id} ->
+        true
+
+      %Screenplay{parent_id: nil} ->
+        false
+
+      %Screenplay{parent_id: parent_id} ->
+        descendant?(parent_id, potential_ancestor_id, depth + 1)
+    end
+  end
+
+  # Keeps local filter because screenplays need the `is_nil(s.draft_of_id)` filter
+  # that can't be expressed in the generic SharedTree.list_by_parent/3.
   defp list_screenplays_by_parent(project_id, parent_id) do
     from(s in Screenplay,
       where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_of_id),

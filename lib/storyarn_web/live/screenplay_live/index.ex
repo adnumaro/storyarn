@@ -7,6 +7,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Screenplays
+  alias Storyarn.Shared.MapUtils
 
   @impl true
   def render(assigns) do
@@ -291,8 +292,8 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
       ) do
     with_authorization(socket, :edit_content, fn socket ->
       screenplay = Screenplays.get_screenplay!(socket.assigns.project.id, item_id)
-      new_parent_id = parse_int(new_parent_id)
-      position = parse_int(position) || 0
+      new_parent_id = MapUtils.parse_int(new_parent_id)
+      position = MapUtils.parse_int(position) || 0
 
       case Screenplays.move_screenplay_to_position(screenplay, new_parent_id, position) do
         {:ok, _} ->
@@ -303,17 +304,6 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
            put_flash(socket, :error, dgettext("screenplays", "Could not move screenplay."))}
       end
     end)
-  end
-
-  defp parse_int(""), do: nil
-  defp parse_int(nil), do: nil
-  defp parse_int(val) when is_integer(val), do: val
-
-  defp parse_int(str) when is_binary(str) do
-    case Integer.parse(str) do
-      {int, ""} -> int
-      _ -> nil
-    end
   end
 
   defp reload_screenplays(socket) do

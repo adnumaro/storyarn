@@ -1,8 +1,6 @@
 defmodule Storyarn.Maps.TreeOperations do
   @moduledoc false
 
-  import Ecto.Query, warn: false
-
   alias Storyarn.Maps.Map, as: MapSchema
   alias Storyarn.Repo
   alias Storyarn.Shared.TreeOperations, as: SharedTree
@@ -31,7 +29,13 @@ defmodule Storyarn.Maps.TreeOperations do
     if new_parent_id && descendant?(new_parent_id, map.id) do
       {:error, :cyclic_parent}
     else
-      do_move_map_to_position(map, new_parent_id, new_position)
+      SharedTree.move_to_position(
+        MapSchema,
+        map,
+        new_parent_id,
+        new_position,
+        &list_maps_by_parent/2
+      )
     end
   end
 
@@ -39,16 +43,7 @@ defmodule Storyarn.Maps.TreeOperations do
   Gets the next available position for a new map in the given container.
   """
   def next_position(project_id, parent_id) do
-    from(m in MapSchema,
-      where: m.project_id == ^project_id and is_nil(m.deleted_at),
-      select: max(m.position)
-    )
-    |> SharedTree.add_parent_filter(parent_id)
-    |> Repo.one()
-    |> case do
-      nil -> 0
-      max -> max + 1
-    end
+    SharedTree.next_position(MapSchema, project_id, parent_id)
   end
 
   @doc """
@@ -56,68 +51,7 @@ defmodule Storyarn.Maps.TreeOperations do
   Excludes soft-deleted maps and orders by position then name.
   """
   def list_maps_by_parent(project_id, parent_id) do
-    from(m in MapSchema,
-      where: m.project_id == ^project_id and is_nil(m.deleted_at),
-      order_by: [asc: m.position, asc: m.name]
-    )
-    |> SharedTree.add_parent_filter(parent_id)
-    |> Repo.all()
-  end
-
-  defp do_move_map_to_position(%MapSchema{} = map, new_parent_id, new_position) do
-    new_position = max(new_position, 0)
-
-    Repo.transaction(fn ->
-      old_parent_id = map.parent_id
-      project_id = map.project_id
-
-      case map
-           |> MapSchema.move_changeset(%{parent_id: new_parent_id, position: new_position})
-           |> Repo.update() do
-        {:ok, updated_map} ->
-          apply_move_result(
-            project_id,
-            map,
-            updated_map,
-            new_parent_id,
-            new_position,
-            old_parent_id
-          )
-
-        {:error, changeset} ->
-          Repo.rollback(changeset)
-      end
-    end)
-  end
-
-  defp apply_move_result(project_id, map, updated_map, new_parent_id, new_position, old_parent_id) do
-    siblings = list_maps_by_parent(project_id, new_parent_id)
-    siblings_without_moved = Enum.reject(siblings, &(&1.id == map.id))
-
-    new_order =
-      siblings_without_moved
-      |> List.insert_at(new_position, updated_map)
-      |> Enum.map(& &1.id)
-
-    new_order
-    |> Enum.with_index()
-    |> Enum.each(fn {map_id, index} ->
-      SharedTree.update_position_only(MapSchema, map_id, index)
-    end)
-
-    maybe_reorder_source(project_id, old_parent_id, new_parent_id)
-    Repo.get!(MapSchema, map.id)
-  end
-
-  defp maybe_reorder_source(_project_id, parent_id, parent_id), do: :ok
-
-  defp maybe_reorder_source(project_id, old_parent_id, _new_parent_id) do
-    SharedTree.reorder_source_container(
-      MapSchema,
-      project_id,
-      old_parent_id,
-      &list_maps_by_parent/2
-    )
+    SharedTree.list_by_parent(MapSchema, project_id, parent_id)
   end
 
   # Walks upward from map_id through parent_id links.
