@@ -6,11 +6,21 @@
 
 **Stack:** Elixir 1.15+ / Phoenix 1.8 / LiveView 1.1 / PostgreSQL / Redis / Tailwind v4 / daisyUI
 
+## Convention References
+
+**YOU MUST read these before writing code. Duplicating existing utilities is a bug.**
+
+| File | Purpose |
+|------|---------|
+| `AGENTS.md` | Phoenix/LiveView/Ecto patterns (**MUST READ**) |
+| @docs/conventions/shared-utilities.md | **Shared utility registry — search here BEFORE writing any helper** |
+| @docs/conventions/domain-patterns.md | Context facades, CRUD templates, auth patterns |
+| @docs/conventions/component-registry.md | All reusable HEEx components |
+
 ## Related Documentation
 
 | File                            | Purpose                                            |
 |---------------------------------|----------------------------------------------------|
-| `AGENTS.md`                     | Phoenix/LiveView/Ecto patterns (**MUST READ**)     |
 | `IMPLEMENTATION_PLAN.md`        | Full roadmap and task breakdown                    |
 | `DIALOGUE_NODE_ENHANCEMENT.md`  | Dialogue node features (Phases 1-4 ✓, 5-7 pending) |
 | `CONDITION_NODE_ENHANCEMENT.md` | Condition node variable integration (pending)      |
@@ -30,6 +40,26 @@ put_flash(socket, :info, "Project saved")
 ```
 Locales: `en` (default), `es`
 
+## IMPORTANT: Reuse Existing Code
+
+**NEVER duplicate existing utilities.** Before writing ANY helper, normalizer, validator, or shared function:
+
+1. **Check `lib/storyarn/shared/`** — contains NameNormalizer, ShortcutHelpers, TreeOperations, SoftDelete, Validations, MapUtils, SearchHelpers, TimeHelpers, TokenGenerator
+2. **Check `lib/storyarn_web/helpers/`** — contains Authorize (auth wrappers)
+3. **Check `lib/storyarn_web/components/`** — contains all reusable UI components
+4. **Read `docs/conventions/shared-utilities.md`** for the full registry with examples
+
+**Common mistakes to avoid:**
+- Writing slug/shortcut generation instead of using `NameNormalizer.slugify/1`, `variablify/1`, `shortcutify/1`
+- Writing tree reorder/move logic instead of using `TreeOperations`
+- Writing soft-delete logic instead of using `SoftDelete`
+- Writing shortcut lifecycle logic instead of using `ShortcutHelpers`
+- Writing `DateTime.utc_now() |> DateTime.truncate(:second)` instead of `TimeHelpers.now/0`
+- Writing LIKE sanitization instead of using `SearchHelpers.sanitize_like_query/1`
+- Writing map key conversion instead of using `MapUtils.stringify_keys/1`
+- Writing shortcut/email validation instead of using `Validations.validate_shortcut/2`
+- Rendering `raw(content)` without `HtmlSanitizer.sanitize_html/1`
+
 ## Commands
 
 ```bash
@@ -47,21 +77,29 @@ lib/storyarn/                    # Domain (Contexts)
 ├── accounts.ex                  # Users, auth, sessions, OAuth
 ├── workspaces.ex                # Workspaces, memberships, invitations
 ├── projects.ex                  # Projects, memberships, invitations
-├── sheets.ex                    # Sheets, blocks, variables
-├── flows.ex                     # Flows, nodes, connections
+├── sheets.ex                    # Sheets, blocks, variables, tables, versioning
+├── flows.ex                     # Flows, nodes, connections, variable tracking
+├── maps.ex                      # Maps, layers, zones, pins, annotations, connections
+├── screenplays.ex               # Screenplays, elements, Fountain export/import
+├── localization.ex              # Languages, texts, glossary, DeepL, export/import
 ├── collaboration.ex             # Presence, cursors, locking
-└── assets/                      # File uploads (R2/S3)
+├── assets.ex                    # File uploads (R2/S3, Local)
+└── shared/                      # ← REUSABLE UTILITIES (see Convention References)
 
 lib/storyarn_web/
-├── components/                  # UI components
+├── components/                  # UI components (see docs/conventions/component-registry.md)
+├── helpers/                     # Web helpers (Authorize)
 ├── live/
-│   ├── flow_live/               # Flow editor ← MAIN WORK AREA
+│   ├── flow_live/               # Flow editor
 │   ├── sheet_live/              # Sheet editor
+│   ├── map_live/                # Map editor
+│   ├── screenplay_live/         # Screenplay editor
+│   ├── localization_live/       # Localization editor
 │   └── ...
 └── router.ex
 ```
 
-**Pattern:** Contexts use facade with `defdelegate` → submodules (e.g., `sheets.ex` → `sheets/sheet_crud.ex`)
+**Pattern:** Contexts use facade with `defdelegate` → submodules (e.g., `sheets.ex` → `sheets/sheet_crud.ex`). See @docs/conventions/domain-patterns.md for full pattern.
 
 ## Domain Model
 
