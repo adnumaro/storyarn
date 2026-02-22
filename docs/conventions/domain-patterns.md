@@ -21,18 +21,20 @@ lib/storyarn/{context}/
 
 ### Contexts and their submodules
 
-| Context | Facade | Key Submodules |
-|---------|--------|---------------|
-| Sheets | `Storyarn.Sheets` | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `PropertyInheritance`, `ReferenceTracker`, `Versioning` |
-| Flows | `Storyarn.Flows` | `FlowCrud`, `NodeCrud`, `ConnectionCrud`, `TreeOperations`, `VariableReferenceTracker` |
-| Maps | `Storyarn.Maps` | `MapCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `TreeOperations` |
-| Screenplays | `Storyarn.Screenplays` | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `FlowSync`, `LinkedPageCrud`, `Export.Fountain`, `Import.Fountain` |
-| Localization | `Storyarn.Localization` | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport` |
-| Assets | `Storyarn.Assets` | (single module, no submodules) |
-| Collaboration | `Storyarn.Collaboration` | `Colors`, `Presence`, `Locks`, `CursorTracker` |
-| Projects | `Storyarn.Projects` | `ProjectCrud`, `ProjectMembership`, `ProjectInvitation` |
-| Workspaces | `Storyarn.Workspaces` | `WorkspaceCrud`, `WorkspaceMembership`, `WorkspaceInvitation` |
-| Accounts | `Storyarn.Accounts` | `UserAuth`, `UserNotifier`, `UserToken`, `OAuthProvider` |
+| Context       | Facade                   | Key Submodules                                                                                                                                                              |
+|---------------|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Sheets        | `Storyarn.Sheets`        | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `PropertyInheritance`, `ReferenceTracker`, `Versioning`, `TreeOperations`                                            |
+| Flows         | `Storyarn.Flows`         | `FlowCrud`, `NodeCrud` (→ `NodeCreate`, `NodeUpdate`, `NodeDelete`), `ConnectionCrud`, `TreeOperations`, `VariableReferenceTracker`, `HubColors`                            |
+| Maps          | `Storyarn.Maps`          | `MapCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `TreeOperations`                                                                         |
+| Screenplays   | `Storyarn.Screenplays`   | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `TreeOperations`, `ElementGrouping`, `FlowSync`, `LinkedPageCrud`, `AutoDetect`, `Export.Fountain`, `Import.Fountain` |
+| Localization  | `Storyarn.Localization`* | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`                                                                   |
+| Assets        | `Storyarn.Assets`        | `Asset` (schema), `Storage` (behaviour), `Storage.Local`, `Storage.R2`, `ImageProcessor`                                                                                    |
+| Collaboration | `Storyarn.Collaboration` | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                                              |
+| Projects      | `Storyarn.Projects`      | `ProjectCrud`, `Memberships`, `Invitations` (schemas: `ProjectMembership`, `ProjectInvitation`)                                                                             |
+| Workspaces    | `Storyarn.Workspaces`    | `WorkspaceCrud`, `Memberships`, `Invitations` (schemas: `WorkspaceMembership`, `WorkspaceInvitation`)                                                                       |
+| Accounts      | `Storyarn.Accounts`      | `Users`, `Registration`, `OAuth`, `Sessions`, `MagicLinks`, `Emails`, `Passwords`, `Profiles`                                                                               |
+
+*Localization facade lives at `lib/storyarn/localization/localization.ex` (non-standard path).
 
 ---
 
@@ -45,7 +47,10 @@ defmodule Storyarn.{Context}.{Entity}Crud do
   import Ecto.Query
   alias Storyarn.Repo
   alias Storyarn.{Context}.{Entity}
-  alias Storyarn.Shared.{MapUtils, NameNormalizer, ShortcutHelpers, SearchHelpers, TimeHelpers}
+  # Import only what you need — not all CRUD modules use the same set:
+  alias Storyarn.Shared.{MapUtils, ShortcutHelpers, SoftDelete}
+  alias Storyarn.Shared.SearchHelpers  # only if search is needed
+  alias Storyarn.Shortcuts              # centralized shortcut generators
 
   # ========== Queries ==========
   def list_{entities}(project_id) do
@@ -69,8 +74,8 @@ defmodule Storyarn.{Context}.{Entity}Crud do
   def create_{entity}(project, attrs) do
     attrs = attrs
       |> MapUtils.stringify_keys()
-      |> ShortcutHelpers.maybe_generate_shortcut(project.id, nil, &generate_shortcut/3)
-      |> ShortcutHelpers.maybe_assign_position(project.id, attrs["parent_id"], &next_position/2)
+      |> ShortcutHelpers.maybe_generate_shortcut(project.id, nil, &Shortcuts.generate_{entity}_shortcut/3)
+      |> ShortcutHelpers.maybe_assign_position(project.id, parent_id, &TreeOperations.next_position/2)
 
     %Entity{project_id: project.id}
     |> Entity.create_changeset(attrs)
@@ -79,7 +84,11 @@ defmodule Storyarn.{Context}.{Entity}Crud do
 
   # ========== Update ==========
   def update_{entity}(entity, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = ShortcutHelpers.maybe_generate_shortcut_on_update(
+      entity, attrs, &Shortcuts.generate_{entity}_shortcut/3,
+      check_backlinks_fn: &has_backlinks?/1  # optional
+    )
+
     entity
     |> Entity.update_changeset(attrs)
     |> Repo.update()
@@ -87,12 +96,9 @@ defmodule Storyarn.{Context}.{Entity}Crud do
 
   # ========== Delete (soft) ==========
   def delete_{entity}(entity) do
-    SoftDelete.soft_delete_children(Entity, entity.project_id, entity.id)
-  end
-
-  # ========== Shortcut generation ==========
-  defp generate_shortcut(project_id, name, exclude_id) do
-    # Use NameNormalizer.shortcutify/1, check uniqueness
+    SoftDelete.soft_delete_children(Entity, entity.project_id, entity.id,
+      pre_delete: &clean_references/1  # optional cleanup callback
+    )
   end
 end
 ```
@@ -109,11 +115,10 @@ schema "{entities}" do
   field :shortcut, :string                # Unique per project
   field :description, :string             # Optional rich text
   field :position, :integer, default: 0   # Order among siblings
-  field :parent_id, :integer              # nil = root level
   field :deleted_at, :utc_datetime        # Soft delete
 
   belongs_to :project, Project
-  belongs_to :parent, __MODULE__
+  belongs_to :parent, __MODULE__            # auto-generates parent_id field
   has_many :children, __MODULE__, foreign_key: :parent_id
 
   timestamps(type: :utc_datetime)
@@ -203,6 +208,7 @@ All real-time features use `Phoenix.PubSub` through the `Collaboration` context:
 Collaboration.subscribe_presence(flow_id)
 Collaboration.subscribe_changes(flow_id)
 Collaboration.subscribe_locks(flow_id)
+Collaboration.subscribe_cursors(flow_id)
 
 # Broadcast changes
 Collaboration.broadcast_change(flow_id, :node_updated, %{node_id: id})
@@ -210,6 +216,8 @@ Collaboration.broadcast_change(flow_id, :node_updated, %{node_id: id})
 # Handle in LiveView
 def handle_info({:remote_change, action, payload}, socket), do: ...
 def handle_info({:lock_change, action, payload}, socket), do: ...
+def handle_info({:cursor_update, data}, socket), do: ...
+def handle_info({:cursor_leave, user_id}, socket), do: ...
 ```
 
 Topic format: `"flow:{flow_id}:{channel}"` where channel is `presence`, `changes`, `locks`, or `cursors`.
@@ -220,14 +228,16 @@ Topic format: `"flow:{flow_id}:{channel}"` where channel is `presence`, `changes
 
 All user-facing text uses domain-specific Gettext:
 
-| Domain | Function | Example |
-|--------|----------|---------|
-| Generic | `gettext("Saved")` | Default domain |
-| Sheets | `dgettext("sheets", "Untitled")` | Sheet-specific |
-| Flows | `dgettext("flows", "Add node")` | Flow-specific |
-| Maps | `dgettext("maps", "Default Layer")` | Map-specific |
-| Localization | `dgettext("localization", "Pending")` | Localization-specific |
-| Settings | `dgettext("settings", "General")` | Settings-specific |
+| Domain       | Function                                    | Example               |
+|--------------|---------------------------------------------|-----------------------|
+| Generic      | `gettext("Saved")`                          | Default domain        |
+| Sheets       | `dgettext("sheets", "Untitled")`            | Sheet-specific        |
+| Flows        | `dgettext("flows", "Add node")`             | Flow-specific         |
+| Maps         | `dgettext("maps", "Default Layer")`         | Map-specific          |
+| Screenplays  | `dgettext("screenplays", "New Screenplay")` | Screenplay-specific   |
+| Localization | `dgettext("localization", "Pending")`       | Localization-specific |
+| Identity     | `dgettext("identity", "Sign in")`           | Auth/user-specific    |
+| Settings     | `dgettext("settings", "General")`           | Settings-specific     |
 
 **NEVER use hardcoded strings for user-facing text.**
 
