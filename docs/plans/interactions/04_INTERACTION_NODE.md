@@ -66,19 +66,19 @@ The node's output pins are generated from the map's event zones:
 
 ## Files to Create/Modify
 
-| File                                                                             | Change                                |
-|----------------------------------------------------------------------------------|---------------------------------------|
-| **CREATE** `lib/storyarn_web/live/flow_live/nodes/interaction/node.ex`           | Node module                           |
-| **CREATE** `lib/storyarn_web/live/flow_live/nodes/interaction/config_sidebar.ex` | Sidebar                               |
-| **CREATE** `assets/js/flow_canvas/nodes/interaction.js`                          | JS canvas rendering                   |
-| `lib/storyarn_web/live/flow_live/node_type_registry.ex`                          | Register new type                     |
-| `lib/storyarn/flows/flow_node.ex`                                                | Add "interaction" to valid types      |
-| `assets/js/flow_canvas/nodes/index.js`                                           | Register JS module                    |
-| `lib/storyarn_web/live/flow_live/show.ex`                                        | Event handlers                        |
-| `lib/storyarn/maps.ex`                                                           | Query: get_map_brief for node sidebar |
+| File                                                                             | Change                                    |
+|----------------------------------------------------------------------------------|-------------------------------------------|
+| **CREATE** `lib/storyarn_web/live/flow_live/nodes/interaction/node.ex`           | Node module                               |
+| **CREATE** `lib/storyarn_web/live/flow_live/nodes/interaction/config_sidebar.ex` | Sidebar                                   |
+| **CREATE** `assets/js/flow_canvas/nodes/interaction.js`                          | JS canvas rendering                       |
+| `lib/storyarn_web/live/flow_live/node_type_registry.ex`                          | Register new type                         |
+| `lib/storyarn/flows/flow_node.ex`                                                | Add "interaction" to valid types          |
+| `assets/js/flow_canvas/nodes/index.js`                                           | Register JS module                        |
+| `lib/storyarn_web/live/flow_live/show.ex`                                        | Event handlers                            |
+| `lib/storyarn/maps.ex`                                                           | Query: get_map_brief for node sidebar     |
 | `lib/storyarn/flows/flow_queries.ex` (or equivalent)                             | Backlink query: interaction nodes for map |
-| `lib/storyarn_web/live/map_live/show.ex`                                         | Load + display referencing flows |
-| `lib/storyarn_web/live/map_live/components/map_header.ex` (or new component)     | Referencing flows UI in map editor |
+| `lib/storyarn_web/live/map_live/show.ex`                                         | Load + display referencing flows          |
+| `lib/storyarn_web/live/map_live/components/map_header.ex` (or new component)     | Referencing flows UI in map editor        |
 
 ---
 
@@ -631,9 +631,9 @@ Display in the map header or as a collapsible panel. Shows which flows use this 
 
 ```
 ┌─────────────────────────────────────────┐
-│ 🎮 Used in flows:                        │
-│  ├── Character Creation (Main Quest)     │  ← click navigates to flow
-│  └── Tutorial Flow                       │  ← click navigates to flow
+│ 🎮 Used in flows:                       │
+│  ├── Character Creation (Main Quest)    │  ← click navigates to flow
+│  └── Tutorial Flow                      │  ← click navigates to flow
 └─────────────────────────────────────────┘
 ```
 

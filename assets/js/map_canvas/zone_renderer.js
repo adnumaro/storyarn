@@ -5,8 +5,14 @@
  */
 
 import L from "leaflet";
-import { createElement, Map as MapIcon } from "lucide";
+import { BarChart3, createElement, Map as MapIcon, Send, Zap } from "lucide";
 import { toLatLng } from "./coordinate_utils.js";
+
+const ACTION_ICONS = {
+  instruction: Zap,
+  display: BarChart3,
+  event: Send,
+};
 
 const DEFAULT_FILL_COLOR = "#3b82f6";
 const DEFAULT_BORDER_COLOR = "#1e40af";
@@ -115,11 +121,8 @@ export function updateZoneLabelMarker(marker, zone, w, h) {
 
   const span = marker.getElement()?.querySelector("span");
   if (span) {
-    // textContent clears all children, then re-append icon if needed
-    span.textContent = zone.name;
-    if (zoneHasChildMap(zone)) {
-      span.appendChild(createMapIndicatorIcon());
-    }
+    span.replaceChildren();
+    populateLabelSpan(span, zone);
   }
 
   const center = computeCentroid(zone.vertices, w, h);
@@ -150,18 +153,29 @@ function verticesToLatLngs(vertices, w, h) {
 }
 
 /**
- * Builds a label <span> with zone name and optional child-map icon.
- * Uses textContent for the name (XSS-safe), then appends a Lucide SVG element.
+ * Builds a label <span> with optional action icon, zone name, and optional child-map icon.
+ * Uses appendChild for text (XSS-safe), then appends Lucide SVG elements.
  */
 function buildLabelSpan(zone) {
   const span = document.createElement("span");
-  span.textContent = zone.name;
+  populateLabelSpan(span, zone);
+  return span;
+}
+
+/**
+ * Populates a label <span> with optional action icon, zone name, and optional child-map icon.
+ */
+function populateLabelSpan(span, zone) {
+  const actionIcon = ACTION_ICONS[zone.action_type];
+  if (actionIcon) {
+    span.appendChild(createElement(actionIcon, { width: 10, height: 10 }));
+  }
+
+  span.appendChild(document.createTextNode(zone.name));
 
   if (zoneHasChildMap(zone)) {
     span.appendChild(createMapIndicatorIcon());
   }
-
-  return span;
 }
 
 /** Returns true when the zone is linked to a child map. */

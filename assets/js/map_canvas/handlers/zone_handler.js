@@ -116,6 +116,10 @@ export function createZoneHandler(hook, i18n = {}) {
       const isZoneTool = hook.isZoneTool?.(hook.currentTool);
       if (isZoneTool) return;
 
+      // Only navigate/create-child-map for navigate zones
+      const actionType = polygon.zoneData.action_type || "navigate";
+      if (actionType !== "navigate") return;
+
       if (polygon.zoneData.target_type === "map" && polygon.zoneData.target_id) {
         // Navigate to existing child map
         hook.pushEvent("navigate_to_target", {

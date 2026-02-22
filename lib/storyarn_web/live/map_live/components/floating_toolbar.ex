@@ -28,6 +28,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
   attr :project_maps, :list, default: []
   attr :project_sheets, :list, default: []
   attr :project_flows, :list, default: []
+  attr :project_variables, :list, default: []
 
   def floating_toolbar(assigns) do
     ~H"""
@@ -41,6 +42,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
         project_maps={@project_maps}
         project_sheets={@project_sheets}
         project_flows={@project_flows}
+        project_variables={@project_variables}
       />
       <.pin_toolbar
         :if={@selected_type == "pin"}
@@ -73,6 +75,8 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
   # [Name] | [Fill▾ (+opacity)] [Border▾] | [Layer▾] [Lock] | [… more]
   # ---------------------------------------------------------------------------
 
+  @action_types ~w(navigate instruction display event)
+
   attr :zone, :map, required: true
   attr :layers, :list, default: []
   attr :can_edit, :boolean, default: true
@@ -80,10 +84,58 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
   attr :project_maps, :list, default: []
   attr :project_sheets, :list, default: []
   attr :project_flows, :list, default: []
+  attr :project_variables, :list, default: []
 
   defp zone_toolbar(assigns) do
+    assigns =
+      assigns
+      |> assign(:action_types, @action_types)
+      |> assign(:action_data, assigns.zone.action_data || %{})
+
     ~H"""
     <div class="flex items-center gap-0.5">
+      <%!-- Action type selector --%>
+      <div class="relative">
+        <button
+          type="button"
+          class="toolbar-btn gap-1 px-1.5"
+          title={dgettext("maps", "Action type")}
+          disabled={!@can_edit}
+          phx-click={JS.toggle(to: "#popover-zone-action-#{@zone.id}", display: "block")}
+        >
+          <.icon name={action_type_icon(@zone.action_type)} class="size-3.5" />
+          <span class="text-xs">{action_type_label(@zone.action_type)}</span>
+          <.icon name="chevron-down" class="size-2.5 opacity-50" />
+        </button>
+
+        <div
+          id={"popover-zone-action-#{@zone.id}"}
+          class="toolbar-popover"
+          style="display:none"
+          phx-click-away={JS.hide(to: "#popover-zone-action-#{@zone.id}")}
+        >
+          <div class="p-1 min-w-[120px]">
+            <button
+              :for={type <- @action_types}
+              type="button"
+              phx-click={
+                JS.push("update_zone_action_type",
+                  value: %{"zone-id": @zone.id, "action-type": type}
+                )
+                |> JS.hide(to: "#popover-zone-action-#{@zone.id}")
+              }
+              class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-base-200 #{if type == (@zone.action_type || "navigate"), do: "font-semibold text-primary"}"}
+              disabled={!@can_edit}
+            >
+              <.icon name={action_type_icon(type)} class="size-3.5" />
+              {action_type_label(type)}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <span class="toolbar-separator" />
+
       <%!-- Name --%>
       <input
         type="text"
@@ -155,7 +207,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
 
       <span class="toolbar-separator" />
 
-      <%!-- More (…) popover: tooltip + target --%>
+      <%!-- More (…) popover: tooltip + type-specific config --%>
       <div class="relative">
         <button
           type="button"
@@ -168,7 +220,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
 
         <div
           id={"popover-zone-more-#{@zone.id}"}
-          class="toolbar-popover w-56"
+          class="toolbar-popover w-72"
           style="display:none"
           phx-click-away={JS.hide(to: "#popover-zone-more-#{@zone.id}")}
         >
@@ -190,8 +242,11 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
               />
             </div>
 
-            <%!-- Target link --%>
-            <div class="pt-2 border-t border-base-300">
+            <%!-- Navigate: target picker --%>
+            <div
+              :if={(@zone.action_type || "navigate") == "navigate"}
+              class="pt-2 border-t border-base-300"
+            >
               <label class="text-xs font-medium text-base-content/60">
                 {dgettext("maps", "Link to")}
               </label>
@@ -209,6 +264,94 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
                   disabled={!@can_edit}
                 />
               </div>
+            </div>
+
+            <%!-- Instruction: InstructionBuilder hook --%>
+            <div :if={@zone.action_type == "instruction"} class="pt-2 border-t border-base-300">
+              <label class="block text-xs font-medium text-base-content/60 mb-1">
+                {dgettext("maps", "Assignments")}
+              </label>
+              <div
+                id={"zone-instruction-builder-#{@zone.id}"}
+                phx-hook="InstructionBuilder"
+                phx-update="ignore"
+                data-assignments={Jason.encode!(@action_data["assignments"] || [])}
+                data-variables={Jason.encode!(@project_variables)}
+                data-can-edit={Jason.encode!(@can_edit)}
+                data-event-name="update_zone_assignments"
+                data-context={Jason.encode!(%{"zone-id" => @zone.id})}
+              />
+            </div>
+
+            <%!-- Display: variable picker + label --%>
+            <div :if={@zone.action_type == "display"} class="pt-2 border-t border-base-300">
+              <label class="block text-xs font-medium text-base-content/60 mb-1">
+                {dgettext("maps", "Variable")}
+              </label>
+              <form phx-change="update_zone_action_data" phx-submit="noop">
+                <input type="hidden" name="zone-id" value={@zone.id} />
+                <input type="hidden" name="field" value="variable_ref" />
+                <select
+                  name="value"
+                  class="select select-xs select-bordered w-full"
+                  disabled={!@can_edit}
+                >
+                  <option value="">{dgettext("maps", "Select variable...")}</option>
+                  <option
+                    :for={var <- @project_variables}
+                    value={"#{var.sheet_shortcut}.#{var.variable_name}"}
+                    selected={
+                      "#{var.sheet_shortcut}.#{var.variable_name}" ==
+                        (@action_data["variable_ref"] || "")
+                    }
+                  >
+                    {var.sheet_shortcut}.{var.variable_name}
+                  </option>
+                </select>
+              </form>
+              <label class="block text-xs font-medium text-base-content/60 mb-1 mt-2">
+                {dgettext("maps", "Label")}
+              </label>
+              <input
+                type="text"
+                value={@action_data["label"] || ""}
+                phx-blur="update_zone_action_data"
+                phx-value-zone-id={@zone.id}
+                phx-value-field="label"
+                placeholder={dgettext("maps", "Display label...")}
+                class="input input-xs input-bordered w-full"
+                disabled={!@can_edit}
+              />
+            </div>
+
+            <%!-- Event: event_name + label --%>
+            <div :if={@zone.action_type == "event"} class="pt-2 border-t border-base-300">
+              <label class="block text-xs font-medium text-base-content/60 mb-1">
+                {dgettext("maps", "Event name")}
+              </label>
+              <input
+                type="text"
+                value={@action_data["event_name"] || ""}
+                phx-blur="update_zone_action_data"
+                phx-value-zone-id={@zone.id}
+                phx-value-field="event_name"
+                placeholder={dgettext("maps", "e.g. on_enter")}
+                class="input input-xs input-bordered w-full"
+                disabled={!@can_edit}
+              />
+              <label class="block text-xs font-medium text-base-content/60 mb-1 mt-2">
+                {dgettext("maps", "Label")}
+              </label>
+              <input
+                type="text"
+                value={@action_data["label"] || ""}
+                phx-blur="update_zone_action_data"
+                phx-value-zone-id={@zone.id}
+                phx-value-field="label"
+                placeholder={dgettext("maps", "Display label...")}
+                class="input input-xs input-bordered w-full"
+                disabled={!@can_edit}
+              />
             </div>
           </div>
         </div>
@@ -631,4 +774,16 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
   defp pin_type_label("event"), do: dgettext("maps", "Event")
   defp pin_type_label("custom"), do: dgettext("maps", "Custom")
   defp pin_type_label(other), do: other
+
+  defp action_type_icon("navigate"), do: "link"
+  defp action_type_icon("instruction"), do: "zap"
+  defp action_type_icon("display"), do: "bar-chart-3"
+  defp action_type_icon("event"), do: "send"
+  defp action_type_icon(_), do: "link"
+
+  defp action_type_label("navigate"), do: dgettext("maps", "Navigate")
+  defp action_type_label("instruction"), do: dgettext("maps", "Action")
+  defp action_type_label("display"), do: dgettext("maps", "Display")
+  defp action_type_label("event"), do: dgettext("maps", "Event")
+  defp action_type_label(_), do: dgettext("maps", "Navigate")
 end

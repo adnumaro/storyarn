@@ -123,6 +123,7 @@ defmodule StoryarnWeb.MapLive.Show do
             project_maps={@project_maps}
             project_sheets={@project_sheets}
             project_flows={@project_flows}
+            project_variables={@project_variables}
           />
         </div>
 
@@ -291,6 +292,7 @@ defmodule StoryarnWeb.MapLive.Show do
     |> assign(:project_maps, Maps.list_maps(project.id))
     |> assign(:project_sheets, Storyarn.Sheets.list_sheets_tree(project.id))
     |> assign(:project_flows, Storyarn.Flows.list_flows(project.id))
+    |> assign(:project_variables, Storyarn.Sheets.list_project_variables(project.id))
     |> assign(:canvas_i18n, %{
       edit_properties: dgettext("maps", "Edit Properties"),
       connect_to: dgettext("maps", "Connect To\u2026"),
@@ -601,6 +603,24 @@ defmodule StoryarnWeb.MapLive.Show do
   def handle_event("delete_zone", params, socket) do
     with_auth(socket, :edit_content, fn ->
       ElementHandlers.handle_delete_zone(params, socket)
+    end)
+  end
+
+  def handle_event("update_zone_action_type", params, socket) do
+    with_auth(socket, :edit_content, fn ->
+      ElementHandlers.handle_update_zone_action_type(params, socket)
+    end)
+  end
+
+  def handle_event("update_zone_assignments", params, socket) do
+    with_auth(socket, :edit_content, fn ->
+      ElementHandlers.handle_update_zone_assignments(params, socket)
+    end)
+  end
+
+  def handle_event("update_zone_action_data", params, socket) do
+    with_auth(socket, :edit_content, fn ->
+      ElementHandlers.handle_update_zone_action_data(params, socket)
     end)
   end
 

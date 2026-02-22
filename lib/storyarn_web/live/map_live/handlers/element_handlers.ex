@@ -190,6 +190,52 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   end
 
   # ---------------------------------------------------------------------------
+  # Zone action handlers (action_type + action_data)
+  # ---------------------------------------------------------------------------
+
+  @default_action_data %{
+    "navigate" => %{},
+    "instruction" => %{"assignments" => []},
+    "display" => %{"variable_ref" => "", "label" => ""},
+    "event" => %{"event_name" => "", "label" => ""}
+  }
+
+  def handle_update_zone_action_type(%{"zone-id" => id, "action-type" => type}, socket) do
+    case Maps.get_zone(socket.assigns.map.id, id) do
+      nil ->
+        {:noreply, socket}
+
+      zone ->
+        do_update_zone_attrs(socket, zone, %{
+          "action_type" => type,
+          "action_data" => Map.get(@default_action_data, type, %{})
+        })
+    end
+  end
+
+  def handle_update_zone_assignments(%{"zone-id" => id, "assignments" => assignments}, socket) do
+    case Maps.get_zone(socket.assigns.map.id, id) do
+      nil ->
+        {:noreply, socket}
+
+      zone ->
+        new_data = Map.merge(zone.action_data || %{}, %{"assignments" => assignments})
+        do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
+    end
+  end
+
+  def handle_update_zone_action_data(%{"zone-id" => id, "field" => field, "value" => value}, socket) do
+    case Maps.get_zone(socket.assigns.map.id, id) do
+      nil ->
+        {:noreply, socket}
+
+      zone ->
+        new_data = Map.merge(zone.action_data || %{}, %{field => value})
+        do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   # Connection handlers
   # ---------------------------------------------------------------------------
 
@@ -487,6 +533,26 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
         {:noreply,
          socket
          |> push_undo({:update_zone, zone.id, %{field => prev_value}, %{field => value}})
+         |> assign(:selected_element, updated)
+         |> assign(:zones, replace_in_list(socket.assigns.zones, updated))
+         |> push_event("zone_updated", serialize_zone(updated))}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update zone."))}
+    end
+  end
+
+  defp do_update_zone_attrs(socket, zone, new_attrs) do
+    prev_attrs =
+      Map.new(new_attrs, fn {key, _val} ->
+        {key, Map.get(zone, String.to_existing_atom(key))}
+      end)
+
+    case Maps.update_zone(zone, new_attrs) do
+      {:ok, updated} ->
+        {:noreply,
+         socket
+         |> push_undo({:update_zone, zone.id, prev_attrs, new_attrs})
          |> assign(:selected_element, updated)
          |> assign(:zones, replace_in_list(socket.assigns.zones, updated))
          |> push_event("zone_updated", serialize_zone(updated))}
