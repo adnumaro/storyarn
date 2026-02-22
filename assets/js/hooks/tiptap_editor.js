@@ -1,6 +1,7 @@
 import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { createMentionExtension } from "../tiptap/mention_extension.js";
+import { createVariableRefExtension } from "../tiptap/variable_ref_extension.js";
 
 export const TiptapEditor = {
   mounted() {
@@ -9,6 +10,7 @@ export const TiptapEditor = {
     const blockId = this.el.dataset.blockId;
     const nodeId = this.el.dataset.nodeId;
     const mode = this.el.dataset.mode || "default"; // "default" or "screenplay"
+    const variablesEnabled = this.el.dataset.variablesEnabled === "true";
 
     // Create editor container
     const editorEl = document.createElement("div");
@@ -45,9 +47,28 @@ export const TiptapEditor = {
       }
     });
 
+    // Build extensions array conditionally
+    const extensions = [StarterKit, createMentionExtension(this)];
+    if (variablesEnabled) {
+      extensions.push(createVariableRefExtension(this));
+
+      // Listen for variable suggestions from server
+      this.handleEvent("variable_suggestions_result", ({ items }) => {
+        if (this.variableResolve) {
+          this.variableResolve(items);
+          this.variableResolve = null;
+        }
+      });
+
+      // Listen for default value resolution
+      this.handleEvent("variable_defaults_resolved", ({ defaults }) => {
+        this.updateVariableDefaults(defaults);
+      });
+    }
+
     this.editor = new Editor({
       element: editorEl,
-      extensions: [StarterKit, createMentionExtension(this)],
+      extensions: extensions,
       content: content,
       editable: editable,
       editorProps: {
@@ -76,6 +97,65 @@ export const TiptapEditor = {
     // Create toolbar if editable and not in screenplay mode
     if (editable && mode !== "screenplay" && mode !== "dialogue-screenplay") {
       this.createToolbar();
+    }
+
+    // Request variable defaults after mount
+    if (variablesEnabled) {
+      this.requestVariableDefaults();
+    }
+  },
+
+  /**
+   * Scan editor for variableRef nodes and request their default values.
+   */
+  requestVariableDefaults() {
+    if (!this.editor) return;
+
+    const refs = new Set();
+    this.editor.state.doc.descendants((node) => {
+      if (node.type.name === "variableRef" && node.attrs.id) {
+        refs.add(node.attrs.id);
+      }
+    });
+
+    if (refs.size === 0) return;
+
+    const target = this.el.dataset.phxTarget;
+    const payload = { refs: Array.from(refs) };
+    if (target) {
+      this.pushEventTo(target, "resolve_variable_defaults", payload);
+    } else {
+      this.pushEvent("resolve_variable_defaults", payload);
+    }
+  },
+
+  /**
+   * Update displayed default values next to variable-ref elements.
+   */
+  updateVariableDefaults(defaults) {
+    if (!this.editor) return;
+
+    const editorEl = this.editor.view.dom;
+    const varRefs = editorEl.querySelectorAll(".variable-ref");
+
+    for (const el of varRefs) {
+      const ref = el.getAttribute("data-ref");
+      if (!ref || !(ref in defaults)) continue;
+
+      const value = defaults[ref];
+      const displayValue = value != null ? `(${value})` : "";
+
+      // Find or create the default-value span (sibling after the variable-ref)
+      let defaultEl = el.nextElementSibling;
+      if (defaultEl?.classList.contains("variable-ref-default")) {
+        defaultEl.textContent = displayValue;
+      } else if (displayValue) {
+        defaultEl = document.createElement("span");
+        defaultEl.className = "variable-ref-default";
+        defaultEl.contentEditable = "false";
+        defaultEl.textContent = displayValue;
+        el.after(defaultEl);
+      }
     }
   },
 
@@ -234,6 +314,9 @@ export const TiptapEditor = {
     }
     if (this.mentionDebounce) {
       clearTimeout(this.mentionDebounce);
+    }
+    if (this.variableDebounce) {
+      clearTimeout(this.variableDebounce);
     }
     if (this.editor) {
       this.editor.destroy();

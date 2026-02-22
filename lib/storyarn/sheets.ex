@@ -114,6 +114,13 @@ defmodule Storyarn.Sheets do
   defdelegate list_project_variables(project_id), to: SheetQueries
 
   @doc """
+  Resolves current default values for a list of variable references.
+  Returns `%{"ref" => value}` for each found variable.
+  """
+  @spec resolve_variable_values(id(), [String.t()]) :: map()
+  defdelegate resolve_variable_values(project_id, refs), to: SheetQueries
+
+  @doc """
   Returns project sheets as options for reference columns.
   Each option has `"key"` (shortcut) and `"value"` (name).
   """

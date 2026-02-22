@@ -285,6 +285,165 @@ defmodule Storyarn.Sheets.SheetQueries do
   end
 
   # =============================================================================
+  # Variable Value Resolution
+  # =============================================================================
+
+  @doc """
+  Resolves current default values for a list of variable references.
+  Returns `%{"ref" => value}` for each found variable.
+
+  Refs can be simple (2-part: "sheet_shortcut.variable_name") or
+  table (4-part: "sheet_shortcut.table_name.row_slug.column_slug").
+  """
+  @spec resolve_variable_values(integer(), [String.t()]) :: map()
+  def resolve_variable_values(project_id, refs) when is_list(refs) do
+    {simple_refs, table_refs} = classify_refs(refs)
+
+    simple_values = resolve_simple_values(project_id, simple_refs)
+    table_values = resolve_table_values(project_id, table_refs)
+
+    Map.merge(simple_values, table_values)
+  end
+
+  defp classify_refs(refs) do
+    Enum.split_with(refs, fn ref ->
+      ref |> String.split(".") |> length() == 2
+    end)
+  end
+
+  defp resolve_simple_values(_project_id, []), do: %{}
+
+  defp resolve_simple_values(project_id, refs) do
+    pairs = parse_simple_refs(refs)
+    do_resolve_simple(project_id, pairs)
+  end
+
+  defp parse_simple_refs(refs) do
+    refs
+    |> Enum.map(&parse_simple_ref/1)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp parse_simple_ref(ref) do
+    case String.split(ref, ".", parts: 2) do
+      [shortcut, var_name] -> {shortcut, var_name}
+      _ -> nil
+    end
+  end
+
+  defp do_resolve_simple(_project_id, []), do: %{}
+
+  defp do_resolve_simple(project_id, pairs) do
+    shortcuts = pairs |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+    pair_set = MapSet.new(pairs)
+
+    query_simple_blocks(project_id, shortcuts)
+    |> Repo.all()
+    |> build_simple_results(pair_set)
+  end
+
+  defp query_simple_blocks(project_id, shortcuts) do
+    from(b in Block,
+      join: s in Sheet,
+      on: b.sheet_id == s.id,
+      where:
+        s.project_id == ^project_id and
+          is_nil(s.deleted_at) and
+          is_nil(b.deleted_at) and
+          not is_nil(b.variable_name) and
+          b.variable_name != "" and
+          coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)) in ^shortcuts,
+      select: %{
+        shortcut: coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)),
+        variable_name: b.variable_name,
+        value: b.value
+      }
+    )
+  end
+
+  defp build_simple_results(rows, pair_set) do
+    Enum.reduce(rows, %{}, fn row, acc ->
+      if MapSet.member?(pair_set, {row.shortcut, row.variable_name}) do
+        Map.put(acc, "#{row.shortcut}.#{row.variable_name}", extract_block_value(row.value))
+      else
+        acc
+      end
+    end)
+  end
+
+  defp resolve_table_values(_project_id, []), do: %{}
+
+  defp resolve_table_values(project_id, refs) do
+    parsed = parse_table_refs(refs)
+    do_resolve_table(project_id, parsed)
+  end
+
+  defp parse_table_refs(refs) do
+    refs
+    |> Enum.map(&parse_table_ref/1)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp parse_table_ref(ref) do
+    case String.split(ref, ".") do
+      [shortcut, table_name, row_slug, col_slug] ->
+        %{shortcut: shortcut, table_name: table_name, row_slug: row_slug, col_slug: col_slug, ref: ref}
+
+      _ ->
+        nil
+    end
+  end
+
+  defp do_resolve_table(_project_id, []), do: %{}
+
+  defp do_resolve_table(project_id, parsed) do
+    shortcuts = parsed |> Enum.map(& &1.shortcut) |> Enum.uniq()
+    rows = query_table_rows(project_id, shortcuts) |> Repo.all()
+
+    Enum.reduce(parsed, %{}, fn entry, acc ->
+      match_table_row(rows, entry, acc)
+    end)
+  end
+
+  defp query_table_rows(project_id, shortcuts) do
+    from(tr in TableRow,
+      join: b in Block,
+      on: tr.block_id == b.id,
+      join: s in Sheet,
+      on: b.sheet_id == s.id,
+      where:
+        s.project_id == ^project_id and
+          is_nil(s.deleted_at) and
+          is_nil(b.deleted_at) and
+          b.type == "table" and
+          coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)) in ^shortcuts,
+      select: %{
+        shortcut: coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)),
+        table_name: b.variable_name,
+        row_slug: tr.slug,
+        values: tr.values
+      }
+    )
+  end
+
+  defp match_table_row(rows, entry, acc) do
+    case find_matching_row(rows, entry) do
+      nil -> acc
+      row -> Map.put(acc, entry.ref, get_in(row.values, [entry.col_slug]))
+    end
+  end
+
+  defp find_matching_row(rows, entry) do
+    Enum.find(rows, fn r ->
+      r.shortcut == entry.shortcut and r.table_name == entry.table_name and
+        r.row_slug == entry.row_slug
+    end)
+  end
+
+  defp extract_block_value(%{"content" => content}), do: content
+  defp extract_block_value(_), do: nil
+
+  # =============================================================================
   # Reference Validation
   # =============================================================================
 

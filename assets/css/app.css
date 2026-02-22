@@ -451,6 +451,27 @@
   opacity: 1;
 }
 
+/* Variable references (inline code style) */
+.variable-ref {
+  font-family: monospace;
+  font-size: 0.85em;
+  background: color-mix(in oklch, var(--color-info) 15%, transparent);
+  color: var(--color-info);
+  padding: 0.1em 0.4em;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+  cursor: default;
+  user-select: none;
+}
+
+.variable-ref-default {
+  color: var(--color-base-content);
+  opacity: 0.4;
+  font-family: monospace;
+  font-size: 0.85em;
+  margin-left: 0.25em;
+}
+
 /* TipTap in dialogue screenplay mode */
 .tiptap-dialogue-screenplay .ProseMirror {
   border: none;

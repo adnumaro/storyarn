@@ -38,6 +38,6 @@
     }
   },
   "files": {
-    "includes": ["js/**"]
+    "includes": ["js/**", "!js/expression_editor/parser_generated.terms.js"]
   }
 }

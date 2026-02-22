@@ -71,9 +71,16 @@ const highlightStyle = HighlightStyle.define([
   { tag: tags.bool, color: "var(--color-accent)" },
   { tag: tags.keyword, color: "var(--color-accent)" },
   // Punctuation (dots, parens)
-  { tag: tags.punctuation, color: "color-mix(in oklch, var(--color-base-content) 50%, transparent)" },
+  {
+    tag: tags.punctuation,
+    color: "color-mix(in oklch, var(--color-base-content) 50%, transparent)",
+  },
   // Comments
-  { tag: tags.lineComment, color: "color-mix(in oklch, var(--color-base-content) 40%, transparent)", fontStyle: "italic" },
+  {
+    tag: tags.lineComment,
+    color: "color-mix(in oklch, var(--color-base-content) 40%, transparent)",
+    fontStyle: "italic",
+  },
 ]);
 
 export const storyarnHighlighting = syntaxHighlighting(highlightStyle);

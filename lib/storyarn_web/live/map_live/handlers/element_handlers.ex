@@ -9,6 +9,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Maps
+  alias Storyarn.Shared.SlugGenerator
   import StoryarnWeb.MapLive.Helpers.MapHelpers
   import StoryarnWeb.MapLive.Helpers.Serializer
 
@@ -206,9 +207,19 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
         {:noreply, socket}
 
       zone ->
+        default_data = Map.get(@default_action_data, type, %{})
+
+        # Auto-set event_name from zone name slug when switching to event type
+        action_data =
+          if type == "event" do
+            Map.put(default_data, "event_name", SlugGenerator.slugify(zone.name))
+          else
+            default_data
+          end
+
         do_update_zone_attrs(socket, zone, %{
           "action_type" => type,
-          "action_data" => Map.get(@default_action_data, type, %{})
+          "action_data" => action_data
         })
     end
   end
@@ -526,13 +537,14 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   end
 
   defp do_update_zone(socket, zone, field, value) do
-    prev_value = Map.get(zone, String.to_existing_atom(field))
+    attrs = build_zone_update_attrs(zone, field, value)
+    prev_attrs = Map.new(attrs, fn {k, _} -> {k, Map.get(zone, String.to_existing_atom(k))} end)
 
-    case Maps.update_zone(zone, %{field => value}) do
+    case Maps.update_zone(zone, attrs) do
       {:ok, updated} ->
         {:noreply,
          socket
-         |> push_undo({:update_zone, zone.id, %{field => prev_value}, %{field => value}})
+         |> push_undo({:update_zone, zone.id, prev_attrs, attrs})
          |> assign(:selected_element, updated)
          |> assign(:zones, replace_in_list(socket.assigns.zones, updated))
          |> push_event("zone_updated", serialize_zone(updated))}
@@ -541,6 +553,21 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
         {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update zone."))}
     end
   end
+
+  # Auto-sync event_name when zone name changes (if event_name matches old slug)
+  defp build_zone_update_attrs(zone, "name", value) when zone.action_type == "event" do
+    old_slug = SlugGenerator.slugify(zone.name || "")
+    current_event = get_in(zone.action_data, ["event_name"]) || ""
+
+    if current_event == "" or current_event == old_slug do
+      new_event = SlugGenerator.slugify(value)
+      %{"name" => value, "action_data" => Map.put(zone.action_data || %{}, "event_name", new_event)}
+    else
+      %{"name" => value}
+    end
+  end
+
+  defp build_zone_update_attrs(_zone, field, value), do: %{field => value}
 
   defp do_update_zone_attrs(socket, zone, new_attrs) do
     prev_attrs =
@@ -972,4 +999,5 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     |> assign(:active_tool, :select)
     |> push_event("tool_changed", %{tool: "select"})
   end
+
 end

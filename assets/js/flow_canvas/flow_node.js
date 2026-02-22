@@ -28,7 +28,10 @@ export class FlowNode extends ClassicPreset.Node {
 
     // Add inputs
     for (const inputName of config.inputs) {
-      this.addInput(inputName, new ClassicPreset.Input(new ClassicPreset.Socket("flow")));
+      this.addInput(
+        inputName,
+        new ClassicPreset.Input(new ClassicPreset.Socket("flow"), inputName, true),
+      );
     }
 
     // Add outputs — delegate to per-type createOutputs if available

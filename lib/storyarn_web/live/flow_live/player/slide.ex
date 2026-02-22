@@ -22,7 +22,11 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   def build(%{type: "dialogue"} = node, state, sheets_map, _project_id) do
     data = node.data || %{}
     speaker = resolve_speaker(data["speaker_sheet_id"], sheets_map)
-    text = interpolate_variables(HtmlSanitizer.sanitize_html(data["text"] || ""), state.variables)
+    text =
+      (data["text"] || "")
+      |> HtmlSanitizer.sanitize_html()
+      |> resolve_variable_refs(state.variables)
+      |> interpolate_variables(state.variables)
     stage_directions = data["stage_directions"] || ""
     menu_text = data["menu_text"] || ""
 
@@ -33,7 +37,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
           |> Enum.map(fn {resp, idx} ->
             %{
               id: resp.id,
-              text: resp.text || "",
+              text: interpolate_response_text(resp.text || "", state.variables),
               valid: resp.valid,
               number: idx,
               has_condition: resp[:rule_details] != nil and resp[:rule_details] != []
@@ -215,6 +219,47 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   # ===========================================================================
   # Variable interpolation
   # ===========================================================================
+
+  # Resolve <span class="variable-ref" data-ref="...">$ref</span> from Tiptap.
+  # Attributes may appear in any order, so we match data-ref anywhere inside the tag.
+  defp resolve_variable_refs("", _variables), do: ""
+
+  defp resolve_variable_refs(html, variables) when is_binary(html) do
+    Regex.replace(
+      ~r/<span\s[^>]*?data-ref="([^"]+)"[^>]*>[^<]*<\/span>/,
+      html,
+      fn full, ref ->
+        if String.contains?(full, "variable-ref") do
+          resolve_variable_value(ref, variables)
+        else
+          full
+        end
+      end
+    )
+  end
+
+  defp resolve_variable_value(ref, variables) do
+    case Map.get(variables, ref) do
+      %{value: val} ->
+        "<span class=\"player-var\">#{format_value(val)}</span>"
+
+      nil ->
+        "<span class=\"player-var-unknown\">[#{ref}]</span>"
+    end
+  end
+
+  # Interpolate $ref patterns in plain text (response text).
+  # Refs must contain at least one dot (e.g. $mc.health) to avoid false positives on $100.
+  defp interpolate_response_text("", _variables), do: ""
+
+  defp interpolate_response_text(text, variables) when is_binary(text) do
+    Regex.replace(~r/\$([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_]+)+)/, text, fn _full, ref ->
+      case Map.get(variables, ref) do
+        %{value: val} -> format_value(val)
+        nil -> "[$#{ref}]"
+      end
+    end)
+  end
 
   defp interpolate_variables("", _variables), do: ""
 

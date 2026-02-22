@@ -57,7 +57,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
 
   @spec handle_mention_suggestions(String.t(), any(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_mention_suggestions(query, component_cid, socket) do
+  def handle_mention_suggestions(query, _component_cid, socket) do
     project_id = socket.assigns.project.id
     results = Sheets.search_referenceable(project_id, query, ["sheet", "flow"])
 
@@ -73,6 +73,65 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
       end)
 
     {:noreply,
-     push_event(socket, "mention_suggestions_result", %{items: items, target: component_cid})}
+     push_event(socket, "mention_suggestions_result", %{items: items})}
   end
+
+  @spec handle_variable_suggestions(String.t(), any(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_variable_suggestions(query, _component_cid, socket) do
+    results = search_variables(socket.assigns.project_variables, query)
+
+    {:noreply,
+     push_event(socket, "variable_suggestions_result", %{items: results})}
+  end
+
+  @max_refs 50
+
+  @spec handle_resolve_variable_defaults([String.t()], any(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_resolve_variable_defaults(refs, _component_cid, socket) when is_list(refs) do
+    project_id = socket.assigns.project.id
+
+    sanitized_refs =
+      refs
+      |> Enum.filter(fn ref -> is_binary(ref) and valid_ref?(ref) end)
+      |> Enum.take(@max_refs)
+
+    defaults = Sheets.resolve_variable_values(project_id, sanitized_refs)
+
+    {:noreply,
+     push_event(socket, "variable_defaults_resolved", %{defaults: defaults})}
+  end
+
+  def handle_resolve_variable_defaults(_refs, _component_cid, socket) do
+    {:noreply, socket}
+  end
+
+  defp search_variables(variables, query) do
+    query_down = String.downcase(query)
+
+    variables
+    |> Enum.filter(fn var ->
+      ref = variable_ref(var)
+
+      String.contains?(String.downcase(ref), query_down) or
+        String.contains?(String.downcase(var.sheet_name), query_down)
+    end)
+    |> Enum.take(20)
+    |> Enum.map(&format_variable/1)
+  end
+
+  defp format_variable(var) do
+    %{
+      ref: variable_ref(var),
+      sheet_name: var.sheet_name,
+      variable_name: var.variable_name,
+      block_type: var.block_type
+    }
+  end
+
+  defp variable_ref(var), do: "#{var.sheet_shortcut}.#{var.variable_name}"
+
+  # Refs must be dot-separated alphanumeric/underscore segments (2 or 4 parts)
+  defp valid_ref?(ref), do: Regex.match?(~r/\A[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+){1,3}\z/, ref)
 end

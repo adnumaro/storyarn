@@ -922,6 +922,12 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:mention_suggestions, query, component_cid}, socket),
     do: EditorInfoHandlers.handle_mention_suggestions(query, component_cid, socket)
 
+  def handle_info({:variable_suggestions, query, component_cid}, socket),
+    do: EditorInfoHandlers.handle_variable_suggestions(query, component_cid, socket)
+
+  def handle_info({:resolve_variable_defaults, refs, component_cid}, socket),
+    do: EditorInfoHandlers.handle_resolve_variable_defaults(refs, component_cid, socket)
+
   def handle_info(:debug_auto_step, socket),
     do: DebugHandlers.handle_debug_auto_step(socket)
 

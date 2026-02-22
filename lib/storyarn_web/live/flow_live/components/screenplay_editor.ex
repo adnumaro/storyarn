@@ -127,6 +127,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
                 data-editable={to_string(@can_edit)}
                 data-placeholder={dgettext("flows", "Enter dialogue text...")}
                 data-mode="dialogue-screenplay"
+                data-variables-enabled="true"
                 class="min-h-[200px] focus:outline-none"
               >
               </div>
@@ -212,7 +213,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
               :if={@can_edit}
               type="text"
               value={response["text"] || ""}
-              placeholder={dgettext("flows", "Response text…")}
+              placeholder={dgettext("flows", "Response text… (use $ref for variables)")}
               phx-blur="update_response_text"
               phx-value-response-id={response["id"]}
               phx-value-node-id={@node.id}
@@ -453,6 +454,18 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
   # Proxy mention suggestions to parent (needs project context)
   def handle_event("mention_suggestions", %{"query" => query}, socket) do
     send(self(), {:mention_suggestions, query, socket.assigns.myself})
+    {:noreply, socket}
+  end
+
+  # Proxy variable suggestions to parent (needs project context)
+  def handle_event("variable_suggestions", %{"query" => query}, socket) do
+    send(self(), {:variable_suggestions, query, socket.assigns.myself})
+    {:noreply, socket}
+  end
+
+  # Proxy variable defaults resolution to parent
+  def handle_event("resolve_variable_defaults", %{"refs" => refs}, socket) do
+    send(self(), {:resolve_variable_defaults, refs, socket.assigns.myself})
     {:noreply, socket}
   end
 
