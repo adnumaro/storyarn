@@ -309,6 +309,18 @@ defmodule Storyarn.Maps do
   """
   defdelegate get_zone_linking_to_map(parent_map_id, child_map_id), to: ZoneCrud
 
+  @doc """
+  Lists zones with action_type "event", ordered by position.
+  """
+  @spec list_event_zones(integer()) :: [zone()]
+  defdelegate list_event_zones(map_id), to: ZoneCrud
+
+  @doc """
+  Lists zones with a non-navigate action_type, ordered by position.
+  """
+  @spec list_actionable_zones(integer()) :: [zone()]
+  defdelegate list_actionable_zones(map_id), to: ZoneCrud
+
   # =============================================================================
   # Pins
   # =============================================================================

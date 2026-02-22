@@ -529,6 +529,186 @@ defmodule Storyarn.MapsTest do
   end
 
   # =============================================================================
+  # Actionable Zones
+  # =============================================================================
+
+  describe "actionable zones" do
+    setup do
+      user = user_fixture()
+      project = project_fixture(user)
+      map = map_fixture(project)
+      %{map: map}
+    end
+
+    @triangle [
+      %{"x" => 10.0, "y" => 10.0},
+      %{"x" => 50.0, "y" => 10.0},
+      %{"x" => 30.0, "y" => 50.0}
+    ]
+
+    test "default zone gets action_type navigate", %{map: map} do
+      {:ok, zone} = Maps.create_zone(map.id, %{"name" => "Plain", "vertices" => @triangle})
+
+      assert zone.action_type == "navigate"
+      assert zone.action_data == %{}
+    end
+
+    test "create instruction zone with assignments", %{map: map} do
+      {:ok, zone} =
+        Maps.create_zone(map.id, %{
+          "name" => "Set HP",
+          "vertices" => @triangle,
+          "action_type" => "instruction",
+          "action_data" => %{"assignments" => [%{"var" => "hp", "op" => "set", "value" => 100}]}
+        })
+
+      assert zone.action_type == "instruction"
+      assert is_list(zone.action_data["assignments"])
+    end
+
+    test "create display zone with variable_ref", %{map: map} do
+      {:ok, zone} =
+        Maps.create_zone(map.id, %{
+          "name" => "Show HP",
+          "vertices" => @triangle,
+          "action_type" => "display",
+          "action_data" => %{"variable_ref" => "mc.jaime.health"}
+        })
+
+      assert zone.action_type == "display"
+      assert zone.action_data["variable_ref"] == "mc.jaime.health"
+    end
+
+    test "create event zone with event_name", %{map: map} do
+      {:ok, zone} =
+        Maps.create_zone(map.id, %{
+          "name" => "Trigger",
+          "vertices" => @triangle,
+          "action_type" => "event",
+          "action_data" => %{"event_name" => "battle_start"}
+        })
+
+      assert zone.action_type == "event"
+      assert zone.action_data["event_name"] == "battle_start"
+    end
+
+    test "instruction requires assignments list", %{map: map} do
+      {:error, changeset} =
+        Maps.create_zone(map.id, %{
+          "name" => "Bad Instruction",
+          "vertices" => @triangle,
+          "action_type" => "instruction",
+          "action_data" => %{}
+        })
+
+      assert "must include \"assignments\" as a list" in errors_on(changeset).action_data
+    end
+
+    test "display requires variable_ref", %{map: map} do
+      {:error, changeset} =
+        Maps.create_zone(map.id, %{
+          "name" => "Bad Display",
+          "vertices" => @triangle,
+          "action_type" => "display",
+          "action_data" => %{}
+        })
+
+      assert "must include a non-empty \"variable_ref\"" in errors_on(changeset).action_data
+    end
+
+    test "event requires event_name", %{map: map} do
+      {:error, changeset} =
+        Maps.create_zone(map.id, %{
+          "name" => "Bad Event",
+          "vertices" => @triangle,
+          "action_type" => "event",
+          "action_data" => %{}
+        })
+
+      assert "must include a non-empty \"event_name\"" in errors_on(changeset).action_data
+    end
+
+    test "invalid action_type rejected", %{map: map} do
+      {:error, changeset} =
+        Maps.create_zone(map.id, %{
+          "name" => "Bad Type",
+          "vertices" => @triangle,
+          "action_type" => "teleport"
+        })
+
+      assert "is invalid" in errors_on(changeset).action_type
+    end
+
+    test "switching to instruction clears target_type and target_id", %{map: map} do
+      {:ok, zone} =
+        Maps.create_zone(map.id, %{
+          "name" => "Nav Zone",
+          "vertices" => @triangle,
+          "target_type" => "sheet",
+          "target_id" => 42
+        })
+
+      assert zone.target_type == "sheet"
+      assert zone.target_id == 42
+
+      {:ok, updated} =
+        Maps.update_zone(zone, %{
+          "action_type" => "instruction",
+          "action_data" => %{"assignments" => []}
+        })
+
+      assert updated.action_type == "instruction"
+      assert is_nil(updated.target_type)
+      assert is_nil(updated.target_id)
+    end
+
+    test "list_event_zones returns only event zones", %{map: map} do
+      _nav = zone_fixture(map, %{"name" => "Nav"})
+
+      _event =
+        zone_fixture(map, %{
+          "name" => "Evt",
+          "action_type" => "event",
+          "action_data" => %{"event_name" => "boom"}
+        })
+
+      _instruction =
+        zone_fixture(map, %{
+          "name" => "Inst",
+          "action_type" => "instruction",
+          "action_data" => %{"assignments" => []}
+        })
+
+      events = Maps.list_event_zones(map.id)
+      assert length(events) == 1
+      assert hd(events).name == "Evt"
+    end
+
+    test "list_actionable_zones returns only non-navigate zones", %{map: map} do
+      _nav = zone_fixture(map, %{"name" => "Nav"})
+
+      _event =
+        zone_fixture(map, %{
+          "name" => "Evt",
+          "action_type" => "event",
+          "action_data" => %{"event_name" => "boom"}
+        })
+
+      _display =
+        zone_fixture(map, %{
+          "name" => "Disp",
+          "action_type" => "display",
+          "action_data" => %{"variable_ref" => "mc.hp"}
+        })
+
+      actionable = Maps.list_actionable_zones(map.id)
+      assert length(actionable) == 2
+      names = Enum.map(actionable, & &1.name) |> Enum.sort()
+      assert names == ["Disp", "Evt"]
+    end
+  end
+
+  # =============================================================================
   # Map Pins
   # =============================================================================
 

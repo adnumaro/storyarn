@@ -15,6 +15,7 @@ defmodule Storyarn.Maps.MapZone do
 
   @valid_border_styles ~w(solid dashed dotted)
   @valid_target_types ~w(sheet flow map)
+  @valid_action_types ~w(navigate instruction display event)
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -30,6 +31,8 @@ defmodule Storyarn.Maps.MapZone do
           tooltip: String.t() | nil,
           position: integer() | nil,
           locked: boolean(),
+          action_type: String.t(),
+          action_data: map(),
           map_id: integer() | nil,
           map: Map.t() | Ecto.Association.NotLoaded.t() | nil,
           layer_id: integer() | nil,
@@ -51,6 +54,8 @@ defmodule Storyarn.Maps.MapZone do
     field :tooltip, :string
     field :position, :integer, default: 0
     field :locked, :boolean, default: false
+    field :action_type, :string, default: "navigate"
+    field :action_data, :map, default: %{}
 
     belongs_to :map, Map
     belongs_to :layer, MapLayer
@@ -83,12 +88,17 @@ defmodule Storyarn.Maps.MapZone do
       :tooltip,
       :layer_id,
       :position,
-      :locked
+      :locked,
+      :action_type,
+      :action_data
     ])
     |> validate_required([:name, :vertices])
     |> validate_length(:name, min: 1, max: 200)
     |> validate_inclusion(:border_style, @valid_border_styles)
+    |> validate_inclusion(:action_type, @valid_action_types)
+    |> maybe_clear_target()
     |> validate_target_pair(@valid_target_types)
+    |> validate_action_data()
     |> validate_number(:opacity, greater_than_or_equal_to: 0, less_than_or_equal_to: 1)
     |> validate_number(:border_width, greater_than_or_equal_to: 0)
     |> validate_length(:fill_color, max: 20)
@@ -132,6 +142,45 @@ defmodule Storyarn.Maps.MapZone do
         add_error(changeset, :vertices, "must be a list of coordinate points")
     end
   end
+
+  # Clears target_type/target_id when switching away from "navigate"
+  defp maybe_clear_target(changeset) do
+    case get_change(changeset, :action_type) do
+      nil -> changeset
+      "navigate" -> changeset
+      _other -> changeset |> put_change(:target_type, nil) |> put_change(:target_id, nil)
+    end
+  end
+
+  # Validates action_data shape based on action_type
+  defp validate_action_data(changeset) do
+    action_type = get_field(changeset, :action_type)
+    action_data = get_field(changeset, :action_data) || %{}
+    do_validate_action_data(changeset, action_type, action_data)
+  end
+
+  defp do_validate_action_data(changeset, "instruction", %{"assignments" => list})
+       when is_list(list),
+       do: changeset
+
+  defp do_validate_action_data(changeset, "instruction", _),
+    do: add_error(changeset, :action_data, "must include \"assignments\" as a list")
+
+  defp do_validate_action_data(changeset, "display", %{"variable_ref" => ref})
+       when is_binary(ref) and ref != "",
+       do: changeset
+
+  defp do_validate_action_data(changeset, "display", _),
+    do: add_error(changeset, :action_data, "must include a non-empty \"variable_ref\"")
+
+  defp do_validate_action_data(changeset, "event", %{"event_name" => name})
+       when is_binary(name) and name != "",
+       do: changeset
+
+  defp do_validate_action_data(changeset, "event", _),
+    do: add_error(changeset, :action_data, "must include a non-empty \"event_name\"")
+
+  defp do_validate_action_data(changeset, _, _), do: changeset
 
   defp all_valid_coordinates?(vertices) do
     Enum.all?(vertices, fn point ->

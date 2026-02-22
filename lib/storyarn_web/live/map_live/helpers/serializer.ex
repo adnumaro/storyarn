@@ -109,7 +109,9 @@ defmodule StoryarnWeb.MapLive.Helpers.Serializer do
       target_type: zone.target_type,
       target_id: zone.target_id,
       position: zone.position,
-      locked: zone.locked || false
+      locked: zone.locked || false,
+      action_type: zone.action_type,
+      action_data: zone.action_data
     }
   end
 
