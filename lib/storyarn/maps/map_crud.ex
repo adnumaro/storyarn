@@ -403,6 +403,15 @@ defmodule Storyarn.Maps.MapCrud do
 
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)
 
+  @doc """
+  Returns the project_id for a given map_id.
+  Used by reference trackers that need the project scope from a map.
+  """
+  def get_map_project_id(map_id) do
+    from(m in Map, where: m.id == ^map_id, select: m.project_id)
+    |> Repo.one()
+  end
+
   defp maybe_assign_position(attrs, project_id, parent_id) do
     ShortcutHelpers.maybe_assign_position(
       attrs,

@@ -9,6 +9,7 @@ export const EditableShortcut = {
 
     // Listen for restore events from server
     this.handleEvent("restore_page_content", ({ shortcut }) => {
+      if (shortcut === undefined) return;
       this.el.textContent = shortcut || "";
       this.originalShortcut = shortcut || "";
       this.el.dataset.shortcut = shortcut || "";

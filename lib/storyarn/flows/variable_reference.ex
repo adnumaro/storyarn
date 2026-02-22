@@ -16,8 +16,12 @@ defmodule Storyarn.Flows.VariableReference do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Sheets.Block
 
+  @source_types ~w(flow_node map_zone)
+
   @type t :: %__MODULE__{
           id: integer() | nil,
+          source_type: String.t() | nil,
+          source_id: integer() | nil,
           flow_node_id: integer() | nil,
           block_id: integer() | nil,
           kind: String.t() | nil,
@@ -28,6 +32,8 @@ defmodule Storyarn.Flows.VariableReference do
         }
 
   schema "variable_references" do
+    field :source_type, :string, default: "flow_node"
+    field :source_id, :integer
     belongs_to :flow_node, FlowNode
     belongs_to :block, Block
     field :kind, :string
@@ -42,9 +48,27 @@ defmodule Storyarn.Flows.VariableReference do
   """
   def changeset(ref, attrs) do
     ref
-    |> cast(attrs, [:flow_node_id, :block_id, :kind, :source_sheet, :source_variable])
-    |> validate_required([:flow_node_id, :block_id, :kind, :source_sheet, :source_variable])
+    |> cast(attrs, [
+      :source_type,
+      :source_id,
+      :flow_node_id,
+      :block_id,
+      :kind,
+      :source_sheet,
+      :source_variable
+    ])
+    |> validate_required([
+      :source_type,
+      :source_id,
+      :block_id,
+      :kind,
+      :source_sheet,
+      :source_variable
+    ])
     |> validate_inclusion(:kind, ["read", "write"])
-    |> unique_constraint([:flow_node_id, :block_id, :kind, :source_variable])
+    |> validate_inclusion(:source_type, @source_types)
+    |> unique_constraint([:source_type, :source_id, :block_id, :kind, :source_variable],
+      name: :variable_references_source_block_kind_var
+    )
   end
 end

@@ -18,7 +18,11 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
 
   def block_menu(assigns) do
     ~H"""
-    <div class="absolute z-10 bg-base-100 border border-base-300 rounded-lg shadow-lg p-2 w-64">
+    <div
+      class="absolute z-10 bg-base-100 border border-base-300 rounded-lg shadow-lg p-2 w-64"
+      phx-click-away="hide_block_menu"
+      phx-target={@target}
+    >
       <%!-- Scope selector --%>
       <div class="px-2 py-2 mb-2 border-b border-base-300">
         <div class="text-xs text-base-content/50 uppercase mb-1">{dgettext("sheets", "Scope")}</div>

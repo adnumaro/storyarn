@@ -27,7 +27,7 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
           <%= if @total_refs == 0 do %>
             <div class="bg-base-200/50 rounded-lg p-6 text-center">
               <p class="text-base-content/70 text-sm">
-                {dgettext("sheets", "No variables on this sheet are used in any flow yet.")}
+                {dgettext("sheets", "No variables on this sheet are used in any flow or map yet.")}
               </p>
             </div>
           <% else %>
@@ -176,6 +176,25 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
   attr :workspace_slug, :string, required: true
   attr :project_slug, :string, required: true
 
+  defp usage_ref_row(%{ref: %{source_type: "map_zone"}} = assigns) do
+    detail = format_zone_ref_detail(assigns.ref)
+    assigns = assign(assigns, :detail, detail)
+
+    ~H"""
+    <.link
+      navigate={~p"/workspaces/#{@workspace_slug}/projects/#{@project_slug}/maps/#{@ref.map_id}"}
+      class="flex items-center gap-2 text-xs hover:text-primary group py-0.5"
+    >
+      <.icon name="map" class="size-3 text-base-content/40 group-hover:text-primary" />
+      <span class="font-medium">{@ref.map_name}</span>
+      <.icon name="arrow-right" class="size-3 text-base-content/40" />
+      <span class="badge badge-xs badge-ghost">{@ref.zone_name}</span>
+      <span :if={@detail} class="text-base-content/40">{@detail}</span>
+      <.stale_badge :if={@ref[:stale]} />
+    </.link>
+    """
+  end
+
   defp usage_ref_row(assigns) do
     detail = format_ref_detail(assigns.ref, assigns.sheet, assigns.block)
     assigns = assign(assigns, :detail, detail)
@@ -195,15 +214,20 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
       <.icon name="arrow-right" class="size-3 text-base-content/40" />
       <span class="badge badge-xs badge-ghost">{@ref.node_type}</span>
       <span :if={@detail} class="text-base-content/40">{@detail}</span>
-      <span
-        :if={@ref[:stale]}
-        class="badge badge-xs badge-warning gap-1"
-        title={dgettext("sheets", "Reference may be outdated")}
-      >
-        <.icon name="alert-triangle" class="size-3" />
-        {dgettext("sheets", "Outdated")}
-      </span>
+      <.stale_badge :if={@ref[:stale]} />
     </.link>
+    """
+  end
+
+  defp stale_badge(assigns) do
+    ~H"""
+    <span
+      class="badge badge-xs badge-warning gap-1"
+      title={dgettext("sheets", "Reference may be outdated")}
+    >
+      <.icon name="alert-triangle" class="size-3" />
+      {dgettext("sheets", "Outdated")}
+    </span>
     """
   end
 
@@ -216,6 +240,19 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
   defp icon_for_node_type("instruction"), do: "zap"
   defp icon_for_node_type("condition"), do: "git-branch"
   defp icon_for_node_type(_), do: "circle"
+
+  defp format_zone_ref_detail(ref) when ref.kind == "write" do
+    assignments = (ref.zone_action_data || %{})["assignments"] || []
+
+    matching =
+      Enum.find(assignments, fn a ->
+        a["sheet"] == ref.source_sheet and a["variable"] == ref.source_variable
+      end)
+
+    if matching, do: format_assignment_detail(matching)
+  end
+
+  defp format_zone_ref_detail(_ref), do: nil
 
   defp format_ref_detail(ref, _sheet, _block) when ref.kind == "write" do
     assignments = ref.node_data["assignments"] || []

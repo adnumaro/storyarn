@@ -3,6 +3,7 @@ defmodule Storyarn.Maps.ZoneCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Maps.{MapZone, PositionUtils}
   alias Storyarn.Repo
   alias Storyarn.Sheets.ReferenceTracker
@@ -60,8 +61,12 @@ defmodule Storyarn.Maps.ZoneCrud do
       |> Repo.insert()
 
     case result do
-      {:ok, zone} -> ReferenceTracker.update_map_zone_references(zone)
-      _ -> :ok
+      {:ok, zone} ->
+        ReferenceTracker.update_map_zone_references(zone)
+        VariableReferenceTracker.update_map_zone_references(zone)
+
+      _ ->
+        :ok
     end
 
     result
@@ -74,8 +79,12 @@ defmodule Storyarn.Maps.ZoneCrud do
       |> Repo.update()
 
     case result do
-      {:ok, updated_zone} -> ReferenceTracker.update_map_zone_references(updated_zone)
-      _ -> :ok
+      {:ok, updated_zone} ->
+        ReferenceTracker.update_map_zone_references(updated_zone)
+        VariableReferenceTracker.update_map_zone_references(updated_zone)
+
+      _ ->
+        :ok
     end
 
     result
@@ -92,6 +101,7 @@ defmodule Storyarn.Maps.ZoneCrud do
 
   def delete_zone(%MapZone{} = zone) do
     ReferenceTracker.delete_map_zone_references(zone.id)
+    VariableReferenceTracker.delete_map_zone_references(zone.id)
     Repo.delete(zone)
   end
 

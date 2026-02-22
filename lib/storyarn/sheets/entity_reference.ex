@@ -24,7 +24,7 @@ defmodule Storyarn.Sheets.EntityReference do
 
   @type t :: %__MODULE__{}
 
-  @source_types ~w(block flow_node screenplay_element)
+  @source_types ~w(block flow_node screenplay_element map_pin map_zone)
   @target_types ~w(sheet flow)
 
   schema "entity_references" do

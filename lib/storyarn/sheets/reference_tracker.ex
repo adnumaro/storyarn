@@ -29,7 +29,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   import Ecto.Query
   alias Storyarn.Repo
-  alias Storyarn.Sheets.EntityReference
+  alias Storyarn.Sheets.{EntityReference, Sheet}
 
   @doc """
   Updates references from a block.
@@ -678,10 +678,90 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   defp extract_map_zone_refs(zone) do
-    if zone.target_type && zone.target_id do
-      [%{type: zone.target_type, id: zone.target_id, context: "target"}]
+    refs = []
+
+    # Track target_type/target_id (navigate link)
+    refs =
+      if zone.target_type && zone.target_id do
+        [%{type: zone.target_type, id: zone.target_id, context: "target"} | refs]
+      else
+        refs
+      end
+
+    # Track sheet references from action_data (instruction assignments, display variable_ref)
+    refs = refs ++ extract_zone_action_data_refs(zone)
+
+    refs
+  end
+
+  defp extract_zone_action_data_refs(
+         %{action_type: "instruction", action_data: action_data} = zone
+       )
+       when is_map(action_data) do
+    assignments = action_data["assignments"] || []
+    project_id = get_project_id_from_map(zone.map_id)
+
+    if project_id do
+      assignments
+      |> Enum.flat_map(&extract_assignment_sheet_refs(&1, project_id))
+      |> Enum.uniq_by(fn ref -> {ref.type, ref.id} end)
     else
       []
     end
   end
+
+  defp extract_zone_action_data_refs(%{action_type: "display", action_data: action_data} = zone)
+       when is_map(action_data) do
+    variable_ref = action_data["variable_ref"]
+    resolve_display_sheet_ref(zone.map_id, variable_ref)
+  end
+
+  defp extract_zone_action_data_refs(_zone), do: []
+
+  defp resolve_display_sheet_ref(_map_id, ref) when not is_binary(ref) or ref == "", do: []
+
+  defp resolve_display_sheet_ref(map_id, variable_ref) do
+    with [sheet_shortcut, _variable] <- String.split(variable_ref, ".", parts: 2),
+         project_id when not is_nil(project_id) <- get_project_id_from_map(map_id) do
+      resolve_sheet_ref(project_id, sheet_shortcut, "display")
+    else
+      _ -> []
+    end
+  end
+
+  defp extract_assignment_sheet_refs(assignment, project_id) do
+    write_refs = resolve_sheet_ref(project_id, assignment["sheet"], "assignment")
+
+    read_refs =
+      if assignment["value_type"] == "variable_ref" do
+        resolve_sheet_ref(project_id, assignment["value_sheet"], "assignment_source")
+      else
+        []
+      end
+
+    write_refs ++ read_refs
+  end
+
+  defp resolve_sheet_ref(_project_id, nil, _context), do: []
+  defp resolve_sheet_ref(_project_id, "", _context), do: []
+
+  defp resolve_sheet_ref(project_id, sheet_shortcut, context) do
+    sheet_id =
+      from(s in Sheet,
+        where: s.project_id == ^project_id and s.shortcut == ^sheet_shortcut,
+        where: is_nil(s.deleted_at),
+        select: s.id,
+        limit: 1
+      )
+      |> Repo.one()
+
+    if sheet_id do
+      [%{type: "sheet", id: sheet_id, context: context}]
+    else
+      []
+    end
+  end
+
+  defp get_project_id_from_map(nil), do: nil
+  defp get_project_id_from_map(map_id), do: Storyarn.Maps.get_map_project_id(map_id)
 end

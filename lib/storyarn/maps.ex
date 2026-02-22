@@ -103,6 +103,13 @@ defmodule Storyarn.Maps do
   defdelegate get_map_brief(project_id, map_id), to: MapCrud
 
   @doc """
+  Returns the project_id for a given map_id.
+  Used by reference trackers that need the project scope from a map.
+  """
+  @spec get_map_project_id(integer()) :: integer() | nil
+  defdelegate get_map_project_id(map_id), to: MapCrud
+
+  @doc """
   Gets a map including soft-deleted ones (for trash/restore).
   Returns `nil` if not found.
   """

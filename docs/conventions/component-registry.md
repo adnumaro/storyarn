@@ -27,15 +27,15 @@ These are available in ALL HEEx templates without explicit import (via `Storyarn
 
 ### UIComponents (`ui_components.ex`)
 
-| Component | Purpose | Key Attributes |
-|-----------|---------|---------------|
-| `<.role_badge>` | Role indicator | `role` (owner/admin/editor/member/viewer) |
-| `<.oauth_buttons>` | OAuth login buttons | `action` (login/link), `class` |
-| `<.kbd>` | Keyboard shortcut | `inner_block` (content slot), `size` (xs/sm/md) |
-| `<.empty_state>` | Empty content state | `icon`, `title`, `inner_block` (description), `:action` slot |
-| `<.search_input>` | Search field | `size` (xs/sm/md/lg), global: `name`, `value`, `placeholder`, `phx-change` |
-| `<.avatar_group>` | Avatar cluster | `size` (xs/sm/md/lg), `max`, `total`, `:avatar` slot (src/alt/fallback) |
-| `<.theme_toggle>` | Theme switcher | — |
+| Component          | Purpose             | Key Attributes                                                             |
+|--------------------|---------------------|----------------------------------------------------------------------------|
+| `<.role_badge>`    | Role indicator      | `role` (owner/admin/editor/member/viewer)                                  |
+| `<.oauth_buttons>` | OAuth login buttons | `action` (login/link), `class`                                             |
+| `<.kbd>`           | Keyboard shortcut   | `inner_block` (content slot), `size` (xs/sm/md)                            |
+| `<.empty_state>`   | Empty content state | `icon`, `title`, `inner_block` (description), `:action` slot               |
+| `<.search_input>`  | Search field        | `size` (xs/sm/md/lg), global: `name`, `value`, `placeholder`, `phx-change` |
+| `<.avatar_group>`  | Avatar cluster      | `size` (xs/sm/md/lg), `max`, `total`, `:avatar` slot (src/alt/fallback)    |
+| `<.theme_toggle>`  | Theme switcher      | —                                                                          |
 
 ---
 
@@ -47,11 +47,11 @@ These are available in ALL HEEx templates without explicit import (via `Storyarn
 import StoryarnWeb.Components.MemberComponents
 ```
 
-| Component | Purpose |
-|-----------|---------|
-| `<.user_avatar>` | Avatar with initials fallback. Attrs: `user`, `email`, `size` (sm/md/lg) |
-| `<.member_row>` | Member list item. Attrs: `member`, `current_user_id`, `can_manage`, `on_remove`, `on_role_change` |
-| `<.invitation_row>` | Invitation list item. Attrs: `invitation`, `can_revoke`, `on_revoke` |
+| Component           | Purpose                                                                                           |
+|---------------------|---------------------------------------------------------------------------------------------------|
+| `<.user_avatar>`    | Avatar with initials fallback. Attrs: `user`, `email`, `size` (sm/md/lg)                          |
+| `<.member_row>`     | Member list item. Attrs: `member`, `current_user_id`, `can_manage`, `on_remove`, `on_role_change` |
+| `<.invitation_row>` | Invitation list item. Attrs: `invitation`, `can_revoke`, `on_revoke`                              |
 
 ### BlockComponents (facade)
 
@@ -59,11 +59,11 @@ import StoryarnWeb.Components.MemberComponents
 import StoryarnWeb.Components.BlockComponents
 ```
 
-| Component | Purpose |
-|-----------|---------|
+| Component            | Purpose                                                                                                                |
+|----------------------|------------------------------------------------------------------------------------------------------------------------|
 | `<.block_component>` | Renders any block by type. Attrs: `block`, `can_edit`, `editing_block_id`, `target`, `table_data`, `reference_options` |
-| `<.block_menu>` | Block type selector dropdown |
-| `<.config_panel>` | Block configuration sidebar |
+| `<.block_menu>`      | Block type selector dropdown                                                                                           |
+| `<.config_panel>`    | Block configuration sidebar                                                                                            |
 
 Submodules: `TextBlocks`, `SelectBlocks`, `LayoutBlocks`, `BooleanBlocks`, `ReferenceBlocks`, `TableBlocks`
 
@@ -73,11 +73,11 @@ Submodules: `TextBlocks`, `SelectBlocks`, `LayoutBlocks`, `BooleanBlocks`, `Refe
 import StoryarnWeb.Components.CollaborationComponents
 ```
 
-| Component | Purpose |
-|-----------|---------|
-| `<.online_users>` | Online user avatars. Attrs: `users`, `current_user_id` |
-| `<.collab_toast>` | Collaboration event toast. Attrs: `action`, `user_email`, `user_color`, `details` |
-| `<.node_lock_indicator>` | Lock indicator on nodes. Attrs: `lock` (map) |
+| Component                | Purpose                                                                           |
+|--------------------------|-----------------------------------------------------------------------------------|
+| `<.online_users>`        | Online user avatars. Attrs: `users`, `current_user_id`                            |
+| `<.collab_toast>`        | Collaboration event toast. Attrs: `action`, `user_email`, `user_color`, `details` |
+| `<.node_lock_indicator>` | Lock indicator on nodes. Attrs: `lock` (map)                                      |
 
 ### SaveIndicator
 
@@ -85,8 +85,8 @@ import StoryarnWeb.Components.CollaborationComponents
 import StoryarnWeb.Components.SaveIndicator
 ```
 
-| Component | Purpose |
-|-----------|---------|
+| Component           | Purpose                                                                                    |
+|---------------------|--------------------------------------------------------------------------------------------|
 | `<.save_indicator>` | Save status display. Attrs: `status` (:idle/:saving/:saved), `variant` (:inline/:floating) |
 
 ### ConditionBuilder
@@ -95,8 +95,8 @@ import StoryarnWeb.Components.SaveIndicator
 import StoryarnWeb.Components.ConditionBuilder
 ```
 
-| Component | Purpose |
-|-----------|---------|
+| Component              | Purpose                                                                                                              |
+|------------------------|----------------------------------------------------------------------------------------------------------------------|
 | `<.condition_builder>` | Variable condition editor. Attrs: `id`, `condition`, `variables`, `can_edit`, `switch_mode`, `event_name`, `context` |
 
 ### InstructionBuilder
@@ -105,8 +105,8 @@ import StoryarnWeb.Components.ConditionBuilder
 import StoryarnWeb.Components.InstructionBuilder
 ```
 
-| Component | Purpose |
-|-----------|---------|
+| Component                | Purpose                                                                                                  |
+|--------------------------|----------------------------------------------------------------------------------------------------------|
 | `<.instruction_builder>` | Variable assignment editor. Attrs: `id`, `assignments`, `variables`, `can_edit`, `event_name`, `context` |
 
 ### ColorPicker
@@ -115,8 +115,8 @@ import StoryarnWeb.Components.InstructionBuilder
 import StoryarnWeb.Components.ColorPicker
 ```
 
-| Component | Purpose |
-|-----------|---------|
+| Component         | Purpose                                                                                                                         |
+|-------------------|---------------------------------------------------------------------------------------------------------------------------------|
 | `<.color_picker>` | Color selection. Attrs: `id` (required), `color` (default "#8b5cf6"), `event` (required), `field` (default "color"), `disabled` |
 
 ### AudioPicker (LiveComponent)
@@ -126,8 +126,8 @@ import StoryarnWeb.Components.ColorPicker
 <.live_component module={StoryarnWeb.Components.AudioPicker} id="audio" ... />
 ```
 
-| Component | Purpose |
-|-----------|---------|
+| Component     | Purpose                                                                         |
+|---------------|---------------------------------------------------------------------------------|
 | `AudioPicker` | Audio asset selector for dialogue nodes (LiveComponent, not function component) |
 
 ### TreeComponents (`tree.ex`)
@@ -149,12 +149,12 @@ import StoryarnWeb.Components.Sidebar.MapTree
 
 ### Other Shared Components
 
-| Module | Import | Components |
-|--------|--------|-----------|
+| Module             | Import                                           | Components                                          |
+|--------------------|--------------------------------------------------|-----------------------------------------------------|
 | `ExpressionEditor` | `import StoryarnWeb.Components.ExpressionEditor` | `<.expression_editor>` — tabbed Builder/Code editor |
-| `SheetComponents` | `import StoryarnWeb.Components.SheetComponents` | `<.sheet_avatar>` |
-| `Sidebar` | `import StoryarnWeb.Components.Sidebar` | `<.sidebar>` — workspace navigation |
-| `ProjectSidebar` | `import StoryarnWeb.Components.ProjectSidebar` | `<.project_sidebar>` — project navigation |
+| `SheetComponents`  | `import StoryarnWeb.Components.SheetComponents`  | `<.sheet_avatar>`                                   |
+| `Sidebar`          | `import StoryarnWeb.Components.Sidebar`          | `<.sidebar>` — workspace navigation                 |
+| `ProjectSidebar`   | `import StoryarnWeb.Components.ProjectSidebar`   | `<.project_sidebar>` — project navigation           |
 
 ---
 
@@ -192,9 +192,9 @@ import StoryarnWeb.Components.Sidebar.MapTree
 
 **File:** `lib/storyarn/maps/changeset_helpers.ex`
 
-| Function | Purpose |
-|----------|---------|
+| Function                 | Purpose                                                    |
+|--------------------------|------------------------------------------------------------|
 | `validate_target_pair/2` | Ensures target_type and target_id are both set or both nil |
-| `validate_color/2` | Validates hex color format (#RGB, #RRGGBB, #RRGGBBAA) |
+| `validate_color/2`       | Validates hex color format (#RGB, #RRGGBB, #RRGGBBAA)      |
 
 These are Maps-specific but could be promoted to `Storyarn.Shared` if needed elsewhere.

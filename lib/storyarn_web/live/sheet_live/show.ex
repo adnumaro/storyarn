@@ -405,10 +405,14 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   # Handle messages from SheetTitle LiveComponent
   def handle_info({:sheet_title, :name_saved, sheet, sheets_tree}, socket) do
+    ancestors =
+      Sheets.get_sheet_with_ancestors(socket.assigns.project.id, sheet.id) || [sheet]
+
     {:noreply,
      socket
      |> assign(:sheet, sheet)
      |> assign(:sheets_tree, sheets_tree)
+     |> assign(:ancestors, ancestors)
      |> assign(:save_status, :saved)
      |> schedule_reset()}
   end

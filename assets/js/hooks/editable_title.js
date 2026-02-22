@@ -9,6 +9,7 @@ export const EditableTitle = {
 
     // Listen for restore events from server
     this.handleEvent("restore_page_content", ({ name }) => {
+      if (name === undefined) return;
       this.el.textContent = name;
       this.originalName = name;
       this.el.dataset.name = name;

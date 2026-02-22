@@ -10,23 +10,23 @@
 
 **YOU MUST read these before writing code. Duplicating existing utilities is a bug.**
 
-| File | Purpose |
-|------|---------|
-| `AGENTS.md` | Phoenix/LiveView/Ecto patterns (**MUST READ**) |
-| @docs/conventions/shared-utilities.md | **Shared utility registry — search here BEFORE writing any helper** |
-| @docs/conventions/domain-patterns.md | Context facades, CRUD templates, auth patterns |
-| @docs/conventions/component-registry.md | All reusable HEEx components |
+| File                                    | Purpose                                                             |
+|-----------------------------------------|---------------------------------------------------------------------|
+| `AGENTS.md`                             | Phoenix/LiveView/Ecto patterns (**MUST READ**)                      |
+| @docs/conventions/shared-utilities.md   | **Shared utility registry — search here BEFORE writing any helper** |
+| @docs/conventions/domain-patterns.md    | Context facades, CRUD templates, auth patterns                      |
+| @docs/conventions/component-registry.md | All reusable HEEx components                                        |
 
 ## Related Documentation
 
-| File                            | Purpose                                            |
-|---------------------------------|----------------------------------------------------|
-| `IMPLEMENTATION_PLAN.md`        | Full roadmap and task breakdown                    |
-| `DIALOGUE_NODE_ENHANCEMENT.md`  | Dialogue node features (Phases 1-4 ✓, 5-7 pending) |
-| `CONDITION_NODE_ENHANCEMENT.md` | Condition node variable integration (pending)      |
-| `INSTRUCTION_VARIABLE_SYSTEM_PLAN.md` | Instruction node + variable tracking (pending) |
-| `FLOW_NODES_IMPROVEMENT_PLAN.md` | Flow node fixes and improvements (Phases 1-2 ✓) |
-| `FUTURE_FEATURES.md`           | Deferred features + competitive analysis           |
+| File                                  | Purpose                                            |
+|---------------------------------------|----------------------------------------------------|
+| `IMPLEMENTATION_PLAN.md`              | Full roadmap and task breakdown                    |
+| `DIALOGUE_NODE_ENHANCEMENT.md`        | Dialogue node features (Phases 1-4 ✓, 5-7 pending) |
+| `CONDITION_NODE_ENHANCEMENT.md`       | Condition node variable integration (pending)      |
+| `INSTRUCTION_VARIABLE_SYSTEM_PLAN.md` | Instruction node + variable tracking (pending)     |
+| `FLOW_NODES_IMPROVEMENT_PLAN.md`      | Flow node fixes and improvements (Phases 1-2 ✓)    |
+| `FUTURE_FEATURES.md`                  | Deferred features + competitive analysis           |
 
 ## Language Policy
 
@@ -264,10 +264,10 @@ assets/js/
 
 **JS — Icon utilities** (`node_config.js`):
 
-| Utility | Purpose | Default |
-|---------|---------|---------|
-| `createIconHTML(Icon, { size })` | General-purpose → outerHTML string | 10px |
-| `createIconSvg(Icon)` | Node header icons (stroke styling) | 16px |
+| Utility                          | Purpose                            | Default  |
+|----------------------------------|------------------------------------|----------|
+| `createIconHTML(Icon, { size })` | General-purpose → outerHTML string | 10px     |
+| `createIconSvg(Icon)`            | Node header icons (stroke styling) | 16px     |
 
 **Flow canvas JS (Shadow DOM — Rete.js):**
 ```javascript

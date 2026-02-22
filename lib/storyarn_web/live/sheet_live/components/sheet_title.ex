@@ -91,7 +91,18 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
         end
 
         send(self(), {:sheet_title, :name_saved, updated_sheet, sheets_tree})
-        {:noreply, assign(socket, :sheet, updated_sheet)}
+
+        socket = assign(socket, :sheet, updated_sheet)
+
+        # Update shortcut display if it was regenerated (phx-update="ignore" won't re-render)
+        socket =
+          if updated_sheet.shortcut != sheet.shortcut do
+            push_event(socket, "restore_page_content", %{shortcut: updated_sheet.shortcut})
+          else
+            socket
+          end
+
+        {:noreply, socket}
 
       {:error, _changeset} ->
         {:noreply, socket}

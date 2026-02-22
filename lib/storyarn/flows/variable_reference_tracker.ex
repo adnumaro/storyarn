@@ -1,19 +1,29 @@
 defmodule Storyarn.Flows.VariableReferenceTracker do
   @moduledoc """
-  Tracks which flow nodes read/write which variables (blocks).
+  Tracks which sources read/write which variables (blocks).
 
-  Called after every node data save. Extracts variable references from
-  the node's structured data (condition rules -> reads, instruction
-  assignments -> writes) and upserts them into the variable_references table.
+  Handles ALL polymorphic variable reference sources:
+  - **Flow nodes** — condition rules → reads, instruction assignments → writes
+  - **Map zones** — instruction action_data → writes, display variable_ref → reads
+
+  Called after every node data or zone action_data save. Extracts variable
+  references from the source's structured data and upserts them into the
+  variable_references table with `source_type` ("flow_node" or "map_zone").
 
   Stores `source_sheet` and `source_variable` alongside each reference so that
   staleness detection and repair can be done with simple SQL comparisons
-  instead of scanning node JSON in Elixir.
+  instead of scanning JSON in Elixir.
+
+  > **Note:** This module lives under `Storyarn.Flows` for historical reasons
+  > but operates across context boundaries via the polymorphic `source_type`
+  > column. A future refactor may promote it to `Storyarn.Sheets` or a shared
+  > module.
   """
 
   import Ecto.Query
 
   alias Storyarn.Flows.{Condition, Flow, FlowNode, VariableReference}
+  alias Storyarn.Maps.MapZone
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
@@ -31,7 +41,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         _ -> []
       end
 
-    replace_references(node.id, refs)
+    replace_references("flow_node", node.id, refs, flow_node_id: node.id)
   end
 
   @doc """
@@ -40,27 +50,74 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   """
   @spec delete_references(integer()) :: :ok
   def delete_references(node_id) do
-    from(vr in VariableReference, where: vr.flow_node_id == ^node_id)
+    from(vr in VariableReference,
+      where: vr.source_type == "flow_node" and vr.source_id == ^node_id
+    )
+    |> Repo.delete_all()
+
+    :ok
+  end
+
+  # ---------------------------------------------------------------------------
+  # Map zone variable references
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Updates variable references for a map zone after its action_data changes.
+  Extracts assignment write refs and display read refs.
+  """
+  @spec update_map_zone_references(map()) :: :ok
+  def update_map_zone_references(%{id: zone_id, map_id: map_id} = zone) do
+    project_id = Storyarn.Maps.get_map_project_id(map_id)
+
+    refs =
+      if project_id do
+        extract_zone_variable_refs(zone, project_id)
+      else
+        []
+      end
+
+    replace_references("map_zone", zone_id, refs)
+  end
+
+  def update_map_zone_references(_zone), do: :ok
+
+  @doc """
+  Deletes all variable references for a map zone.
+  """
+  @spec delete_map_zone_references(integer()) :: :ok
+  def delete_map_zone_references(zone_id) do
+    from(vr in VariableReference,
+      where: vr.source_type == "map_zone" and vr.source_id == ^zone_id
+    )
     |> Repo.delete_all()
 
     :ok
   end
 
   @doc """
-  Returns all variable references for a block, with flow/node info.
+  Returns all variable references for a block, with source info.
+  Includes both flow node and map zone sources.
   Used by the sheet editor's variable usage section.
   """
   @spec get_variable_usage(integer(), integer()) :: [map()]
   def get_variable_usage(block_id, project_id) do
+    flow_refs = get_flow_node_variable_usage(block_id, project_id)
+    map_refs = get_map_zone_variable_usage(block_id, project_id)
+    flow_refs ++ map_refs
+  end
+
+  defp get_flow_node_variable_usage(block_id, project_id) do
     from(vr in VariableReference,
       join: n in FlowNode,
-      on: n.id == vr.flow_node_id,
+      on: vr.source_type == "flow_node" and n.id == vr.source_id,
       join: f in Flow,
       on: f.id == n.flow_id,
       where: vr.block_id == ^block_id,
       where: f.project_id == ^project_id,
       where: is_nil(f.deleted_at),
       select: %{
+        source_type: vr.source_type,
         kind: vr.kind,
         flow_id: f.id,
         flow_name: f.name,
@@ -70,6 +127,29 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         node_data: n.data
       },
       order_by: [asc: vr.kind, asc: f.name]
+    )
+    |> Repo.all()
+  end
+
+  defp get_map_zone_variable_usage(block_id, project_id) do
+    from(vr in VariableReference,
+      join: z in MapZone,
+      on: vr.source_type == "map_zone" and z.id == vr.source_id,
+      join: m in Storyarn.Maps.Map,
+      on: m.id == z.map_id,
+      where: vr.block_id == ^block_id,
+      where: m.project_id == ^project_id,
+      where: is_nil(m.deleted_at),
+      select: %{
+        source_type: vr.source_type,
+        kind: vr.kind,
+        map_id: m.id,
+        map_name: m.name,
+        zone_id: z.id,
+        zone_name: z.name,
+        zone_action_data: z.action_data
+      },
+      order_by: [asc: vr.kind, asc: m.name]
     )
     |> Repo.all()
   end
@@ -95,13 +175,22 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   of `source_sheet`/`source_variable` against the current sheet shortcut and
   block variable_name.
 
+  Returns both flow node and map zone sources. Each result includes a
+  `:source_type` field ("flow_node" or "map_zone") to distinguish them.
+
   Filters out references whose sheet or block has been soft-deleted.
   """
   @spec check_stale_references(integer(), integer()) :: [map()]
   def check_stale_references(block_id, project_id) do
+    flow_refs = check_stale_flow_node_references(block_id, project_id)
+    map_refs = check_stale_map_zone_references(block_id, project_id)
+    flow_refs ++ map_refs
+  end
+
+  defp check_stale_flow_node_references(block_id, project_id) do
     from(vr in VariableReference,
       join: n in FlowNode,
-      on: n.id == vr.flow_node_id,
+      on: vr.source_type == "flow_node" and n.id == vr.source_id,
       join: f in Flow,
       on: f.id == n.flow_id,
       join: b in Block,
@@ -114,6 +203,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       where: is_nil(s.deleted_at),
       where: is_nil(b.deleted_at),
       select: %{
+        source_type: vr.source_type,
         kind: vr.kind,
         flow_id: f.id,
         flow_name: f.name,
@@ -154,6 +244,62 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     |> Repo.all()
   end
 
+  defp check_stale_map_zone_references(block_id, project_id) do
+    from(vr in VariableReference,
+      join: z in MapZone,
+      on: vr.source_type == "map_zone" and z.id == vr.source_id,
+      join: m in Storyarn.Maps.Map,
+      on: m.id == z.map_id,
+      join: b in Block,
+      on: b.id == vr.block_id,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      where: vr.block_id == ^block_id,
+      where: m.project_id == ^project_id,
+      where: is_nil(m.deleted_at),
+      where: is_nil(s.deleted_at),
+      where: is_nil(b.deleted_at),
+      select: %{
+        source_type: vr.source_type,
+        kind: vr.kind,
+        map_id: m.id,
+        map_name: m.name,
+        zone_id: z.id,
+        zone_name: z.name,
+        zone_action_data: z.action_data,
+        source_sheet: vr.source_sheet,
+        source_variable: vr.source_variable,
+        stale:
+          fragment(
+            """
+            CASE WHEN ? = 'table' THEN
+              ? != ? OR NOT EXISTS (
+                SELECT 1 FROM table_rows tr
+                JOIN table_columns tc ON tc.block_id = tr.block_id
+                WHERE tr.block_id = ?
+                  AND ? = ? || '.' || tr.slug || '.' || tc.slug
+              )
+            ELSE
+              ? != ? OR ? != ?
+            END
+            """,
+            b.type,
+            vr.source_sheet,
+            s.shortcut,
+            b.id,
+            vr.source_variable,
+            b.variable_name,
+            vr.source_sheet,
+            s.shortcut,
+            vr.source_variable,
+            b.variable_name
+          )
+      },
+      order_by: [asc: vr.kind, asc: m.name]
+    )
+    |> Repo.all()
+  end
+
   @doc """
   Repairs all stale variable references across a project.
   Updates node JSON to reflect current sheet shortcut + variable names.
@@ -166,7 +312,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     refs_with_info =
       from(vr in VariableReference,
         join: n in FlowNode,
-        on: n.id == vr.flow_node_id,
+        on: vr.source_type == "flow_node" and n.id == vr.source_id,
         join: f in Flow,
         on: f.id == n.flow_id,
         join: b in Block,
@@ -233,7 +379,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   defp list_stale_regular_node_ids(flow_id) do
     from(vr in VariableReference,
       join: n in FlowNode,
-      on: n.id == vr.flow_node_id,
+      on: vr.source_type == "flow_node" and n.id == vr.source_id,
       join: b in Block,
       on: b.id == vr.block_id,
       join: s in Sheet,
@@ -269,7 +415,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     from(vr in VariableReference,
       as: :vr,
       join: n in FlowNode,
-      on: n.id == vr.flow_node_id,
+      on: vr.source_type == "flow_node" and n.id == vr.source_id,
       join: b in Block,
       as: :block,
       on: b.id == vr.block_id,
@@ -546,9 +692,52 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     end
   end
 
-  defp replace_references(node_id, refs) do
+  defp extract_zone_variable_refs(zone, project_id) do
+    case zone.action_type do
+      "instruction" ->
+        assignments = (zone.action_data || %{})["assignments"] || []
+        Enum.flat_map(assignments, &extract_assignment_refs(&1, project_id))
+
+      "display" ->
+        variable_ref = (zone.action_data || %{})["variable_ref"]
+        resolve_display_variable_ref(project_id, variable_ref)
+
+      _ ->
+        []
+    end
+  end
+
+  defp resolve_display_variable_ref(_project_id, nil), do: []
+  defp resolve_display_variable_ref(_project_id, ""), do: []
+
+  defp resolve_display_variable_ref(project_id, variable_ref) do
+    case String.split(variable_ref, ".", parts: 2) do
+      [sheet_shortcut, variable_name] ->
+        case resolve_block(project_id, sheet_shortcut, variable_name) do
+          nil ->
+            []
+
+          block_id ->
+            [
+              %{
+                block_id: block_id,
+                kind: "read",
+                source_sheet: sheet_shortcut,
+                source_variable: variable_name
+              }
+            ]
+        end
+
+      _ ->
+        []
+    end
+  end
+
+  defp replace_references(source_type, source_id, refs, opts \\ []) do
     Repo.transaction(fn ->
-      from(vr in VariableReference, where: vr.flow_node_id == ^node_id)
+      from(vr in VariableReference,
+        where: vr.source_type == ^source_type and vr.source_id == ^source_id
+      )
       |> Repo.delete_all()
 
       unique_refs = Enum.uniq_by(refs, fn r -> {r.block_id, r.kind, r.source_variable} end)
@@ -557,7 +746,9 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       entries =
         Enum.map(unique_refs, fn ref ->
           %{
-            flow_node_id: node_id,
+            source_type: source_type,
+            source_id: source_id,
+            flow_node_id: Keyword.get(opts, :flow_node_id),
             block_id: ref.block_id,
             kind: ref.kind,
             source_sheet: ref.source_sheet,
