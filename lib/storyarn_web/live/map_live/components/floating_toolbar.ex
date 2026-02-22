@@ -12,6 +12,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
   alias Phoenix.LiveView.JS
 
   import StoryarnWeb.Components.CoreComponents
+  import StoryarnWeb.Components.ExpressionEditor
   import StoryarnWeb.MapLive.Components.ToolbarWidgets
 
   @pin_types ~w(location character event custom)
@@ -29,6 +30,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
   attr :project_sheets, :list, default: []
   attr :project_flows, :list, default: []
   attr :project_variables, :list, default: []
+  attr :panel_sections, :map, default: %{}
 
   def floating_toolbar(assigns) do
     ~H"""
@@ -43,6 +45,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
         project_sheets={@project_sheets}
         project_flows={@project_flows}
         project_variables={@project_variables}
+        panel_sections={@panel_sections}
       />
       <.pin_toolbar
         :if={@selected_type == "pin"}
@@ -85,6 +88,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
   attr :project_sheets, :list, default: []
   attr :project_flows, :list, default: []
   attr :project_variables, :list, default: []
+  attr :panel_sections, :map, default: %{}
 
   defp zone_toolbar(assigns) do
     assigns =
@@ -124,7 +128,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
                 )
                 |> JS.hide(to: "#popover-zone-action-#{@zone.id}")
               }
-              class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-base-200 #{if type == (@zone.action_type || "navigate"), do: "font-semibold text-primary"}"}
+              class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm cursor-pointer hover:bg-base-content/10 #{if type == (@zone.action_type || "navigate"), do: "font-semibold text-primary"}"}
               disabled={!@can_edit}
             >
               <.icon name={action_type_icon(type)} class="size-3.5" />
@@ -266,20 +270,20 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
               </div>
             </div>
 
-            <%!-- Instruction: InstructionBuilder hook --%>
+            <%!-- Instruction: Expression Editor (Builder | Code) --%>
             <div :if={@zone.action_type == "instruction"} class="pt-2 border-t border-base-300">
               <label class="block text-xs font-medium text-base-content/60 mb-1">
                 {dgettext("maps", "Assignments")}
               </label>
-              <div
-                id={"zone-instruction-builder-#{@zone.id}"}
-                phx-hook="InstructionBuilder"
-                phx-update="ignore"
-                data-assignments={Jason.encode!(@action_data["assignments"] || [])}
-                data-variables={Jason.encode!(@project_variables)}
-                data-can-edit={Jason.encode!(@can_edit)}
-                data-event-name="update_zone_assignments"
-                data-context={Jason.encode!(%{"zone-id" => @zone.id})}
+              <.expression_editor
+                id={"zone-instruction-#{@zone.id}"}
+                mode="instruction"
+                assignments={@action_data["assignments"] || []}
+                variables={@project_variables}
+                can_edit={@can_edit}
+                context={%{"zone-id" => @zone.id}}
+                event_name="update_zone_assignments"
+                active_tab={Map.get(@panel_sections, "tab_zone-instruction-#{@zone.id}", "builder")}
               />
             </div>
 
@@ -288,39 +292,12 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
               <label class="block text-xs font-medium text-base-content/60 mb-1">
                 {dgettext("maps", "Variable")}
               </label>
-              <form phx-change="update_zone_action_data" phx-submit="noop">
-                <input type="hidden" name="zone-id" value={@zone.id} />
-                <input type="hidden" name="field" value="variable_ref" />
-                <select
-                  name="value"
-                  class="select select-xs select-bordered w-full"
-                  disabled={!@can_edit}
-                >
-                  <option value="">{dgettext("maps", "Select variable...")}</option>
-                  <option
-                    :for={var <- @project_variables}
-                    value={"#{var.sheet_shortcut}.#{var.variable_name}"}
-                    selected={
-                      "#{var.sheet_shortcut}.#{var.variable_name}" ==
-                        (@action_data["variable_ref"] || "")
-                    }
-                  >
-                    {var.sheet_shortcut}.{var.variable_name}
-                  </option>
-                </select>
-              </form>
-              <label class="block text-xs font-medium text-base-content/60 mb-1 mt-2">
-                {dgettext("maps", "Label")}
-              </label>
-              <input
-                type="text"
-                value={@action_data["label"] || ""}
-                phx-blur="update_zone_action_data"
-                phx-value-zone-id={@zone.id}
-                phx-value-field="label"
-                placeholder={dgettext("maps", "Display label...")}
-                class="input input-xs input-bordered w-full"
-                disabled={!@can_edit}
+              <.display_variable_picker
+                id={"zone-display-var-#{@zone.id}"}
+                zone_id={@zone.id}
+                variables={@project_variables}
+                selected_ref={@action_data["variable_ref"] || ""}
+                can_edit={@can_edit}
               />
             </div>
 
@@ -418,7 +395,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
                 JS.push("update_pin", value: %{id: @pin.id, field: "pin_type", value: value})
                 |> JS.hide(to: "#popover-pin-type-#{@pin.id}")
               }
-              class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-base-200 #{if value == @pin.pin_type, do: "font-semibold text-primary"}"}
+              class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm cursor-pointer hover:bg-base-content/10 #{if value == @pin.pin_type, do: "font-semibold text-primary"}"}
               disabled={!@can_edit}
             >
               <.icon name={pin_type_icon(value)} class="size-3.5" />
@@ -660,7 +637,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
                 JS.push("clear_connection_waypoints", value: %{id: @connection.id})
                 |> JS.hide(to: "#popover-conn-more-#{@connection.id}")
               }
-              class="flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-base-200"
+              class="flex items-center gap-2 w-full px-2 py-1 rounded text-sm cursor-pointer hover:bg-base-content/10"
             >
               <.icon name="undo-2" class="size-3" />
               {dgettext("maps", "Straighten path")}
@@ -786,4 +763,81 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
   defp action_type_label("display"), do: dgettext("maps", "Display")
   defp action_type_label("event"), do: dgettext("maps", "Event")
   defp action_type_label(_), do: dgettext("maps", "Navigate")
+
+  # ---------------------------------------------------------------------------
+  # Display variable picker (searchable select using SearchableSelect hook)
+  # ---------------------------------------------------------------------------
+
+  attr :id, :string, required: true
+  attr :zone_id, :integer, required: true
+  attr :variables, :list, required: true
+  attr :selected_ref, :string, default: ""
+  attr :can_edit, :boolean, default: true
+
+  defp display_variable_picker(assigns) do
+    selected_label =
+      if assigns.selected_ref != "" do
+        assigns.selected_ref
+      end
+
+    assigns = assign(assigns, :selected_label, selected_label)
+
+    ~H"""
+    <div id={@id} phx-hook="SearchableSelect">
+      <button
+        data-role="trigger"
+        type="button"
+        class="btn btn-xs btn-ghost gap-1 w-full justify-between font-normal border border-base-300"
+        disabled={!@can_edit}
+      >
+        <span :if={@selected_label} class="text-xs truncate">{@selected_label}</span>
+        <span :if={!@selected_label} class="text-xs opacity-50">
+          {dgettext("maps", "Select variable...")}
+        </span>
+        <.icon name="chevron-down" class="size-3 opacity-50 shrink-0" />
+      </button>
+      <template data-role="popover-template">
+        <div class="p-2 pb-1">
+          <input
+            data-role="search"
+            type="text"
+            placeholder={dgettext("maps", "Search variables...")}
+            class="input input-xs input-bordered w-full"
+            autocomplete="off"
+          />
+        </div>
+        <div data-role="list" class="max-h-48 overflow-y-auto p-1">
+          <button
+            :if={@selected_ref != ""}
+            type="button"
+            data-event="update_zone_action_data"
+            data-params={Jason.encode!(%{"zone-id" => @zone_id, "field" => "variable_ref", "value" => ""})}
+            data-search-text=""
+            class="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs text-base-content/50 cursor-pointer hover:bg-base-content/10"
+          >
+            <.icon name="x" class="size-3" />
+            {dgettext("maps", "Clear")}
+          </button>
+          <button
+            :for={var <- @variables}
+            type="button"
+            data-event="update_zone_action_data"
+            data-params={Jason.encode!(%{"zone-id" => @zone_id, "field" => "variable_ref", "value" => "#{var.sheet_shortcut}.#{var.variable_name}"})}
+            data-search-text={"#{String.downcase(var.sheet_shortcut)}.#{String.downcase(var.variable_name)}"}
+            class={"flex items-center w-full px-2 py-1.5 rounded text-xs cursor-pointer hover:bg-base-content/10 truncate #{if "#{var.sheet_shortcut}.#{var.variable_name}" == @selected_ref, do: "font-semibold text-primary"}"}
+          >
+            <span class="text-base-content/50">{var.sheet_shortcut}.</span>{var.variable_name}
+          </button>
+        </div>
+        <div
+          data-role="empty"
+          class="px-3 py-2 text-xs text-base-content/40 italic"
+          style="display:none"
+        >
+          {dgettext("maps", "No matches")}
+        </div>
+      </template>
+    </div>
+    """
+  end
 end

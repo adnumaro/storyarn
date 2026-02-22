@@ -1,6 +1,6 @@
 /**
  * CodeMirror theme for Storyarn expression editor.
- * Uses CSS variables from daisyUI theme for consistency.
+ * Uses CSS variables from daisyUI v5 / Tailwind v4 theme for consistency.
  */
 
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
@@ -14,30 +14,30 @@ export const storyarnEditorTheme = EditorView.theme({
   },
   ".cm-content": {
     padding: "8px 0",
-    caretColor: "oklch(var(--bc))",
+    caretColor: "var(--color-base-content)",
   },
   ".cm-line": {
     padding: "0 8px",
   },
   "&.cm-focused .cm-cursor": {
-    borderLeftColor: "oklch(var(--bc))",
+    borderLeftColor: "var(--color-base-content)",
   },
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
-    backgroundColor: "oklch(var(--bc) / 0.15)",
+    backgroundColor: "color-mix(in oklch, var(--color-base-content) 15%, transparent)",
   },
   ".cm-activeLine": {
-    backgroundColor: "oklch(var(--bc) / 0.05)",
+    backgroundColor: "color-mix(in oklch, var(--color-base-content) 5%, transparent)",
   },
   ".cm-gutters": {
     display: "none",
   },
   ".cm-placeholder": {
-    color: "oklch(var(--bc) / 0.35)",
+    color: "color-mix(in oklch, var(--color-base-content) 35%, transparent)",
     fontStyle: "italic",
   },
   ".cm-tooltip": {
-    backgroundColor: "oklch(var(--b1))",
-    border: "1px solid oklch(var(--b3))",
+    backgroundColor: "var(--color-base-100)",
+    border: "1px solid var(--color-base-300)",
     borderRadius: "0.5rem",
     boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
   },
@@ -45,35 +45,35 @@ export const storyarnEditorTheme = EditorView.theme({
     padding: "2px 8px",
   },
   ".cm-tooltip-autocomplete ul li[aria-selected]": {
-    backgroundColor: "oklch(var(--p) / 0.15)",
-    color: "oklch(var(--bc))",
+    backgroundColor: "color-mix(in oklch, var(--color-primary) 15%, transparent)",
+    color: "var(--color-base-content)",
   },
   ".cm-diagnostic-error": {
-    borderBottom: "2px solid oklch(var(--er))",
+    borderBottom: "2px solid var(--color-error)",
   },
   ".cm-diagnostic-warning": {
-    borderBottom: "2px solid oklch(var(--wa))",
+    borderBottom: "2px solid var(--color-warning)",
   },
 });
 
 const highlightStyle = HighlightStyle.define([
   // Variable refs (identifiers)
-  { tag: tags.variableName, color: "oklch(var(--in))" },
-  { tag: tags.name, color: "oklch(var(--in))" },
+  { tag: tags.variableName, color: "var(--color-info)" },
+  { tag: tags.name, color: "var(--color-info)" },
   // Operators
-  { tag: tags.operator, color: "oklch(var(--s))" },
-  { tag: tags.compareOperator, color: "oklch(var(--s))" },
+  { tag: tags.operator, color: "var(--color-secondary)" },
+  { tag: tags.compareOperator, color: "var(--color-secondary)" },
   // Strings
-  { tag: tags.string, color: "oklch(var(--su))" },
+  { tag: tags.string, color: "var(--color-success)" },
   // Numbers
-  { tag: tags.number, color: "oklch(var(--wa))" },
+  { tag: tags.number, color: "var(--color-warning)" },
   // Booleans / keywords
-  { tag: tags.bool, color: "oklch(var(--a))" },
-  { tag: tags.keyword, color: "oklch(var(--a))" },
+  { tag: tags.bool, color: "var(--color-accent)" },
+  { tag: tags.keyword, color: "var(--color-accent)" },
   // Punctuation (dots, parens)
-  { tag: tags.punctuation, color: "oklch(var(--bc) / 0.5)" },
+  { tag: tags.punctuation, color: "color-mix(in oklch, var(--color-base-content) 50%, transparent)" },
   // Comments
-  { tag: tags.lineComment, color: "oklch(var(--bc) / 0.4)", fontStyle: "italic" },
+  { tag: tags.lineComment, color: "color-mix(in oklch, var(--color-base-content) 40%, transparent)", fontStyle: "italic" },
 ]);
 
 export const storyarnHighlighting = syntaxHighlighting(highlightStyle);

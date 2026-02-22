@@ -44,6 +44,7 @@ import { FlowFloatingToolbar } from "./hooks/flow_floating_toolbar";
 import { FlowLoader } from "./hooks/flow_loader";
 import { FountainImport } from "./hooks/fountain_import";
 import { InstructionBuilder } from "./hooks/instruction_builder";
+import { InteractionPlayer } from "./hooks/interaction_player";
 import { MapCanvas } from "./hooks/map_canvas";
 import { ReferenceSearch } from "./hooks/reference_search";
 import { ScreenplayEditor } from "./hooks/screenplay_editor";
@@ -90,6 +91,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     FlowCanvas,
     FlowLoader,
     InstructionBuilder,
+    InteractionPlayer,
     ColorPicker,
     ConditionBuilder,
     DebugPanelResize,

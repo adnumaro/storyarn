@@ -151,6 +151,7 @@ defmodule StoryarnWeb.FlowLive.Show do
             debug_var_changed_only={@debug_var_changed_only}
             debug_current_flow_name={@flow.name}
             debug_step_limit_reached={@debug_step_limit_reached}
+            debug_interaction_zones={@debug_interaction_zones}
           />
         </div>
       </div>
@@ -263,6 +264,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         |> assign(:debug_var_filter, debug_assigns.debug_var_filter)
         |> assign(:debug_var_changed_only, debug_assigns.debug_var_changed_only)
         |> assign(:debug_step_limit_reached, debug_assigns[:debug_step_limit_reached] || false)
+        |> assign(:debug_interaction_zones, debug_assigns[:debug_interaction_zones] || [])
         |> push_debug_canvas_events(debug_assigns.debug_state)
     end
   end
@@ -733,6 +735,14 @@ defmodule StoryarnWeb.FlowLive.Show do
     DebugHandlers.handle_debug_choose_response(params, socket)
   end
 
+  def handle_event("debug_interaction_instruction", params, socket) do
+    DebugHandlers.handle_debug_interaction_instruction(params, socket)
+  end
+
+  def handle_event("debug_interaction_event", params, socket) do
+    DebugHandlers.handle_debug_interaction_event(params, socket)
+  end
+
   def handle_event("debug_reset", _params, socket) do
     DebugHandlers.handle_debug_reset(socket)
   end
@@ -879,6 +889,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:debug_var_changed_only, false)
       |> assign(:debug_auto_timer, nil)
       |> assign(:debug_step_limit_reached, false)
+      |> assign(:debug_interaction_zones, [])
       |> assign(:loading, false)
 
     socket =

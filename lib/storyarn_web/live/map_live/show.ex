@@ -125,6 +125,7 @@ defmodule StoryarnWeb.MapLive.Show do
             project_sheets={@project_sheets}
             project_flows={@project_flows}
             project_variables={@project_variables}
+            panel_sections={@panel_sections}
           />
         </div>
 
@@ -290,6 +291,7 @@ defmodule StoryarnWeb.MapLive.Show do
     |> assign(:legend_open, false)
     |> assign(:undo_stack, [])
     |> assign(:redo_stack, [])
+    |> assign(:panel_sections, %{})
     |> assign(:project_maps, Maps.list_maps(project.id))
     |> assign(:project_sheets, Storyarn.Sheets.list_sheets_tree(project.id))
     |> assign(:project_flows, Storyarn.Flows.list_flows(project.id))
@@ -624,6 +626,12 @@ defmodule StoryarnWeb.MapLive.Show do
     with_auth(socket, :edit_content, fn ->
       ElementHandlers.handle_update_zone_action_data(params, socket)
     end)
+  end
+
+  # Expression editor tab toggle (Builder ↔ Code)
+  def handle_event("toggle_expression_tab", %{"id" => id, "tab" => tab}, socket) do
+    panel_sections = Map.put(socket.assigns.panel_sections, "tab_#{id}", tab)
+    {:noreply, assign(socket, :panel_sections, panel_sections)}
   end
 
   # ---------------------------------------------------------------------------

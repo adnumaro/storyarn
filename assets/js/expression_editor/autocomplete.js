@@ -44,8 +44,8 @@ function groupBySheet(variables) {
 }
 
 function completeVariable(context, sheets, bySheet) {
-  // Match identifiers with dots (variable references)
-  const word = context.matchBefore(/[a-zA-Z_][a-zA-Z0-9_.]*/);
+  // Match identifiers with dots and hyphens (variable references)
+  const word = context.matchBefore(/[a-zA-Z_][a-zA-Z0-9_\-.]*/);
   if (!word && !context.explicit) return null;
 
   const text = word ? word.text : "";

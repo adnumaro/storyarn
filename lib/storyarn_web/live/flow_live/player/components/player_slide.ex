@@ -4,6 +4,8 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
+  import StoryarnWeb.FlowLive.Player.Components.PlayerInteraction
+
   attr :slide, :map, required: true
 
   def player_slide(%{slide: %{type: :dialogue}} = assigns) do
@@ -41,6 +43,14 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
       <div :if={@slide.description != ""} class="player-scene-description">
         {Phoenix.HTML.raw(@slide.description)}
       </div>
+    </div>
+    """
+  end
+
+  def player_slide(%{slide: %{type: :interaction}} = assigns) do
+    ~H"""
+    <div class="player-slide player-slide-interaction">
+      <.player_interaction slide={@slide} />
     </div>
     """
   end

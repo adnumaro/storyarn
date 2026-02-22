@@ -19,6 +19,8 @@ defmodule StoryarnWeb.FlowLive.Components.DebugConsoleTab do
   attr :console, :list, required: true
   attr :pending_choices, :map, default: nil
   attr :status, :atom, required: true
+  attr :debug_interaction_zones, :list, default: []
+  attr :debug_interaction_variables, :map, default: %{}
 
   def console_tab(assigns) do
     assigns = Phoenix.Component.assign(assigns, :console, Enum.reverse(assigns.console))
@@ -54,10 +56,17 @@ defmodule StoryarnWeb.FlowLive.Components.DebugConsoleTab do
         </span>
       </div>
 
-      <%!-- Response choices --%>
+      <%!-- Response choices (dialogue) --%>
       <.response_choices
-        :if={@status == :waiting_input and not is_nil(@pending_choices)}
+        :if={@status == :waiting_input and match?(%{responses: _}, @pending_choices)}
         choices={@pending_choices}
+      />
+
+      <%!-- Interaction zone choices --%>
+      <.interaction_choices
+        :if={@status == :waiting_input and match?(%{type: :interaction}, @pending_choices)}
+        zones={@debug_interaction_zones}
+        variables={@debug_interaction_variables}
       />
     </div>
     """
@@ -121,6 +130,71 @@ defmodule StoryarnWeb.FlowLive.Components.DebugConsoleTab do
       </div>
     </div>
     """
+  end
+
+  # ===========================================================================
+  # Interaction choices
+  # ===========================================================================
+
+  attr :zones, :list, required: true
+  attr :variables, :map, required: true
+
+  defp interaction_choices(assigns) do
+    ~H"""
+    <div class="px-3 py-2 border-t border-base-300 bg-base-200/50">
+      <p class="text-xs text-base-content/50 mb-1.5">
+        {dgettext("flows", "Interaction zones:")}
+      </p>
+      <div class="flex flex-col gap-1">
+        <div :for={zone <- @zones} class="flex items-center gap-2">
+          <%= case zone.action_type do %>
+            <% "instruction" -> %>
+              <button
+                type="button"
+                class="btn btn-xs btn-warning btn-outline"
+                phx-click="debug_interaction_instruction"
+                phx-value-zone_id={zone.id}
+                phx-value-zone_name={zone.name}
+                phx-value-assignments={Jason.encode!((zone.action_data || %{})["assignments"] || [])}
+              >
+                <.icon name="zap" class="size-3" />
+                {zone.name}
+              </button>
+            <% "event" -> %>
+              <button
+                type="button"
+                class="btn btn-xs btn-primary btn-outline"
+                phx-click="debug_interaction_event"
+                phx-value-zone_id={zone.id}
+                phx-value-event_name={(zone.action_data || %{})["event_name"] || "zone_#{zone.id}"}
+              >
+                <.icon name="play" class="size-3" />
+                {zone.name}
+              </button>
+            <% "display" -> %>
+              <span class="inline-flex items-center gap-1 text-xs text-base-content/60">
+                <.icon name="eye" class="size-3" />
+                {zone.name}:
+                <span class="font-bold text-base-content">
+                  {format_display_zone_value(zone, @variables)}
+                </span>
+              </span>
+            <% _ -> %>
+              <span class="text-xs text-base-content/30">{zone.name} (navigate)</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  defp format_display_zone_value(zone, variables) do
+    ref = (zone.action_data || %{})["variable_ref"]
+
+    case Map.get(variables, ref) do
+      nil -> "—"
+      val -> to_string(val)
+    end
   end
 
   # ===========================================================================

@@ -27,5 +27,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlers do
   defdelegate handle_debug_play(socket), to: DebugExecutionHandlers
   defdelegate handle_debug_pause(socket), to: DebugExecutionHandlers
   defdelegate handle_debug_set_speed(params, socket), to: DebugExecutionHandlers
+  defdelegate handle_debug_interaction_instruction(params, socket), to: DebugExecutionHandlers
+  defdelegate handle_debug_interaction_event(params, socket), to: DebugExecutionHandlers
   defdelegate handle_debug_auto_step(socket), to: DebugExecutionHandlers
 end

@@ -297,7 +297,7 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
               JS.push(@event, value: %{id: @element_id, field: "layer_id", value: ""})
               |> JS.hide(to: "#popover-layer-#{@id}")
             }
-            class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-base-200 #{if is_nil(@current_layer_id), do: "font-semibold text-primary"}"}
+            class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm cursor-pointer hover:bg-base-content/10 #{if is_nil(@current_layer_id), do: "font-semibold text-primary"}"}
             disabled={@disabled}
           >
             {dgettext("maps", "None")}
@@ -309,7 +309,7 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
               JS.push(@event, value: %{id: @element_id, field: "layer_id", value: layer.id})
               |> JS.hide(to: "#popover-layer-#{@id}")
             }
-            class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-base-200 #{if layer.id == @current_layer_id, do: "font-semibold text-primary"}"}
+            class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm cursor-pointer hover:bg-base-content/10 #{if layer.id == @current_layer_id, do: "font-semibold text-primary"}"}
             disabled={@disabled}
           >
             {layer.name}
@@ -380,7 +380,7 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
               JS.push(@event, value: %{id: @element_id, field: "target_type", value: ""})
               |> JS.hide(to: "#popover-target-#{@id}")
             }
-            class="flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-base-200 text-error"
+            class="flex items-center gap-2 w-full px-2 py-1 rounded text-sm cursor-pointer hover:bg-base-content/10 text-error"
             disabled={@disabled}
           >
             <.icon name="x" class="size-3" />
@@ -400,7 +400,7 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
                 |> JS.show(to: "#target-list-#{@id}-#{t}")
               end
             }
-            class={"flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm hover:bg-base-200 #{if t == @current_type, do: "font-semibold text-primary"}"}
+            class={"flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm cursor-pointer hover:bg-base-content/10 #{if t == @current_type, do: "font-semibold text-primary"}"}
             disabled={@disabled}
           >
             <.icon name={target_type_icon(t)} class="size-3.5" />
@@ -437,7 +437,7 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
                 |> JS.show(to: "#target-step1-#{@id}")
                 |> JS.hide(to: "#target-list-#{@id}-#{t}")
               }
-              class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-base-200 #{if item.id == @current_target_id, do: "font-semibold text-primary"}"}
+              class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm cursor-pointer hover:bg-base-content/10 #{if item.id == @current_target_id, do: "font-semibold text-primary"}"}
               disabled={@disabled}
             >
               {item.name}

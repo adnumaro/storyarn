@@ -613,7 +613,7 @@ defmodule Storyarn.MapsTest do
           "action_data" => %{}
         })
 
-      assert "must include a non-empty \"variable_ref\"" in errors_on(changeset).action_data
+      assert "must include \"variable_ref\"" in errors_on(changeset).action_data
     end
 
     test "event requires event_name", %{map: map} do
@@ -625,7 +625,7 @@ defmodule Storyarn.MapsTest do
           "action_data" => %{}
         })
 
-      assert "must include a non-empty \"event_name\"" in errors_on(changeset).action_data
+      assert "must include \"event_name\"" in errors_on(changeset).action_data
     end
 
     test "invalid action_type rejected", %{map: map} do

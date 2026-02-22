@@ -196,7 +196,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   @default_action_data %{
     "navigate" => %{},
     "instruction" => %{"assignments" => []},
-    "display" => %{"variable_ref" => "", "label" => ""},
+    "display" => %{"variable_ref" => ""},
     "event" => %{"event_name" => "", "label" => ""}
   }
 

@@ -115,16 +115,6 @@ export function createAssignmentRow(opts) {
       }
     }
 
-    // Value type toggle (only for operators that require a value)
-    if (!NO_VALUE_OPERATORS.has(operator) && canEdit) {
-      const valueSlotEl =
-        comboboxes.value_sheet?.input?.parentElement || comboboxes.value?.input?.parentElement;
-      if (valueSlotEl) {
-        const toggle = createValueTypeToggle();
-        sentenceWrap.insertBefore(toggle, valueSlotEl);
-      }
-    }
-
     container.appendChild(sentenceWrap);
 
     // Remove button (visible on hover)
@@ -382,32 +372,6 @@ export function createAssignmentRow(opts) {
 
     wrapper.appendChild(btn);
     return wrapper;
-  }
-
-  function createValueTypeToggle() {
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    const isRef = currentAssignment.value_type === "variable_ref";
-    toggle.className = "value-type-toggle";
-    toggle.textContent = isRef ? "{x}" : "123";
-    toggle.title = isRef
-      ? t?.switch_to_literal || "Switch to literal value"
-      : t?.switch_to_variable_ref || "Switch to variable reference";
-
-    toggle.addEventListener("click", (e) => {
-      e.preventDefault();
-      if (currentAssignment.value_type === "variable_ref") {
-        currentAssignment.value_type = "literal";
-        currentAssignment.value_sheet = null;
-      } else {
-        currentAssignment.value_type = "variable_ref";
-        currentAssignment.value = null;
-      }
-      notifyChange();
-      render();
-    });
-
-    return toggle;
   }
 
   function getVariableType() {

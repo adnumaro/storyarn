@@ -252,6 +252,10 @@
   border-bottom: 1px solid color-mix(in oklch, var(--color-base-300) 30%, transparent);
 }
 
+.instruction-builder .assignment-row:hover .sp-row-action {
+  opacity: 1;
+}
+
 .instruction-builder .sentence-text,
 .condition-builder .sentence-text {
   font-size: 0.875rem;
@@ -401,25 +405,6 @@
   font-weight: 500;
 }
 
-.instruction-builder .value-type-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1rem;
-  height: 1rem;
-  border-radius: 0.125rem;
-  font-size: 0.625rem;
-  color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
-  cursor: pointer;
-  user-select: none;
-  border: none;
-  background: none;
-  padding: 0;
-}
-
-.instruction-builder .value-type-toggle:hover {
-  color: var(--color-primary);
-}
 
 /* Dialogue screenplay editor — form controls */
 

@@ -167,18 +167,18 @@ defmodule Storyarn.Maps.MapZone do
     do: add_error(changeset, :action_data, "must include \"assignments\" as a list")
 
   defp do_validate_action_data(changeset, "display", %{"variable_ref" => ref})
-       when is_binary(ref) and ref != "",
+       when is_binary(ref),
        do: changeset
 
   defp do_validate_action_data(changeset, "display", _),
-    do: add_error(changeset, :action_data, "must include a non-empty \"variable_ref\"")
+    do: add_error(changeset, :action_data, "must include \"variable_ref\"")
 
   defp do_validate_action_data(changeset, "event", %{"event_name" => name})
-       when is_binary(name) and name != "",
+       when is_binary(name),
        do: changeset
 
   defp do_validate_action_data(changeset, "event", _),
-    do: add_error(changeset, :action_data, "must include a non-empty \"event_name\"")
+    do: add_error(changeset, :action_data, "must include \"event_name\"")
 
   defp do_validate_action_data(changeset, _, _), do: changeset
 

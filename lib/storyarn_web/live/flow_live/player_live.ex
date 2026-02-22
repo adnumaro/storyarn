@@ -18,6 +18,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   alias Storyarn.Flows
   alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.Evaluator.Engine
+  alias Storyarn.Flows.Evaluator.Helpers, as: EvalHelpers
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -277,6 +278,50 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     end
   end
 
+  def handle_event("interaction_zone_instruction", params, socket) do
+    assignments = params["assignments"] || []
+    zone_name = params["zone_name"] || "zone"
+    state = socket.assigns.engine_state
+
+    case Engine.execute_interaction_instruction(state, assignments, zone_name) do
+      {:ok, new_state} ->
+        display_vars = extract_display_variables(new_state)
+
+        {:noreply,
+         socket
+         |> assign(:engine_state, new_state)
+         |> assign(:can_go_back, new_state.snapshots != [])
+         |> push_event("interaction_variables_updated", %{variables: display_vars})}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("interaction_zone_event", %{"event_name" => event_name}, socket) do
+    %{engine_state: state, connections: connections, nodes: nodes} = socket.assigns
+
+    case Engine.choose_interaction_event(state, event_name, connections) do
+      {:ok, new_state} ->
+        case PlayerEngine.step_until_interactive(new_state, nodes, connections) do
+          {:flow_jump, stepped, target_flow_id, _} ->
+            handle_flow_jump(socket, stepped, target_flow_id)
+
+          {:flow_return, stepped, _} ->
+            handle_flow_return(socket, stepped)
+
+          {_status, stepped, _} ->
+            {:noreply, update_slide(socket, stepped)}
+        end
+
+      {:finished, new_state} ->
+        {:noreply, update_slide(socket, new_state)}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not process event."))}
+    end
+  end
+
   def handle_event("exit_player", _params, socket) do
     %{workspace: ws, project: proj, flow: flow} = socket.assigns
 
@@ -424,6 +469,10 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     |> assign(:engine_state, new_state)
     |> assign(:slide, slide)
     |> assign(:can_go_back, new_state.snapshots != [])
+  end
+
+  defp extract_display_variables(state) do
+    Map.new(state.variables, fn {ref, var} -> {ref, EvalHelpers.format_value(var.value)} end)
   end
 
   defp show_continue?(%{type: :dialogue, responses: responses}) do

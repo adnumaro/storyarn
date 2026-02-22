@@ -101,9 +101,76 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     }
   end
 
+  def build(%{type: "interaction"} = node, state, _sheets_map, project_id) do
+    data = node.data || %{}
+    map_id = data["map_id"]
+    {map_data, zones} = load_interaction_map(project_id, map_id)
+
+    %{
+      type: :interaction,
+      node_id: node.id,
+      label: (map_data && map_data.name) || "Interaction",
+      map_id: map_id,
+      map_name: map_data && map_data.name,
+      background_url: extract_background_url(map_data),
+      map_width: map_data && map_data.width,
+      map_height: map_data && map_data.height,
+      zones: Enum.map(zones, &serialize_zone_for_player(&1, state))
+    }
+  end
+
   def build(_node, _state, _sheets_map, _project_id) do
     %{type: :empty}
   end
+
+  # ===========================================================================
+  # Interaction helpers
+  # ===========================================================================
+
+  defp load_interaction_map(_project_id, nil), do: {nil, []}
+
+  defp load_interaction_map(project_id, map_id) do
+    case Storyarn.Maps.get_map(project_id, map_id) do
+      nil -> {nil, []}
+      map -> {map, map.zones || []}
+    end
+  end
+
+  defp serialize_zone_for_player(zone, state) do
+    action_data = zone.action_data || %{}
+
+    base = %{
+      id: zone.id,
+      name: zone.name,
+      vertices: zone.vertices,
+      fill_color: zone.fill_color,
+      border_color: zone.border_color,
+      opacity: zone.opacity,
+      action_type: zone.action_type,
+      action_data: action_data
+    }
+
+    if zone.action_type == "display" do
+      ref = action_data["variable_ref"]
+      Map.put(base, :display_value, get_variable_value(ref, state.variables))
+    else
+      base
+    end
+  end
+
+  defp get_variable_value(nil, _variables), do: nil
+
+  defp get_variable_value(ref, variables) when is_binary(ref) do
+    case Map.get(variables, ref) do
+      %{value: val} -> format_value(val)
+      _ -> nil
+    end
+  end
+
+  defp get_variable_value(_, _variables), do: nil
+
+  defp extract_background_url(%{background_asset: %{url: url}}) when is_binary(url), do: url
+  defp extract_background_url(_), do: nil
 
   # ===========================================================================
   # Speaker resolution

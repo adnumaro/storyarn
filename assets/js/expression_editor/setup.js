@@ -8,7 +8,8 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { LanguageSupport, LRLanguage } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
-import { EditorView, keymap, placeholder as placeholderExt } from "@codemirror/view";
+import { EditorView, keymap, placeholder as placeholderExt, tooltips } from "@codemirror/view";
+import { styleTags, tags } from "@lezer/highlight";
 import { variableAutocomplete } from "./autocomplete.js";
 import { expressionLinter } from "./linter.js";
 import { parser as exprParser } from "./parser_generated.js";
@@ -39,9 +40,34 @@ export function createExpressionEditor(opts) {
     extraExtensions = [],
   } = opts;
 
-  // Configure parser for the right top rule
+  // Configure parser for the right top rule, with syntax highlighting tags
   const topRule = mode === "assignments" ? "AssignmentProgram" : "ExpressionProgram";
-  const configuredParser = exprParser.configure({ top: topRule });
+  const configuredParser = exprParser.configure({
+    top: topRule,
+    props: [
+      styleTags({
+        Identifier: tags.variableName,
+        Number: tags.number,
+        StringLiteral: tags.string,
+        Boolean: tags.bool,
+        SetOp: tags.operator,
+        AddOp: tags.operator,
+        SubOp: tags.operator,
+        SetIfUnsetOp: tags.operator,
+        Eq: tags.compareOperator,
+        Neq: tags.compareOperator,
+        Gte: tags.compareOperator,
+        Lte: tags.compareOperator,
+        Gt: tags.compareOperator,
+        Lt: tags.compareOperator,
+        And: tags.keyword,
+        Or: tags.keyword,
+        Not: tags.keyword,
+        LineComment: tags.lineComment,
+        "( )": tags.paren,
+      }),
+    ],
+  });
 
   const language = LRLanguage.define({
     parser: configuredParser,
@@ -84,6 +110,8 @@ export function createExpressionEditor(opts) {
     ...(variables.length > 0 ? [variableAutocomplete(variables)] : []),
     // Linting: syntax errors always, undefined variable warnings when variables available
     expressionLinter(mode, variables),
+    // Render tooltips in document.body so they aren't clipped by overflow containers
+    tooltips({ parent: document.body }),
     ...extraExtensions,
   ];
 

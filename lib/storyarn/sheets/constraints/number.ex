@@ -13,7 +13,7 @@ defmodule Storyarn.Sheets.Constraints.Number do
   Returns a constraints map with parsed numeric values, or nil if all are nil.
 
       iex> extract(%{"min" => "0", "max" => "100", "step" => "1"})
-      %{"min" => 0.0, "max" => 100.0, "step" => 1.0}
+      %{"min" => 0, "max" => 100, "step" => 1}
 
       iex> extract(%{"min" => nil, "max" => nil, "step" => nil})
       nil
@@ -80,7 +80,7 @@ defmodule Storyarn.Sheets.Constraints.Number do
   Parses a constraint value (from form params or config) into a number or nil.
 
       iex> parse_constraint("42")
-      42.0
+      42
 
       iex> parse_constraint("")
       nil
@@ -94,9 +94,12 @@ defmodule Storyarn.Sheets.Constraints.Number do
   def parse_constraint(val) when is_number(val), do: val
 
   def parse_constraint(val) when is_binary(val) do
-    case Float.parse(val) do
-      {num, _} -> num
-      :error -> nil
+    case Integer.parse(val) do
+      {int, ""} -> int
+      _ -> case Float.parse(val) do
+             {num, _} -> num
+             :error -> nil
+           end
     end
   end
 
