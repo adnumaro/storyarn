@@ -35,6 +35,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.Dialogue
   alias StoryarnWeb.FlowLive.Nodes.Exit, as: ExitNode
   alias StoryarnWeb.FlowLive.Nodes.Instruction
+  alias StoryarnWeb.FlowLive.Nodes.Interaction
   alias StoryarnWeb.FlowLive.Nodes.Scene
   alias StoryarnWeb.FlowLive.Nodes.Subflow
 
@@ -115,6 +116,9 @@ defmodule StoryarnWeb.FlowLive.Show do
                   subflow_exits={@subflow_exits}
                   referencing_jumps={@referencing_jumps}
                   referencing_flows={@referencing_flows}
+                  project_maps={@project_maps}
+                  interaction_map={@interaction_map}
+                  interaction_event_zones={@interaction_event_zones}
                 />
               </div>
 
@@ -666,6 +670,27 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  # Interaction node events
+  def handle_event("interaction_select_map", params, socket) do
+    with_auth(:edit_content, socket, fn ->
+      Interaction.Node.handle_select_map(params, socket)
+    end)
+  end
+
+  def handle_event("navigate_to_interaction_map", %{"map-id" => map_id}, socket) do
+    case Storyarn.Maps.get_map_brief(socket.assigns.project.id, map_id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Map not found."))}
+
+      _map ->
+        {:noreply,
+         push_navigate(socket,
+           to:
+             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/maps/#{map_id}"
+         )}
+    end
+  end
+
   # Hub color picker
   def handle_event("update_hub_color", %{"color" => color}, socket) do
     with_auth(:edit_content, socket, fn ->
@@ -830,6 +855,9 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:subflow_exits, [])
       |> assign(:outcome_tags_suggestions, [])
       |> assign(:referencing_flows, [])
+      |> assign(:project_maps, [])
+      |> assign(:interaction_map, nil)
+      |> assign(:interaction_event_zones, [])
       |> assign(:editing_mode, nil)
       |> assign(:save_status, :idle)
       |> assign(:preview_show, false)

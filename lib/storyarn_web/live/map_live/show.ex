@@ -37,6 +37,7 @@ defmodule StoryarnWeb.MapLive.Show do
         project={@project}
         can_edit={@can_edit}
         edit_mode={@edit_mode}
+        referencing_flows={@referencing_flows}
       />
 
       <%!-- Canvas area (full width — no sidebar) --%>
@@ -293,6 +294,7 @@ defmodule StoryarnWeb.MapLive.Show do
     |> assign(:project_sheets, Storyarn.Sheets.list_sheets_tree(project.id))
     |> assign(:project_flows, Storyarn.Flows.list_flows(project.id))
     |> assign(:project_variables, Storyarn.Sheets.list_project_variables(project.id))
+    |> assign(:referencing_flows, Storyarn.Flows.list_interaction_nodes_for_map(map.id))
     |> assign(:canvas_i18n, %{
       edit_properties: dgettext("maps", "Edit Properties"),
       connect_to: dgettext("maps", "Connect To\u2026"),
@@ -728,6 +730,21 @@ defmodule StoryarnWeb.MapLive.Show do
 
   def handle_event("navigate_to_target", params, socket) do
     TreeHandlers.handle_navigate_to_target(params, socket)
+  end
+
+  def handle_event("navigate_to_referencing_flow", %{"flow-id" => flow_id}, socket) do
+    case Storyarn.Flows.get_flow_brief(socket.assigns.project.id, flow_id) do
+      nil ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("maps", "Flow not found."))}
+
+      _flow ->
+        {:noreply,
+         push_navigate(socket,
+           to:
+             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
+         )}
+    end
   end
 
   # ---------------------------------------------------------------------------

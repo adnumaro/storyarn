@@ -184,6 +184,17 @@ defmodule Storyarn.Maps.MapCrud do
   end
 
   @doc """
+  Gets a map by ID without project scoping (no preloads).
+  Used for canvas data enrichment where the map reference is already project-scoped.
+  """
+  def get_map_by_id(map_id) do
+    from(m in Map,
+      where: m.id == ^map_id and is_nil(m.deleted_at)
+    )
+    |> Repo.one()
+  end
+
+  @doc """
   Gets a map with only basic fields (no preloads).
   Used for breadcrumbs and lightweight lookups.
   """

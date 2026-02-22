@@ -89,6 +89,13 @@ defmodule Storyarn.Maps do
   defdelegate get_map!(project_id, map_id), to: MapCrud
 
   @doc """
+  Gets a map by ID without project scoping (no preloads).
+  Used for canvas data enrichment where the map reference is already project-scoped.
+  """
+  @spec get_map_by_id(integer()) :: map_record() | nil
+  defdelegate get_map_by_id(map_id), to: MapCrud
+
+  @doc """
   Gets a map with only basic fields (no preloads).
   Used for breadcrumbs and lightweight lookups.
   """

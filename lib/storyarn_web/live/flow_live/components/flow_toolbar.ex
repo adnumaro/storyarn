@@ -24,6 +24,9 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   attr :subflow_exits, :list, default: []
   attr :referencing_jumps, :list, default: []
   attr :referencing_flows, :list, default: []
+  attr :project_maps, :list, default: []
+  attr :interaction_map, :map, default: nil
+  attr :interaction_event_zones, :list, default: []
 
   def node_toolbar(assigns) do
     ~H"""
@@ -523,6 +526,53 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       event="update_node_data"
       event_params_fn={fn value -> %{node: %{time_of_day: value}} end}
     />
+    """
+  end
+
+  # ── Interaction ────────────────────────────────────────────────────────
+
+  defp render_toolbar("interaction", assigns) do
+    map_id = assigns.node.data["map_id"]
+    map_info = assigns.interaction_map
+    event_count = length(assigns.interaction_event_zones)
+
+    selected_map_name =
+      if map_info, do: map_info.name
+
+    assigns =
+      assigns
+      |> assign(:map_id, map_id)
+      |> assign(:selected_map_name, selected_map_name)
+      |> assign(:event_count, event_count)
+
+    ~H"""
+    <.node_type_icon type="interaction" />
+    <.toolbar_searchable_select
+      :if={@can_edit}
+      id={"interaction-map-#{@node.id}"}
+      options={Enum.map(@project_maps, &{&1.name, &1.id})}
+      selected_value={@map_id}
+      selected_label={@selected_map_name}
+      placeholder={dgettext("flows", "Map…")}
+      event="interaction_select_map"
+      event_params_fn={fn value -> %{"map-id" => value} end}
+    />
+    <span :if={!@can_edit && @selected_map_name} class="text-xs truncate max-w-[120px]">
+      {@selected_map_name}
+    </span>
+    <button
+      :if={@map_id}
+      type="button"
+      phx-click="navigate_to_interaction_map"
+      phx-value-map-id={@map_id}
+      class="toolbar-btn text-xs"
+      title={dgettext("flows", "Open map editor")}
+    >
+      <.icon name="external-link" class="size-3.5" />
+    </button>
+    <span :if={@event_count > 0} class="badge badge-xs badge-ghost">
+      {dngettext("flows", "%{count} event", "%{count} events", @event_count, count: @event_count)}
+    </span>
     """
   end
 

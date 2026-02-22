@@ -20,6 +20,7 @@ defmodule StoryarnWeb.MapLive.Components.MapHeader do
   attr :project, :map, required: true
   attr :can_edit, :boolean, required: true
   attr :edit_mode, :boolean, required: true
+  attr :referencing_flows, :list, default: []
 
   def map_header(assigns) do
     ~H"""
@@ -69,36 +70,80 @@ defmodule StoryarnWeb.MapLive.Components.MapHeader do
         <span :if={@map.shortcut} class="badge badge-ghost font-mono text-xs">
           #{@map.shortcut}
         </span>
+        <div
+          :if={@referencing_flows != []}
+          phx-hook="ToolbarPopover"
+          id="popover-referencing-flows"
+          data-width="14rem"
+          data-placement="bottom-start"
+        >
+          <button data-role="trigger" type="button" class="btn btn-xs btn-ghost gap-1 font-normal">
+            <.icon name="git-branch" class="size-3.5 opacity-60" />
+            <span class="text-xs">
+              {dngettext("maps", "Used in %{count} flow", "Used in %{count} flows",
+                length(@referencing_flows), count: length(@referencing_flows))}
+            </span>
+          </button>
+          <template data-role="popover-template">
+            <ul class="menu menu-xs p-1">
+              <li :for={ref <- @referencing_flows}>
+                <button
+                  type="button"
+                  data-event="navigate_to_referencing_flow"
+                  data-params={Jason.encode!(%{"flow-id" => ref.flow_id})}
+                  class="flex items-center gap-2"
+                >
+                  <.icon name="git-branch" class="size-3.5 opacity-60" />
+                  <span class="truncate">{ref.flow_name}</span>
+                </button>
+              </li>
+            </ul>
+          </template>
+        </div>
       </div>
       <div class="flex-none flex items-center gap-1">
         <%!-- Export dropdown --%>
-        <div class="dropdown dropdown-end">
-          <div
-            tabindex="0"
-            role="button"
+        <div
+          phx-hook="ToolbarPopover"
+          id="popover-export-map"
+          data-width="11rem"
+          data-placement="bottom-end"
+        >
+          <button
+            data-role="trigger"
+            type="button"
             class="btn btn-ghost btn-sm gap-2"
             title={dgettext("maps", "Export map")}
           >
             <.icon name="upload" class="size-4" />
             {dgettext("maps", "Export")}
-          </div>
-          <ul
-            tabindex="0"
-            class="dropdown-content menu bg-base-100 rounded-lg border border-base-300 shadow-md w-44 p-1 mt-1 z-[1001]"
-          >
-            <li>
-              <button type="button" phx-click="export_map" phx-value-format="png" class="text-sm">
-                <.icon name="image" class="size-4" />
-                {dgettext("maps", "Export as PNG")}
-              </button>
-            </li>
-            <li>
-              <button type="button" phx-click="export_map" phx-value-format="svg" class="text-sm">
-                <.icon name="file-code" class="size-4" />
-                {dgettext("maps", "Export as SVG")}
-              </button>
-            </li>
-          </ul>
+          </button>
+          <template data-role="popover-template">
+            <ul class="menu menu-sm p-1">
+              <li>
+                <button
+                  type="button"
+                  data-event="export_map"
+                  data-params={Jason.encode!(%{"format" => "png"})}
+                  class="text-sm"
+                >
+                  <.icon name="image" class="size-4" />
+                  {dgettext("maps", "Export as PNG")}
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  data-event="export_map"
+                  data-params={Jason.encode!(%{"format" => "svg"})}
+                  class="text-sm"
+                >
+                  <.icon name="file-code" class="size-4" />
+                  {dgettext("maps", "Export as SVG")}
+                </button>
+              </li>
+            </ul>
+          </template>
         </div>
 
         <%!-- Map settings gear button --%>

@@ -135,6 +135,7 @@ msgstr ""
 msgid "Connected accounts"
 msgstr ""
 
+#: lib/storyarn_web/components/block_components/table_blocks.ex:95
 #: lib/storyarn_web/components/core_components.ex:453
 #, elixir-autogen, elixir-format
 msgid "Constant"

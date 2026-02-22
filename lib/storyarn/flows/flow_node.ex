@@ -22,7 +22,7 @@ defmodule Storyarn.Flows.FlowNode do
 
   alias Storyarn.Flows.{Flow, FlowConnection}
 
-  @node_types ~w(dialogue hub condition instruction jump entry exit subflow scene)
+  @node_types ~w(dialogue hub condition instruction jump entry exit subflow scene interaction)
   @valid_sources ~w(manual screenplay_sync)
 
   @type node_type ::
@@ -35,6 +35,7 @@ defmodule Storyarn.Flows.FlowNode do
           | :exit
           | :subflow
           | :scene
+          | :interaction
   @type t :: %__MODULE__{
           id: integer() | nil,
           type: String.t() | nil,

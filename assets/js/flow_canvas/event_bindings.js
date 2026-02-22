@@ -138,6 +138,13 @@ export function setupEventHandlers(hook) {
     hook.pushEvent("navigate_to_subflow", { "flow-id": String(e.detail.flowId) });
   });
 
+  // Interaction map navigation (composed from storyarn-node Shadow DOM)
+  hook.el.addEventListener("navigate-to-interaction-map", (e) => {
+    hook.pushEvent("navigate_to_interaction_map", {
+      "map-id": String(e.detail.mapId),
+    });
+  });
+
   // Exit flow reference navigation (composed from storyarn-node Shadow DOM)
   hook.el.addEventListener("navigate-to-exit-flow", (e) => {
     hook.pushEvent("navigate_to_exit_flow", { "flow-id": String(e.detail.flowId) });

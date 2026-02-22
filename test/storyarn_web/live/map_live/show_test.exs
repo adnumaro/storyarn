@@ -3232,9 +3232,7 @@ defmodule StoryarnWeb.MapLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/maps/#{map.id}"
         )
 
-      assert html =~ "phx-click=\"export_map\""
-      assert html =~ "phx-value-format=\"png\""
-      assert html =~ "phx-value-format=\"svg\""
+      assert html =~ "data-event=\"export_map\""
       assert html =~ "Export as PNG"
       assert html =~ "Export as SVG"
     end
@@ -3252,8 +3250,7 @@ defmodule StoryarnWeb.MapLive.ShowTest do
         )
 
       # Export should still be available for viewers (read-only export)
-      assert html =~ "phx-click=\"export_map\""
-      assert html =~ "phx-value-format=\"png\""
+      assert html =~ "data-event=\"export_map\""
     end
 
     test "export_map event pushes export to client", %{conn: conn, user: user} do

@@ -13,11 +13,23 @@ import entry from "./entry.js";
 import exit from "./exit.js";
 import hub from "./hub.js";
 import instruction from "./instruction.js";
+import interaction from "./interaction.js";
 import jump from "./jump.js";
 import scene from "./scene.js";
 import subflow from "./subflow.js";
 
-const NODE_DEFS = { entry, exit, dialogue, hub, condition, instruction, jump, subflow, scene };
+const NODE_DEFS = {
+  entry,
+  exit,
+  dialogue,
+  hub,
+  condition,
+  instruction,
+  interaction,
+  jump,
+  subflow,
+  scene,
+};
 
 /**
  * Returns the full definition object for a node type.

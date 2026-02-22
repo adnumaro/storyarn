@@ -54,6 +54,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
           |> assign(:node_form, form)
           |> assign(:save_status, :saved)
           |> maybe_refresh_referencing_jumps(updated_node)
+          |> maybe_refresh_interaction_data(updated_node)
           |> push_node_or_flow_update(updated_node, renamed_count)
 
         # Push undo snapshot only when no cascade occurred.
@@ -285,6 +286,13 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
   defp maybe_refresh_referencing_jumps(socket, _node), do: socket
 
+  # Refreshes interaction assigns when map_id changes.
+  defp maybe_refresh_interaction_data(socket, %{type: "interaction"} = node) do
+    NodeTypeRegistry.on_select("interaction", node, socket)
+  end
+
+  defp maybe_refresh_interaction_data(socket, _node), do: socket
+
   # Normalizes empty strings to nil for ID fields that should be nullable.
   @doc false
   def normalize_form_params(params) do
@@ -354,6 +362,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          |> assign(:node_form, form)
          |> assign(:save_status, :saved)
          |> maybe_refresh_referencing_jumps(updated_node)
+         |> maybe_refresh_interaction_data(updated_node)
          |> push_event("node_updated", %{id: node_id, data: canvas_data(updated_node)})}
 
       {:error, :hub_id_required} ->
