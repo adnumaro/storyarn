@@ -12,6 +12,7 @@ defmodule Storyarn.Shortcuts do
   alias Storyarn.Maps.Map, as: MapSchema
   alias Storyarn.Repo
   alias Storyarn.Screenplays.Screenplay
+  alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Sheets.Sheet
 
   @doc """
@@ -33,7 +34,7 @@ defmodule Storyarn.Shortcuts do
     do: generate_unique(name, &list_map_shortcuts(project_id, &1), exclude_id)
 
   defp generate_unique(name, list_fn, exclude_id) do
-    base_shortcut = slugify(name)
+    base_shortcut = NameNormalizer.shortcutify(name)
 
     if base_shortcut == "" do
       nil
@@ -41,40 +42,6 @@ defmodule Storyarn.Shortcuts do
       existing = list_fn.(exclude_id)
       find_unique_shortcut(base_shortcut, existing)
     end
-  end
-
-  @doc """
-  Slugifies a name into a valid shortcut format.
-
-  - Converts to lowercase
-  - Replaces spaces and underscores with hyphens
-  - Removes invalid characters (keeps alphanumeric, dots, hyphens)
-  - Removes leading/trailing dots and hyphens
-  - Collapses multiple hyphens into one
-
-  ## Examples
-
-      iex> Storyarn.Shortcuts.slugify("My Character")
-      "my-character"
-
-      iex> Storyarn.Shortcuts.slugify("Chapter 1: The Beginning")
-      "chapter-1-the-beginning"
-
-      iex> Storyarn.Shortcuts.slugify("MC.Jaime")
-      "mc.jaime"
-  """
-  def slugify(nil), do: ""
-  def slugify(""), do: ""
-
-  def slugify(name) when is_binary(name) do
-    name
-    |> String.downcase()
-    |> String.replace(~r/[\s_]+/, "-")
-    |> String.replace(~r/[^a-z0-9.\-]/, "")
-    |> String.replace(~r/-+/, "-")
-    |> String.replace(~r/\.+/, ".")
-    |> String.replace(~r/^[.\-]+/, "")
-    |> String.replace(~r/[.\-]+$/, "")
   end
 
   # Private functions

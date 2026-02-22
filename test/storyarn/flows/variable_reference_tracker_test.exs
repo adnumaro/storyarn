@@ -1095,10 +1095,10 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      # Rename the block's variable_name (label change: "Health" → "Vitality")
-      Storyarn.Sheets.update_block(ctx.health_block, %{
-        config: %{"label" => "Vitality", "placeholder" => "0"}
-      })
+      # Directly rename variable_name bypassing CRUD protection
+      ctx.health_block
+      |> Ecto.Changeset.change(%{variable_name: "vitality"})
+      |> Storyarn.Repo.update!()
 
       # Verify stale
       refs = VariableReferenceTracker.check_stale_references(ctx.health_block.id, ctx.project.id)
@@ -1520,10 +1520,10 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      # Rename the table block label → changes variable_name
-      Storyarn.Sheets.update_block(ctx.table_block, %{
-        config: %{"label" => "Stats", "collapsed" => false}
-      })
+      # Directly rename variable_name bypassing CRUD protection
+      ctx.table_block
+      |> Ecto.Changeset.change(%{variable_name: "stats"})
+      |> Storyarn.Repo.update!()
 
       stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
       assert MapSet.member?(stale_ids, node.id)
@@ -1549,8 +1549,10 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      # Rename the row → changes slug
-      Storyarn.Sheets.update_table_row(ctx.strength_row, %{name: "Power"})
+      # Directly rename slug bypassing CRUD protection
+      ctx.strength_row
+      |> Ecto.Changeset.change(%{slug: "power"})
+      |> Storyarn.Repo.update!()
 
       stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
       assert MapSet.member?(stale_ids, node.id)
@@ -1578,8 +1580,10 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      # Rename the column → changes slug
-      Storyarn.Sheets.update_table_column(extra_col, %{name: "Points"})
+      # Directly rename slug bypassing CRUD protection
+      extra_col
+      |> Ecto.Changeset.change(%{slug: "points"})
+      |> Storyarn.Repo.update!()
 
       stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
       assert MapSet.member?(stale_ids, node.id)
@@ -1623,10 +1627,10 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       VariableReferenceTracker.update_references(table_node)
       VariableReferenceTracker.update_references(regular_node)
 
-      # Rename the table block → only table ref becomes stale
-      Storyarn.Sheets.update_block(ctx.table_block, %{
-        config: %{"label" => "Stats", "collapsed" => false}
-      })
+      # Directly rename variable_name bypassing CRUD protection
+      ctx.table_block
+      |> Ecto.Changeset.change(%{variable_name: "stats"})
+      |> Storyarn.Repo.update!()
 
       stale_ids = VariableReferenceTracker.list_stale_node_ids(ctx.flow.id)
       assert MapSet.member?(stale_ids, table_node.id)
@@ -1691,9 +1695,10 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      Storyarn.Sheets.update_block(ctx.table_block, %{
-        config: %{"label" => "Stats", "collapsed" => false}
-      })
+      # Directly rename variable_name bypassing CRUD protection
+      ctx.table_block
+      |> Ecto.Changeset.change(%{variable_name: "stats"})
+      |> Storyarn.Repo.update!()
 
       refs = VariableReferenceTracker.check_stale_references(ctx.table_block.id, ctx.project.id)
       assert length(refs) == 1
@@ -1763,9 +1768,10 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      Storyarn.Sheets.update_block(ctx.table_block, %{
-        config: %{"label" => "Stats", "collapsed" => false}
-      })
+      # Directly rename variable_name bypassing CRUD protection
+      ctx.table_block
+      |> Ecto.Changeset.change(%{variable_name: "stats"})
+      |> Storyarn.Repo.update!()
 
       {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
       assert count == 1

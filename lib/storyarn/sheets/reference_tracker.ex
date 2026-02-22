@@ -18,7 +18,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   - **Deleted sources**: References from soft-deleted blocks/sheets are excluded from backlinks
   - **Deleted targets**: References to deleted targets show "not found" in UI
-  - **Orphaned references**: Use `cleanup_orphaned_references/0` to remove stale data
+  - **Orphaned references**: Stale references are cleaned up during bulk deletions
   - **Cross-project**: References are always scoped to a single project
 
   ## Performance
@@ -208,8 +208,11 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     block_backlinks = query_block_backlinks(target_type, target_id, project_id)
     flow_backlinks = query_flow_node_backlinks(target_type, target_id, project_id)
     screenplay_backlinks = query_screenplay_element_backlinks(target_type, target_id, project_id)
+    map_pin_backlinks = query_map_pin_backlinks(target_type, target_id, project_id)
+    map_zone_backlinks = query_map_zone_backlinks(target_type, target_id, project_id)
 
-    (block_backlinks ++ flow_backlinks ++ screenplay_backlinks)
+    (block_backlinks ++
+       flow_backlinks ++ screenplay_backlinks ++ map_pin_backlinks ++ map_zone_backlinks)
     |> Enum.sort_by(& &1.inserted_at, {:desc, NaiveDateTime})
   end
 
@@ -349,6 +352,94 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     |> Repo.one()
   end
 
+  # ---------------------------------------------------------------------------
+  # Map element references (pins & zones)
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Updates references from a map pin.
+  Tracks target_type/target_id and sheet_id references.
+  """
+  @spec update_map_pin_references(map()) :: :ok
+  def update_map_pin_references(%{id: pin_id} = pin) do
+    delete_map_pin_references(pin_id)
+
+    refs = extract_map_pin_refs(pin)
+
+    for ref <- refs do
+      target_id = parse_id(ref.id)
+
+      if target_id do
+        %EntityReference{}
+        |> EntityReference.changeset(%{
+          source_type: "map_pin",
+          source_id: pin_id,
+          target_type: ref.type,
+          target_id: target_id,
+          context: ref.context
+        })
+        |> Repo.insert(on_conflict: :nothing)
+      end
+    end
+
+    :ok
+  end
+
+  def update_map_pin_references(_pin), do: :ok
+
+  @doc """
+  Deletes all references from a map pin.
+  """
+  @spec delete_map_pin_references(any()) :: {integer(), nil}
+  def delete_map_pin_references(pin_id) do
+    from(r in EntityReference,
+      where: r.source_type == "map_pin" and r.source_id == ^pin_id
+    )
+    |> Repo.delete_all()
+  end
+
+  @doc """
+  Updates references from a map zone.
+  Tracks target_type/target_id references.
+  """
+  @spec update_map_zone_references(map()) :: :ok
+  def update_map_zone_references(%{id: zone_id} = zone) do
+    delete_map_zone_references(zone_id)
+
+    refs = extract_map_zone_refs(zone)
+
+    for ref <- refs do
+      target_id = parse_id(ref.id)
+
+      if target_id do
+        %EntityReference{}
+        |> EntityReference.changeset(%{
+          source_type: "map_zone",
+          source_id: zone_id,
+          target_type: ref.type,
+          target_id: target_id,
+          context: ref.context
+        })
+        |> Repo.insert(on_conflict: :nothing)
+      end
+    end
+
+    :ok
+  end
+
+  def update_map_zone_references(_zone), do: :ok
+
+  @doc """
+  Deletes all references from a map zone.
+  """
+  @spec delete_map_zone_references(any()) :: {integer(), nil}
+  def delete_map_zone_references(zone_id) do
+    from(r in EntityReference,
+      where: r.source_type == "map_zone" and r.source_id == ^zone_id
+    )
+    |> Repo.delete_all()
+  end
+
   @doc """
   Deletes all references pointing to a specific target.
   Called when permanently deleting a sheet or flow.
@@ -361,41 +452,86 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     |> Repo.delete_all()
   end
 
-  @doc """
-  Cleans up orphaned references where source or target no longer exists.
-  Should be called periodically or after bulk deletions.
-  """
-  @spec cleanup_orphaned_references() :: :ok
-  def cleanup_orphaned_references do
-    # Clean up references where source block no longer exists
-    from(r in EntityReference,
-      where: r.source_type == "block",
-      where: fragment("NOT EXISTS (SELECT 1 FROM blocks WHERE id = ?)", r.source_id)
-    )
-    |> Repo.delete_all()
+  defp query_map_pin_backlinks(target_type, target_id, project_id) do
+    alias Storyarn.Maps.{Map, MapPin}
 
-    # Clean up references where target sheet no longer exists (hard deleted)
     from(r in EntityReference,
-      where: r.target_type == "sheet",
-      where: fragment("NOT EXISTS (SELECT 1 FROM sheets WHERE id = ?)", r.target_id)
+      join: p in MapPin,
+      on: r.source_type == "map_pin" and r.source_id == p.id,
+      join: m in Map,
+      on: p.map_id == m.id,
+      where: r.target_type == ^target_type and r.target_id == ^target_id,
+      where: m.project_id == ^project_id,
+      select: %{
+        id: r.id,
+        source_type: r.source_type,
+        source_id: r.source_id,
+        context: r.context,
+        inserted_at: r.inserted_at,
+        pin_label: p.label,
+        map_id: m.id,
+        map_name: m.name
+      },
+      order_by: [desc: r.inserted_at]
     )
-    |> Repo.delete_all()
+    |> Repo.all()
+    |> Enum.map(fn ref ->
+      %{
+        id: ref.id,
+        source_type: "map_pin",
+        source_id: ref.source_id,
+        context: ref.context,
+        inserted_at: ref.inserted_at,
+        source_info: %{
+          type: :map,
+          map_id: ref.map_id,
+          map_name: ref.map_name,
+          element_type: "pin",
+          element_label: ref.pin_label
+        }
+      }
+    end)
+  end
 
-    # Clean up references where source screenplay element no longer exists
+  defp query_map_zone_backlinks(target_type, target_id, project_id) do
+    alias Storyarn.Maps.{Map, MapZone}
+
     from(r in EntityReference,
-      where: r.source_type == "screenplay_element",
-      where: fragment("NOT EXISTS (SELECT 1 FROM screenplay_elements WHERE id = ?)", r.source_id)
+      join: z in MapZone,
+      on: r.source_type == "map_zone" and r.source_id == z.id,
+      join: m in Map,
+      on: z.map_id == m.id,
+      where: r.target_type == ^target_type and r.target_id == ^target_id,
+      where: m.project_id == ^project_id,
+      select: %{
+        id: r.id,
+        source_type: r.source_type,
+        source_id: r.source_id,
+        context: r.context,
+        inserted_at: r.inserted_at,
+        zone_name: z.name,
+        map_id: m.id,
+        map_name: m.name
+      },
+      order_by: [desc: r.inserted_at]
     )
-    |> Repo.delete_all()
-
-    # Clean up references where target flow no longer exists
-    from(r in EntityReference,
-      where: r.target_type == "flow",
-      where: fragment("NOT EXISTS (SELECT 1 FROM flows WHERE id = ?)", r.target_id)
-    )
-    |> Repo.delete_all()
-
-    :ok
+    |> Repo.all()
+    |> Enum.map(fn ref ->
+      %{
+        id: ref.id,
+        source_type: "map_zone",
+        source_id: ref.source_id,
+        context: ref.context,
+        inserted_at: ref.inserted_at,
+        source_info: %{
+          type: :map,
+          map_id: ref.map_id,
+          map_name: ref.map_name,
+          element_type: "zone",
+          element_label: ref.zone_name
+        }
+      }
+    end)
   end
 
   # Private functions
@@ -494,15 +630,11 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   defp extract_flow_node_refs(data) do
     refs = []
 
-    # Extract speaker reference (speaker can be a map with id, or just a string name)
-    refs =
-      case data["speaker"] do
-        %{"id" => speaker_id} when not is_nil(speaker_id) ->
-          [%{type: "sheet", id: speaker_id, context: "speaker"} | refs]
+    # Extract speaker reference (stored as speaker_sheet_id integer)
+    refs = maybe_add_sheet_ref(refs, data["speaker_sheet_id"], "speaker")
 
-        _ ->
-          refs
-      end
+    # Extract location reference (stored as location_sheet_id integer)
+    refs = maybe_add_sheet_ref(refs, data["location_sheet_id"], "location")
 
     # Extract mentions from dialogue text
     refs =
@@ -514,5 +646,42 @@ defmodule Storyarn.Sheets.ReferenceTracker do
       end
 
     refs
+  end
+
+  defp maybe_add_sheet_ref(refs, nil, _context), do: refs
+  defp maybe_add_sheet_ref(refs, "", _context), do: refs
+
+  defp maybe_add_sheet_ref(refs, sheet_id, context) do
+    [%{type: "sheet", id: sheet_id, context: context} | refs]
+  end
+
+  defp extract_map_pin_refs(pin) do
+    refs = []
+
+    # Track target_type/target_id (navigate link)
+    refs =
+      if pin.target_type && pin.target_id do
+        [%{type: pin.target_type, id: pin.target_id, context: "target"} | refs]
+      else
+        refs
+      end
+
+    # Track sheet_id (avatar/display sheet — separate from target)
+    refs =
+      if pin.sheet_id && pin.sheet_id != pin.target_id do
+        [%{type: "sheet", id: pin.sheet_id, context: "display"} | refs]
+      else
+        refs
+      end
+
+    refs
+  end
+
+  defp extract_map_zone_refs(zone) do
+    if zone.target_type && zone.target_id do
+      [%{type: zone.target_type, id: zone.target_id, context: "target"}]
+    else
+      []
+    end
   end
 end

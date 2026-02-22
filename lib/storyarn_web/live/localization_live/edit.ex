@@ -7,6 +7,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
 
   @impl true
   def render(assigns) do
@@ -170,67 +171,49 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
 
   @impl true
   def handle_event("save_translation", %{"localized_text" => params}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        now = DateTime.utc_now() |> DateTime.truncate(:second)
-        params = Map.put(params, "last_translated_at", now)
+    with_authorization(socket, :edit_content, fn socket ->
+      now = TimeHelpers.now()
+      params = Map.put(params, "last_translated_at", now)
 
-        case Localization.update_text(socket.assigns.text, params) do
-          {:ok, updated_text} ->
-            socket =
-              socket
-              |> assign(:text, updated_text)
-              |> assign(:form, build_form(updated_text))
-              |> put_flash(:info, dgettext("localization", "Translation saved."))
+      case Localization.update_text(socket.assigns.text, params) do
+        {:ok, updated_text} ->
+          socket =
+            socket
+            |> assign(:text, updated_text)
+            |> assign(:form, build_form(updated_text))
+            |> put_flash(:info, dgettext("localization", "Translation saved."))
 
-            {:noreply, socket}
+          {:noreply, socket}
 
-          {:error, changeset} ->
-            {:noreply, assign(socket, :form, to_form(changeset, as: "localized_text"))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("localization", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, changeset} ->
+          {:noreply, assign(socket, :form, to_form(changeset, as: "localized_text"))}
+      end
+    end)
   end
 
   def handle_event("translate_with_deepl", _params, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        text = socket.assigns.text
+    with_authorization(socket, :edit_content, fn socket ->
+      text = socket.assigns.text
 
-        case Localization.translate_single(socket.assigns.project.id, text.id) do
-          {:ok, updated_text} ->
-            socket =
-              socket
-              |> assign(:text, updated_text)
-              |> assign(:form, build_form(updated_text))
-              |> put_flash(:info, dgettext("localization", "Translation complete."))
+      case Localization.translate_single(socket.assigns.project.id, text.id) do
+        {:ok, updated_text} ->
+          socket =
+            socket
+            |> assign(:text, updated_text)
+            |> assign(:form, build_form(updated_text))
+            |> put_flash(:info, dgettext("localization", "Translation complete."))
 
-            {:noreply, socket}
+          {:noreply, socket}
 
-          {:error, reason} ->
-            {:noreply,
-             put_flash(
-               socket,
-               :error,
-               dgettext("localization", "Translation failed: %{reason}", reason: inspect(reason))
-             )}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("localization", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, reason} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             dgettext("localization", "Translation failed: %{reason}", reason: inspect(reason))
+           )}
+      end
+    end)
   end
 
   defp build_form(text) do

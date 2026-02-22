@@ -9,12 +9,17 @@ defmodule Storyarn.Sheets.SheetQueries do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
+  alias Storyarn.Shared.SearchHelpers
   alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
 
   # =============================================================================
   # Tree Operations
   # =============================================================================
 
+  @doc """
+  Lists root-level sheets for a project as a recursive tree.
+  Each sheet has `:children` populated with nested descendants.
+  """
   @spec list_sheets_tree(integer()) :: [Sheet.t()]
   def list_sheets_tree(project_id) do
     from(s in Sheet,
@@ -25,6 +30,9 @@ defmodule Storyarn.Sheets.SheetQueries do
     |> preload_children_recursive()
   end
 
+  @doc """
+  Gets a sheet with blocks and assets preloaded. Returns nil if not found.
+  """
   @spec get_sheet(integer(), integer()) :: Sheet.t() | nil
   def get_sheet(project_id, sheet_id) do
     Sheet
@@ -34,6 +42,9 @@ defmodule Storyarn.Sheets.SheetQueries do
     |> Repo.one()
   end
 
+  @doc """
+  Gets a sheet with blocks and assets preloaded. Raises if not found.
+  """
   @spec get_sheet!(integer(), integer()) :: Sheet.t()
   def get_sheet!(project_id, sheet_id) do
     Sheet
@@ -43,6 +54,10 @@ defmodule Storyarn.Sheets.SheetQueries do
     |> Repo.one!()
   end
 
+  @doc """
+  Returns the sheet with its full ancestor chain (root-first).
+  Returns nil if the sheet doesn't exist.
+  """
   @spec get_sheet_with_ancestors(integer(), integer()) :: [Sheet.t()] | nil
   def get_sheet_with_ancestors(project_id, sheet_id) do
     case get_sheet(project_id, sheet_id) do
@@ -51,6 +66,9 @@ defmodule Storyarn.Sheets.SheetQueries do
     end
   end
 
+  @doc """
+  Gets a sheet with all descendants recursively loaded into `:children`.
+  """
   @spec get_sheet_with_descendants(integer(), integer()) :: Sheet.t() | nil
   def get_sheet_with_descendants(project_id, sheet_id) do
     case get_sheet(project_id, sheet_id) do
@@ -59,6 +77,9 @@ defmodule Storyarn.Sheets.SheetQueries do
     end
   end
 
+  @doc """
+  Lists direct children of a sheet, ordered by position then name.
+  """
   @spec get_children(integer()) :: [Sheet.t()]
   def get_children(sheet_id) do
     from(s in Sheet,
@@ -69,6 +90,9 @@ defmodule Storyarn.Sheets.SheetQueries do
     |> Repo.all()
   end
 
+  @doc """
+  Lists all non-deleted sheets for a project (flat, no tree structure).
+  """
   @spec list_all_sheets(integer()) :: [Sheet.t()]
   def list_all_sheets(project_id) do
     from(s in Sheet,
@@ -79,6 +103,9 @@ defmodule Storyarn.Sheets.SheetQueries do
     |> Repo.all()
   end
 
+  @doc """
+  Lists sheets that have no children (leaf nodes in the tree).
+  """
   @spec list_leaf_sheets(integer()) :: [Sheet.t()]
   def list_leaf_sheets(project_id) do
     parent_ids_subquery =
@@ -101,6 +128,10 @@ defmodule Storyarn.Sheets.SheetQueries do
   # Search
   # =============================================================================
 
+  @doc """
+  Searches sheets by name or shortcut. Returns up to 10 results.
+  Empty query returns most recently updated sheets.
+  """
   @spec search_sheets(integer(), String.t()) :: [Sheet.t()]
   def search_sheets(project_id, query) when is_binary(query) do
     query = String.trim(query)
@@ -113,7 +144,7 @@ defmodule Storyarn.Sheets.SheetQueries do
       )
       |> Repo.all()
     else
-      search_term = "%#{query}%"
+      search_term = "%#{SearchHelpers.sanitize_like_query(query)}%"
 
       from(s in Sheet,
         where: s.project_id == ^project_id and is_nil(s.deleted_at),
@@ -125,6 +156,10 @@ defmodule Storyarn.Sheets.SheetQueries do
     end
   end
 
+  @doc """
+  Finds a sheet by its unique shortcut within a project.
+  Returns nil if not found or shortcut is nil.
+  """
   @spec get_sheet_by_shortcut(integer(), String.t() | nil) :: Sheet.t() | nil
   def get_sheet_by_shortcut(project_id, shortcut) when is_binary(shortcut) do
     from(s in Sheet,
@@ -140,6 +175,10 @@ defmodule Storyarn.Sheets.SheetQueries do
   # Variables
   # =============================================================================
 
+  @doc """
+  Lists all variables in a project (block variables + table cell variables).
+  Each entry includes sheet info, variable name, type, options, and constraints.
+  """
   @spec list_project_variables(integer()) :: [map()]
   def list_project_variables(project_id) do
     list_block_variables(project_id) ++ list_table_variables(project_id)
@@ -387,7 +426,13 @@ defmodule Storyarn.Sheets.SheetQueries do
   defp parse_table_ref(ref) do
     case String.split(ref, ".") do
       [shortcut, table_name, row_slug, col_slug] ->
-        %{shortcut: shortcut, table_name: table_name, row_slug: row_slug, col_slug: col_slug, ref: ref}
+        %{
+          shortcut: shortcut,
+          table_name: table_name,
+          row_slug: row_slug,
+          col_slug: col_slug,
+          ref: ref
+        }
 
       _ ->
         nil
@@ -447,6 +492,10 @@ defmodule Storyarn.Sheets.SheetQueries do
   # Reference Validation
   # =============================================================================
 
+  @doc """
+  Validates that a reference target (sheet or flow) exists in the project.
+  Returns `{:ok, entity}` or `{:error, reason}`.
+  """
   @spec validate_reference_target(String.t(), integer(), integer()) ::
           {:ok, Sheet.t() | Storyarn.Flows.Flow.t()} | {:error, :not_found | :invalid_type}
   def validate_reference_target(target_type, target_id, project_id) do
@@ -568,6 +617,9 @@ defmodule Storyarn.Sheets.SheetQueries do
   # Trash
   # =============================================================================
 
+  @doc """
+  Lists all soft-deleted sheets for the trash view.
+  """
   @spec list_trashed_sheets(integer()) :: [Sheet.t()]
   def list_trashed_sheets(project_id) do
     from(s in Sheet,
@@ -578,6 +630,9 @@ defmodule Storyarn.Sheets.SheetQueries do
     |> Repo.all()
   end
 
+  @doc """
+  Gets a single trashed sheet for restore/permanent-delete operations.
+  """
   @spec get_trashed_sheet(integer(), integer()) :: Sheet.t() | nil
   def get_trashed_sheet(project_id, sheet_id) do
     Sheet

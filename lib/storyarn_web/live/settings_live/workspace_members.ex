@@ -145,34 +145,16 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
   @impl true
   def handle_event("send_invitation", %{"invite" => invite_params}, socket) do
-    case authorize(socket, :manage_workspace_members) do
-      :ok ->
-        do_send_invitation(socket, invite_params)
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("workspaces", "You don't have permission to perform this action.")
-         )}
-    end
+    with_authorization(socket, :manage_workspace_members, fn socket ->
+      do_send_invitation(socket, invite_params)
+    end)
   end
 
   @impl true
   def handle_event("revoke_invitation", %{"id" => id}, socket) do
-    case authorize(socket, :manage_workspace_members) do
-      :ok ->
-        do_revoke_invitation(socket, id)
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("workspaces", "You don't have permission to perform this action.")
-         )}
-    end
+    with_authorization(socket, :manage_workspace_members, fn socket ->
+      do_revoke_invitation(socket, id)
+    end)
   end
 
   @impl true

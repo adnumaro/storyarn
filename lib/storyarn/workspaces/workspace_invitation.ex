@@ -9,7 +9,7 @@ defmodule Storyarn.Workspaces.WorkspaceInvitation do
   import Ecto.Query
 
   alias Storyarn.Accounts.User
-  alias Storyarn.Shared.TokenGenerator
+  alias Storyarn.Shared.{TokenGenerator, Validations}
   alias Storyarn.Workspaces.Workspace
 
   @invitation_validity_in_days 7
@@ -49,9 +49,7 @@ defmodule Storyarn.Workspaces.WorkspaceInvitation do
     invitation
     |> cast(attrs, [:email, :role, :workspace_id, :invited_by_id])
     |> validate_required([:email, :role, :workspace_id, :invited_by_id])
-    |> validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/,
-      message: "must have the @ sign and no spaces"
-    )
+    |> Validations.validate_email_format()
     |> validate_inclusion(:role, ~w(admin member viewer))
     |> foreign_key_constraint(:workspace_id)
     |> foreign_key_constraint(:invited_by_id)

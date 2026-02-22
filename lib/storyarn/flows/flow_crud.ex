@@ -8,7 +8,8 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Localization.TextExtractor
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.{MapUtils, NameNormalizer, SearchHelpers, ShortcutHelpers, SoftDelete}
+  alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Shortcuts
 
   @doc """
@@ -38,14 +39,6 @@ defmodule Storyarn.Flows.FlowCrud do
 
     # Build tree structure in memory
     build_tree(all_flows, nil)
-  end
-
-  @doc """
-  Lists flows by parent (for tree navigation).
-  Use parent_id = nil for root level flows.
-  """
-  def list_flows_by_parent(project_id, parent_id) do
-    TreeOperations.list_flows_by_parent(project_id, parent_id)
   end
 
   defp build_tree(all_flows, parent_id) do
@@ -92,7 +85,7 @@ defmodule Storyarn.Flows.FlowCrud do
       )
       |> Repo.all()
     else
-      search_term = "%#{query_str}%"
+      search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
 
       from(f in base,
         where: ilike(f.name, ^search_term) or ilike(f.shortcut, ^search_term),
@@ -127,7 +120,8 @@ defmodule Storyarn.Flows.FlowCrud do
       limit = Keyword.get(opts, :limit, @default_search_limit)
       offset = Keyword.get(opts, :offset, 0)
       exclude_id = Keyword.get(opts, :exclude_id)
-      search_term = "%#{query_str}%"
+
+      search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
 
       from(f in Flow,
         where: f.project_id == ^project_id and is_nil(f.deleted_at),
@@ -318,7 +312,10 @@ defmodule Storyarn.Flows.FlowCrud do
         case flow |> Flow.delete_changeset() |> Repo.update() do
           {:ok, deleted_flow} ->
             # Also soft-delete all children recursively
-            soft_delete_children(flow.project_id, flow.id)
+            SoftDelete.soft_delete_children(Flow, flow.project_id, flow.id,
+              pre_delete: &TextExtractor.delete_flow_texts(&1.id)
+            )
+
             deleted_flow
 
           {:error, changeset} ->
@@ -378,37 +375,8 @@ defmodule Storyarn.Flows.FlowCrud do
     end)
   end
 
-  defp soft_delete_children(project_id, parent_id) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
-
-    # Get all children
-    children =
-      from(f in Flow,
-        where: f.project_id == ^project_id and f.parent_id == ^parent_id and is_nil(f.deleted_at)
-      )
-      |> Repo.all()
-
-    # Soft delete each child and recursively delete their children
-    Enum.each(children, fn child ->
-      TextExtractor.delete_flow_texts(child.id)
-
-      from(f in Flow, where: f.id == ^child.id)
-      |> Repo.update_all(set: [deleted_at: now])
-
-      # Always recurse - any flow can have children
-      soft_delete_children(project_id, child.id)
-    end)
-  end
-
   def change_flow(%Flow{} = flow, attrs \\ %{}) do
     Flow.update_changeset(flow, attrs)
-  end
-
-  def get_main_flow(project_id) do
-    from(f in Flow,
-      where: f.project_id == ^project_id and f.is_main == true and is_nil(f.deleted_at)
-    )
-    |> Repo.one()
   end
 
   def set_main_flow(%Flow{} = flow) do
@@ -423,68 +391,62 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   defp maybe_generate_shortcut(attrs, project_id, exclude_flow_id) do
-    attrs = stringify_keys(attrs)
-    has_shortcut = Map.has_key?(attrs, "shortcut")
-    name = attrs["name"]
-
-    if has_shortcut || is_nil(name) || name == "" do
-      attrs
-    else
-      shortcut = Shortcuts.generate_flow_shortcut(name, project_id, exclude_flow_id)
-      Map.put(attrs, "shortcut", shortcut)
-    end
+    attrs
+    |> stringify_keys()
+    |> ShortcutHelpers.maybe_generate_shortcut(
+      project_id,
+      exclude_flow_id,
+      &Shortcuts.generate_flow_shortcut/3
+    )
   end
 
   defp maybe_generate_shortcut_on_update(%Flow{} = flow, attrs) do
     attrs = stringify_keys(attrs)
 
     cond do
-      # If attrs explicitly set shortcut, use that
       Map.has_key?(attrs, "shortcut") ->
         attrs
 
-      # If name is changing, regenerate shortcut from new name
-      name_changing?(attrs, flow) ->
-        shortcut = Shortcuts.generate_flow_shortcut(attrs["name"], flow.project_id, flow.id)
+      ShortcutHelpers.name_changing?(attrs, flow) ->
+        referenced? = ReferenceTracker.count_backlinks("flow", flow.id) > 0
+
+        shortcut =
+          NameNormalizer.maybe_regenerate(
+            flow.shortcut,
+            attrs["name"],
+            referenced?,
+            &NameNormalizer.shortcutify/1
+          )
+
+        shortcut =
+          if shortcut != flow.shortcut do
+            Shortcuts.generate_flow_shortcut(attrs["name"], flow.project_id, flow.id)
+          else
+            shortcut
+          end
+
         Map.put(attrs, "shortcut", shortcut)
 
-      # If flow has no shortcut yet, generate one from current name
-      missing_shortcut?(flow) ->
-        generate_shortcut_from_current_name(flow, attrs)
+      ShortcutHelpers.missing_shortcut?(flow) ->
+        ShortcutHelpers.generate_shortcut_from_name(
+          flow,
+          attrs,
+          &Shortcuts.generate_flow_shortcut/3
+        )
 
       true ->
         attrs
     end
   end
 
-  defp name_changing?(attrs, flow) do
-    new_name = attrs["name"]
-    new_name && new_name != "" && new_name != flow.name
-  end
-
-  defp missing_shortcut?(flow) do
-    is_nil(flow.shortcut) || flow.shortcut == ""
-  end
-
-  defp generate_shortcut_from_current_name(flow, attrs) do
-    name = flow.name
-
-    if name && name != "" do
-      shortcut = Shortcuts.generate_flow_shortcut(name, flow.project_id, flow.id)
-      Map.put(attrs, "shortcut", shortcut)
-    else
-      attrs
-    end
-  end
-
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)
 
   defp maybe_assign_position(attrs, project_id, parent_id) do
-    if Map.has_key?(attrs, "position") do
-      attrs
-    else
-      position = TreeOperations.next_position(project_id, parent_id)
-      Map.put(attrs, "position", position)
-    end
+    ShortcutHelpers.maybe_assign_position(
+      attrs,
+      project_id,
+      parent_id,
+      &TreeOperations.next_position/2
+    )
   end
 end

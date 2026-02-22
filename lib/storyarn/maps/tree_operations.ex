@@ -5,6 +5,7 @@ defmodule Storyarn.Maps.TreeOperations do
 
   alias Storyarn.Maps.Map, as: MapSchema
   alias Storyarn.Repo
+  alias Storyarn.Shared.TreeOperations, as: SharedTree
 
   @doc """
   Reorders maps within a parent container.
@@ -15,14 +16,7 @@ defmodule Storyarn.Maps.TreeOperations do
   Returns `{:ok, maps}` with the reordered maps or `{:error, reason}`.
   """
   def reorder_maps(project_id, parent_id, map_ids) when is_list(map_ids) do
-    Repo.transaction(fn ->
-      map_ids
-      |> Enum.reject(&is_nil/1)
-      |> Enum.with_index()
-      |> Enum.each(&update_map_position(&1, project_id, parent_id))
-
-      list_maps_by_parent(project_id, parent_id)
-    end)
+    SharedTree.reorder(MapSchema, project_id, parent_id, map_ids, &list_maps_by_parent/2)
   end
 
   @doc """
@@ -39,6 +33,35 @@ defmodule Storyarn.Maps.TreeOperations do
     else
       do_move_map_to_position(map, new_parent_id, new_position)
     end
+  end
+
+  @doc """
+  Gets the next available position for a new map in the given container.
+  """
+  def next_position(project_id, parent_id) do
+    from(m in MapSchema,
+      where: m.project_id == ^project_id and is_nil(m.deleted_at),
+      select: max(m.position)
+    )
+    |> SharedTree.add_parent_filter(parent_id)
+    |> Repo.one()
+    |> case do
+      nil -> 0
+      max -> max + 1
+    end
+  end
+
+  @doc """
+  Lists maps for a given parent (or root level).
+  Excludes soft-deleted maps and orders by position then name.
+  """
+  def list_maps_by_parent(project_id, parent_id) do
+    from(m in MapSchema,
+      where: m.project_id == ^project_id and is_nil(m.deleted_at),
+      order_by: [asc: m.position, asc: m.name]
+    )
+    |> SharedTree.add_parent_filter(parent_id)
+    |> Repo.all()
   end
 
   defp do_move_map_to_position(%MapSchema{} = map, new_parent_id, new_position) do
@@ -78,71 +101,23 @@ defmodule Storyarn.Maps.TreeOperations do
 
     new_order
     |> Enum.with_index()
-    |> Enum.each(fn {map_id, index} -> update_position_only(map_id, index) end)
+    |> Enum.each(fn {map_id, index} ->
+      SharedTree.update_position_only(MapSchema, map_id, index)
+    end)
 
     maybe_reorder_source(project_id, old_parent_id, new_parent_id)
     Repo.get!(MapSchema, map.id)
   end
 
-  @doc """
-  Gets the next available position for a new map in the given container.
-  """
-  def next_position(project_id, parent_id) do
-    from(m in MapSchema,
-      where: m.project_id == ^project_id and is_nil(m.deleted_at),
-      select: max(m.position)
-    )
-    |> add_parent_filter(parent_id)
-    |> Repo.one()
-    |> case do
-      nil -> 0
-      max -> max + 1
-    end
-  end
-
-  @doc """
-  Lists maps for a given parent (or root level).
-  Excludes soft-deleted maps and orders by position then name.
-  """
-  def list_maps_by_parent(project_id, parent_id) do
-    from(m in MapSchema,
-      where: m.project_id == ^project_id and is_nil(m.deleted_at),
-      order_by: [asc: m.position, asc: m.name]
-    )
-    |> add_parent_filter(parent_id)
-    |> Repo.all()
-  end
-
-  defp update_map_position({map_id, index}, project_id, parent_id) do
-    query =
-      from(m in MapSchema,
-        where: m.id == ^map_id and m.project_id == ^project_id and is_nil(m.deleted_at)
-      )
-
-    query = add_parent_filter(query, parent_id)
-    Repo.update_all(query, set: [position: index])
-  end
-
-  defp update_position_only(map_id, position) do
-    from(m in MapSchema, where: m.id == ^map_id and is_nil(m.deleted_at))
-    |> Repo.update_all(set: [position: position])
-  end
-
-  defp reorder_source_container(project_id, parent_id) do
-    list_maps_by_parent(project_id, parent_id)
-    |> Enum.with_index()
-    |> Enum.each(fn {map, index} ->
-      update_position_only(map.id, index)
-    end)
-  end
-
-  defp add_parent_filter(query, nil), do: where(query, [m], is_nil(m.parent_id))
-  defp add_parent_filter(query, parent_id), do: where(query, [m], m.parent_id == ^parent_id)
-
   defp maybe_reorder_source(_project_id, parent_id, parent_id), do: :ok
 
   defp maybe_reorder_source(project_id, old_parent_id, _new_parent_id) do
-    reorder_source_container(project_id, old_parent_id)
+    SharedTree.reorder_source_container(
+      MapSchema,
+      project_id,
+      old_parent_id,
+      &list_maps_by_parent/2
+    )
   end
 
   # Walks upward from map_id through parent_id links.

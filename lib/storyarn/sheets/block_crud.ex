@@ -7,6 +7,9 @@ defmodule Storyarn.Sheets.BlockCrud do
   alias Storyarn.Localization.TextExtractor
   alias Storyarn.Repo
 
+  alias Storyarn.Flows.VariableReferenceTracker
+  alias Storyarn.Shared.NameNormalizer
+
   alias Storyarn.Sheets.{
     Block,
     PropertyInheritance,
@@ -106,6 +109,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     result =
       block
       |> Block.update_changeset(attrs)
+      |> maybe_sync_variable_name(block)
       |> ensure_unique_variable_name(block.sheet_id, block.id)
       |> Repo.update()
 
@@ -183,6 +187,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     result =
       block
       |> Block.config_changeset(%{config: config})
+      |> maybe_sync_variable_name(block)
       |> ensure_unique_variable_name(block.sheet_id, block.id)
       |> Repo.update()
 
@@ -271,6 +276,28 @@ defmodule Storyarn.Sheets.BlockCrud do
   @doc false
   def ensure_unique_variable_name_public(changeset, sheet_id, exclude_block_id) do
     ensure_unique_variable_name(changeset, sheet_id, exclude_block_id)
+  end
+
+  # Syncs variable_name from label only if the block has no variable references.
+  defp maybe_sync_variable_name(changeset, block) do
+    config = Ecto.Changeset.get_field(changeset, :config) || %{}
+    label = Map.get(config, "label")
+
+    if label do
+      referenced? = VariableReferenceTracker.count_variable_usage(block.id) != %{}
+
+      new_name =
+        NameNormalizer.maybe_regenerate(
+          block.variable_name,
+          label,
+          referenced?,
+          &NameNormalizer.variablify/1
+        )
+
+      Ecto.Changeset.put_change(changeset, :variable_name, new_name)
+    else
+      changeset
+    end
   end
 
   @doc """

@@ -19,11 +19,8 @@ defmodule Storyarn.Sheets.Sheet do
 
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Project
+  alias Storyarn.Shared.{TimeHelpers, Validations}
   alias Storyarn.Sheets.{Block, SheetVersion}
-
-  # Shortcut format: lowercase, alphanumeric, dots and hyphens allowed, no spaces
-  # Examples: mc.jaime, loc.tavern, items.sword, quest-1
-  @shortcut_format ~r/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$|^[a-z0-9]$/
 
   # Color format: hex color with 3, 6, or 8 characters (e.g., #fff, #3b82f6, #3b82f680)
   @color_format ~r/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
@@ -138,7 +135,7 @@ defmodule Storyarn.Sheets.Sheet do
   """
   def delete_changeset(sheet) do
     sheet
-    |> change(%{deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)})
+    |> change(%{deleted_at: TimeHelpers.now()})
   end
 
   @doc """
@@ -167,8 +164,7 @@ defmodule Storyarn.Sheets.Sheet do
 
   defp validate_shortcut(changeset) do
     changeset
-    |> validate_length(:shortcut, min: 1, max: 50)
-    |> validate_format(:shortcut, @shortcut_format,
+    |> Validations.validate_shortcut(
       message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., mc.jaime)"
     )
     |> unique_constraint(:shortcut,

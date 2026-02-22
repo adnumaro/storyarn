@@ -4,6 +4,7 @@ defmodule Storyarn.Localization.BatchTranslator do
   alias Storyarn.Localization.{LanguageCrud, Providers.DeepL, TextCrud}
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
 
   require Logger
 
@@ -70,7 +71,7 @@ defmodule Storyarn.Localization.BatchTranslator do
     if source_text && String.trim(source_text) != "" do
       case DeepL.translate([source_text], source_lang, text.locale_code, config) do
         {:ok, [%{text: translated}]} ->
-          now = DateTime.utc_now() |> DateTime.truncate(:second)
+          now = TimeHelpers.now()
 
           TextCrud.update_text(text, %{
             "translated_text" => translated,
@@ -109,7 +110,7 @@ defmodule Storyarn.Localization.BatchTranslator do
 
       case DeepL.translate(translatable_texts, source_lang, target_locale, config) do
         {:ok, translations} ->
-          now = DateTime.utc_now() |> DateTime.truncate(:second)
+          now = TimeHelpers.now()
           {translated, failed, errors} = apply_translations(indexed_texts, translations, now)
 
           {:ok,

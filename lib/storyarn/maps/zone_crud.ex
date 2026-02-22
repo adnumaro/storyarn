@@ -5,6 +5,7 @@ defmodule Storyarn.Maps.ZoneCrud do
 
   alias Storyarn.Maps.{MapZone, PositionUtils}
   alias Storyarn.Repo
+  alias Storyarn.Sheets.ReferenceTracker
 
   @doc """
   Lists zones for a map, with optional layer_id filter.
@@ -53,15 +54,31 @@ defmodule Storyarn.Maps.ZoneCrud do
     position = PositionUtils.next_position(MapZone, map_id)
     attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
 
-    %MapZone{map_id: map_id}
-    |> MapZone.create_changeset(Map.put(attrs, "position", position))
-    |> Repo.insert()
+    result =
+      %MapZone{map_id: map_id}
+      |> MapZone.create_changeset(Map.put(attrs, "position", position))
+      |> Repo.insert()
+
+    case result do
+      {:ok, zone} -> ReferenceTracker.update_map_zone_references(zone)
+      _ -> :ok
+    end
+
+    result
   end
 
   def update_zone(%MapZone{} = zone, attrs) do
-    zone
-    |> MapZone.update_changeset(attrs)
-    |> Repo.update()
+    result =
+      zone
+      |> MapZone.update_changeset(attrs)
+      |> Repo.update()
+
+    case result do
+      {:ok, updated_zone} -> ReferenceTracker.update_map_zone_references(updated_zone)
+      _ -> :ok
+    end
+
+    result
   end
 
   @doc """
@@ -74,6 +91,7 @@ defmodule Storyarn.Maps.ZoneCrud do
   end
 
   def delete_zone(%MapZone{} = zone) do
+    ReferenceTracker.delete_map_zone_references(zone.id)
     Repo.delete(zone)
   end
 

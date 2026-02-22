@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   """
 
   use StoryarnWeb, :live_component
+  use StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.BlockComponents
   import StoryarnWeb.SheetLive.Components.InheritedBlockComponents
@@ -166,37 +167,37 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   # ===========================================================================
 
   def handle_event("add_block", %{"type" => type}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       BlockCrudHandlers.handle_add_block(type, socket, block_crud_helpers())
     end)
   end
 
   def handle_event("update_block_value", %{"id" => block_id, "value" => value}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       BlockCrudHandlers.handle_update_block_value(block_id, value, socket, block_crud_helpers())
     end)
   end
 
   def handle_event("delete_block", %{"id" => block_id}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       BlockCrudHandlers.handle_delete_block(block_id, socket, block_crud_helpers())
     end)
   end
 
   def handle_event("reorder", %{"ids" => ids, "group" => "blocks"}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       BlockCrudHandlers.handle_reorder(ids, socket, block_crud_helpers())
     end)
   end
 
   def handle_event("reorder_with_columns", %{"items" => items}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       BlockCrudHandlers.handle_reorder_with_columns(items, socket, block_crud_helpers())
     end)
   end
 
   def handle_event("create_column_group", %{"block_ids" => block_ids}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       BlockCrudHandlers.handle_create_column_group(block_ids, socket, block_crud_helpers())
     end)
   end
@@ -206,7 +207,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   # ===========================================================================
 
   def handle_event("toggle_multi_select", %{"id" => block_id, "key" => key}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       result = BlockHelpers.toggle_multi_select_value(socket, block_id, key)
       handle_block_result(socket, result)
     end)
@@ -217,7 +218,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         %{"key" => "Enter", "value" => value, "id" => block_id},
         socket
       ) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       result = BlockHelpers.handle_multi_select_enter_value(socket, block_id, value)
       handle_block_result(socket, result)
     end)
@@ -232,7 +233,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   # ===========================================================================
 
   def handle_event("update_rich_text", %{"id" => block_id, "content" => content}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       result = BlockHelpers.update_rich_text_value(socket, block_id, content)
       handle_block_result(socket, result)
     end)
@@ -266,7 +267,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   # ===========================================================================
 
   def handle_event("set_boolean_block", %{"id" => block_id, "value" => value}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       result = BlockHelpers.set_boolean_block_value(socket, block_id, value)
       handle_block_result(socket, result)
     end)
@@ -277,121 +278,121 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   # ===========================================================================
 
   def handle_event("resize_table_column", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_resize_column(params, socket)
     end)
   end
 
   def handle_event("update_table_cell", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_update_cell(params, socket, table_helpers())
     end)
   end
 
   def handle_event("toggle_table_collapse", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_toggle_collapse(params, socket, table_helpers())
     end)
   end
 
   def handle_event("toggle_table_cell_boolean", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_toggle_cell_boolean(params, socket, table_helpers())
     end)
   end
 
   def handle_event("add_table_column", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_add_column(params, socket, table_helpers())
     end)
   end
 
   def handle_event("add_table_row", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_add_row(params, socket, table_helpers())
     end)
   end
 
   def handle_event("rename_table_column", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_rename_column(params, socket, table_helpers())
     end)
   end
 
   def handle_event("change_table_column_type", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_change_column_type(params, socket, table_helpers())
     end)
   end
 
   def handle_event("toggle_table_column_constant", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_toggle_column_constant(params, socket, table_helpers())
     end)
   end
 
   def handle_event("toggle_table_column_required", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_toggle_column_required(params, socket, table_helpers())
     end)
   end
 
   def handle_event("delete_table_column", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_delete_column(params, socket, table_helpers())
     end)
   end
 
   def handle_event("rename_table_row", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_rename_row(params, socket, table_helpers())
     end)
   end
 
   def handle_event("rename_table_row_keydown", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_rename_row_keydown(params, socket, table_helpers())
     end)
   end
 
   def handle_event("delete_table_row", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_delete_row(params, socket, table_helpers())
     end)
   end
 
   def handle_event("reorder_table_rows", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_reorder_rows(params, socket, table_helpers())
     end)
   end
 
   def handle_event("toggle_reference_multiple", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_toggle_reference_multiple(params, socket, table_helpers())
     end)
   end
 
   def handle_event("update_number_constraint", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_update_number_constraint(params, socket, table_helpers())
     end)
   end
 
   def handle_event("select_table_cell", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_select_table_cell(params, socket, table_helpers())
     end)
   end
 
   def handle_event("toggle_table_cell_multi_select", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_toggle_table_cell_multi_select(params, socket, table_helpers())
     end)
   end
 
   def handle_event("add_table_cell_option", %{"key" => "Enter"} = params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_add_table_cell_option(params, socket, table_helpers())
     end)
   end
@@ -401,7 +402,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   end
 
   def handle_event("add_table_column_option_keydown", %{"key" => "Enter"} = params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_add_column_option(params, socket, table_helpers())
     end)
   end
@@ -411,13 +412,13 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   end
 
   def handle_event("remove_table_column_option", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_remove_column_option(params, socket, table_helpers())
     end)
   end
 
   def handle_event("update_table_column_option", params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_update_column_option(params, socket, table_helpers())
     end)
   end
@@ -427,7 +428,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   # ===========================================================================
 
   def handle_event("configure_block", %{"id" => block_id}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       ConfigPanelHandlers.handle_configure_block(block_id, socket, block_crud_helpers())
     end)
   end
@@ -437,13 +438,13 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   end
 
   def handle_event("save_block_config", %{"config" => config_params}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       ConfigPanelHandlers.handle_save_block_config(config_params, socket, block_crud_helpers())
     end)
   end
 
   def handle_event("toggle_constant", _params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       ConfigPanelHandlers.handle_toggle_constant(socket, block_crud_helpers())
     end)
   end
@@ -453,13 +454,13 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   # ===========================================================================
 
   def handle_event("add_select_option", _params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       ConfigHelpers.add_select_option(socket)
     end)
   end
 
   def handle_event("remove_select_option", %{"index" => index}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       ConfigHelpers.remove_select_option(socket, index)
     end)
   end
@@ -469,7 +470,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         %{"index" => index, "key" => key, "value" => value},
         socket
       ) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       ConfigHelpers.update_select_option(socket, index, key, value)
     end)
   end
@@ -487,14 +488,14 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         %{"block-id" => block_id, "type" => target_type, "id" => target_id},
         socket
       ) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       result = ReferenceHelpers.select_reference_value(socket, block_id, target_type, target_id)
       handle_block_result(socket, result)
     end)
   end
 
   def handle_event("clear_reference", %{"block-id" => block_id}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       result = ReferenceHelpers.clear_reference_value(socket, block_id)
       handle_block_result(socket, result)
     end)
@@ -505,25 +506,25 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   # ===========================================================================
 
   def handle_event("detach_inherited_block", %{"id" => block_id}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       InheritanceHandlers.handle_detach(block_id, socket, inheritance_helpers(socket))
     end)
   end
 
   def handle_event("reattach_block", %{"id" => block_id}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       InheritanceHandlers.handle_reattach(block_id, socket, inheritance_helpers(socket))
     end)
   end
 
   def handle_event("hide_inherited_for_children", %{"id" => block_id}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       InheritanceHandlers.handle_hide_for_children(block_id, socket, inheritance_helpers(socket))
     end)
   end
 
   def handle_event("unhide_inherited_for_children", %{"id" => block_id}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       InheritanceHandlers.handle_unhide_for_children(
         block_id,
         socket,
@@ -538,13 +539,13 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
   def handle_event("change_block_scope", %{"scope" => scope}, socket)
       when scope in ["self", "children"] do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       InheritanceHandlers.handle_change_scope(scope, socket, inheritance_helpers(socket))
     end)
   end
 
   def handle_event("toggle_required", _params, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       InheritanceHandlers.handle_toggle_required(socket, inheritance_helpers(socket))
     end)
   end
@@ -566,7 +567,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   end
 
   def handle_event("propagate_property", %{"sheet_ids" => sheet_ids_json}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       InheritanceHandlers.handle_propagate_property(
         sheet_ids_json,
         socket,
@@ -578,15 +579,6 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   # ===========================================================================
   # Private Helpers
   # ===========================================================================
-
-  defp with_authorization(socket, fun) do
-    if socket.assigns.can_edit do
-      fun.(socket)
-    else
-      {:noreply,
-       put_flash(socket, :error, dgettext("sheets", "You don't have permission to edit."))}
-    end
-  end
 
   defp handle_block_result(socket, {:ok, _blocks}) do
     maybe_create_version(socket)

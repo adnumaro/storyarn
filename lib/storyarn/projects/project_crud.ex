@@ -4,9 +4,9 @@ defmodule Storyarn.Projects.ProjectCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Projects.{Project, ProjectMembership}
-  alias Storyarn.Shared.SlugGenerator
+  alias Storyarn.Projects.{Memberships, Project, ProjectMembership}
   alias Storyarn.Repo
+  alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Workspaces.Workspace
 
   @doc """
@@ -49,7 +49,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   """
   def get_project(%Scope{user: user}, id) do
     with %Project{} = project <- Repo.get(Project, id),
-         %ProjectMembership{} = membership <- get_membership(project.id, user.id) do
+         %ProjectMembership{} = membership <- Memberships.get_membership(project.id, user.id) do
       {:ok, project, membership}
     else
       nil -> {:error, :not_found}
@@ -73,7 +73,7 @@ defmodule Storyarn.Projects.ProjectCrud do
         select: p
 
     with %Project{} = project <- Repo.one(query),
-         %ProjectMembership{} = membership <- get_membership(project.id, user.id) do
+         %ProjectMembership{} = membership <- Memberships.get_membership(project.id, user.id) do
       {:ok, project, membership}
     else
       nil -> {:error, :not_found}
@@ -120,7 +120,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   defp insert_project(user, attrs) do
     workspace_id = attrs[:workspace_id] || attrs["workspace_id"]
     name = attrs[:name] || attrs["name"] || "untitled"
-    slug = SlugGenerator.generate_unique_slug(Project, [workspace_id: workspace_id], name)
+    slug = NameNormalizer.generate_unique_slug(Project, [workspace_id: workspace_id], name)
 
     # Use same key type as input attrs (atom if attrs has atom keys, string otherwise)
     slug_key =
@@ -135,9 +135,5 @@ defmodule Storyarn.Projects.ProjectCrud do
     %ProjectMembership{}
     |> ProjectMembership.changeset(%{project_id: project.id, user_id: user.id, role: "owner"})
     |> Repo.insert()
-  end
-
-  defp get_membership(project_id, user_id) do
-    Repo.get_by(ProjectMembership, project_id: project_id, user_id: user_id)
   end
 end

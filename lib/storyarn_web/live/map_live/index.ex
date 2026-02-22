@@ -217,73 +217,46 @@ defmodule StoryarnWeb.MapLive.Index do
   end
 
   def handle_event("delete", %{"id" => map_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        case Maps.get_map(socket.assigns.project.id, map_id) do
-          nil -> {:noreply, put_flash(socket, :error, dgettext("maps", "Map not found."))}
-          map -> do_delete_map(socket, map)
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("maps", "You don't have permission to perform this action.")
-         )}
-    end
+    with_authorization(socket, :edit_content, fn socket ->
+      case Maps.get_map(socket.assigns.project.id, map_id) do
+        nil -> {:noreply, put_flash(socket, :error, dgettext("maps", "Map not found."))}
+        map -> do_delete_map(socket, map)
+      end
+    end)
   end
 
   def handle_event("create_map", _params, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        case Maps.create_map(socket.assigns.project, %{name: dgettext("maps", "Untitled")}) do
-          {:ok, new_map} ->
-            {:noreply,
-             push_navigate(socket,
-               to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/maps/#{new_map.id}"
-             )}
+    with_authorization(socket, :edit_content, fn socket ->
+      case Maps.create_map(socket.assigns.project, %{name: dgettext("maps", "Untitled")}) do
+        {:ok, new_map} ->
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/maps/#{new_map.id}"
+           )}
 
-          {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create map."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("maps", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create map."))}
+      end
+    end)
   end
 
   def handle_event("create_child_map", %{"parent-id" => parent_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        attrs = %{name: dgettext("maps", "Untitled"), parent_id: parent_id}
+    with_authorization(socket, :edit_content, fn socket ->
+      attrs = %{name: dgettext("maps", "Untitled"), parent_id: parent_id}
 
-        case Maps.create_map(socket.assigns.project, attrs) do
-          {:ok, new_map} ->
-            {:noreply,
-             push_navigate(socket,
-               to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/maps/#{new_map.id}"
-             )}
+      case Maps.create_map(socket.assigns.project, attrs) do
+        {:ok, new_map} ->
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/maps/#{new_map.id}"
+           )}
 
-          {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create map."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("maps", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, dgettext("maps", "Could not create map."))}
+      end
+    end)
   end
 
   def handle_event(
@@ -291,21 +264,12 @@ defmodule StoryarnWeb.MapLive.Index do
         %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
         socket
       ) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        case Maps.get_map(socket.assigns.project.id, item_id) do
-          nil -> {:noreply, put_flash(socket, :error, dgettext("maps", "Map not found."))}
-          map -> do_move_map(socket, map, new_parent_id, position)
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("maps", "You don't have permission to perform this action.")
-         )}
-    end
+    with_authorization(socket, :edit_content, fn socket ->
+      case Maps.get_map(socket.assigns.project.id, item_id) do
+        nil -> {:noreply, put_flash(socket, :error, dgettext("maps", "Map not found."))}
+        map -> do_move_map(socket, map, new_parent_id, position)
+      end
+    end)
   end
 
   defp do_delete_map(socket, map) do

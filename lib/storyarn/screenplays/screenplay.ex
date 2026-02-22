@@ -20,9 +20,7 @@ defmodule Storyarn.Screenplays.Screenplay do
   alias Storyarn.Flows.Flow
   alias Storyarn.Projects.Project
   alias Storyarn.Screenplays.ScreenplayElement
-
-  # Shortcut format: lowercase, alphanumeric, dots and hyphens allowed, no spaces
-  @shortcut_format ~r/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$|^[a-z0-9]$/
+  alias Storyarn.Shared.{TimeHelpers, Validations}
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -120,7 +118,7 @@ defmodule Storyarn.Screenplays.Screenplay do
   """
   def delete_changeset(screenplay) do
     screenplay
-    |> change(%{deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)})
+    |> change(%{deleted_at: TimeHelpers.now()})
   end
 
   @doc """
@@ -148,8 +146,7 @@ defmodule Storyarn.Screenplays.Screenplay do
 
   defp validate_shortcut(changeset) do
     changeset
-    |> validate_length(:shortcut, min: 1, max: 50)
-    |> validate_format(:shortcut, @shortcut_format,
+    |> Validations.validate_shortcut(
       message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., chapter-1)"
     )
     |> unique_constraint(:shortcut,

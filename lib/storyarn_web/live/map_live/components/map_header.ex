@@ -80,8 +80,13 @@ defmodule StoryarnWeb.MapLive.Components.MapHeader do
           <button data-role="trigger" type="button" class="btn btn-xs btn-ghost gap-1 font-normal">
             <.icon name="git-branch" class="size-3.5 opacity-60" />
             <span class="text-xs">
-              {dngettext("maps", "Used in %{count} flow", "Used in %{count} flows",
-                length(@referencing_flows), count: length(@referencing_flows))}
+              {dngettext(
+                "maps",
+                "Used in %{count} flow",
+                "Used in %{count} flows",
+                length(@referencing_flows),
+                count: length(@referencing_flows)
+              )}
             </span>
           </button>
           <template data-role="popover-template">

@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
   """
 
   use StoryarnWeb, :live_component
+  use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -111,13 +112,13 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
   end
 
   def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       create_version(socket, title, description)
     end)
   end
 
   def handle_event("restore_version", %{"version" => version_number}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       restore_version(socket, version_number)
     end)
   end
@@ -135,7 +136,7 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
   end
 
   def handle_event("delete_version", %{"version" => version_number}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       delete_version(socket, version_number)
     end)
   end
@@ -143,19 +144,6 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
   def handle_event("load_more_versions", _params, socket) do
     next_page = socket.assigns.versions_page + 1
     {:noreply, load_versions(socket, next_page)}
-  end
-
-  # ===========================================================================
-  # Private: Authorization
-  # ===========================================================================
-
-  defp with_authorization(socket, fun) do
-    if socket.assigns.can_edit do
-      fun.(socket)
-    else
-      {:noreply,
-       put_flash(socket, :error, dgettext("sheets", "You don't have permission to edit."))}
-    end
   end
 
   # ===========================================================================

@@ -15,6 +15,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   alias Storyarn.Flows.{Condition, Flow, FlowNode, VariableReference}
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
 
   @doc """
@@ -551,7 +552,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       |> Repo.delete_all()
 
       unique_refs = Enum.uniq_by(refs, fn r -> {r.block_id, r.kind, r.source_variable} end)
-      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      now = TimeHelpers.now()
 
       entries =
         Enum.map(unique_refs, fn ref ->

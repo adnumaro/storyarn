@@ -12,6 +12,7 @@ defmodule Storyarn.Sheets.Versioning do
   alias Ecto.Multi
   alias Storyarn.Accounts.User
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.{Block, Sheet, SheetVersion}
 
   @doc """
@@ -232,7 +233,7 @@ defmodule Storyarn.Sheets.Versioning do
   defp restore_blocks_from_snapshot(_repo, _sheet_id, []), do: {:ok, 0}
 
   defp restore_blocks_from_snapshot(repo, sheet_id, blocks_data) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    now = TimeHelpers.now()
     existing_source_ids = load_existing_source_ids(repo, blocks_data)
 
     blocks =

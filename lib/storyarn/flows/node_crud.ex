@@ -16,6 +16,9 @@ defmodule Storyarn.Flows.NodeCrud do
   # Query helpers
   # =============================================================================
 
+  @doc """
+  Lists all non-deleted nodes for a flow, ordered by insertion time.
+  """
   def list_nodes(flow_id) do
     from(n in FlowNode,
       where: n.flow_id == ^flow_id and is_nil(n.deleted_at),
@@ -24,6 +27,10 @@ defmodule Storyarn.Flows.NodeCrud do
     |> Repo.all()
   end
 
+  @doc """
+  Gets a single node by flow and node ID with connections preloaded.
+  Returns nil if not found.
+  """
   def get_node(flow_id, node_id) do
     from(n in FlowNode,
       where: n.flow_id == ^flow_id and n.id == ^node_id and is_nil(n.deleted_at),
@@ -32,6 +39,10 @@ defmodule Storyarn.Flows.NodeCrud do
     |> Repo.one()
   end
 
+  @doc """
+  Gets a single node by flow and node ID with connections preloaded.
+  Raises if not found.
+  """
   def get_node!(flow_id, node_id) do
     from(n in FlowNode,
       where: n.flow_id == ^flow_id and n.id == ^node_id and is_nil(n.deleted_at),
@@ -40,6 +51,9 @@ defmodule Storyarn.Flows.NodeCrud do
     |> Repo.one!()
   end
 
+  @doc """
+  Gets a node by ID without flow scoping or preloads. Raises if not found.
+  """
   def get_node_by_id!(node_id) do
     Repo.get!(FlowNode, node_id)
   end
@@ -129,6 +143,9 @@ defmodule Storyarn.Flows.NodeCrud do
     |> Repo.all()
   end
 
+  @doc """
+  Returns a map of `%{type => count}` for all node types in a flow.
+  """
   def count_nodes_by_type(flow_id) do
     from(n in FlowNode,
       where: n.flow_id == ^flow_id and is_nil(n.deleted_at),

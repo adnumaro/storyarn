@@ -6,6 +6,7 @@ defmodule Storyarn.Flows.NodeUpdate do
   alias Storyarn.Flows.{FlowNode, NodeCrud, VariableReferenceTracker}
   alias Storyarn.Localization.TextExtractor
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.ReferenceTracker
 
   def update_node(%FlowNode{} = node, attrs) do
@@ -26,7 +27,7 @@ defmodule Storyarn.Flows.NodeUpdate do
   Returns {:ok, count} with the number of updated nodes.
   """
   def batch_update_positions(flow_id, positions) when is_list(positions) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    now = TimeHelpers.now()
 
     Repo.transaction(fn ->
       Enum.each(positions, fn %{id: node_id, position_x: x, position_y: y} ->

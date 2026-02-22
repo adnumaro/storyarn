@@ -21,6 +21,7 @@ defmodule Storyarn.Flows.FlowNode do
   import Ecto.Changeset
 
   alias Storyarn.Flows.{Flow, FlowConnection}
+  alias Storyarn.Shared.TimeHelpers
 
   @node_types ~w(dialogue hub condition instruction jump entry exit subflow scene interaction)
   @valid_sources ~w(manual screenplay_sync)
@@ -116,8 +117,7 @@ defmodule Storyarn.Flows.FlowNode do
   Changeset for soft-deleting a node by setting deleted_at.
   """
   def soft_delete_changeset(node) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
-    change(node, deleted_at: now)
+    change(node, deleted_at: TimeHelpers.now())
   end
 
   @doc """

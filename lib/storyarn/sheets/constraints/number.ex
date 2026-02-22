@@ -95,11 +95,14 @@ defmodule Storyarn.Sheets.Constraints.Number do
 
   def parse_constraint(val) when is_binary(val) do
     case Integer.parse(val) do
-      {int, ""} -> int
-      _ -> case Float.parse(val) do
-             {num, _} -> num
-             :error -> nil
-           end
+      {int, ""} ->
+        int
+
+      _ ->
+        case Float.parse(val) do
+          {num, _} -> num
+          :error -> nil
+        end
     end
   end
 

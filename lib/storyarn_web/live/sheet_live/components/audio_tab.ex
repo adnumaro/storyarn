@@ -6,6 +6,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
   """
 
   use StoryarnWeb, :live_component
+  use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Assets
   alias Storyarn.Assets.Storage
@@ -78,7 +79,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
 
   @impl true
   def handle_event("select_audio", %{"node-id" => node_id, "audio_asset_id" => ""}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       update_node_audio(socket, node_id, nil)
     end)
   end
@@ -88,14 +89,14 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
         %{"node-id" => node_id, "audio_asset_id" => asset_id_str},
         socket
       ) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       asset_id = String.to_integer(asset_id_str)
       update_node_audio(socket, node_id, asset_id)
     end)
   end
 
   def handle_event("remove_audio", %{"node-id" => node_id}, socket) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       update_node_audio(socket, node_id, nil)
     end)
   end
@@ -123,7 +124,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
         },
         socket
       ) do
-    with_authorization(socket, fn socket ->
+    with_edit_authorization(socket, fn socket ->
       [_header, base64_data] = String.split(data, ",", parts: 2)
 
       case Base.decode64(base64_data) do
@@ -135,19 +136,6 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
           {:noreply, assign(socket, :uploading_node_id, nil)}
       end
     end)
-  end
-
-  # ===========================================================================
-  # Private: Authorization
-  # ===========================================================================
-
-  defp with_authorization(socket, fun) do
-    if socket.assigns.can_edit do
-      fun.(socket)
-    else
-      {:noreply,
-       put_flash(socket, :error, dgettext("sheets", "You don't have permission to edit."))}
-    end
   end
 
   # ===========================================================================

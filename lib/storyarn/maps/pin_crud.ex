@@ -5,6 +5,7 @@ defmodule Storyarn.Maps.PinCrud do
 
   alias Storyarn.Maps.{MapPin, PositionUtils}
   alias Storyarn.Repo
+  alias Storyarn.Sheets.ReferenceTracker
 
   @doc """
   Lists pins for a map, with optional layer_id filter.
@@ -59,15 +60,31 @@ defmodule Storyarn.Maps.PinCrud do
     position = PositionUtils.next_position(MapPin, map_id)
     attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
 
-    %MapPin{map_id: map_id}
-    |> MapPin.create_changeset(Map.put(attrs, "position", position))
-    |> Repo.insert()
+    result =
+      %MapPin{map_id: map_id}
+      |> MapPin.create_changeset(Map.put(attrs, "position", position))
+      |> Repo.insert()
+
+    case result do
+      {:ok, pin} -> ReferenceTracker.update_map_pin_references(pin)
+      _ -> :ok
+    end
+
+    result
   end
 
   def update_pin(%MapPin{} = pin, attrs) do
-    pin
-    |> MapPin.update_changeset(attrs)
-    |> Repo.update()
+    result =
+      pin
+      |> MapPin.update_changeset(attrs)
+      |> Repo.update()
+
+    case result do
+      {:ok, updated_pin} -> ReferenceTracker.update_map_pin_references(updated_pin)
+      _ -> :ok
+    end
+
+    result
   end
 
   @doc """
@@ -80,6 +97,7 @@ defmodule Storyarn.Maps.PinCrud do
   end
 
   def delete_pin(%MapPin{} = pin) do
+    ReferenceTracker.delete_map_pin_references(pin.id)
     Repo.delete(pin)
   end
 

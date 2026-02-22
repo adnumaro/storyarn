@@ -416,7 +416,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
     icon_name =
       assigns.name
       |> String.replace("-", "_")
-      |> String.to_atom()
+      |> String.to_existing_atom()
 
     # Build assigns map compatible with Phoenix.Component
     icon_assigns =

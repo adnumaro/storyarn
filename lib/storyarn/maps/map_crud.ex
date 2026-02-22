@@ -1,12 +1,18 @@
 defmodule Storyarn.Maps.MapCrud do
-  @moduledoc false
+  @moduledoc """
+  CRUD operations for maps with hierarchical tree structure.
+
+  Handles map creation (with auto-shortcut and default layer), updates,
+  soft-delete/restore with recursive children handling, tree queries,
+  and sidebar element preloading.
+  """
 
   import Ecto.Query, warn: false
 
   alias Storyarn.Maps.{Map, MapLayer, MapPin, MapZone, TreeOperations}
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.{MapUtils, SearchHelpers, ShortcutHelpers, SoftDelete}
   alias Storyarn.Shortcuts
 
   @doc """
@@ -140,13 +146,7 @@ defmodule Storyarn.Maps.MapCrud do
       )
       |> Repo.all()
     else
-      sanitized =
-        query
-        |> String.replace("\\", "\\\\")
-        |> String.replace("%", "\\%")
-        |> String.replace("_", "\\_")
-
-      search_term = "%#{sanitized}%"
+      search_term = "%#{SearchHelpers.sanitize_like_query(query)}%"
 
       from(m in Map,
         where: m.project_id == ^project_id and is_nil(m.deleted_at),
@@ -167,6 +167,10 @@ defmodule Storyarn.Maps.MapCrud do
     connections: [:from_pin, :to_pin]
   ]
 
+  @doc """
+  Gets a map by project and map ID with all associations preloaded.
+  Returns nil if not found or deleted.
+  """
   def get_map(project_id, map_id) do
     from(m in Map,
       where: m.project_id == ^project_id and m.id == ^map_id and is_nil(m.deleted_at),
@@ -175,6 +179,10 @@ defmodule Storyarn.Maps.MapCrud do
     |> Repo.one()
   end
 
+  @doc """
+  Gets a map by project and map ID with all associations preloaded.
+  Raises if not found or deleted.
+  """
   def get_map!(project_id, map_id) do
     from(m in Map,
       where: m.project_id == ^project_id and m.id == ^map_id and is_nil(m.deleted_at),
@@ -216,6 +224,10 @@ defmodule Storyarn.Maps.MapCrud do
     |> Repo.one()
   end
 
+  @doc """
+  Creates a map with auto-generated shortcut and default layer.
+  Auto-assigns position if not provided.
+  """
   def create_map(%Project{} = project, attrs) do
     # Auto-generate shortcut from name if not provided
     attrs = maybe_generate_shortcut(attrs, project.id, nil)
@@ -242,6 +254,9 @@ defmodule Storyarn.Maps.MapCrud do
     end)
   end
 
+  @doc """
+  Updates a map. Regenerates shortcut if name changes.
+  """
   def update_map(%Map{} = map, attrs) do
     attrs = maybe_generate_shortcut_on_update(map, attrs)
 
@@ -260,7 +275,7 @@ defmodule Storyarn.Maps.MapCrud do
       case map |> Map.delete_changeset() |> Repo.update() do
         {:ok, deleted_map} ->
           # Also soft-delete all children recursively
-          soft_delete_children(map.project_id, map.id)
+          SoftDelete.soft_delete_children(Map, map.project_id, map.id)
           deleted_map
 
         {:error, changeset} ->
@@ -335,6 +350,9 @@ defmodule Storyarn.Maps.MapCrud do
     end
   end
 
+  @doc """
+  Returns a changeset for tracking map form changes.
+  """
   def change_map(%Map{} = map, attrs \\ %{}) do
     Map.update_changeset(map, attrs)
   end
@@ -346,23 +364,6 @@ defmodule Storyarn.Maps.MapCrud do
       where: m.project_id == ^project_id and is_nil(m.deleted_at),
       order_by: [asc: m.position, asc: m.name]
     )
-  end
-
-  defp soft_delete_children(project_id, parent_id) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
-
-    children =
-      from(m in Map,
-        where: m.project_id == ^project_id and m.parent_id == ^parent_id and is_nil(m.deleted_at)
-      )
-      |> Repo.all()
-
-    Enum.each(children, fn child ->
-      from(m in Map, where: m.id == ^child.id)
-      |> Repo.update_all(set: [deleted_at: now])
-
-      soft_delete_children(project_id, child.id)
-    end)
   end
 
   defp restore_children(project_id, parent_id, since) do
@@ -389,16 +390,13 @@ defmodule Storyarn.Maps.MapCrud do
   end
 
   defp maybe_generate_shortcut(attrs, project_id, exclude_map_id) do
-    attrs = stringify_keys(attrs)
-    has_shortcut = Elixir.Map.has_key?(attrs, "shortcut")
-    name = attrs["name"]
-
-    if has_shortcut || is_nil(name) || name == "" do
-      attrs
-    else
-      shortcut = Shortcuts.generate_map_shortcut(name, project_id, exclude_map_id)
-      Elixir.Map.put(attrs, "shortcut", shortcut)
-    end
+    attrs
+    |> stringify_keys()
+    |> ShortcutHelpers.maybe_generate_shortcut(
+      project_id,
+      exclude_map_id,
+      &Shortcuts.generate_map_shortcut/3
+    )
   end
 
   defp maybe_generate_shortcut_on_update(%Map{} = map, attrs) do
@@ -408,46 +406,30 @@ defmodule Storyarn.Maps.MapCrud do
       Elixir.Map.has_key?(attrs, "shortcut") ->
         attrs
 
-      name_changing?(attrs, map) ->
+      ShortcutHelpers.name_changing?(attrs, map) ->
         shortcut = Shortcuts.generate_map_shortcut(attrs["name"], map.project_id, map.id)
         Elixir.Map.put(attrs, "shortcut", shortcut)
 
-      missing_shortcut?(map) ->
-        generate_shortcut_from_current_name(map, attrs)
+      ShortcutHelpers.missing_shortcut?(map) ->
+        ShortcutHelpers.generate_shortcut_from_name(
+          map,
+          attrs,
+          &Shortcuts.generate_map_shortcut/3
+        )
 
       true ->
         attrs
     end
   end
 
-  defp name_changing?(attrs, map) do
-    new_name = attrs["name"]
-    new_name && new_name != "" && new_name != map.name
-  end
-
-  defp missing_shortcut?(map) do
-    is_nil(map.shortcut) || map.shortcut == ""
-  end
-
-  defp generate_shortcut_from_current_name(map, attrs) do
-    name = map.name
-
-    if name && name != "" do
-      shortcut = Shortcuts.generate_map_shortcut(name, map.project_id, map.id)
-      Elixir.Map.put(attrs, "shortcut", shortcut)
-    else
-      attrs
-    end
-  end
-
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)
 
   defp maybe_assign_position(attrs, project_id, parent_id) do
-    if Elixir.Map.has_key?(attrs, "position") do
-      attrs
-    else
-      position = TreeOperations.next_position(project_id, parent_id)
-      Elixir.Map.put(attrs, "position", position)
-    end
+    ShortcutHelpers.maybe_assign_position(
+      attrs,
+      project_id,
+      parent_id,
+      &TreeOperations.next_position/2
+    )
   end
 end

@@ -59,7 +59,7 @@ defmodule Storyarn.Flows do
   Use parent_id = nil for root level flows.
   """
   @spec list_flows_by_parent(integer(), integer() | nil) :: [flow()]
-  defdelegate list_flows_by_parent(project_id, parent_id), to: FlowCrud
+  defdelegate list_flows_by_parent(project_id, parent_id), to: TreeOperations
 
   @doc "Returns the default search limit used by search_flows/3 and search_flows_deep/3."
   defdelegate default_search_limit(), to: FlowCrud
@@ -158,12 +158,6 @@ defmodule Storyarn.Flows do
   """
   @spec change_flow(flow(), attrs()) :: changeset()
   defdelegate change_flow(flow, attrs \\ %{}), to: FlowCrud
-
-  @doc """
-  Gets the main flow for a project.
-  """
-  @spec get_main_flow(integer()) :: flow() | nil
-  defdelegate get_main_flow(project_id), to: FlowCrud
 
   @doc """
   Sets a flow as the main flow for its project.
@@ -602,8 +596,7 @@ defmodule Storyarn.Flows do
       event_zone_names: Enum.map(event_zones, & &1.action_data["event_name"]),
       event_zone_labels:
         Elixir.Map.new(event_zones, fn z ->
-          {z.action_data["event_name"],
-           z.action_data["label"] || z.action_data["event_name"]}
+          {z.action_data["event_name"], z.action_data["label"] || z.action_data["event_name"]}
         end),
       map_name: map_info && map_info.name
     }

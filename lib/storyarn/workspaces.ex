@@ -13,7 +13,7 @@ defmodule Storyarn.Workspaces do
   """
 
   alias Storyarn.Accounts.{Scope, User}
-  alias Storyarn.Shared.SlugGenerator
+  alias Storyarn.Shared.NameNormalizer
 
   alias Storyarn.Workspaces.{
     Invitations,
@@ -192,7 +192,7 @@ defmodule Storyarn.Workspaces do
   """
   @spec generate_slug(String.t()) :: String.t()
   def generate_slug(name) do
-    SlugGenerator.generate_unique_slug(Workspace, [], name)
+    NameNormalizer.generate_unique_slug(Workspace, [], name)
   end
 
   # =============================================================================

@@ -215,18 +215,9 @@ defmodule StoryarnWeb.ProjectLive.Trash do
 
   @impl true
   def handle_event("restore_sheet", %{"id" => id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        do_restore_sheet(socket, id)
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "You don't have permission to perform this action.")
-         )}
-    end
+    with_authorization(socket, :edit_content, fn socket ->
+      do_restore_sheet(socket, id)
+    end)
   end
 
   def handle_event("show_delete_confirm", %{"id" => id}, socket) do
@@ -234,37 +225,19 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   end
 
   def handle_event("confirm_delete_permanently", _params, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        if socket.assigns.sheet_to_delete do
-          do_delete_permanently(socket, socket.assigns.sheet_to_delete)
-        else
-          {:noreply, socket}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "You don't have permission to perform this action.")
-         )}
-    end
+    with_authorization(socket, :edit_content, fn socket ->
+      if socket.assigns.sheet_to_delete do
+        do_delete_permanently(socket, socket.assigns.sheet_to_delete)
+      else
+        {:noreply, socket}
+      end
+    end)
   end
 
   def handle_event("empty_trash", _params, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        do_empty_trash(socket)
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "You don't have permission to perform this action.")
-         )}
-    end
+    with_authorization(socket, :edit_content, fn socket ->
+      do_empty_trash(socket)
+    end)
   end
 
   defp do_restore_sheet(socket, id) do

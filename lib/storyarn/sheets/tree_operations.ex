@@ -4,6 +4,7 @@ defmodule Storyarn.Sheets.TreeOperations do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
+  alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.Sheet
 
   @doc """
@@ -15,14 +16,7 @@ defmodule Storyarn.Sheets.TreeOperations do
   Returns `{:ok, sheets}` with the reordered sheets or `{:error, reason}`.
   """
   def reorder_sheets(project_id, parent_id, sheet_ids) when is_list(sheet_ids) do
-    Repo.transaction(fn ->
-      sheet_ids
-      |> Enum.reject(&is_nil/1)
-      |> Enum.with_index()
-      |> Enum.each(&update_sheet_position(&1, project_id, parent_id))
-
-      list_sheets_by_parent(project_id, parent_id)
-    end)
+    SharedTree.reorder(Sheet, project_id, parent_id, sheet_ids, &list_sheets_by_parent/2)
   end
 
   @doc """
@@ -59,12 +53,17 @@ defmodule Storyarn.Sheets.TreeOperations do
       new_order
       |> Enum.with_index()
       |> Enum.each(fn {sheet_id, index} ->
-        update_position_only(sheet_id, index)
+        SharedTree.update_position_only(Sheet, sheet_id, index)
       end)
 
       # If parent changed, also reorder the source container
       if old_parent_id != new_parent_id do
-        reorder_source_container(project_id, old_parent_id)
+        SharedTree.reorder_source_container(
+          Sheet,
+          project_id,
+          old_parent_id,
+          &list_sheets_by_parent/2
+        )
       end
 
       # Return the sheet with updated position
@@ -72,38 +71,12 @@ defmodule Storyarn.Sheets.TreeOperations do
     end)
   end
 
-  defp update_sheet_position({sheet_id, index}, project_id, parent_id) do
-    query =
-      from(s in Sheet,
-        where: s.id == ^sheet_id and s.project_id == ^project_id and is_nil(s.deleted_at)
-      )
-
-    query = add_parent_filter(query, parent_id)
-    Repo.update_all(query, set: [position: index])
-  end
-
-  defp update_position_only(sheet_id, position) do
-    from(s in Sheet, where: s.id == ^sheet_id and is_nil(s.deleted_at))
-    |> Repo.update_all(set: [position: position])
-  end
-
-  defp reorder_source_container(project_id, parent_id) do
-    list_sheets_by_parent(project_id, parent_id)
-    |> Enum.with_index()
-    |> Enum.each(fn {sheet, index} ->
-      update_position_only(sheet.id, index)
-    end)
-  end
-
-  defp add_parent_filter(query, nil), do: where(query, [s], is_nil(s.parent_id))
-  defp add_parent_filter(query, parent_id), do: where(query, [s], s.parent_id == ^parent_id)
-
   defp list_sheets_by_parent(project_id, parent_id) do
     from(s in Sheet,
       where: s.project_id == ^project_id and is_nil(s.deleted_at),
       order_by: [asc: s.position, asc: s.name]
     )
-    |> add_parent_filter(parent_id)
+    |> SharedTree.add_parent_filter(parent_id)
     |> Repo.all()
   end
 end

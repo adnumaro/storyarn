@@ -10,6 +10,7 @@ defmodule Storyarn.Sheets.TableRow do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Sheets.Block
 
   schema "table_rows" do
@@ -54,14 +55,11 @@ defmodule Storyarn.Sheets.TableRow do
   defp generate_slug(changeset) do
     case get_change(changeset, :name) do
       nil -> changeset
-      name -> put_change(changeset, :slug, Block.slugify(name))
+      name -> put_change(changeset, :slug, NameNormalizer.variablify(name))
     end
   end
 
   defp maybe_regenerate_slug(changeset) do
-    case get_change(changeset, :name) do
-      nil -> changeset
-      name -> put_change(changeset, :slug, Block.slugify(name))
-    end
+    if get_field(changeset, :slug), do: changeset, else: generate_slug(changeset)
   end
 end

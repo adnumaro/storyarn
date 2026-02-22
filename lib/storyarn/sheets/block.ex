@@ -45,6 +45,7 @@ defmodule Storyarn.Sheets.Block do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Storyarn.Shared.{NameNormalizer, TimeHelpers}
   alias Storyarn.Sheets.Sheet
 
   @block_types ~w(text rich_text number select multi_select divider date boolean reference table)
@@ -275,7 +276,7 @@ defmodule Storyarn.Sheets.Block do
   """
   def delete_changeset(block) do
     block
-    |> change(%{deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)})
+    |> change(%{deleted_at: TimeHelpers.now()})
   end
 
   @doc """
@@ -317,43 +318,25 @@ defmodule Storyarn.Sheets.Block do
   def inherited?(%__MODULE__{detached: true}), do: false
   def inherited?(%__MODULE__{}), do: true
 
-  @doc """
-  Generates a variable name from a label string.
-  Converts "Health Points" to "health_points".
-  """
-  def slugify(nil), do: nil
-  def slugify(""), do: nil
-
-  def slugify(label) when is_binary(label) do
-    label
-    |> String.downcase()
-    |> String.replace(~r/[^\w\s-]/u, "")
-    |> String.replace(~r/[\s-]+/, "_")
-    |> String.replace(~r/^_+|_+$/, "")
-    |> case do
-      "" -> nil
-      slug -> slug
-    end
-  end
-
   # Generates variable_name from label in config.
-  # Always regenerates to keep variable_name in sync with label.
+  # Only generates if variable_name is not yet set (new block or first label).
+  # The CRUD layer handles conditional regeneration for existing blocks.
   defp maybe_generate_variable_name(changeset) do
     type = get_field(changeset, :type)
 
-    if can_be_variable?(type) do
-      config = get_field(changeset, :config) || %{}
-      label = Map.get(config, "label")
+    cond do
+      not can_be_variable?(type) ->
+        put_change(changeset, :variable_name, nil)
 
-      # Always regenerate variable_name from label
-      if label do
-        put_change(changeset, :variable_name, slugify(label))
-      else
+      get_field(changeset, :variable_name) != nil ->
         changeset
-      end
-    else
-      # Non-variable types should have nil variable_name
-      put_change(changeset, :variable_name, nil)
+
+      true ->
+        label = (get_field(changeset, :config) || %{}) |> Map.get("label")
+
+        if label,
+          do: put_change(changeset, :variable_name, NameNormalizer.variablify(label)),
+          else: changeset
     end
   end
 end

@@ -20,8 +20,7 @@ defmodule Storyarn.Maps.Map do
   alias Storyarn.Assets.Asset
   alias Storyarn.Maps.{MapAnnotation, MapConnection, MapLayer, MapPin, MapZone}
   alias Storyarn.Projects.Project
-
-  @shortcut_format ~r/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$|^[a-z0-9]$/
+  alias Storyarn.Shared.{TimeHelpers, Validations}
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -136,7 +135,7 @@ defmodule Storyarn.Maps.Map do
   """
   def delete_changeset(map) do
     map
-    |> change(%{deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)})
+    |> change(%{deleted_at: TimeHelpers.now()})
   end
 
   @doc """
@@ -156,8 +155,7 @@ defmodule Storyarn.Maps.Map do
 
   defp validate_shortcut(changeset) do
     changeset
-    |> validate_length(:shortcut, min: 1, max: 50)
-    |> validate_format(:shortcut, @shortcut_format,
+    |> Validations.validate_shortcut(
       message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., world-map)"
     )
     |> unique_constraint(:shortcut,

@@ -10,6 +10,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
+  alias Storyarn.Shared.{NameNormalizer, TimeHelpers}
   alias Storyarn.Sheets.{Block, BlockCrud, EntityReference, Sheet, TableColumn, TableRow}
 
   # =============================================================================
@@ -58,7 +59,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     if child_sheet_ids == [] do
       {:ok, 0}
     else
-      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      now = TimeHelpers.now()
 
       # Batch check which sheets already have instances for this parent block
       existing_sheet_ids =
@@ -171,40 +172,13 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         {:error, :source_not_found}
 
       source ->
-        updates = %{
-          type: source.type,
-          config: source.config,
-          required: source.required,
-          is_constant: source.is_constant,
-          detached: false
-        }
+        updates = build_reattach_updates(source)
 
-        # Derive variable name
-        label = get_in(source.config, ["label"])
-        variable_name = Block.slugify(label)
-
-        updates =
-          if Block.can_be_variable?(source.type) and not source.is_constant do
-            Map.put(updates, :variable_name, variable_name)
-          else
-            Map.put(updates, :variable_name, nil)
-          end
-
-        result =
-          block
-          |> Ecto.Changeset.change(updates)
-          |> BlockCrud.ensure_unique_variable_name_public(block.sheet_id, block.id)
-          |> Repo.update()
-
-        # For table blocks, reset table structure from source
-        case result do
-          {:ok, reattached} when reattached.type == "table" ->
-            reset_table_structure_from_source(reattached.id, source.id)
-            result
-
-          _ ->
-            result
-        end
+        block
+        |> Ecto.Changeset.change(updates)
+        |> BlockCrud.ensure_unique_variable_name_public(block.sheet_id, block.id)
+        |> Repo.update()
+        |> maybe_reset_table_structure(source.id)
     end
   end
 
@@ -248,7 +222,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   @spec delete_inherited_instances(Block.t()) :: {:ok, integer()}
   def delete_inherited_instances(%Block{} = parent_block) do
     Repo.transaction(fn ->
-      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      now = TimeHelpers.now()
 
       # Get instance IDs before soft-deleting
       instance_ids =
@@ -370,7 +344,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   # Recalculates inheritance for a single sheet: soft-deletes non-detached
   # inherited instances and re-inherits from the current ancestor chain.
   defp recalculate_sheet_inheritance(sheet_id) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    now = TimeHelpers.now()
 
     # Soft-delete non-detached inherited instances (preserves data)
     from(b in Block,
@@ -423,7 +397,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   defp derive_variable_name(%Block{} = parent_block, _sheet_id) do
     if Block.can_be_variable?(parent_block.type) and not parent_block.is_constant do
       label = get_in(parent_block.config, ["label"])
-      Block.slugify(label)
+      NameNormalizer.variablify(label)
     else
       nil
     end
@@ -488,7 +462,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
   defp derive_sync_variable_name(parent_block) do
     label = get_in(parent_block.config, ["label"])
-    base_variable_name = Block.slugify(label)
+    base_variable_name = NameNormalizer.variablify(label)
 
     if Block.can_be_variable?(parent_block.type) and not parent_block.is_constant do
       base_variable_name
@@ -588,7 +562,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   defp do_inherit_blocks(_sheet, []), do: {:ok, 0}
 
   defp do_inherit_blocks(sheet, inheritable_blocks) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    now = TimeHelpers.now()
 
     start_position = next_block_position(sheet.id)
     existing_names = MapSet.new(BlockCrud.list_variable_names(sheet.id))
@@ -669,6 +643,34 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
   defp copy_table_structure_to_instances(_), do: :ok
 
+  defp build_reattach_updates(source) do
+    label = get_in(source.config, ["label"])
+    variable_name = NameNormalizer.variablify(label)
+
+    variable_name =
+      if Block.can_be_variable?(source.type) and not source.is_constant do
+        variable_name
+      else
+        nil
+      end
+
+    %{
+      type: source.type,
+      config: source.config,
+      required: source.required,
+      is_constant: source.is_constant,
+      detached: false,
+      variable_name: variable_name
+    }
+  end
+
+  defp maybe_reset_table_structure({:ok, %{type: "table"}} = result, source_id) do
+    reset_table_structure_from_source(result |> elem(1) |> Map.get(:id), source_id)
+    result
+  end
+
+  defp maybe_reset_table_structure(result, _source_id), do: result
+
   # Resets table structure on an instance block to match the source block.
   defp reset_table_structure_from_source(instance_block_id, source_block_id) do
     Repo.delete_all(from(c in TableColumn, where: c.block_id == ^instance_block_id))
@@ -691,7 +693,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   end
 
   defp insert_table_structure(target_block_id, source_columns, source_rows) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    now = TimeHelpers.now()
 
     col_entries =
       Enum.map(source_columns, fn col ->

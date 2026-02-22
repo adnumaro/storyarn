@@ -303,150 +303,77 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   end
 
   def handle_event("update_project", %{"project" => project_params}, socket) do
-    case authorize(socket, :manage_project) do
-      :ok ->
-        case Projects.update_project(socket.assigns.project, project_params) do
-          {:ok, project} ->
-            project_changeset = Projects.change_project(project)
+    with_authorization(socket, :manage_project, fn socket ->
+      case Projects.update_project(socket.assigns.project, project_params) do
+        {:ok, project} ->
+          project_changeset = Projects.change_project(project)
 
-            socket =
-              socket
-              |> assign(:project, project)
-              |> assign(:project_form, to_form(project_changeset))
-              |> put_flash(:info, dgettext("projects", "Project updated successfully."))
+          socket =
+            socket
+            |> assign(:project, project)
+            |> assign(:project_form, to_form(project_changeset))
+            |> put_flash(:info, dgettext("projects", "Project updated successfully."))
 
-            {:noreply, socket}
+          {:noreply, socket}
 
-          {:error, changeset} ->
-            {:noreply, assign(socket, :project_form, to_form(changeset))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, changeset} ->
+          {:noreply, assign(socket, :project_form, to_form(changeset))}
+      end
+    end)
   end
 
   def handle_event("send_invitation", %{"invite" => invite_params}, socket) do
-    case authorize(socket, :manage_members) do
-      :ok ->
-        do_send_invitation(socket, invite_params)
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "You don't have permission to perform this action.")
-         )}
-    end
+    with_authorization(socket, :manage_members, fn socket ->
+      do_send_invitation(socket, invite_params)
+    end)
   end
 
   def handle_event("revoke_invitation", %{"id" => id}, socket) do
-    case authorize(socket, :manage_members) do
-      :ok ->
-        do_revoke_invitation(socket, id)
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "You don't have permission to perform this action.")
-         )}
-    end
+    with_authorization(socket, :manage_members, fn socket ->
+      do_revoke_invitation(socket, id)
+    end)
   end
 
   def handle_event("remove_member", %{"id" => id}, socket) do
-    case authorize(socket, :manage_members) do
-      :ok ->
-        do_remove_member(socket, id)
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "You don't have permission to perform this action.")
-         )}
-    end
+    with_authorization(socket, :manage_members, fn socket ->
+      do_remove_member(socket, id)
+    end)
   end
 
   def handle_event("repair_variable_references", _params, socket) do
-    case authorize(socket, :manage_project) do
-      :ok ->
-        do_repair_variable_references(socket)
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "You don't have permission to perform this action.")
-         )}
-    end
+    with_authorization(socket, :manage_project, fn socket ->
+      do_repair_variable_references(socket)
+    end)
   end
 
   def handle_event("delete_project", _params, socket) do
-    case authorize(socket, :manage_project) do
-      :ok ->
-        workspace = socket.assigns.workspace
+    with_authorization(socket, :manage_project, fn socket ->
+      workspace = socket.assigns.workspace
 
-        case Projects.delete_project(socket.assigns.project) do
-          {:ok, _} ->
-            socket =
-              socket
-              |> put_flash(:info, dgettext("projects", "Project deleted."))
-              |> push_navigate(to: ~p"/workspaces/#{workspace.slug}")
+      case Projects.delete_project(socket.assigns.project) do
+        {:ok, _} ->
+          socket =
+            socket
+            |> put_flash(:info, dgettext("projects", "Project deleted."))
+            |> push_navigate(to: ~p"/workspaces/#{workspace.slug}")
 
-            {:noreply, socket}
+          {:noreply, socket}
 
-          {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("projects", "Failed to delete project."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to delete project."))}
+      end
+    end)
   end
 
   def handle_event("save_provider_config", %{"provider" => params}, socket) do
-    case authorize(socket, :manage_project) do
-      :ok ->
-        do_save_provider_config(socket, params)
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "You don't have permission to perform this action.")
-         )}
-    end
+    with_authorization(socket, :manage_project, fn socket ->
+      do_save_provider_config(socket, params)
+    end)
   end
 
   def handle_event("test_provider_connection", _params, socket) do
-    case authorize(socket, :manage_project) do
-      :ok ->
-        do_test_provider_connection(socket)
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "You don't have permission to perform this action.")
-         )}
-    end
+    with_authorization(socket, :manage_project, fn socket ->
+      do_test_provider_connection(socket)
+    end)
   end
 end

@@ -36,7 +36,8 @@ defmodule StoryarnWeb.Helpers.Authorize do
 
   defmacro __using__(_opts) do
     quote do
-      import StoryarnWeb.Helpers.Authorize, only: [authorize: 2, with_authorization: 3]
+      import StoryarnWeb.Helpers.Authorize,
+        only: [authorize: 2, with_authorization: 3, with_edit_authorization: 2]
     end
   end
 
@@ -76,6 +77,32 @@ defmodule StoryarnWeb.Helpers.Authorize do
 
       {:error, :unauthorized} ->
         {:noreply, Phoenix.LiveView.put_flash(socket, :error, unauthorized_message())}
+    end
+  end
+
+  @doc """
+  Executes a function if the socket's `can_edit` assign is truthy.
+
+  Used by LiveView components that check `can_edit` instead of membership role.
+  The function receives the socket and must return `{:noreply, socket}`.
+
+  ## Examples
+
+      def handle_event("save", params, socket) do
+        with_edit_authorization(socket, fn socket ->
+          {:noreply, do_save(socket, params)}
+        end)
+      end
+  """
+  @spec with_edit_authorization(
+          Phoenix.LiveView.Socket.t(),
+          (Phoenix.LiveView.Socket.t() -> {:noreply, Phoenix.LiveView.Socket.t()})
+        ) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  def with_edit_authorization(socket, success_fn) do
+    if socket.assigns[:can_edit] do
+      success_fn.(socket)
+    else
+      {:noreply, Phoenix.LiveView.put_flash(socket, :error, unauthorized_message())}
     end
   end
 

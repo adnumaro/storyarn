@@ -152,28 +152,19 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
 
   @impl true
   def handle_event("save", %{"workspace" => workspace_params}, socket) do
-    case authorize(socket, :manage_workspace) do
-      :ok ->
-        case Workspaces.update_workspace(socket.assigns.workspace, workspace_params) do
-          {:ok, workspace} ->
-            {:noreply,
-             socket
-             |> assign(:workspace, workspace)
-             |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
-             |> put_flash(:info, dgettext("workspaces", "Workspace updated successfully."))}
+    with_authorization(socket, :manage_workspace, fn socket ->
+      case Workspaces.update_workspace(socket.assigns.workspace, workspace_params) do
+        {:ok, workspace} ->
+          {:noreply,
+           socket
+           |> assign(:workspace, workspace)
+           |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
+           |> put_flash(:info, dgettext("workspaces", "Workspace updated successfully."))}
 
-          {:error, %Ecto.Changeset{} = changeset} ->
-            {:noreply, assign(socket, :form, to_form(changeset))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("workspaces", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, %Ecto.Changeset{} = changeset} ->
+          {:noreply, assign(socket, :form, to_form(changeset))}
+      end
+    end)
   end
 
   @impl true

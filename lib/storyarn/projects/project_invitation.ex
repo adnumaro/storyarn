@@ -10,7 +10,7 @@ defmodule Storyarn.Projects.ProjectInvitation do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Projects.Project
-  alias Storyarn.Shared.TokenGenerator
+  alias Storyarn.Shared.{TokenGenerator, Validations}
 
   @invitation_validity_in_days 7
 
@@ -49,9 +49,7 @@ defmodule Storyarn.Projects.ProjectInvitation do
     invitation
     |> cast(attrs, [:email, :role, :project_id, :invited_by_id])
     |> validate_required([:email, :role, :project_id, :invited_by_id])
-    |> validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/,
-      message: "must have the @ sign and no spaces"
-    )
+    |> Validations.validate_email_format()
     |> validate_inclusion(:role, ~w(editor viewer))
     |> foreign_key_constraint(:project_id)
     |> foreign_key_constraint(:invited_by_id)

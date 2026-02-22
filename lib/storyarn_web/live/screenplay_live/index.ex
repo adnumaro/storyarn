@@ -225,30 +225,21 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
   end
 
   def handle_event("delete", %{"id" => screenplay_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        screenplay = Screenplays.get_screenplay!(socket.assigns.project.id, screenplay_id)
+    with_authorization(socket, :edit_content, fn socket ->
+      screenplay = Screenplays.get_screenplay!(socket.assigns.project.id, screenplay_id)
 
-        case Screenplays.delete_screenplay(screenplay) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, dgettext("screenplays", "Screenplay moved to trash."))
-             |> reload_screenplays()}
+      case Screenplays.delete_screenplay(screenplay) do
+        {:ok, _} ->
+          {:noreply,
+           socket
+           |> put_flash(:info, dgettext("screenplays", "Screenplay moved to trash."))
+           |> reload_screenplays()}
 
-          {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("screenplays", "Could not delete screenplay."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("screenplays", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, _} ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("screenplays", "Could not delete screenplay."))}
+      end
+    end)
   end
 
   def handle_event("delete_screenplay", %{"id" => screenplay_id}, socket) do
@@ -256,59 +247,41 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
   end
 
   def handle_event("create_screenplay", _params, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        case Screenplays.create_screenplay(socket.assigns.project, %{
-               name: dgettext("screenplays", "Untitled")
-             }) do
-          {:ok, new_screenplay} ->
-            {:noreply,
-             push_navigate(socket,
-               to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/screenplays/#{new_screenplay.id}"
-             )}
+    with_authorization(socket, :edit_content, fn socket ->
+      case Screenplays.create_screenplay(socket.assigns.project, %{
+             name: dgettext("screenplays", "Untitled")
+           }) do
+        {:ok, new_screenplay} ->
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/screenplays/#{new_screenplay.id}"
+           )}
 
-          {:error, _changeset} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("screenplays", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, _changeset} ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
+      end
+    end)
   end
 
   def handle_event("create_child_screenplay", %{"parent-id" => parent_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        attrs = %{name: dgettext("screenplays", "Untitled"), parent_id: parent_id}
+    with_authorization(socket, :edit_content, fn socket ->
+      attrs = %{name: dgettext("screenplays", "Untitled"), parent_id: parent_id}
 
-        case Screenplays.create_screenplay(socket.assigns.project, attrs) do
-          {:ok, new_screenplay} ->
-            {:noreply,
-             push_navigate(socket,
-               to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/screenplays/#{new_screenplay.id}"
-             )}
+      case Screenplays.create_screenplay(socket.assigns.project, attrs) do
+        {:ok, new_screenplay} ->
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/screenplays/#{new_screenplay.id}"
+           )}
 
-          {:error, _changeset} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("screenplays", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, _changeset} ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
+      end
+    end)
   end
 
   def handle_event(
@@ -316,29 +289,20 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
         %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
         socket
       ) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        screenplay = Screenplays.get_screenplay!(socket.assigns.project.id, item_id)
-        new_parent_id = parse_int(new_parent_id)
-        position = parse_int(position) || 0
+    with_authorization(socket, :edit_content, fn socket ->
+      screenplay = Screenplays.get_screenplay!(socket.assigns.project.id, item_id)
+      new_parent_id = parse_int(new_parent_id)
+      position = parse_int(position) || 0
 
-        case Screenplays.move_screenplay_to_position(screenplay, new_parent_id, position) do
-          {:ok, _} ->
-            {:noreply, reload_screenplays(socket)}
+      case Screenplays.move_screenplay_to_position(screenplay, new_parent_id, position) do
+        {:ok, _} ->
+          {:noreply, reload_screenplays(socket)}
 
-          {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("screenplays", "Could not move screenplay."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("screenplays", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, _} ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("screenplays", "Could not move screenplay."))}
+      end
+    end)
   end
 
   defp parse_int(""), do: nil

@@ -5,20 +5,20 @@ defmodule Storyarn.Screenplays.TreeOperations do
 
   alias Storyarn.Repo
   alias Storyarn.Screenplays.Screenplay
+  alias Storyarn.Shared.TreeOperations, as: SharedTree
 
   @doc """
   Reorders screenplays within a parent container.
   Updates all positions in a single transaction.
   """
   def reorder_screenplays(project_id, parent_id, screenplay_ids) when is_list(screenplay_ids) do
-    Repo.transaction(fn ->
-      screenplay_ids
-      |> Enum.reject(&is_nil/1)
-      |> Enum.with_index()
-      |> Enum.each(&update_screenplay_position(&1, project_id, parent_id))
-
-      list_screenplays_by_parent(project_id, parent_id)
-    end)
+    SharedTree.reorder(
+      Screenplay,
+      project_id,
+      parent_id,
+      screenplay_ids,
+      &list_screenplays_by_parent/2
+    )
   end
 
   @doc """
@@ -45,11 +45,18 @@ defmodule Storyarn.Screenplays.TreeOperations do
       |> List.insert_at(new_position, updated)
       |> Enum.map(& &1.id)
       |> Enum.with_index()
-      |> Enum.each(fn {id, index} -> update_position_only(id, index) end)
+      |> Enum.each(fn {id, index} ->
+        SharedTree.update_position_only(Screenplay, id, index)
+      end)
 
       # If parent changed, reorder source container
       if old_parent_id != new_parent_id do
-        reorder_source_container(project_id, old_parent_id)
+        SharedTree.reorder_source_container(
+          Screenplay,
+          project_id,
+          old_parent_id,
+          &list_screenplays_by_parent/2
+        )
       end
 
       Repo.get!(Screenplay, screenplay.id)
@@ -61,29 +68,7 @@ defmodule Storyarn.Screenplays.TreeOperations do
       where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_of_id),
       order_by: [asc: s.position, asc: s.name]
     )
-    |> add_parent_filter(parent_id)
+    |> SharedTree.add_parent_filter(parent_id)
     |> Repo.all()
   end
-
-  defp update_screenplay_position({screenplay_id, index}, project_id, parent_id) do
-    from(s in Screenplay,
-      where: s.id == ^screenplay_id and s.project_id == ^project_id and is_nil(s.deleted_at)
-    )
-    |> add_parent_filter(parent_id)
-    |> Repo.update_all(set: [position: index])
-  end
-
-  defp update_position_only(screenplay_id, position) do
-    from(s in Screenplay, where: s.id == ^screenplay_id and is_nil(s.deleted_at))
-    |> Repo.update_all(set: [position: position])
-  end
-
-  defp reorder_source_container(project_id, parent_id) do
-    list_screenplays_by_parent(project_id, parent_id)
-    |> Enum.with_index()
-    |> Enum.each(fn {s, index} -> update_position_only(s.id, index) end)
-  end
-
-  defp add_parent_filter(query, nil), do: where(query, [s], is_nil(s.parent_id))
-  defp add_parent_filter(query, parent_id), do: where(query, [s], s.parent_id == ^parent_id)
 end

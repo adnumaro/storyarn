@@ -5,6 +5,7 @@ defmodule Storyarn.Flows.TreeOperations do
 
   alias Storyarn.Flows.Flow
   alias Storyarn.Repo
+  alias Storyarn.Shared.TreeOperations, as: SharedTree
 
   @doc """
   Reorders flows within a parent container.
@@ -15,14 +16,7 @@ defmodule Storyarn.Flows.TreeOperations do
   Returns `{:ok, flows}` with the reordered flows or `{:error, reason}`.
   """
   def reorder_flows(project_id, parent_id, flow_ids) when is_list(flow_ids) do
-    Repo.transaction(fn ->
-      flow_ids
-      |> Enum.reject(&is_nil/1)
-      |> Enum.with_index()
-      |> Enum.each(&update_flow_position(&1, project_id, parent_id))
-
-      list_flows_by_parent(project_id, parent_id)
-    end)
+    SharedTree.reorder(Flow, project_id, parent_id, flow_ids, &list_flows_by_parent/2)
   end
 
   @doc """
@@ -59,12 +53,17 @@ defmodule Storyarn.Flows.TreeOperations do
       new_order
       |> Enum.with_index()
       |> Enum.each(fn {flow_id, index} ->
-        update_position_only(flow_id, index)
+        SharedTree.update_position_only(Flow, flow_id, index)
       end)
 
       # If parent changed, also reorder the source container
       if old_parent_id != new_parent_id do
-        reorder_source_container(project_id, old_parent_id)
+        SharedTree.reorder_source_container(
+          Flow,
+          project_id,
+          old_parent_id,
+          &list_flows_by_parent/2
+        )
       end
 
       # Return the flow with updated position
@@ -80,7 +79,7 @@ defmodule Storyarn.Flows.TreeOperations do
       where: f.project_id == ^project_id and is_nil(f.deleted_at),
       select: max(f.position)
     )
-    |> add_parent_filter(parent_id)
+    |> SharedTree.add_parent_filter(parent_id)
     |> Repo.one()
     |> case do
       nil -> 0
@@ -97,33 +96,7 @@ defmodule Storyarn.Flows.TreeOperations do
       where: f.project_id == ^project_id and is_nil(f.deleted_at),
       order_by: [asc: f.position, asc: f.name]
     )
-    |> add_parent_filter(parent_id)
+    |> SharedTree.add_parent_filter(parent_id)
     |> Repo.all()
   end
-
-  defp update_flow_position({flow_id, index}, project_id, parent_id) do
-    query =
-      from(f in Flow,
-        where: f.id == ^flow_id and f.project_id == ^project_id and is_nil(f.deleted_at)
-      )
-
-    query = add_parent_filter(query, parent_id)
-    Repo.update_all(query, set: [position: index])
-  end
-
-  defp update_position_only(flow_id, position) do
-    from(f in Flow, where: f.id == ^flow_id and is_nil(f.deleted_at))
-    |> Repo.update_all(set: [position: position])
-  end
-
-  defp reorder_source_container(project_id, parent_id) do
-    list_flows_by_parent(project_id, parent_id)
-    |> Enum.with_index()
-    |> Enum.each(fn {flow, index} ->
-      update_position_only(flow.id, index)
-    end)
-  end
-
-  defp add_parent_filter(query, nil), do: where(query, [f], is_nil(f.parent_id))
-  defp add_parent_filter(query, parent_id), do: where(query, [f], f.parent_id == ^parent_id)
 end

@@ -6,8 +6,8 @@ defmodule Storyarn.Sheets.SheetCrud do
   alias Storyarn.Localization.TextExtractor
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
-  alias Storyarn.Sheets.{PropertyInheritance, Sheet}
+  alias Storyarn.Shared.{MapUtils, NameNormalizer, ShortcutHelpers, TimeHelpers}
+  alias Storyarn.Sheets.{PropertyInheritance, ReferenceTracker, Sheet}
   alias Storyarn.Shortcuts
 
   # =============================================================================
@@ -70,7 +70,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       descendant_ids = get_descendant_ids(sheet.id)
 
       # Soft delete all descendants
-      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      now = TimeHelpers.now()
 
       if descendant_ids != [] do
         from(s in Sheet, where: s.id in ^descendant_ids)
@@ -226,57 +226,52 @@ defmodule Storyarn.Sheets.SheetCrud do
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)
 
   defp maybe_generate_shortcut(attrs, project_id, exclude_sheet_id) do
-    # Only generate if shortcut is not provided and name is available
-    has_shortcut = Map.has_key?(attrs, "shortcut") || Map.has_key?(attrs, :shortcut)
-    name = attrs["name"] || attrs[:name]
-
-    if has_shortcut || is_nil(name) || name == "" do
-      attrs
-    else
-      shortcut = Shortcuts.generate_sheet_shortcut(name, project_id, exclude_sheet_id)
-      Map.put(attrs, "shortcut", shortcut)
-    end
+    attrs
+    |> stringify_keys()
+    |> ShortcutHelpers.maybe_generate_shortcut(
+      project_id,
+      exclude_sheet_id,
+      &Shortcuts.generate_sheet_shortcut/3
+    )
   end
 
   defp maybe_generate_shortcut_on_update(%Sheet{} = sheet, attrs) do
     attrs = stringify_keys(attrs)
 
     cond do
-      # If attrs explicitly set shortcut, use that
       Map.has_key?(attrs, "shortcut") ->
         attrs
 
-      # If name is changing, regenerate shortcut from new name
-      name_changing?(attrs, sheet) ->
-        shortcut = Shortcuts.generate_sheet_shortcut(attrs["name"], sheet.project_id, sheet.id)
+      ShortcutHelpers.name_changing?(attrs, sheet) ->
+        referenced? = ReferenceTracker.count_backlinks("sheet", sheet.id) > 0
+
+        shortcut =
+          NameNormalizer.maybe_regenerate(
+            sheet.shortcut,
+            attrs["name"],
+            referenced?,
+            &NameNormalizer.shortcutify/1
+          )
+
+        # Only check uniqueness if the shortcut actually changed
+        shortcut =
+          if shortcut != sheet.shortcut do
+            Shortcuts.generate_sheet_shortcut(attrs["name"], sheet.project_id, sheet.id)
+          else
+            shortcut
+          end
+
         Map.put(attrs, "shortcut", shortcut)
 
-      # If sheet has no shortcut yet, generate one from current name
-      missing_shortcut?(sheet) ->
-        maybe_generate_from_existing_name(attrs, sheet)
+      ShortcutHelpers.missing_shortcut?(sheet) ->
+        ShortcutHelpers.generate_shortcut_from_name(
+          sheet,
+          attrs,
+          &Shortcuts.generate_sheet_shortcut/3
+        )
 
       true ->
         attrs
-    end
-  end
-
-  defp name_changing?(attrs, sheet) do
-    new_name = attrs["name"]
-    new_name && new_name != "" && new_name != sheet.name
-  end
-
-  defp missing_shortcut?(sheet) do
-    is_nil(sheet.shortcut) || sheet.shortcut == ""
-  end
-
-  defp maybe_generate_from_existing_name(attrs, sheet) do
-    name = sheet.name
-
-    if name && name != "" do
-      shortcut = Shortcuts.generate_sheet_shortcut(name, sheet.project_id, sheet.id)
-      Map.put(attrs, "shortcut", shortcut)
-    else
-      attrs
     end
   end
 end

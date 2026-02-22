@@ -1225,46 +1225,46 @@ defmodule Storyarn.SheetsTest do
   end
 
   describe "shortcut validation" do
-    alias Storyarn.Shortcuts
+    alias Storyarn.Shared.NameNormalizer
 
     test "accepts lowercase alphanumeric" do
-      assert Shortcuts.slugify("test123") == "test123"
+      assert NameNormalizer.shortcutify("test123") == "test123"
     end
 
     test "accepts dots and hyphens" do
-      assert Shortcuts.slugify("mc.jaime") == "mc.jaime"
-      assert Shortcuts.slugify("chapter-one") == "chapter-one"
+      assert NameNormalizer.shortcutify("mc.jaime") == "mc.jaime"
+      assert NameNormalizer.shortcutify("chapter-one") == "chapter-one"
     end
 
     test "rejects uppercase by converting to lowercase" do
-      assert Shortcuts.slugify("UPPERCASE") == "uppercase"
-      assert Shortcuts.slugify("MixedCase") == "mixedcase"
+      assert NameNormalizer.shortcutify("UPPERCASE") == "uppercase"
+      assert NameNormalizer.shortcutify("MixedCase") == "mixedcase"
     end
 
     test "rejects spaces by converting to hyphens" do
-      assert Shortcuts.slugify("has spaces") == "has-spaces"
+      assert NameNormalizer.shortcutify("has spaces") == "has-spaces"
     end
 
     test "rejects special characters" do
-      assert Shortcuts.slugify("test@#$%^&*") == "test"
-      assert Shortcuts.slugify("emoji😀test") == "emojitest"
+      assert NameNormalizer.shortcutify("test@#$%^&*") == "test"
+      assert NameNormalizer.shortcutify("emoji😀test") == "emojitest"
     end
 
     test "rejects leading/trailing dots or hyphens" do
-      assert Shortcuts.slugify(".leading-dot") == "leading-dot"
-      assert Shortcuts.slugify("trailing-dot.") == "trailing-dot"
-      assert Shortcuts.slugify("-leading-hyphen") == "leading-hyphen"
-      assert Shortcuts.slugify("trailing-hyphen-") == "trailing-hyphen"
+      assert NameNormalizer.shortcutify(".leading-dot") == "leading-dot"
+      assert NameNormalizer.shortcutify("trailing-dot.") == "trailing-dot"
+      assert NameNormalizer.shortcutify("-leading-hyphen") == "leading-hyphen"
+      assert NameNormalizer.shortcutify("trailing-hyphen-") == "trailing-hyphen"
     end
 
     test "collapses consecutive dots" do
-      assert Shortcuts.slugify("mc..jaime") == "mc.jaime"
-      assert Shortcuts.slugify("test...multiple") == "test.multiple"
+      assert NameNormalizer.shortcutify("mc..jaime") == "mc.jaime"
+      assert NameNormalizer.shortcutify("test...multiple") == "test.multiple"
     end
 
     test "collapses consecutive hyphens" do
-      assert Shortcuts.slugify("test--multiple") == "test-multiple"
-      assert Shortcuts.slugify("test---hyphens") == "test-hyphens"
+      assert NameNormalizer.shortcutify("test--multiple") == "test-multiple"
+      assert NameNormalizer.shortcutify("test---hyphens") == "test-hyphens"
     end
 
     test "enforces uniqueness within project" do

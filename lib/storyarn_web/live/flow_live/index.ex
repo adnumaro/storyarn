@@ -244,29 +244,20 @@ defmodule StoryarnWeb.FlowLive.Index do
   end
 
   def handle_event("delete", %{"id" => flow_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        flow = Flows.get_flow!(socket.assigns.project.id, flow_id)
+    with_authorization(socket, :edit_content, fn socket ->
+      flow = Flows.get_flow!(socket.assigns.project.id, flow_id)
 
-        case Flows.delete_flow(flow) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
-             |> reload_flows()}
+      case Flows.delete_flow(flow) do
+        {:ok, _} ->
+          {:noreply,
+           socket
+           |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
+           |> reload_flows()}
 
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("flows", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
+      end
+    end)
   end
 
   def handle_event("delete_flow", %{"id" => flow_id}, socket) do
@@ -274,29 +265,20 @@ defmodule StoryarnWeb.FlowLive.Index do
   end
 
   def handle_event("set_main", %{"id" => flow_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        flow = Flows.get_flow!(socket.assigns.project.id, flow_id)
+    with_authorization(socket, :edit_content, fn socket ->
+      flow = Flows.get_flow!(socket.assigns.project.id, flow_id)
 
-        case Flows.set_main_flow(flow) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, dgettext("flows", "Flow set as main."))
-             |> reload_flows()}
+      case Flows.set_main_flow(flow) do
+        {:ok, _} ->
+          {:noreply,
+           socket
+           |> put_flash(:info, dgettext("flows", "Flow set as main."))
+           |> reload_flows()}
 
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("flows", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
+      end
+    end)
   end
 
   def handle_event("set_main_flow", %{"id" => flow_id}, socket) do
@@ -304,55 +286,37 @@ defmodule StoryarnWeb.FlowLive.Index do
   end
 
   def handle_event("create_flow", _params, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        case Flows.create_flow(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
-          {:ok, new_flow} ->
-            {:noreply,
-             push_navigate(socket,
-               to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
-             )}
+    with_authorization(socket, :edit_content, fn socket ->
+      case Flows.create_flow(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
+        {:ok, new_flow} ->
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
+           )}
 
-          {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("flows", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
+      end
+    end)
   end
 
   def handle_event("create_child_flow", %{"parent-id" => parent_id}, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        attrs = %{name: dgettext("flows", "Untitled"), parent_id: parent_id}
+    with_authorization(socket, :edit_content, fn socket ->
+      attrs = %{name: dgettext("flows", "Untitled"), parent_id: parent_id}
 
-        case Flows.create_flow(socket.assigns.project, attrs) do
-          {:ok, new_flow} ->
-            {:noreply,
-             push_navigate(socket,
-               to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
-             )}
+      case Flows.create_flow(socket.assigns.project, attrs) do
+        {:ok, new_flow} ->
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
+           )}
 
-          {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("flows", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
+      end
+    end)
   end
 
   def handle_event(
@@ -360,53 +324,35 @@ defmodule StoryarnWeb.FlowLive.Index do
         %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
         socket
       ) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        flow = Flows.get_flow!(socket.assigns.project.id, item_id)
-        new_parent_id = parse_int(new_parent_id)
-        position = parse_int(position) || 0
+    with_authorization(socket, :edit_content, fn socket ->
+      flow = Flows.get_flow!(socket.assigns.project.id, item_id)
+      new_parent_id = parse_int(new_parent_id)
+      position = parse_int(position) || 0
 
-        case Flows.move_flow_to_position(flow, new_parent_id, position) do
-          {:ok, _} ->
-            {:noreply, reload_flows(socket)}
+      case Flows.move_flow_to_position(flow, new_parent_id, position) do
+        {:ok, _} ->
+          {:noreply, reload_flows(socket)}
 
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("flows", "Could not move flow."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("flows", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not move flow."))}
+      end
+    end)
   end
 
   def handle_event("create_sheet", _params, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
-          {:ok, new_sheet} ->
-            {:noreply,
-             push_navigate(socket,
-               to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
-             )}
+    with_authorization(socket, :edit_content, fn socket ->
+      case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
+        {:ok, new_sheet} ->
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
+           )}
 
-          {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create sheet."))}
-        end
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("flows", "You don't have permission to perform this action.")
-         )}
-    end
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create sheet."))}
+      end
+    end)
   end
 
   defp parse_int(""), do: nil

@@ -4,7 +4,9 @@ defmodule Storyarn.Sheets.TableCrud do
   import Ecto.Query, warn: false
 
   alias Ecto.Multi
+  alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Repo
+  alias Storyarn.Shared.{NameNormalizer, TimeHelpers}
   alias Storyarn.Sheets.{Block, TableColumn, TableRow}
 
   # =============================================================================
@@ -71,7 +73,11 @@ defmodule Storyarn.Sheets.TableCrud do
   Updates a column. Handles rename (slug migration) and type change (cell reset).
   """
   def update_column(%TableColumn{} = column, attrs) do
-    changeset = TableColumn.update_changeset(column, attrs)
+    changeset =
+      column
+      |> TableColumn.update_changeset(attrs)
+      |> maybe_sync_table_slug(column.block_id)
+
     new_slug = Ecto.Changeset.get_field(changeset, :slug)
     new_type = Ecto.Changeset.get_field(changeset, :type)
     old_slug = column.slug
@@ -276,7 +282,12 @@ defmodule Storyarn.Sheets.TableCrud do
   @doc "Updates a row (rename → re-slug)."
   def update_row(%TableRow{} = row, attrs) do
     old_slug = row.slug
-    changeset = TableRow.update_changeset(row, attrs)
+
+    changeset =
+      row
+      |> TableRow.update_changeset(attrs)
+      |> maybe_sync_table_slug(row.block_id)
+
     new_slug = Ecto.Changeset.get_field(changeset, :slug)
 
     changeset =
@@ -365,7 +376,7 @@ defmodule Storyarn.Sheets.TableCrud do
   # Syncs a column creation to non-detached inherited instances.
   defp sync_column_to_children(%Block{} = parent_block, %TableColumn{} = column, :create) do
     with_inheriting_instances(parent_block, fn instance_ids ->
-      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      now = TimeHelpers.now()
 
       col_entries =
         Enum.map(instance_ids, fn instance_id ->
@@ -450,7 +461,7 @@ defmodule Storyarn.Sheets.TableCrud do
   # Syncs a row creation to non-detached inherited instances.
   defp sync_row_to_children(%Block{} = parent_block, %TableRow{} = row, :create) do
     with_inheriting_instances(parent_block, fn instance_ids ->
-      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      now = TimeHelpers.now()
 
       row_entries =
         Enum.map(instance_ids, fn instance_id ->
@@ -537,6 +548,28 @@ defmodule Storyarn.Sheets.TableCrud do
     )
     |> Repo.one()
     |> then(fn max_pos -> (max_pos || -1) + 1 end)
+  end
+
+  # Syncs slug from name only if the parent table block has no variable references.
+  defp maybe_sync_table_slug(changeset, block_id) do
+    name = Ecto.Changeset.get_change(changeset, :name)
+
+    if name do
+      current_slug = Ecto.Changeset.get_field(changeset, :slug)
+      referenced? = VariableReferenceTracker.count_variable_usage(block_id) != %{}
+
+      new_slug =
+        NameNormalizer.maybe_regenerate(
+          current_slug,
+          name,
+          referenced?,
+          &NameNormalizer.variablify/1
+        )
+
+      Ecto.Changeset.put_change(changeset, :slug, new_slug)
+    else
+      changeset
+    end
   end
 
   defp next_row_position(block_id) do

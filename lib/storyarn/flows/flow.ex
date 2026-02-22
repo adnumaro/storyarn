@@ -19,10 +19,7 @@ defmodule Storyarn.Flows.Flow do
 
   alias Storyarn.Flows.{FlowConnection, FlowNode}
   alias Storyarn.Projects.Project
-
-  # Shortcut format: lowercase, alphanumeric, dots and hyphens allowed, no spaces
-  # Examples: chapter-1, quest.main, dialogue.intro
-  @shortcut_format ~r/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$|^[a-z0-9]$/
+  alias Storyarn.Shared.{TimeHelpers, Validations}
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -102,7 +99,7 @@ defmodule Storyarn.Flows.Flow do
   """
   def delete_changeset(flow) do
     flow
-    |> change(%{deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)})
+    |> change(%{deleted_at: TimeHelpers.now()})
   end
 
   @doc """
@@ -122,8 +119,7 @@ defmodule Storyarn.Flows.Flow do
 
   defp validate_shortcut(changeset) do
     changeset
-    |> validate_length(:shortcut, min: 1, max: 50)
-    |> validate_format(:shortcut, @shortcut_format,
+    |> Validations.validate_shortcut(
       message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., chapter-1)"
     )
     |> unique_constraint(:shortcut,

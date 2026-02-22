@@ -213,18 +213,9 @@ defmodule StoryarnWeb.AssetLive.Index do
   end
 
   def handle_event("confirm_delete_asset", _params, socket) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        delete_selected_asset(socket)
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("assets", "You don't have permission to delete assets.")
-         )}
-    end
+    with_authorization(socket, :edit_content, fn socket ->
+      delete_selected_asset(socket)
+    end)
   end
 
   def handle_event("upload_started", _params, socket) do
@@ -243,16 +234,9 @@ defmodule StoryarnWeb.AssetLive.Index do
         %{"filename" => filename, "content_type" => content_type, "data" => data},
         socket
       ) do
-    case authorize(socket, :edit_content) do
-      :ok ->
-        process_upload(socket, filename, content_type, data)
-
-      {:error, :unauthorized} ->
-        {:noreply,
-         socket
-         |> assign(:uploading, false)
-         |> put_flash(:error, dgettext("assets", "You don't have permission to upload files."))}
-    end
+    with_authorization(socket, :edit_content, fn socket ->
+      process_upload(socket, filename, content_type, data)
+    end)
   end
 
   # ===========================================================================
