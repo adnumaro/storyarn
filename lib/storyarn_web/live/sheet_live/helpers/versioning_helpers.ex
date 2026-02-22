@@ -3,6 +3,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
 
   import Phoenix.Component
   import Phoenix.LiveView
+  import StoryarnWeb.Helpers.SaveStatusTimer
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Repo
@@ -151,7 +152,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
      |> assign(:sheets_tree, sheets_tree)
      |> assign(:versions, versions)
      |> assign(:save_status, :saved)
-     |> schedule_save_status_reset()
+     |> schedule_reset()
      |> push_event("restore_sheet_content", %{
        name: updated_sheet.name,
        shortcut: updated_sheet.shortcut || ""
@@ -176,10 +177,5 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
 
   defp add_reference_target(block, _project_id) do
     Map.put(block, :reference_target, nil)
-  end
-
-  defp schedule_save_status_reset(socket) do
-    Process.send_after(self(), :reset_save_status, 4000)
-    socket
   end
 end

@@ -6,6 +6,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   import StoryarnWeb.Components.SheetComponents
   import StoryarnWeb.Components.SaveIndicator
+  import StoryarnWeb.Helpers.SaveStatusTimer
 
   alias Storyarn.Projects
   alias Storyarn.Repo
@@ -325,7 +326,7 @@ defmodule StoryarnWeb.SheetLive.Show do
          socket
          |> assign(:sheet, updated_sheet)
          |> assign(:save_status, :saved)
-         |> schedule_save_status_reset()}
+         |> schedule_reset()}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update color."))}
@@ -346,7 +347,7 @@ defmodule StoryarnWeb.SheetLive.Show do
     {:noreply,
      socket
      |> assign(:save_status, :saved)
-     |> schedule_save_status_reset()}
+     |> schedule_reset()}
   end
 
   # Handle messages from VersionsSection LiveComponent
@@ -354,7 +355,7 @@ defmodule StoryarnWeb.SheetLive.Show do
     {:noreply,
      socket
      |> assign(:save_status, :saved)
-     |> schedule_save_status_reset()}
+     |> schedule_reset()}
   end
 
   def handle_info({:versions_section, :sheet_updated, sheet}, socket) do
@@ -372,7 +373,7 @@ defmodule StoryarnWeb.SheetLive.Show do
      |> assign(:blocks, blocks)
      |> assign(:sheets_tree, sheets_tree)
      |> assign(:save_status, :saved)
-     |> schedule_save_status_reset()}
+     |> schedule_reset()}
   end
 
   # Handle messages from Banner LiveComponent
@@ -381,7 +382,7 @@ defmodule StoryarnWeb.SheetLive.Show do
      socket
      |> assign(:sheet, sheet)
      |> assign(:save_status, :saved)
-     |> schedule_save_status_reset()}
+     |> schedule_reset()}
   end
 
   def handle_info({:banner, :error, message}, socket) do
@@ -400,7 +401,7 @@ defmodule StoryarnWeb.SheetLive.Show do
      |> assign(:sheet, sheet)
      |> assign(:sheets_tree, sheets_tree)
      |> assign(:save_status, :saved)
-     |> schedule_save_status_reset()}
+     |> schedule_reset()}
   end
 
   def handle_info({:sheet_avatar, :error, message}, socket) do
@@ -414,7 +415,7 @@ defmodule StoryarnWeb.SheetLive.Show do
      |> assign(:sheet, sheet)
      |> assign(:sheets_tree, sheets_tree)
      |> assign(:save_status, :saved)
-     |> schedule_save_status_reset()}
+     |> schedule_reset()}
   end
 
   def handle_info({:sheet_title, :shortcut_saved, sheet}, socket) do
@@ -422,7 +423,7 @@ defmodule StoryarnWeb.SheetLive.Show do
      socket
      |> assign(:sheet, sheet)
      |> assign(:save_status, :saved)
-     |> schedule_save_status_reset()}
+     |> schedule_reset()}
   end
 
   def handle_info({:sheet_title, :error, message}, socket) do
@@ -432,9 +433,4 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
   # Private Functions
   # ===========================================================================
-
-  defp schedule_save_status_reset(socket) do
-    Process.send_after(self(), :reset_save_status, 4000)
-    socket
-  end
 end

@@ -3,6 +3,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
 
   import Phoenix.Component
   import Phoenix.LiveView
+  import StoryarnWeb.Helpers.SaveStatusTimer
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Assets
@@ -25,7 +26,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          |> assign(:sheet, updated_sheet)
          |> assign(:sheets_tree, sheets_tree)
          |> assign(:save_status, :saved)
-         |> schedule_save_status_reset()}
+         |> schedule_reset()}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove avatar."))}
@@ -48,7 +49,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          |> assign(:sheet, updated_sheet)
          |> assign(:sheets_tree, sheets_tree)
          |> assign(:save_status, :saved)
-         |> schedule_save_status_reset()}
+         |> schedule_reset()}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not set avatar."))}
@@ -85,7 +86,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          socket
          |> assign(:sheet, updated_sheet)
          |> assign(:save_status, :saved)
-         |> schedule_save_status_reset()}
+         |> schedule_reset()}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove banner."))}
@@ -138,7 +139,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          |> assign(:sheet, updated_sheet)
          |> assign(:sheets_tree, sheets_tree)
          |> assign(:save_status, :saved)
-         |> schedule_save_status_reset()}
+         |> schedule_reset()}
       else
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload avatar."))}
@@ -174,7 +175,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          socket
          |> assign(:sheet, updated_sheet)
          |> assign(:save_status, :saved)
-         |> schedule_save_status_reset()}
+         |> schedule_reset()}
       else
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload banner."))}
@@ -182,10 +183,5 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
     else
       {:noreply, put_flash(socket, :error, dgettext("sheets", "Unsupported file type."))}
     end
-  end
-
-  defp schedule_save_status_reset(socket) do
-    Process.send_after(self(), :reset_save_status, 4000)
-    socket
   end
 end

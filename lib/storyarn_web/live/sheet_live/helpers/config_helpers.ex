@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ConfigHelpers do
 
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
+  import StoryarnWeb.Helpers.SaveStatusTimer
 
   use Gettext, backend: StoryarnWeb.Gettext
 
@@ -46,13 +47,13 @@ defmodule StoryarnWeb.SheetLive.Helpers.ConfigHelpers do
     case Sheets.update_block_config(block, config_params) do
       {:ok, updated_block} ->
         blocks = load_blocks_with_references(socket.assigns.sheet.id, socket.assigns.project.id)
-        schedule_save_status_reset()
 
         {:noreply,
          socket
          |> assign(:blocks, blocks)
          |> assign(:configuring_block, updated_block)
-         |> assign(:save_status, :saved)}
+         |> assign(:save_status, :saved)
+         |> schedule_reset()}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not save configuration."))}
@@ -246,10 +247,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.ConfigHelpers do
 
   defp parse_index(index) when is_integer(index), do: {:ok, index}
   defp parse_index(_), do: :error
-
-  defp schedule_save_status_reset do
-    Process.send_after(self(), :reset_save_status, 4000)
-  end
 
   defp load_blocks_with_references(sheet_id, project_id) do
     blocks = Sheets.list_blocks(sheet_id)

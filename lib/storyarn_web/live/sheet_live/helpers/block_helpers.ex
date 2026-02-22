@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
 
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
+  import StoryarnWeb.Helpers.SaveStatusTimer
 
   use Gettext, backend: StoryarnWeb.Gettext
 
@@ -51,12 +52,12 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
     case Sheets.update_block_value(block, %{"content" => value}) do
       {:ok, _block} ->
         blocks = Sheets.list_blocks(socket.assigns.sheet.id)
-        schedule_save_status_reset()
 
         {:noreply,
          socket
          |> assign(:blocks, blocks)
-         |> assign(:save_status, :saved)}
+         |> assign(:save_status, :saved)
+         |> schedule_reset()}
 
       {:error, _} ->
         {:noreply, socket}
@@ -127,12 +128,12 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
     case Sheets.update_block_value(block, %{"content" => new_content}) do
       {:ok, _block} ->
         blocks = Sheets.list_blocks(socket.assigns.sheet.id)
-        schedule_save_status_reset()
 
         {:noreply,
          socket
          |> assign(:blocks, blocks)
-         |> assign(:save_status, :saved)}
+         |> assign(:save_status, :saved)
+         |> schedule_reset()}
 
       {:error, _} ->
         {:noreply, socket}
@@ -167,8 +168,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
     case Sheets.update_block_value(block, %{"content" => content}) do
       {:ok, _block} ->
         # Don't reload blocks to avoid disrupting the editor
-        schedule_save_status_reset()
-        {:noreply, assign(socket, :save_status, :saved)}
+        {:noreply, socket |> assign(:save_status, :saved) |> schedule_reset()}
 
       {:error, _} ->
         {:noreply, socket}
@@ -196,12 +196,12 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
     case Sheets.update_block_value(block, %{"content" => new_value}) do
       {:ok, _block} ->
         blocks = Sheets.list_blocks(socket.assigns.sheet.id)
-        schedule_save_status_reset()
 
         {:noreply,
          socket
          |> assign(:blocks, blocks)
-         |> assign(:save_status, :saved)}
+         |> assign(:save_status, :saved)
+         |> schedule_reset()}
 
       {:error, _} ->
         {:noreply, socket}
@@ -250,12 +250,12 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
            block <- Sheets.get_block_in_project!(block_id, project_id),
            {:ok, _} <- Sheets.update_block_value(block, %{"content" => new_content}) do
         blocks = Sheets.list_blocks(socket.assigns.sheet.id)
-        schedule_save_status_reset()
 
         {:noreply,
          socket
          |> assign(:blocks, blocks)
-         |> assign(:save_status, :saved)}
+         |> assign(:save_status, :saved)
+         |> schedule_reset()}
       else
         _ -> {:noreply, socket}
       end
@@ -266,12 +266,12 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
     case Sheets.update_block_value(block, %{"content" => new_content}) do
       {:ok, _} ->
         blocks = Sheets.list_blocks(socket.assigns.sheet.id)
-        schedule_save_status_reset()
 
         {:noreply,
          socket
          |> assign(:blocks, blocks)
-         |> assign(:save_status, :saved)}
+         |> assign(:save_status, :saved)
+         |> schedule_reset()}
 
       {:error, _} ->
         {:noreply, socket}
@@ -286,10 +286,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
     |> then(fn key ->
       if key == "", do: "option-#{:rand.uniform(9999)}", else: key
     end)
-  end
-
-  defp schedule_save_status_reset do
-    Process.send_after(self(), :reset_save_status, 4000)
   end
 
   # ===========================================================================

@@ -3,6 +3,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
 
   import Phoenix.Component
   import Phoenix.LiveView
+  import StoryarnWeb.Helpers.SaveStatusTimer
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Sheets
@@ -45,7 +46,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
        socket
        |> assign(:blocks, blocks)
        |> assign(:save_status, :saved)
-       |> schedule_save_status_reset()}
+       |> schedule_reset()}
     else
       :error ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid reference ID."))}
@@ -75,7 +76,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
          socket
          |> assign(:blocks, blocks)
          |> assign(:save_status, :saved)
-         |> schedule_save_status_reset()}
+         |> schedule_reset()}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not clear reference."))}
@@ -162,11 +163,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
   end
 
   # Private functions
-
-  defp schedule_save_status_reset(socket) do
-    Process.send_after(self(), :reset_save_status, 4000)
-    socket
-  end
 
   defp parse_id(id) when is_binary(id), do: String.to_integer(id)
   defp parse_id(id) when is_integer(id), do: id
