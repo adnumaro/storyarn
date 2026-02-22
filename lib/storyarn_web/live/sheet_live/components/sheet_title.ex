@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
   """
 
   use StoryarnWeb, :live_component
+  use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -66,6 +67,18 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
 
   @impl true
   def handle_event("save_name", %{"name" => name}, socket) do
+    with_edit_authorization(socket, fn socket -> do_save_name(socket, name) end)
+  end
+
+  def handle_event("save_shortcut", %{"shortcut" => shortcut}, socket) do
+    with_edit_authorization(socket, fn socket -> do_save_shortcut(socket, shortcut) end)
+  end
+
+  # ===========================================================================
+  # Private Functions
+  # ===========================================================================
+
+  defp do_save_name(socket, name) do
     sheet = socket.assigns.sheet
     old_name = sheet.name
 
@@ -87,7 +100,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
     end
   end
 
-  def handle_event("save_shortcut", %{"shortcut" => shortcut}, socket) do
+  defp do_save_shortcut(socket, shortcut) do
     sheet = socket.assigns.sheet
     old_shortcut = sheet.shortcut
     shortcut = if shortcut == "", do: nil, else: shortcut
@@ -111,10 +124,6 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
         {:noreply, socket}
     end
   end
-
-  # ===========================================================================
-  # Private Functions
-  # ===========================================================================
 
   defp format_shortcut_error(changeset) do
     case changeset.errors[:shortcut] do

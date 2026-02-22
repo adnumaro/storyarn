@@ -2,6 +2,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.HtmlSanitizer do
   @moduledoc false
 
   @allowed_tags ~w(p br em strong b i u s span a ul ol li blockquote code pre sub sup del h1 h2 h3 h4 h5 h6 div)
+  @safe_uri_schemes ~w(http: https: mailto: tel: #)
 
   def sanitize_html(""), do: ""
 
@@ -33,14 +34,32 @@ defmodule StoryarnWeb.FlowLive.Helpers.HtmlSanitizer do
   defp strip_unsafe_node({:comment, _}), do: []
   defp strip_unsafe_node(_), do: []
 
-  defp unsafe_attr?(name, _value) when is_binary(name) do
-    lower = String.downcase(name)
-    String.starts_with?(lower, "on") or lower in ~w(style srcdoc formaction)
-  end
+  defp unsafe_attr?(name, value) when is_binary(name) do
+    lower_name = String.downcase(name)
 
-  defp unsafe_attr?(_name, value) when is_binary(value) do
-    String.contains?(String.downcase(value), "javascript:")
+    cond do
+      String.starts_with?(lower_name, "on") ->
+        true
+
+      lower_name in ~w(style srcdoc formaction) ->
+        true
+
+      lower_name in ~w(href src action) and is_binary(value) ->
+        not safe_uri?(value)
+
+      true ->
+        false
+    end
   end
 
   defp unsafe_attr?(_, _), do: false
+
+  defp safe_uri?(value) do
+    trimmed = value |> String.trim() |> String.downcase()
+
+    # Empty or relative URIs are safe
+    trimmed == "" or
+      not String.contains?(trimmed, ":") or
+      Enum.any?(@safe_uri_schemes, &String.starts_with?(trimmed, &1))
+  end
 end

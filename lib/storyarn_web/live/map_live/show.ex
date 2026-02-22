@@ -725,11 +725,15 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("undo", params, socket) do
-    UndoRedoHandlers.handle_undo(params, socket)
+    with_auth(socket, :edit_content, fn ->
+      UndoRedoHandlers.handle_undo(params, socket)
+    end)
   end
 
   def handle_event("redo", params, socket) do
-    UndoRedoHandlers.handle_redo(params, socket)
+    with_auth(socket, :edit_content, fn ->
+      UndoRedoHandlers.handle_redo(params, socket)
+    end)
   end
 
   # ---------------------------------------------------------------------------

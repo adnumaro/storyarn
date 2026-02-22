@@ -77,6 +77,9 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# Filter sensitive parameters from logs
+config :phoenix, :filter_parameters, ["password", "secret", "token", "api_key", "_csrf_token"]
+
 # Configure Gettext locales
 config :storyarn, StoryarnWeb.Gettext,
   default_locale: "en",

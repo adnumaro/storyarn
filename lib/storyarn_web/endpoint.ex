@@ -10,7 +10,8 @@ defmodule StoryarnWeb.Endpoint do
     key: "_storyarn_key",
     signing_salt:
       Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
-    same_site: "Lax"
+    same_site: "Lax",
+    secure: Application.compile_env(:storyarn, [StoryarnWeb.Endpoint, :force_ssl]) != nil
   ]
 
   socket "/live", Phoenix.LiveView.Socket,

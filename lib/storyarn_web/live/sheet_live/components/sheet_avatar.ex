@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   """
 
   use StoryarnWeb, :live_component
+  use StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.SheetComponents
 
@@ -76,19 +77,21 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
 
   @impl true
   def handle_event("remove_avatar", _params, socket) do
-    sheet = socket.assigns.sheet
+    with_edit_authorization(socket, fn socket ->
+      sheet = socket.assigns.sheet
 
-    case Sheets.update_sheet(sheet, %{avatar_asset_id: nil}) do
-      {:ok, updated_sheet} ->
-        updated_sheet = Repo.preload(updated_sheet, :avatar_asset, force: true)
-        sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
-        send(self(), {:sheet_avatar, :sheet_updated, updated_sheet, sheets_tree})
-        {:noreply, assign(socket, :sheet, updated_sheet)}
+      case Sheets.update_sheet(sheet, %{avatar_asset_id: nil}) do
+        {:ok, updated_sheet} ->
+          updated_sheet = Repo.preload(updated_sheet, :avatar_asset, force: true)
+          sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
+          send(self(), {:sheet_avatar, :sheet_updated, updated_sheet, sheets_tree})
+          {:noreply, assign(socket, :sheet, updated_sheet)}
 
-      {:error, _changeset} ->
-        send(self(), {:sheet_avatar, :error, dgettext("sheets", "Could not remove avatar.")})
-        {:noreply, socket}
-    end
+        {:error, _changeset} ->
+          send(self(), {:sheet_avatar, :error, dgettext("sheets", "Could not remove avatar.")})
+          {:noreply, socket}
+      end
+    end)
   end
 
   def handle_event("upload_validation_error", %{"message" => message}, socket) do
@@ -101,17 +104,19 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
         %{"filename" => filename, "content_type" => content_type, "data" => data},
         socket
       ) do
-    # Extract binary data from base64 data URL
-    [_header, base64_data] = String.split(data, ",", parts: 2)
+    with_edit_authorization(socket, fn socket ->
+      # Extract binary data from base64 data URL
+      [_header, base64_data] = String.split(data, ",", parts: 2)
 
-    case Base.decode64(base64_data) do
-      {:ok, binary_data} ->
-        upload_avatar_file(socket, filename, content_type, binary_data)
+      case Base.decode64(base64_data) do
+        {:ok, binary_data} ->
+          upload_avatar_file(socket, filename, content_type, binary_data)
 
-      :error ->
-        send(self(), {:sheet_avatar, :error, dgettext("sheets", "Invalid file data.")})
-        {:noreply, socket}
-    end
+        :error ->
+          send(self(), {:sheet_avatar, :error, dgettext("sheets", "Invalid file data.")})
+          {:noreply, socket}
+      end
+    end)
   end
 
   # ===========================================================================

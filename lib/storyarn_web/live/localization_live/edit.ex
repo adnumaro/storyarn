@@ -8,6 +8,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+  alias StoryarnWeb.FlowLive.Helpers.HtmlSanitizer
 
   @impl true
   def render(assigns) do
@@ -42,7 +43,9 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
           <div>
             <h4 class="font-medium text-sm mb-2 opacity-70">{dgettext("localization", "Source")}</h4>
             <div class="bg-base-200 rounded-lg p-4 min-h-32">
-              <div class="prose prose-sm">{raw(@text.source_text || "")}</div>
+              <div class="prose prose-sm">
+                {raw(HtmlSanitizer.sanitize_html(@text.source_text || ""))}
+              </div>
             </div>
             <div class="text-xs opacity-50 mt-1">
               {dgettext("localization", "%{count} words", count: @text.word_count || 0)}
