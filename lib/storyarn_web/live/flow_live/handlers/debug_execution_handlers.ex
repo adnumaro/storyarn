@@ -14,6 +14,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.Evaluator.Engine
 
+  @doc "Advances the debugger by one step. May trigger cross-flow navigation."
   def handle_debug_step(socket) do
     state = socket.assigns.debug_state
     nodes = socket.assigns.debug_nodes
@@ -31,6 +32,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     end
   end
 
+  @doc "Steps back to the previous state in the execution history."
   def handle_debug_step_back(socket) do
     state = socket.assigns.debug_state
 
@@ -46,6 +48,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     end
   end
 
+  @doc "Selects a dialogue response and advances past the choice point."
   def handle_debug_choose_response(%{"id" => response_id}, socket) do
     state = socket.assigns.debug_state
     connections = socket.assigns.debug_connections
@@ -74,6 +77,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     end
   end
 
+  @doc "Executes an instruction zone's variable assignments in the debugger."
   def handle_debug_interaction_instruction(params, socket) do
     assignments = decode_assignments(params["assignments"])
     zone_name = params["zone_name"] || "zone"
@@ -91,6 +95,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     end
   end
 
+  @doc "Triggers an event zone in the interaction node, advancing to the matching output."
   def handle_debug_interaction_event(params, socket) do
     event_name = params["event_name"]
     state = socket.assigns.debug_state
@@ -128,6 +133,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     end
   end
 
+  @doc "Starts auto-play mode, stepping at the configured speed."
   def handle_debug_play(socket) do
     socket =
       socket
@@ -137,6 +143,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     {:noreply, socket}
   end
 
+  @doc "Pauses auto-play mode."
   def handle_debug_pause(socket) do
     {:noreply,
      socket
@@ -144,11 +151,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
      |> assign(:debug_auto_playing, false)}
   end
 
+  @doc "Sets the auto-play step interval (200-3000ms)."
   def handle_debug_set_speed(%{"speed" => speed_str}, socket) do
     speed = parse_speed(speed_str)
     {:noreply, assign(socket, :debug_speed, speed)}
   end
 
+  @doc "Timer callback for auto-play. Stops at breakpoints or waiting_input states."
   def handle_debug_auto_step(socket) do
     state = socket.assigns.debug_state
 
@@ -168,6 +177,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   # Public helpers (used by DebugSessionHandlers)
   # ===========================================================================
 
+  @doc "Pushes node highlight and connection highlight events to the canvas."
   def push_debug_canvas(socket, state) do
     path = Enum.reverse(state.execution_path)
     active_connection = find_active_connection(path, socket.assigns.debug_connections)
@@ -192,6 +202,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     })
   end
 
+  @doc "Stores debug session to ETS and navigates to a different flow (cross-flow debugging)."
   def store_and_navigate(socket, target_flow_id) do
     user_id = socket.assigns.current_scope.user.id
     project_id = socket.assigns.project.id
@@ -221,6 +232,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     {:navigating, push_navigate(socket, to: path)}
   end
 
+  @doc "Schedules the next auto-step timer at the configured speed."
   def schedule_auto_step(socket) do
     socket = cancel_auto_timer(socket)
     speed = socket.assigns.debug_speed
@@ -228,6 +240,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     assign(socket, :debug_auto_timer, ref)
   end
 
+  @doc "Cancels the running auto-step timer if one exists."
   def cancel_auto_timer(socket) do
     case socket.assigns[:debug_auto_timer] do
       nil ->
@@ -397,11 +410,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     end)
   end
 
+  @doc "Builds a `%{node_id => node_map}` lookup from all nodes in a flow."
   def build_nodes_map(flow_id) do
     Flows.list_nodes(flow_id)
     |> Map.new(fn node -> {node.id, %{id: node.id, type: node.type, data: node.data || %{}}} end)
   end
 
+  @doc "Builds a list of connection maps for the debugger engine."
   def build_connections(flow_id) do
     Flows.list_connections(flow_id)
     |> Enum.map(fn conn ->
@@ -414,6 +429,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     end)
   end
 
+  @doc "Finds the entry node ID in a nodes map. Returns nil if none exists."
   def find_entry_node(nodes_map) do
     Enum.find_value(nodes_map, fn {id, node} ->
       if node.type == "entry", do: id

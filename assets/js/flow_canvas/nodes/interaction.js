@@ -38,15 +38,18 @@ export default {
     return null; // Fall back to static ["output"]
   },
 
+  /** Returns the display label for an output pin (event zone label or key fallback). */
   formatOutputLabel(key, data) {
     const labels = data.event_zone_labels || {};
     return labels[key] || key;
   },
 
+  /** Returns visual badges for an output pin (none for interaction). */
   getOutputBadges(_key, _data) {
     return [];
   },
 
+  /** Renders the interaction node with map nav link and event zone sockets. */
   render(ctx) {
     const { node, nodeData, config, selected, emit } = ctx;
     const preview = this.getPreviewText(nodeData);
@@ -72,6 +75,7 @@ export default {
     );
   },
 
+  /** Returns warning indicators (e.g., "No map selected"). */
   getIndicators(data) {
     const indicators = [];
     if (!data.map_id) {
@@ -80,12 +84,14 @@ export default {
     return indicators;
   },
 
+  /** Returns the preview text shown inside the node body. */
   getPreviewText(data) {
     if (data.map_name) return data.map_name;
     if (data.map_id) return `Map #${data.map_id}`;
     return "No map selected";
   },
 
+  /** Returns true if the node structure changed (map or event zones). */
   needsRebuild(oldData, newData) {
     if (oldData?.map_id !== newData.map_id) return true;
     if (JSON.stringify(oldData?.event_zone_names) !== JSON.stringify(newData.event_zone_names))

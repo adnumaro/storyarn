@@ -743,8 +743,7 @@ defmodule StoryarnWeb.MapLive.Show do
   def handle_event("navigate_to_referencing_flow", %{"flow-id" => flow_id}, socket) do
     case Storyarn.Flows.get_flow_brief(socket.assigns.project.id, flow_id) do
       nil ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("maps", "Flow not found."))}
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Flow not found."))}
 
       _flow ->
         {:noreply,

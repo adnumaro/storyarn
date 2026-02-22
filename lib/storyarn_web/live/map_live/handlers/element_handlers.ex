@@ -9,7 +9,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Maps
-  alias Storyarn.Shared.SlugGenerator
+  alias Storyarn.Shared.NameNormalizer
   import StoryarnWeb.MapLive.Helpers.MapHelpers
   import StoryarnWeb.MapLive.Helpers.Serializer
 
@@ -20,6 +20,9 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   # Pin handlers
   # ---------------------------------------------------------------------------
 
+  @doc """
+  Creates a new pin at the given canvas position on the active layer.
+  """
   def handle_create_pin(%{"position_x" => x, "position_y" => y}, socket) do
     attrs = %{
       "position_x" => x,
@@ -46,6 +49,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Moves a pin to new coordinates. Respects lock state."
   def handle_move_pin(%{"id" => pin_id, "position_x" => x, "position_y" => y}, socket) do
     case Maps.get_pin(socket.assigns.map.id, pin_id) do
       nil -> {:noreply, socket}
@@ -53,10 +57,12 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Opens the sheet picker modal for creating a pin from a sheet."
   def handle_show_sheet_picker(_params, socket) do
     {:noreply, assign(socket, :show_sheet_picker, true)}
   end
 
+  @doc "Cancels the sheet picker without creating a pin."
   def handle_cancel_sheet_picker(_params, socket) do
     {:noreply,
      socket
@@ -64,6 +70,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
      |> push_event("pending_sheet_changed", %{active: false})}
   end
 
+  @doc "Selects a sheet and switches to pin placement mode."
   def handle_start_pin_from_sheet(%{"sheet-id" => sheet_id}, socket) do
     raw_sheet = Storyarn.Sheets.get_sheet(socket.assigns.project.id, sheet_id)
     sheet = if raw_sheet, do: Storyarn.Repo.preload(raw_sheet, avatar_asset: []), else: nil
@@ -81,10 +88,12 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Places a character pin linked to the pending sheet at the given position."
   def handle_create_pin_from_sheet(%{"position_x" => x, "position_y" => y}, socket) do
     do_create_pin_from_sheet(socket, x, y)
   end
 
+  @doc "Deletes a pin and its associated connections. Respects lock state."
   def handle_delete_pin(%{"id" => pin_id}, socket) do
     case Maps.get_pin(socket.assigns.map.id, pin_id) do
       nil -> {:noreply, socket}
@@ -92,6 +101,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Updates a single field on a pin (e.g., label, color, size)."
   def handle_update_pin(%{"field" => field} = params, socket) do
     id = params["id"] || params["element_id"]
 
@@ -101,10 +111,12 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Marks a pin for pending confirmation-based deletion."
   def handle_set_pending_delete_pin(%{"id" => id}, socket) do
     {:noreply, assign(socket, :pending_delete_element, {:pin, parse_id(id)})}
   end
 
+  @doc "Confirms and executes the pending element deletion (pin, zone, connection, or annotation)."
   def handle_confirm_delete_element(_params, socket) do
     case socket.assigns[:pending_delete_element] do
       {:pin, id} ->
@@ -128,6 +140,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   # Zone handlers
   # ---------------------------------------------------------------------------
 
+  @doc "Creates a polygon zone from the drawn vertices on the active layer."
   def handle_create_zone(%{"vertices" => vertices} = params, socket) do
     name = params["name"]
     name = if name == "" or is_nil(name), do: dgettext("maps", "New Zone"), else: name
@@ -156,6 +169,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Updates a single field on a zone (e.g., name, color, opacity)."
   def handle_update_zone(%{"field" => field} = params, socket) do
     id = params["id"] || params["element_id"]
 
@@ -165,6 +179,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Updates the polygon vertices of a zone after user reshapes it."
   def handle_update_zone_vertices(%{"id" => id, "vertices" => vertices}, socket) do
     case Maps.get_zone(socket.assigns.map.id, id) do
       nil -> {:noreply, socket}
@@ -172,6 +187,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Duplicates a zone with shifted position and '(copy)' suffix."
   def handle_duplicate_zone(%{"id" => zone_id}, socket) do
     case Maps.get_zone(socket.assigns.map.id, zone_id) do
       nil -> {:noreply, socket}
@@ -179,6 +195,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Deletes a zone. Respects lock state."
   def handle_delete_zone(%{"id" => zone_id}, socket) do
     case Maps.get_zone(socket.assigns.map.id, zone_id) do
       nil -> {:noreply, socket}
@@ -186,6 +203,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Marks a zone for pending confirmation-based deletion."
   def handle_set_pending_delete_zone(%{"id" => id}, socket) do
     {:noreply, assign(socket, :pending_delete_element, {:zone, parse_id(id)})}
   end
@@ -201,6 +219,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     "event" => %{"event_name" => ""}
   }
 
+  @doc "Changes a zone's action type (navigate, instruction, display, event) with default data."
   def handle_update_zone_action_type(%{"zone-id" => id, "action-type" => type}, socket) do
     case Maps.get_zone(socket.assigns.map.id, id) do
       nil ->
@@ -212,7 +231,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
         # Auto-set event_name from zone name slug when switching to event type
         action_data =
           if type == "event" do
-            Map.put(default_data, "event_name", SlugGenerator.slugify(zone.name))
+            Map.put(default_data, "event_name", NameNormalizer.slugify(zone.name))
           else
             default_data
           end
@@ -224,6 +243,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Updates instruction assignments for an instruction-type zone."
   def handle_update_zone_assignments(%{"zone-id" => id, "assignments" => assignments}, socket) do
     case Maps.get_zone(socket.assigns.map.id, id) do
       nil ->
@@ -235,7 +255,11 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
-  def handle_update_zone_action_data(%{"zone-id" => id, "field" => field, "value" => value}, socket) do
+  @doc "Updates a single field in a zone's action_data (e.g., event_name, variable_ref)."
+  def handle_update_zone_action_data(
+        %{"zone-id" => id, "field" => field, "value" => value},
+        socket
+      ) do
     case Maps.get_zone(socket.assigns.map.id, id) do
       nil ->
         {:noreply, socket}
@@ -250,6 +274,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   # Connection handlers
   # ---------------------------------------------------------------------------
 
+  @doc "Creates a connection between two pins."
   def handle_create_connection(%{"from_pin_id" => from_pin_id, "to_pin_id" => to_pin_id}, socket) do
     attrs = %{
       "from_pin_id" => from_pin_id,
@@ -269,6 +294,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Updates a single field on a connection (e.g., label, color, style)."
   def handle_update_connection(%{"field" => field} = params, socket) do
     id = params["id"] || params["element_id"]
 
@@ -278,6 +304,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Updates the waypoint list for a connection path."
   def handle_update_connection_waypoints(%{"id" => id, "waypoints" => waypoints}, socket) do
     case Maps.get_connection(socket.assigns.map.id, id) do
       nil -> {:noreply, socket}
@@ -285,6 +312,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Clears all waypoints from a connection, resetting to direct path."
   def handle_clear_connection_waypoints(%{"id" => id}, socket) do
     case Maps.get_connection(socket.assigns.map.id, id) do
       nil -> {:noreply, socket}
@@ -292,6 +320,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Deletes a connection between two pins."
   def handle_delete_connection(%{"id" => connection_id}, socket) do
     case Maps.get_connection(socket.assigns.map.id, connection_id) do
       nil -> {:noreply, socket}
@@ -299,6 +328,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Marks a connection for pending confirmation-based deletion."
   def handle_set_pending_delete_connection(%{"id" => id}, socket) do
     {:noreply, assign(socket, :pending_delete_element, {:connection, parse_id(id)})}
   end
@@ -307,6 +337,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   # Annotation handlers
   # ---------------------------------------------------------------------------
 
+  @doc "Creates a text annotation at the given canvas position."
   def handle_create_annotation(%{"position_x" => x, "position_y" => y} = params, socket) do
     attrs = %{
       "text" => params["text"] || dgettext("maps", "Note"),
@@ -335,6 +366,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Updates a single field on an annotation (e.g., text, font_size, color)."
   def handle_update_annotation(%{"field" => field} = params, socket) do
     id = params["id"] || params["element_id"]
     value = params["value"] || params[field]
@@ -345,6 +377,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Moves an annotation to new coordinates. Respects lock state."
   def handle_move_annotation(%{"id" => id, "position_x" => x, "position_y" => y}, socket) do
     case Maps.get_annotation(socket.assigns.map.id, id) do
       nil -> {:noreply, socket}
@@ -352,6 +385,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Deletes an annotation. Respects lock state."
   def handle_delete_annotation(%{"id" => annotation_id}, socket) do
     case Maps.get_annotation(socket.assigns.map.id, annotation_id) do
       nil -> {:noreply, socket}
@@ -359,6 +393,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Marks an annotation for pending confirmation-based deletion."
   def handle_set_pending_delete_annotation(%{"id" => id}, socket) do
     {:noreply, assign(socket, :pending_delete_element, {:annotation, parse_id(id)})}
   end
@@ -367,6 +402,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   # Keyboard shortcut handlers (delete / duplicate / copy / paste)
   # ---------------------------------------------------------------------------
 
+  @doc "Deletes the currently selected element (keyboard shortcut handler)."
   def handle_delete_selected(socket) do
     case {socket.assigns.selected_type, socket.assigns.selected_element} do
       {nil, _} -> {:noreply, socket}
@@ -378,6 +414,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Duplicates the currently selected element (keyboard shortcut handler)."
   def handle_duplicate_selected(socket) do
     case {socket.assigns.selected_type, socket.assigns.selected_element} do
       {nil, _} -> {:noreply, socket}
@@ -388,6 +425,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Copies the currently selected element to clipboard (keyboard shortcut handler)."
   def handle_copy_selected(socket) do
     case {socket.assigns.selected_type, socket.assigns.selected_element} do
       {nil, _} ->
@@ -399,6 +437,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  @doc "Pastes an element from clipboard data with shifted position."
   def handle_paste_element(%{"type" => type, "attrs" => attrs}, socket) do
     attrs = shift_paste_position(attrs)
 
@@ -556,12 +595,16 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
 
   # Auto-sync event_name when zone name changes (if event_name matches old slug)
   defp build_zone_update_attrs(zone, "name", value) when zone.action_type == "event" do
-    old_slug = SlugGenerator.slugify(zone.name || "")
+    old_slug = NameNormalizer.slugify(zone.name || "")
     current_event = get_in(zone.action_data, ["event_name"]) || ""
 
     if current_event == "" or current_event == old_slug do
-      new_event = SlugGenerator.slugify(value)
-      %{"name" => value, "action_data" => Map.put(zone.action_data || %{}, "event_name", new_event)}
+      new_event = NameNormalizer.slugify(value)
+
+      %{
+        "name" => value,
+        "action_data" => Map.put(zone.action_data || %{}, "event_name", new_event)
+      }
     else
       %{"name" => value}
     end
@@ -999,5 +1042,4 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     |> assign(:active_tool, :select)
     |> push_event("tool_changed", %{tool: "select"})
   end
-
 end

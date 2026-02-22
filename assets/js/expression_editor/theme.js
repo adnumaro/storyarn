@@ -7,6 +7,7 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 
+/** Base editor theme: fonts, cursor, selection, tooltip, and diagnostic styles. */
 export const storyarnEditorTheme = EditorView.theme({
   "&": {
     fontSize: "13px",
@@ -83,4 +84,5 @@ const highlightStyle = HighlightStyle.define([
   },
 ]);
 
+/** Syntax highlighting extension mapping language tokens to daisyUI CSS variables. */
 export const storyarnHighlighting = syntaxHighlighting(highlightStyle);

@@ -72,8 +72,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
         }
       end)
 
-    {:noreply,
-     push_event(socket, "mention_suggestions_result", %{items: items})}
+    {:noreply, push_event(socket, "mention_suggestions_result", %{items: items})}
   end
 
   @spec handle_variable_suggestions(String.t(), any(), Phoenix.LiveView.Socket.t()) ::
@@ -81,8 +80,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
   def handle_variable_suggestions(query, _component_cid, socket) do
     results = search_variables(socket.assigns.project_variables, query)
 
-    {:noreply,
-     push_event(socket, "variable_suggestions_result", %{items: results})}
+    {:noreply, push_event(socket, "variable_suggestions_result", %{items: results})}
   end
 
   @max_refs 50
@@ -99,8 +97,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
 
     defaults = Sheets.resolve_variable_values(project_id, sanitized_refs)
 
-    {:noreply,
-     push_event(socket, "variable_defaults_resolved", %{defaults: defaults})}
+    {:noreply, push_event(socket, "variable_defaults_resolved", %{defaults: defaults})}
   end
 
   def handle_resolve_variable_defaults(_refs, _component_cid, socket) do

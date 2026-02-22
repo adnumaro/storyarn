@@ -40,6 +40,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   attr :debug_step_limit_reached, :boolean, default: false
   attr :debug_interaction_zones, :list, default: []
 
+  @doc "Renders the debug panel with controls, status, tabs, and tab content."
   def debug_panel(assigns) do
     ~H"""
     <div

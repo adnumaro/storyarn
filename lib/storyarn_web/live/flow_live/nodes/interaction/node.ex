@@ -14,12 +14,19 @@ defmodule StoryarnWeb.FlowLive.Nodes.Interaction.Node do
   alias Storyarn.Maps
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
+  @doc "Returns the node type identifier."
   def type, do: "interaction"
+
+  @doc "Returns the Lucide icon name for this node type."
   def icon_name, do: "gamepad-2"
+
+  @doc "Returns the human-readable label for this node type."
   def label, do: dgettext("flows", "Interaction")
 
+  @doc "Returns default data for a new interaction node."
   def default_data, do: %{"map_id" => nil}
 
+  @doc "Extracts form-relevant fields from node data."
   def extract_form_data(data) do
     %{"map_id" => data["map_id"]}
   end
@@ -38,6 +45,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Interaction.Node do
     |> assign(:project_maps, project_maps)
   end
 
+  @doc "Double-click opens the toolbar for map selection."
   def on_double_click(_node), do: :toolbar
 
   @doc "Keep map_id on duplicate (map is a shared resource)."

@@ -22,11 +22,13 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   def build(%{type: "dialogue"} = node, state, sheets_map, _project_id) do
     data = node.data || %{}
     speaker = resolve_speaker(data["speaker_sheet_id"], sheets_map)
+
     text =
       (data["text"] || "")
       |> HtmlSanitizer.sanitize_html()
       |> resolve_variable_refs(state.variables)
       |> interpolate_variables(state.variables)
+
     stage_directions = data["stage_directions"] || ""
     menu_text = data["menu_text"] || ""
 

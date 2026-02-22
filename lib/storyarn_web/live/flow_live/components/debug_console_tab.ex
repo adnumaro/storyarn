@@ -22,6 +22,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugConsoleTab do
   attr :debug_interaction_zones, :list, default: []
   attr :debug_interaction_variables, :map, default: %{}
 
+  @doc "Renders the console log with timestamped entries and response/interaction choices."
   def console_tab(assigns) do
     assigns = Phoenix.Component.assign(assigns, :console, Enum.reverse(assigns.console))
 
@@ -78,6 +79,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugConsoleTab do
 
   attr :level, :atom, required: true
 
+  @doc "Renders the icon for a console log level (:info, :warning, :error)."
   def level_icon(%{level: :info} = assigns) do
     ~H"""
     <.icon name="info" class="size-3" />

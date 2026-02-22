@@ -1,11 +1,17 @@
 defmodule StoryarnWeb.FlowLive.Player.Components.PlayerInteraction do
-  @moduledoc false
+  @moduledoc """
+  Renders the interaction slide in the Story Player.
+
+  Passes map background, zone data, and display variable values to the
+  `InteractionPlayer` JS hook, which handles zone rendering and click events.
+  """
 
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
   attr :slide, :map, required: true
 
+  @doc "Renders the map-based interaction container with zone overlays."
   def player_interaction(assigns) do
     display_variables =
       assigns.slide.zones

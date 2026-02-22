@@ -32,6 +32,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
   attr :project_variables, :list, default: []
   attr :panel_sections, :map, default: %{}
 
+  @doc "Renders the floating toolbar dispatching to the per-type toolbar variant."
   def floating_toolbar(assigns) do
     ~H"""
     <div class="floating-toolbar">
@@ -798,7 +799,9 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
             :if={@selected_ref != ""}
             type="button"
             data-event="update_zone_action_data"
-            data-params={Jason.encode!(%{"zone-id" => @zone_id, "field" => "variable_ref", "value" => ""})}
+            data-params={
+              Jason.encode!(%{"zone-id" => @zone_id, "field" => "variable_ref", "value" => ""})
+            }
             data-search-text=""
             class="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs text-base-content/50 cursor-pointer hover:bg-base-content/10"
           >
@@ -809,7 +812,13 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
             :for={var <- @variables}
             type="button"
             data-event="update_zone_action_data"
-            data-params={Jason.encode!(%{"zone-id" => @zone_id, "field" => "variable_ref", "value" => "#{var.sheet_shortcut}.#{var.variable_name}"})}
+            data-params={
+              Jason.encode!(%{
+                "zone-id" => @zone_id,
+                "field" => "variable_ref",
+                "value" => "#{var.sheet_shortcut}.#{var.variable_name}"
+              })
+            }
             data-search-text={"#{String.downcase(var.sheet_shortcut)}.#{String.downcase(var.variable_name)}"}
             class={"flex items-center w-full px-2 py-1.5 rounded text-xs cursor-pointer hover:bg-base-content/10 truncate #{if "#{var.sheet_shortcut}.#{var.variable_name}" == @selected_ref, do: "font-semibold text-primary"}"}
           >

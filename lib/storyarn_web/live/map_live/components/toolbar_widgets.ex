@@ -31,6 +31,7 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
   attr :disabled, :boolean, default: false
   slot :extra_content
 
+  @doc "Color swatch picker with popover grid."
   def toolbar_color_picker(assigns) do
     assigns = assign(assigns, :swatches, @color_swatches)
 
@@ -92,6 +93,7 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
   attr :label, :string, default: "Border"
   attr :disabled, :boolean, default: false
 
+  @doc "Border style/color/width picker with popover."
   def toolbar_stroke_picker(assigns) do
     assigns = assign(assigns, :swatches, @color_swatches)
 
@@ -232,6 +234,7 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
   attr :value, :float, default: 0.3
   attr :disabled, :boolean, default: false
 
+  @doc "Opacity slider (0.0-1.0) for zone/annotation transparency."
   def toolbar_opacity_slider(assigns) do
     ~H"""
     <div class="px-2 pb-2 pt-1 border-t border-base-300">
@@ -268,6 +271,7 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
   attr :layers, :list, default: []
   attr :disabled, :boolean, default: false
 
+  @doc "Layer selector dropdown for moving elements between layers."
   def toolbar_layer_picker(assigns) do
     ~H"""
     <div class="relative">
@@ -335,6 +339,7 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
   attr :project_flows, :list, default: []
   attr :disabled, :boolean, default: false
 
+  @doc "Target picker for linking pins to sheets, flows, or maps."
   def toolbar_target_picker(assigns) do
     ~H"""
     <div class="relative">
@@ -489,6 +494,7 @@ defmodule StoryarnWeb.MapLive.Components.ToolbarWidgets do
   attr :options, :list, default: [{"sm", "S"}, {"md", "M"}, {"lg", "L"}]
   attr :disabled, :boolean, default: false
 
+  @doc "Size selector (S/M/L) for pins and annotations."
   def toolbar_size_picker(assigns) do
     ~H"""
     <div class="flex items-center">

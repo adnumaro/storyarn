@@ -14,6 +14,7 @@
  * - navigate: Inert in player context
  */
 export const InteractionPlayer = {
+  /** Parses data attributes and renders the map with zones. Listens for variable updates. */
   mounted() {
     this.backgroundUrl = this.el.dataset.backgroundUrl;
     this.mapWidth = parseInt(this.el.dataset.mapWidth, 10) || 800;
@@ -29,6 +30,7 @@ export const InteractionPlayer = {
     });
   },
 
+  /** Builds the map wrapper with background image and zone overlays. */
   render() {
     // Clear any server-rendered fallback content
     this.el.innerHTML = "";
@@ -67,6 +69,7 @@ export const InteractionPlayer = {
     this.el.appendChild(wrapper);
   },
 
+  /** Creates a zone DOM element with clip-path polygon, label, and click handlers. */
   createZoneElement(zone) {
     const { vertices, action_type } = zone;
     if (!vertices || vertices.length < 3) return null;
@@ -154,6 +157,7 @@ export const InteractionPlayer = {
     return group;
   },
 
+  /** Computes the bounding box (minX/Y, maxX/Y in %) for label positioning. */
   getBoundingBox(vertices) {
     let minX = 100,
       minY = 100,
@@ -168,6 +172,7 @@ export const InteractionPlayer = {
     return { minX, minY, maxX, maxY };
   },
 
+  /** Refreshes display zone values from the latest variable state. */
   updateDisplayZones() {
     const displayValues = this.el.querySelectorAll(".zone-display-value[data-ref]");
     for (const el of displayValues) {
