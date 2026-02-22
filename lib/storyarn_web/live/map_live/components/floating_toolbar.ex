@@ -301,7 +301,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
               />
             </div>
 
-            <%!-- Event: event_name + label --%>
+            <%!-- Event: event_name --%>
             <div :if={@zone.action_type == "event"} class="pt-2 border-t border-base-300">
               <label class="block text-xs font-medium text-base-content/60 mb-1">
                 {dgettext("maps", "Event name")}
@@ -313,19 +313,6 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
                 phx-value-zone-id={@zone.id}
                 phx-value-field="event_name"
                 placeholder={dgettext("maps", "e.g. on_enter")}
-                class="input input-xs input-bordered w-full"
-                disabled={!@can_edit}
-              />
-              <label class="block text-xs font-medium text-base-content/60 mb-1 mt-2">
-                {dgettext("maps", "Label")}
-              </label>
-              <input
-                type="text"
-                value={@action_data["label"] || ""}
-                phx-blur="update_zone_action_data"
-                phx-value-zone-id={@zone.id}
-                phx-value-field="label"
-                placeholder={dgettext("maps", "Display label...")}
                 class="input input-xs input-bordered w-full"
                 disabled={!@can_edit}
               />

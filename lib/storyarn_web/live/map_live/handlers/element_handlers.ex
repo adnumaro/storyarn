@@ -197,7 +197,7 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     "navigate" => %{},
     "instruction" => %{"assignments" => []},
     "display" => %{"variable_ref" => ""},
-    "event" => %{"event_name" => "", "label" => ""}
+    "event" => %{"event_name" => ""}
   }
 
   def handle_update_zone_action_type(%{"zone-id" => id, "action-type" => type}, socket) do
