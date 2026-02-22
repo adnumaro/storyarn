@@ -18,6 +18,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
 
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Constraints.Number, as: NumberConstraints
+  alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
   alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
 
   # ---------------------------------------------------------------------------
@@ -30,7 +31,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
     scope = socket.assigns.block_scope
 
     case Sheets.create_block(sheet, %{type: type, scope: scope}) do
-      {:ok, _block} ->
+      {:ok, block} ->
+        helpers.push_undo.({:create_block, UndoRedoHandlers.block_to_snapshot(block)})
         helpers.notify_parent.(socket, :saved)
 
         {:noreply,
@@ -58,10 +60,12 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Block not found."))}
 
       block ->
+        prev_value = get_in(block.value, ["content"])
         value = maybe_clamp_number_value(block, value)
 
         case Sheets.update_block_value(block, %{"content" => value}) do
           {:ok, _updated} ->
+            helpers.push_undo.({:update_block_value, block.id, prev_value, value})
             helpers.maybe_create_version.(socket)
             helpers.notify_parent.(socket, :saved)
             {:noreply, helpers.reload_blocks.(socket)}
@@ -86,8 +90,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Block not found."))}
 
       block ->
+        snapshot = UndoRedoHandlers.block_to_snapshot(block)
+
         case Sheets.delete_block(block) do
           {:ok, _} ->
+            helpers.push_undo.({:delete_block, snapshot})
             helpers.maybe_create_version.(socket)
             helpers.notify_parent.(socket, :saved)
             {:noreply, helpers.reload_blocks.(socket)}
@@ -105,10 +112,12 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
   @doc "Reorders blocks within the sheet."
   def handle_reorder(ids, socket, helpers) do
     sheet_id = socket.assigns.sheet.id
+    prev_order = Sheets.list_blocks(sheet_id) |> Enum.map(& &1.id)
     block_ids = Enum.map(ids, &ContentTabHelpers.to_integer/1)
 
     case Sheets.reorder_blocks(sheet_id, block_ids) do
       {:ok, _} ->
+        helpers.push_undo.({:reorder_blocks, prev_order, block_ids})
         helpers.maybe_create_version.(socket)
         helpers.notify_parent.(socket, :saved)
         {:noreply, helpers.reload_blocks.(socket)}

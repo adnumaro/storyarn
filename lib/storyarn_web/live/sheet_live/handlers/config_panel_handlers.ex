@@ -42,9 +42,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.ConfigPanelHandlers do
   @doc "Saves configuration params for the currently-configuring block."
   def handle_save_block_config(config_params, socket, helpers) do
     block = socket.assigns.configuring_block
+    prev_config = block.config
 
     case Sheets.update_block_config(block, config_params) do
       {:ok, updated_block} ->
+        helpers.push_undo.({:update_block_config, block.id, prev_config, config_params})
         helpers.maybe_create_version.(socket)
         helpers.notify_parent.(socket, :saved)
 
@@ -65,10 +67,12 @@ defmodule StoryarnWeb.SheetLive.Handlers.ConfigPanelHandlers do
   @doc "Toggles the `is_constant` flag on the currently-configuring block."
   def handle_toggle_constant(socket, helpers) do
     block = socket.assigns.configuring_block
-    new_value = !block.is_constant
+    prev_value = block.is_constant
+    new_value = !prev_value
 
     case Sheets.update_block(block, %{is_constant: new_value}) do
       {:ok, updated_block} ->
+        helpers.push_undo.({:toggle_constant, block.id, prev_value, new_value})
         helpers.maybe_create_version.(socket)
         helpers.notify_parent.(socket, :saved)
 

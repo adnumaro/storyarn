@@ -270,6 +270,41 @@ defmodule Storyarn.Sheets.BlockCrud do
     result
   end
 
+  @doc """
+  Recreates a block from a snapshot (for undo/redo).
+  First tries to restore a soft-deleted block with the same ID.
+  Falls back to creating a new block if the original doesn't exist.
+  """
+  def create_block_from_snapshot(%Sheet{} = sheet, snapshot) do
+    case Repo.get(Block, snapshot.id) do
+      %Block{deleted_at: d} = block when not is_nil(d) ->
+        # Block exists but is soft-deleted — restore it
+        restore_block(block)
+
+      nil ->
+        # Block doesn't exist, create from scratch
+        attrs = %{
+          type: snapshot.type,
+          position: snapshot.position,
+          config: snapshot.config,
+          value: snapshot.value,
+          is_constant: Map.get(snapshot, :is_constant, false),
+          variable_name: snapshot.variable_name,
+          scope: Map.get(snapshot, :scope, "self"),
+          column_group_id: snapshot.column_group_id,
+          column_index: Map.get(snapshot, :column_index, 0)
+        }
+
+        %Block{sheet_id: sheet.id}
+        |> Block.create_changeset(attrs)
+        |> Repo.insert()
+
+      _active_block ->
+        # Block exists and is active — shouldn't happen in normal undo/redo
+        {:error, :block_already_exists}
+    end
+  end
+
   def change_block(%Block{} = block, attrs \\ %{}) do
     Block.update_changeset(block, attrs)
   end

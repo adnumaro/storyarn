@@ -343,6 +343,12 @@ defmodule Storyarn.Sheets do
   defdelegate create_block(sheet, attrs), to: BlockCrud
 
   @doc """
+  Recreates a block from a snapshot (for undo/redo).
+  Restores soft-deleted block if it exists, otherwise creates new.
+  """
+  defdelegate create_block_from_snapshot(sheet, snapshot), to: BlockCrud
+
+  @doc """
   Updates a block.
   """
   @spec update_block(block(), attrs()) :: {:ok, block()} | {:error, changeset()}
@@ -410,7 +416,13 @@ defmodule Storyarn.Sheets do
 
   defdelegate list_table_columns(block_id), to: TableCrud, as: :list_columns
   defdelegate get_table_column!(id), to: TableCrud, as: :get_column!
+  defdelegate get_table_column(id), to: TableCrud, as: :get_column
   defdelegate create_table_column(block, attrs), to: TableCrud, as: :create_column
+
+  defdelegate create_table_column_from_snapshot(block_id, snapshot, cell_values),
+    to: TableCrud,
+    as: :create_column_from_snapshot
+
   defdelegate update_table_column(column, attrs), to: TableCrud, as: :update_column
   defdelegate delete_table_column(column), to: TableCrud, as: :delete_column
   defdelegate reorder_table_columns(block_id, ids), to: TableCrud, as: :reorder_columns
@@ -421,7 +433,13 @@ defmodule Storyarn.Sheets do
 
   defdelegate list_table_rows(block_id), to: TableCrud, as: :list_rows
   defdelegate get_table_row!(id), to: TableCrud, as: :get_row!
+  defdelegate get_table_row(id), to: TableCrud, as: :get_row
   defdelegate create_table_row(block, attrs), to: TableCrud, as: :create_row
+
+  defdelegate create_table_row_from_snapshot(block_id, snapshot, cells),
+    to: TableCrud,
+    as: :create_row_from_snapshot
+
   defdelegate update_table_row(row, attrs), to: TableCrud, as: :update_row
   defdelegate delete_table_row(row), to: TableCrud, as: :delete_row
   defdelegate reorder_table_rows(block_id, ids), to: TableCrud, as: :reorder_rows

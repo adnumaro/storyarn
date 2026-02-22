@@ -3,106 +3,96 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
   Undo/redo handlers for the map LiveView.
   """
 
-  import Phoenix.Component, only: [assign: 2, assign: 3]
+  import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Maps
+  alias StoryarnWeb.Helpers.UndoRedoStack
   import StoryarnWeb.MapLive.Helpers.Serializer
 
   import StoryarnWeb.MapLive.Helpers.MapHelpers,
     only: [replace_in_list: 2, maybe_update_selected_element: 3]
-
-  @max_undo 50
 
   # ---------------------------------------------------------------------------
   # Public dispatch
   # ---------------------------------------------------------------------------
 
   def handle_undo(_params, socket) do
-    case socket.assigns.undo_stack do
-      [] ->
+    case UndoRedoStack.pop_undo(socket) do
+      :empty ->
         {:noreply, socket}
 
-      [action | rest] ->
+      {action, socket} ->
         case undo_action(action, socket) do
           {:ok, socket, redo_item} ->
             {:noreply,
              socket
-             |> assign(:undo_stack, rest)
-             |> push_redo(redo_item)
+             |> UndoRedoStack.push_redo(redo_item)
              |> reload_map()}
 
           {:error, socket} ->
-            {:noreply, assign(socket, :undo_stack, rest)}
+            {:noreply, socket}
         end
     end
   end
 
   def handle_redo(_params, socket) do
-    case socket.assigns.redo_stack do
-      [] ->
+    case UndoRedoStack.pop_redo(socket) do
+      :empty ->
         {:noreply, socket}
 
-      [action | rest] ->
+      {action, socket} ->
         case redo_action(action, socket) do
           {:ok, socket, undo_item} ->
             {:noreply,
              socket
-             |> assign(:redo_stack, rest)
-             |> push_undo_no_clear(undo_item)
+             |> UndoRedoStack.push_undo_no_clear(undo_item)
              |> reload_map()}
 
           {:error, socket} ->
-            {:noreply, assign(socket, :redo_stack, rest)}
+            {:noreply, socket}
         end
     end
   end
 
   # ---------------------------------------------------------------------------
-  # Stack operations
+  # Stack operations (delegate to shared module, keep local API for callers)
   # ---------------------------------------------------------------------------
 
-  def push_undo(socket, action) do
-    stack = Enum.take([action | socket.assigns.undo_stack], @max_undo)
-    assign(socket, undo_stack: stack, redo_stack: [])
-  end
+  def push_undo(socket, action), do: UndoRedoStack.push_undo(socket, action)
 
-  def push_undo_no_clear(socket, action) do
-    stack = Enum.take([action | socket.assigns.undo_stack], @max_undo)
-    assign(socket, :undo_stack, stack)
-  end
+  def push_undo_no_clear(socket, action), do: UndoRedoStack.push_undo_no_clear(socket, action)
 
-  def push_redo(socket, action) do
-    stack = Enum.take([action | socket.assigns.redo_stack], @max_undo)
-    assign(socket, :redo_stack, stack)
-  end
+  def push_redo(socket, action), do: UndoRedoStack.push_redo(socket, action)
 
   def push_undo_coalesced(socket, {:move_pin, pin_id, prev, new}) do
-    case socket.assigns.undo_stack do
-      [{:move_pin, ^pin_id, original_prev, _} | rest] ->
-        assign(socket,
-          undo_stack: [{:move_pin, pin_id, original_prev, new} | rest],
-          redo_stack: []
-        )
-
-      _ ->
-        push_undo(socket, {:move_pin, pin_id, prev, new})
-    end
+    UndoRedoStack.push_coalesced(
+      socket,
+      {:move_pin, pin_id, prev, new},
+      fn
+        {:move_pin, ^pin_id, _, _} -> true
+        _ -> false
+      end,
+      fn {:move_pin, ^pin_id, original_prev, _} ->
+        {:move_pin, pin_id, original_prev, new}
+      end
+    )
   end
 
   def push_undo_coalesced(socket, {:move_annotation, ann_id, prev, new}) do
-    case socket.assigns.undo_stack do
-      [{:move_annotation, ^ann_id, original_prev, _} | rest] ->
-        assign(socket,
-          undo_stack: [{:move_annotation, ann_id, original_prev, new} | rest],
-          redo_stack: []
-        )
-
-      _ ->
-        push_undo(socket, {:move_annotation, ann_id, prev, new})
-    end
+    UndoRedoStack.push_coalesced(
+      socket,
+      {:move_annotation, ann_id, prev, new},
+      fn
+        {:move_annotation, ^ann_id, _, _} -> true
+        _ -> false
+      end,
+      fn {:move_annotation, ^ann_id, original_prev, _} ->
+        {:move_annotation, ann_id, original_prev, new}
+      end
+    )
   end
 
   # ---------------------------------------------------------------------------

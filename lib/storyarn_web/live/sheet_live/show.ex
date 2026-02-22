@@ -10,6 +10,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   alias Storyarn.Projects
   alias Storyarn.Sheets
+  alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.SheetLive.Components.AudioTab
   alias StoryarnWeb.SheetLive.Components.Banner
   alias StoryarnWeb.SheetLive.Components.ContentTab
@@ -17,6 +18,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.SheetLive.Components.ReferencesTab
   alias StoryarnWeb.SheetLive.Components.SheetAvatar
   alias StoryarnWeb.SheetLive.Components.SheetTitle
+  alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
   alias StoryarnWeb.SheetLive.Helpers.ReferenceHelpers
   alias StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers
 
@@ -33,151 +35,153 @@ defmodule StoryarnWeb.SheetLive.Show do
       selected_sheet_id={to_string(@sheet.id)}
       can_edit={@can_edit}
     >
-      <%!-- Breadcrumb (above banner) --%>
-      <nav class="text-sm mb-4">
-        <ol class="flex flex-wrap items-center gap-1 text-base-content/70">
-          <li :for={{ancestor, idx} <- Enum.with_index(@ancestors)} class="flex items-center">
-            <.link
-              navigate={
-                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{ancestor.id}"
-              }
-              class="hover:text-primary flex items-center gap-1"
-            >
-              <.sheet_avatar avatar_asset={ancestor.avatar_asset} name={ancestor.name} size="sm" />
-              {ancestor.name}
-            </.link>
-            <span :if={idx < length(@ancestors) - 1} class="mx-1 text-base-content/50">/</span>
-          </li>
-        </ol>
-      </nav>
+      <div id="sheet-undo-redo" phx-hook="UndoRedo">
+        <%!-- Breadcrumb (above banner) --%>
+        <nav class="text-sm mb-4">
+          <ol class="flex flex-wrap items-center gap-1 text-base-content/70">
+            <li :for={{ancestor, idx} <- Enum.with_index(@ancestors)} class="flex items-center">
+              <.link
+                navigate={
+                  ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{ancestor.id}"
+                }
+                class="hover:text-primary flex items-center gap-1"
+              >
+                <.sheet_avatar avatar_asset={ancestor.avatar_asset} name={ancestor.name} size="sm" />
+                {ancestor.name}
+              </.link>
+              <span :if={idx < length(@ancestors) - 1} class="mx-1 text-base-content/50">/</span>
+            </li>
+          </ol>
+        </nav>
 
-      <%!-- Banner --%>
-      <.live_component
-        module={Banner}
-        id="sheet-banner"
-        sheet={@sheet}
-        project={@project}
-        current_user={@current_scope.user}
-        can_edit={@can_edit}
-      />
+        <%!-- Banner --%>
+        <.live_component
+          module={Banner}
+          id="sheet-banner"
+          sheet={@sheet}
+          project={@project}
+          current_user={@current_scope.user}
+          can_edit={@can_edit}
+        />
 
-      <%!-- Sheet Header --%>
-      <div class="relative">
-        <div class="max-w-3xl mx-auto">
-          <div class="flex items-start gap-4 mb-8">
-            <%!-- Avatar with edit options --%>
-            <.live_component
-              module={SheetAvatar}
-              id="sheet-avatar"
-              sheet={@sheet}
-              project={@project}
-              current_user={@current_scope.user}
-              can_edit={@can_edit}
-            />
-            <div class="flex-1">
+        <%!-- Sheet Header --%>
+        <div class="relative">
+          <div class="max-w-3xl mx-auto">
+            <div class="flex items-start gap-4 mb-8">
+              <%!-- Avatar with edit options --%>
               <.live_component
-                module={SheetTitle}
-                id="sheet-title"
+                module={SheetAvatar}
+                id="sheet-avatar"
                 sheet={@sheet}
                 project={@project}
-                current_user_id={@current_scope.user.id}
+                current_user={@current_scope.user}
                 can_edit={@can_edit}
               />
+              <div class="flex-1">
+                <.live_component
+                  module={SheetTitle}
+                  id="sheet-title"
+                  sheet={@sheet}
+                  project={@project}
+                  current_user_id={@current_scope.user.id}
+                  can_edit={@can_edit}
+                />
+              </div>
             </div>
           </div>
-        </div>
-        <%!-- Save indicator (positioned at header level) --%>
-        <.save_indicator status={@save_status} variant={:floating} />
-      </div>
-
-      <div class="max-w-3xl mx-auto">
-        <%!-- Tabs Navigation --%>
-        <div role="tablist" class="tabs tabs-border mb-6">
-          <button
-            role="tab"
-            class={["tab", @current_tab == "content" && "tab-active"]}
-            phx-click="switch_tab"
-            phx-value-tab="content"
-          >
-            <.icon name="file-text" class="size-4 mr-2" />
-            {dgettext("sheets", "Content")}
-          </button>
-          <button
-            role="tab"
-            class={["tab", @current_tab == "references" && "tab-active"]}
-            phx-click="switch_tab"
-            phx-value-tab="references"
-          >
-            <.icon name="link" class="size-4 mr-2" />
-            {dgettext("sheets", "References")}
-          </button>
-          <button
-            role="tab"
-            class={["tab", @current_tab == "audio" && "tab-active"]}
-            phx-click="switch_tab"
-            phx-value-tab="audio"
-          >
-            <.icon name="volume-2" class="size-4 mr-2" />
-            {dgettext("sheets", "Audio")}
-          </button>
-          <button
-            role="tab"
-            class={["tab", @current_tab == "history" && "tab-active"]}
-            phx-click="switch_tab"
-            phx-value-tab="history"
-          >
-            <.icon name="clock" class="size-4 mr-2" />
-            {dgettext("sheets", "History")}
-          </button>
+          <%!-- Save indicator (positioned at header level) --%>
+          <.save_indicator status={@save_status} variant={:floating} />
         </div>
 
-        <%!-- Tab Content: Content (LiveComponent) --%>
-        <.live_component
-          :if={@current_tab == "content"}
-          module={ContentTab}
-          id="content-tab"
-          workspace={@workspace}
-          project={@project}
-          sheet={@sheet}
-          blocks={@blocks}
-          children={@children}
-          can_edit={@can_edit}
-          current_user_id={@current_scope.user.id}
-        />
+        <div class="max-w-3xl mx-auto">
+          <%!-- Tabs Navigation --%>
+          <div role="tablist" class="tabs tabs-border mb-6">
+            <button
+              role="tab"
+              class={["tab", @current_tab == "content" && "tab-active"]}
+              phx-click="switch_tab"
+              phx-value-tab="content"
+            >
+              <.icon name="file-text" class="size-4 mr-2" />
+              {dgettext("sheets", "Content")}
+            </button>
+            <button
+              role="tab"
+              class={["tab", @current_tab == "references" && "tab-active"]}
+              phx-click="switch_tab"
+              phx-value-tab="references"
+            >
+              <.icon name="link" class="size-4 mr-2" />
+              {dgettext("sheets", "References")}
+            </button>
+            <button
+              role="tab"
+              class={["tab", @current_tab == "audio" && "tab-active"]}
+              phx-click="switch_tab"
+              phx-value-tab="audio"
+            >
+              <.icon name="volume-2" class="size-4 mr-2" />
+              {dgettext("sheets", "Audio")}
+            </button>
+            <button
+              role="tab"
+              class={["tab", @current_tab == "history" && "tab-active"]}
+              phx-click="switch_tab"
+              phx-value-tab="history"
+            >
+              <.icon name="clock" class="size-4 mr-2" />
+              {dgettext("sheets", "History")}
+            </button>
+          </div>
 
-        <%!-- Tab Content: References (LiveComponent) --%>
-        <.live_component
-          :if={@current_tab == "references"}
-          module={ReferencesTab}
-          id="references-tab"
-          project={@project}
-          workspace={@workspace}
-          sheet={@sheet}
-          blocks={@blocks}
-        />
+          <%!-- Tab Content: Content (LiveComponent) --%>
+          <.live_component
+            :if={@current_tab == "content"}
+            module={ContentTab}
+            id="content-tab"
+            workspace={@workspace}
+            project={@project}
+            sheet={@sheet}
+            blocks={@blocks}
+            children={@children}
+            can_edit={@can_edit}
+            current_user_id={@current_scope.user.id}
+          />
 
-        <%!-- Tab Content: Audio (LiveComponent) --%>
-        <.live_component
-          :if={@current_tab == "audio"}
-          module={AudioTab}
-          id="audio-tab"
-          project={@project}
-          workspace={@workspace}
-          sheet={@sheet}
-          can_edit={@can_edit}
-          current_user={@current_scope.user}
-        />
+          <%!-- Tab Content: References (LiveComponent) --%>
+          <.live_component
+            :if={@current_tab == "references"}
+            module={ReferencesTab}
+            id="references-tab"
+            project={@project}
+            workspace={@workspace}
+            sheet={@sheet}
+            blocks={@blocks}
+          />
 
-        <%!-- Tab Content: History (LiveComponent) --%>
-        <.live_component
-          :if={@current_tab == "history"}
-          module={HistoryTab}
-          id="history-tab"
-          project={@project}
-          sheet={@sheet}
-          can_edit={@can_edit}
-          current_user_id={@current_scope.user.id}
-        />
+          <%!-- Tab Content: Audio (LiveComponent) --%>
+          <.live_component
+            :if={@current_tab == "audio"}
+            module={AudioTab}
+            id="audio-tab"
+            project={@project}
+            workspace={@workspace}
+            sheet={@sheet}
+            can_edit={@can_edit}
+            current_user={@current_scope.user}
+          />
+
+          <%!-- Tab Content: History (LiveComponent) --%>
+          <.live_component
+            :if={@current_tab == "history"}
+            module={HistoryTab}
+            id="history-tab"
+            project={@project}
+            sheet={@sheet}
+            can_edit={@can_edit}
+            current_user_id={@current_scope.user.id}
+          />
+        </div>
       </div>
     </Layouts.project>
     """
@@ -237,6 +241,7 @@ defmodule StoryarnWeb.SheetLive.Show do
     |> assign(:can_edit, can_edit)
     |> assign(:save_status, :idle)
     |> assign(:current_tab, "content")
+    |> UndoRedoStack.init()
   end
 
   @impl true
@@ -252,6 +257,18 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("switch_tab", %{"tab" => tab}, socket)
       when tab in ["content", "references", "audio", "history"] do
     {:noreply, assign(socket, :current_tab, tab)}
+  end
+
+  # ===========================================================================
+  # Event Handlers: Undo/Redo
+  # ===========================================================================
+
+  def handle_event("undo", params, socket) do
+    UndoRedoHandlers.handle_undo(params, socket)
+  end
+
+  def handle_event("redo", params, socket) do
+    UndoRedoHandlers.handle_redo(params, socket)
   end
 
   # ===========================================================================
@@ -311,6 +328,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp update_sheet_color(socket, color) do
     sheet = socket.assigns.sheet
+    prev_color = sheet.color
 
     case Sheets.update_sheet(sheet, %{color: color}) do
       {:ok, _updated_sheet} ->
@@ -320,6 +338,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         {:noreply,
          socket
          |> assign(:sheet, updated_sheet)
+         |> UndoRedoStack.push_undo({:update_sheet_color, prev_color, color})
          |> assign(:save_status, :saved)
          |> schedule_reset()}
 
@@ -367,6 +386,7 @@ defmodule StoryarnWeb.SheetLive.Show do
      |> assign(:sheet, sheet)
      |> assign(:blocks, blocks)
      |> assign(:sheets_tree, sheets_tree)
+     |> UndoRedoStack.clear()
      |> assign(:save_status, :saved)
      |> schedule_reset()}
   end
@@ -405,6 +425,8 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   # Handle messages from SheetTitle LiveComponent
   def handle_info({:sheet_title, :name_saved, sheet, sheets_tree}, socket) do
+    prev_name = socket.assigns.sheet.name
+
     ancestors =
       Sheets.get_sheet_with_ancestors(socket.assigns.project.id, sheet.id) || [sheet]
 
@@ -413,20 +435,41 @@ defmodule StoryarnWeb.SheetLive.Show do
      |> assign(:sheet, sheet)
      |> assign(:sheets_tree, sheets_tree)
      |> assign(:ancestors, ancestors)
+     |> UndoRedoHandlers.push_name_coalesced(prev_name, sheet.name)
      |> assign(:save_status, :saved)
      |> schedule_reset()}
   end
 
   def handle_info({:sheet_title, :shortcut_saved, sheet}, socket) do
+    prev_shortcut = socket.assigns.sheet.shortcut
+
     {:noreply,
      socket
      |> assign(:sheet, sheet)
+     |> UndoRedoHandlers.push_shortcut_coalesced(prev_shortcut, sheet.shortcut)
      |> assign(:save_status, :saved)
      |> schedule_reset()}
   end
 
   def handle_info({:sheet_title, :error, message}, socket) do
     {:noreply, put_flash(socket, :error, message)}
+  end
+
+  # Handle undo action push from ContentTab LiveComponent
+  def handle_info({:content_tab, :push_undo, action}, socket) do
+    {:noreply, route_undo_push(socket, action)}
+  end
+
+  defp route_undo_push(socket, {:update_block_value, block_id, prev, new}) do
+    UndoRedoHandlers.push_block_value_coalesced(socket, block_id, prev, new)
+  end
+
+  defp route_undo_push(socket, {:update_table_cell, block_id, row_id, col_slug, prev, new}) do
+    UndoRedoHandlers.push_cell_coalesced(socket, block_id, row_id, col_slug, prev, new)
+  end
+
+  defp route_undo_push(socket, action) do
+    UndoRedoStack.push_undo(socket, action)
   end
 
   # ===========================================================================

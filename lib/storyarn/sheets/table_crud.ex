@@ -27,6 +27,11 @@ defmodule Storyarn.Sheets.TableCrud do
     Repo.get!(TableColumn, column_id)
   end
 
+  @doc "Gets a single column by ID. Returns nil if not found."
+  def get_column(column_id) do
+    Repo.get(TableColumn, column_id)
+  end
+
   @doc """
   Creates a new column on a table block.
   Auto-generates slug, auto-assigns position, and adds empty cell to all existing rows.
@@ -167,6 +172,47 @@ defmodule Storyarn.Sheets.TableCrud do
     end
   end
 
+  @doc """
+  Recreates a column from a snapshot map (for undo/redo).
+  Also restores cell values for the column across all rows.
+  """
+  def create_column_from_snapshot(block_id, snapshot, cell_values) do
+    changeset =
+      %TableColumn{block_id: block_id}
+      |> TableColumn.create_changeset(%{
+        name: snapshot.name,
+        type: snapshot.type,
+        position: snapshot.position,
+        is_constant: Map.get(snapshot, :is_constant, false),
+        required: Map.get(snapshot, :required, false),
+        config: Map.get(snapshot, :config, %{})
+      })
+      # Force slug to match the original
+      |> Ecto.Changeset.force_change(:slug, snapshot.slug)
+
+    case Repo.insert(changeset) do
+      {:ok, column} ->
+        restore_column_cell_values(column.slug, cell_values)
+        {:ok, column}
+
+      {:error, changeset} ->
+        {:error, changeset}
+    end
+  end
+
+  defp restore_column_cell_values(column_slug, cell_values) do
+    for {row_id, value} <- cell_values do
+      case Repo.get(TableRow, row_id) do
+        nil ->
+          :skip
+
+        row ->
+          new_cells = Map.put(row.cells || %{}, column_slug, value)
+          row |> TableRow.cells_changeset(%{cells: new_cells}) |> Repo.update()
+      end
+    end
+  end
+
   @doc "Reorders columns by updating their positions."
   def reorder_columns(block_id, column_ids) when is_list(column_ids) do
     Repo.transaction(fn ->
@@ -230,6 +276,11 @@ defmodule Storyarn.Sheets.TableCrud do
   @doc "Gets a single row by ID. Raises if not found."
   def get_row!(row_id) do
     Repo.get!(TableRow, row_id)
+  end
+
+  @doc "Gets a single row by ID. Returns nil if not found."
+  def get_row(row_id) do
+    Repo.get(TableRow, row_id)
   end
 
   @doc """
@@ -310,6 +361,23 @@ defmodule Storyarn.Sheets.TableCrud do
       {:ok, %{row: row}} -> {:ok, row}
       {:error, :row, changeset, _} -> {:error, changeset}
     end
+  end
+
+  @doc """
+  Recreates a row from a snapshot map (for undo/redo).
+  """
+  def create_row_from_snapshot(block_id, snapshot, cells) do
+    changeset =
+      %TableRow{block_id: block_id}
+      |> TableRow.create_changeset(%{
+        name: snapshot.name,
+        position: snapshot.position,
+        cells: cells
+      })
+      # Force slug to match the original
+      |> Ecto.Changeset.force_change(:slug, snapshot.slug)
+
+    Repo.insert(changeset)
   end
 
   @doc "Deletes a row. Prevents deletion of the last row."
