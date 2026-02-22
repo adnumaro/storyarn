@@ -44,6 +44,8 @@ defmodule Storyarn.Shared.SlugGenerator do
   """
   def slugify(name) do
     name
+    |> String.normalize(:nfd)
+    |> String.replace(~r/\p{Mn}/u, "")
     |> String.downcase()
     |> String.replace(~r/[^a-z0-9\s-]/, "")
     |> String.replace(~r/\s+/, "-")

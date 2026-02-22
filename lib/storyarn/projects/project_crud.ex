@@ -4,7 +4,8 @@ defmodule Storyarn.Projects.ProjectCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Projects.{Project, ProjectMembership, SlugGenerator}
+  alias Storyarn.Projects.{Project, ProjectMembership}
+  alias Storyarn.Shared.SlugGenerator
   alias Storyarn.Repo
   alias Storyarn.Workspaces.Workspace
 
@@ -119,7 +120,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   defp insert_project(user, attrs) do
     workspace_id = attrs[:workspace_id] || attrs["workspace_id"]
     name = attrs[:name] || attrs["name"] || "untitled"
-    slug = SlugGenerator.generate_slug(workspace_id, name)
+    slug = SlugGenerator.generate_unique_slug(Project, [workspace_id: workspace_id], name)
 
     # Use same key type as input attrs (atom if attrs has atom keys, string otherwise)
     slug_key =

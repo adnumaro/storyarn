@@ -10,15 +10,14 @@ defmodule Storyarn.Workspaces do
   - `WorkspaceCrud` - Workspace CRUD operations
   - `Memberships` - Member management and authorization
   - `Invitations` - Invitation management
-  - `SlugGenerator` - Unique slug generation
   """
 
   alias Storyarn.Accounts.{Scope, User}
+  alias Storyarn.Shared.SlugGenerator
 
   alias Storyarn.Workspaces.{
     Invitations,
     Memberships,
-    SlugGenerator,
     Workspace,
     WorkspaceCrud,
     WorkspaceInvitation,
@@ -191,8 +190,10 @@ defmodule Storyarn.Workspaces do
   @doc """
   Generates a unique slug for a workspace name.
   """
-  @spec generate_slug(String.t(), String.t() | nil) :: String.t()
-  defdelegate generate_slug(name, suffix \\ nil), to: SlugGenerator
+  @spec generate_slug(String.t()) :: String.t()
+  def generate_slug(name) do
+    SlugGenerator.generate_unique_slug(Workspace, [], name)
+  end
 
   # =============================================================================
   # Invitations
