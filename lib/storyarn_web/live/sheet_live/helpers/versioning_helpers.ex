@@ -6,7 +6,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
   import StoryarnWeb.Helpers.SaveStatusTimer
   use Gettext, backend: StoryarnWeb.Gettext
 
-  alias Storyarn.Repo
   alias Storyarn.Sheets
 
   @versions_per_page 20
@@ -41,8 +40,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
           {:ok, _} ->
             versions = Sheets.list_versions(socket.assigns.sheet.id, limit: @versions_per_page)
             # Reload sheet in case current_version was cleared
-            sheet = Sheets.get_sheet!(socket.assigns.project.id, socket.assigns.sheet.id)
-            sheet = Repo.preload(sheet, [:avatar_asset, :banner_asset, :blocks, :current_version])
+            sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
 
             {:noreply,
              socket
@@ -60,7 +58,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
   Handles create_version event.
   """
   def create_version(socket, title, description) do
-    sheet = Repo.preload(socket.assigns.sheet, :blocks)
+    sheet = socket.assigns.sheet
     user_id = socket.assigns.current_scope.user.id
 
     title = if title == "", do: nil, else: title
@@ -70,10 +68,10 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
       {:ok, version} ->
         versions = Sheets.list_versions(sheet.id, limit: @versions_per_page)
         # Set as current version
-        {:ok, updated_sheet} = Sheets.set_current_version(sheet, version)
+        {:ok, _updated_sheet} = Sheets.set_current_version(sheet, version)
 
         updated_sheet =
-          Repo.preload(updated_sheet, [:avatar_asset, :banner_asset, :blocks, :current_version])
+          Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
 
         {:noreply,
          socket

@@ -20,7 +20,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   alias Storyarn.Flows.Evaluator.Engine
   alias Storyarn.Flows.Evaluator.Helpers, as: EvalHelpers
   alias Storyarn.Projects
-  alias Storyarn.Repo
   alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
@@ -87,8 +86,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   end
 
   defp mount_player(socket, project, flow_id) do
-    project = Repo.preload(project, :workspace)
-
     case Flows.get_flow(project.id, flow_id) do
       nil ->
         {:ok,

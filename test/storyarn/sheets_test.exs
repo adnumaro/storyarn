@@ -1,6 +1,8 @@
 defmodule Storyarn.SheetsTest do
   use Storyarn.DataCase
 
+  import Ecto.Query
+
   alias Storyarn.Sheets
 
   import Storyarn.AccountsFixtures
@@ -931,9 +933,21 @@ defmodule Storyarn.SheetsTest do
       sheet2 = sheet_fixture(project, %{name: "Second Deleted"})
 
       {:ok, _} = Sheets.trash_sheet(sheet1)
-      # Delay to ensure different timestamps (PostgreSQL timestamp precision is seconds)
-      Process.sleep(1100)
       {:ok, _} = Sheets.trash_sheet(sheet2)
+
+      # Set explicit timestamps to ensure deterministic ordering
+      earlier = ~U[2024-01-01 10:00:00Z]
+      later = ~U[2024-01-01 11:00:00Z]
+
+      Storyarn.Repo.update_all(
+        from(s in Storyarn.Sheets.Sheet, where: s.id == ^sheet1.id),
+        set: [deleted_at: earlier]
+      )
+
+      Storyarn.Repo.update_all(
+        from(s in Storyarn.Sheets.Sheet, where: s.id == ^sheet2.id),
+        set: [deleted_at: later]
+      )
 
       trashed = Sheets.list_trashed_sheets(project.id)
 

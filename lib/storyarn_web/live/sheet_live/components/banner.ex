@@ -10,7 +10,6 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
   import StoryarnWeb.Components.ColorPicker
 
   alias Storyarn.Assets
-  alias Storyarn.Repo
   alias Storyarn.Sheets
 
   @impl true
@@ -140,8 +139,8 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
       sheet = socket.assigns.sheet
 
       case Sheets.update_sheet(sheet, %{banner_asset_id: nil}) do
-        {:ok, updated_sheet} ->
-          updated_sheet = Repo.preload(updated_sheet, [:avatar_asset, :banner_asset], force: true)
+        {:ok, _updated_sheet} ->
+          updated_sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
           send(self(), {:banner, :sheet_updated, updated_sheet})
           {:noreply, assign(socket, :sheet, updated_sheet)}
 
@@ -197,8 +196,8 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
 
     with {:ok, url} <- Assets.Storage.upload(key, binary_data, content_type),
          {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
-         {:ok, updated_sheet} <- Sheets.update_sheet(sheet, %{banner_asset_id: asset.id}) do
-      updated_sheet = Repo.preload(updated_sheet, [:avatar_asset, :banner_asset], force: true)
+         {:ok, _updated_sheet} <- Sheets.update_sheet(sheet, %{banner_asset_id: asset.id}) do
+      updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
       send(self(), {:banner, :sheet_updated, updated_sheet})
       {:noreply, assign(socket, :sheet, updated_sheet)}
     else

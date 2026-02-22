@@ -8,7 +8,6 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Projects
-  alias Storyarn.Repo
   alias Storyarn.Sheets
 
   @impl true
@@ -244,7 +243,6 @@ defmodule StoryarnWeb.ProjectLive.Settings do
          ) do
       {:ok, project, membership} ->
         if Projects.ProjectMembership.can?(membership.role, :manage_project) do
-          project = Repo.preload(project, :workspace)
           members = Projects.list_project_members(project.id)
           pending_invitations = Projects.list_pending_invitations(project.id)
           sheets_tree = Sheets.list_sheets_tree(project.id)

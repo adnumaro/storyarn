@@ -12,9 +12,9 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   import Phoenix.LiveView, only: [put_flash: 3]
 
   alias Storyarn.Flows
+  alias Storyarn.Localization
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Projects
-  alias Storyarn.Repo
 
   # ---------------------------------------------------------------------------
   # Form changesets
@@ -30,7 +30,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   end
 
   def get_provider_config(project_id) do
-    Repo.get_by(ProviderConfig, project_id: project_id, provider: "deepl")
+    Localization.get_provider_config(project_id)
   end
 
   def provider_changeset(nil) do
@@ -102,7 +102,6 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
 
   def do_save_provider_config(socket, params) do
     project = socket.assigns.project
-    existing = get_provider_config(project.id)
 
     # Don't overwrite API key if the field is empty (user didn't change it)
     params =
@@ -112,18 +111,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
         params
       end
 
-    result =
-      case existing do
-        nil ->
-          %ProviderConfig{project_id: project.id}
-          |> ProviderConfig.changeset(Map.put(params, "provider", "deepl"))
-          |> Repo.insert()
-
-        config ->
-          config
-          |> ProviderConfig.changeset(params)
-          |> Repo.update()
-      end
+    result = Localization.upsert_provider_config(project, params)
 
     case result do
       {:ok, config} ->

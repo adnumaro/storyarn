@@ -447,15 +447,31 @@ defmodule Storyarn.Sheets.TableCrud do
   end
 
   defp migrate_cells_key_for_instances(instance_ids, old_slug, new_slug) do
-    Enum.each(instance_ids, fn instance_id ->
-      migrate_cells_key(instance_id, old_slug, new_slug)
-    end)
+    from(r in TableRow, where: r.block_id in ^instance_ids)
+    |> update([r],
+      set: [
+        cells:
+          fragment(
+            "(? - ?::text) || jsonb_build_object(?::text, ? -> ?::text)",
+            r.cells,
+            ^old_slug,
+            ^new_slug,
+            r.cells,
+            ^old_slug
+          )
+      ]
+    )
+    |> Repo.update_all([])
   end
 
   defp reset_cells_for_instances(instance_ids, column_slug) do
-    Enum.each(instance_ids, fn instance_id ->
-      reset_cells_for_column(instance_id, column_slug)
-    end)
+    from(r in TableRow, where: r.block_id in ^instance_ids)
+    |> update([r],
+      set: [
+        cells: fragment("? || jsonb_build_object(?::text, null::jsonb)", r.cells, ^column_slug)
+      ]
+    )
+    |> Repo.update_all([])
   end
 
   # Syncs a row creation to non-detached inherited instances.
@@ -626,61 +642,58 @@ defmodule Storyarn.Sheets.TableCrud do
     end
   end
 
-  # Adds a cell key with nil value to all rows of a block
+  # Adds a cell key with null value to all rows of a block (single UPDATE)
   defp add_cell_to_all_rows(block_id, column_slug) do
-    rows = Repo.all(from(r in TableRow, where: r.block_id == ^block_id))
-
-    Enum.each(rows, fn row ->
-      unless Map.has_key?(row.cells, column_slug) do
-        new_cells = Map.put(row.cells, column_slug, nil)
-
-        row
-        |> TableRow.cells_changeset(%{cells: new_cells})
-        |> Repo.update!()
-      end
-    end)
+    from(r in TableRow,
+      where:
+        r.block_id == ^block_id and
+          not fragment("? \\? ?::text", r.cells, ^column_slug)
+    )
+    |> update([r],
+      set: [
+        cells: fragment("? || jsonb_build_object(?::text, null::jsonb)", r.cells, ^column_slug)
+      ]
+    )
+    |> Repo.update_all([])
   end
 
-  # Removes a cell key from all rows of a block
+  # Removes a cell key from all rows of a block (single UPDATE)
   defp remove_cell_from_all_rows(block_id, column_slug) do
-    rows = Repo.all(from(r in TableRow, where: r.block_id == ^block_id))
-
-    Enum.each(rows, fn row ->
-      new_cells = Map.delete(row.cells, column_slug)
-
-      row
-      |> TableRow.cells_changeset(%{cells: new_cells})
-      |> Repo.update!()
-    end)
+    from(r in TableRow, where: r.block_id == ^block_id)
+    |> update([r], set: [cells: fragment("? - ?::text", r.cells, ^column_slug)])
+    |> Repo.update_all([])
   end
 
-  # Migrates JSONB cell keys when a column is renamed.
+  # Migrates JSONB cell keys when a column is renamed (single UPDATE)
   defp migrate_cells_key(block_id, old_slug, new_slug) do
-    rows = Repo.all(from(r in TableRow, where: r.block_id == ^block_id))
-
-    Enum.each(rows, fn row ->
-      {value, rest} = Map.pop(row.cells, old_slug)
-      new_cells = Map.put(rest, new_slug, value)
-
-      row
-      |> TableRow.cells_changeset(%{cells: new_cells})
-      |> Repo.update!()
-    end)
+    from(r in TableRow, where: r.block_id == ^block_id)
+    |> update([r],
+      set: [
+        cells:
+          fragment(
+            "(? - ?::text) || jsonb_build_object(?::text, ? -> ?::text)",
+            r.cells,
+            ^old_slug,
+            ^new_slug,
+            r.cells,
+            ^old_slug
+          )
+      ]
+    )
+    |> Repo.update_all([])
 
     {:ok, :done}
   end
 
-  # Resets cell values to nil for a specific column across all rows.
+  # Resets cell values to null for a specific column across all rows (single UPDATE)
   defp reset_cells_for_column(block_id, column_slug) do
-    rows = Repo.all(from(r in TableRow, where: r.block_id == ^block_id))
-
-    Enum.each(rows, fn row ->
-      new_cells = Map.put(row.cells, column_slug, nil)
-
-      row
-      |> TableRow.cells_changeset(%{cells: new_cells})
-      |> Repo.update!()
-    end)
+    from(r in TableRow, where: r.block_id == ^block_id)
+    |> update([r],
+      set: [
+        cells: fragment("? || jsonb_build_object(?::text, null::jsonb)", r.cells, ^column_slug)
+      ]
+    )
+    |> Repo.update_all([])
 
     {:ok, :done}
   end

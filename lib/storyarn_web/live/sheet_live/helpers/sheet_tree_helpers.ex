@@ -99,9 +99,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
 
         # Create version if name actually changed
         if name != old_name do
-          sheet_with_blocks = Storyarn.Repo.preload(sheet, :blocks)
           user_id = socket.assigns.current_scope.user.id
-          Sheets.maybe_create_version(sheet_with_blocks, user_id)
+          Sheets.maybe_create_version(sheet, user_id)
         end
 
         {:noreply,

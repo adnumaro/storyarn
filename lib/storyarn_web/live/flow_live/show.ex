@@ -19,7 +19,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NavigationHistoryStore
   alias Storyarn.Projects
-  alias Storyarn.Repo
   alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
@@ -218,7 +217,6 @@ defmodule StoryarnWeb.FlowLive.Show do
          |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/flows")}
 
       flow ->
-        project = Repo.preload(project, :workspace)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
 
         socket =

@@ -4,7 +4,6 @@ defmodule StoryarnWeb.ProjectLive.Show do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Projects
-  alias Storyarn.Repo
   alias Storyarn.Sheets
 
   @impl true
@@ -55,7 +54,6 @@ defmodule StoryarnWeb.ProjectLive.Show do
       ) do
     case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
       {:ok, project, membership} ->
-        project = Repo.preload(project, :workspace)
         can_manage = Projects.ProjectMembership.can?(membership.role, :manage_project)
         sheets_tree = Sheets.list_sheets_tree(project.id)
 

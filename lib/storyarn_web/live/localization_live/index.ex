@@ -7,7 +7,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   alias Storyarn.Localization
   alias Storyarn.Localization.Languages
   alias Storyarn.Projects
-  alias Storyarn.Repo
 
   import StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
   alias StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers
@@ -396,7 +395,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
            project_slug
          ) do
       {:ok, project, membership} ->
-        project = Repo.preload(project, :workspace)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
 
         # Auto-create source language from workspace if missing

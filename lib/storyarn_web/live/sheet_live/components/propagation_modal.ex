@@ -8,8 +8,6 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
 
   use StoryarnWeb, :live_component
 
-  import Ecto.Query, warn: false
-
   alias Storyarn.Sheets
 
   @impl true
@@ -92,9 +90,12 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
   def update(assigns, socket) do
     sheet = assigns.sheet
 
-    # Get all descendants as a flat list and as a tree
-    descendants = get_flat_descendants(sheet.id)
-    tree = get_descendant_tree(sheet.id)
+    # Get descendants via context function (single query + in-memory tree build)
+    sheet_with_descendants = Sheets.get_sheet_with_descendants(sheet.project_id, sheet.id)
+    children = if sheet_with_descendants, do: sheet_with_descendants.children, else: []
+
+    tree = build_display_tree(children)
+    descendants = flatten_tree(children)
     all_ids = Enum.map(descendants, & &1.id)
 
     socket =
@@ -195,29 +196,19 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
   # Private Helpers
   # ===========================================================================
 
-  defp get_flat_descendants(sheet_id) do
-    ids = Sheets.get_descendant_sheet_ids(sheet_id)
-
-    if ids == [] do
-      []
-    else
-      Storyarn.Sheets.Sheet
-      |> where([s], s.id in ^ids and is_nil(s.deleted_at))
-      |> order_by([s], asc: s.position, asc: s.name)
-      |> Storyarn.Repo.all()
-    end
+  defp build_display_tree(children) do
+    Enum.map(children, fn child ->
+      %{
+        id: child.id,
+        name: child.name,
+        children: build_display_tree(child.children || [])
+      }
+    end)
   end
 
-  defp get_descendant_tree(sheet_id) do
-    direct_children =
-      Storyarn.Sheets.Sheet
-      |> where([s], s.parent_id == ^sheet_id and is_nil(s.deleted_at))
-      |> order_by([s], asc: s.position, asc: s.name)
-      |> Storyarn.Repo.all()
-
-    Enum.map(direct_children, fn child ->
-      children = get_descendant_tree(child.id)
-      %{id: child.id, name: child.name, children: children}
+  defp flatten_tree(children) do
+    Enum.flat_map(children, fn child ->
+      [%{id: child.id, name: child.name} | flatten_tree(child.children || [])]
     end)
   end
 end

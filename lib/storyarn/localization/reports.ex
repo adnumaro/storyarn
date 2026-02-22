@@ -18,8 +18,19 @@ defmodule Storyarn.Localization.Reports do
       )
       |> Repo.all()
 
+    # Single GROUP BY query for all languages at once (instead of 1 query per language)
+    counts_by_locale =
+      from(t in LocalizedText,
+        where: t.project_id == ^project_id,
+        group_by: [t.locale_code, t.status],
+        select: {t.locale_code, t.status, count(t.id)}
+      )
+      |> Repo.all()
+      |> Enum.group_by(&elem(&1, 0), fn {_locale, status, count} -> {status, count} end)
+      |> Map.new(fn {locale, pairs} -> {locale, Map.new(pairs)} end)
+
     Enum.map(languages, fn lang ->
-      stats = status_counts(project_id, lang.locale_code)
+      stats = Map.get(counts_by_locale, lang.locale_code, %{})
       total = Enum.reduce(stats, 0, fn {_status, count}, acc -> acc + count end)
       final = Map.get(stats, "final", 0)
 
@@ -88,20 +99,6 @@ defmodule Storyarn.Localization.Reports do
       group_by: t.source_type,
       select: {t.source_type, count(t.id)},
       order_by: [desc: count(t.id)]
-    )
-    |> Repo.all()
-    |> Enum.into(%{})
-  end
-
-  # =============================================================================
-  # Private
-  # =============================================================================
-
-  defp status_counts(project_id, locale_code) do
-    from(t in LocalizedText,
-      where: t.project_id == ^project_id and t.locale_code == ^locale_code,
-      group_by: t.status,
-      select: {t.status, count(t.id)}
     )
     |> Repo.all()
     |> Enum.into(%{})

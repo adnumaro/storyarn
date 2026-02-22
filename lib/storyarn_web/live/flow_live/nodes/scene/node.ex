@@ -9,7 +9,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.Node do
 
   use Gettext, backend: StoryarnWeb.Gettext
 
-  alias Storyarn.Repo
+  alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
@@ -73,10 +73,10 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.Node do
   end
 
   defp count_scene_in_flow(flow, current_node_id) do
-    flow = if Ecto.assoc_loaded?(flow.nodes), do: flow, else: Repo.preload(flow, :nodes)
+    nodes = if Ecto.assoc_loaded?(flow.nodes), do: flow.nodes, else: Flows.list_nodes(flow.id)
 
     scene_nodes =
-      flow.nodes
+      nodes
       |> Enum.filter(&(&1.type == "scene"))
       |> Enum.sort_by(& &1.inserted_at)
 

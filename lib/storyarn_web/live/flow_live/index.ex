@@ -6,7 +6,6 @@ defmodule StoryarnWeb.FlowLive.Index do
 
   alias Storyarn.Flows
   alias Storyarn.Projects
-  alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
 
@@ -175,7 +174,6 @@ defmodule StoryarnWeb.FlowLive.Index do
            project_slug
          ) do
       {:ok, project, membership} ->
-        project = Repo.preload(project, :workspace)
         flows = Flows.list_flows(project.id)
         flows_tree = Flows.list_flows_tree(project.id)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)

@@ -7,7 +7,6 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
   use StoryarnWeb, :live_component
   use StoryarnWeb.Helpers.Authorize
 
-  alias Storyarn.Repo
   alias Storyarn.Sheets
 
   @impl true
@@ -87,9 +86,8 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
         sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
 
         if name != old_name do
-          sheet_with_blocks = Repo.preload(updated_sheet, :blocks)
           user_id = socket.assigns.current_user_id
-          Sheets.maybe_create_version(sheet_with_blocks, user_id)
+          Sheets.maybe_create_version(updated_sheet, user_id)
         end
 
         send(self(), {:sheet_title, :name_saved, updated_sheet, sheets_tree})
@@ -106,9 +104,9 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
     shortcut = if shortcut == "", do: nil, else: shortcut
 
     case Sheets.update_sheet(sheet, %{shortcut: shortcut}) do
-      {:ok, updated_sheet} ->
+      {:ok, _updated_sheet} ->
         updated_sheet =
-          Repo.preload(updated_sheet, [:avatar_asset, :banner_asset, :blocks], force: true)
+          Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
 
         if shortcut != old_shortcut do
           user_id = socket.assigns.current_user_id

@@ -7,7 +7,6 @@ defmodule StoryarnWeb.LocalizationLive.Report do
   alias Storyarn.Localization
   alias Storyarn.Localization.Reports
   alias Storyarn.Projects
-  alias Storyarn.Repo
 
   @impl true
   def render(assigns) do
@@ -170,7 +169,6 @@ defmodule StoryarnWeb.LocalizationLive.Report do
            project_slug
          ) do
       {:ok, project, membership} ->
-        project = Repo.preload(project, :workspace)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
         target_languages = Localization.get_target_languages(project.id)
 

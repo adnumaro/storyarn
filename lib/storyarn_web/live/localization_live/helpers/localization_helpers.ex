@@ -12,7 +12,6 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
 
   alias Storyarn.Localization
   alias Storyarn.Localization.Languages
-  alias Storyarn.Repo
   alias Storyarn.Screenplays.ContentUtils
 
   @spec load_texts(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
@@ -89,13 +88,7 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
 
   @spec has_active_provider?(any()) :: boolean()
   def has_active_provider?(project_id) do
-    case Repo.get_by(Storyarn.Localization.ProviderConfig,
-           project_id: project_id,
-           provider: "deepl"
-         ) do
-      %{is_active: true, api_key_encrypted: key} when not is_nil(key) -> true
-      _ -> false
-    end
+    Localization.has_active_provider?(project_id)
   end
 
   @spec maybe_add(keyword(), atom(), any()) :: keyword()

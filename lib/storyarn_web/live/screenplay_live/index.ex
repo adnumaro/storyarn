@@ -5,7 +5,6 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
   use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Projects
-  alias Storyarn.Repo
   alias Storyarn.Screenplays
   alias Storyarn.Shared.MapUtils
 
@@ -160,7 +159,6 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
            project_slug
          ) do
       {:ok, project, membership} ->
-        project = Repo.preload(project, :workspace)
         screenplays = Screenplays.list_screenplays(project.id)
         screenplays_tree = Screenplays.list_screenplays_tree(project.id)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)

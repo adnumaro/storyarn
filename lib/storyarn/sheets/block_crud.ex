@@ -26,7 +26,8 @@ defmodule Storyarn.Sheets.BlockCrud do
   def list_blocks(sheet_id) do
     from(b in Block,
       where: b.sheet_id == ^sheet_id and is_nil(b.deleted_at),
-      order_by: [asc: b.position]
+      order_by: [asc: b.position],
+      preload: [:inherited_from_block]
     )
     |> Repo.all()
   end

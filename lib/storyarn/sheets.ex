@@ -68,6 +68,20 @@ defmodule Storyarn.Sheets do
   defdelegate get_sheet!(project_id, sheet_id), to: SheetQueries
 
   @doc """
+  Gets a sheet with all associations preloaded (blocks, assets, current_version).
+  Returns nil if not found.
+  """
+  @spec get_sheet_full(id(), id()) :: sheet() | nil
+  defdelegate get_sheet_full(project_id, sheet_id), to: SheetQueries
+
+  @doc """
+  Gets a sheet with all associations preloaded (blocks, assets, current_version).
+  Raises if not found.
+  """
+  @spec get_sheet_full!(id(), id()) :: sheet()
+  defdelegate get_sheet_full!(project_id, sheet_id), to: SheetQueries
+
+  @doc """
   Gets a sheet with all its ancestors for breadcrumb.
   Returns a list starting from the root and ending with the sheet itself.
   """

@@ -10,7 +10,6 @@ defmodule StoryarnWeb.AssetLive.Index do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
   alias Storyarn.Projects
-  alias Storyarn.Repo
 
   @impl true
   def render(assigns) do
@@ -135,7 +134,6 @@ defmodule StoryarnWeb.AssetLive.Index do
            project_slug
          ) do
       {:ok, project, membership} ->
-        project = Repo.preload(project, :workspace)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
         type_counts = Assets.count_assets_by_type(project.id)
 

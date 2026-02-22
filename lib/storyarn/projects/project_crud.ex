@@ -70,7 +70,7 @@ defmodule Storyarn.Projects.ProjectCrud do
         join: w in Workspace,
         on: w.id == p.workspace_id,
         where: w.slug == ^workspace_slug and p.slug == ^project_slug,
-        select: p
+        preload: [:workspace]
 
     with %Project{} = project <- Repo.one(query),
          %ProjectMembership{} = membership <- Memberships.get_membership(project.id, user.id) do

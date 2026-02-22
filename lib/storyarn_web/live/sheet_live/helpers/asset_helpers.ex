@@ -7,7 +7,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Assets
-  alias Storyarn.Repo
   alias Storyarn.Sheets
 
   @doc """
@@ -17,8 +16,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
     sheet = socket.assigns.sheet
 
     case Sheets.update_sheet(sheet, %{avatar_asset_id: nil}) do
-      {:ok, updated_sheet} ->
-        updated_sheet = Repo.preload(updated_sheet, :avatar_asset)
+      {:ok, _updated_sheet} ->
+        updated_sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
         sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
 
         {:noreply,
@@ -40,8 +39,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
     sheet = socket.assigns.sheet
 
     case Sheets.update_sheet(sheet, %{avatar_asset_id: asset_id}) do
-      {:ok, updated_sheet} ->
-        updated_sheet = Repo.preload(updated_sheet, :avatar_asset)
+      {:ok, _updated_sheet} ->
+        updated_sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
         sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
 
         {:noreply,
@@ -79,8 +78,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
     sheet = socket.assigns.sheet
 
     case Sheets.update_sheet(sheet, %{banner_asset_id: nil}) do
-      {:ok, updated_sheet} ->
-        updated_sheet = Repo.preload(updated_sheet, [:avatar_asset, :banner_asset])
+      {:ok, _updated_sheet} ->
+        updated_sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
 
         {:noreply,
          socket
@@ -130,8 +129,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
 
       with {:ok, url} <- Assets.Storage.upload(key, binary_data, content_type),
            {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
-           {:ok, updated_sheet} <- Sheets.update_sheet(sheet, %{avatar_asset_id: asset.id}) do
-        updated_sheet = Repo.preload(updated_sheet, :avatar_asset)
+           {:ok, _updated_sheet} <- Sheets.update_sheet(sheet, %{avatar_asset_id: asset.id}) do
+        updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
         sheets_tree = Sheets.list_sheets_tree(project.id)
 
         {:noreply,
@@ -168,8 +167,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
 
       with {:ok, url} <- Assets.Storage.upload(key, binary_data, content_type),
            {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
-           {:ok, updated_sheet} <- Sheets.update_sheet(sheet, %{banner_asset_id: asset.id}) do
-        updated_sheet = Repo.preload(updated_sheet, [:avatar_asset, :banner_asset])
+           {:ok, _updated_sheet} <- Sheets.update_sheet(sheet, %{banner_asset_id: asset.id}) do
+        updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
 
         {:noreply,
          socket

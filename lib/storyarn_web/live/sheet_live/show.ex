@@ -9,7 +9,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.Helpers.SaveStatusTimer
 
   alias Storyarn.Projects
-  alias Storyarn.Repo
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Components.AudioTab
   alias StoryarnWeb.SheetLive.Components.Banner
@@ -207,7 +206,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   defp mount_with_project(socket, workspace_slug, project_slug, sheet_id, project, membership) do
-    case Sheets.get_sheet(project.id, sheet_id) do
+    case Sheets.get_sheet_full(project.id, sheet_id) do
       nil ->
         {:ok,
          socket
@@ -220,8 +219,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   defp setup_sheet_view(socket, project, membership, sheet) do
-    project = Repo.preload(project, :workspace)
-    sheet = Repo.preload(sheet, [:avatar_asset, :banner_asset, :current_version])
     sheets_tree = Sheets.list_sheets_tree(project.id)
     ancestors = Sheets.get_sheet_with_ancestors(project.id, sheet.id) || [sheet]
     children = Sheets.get_children(sheet.id)
@@ -316,11 +313,9 @@ defmodule StoryarnWeb.SheetLive.Show do
     sheet = socket.assigns.sheet
 
     case Sheets.update_sheet(sheet, %{color: color}) do
-      {:ok, updated_sheet} ->
+      {:ok, _updated_sheet} ->
         updated_sheet =
-          Repo.preload(updated_sheet, [:avatar_asset, :banner_asset, :current_version],
-            force: true
-          )
+          Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
 
         {:noreply,
          socket

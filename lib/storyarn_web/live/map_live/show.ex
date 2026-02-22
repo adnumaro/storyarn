@@ -234,7 +234,6 @@ defmodule StoryarnWeb.MapLive.Show do
            project_slug
          ) do
       {:ok, project, membership} ->
-        project = Repo.preload(project, :workspace)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
 
         case Maps.get_map(project.id, map_id) do

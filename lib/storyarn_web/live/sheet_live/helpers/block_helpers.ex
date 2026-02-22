@@ -23,9 +23,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
         blocks = Sheets.list_blocks(socket.assigns.sheet.id)
 
         # Create version for significant change (block added)
-        sheet = Storyarn.Repo.preload(socket.assigns.sheet, :blocks)
         user_id = socket.assigns.current_scope.user.id
-        Sheets.maybe_create_version(sheet, user_id)
+        Sheets.maybe_create_version(socket.assigns.sheet, user_id)
 
         {:noreply,
          socket
@@ -78,9 +77,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
         blocks = Sheets.list_blocks(socket.assigns.sheet.id)
 
         # Create version for significant change (block deleted)
-        sheet = Storyarn.Repo.preload(socket.assigns.sheet, :blocks)
         user_id = socket.assigns.current_scope.user.id
-        Sheets.maybe_create_version(sheet, user_id)
+        Sheets.maybe_create_version(socket.assigns.sheet, user_id)
 
         {:noreply,
          socket

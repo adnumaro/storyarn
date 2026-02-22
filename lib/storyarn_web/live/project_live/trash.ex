@@ -5,7 +5,6 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Projects
-  alias Storyarn.Repo
   alias Storyarn.Sheets
 
   @impl true
@@ -187,7 +186,6 @@ defmodule StoryarnWeb.ProjectLive.Trash do
            project_slug
          ) do
       {:ok, project, membership} ->
-        project = Repo.preload(project, :workspace)
         sheets_tree = Sheets.list_sheets_tree(project.id)
         trashed_sheets = Sheets.list_trashed_sheets(project.id)
         can_manage = Projects.ProjectMembership.can?(membership.role, :edit_content)

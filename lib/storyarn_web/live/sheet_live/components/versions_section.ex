@@ -7,7 +7,6 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
   use StoryarnWeb, :live_component
   use StoryarnWeb.Helpers.Authorize
 
-  alias Storyarn.Repo
   alias Storyarn.Sheets
 
   @versions_per_page 20
@@ -151,7 +150,7 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
   # ===========================================================================
 
   defp create_version(socket, title, description) do
-    sheet = Repo.preload(socket.assigns.sheet, :blocks)
+    sheet = socket.assigns.sheet
     user_id = socket.assigns.current_user_id
 
     title = if title == "", do: nil, else: title
@@ -159,10 +158,10 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
 
     case Sheets.create_version(sheet, user_id, title: title, description: description) do
       {:ok, version} ->
-        {:ok, updated_sheet} = Sheets.set_current_version(sheet, version)
+        {:ok, _updated_sheet} = Sheets.set_current_version(sheet, version)
 
         updated_sheet =
-          Repo.preload(updated_sheet, [:avatar_asset, :banner_asset, :blocks, :current_version])
+          Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
 
         socket =
           socket
@@ -195,9 +194,9 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
     sheet = socket.assigns.sheet
 
     case Sheets.restore_version(sheet, version) do
-      {:ok, updated_sheet} ->
+      {:ok, _updated_sheet} ->
         updated_sheet =
-          Repo.preload(updated_sheet, [:avatar_asset, :banner_asset, :blocks, :current_version])
+          Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
 
         socket =
           socket
@@ -240,8 +239,7 @@ defmodule StoryarnWeb.SheetLive.Components.VersionsSection do
   defp do_delete_version(socket, version) do
     case Sheets.delete_version(version) do
       {:ok, _} ->
-        sheet = Sheets.get_sheet!(socket.assigns.project.id, socket.assigns.sheet.id)
-        sheet = Repo.preload(sheet, [:avatar_asset, :banner_asset, :blocks, :current_version])
+        sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
 
         socket =
           socket

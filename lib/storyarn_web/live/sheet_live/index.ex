@@ -6,7 +6,6 @@ defmodule StoryarnWeb.SheetLive.Index do
   import StoryarnWeb.Components.SheetComponents
 
   alias Storyarn.Projects
-  alias Storyarn.Repo
   alias Storyarn.Sheets
 
   @impl true
@@ -93,7 +92,6 @@ defmodule StoryarnWeb.SheetLive.Index do
            project_slug
          ) do
       {:ok, project, membership} ->
-        project = Repo.preload(project, :workspace)
         sheets_tree = Sheets.list_sheets_tree(project.id)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
 

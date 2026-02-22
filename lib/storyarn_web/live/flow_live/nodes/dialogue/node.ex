@@ -16,7 +16,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   import Phoenix.Component, only: [assign: 3]
 
   alias Storyarn.Flows
-  alias Storyarn.Repo
   alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
@@ -221,10 +220,10 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   end
 
   defp count_speaker_in_flow(flow, speaker_sheet_id, current_node_id) do
-    flow = if Ecto.assoc_loaded?(flow.nodes), do: flow, else: Repo.preload(flow, :nodes)
+    nodes = if Ecto.assoc_loaded?(flow.nodes), do: flow.nodes, else: Flows.list_nodes(flow.id)
 
     same_speaker_nodes =
-      flow.nodes
+      nodes
       |> Enum.filter(fn node ->
         node.type == "dialogue" &&
           to_string(node.data["speaker_sheet_id"]) == to_string(speaker_sheet_id)

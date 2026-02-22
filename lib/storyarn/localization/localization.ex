@@ -229,4 +229,40 @@ defmodule Storyarn.Localization do
   @doc "Returns counts by source type for a locale."
   @spec counts_by_source_type(id(), String.t()) :: map()
   defdelegate counts_by_source_type(project_id, locale_code), to: Reports
+
+  # =============================================================================
+  # Provider Configuration
+  # =============================================================================
+
+  @doc "Gets the translation provider config for a project. Returns nil if not configured."
+  @spec get_provider_config(id(), String.t()) :: provider_config() | nil
+  def get_provider_config(project_id, provider \\ "deepl") do
+    Storyarn.Repo.get_by(ProviderConfig, project_id: project_id, provider: provider)
+  end
+
+  @doc "Returns true if the project has an active provider with an API key."
+  @spec has_active_provider?(id()) :: boolean()
+  def has_active_provider?(project_id) do
+    case get_provider_config(project_id) do
+      %{is_active: true, api_key_encrypted: key} when not is_nil(key) -> true
+      _ -> false
+    end
+  end
+
+  @doc "Creates or updates a provider config for a project."
+  @spec upsert_provider_config(Project.t(), map()) ::
+          {:ok, provider_config()} | {:error, changeset()}
+  def upsert_provider_config(%Project{} = project, attrs) do
+    case get_provider_config(project.id) do
+      nil ->
+        %ProviderConfig{project_id: project.id}
+        |> ProviderConfig.changeset(Map.put(attrs, "provider", "deepl"))
+        |> Storyarn.Repo.insert()
+
+      config ->
+        config
+        |> ProviderConfig.changeset(attrs)
+        |> Storyarn.Repo.update()
+    end
+  end
 end

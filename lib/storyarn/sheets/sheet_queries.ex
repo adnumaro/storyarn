@@ -22,12 +22,16 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   @spec list_sheets_tree(integer()) :: [Sheet.t()]
   def list_sheets_tree(project_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.parent_id) and is_nil(s.deleted_at),
-      order_by: [asc: s.position, asc: s.name]
-    )
-    |> Repo.all()
-    |> preload_children_recursive()
+    # Single query for all non-deleted sheets, then build tree in memory
+    all_sheets =
+      from(s in Sheet,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
+        order_by: [asc: s.position, asc: s.name],
+        preload: [:avatar_asset]
+      )
+      |> Repo.all()
+
+    build_tree(all_sheets, nil)
   end
 
   @doc """
@@ -55,6 +59,32 @@ defmodule Storyarn.Sheets.SheetQueries do
   end
 
   @doc """
+  Gets a sheet with all associations preloaded (blocks, assets, current_version).
+  Returns nil if not found.
+  """
+  @spec get_sheet_full(integer(), integer()) :: Sheet.t() | nil
+  def get_sheet_full(project_id, sheet_id) do
+    Sheet
+    |> where(project_id: ^project_id, id: ^sheet_id)
+    |> where([s], is_nil(s.deleted_at))
+    |> preload([:blocks, :avatar_asset, :banner_asset, :current_version])
+    |> Repo.one()
+  end
+
+  @doc """
+  Gets a sheet with all associations preloaded (blocks, assets, current_version).
+  Raises if not found.
+  """
+  @spec get_sheet_full!(integer(), integer()) :: Sheet.t()
+  def get_sheet_full!(project_id, sheet_id) do
+    Sheet
+    |> where(project_id: ^project_id, id: ^sheet_id)
+    |> where([s], is_nil(s.deleted_at))
+    |> preload([:blocks, :avatar_asset, :banner_asset, :current_version])
+    |> Repo.one!()
+  end
+
+  @doc """
   Returns the sheet with its full ancestor chain (root-first).
   Returns nil if the sheet doesn't exist.
   """
@@ -62,7 +92,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   def get_sheet_with_ancestors(project_id, sheet_id) do
     case get_sheet(project_id, sheet_id) do
       nil -> nil
-      sheet -> build_ancestor_chain(sheet, [sheet])
+      sheet -> Enum.reverse(list_ancestors(sheet.id)) ++ [sheet]
     end
   end
 
@@ -72,8 +102,21 @@ defmodule Storyarn.Sheets.SheetQueries do
   @spec get_sheet_with_descendants(integer(), integer()) :: Sheet.t() | nil
   def get_sheet_with_descendants(project_id, sheet_id) do
     case get_sheet(project_id, sheet_id) do
-      nil -> nil
-      sheet -> sheet |> preload_children_recursive() |> List.wrap() |> List.first()
+      nil ->
+        nil
+
+      sheet ->
+        # Load all non-deleted sheets in the project and build subtree from this sheet
+        all_sheets =
+          from(s in Sheet,
+            where: s.project_id == ^project_id and is_nil(s.deleted_at),
+            order_by: [asc: s.position, asc: s.name],
+            preload: [:avatar_asset]
+          )
+          |> Repo.all()
+
+        grouped = Enum.group_by(all_sheets, & &1.parent_id)
+        %{sheet | children: build_subtree(grouped, sheet.id)}
     end
   end
 
@@ -643,39 +686,74 @@ defmodule Storyarn.Sheets.SheetQueries do
   end
 
   # =============================================================================
-  # Private Helpers
+  # Ancestor Chain
   # =============================================================================
 
-  defp build_ancestor_chain(%Sheet{parent_id: nil}, chain), do: chain
+  @doc """
+  Returns the ancestor chain for a sheet (child-first order: nearest parent first).
+  Uses a recursive CTE for O(1) queries regardless of tree depth.
+  """
+  @spec list_ancestors(integer()) :: [Sheet.t()]
+  def list_ancestors(sheet_id) do
+    anchor =
+      from(s in "sheets",
+        where: s.id == ^sheet_id and is_nil(s.deleted_at),
+        select: %{parent_id: s.parent_id, depth: 0}
+      )
 
-  defp build_ancestor_chain(%Sheet{parent_id: parent_id, project_id: project_id}, chain) do
-    parent =
-      Sheet
-      |> Repo.get!(parent_id)
-      |> Repo.preload(:avatar_asset)
+    recursion =
+      from(s in "sheets",
+        join: a in "ancestors",
+        on: s.id == a.parent_id,
+        where: is_nil(s.deleted_at),
+        select: %{parent_id: s.parent_id, depth: a.depth + 1}
+      )
 
-    if parent.project_id == project_id do
-      build_ancestor_chain(parent, [parent | chain])
+    cte_query =
+      anchor
+      |> union_all(^recursion)
+
+    # Get ordered ancestor IDs from the CTE
+    ancestor_ids =
+      from("ancestors")
+      |> recursive_ctes(true)
+      |> with_cte("ancestors", as: ^cte_query)
+      |> where([a], not is_nil(a.parent_id))
+      |> select([a], a.parent_id)
+      |> Repo.all()
+
+    if ancestor_ids == [] do
+      []
     else
-      chain
+      # Load full structs with preloads in a single query
+      ancestors_map =
+        from(s in Sheet,
+          where: s.id in ^ancestor_ids and is_nil(s.deleted_at),
+          preload: [:avatar_asset]
+        )
+        |> Repo.all()
+        |> Map.new(fn s -> {s.id, s} end)
+
+      # Reconstruct order from CTE result (child-first)
+      ancestor_ids
+      |> Enum.map(&Map.get(ancestors_map, &1))
+      |> Enum.reject(&is_nil/1)
     end
   end
 
-  defp preload_children_recursive(sheets) when is_list(sheets) do
-    Enum.map(sheets, &preload_children_recursive/1)
+  # =============================================================================
+  # Private Helpers
+  # =============================================================================
+
+  defp build_tree(all_items, root_parent_id) do
+    grouped = Enum.group_by(all_items, & &1.parent_id)
+    build_subtree(grouped, root_parent_id)
   end
 
-  defp preload_children_recursive(%Sheet{} = sheet) do
-    sheet = Repo.preload(sheet, :avatar_asset)
-
-    children =
-      from(s in Sheet,
-        where: s.parent_id == ^sheet.id and is_nil(s.deleted_at),
-        order_by: [asc: s.position, asc: s.name]
-      )
-      |> Repo.all()
-      |> preload_children_recursive()
-
-    %{sheet | children: children}
+  defp build_subtree(grouped, parent_id) do
+    (Map.get(grouped, parent_id) || [])
+    |> Enum.map(fn item ->
+      %{item | children: build_subtree(grouped, item.id)}
+    end)
   end
 end

@@ -11,7 +11,16 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
   alias Storyarn.Repo
   alias Storyarn.Shared.{NameNormalizer, TimeHelpers}
-  alias Storyarn.Sheets.{Block, BlockCrud, EntityReference, Sheet, TableColumn, TableRow}
+
+  alias Storyarn.Sheets.{
+    Block,
+    BlockCrud,
+    EntityReference,
+    Sheet,
+    SheetQueries,
+    TableColumn,
+    TableRow
+  }
 
   # =============================================================================
   # Resolution
@@ -286,16 +295,27 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   """
   @spec get_descendant_sheet_ids(integer()) :: [integer()]
   def get_descendant_sheet_ids(sheet_id) do
-    direct_children_ids =
-      from(s in Sheet,
+    anchor =
+      from(s in "sheets",
         where: s.parent_id == ^sheet_id and is_nil(s.deleted_at),
-        select: s.id
+        select: %{id: s.id}
       )
-      |> Repo.all()
 
-    Enum.flat_map(direct_children_ids, fn child_id ->
-      [child_id | get_descendant_sheet_ids(child_id)]
-    end)
+    recursion =
+      from(s in "sheets",
+        join: d in "descendants",
+        on: s.parent_id == d.id,
+        where: is_nil(s.deleted_at),
+        select: %{id: s.id}
+      )
+
+    cte_query = anchor |> union_all(^recursion)
+
+    from("descendants")
+    |> recursive_ctes(true)
+    |> with_cte("descendants", as: ^cte_query)
+    |> select([d], d.id)
+    |> Repo.all()
   end
 
   @doc """
@@ -367,20 +387,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   # =============================================================================
 
   defp build_ancestor_list(%Sheet{parent_id: nil}), do: []
-
-  defp build_ancestor_list(%Sheet{parent_id: parent_id}) do
-    case Repo.get(Sheet, parent_id) do
-      nil ->
-        []
-
-      parent ->
-        if Sheet.deleted?(parent) do
-          []
-        else
-          [parent | build_ancestor_list(parent)]
-        end
-    end
-  end
+  defp build_ancestor_list(%Sheet{} = sheet), do: SheetQueries.list_ancestors(sheet.id)
 
   defp collect_hidden_block_ids(sheets) do
     sheets

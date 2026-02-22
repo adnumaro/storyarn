@@ -5,7 +5,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Projects
-  alias Storyarn.Repo
   alias Storyarn.Screenplays
   alias Storyarn.Screenplays.TiptapSerialization
   alias Storyarn.Sheets
@@ -92,7 +91,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
            project_slug
          ) do
       {:ok, project, membership} ->
-        project = Repo.preload(project, :workspace)
         screenplay = Screenplays.get_screenplay!(project.id, screenplay_id)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
 

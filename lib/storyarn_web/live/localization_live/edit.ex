@@ -6,7 +6,6 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
 
   alias Storyarn.Localization
   alias Storyarn.Projects
-  alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias StoryarnWeb.FlowLive.Helpers.HtmlSanitizer
 
@@ -137,20 +136,12 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
            project_slug
          ) do
       {:ok, project, membership} ->
-        project = Repo.preload(project, :workspace)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
         text = Localization.get_text!(String.to_integer(text_id))
 
         form = build_form(text)
 
-        has_provider =
-          case Repo.get_by(Storyarn.Localization.ProviderConfig,
-                 project_id: project.id,
-                 provider: "deepl"
-               ) do
-            %{is_active: true, api_key_encrypted: key} when not is_nil(key) -> true
-            _ -> false
-          end
+        has_provider = Localization.has_active_provider?(project.id)
 
         socket =
           socket

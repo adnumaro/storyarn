@@ -87,9 +87,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
   Loads blocks with their reference targets resolved.
   """
   def load_blocks_with_references(sheet_id, project_id) do
-    blocks =
-      Sheets.list_blocks(sheet_id)
-      |> Storyarn.Repo.preload(:inherited_from_block)
+    blocks = Sheets.list_blocks(sheet_id)
 
     Enum.map(blocks, fn block ->
       if block.type == "reference" do

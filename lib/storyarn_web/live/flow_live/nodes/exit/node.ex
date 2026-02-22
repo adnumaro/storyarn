@@ -9,7 +9,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Flows
-  alias Storyarn.Repo
   alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
@@ -236,10 +235,10 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   # Private helpers
 
   defp count_exit_in_flow(flow, current_node_id) do
-    flow = if Ecto.assoc_loaded?(flow.nodes), do: flow, else: Repo.preload(flow, :nodes)
+    nodes = if Ecto.assoc_loaded?(flow.nodes), do: flow.nodes, else: Flows.list_nodes(flow.id)
 
     exit_nodes =
-      flow.nodes
+      nodes
       |> Enum.filter(&(&1.type == "exit"))
       |> Enum.sort_by(& &1.inserted_at)
 

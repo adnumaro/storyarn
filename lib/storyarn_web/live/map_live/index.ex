@@ -6,7 +6,6 @@ defmodule StoryarnWeb.MapLive.Index do
 
   alias Storyarn.Maps
   alias Storyarn.Projects
-  alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
 
   @impl true
@@ -163,7 +162,6 @@ defmodule StoryarnWeb.MapLive.Index do
            project_slug
          ) do
       {:ok, project, membership} ->
-        project = Repo.preload(project, :workspace)
         maps = Maps.list_maps(project.id)
         maps_tree = Maps.list_maps_tree(project.id)
         can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
