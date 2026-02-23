@@ -9,8 +9,9 @@ defmodule StoryarnWeb.FlowLive.Show do
   import StoryarnWeb.FlowLive.Components.DebugPanel
   import StoryarnWeb.FlowLive.Components.FlowHeader
   import StoryarnWeb.FlowLive.Components.FlowToolbar
-  import StoryarnWeb.Layouts, only: [flash_group: 1]
+  import StoryarnWeb.Live.Shared.TreePanelHandlers
 
+  alias StoryarnWeb.Components.Sidebar.FlowTree
   alias StoryarnWeb.FlowLive.Components.ScreenplayEditor
 
   alias Storyarn.Collaboration
@@ -44,41 +45,68 @@ defmodule StoryarnWeb.FlowLive.Show do
   @impl true
   def render(%{loading: true} = assigns) do
     ~H"""
-    <%!-- Minimal shell: the root-layout overlay (#page-loader) provides the
-         animated spinner. This hidden div just hosts the FlowLoader hook
-         that triggers the deferred data fetch. --%>
-    <div id="flow-loader" phx-hook="FlowLoader" class="hidden"></div>
+    <Layouts.focus
+      flash={@flash}
+      current_scope={@current_scope}
+      project={@project}
+      workspace={@workspace}
+      active_tool={:flows}
+      has_tree={false}
+      canvas_mode={true}
+    >
+      <%!-- Minimal shell: the root-layout overlay (#page-loader) provides the
+           animated spinner. This hidden div just hosts the FlowLoader hook
+           that triggers the deferred data fetch. --%>
+      <div id="flow-loader" phx-hook="FlowLoader" class="hidden"></div>
+    </Layouts.focus>
     """
   end
 
   def render(assigns) do
     ~H"""
-    <div class="h-screen flex flex-col">
-      <.flow_header
-        flow={@flow}
-        workspace={@workspace}
-        project={@project}
-        nav_history={@nav_history}
-        can_edit={@can_edit}
-        debug_panel_open={@debug_panel_open}
-        save_status={@save_status}
-        online_users={@online_users}
-        current_user_id={@current_scope.user.id}
-        node_types={@node_types}
-      />
-
-      <%!-- Collaboration Toast --%>
-      <.collab_toast
-        :if={@collab_toast}
-        action={@collab_toast.action}
-        user_email={@collab_toast.user_email}
-        user_color={@collab_toast.user_color}
-      />
-
-      <%!-- Main content: Canvas + Debug Panel + Properties Panel --%>
-      <div class="flex-1 flex overflow-hidden">
-        <%!-- Canvas + Debug Panel (vertical stack) --%>
-        <div class="flex-1 flex flex-col">
+    <Layouts.focus
+      flash={@flash}
+      current_scope={@current_scope}
+      project={@project}
+      workspace={@workspace}
+      active_tool={:flows}
+      has_tree={true}
+      tree_panel_open={@tree_panel_open}
+      tree_panel_pinned={@tree_panel_pinned}
+      can_edit={@can_edit}
+      online_users={@online_users}
+      canvas_mode={true}
+    >
+      <:top_bar_extra>
+        <.flow_info_bar
+          flow={@flow}
+          can_edit={@can_edit}
+          save_status={@save_status}
+          nav_history={@nav_history}
+        />
+      </:top_bar_extra>
+      <:top_bar_extra_right>
+        <.flow_actions
+          flow={@flow}
+          workspace={@workspace}
+          project={@project}
+          can_edit={@can_edit}
+          debug_panel_open={@debug_panel_open}
+          node_types={@node_types}
+        />
+      </:top_bar_extra_right>
+      <:tree_content>
+        <FlowTree.flows_section
+          flows_tree={@flows_tree}
+          workspace={@workspace}
+          project={@project}
+          selected_flow_id={to_string(@flow.id)}
+          can_edit={@can_edit}
+        />
+      </:tree_content>
+      <div class="h-full relative">
+        <%!-- Canvas fills the entire area --%>
+        <div class="absolute inset-0 flex flex-col">
           <div class="flex-1 relative bg-base-200">
             <div
               id="flow-canvas"
@@ -153,9 +181,15 @@ defmodule StoryarnWeb.FlowLive.Show do
             debug_interaction_zones={@debug_interaction_zones}
           />
         </div>
-      </div>
 
-      <.flash_group flash={@flash} />
+        <%!-- Collaboration Toast --%>
+        <.collab_toast
+          :if={@collab_toast}
+          action={@collab_toast.action}
+          user_email={@collab_toast.user_email}
+          user_color={@collab_toast.user_color}
+        />
+      </div>
 
       <%!-- Screenplay Editor (fullscreen overlay) --%>
       <.live_component
@@ -181,7 +215,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         project={@project}
         sheets_map={FormHelpers.sheets_map(@all_sheets)}
       />
-    </div>
+    </Layouts.focus>
     """
   end
 
@@ -221,6 +255,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
         socket =
           socket
+          |> assign(focus_layout_defaults())
           |> assign(:loading, true)
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
@@ -228,6 +263,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:flow, flow)
           |> assign(:can_edit, can_edit)
           |> assign(:nav_history, nil)
+          |> assign(:flows_tree, [])
+          |> assign(:pending_delete_id, nil)
 
         {:ok, socket}
     end
@@ -309,6 +346,10 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
 
   @impl true
+  # Tree panel events (from FocusLayout)
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: handle_tree_panel_event(event, params, socket)
+
   # Triggered by the FlowLoader hook after the browser has painted the spinner.
   def handle_event("load_flow_data", _params, socket) do
     %{flow: flow, project: project} = socket.assigns
@@ -322,7 +363,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           flow_data: Flows.serialize_for_canvas(full_flow),
           all_sheets: Sheets.list_all_sheets(project.id),
           flow_hubs: Flows.list_hubs(flow.id),
-          project_variables: Sheets.list_project_variables(project.id)
+          project_variables: Sheets.list_project_variables(project.id),
+          flows_tree: Flows.list_flows_tree(project.id)
         }
       end)
 
@@ -836,6 +878,117 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   # ===========================================================================
+  # Sidebar Tree Event Handlers
+  # ===========================================================================
+
+  def handle_event("create_flow", _params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      case Flows.create_flow(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
+        {:ok, new_flow} ->
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
+           )}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
+      end
+    end)
+  end
+
+  def handle_event("create_child_flow", %{"parent-id" => parent_id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      attrs = %{name: dgettext("flows", "Untitled"), parent_id: parent_id}
+
+      case Flows.create_flow(socket.assigns.project, attrs) do
+        {:ok, new_flow} ->
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
+           )}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
+      end
+    end)
+  end
+
+  def handle_event("set_main_flow", %{"id" => flow_id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      flow = Flows.get_flow!(socket.assigns.project.id, flow_id)
+
+      case Flows.set_main_flow(flow) do
+        {:ok, _} ->
+          {:noreply,
+           assign(socket, :flows_tree, Flows.list_flows_tree(socket.assigns.project.id))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
+      end
+    end)
+  end
+
+  def handle_event("set_pending_delete_flow", %{"id" => id}, socket) do
+    {:noreply, assign(socket, :pending_delete_id, id)}
+  end
+
+  def handle_event("confirm_delete_flow", _params, socket) do
+    if id = socket.assigns[:pending_delete_id] do
+      handle_event("delete_flow", %{"id" => id}, socket)
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("delete_flow", %{"id" => flow_id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      flow = Flows.get_flow!(socket.assigns.project.id, flow_id)
+
+      case Flows.delete_flow(flow) do
+        {:ok, _} ->
+          if to_string(flow.id) == to_string(socket.assigns.flow.id) do
+            {:noreply,
+             push_navigate(socket,
+               to:
+                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows"
+             )}
+          else
+            {:noreply,
+             socket
+             |> assign(:flows_tree, Flows.list_flows_tree(socket.assigns.project.id))
+             |> put_flash(:info, dgettext("flows", "Flow moved to trash."))}
+          end
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
+      end
+    end)
+  end
+
+  def handle_event(
+        "move_to_parent",
+        %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
+        socket
+      ) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      flow = Flows.get_flow!(socket.assigns.project.id, item_id)
+      new_parent_id = Storyarn.Shared.MapUtils.parse_int(new_parent_id)
+      position = Storyarn.Shared.MapUtils.parse_int(position) || 0
+
+      case Flows.move_flow_to_position(flow, new_parent_id, position) do
+        {:ok, _} ->
+          {:noreply,
+           assign(socket, :flows_tree, Flows.list_flows_tree(socket.assigns.project.id))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not move flow."))}
+      end
+    end)
+  end
+
+  # ===========================================================================
   # Handle Info (thin delegation)
   # ===========================================================================
 
@@ -852,6 +1005,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       socket
       |> assign(:flow, flow)
       |> assign(:flow_data, data.flow_data)
+      |> assign(:flows_tree, data.flows_tree)
       |> assign(:node_types, @node_types)
       |> assign(:all_sheets, data.all_sheets)
       |> assign(:flow_hubs, data.flow_hubs)

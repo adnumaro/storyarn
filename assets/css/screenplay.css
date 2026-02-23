@@ -41,12 +41,7 @@
    --------------------------------------------------------------------------- */
 
 .screenplay-container {
-  min-height: 100vh;
-  background-color: var(--color-base-300);
-}
-
-[data-theme="dark"] .screenplay-container {
-  background-color: color-mix(in oklch, var(--color-base-300) 80%, black);
+  min-height: 100%;
 }
 
 /* ---------------------------------------------------------------------------
@@ -59,7 +54,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 12px 20px;
   gap: 12px;
 }
 
@@ -207,8 +202,8 @@
 .screenplay-page {
   max-width: 816px;
   margin: 0 auto;
-  background-color: var(--color-base-100);
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  background-color: var(--color-base-200);
+  border-radius: 20px;
   font-family: "Courier Prime", "Courier New", Courier, monospace;
   font-size: 12pt;
   line-height: 1;
@@ -217,12 +212,6 @@
   cursor: text;
   display: flex;
   flex-direction: column;
-}
-
-[data-theme="dark"] .screenplay-page {
-  background-color: var(--color-base-100);
-  border: 1px solid var(--color-base-300);
-  box-shadow: 0 4px 24px rgb(0 0 0 / 0.4);
 }
 
 /* ---------------------------------------------------------------------------

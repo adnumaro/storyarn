@@ -7,9 +7,11 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.Components.SheetComponents
   import StoryarnWeb.Components.SaveIndicator
   import StoryarnWeb.Helpers.SaveStatusTimer
+  import StoryarnWeb.Live.Shared.TreePanelHandlers
 
   alias Storyarn.Projects
   alias Storyarn.Sheets
+  alias StoryarnWeb.Components.Sidebar.SheetTree
   alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.SheetLive.Components.AudioTab
   alias StoryarnWeb.SheetLive.Components.Banner
@@ -25,35 +27,39 @@ defmodule StoryarnWeb.SheetLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.project
+    <Layouts.focus
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      sheets_tree={@sheets_tree}
-      current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{@sheet.id}"}
-      selected_sheet_id={to_string(@sheet.id)}
+      active_tool={:sheets}
+      has_tree={true}
+      tree_panel_open={@tree_panel_open}
+      tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
     >
-      <div id="sheet-undo-redo" phx-hook="UndoRedo">
-        <%!-- Breadcrumb (above banner) --%>
-        <nav class="text-sm mb-4">
-          <ol class="flex flex-wrap items-center gap-1 text-base-content/70">
-            <li :for={{ancestor, idx} <- Enum.with_index(@ancestors)} class="flex items-center">
-              <.link
-                navigate={
-                  ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{ancestor.id}"
-                }
-                class="hover:text-primary flex items-center gap-1"
-              >
-                <.sheet_avatar avatar_asset={ancestor.avatar_asset} name={ancestor.name} size="sm" />
-                {ancestor.name}
-              </.link>
-              <span :if={idx < length(@ancestors) - 1} class="mx-1 text-base-content/50">/</span>
-            </li>
-          </ol>
-        </nav>
-
+      <:top_bar_extra>
+        <.sheet_breadcrumb
+          :if={@ancestors != []}
+          ancestors={@ancestors}
+          workspace={@workspace}
+          project={@project}
+        />
+      </:top_bar_extra>
+      <:tree_content>
+        <SheetTree.sheets_section
+          sheets_tree={@sheets_tree}
+          workspace={@workspace}
+          project={@project}
+          selected_sheet_id={to_string(@sheet.id)}
+          can_edit={@can_edit}
+        />
+      </:tree_content>
+      <div
+        id="sheet-undo-redo"
+        phx-hook="UndoRedo"
+        class="w-full max-w-[950px] mx-auto bg-base-200 rounded-[20px] p-5 min-h-full"
+      >
         <%!-- Banner --%>
         <.live_component
           module={Banner}
@@ -66,34 +72,32 @@ defmodule StoryarnWeb.SheetLive.Show do
 
         <%!-- Sheet Header --%>
         <div class="relative">
-          <div class="max-w-3xl mx-auto">
-            <div class="flex items-start gap-4 mb-8">
-              <%!-- Avatar with edit options --%>
+          <div class="flex items-start gap-4 mb-8">
+            <%!-- Avatar with edit options --%>
+            <.live_component
+              module={SheetAvatar}
+              id="sheet-avatar"
+              sheet={@sheet}
+              project={@project}
+              current_user={@current_scope.user}
+              can_edit={@can_edit}
+            />
+            <div class="flex-1">
               <.live_component
-                module={SheetAvatar}
-                id="sheet-avatar"
+                module={SheetTitle}
+                id="sheet-title"
                 sheet={@sheet}
                 project={@project}
-                current_user={@current_scope.user}
+                current_user_id={@current_scope.user.id}
                 can_edit={@can_edit}
               />
-              <div class="flex-1">
-                <.live_component
-                  module={SheetTitle}
-                  id="sheet-title"
-                  sheet={@sheet}
-                  project={@project}
-                  current_user_id={@current_scope.user.id}
-                  can_edit={@can_edit}
-                />
-              </div>
             </div>
           </div>
           <%!-- Save indicator (positioned at header level) --%>
           <.save_indicator status={@save_status} variant={:floating} />
         </div>
 
-        <div class="max-w-3xl mx-auto">
+        <div>
           <%!-- Tabs Navigation --%>
           <div role="tablist" class="tabs tabs-border mb-6">
             <button
@@ -183,7 +187,7 @@ defmodule StoryarnWeb.SheetLive.Show do
           />
         </div>
       </div>
-    </Layouts.project>
+    </Layouts.focus>
     """
   end
 
@@ -224,12 +228,19 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp setup_sheet_view(socket, project, membership, sheet) do
     sheets_tree = Sheets.list_sheets_tree(project.id)
-    ancestors = Sheets.get_sheet_with_ancestors(project.id, sheet.id) || [sheet]
+
+    ancestors =
+      case Sheets.get_sheet_with_ancestors(project.id, sheet.id) do
+        nil -> []
+        list -> List.delete_at(list, -1)
+      end
+
     children = Sheets.get_children(sheet.id)
     blocks = ReferenceHelpers.load_blocks_with_references(sheet.id, project.id)
     can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
 
     socket
+    |> assign(focus_layout_defaults())
     |> assign(:project, project)
     |> assign(:workspace, project.workspace)
     |> assign(:membership, membership)
@@ -254,6 +265,10 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
 
   @impl true
+  # Tree panel events (from FocusLayout)
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: handle_tree_panel_event(event, params, socket)
+
   def handle_event("switch_tab", %{"tab" => tab}, socket)
       when tab in ["content", "references", "audio", "history"] do
     {:noreply, assign(socket, :current_tab, tab)}
@@ -274,6 +289,18 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
   # Event Handlers: Sheet Tree
   # ===========================================================================
+
+  def handle_event("set_pending_delete_sheet", %{"id" => id}, socket) do
+    {:noreply, assign(socket, :pending_delete_id, id)}
+  end
+
+  def handle_event("confirm_delete_sheet", _params, socket) do
+    if id = socket.assigns[:pending_delete_id] do
+      with_authorization(socket, :edit_content, &SheetTreeHelpers.delete_sheet(&1, id))
+    else
+      {:noreply, socket}
+    end
+  end
 
   def handle_event("delete_sheet", %{"id" => sheet_id}, socket) do
     with_authorization(socket, :edit_content, &SheetTreeHelpers.delete_sheet(&1, sheet_id))
@@ -428,7 +455,10 @@ defmodule StoryarnWeb.SheetLive.Show do
     prev_name = socket.assigns.sheet.name
 
     ancestors =
-      Sheets.get_sheet_with_ancestors(socket.assigns.project.id, sheet.id) || [sheet]
+      case Sheets.get_sheet_with_ancestors(socket.assigns.project.id, sheet.id) do
+        nil -> []
+        list -> List.delete_at(list, -1)
+      end
 
     {:noreply,
      socket

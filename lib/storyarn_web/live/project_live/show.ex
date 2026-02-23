@@ -3,20 +3,33 @@ defmodule StoryarnWeb.ProjectLive.Show do
 
   use StoryarnWeb, :live_view
 
+  import StoryarnWeb.Live.Shared.TreePanelHandlers
+
   alias Storyarn.Projects
   alias Storyarn.Sheets
+  alias StoryarnWeb.Components.Sidebar.SheetTree
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.project
+    <Layouts.focus
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      sheets_tree={@sheets_tree}
-      current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
+      active_tool={:sheets}
+      has_tree={true}
+      tree_panel_open={@tree_panel_open}
+      tree_panel_pinned={@tree_panel_pinned}
     >
+      <:tree_content>
+        <SheetTree.sheets_section
+          sheets_tree={@sheets_tree}
+          workspace={@workspace}
+          project={@project}
+          can_edit={false}
+        />
+      </:tree_content>
       <div class="text-center mb-8">
         <.header>
           {@project.name}
@@ -42,7 +55,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
           {dgettext("projects", "This is where you'll design your narrative flows.")}
         </p>
       </div>
-    </Layouts.project>
+    </Layouts.focus>
     """
   end
 
@@ -59,6 +72,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
 
         socket =
           socket
+          |> assign(focus_layout_defaults())
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:current_workspace, project.workspace)
@@ -75,4 +89,9 @@ defmodule StoryarnWeb.ProjectLive.Show do
          |> redirect(to: ~p"/workspaces")}
     end
   end
+
+  @impl true
+  # Tree panel events (from FocusLayout)
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: handle_tree_panel_event(event, params, socket)
 end

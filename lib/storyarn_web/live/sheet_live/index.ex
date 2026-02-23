@@ -2,36 +2,44 @@ defmodule StoryarnWeb.SheetLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
+  use StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.SheetComponents
+  import StoryarnWeb.Live.Shared.TreePanelHandlers
 
   alias Storyarn.Projects
   alias Storyarn.Sheets
+  alias Storyarn.Shared.MapUtils
+  alias StoryarnWeb.Components.Sidebar.SheetTree
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.project
+    <Layouts.focus
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      sheets_tree={@sheets_tree}
-      current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets"}
+      active_tool={:sheets}
+      has_tree={true}
+      tree_panel_open={@tree_panel_open}
+      tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
     >
+      <:tree_content>
+        <SheetTree.sheets_section
+          sheets_tree={@sheets_tree}
+          workspace={@workspace}
+          project={@project}
+          can_edit={@can_edit}
+        />
+      </:tree_content>
       <div class="text-center mb-8">
         <.header>
           {dgettext("sheets", "Sheets")}
           <:subtitle>
             {dgettext("sheets", "Create and organize your project's content")}
           </:subtitle>
-          <:actions :if={@can_edit}>
-            <button type="button" class="btn btn-primary" phx-click="create_sheet">
-              <.icon name="plus" class="size-4 mr-2" />
-              {dgettext("sheets", "New Sheet")}
-            </button>
-          </:actions>
         </.header>
       </div>
 
@@ -47,7 +55,7 @@ defmodule StoryarnWeb.SheetLive.Index do
           workspace={@workspace}
         />
       </div>
-    </Layouts.project>
+    </Layouts.focus>
     """
   end
 
@@ -97,6 +105,7 @@ defmodule StoryarnWeb.SheetLive.Index do
 
         socket =
           socket
+          |> assign(focus_layout_defaults())
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
@@ -119,8 +128,12 @@ defmodule StoryarnWeb.SheetLive.Index do
   end
 
   @impl true
+  # Tree panel events (from FocusLayout)
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: handle_tree_panel_event(event, params, socket)
+
   def handle_event("create_sheet", _params, socket) do
-    if socket.assigns.can_edit do
+    with_authorization(socket, :edit_content, fn socket ->
       attrs = %{name: dgettext("sheets", "Untitled")}
 
       case Sheets.create_sheet(socket.assigns.project, attrs) do
@@ -134,18 +147,23 @@ defmodule StoryarnWeb.SheetLive.Index do
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
       end
+    end)
+  end
+
+  def handle_event("set_pending_delete_sheet", %{"id" => id}, socket) do
+    {:noreply, assign(socket, :pending_delete_id, id)}
+  end
+
+  def handle_event("confirm_delete_sheet", _params, socket) do
+    if id = socket.assigns[:pending_delete_id] do
+      handle_event("delete_sheet", %{"id" => id}, socket)
     else
-      {:noreply,
-       put_flash(
-         socket,
-         :error,
-         dgettext("sheets", "You don't have permission to perform this action.")
-       )}
+      {:noreply, socket}
     end
   end
 
   def handle_event("delete_sheet", %{"id" => sheet_id}, socket) do
-    if socket.assigns.can_edit do
+    with_authorization(socket, :edit_content, fn socket ->
       sheet = Sheets.get_sheet!(socket.assigns.project.id, sheet_id)
 
       case Sheets.delete_sheet(sheet) do
@@ -160,14 +178,7 @@ defmodule StoryarnWeb.SheetLive.Index do
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
       end
-    else
-      {:noreply,
-       put_flash(
-         socket,
-         :error,
-         dgettext("sheets", "You don't have permission to perform this action.")
-       )}
-    end
+    end)
   end
 
   def handle_event(
@@ -175,10 +186,10 @@ defmodule StoryarnWeb.SheetLive.Index do
         %{"sheet_id" => sheet_id, "parent_id" => parent_id, "position" => position},
         socket
       ) do
-    if socket.assigns.can_edit do
+    with_authorization(socket, :edit_content, fn socket ->
       sheet = Sheets.get_sheet!(socket.assigns.project.id, sheet_id)
-      parent_id = normalize_parent_id(parent_id)
-      position = parse_int(position) || 0
+      parent_id = MapUtils.parse_int(parent_id)
+      position = MapUtils.parse_int(position) || 0
 
       case Sheets.move_sheet_to_position(sheet, parent_id, position) do
         {:ok, _sheet} ->
@@ -196,18 +207,11 @@ defmodule StoryarnWeb.SheetLive.Index do
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
       end
-    else
-      {:noreply,
-       put_flash(
-         socket,
-         :error,
-         dgettext("sheets", "You don't have permission to perform this action.")
-       )}
-    end
+    end)
   end
 
   def handle_event("create_child_sheet", %{"parent-id" => parent_id}, socket) do
-    if socket.assigns.can_edit do
+    with_authorization(socket, :edit_content, fn socket ->
       attrs = %{name: dgettext("sheets", "New Sheet"), parent_id: parent_id}
 
       case Sheets.create_sheet(socket.assigns.project, attrs) do
@@ -225,13 +229,6 @@ defmodule StoryarnWeb.SheetLive.Index do
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
       end
-    else
-      {:noreply,
-       put_flash(
-         socket,
-         :error,
-         dgettext("sheets", "You don't have permission to perform this action.")
-       )}
-    end
+    end)
   end
 end

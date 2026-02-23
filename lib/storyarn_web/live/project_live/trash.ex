@@ -10,13 +10,13 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.project
+    <Layouts.focus
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      sheets_tree={@sheets_tree}
-      current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/trash"}
+      active_tool={:sheets}
+      has_tree={false}
     >
       <div class="max-w-3xl mx-auto">
         <.header>
@@ -91,7 +91,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
         icon="alert-triangle"
         on_confirm={JS.push("empty_trash")}
       />
-    </Layouts.project>
+    </Layouts.focus>
     """
   end
 
@@ -186,7 +186,6 @@ defmodule StoryarnWeb.ProjectLive.Trash do
            project_slug
          ) do
       {:ok, project, membership} ->
-        sheets_tree = Sheets.list_sheets_tree(project.id)
         trashed_sheets = Sheets.list_trashed_sheets(project.id)
         can_manage = Projects.ProjectMembership.can?(membership.role, :edit_content)
 
@@ -196,7 +195,6 @@ defmodule StoryarnWeb.ProjectLive.Trash do
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
           |> assign(:current_workspace, project.workspace)
-          |> assign(:sheets_tree, sheets_tree)
           |> assign(:trashed_sheets, trashed_sheets)
           |> assign(:can_manage, can_manage)
           |> assign(:sheet_to_delete, nil)
@@ -245,12 +243,10 @@ defmodule StoryarnWeb.ProjectLive.Trash do
       case Sheets.restore_sheet(sheet) do
         {:ok, _sheet} ->
           trashed_sheets = Sheets.list_trashed_sheets(socket.assigns.project.id)
-          sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
 
           socket =
             socket
             |> assign(:trashed_sheets, trashed_sheets)
-            |> assign(:sheets_tree, sheets_tree)
             |> put_flash(:info, dgettext("projects", "Sheet restored successfully."))
 
           {:noreply, socket}

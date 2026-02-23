@@ -2,45 +2,9 @@ defmodule StoryarnWeb.Components.SheetComponents do
   @moduledoc """
   Shared components and helpers for sheet display and navigation.
   """
-  use Phoenix.Component
-
-  import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
+  use StoryarnWeb, :html
 
   alias Storyarn.Assets.Asset
-
-  @doc """
-  Safely parses an integer from a string, empty string, or nil.
-
-  ## Examples
-
-      iex> parse_int("")
-      nil
-
-      iex> parse_int(nil)
-      nil
-
-      iex> parse_int("123")
-      123
-
-      iex> parse_int(42)
-      42
-  """
-  def parse_int(""), do: nil
-  def parse_int(nil), do: nil
-  def parse_int(val) when is_integer(val), do: val
-
-  def parse_int(str) when is_binary(str) do
-    case Integer.parse(str) do
-      {int, ""} -> int
-      _ -> nil
-    end
-  end
-
-  @doc """
-  Normalizes a parent_id value, converting empty strings to nil.
-  Delegates to parse_int/1 for safe integer parsing.
-  """
-  def normalize_parent_id(val), do: parse_int(val)
 
   @avatar_sizes %{
     "sm" => "size-4",
@@ -86,4 +50,34 @@ defmodule StoryarnWeb.Components.SheetComponents do
   defp has_avatar?(%Ecto.Association.NotLoaded{}), do: false
   defp has_avatar?(%Asset{} = asset), do: Asset.image?(asset)
   defp has_avatar?(_), do: false
+
+  @doc """
+  Renders a floating breadcrumb pill for sheet ancestors — matches the map/flow info bar style.
+  Used in the `top_bar_extra` slot of the focus layout.
+  """
+  attr :ancestors, :list, required: true
+  attr :workspace, :map, required: true
+  attr :project, :map, required: true
+
+  def sheet_breadcrumb(assigns) do
+    ~H"""
+    <div class="hidden lg:flex items-center gap-1 bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg px-3 py-1.5">
+      <span
+        :for={{ancestor, idx} <- Enum.with_index(@ancestors)}
+        class="flex items-center gap-1 text-xs text-base-content/60"
+      >
+        <span :if={idx > 0} class="opacity-50">/</span>
+        <.link
+          navigate={
+            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{ancestor.id}"
+          }
+          class="hover:text-base-content flex items-center gap-1 truncate max-w-[120px]"
+        >
+          <.sheet_avatar avatar_asset={ancestor.avatar_asset} name={ancestor.name} size="sm" />
+          {ancestor.name}
+        </.link>
+      </span>
+    </div>
+    """
+  end
 end

@@ -25,19 +25,6 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
   def screenplays_section(assigns) do
     ~H"""
     <div>
-      <div class="flex items-center justify-between mb-1">
-        <.tree_section label={dgettext("screenplays", "Screenplays")} />
-        <button
-          :if={@can_edit}
-          type="button"
-          phx-click="create_screenplay"
-          class="btn btn-ghost btn-xs"
-          title={dgettext("screenplays", "New Screenplay")}
-        >
-          <.icon name="plus" class="size-3" />
-        </button>
-      </div>
-
       <%!-- Search input --%>
       <div
         :if={@screenplays_tree != []}
@@ -50,7 +37,7 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
           type="text"
           data-tree-search-input
           placeholder={dgettext("screenplays", "Filter screenplays...")}
-          class="input input-xs input-bordered w-full"
+          class="input input-sm input-bordered w-full"
         />
       </div>
 
@@ -76,6 +63,17 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
           />
         </div>
       </div>
+
+      <%!-- Add new button (full width, below tree) --%>
+      <button
+        :if={@can_edit}
+        type="button"
+        phx-click="create_screenplay"
+        class="btn btn-ghost btn-sm w-full gap-1.5 mt-1 text-base-content/50 hover:text-base-content"
+      >
+        <.icon name="plus" class="size-4" />
+        {dgettext("screenplays", "New Screenplay")}
+      </button>
 
       <.confirm_modal
         :if={@can_edit}

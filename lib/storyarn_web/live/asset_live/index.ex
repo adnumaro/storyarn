@@ -14,39 +14,40 @@ defmodule StoryarnWeb.AssetLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.project
+    <Layouts.focus
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/assets"}
+      active_tool={:assets}
+      has_tree={false}
       can_edit={@can_edit}
     >
-      <div class="max-w-4xl mx-auto">
-        <.header>
-          {dgettext("assets", "Assets")}
-          <:subtitle>
-            {dgettext("assets", "Manage images, audio, and other files for your project")}
-          </:subtitle>
-          <:actions :if={@can_edit}>
-            <label class={["btn btn-primary", @uploading && "btn-disabled"]}>
-              <.icon name="upload" class="size-4 mr-2" />
+      <:top_bar_extra_right :if={@can_edit}>
+        <div class="flex items-center px-1.5 py-1 bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg">
+          <label class={[
+            "btn btn-ghost btn-sm gap-1.5",
+            @uploading && "btn-disabled"
+          ]}>
+            <.icon name="upload" class="size-4" />
+            <span class="hidden xl:inline">
               {if @uploading,
                 do: dgettext("assets", "Uploading..."),
                 else: dgettext("assets", "Upload")}
-              <input
-                type="file"
-                accept="image/*,audio/*"
-                class="hidden"
-                phx-hook="AssetUpload"
-                id="asset-upload-input"
-              />
-            </label>
-          </:actions>
-        </.header>
-
+            </span>
+            <input
+              type="file"
+              accept="image/*,audio/*"
+              class="hidden"
+              phx-hook="AssetUpload"
+              id="asset-upload-input"
+            />
+          </label>
+        </div>
+      </:top_bar_extra_right>
+      <div class="max-w-4xl mx-auto mt-4">
         <%!-- Filter tabs + Search --%>
-        <div class="flex items-center justify-between mt-6 mb-4 gap-4">
+        <div class="flex items-center justify-between mb-4 gap-4">
           <div role="tablist" class="tabs tabs-border">
             <button
               :for={{type, label, count} <- filter_tabs(@type_counts)}
@@ -114,7 +115,7 @@ defmodule StoryarnWeb.AssetLive.Index do
           on_confirm={JS.push("confirm_delete_asset")}
         />
       </div>
-    </Layouts.project>
+    </Layouts.focus>
     """
   end
 

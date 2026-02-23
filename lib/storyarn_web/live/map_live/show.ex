@@ -4,7 +4,7 @@ defmodule StoryarnWeb.MapLive.Show do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
 
-  import StoryarnWeb.Layouts, only: [flash_group: 1]
+  import StoryarnWeb.Live.Shared.TreePanelHandlers
   import StoryarnWeb.MapLive.Components.Dock
   import StoryarnWeb.MapLive.Components.LayerBar
   import StoryarnWeb.MapLive.Components.Legend
@@ -16,6 +16,8 @@ defmodule StoryarnWeb.MapLive.Show do
   alias Storyarn.Maps
   alias Storyarn.Projects
   alias Storyarn.Repo
+
+  alias StoryarnWeb.Components.Sidebar.MapTree
 
   import StoryarnWeb.MapLive.Helpers.MapHelpers
   import StoryarnWeb.MapLive.Helpers.Serializer
@@ -29,40 +31,48 @@ defmodule StoryarnWeb.MapLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="h-screen flex flex-col">
-      <.map_header
-        map={@map}
-        ancestors={@ancestors}
-        workspace={@workspace}
-        project={@project}
-        can_edit={@can_edit}
-        edit_mode={@edit_mode}
-        referencing_flows={@referencing_flows}
-      />
-
-      <%!-- Canvas area (full width — no sidebar) --%>
-      <div class="flex-1 relative overflow-hidden">
-        <div
-          id="map-canvas"
-          phx-hook="MapCanvas"
-          phx-update="ignore"
-          data-map={Jason.encode!(@map_data)}
-          data-i18n={Jason.encode!(@canvas_i18n)}
-          class="w-full h-full"
-        >
-          <div id="map-canvas-container" class="w-full h-full"></div>
+    <Layouts.focus
+      flash={@flash}
+      current_scope={@current_scope}
+      project={@project}
+      workspace={@workspace}
+      active_tool={:maps}
+      has_tree={true}
+      tree_panel_open={@tree_panel_open}
+      tree_panel_pinned={@tree_panel_pinned}
+      can_edit={@can_edit}
+      canvas_mode={true}
+    >
+      <:tree_content>
+        <div role="tablist" class="tabs tabs-border tabs-sm mb-6">
+          <button
+            role="tab"
+            class={["tab", @tree_panel_tab == "maps" && "tab-active"]}
+            phx-click="switch_tree_tab"
+            phx-value-tab="maps"
+          >
+            <.icon name="map" class="size-3.5 mr-1" />{dgettext("maps", "Maps")}
+          </button>
+          <button
+            role="tab"
+            class={["tab", @tree_panel_tab == "layers" && "tab-active"]}
+            phx-click="switch_tree_tab"
+            phx-value-tab="layers"
+          >
+            <.icon name="layers" class="size-3.5 mr-1" />{dgettext("maps", "Layers")}
+          </button>
         </div>
-
-        <%!-- Top-left panel: Search + Layers --%>
-        <div class="absolute top-3 left-3 z-[1000] flex flex-col gap-2 w-64">
-          <.map_search_panel
-            search_query={@search_query}
-            search_filter={@search_filter}
-            search_results={@search_results}
+        <div :if={@tree_panel_tab == "maps"}>
+          <MapTree.maps_section
+            maps_tree={@maps_tree}
+            workspace={@workspace}
+            project={@project}
+            selected_map_id={to_string(@map.id)}
+            can_edit={@can_edit}
           />
-
-          <%!-- Layer bar --%>
-          <.layer_bar
+        </div>
+        <div :if={@tree_panel_tab == "layers"}>
+          <.layer_panel
             layers={@layers}
             active_layer_id={@active_layer_id}
             renaming_layer_id={@renaming_layer_id}
@@ -70,119 +80,154 @@ defmodule StoryarnWeb.MapLive.Show do
             edit_mode={@edit_mode}
           />
         </div>
-
-        <%!-- Bottom dock (edit mode only) --%>
-        <.dock :if={@edit_mode} active_tool={@active_tool} pending_sheet={@pending_sheet_for_pin} />
-
-        <%!-- Sheet picker overlay --%>
-        <div
-          :if={@show_sheet_picker}
-          id="sheet-picker"
-          class="absolute bottom-32 left-1/2 -translate-x-1/2 z-[1001] w-72 bg-base-100 rounded-lg border border-base-300 shadow-lg overflow-hidden"
-        >
-          <div class="p-2 border-b border-base-300 flex items-center justify-between">
-            <span class="text-xs font-medium">{dgettext("maps", "Select a sheet")}</span>
-            <button
-              type="button"
-              phx-click="cancel_sheet_picker"
-              class="btn btn-ghost btn-xs btn-square"
-            >
-              <.icon name="x" class="size-3" />
-            </button>
-          </div>
-          <div class="max-h-60 overflow-y-auto p-1">
-            <.sheet_picker_list sheets={flatten_sheets(@project_sheets)} />
-          </div>
-        </div>
-
-        <%!-- Flash messages overlay --%>
-        <div class="absolute top-2 left-1/2 -translate-x-1/2 z-[1100]">
-          <.flash_group flash={@flash} />
-        </div>
-
-        <%!-- Legend --%>
-        <.legend
-          pins={@pins}
-          zones={@zones}
-          connections={@connections}
-          legend_open={@legend_open}
+      </:tree_content>
+      <:top_bar_extra>
+        <.map_info_bar
+          map={@map}
+          ancestors={@ancestors}
+          workspace={@workspace}
+          project={@project}
+          can_edit={@can_edit}
+          referencing_flows={@referencing_flows}
         />
-
-        <%!-- Floating element toolbar --%>
-        <div
-          :if={@selected_element && @can_edit && @edit_mode}
-          id="floating-toolbar-content"
-          phx-hook="FloatingToolbar"
-          class="absolute z-[1050]"
-        >
-          <.floating_toolbar
-            selected_type={@selected_type}
-            selected_element={@selected_element}
-            layers={@layers}
-            can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-            can_toggle_lock={true}
-            project_maps={@project_maps}
-            project_sheets={@project_sheets}
-            project_flows={@project_flows}
-            project_variables={@project_variables}
-            panel_sections={@panel_sections}
-          />
-        </div>
-
-        <%!-- Pin icon upload overlay --%>
-        <div
-          :if={@show_pin_icon_upload && @selected_type == "pin" && @project && @current_scope}
-          class="absolute top-3 right-3 z-[1060] w-64 bg-base-100 rounded-xl border border-base-300 shadow-xl p-3"
-        >
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-medium">{dgettext("maps", "Upload Icon")}</span>
-            <button
-              type="button"
-              phx-click="toggle_pin_icon_upload"
-              class="btn btn-ghost btn-xs btn-square"
-            >
-              <.icon name="x" class="size-3" />
-            </button>
+      </:top_bar_extra>
+      <:top_bar_extra_right>
+        <.map_actions can_edit={@can_edit} edit_mode={@edit_mode} />
+      </:top_bar_extra_right>
+      <div class="h-full relative">
+        <%!-- Canvas fills the entire area --%>
+        <div class="absolute inset-0 overflow-hidden">
+          <div
+            id="map-canvas"
+            phx-hook="MapCanvas"
+            phx-update="ignore"
+            data-map={Jason.encode!(@map_data)}
+            data-i18n={Jason.encode!(@canvas_i18n)}
+            class="w-full h-full"
+          >
+            <div id="map-canvas-container" class="w-full h-full"></div>
           </div>
-          <.live_component
-            module={StoryarnWeb.Components.AssetUpload}
-            id="pin-icon-upload"
-            project={@project}
-            current_user={@current_scope.user}
-            on_upload={fn asset -> send(self(), {:pin_icon_uploaded, asset}) end}
-            accept={~w(image/jpeg image/png image/gif image/webp image/svg+xml)}
-            max_entries={1}
-            max_file_size={524_288}
-          />
-        </div>
 
-        <%!-- Map settings floating panel (gear button) --%>
-        <div
-          id="map-settings-floating"
-          class="hidden absolute top-3 right-3 z-[1000] w-72 max-h-[calc(100vh-8rem)]
-                   overflow-y-auto bg-base-100 rounded-xl border border-base-300 shadow-xl"
-          phx-click-away={JS.add_class("hidden", to: "#map-settings-floating")}
-        >
-          <div class="p-3 border-b border-base-300 flex items-center justify-between">
-            <h2 class="font-medium text-sm flex items-center gap-2">
-              <.icon name="settings" class="size-4" />
-              {dgettext("maps", "Map Settings")}
-            </h2>
-            <button
-              type="button"
-              class="btn btn-ghost btn-xs btn-square"
-              phx-click={JS.add_class("hidden", to: "#map-settings-floating")}
-            >
-              <.icon name="x" class="size-4" />
-            </button>
+          <%!-- Search panel (below toolbar row) --%>
+          <div class={[
+            "absolute top-[76px] z-[1000] w-64 transition-[left] duration-200",
+            if(@tree_panel_open, do: "left-[264px]", else: "left-3")
+          ]}>
+            <.map_search_panel
+              search_query={@search_query}
+              search_filter={@search_filter}
+              search_results={@search_results}
+            />
           </div>
-          <div :if={@can_edit && @edit_mode} class="p-3">
-            <.map_properties
-              map={@map}
-              show_background_upload={@show_background_upload}
+
+          <%!-- Bottom dock (edit mode only) --%>
+          <.dock :if={@edit_mode} active_tool={@active_tool} pending_sheet={@pending_sheet_for_pin} />
+
+          <%!-- Sheet picker overlay --%>
+          <div
+            :if={@show_sheet_picker}
+            id="sheet-picker"
+            class="absolute bottom-32 left-1/2 -translate-x-1/2 z-[1001] w-72 bg-base-100 rounded-lg border border-base-300 shadow-lg overflow-hidden"
+          >
+            <div class="p-2 border-b border-base-300 flex items-center justify-between">
+              <span class="text-xs font-medium">{dgettext("maps", "Select a sheet")}</span>
+              <button
+                type="button"
+                phx-click="cancel_sheet_picker"
+                class="btn btn-ghost btn-xs btn-square"
+              >
+                <.icon name="x" class="size-3" />
+              </button>
+            </div>
+            <div class="max-h-60 overflow-y-auto p-1">
+              <.sheet_picker_list sheets={flatten_sheets(@project_sheets)} />
+            </div>
+          </div>
+
+          <%!-- Legend --%>
+          <.legend
+            pins={@pins}
+            zones={@zones}
+            connections={@connections}
+            legend_open={@legend_open}
+          />
+
+          <%!-- Floating element toolbar --%>
+          <div
+            :if={@selected_element && @can_edit && @edit_mode}
+            id="floating-toolbar-content"
+            phx-hook="FloatingToolbar"
+            class="absolute z-[1050]"
+          >
+            <.floating_toolbar
+              selected_type={@selected_type}
+              selected_element={@selected_element}
+              layers={@layers}
+              can_edit={not Map.get(@selected_element || %{}, :locked, false)}
+              can_toggle_lock={true}
+              project_maps={@project_maps}
+              project_sheets={@project_sheets}
+              project_flows={@project_flows}
+              project_variables={@project_variables}
+              panel_sections={@panel_sections}
+            />
+          </div>
+
+          <%!-- Pin icon upload overlay --%>
+          <div
+            :if={@show_pin_icon_upload && @selected_type == "pin" && @project && @current_scope}
+            class="absolute top-3 right-3 z-[1060] w-64 bg-base-100 rounded-xl border border-base-300 shadow-xl p-3"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-medium">{dgettext("maps", "Upload Icon")}</span>
+              <button
+                type="button"
+                phx-click="toggle_pin_icon_upload"
+                class="btn btn-ghost btn-xs btn-square"
+              >
+                <.icon name="x" class="size-3" />
+              </button>
+            </div>
+            <.live_component
+              module={StoryarnWeb.Components.AssetUpload}
+              id="pin-icon-upload"
               project={@project}
               current_user={@current_scope.user}
+              on_upload={fn asset -> send(self(), {:pin_icon_uploaded, asset}) end}
+              accept={~w(image/jpeg image/png image/gif image/webp image/svg+xml)}
+              max_entries={1}
+              max_file_size={524_288}
             />
+          </div>
+
+          <%!-- Map settings floating panel (gear button) --%>
+          <div
+            id="map-settings-floating"
+            class="hidden absolute top-3 right-3 z-[1000] w-72 max-h-[calc(100vh-8rem)]
+                     overflow-y-auto bg-base-100 rounded-xl border border-base-300 shadow-xl"
+            phx-click-away={JS.add_class("hidden", to: "#map-settings-floating")}
+          >
+            <div class="p-3 border-b border-base-300 flex items-center justify-between">
+              <h2 class="font-medium text-sm flex items-center gap-2">
+                <.icon name="settings" class="size-4" />
+                {dgettext("maps", "Map Settings")}
+              </h2>
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs btn-square"
+                phx-click={JS.add_class("hidden", to: "#map-settings-floating")}
+              >
+                <.icon name="x" class="size-4" />
+              </button>
+            </div>
+            <div :if={@can_edit && @edit_mode} class="p-3">
+              <.map_properties
+                map={@map}
+                show_background_upload={@show_background_upload}
+                project={@project}
+                current_user={@current_scope.user}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -214,7 +259,7 @@ defmodule StoryarnWeb.MapLive.Show do
         icon="alert-triangle"
         on_confirm={JS.push("confirm_delete_layer")}
       />
-    </div>
+    </Layouts.focus>
     """
   end
 
@@ -261,6 +306,8 @@ defmodule StoryarnWeb.MapLive.Show do
     maps_tree = Maps.list_maps_tree_with_elements(project.id)
 
     socket
+    |> assign(focus_layout_defaults())
+    |> assign(:tree_panel_tab, "maps")
     |> assign(:project, project)
     |> assign(:workspace, project.workspace)
     |> assign(:membership, membership)
@@ -340,6 +387,15 @@ defmodule StoryarnWeb.MapLive.Show do
   @valid_tools ~w(select pan rectangle triangle circle freeform pin annotation connector ruler)
 
   @impl true
+  # Tree panel events (from FocusLayout)
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: handle_tree_panel_event(event, params, socket)
+
+  def handle_event("switch_tree_tab", %{"tab" => tab}, socket)
+      when tab in ~w(maps layers) do
+    {:noreply, assign(socket, :tree_panel_tab, tab)}
+  end
+
   def handle_event("save_name", params, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
       CanvasEventHandlers.handle_save_name(params, socket)

@@ -11,9 +11,11 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   alias StoryarnWeb.Components.ConditionBuilder
   alias StoryarnWeb.Components.InstructionBuilder
 
+  import StoryarnWeb.Live.Shared.TreePanelHandlers
   import StoryarnWeb.ScreenplayLive.Helpers.SocketHelpers
   import StoryarnWeb.ScreenplayLive.Components.ScreenplayToolbar
 
+  alias StoryarnWeb.Components.Sidebar.ScreenplayTree
   alias StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers
   alias StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers
   alias StoryarnWeb.ScreenplayLive.Handlers.FlowSyncHandlers
@@ -24,20 +26,27 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.project
+    <Layouts.focus
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      screenplays_tree={@screenplays_tree}
       active_tool={:screenplays}
-      selected_screenplay_id={to_string(@screenplay.id)}
-      current_path={
-        ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays/#{@screenplay.id}"
-      }
+      has_tree={true}
+      tree_panel_open={@tree_panel_open}
+      tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
     >
-      <div class="screenplay-container -mx-12 lg:-mx-8 -my-6 lg:-my-8 px-12 lg:px-8 py-6 lg:py-8">
+      <:tree_content>
+        <ScreenplayTree.screenplays_section
+          screenplays_tree={@screenplays_tree}
+          workspace={@workspace}
+          project={@project}
+          selected_screenplay_id={to_string(@screenplay.id)}
+          can_edit={@can_edit}
+        />
+      </:tree_content>
+      <div class="screenplay-container">
         <.screenplay_toolbar
           screenplay={@screenplay}
           elements={@elements}
@@ -71,7 +80,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           </div>
         </div>
       </div>
-    </Layouts.project>
+    </Layouts.focus>
     """
   end
 
@@ -96,6 +105,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
         socket =
           socket
+          |> assign(focus_layout_defaults())
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
@@ -136,6 +146,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # ---------------------------------------------------------------------------
 
   @impl true
+  # Tree panel events (from FocusLayout)
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: handle_tree_panel_event(event, params, socket)
+
   def handle_event("toggle_read_mode", _params, socket) do
     new_mode = !socket.assigns.read_mode
 

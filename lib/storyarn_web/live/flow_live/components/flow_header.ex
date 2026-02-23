@@ -6,7 +6,6 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
   use StoryarnWeb, :verified_routes
 
   import StoryarnWeb.Components.CoreComponents
-  import StoryarnWeb.Components.CollaborationComponents
   import StoryarnWeb.Components.SaveIndicator
 
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers,
@@ -14,57 +13,105 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
 
   alias StoryarnWeb.FlowLive.Helpers.NavigationHistory
 
+  @doc "Actions toolbar (play, debug, add node) — for top_bar_extra_right slot."
   attr :flow, :map, required: true
   attr :workspace, :map, required: true
   attr :project, :map, required: true
-  attr :nav_history, :map, default: nil
   attr :can_edit, :boolean, required: true
   attr :debug_panel_open, :boolean, default: false
-  attr :save_status, :atom, default: :idle
-  attr :online_users, :list, default: []
-  attr :current_user_id, :string, required: true
   attr :node_types, :list, default: []
 
-  def flow_header(assigns) do
+  def flow_actions(assigns) do
     ~H"""
-    <header class="navbar bg-base-100 border-b border-base-300 px-4 shrink-0">
-      <div class="flex-none flex items-center gap-1">
-        <.link
-          navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows"}
-          class="btn btn-ghost btn-sm gap-2"
+    <div class="flex items-center gap-1 px-1.5 py-1 bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg">
+      <.link
+        navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}/play"}
+        class="btn btn-ghost btn-sm gap-1.5"
+      >
+        <.icon name="play" class="size-4" />
+        <span class="hidden xl:inline">{dgettext("flows", "Play")}</span>
+      </.link>
+      <button
+        type="button"
+        class={[
+          "btn btn-sm gap-1.5",
+          if(@debug_panel_open, do: "btn-accent", else: "btn-ghost")
+        ]}
+        phx-click={if(@debug_panel_open, do: "debug_stop", else: "debug_start")}
+      >
+        <.icon name="bug" class="size-4" />
+        <span class="hidden xl:inline">
+          {if @debug_panel_open,
+            do: dgettext("flows", "Stop"),
+            else: dgettext("flows", "Debug")}
+        </span>
+      </button>
+      <div :if={@can_edit} class="dropdown dropdown-end">
+        <button type="button" tabindex="0" class="btn btn-primary btn-sm gap-1.5">
+          <.icon name="plus" class="size-4" />
+          <span class="hidden xl:inline">{dgettext("flows", "Add Node")}</span>
+        </button>
+        <ul
+          tabindex="0"
+          class="dropdown-content menu menu-xs bg-base-100 rounded-box shadow-lg border border-base-300 w-44 z-50 mt-2"
         >
-          <.icon name="chevron-left" class="size-4" />
-          {dgettext("flows", "Flows")}
-        </.link>
-        <% back_entry = @nav_history && NavigationHistory.peek_back(@nav_history) %>
-        <% forward_entry = @nav_history && NavigationHistory.peek_forward(@nav_history) %>
+          <li :for={type <- @node_types}>
+            <button type="button" phx-click="add_node" phx-value-type={type}>
+              <.node_type_icon type={type} />
+              {node_type_label(type)}
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+    """
+  end
+
+  @doc "Flow info bar (nav history + title + save indicator) — overlays the canvas."
+  attr :flow, :map, required: true
+  attr :can_edit, :boolean, required: true
+  attr :save_status, :atom, default: :idle
+  attr :nav_history, :map, default: nil
+
+  def flow_info_bar(assigns) do
+    ~H"""
+    <div class="flex items-center gap-2">
+      <%!-- Nav history --%>
+      <% back_entry = @nav_history && NavigationHistory.peek_back(@nav_history) %>
+      <% forward_entry = @nav_history && NavigationHistory.peek_forward(@nav_history) %>
+      <div
+        :if={back_entry || forward_entry}
+        class="flex items-center gap-0.5 bg-base-200/95 backdrop-blur rounded-xl shadow-lg border border-base-300 px-1"
+      >
         <button
           :if={back_entry}
           type="button"
-          class="btn btn-ghost btn-sm gap-1 text-base-content/60 max-w-[180px]"
+          class="btn btn-ghost btn-sm gap-1 text-base-content/60 max-w-[140px]"
           phx-click="nav_back"
           title={dgettext("flows", "Alt+Left")}
         >
           <.icon name="arrow-left" class="size-3.5 shrink-0" />
-          <span class="truncate">{back_entry.flow_name}</span>
+          <span class="truncate text-xs">{back_entry.flow_name}</span>
         </button>
         <button
           :if={forward_entry}
           type="button"
-          class="btn btn-ghost btn-sm gap-1 text-base-content/60 max-w-[180px]"
+          class="btn btn-ghost btn-sm gap-1 text-base-content/60 max-w-[140px]"
           phx-click="nav_forward"
           title={dgettext("flows", "Alt+Right")}
         >
-          <span class="truncate">{forward_entry.flow_name}</span>
+          <span class="truncate text-xs">{forward_entry.flow_name}</span>
           <.icon name="arrow-right" class="size-3.5 shrink-0" />
         </button>
       </div>
-      <div class="flex-1 flex items-center gap-3 ml-4">
+
+      <%!-- Flow title pill --%>
+      <div class="hidden lg:flex items-center gap-2 bg-base-200/95 backdrop-blur rounded-xl shadow-lg border border-base-300 px-3 py-1.5">
         <div>
           <h1
             :if={@can_edit}
             id="flow-title"
-            class="text-lg font-medium outline-none rounded px-1 -mx-1 empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
+            class="text-sm font-medium outline-none rounded px-1 -mx-1 empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
             contenteditable="true"
             phx-hook="EditableTitle"
             phx-update="ignore"
@@ -73,7 +120,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
           >
             {@flow.name}
           </h1>
-          <h1 :if={!@can_edit} class="text-lg font-medium">{@flow.name}</h1>
+          <h1 :if={!@can_edit} class="text-sm font-medium">{@flow.name}</h1>
           <div :if={@can_edit} class="flex items-center gap-1 text-xs">
             <span class="text-base-content/50">#</span>
             <span
@@ -94,56 +141,16 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
         </div>
         <span
           :if={@flow.is_main}
-          class="badge badge-primary badge-sm"
+          class="badge badge-primary badge-xs"
           title={dgettext("flows", "Main flow")}
         >
           {dgettext("flows", "Main")}
         </span>
       </div>
-      <div class="flex-none flex items-center gap-4">
-        <.online_users users={@online_users} current_user_id={@current_user_id} />
-        <.save_indicator :if={@can_edit} status={@save_status} />
-        <.link
-          navigate={
-            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}/play"
-          }
-          class="btn btn-ghost btn-sm gap-2"
-        >
-          <.icon name="play" class="size-4" />
-          {dgettext("flows", "Play")}
-        </.link>
-        <button
-          type="button"
-          class={[
-            "btn btn-sm gap-2",
-            if(@debug_panel_open, do: "btn-accent", else: "btn-ghost")
-          ]}
-          phx-click={if(@debug_panel_open, do: "debug_stop", else: "debug_start")}
-        >
-          <.icon name="bug" class="size-4" />
-          {if @debug_panel_open,
-            do: dgettext("flows", "Stop Debug"),
-            else: dgettext("flows", "Debug")}
-        </button>
-        <div :if={@can_edit} class="dropdown dropdown-end">
-          <button type="button" tabindex="0" class="btn btn-primary btn-sm gap-2">
-            <.icon name="plus" class="size-4" />
-            {dgettext("flows", "Add Node")}
-          </button>
-          <ul
-            tabindex="0"
-            class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-48 z-50 mt-2"
-          >
-            <li :for={type <- @node_types}>
-              <button type="button" phx-click="add_node" phx-value-type={type}>
-                <.node_type_icon type={type} />
-                {node_type_label(type)}
-              </button>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </header>
+
+      <%!-- Save indicator --%>
+      <.save_indicator :if={@can_edit} status={@save_status} />
+    </div>
     """
   end
 end

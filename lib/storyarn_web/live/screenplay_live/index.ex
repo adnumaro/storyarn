@@ -4,38 +4,41 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
 
+  import StoryarnWeb.Live.Shared.TreePanelHandlers
+
   alias Storyarn.Projects
   alias Storyarn.Screenplays
   alias Storyarn.Shared.MapUtils
+  alias StoryarnWeb.Components.Sidebar.ScreenplayTree
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.project
+    <Layouts.focus
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      screenplays_tree={@screenplays_tree}
       active_tool={:screenplays}
-      current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays"}
+      has_tree={true}
+      tree_panel_open={@tree_panel_open}
+      tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
     >
+      <:tree_content>
+        <ScreenplayTree.screenplays_section
+          screenplays_tree={@screenplays_tree}
+          workspace={@workspace}
+          project={@project}
+          can_edit={@can_edit}
+        />
+      </:tree_content>
       <div class="max-w-4xl mx-auto">
         <.header>
           {dgettext("screenplays", "Screenplays")}
           <:subtitle>
             {dgettext("screenplays", "Write and format screenplays with industry-standard formatting")}
           </:subtitle>
-          <:actions :if={@can_edit}>
-            <.link
-              patch={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays/new"}
-              class="btn btn-primary"
-            >
-              <.icon name="plus" class="size-4 mr-2" />
-              {dgettext("screenplays", "New Screenplay")}
-            </.link>
-          </:actions>
         </.header>
 
         <.empty_state :if={@screenplays == []} icon="scroll-text">
@@ -80,7 +83,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
           on_confirm={JS.push("confirm_delete")}
         />
       </div>
-    </Layouts.project>
+    </Layouts.focus>
     """
   end
 
@@ -165,6 +168,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
 
         socket =
           socket
+          |> assign(focus_layout_defaults())
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
@@ -199,6 +203,10 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
   end
 
   @impl true
+  # Tree panel events (from FocusLayout)
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: handle_tree_panel_event(event, params, socket)
+
   def handle_event("set_pending_delete", %{"id" => id}, socket) do
     {:noreply, assign(socket, :pending_delete_id, id)}
   end

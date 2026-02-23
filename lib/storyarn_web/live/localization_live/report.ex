@@ -11,12 +11,13 @@ defmodule StoryarnWeb.LocalizationLive.Report do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.project
+    <Layouts.focus
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/report"}
+      active_tool={:localization}
+      has_tree={false}
       can_edit={@can_edit}
     >
       <div class="max-w-4xl mx-auto">
@@ -153,7 +154,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
           </div>
         </section>
       </div>
-    </Layouts.project>
+    </Layouts.focus>
     """
   end
 

@@ -16,71 +16,65 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.project
+    <Layouts.focus
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization"}
+      active_tool={:localization}
+      has_tree={false}
       can_edit={@can_edit}
     >
-      <div class="max-w-6xl mx-auto">
-        <.header>
-          {dgettext("localization", "Localization")}
-          <:subtitle>
-            {dgettext("localization", "Manage translations for your project content")}
-          </:subtitle>
-          <:actions :if={@can_edit && @target_languages != []}>
-            <div class="flex items-center gap-2">
-              <.link
-                navigate={
-                  ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/report"
-                }
-                class="btn btn-sm btn-ghost"
-              >
-                <.icon name="bar-chart-3" class="size-4 mr-1" />
-                {dgettext("localization", "Report")}
-              </.link>
-              <div :if={@selected_locale} class="dropdown dropdown-end">
-                <div tabindex="0" role="button" class="btn btn-sm btn-ghost">
-                  <.icon name="download" class="size-4 mr-1" />
-                  {dgettext("localization", "Export")}
-                </div>
-                <ul
-                  tabindex="0"
-                  class="dropdown-content menu bg-base-200 rounded-box z-10 w-40 p-2 shadow-sm"
-                >
-                  <li>
-                    <a href={
-                      ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/xlsx/#{@selected_locale}"
-                    }>
-                      {dgettext("localization", "Excel (.xlsx)")}
-                    </a>
-                  </li>
-                  <li>
-                    <a href={
-                      ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/csv/#{@selected_locale}"
-                    }>
-                      {dgettext("localization", "CSV (.csv)")}
-                    </a>
-                  </li>
-                </ul>
-              </div>
-              <.button
-                :if={@has_provider}
-                phx-click="translate_batch"
-                phx-disable-with={dgettext("localization", "Translating...")}
-                variant="primary"
-              >
-                <.icon name="languages" class="size-4 mr-1" />
-                {dgettext("localization", "Translate All Pending")}
-              </.button>
+      <:top_bar_extra_right :if={@can_edit && @target_languages != []}>
+        <div class="flex items-center gap-1 px-1.5 py-1 bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg">
+          <.link
+            navigate={
+              ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/report"
+            }
+            class="btn btn-ghost btn-sm gap-1.5"
+          >
+            <.icon name="bar-chart-3" class="size-4" />
+            <span class="hidden xl:inline">{dgettext("localization", "Report")}</span>
+          </.link>
+          <div :if={@selected_locale} class="dropdown dropdown-end">
+            <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-1.5">
+              <.icon name="download" class="size-4" />
+              <span class="hidden xl:inline">{dgettext("localization", "Export")}</span>
             </div>
-          </:actions>
-        </.header>
-
+            <ul
+              tabindex="0"
+              class="dropdown-content menu bg-base-100 rounded-box z-50 w-40 p-2 shadow-lg border border-base-300 mt-2"
+            >
+              <li>
+                <a href={
+                  ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/xlsx/#{@selected_locale}"
+                }>
+                  {dgettext("localization", "Excel (.xlsx)")}
+                </a>
+              </li>
+              <li>
+                <a href={
+                  ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/csv/#{@selected_locale}"
+                }>
+                  {dgettext("localization", "CSV (.csv)")}
+                </a>
+              </li>
+            </ul>
+          </div>
+          <button
+            :if={@has_provider}
+            phx-click="translate_batch"
+            phx-disable-with={dgettext("localization", "Translating...")}
+            class="btn btn-primary btn-sm gap-1.5"
+          >
+            <.icon name="languages" class="size-4" />
+            <span class="hidden xl:inline">{dgettext("localization", "Translate All Pending")}</span>
+          </button>
+        </div>
+      </:top_bar_extra_right>
+      <div class="max-w-6xl mx-auto mt-4">
         <%!-- Language management bar --%>
-        <div class="mt-6">
+        <div>
           <div class="flex flex-wrap items-center gap-2 mb-4">
             <%!-- Source language badge --%>
             <div :if={@source_language} class="badge badge-primary gap-1.5 py-3">
@@ -369,7 +363,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           </div>
         </div>
       </div>
-    </Layouts.project>
+    </Layouts.focus>
     """
   end
 

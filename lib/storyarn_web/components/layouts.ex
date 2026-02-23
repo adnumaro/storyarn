@@ -6,7 +6,7 @@ defmodule StoryarnWeb.Layouts do
   use StoryarnWeb, :html
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.Components.ProjectSidebar
+  import StoryarnWeb.Components.FocusLayout
   import StoryarnWeb.Components.Sidebar
 
   # Embed all files in layouts/* within this module.
@@ -85,125 +85,127 @@ defmodule StoryarnWeb.Layouts do
   end
 
   @doc """
-  Renders a project layout with sheets tree sidebar.
-
-  This layout is used for project-specific sheets that show the sheet navigation tree.
+  Renders the focus layout — full-screen content with floating toolbars and pinnable tree panel.
 
   ## Examples
 
-      <Layouts.project
+      <Layouts.focus
         flash={@flash}
         current_scope={@current_scope}
         project={@project}
         workspace={@workspace}
-        sheets_tree={@sheets_tree}
-        current_path={@current_path}
+        active_tool={:sheets}
+        has_tree={true}
+        tree_panel_open={@tree_panel_open}
+        tree_panel_pinned={@tree_panel_pinned}
+        can_edit={@can_edit}
+        online_users={@online_users}
       >
-        <h1>Content</h1>
-      </Layouts.project>
-
+        <:tree_content>
+          <SheetTree.sheets_section sheets_tree={@sheets_tree} ... />
+        </:tree_content>
+        <:content_header>
+          <h1>Sheet Title</h1>
+        </:content_header>
+        Content here
+      </Layouts.focus>
   """
-  attr :flash, :map, required: true, doc: "the map of flash messages"
+  attr :flash, :map, required: true
 
   attr :current_scope, :map,
     default: nil,
-    doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
+    doc: "the current scope"
 
   attr :project, :map, required: true, doc: "the current project"
   attr :workspace, :map, required: true, doc: "the workspace the project belongs to"
 
-  attr :sheets_tree, :list,
-    default: [],
-    doc: "sheets with preloaded children for the tree"
-
-  attr :flows_tree, :list, default: [], doc: "flows with preloaded children for the tree"
-
-  attr :screenplays_tree, :list,
-    default: [],
-    doc: "screenplays with preloaded children for the tree"
-
-  attr :maps_tree, :list, default: [], doc: "maps with preloaded children for the tree"
-
   attr :active_tool, :atom,
     default: :sheets,
-    doc: "active tool (:sheets, :flows, :screenplays, or :maps)"
+    doc: "active tool (:sheets, :flows, :screenplays, :maps, :assets, :localization)"
 
-  attr :current_path, :string, default: "", doc: "current path for navigation highlighting"
+  attr :has_tree, :boolean, default: true, doc: "whether this page has a tree panel"
+  attr :tree_panel_open, :boolean, default: false, doc: "whether the tree panel is open"
+  attr :tree_panel_pinned, :boolean, default: false, doc: "whether the tree panel is pinned"
+  attr :can_edit, :boolean, default: false, doc: "whether the user can edit content"
+  attr :online_users, :list, default: [], doc: "list of online user presence maps"
 
-  attr :selected_sheet_id, :string,
-    default: nil,
-    doc: "currently selected sheet ID for tree highlighting"
+  attr :canvas_mode, :boolean,
+    default: false,
+    doc: "when true, main area has no padding/scroll (canvas views)"
 
-  attr :selected_flow_id, :string,
-    default: nil,
-    doc: "currently selected flow ID for sidebar highlighting"
-
-  attr :selected_screenplay_id, :string,
-    default: nil,
-    doc: "currently selected screenplay ID for sidebar highlighting"
-
-  attr :selected_map_id, :string,
-    default: nil,
-    doc: "currently selected map ID for sidebar highlighting"
-
-  attr :can_edit, :boolean, default: false, doc: "whether the user can edit sheets"
-
+  slot :tree_content, doc: "tree panel content (tree component)"
+  slot :top_bar_extra, doc: "extra content rendered next to the left toolbar (same row)"
+  slot :top_bar_extra_right, doc: "extra content rendered next to the right toolbar (same row)"
+  slot :content_header, doc: "optional header above main content"
   slot :inner_block, required: true
 
-  def project(assigns) do
+  def focus(assigns) do
+    current_user_id =
+      case assigns.current_scope do
+        %{user: %{id: id}} -> id
+        _ -> nil
+      end
+
+    assigns = assign(assigns, :current_user_id, current_user_id)
+
     ~H"""
-    <div class="drawer lg:drawer-open">
-      <input id="project-sidebar-drawer" type="checkbox" class="drawer-toggle" />
-
-      <div class="drawer-content flex flex-col min-h-screen">
-        <%!-- Mobile header with hamburger --%>
-        <header class="navbar bg-base-100 border-b border-base-300 lg:hidden">
-          <div class="flex-none">
-            <label for="project-sidebar-drawer" class="btn btn-square btn-ghost">
-              <.icon name="menu" class="size-6" />
-            </label>
-          </div>
-          <div class="flex-1">
-            <.link
-              navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
-              class="flex items-center gap-2"
-            >
-              <.icon name="folder" class="size-5" />
-              <span class="font-bold truncate">{@project.name}</span>
-            </.link>
-          </div>
-          <div class="flex-none">
-            <.theme_toggle />
-          </div>
-        </header>
-
-        <%!-- Main content area --%>
-        <main class="flex-1 overflow-y-auto bg-base-100 py-6 lg:py-8 px-12 lg:px-8">
-          {render_slot(@inner_block)}
-        </main>
-
-        <.flash_group flash={@flash} />
+    <div class="h-screen w-screen overflow-hidden relative bg-base-100">
+      <%!-- Left floating toolbar row (top-left) --%>
+      <div class="fixed top-3 left-3 z-[1020] flex items-stretch gap-2">
+        <.left_toolbar
+          active_tool={@active_tool}
+          has_tree={@has_tree}
+          tree_panel_open={@tree_panel_open}
+          workspace={@workspace}
+          project={@project}
+        />
+        {render_slot(@top_bar_extra)}
       </div>
 
-      <%!-- Sidebar drawer --%>
-      <div class="drawer-side z-40">
-        <label for="project-sidebar-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-        <.project_sidebar
-          project={@project}
+      <%!-- Right floating toolbar row (top-right) --%>
+      <div :if={@current_user_id} class="fixed top-3 right-3 z-[1020] flex items-stretch gap-2">
+        {render_slot(@top_bar_extra_right)}
+        <.right_toolbar
           workspace={@workspace}
-          sheets_tree={@sheets_tree}
-          flows_tree={@flows_tree}
-          screenplays_tree={@screenplays_tree}
-          maps_tree={@maps_tree}
-          active_tool={@active_tool}
-          current_path={@current_path}
-          selected_sheet_id={@selected_sheet_id}
-          selected_flow_id={@selected_flow_id}
-          selected_screenplay_id={@selected_screenplay_id}
-          selected_map_id={@selected_map_id}
-          can_edit={@can_edit}
+          project={@project}
+          online_users={@online_users}
+          current_user_id={@current_user_id}
+          current_scope={@current_scope}
         />
       </div>
+
+      <%!-- Tree panel (when page has tree and panel is open) --%>
+      <.tree_panel
+        :if={@has_tree && @tree_panel_open && @tree_content != []}
+        active_tool={@active_tool}
+        tree_panel_pinned={@tree_panel_pinned}
+        can_edit={@can_edit}
+        workspace={@workspace}
+        project={@project}
+      >
+        <:tree_content>
+          {render_slot(@tree_content)}
+        </:tree_content>
+      </.tree_panel>
+
+      <%!-- Main content area --%>
+      <main class={[
+        "h-full",
+        if(@canvas_mode,
+          do: "overflow-hidden",
+          else: [
+            "overflow-y-auto pt-[76px] pb-4 px-4 transition-[padding-left] duration-200",
+            @has_tree && @tree_panel_open && "pl-[264px]"
+          ]
+        )
+      ]}>
+        <div :if={@content_header != []} class="mb-4">
+          {render_slot(@content_header)}
+        </div>
+        {render_slot(@inner_block)}
+      </main>
+
+      <.flash_group flash={@flash} />
     </div>
     """
   end

@@ -23,22 +23,22 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
       |> assign_block_fields()
 
     ~H"""
-    <div class="fixed inset-y-0 right-0 w-80 bg-base-200 shadow-xl z-50 flex flex-col">
+    <div class="fixed right-3 top-[76px] bottom-3 z-[1010] w-72 flex flex-col bg-base-200 border border-base-300 rounded-xl shadow-lg overflow-hidden">
       <%!-- Header --%>
-      <div class="flex items-center justify-between p-4 border-b border-base-300">
-        <h3 class="font-semibold">{dgettext("sheets", "Configure Block")}</h3>
+      <div class="flex items-center justify-between px-3 py-2 border-b border-base-300">
+        <h3 class="text-sm font-semibold">{dgettext("sheets", "Configure Block")}</h3>
         <button
           type="button"
-          class="btn btn-ghost btn-sm btn-square"
+          class="btn btn-ghost btn-xs btn-square"
           phx-click="close_config_panel"
           phx-target={@target}
         >
-          <.icon name="x" class="size-5" />
+          <.icon name="x" class="size-4" />
         </button>
       </div>
 
       <%!-- Content --%>
-      <div class="flex-1 overflow-y-auto p-4">
+      <div class="flex-1 overflow-y-auto p-3">
         <form phx-change="save_block_config" phx-target={@target} class="space-y-4">
           <%!-- Block Type (read-only) --%>
           <div>
@@ -444,9 +444,6 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
           </div>
         </div>
       </div>
-    </div>
-    <%!-- Backdrop --%>
-    <div class="fixed inset-0 bg-black/20 z-40" phx-click="close_config_panel" phx-target={@target}>
     </div>
     """
   end

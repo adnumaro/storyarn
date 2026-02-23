@@ -9,6 +9,8 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Phoenix.LiveView.JS
+
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.TreeComponents
 
@@ -23,19 +25,6 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
   def sheets_section(assigns) do
     ~H"""
     <div>
-      <div class="flex items-center justify-between mb-1">
-        <.tree_section label={dgettext("sheets", "Sheets")} />
-        <button
-          :if={@can_edit}
-          type="button"
-          phx-click="create_sheet"
-          class="btn btn-ghost btn-xs"
-          title={dgettext("sheets", "New Sheet")}
-        >
-          <.icon name="plus" class="size-3" />
-        </button>
-      </div>
-
       <%!-- Search input --%>
       <div
         :if={@sheets_tree != []}
@@ -48,7 +37,7 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
           type="text"
           data-tree-search-input
           placeholder={dgettext("sheets", "Filter sheets...")}
-          class="input input-xs input-bordered w-full"
+          class="input input-sm input-bordered w-full"
         />
       </div>
 
@@ -73,6 +62,28 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
           />
         </div>
       </div>
+
+      <%!-- Add new button (full width, below tree) --%>
+      <button
+        :if={@can_edit}
+        type="button"
+        phx-click="create_sheet"
+        class="btn btn-ghost btn-sm w-full gap-1.5 mt-1 text-base-content/50 hover:text-base-content"
+      >
+        <.icon name="plus" class="size-4" />
+        {dgettext("sheets", "New Sheet")}
+      </button>
+
+      <.confirm_modal
+        :if={@can_edit}
+        id="delete-sheet-sidebar-confirm"
+        title={dgettext("sheets", "Delete sheet?")}
+        message={dgettext("sheets", "Are you sure you want to delete this sheet?")}
+        confirm_text={dgettext("sheets", "Delete")}
+        confirm_variant="error"
+        icon="alert-triangle"
+        on_confirm={JS.push("confirm_delete_sheet")}
+      />
     </div>
     """
   end
@@ -185,8 +196,10 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
           <button
             type="button"
             class="text-error"
-            phx-click="delete_sheet"
-            phx-value-id={@sheet_id}
+            phx-click={
+              JS.push("set_pending_delete_sheet", value: %{id: @sheet_id})
+              |> show_modal("delete-sheet-sidebar-confirm")
+            }
             onclick="event.stopPropagation();"
           >
             <.icon name="trash-2" class="size-4" />

@@ -8,18 +8,17 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Projects
-  alias Storyarn.Sheets
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.project
+    <Layouts.focus
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      sheets_tree={@sheets_tree}
-      current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings"}
+      active_tool={:sheets}
+      has_tree={false}
     >
       <div class="text-center mb-8">
         <.header>
@@ -226,7 +225,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         icon="alert-triangle"
         on_confirm={JS.push("delete_project")}
       />
-    </Layouts.project>
+    </Layouts.focus>
     """
   end
 
@@ -245,7 +244,6 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         if Projects.ProjectMembership.can?(membership.role, :manage_project) do
           members = Projects.list_project_members(project.id)
           pending_invitations = Projects.list_pending_invitations(project.id)
-          sheets_tree = Sheets.list_sheets_tree(project.id)
 
           project_changeset = Projects.change_project(project)
           provider_config = get_provider_config(project.id)
@@ -256,7 +254,6 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             |> assign(:workspace, project.workspace)
             |> assign(:membership, membership)
             |> assign(:current_workspace, project.workspace)
-            |> assign(:sheets_tree, sheets_tree)
             |> assign(:members, members)
             |> assign(:pending_invitations, pending_invitations)
             |> assign(:project_form, to_form(project_changeset))

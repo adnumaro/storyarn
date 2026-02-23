@@ -25,19 +25,6 @@ defmodule StoryarnWeb.Components.Sidebar.MapTree do
   def maps_section(assigns) do
     ~H"""
     <div>
-      <div class="flex items-center justify-between mb-1">
-        <.tree_section label={dgettext("maps", "Maps")} />
-        <button
-          :if={@can_edit}
-          type="button"
-          phx-click="create_map"
-          class="btn btn-ghost btn-xs"
-          title={dgettext("maps", "New Map")}
-        >
-          <.icon name="plus" class="size-3" />
-        </button>
-      </div>
-
       <%!-- Search input --%>
       <div
         :if={@maps_tree != []}
@@ -50,7 +37,7 @@ defmodule StoryarnWeb.Components.Sidebar.MapTree do
           type="text"
           data-tree-search-input
           placeholder={dgettext("maps", "Filter maps...")}
-          class="input input-xs input-bordered w-full"
+          class="input input-sm input-bordered w-full"
         />
       </div>
 
@@ -76,6 +63,17 @@ defmodule StoryarnWeb.Components.Sidebar.MapTree do
           />
         </div>
       </div>
+
+      <%!-- Add new button (full width, below tree) --%>
+      <button
+        :if={@can_edit}
+        type="button"
+        phx-click="create_map"
+        class="btn btn-ghost btn-sm w-full gap-1.5 mt-1 text-base-content/50 hover:text-base-content"
+      >
+        <.icon name="plus" class="size-4" />
+        {dgettext("maps", "New Map")}
+      </button>
 
       <.confirm_modal
         :if={@can_edit}

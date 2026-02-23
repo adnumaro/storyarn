@@ -17,9 +17,9 @@ defmodule StoryarnWeb.MapLive.Components.MapSearchPanel do
 
   def map_search_panel(assigns) do
     ~H"""
-    <div class="bg-base-100 rounded-lg border border-base-300 shadow-md">
+    <div class="bg-base-100 rounded-xl border border-base-300 shadow-md">
       <form id="search-form" phx-change="search_elements" phx-submit="search_elements">
-        <div class="flex items-center gap-1.5 px-2.5 py-1.5">
+        <div class="flex items-center gap-2 px-3 py-3">
           <.icon name="search" class="size-4 text-base-content/40 shrink-0" />
           <input
             type="text"

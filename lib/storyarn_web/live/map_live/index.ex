@@ -4,38 +4,66 @@ defmodule StoryarnWeb.MapLive.Index do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
 
+  import StoryarnWeb.Live.Shared.TreePanelHandlers
+
   alias Storyarn.Maps
   alias Storyarn.Projects
   alias Storyarn.Shared.MapUtils
+  alias StoryarnWeb.Components.Sidebar.MapTree
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.project
+    <Layouts.focus
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      maps_tree={@maps_tree}
       active_tool={:maps}
-      current_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/maps"}
+      has_tree={true}
+      tree_panel_open={@tree_panel_open}
+      tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
     >
+      <:tree_content>
+        <div role="tablist" class="tabs tabs-border tabs-sm mb-6">
+          <button
+            role="tab"
+            class={["tab", @tree_panel_tab == "maps" && "tab-active"]}
+            phx-click="switch_tree_tab"
+            phx-value-tab="maps"
+          >
+            <.icon name="map" class="size-3.5 mr-1" />{dgettext("maps", "Maps")}
+          </button>
+          <button
+            role="tab"
+            class={["tab", @tree_panel_tab == "layers" && "tab-active"]}
+            phx-click="switch_tree_tab"
+            phx-value-tab="layers"
+          >
+            <.icon name="layers" class="size-3.5 mr-1" />{dgettext("maps", "Layers")}
+          </button>
+        </div>
+        <div :if={@tree_panel_tab == "maps"}>
+          <MapTree.maps_section
+            maps_tree={@maps_tree}
+            workspace={@workspace}
+            project={@project}
+            can_edit={@can_edit}
+          />
+        </div>
+        <div :if={@tree_panel_tab == "layers"} class="px-3 py-6">
+          <.empty_state icon="layers">
+            {dgettext("maps", "Select a map to manage layers.")}
+          </.empty_state>
+        </div>
+      </:tree_content>
       <div class="max-w-4xl mx-auto">
         <.header>
           {dgettext("maps", "Maps")}
           <:subtitle>
             {dgettext("maps", "Create maps to visualize your world")}
           </:subtitle>
-          <:actions :if={@can_edit}>
-            <.link
-              patch={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/maps/new"}
-              class="btn btn-primary"
-            >
-              <.icon name="plus" class="size-4 mr-2" />
-              {dgettext("maps", "New Map")}
-            </.link>
-          </:actions>
         </.header>
 
         <.empty_state :if={@maps == []} icon="map">
@@ -78,7 +106,7 @@ defmodule StoryarnWeb.MapLive.Index do
           on_confirm={JS.push("confirm_delete")}
         />
       </div>
-    </Layouts.project>
+    </Layouts.focus>
     """
   end
 
@@ -168,6 +196,8 @@ defmodule StoryarnWeb.MapLive.Index do
 
         socket =
           socket
+          |> assign(focus_layout_defaults())
+          |> assign(:tree_panel_tab, "maps")
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
@@ -202,6 +232,15 @@ defmodule StoryarnWeb.MapLive.Index do
   end
 
   @impl true
+  # Tree panel events (from FocusLayout)
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: handle_tree_panel_event(event, params, socket)
+
+  def handle_event("switch_tree_tab", %{"tab" => tab}, socket)
+      when tab in ~w(maps layers) do
+    {:noreply, assign(socket, :tree_panel_tab, tab)}
+  end
+
   def handle_event("set_pending_delete", %{"id" => id}, socket) do
     {:noreply, assign(socket, :pending_delete_id, id)}
   end

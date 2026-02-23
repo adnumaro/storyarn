@@ -60,6 +60,7 @@ import { TableRowMenu } from "./hooks/table_row_menu";
 import { TableRowSortable } from "./hooks/table_row_sortable";
 import { TiptapEditor } from "./hooks/tiptap_editor";
 import { ToolbarPopover } from "./hooks/toolbar_popover";
+import { TreePanel } from "./hooks/tree_panel";
 import { TreeToggle } from "./hooks/tree";
 import { TreeSearch } from "./hooks/tree_search";
 import { TriStateCheckbox } from "./hooks/tri_state_checkbox";
@@ -84,6 +85,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     EditableTitle,
     SortableList,
     SortableTree,
+    TreePanel,
     TreeToggle,
     TreeSearch,
     TiptapEditor,
