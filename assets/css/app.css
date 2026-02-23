@@ -39,7 +39,7 @@
 
 /* Leaflet container background — theme-aware for dark/light mode */
 .leaflet-container {
-  background: var(--color-base-200, #e5e7eb);
+  background: var(--color-base-100, #e5e7eb);
 }
 
 /* Story player styles */
@@ -510,7 +510,7 @@
 
 /* Map Canvas - Grid placeholder (theme-aware via CSS variables) */
 .map-grid-fill {
-  fill: var(--color-base-100) !important;
+  fill: var(--color-base-200) !important;
   stroke: var(--color-base-300) !important;
 }
 

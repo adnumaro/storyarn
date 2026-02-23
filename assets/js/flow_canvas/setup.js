@@ -231,7 +231,7 @@ export async function finalizeSetup(area, editor, hasNodes) {
 const reteStyles = document.createElement("style");
 reteStyles.textContent = `
   #flow-canvas {
-    background-color: var(--color-base-200, #1d232a);
+    background-color: var(--color-base-100, #1d232a);
     background-image:
       radial-gradient(circle at center, color-mix(in oklch, var(--color-base-content, #a6adbb) 8%, transparent) 1.5px, transparent 1.5px);
     background-size: 24px 24px;

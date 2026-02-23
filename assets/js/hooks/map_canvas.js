@@ -7,7 +7,7 @@
 
 import L from "leaflet";
 import { createContextMenu } from "../map_canvas/context_menu.js";
-import { toPercent } from "../map_canvas/coordinate_utils.js";
+import { imageBounds, toPercent } from "../map_canvas/coordinate_utils.js";
 import { exportPNG, exportSVG } from "../map_canvas/exporter.js";
 import { createFloatingToolbar } from "../map_canvas/floating_toolbar.js";
 import { createAnnotationHandler } from "../map_canvas/handlers/annotation_handler.js";
@@ -262,21 +262,35 @@ export const MapCanvas = {
         this.gridOverlay = null;
       }
 
-      const bounds = [
-        [0, 0],
-        [-this.canvasHeight, this.canvasWidth],
-      ];
-
       if (url) {
-        this.backgroundOverlay = L.imageOverlay(url, bounds).addTo(this.leafletMap);
-        // Send behind pins/zones/connections
-        this.backgroundOverlay.bringToBack();
+        // Load image to read natural dimensions, then fit canvas to them
+        const img = new Image();
+        img.onload = () => {
+          const natW = img.naturalWidth || this.canvasWidth;
+          const natH = img.naturalHeight || this.canvasHeight;
+          const newBounds = imageBounds(natW, natH);
+
+          this.canvasWidth = natW;
+          this.canvasHeight = natH;
+          this.initialBounds = newBounds;
+
+          this.backgroundOverlay = L.imageOverlay(url, newBounds).addTo(this.leafletMap);
+          this.backgroundOverlay.bringToBack();
+          this.leafletMap.fitBounds(newBounds);
+
+          // Reposition all elements to the new coordinate space
+          if (this.pinHandler) this.pinHandler.repositionAll();
+          if (this.zoneHandler) this.zoneHandler.repositionAll();
+          if (this.connectionHandler) this.connectionHandler.repositionAll();
+          if (this.annotationHandler) this.annotationHandler.repositionAll();
+
+          if (this.minimap) this.minimap.refreshBackground();
+        };
+        img.src = url;
       } else {
         this.gridOverlay = addGridPlaceholder(this.leafletMap, this.canvasWidth, this.canvasHeight);
+        if (this.minimap) this.minimap.refreshBackground();
       }
-
-      // Refresh minimap background
-      if (this.minimap) this.minimap.refreshBackground();
     });
 
     // Wire map export

@@ -12,7 +12,7 @@ export const storyarnNodeStyles = css`
 
   .node {
     position: relative;
-    background: var(--color-base-100, #1d232a);
+    background: var(--color-base-200, #1d232a);
     border-radius: 8px;
     min-width: 180px;
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
