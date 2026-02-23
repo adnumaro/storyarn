@@ -55,8 +55,21 @@ export const InteractionPlayer = {
       img.style.inset = "0";
       img.style.width = "100%";
       img.style.height = "100%";
-      img.style.objectFit = "contain";
+      img.style.objectFit = "fill";
       img.draggable = false;
+
+      // Correct wrapper aspect ratio from actual image dimensions.
+      // When map width/height are null the server-side defaults may not
+      // match the background image, causing zone misalignment.
+      const onLoad = () => {
+        if (img.naturalWidth && img.naturalHeight) {
+          wrapper.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+        }
+      };
+      img.addEventListener("load", onLoad);
+      // Handle already-cached images where load event already fired
+      if (img.complete && img.naturalWidth) onLoad();
+
       wrapper.appendChild(img);
     }
 
@@ -125,8 +138,9 @@ export const InteractionPlayer = {
       labelContainer.appendChild(label);
     }
 
-    // Clickable zones
+    // Clickable zones — re-enable pointer-events (inherited none from group)
     if (action_type === "instruction") {
+      div.style.pointerEvents = "auto";
       div.style.cursor = "pointer";
       div.addEventListener("click", () => {
         const assignments = zone.action_data?.assignments || [];
@@ -137,6 +151,7 @@ export const InteractionPlayer = {
         });
       });
     } else if (action_type === "event") {
+      div.style.pointerEvents = "auto";
       div.style.cursor = "pointer";
       const eventName = zone.action_data?.event_name || `zone_${zone.id}`;
       div.addEventListener("click", () => {
@@ -147,10 +162,12 @@ export const InteractionPlayer = {
       });
     }
 
-    // Group zone overlay + label in a fragment-like wrapper
+    // Group zone overlay + label in a fragment-like wrapper.
+    // pointer-events: none on group so stacked zones don't block clicks on zones below.
     const group = document.createElement("div");
     group.style.position = "absolute";
     group.style.inset = "0";
+    group.style.pointerEvents = "none";
     group.appendChild(div);
     group.appendChild(labelContainer);
 

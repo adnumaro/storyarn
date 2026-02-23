@@ -10,6 +10,7 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
 
   alias Storyarn.Maps
   alias StoryarnWeb.Helpers.UndoRedoStack
+  alias StoryarnWeb.MapLive.Handlers.ElementHandlers
   import StoryarnWeb.MapLive.Helpers.Serializer
 
   import StoryarnWeb.MapLive.Helpers.MapHelpers,
@@ -100,40 +101,11 @@ defmodule StoryarnWeb.MapLive.Handlers.UndoRedoHandlers do
   # ---------------------------------------------------------------------------
 
   defp pin_to_attrs(pin) do
-    %{
-      "position_x" => pin.position_x,
-      "position_y" => pin.position_y,
-      "label" => pin.label,
-      "pin_type" => pin.pin_type,
-      "color" => pin.color,
-      "icon" => pin.icon,
-      "opacity" => pin.opacity,
-      "size" => pin.size,
-      "tooltip" => pin.tooltip,
-      "layer_id" => pin.layer_id,
-      "sheet_id" => pin.sheet_id,
-      "target_type" => pin.target_type,
-      "target_id" => pin.target_id,
-      "locked" => pin.locked,
-      "icon_asset_id" => pin.icon_asset_id
-    }
+    Map.put(ElementHandlers.pin_copyable_attrs(pin), "locked", pin.locked)
   end
 
   defp zone_to_attrs(zone) do
-    %{
-      "name" => zone.name,
-      "vertices" => zone.vertices,
-      "fill_color" => zone.fill_color,
-      "border_color" => zone.border_color,
-      "border_width" => zone.border_width,
-      "border_style" => zone.border_style,
-      "opacity" => zone.opacity,
-      "tooltip" => zone.tooltip,
-      "layer_id" => zone.layer_id,
-      "target_type" => zone.target_type,
-      "target_id" => zone.target_id,
-      "locked" => zone.locked
-    }
+    Map.put(ElementHandlers.zone_copyable_attrs(zone), "locked", zone.locked)
   end
 
   defp connection_to_attrs(conn) do

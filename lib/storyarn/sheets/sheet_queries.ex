@@ -248,7 +248,8 @@ defmodule Storyarn.Sheets.SheetQueries do
         block_id: b.id,
         variable_name: b.variable_name,
         block_type: b.type,
-        config: b.config
+        config: b.config,
+        value: b.value
       },
       order_by: [asc: s.name, asc: b.position]
     )
@@ -282,6 +283,7 @@ defmodule Storyarn.Sheets.SheetQueries do
           variable_name: fragment("? || '.' || ? || '.' || ?", b.variable_name, tr.slug, tc.slug),
           block_type: tc.type,
           config: tc.config,
+          cell_value: fragment("?->?", tr.cells, tc.slug),
           table_name: b.variable_name,
           row_name: tr.slug,
           column_name: tc.slug

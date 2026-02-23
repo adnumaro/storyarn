@@ -15,6 +15,7 @@ import { MinimapPlugin } from "rete-minimap-plugin";
 
 import { createContextMenuItems } from "./context_menu_items.js";
 import { createFlowHistoryPreset } from "./history_preset.js";
+import { useMagneticConnection } from "./magnetic-connection/index.js";
 
 /**
  * Creates and configures all Rete.js plugins.
@@ -68,6 +69,11 @@ export function createPlugins(container, hook) {
         },
         connection: (context) => {
           const conn = context.payload;
+          if (conn.isMagnetic) {
+            return ({ path }) => html`
+              <storyarn-magnetic-connection .path=${path}></storyarn-magnetic-connection>
+            `;
+          }
           return ({ path }) => {
             const connData = hook.connectionDataMap.get(conn.id);
             return html`
@@ -155,6 +161,37 @@ export function createPlugins(container, hook) {
 
   area.use(connection);
   area.use(render);
+
+  // Magnetic connection — enlarges socket drop area for easier connecting
+  useMagneticConnection(connection, {
+    async createConnection(from, to) {
+      if (from.side === to.side) return;
+      const [source, target] = from.side === "output" ? [from, to] : [to, from];
+      const sourceNode = editor.getNode(source.nodeId);
+      const targetNode = editor.getNode(target.nodeId);
+
+      if (sourceNode && targetNode) {
+        await editor.addConnection({
+          id: `${Date.now()}`,
+          source: source.nodeId,
+          sourceOutput: source.key,
+          target: target.nodeId,
+          targetInput: target.key,
+        });
+      }
+    },
+    display(from, to) {
+      return from.side !== to.side;
+    },
+    offset(socket, position) {
+      const socketRadius = 10;
+      return {
+        x: position.x + (socket.side === "input" ? -socketRadius : socketRadius),
+        y: position.y,
+      };
+    },
+  });
+
   area.use(contextMenu);
   area.use(arrange);
   // History preset — wires pipes on the editor and area for connection/drag tracking.

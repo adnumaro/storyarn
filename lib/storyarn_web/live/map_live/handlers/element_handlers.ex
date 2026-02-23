@@ -17,6 +17,55 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     only: [push_undo: 2, push_undo_coalesced: 2]
 
   # ---------------------------------------------------------------------------
+  # Shared attr extraction (single source of truth for field lists)
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Returns a string-keyed map of all copyable zone attributes.
+  Used by duplicate, clipboard, paste, and undo/redo.
+  """
+  def zone_copyable_attrs(zone) do
+    %{
+      "name" => zone.name,
+      "vertices" => zone.vertices,
+      "fill_color" => zone.fill_color,
+      "border_color" => zone.border_color,
+      "border_width" => zone.border_width,
+      "border_style" => zone.border_style,
+      "opacity" => zone.opacity,
+      "layer_id" => zone.layer_id,
+      "tooltip" => zone.tooltip,
+      "target_type" => zone.target_type,
+      "target_id" => zone.target_id,
+      "action_type" => zone.action_type,
+      "action_data" => zone.action_data
+    }
+  end
+
+  @doc """
+  Returns a string-keyed map of all copyable pin attributes.
+  Used by duplicate, clipboard, paste, and undo/redo.
+  """
+  def pin_copyable_attrs(pin) do
+    %{
+      "position_x" => pin.position_x,
+      "position_y" => pin.position_y,
+      "label" => pin.label,
+      "pin_type" => pin.pin_type,
+      "icon" => pin.icon,
+      "color" => pin.color,
+      "size" => pin.size,
+      "tooltip" => pin.tooltip,
+      "layer_id" => pin.layer_id,
+      "opacity" => pin.opacity,
+      "target_type" => pin.target_type,
+      "target_id" => pin.target_id,
+      "sheet_id" => pin.sheet_id,
+      "icon_asset_id" => pin.icon_asset_id
+    }
+  end
+
+  # ---------------------------------------------------------------------------
   # Pin handlers
   # ---------------------------------------------------------------------------
 
@@ -638,16 +687,10 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
         %{"x" => min(v["x"] + 5, 100.0), "y" => min(v["y"] + 5, 100.0)}
       end)
 
-    attrs = %{
-      "name" => zone.name <> " (copy)",
-      "vertices" => shifted_vertices,
-      "fill_color" => zone.fill_color,
-      "border_color" => zone.border_color,
-      "border_width" => zone.border_width,
-      "border_style" => zone.border_style,
-      "opacity" => zone.opacity,
-      "layer_id" => zone.layer_id
-    }
+    attrs =
+      zone
+      |> zone_copyable_attrs()
+      |> Map.merge(%{"name" => zone.name <> " (copy)", "vertices" => shifted_vertices})
 
     case Maps.create_zone(socket.assigns.map.id, attrs) do
       {:ok, new_zone} ->
@@ -813,17 +856,14 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   end
 
   defp do_duplicate_pin(socket, pin) do
-    attrs = %{
-      "position_x" => min(pin.position_x + 5, 100.0),
-      "position_y" => min(pin.position_y + 5, 100.0),
-      "label" => pin.label <> " (copy)",
-      "pin_type" => pin.pin_type,
-      "icon" => pin.icon,
-      "color" => pin.color,
-      "size" => pin.size,
-      "tooltip" => pin.tooltip,
-      "layer_id" => pin.layer_id
-    }
+    attrs =
+      pin
+      |> pin_copyable_attrs()
+      |> Map.merge(%{
+        "position_x" => min(pin.position_x + 5, 100.0),
+        "position_y" => min(pin.position_y + 5, 100.0),
+        "label" => pin.label <> " (copy)"
+      })
 
     case Maps.create_pin(socket.assigns.map.id, attrs) do
       {:ok, new_pin} ->
@@ -880,31 +920,14 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   defp serialize_element_for_clipboard("pin", pin) do
     %{
       type: "pin",
-      attrs: %{
-        position_x: pin.position_x,
-        position_y: pin.position_y,
-        label: pin.label,
-        pin_type: pin.pin_type,
-        icon: pin.icon,
-        color: pin.color,
-        size: pin.size,
-        tooltip: pin.tooltip
-      }
+      attrs: Map.new(pin_copyable_attrs(pin), fn {k, v} -> {String.to_existing_atom(k), v} end)
     }
   end
 
   defp serialize_element_for_clipboard("zone", zone) do
     %{
       type: "zone",
-      attrs: %{
-        name: zone.name,
-        vertices: zone.vertices,
-        fill_color: zone.fill_color,
-        border_color: zone.border_color,
-        border_width: zone.border_width,
-        border_style: zone.border_style,
-        opacity: zone.opacity
-      }
+      attrs: Map.new(zone_copyable_attrs(zone), fn {k, v} -> {String.to_existing_atom(k), v} end)
     }
   end
 
@@ -952,17 +975,14 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   defp shift_vertices(attrs), do: attrs
 
   defp do_create_pin_from_clipboard(socket, attrs) do
-    pin_attrs = %{
-      "position_x" => attrs["position_x"] || 50.0,
-      "position_y" => attrs["position_y"] || 50.0,
-      "label" => attrs["label"] || dgettext("maps", "New Pin"),
-      "pin_type" => attrs["pin_type"] || "location",
-      "icon" => attrs["icon"],
-      "color" => attrs["color"],
-      "size" => attrs["size"],
-      "tooltip" => attrs["tooltip"],
-      "layer_id" => socket.assigns.active_layer_id
-    }
+    pin_attrs =
+      Map.merge(attrs, %{
+        "position_x" => attrs["position_x"] || 50.0,
+        "position_y" => attrs["position_y"] || 50.0,
+        "label" => attrs["label"] || dgettext("maps", "New Pin"),
+        "pin_type" => attrs["pin_type"] || "location",
+        "layer_id" => socket.assigns.active_layer_id
+      })
 
     case Maps.create_pin(socket.assigns.map.id, pin_attrs) do
       {:ok, pin} ->
@@ -982,16 +1002,12 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   end
 
   defp do_create_zone_from_clipboard(socket, attrs) do
-    zone_attrs = %{
-      "name" => (attrs["name"] || dgettext("maps", "New Zone")) <> " (paste)",
-      "vertices" => attrs["vertices"] || [],
-      "fill_color" => attrs["fill_color"],
-      "border_color" => attrs["border_color"],
-      "border_width" => attrs["border_width"],
-      "border_style" => attrs["border_style"],
-      "opacity" => attrs["opacity"],
-      "layer_id" => socket.assigns.active_layer_id
-    }
+    zone_attrs =
+      Map.merge(attrs, %{
+        "name" => (attrs["name"] || dgettext("maps", "New Zone")) <> " (paste)",
+        "vertices" => attrs["vertices"] || [],
+        "layer_id" => socket.assigns.active_layer_id
+      })
 
     case Maps.create_zone(socket.assigns.map.id, zone_attrs) do
       {:ok, zone} ->
