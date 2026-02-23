@@ -38,7 +38,6 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   attr :debug_var_changed_only, :boolean, default: false
   attr :debug_current_flow_name, :string, default: nil
   attr :debug_step_limit_reached, :boolean, default: false
-  attr :debug_interaction_zones, :list, default: []
 
   @doc "Renders the debug panel with controls, status, tabs, and tab content."
   def debug_panel(assigns) do
@@ -231,8 +230,6 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           console={@debug_state.console}
           pending_choices={@debug_state.pending_choices}
           status={@debug_state.status}
-          debug_interaction_zones={@debug_interaction_zones}
-          debug_interaction_variables={build_interaction_variables(@debug_state)}
         />
         <.variables_tab
           :if={@debug_active_tab == "variables"}
@@ -310,10 +307,6 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   # ===========================================================================
   # Helpers
   # ===========================================================================
-
-  defp build_interaction_variables(%{variables: variables}) do
-    Map.new(variables, fn {ref, var} -> {ref, var.value} end)
-  end
 
   defp status_badge_class(:paused), do: "badge-info"
   defp status_badge_class(:waiting_input), do: "badge-warning"

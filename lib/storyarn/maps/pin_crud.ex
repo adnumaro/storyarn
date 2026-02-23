@@ -3,6 +3,7 @@ defmodule Storyarn.Maps.PinCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Maps.{MapPin, PositionUtils}
   alias Storyarn.Repo
   alias Storyarn.Sheets.ReferenceTracker
@@ -66,8 +67,12 @@ defmodule Storyarn.Maps.PinCrud do
       |> Repo.insert()
 
     case result do
-      {:ok, pin} -> ReferenceTracker.update_map_pin_references(pin)
-      _ -> :ok
+      {:ok, pin} ->
+        ReferenceTracker.update_map_pin_references(pin)
+        VariableReferenceTracker.update_map_pin_references(pin)
+
+      _ ->
+        :ok
     end
 
     result
@@ -80,8 +85,12 @@ defmodule Storyarn.Maps.PinCrud do
       |> Repo.update()
 
     case result do
-      {:ok, updated_pin} -> ReferenceTracker.update_map_pin_references(updated_pin)
-      _ -> :ok
+      {:ok, updated_pin} ->
+        ReferenceTracker.update_map_pin_references(updated_pin)
+        VariableReferenceTracker.update_map_pin_references(updated_pin)
+
+      _ ->
+        :ok
     end
 
     result
@@ -98,6 +107,7 @@ defmodule Storyarn.Maps.PinCrud do
 
   def delete_pin(%MapPin{} = pin) do
     ReferenceTracker.delete_map_pin_references(pin.id)
+    VariableReferenceTracker.delete_map_pin_references(pin.id)
     Repo.delete(pin)
   end
 

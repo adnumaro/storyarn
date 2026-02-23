@@ -18,6 +18,8 @@ defmodule Storyarn.Maps.MapPin do
   @valid_pin_types ~w(location character event custom)
   @valid_sizes ~w(sm md lg)
   @valid_target_types ~w(sheet flow map url)
+  @valid_action_types ~w(none instruction display)
+  @valid_condition_effects ~w(hide disable)
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -33,6 +35,10 @@ defmodule Storyarn.Maps.MapPin do
           size: String.t(),
           position: integer() | nil,
           locked: boolean(),
+          action_type: String.t(),
+          action_data: map(),
+          condition: map() | nil,
+          condition_effect: String.t(),
           map_id: integer() | nil,
           map: Map.t() | Ecto.Association.NotLoaded.t() | nil,
           layer_id: integer() | nil,
@@ -55,6 +61,10 @@ defmodule Storyarn.Maps.MapPin do
     field :size, :string, default: "md"
     field :position, :integer, default: 0
     field :locked, :boolean, default: false
+    field :action_type, :string, default: "none"
+    field :action_data, :map, default: %{}
+    field :condition, :map
+    field :condition_effect, :string, default: "hide"
 
     belongs_to :map, Map
     belongs_to :layer, MapLayer
@@ -95,15 +105,22 @@ defmodule Storyarn.Maps.MapPin do
       :sheet_id,
       :icon_asset_id,
       :position,
-      :locked
+      :locked,
+      :action_type,
+      :action_data,
+      :condition,
+      :condition_effect
     ])
     |> validate_required([:position_x, :position_y])
     |> validate_number(:position_x, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
     |> validate_number(:position_y, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
     |> validate_inclusion(:pin_type, @valid_pin_types)
     |> validate_inclusion(:size, @valid_sizes)
+    |> validate_inclusion(:action_type, @valid_action_types)
+    |> validate_inclusion(:condition_effect, @valid_condition_effects)
     |> validate_number(:opacity, greater_than_or_equal_to: 0, less_than_or_equal_to: 1)
     |> validate_target_pair(@valid_target_types)
+    |> validate_action_data()
     |> validate_length(:label, max: 200)
     |> validate_length(:color, max: 20)
     |> validate_color(:color)
@@ -113,6 +130,29 @@ defmodule Storyarn.Maps.MapPin do
     |> foreign_key_constraint(:sheet_id)
     |> foreign_key_constraint(:icon_asset_id)
   end
+
+  # Validates action_data shape based on action_type (same logic as MapZone)
+  defp validate_action_data(changeset) do
+    action_type = get_field(changeset, :action_type)
+    action_data = get_field(changeset, :action_data) || %{}
+    do_validate_action_data(changeset, action_type, action_data)
+  end
+
+  defp do_validate_action_data(changeset, "instruction", %{"assignments" => list})
+       when is_list(list),
+       do: changeset
+
+  defp do_validate_action_data(changeset, "instruction", _),
+    do: add_error(changeset, :action_data, "must include \"assignments\" as a list")
+
+  defp do_validate_action_data(changeset, "display", %{"variable_ref" => ref})
+       when is_binary(ref),
+       do: changeset
+
+  defp do_validate_action_data(changeset, "display", _),
+    do: add_error(changeset, :action_data, "must include \"variable_ref\"")
+
+  defp do_validate_action_data(changeset, _, _), do: changeset
 
   @doc """
   Changeset for moving a pin (position_x/position_y only — drag optimization).

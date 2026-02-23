@@ -316,27 +316,6 @@
   font-size: 0.9em;
 }
 
-/* ===== Interaction Slide ===== */
-
-.player-slide-interaction {
-  max-width: 720px;
-}
-
-.interaction-player-container {
-  width: 100%;
-}
-
-.interaction-zone {
-  transition: opacity 0.15s, filter 0.15s;
-  user-select: none;
-}
-
-.interaction-zone-instruction:hover,
-.interaction-zone-event:hover {
-  filter: brightness(1.3);
-  opacity: 0.5 !important;
-}
-
 .zone-label {
   font-size: 12px;
   font-weight: 700;
@@ -359,4 +338,45 @@
   color: oklch(0.95 0 0);
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
   text-align: center;
+}
+
+/* ===== Scene Backdrop ===== */
+
+.scene-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.scene-backdrop-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(2px);
+}
+
+.scene-backdrop-transition {
+  animation: scene-fade 0.5s ease;
+}
+
+@keyframes scene-fade {
+  from { opacity: 0; }
+  to   { opacity: 0.25; }
+}
+
+/* ===== Exploration Flow Overlay ===== */
+
+.exploration-flow-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  z-index: 10;
+  animation: player-fade-in 0.3s ease;
 }

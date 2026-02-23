@@ -238,30 +238,6 @@ defmodule Storyarn.Flows.NodeCrud do
     |> Repo.all()
   end
 
-  @doc """
-  Lists all interaction nodes that reference a given map.
-  Used for "Used in N flows" backlinks in the map editor.
-  """
-  def list_interaction_nodes_for_map(map_id) do
-    map_id_str = to_string(map_id)
-
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where: n.type == "interaction",
-      where: is_nil(n.deleted_at) and is_nil(f.deleted_at),
-      where: fragment("?->>'map_id' = ?", n.data, ^map_id_str),
-      select: %{
-        node_id: n.id,
-        flow_id: f.id,
-        flow_name: f.name,
-        project_id: f.project_id
-      },
-      order_by: [asc: f.name]
-    )
-    |> Repo.all()
-  end
-
   # =============================================================================
   # Subflow / exit data resolution
   # =============================================================================
@@ -307,56 +283,6 @@ defmodule Storyarn.Flows.NodeCrud do
 
       Map.new(ref_ids, fn id ->
         {id, %{flow: Map.get(flows, id), exit_labels: Map.get(exits, id, [])}}
-      end)
-    end
-  end
-
-  @doc """
-  Pre-fetches all referenced map data for interaction nodes in a single batch.
-  Returns %{map_id => %{map_name: name, event_zone_names: [...], event_zone_labels: %{...}}}
-  """
-  def batch_resolve_interaction_data(nodes) do
-    map_ids =
-      nodes
-      |> Enum.filter(&(&1.type == "interaction"))
-      |> Enum.map(& &1.data["map_id"])
-      |> Enum.reject(&(is_nil(&1) or &1 == ""))
-      |> Enum.map(&safe_to_integer/1)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
-
-    if map_ids == [] do
-      %{}
-    else
-      maps =
-        from(m in Storyarn.Maps.Map,
-          where: m.id in ^map_ids and is_nil(m.deleted_at),
-          select: {m.id, m.name}
-        )
-        |> Repo.all()
-        |> Map.new()
-
-      zones =
-        from(z in Storyarn.Maps.MapZone,
-          where: z.map_id in ^map_ids and z.action_type == "event",
-          select: %{map_id: z.map_id, action_data: z.action_data}
-        )
-        |> Repo.all()
-        |> Enum.group_by(& &1.map_id)
-
-      Map.new(map_ids, fn id ->
-        zone_list = Map.get(zones, id, [])
-
-        {id,
-         %{
-           map_name: Map.get(maps, id),
-           event_zone_names: Enum.map(zone_list, & &1.action_data["event_name"]),
-           event_zone_labels:
-             Map.new(zone_list, fn z ->
-               {z.action_data["event_name"],
-                z.action_data["label"] || z.action_data["event_name"]}
-             end)
-         }}
       end)
     end
   end

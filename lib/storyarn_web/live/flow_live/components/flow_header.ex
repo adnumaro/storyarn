@@ -67,11 +67,14 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
     """
   end
 
-  @doc "Flow info bar (nav history + title + save indicator) — overlays the canvas."
+  @doc "Flow info bar (nav history + title + scene map + save indicator) — overlays the canvas."
   attr :flow, :map, required: true
   attr :can_edit, :boolean, required: true
   attr :save_status, :atom, default: :idle
   attr :nav_history, :map, default: nil
+  attr :scene_map_name, :string, default: nil
+  attr :scene_map_inherited, :boolean, default: false
+  attr :available_maps, :list, default: []
 
   def flow_info_bar(assigns) do
     ~H"""
@@ -148,8 +151,84 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
         </span>
       </div>
 
+      <%!-- Scene map indicator --%>
+      <.scene_map_indicator
+        :if={@can_edit || @scene_map_name}
+        scene_map_name={@scene_map_name}
+        scene_map_inherited={@scene_map_inherited}
+        can_edit={@can_edit}
+        available_maps={@available_maps}
+      />
+
       <%!-- Save indicator --%>
       <.save_indicator :if={@can_edit} status={@save_status} />
+    </div>
+    """
+  end
+
+  attr :scene_map_name, :string, default: nil
+  attr :scene_map_inherited, :boolean, default: false
+  attr :can_edit, :boolean, required: true
+  attr :available_maps, :list, default: []
+
+  defp scene_map_indicator(assigns) do
+    ~H"""
+    <div class="hidden lg:block">
+      <div class="dropdown dropdown-bottom dropdown-end">
+        <button
+          type="button"
+          tabindex="0"
+          class={[
+            "flex items-center gap-1.5 bg-base-200/95 backdrop-blur rounded-xl shadow-lg border px-2.5 py-1.5 text-xs",
+            if(@scene_map_name,
+              do: "border-primary/30 text-base-content",
+              else: "border-base-300 text-base-content/50"
+            )
+          ]}
+          title={dgettext("flows", "Scene map backdrop")}
+        >
+          <.icon name="map" class="size-3.5" />
+          <span :if={@scene_map_name} class="truncate max-w-[120px]">{@scene_map_name}</span>
+          <span :if={!@scene_map_name}>{dgettext("flows", "No scene")}</span>
+          <span
+            :if={@scene_map_inherited}
+            class="text-base-content/40 text-[10px]"
+            title={dgettext("flows", "Inherited from parent flow")}
+          >
+            ({dgettext("flows", "inherited")})
+          </span>
+        </button>
+        <ul
+          :if={@can_edit}
+          tabindex="0"
+          class="dropdown-content menu menu-xs bg-base-100 rounded-box shadow-lg border border-base-300 w-56 z-50 mt-2 max-h-60 overflow-y-auto"
+        >
+          <li>
+            <button
+              type="button"
+              phx-click="update_scene_map"
+              phx-value-map_id=""
+              class={[
+                "flex items-center gap-2",
+                if(!@scene_map_name, do: "active")
+              ]}
+            >
+              <.icon name="x" class="size-3 opacity-60" />
+              <span class="text-base-content/60">{dgettext("flows", "No scene (inherit)")}</span>
+            </button>
+          </li>
+          <li :for={map <- @available_maps}>
+            <button
+              type="button"
+              phx-click="update_scene_map"
+              phx-value-map_id={map.id}
+            >
+              <.icon name="map" class="size-3 opacity-60" />
+              <span class="truncate">{map.name}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
     </div>
     """
   end

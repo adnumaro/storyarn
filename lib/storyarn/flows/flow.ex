@@ -18,6 +18,7 @@ defmodule Storyarn.Flows.Flow do
   import Ecto.Changeset
 
   alias Storyarn.Flows.{FlowConnection, FlowNode}
+  alias Storyarn.Maps
   alias Storyarn.Projects.Project
   alias Storyarn.Shared.{TimeHelpers, Validations}
 
@@ -29,6 +30,8 @@ defmodule Storyarn.Flows.Flow do
           position: integer() | nil,
           is_main: boolean(),
           settings: map(),
+          scene_map_id: integer() | nil,
+          scene_map: Maps.Map.t() | Ecto.Association.NotLoaded.t() | nil,
           project_id: integer() | nil,
           project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
           parent_id: integer() | nil,
@@ -52,6 +55,7 @@ defmodule Storyarn.Flows.Flow do
 
     belongs_to :project, Project
     belongs_to :parent, __MODULE__
+    belongs_to :scene_map, Maps.Map
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :nodes, FlowNode
     has_many :connections, FlowConnection
@@ -64,12 +68,22 @@ defmodule Storyarn.Flows.Flow do
   """
   def create_changeset(flow, attrs) do
     flow
-    |> cast(attrs, [:name, :shortcut, :description, :is_main, :settings, :parent_id, :position])
+    |> cast(attrs, [
+      :name,
+      :shortcut,
+      :description,
+      :is_main,
+      :settings,
+      :parent_id,
+      :position,
+      :scene_map_id
+    ])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
     |> validate_length(:description, max: 2000)
     |> validate_shortcut()
     |> foreign_key_constraint(:parent_id)
+    |> foreign_key_constraint(:scene_map_id)
   end
 
   @doc """
@@ -77,12 +91,31 @@ defmodule Storyarn.Flows.Flow do
   """
   def update_changeset(flow, attrs) do
     flow
-    |> cast(attrs, [:name, :shortcut, :description, :is_main, :settings, :parent_id, :position])
+    |> cast(attrs, [
+      :name,
+      :shortcut,
+      :description,
+      :is_main,
+      :settings,
+      :parent_id,
+      :position,
+      :scene_map_id
+    ])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 200)
     |> validate_length(:description, max: 2000)
     |> validate_shortcut()
     |> foreign_key_constraint(:parent_id)
+    |> foreign_key_constraint(:scene_map_id)
+  end
+
+  @doc """
+  Changeset for updating the scene map association.
+  """
+  def scene_changeset(flow, attrs) do
+    flow
+    |> cast(attrs, [:scene_map_id])
+    |> foreign_key_constraint(:scene_map_id)
   end
 
   @doc """

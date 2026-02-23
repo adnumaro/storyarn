@@ -12,6 +12,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
   alias Phoenix.LiveView.JS
 
   import StoryarnWeb.Components.CoreComponents
+  import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.ExpressionEditor
   import StoryarnWeb.MapLive.Components.ToolbarWidgets
 
@@ -57,6 +58,8 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
         project_maps={@project_maps}
         project_sheets={@project_sheets}
         project_flows={@project_flows}
+        project_variables={@project_variables}
+        panel_sections={@panel_sections}
       />
       <.connection_toolbar
         :if={@selected_type == "connection"}
@@ -79,7 +82,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
   # [Name] | [Fill▾ (+opacity)] [Border▾] | [Layer▾] [Lock] | [… more]
   # ---------------------------------------------------------------------------
 
-  @action_types ~w(navigate instruction display event)
+  @action_types ~w(none instruction display)
 
   attr :zone, :map, required: true
   attr :layers, :list, default: []
@@ -129,7 +132,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
                 )
                 |> JS.hide(to: "#popover-zone-action-#{@zone.id}")
               }
-              class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm cursor-pointer hover:bg-base-content/10 #{if type == (@zone.action_type || "navigate"), do: "font-semibold text-primary"}"}
+              class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm cursor-pointer hover:bg-base-content/10 #{if type == (@zone.action_type || "none"), do: "font-semibold text-primary"}"}
               disabled={!@can_edit}
             >
               <.icon name={action_type_icon(type)} class="size-3.5" />
@@ -247,11 +250,8 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
               />
             </div>
 
-            <%!-- Navigate: target picker --%>
-            <div
-              :if={(@zone.action_type || "navigate") == "navigate"}
-              class="pt-2 border-t border-base-300"
-            >
+            <%!-- Link to: target picker (independent of action_type) --%>
+            <div class="pt-2 border-t border-base-300">
               <label class="text-xs font-medium text-base-content/60">
                 {dgettext("maps", "Link to")}
               </label>
@@ -295,27 +295,43 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
               </label>
               <.display_variable_picker
                 id={"zone-display-var-#{@zone.id}"}
-                zone_id={@zone.id}
+                element_id={@zone.id}
+                event="update_zone_action_data"
+                context_key="zone-id"
                 variables={@project_variables}
                 selected_ref={@action_data["variable_ref"] || ""}
                 can_edit={@can_edit}
               />
             </div>
 
-            <%!-- Event: event_name --%>
-            <div :if={@zone.action_type == "event"} class="pt-2 border-t border-base-300">
-              <label class="block text-xs font-medium text-base-content/60 mb-1">
-                {dgettext("maps", "Event name")}
-              </label>
-              <input
-                type="text"
-                value={@action_data["event_name"] || ""}
-                phx-blur="update_zone_action_data"
-                phx-value-zone-id={@zone.id}
-                phx-value-field="event_name"
-                placeholder={dgettext("maps", "e.g. on_enter")}
-                class="input input-xs input-bordered w-full"
-                disabled={!@can_edit}
+            <%!-- Condition: visibility condition --%>
+            <div class="pt-2 border-t border-base-300">
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-medium text-base-content/60">
+                  {dgettext("maps", "Condition")}
+                </label>
+                <select
+                  name="value"
+                  class="select select-xs w-20 text-xs"
+                  phx-change="update_zone_condition_effect"
+                  phx-value-id={@zone.id}
+                  disabled={!@can_edit}
+                >
+                  <option value="hide" selected={(@zone.condition_effect || "hide") == "hide"}>
+                    {dgettext("maps", "Hide")}
+                  </option>
+                  <option value="disable" selected={(@zone.condition_effect || "hide") == "disable"}>
+                    {dgettext("maps", "Disable")}
+                  </option>
+                </select>
+              </div>
+              <.condition_builder
+                id={"zone-condition-#{@zone.id}"}
+                condition={@zone.condition}
+                variables={@project_variables}
+                can_edit={@can_edit}
+                event_name="update_zone_condition"
+                context={%{"zone-id" => @zone.id}}
               />
             </div>
           </div>
@@ -337,9 +353,15 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
   attr :project_maps, :list, default: []
   attr :project_sheets, :list, default: []
   attr :project_flows, :list, default: []
+  attr :project_variables, :list, default: []
+  attr :panel_sections, :map, default: %{}
 
   defp pin_toolbar(assigns) do
-    assigns = assign(assigns, :pin_types, @pin_types)
+    assigns =
+      assigns
+      |> assign(:pin_types, @pin_types)
+      |> assign(:action_types, @action_types)
+      |> assign(:action_data, assigns.pin.action_data || %{})
 
     ~H"""
     <div class="flex items-center gap-0.5">
@@ -457,7 +479,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
 
         <div
           id={"popover-pin-more-#{@pin.id}"}
-          class="toolbar-popover w-56"
+          class="toolbar-popover w-72"
           style="display:none"
           phx-click-away={JS.hide(to: "#popover-pin-more-#{@pin.id}")}
         >
@@ -479,7 +501,7 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
               />
             </div>
 
-            <%!-- Target link --%>
+            <%!-- Link to: target picker --%>
             <div class="pt-2 border-t border-base-300">
               <label class="text-xs font-medium text-base-content/60">
                 {dgettext("maps", "Link to")}
@@ -498,6 +520,93 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
                   disabled={!@can_edit}
                 />
               </div>
+            </div>
+
+            <%!-- Action type --%>
+            <div class="pt-2 border-t border-base-300">
+              <label class="block text-xs font-medium text-base-content/60 mb-1">
+                {dgettext("maps", "Action")}
+              </label>
+              <div class="flex gap-1">
+                <button
+                  :for={type <- @action_types}
+                  type="button"
+                  phx-click={
+                    JS.push("update_pin_action_type",
+                      value: %{"pin-id": @pin.id, "action-type": type}
+                    )
+                  }
+                  class={"flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer hover:bg-base-content/10 #{if type == (@pin.action_type || "none"), do: "font-semibold text-primary bg-base-content/5"}"}
+                  disabled={!@can_edit}
+                >
+                  <.icon name={action_type_icon(type)} class="size-3" />
+                  {action_type_label(type)}
+                </button>
+              </div>
+            </div>
+
+            <%!-- Instruction: Expression Editor (Builder | Code) --%>
+            <div :if={@pin.action_type == "instruction"} class="pt-2 border-t border-base-300">
+              <label class="block text-xs font-medium text-base-content/60 mb-1">
+                {dgettext("maps", "Assignments")}
+              </label>
+              <.expression_editor
+                id={"pin-instruction-#{@pin.id}"}
+                mode="instruction"
+                assignments={@action_data["assignments"] || []}
+                variables={@project_variables}
+                can_edit={@can_edit}
+                context={%{"pin-id" => @pin.id}}
+                event_name="update_pin_assignments"
+                active_tab={Map.get(@panel_sections, "tab_pin-instruction-#{@pin.id}", "builder")}
+              />
+            </div>
+
+            <%!-- Display: variable picker --%>
+            <div :if={@pin.action_type == "display"} class="pt-2 border-t border-base-300">
+              <label class="block text-xs font-medium text-base-content/60 mb-1">
+                {dgettext("maps", "Variable")}
+              </label>
+              <.display_variable_picker
+                id={"pin-display-var-#{@pin.id}"}
+                element_id={@pin.id}
+                event="update_pin_action_data"
+                context_key="pin-id"
+                variables={@project_variables}
+                selected_ref={@action_data["variable_ref"] || ""}
+                can_edit={@can_edit}
+              />
+            </div>
+
+            <%!-- Condition: visibility condition --%>
+            <div class="pt-2 border-t border-base-300">
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-medium text-base-content/60">
+                  {dgettext("maps", "Condition")}
+                </label>
+                <select
+                  name="value"
+                  class="select select-xs w-20 text-xs"
+                  phx-change="update_pin_condition_effect"
+                  phx-value-id={@pin.id}
+                  disabled={!@can_edit}
+                >
+                  <option value="hide" selected={(@pin.condition_effect || "hide") == "hide"}>
+                    {dgettext("maps", "Hide")}
+                  </option>
+                  <option value="disable" selected={(@pin.condition_effect || "hide") == "disable"}>
+                    {dgettext("maps", "Disable")}
+                  </option>
+                </select>
+              </div>
+              <.condition_builder
+                id={"pin-condition-#{@pin.id}"}
+                condition={@pin.condition}
+                variables={@project_variables}
+                can_edit={@can_edit}
+                event_name="update_pin_condition"
+                context={%{"pin-id" => @pin.id}}
+              />
             </div>
 
             <%!-- Custom icon --%>
@@ -740,24 +849,24 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
   defp pin_type_label("custom"), do: dgettext("maps", "Custom")
   defp pin_type_label(other), do: other
 
-  defp action_type_icon("navigate"), do: "link"
+  defp action_type_icon("none"), do: "circle-off"
   defp action_type_icon("instruction"), do: "zap"
   defp action_type_icon("display"), do: "bar-chart-3"
-  defp action_type_icon("event"), do: "send"
-  defp action_type_icon(_), do: "link"
+  defp action_type_icon(_), do: "circle-off"
 
-  defp action_type_label("navigate"), do: dgettext("maps", "Navigate")
+  defp action_type_label("none"), do: dgettext("maps", "None")
   defp action_type_label("instruction"), do: dgettext("maps", "Action")
   defp action_type_label("display"), do: dgettext("maps", "Display")
-  defp action_type_label("event"), do: dgettext("maps", "Event")
-  defp action_type_label(_), do: dgettext("maps", "Navigate")
+  defp action_type_label(_), do: dgettext("maps", "None")
 
   # ---------------------------------------------------------------------------
   # Display variable picker (searchable select using SearchableSelect hook)
   # ---------------------------------------------------------------------------
 
   attr :id, :string, required: true
-  attr :zone_id, :integer, required: true
+  attr :element_id, :integer, required: true
+  attr :event, :string, required: true
+  attr :context_key, :string, required: true
   attr :variables, :list, required: true
   attr :selected_ref, :string, default: ""
   attr :can_edit, :boolean, default: true
@@ -798,9 +907,9 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
           <button
             :if={@selected_ref != ""}
             type="button"
-            data-event="update_zone_action_data"
+            data-event={@event}
             data-params={
-              Jason.encode!(%{"zone-id" => @zone_id, "field" => "variable_ref", "value" => ""})
+              Jason.encode!(%{@context_key => @element_id, "field" => "variable_ref", "value" => ""})
             }
             data-search-text=""
             class="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs text-base-content/50 cursor-pointer hover:bg-base-content/10"
@@ -811,10 +920,10 @@ defmodule StoryarnWeb.MapLive.Components.FloatingToolbar do
           <button
             :for={var <- @variables}
             type="button"
-            data-event="update_zone_action_data"
+            data-event={@event}
             data-params={
               Jason.encode!(%{
-                "zone-id" => @zone_id,
+                @context_key => @element_id,
                 "field" => "variable_ref",
                 "value" => "#{var.sheet_shortcut}.#{var.variable_name}"
               })

@@ -1,14 +1,12 @@
 defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
   @moduledoc """
-  Dispatches slide rendering based on type (dialogue, scene, interaction, empty).
+  Dispatches slide rendering based on type (dialogue, scene, empty).
 
   Each clause renders a different visual layout for the Story Player.
   """
 
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
-
-  import StoryarnWeb.FlowLive.Player.Components.PlayerInteraction
 
   attr :slide, :map, required: true
 
@@ -48,14 +46,6 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
       <div :if={@slide.description != ""} class="player-scene-description">
         {Phoenix.HTML.raw(@slide.description)}
       </div>
-    </div>
-    """
-  end
-
-  def player_slide(%{slide: %{type: :interaction}} = assigns) do
-    ~H"""
-    <div class="player-slide player-slide-interaction">
-      <.player_interaction slide={@slide} />
     </div>
     """
   end

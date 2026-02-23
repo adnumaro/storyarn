@@ -19,6 +19,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NavigationHistoryStore
+  alias Storyarn.Maps
   alias Storyarn.Projects
   alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
@@ -35,7 +36,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.Dialogue
   alias StoryarnWeb.FlowLive.Nodes.Exit, as: ExitNode
   alias StoryarnWeb.FlowLive.Nodes.Instruction
-  alias StoryarnWeb.FlowLive.Nodes.Interaction
   alias StoryarnWeb.FlowLive.Nodes.Scene
   alias StoryarnWeb.FlowLive.Nodes.Subflow
 
@@ -83,6 +83,9 @@ defmodule StoryarnWeb.FlowLive.Show do
           can_edit={@can_edit}
           save_status={@save_status}
           nav_history={@nav_history}
+          scene_map_name={@scene_map_name}
+          scene_map_inherited={@scene_map_inherited}
+          available_maps={@available_maps}
         />
       </:top_bar_extra>
       <:top_bar_extra_right>
@@ -138,14 +141,13 @@ defmodule StoryarnWeb.FlowLive.Show do
                   all_sheets={@all_sheets}
                   flow_hubs={@flow_hubs}
                   available_flows={@available_flows}
+                  available_maps={assigns[:available_maps] || []}
                   flow_search_has_more={@flow_search_has_more}
                   flow_search_deep={@flow_search_deep}
                   subflow_exits={@subflow_exits}
                   referencing_jumps={@referencing_jumps}
                   referencing_flows={@referencing_flows}
                   project_maps={@project_maps}
-                  interaction_map={@interaction_map}
-                  interaction_event_zones={@interaction_event_zones}
                 />
               </div>
 
@@ -178,7 +180,6 @@ defmodule StoryarnWeb.FlowLive.Show do
             debug_var_changed_only={@debug_var_changed_only}
             debug_current_flow_name={@flow.name}
             debug_step_limit_reached={@debug_step_limit_reached}
-            debug_interaction_zones={@debug_interaction_zones}
           />
         </div>
 
@@ -265,6 +266,9 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:nav_history, nil)
           |> assign(:flows_tree, [])
           |> assign(:pending_delete_id, nil)
+          |> assign(:scene_map_name, nil)
+          |> assign(:scene_map_inherited, false)
+          |> assign(:available_maps, [])
 
         {:ok, socket}
     end
@@ -299,7 +303,6 @@ defmodule StoryarnWeb.FlowLive.Show do
         |> assign(:debug_var_filter, debug_assigns.debug_var_filter)
         |> assign(:debug_var_changed_only, debug_assigns.debug_var_changed_only)
         |> assign(:debug_step_limit_reached, debug_assigns[:debug_step_limit_reached] || false)
-        |> assign(:debug_interaction_zones, debug_assigns[:debug_interaction_zones] || [])
         |> push_debug_canvas_events(debug_assigns.debug_state)
     end
   end
@@ -364,7 +367,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           all_sheets: Sheets.list_all_sheets(project.id),
           flow_hubs: Flows.list_hubs(flow.id),
           project_variables: Sheets.list_project_variables(project.id),
-          flows_tree: Flows.list_flows_tree(project.id)
+          flows_tree: Flows.list_flows_tree(project.id),
+          available_maps: Maps.list_maps(project.id)
         }
       end)
 
@@ -716,25 +720,29 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
-  # Interaction node events
-  def handle_event("interaction_select_map", params, socket) do
+  def handle_event("update_exit_target", params, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
-      Interaction.Node.handle_select_map(params, socket)
+      ExitNode.Node.handle_update_exit_target(params, socket)
     end)
   end
 
-  def handle_event("navigate_to_interaction_map", %{"map-id" => map_id}, socket) do
-    case Storyarn.Maps.get_map_brief(socket.assigns.project.id, map_id) do
-      nil ->
-        {:noreply, put_flash(socket, :error, dgettext("flows", "Map not found."))}
+  # Scene map
+  def handle_event("update_scene_map", %{"map_id" => map_id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      map_id =
+        if map_id in [nil, "", "null"], do: nil, else: Storyarn.Shared.MapUtils.parse_int(map_id)
 
-      _map ->
-        {:noreply,
-         push_navigate(socket,
-           to:
-             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/maps/#{map_id}"
-         )}
-    end
+      case Flows.update_flow_scene(socket.assigns.flow, %{scene_map_id: map_id}) do
+        {:ok, updated_flow} ->
+          {:noreply,
+           socket
+           |> assign(:flow, updated_flow)
+           |> assign_scene_map_info(updated_flow)}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not update scene map."))}
+      end
+    end)
   end
 
   # Hub color picker
@@ -777,14 +785,6 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("debug_choose_response", params, socket) do
     DebugHandlers.handle_debug_choose_response(params, socket)
-  end
-
-  def handle_event("debug_interaction_instruction", params, socket) do
-    DebugHandlers.handle_debug_interaction_instruction(params, socket)
-  end
-
-  def handle_event("debug_interaction_event", params, socket) do
-    DebugHandlers.handle_debug_interaction_event(params, socket)
   end
 
   def handle_event("debug_reset", _params, socket) do
@@ -1026,8 +1026,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:outcome_tags_suggestions, [])
       |> assign(:referencing_flows, [])
       |> assign(:project_maps, [])
-      |> assign(:interaction_map, nil)
-      |> assign(:interaction_event_zones, [])
       |> assign(:editing_mode, nil)
       |> assign(:save_status, :idle)
       |> assign(:preview_show, false)
@@ -1049,8 +1047,9 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:debug_var_changed_only, false)
       |> assign(:debug_auto_timer, nil)
       |> assign(:debug_step_limit_reached, false)
-      |> assign(:debug_interaction_zones, [])
+      |> assign(:available_maps, data.available_maps)
       |> assign(:loading, false)
+      |> assign_scene_map_info(flow)
 
     socket =
       socket
@@ -1146,5 +1145,22 @@ defmodule StoryarnWeb.FlowLive.Show do
     user_id = socket.assigns.current_scope.user.id
     project_id = socket.assigns.project.id
     NavigationHistoryStore.put({user_id, project_id}, history)
+  end
+
+  defp assign_scene_map_info(socket, flow) do
+    resolved_id = Flows.resolve_scene_map_id(flow)
+    is_inherited = resolved_id != nil and resolved_id != flow.scene_map_id
+
+    scene_map_name =
+      if resolved_id do
+        case Maps.get_map_brief(socket.assigns.project.id, resolved_id) do
+          nil -> nil
+          map -> map.name
+        end
+      end
+
+    socket
+    |> assign(:scene_map_name, scene_map_name)
+    |> assign(:scene_map_inherited, is_inherited)
   end
 end

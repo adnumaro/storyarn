@@ -700,5 +700,5 @@ Full remaining space. Content is centered with max-width appropriate per tool:
 
 ## Related Documents
 
-- [SHEET_BLOCK_TOOLBARS.md](./SHEET_BLOCK_TOOLBARS.md) — Per-block toolbar design replacing the sheet config sidebar
+- [SHEET_BLOCK_TOOLBARS.md](../SHEET_BLOCK_TOOLBARS.md) — Per-block toolbar design replacing the sheet config sidebar
 - [FUTURE_FEATURES.md](../FUTURE_FEATURES.md) — Deferred features and competitive analysis

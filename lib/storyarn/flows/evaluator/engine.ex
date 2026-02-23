@@ -30,8 +30,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     ConditionNodeEvaluator,
     DialogueEvaluator,
     ExitEvaluator,
-    InstructionEvaluator,
-    InteractionEvaluator
+    InstructionEvaluator
   }
 
   # =============================================================================
@@ -201,49 +200,6 @@ defmodule Storyarn.Flows.Evaluator.Engine do
   end
 
   def choose_response(state, _response_id, _connections) do
-    {:error, state, :not_waiting_input}
-  end
-
-  @doc """
-  Execute an instruction zone's variable assignments on an interaction node.
-
-  The interaction node stays in `waiting_input` — the player can trigger
-  multiple instruction zones before selecting an event zone.
-  """
-  @spec execute_interaction_instruction(State.t(), list(), String.t()) ::
-          {:ok, State.t()} | {:error, State.t(), atom()}
-  def execute_interaction_instruction(state, assignments, zone_name \\ "zone")
-
-  def execute_interaction_instruction(
-        %State{status: :waiting_input, pending_choices: %{type: :interaction, node_id: node_id}} =
-          state,
-        assignments,
-        zone_name
-      ) do
-    InteractionEvaluator.execute_instruction(state, assignments, node_id, zone_name)
-  end
-
-  def execute_interaction_instruction(state, _assignments, _zone_name) do
-    {:error, state, :not_waiting_input}
-  end
-
-  @doc """
-  Advance the flow through an event zone on an interaction node.
-
-  Finds the connection from the interaction node using the event zone's
-  name as the source pin and advances to the target node.
-  """
-  @spec choose_interaction_event(State.t(), String.t(), list()) ::
-          {:ok, State.t()} | {:finished, State.t()} | {:error, State.t(), atom()}
-  def choose_interaction_event(
-        %State{status: :waiting_input, pending_choices: %{type: :interaction}} = state,
-        event_name,
-        connections
-      ) do
-    InteractionEvaluator.choose_event(state, event_name, connections)
-  end
-
-  def choose_interaction_event(state, _event_name, _connections) do
     {:error, state, :not_waiting_input}
   end
 
@@ -510,11 +466,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     InstructionEvaluator.evaluate(node, state, connections)
   end
 
-  defp evaluate_node(%{type: "interaction"} = node, state, connections, _nodes) do
-    InteractionEvaluator.evaluate(node, state, connections)
-  end
-
-  # Unknown node type — pass through
+  # Unknown/deprecated node type — log warning and skip via default output
   defp evaluate_node(node, state, connections, _nodes) do
     label = EngineHelpers.node_label(node)
 
@@ -524,10 +476,16 @@ defmodule Storyarn.Flows.Evaluator.Engine do
         :warning,
         node.id,
         label,
-        "Unknown node type: #{node.type} — pass through"
+        "Unknown node type '#{node.type}' — skipping"
       )
 
-    EngineHelpers.follow_output(state, node.id, label, connections)
+    case EngineHelpers.find_connection(connections, node.id, "output") do
+      nil ->
+        EngineHelpers.follow_output(state, node.id, label, connections)
+
+      conn ->
+        EngineHelpers.advance_to(state, conn.target_node_id)
+    end
   end
 
   # =============================================================================

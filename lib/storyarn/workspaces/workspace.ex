@@ -12,6 +12,9 @@ defmodule Storyarn.Workspaces.Workspace do
   alias Storyarn.Projects.Project
   alias Storyarn.Workspaces.WorkspaceMembership
 
+  # Color format: hex color with 3, 6, or 8 characters (e.g., #fff, #3b82f6, #3b82f680)
+  @color_format ~r/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
+
   @type t :: %__MODULE__{
           id: integer() | nil,
           name: String.t() | nil,
@@ -54,6 +57,7 @@ defmodule Storyarn.Workspaces.Workspace do
     |> validate_required([:name, :slug])
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:description, max: 1000)
+    |> validate_color()
     |> validate_slug()
     |> unique_constraint(:slug)
   end
@@ -67,6 +71,19 @@ defmodule Storyarn.Workspaces.Workspace do
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:description, max: 1000)
+    |> validate_color()
+  end
+
+  defp validate_color(changeset) do
+    case get_change(changeset, :color) do
+      nil ->
+        changeset
+
+      _color ->
+        validate_format(changeset, :color, @color_format,
+          message: "must be a valid hex color (e.g., #3b82f6)"
+        )
+    end
   end
 
   defp validate_slug(changeset) do

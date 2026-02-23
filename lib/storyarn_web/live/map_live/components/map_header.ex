@@ -14,13 +14,28 @@ defmodule StoryarnWeb.MapLive.Components.MapHeader do
 
   import StoryarnWeb.Components.CoreComponents
 
-  @doc "Actions toolbar (export, settings, edit/view toggle) — fixed top-right."
+  @doc "Actions toolbar (export, settings, play, edit/view toggle) — fixed top-right."
   attr :can_edit, :boolean, required: true
   attr :edit_mode, :boolean, required: true
+  attr :workspace, :map, required: true
+  attr :project, :map, required: true
+  attr :map, :map, required: true
 
   def map_actions(assigns) do
     ~H"""
     <div class="flex items-center gap-1 px-1.5 py-1 bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg">
+      <%!-- Play / Explore button --%>
+      <.link
+        navigate={
+          ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/maps/#{@map.id}/explore"
+        }
+        class="btn btn-ghost btn-sm gap-1.5"
+        title={dgettext("maps", "Play exploration mode")}
+      >
+        <.icon name="play" class="size-3.5" />
+        <span class="hidden xl:inline">{dgettext("maps", "Play")}</span>
+      </.link>
+
       <%!-- Export dropdown --%>
       <div
         phx-hook="ToolbarPopover"

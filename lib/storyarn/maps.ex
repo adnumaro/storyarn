@@ -103,6 +103,13 @@ defmodule Storyarn.Maps do
   defdelegate get_map_brief(project_id, map_id), to: MapCrud
 
   @doc """
+  Gets a map with only background_asset preloaded.
+  Used for rendering scene backdrops in the flow player.
+  """
+  @spec get_map_backdrop(integer()) :: map_record() | nil
+  defdelegate get_map_backdrop(map_id), to: MapCrud
+
+  @doc """
   Returns the project_id for a given map_id.
   Used by reference trackers that need the project scope from a map.
   """
@@ -322,12 +329,6 @@ defmodule Storyarn.Maps do
   Finds the zone on a parent map that targets a child map.
   """
   defdelegate get_zone_linking_to_map(parent_map_id, child_map_id), to: ZoneCrud
-
-  @doc """
-  Lists zones with action_type "event", ordered by position.
-  """
-  @spec list_event_zones(integer()) :: [zone()]
-  defdelegate list_event_zones(map_id), to: ZoneCrud
 
   @doc """
   Lists zones with a non-navigate action_type, ordered by position.

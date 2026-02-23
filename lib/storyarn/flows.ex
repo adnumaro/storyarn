@@ -19,11 +19,11 @@ defmodule Storyarn.Flows do
     FlowNode,
     HubColors,
     NodeCrud,
+    SceneResolver,
     TreeOperations,
     VariableReferenceTracker
   }
 
-  alias Storyarn.Maps
   alias Storyarn.Projects.Project
 
   # =============================================================================
@@ -158,6 +158,25 @@ defmodule Storyarn.Flows do
   """
   @spec change_flow(flow(), attrs()) :: changeset()
   defdelegate change_flow(flow, attrs \\ %{}), to: FlowCrud
+
+  @doc """
+  Updates only the scene_map_id of a flow.
+  Used to associate a flow with a map as its scene backdrop.
+  """
+  @spec update_flow_scene(flow(), attrs()) :: {:ok, flow()} | {:error, Ecto.Changeset.t()}
+  defdelegate update_flow_scene(flow, attrs), to: FlowCrud
+
+  @doc """
+  Resolves the scene_map_id for a flow using inheritance chain.
+
+  Resolution order:
+  1. `flow.scene_map_id` (explicit)
+  2. `opts[:caller_scene_map_id]` (runtime inheritance from calling flow)
+  3. Parent chain (walk up parent_id)
+  4. `nil`
+  """
+  @spec resolve_scene_map_id(flow(), keyword()) :: integer() | nil
+  defdelegate resolve_scene_map_id(flow, opts \\ []), to: SceneResolver
 
   @doc """
   Sets a flow as the main flow for its project.
@@ -330,13 +349,6 @@ defmodule Storyarn.Flows do
   defdelegate list_nodes_referencing_flow(flow_id, project_id), to: NodeCrud
 
   @doc """
-  Lists all interaction nodes that reference a given map.
-  Used for "Used in N flows" backlinks in the map editor.
-  """
-  @spec list_interaction_nodes_for_map(integer()) :: [map()]
-  defdelegate list_interaction_nodes_for_map(map_id), to: NodeCrud
-
-  @doc """
   Checks if a subflow reference would create a circular dependency.
   """
   @spec has_circular_reference?(integer(), integer()) :: boolean()
@@ -493,10 +505,9 @@ defmodule Storyarn.Flows do
   def serialize_for_canvas(%Flow{} = flow) do
     stale_node_ids = VariableReferenceTracker.list_stale_node_ids(flow.id)
     subflow_cache = NodeCrud.batch_resolve_subflow_data(flow.nodes)
-    interaction_cache = NodeCrud.batch_resolve_interaction_data(flow.nodes)
     referencing_flows = NodeCrud.list_nodes_referencing_flow(flow.id, flow.project_id)
 
-    cache = %{subflow: subflow_cache, interaction: interaction_cache}
+    cache = %{subflow: subflow_cache}
 
     %{
       id: flow.id,
@@ -539,8 +550,8 @@ defmodule Storyarn.Flows do
 
   @doc """
   Enriches node data with resolved values for the canvas.
-  Resolves hub color names to hex values, subflow references, and interaction maps.
-  The cache is pre-fetched by batch_resolve_subflow_data/1 and batch_resolve_interaction_data/1.
+  Resolves hub color names to hex values and subflow references.
+  The cache is pre-fetched by batch_resolve_subflow_data/1.
   When called via the 2-arity version (single-node updates), cache is `%{}`.
   """
   @spec resolve_node_colors(String.t(), map(), map()) :: map()
@@ -561,46 +572,7 @@ defmodule Storyarn.Flows do
     NodeCrud.resolve_exit_data(data)
   end
 
-  def resolve_node_colors("interaction", data, cache) do
-    map_id = data["map_id"]
-    parsed_id = NodeCrud.safe_to_integer(map_id)
-
-    cond do
-      is_nil(parsed_id) ->
-        data
-
-      is_map_key(cache, :interaction) ->
-        enrich_interaction(data, cache.interaction[parsed_id])
-
-      true ->
-        enrich_interaction(data, fetch_interaction_info(parsed_id))
-    end
-  end
-
   def resolve_node_colors(_type, data, _cache), do: data
-
-  defp enrich_interaction(data, nil), do: data
-
-  defp enrich_interaction(data, info) do
-    data
-    |> Map.put("event_zone_names", info.event_zone_names)
-    |> Map.put("event_zone_labels", info.event_zone_labels)
-    |> Map.put("map_name", info.map_name)
-  end
-
-  defp fetch_interaction_info(map_id) do
-    event_zones = Maps.list_event_zones(map_id)
-    map_info = Maps.get_map_by_id(map_id)
-
-    %{
-      event_zone_names: Enum.map(event_zones, & &1.action_data["event_name"]),
-      event_zone_labels:
-        Elixir.Map.new(event_zones, fn z ->
-          {z.action_data["event_name"], z.action_data["label"] || z.action_data["event_name"]}
-        end),
-      map_name: map_info && map_info.name
-    }
-  end
 
   defp maybe_add_referencing_flows(data, "entry", referencing_flows) do
     refs =

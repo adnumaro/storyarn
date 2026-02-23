@@ -37,6 +37,7 @@ import { DebugPanelResize } from "./hooks/debug_panel_resize";
 import { DialogueScreenplayEditor } from "./hooks/dialogue_screenplay_editor";
 import { EditableShortcut } from "./hooks/editable_shortcut";
 import { EditableTitle } from "./hooks/editable_title";
+import { ExplorationPlayer } from "./hooks/exploration_player";
 import { ExpressionEditor } from "./hooks/expression_editor";
 import { FloatingToolbar } from "./hooks/floating_toolbar";
 import { FlowCanvas } from "./hooks/flow_canvas";
@@ -44,7 +45,6 @@ import { FlowFloatingToolbar } from "./hooks/flow_floating_toolbar";
 import { FlowLoader } from "./hooks/flow_loader";
 import { FountainImport } from "./hooks/fountain_import";
 import { InstructionBuilder } from "./hooks/instruction_builder";
-import { InteractionPlayer } from "./hooks/interaction_player";
 import { MapCanvas } from "./hooks/map_canvas";
 import { ReferenceSearch } from "./hooks/reference_search";
 import { ScreenplayEditor } from "./hooks/screenplay_editor";
@@ -60,8 +60,8 @@ import { TableRowMenu } from "./hooks/table_row_menu";
 import { TableRowSortable } from "./hooks/table_row_sortable";
 import { TiptapEditor } from "./hooks/tiptap_editor";
 import { ToolbarPopover } from "./hooks/toolbar_popover";
-import { TreePanel } from "./hooks/tree_panel";
 import { TreeToggle } from "./hooks/tree";
+import { TreePanel } from "./hooks/tree_panel";
 import { TreeSearch } from "./hooks/tree_search";
 import { TriStateCheckbox } from "./hooks/tri_state_checkbox";
 import { TwoStateCheckbox } from "./hooks/two_state_checkbox";
@@ -94,7 +94,6 @@ const liveSocket = new LiveSocket("/live", Socket, {
     FlowCanvas,
     FlowLoader,
     InstructionBuilder,
-    InteractionPlayer,
     ColorPicker,
     ConditionBuilder,
     DebugPanelResize,
@@ -107,6 +106,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     DialogueScreenplayEditor,
     ScreenplayEditor,
     StoryPlayer,
+    ExplorationPlayer,
     ExpressionEditor,
     TableCellCheckbox,
     TableCellSelect,

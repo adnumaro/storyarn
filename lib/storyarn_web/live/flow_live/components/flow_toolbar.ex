@@ -25,8 +25,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   attr :referencing_jumps, :list, default: []
   attr :referencing_flows, :list, default: []
   attr :project_maps, :list, default: []
-  attr :interaction_map, :map, default: nil
-  attr :interaction_event_zones, :list, default: []
+  attr :available_maps, :list, default: []
 
   def node_toolbar(assigns) do
     ~H"""
@@ -302,12 +301,19 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
     exit_mode = assigns.node.data["exit_mode"] || "terminal"
     color = assigns.node.data["outcome_color"] || "#22c55e"
     has_ref = assigns.node.data["referenced_flow_id"] not in [nil, ""]
+    target_type = assigns.node.data["target_type"]
+    target_id = assigns.node.data["target_id"]
+
+    exit_target_label = resolve_exit_target_label(target_type, target_id, assigns)
 
     assigns =
       assigns
       |> assign(:exit_mode, exit_mode)
       |> assign(:color, color)
       |> assign(:has_ref, has_ref)
+      |> assign(:target_type, target_type)
+      |> assign(:target_id, target_id)
+      |> assign(:exit_target_label, exit_target_label)
       |> assign(:color_swatches, @color_swatches)
 
     ~H"""
@@ -404,6 +410,16 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
         </div>
       </template>
     </div>
+    <%!-- Target picker (terminal mode only) --%>
+    <.exit_target_picker
+      :if={@exit_mode == "terminal" && @can_edit}
+      node={@node}
+      target_type={@target_type}
+      target_id={@target_id}
+      exit_target_label={@exit_target_label}
+      available_maps={@available_maps}
+      available_flows={@available_flows}
+    />
     <button
       :if={@has_ref}
       type="button"
@@ -526,53 +542,6 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       event="update_node_data"
       event_params_fn={fn value -> %{node: %{time_of_day: value}} end}
     />
-    """
-  end
-
-  # ── Interaction ────────────────────────────────────────────────────────
-
-  defp render_toolbar("interaction", assigns) do
-    map_id = assigns.node.data["map_id"]
-    map_info = assigns.interaction_map
-    event_count = length(assigns.interaction_event_zones)
-
-    selected_map_name =
-      if map_info, do: map_info.name
-
-    assigns =
-      assigns
-      |> assign(:map_id, map_id)
-      |> assign(:selected_map_name, selected_map_name)
-      |> assign(:event_count, event_count)
-
-    ~H"""
-    <.node_type_icon type="interaction" />
-    <.toolbar_searchable_select
-      :if={@can_edit}
-      id={"interaction-map-#{@node.id}"}
-      options={Enum.map(@project_maps, &{&1.name, &1.id})}
-      selected_value={@map_id}
-      selected_label={@selected_map_name}
-      placeholder={dgettext("flows", "Map…")}
-      event="interaction_select_map"
-      event_params_fn={fn value -> %{"map-id" => value} end}
-    />
-    <span :if={!@can_edit && @selected_map_name} class="text-xs truncate max-w-[120px]">
-      {@selected_map_name}
-    </span>
-    <button
-      :if={@map_id}
-      type="button"
-      phx-click="navigate_to_interaction_map"
-      phx-value-map-id={@map_id}
-      class="toolbar-btn text-xs"
-      title={dgettext("flows", "Open map editor")}
-    >
-      <.icon name="external-link" class="size-3.5" />
-    </button>
-    <span :if={@event_count > 0} class="badge badge-xs badge-ghost">
-      {dngettext("flows", "%{count} event", "%{count} events", @event_count, count: @event_count)}
-    </span>
     """
   end
 
@@ -717,4 +686,69 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
 
   defp exit_mode_description("caller_return"),
     do: dgettext("flows", "Returns to the calling subflow")
+
+  # ── Exit target picker ──────────────────────────────────────────────────
+
+  defp exit_target_picker(assigns) do
+    target_options = build_exit_target_options(assigns.available_maps, assigns.available_flows)
+
+    selected_value =
+      if assigns.target_type && assigns.target_id do
+        "#{assigns.target_type}:#{assigns.target_id}"
+      end
+
+    assigns =
+      assigns
+      |> assign(:target_options, target_options)
+      |> assign(:selected_value, selected_value)
+
+    ~H"""
+    <span class="toolbar-separator"></span>
+    <.toolbar_searchable_select
+      id={"exit-target-#{@node.id}"}
+      options={@target_options}
+      selected_value={@selected_value}
+      selected_label={@exit_target_label}
+      placeholder={dgettext("flows", "Transition…")}
+      event="update_exit_target"
+      event_params_fn={&parse_exit_target_value/1}
+    />
+    """
+  end
+
+  defp build_exit_target_options(maps, flows) do
+    map_opts = Enum.map(maps, fn m -> {"#{m.name}", "map:#{m.id}"} end)
+    flow_opts = Enum.map(flows, fn f -> {"#{f.name}", "flow:#{f.id}"} end)
+    map_opts ++ flow_opts
+  end
+
+  defp parse_exit_target_value("") do
+    %{"target_type" => "", "target_id" => ""}
+  end
+
+  defp parse_exit_target_value(value) when is_binary(value) do
+    case String.split(value, ":", parts: 2) do
+      [type, id] -> %{"target_type" => type, "target_id" => id}
+      _ -> %{"target_type" => "", "target_id" => ""}
+    end
+  end
+
+  defp parse_exit_target_value(_), do: %{"target_type" => "", "target_id" => ""}
+
+  defp resolve_exit_target_label(nil, _, _), do: nil
+  defp resolve_exit_target_label(_, nil, _), do: nil
+
+  defp resolve_exit_target_label("map", target_id, assigns) do
+    Enum.find_value(assigns.available_maps, fn m ->
+      if to_string(m.id) == to_string(target_id), do: m.name
+    end)
+  end
+
+  defp resolve_exit_target_label("flow", target_id, assigns) do
+    Enum.find_value(assigns.available_flows, fn f ->
+      if to_string(f.id) == to_string(target_id), do: f.name
+    end)
+  end
+
+  defp resolve_exit_target_label(_, _, _), do: nil
 end

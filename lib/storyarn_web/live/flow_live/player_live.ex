@@ -18,13 +18,14 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   alias Storyarn.Flows
   alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.Evaluator.Engine
-  alias Storyarn.Flows.Evaluator.Helpers, as: EvalHelpers
+  alias Storyarn.Maps
   alias Storyarn.Projects
   alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.FlowLive.Player.{PlayerEngine, Slide}
+  alias StoryarnWeb.MapLive.Helpers.Serializer, as: MapSerializer
 
   # ===========================================================================
   # Render
@@ -34,18 +35,31 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   def render(assigns) do
     ~H"""
     <div id="story-player" class="player-layout" phx-hook="StoryPlayer">
-      <div class="player-main">
-        <%= if @slide.type == :outcome do %>
-          <.player_outcome
-            slide={@slide}
-            workspace={@workspace}
-            project={@project}
-            flow={@flow}
+      <div class="player-main relative">
+        <%!-- Scene backdrop (dimmed map background) --%>
+        <div :if={@scene_backdrop} class="scene-backdrop scene-backdrop-transition">
+          <img
+            src={MapSerializer.background_url(@scene_backdrop)}
+            alt=""
+            class="scene-backdrop-img"
+            draggable="false"
           />
-        <% else %>
-          <.player_slide slide={@slide} />
-          <.player_choices responses={@slide[:responses] || []} player_mode={@player_mode} />
-        <% end %>
+        </div>
+
+        <%!-- Flow content (on top) --%>
+        <div class="relative z-10 flex flex-col items-center justify-center flex-1 w-full">
+          <%= if @slide.type == :outcome do %>
+            <.player_outcome
+              slide={@slide}
+              workspace={@workspace}
+              project={@project}
+              flow={@flow}
+            />
+          <% else %>
+            <.player_slide slide={@slide} />
+            <.player_choices responses={@slide[:responses] || []} player_mode={@player_mode} />
+          <% end %>
+        </div>
       </div>
 
       <.player_toolbar
@@ -94,42 +108,50 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
          |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")}
 
       flow ->
-        nodes_map = DebugExecutionHandlers.build_nodes_map(flow.id)
-        connections = DebugExecutionHandlers.build_connections(flow.id)
-        all_sheets = Sheets.list_all_sheets(project.id)
-        sheets_map = FormHelpers.sheets_map(all_sheets)
-        variables = VariableHelpers.build_variables(project.id)
+        mount_flow_player(socket, project, flow)
+    end
+  end
 
-        case init_and_step(nodes_map, connections, variables, flow.id) do
-          {:error, reason} ->
-            {:ok,
-             socket
-             |> put_flash(:error, reason)
-             |> redirect(
-               to:
-                 ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
-             )}
+  defp mount_flow_player(socket, project, flow) do
+    nodes_map = DebugExecutionHandlers.build_nodes_map(flow.id)
+    connections = DebugExecutionHandlers.build_connections(flow.id)
+    all_sheets = Sheets.list_all_sheets(project.id)
+    sheets_map = FormHelpers.sheets_map(all_sheets)
+    variables = VariableHelpers.build_variables(project.id)
 
-          {:ok, engine_state} ->
-            node = Map.get(nodes_map, engine_state.current_node_id)
-            slide = Slide.build(node, engine_state, sheets_map, project.id)
+    case init_and_step(nodes_map, connections, variables, flow.id) do
+      {:error, reason} ->
+        {:ok,
+         socket
+         |> put_flash(:error, reason)
+         |> redirect(
+           to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+         )}
 
-            socket =
-              maybe_restore_player_session(socket, project) ||
-                socket
-                |> assign(:engine_state, engine_state)
-                |> assign(:nodes, nodes_map)
-                |> assign(:connections, connections)
-                |> assign(:sheets_map, sheets_map)
-                |> assign(:flow, flow)
-                |> assign(:project, project)
-                |> assign(:workspace, project.workspace)
-                |> assign(:slide, slide)
-                |> assign(:player_mode, :player)
-                |> assign(:can_go_back, engine_state.snapshots != [])
+      {:ok, engine_state} ->
+        node = Map.get(nodes_map, engine_state.current_node_id)
+        slide = Slide.build(node, engine_state, sheets_map, project.id)
 
-            {:ok, socket, layout: false}
-        end
+        scene_map_id = Flows.resolve_scene_map_id(flow)
+        scene_backdrop = if scene_map_id, do: Maps.get_map_backdrop(scene_map_id)
+
+        socket =
+          maybe_restore_player_session(socket, project) ||
+            socket
+            |> assign(:engine_state, engine_state)
+            |> assign(:nodes, nodes_map)
+            |> assign(:connections, connections)
+            |> assign(:sheets_map, sheets_map)
+            |> assign(:flow, flow)
+            |> assign(:project, project)
+            |> assign(:workspace, project.workspace)
+            |> assign(:slide, slide)
+            |> assign(:player_mode, :player)
+            |> assign(:can_go_back, engine_state.snapshots != [])
+            |> assign(:scene_backdrop, scene_backdrop)
+            |> assign(:current_scene_map_id, scene_map_id)
+
+        {:ok, socket, layout: false}
     end
   end
 
@@ -175,6 +197,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
           |> assign(:slide, slide)
           |> assign(:player_mode, restored.player_mode)
           |> assign(:can_go_back, restored.engine_state.snapshots != [])
+          |> assign(:scene_backdrop, restored[:scene_backdrop])
+          |> assign(:current_scene_map_id, restored[:current_scene_map_id])
         else
           nil
         end
@@ -275,50 +299,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     end
   end
 
-  def handle_event("interaction_zone_instruction", params, socket) do
-    assignments = params["assignments"] || []
-    zone_name = params["zone_name"] || "zone"
-    state = socket.assigns.engine_state
-
-    case Engine.execute_interaction_instruction(state, assignments, zone_name) do
-      {:ok, new_state} ->
-        display_vars = extract_display_variables(new_state)
-
-        {:noreply,
-         socket
-         |> assign(:engine_state, new_state)
-         |> assign(:can_go_back, new_state.snapshots != [])
-         |> push_event("interaction_variables_updated", %{variables: display_vars})}
-
-      _ ->
-        {:noreply, socket}
-    end
-  end
-
-  def handle_event("interaction_zone_event", %{"event_name" => event_name}, socket) do
-    %{engine_state: state, connections: connections, nodes: nodes} = socket.assigns
-
-    case Engine.choose_interaction_event(state, event_name, connections) do
-      {:ok, new_state} ->
-        case PlayerEngine.step_until_interactive(new_state, nodes, connections) do
-          {:flow_jump, stepped, target_flow_id, _} ->
-            handle_flow_jump(socket, stepped, target_flow_id)
-
-          {:flow_return, stepped, _} ->
-            handle_flow_return(socket, stepped)
-
-          {_status, stepped, _} ->
-            {:noreply, update_slide(socket, stepped)}
-        end
-
-      {:finished, new_state} ->
-        {:noreply, update_slide(socket, new_state)}
-
-      _ ->
-        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not process event."))}
-    end
-  end
-
   def handle_event("exit_player", _params, socket) do
     %{workspace: ws, project: proj, flow: flow} = socket.assigns
 
@@ -337,6 +317,18 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
     target_nodes = DebugExecutionHandlers.build_nodes_map(target_flow_id)
     target_connections = DebugExecutionHandlers.build_connections(target_flow_id)
+
+    # Resolve scene for target flow (pass current as caller context)
+    target_flow = Flows.get_flow_brief(socket.assigns.project.id, target_flow_id)
+
+    new_scene_map_id =
+      if target_flow do
+        Flows.resolve_scene_map_id(target_flow,
+          caller_scene_map_id: socket.assigns.current_scene_map_id
+        )
+      end
+
+    socket = maybe_update_scene_backdrop(socket, new_scene_map_id)
 
     case DebugExecutionHandlers.find_entry_node(target_nodes) do
       nil ->
@@ -382,6 +374,11 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         parent_nodes = frame.nodes
         parent_connections = frame.connections
         parent_flow_id = frame.flow_id
+
+        # Restore parent flow's scene
+        parent_flow = Flows.get_flow_brief(socket.assigns.project.id, parent_flow_id)
+        parent_scene_map_id = if parent_flow, do: Flows.resolve_scene_map_id(parent_flow)
+        socket = maybe_update_scene_backdrop(socket, parent_scene_map_id)
 
         # Find the connection after the return node to advance
         return_node_id = frame.return_node_id
@@ -444,7 +441,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
       connections: connections,
       sheets_map: sheets_map,
       flow: target_flow,
-      player_mode: mode
+      player_mode: mode,
+      scene_backdrop: socket.assigns.scene_backdrop,
+      current_scene_map_id: socket.assigns.current_scene_map_id
     })
 
     {:noreply,
@@ -468,14 +467,20 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     |> assign(:can_go_back, new_state.snapshots != [])
   end
 
-  defp extract_display_variables(state) do
-    Map.new(state.variables, fn {ref, var} -> {ref, EvalHelpers.format_value(var.value)} end)
+  defp maybe_update_scene_backdrop(socket, new_scene_map_id) do
+    if new_scene_map_id == socket.assigns.current_scene_map_id do
+      socket
+    else
+      new_backdrop = if new_scene_map_id, do: Maps.get_map_backdrop(new_scene_map_id)
+
+      socket
+      |> assign(:scene_backdrop, new_backdrop)
+      |> assign(:current_scene_map_id, new_scene_map_id)
+    end
   end
 
-  defp show_continue?(%{type: :dialogue, responses: responses}) do
-    responses == []
-  end
-
+  defp show_continue?(%{type: :dialogue, responses: []}), do: true
+  defp show_continue?(%{type: :dialogue}), do: false
   defp show_continue?(%{type: :scene}), do: true
   defp show_continue?(_), do: false
 end

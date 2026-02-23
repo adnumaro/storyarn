@@ -84,7 +84,11 @@ defmodule StoryarnWeb.MapLive.Helpers.Serializer do
       avatar_url: pin_avatar_url(pin),
       icon_asset_url: pin_icon_asset_url(pin),
       position: pin.position,
-      locked: pin.locked || false
+      locked: pin.locked || false,
+      action_type: pin.action_type || "none",
+      action_data: pin.action_data || %{},
+      condition: pin.condition,
+      condition_effect: pin.condition_effect || "hide"
     }
   end
 
@@ -111,7 +115,9 @@ defmodule StoryarnWeb.MapLive.Helpers.Serializer do
       position: zone.position,
       locked: zone.locked || false,
       action_type: zone.action_type,
-      action_data: zone.action_data
+      action_data: zone.action_data,
+      condition: zone.condition,
+      condition_effect: zone.condition_effect || "hide"
     }
   end
 

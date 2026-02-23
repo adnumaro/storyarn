@@ -9,7 +9,6 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Maps
-  alias Storyarn.Shared.NameNormalizer
   import StoryarnWeb.MapLive.Helpers.MapHelpers
   import StoryarnWeb.MapLive.Helpers.Serializer
 
@@ -38,7 +37,9 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       "target_type" => zone.target_type,
       "target_id" => zone.target_id,
       "action_type" => zone.action_type,
-      "action_data" => zone.action_data
+      "action_data" => zone.action_data,
+      "condition" => zone.condition,
+      "condition_effect" => zone.condition_effect
     }
   end
 
@@ -61,7 +62,11 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       "target_type" => pin.target_type,
       "target_id" => pin.target_id,
       "sheet_id" => pin.sheet_id,
-      "icon_asset_id" => pin.icon_asset_id
+      "icon_asset_id" => pin.icon_asset_id,
+      "action_type" => pin.action_type,
+      "action_data" => pin.action_data,
+      "condition" => pin.condition,
+      "condition_effect" => pin.condition_effect
     }
   end
 
@@ -262,28 +267,19 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
   # ---------------------------------------------------------------------------
 
   @default_action_data %{
-    "navigate" => %{},
+    "none" => %{},
     "instruction" => %{"assignments" => []},
-    "display" => %{"variable_ref" => ""},
-    "event" => %{"event_name" => ""}
+    "display" => %{"variable_ref" => ""}
   }
 
-  @doc "Changes a zone's action type (navigate, instruction, display, event) with default data."
+  @doc "Changes a zone's action type (none, instruction, display) with default data."
   def handle_update_zone_action_type(%{"zone-id" => id, "action-type" => type}, socket) do
     case Maps.get_zone(socket.assigns.map.id, id) do
       nil ->
         {:noreply, socket}
 
       zone ->
-        default_data = Map.get(@default_action_data, type, %{})
-
-        # Auto-set event_name from zone name slug when switching to event type
-        action_data =
-          if type == "event" do
-            Map.put(default_data, "event_name", NameNormalizer.slugify(zone.name))
-          else
-            default_data
-          end
+        action_data = Map.get(@default_action_data, type, %{})
 
         do_update_zone_attrs(socket, zone, %{
           "action_type" => type,
@@ -316,6 +312,93 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
       zone ->
         new_data = Map.merge(zone.action_data || %{}, %{field => value})
         do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Zone condition handlers
+  # ---------------------------------------------------------------------------
+
+  @doc "Updates a zone's visibility condition from the condition builder hook."
+  def handle_update_zone_condition(%{"zone-id" => id, "condition" => condition_data}, socket) do
+    case Maps.get_zone(socket.assigns.map.id, id) do
+      nil -> {:noreply, socket}
+      zone -> do_update_zone_attrs(socket, zone, %{"condition" => condition_data})
+    end
+  end
+
+  def handle_update_zone_condition(_params, socket), do: {:noreply, socket}
+
+  @doc "Updates a zone's condition_effect (hide or disable)."
+  def handle_update_zone_condition_effect(%{"id" => id, "value" => value}, socket) do
+    case Maps.get_zone(socket.assigns.map.id, id) do
+      nil -> {:noreply, socket}
+      zone -> do_update_zone_attrs(socket, zone, %{"condition_effect" => value})
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Pin action handlers (action_type + action_data)
+  # ---------------------------------------------------------------------------
+
+  @doc "Changes a pin's action type (none, instruction, display) with default data."
+  def handle_update_pin_action_type(%{"pin-id" => id, "action-type" => type}, socket) do
+    case Maps.get_pin(socket.assigns.map.id, id) do
+      nil ->
+        {:noreply, socket}
+
+      pin ->
+        action_data = Map.get(@default_action_data, type, %{})
+        do_update_pin_attrs(socket, pin, %{"action_type" => type, "action_data" => action_data})
+    end
+  end
+
+  @doc "Updates instruction assignments for an instruction-type pin."
+  def handle_update_pin_assignments(%{"pin-id" => id, "assignments" => assignments}, socket) do
+    case Maps.get_pin(socket.assigns.map.id, id) do
+      nil ->
+        {:noreply, socket}
+
+      pin ->
+        new_data = Map.merge(pin.action_data || %{}, %{"assignments" => assignments})
+        do_update_pin_attrs(socket, pin, %{"action_data" => new_data})
+    end
+  end
+
+  @doc "Updates a single field in a pin's action_data (e.g., variable_ref)."
+  def handle_update_pin_action_data(
+        %{"pin-id" => id, "field" => field, "value" => value},
+        socket
+      ) do
+    case Maps.get_pin(socket.assigns.map.id, id) do
+      nil ->
+        {:noreply, socket}
+
+      pin ->
+        new_data = Map.merge(pin.action_data || %{}, %{field => value})
+        do_update_pin_attrs(socket, pin, %{"action_data" => new_data})
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Pin condition handlers
+  # ---------------------------------------------------------------------------
+
+  @doc "Updates a pin's visibility condition from the condition builder hook."
+  def handle_update_pin_condition(%{"pin-id" => id, "condition" => condition_data}, socket) do
+    case Maps.get_pin(socket.assigns.map.id, id) do
+      nil -> {:noreply, socket}
+      pin -> do_update_pin_attrs(socket, pin, %{"condition" => condition_data})
+    end
+  end
+
+  def handle_update_pin_condition(_params, socket), do: {:noreply, socket}
+
+  @doc "Updates a pin's condition_effect (hide or disable)."
+  def handle_update_pin_condition_effect(%{"id" => id, "value" => value}, socket) do
+    case Maps.get_pin(socket.assigns.map.id, id) do
+      nil -> {:noreply, socket}
+      pin -> do_update_pin_attrs(socket, pin, %{"condition_effect" => value})
     end
   end
 
@@ -604,6 +687,26 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
     end
   end
 
+  defp do_update_pin_attrs(socket, pin, new_attrs) do
+    prev_attrs =
+      Map.new(new_attrs, fn {key, _val} ->
+        {key, Map.get(pin, String.to_existing_atom(key))}
+      end)
+
+    case Maps.update_pin(pin, new_attrs) do
+      {:ok, updated} ->
+        {:noreply,
+         socket
+         |> push_undo({:update_pin, pin.id, prev_attrs, new_attrs})
+         |> assign(:selected_element, updated)
+         |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
+         |> push_event("pin_updated", serialize_pin(updated))}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update pin."))}
+    end
+  end
+
   defp do_update_zone_vertices(socket, %{locked: true}, _vertices), do: {:noreply, socket}
 
   defp do_update_zone_vertices(socket, zone, vertices) do
@@ -639,23 +742,6 @@ defmodule StoryarnWeb.MapLive.Handlers.ElementHandlers do
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update zone."))}
-    end
-  end
-
-  # Auto-sync event_name when zone name changes (if event_name matches old slug)
-  defp build_zone_update_attrs(zone, "name", value) when zone.action_type == "event" do
-    old_slug = NameNormalizer.slugify(zone.name || "")
-    current_event = get_in(zone.action_data, ["event_name"]) || ""
-
-    if current_event == "" or current_event == old_slug do
-      new_event = NameNormalizer.slugify(value)
-
-      %{
-        "name" => value,
-        "action_data" => Map.put(zone.action_data || %{}, "event_name", new_event)
-      }
-    else
-      %{"name" => value}
     end
   end
 

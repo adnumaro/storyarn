@@ -87,7 +87,8 @@ defmodule Storyarn.Flows.Evaluator.State do
           started_at: integer() | nil,
           breakpoints: MapSet.t(integer()),
           call_stack: [flow_frame()],
-          current_flow_id: integer() | nil
+          current_flow_id: integer() | nil,
+          exit_transition: map() | nil
         }
 
   defstruct [
@@ -108,6 +109,7 @@ defmodule Storyarn.Flows.Evaluator.State do
     max_steps: 1000,
     breakpoints: MapSet.new(),
     call_stack: [],
-    current_flow_id: nil
+    current_flow_id: nil,
+    exit_transition: nil
   ]
 end

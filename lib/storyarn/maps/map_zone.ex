@@ -15,7 +15,9 @@ defmodule Storyarn.Maps.MapZone do
 
   @valid_border_styles ~w(solid dashed dotted)
   @valid_target_types ~w(sheet flow map)
-  @valid_action_types ~w(navigate instruction display event)
+  @valid_action_types ~w(none instruction display)
+
+  @valid_condition_effects ~w(hide disable)
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -33,6 +35,8 @@ defmodule Storyarn.Maps.MapZone do
           locked: boolean(),
           action_type: String.t(),
           action_data: map(),
+          condition: map() | nil,
+          condition_effect: String.t(),
           map_id: integer() | nil,
           map: Map.t() | Ecto.Association.NotLoaded.t() | nil,
           layer_id: integer() | nil,
@@ -54,8 +58,10 @@ defmodule Storyarn.Maps.MapZone do
     field :tooltip, :string
     field :position, :integer, default: 0
     field :locked, :boolean, default: false
-    field :action_type, :string, default: "navigate"
+    field :action_type, :string, default: "none"
     field :action_data, :map, default: %{}
+    field :condition, :map
+    field :condition_effect, :string, default: "hide"
 
     belongs_to :map, Map
     belongs_to :layer, MapLayer
@@ -90,13 +96,15 @@ defmodule Storyarn.Maps.MapZone do
       :position,
       :locked,
       :action_type,
-      :action_data
+      :action_data,
+      :condition,
+      :condition_effect
     ])
     |> validate_required([:name, :vertices])
     |> validate_length(:name, min: 1, max: 200)
     |> validate_inclusion(:border_style, @valid_border_styles)
     |> validate_inclusion(:action_type, @valid_action_types)
-    |> maybe_clear_target()
+    |> validate_inclusion(:condition_effect, @valid_condition_effects)
     |> validate_target_pair(@valid_target_types)
     |> validate_action_data()
     |> validate_number(:opacity, greater_than_or_equal_to: 0, less_than_or_equal_to: 1)
@@ -143,15 +151,6 @@ defmodule Storyarn.Maps.MapZone do
     end
   end
 
-  # Clears target_type/target_id when switching away from "navigate"
-  defp maybe_clear_target(changeset) do
-    case get_change(changeset, :action_type) do
-      nil -> changeset
-      "navigate" -> changeset
-      _other -> changeset |> put_change(:target_type, nil) |> put_change(:target_id, nil)
-    end
-  end
-
   # Validates action_data shape based on action_type
   defp validate_action_data(changeset) do
     action_type = get_field(changeset, :action_type)
@@ -172,13 +171,6 @@ defmodule Storyarn.Maps.MapZone do
 
   defp do_validate_action_data(changeset, "display", _),
     do: add_error(changeset, :action_data, "must include \"variable_ref\"")
-
-  defp do_validate_action_data(changeset, "event", %{"event_name" => name})
-       when is_binary(name),
-       do: changeset
-
-  defp do_validate_action_data(changeset, "event", _),
-    do: add_error(changeset, :action_data, "must include \"event_name\"")
 
   defp do_validate_action_data(changeset, _, _), do: changeset
 

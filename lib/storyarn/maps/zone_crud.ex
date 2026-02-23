@@ -110,22 +110,11 @@ defmodule Storyarn.Maps.ZoneCrud do
   end
 
   @doc """
-  Lists zones with action_type "event", ordered by position.
-  """
-  def list_event_zones(map_id) do
-    from(z in MapZone,
-      where: z.map_id == ^map_id and z.action_type == "event",
-      order_by: [asc: z.position]
-    )
-    |> Repo.all()
-  end
-
-  @doc """
-  Lists zones with a non-navigate action_type, ordered by position.
+  Lists zones with a non-none action_type, ordered by position.
   """
   def list_actionable_zones(map_id) do
     from(z in MapZone,
-      where: z.map_id == ^map_id and z.action_type != "navigate",
+      where: z.map_id == ^map_id and z.action_type != "none",
       order_by: [asc: z.position]
     )
     |> Repo.all()

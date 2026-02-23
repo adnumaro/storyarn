@@ -404,6 +404,18 @@ defmodule Storyarn.Maps.MapCrud do
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)
 
   @doc """
+  Gets a map with only background_asset preloaded.
+  Used for rendering scene backdrops in the flow player.
+  """
+  def get_map_backdrop(map_id) do
+    from(m in Map,
+      where: m.id == ^map_id and is_nil(m.deleted_at),
+      preload: [:background_asset]
+    )
+    |> Repo.one()
+  end
+
+  @doc """
   Returns the project_id for a given map_id.
   Used by reference trackers that need the project scope from a map.
   """

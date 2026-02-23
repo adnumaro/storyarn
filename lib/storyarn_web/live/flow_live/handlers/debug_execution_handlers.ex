@@ -27,7 +27,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
         {:noreply, socket}
 
       {:continue, socket} ->
-        socket = maybe_load_interaction_zones(socket)
         {:noreply, push_debug_canvas(socket, socket.assigns.debug_state)}
     end
   end
@@ -74,62 +73,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
          socket
          |> assign(:debug_state, new_state)
          |> push_debug_canvas(new_state)}
-    end
-  end
-
-  @doc "Executes an instruction zone's variable assignments in the debugger."
-  def handle_debug_interaction_instruction(params, socket) do
-    assignments = decode_assignments(params["assignments"])
-    zone_name = params["zone_name"] || "zone"
-    state = socket.assigns.debug_state
-
-    case Engine.execute_interaction_instruction(state, assignments, zone_name) do
-      {:ok, new_state} ->
-        {:noreply,
-         socket
-         |> assign(:debug_state, new_state)
-         |> push_debug_canvas(new_state)}
-
-      _ ->
-        {:noreply, socket}
-    end
-  end
-
-  @doc "Triggers an event zone in the interaction node, advancing to the matching output."
-  def handle_debug_interaction_event(params, socket) do
-    event_name = params["event_name"]
-    state = socket.assigns.debug_state
-    connections = socket.assigns.debug_connections
-
-    case Engine.choose_interaction_event(state, event_name, connections) do
-      {:ok, new_state} ->
-        socket =
-          socket
-          |> assign(:debug_state, new_state)
-          |> assign(:debug_interaction_zones, [])
-          |> push_debug_canvas(new_state)
-
-        socket =
-          if socket.assigns.debug_auto_playing do
-            schedule_auto_step(socket)
-          else
-            socket
-          end
-
-        {:noreply, socket}
-
-      {:finished, new_state} ->
-        socket =
-          socket
-          |> assign(:debug_state, new_state)
-          |> assign(:debug_interaction_zones, [])
-          |> push_debug_canvas(new_state)
-          |> assign(:debug_auto_playing, false)
-
-        {:noreply, socket}
-
-      _ ->
-        {:noreply, socket}
     end
   end
 
@@ -220,8 +163,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
       debug_editing_var: nil,
       debug_var_filter: socket.assigns.debug_var_filter,
       debug_var_changed_only: socket.assigns.debug_var_changed_only,
-      debug_step_limit_reached: socket.assigns[:debug_step_limit_reached] || false,
-      debug_interaction_zones: socket.assigns[:debug_interaction_zones] || []
+      debug_step_limit_reached: socket.assigns[:debug_step_limit_reached] || false
     }
 
     DebugSessionStore.store({user_id, project_id}, debug_assigns)
@@ -274,7 +216,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     socket =
       socket
       |> assign(:debug_state, new_state)
-      |> maybe_load_interaction_zones()
       |> push_debug_canvas(new_state)
 
     schedule_or_stop_auto_play(socket, new_state, hit_breakpoint)
@@ -434,32 +375,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     Enum.find_value(nodes_map, fn {id, node} ->
       if node.type == "entry", do: id
     end)
-  end
-
-  # phx-value-* attributes arrive as strings; pushEvent sends native types.
-  defp decode_assignments(raw) when is_list(raw), do: raw
-  defp decode_assignments(nil), do: []
-
-  defp decode_assignments(raw) when is_binary(raw) do
-    case Jason.decode(raw) do
-      {:ok, list} when is_list(list) -> list
-      _ -> []
-    end
-  end
-
-  defp decode_assignments(_), do: []
-
-  defp maybe_load_interaction_zones(socket) do
-    state = socket.assigns.debug_state
-
-    case state.pending_choices do
-      %{type: :interaction, map_id: map_id} when not is_nil(map_id) ->
-        zones = Storyarn.Maps.list_zones(map_id)
-        assign(socket, :debug_interaction_zones, zones)
-
-      _ ->
-        assign(socket, :debug_interaction_zones, [])
-    end
   end
 
   defp parse_speed(val) when is_binary(val) do

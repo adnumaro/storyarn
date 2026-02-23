@@ -546,10 +546,10 @@ defmodule Storyarn.MapsTest do
       %{"x" => 30.0, "y" => 50.0}
     ]
 
-    test "default zone gets action_type navigate", %{map: map} do
+    test "default zone gets action_type none", %{map: map} do
       {:ok, zone} = Maps.create_zone(map.id, %{"name" => "Plain", "vertices" => @triangle})
 
-      assert zone.action_type == "navigate"
+      assert zone.action_type == "none"
       assert zone.action_data == %{}
     end
 
@@ -579,17 +579,15 @@ defmodule Storyarn.MapsTest do
       assert zone.action_data["variable_ref"] == "mc.jaime.health"
     end
 
-    test "create event zone with event_name", %{map: map} do
+    test "create zone with action_type none", %{map: map} do
       {:ok, zone} =
         Maps.create_zone(map.id, %{
-          "name" => "Trigger",
+          "name" => "Simple",
           "vertices" => @triangle,
-          "action_type" => "event",
-          "action_data" => %{"event_name" => "battle_start"}
+          "action_type" => "none"
         })
 
-      assert zone.action_type == "event"
-      assert zone.action_data["event_name"] == "battle_start"
+      assert zone.action_type == "none"
     end
 
     test "instruction requires assignments list", %{map: map} do
@@ -616,16 +614,16 @@ defmodule Storyarn.MapsTest do
       assert "must include \"variable_ref\"" in errors_on(changeset).action_data
     end
 
-    test "event requires event_name", %{map: map} do
+    test "event action_type is no longer valid", %{map: map} do
       {:error, changeset} =
         Maps.create_zone(map.id, %{
           "name" => "Bad Event",
           "vertices" => @triangle,
           "action_type" => "event",
-          "action_data" => %{}
+          "action_data" => %{"event_name" => "boom"}
         })
 
-      assert "must include \"event_name\"" in errors_on(changeset).action_data
+      assert "is invalid" in errors_on(changeset).action_type
     end
 
     test "invalid action_type rejected", %{map: map} do
@@ -639,7 +637,7 @@ defmodule Storyarn.MapsTest do
       assert "is invalid" in errors_on(changeset).action_type
     end
 
-    test "switching to instruction clears target_type and target_id", %{map: map} do
+    test "switching action_type preserves target_type and target_id", %{map: map} do
       {:ok, zone} =
         Maps.create_zone(map.id, %{
           "name" => "Nav Zone",
@@ -658,40 +656,18 @@ defmodule Storyarn.MapsTest do
         })
 
       assert updated.action_type == "instruction"
-      assert is_nil(updated.target_type)
-      assert is_nil(updated.target_id)
+      assert updated.target_type == "sheet"
+      assert updated.target_id == 42
     end
 
-    test "list_event_zones returns only event zones", %{map: map} do
-      _nav = zone_fixture(map, %{"name" => "Nav"})
-
-      _event =
-        zone_fixture(map, %{
-          "name" => "Evt",
-          "action_type" => "event",
-          "action_data" => %{"event_name" => "boom"}
-        })
+    test "list_actionable_zones returns only non-none zones", %{map: map} do
+      _plain = zone_fixture(map, %{"name" => "Plain"})
 
       _instruction =
         zone_fixture(map, %{
           "name" => "Inst",
           "action_type" => "instruction",
           "action_data" => %{"assignments" => []}
-        })
-
-      events = Maps.list_event_zones(map.id)
-      assert length(events) == 1
-      assert hd(events).name == "Evt"
-    end
-
-    test "list_actionable_zones returns only non-navigate zones", %{map: map} do
-      _nav = zone_fixture(map, %{"name" => "Nav"})
-
-      _event =
-        zone_fixture(map, %{
-          "name" => "Evt",
-          "action_type" => "event",
-          "action_data" => %{"event_name" => "boom"}
         })
 
       _display =
@@ -704,7 +680,7 @@ defmodule Storyarn.MapsTest do
       actionable = Maps.list_actionable_zones(map.id)
       assert length(actionable) == 2
       names = Enum.map(actionable, & &1.name) |> Enum.sort()
-      assert names == ["Disp", "Evt"]
+      assert names == ["Disp", "Inst"]
     end
   end
 

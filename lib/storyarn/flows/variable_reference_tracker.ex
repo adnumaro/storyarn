@@ -4,7 +4,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   Handles ALL polymorphic variable reference sources:
   - **Flow nodes** — condition rules → reads, instruction assignments → writes
-  - **Map zones** — instruction action_data → writes, display variable_ref → reads
+  - **Map zones** — instruction action_data → writes, display variable_ref → reads, condition → reads
+  - **Map pins** — instruction action_data → writes, display variable_ref → reads, condition → reads
 
   Called after every node data or zone action_data save. Extracts variable
   references from the source's structured data and upserts them into the
@@ -23,7 +24,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   import Ecto.Query
 
   alias Storyarn.Flows.{Condition, Flow, FlowNode, VariableReference}
-  alias Storyarn.Maps.MapZone
+  alias Storyarn.Maps.{MapPin, MapZone}
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
@@ -95,16 +96,54 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     :ok
   end
 
+  # ---------------------------------------------------------------------------
+  # Map pin variable references
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Updates variable references for a map pin after its action_data changes.
+  Extracts assignment write refs and display read refs.
+  """
+  @spec update_map_pin_references(map()) :: :ok
+  def update_map_pin_references(%{id: pin_id, map_id: map_id} = pin) do
+    project_id = Storyarn.Maps.get_map_project_id(map_id)
+
+    refs =
+      if project_id do
+        extract_pin_variable_refs(pin, project_id)
+      else
+        []
+      end
+
+    replace_references("map_pin", pin_id, refs)
+  end
+
+  def update_map_pin_references(_pin), do: :ok
+
+  @doc """
+  Deletes all variable references for a map pin.
+  """
+  @spec delete_map_pin_references(integer()) :: :ok
+  def delete_map_pin_references(pin_id) do
+    from(vr in VariableReference,
+      where: vr.source_type == "map_pin" and vr.source_id == ^pin_id
+    )
+    |> Repo.delete_all()
+
+    :ok
+  end
+
   @doc """
   Returns all variable references for a block, with source info.
-  Includes both flow node and map zone sources.
+  Includes flow node, map zone, and map pin sources.
   Used by the sheet editor's variable usage section.
   """
   @spec get_variable_usage(integer(), integer()) :: [map()]
   def get_variable_usage(block_id, project_id) do
     flow_refs = get_flow_node_variable_usage(block_id, project_id)
-    map_refs = get_map_zone_variable_usage(block_id, project_id)
-    flow_refs ++ map_refs
+    zone_refs = get_map_zone_variable_usage(block_id, project_id)
+    pin_refs = get_map_pin_variable_usage(block_id, project_id)
+    flow_refs ++ zone_refs ++ pin_refs
   end
 
   defp get_flow_node_variable_usage(block_id, project_id) do
@@ -154,6 +193,29 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     |> Repo.all()
   end
 
+  defp get_map_pin_variable_usage(block_id, project_id) do
+    from(vr in VariableReference,
+      join: p in MapPin,
+      on: vr.source_type == "map_pin" and p.id == vr.source_id,
+      join: m in Storyarn.Maps.Map,
+      on: m.id == p.map_id,
+      where: vr.block_id == ^block_id,
+      where: m.project_id == ^project_id,
+      where: is_nil(m.deleted_at),
+      select: %{
+        source_type: vr.source_type,
+        kind: vr.kind,
+        map_id: m.id,
+        map_name: m.name,
+        pin_id: p.id,
+        pin_label: p.label,
+        pin_action_data: p.action_data
+      },
+      order_by: [asc: vr.kind, asc: m.name]
+    )
+    |> Repo.all()
+  end
+
   @doc """
   Counts variable references for a block, grouped by kind.
   Returns %{"read" => N, "write" => M}.
@@ -183,8 +245,9 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   @spec check_stale_references(integer(), integer()) :: [map()]
   def check_stale_references(block_id, project_id) do
     flow_refs = check_stale_flow_node_references(block_id, project_id)
-    map_refs = check_stale_map_zone_references(block_id, project_id)
-    flow_refs ++ map_refs
+    zone_refs = check_stale_map_zone_references(block_id, project_id)
+    pin_refs = check_stale_map_pin_references(block_id, project_id)
+    flow_refs ++ zone_refs ++ pin_refs
   end
 
   defp check_stale_flow_node_references(block_id, project_id) do
@@ -267,6 +330,62 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         zone_id: z.id,
         zone_name: z.name,
         zone_action_data: z.action_data,
+        source_sheet: vr.source_sheet,
+        source_variable: vr.source_variable,
+        stale:
+          fragment(
+            """
+            CASE WHEN ? = 'table' THEN
+              ? != ? OR NOT EXISTS (
+                SELECT 1 FROM table_rows tr
+                JOIN table_columns tc ON tc.block_id = tr.block_id
+                WHERE tr.block_id = ?
+                  AND ? = ? || '.' || tr.slug || '.' || tc.slug
+              )
+            ELSE
+              ? != ? OR ? != ?
+            END
+            """,
+            b.type,
+            vr.source_sheet,
+            s.shortcut,
+            b.id,
+            vr.source_variable,
+            b.variable_name,
+            vr.source_sheet,
+            s.shortcut,
+            vr.source_variable,
+            b.variable_name
+          )
+      },
+      order_by: [asc: vr.kind, asc: m.name]
+    )
+    |> Repo.all()
+  end
+
+  defp check_stale_map_pin_references(block_id, project_id) do
+    from(vr in VariableReference,
+      join: p in MapPin,
+      on: vr.source_type == "map_pin" and p.id == vr.source_id,
+      join: m in Storyarn.Maps.Map,
+      on: m.id == p.map_id,
+      join: b in Block,
+      on: b.id == vr.block_id,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      where: vr.block_id == ^block_id,
+      where: m.project_id == ^project_id,
+      where: is_nil(m.deleted_at),
+      where: is_nil(s.deleted_at),
+      where: is_nil(b.deleted_at),
+      select: %{
+        source_type: vr.source_type,
+        kind: vr.kind,
+        map_id: m.id,
+        map_name: m.name,
+        pin_id: p.id,
+        pin_label: p.label,
+        pin_action_data: p.action_data,
         source_sheet: vr.source_sheet,
         source_variable: vr.source_variable,
         stale:
@@ -693,17 +812,42 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp extract_zone_variable_refs(zone, project_id) do
-    case zone.action_type do
+    action_refs = extract_action_variable_refs(zone, project_id)
+    condition_refs = extract_condition_variable_refs(zone, project_id)
+    action_refs ++ condition_refs
+  end
+
+  defp extract_pin_variable_refs(pin, project_id) do
+    action_refs = extract_action_variable_refs(pin, project_id)
+    condition_refs = extract_condition_variable_refs(pin, project_id)
+    action_refs ++ condition_refs
+  end
+
+  # Shared extraction for action_type + action_data (zones and pins)
+  defp extract_action_variable_refs(element, project_id) do
+    case Map.get(element, :action_type) do
       "instruction" ->
-        assignments = (zone.action_data || %{})["assignments"] || []
+        assignments = (Map.get(element, :action_data) || %{})["assignments"] || []
         Enum.flat_map(assignments, &extract_assignment_refs(&1, project_id))
 
       "display" ->
-        variable_ref = (zone.action_data || %{})["variable_ref"]
+        variable_ref = (Map.get(element, :action_data) || %{})["variable_ref"]
         resolve_display_variable_ref(project_id, variable_ref)
 
       _ ->
         []
+    end
+  end
+
+  # Shared extraction for condition read refs (zones and pins)
+  defp extract_condition_variable_refs(element, project_id) do
+    condition = Map.get(element, :condition)
+
+    if is_nil(condition) do
+      []
+    else
+      rules = Condition.extract_all_rules(condition)
+      Enum.flat_map(rules, &resolve_rule_read_ref(&1, project_id))
     end
   end
 

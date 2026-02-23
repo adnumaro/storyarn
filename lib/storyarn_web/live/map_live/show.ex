@@ -92,7 +92,13 @@ defmodule StoryarnWeb.MapLive.Show do
         />
       </:top_bar_extra>
       <:top_bar_extra_right>
-        <.map_actions can_edit={@can_edit} edit_mode={@edit_mode} />
+        <.map_actions
+          can_edit={@can_edit}
+          edit_mode={@edit_mode}
+          workspace={@workspace}
+          project={@project}
+          map={@map}
+        />
       </:top_bar_extra_right>
       <div class="h-full relative">
         <%!-- Canvas fills the entire area --%>
@@ -342,7 +348,7 @@ defmodule StoryarnWeb.MapLive.Show do
     |> assign(:project_sheets, Storyarn.Sheets.list_sheets_tree(project.id))
     |> assign(:project_flows, Storyarn.Flows.list_flows(project.id))
     |> assign(:project_variables, Storyarn.Sheets.list_project_variables(project.id))
-    |> assign(:referencing_flows, Storyarn.Flows.list_interaction_nodes_for_map(map.id))
+    |> assign(:referencing_flows, [])
     |> assign(:canvas_i18n, %{
       edit_properties: dgettext("maps", "Edit Properties"),
       connect_to: dgettext("maps", "Connect To\u2026"),
@@ -683,6 +689,18 @@ defmodule StoryarnWeb.MapLive.Show do
     end)
   end
 
+  def handle_event("update_zone_condition", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      ElementHandlers.handle_update_zone_condition(params, socket)
+    end)
+  end
+
+  def handle_event("update_zone_condition_effect", %{"value" => _} = params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      ElementHandlers.handle_update_zone_condition_effect(params, socket)
+    end)
+  end
+
   # Expression editor tab toggle (Builder ↔ Code)
   def handle_event("toggle_expression_tab", %{"id" => id, "tab" => tab}, socket) do
     panel_sections = Map.put(socket.assigns.panel_sections, "tab_#{id}", tab)
@@ -692,6 +710,36 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
   # Pin handlers — delegate to ElementHandlers
   # ---------------------------------------------------------------------------
+
+  def handle_event("update_pin_action_type", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      ElementHandlers.handle_update_pin_action_type(params, socket)
+    end)
+  end
+
+  def handle_event("update_pin_assignments", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      ElementHandlers.handle_update_pin_assignments(params, socket)
+    end)
+  end
+
+  def handle_event("update_pin_action_data", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      ElementHandlers.handle_update_pin_action_data(params, socket)
+    end)
+  end
+
+  def handle_event("update_pin_condition", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      ElementHandlers.handle_update_pin_condition(params, socket)
+    end)
+  end
+
+  def handle_event("update_pin_condition_effect", %{"value" => _} = params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      ElementHandlers.handle_update_pin_condition_effect(params, socket)
+    end)
+  end
 
   def handle_event("delete_pin", params, socket) do
     with_authorization(socket, :edit_content, fn _socket ->

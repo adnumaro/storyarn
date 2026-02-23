@@ -2,7 +2,7 @@
 
 > **Goal:** Eliminate the sheet config sidebar (`config_panel.ex`) by migrating all block configuration to inline hover toolbars + floating popovers, consistent with the Maps and Flows pattern.
 >
-> **Parent Epic:** [FOCUS_MODE_REDESIGN.md](./FOCUS_MODE_REDESIGN.md)
+> **Parent Epic:** [FOCUS_MODE_REDESIGN.md](completed/FOCUS_MODE_REDESIGN.md)
 >
 > **Priority:** Medium — can be implemented independently before the full layout redesign
 >
@@ -595,6 +595,6 @@ For each block type, verify:
 
 ## Related Documents
 
-- [FOCUS_MODE_REDESIGN.md](./FOCUS_MODE_REDESIGN.md) — Parent epic for the full layout redesign
+- [FOCUS_MODE_REDESIGN.md](completed/FOCUS_MODE_REDESIGN.md) — Parent epic for the full layout redesign
 - [PHASE_7_5_SHEETS_ENHANCEMENT.md](./PHASE_7_5_SHEETS_ENHANCEMENT.md) — Sheet editor improvements
-- [UNIFIED_UNDO_REDO.md](./UNIFIED_UNDO_REDO.md) — Undo/redo system (must remain compatible)
+- [UNIFIED_UNDO_REDO.md](completed/UNIFIED_UNDO_REDO.md) — Undo/redo system (must remain compatible)
