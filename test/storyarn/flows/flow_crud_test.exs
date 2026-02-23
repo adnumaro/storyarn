@@ -1,5 +1,5 @@
 defmodule Storyarn.Flows.FlowCrudTest do
-  use Storyarn.DataCase
+  use Storyarn.DataCase, async: true
 
   alias Storyarn.Flows
 

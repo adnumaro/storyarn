@@ -67,9 +67,11 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   Updates variable references for a map zone after its action_data changes.
   Extracts assignment write refs and display read refs.
   """
-  @spec update_map_zone_references(map()) :: :ok
-  def update_map_zone_references(%{id: zone_id, map_id: map_id} = zone) do
-    project_id = Storyarn.Maps.get_map_project_id(map_id)
+  @spec update_map_zone_references(map(), keyword()) :: :ok
+  def update_map_zone_references(zone, opts \\ [])
+
+  def update_map_zone_references(%{id: zone_id, map_id: map_id} = zone, opts) do
+    project_id = opts[:project_id] || Storyarn.Maps.get_map_project_id(map_id)
 
     refs =
       if project_id do
@@ -81,7 +83,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     replace_references("map_zone", zone_id, refs)
   end
 
-  def update_map_zone_references(_zone), do: :ok
+  def update_map_zone_references(_zone, _opts), do: :ok
 
   @doc """
   Deletes all variable references for a map zone.
@@ -104,9 +106,11 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   Updates variable references for a map pin after its action_data changes.
   Extracts assignment write refs and display read refs.
   """
-  @spec update_map_pin_references(map()) :: :ok
-  def update_map_pin_references(%{id: pin_id, map_id: map_id} = pin) do
-    project_id = Storyarn.Maps.get_map_project_id(map_id)
+  @spec update_map_pin_references(map(), keyword()) :: :ok
+  def update_map_pin_references(pin, opts \\ [])
+
+  def update_map_pin_references(%{id: pin_id, map_id: map_id} = pin, opts) do
+    project_id = opts[:project_id] || Storyarn.Maps.get_map_project_id(map_id)
 
     refs =
       if project_id do
@@ -118,7 +122,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     replace_references("map_pin", pin_id, refs)
   end
 
-  def update_map_pin_references(_pin), do: :ok
+  def update_map_pin_references(_pin, _opts), do: :ok
 
   @doc """
   Deletes all variable references for a map pin.

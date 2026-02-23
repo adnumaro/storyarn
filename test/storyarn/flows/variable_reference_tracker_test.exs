@@ -1,5 +1,5 @@
 defmodule Storyarn.Flows.VariableReferenceTrackerTest do
-  use Storyarn.DataCase
+  use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures

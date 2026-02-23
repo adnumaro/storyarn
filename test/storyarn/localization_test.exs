@@ -1,5 +1,5 @@
 defmodule Storyarn.LocalizationTest do
-  use Storyarn.DataCase
+  use Storyarn.DataCase, async: true
 
   alias Storyarn.Localization
 

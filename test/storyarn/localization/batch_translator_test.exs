@@ -1,5 +1,5 @@
 defmodule Storyarn.Localization.BatchTranslatorTest do
-  use Storyarn.DataCase
+  use Storyarn.DataCase, async: true
 
   alias Storyarn.Localization
 

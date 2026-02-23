@@ -155,7 +155,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
     if next_connection do
       # Add current node to history
       history = [current_node.id | socket.assigns.history]
-      next_node = Flows.get_node_by_id!(next_connection.target_node_id)
+      next_node = Flows.get_node_by_id!(current_node.flow_id, next_connection.target_node_id)
 
       socket =
         socket
@@ -177,7 +177,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
 
     if next_connection do
       history = [current_node.id | socket.assigns.history]
-      next_node = Flows.get_node_by_id!(next_connection.target_node_id)
+      next_node = Flows.get_node_by_id!(current_node.flow_id, next_connection.target_node_id)
 
       socket =
         socket
@@ -193,7 +193,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
   def handle_event("go_back", _params, socket) do
     case socket.assigns.history do
       [prev_node_id | rest] ->
-        prev_node = Flows.get_node_by_id!(prev_node_id)
+        prev_node = Flows.get_node_by_id!(socket.assigns.current_node.flow_id, prev_node_id)
 
         socket =
           socket
@@ -280,7 +280,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
         assign_empty_node(socket)
 
       next_conn ->
-        next_node = Flows.get_node_by_id!(next_conn.target_node_id)
+        next_node = Flows.get_node_by_id!(node.flow_id, next_conn.target_node_id)
         load_or_skip(socket, next_node, visited, depth)
     end
   end

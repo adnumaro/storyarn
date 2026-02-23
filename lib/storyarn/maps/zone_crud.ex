@@ -4,6 +4,7 @@ defmodule Storyarn.Maps.ZoneCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.VariableReferenceTracker
+  alias Storyarn.Maps
   alias Storyarn.Maps.{MapZone, PositionUtils}
   alias Storyarn.Repo
   alias Storyarn.Sheets.ReferenceTracker
@@ -62,8 +63,9 @@ defmodule Storyarn.Maps.ZoneCrud do
 
     case result do
       {:ok, zone} ->
+        project_id = Maps.get_map_project_id(map_id)
         ReferenceTracker.update_map_zone_references(zone)
-        VariableReferenceTracker.update_map_zone_references(zone)
+        VariableReferenceTracker.update_map_zone_references(zone, project_id: project_id)
 
       _ ->
         :ok
@@ -80,8 +82,9 @@ defmodule Storyarn.Maps.ZoneCrud do
 
     case result do
       {:ok, updated_zone} ->
+        project_id = Maps.get_map_project_id(zone.map_id)
         ReferenceTracker.update_map_zone_references(updated_zone)
-        VariableReferenceTracker.update_map_zone_references(updated_zone)
+        VariableReferenceTracker.update_map_zone_references(updated_zone, project_id: project_id)
 
       _ ->
         :ok

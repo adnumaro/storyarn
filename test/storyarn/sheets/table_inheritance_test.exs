@@ -1,5 +1,5 @@
 defmodule Storyarn.Sheets.TableInheritanceTest do
-  use Storyarn.DataCase
+  use Storyarn.DataCase, async: true
 
   alias Storyarn.Sheets
   alias Storyarn.Sheets.{PropertyInheritance, TableCrud}

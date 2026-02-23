@@ -11,7 +11,6 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Localization
-  alias Storyarn.Localization.Languages
 
   import StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
 
@@ -147,7 +146,7 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
   # Private
 
   defp do_add_target_language(socket, code) do
-    name = Languages.name(code)
+    name = Localization.language_name(code)
 
     case Localization.add_language(socket.assigns.project, %{
            "locale_code" => code,

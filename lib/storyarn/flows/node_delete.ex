@@ -66,7 +66,7 @@ defmodule Storyarn.Flows.NodeDelete do
   defp unwrap_delete_result({:error, reason}), do: {:error, reason}
 
   defp clear_orphaned_jumps(flow_id, hub_id) when is_binary(hub_id) and hub_id != "" do
-    now = DateTime.utc_now()
+    now = Storyarn.Shared.TimeHelpers.now()
 
     query =
       from(n in FlowNode,

@@ -102,6 +102,15 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret 32
       """
 
+  # Session encryption salt - used to encrypt session cookie contents
+  # Generate with: mix phx.gen.secret 32
+  session_encryption_salt =
+    System.get_env("SESSION_ENCRYPTION_SALT") ||
+      raise """
+      environment variable SESSION_ENCRYPTION_SALT is missing.
+      You can generate one by calling: mix phx.gen.secret 32
+      """
+
   config :storyarn, StoryarnWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
@@ -113,7 +122,8 @@ if config_env() == :prod do
       port: port
     ],
     secret_key_base: secret_key_base,
-    session_signing_salt: session_signing_salt
+    session_signing_salt: session_signing_salt,
+    session_encryption_salt: session_encryption_salt
 
   # ## SSL Support
   #

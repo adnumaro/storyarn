@@ -1,5 +1,5 @@
 defmodule Storyarn.WorkspacesTest do
-  use Storyarn.DataCase
+  use Storyarn.DataCase, async: true
 
   alias Storyarn.Workspaces
 

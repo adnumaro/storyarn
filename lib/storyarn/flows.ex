@@ -24,6 +24,13 @@ defmodule Storyarn.Flows do
     VariableReferenceTracker
   }
 
+  alias Storyarn.Flows.Evaluator.{
+    ConditionEval,
+    Engine,
+    Helpers,
+    InstructionExec
+  }
+
   alias Storyarn.Projects.Project
 
   # =============================================================================
@@ -230,11 +237,11 @@ defmodule Storyarn.Flows do
   defdelegate get_node!(flow_id, node_id), to: NodeCrud
 
   @doc """
-  Gets a node by ID without flow validation.
+  Gets a node by ID scoped to a flow, without preloads.
   Raises `Ecto.NoResultsError` if not found.
   """
-  @spec get_node_by_id!(integer()) :: flow_node()
-  defdelegate get_node_by_id!(node_id), to: NodeCrud
+  @spec get_node_by_id!(integer(), integer()) :: flow_node()
+  defdelegate get_node_by_id!(flow_id, node_id), to: NodeCrud
 
   @doc """
   Creates a new node in a flow.
@@ -491,6 +498,75 @@ defmodule Storyarn.Flows do
   """
   @spec get_incoming_connections(integer()) :: [connection()]
   defdelegate get_incoming_connections(node_id), to: ConnectionCrud
+
+  # =============================================================================
+  # Evaluator — Engine
+  # =============================================================================
+
+  @doc "Initialize an evaluator state for a flow."
+  defdelegate evaluator_init(variables, start_node_id), to: Engine, as: :init
+
+  @doc "Advance the evaluator by one step."
+  defdelegate evaluator_step(state, nodes, connections), to: Engine, as: :step
+
+  @doc "Step back to the previous node."
+  defdelegate evaluator_step_back(state), to: Engine, as: :step_back
+
+  @doc "Choose a response in a waiting_input state."
+  defdelegate evaluator_choose_response(state, response_id, connections),
+    to: Engine,
+    as: :choose_response
+
+  @doc "Push a sub-flow context onto the call stack."
+  defdelegate evaluator_push_flow_context(state, node_id, nodes, connections, flow_name),
+    to: Engine,
+    as: :push_flow_context
+
+  @doc "Pop a sub-flow context from the call stack."
+  defdelegate evaluator_pop_flow_context(state), to: Engine, as: :pop_flow_context
+
+  @doc "Reset the evaluator to its initial state."
+  defdelegate evaluator_reset(state), to: Engine, as: :reset
+
+  @doc "Toggle a breakpoint on a node."
+  defdelegate evaluator_toggle_breakpoint(state, node_id), to: Engine, as: :toggle_breakpoint
+
+  @doc "Check if the evaluator is at a breakpoint."
+  defdelegate evaluator_at_breakpoint?(state), to: Engine, as: :at_breakpoint?
+
+  @doc "Record a breakpoint hit."
+  defdelegate evaluator_add_breakpoint_hit(state, node_id), to: Engine, as: :add_breakpoint_hit
+
+  @doc "Set a variable value in the evaluator state."
+  defdelegate evaluator_set_variable(state, key, value), to: Engine, as: :set_variable
+
+  @doc "Extend the step limit for the evaluator."
+  defdelegate evaluator_extend_step_limit(state), to: Engine, as: :extend_step_limit
+
+  @doc "Add a console entry to the evaluator state."
+  defdelegate evaluator_add_console_entry(state, level, node_id, label, message),
+    to: Engine,
+    as: :add_console_entry
+
+  # =============================================================================
+  # Evaluator — Helpers
+  # =============================================================================
+
+  @doc "Strip HTML tags and truncate to max_length characters."
+  def evaluator_strip_html(text, max_length \\ 40), do: Helpers.strip_html(text, max_length)
+
+  @doc "Format a debug value for display."
+  defdelegate evaluator_format_value(value), to: Helpers, as: :format_value
+
+  # =============================================================================
+  # Evaluator — Condition & Instruction
+  # =============================================================================
+
+  @doc "Evaluate a condition expression against variables."
+  defdelegate evaluate_condition(condition, variables), to: ConditionEval, as: :evaluate
+
+  @doc "Execute instruction assignments against variables."
+  defdelegate execute_instructions(assignments, variables), to: InstructionExec, as: :execute
 
   # =============================================================================
   # Serialization

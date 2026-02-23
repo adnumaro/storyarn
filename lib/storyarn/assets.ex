@@ -77,7 +77,7 @@ defmodule Storyarn.Assets do
         query
 
       term ->
-        escaped = sanitize_like_term(term)
+        escaped = Storyarn.Shared.SearchHelpers.sanitize_like_query(term)
         where(query, [a], ilike(a.filename, ^"%#{escaped}%"))
     end
   end
@@ -314,10 +314,4 @@ defmodule Storyarn.Assets do
     |> String.slice(0, 255)
   end
 
-  defp sanitize_like_term(term) do
-    term
-    |> String.replace("\\", "\\\\")
-    |> String.replace("%", "\\%")
-    |> String.replace("_", "\\_")
-  end
 end

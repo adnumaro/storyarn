@@ -396,7 +396,8 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
   defp truncate_html(html, max) do
     text =
       html
-      |> HtmlSanitizeEx.strip_tags()
+      |> Floki.parse_document!()
+      |> Floki.text()
       |> String.trim()
 
     if String.length(text) > max do

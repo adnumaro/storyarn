@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.LocalizationExportController do
   use StoryarnWeb, :controller
 
-  alias Storyarn.Localization.ExportImport
+  alias Storyarn.Localization
   alias Storyarn.Projects
 
   def export(conn, %{
@@ -20,7 +20,7 @@ defmodule StoryarnWeb.LocalizationExportController do
 
         case format do
           "xlsx" ->
-            {:ok, binary} = ExportImport.export_xlsx(project.id, opts)
+            {:ok, binary} = Localization.export_xlsx(project.id, opts)
             filename = "#{project.slug}_translations_#{locale}.xlsx"
 
             conn
@@ -31,7 +31,7 @@ defmodule StoryarnWeb.LocalizationExportController do
             |> send_resp(200, binary)
 
           "csv" ->
-            {:ok, csv} = ExportImport.export_csv(project.id, opts)
+            {:ok, csv} = Localization.export_csv(project.id, opts)
             filename = "#{project.slug}_translations_#{locale}.csv"
 
             conn

@@ -1,5 +1,5 @@
 defmodule StoryarnWeb.ScreenplayLive.ShowTest do
-  use StoryarnWeb.ConnCase
+  use StoryarnWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures

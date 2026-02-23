@@ -13,7 +13,6 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
 
   alias Storyarn.Flows
   alias Storyarn.Localization
-  alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Projects
 
   # ---------------------------------------------------------------------------
@@ -33,12 +32,8 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     Localization.get_provider_config(project_id)
   end
 
-  def provider_changeset(nil) do
-    ProviderConfig.changeset(%ProviderConfig{api_endpoint: "https://api-free.deepl.com"}, %{})
-  end
-
-  def provider_changeset(%ProviderConfig{} = config) do
-    ProviderConfig.changeset(config, %{})
+  def provider_changeset(config) do
+    Localization.change_provider_config(config)
   end
 
   # ---------------------------------------------------------------------------
@@ -77,7 +72,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     config = get_provider_config(socket.assigns.project.id)
 
     if config && config.api_key_encrypted do
-      case Storyarn.Localization.Providers.DeepL.get_usage(config) do
+      case Localization.get_deepl_usage(config) do
         {:ok, usage} ->
           {:noreply,
            socket

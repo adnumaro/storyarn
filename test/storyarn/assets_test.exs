@@ -1,5 +1,5 @@
 defmodule Storyarn.AssetsTest do
-  use Storyarn.DataCase
+  use Storyarn.DataCase, async: true
 
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset

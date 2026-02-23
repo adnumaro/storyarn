@@ -4,7 +4,7 @@ defmodule StoryarnWeb.FlowLive.ShowEventsTest do
   Verifies structural correctness of the handler extraction refactoring.
   """
 
-  use StoryarnWeb.ConnCase
+  use StoryarnWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
   import Storyarn.FlowsFixtures

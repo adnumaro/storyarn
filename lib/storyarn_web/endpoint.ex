@@ -1,15 +1,15 @@
 defmodule StoryarnWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :storyarn
 
-  # The session will be stored in the cookie and signed,
-  # this means its contents can be read but not tampered with.
-  # Set :encryption_salt if you would also like to encrypt it.
-  # The signing_salt is configured in config.exs (dev/test) or runtime.exs (prod)
+  # The session will be stored in the cookie, signed and encrypted.
+  # The signing_salt and encryption_salt are configured in config.exs (dev/test) or runtime.exs (prod)
   @session_options [
     store: :cookie,
     key: "_storyarn_key",
     signing_salt:
       Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
+    encryption_salt:
+      Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt]),
     same_site: "Lax",
     secure: Application.compile_env(:storyarn, [StoryarnWeb.Endpoint, :force_ssl]) != nil
   ]
@@ -51,7 +51,7 @@ defmodule StoryarnWeb.Endpoint do
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
   plug Plug.Parsers,
-    parsers: [:urlencoded, :multipart, :json],
+    parsers: [:urlencoded, {:multipart, length: 20_000_000}, :json],
     pass: ["*/*"],
     json_decoder: Phoenix.json_library()
 

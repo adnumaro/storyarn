@@ -12,7 +12,7 @@ defmodule StoryarnWeb.MapLive.UndoRedoTest do
   - Attr preservation (opacity, locked, icon_asset_id, line_width, show_label)
   """
 
-  use StoryarnWeb.ConnCase
+  use StoryarnWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
   import Storyarn.MapsFixtures

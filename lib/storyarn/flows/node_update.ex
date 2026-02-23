@@ -104,7 +104,7 @@ defmodule Storyarn.Flows.NodeUpdate do
 
   defp cascade_hub_id_rename(flow_id, old_hub_id, new_hub_id)
        when is_binary(old_hub_id) and old_hub_id != "" do
-    now = DateTime.utc_now()
+    now = Storyarn.Shared.TimeHelpers.now()
 
     query =
       from(n in FlowNode,

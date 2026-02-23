@@ -213,7 +213,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
 
   defp build_form(text) do
     changeset =
-      Storyarn.Localization.LocalizedText.update_changeset(text, %{})
+      Storyarn.Localization.change_localized_text(text)
 
     to_form(changeset, as: "localized_text")
   end

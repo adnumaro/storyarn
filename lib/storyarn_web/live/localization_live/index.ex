@@ -5,7 +5,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Localization
-  alias Storyarn.Localization.Languages
   alias Storyarn.Projects
 
   import StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
@@ -79,7 +78,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             <%!-- Source language badge --%>
             <div :if={@source_language} class="badge badge-primary gap-1.5 py-3">
               <.icon name="flag" class="size-3" />
-              {Languages.name(@source_language.locale_code)}
+              {Localization.language_name(@source_language.locale_code)}
               <span class="opacity-60">({@source_language.locale_code})</span>
             </div>
 

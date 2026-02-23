@@ -85,7 +85,8 @@ defmodule Storyarn.Localization.GlossaryCrud do
   defp maybe_search(query, ""), do: query
 
   defp maybe_search(query, search) do
-    pattern = "%#{search}%"
+    sanitized = Storyarn.Shared.SearchHelpers.sanitize_like_query(search)
+    pattern = "%#{sanitized}%"
 
     where(
       query,

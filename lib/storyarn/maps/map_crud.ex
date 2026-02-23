@@ -313,34 +313,53 @@ defmodule Storyarn.Maps.MapCrud do
   """
   def list_deleted_maps(project_id), do: SoftDelete.list_deleted(Map, project_id)
 
-  @max_ancestor_depth 50
-
   @doc """
   Returns ancestors from root to direct parent, ordered top-down.
+  Uses a recursive CTE for O(1) queries regardless of tree depth.
   """
-  def list_ancestors(map) do
-    do_collect_ancestors(map.parent_id, [], MapSet.new(), 0)
-  end
+  def list_ancestors(%Map{parent_id: nil}), do: []
 
-  defp do_collect_ancestors(nil, acc, _visited, _depth), do: acc
-  defp do_collect_ancestors(_id, acc, _visited, depth) when depth > @max_ancestor_depth, do: acc
+  def list_ancestors(%Map{id: map_id}) do
+    anchor =
+      from(m in "maps",
+        where: m.id == ^map_id and is_nil(m.deleted_at),
+        select: %{parent_id: m.parent_id, depth: 0}
+      )
 
-  defp do_collect_ancestors(parent_id, acc, visited, depth) do
-    if MapSet.member?(visited, parent_id) do
-      acc
+    recursion =
+      from(m in "maps",
+        join: a in "ancestors",
+        on: m.id == a.parent_id,
+        where: is_nil(m.deleted_at),
+        select: %{parent_id: m.parent_id, depth: a.depth + 1}
+      )
+
+    cte_query = anchor |> union_all(^recursion)
+
+    # Get ordered ancestor IDs from the CTE (child-first order)
+    ancestor_ids =
+      from("ancestors")
+      |> recursive_ctes(true)
+      |> with_cte("ancestors", as: ^cte_query)
+      |> where([a], not is_nil(a.parent_id))
+      |> select([a], a.parent_id)
+      |> Repo.all()
+
+    if ancestor_ids == [] do
+      []
     else
-      case Repo.get(Map, parent_id) do
-        nil ->
-          acc
+      ancestors_map =
+        from(m in Map,
+          where: m.id in ^ancestor_ids and is_nil(m.deleted_at)
+        )
+        |> Repo.all()
+        |> Elixir.Map.new(fn m -> {m.id, m} end)
 
-        parent ->
-          do_collect_ancestors(
-            parent.parent_id,
-            [parent | acc],
-            MapSet.put(visited, parent_id),
-            depth + 1
-          )
-      end
+      # CTE returns child-first; reverse for root-first (top-down) order
+      ancestor_ids
+      |> Enum.map(&Elixir.Map.get(ancestors_map, &1))
+      |> Enum.reject(&is_nil/1)
+      |> Enum.reverse()
     end
   end
 

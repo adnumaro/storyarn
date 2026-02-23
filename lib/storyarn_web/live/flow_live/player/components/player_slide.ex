@@ -8,6 +8,8 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias StoryarnWeb.FlowLive.Helpers.HtmlSanitizer
+
   attr :slide, :map, required: true
 
   @doc "Renders the appropriate slide layout based on the slide type."
@@ -26,7 +28,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
         </div>
       </div>
       <div class="player-text">
-        {Phoenix.HTML.raw(@slide.text)}
+        {Phoenix.HTML.raw(HtmlSanitizer.sanitize_html(@slide.text))}
       </div>
       <div :if={@slide.stage_directions != ""} class="player-stage-directions">
         {@slide.stage_directions}
@@ -44,7 +46,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
         <span :if={@slide.time_of_day != ""}>{" — #{String.upcase(@slide.time_of_day)}"}</span>
       </div>
       <div :if={@slide.description != ""} class="player-scene-description">
-        {Phoenix.HTML.raw(@slide.description)}
+        {Phoenix.HTML.raw(HtmlSanitizer.sanitize_html(@slide.description))}
       </div>
     </div>
     """

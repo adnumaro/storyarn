@@ -1,5 +1,5 @@
 defmodule StoryarnWeb.PageControllerTest do
-  use StoryarnWeb.ConnCase
+  use StoryarnWeb.ConnCase, async: true
 
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")

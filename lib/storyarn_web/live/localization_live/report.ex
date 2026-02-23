@@ -5,7 +5,6 @@ defmodule StoryarnWeb.LocalizationLive.Report do
   use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Localization
-  alias Storyarn.Localization.Reports
   alias Storyarn.Projects
 
   @impl true
@@ -213,14 +212,14 @@ defmodule StoryarnWeb.LocalizationLive.Report do
     project_id = socket.assigns.project.id
     locale = socket.assigns.selected_locale
 
-    language_progress = Reports.progress_by_language(project_id)
+    language_progress = Localization.progress_by_language(project_id)
 
     {speaker_stats, vo_progress, type_counts} =
       if locale do
         {
-          Reports.word_counts_by_speaker(project_id, locale),
-          Reports.vo_progress(project_id, locale),
-          Reports.counts_by_source_type(project_id, locale)
+          Localization.word_counts_by_speaker(project_id, locale),
+          Localization.vo_progress(project_id, locale),
+          Localization.counts_by_source_type(project_id, locale)
         }
       else
         {[], %{none: 0, needed: 0, recorded: 0, approved: 0}, %{}}

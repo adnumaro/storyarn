@@ -1,5 +1,5 @@
 defmodule Storyarn.Screenplays.ScreenplayQueriesTest do
-  use Storyarn.DataCase
+  use Storyarn.DataCase, async: true
 
   alias Storyarn.Screenplays.{Screenplay, ScreenplayQueries}
 

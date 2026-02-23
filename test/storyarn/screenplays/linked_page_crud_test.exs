@@ -1,5 +1,5 @@
 defmodule Storyarn.Screenplays.LinkedPageCrudTest do
-  use Storyarn.DataCase
+  use Storyarn.DataCase, async: true
 
   alias Storyarn.Screenplays.LinkedPageCrud
   alias Storyarn.ScreenplaysFixtures

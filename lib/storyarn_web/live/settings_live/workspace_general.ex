@@ -5,7 +5,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
 
-  alias Storyarn.Localization.Languages
+  alias Storyarn.Localization
   alias Storyarn.Workspaces
 
   @impl true
@@ -83,7 +83,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
               field={@form[:source_locale]}
               type="select"
               label={dgettext("workspaces", "Source language")}
-              options={Languages.options_for_select()}
+              options={Localization.language_options_for_select()}
               prompt={dgettext("workspaces", "Select language...")}
             />
             <p class="text-xs opacity-60 -mt-2 mb-2">

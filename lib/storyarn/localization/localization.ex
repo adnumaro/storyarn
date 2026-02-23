@@ -17,9 +17,11 @@ defmodule Storyarn.Localization do
     GlossaryCrud,
     GlossaryEntry,
     LanguageCrud,
+    Languages,
     LocalizedText,
     ProjectLanguage,
     ProviderConfig,
+    Providers,
     Reports,
     TextCrud,
     TextExtractor
@@ -265,4 +267,32 @@ defmodule Storyarn.Localization do
         |> Storyarn.Repo.update()
     end
   end
+
+  # =============================================================================
+  # Languages (static helpers)
+  # =============================================================================
+
+  @doc "Returns an update changeset for a localized text (for form rendering)."
+  def change_localized_text(text, attrs \\ %{}) do
+    LocalizedText.update_changeset(text, attrs)
+  end
+
+  @doc "Returns the display name for a language code."
+  defdelegate language_name(code), to: Languages, as: :name
+
+  @doc "Returns language options for select inputs."
+  def language_options_for_select(opts \\ []), do: Languages.options_for_select(opts)
+
+  # =============================================================================
+  # Provider (DeepL)
+  # =============================================================================
+
+  @doc "Returns a changeset for a provider config (for form rendering)."
+  def change_provider_config(config \\ nil) do
+    config = config || %ProviderConfig{api_endpoint: "https://api-free.deepl.com"}
+    ProviderConfig.changeset(config, %{})
+  end
+
+  @doc "Gets DeepL API usage stats."
+  defdelegate get_deepl_usage(config), to: Providers.DeepL, as: :get_usage
 end

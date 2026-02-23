@@ -1,5 +1,5 @@
 defmodule Storyarn.ProjectsTest do
-  use Storyarn.DataCase
+  use Storyarn.DataCase, async: true
 
   alias Storyarn.Projects
   alias Storyarn.Projects.ProjectMembership

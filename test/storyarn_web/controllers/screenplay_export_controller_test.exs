@@ -1,5 +1,5 @@
 defmodule StoryarnWeb.ScreenplayExportControllerTest do
-  use StoryarnWeb.ConnCase
+  use StoryarnWeb.ConnCase, async: true
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures

@@ -11,7 +11,6 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Localization
-  alias Storyarn.Localization.Languages
   alias Storyarn.Screenplays.ContentUtils
 
   @spec load_texts(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
@@ -83,7 +82,7 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   @spec language_picker_options(map()) :: list()
   def language_picker_options(assigns) do
     existing_codes = Enum.map(assigns.languages, & &1.locale_code)
-    Languages.options_for_select(exclude: existing_codes)
+    Localization.language_options_for_select(exclude: existing_codes)
   end
 
   @spec has_active_provider?(any()) :: boolean()

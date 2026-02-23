@@ -52,10 +52,13 @@ defmodule Storyarn.Flows.NodeCrud do
   end
 
   @doc """
-  Gets a node by ID without flow scoping or preloads. Raises if not found.
+  Gets a node by ID scoped to a flow, without preloads. Raises if not found.
   """
-  def get_node_by_id!(node_id) do
-    Repo.get!(FlowNode, node_id)
+  def get_node_by_id!(flow_id, node_id) do
+    from(n in FlowNode,
+      where: n.flow_id == ^flow_id and n.id == ^node_id and is_nil(n.deleted_at)
+    )
+    |> Repo.one!()
   end
 
   @doc """
