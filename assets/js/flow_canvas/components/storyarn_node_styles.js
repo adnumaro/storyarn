@@ -1,6 +1,6 @@
 /**
  * Styles for StoryarnNode LitElement component.
- * Uses daisyUI CSS variables (they pierce Shadow DOM).
+ * Uses daisyUI v5 CSS variables (they pierce Shadow DOM).
  */
 
 import { css } from "lit";
@@ -12,7 +12,7 @@ export const storyarnNodeStyles = css`
 
   .node {
     position: relative;
-    background: oklch(var(--b1, 0.2 0 0));
+    background: var(--color-base-100, #1d232a);
     border-radius: 8px;
     min-width: 180px;
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -25,7 +25,7 @@ export const storyarnNodeStyles = css`
   }
 
   .node.selected {
-    box-shadow: 0 0 0 3px oklch(var(--p, 0.6 0.2 250) / 0.5), 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary, #7c3aed) 50%, transparent), 0 4px 6px -1px rgb(0 0 0 / 0.1);
   }
 
   .header {
@@ -65,13 +65,13 @@ export const storyarnNodeStyles = css`
 
   .socket-label-left {
     font-size: 11px;
-    color: oklch(var(--bc, 0.8 0 0) / 0.7);
+    color: color-mix(in oklch, var(--color-base-content, #a6adbb) 70%, transparent);
     margin-left: 4px;
   }
 
   .socket-label-right {
     font-size: 11px;
-    color: oklch(var(--bc, 0.8 0 0) / 0.7);
+    color: color-mix(in oklch, var(--color-base-content, #a6adbb) 70%, transparent);
     margin-left: auto;
     margin-right: 4px;
   }
@@ -81,7 +81,7 @@ export const storyarnNodeStyles = css`
     align-items: center;
     padding: 4px 0;
     font-size: 11px;
-    color: oklch(var(--bc, 0.8 0 0) / 0.7);
+    color: color-mix(in oklch, var(--color-base-content, #a6adbb) 70%, transparent);
   }
 
   .socket-row.input {
@@ -108,10 +108,10 @@ export const storyarnNodeStyles = css`
 
   .node-data {
     font-size: 11px;
-    color: oklch(var(--bc, 0.8 0 0) / 0.8);
+    color: color-mix(in oklch, var(--color-base-content, #a6adbb) 80%, transparent);
     padding: 8px 12px;
     max-width: 200px;
-    border-bottom: 1px solid oklch(var(--bc, 0.8 0 0) / 0.1);
+    border-bottom: 1px solid color-mix(in oklch, var(--color-base-content, #a6adbb) 10%, transparent);
     word-break: break-word;
   }
 
@@ -125,14 +125,14 @@ export const storyarnNodeStyles = css`
 
   .stage-directions {
     font-style: italic;
-    color: oklch(var(--bc, 0.8 0 0) / 0.5);
+    color: color-mix(in oklch, var(--color-base-content, #a6adbb) 50%, transparent);
     font-size: 10px;
     padding: 4px 12px;
     max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    background: oklch(var(--bc, 0.8 0 0) / 0.03);
+    background: color-mix(in oklch, var(--color-base-content, #a6adbb) 3%, transparent);
   }
 
   .speaker-avatar {
@@ -157,8 +157,8 @@ export const storyarnNodeStyles = css`
     height: 14px;
     font-size: 10px;
     font-weight: bold;
-    background: oklch(var(--wa, 0.8 0.15 80) / 0.2);
-    color: oklch(var(--wa, 0.8 0.15 80));
+    background: color-mix(in oklch, var(--color-warning, #fbbd23) 20%, transparent);
+    color: var(--color-warning, #fbbd23);
     border-radius: 50%;
     margin-right: 2px;
   }
@@ -171,8 +171,8 @@ export const storyarnNodeStyles = css`
     height: 14px;
     font-size: 10px;
     font-weight: bold;
-    background: oklch(var(--er, 0.65 0.25 25) / 0.2);
-    color: oklch(var(--er, 0.65 0.25 25));
+    background: color-mix(in oklch, var(--color-error, #f87171) 20%, transparent);
+    color: var(--color-error, #f87171);
     border-radius: 50%;
     margin-right: 2px;
     cursor: help;
@@ -224,24 +224,24 @@ export const storyarnNodeStyles = css`
   /* Debug: current node — pulsing primary border */
   :host(.debug-current) .node {
     animation: debug-pulse 1.5s ease-in-out infinite;
-    border-color: oklch(var(--p, 0.6 0.2 250) / 0.6);
+    border-color: color-mix(in oklch, var(--color-primary, #7c3aed) 60%, transparent);
   }
 
   /* Debug: visited node — subtle success border */
   :host(.debug-visited) .node {
-    border-color: oklch(var(--su, 0.75 0.15 150) / 0.4);
+    border-color: color-mix(in oklch, var(--color-success, #36d399) 40%, transparent);
   }
 
   /* Debug: waiting for input — pulsing warning border */
   :host(.debug-waiting) .node {
     animation: debug-pulse-warning 1.5s ease-in-out infinite;
-    border-color: oklch(var(--wa, 0.8 0.15 80) / 0.6);
+    border-color: color-mix(in oklch, var(--color-warning, #fbbd23) 60%, transparent);
   }
 
   /* Debug: error node — error border */
   :host(.debug-error) .node {
-    border-color: oklch(var(--er, 0.65 0.25 25) / 0.5);
-    box-shadow: 0 0 0 2px oklch(var(--er, 0.65 0.25 25) / 0.15);
+    border-color: color-mix(in oklch, var(--color-error, #f87171) 50%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-error, #f87171) 15%, transparent);
   }
 
   /* Debug: breakpoint — red dot at top-right corner */
@@ -253,28 +253,28 @@ export const storyarnNodeStyles = css`
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: oklch(var(--er, 0.65 0.25 25));
-    box-shadow: 0 0 4px oklch(var(--er, 0.65 0.25 25) / 0.5);
+    background: var(--color-error, #f87171);
+    box-shadow: 0 0 4px color-mix(in oklch, var(--color-error, #f87171) 50%, transparent);
     z-index: 10;
   }
 
   @keyframes debug-pulse {
     0%, 100% {
-      box-shadow: 0 0 0 3px oklch(var(--p, 0.6 0.2 250) / 0.35);
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary, #7c3aed) 35%, transparent);
     }
     50% {
-      box-shadow: 0 0 0 6px oklch(var(--p, 0.6 0.2 250) / 0.12),
-                  0 0 14px oklch(var(--p, 0.6 0.2 250) / 0.08);
+      box-shadow: 0 0 0 6px color-mix(in oklch, var(--color-primary, #7c3aed) 12%, transparent),
+                  0 0 14px color-mix(in oklch, var(--color-primary, #7c3aed) 8%, transparent);
     }
   }
 
   @keyframes debug-pulse-warning {
     0%, 100% {
-      box-shadow: 0 0 0 3px oklch(var(--wa, 0.8 0.15 80) / 0.35);
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-warning, #fbbd23) 35%, transparent);
     }
     50% {
-      box-shadow: 0 0 0 6px oklch(var(--wa, 0.8 0.15 80) / 0.12),
-                  0 0 14px oklch(var(--wa, 0.8 0.15 80) / 0.08);
+      box-shadow: 0 0 0 6px color-mix(in oklch, var(--color-warning, #fbbd23) 12%, transparent),
+                  0 0 14px color-mix(in oklch, var(--color-warning, #fbbd23) 8%, transparent);
     }
   }
 
@@ -285,7 +285,7 @@ export const storyarnNodeStyles = css`
   }
 
   .nav-link:hover {
-    color: oklch(var(--p));
+    color: var(--color-primary, #7c3aed);
   }
 
   .nav-jumps-link {
@@ -297,7 +297,7 @@ export const storyarnNodeStyles = css`
 
   .nav-jumps-link:hover {
     opacity: 1;
-    color: oklch(var(--p));
+    color: var(--color-primary, #7c3aed);
   }
 
   /* Simplified LOD — compact node */

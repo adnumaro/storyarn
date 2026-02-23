@@ -41,7 +41,7 @@ export class StoryarnConnection extends LitElement {
     /* Visible connection line — uses CSS custom properties for debug overrides */
     path.visible {
       fill: none;
-      stroke: var(--conn-stroke, oklch(var(--bc, 0.7 0 0) / 0.4));
+      stroke: var(--conn-stroke, color-mix(in oklch, var(--color-base-content, #a6adbb) 40%, transparent));
       stroke-width: var(--conn-stroke-width, 2px);
       stroke-dasharray: var(--conn-dash, none);
       animation: var(--conn-animation, none);
@@ -51,7 +51,7 @@ export class StoryarnConnection extends LitElement {
 
     /* Hover state */
     path.hit-area:hover + path.visible {
-      stroke: oklch(var(--p, 0.6 0.2 250));
+      stroke: var(--color-primary, #7c3aed);
       stroke-width: 3px;
     }
 
@@ -66,15 +66,15 @@ export class StoryarnConnection extends LitElement {
     }
 
     .label-bg {
-      fill: oklch(var(--b1, 0.2 0 0));
-      stroke: oklch(var(--bc, 0.7 0 0) / 0.3);
+      fill: var(--color-base-100, #1d232a);
+      stroke: color-mix(in oklch, var(--color-base-content, #a6adbb) 30%, transparent);
       stroke-width: 1px;
       rx: 3;
       ry: 3;
     }
 
     .label-text {
-      fill: oklch(var(--bc, 0.8 0 0));
+      fill: var(--color-base-content, #a6adbb);
       font-size: 10px;
       font-family: system-ui, sans-serif;
       dominant-baseline: middle;

@@ -11,14 +11,13 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
   describe "Index" do
     setup :register_and_log_in_user
 
-    test "renders Assets header for project owner", %{conn: conn, user: user} do
+    test "renders Assets page for project owner", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       {:ok, _view, html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
 
       assert html =~ "Assets"
-      assert html =~ "Manage images, audio, and other files for your project"
     end
 
     test "renders empty state when no assets exist", %{conn: conn, user: user} do

@@ -67,9 +67,7 @@ export function useMagneticConnection(connection, props) {
       const nearestNodeIds = nearestRects.map(({ id }) => id);
 
       // Get sockets belonging to nearby nodes
-      const nearestSockets = socketsList.filter((item) =>
-        nearestNodeIds.includes(item.nodeId),
-      );
+      const nearestSockets = socketsList.filter((item) => nearestNodeIds.includes(item.nodeId));
 
       // Calculate positions for those sockets
       const socketsPositions = await Promise.all(

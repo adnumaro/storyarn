@@ -102,6 +102,10 @@ export function initMap(hook) {
 /**
  * Draws a subtle grid when no background image is set.
  * Returns the created layer group for later removal.
+ *
+ * Colors are applied via CSS classes (map-grid-fill, map-grid-line) using
+ * CSS variables, so they automatically adapt to light/dark theme changes
+ * without needing JS color resolution.
  */
 export function addGridPlaceholder(map, width, height) {
   const bounds = imageBounds(width, height);
@@ -127,20 +131,19 @@ export function addGridPlaceholder(map, width, height) {
 
   const group = L.layerGroup();
 
-  // Border rectangle (drawn first so grid lines render on top)
+  // Border rectangle — colors overridden by .map-grid-fill CSS class
   L.rectangle(bounds, {
-    color: "#9ca3af",
+    className: "map-grid-fill",
     weight: 2,
     fill: true,
-    fillColor: "#f9fafb",
     fillOpacity: 1,
     interactive: false,
   }).addTo(group);
 
+  // Grid lines — colors overridden by .map-grid-line CSS class
   L.polyline(gridLines, {
-    color: "#d1d5db",
+    className: "map-grid-line",
     weight: 1,
-    opacity: 0.5,
     interactive: false,
   }).addTo(group);
 

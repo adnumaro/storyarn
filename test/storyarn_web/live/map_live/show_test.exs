@@ -1254,19 +1254,23 @@ defmodule StoryarnWeb.MapLive.ShowTest do
   describe "layer bar" do
     setup :register_and_log_in_user
 
-    test "renders layer bar with layers", %{conn: conn, user: user} do
+    test "renders layer panel in tree panel layers tab", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       map = map_fixture(project)
 
-      {:ok, _view, html} =
+      {:ok, view, html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/maps/#{map.id}"
         )
 
+      # Layers tab exists
       assert html =~ "Layers"
-      assert html =~ "layer-bar-items"
-      # Default layer always exists
+
+      # Switch to layers tab
+      html = render_click(view, "switch_tree_tab", %{"tab" => "layers"})
+
+      assert html =~ "layer-panel-items"
       assert html =~ "toggle_layer_visibility"
     end
 
@@ -1275,12 +1279,13 @@ defmodule StoryarnWeb.MapLive.ShowTest do
       map = map_fixture(project)
       Maps.create_layer(map.id, %{name: "Second Layer"})
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/maps/#{map.id}"
         )
 
+      html = render_click(view, "switch_tree_tab", %{"tab" => "layers"})
       assert html =~ "Second Layer"
     end
 
@@ -1294,6 +1299,7 @@ defmodule StoryarnWeb.MapLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/maps/#{map.id}"
         )
 
+      render_click(view, "switch_tree_tab", %{"tab" => "layers"})
       html = render_click(view, "create_layer", %{})
 
       assert html =~ "New Layer"
@@ -1315,6 +1321,9 @@ defmodule StoryarnWeb.MapLive.ShowTest do
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/maps/#{map.id}"
         )
+
+      # Switch to layers tab first
+      render_click(view, "switch_tree_tab", %{"tab" => "layers"})
 
       html = render_click(view, "set_active_layer", %{"id" => to_string(new_layer.id)})
 
@@ -1620,6 +1629,9 @@ defmodule StoryarnWeb.MapLive.ShowTest do
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/maps/#{map.id}"
         )
+
+      # Switch to layers tab so layer UI is rendered
+      render_click(view, "switch_tree_tab", %{"tab" => "layers"})
 
       html = render_click(view, "toggle_layer_visibility", %{"id" => to_string(layer.id)})
       assert html =~ "eye-off"
@@ -2906,6 +2918,9 @@ defmodule StoryarnWeb.MapLive.ShowTest do
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/maps/#{map.id}"
         )
+
+      # Switch to layers tab so fog icon is visible
+      render_click(view, "switch_tree_tab", %{"tab" => "layers"})
 
       html =
         render_click(view, "update_layer_fog", %{

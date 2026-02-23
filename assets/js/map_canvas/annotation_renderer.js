@@ -6,6 +6,7 @@
 
 import L from "leaflet";
 import { createElement, Lock } from "lucide";
+import { sanitizeColor } from "./color_utils.js";
 import { toLatLng } from "./coordinate_utils.js";
 
 // Font size → CSS values
@@ -117,11 +118,6 @@ function buildAnnotationHtml(annotation) {
     `"></span>` +
     `</div>`
   );
-}
-
-/** Strips non-hex characters from a CSS color value. */
-function sanitizeColor(c) {
-  return c.replace(/[^#a-fA-F0-9]/g, "");
 }
 
 function escapeHtml(str) {

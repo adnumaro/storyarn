@@ -145,10 +145,9 @@ export function createMinimap(hook) {
       L.imageOverlay(hook.mapData.background_url, bounds).addTo(minimapMap);
     } else {
       L.rectangle(bounds, {
-        color: "#9ca3af",
+        className: "map-grid-fill",
         weight: 1,
         fill: true,
-        fillColor: "#f3f4f6",
         fillOpacity: 1,
         interactive: false,
       }).addTo(minimapMap);

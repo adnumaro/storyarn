@@ -74,7 +74,7 @@ export function createLockHandler(hook) {
         align-items: center;
         gap: 4px;
         padding: 2px 6px;
-        background: white;
+        background: var(--color-base-100, white);
         border: 1px solid ${lockInfo.user_color};
         border-radius: 12px;
         font-size: 10px;

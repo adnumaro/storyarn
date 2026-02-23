@@ -948,18 +948,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
       case Flows.delete_flow(flow) do
         {:ok, _} ->
-          if to_string(flow.id) == to_string(socket.assigns.flow.id) do
-            {:noreply,
-             push_navigate(socket,
-               to:
-                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows"
-             )}
-          else
-            {:noreply,
-             socket
-             |> assign(:flows_tree, Flows.list_flows_tree(socket.assigns.project.id))
-             |> put_flash(:info, dgettext("flows", "Flow moved to trash."))}
-          end
+          handle_flow_deleted(socket, flow)
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
@@ -986,6 +975,21 @@ defmodule StoryarnWeb.FlowLive.Show do
           {:noreply, put_flash(socket, :error, dgettext("flows", "Could not move flow."))}
       end
     end)
+  end
+
+  defp handle_flow_deleted(socket, flow) do
+    if to_string(flow.id) == to_string(socket.assigns.flow.id) do
+      {:noreply,
+       push_navigate(socket,
+         to:
+           ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows"
+       )}
+    else
+      {:noreply,
+       socket
+       |> assign(:flows_tree, Flows.list_flows_tree(socket.assigns.project.id))
+       |> put_flash(:info, dgettext("flows", "Flow moved to trash."))}
+    end
   end
 
   # ===========================================================================

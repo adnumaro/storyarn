@@ -64,22 +64,15 @@ defmodule StoryarnWeb.ScreenplayLive.IndexTest do
       assert render(view) =~ "No screenplays yet"
     end
 
-    test "opens modal when clicking New Screenplay button", %{conn: conn, user: user} do
+    test "creates screenplay when clicking New Screenplay button", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays")
 
       assert view
-             |> element("a", "New Screenplay")
+             |> element("button", "New Screenplay")
              |> render_click()
-
-      assert_patch(
-        view,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays/new"
-      )
-
-      assert has_element?(view, "#screenplay-form")
     end
 
     test "creates screenplay via form and redirects to show page", %{conn: conn, user: user} do

@@ -227,19 +227,19 @@ export async function finalizeSetup(area, editor, hasNodes) {
   }
 }
 
-// Inject global rete styles
+// Inject global rete styles (uses daisyUI v5 CSS variables)
 const reteStyles = document.createElement("style");
 reteStyles.textContent = `
   #flow-canvas {
-    background-color: oklch(var(--b2, 0.2 0 0));
+    background-color: var(--color-base-200, #1d232a);
     background-image:
-      radial-gradient(circle at center, oklch(var(--bc, 0.8 0 0) / 0.08) 1.5px, transparent 1.5px);
+      radial-gradient(circle at center, color-mix(in oklch, var(--color-base-content, #a6adbb) 8%, transparent) 1.5px, transparent 1.5px);
     background-size: 24px 24px;
   }
 
   .flow-context-menu {
-    background-color: oklch(var(--b1, 0.25 0 0));
-    border: 1px solid oklch(var(--b3, 0.18 0 0));
+    background-color: var(--color-base-100, #1d232a);
+    border: 1px solid var(--color-base-300, #2a323c);
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     padding: 4px 0;
@@ -257,7 +257,7 @@ reteStyles.textContent = `
     font-size: 13px;
     line-height: 1.4;
     text-align: left;
-    color: oklch(var(--bc, 0.9 0 0));
+    color: var(--color-base-content, #a6adbb);
     background: none;
     border: none;
     cursor: pointer;
@@ -272,15 +272,15 @@ reteStyles.textContent = `
   }
 
   .flow-cm-item:hover {
-    background-color: oklch(var(--b2, 0.22 0 0));
+    background-color: var(--color-base-200, #2a323c);
   }
 
   .flow-cm-item.danger {
-    color: oklch(var(--er, 0.65 0.2 25));
+    color: var(--color-error, #f87171);
   }
 
   .flow-cm-item.danger:hover {
-    background-color: oklch(var(--er, 0.65 0.2 25) / 0.1);
+    background-color: color-mix(in oklch, var(--color-error, #f87171) 10%, transparent);
   }
 
   .flow-cm-item.has-sub::after {
@@ -299,8 +299,8 @@ reteStyles.textContent = `
     position: absolute;
     left: 100%;
     top: -4px;
-    background-color: oklch(var(--b1, 0.25 0 0));
-    border: 1px solid oklch(var(--b3, 0.18 0 0));
+    background-color: var(--color-base-100, #1d232a);
+    border: 1px solid var(--color-base-300, #2a323c);
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     padding: 4px 0;

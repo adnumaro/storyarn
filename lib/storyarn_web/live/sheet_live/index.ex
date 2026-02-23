@@ -8,8 +8,8 @@ defmodule StoryarnWeb.SheetLive.Index do
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
   alias Storyarn.Projects
-  alias Storyarn.Sheets
   alias Storyarn.Shared.MapUtils
+  alias Storyarn.Sheets
   alias StoryarnWeb.Components.Sidebar.SheetTree
 
   @impl true

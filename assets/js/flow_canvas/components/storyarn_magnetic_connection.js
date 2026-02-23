@@ -31,7 +31,7 @@ export class StoryarnMagneticConnection extends LitElement {
     path {
       fill: none;
       stroke-width: 2px;
-      stroke: oklch(var(--bc, 0.7 0 0) / 0.25);
+      stroke: color-mix(in oklch, var(--color-base-content, #a6adbb) 25%, transparent);
       pointer-events: none;
       stroke-dasharray: 6 4;
     }

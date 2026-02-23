@@ -260,7 +260,7 @@ function findConnectionViewElement(hook, sourceDbId, targetDbId) {
  * @param {HTMLElement} viewEl - The connection view wrapper div
  */
 function setConnActiveProps(viewEl) {
-  viewEl.style.setProperty("--conn-stroke", "oklch(var(--p, 0.6 0.2 250))");
+  viewEl.style.setProperty("--conn-stroke", "var(--color-primary, #7c3aed)");
   viewEl.style.setProperty("--conn-stroke-width", "3px");
   viewEl.style.setProperty("--conn-dash", "8 4");
   viewEl.style.setProperty("--conn-animation", "debug-flow 0.6s linear infinite");
@@ -271,7 +271,10 @@ function setConnActiveProps(viewEl) {
  * @param {HTMLElement} viewEl - The connection view wrapper div
  */
 function setConnVisitedProps(viewEl) {
-  viewEl.style.setProperty("--conn-stroke", "oklch(var(--p, 0.6 0.2 250) / 0.3)");
+  viewEl.style.setProperty(
+    "--conn-stroke",
+    "color-mix(in oklch, var(--color-primary, #7c3aed) 30%, transparent)",
+  );
   viewEl.style.setProperty("--conn-stroke-width", "2px");
   viewEl.style.removeProperty("--conn-dash");
   viewEl.style.removeProperty("--conn-animation");

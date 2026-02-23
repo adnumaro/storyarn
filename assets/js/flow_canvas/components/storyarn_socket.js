@@ -19,16 +19,16 @@ export class StoryarnSocket extends LitElement {
     .socket {
       width: 10px;
       height: 10px;
-      background: oklch(var(--bc, 0.7 0 0) / 0.25);
-      border: 2px solid oklch(var(--bc, 0.7 0 0) / 0.5);
+      background: color-mix(in oklch, var(--color-base-content, #a6adbb) 25%, transparent);
+      border: 2px solid color-mix(in oklch, var(--color-base-content, #a6adbb) 50%, transparent);
       border-radius: 50%;
       cursor: crosshair;
       transition: all 0.15s ease;
     }
 
     .socket:hover {
-      background: oklch(var(--p, 0.6 0.2 250));
-      border-color: oklch(var(--p, 0.6 0.2 250));
+      background: var(--color-primary, #7c3aed);
+      border-color: var(--color-primary, #7c3aed);
       transform: scale(1.3);
     }
   `;
