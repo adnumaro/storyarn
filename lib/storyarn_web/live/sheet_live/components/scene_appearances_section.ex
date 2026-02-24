@@ -103,7 +103,7 @@ defmodule StoryarnWeb.SheetLive.Components.SceneAppearancesSection do
     <div class="bg-base-200/50 rounded-lg p-8 text-center">
       <.icon name="map" class="size-12 mx-auto text-base-content/30 mb-4" />
       <p class="text-base-content/70 mb-2">
-        {dgettext("sheets", "This sheet doesn't appear on any maps yet.")}
+        {dgettext("sheets", "This sheet doesn't appear on any scenes yet.")}
       </p>
       <p class="text-sm text-base-content/50">
         {dgettext("sheets", "Create a pin or zone referencing this sheet to see it here.")}

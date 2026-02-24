@@ -5,14 +5,14 @@ defmodule Storyarn.Flows.Flow do
   A flow is a visual graph representing narrative structure, dialogue trees,
   or game logic. Each flow belongs to a project and contains nodes and connections.
 
-  Flows are organized in a tree structure (like Pages) with:
+  Flows are organized in a tree structure (like Sheets) with:
   - `parent_id` - FK to parent flow (nil for root level)
   - `position` - Order among siblings
   - `description` - Rich text for annotations
   - `deleted_at` - Soft delete support
 
   Any flow can have children AND content (nodes). The UI adapts based on what
-  the flow contains. This matches the Pages model for consistency.
+  the flow contains. This matches the Sheets model for consistency.
   """
   use Ecto.Schema
   import Ecto.Changeset
@@ -110,7 +110,7 @@ defmodule Storyarn.Flows.Flow do
   end
 
   @doc """
-  Changeset for updating the scene map association.
+  Changeset for updating the scene association.
   """
   def scene_changeset(flow, attrs) do
     flow

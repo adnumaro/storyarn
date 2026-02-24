@@ -44,41 +44,41 @@ All schemas, migrations, CRUD operations, tree queries, and 54 unit tests.
 - `priv/repo/migrations/20260217140000_create_map_tables.exs`
 - `lib/storyarn/maps.ex` (facade)
 - `lib/storyarn/maps/map.ex`, `map_layer.ex`, `map_zone.ex`, `map_pin.ex`, `map_connection.ex`
-- `lib/storyarn/maps/map_crud.ex`, `layer_crud.ex`, `zone_crud.ex`, `pin_crud.ex`, `connection_crud.ex`, `tree_operations.ex`
-- `test/storyarn/maps_test.exs`, `test/support/fixtures/maps_fixtures.ex`
+- `lib/storyarn/maps/scene_crud.ex`, `layer_crud.ex`, `zone_crud.ex`, `pin_crud.ex`, `connection_crud.ex`, `tree_operations.ex`
+- `test/storyarn/scenes_test.exs`, `test/support/fixtures/scenes_fixtures.ex`
 
 ### Phase 2: UI Navigation & CRUD (✅ Complete)
-Router, sidebar integration, MapLive.Index, MapLive.Form, MapLive.Show (list-based, no canvas).
+Router, sidebar integration, SceneLive.Index, SceneLive.Form, SceneLive.Show (list-based, no canvas).
 
 **Files created/modified:**
 - `lib/storyarn_web/router.ex` — 3 map routes added
 - `lib/storyarn_web/components/layouts.ex` — `maps_tree`, `selected_scene_id` attrs
 - `lib/storyarn_web/components/project_sidebar.ex` — Maps tool link + `:maps` branch
-- `lib/storyarn_web/components/sidebar/map_tree.ex` — sidebar tree component
-- `lib/storyarn_web/live/map_live/index.ex` — map list page
-- `lib/storyarn_web/live/map_live/form.ex` — create map form (LiveComponent)
-- `lib/storyarn_web/live/map_live/show.ex` — map detail page (layers, zones, pins, connections as lists)
+- `lib/storyarn_web/components/sidebar/scene_tree.ex` — sidebar tree component
+- `lib/storyarn_web/live/scene_live/index.ex` — map list page
+- `lib/storyarn_web/live/scene_live/form.ex` — create map form (LiveComponent)
+- `lib/storyarn_web/live/scene_live/show.ex` — map detail page (layers, zones, pins, connections as lists)
 
 ### Phase 3: Leaflet.js Canvas (✅ Complete)
 Interactive map canvas with Leaflet.js for drawing zones, placing pins, connecting pins, and background images. 65 LiveView tests, 1777 total tests passing.
 
 **Files created:**
-- `assets/js/hooks/map_canvas.js` — Leaflet.js LiveView hook (thin orchestrator)
-- `assets/js/map_canvas/setup.js` — `L.CRS.Simple` + `L.imageOverlay` init
-- `assets/js/map_canvas/coordinate_utils.js` — percentage ↔ LatLng conversion
-- `assets/js/map_canvas/pin_renderer.js` — `L.divIcon` markers with Lucide icons + tooltips
-- `assets/js/map_canvas/zone_renderer.js` — `L.polygon` with fill/border/dash styling
-- `assets/js/map_canvas/connection_renderer.js` — `L.polyline` between pins
-- `assets/js/map_canvas/vertex_editor.js` — draggable vertex handles, midpoint insert, Ctrl+click remove
-- `assets/js/map_canvas/handlers/pin_handler.js` — pin creation, drag, selection
-- `assets/js/map_canvas/handlers/zone_handler.js` — zone drawing state machine, hover effects
-- `assets/js/map_canvas/handlers/connection_handler.js` — connection drawing state machine
-- `assets/js/map_canvas/handlers/layer_handler.js` — layer visibility toggling
-- `lib/storyarn_web/live/map_live/components/properties_panel.ex` — pin/zone/connection property panels
+- `assets/js/hooks/scene_canvas.js` — Leaflet.js LiveView hook (thin orchestrator)
+- `assets/js/scene_canvas/setup.js` — `L.CRS.Simple` + `L.imageOverlay` init
+- `assets/js/scene_canvas/coordinate_utils.js` — percentage ↔ LatLng conversion
+- `assets/js/scene_canvas/pin_renderer.js` — `L.divIcon` markers with Lucide icons + tooltips
+- `assets/js/scene_canvas/zone_renderer.js` — `L.polygon` with fill/border/dash styling
+- `assets/js/scene_canvas/connection_renderer.js` — `L.polyline` between pins
+- `assets/js/scene_canvas/vertex_editor.js` — draggable vertex handles, midpoint insert, Ctrl+click remove
+- `assets/js/scene_canvas/handlers/pin_handler.js` — pin creation, drag, selection
+- `assets/js/scene_canvas/handlers/zone_handler.js` — zone drawing state machine, hover effects
+- `assets/js/scene_canvas/handlers/connection_handler.js` — connection drawing state machine
+- `assets/js/scene_canvas/handlers/layer_handler.js` — layer visibility toggling
+- `lib/storyarn_web/live/scene_live/components/properties_panel.ex` — pin/zone/connection property panels
 
 **Files modified:**
-- `lib/storyarn_web/live/map_live/show.ex` — full-screen canvas layout, toolbar (Pan/Pin/Zone/Connect modes), property panel sidebar, layer bar, all CRUD event handlers
-- `test/storyarn_web/live/map_live/show_test.exs` — 65 tests covering all canvas features
+- `lib/storyarn_web/live/scene_live/show.ex` — full-screen canvas layout, toolbar (Pan/Pin/Zone/Connect modes), property panel sidebar, layer bar, all CRUD event handlers
+- `test/storyarn_web/live/scene_live/show_test.exs` — 65 tests covering all canvas features
 
 **Implemented features:**
 - Toolbar modes: Pan, Pin, Zone, Connect
@@ -98,8 +98,8 @@ Interactive map canvas. Full edit/view modes, toolbar modes, property panels, la
 Edit/View modes, dock, shape presets, context menus, pins from sheets, annotations, layer management. 9 tasks.
 
 **Files created:**
-- `assets/js/map_canvas/handlers/annotation_handler.js`
-- `lib/storyarn_web/live/map_live/components/properties_panel.ex`
+- `assets/js/scene_canvas/handlers/annotation_handler.js`
+- `lib/storyarn_web/live/scene_live/components/properties_panel.ex`
 - Additional migrations: `20260217150000_add_sheet_id_to_map_pins.exs`, `20260217160000_create_map_annotations.exs`, `20260217180000_add_icon_asset_to_pins.exs`
 
 ### Phase B: Polish & Connections (✅ Complete)
@@ -107,14 +107,14 @@ Connection feedback, curved paths with waypoints, search/filter, legend, image p
 
 **Files created/modified:**
 - Migration: `20260217170000_add_waypoints_to_connections.exs`
-- `assets/js/map_canvas/handlers/connection_handler.js` — waypoint editing
+- `assets/js/scene_canvas/handlers/connection_handler.js` — waypoint editing
 
 ### Phase C: Advanced Features (✅ Complete)
 Fog of War, scale/ruler, map export (PNG + SVG). 4 tasks.
 
 **Files created/modified:**
 - Migration: `20260217190000_add_fog_to_layers.exs`, `20260217200000_add_scale_to_maps.exs`
-- `assets/js/map_canvas/exporter.js` — PNG + SVG export
+- `assets/js/scene_canvas/exporter.js` — PNG + SVG export
 - `lib/storyarn/maps/map_layer.ex` — fog fields added
 - `lib/storyarn/maps/map.ex` — scale fields added
 
@@ -124,7 +124,7 @@ Fog of War, scale/ruler, map export (PNG + SVG). 4 tasks.
 **Summary of changes:**
 - Removed dead code: `trigger_sheet/variable/value` fields from `map_layers` (+ migration `20260218010000_remove_trigger_fields_from_map_layers.exs`), dead `reorder_changeset/2`
 - New shared modules: `lib/storyarn/maps/position_utils.ex`, `lib/storyarn/maps/changeset_helpers.ex`
-- New JS utilities: `assets/js/map_canvas/color_utils.js`, `assets/js/map_canvas/context_menu_builder.js`
+- New JS utilities: `assets/js/scene_canvas/color_utils.js`, `assets/js/scene_canvas/context_menu_builder.js`
 - Bug fix: `restore_children` now only restores children deleted in the same operation
 - Validation: hex color validation on all color fields, waypoint count limit (max 50)
 - Security: `escapeXml` strips XML 1.0 control chars in exporter
@@ -268,23 +268,23 @@ lib/storyarn/maps/                                    # ✅ ALL COMPLETE
 ├── map_zone.ex                # Zone schema + changesets (polygon vertices)
 ├── map_pin.ex                 # Pin schema + changesets
 ├── map_connection.ex          # Connection schema + changesets
-├── map_crud.ex                # Map CRUD + hierarchy + tree queries
+├── scene_crud.ex                # Map CRUD + hierarchy + tree queries
 ├── layer_crud.ex              # Layer CRUD + reorder + visibility toggle
 ├── zone_crud.ex               # Zone CRUD + vertex updates
 ├── pin_crud.ex                # Pin CRUD + move + target linking
 ├── connection_crud.ex         # Connection CRUD
 └── tree_operations.ex         # Reorder + move-to-position
 
-lib/storyarn_web/live/map_live/                       # ✅ Phase 2 COMPLETE
+lib/storyarn_web/live/scene_live/                       # ✅ Phase 2 COMPLETE
 ├── index.ex                   # Map list with create/delete
 ├── show.ex                    # Map detail (layers, zones, pins, connections lists)
 └── form.ex                    # LiveComponent: create map form
 
 lib/storyarn_web/components/sidebar/                  # ✅ COMPLETE
-└── map_tree.ex                # Maps section in project sidebar (search, sortable tree)
+└── scene_tree.ex                # Maps section in project sidebar (search, sortable tree)
 
 assets/js/hooks/                                      # ⬜ Phase 3 PENDING
-└── map_canvas.js              # Leaflet.js LiveView hook (pins, zones, connections)
+└── scene_canvas.js              # Leaflet.js LiveView hook (pins, zones, connections)
 ```
 
 ---
@@ -516,8 +516,8 @@ Main interface for creating and editing maps. **Requires Leaflet.js integration.
 ```
 
 #### Implementation Tasks
-- [ ] LiveView: `MapLive.Edit`
-- [ ] Leaflet.js hook (`map_canvas.js`) with simple CRS for image overlay
+- [ ] LiveView: `SceneLive.Edit`
+- [ ] Leaflet.js hook (`scene_canvas.js`) with simple CRS for image overlay
 - [ ] Background image upload (reuse asset upload system)
 - [ ] **Toolbar modes:**
   - Pan Mode (default — drag to pan)
@@ -613,7 +613,7 @@ Read-only view for navigating the map. **Requires Leaflet.js integration.**
 - Not interactive (visual only)
 
 #### Implementation Tasks
-- [ ] LiveView: `MapLive.Show`
+- [ ] LiveView: `SceneLive.Show`
 - [ ] Read-only Leaflet.js canvas with pan/zoom
 - [ ] Zone rendering as `L.polygon` with hover highlight
 - [ ] Zone click → drill-down navigation or popup
@@ -659,13 +659,13 @@ Integration with project sidebar for navigation. Maps show their children (zones
 - Pins: `map-pin` (Lucide) or the pin's configured icon
 
 **Click behavior:**
-- Click a map → opens `MapLive.Show` (viewer)
-- Click a zone → opens `MapLive.Show` and highlights/centers on that zone
-- Click a pin → opens `MapLive.Show` and highlights/centers on that pin
+- Click a map → opens `SceneLive.Show` (viewer)
+- Click a zone → opens `SceneLive.Show` and highlights/centers on that zone
+- Click a pin → opens `SceneLive.Show` and highlights/centers on that pin
 
 #### Implementation Tasks
 - [x] Add "Maps" tool link to project sidebar (Lucide icon: `map`) — `project_sidebar.ex`
-- [x] Create `MapTree` component (same pattern as `FlowTree`) — `lib/storyarn_web/components/sidebar/map_tree.ex`
+- [x] Create `SceneTree` component (same pattern as `FlowTree`) — `lib/storyarn_web/components/sidebar/scene_tree.ex`
 - [x] Tree view: maps as hierarchical tree with children
 - [ ] Tree view: zones + pins as children of maps (requires canvas phase — currently zones/pins are only created via canvas)
 - [ ] Different icons for maps vs zones vs pins in tree (maps use `map`; zone/pin icons pending canvas integration)
@@ -699,7 +699,7 @@ When a pin or zone's `target_type` is `"sheet"` and `target_id` points to a shee
 #### Implementation Tasks
 - [ ] Query: `Maps.get_elements_for_target("sheet", sheet_id)` — returns pins + zones with preloaded map
 - [ ] Add "Appears on Maps" section to sheet references UI
-- [ ] "View on Map" link navigates to `MapLive.Show` with the element highlighted/centered
+- [ ] "View on Map" link navigates to `SceneLive.Show` with the element highlighted/centered
 
 ---
 
@@ -823,8 +823,8 @@ create index(:map_connections, [:scene_id])
 | 4     | Map pins table + CRUD                       | ✅       | Can add/move/delete pins                      |
 | 5     | Map connections CRUD                        | ✅       | Can create connections between pins           |
 | 6     | Maps sidebar section + tree                 | ✅       | Maps tool link, tree with search/sort/menu    |
-| 7     | MapLive.Index + Form                        | ✅       | List maps, create via modal, delete           |
-| 8     | MapLive.Show (list-based, no canvas)        | ✅       | Detail page: layers, zones, pins, connections |
+| 7     | SceneLive.Index + Form                        | ✅       | List maps, create via modal, delete           |
+| 8     | SceneLive.Show (list-based, no canvas)        | ✅       | Detail page: layers, zones, pins, connections |
 | 9     | Basic map editor (Leaflet canvas + bg)      | ✅       | Can upload map image, pan/zoom                |
 | 10    | Zone drawing UI                             | ✅       | Can draw polygonal zones on map               |
 | 11    | Zone vertex editing                         | ✅       | Can reshape zones (drag/add/remove vertices)  |
@@ -878,7 +878,7 @@ map.on('click', (e) => {
 
 **Hook Pattern:**
 ```javascript
-// assets/js/hooks/map_canvas.js
+// assets/js/hooks/scene_canvas.js
 export default {
   mounted() {
     this.map = L.map(this.el, { crs: L.CRS.Simple, ... })
@@ -925,7 +925,7 @@ const toPercent = (latLng) => ({
 ## Testing Strategy
 
 ### Unit Tests
-- [x] Map CRUD operations (create, update, soft delete, hierarchy) — 54 tests in `test/storyarn/maps_test.exs`
+- [x] Map CRUD operations (create, update, soft delete, hierarchy) — 54 tests in `test/storyarn/scenes_test.exs`
 - [x] Zone vertex validation (minimum 3 points, all within 0-100 range)
 - [x] Pin position validation (0-100 range)
 - [x] Layer default enforcement (auto-create on map creation)
@@ -980,7 +980,7 @@ const toPercent = (latLng) => ({
 - [x] Maps appear in the project sidebar with tree navigation
 - [x] Can create/edit/delete maps via UI (Index, Show, sidebar tree)
 - [x] Map hierarchy works (parent/child with drag reorder in sidebar)
-- [x] MapLive.Show displays layers, zones, pins, connections as lists
+- [x] SceneLive.Show displays layers, zones, pins, connections as lists
 - [x] Layer CRUD works from Show page (create, toggle visibility, delete with last-layer protection)
 - [x] All backend CRUD for maps, layers, zones, pins, connections (54 tests)
 

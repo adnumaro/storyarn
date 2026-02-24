@@ -100,14 +100,14 @@ Event zone:        📤 (send icon) + event name text
 
 | File                                                            | Change                                         |
 |-----------------------------------------------------------------|------------------------------------------------|
-| `lib/storyarn_web/live/map_live/components/floating_toolbar.ex` | Action type selector, type-specific panels     |
-| `lib/storyarn_web/live/map_live/components/toolbar_widgets.ex`  | New widget components                          |
-| `lib/storyarn_web/live/map_live/handlers/element_handlers.ex`   | Handle action type changes, assignment updates |
-| `lib/storyarn_web/live/map_live/show.ex`                        | New events, project_variables assign           |
-| `assets/js/map_canvas/handlers/zone_handler.js`                 | Zone badge rendering                           |
-| `assets/js/map_canvas/zone_renderer.js`                         | Action type visual indicators                  |
-| `assets/js/hooks/map_canvas.js`                                 | Pass action data to renderer                   |
-| `lib/storyarn_web/live/map_live/helpers/serializer.ex`          | Already done in Phase 2                        |
+| `lib/storyarn_web/live/scene_live/components/floating_toolbar.ex` | Action type selector, type-specific panels     |
+| `lib/storyarn_web/live/scene_live/components/toolbar_widgets.ex`  | New widget components                          |
+| `lib/storyarn_web/live/scene_live/handlers/element_handlers.ex`   | Handle action type changes, assignment updates |
+| `lib/storyarn_web/live/scene_live/show.ex`                        | New events, project_variables assign           |
+| `assets/js/scene_canvas/handlers/zone_handler.js`                 | Zone badge rendering                           |
+| `assets/js/scene_canvas/zone_renderer.js`                         | Action type visual indicators                  |
+| `assets/js/hooks/scene_canvas.js`                                 | Pass action data to renderer                   |
+| `lib/storyarn_web/live/scene_live/helpers/serializer.ex`          | Already done in Phase 2                        |
 
 ---
 
@@ -115,7 +115,7 @@ Event zone:        📤 (send icon) + event name text
 
 ### 1a — Floating toolbar: action type dropdown
 
-**`lib/storyarn_web/live/map_live/components/floating_toolbar.ex`** — When a zone is selected, show an action type selector before the name field.
+**`lib/storyarn_web/live/scene_live/components/floating_toolbar.ex`** — When a zone is selected, show an action type selector before the name field.
 
 The selector is a dropdown button showing the current action type with its icon:
 
@@ -342,7 +342,7 @@ defp zone_event_editor(assigns) do
         phx-target={@target}
       />
       <p class="text-xs opacity-50 mt-0.5">
-        {dgettext("maps", "This becomes an output pin on the interaction node")}
+        {dgettext("scenes", "This event zone triggers a flow transition")}
       </p>
     </div>
     <div>
@@ -368,7 +368,7 @@ end
 
 ### 5a — Action type change
 
-**`lib/storyarn_web/live/map_live/handlers/element_handlers.ex`** — Add handler:
+**`lib/storyarn_web/live/scene_live/handlers/element_handlers.ex`** — Add handler:
 
 ```elixir
 def handle_set_zone_action_type(socket, %{"zone-id" => zone_id, "action-type" => action_type}) do
@@ -457,7 +457,7 @@ end
 
 ## Task 6 — Load Project Variables
 
-**`lib/storyarn_web/live/map_live/show.ex`** — On mount, load project variables for the assignment builder and variable picker:
+**`lib/storyarn_web/live/scene_live/show.ex`** — On mount, load project variables for the assignment builder and variable picker:
 
 ```elixir
 # In mount or reload:
@@ -473,7 +473,7 @@ Pass down to floating toolbar component.
 
 ### 7a — Zone renderer badges
 
-**`assets/js/map_canvas/zone_renderer.js`** — When rendering a zone, add a small icon badge in the center based on `action_type`:
+**`assets/js/scene_canvas/zone_renderer.js`** — When rendering a zone, add a small icon badge in the center based on `action_type`:
 
 ```javascript
 function renderZoneBadge(zone, polygon) {

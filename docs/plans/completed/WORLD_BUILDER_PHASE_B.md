@@ -25,14 +25,14 @@ Redesign connection drawing to be intuitive:
 
 ### Files to modify
 
-**`assets/js/map_canvas/handlers/connection_handler.js`**
+**`assets/js/scene_canvas/handlers/connection_handler.js`**
 - Add `mousemove` handler: when first pin selected, draw a temporary `L.polyline` from source pin to cursor position (dashed, semi-transparent).
 - Add pin hover detection: when connector tool active, add visual indicator to pins on `mouseover` (CSS class `map-pin-connectable`).
 - On first pin click: add `map-pin-source` class to source pin marker.
 - On second pin click: remove all temporary styles, push `create_connection`.
 - On Escape/canvas click: cancel and cleanup.
 
-**`assets/js/map_canvas/pin_renderer.js`**
+**`assets/js/scene_canvas/pin_renderer.js`**
 - No changes — CSS handles the visual states.
 
 **`assets/css/app.css`**
@@ -42,13 +42,13 @@ Redesign connection drawing to be intuitive:
 
 ### Tests
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - Existing connection creation tests still pass (backend unchanged).
 - Connection creation rejected for viewer (existing test).
 
 ### Verification
 ```bash
-mix test test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -80,39 +80,39 @@ end
 **`lib/storyarn/maps/connection_crud.ex`**
 - `update_connection_waypoints/2` — optimized changeset for drag.
 
-**`assets/js/map_canvas/connection_renderer.js`**
+**`assets/js/scene_canvas/connection_renderer.js`**
 - `createConnectionLine`: if `conn.waypoints` is non-empty, build a polyline through [from_pin, ...waypoints, to_pin].
 - Use smooth interpolation (catmull-rom or simple bezier approximation) for nicer curves. Alternatively, use `L.curve` plugin or just polyline through waypoints.
 
-**`assets/js/map_canvas/handlers/connection_handler.js`**
+**`assets/js/scene_canvas/handlers/connection_handler.js`**
 - When a connection is selected, show draggable waypoint handles (similar to vertex editor for zones).
 - Double-click on a connection line → add a waypoint at that position.
 - Drag waypoint → update in real-time → push `update_connection_waypoints` on dragend.
 - Right-click waypoint → "Remove Waypoint".
 
-**`lib/storyarn_web/live/map_live/show.ex`**
+**`lib/storyarn_web/live/scene_live/show.ex`**
 - Add `handle_event("update_connection_waypoints", ...)`.
 - Include `waypoints` in `serialize_connection/1`.
 
-**`lib/storyarn_web/live/map_live/components/properties_panel.ex`**
+**`lib/storyarn_web/live/scene_live/components/properties_panel.ex`**
 - Connection properties: show waypoint count (read-only info).
 - "Clear Waypoints" button to reset to straight line.
 
 ### Tests
 
-**`test/storyarn/maps_test.exs`**
+**`test/storyarn/scenes_test.exs`**
 - `create_connection` with waypoints stores them.
 - `update_connection_waypoints` updates waypoints.
 - Waypoint validation (coordinates 0-100).
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - `update_connection_waypoints` event updates waypoints.
 - Connection serialization includes waypoints.
 - Viewer cannot update waypoints.
 
 ### Verification
 ```bash
-mix test test/storyarn/maps_test.exs test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn/scenes_test.exs test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -125,34 +125,34 @@ Add a search bar and type filter above the canvas to find elements on the map. S
 
 ### Files to modify
 
-**`lib/storyarn_web/live/map_live/show.ex` (template)**
+**`lib/storyarn_web/live/scene_live/show.ex` (template)**
 - Add a search input in the header area (or as a floating bar):
   - Text input with `phx-change="search_elements"` (debounced).
   - Type filter buttons/dropdown: All | Pins | Zones | Annotations | Connections.
 - Add `@search_query` and `@search_filter` assigns.
 
-**`lib/storyarn_web/live/map_live/show.ex` (handlers)**
+**`lib/storyarn_web/live/scene_live/show.ex` (handlers)**
 - `handle_event("search_elements", %{"query" => q}, socket)`:
   - Filter `@pins`, `@zones`, `@annotations` by name/label/text containing query.
   - Push `highlight_elements` event to JS with list of matching IDs + types.
 - `handle_event("clear_search", ...)` → clears search and highlights.
 - `handle_event("focus_element", %{"type" => type, "id" => id})` → pushes `focus_element` to JS.
 
-**`assets/js/hooks/map_canvas.js`**
+**`assets/js/hooks/scene_canvas.js`**
 - Handle `highlight_elements` → dim non-matching elements (reduce opacity), highlight matches.
 - Handle `focus_element` → pan/zoom to center on element, flash highlight.
 
-**`assets/js/map_canvas/handlers/pin_handler.js`**
+**`assets/js/scene_canvas/handlers/pin_handler.js`**
 - Add `setHighlighted(pinId, highlighted)` method to toggle visual state.
 - `focusPin(pinId)` → fly to pin location.
 
-**`assets/js/map_canvas/handlers/zone_handler.js`**
+**`assets/js/scene_canvas/handlers/zone_handler.js`**
 - Add `setHighlighted(zoneId, highlighted)` method.
 - `focusZone(zoneId)` → fit bounds to zone vertices.
 
 ### Tests
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - `search_elements` returns matching pins by label
 - `search_elements` returns matching zones by name
 - `search_elements` with empty query clears highlights
@@ -160,7 +160,7 @@ Add a search bar and type filter above the canvas to find elements on the map. S
 
 ### Verification
 ```bash
-mix test test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -173,7 +173,7 @@ Add a collapsible legend panel that shows all pin types, zone colors, and connec
 
 ### Files to create
 
-**`lib/storyarn_web/live/map_live/components/legend.ex`**
+**`lib/storyarn_web/live/scene_live/components/legend.ex`**
 - Function component `legend/1` receiving `pins`, `zones`, `connections`.
 - Groups pins by `pin_type` + `color` → shows icon + color swatch + count.
 - Groups zones by `fill_color` → shows color swatch + count.
@@ -182,14 +182,14 @@ Add a collapsible legend panel that shows all pin types, zone colors, and connec
 
 ### Files to modify
 
-**`lib/storyarn_web/live/map_live/show.ex` (template)**
+**`lib/storyarn_web/live/scene_live/show.ex` (template)**
 - Add legend component in the bottom-right corner (floating, collapsible).
 - Toggle with a small icon button.
 - Pass `@pins`, `@zones`, `@connections` to legend.
 
 ### Tests
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - Legend renders when map has pins
 - Legend shows correct pin type groupings
 - Legend shows correct zone color groupings
@@ -197,7 +197,7 @@ Add a collapsible legend panel that shows all pin types, zone colors, and connec
 
 ### Verification
 ```bash
-mix test test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -223,32 +223,32 @@ end
 - Add `belongs_to :icon_asset, Storyarn.Assets.Asset`.
 - Add `:icon_asset_id` to changeset cast.
 
-**`lib/storyarn_web/live/map_live/components/properties_panel.ex`**
+**`lib/storyarn_web/live/scene_live/components/properties_panel.ex`**
 - In pin properties: add "Custom Icon" section.
 - If `icon_asset_id` is set, show the image with a "Remove" button.
 - "Upload Icon" button → uses `AssetUpload` component (accept images only, small max size ~512KB).
 
-**`lib/storyarn_web/live/map_live/show.ex`**
+**`lib/storyarn_web/live/scene_live/show.ex`**
 - Add `handle_info({:pin_icon_uploaded, asset}, socket)` → updates selected pin's `icon_asset_id`.
 - Include `icon_asset_url` in `serialize_pin/1` (from icon_asset.url).
 
-**`assets/js/map_canvas/pin_renderer.js`**
+**`assets/js/scene_canvas/pin_renderer.js`**
 - Rendering priority: `icon_asset_url` > `avatar_url` (from sheet) > Lucide icon.
 - If `icon_asset_url`: render as `<img>` inside divIcon, sized to pin's `size` setting.
 
 ### Tests
 
-**`test/storyarn/maps_test.exs`**
+**`test/storyarn/scenes_test.exs`**
 - `create_pin` with `icon_asset_id` stores reference.
 - `update_pin` to set/clear `icon_asset_id`.
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - Pin serialization includes `icon_asset_url` when set.
 - Pin serialization handles nil `icon_asset_id`.
 
 ### Verification
 ```bash
-mix test test/storyarn/maps_test.exs test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn/scenes_test.exs test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 

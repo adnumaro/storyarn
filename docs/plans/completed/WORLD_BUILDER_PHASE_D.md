@@ -46,7 +46,7 @@ right-click for child map creation.
 
 ### Implementation
 
-#### `assets/js/map_canvas/zone_renderer.js`
+#### `assets/js/scene_canvas/zone_renderer.js`
 
 Add two exported functions and one private helper:
 
@@ -108,7 +108,7 @@ function computeCentroid(vertices, w, h) {
 }
 ```
 
-#### `assets/js/map_canvas/handlers/zone_handler.js`
+#### `assets/js/scene_canvas/handlers/zone_handler.js`
 
 Add a second `Map` alongside `polygons` for label markers:
 
@@ -223,12 +223,12 @@ ready to continue working (adding pins, zones, sub-maps).
 - `{:image, "~> 0.62"}` — already a dependency (libvips wrapper, supports crop + resize)
 - `zone_handler.js` lines 176–214 — zone context menu built inline (NOT in `context_menu_builder.js`)
 - `tree_handlers.ex` `handle_create_child_map/2` — creates child from sidebar (keep as-is)
-- `map_header.ex` — needs breadcrumb added (see below)
+- `scene_header.ex` — needs breadcrumb added (see below)
 - `map.scale_value`, `map.scale_unit`, `map.width`, `map.height` — all stored on the map
 
 ### Part 2a: Right-click context menu item
 
-#### `assets/js/map_canvas/handlers/zone_handler.js` (lines 186–213)
+#### `assets/js/scene_canvas/handlers/zone_handler.js` (lines 186–213)
 
 Add the new item **before** the delete separator (around line 206), inside the
 `polygon.on("contextmenu", ...)` handler. The context menu items are built inline here,
@@ -254,7 +254,7 @@ The `disabled` + `tooltip` pattern follows existing context menu conventions —
 
 ### Part 2b: Server-side event handler
 
-#### `lib/storyarn_web/live/map_live/show.ex`
+#### `lib/storyarn_web/live/scene_live/show.ex`
 
 ```elixir
 def handle_event("create_child_map_from_zone", params, socket) do
@@ -264,7 +264,7 @@ def handle_event("create_child_map_from_zone", params, socket) do
 end
 ```
 
-#### `lib/storyarn_web/live/map_live/handlers/tree_handlers.ex`
+#### `lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex`
 
 New function `handle_create_child_map_from_zone/2`:
 
@@ -504,7 +504,7 @@ physical area — only the resolution changes, not the scale.
 
 ### Part 2e: Breadcrumb in the header
 
-#### `lib/storyarn/maps/map_crud.ex`
+#### `lib/storyarn/maps/scene_crud.ex`
 
 Add a function to load the ancestor chain:
 
@@ -529,10 +529,10 @@ this is fast enough. A recursive CTE would be faster for deeper trees but adds c
 
 Delegate via `lib/storyarn/maps.ex`:
 ```elixir
-defdelegate list_ancestors(map), to: MapCrud
+defdelegate list_ancestors(map), to: SceneCrud
 ```
 
-#### `lib/storyarn_web/live/map_live/show.ex`
+#### `lib/storyarn_web/live/scene_live/show.ex`
 
 Load ancestors on mount and `handle_params`:
 
@@ -540,7 +540,7 @@ Load ancestors on mount and `handle_params`:
 |> assign(:ancestors, Maps.list_ancestors(map))
 ```
 
-#### `lib/storyarn_web/live/map_live/components/map_header.ex`
+#### `lib/storyarn_web/live/scene_live/components/scene_header.ex`
 
 Add `ancestors` attr and a breadcrumb nav before the editable title.
 
@@ -584,7 +584,7 @@ the last ancestor from the current map name shown in the `<h1>`).
 
 ### Tests
 
-New `describe` block in `test/storyarn_web/live/map_live/show_test.exs`:
+New `describe` block in `test/storyarn_web/live/scene_live/show_test.exs`:
 
 ```
 describe "create_child_map_from_zone event" do
@@ -599,7 +599,7 @@ describe "create_child_map_from_zone event" do
 end
 ```
 
-New unit tests in `test/storyarn/maps_test.exs`:
+New unit tests in `test/storyarn/scenes_test.exs`:
 
 ```
 describe "ZoneImageExtractor.bounding_box/1" do
@@ -622,20 +622,20 @@ end
 
 ```
 NEW:  lib/storyarn/maps/zone_image_extractor.ex
-MOD:  lib/storyarn/maps/map_crud.ex          — list_ancestors/1
+MOD:  lib/storyarn/maps/scene_crud.ex          — list_ancestors/1
 MOD:  lib/storyarn/maps.ex                   — defdelegate list_ancestors
-MOD:  lib/storyarn_web/live/map_live/show.ex — event handler + ancestors assign
-MOD:  lib/storyarn_web/live/map_live/handlers/tree_handlers.ex — handler impl
-MOD:  lib/storyarn_web/live/map_live/components/map_header.ex  — breadcrumb
-MOD:  assets/js/map_canvas/handlers/zone_handler.js            — context menu item
-MOD:  test/storyarn_web/live/map_live/show_test.exs
-MOD:  test/storyarn/maps_test.exs
+MOD:  lib/storyarn_web/live/scene_live/show.ex — event handler + ancestors assign
+MOD:  lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex — handler impl
+MOD:  lib/storyarn_web/live/scene_live/components/scene_header.ex  — breadcrumb
+MOD:  assets/js/scene_canvas/handlers/zone_handler.js            — context menu item
+MOD:  test/storyarn_web/live/scene_live/show_test.exs
+MOD:  test/storyarn/scenes_test.exs
 ```
 
 ### Verification
 
 ```bash
-mix test test/storyarn/maps_test.exs test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn/scenes_test.exs test/storyarn_web/live/scene_live/show_test.exs
 mix credo --strict
 ```
 
@@ -671,7 +671,7 @@ cd assets && npm install leaflet-textpath
 
 ### Implementation
 
-#### `assets/js/map_canvas/connection_renderer.js`
+#### `assets/js/scene_canvas/connection_renderer.js`
 
 ```js
 // Add import at top (after existing leaflet-polylinedecorator imports, line 12):
@@ -721,7 +721,7 @@ function applyLabel(line, label, color) {
 The `"paint-order": "stroke fill"` trick renders a white stroke behind the colored text,
 making it legible on both dark and light backgrounds without needing a background box.
 
-#### `assets/js/map_canvas/handlers/connection_handler.js`
+#### `assets/js/scene_canvas/handlers/connection_handler.js`
 
 No changes needed — `updateConnectionLine` already calls `connection_renderer.js`.
 
@@ -756,7 +756,7 @@ Manual verification:
 
 ```
 MOD:  assets/package.json (+ package-lock.json) — new dep: leaflet-textpath
-MOD:  assets/js/map_canvas/connection_renderer.js — import + applyLabel helper + calls
+MOD:  assets/js/scene_canvas/connection_renderer.js — import + applyLabel helper + calls
 ```
 
 ### Verification
@@ -778,7 +778,7 @@ which maps reference this sheet (via pins or zones with `target_type: "sheet"`).
 ### What already exists
 
 - `Maps.get_elements_for_target("sheet", sheet_id)` returns `%{zones: [...], pins: [...]}`
-  with `map` preloaded on each. Tested in `maps_test.exs`. Do NOT duplicate this.
+  with `map` preloaded on each. Tested in `scenes_test.exs`. Do NOT duplicate this.
 - `BacklinksSection` — use as structural pattern (lazy-loading LiveComponent).
 - `ReferencesTab` already receives `@workspace` and `@project` via assigns pass-through
   in its `update/2` callback.
@@ -793,7 +793,7 @@ LiveComponent following the exact `BacklinksSection` pattern:
   [%{element_type: "pin"|"zone", element_name: ..., scene_id: ..., map_name: ...}, ...]
   ```
 - Each row: map icon + map name (link to map) + badge "Pin"/"Zone" + element name
-- Empty state: *"This sheet doesn't appear on any maps yet."*
+- Empty state: *"This sheet doesn't appear on any scenes yet."*
 - The link to the map uses the full path:
   `~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/maps/#{scene_id}"`
 
@@ -856,7 +856,7 @@ World Map
 
 ### Changes needed
 
-#### `lib/storyarn/maps/map_crud.ex`
+#### `lib/storyarn/maps/scene_crud.ex`
 
 Add `list_maps_tree_with_elements/1` that loads maps + limited elements:
 
@@ -933,10 +933,10 @@ end
 
 Delegate via `maps.ex`:
 ```elixir
-defdelegate list_maps_tree_with_elements(project_id), to: MapCrud
+defdelegate list_maps_tree_with_elements(project_id), to: SceneCrud
 ```
 
-#### `lib/storyarn_web/components/sidebar/map_tree.ex`
+#### `lib/storyarn_web/components/sidebar/scene_tree.ex`
 
 **Key change:** A map that has no child maps but DOES have zones/pins must now render
 as a `tree_node` (expandable) instead of a `tree_leaf`. Update `has_children` logic:
@@ -997,7 +997,7 @@ Inside the `tree_node` children block, after rendering child maps, render elemen
 </div>
 ```
 
-#### `lib/storyarn_web/live/map_live/show.ex`
+#### `lib/storyarn_web/live/scene_live/show.ex`
 
 1. Change `list_maps_tree` call to `list_maps_tree_with_elements` in mount/reload.
 
@@ -1014,7 +1014,7 @@ socket =
   end
 ```
 
-#### `assets/js/hooks/map_canvas.js`
+#### `assets/js/hooks/scene_canvas.js`
 
 Handle `highlight_element` server event. Use existing handler infrastructure:
 
@@ -1059,18 +1059,18 @@ end
 ### Files modified
 
 ```
-MOD:  lib/storyarn/maps/map_crud.ex — list_maps_tree_with_elements + queries
+MOD:  lib/storyarn/maps/scene_crud.ex — list_maps_tree_with_elements + queries
 MOD:  lib/storyarn/maps.ex — defdelegate
-MOD:  lib/storyarn_web/components/sidebar/map_tree.ex — element leaves + has_children logic
-MOD:  lib/storyarn_web/live/map_live/show.ex — highlight param + tree function swap
-MOD:  assets/js/hooks/map_canvas.js — highlight_element event handler
-MOD:  test/storyarn_web/live/map_live/show_test.exs
+MOD:  lib/storyarn_web/components/sidebar/scene_tree.ex — element leaves + has_children logic
+MOD:  lib/storyarn_web/live/scene_live/show.ex — highlight param + tree function swap
+MOD:  assets/js/hooks/scene_canvas.js — highlight_element event handler
+MOD:  test/storyarn_web/live/scene_live/show_test.exs
 ```
 
 ### Verification
 
 ```bash
-mix test test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn_web/live/scene_live/show_test.exs
 mix credo --strict
 ```
 

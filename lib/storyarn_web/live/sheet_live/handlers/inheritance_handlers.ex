@@ -276,7 +276,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlers do
          |> assign(:propagation_block, nil)
          |> put_flash(
            :info,
-           dgettext("sheets", "Property propagated to %{count} pages.", count: count)
+           dgettext("sheets", "Property propagated to %{count} sheets.", count: count)
          )}
 
       {:error, _} ->

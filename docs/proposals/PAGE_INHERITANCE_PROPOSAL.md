@@ -8,21 +8,21 @@
 
 ## Overview
 
-A system for organic property inheritance between parent and child pages, inspired by Notion's simplicity. No explicit "template mode" - inheritance emerges naturally from user decisions when creating properties.
+A system for organic property inheritance between parent and child sheets, inspired by Notion's simplicity. No explicit "template mode" - inheritance emerges naturally from user decisions when creating properties.
 
 ## Design Principles
 
 1. **Organic** - No configuration needed, just start creating
 2. **In-context decisions** - Choose inheritance scope when adding each property
 3. **Visual clarity** - Clear distinction between inherited vs own properties
-4. **Flexible** - Any page can define inheritable properties, any child can detach
+4. **Flexible** - Any sheet can define inheritable properties, any child can detach
 5. **Notion-like** - Feels natural, not "enterprise"
 
 ---
 
 ## Core Concept: Property Scope
 
-When adding a property to a page, the user chooses its scope:
+When adding a property to a sheet, the user chooses its scope:
 
 ```
 ┌─────────────────────────────────────────┐
@@ -32,21 +32,21 @@ When adding a property to a page, the user chooses its scope:
 │ Type: [Image Asset    ▼]                │
 │                                         │
 │ Scope:                                  │
-│ ○ This page only                        │
-│ ● This page and all children            │
+│ ○ This sheet only                        │
+│ ● This sheet and all children            │
 │                                         │
 │ [Cancel]                    [Add]       │
 └─────────────────────────────────────────┘
 ```
 
-- **"This page only"** → Property is local, only exists on this page
-- **"This page and children"** → Property is inherited by all child pages
+- **"This sheet only"** → Property is local, only exists on this sheet
+- **"This sheet and children"** → Property is inherited by all child sheets
 
 ---
 
 ## UI: Content Tab Layout
 
-### Child Page View (e.g., "Jaime")
+### Child Sheet View (e.g., "Jaime")
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -74,9 +74,9 @@ When adding a property to a page, the user chooses its scope:
 └─────────────────────────────────────────────────────────┘
 ```
 
-The `🔗 ↑` icon indicates inherited property. Click navigates to the source page.
+The `🔗 ↑` icon indicates inherited property. Click navigates to the source sheet.
 
-### Parent Page View (e.g., "Characters")
+### Parent Sheet View (e.g., "Characters")
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -84,7 +84,7 @@ The `🔗 ↑` icon indicates inherited property. Click navigates to the source 
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
 │ ┌─ Properties for children ───────────────────────┐    │
-│ │ These properties will appear in all child pages  │    │
+│ │ These properties will appear in all child sheets  │    │
 │ │                                                  │    │
 │ │ 👤 Portrait    [Image Asset    ]  [Required ✓]  │    │
 │ │ 📅 Age         [Number         ]  [Optional  ]  │    │
@@ -113,11 +113,11 @@ The `🔗 ↑` icon indicates inherited property. Click navigates to the source 
 
 ### New Children
 
-New child pages **automatically** inherit all "children scope" properties from their parent.
+New child sheets **automatically** inherit all "children scope" properties from their parent.
 
 ### Existing Children
 
-When adding a new inheritable property to a page that already has children, show a propagation modal:
+When adding a new inheritable property to a sheet that already has children, show a propagation modal:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -127,7 +127,7 @@ When adding a new inheritable property to a page that already has children, show
 │ This property will automatically appear in all          │
 │ NEW children. For existing children:                    │
 │                                                         │
-│ ☑ Select all (12 pages)                                │
+│ ☑ Select all (12 sheets)                                │
 │                                                         │
 │ ▼ Characters                                            │
 │   ☑ Jaime                                              │
@@ -138,7 +138,7 @@ When adding a new inheritable property to a page that already has children, show
 │     ☐ Baron  ← (user deselected)                       │
 │                                                         │
 │ ───────────────────────────────────────────────────     │
-│ ℹ️ Unselected pages won't get this property but can     │
+│ ℹ️ Unselected sheets won't get this property but can     │
 │    add it manually later.                               │
 │                                                         │
 │ [Cancel]                           [Propagate]          │
@@ -180,34 +180,34 @@ When hovering over an inherited property, show a context menu:
 ```
 
 ### Go to source
-Navigate to the parent page where the property is defined.
+Navigate to the parent sheet where the property is defined.
 
 ### Detach property
 Convert the inherited property into an "own" property. It will no longer sync with the parent definition. Useful when a child needs different configuration.
 
 ### Hide for children
-This page still inherits the property, but its children will NOT inherit it. Useful for breaking inheritance at a specific level.
+This sheet still inherits the property, but its children will NOT inherit it. Useful for breaking inheritance at a specific level.
 
 ---
 
 ## Data Model Considerations
 
-### Page Schema
+### Sheet Schema
 
 ```elixir
-# Each page tracks:
-# - Own properties (local to this page)
+# Each sheet tracks:
+# - Own properties (local to this sheet)
 # - Inherited property definitions (for children)
 # - Hidden inherited properties (from parent, not passed to children)
 # - Detached properties (were inherited, now local)
 
-%Page{
+%Sheet{
   properties: [
     %Property{
       name: "portrait",
       type: :image_asset,
       scope: :children,        # :self | :children
-      inherited_from: nil,     # page_id if inherited
+      inherited_from: nil,     # sheet_id if inherited
       detached: false,         # true if was inherited but now local
       hidden_for_children: false
     }
@@ -217,12 +217,12 @@ This page still inherits the property, but its children will NOT inherit it. Use
 
 ### Inheritance Resolution
 
-When rendering a page's properties:
+When rendering a sheet's properties:
 
 1. Get all properties with `scope: :children` from ancestors (walking up the tree)
-2. Filter out any marked as `hidden_for_children` by intermediate pages
+2. Filter out any marked as `hidden_for_children` by intermediate sheets
 3. Mark detached properties as local (don't sync with parent)
-4. Merge with page's own properties
+4. Merge with sheet's own properties
 5. Display with visual distinction
 
 ---
@@ -317,13 +317,13 @@ With many tabs needed (Content, References, Gallery, Audio, History, Version Con
 
 ## FAQ
 
-### Can a page with children NOT be a template?
+### Can a sheet with children NOT be a template?
 
-**Yes.** If all its properties are "this page only", children inherit nothing. The page is just an organizational container with its own content.
+**Yes.** If all its properties are "this sheet only", children inherit nothing. The sheet is just an organizational container with its own content.
 
-### Can any page become a template?
+### Can any sheet become a template?
 
-**Yes.** The moment you add a property with "this page and children" scope, that page starts defining inheritance. It's emergent, not configured.
+**Yes.** The moment you add a property with "this sheet and children" scope, that sheet starts defining inheritance. It's emergent, not configured.
 
 ### What if I change a property type in the parent?
 
@@ -346,7 +346,7 @@ Parent can define default values for inherited properties. Children inherit the 
 
 ### Database
 
-- Properties stored as JSONB on pages
+- Properties stored as JSONB on sheets
 - Add `inherited_schema` field or compute dynamically from ancestors
 - Consider caching resolved inheritance for performance
 
@@ -359,7 +359,7 @@ Parent can define default values for inherited properties. Children inherit the 
 
 ### Performance
 
-- Cache resolved inheritance per page
+- Cache resolved inheritance per sheet
 - Invalidate cache when ancestor properties change
 - Consider background job for large propagation operations
 

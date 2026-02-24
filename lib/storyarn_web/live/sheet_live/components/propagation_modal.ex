@@ -38,7 +38,7 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
             phx-target={@myself}
           />
           <span class="font-medium text-sm">
-            {dgettext("sheets", "Select all (%{count} pages)", count: length(@descendants))}
+            {dgettext("sheets", "Select all (%{count} sheets)", count: length(@descendants))}
           </span>
         </label>
 
@@ -55,7 +55,7 @@ defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
         <p class="text-xs text-base-content/50 mt-2">
           {dgettext(
             "sheets",
-            "Unselected pages won't get this property but can add it manually later."
+            "Unselected sheets won't get this property but can add it manually later."
           )}
         </p>
 

@@ -2,7 +2,7 @@ defmodule Storyarn.Shared.ShortcutHelpers do
   @moduledoc """
   Shared helpers for shortcut generation across CRUD modules.
 
-  Extracts common patterns from flow_crud, sheet_crud, map_crud, and screenplay_crud
+  Extracts common patterns from flow_crud, sheet_crud, scene_crud, and screenplay_crud
   while keeping context-specific logic (update-path regeneration with backlink checks)
   in each CRUD module.
   """

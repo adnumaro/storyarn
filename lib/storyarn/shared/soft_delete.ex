@@ -2,7 +2,7 @@ defmodule Storyarn.Shared.SoftDelete do
   @moduledoc """
   Shared recursive soft-delete logic for hierarchical entities.
 
-  Extracts the common `soft_delete_children` pattern from flow_crud, map_crud,
+  Extracts the common `soft_delete_children` pattern from flow_crud, scene_crud,
   and screenplay_crud. Accepts an optional `:pre_delete` callback for
   context-specific side effects (e.g., cleaning up localization texts).
   """

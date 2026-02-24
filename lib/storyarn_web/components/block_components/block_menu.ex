@@ -38,7 +38,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
               phx-value-scope="self"
               phx-target={@target}
             />
-            <span>{dgettext("sheets", "This page only")}</span>
+            <span>{dgettext("sheets", "This sheet only")}</span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer text-sm">
             <input
@@ -51,7 +51,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
               phx-value-scope="children"
               phx-target={@target}
             />
-            <span>{dgettext("sheets", "This page and all children")}</span>
+            <span>{dgettext("sheets", "This sheet and all children")}</span>
           </label>
         </div>
       </div>

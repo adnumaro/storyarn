@@ -61,35 +61,35 @@ Remove the 4-mode toolbar (pan/pin/zone/connect). Replace with a single Edit/Vie
 
 ### Files to modify
 
-**`lib/storyarn_web/live/map_live/show.ex`**
+**`lib/storyarn_web/live/scene_live/show.ex`**
 - Replace `@mode` atom (`:pan | :pin | :zone | :connect`) with `@edit_mode` boolean + `@active_tool` atom (`:select | :pan | :rectangle | :triangle | :circle | :freeform | :pin | :annotation | :connector`)
 - Default: `@edit_mode = can_edit`, `@active_tool = :select`
 - Remove `set_mode` event handler. Add `set_tool` event handler and `toggle_edit_mode` handler.
 - `set_tool` pushes `tool_changed` event to JS hook with `%{tool: tool_name}`.
 - `toggle_edit_mode` flips `@edit_mode` and pushes `edit_mode_changed` to JS.
 
-**`lib/storyarn_web/live/map_live/show.ex` (template)**
+**`lib/storyarn_web/live/scene_live/show.ex` (template)**
 - Remove the toolbar div (`.absolute.top-3.left-3`).
 - Add Edit/View toggle button in the header (right side).
 - When `@edit_mode`, render the bottom dock component.
 
-**`assets/js/hooks/map_canvas.js`**
+**`assets/js/hooks/scene_canvas.js`**
 - Replace `mode_changed` handler with `tool_changed` and `edit_mode_changed` handlers.
 - `tool_changed`: store `hook.currentTool`, update cursor, cancel any in-progress drawing.
 - `edit_mode_changed`: toggle `hook.editMode`, when entering View mode cancel all drawing and switch to pan.
 
-**`assets/js/map_canvas/handlers/pin_handler.js`**
+**`assets/js/scene_canvas/handlers/pin_handler.js`**
 - Replace `hook.currentMode === "pin"` checks with `hook.currentTool === "pin"`.
 
-**`assets/js/map_canvas/handlers/zone_handler.js`**
+**`assets/js/scene_canvas/handlers/zone_handler.js`**
 - Replace `hook.currentMode === "zone"` checks with freeform tool check.
 
-**`assets/js/map_canvas/handlers/connection_handler.js`**
+**`assets/js/scene_canvas/handlers/connection_handler.js`**
 - Replace `hook.currentMode === "connect"` checks with `hook.currentTool === "connector"`.
 
 ### Tests
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - `set_tool` event updates active tool
 - `toggle_edit_mode` flips edit mode
 - Viewer cannot toggle to edit mode
@@ -98,7 +98,7 @@ Remove the 4-mode toolbar (pan/pin/zone/connect). Replace with a single Edit/Vie
 
 ### Verification
 ```bash
-mix test test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -111,7 +111,7 @@ Create a bottom dock component (`dock.ex`) that renders tool buttons. Each butto
 
 ### Files to create
 
-**`lib/storyarn_web/live/map_live/components/dock.ex`**
+**`lib/storyarn_web/live/scene_live/components/dock.ex`**
 - Function component `dock/1` that receives:
   - `active_tool` — current tool atom
   - `can_edit` — boolean
@@ -125,14 +125,14 @@ Create a bottom dock component (`dock.ex`) that renders tool buttons. Each butto
 
 ### Files to modify
 
-**`lib/storyarn_web/live/map_live/show.ex` (template)**
+**`lib/storyarn_web/live/scene_live/show.ex` (template)**
 - Import dock component.
 - Render `<.dock>` inside the canvas area (bottom-center), only when `@edit_mode`.
 - Wrap in a container with `absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000]`.
 
 ### Tests
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - Dock renders for editor in edit mode
 - Dock does not render for viewer
 - All tool buttons present in dock
@@ -141,7 +141,7 @@ Create a bottom dock component (`dock.ex`) that renders tool buttons. Each butto
 
 ### Verification
 ```bash
-mix test test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -176,14 +176,14 @@ All vertices clamped to 0-100 range.
 
 ### Files to create
 
-**`assets/js/map_canvas/shape_presets.js`**
+**`assets/js/scene_canvas/shape_presets.js`**
 - Export functions: `rectangleVertices(cx, cy)`, `triangleVertices(cx, cy)`, `circleVertices(cx, cy, sides=16)`
 - Each returns an array of `{x, y}` in percentage coordinates.
 - All values clamped to [0, 100].
 
 ### Files to modify
 
-**`assets/js/map_canvas/handlers/zone_handler.js`**
+**`assets/js/scene_canvas/handlers/zone_handler.js`**
 - Import shape presets.
 - In the map click handler, if tool is `rectangle/triangle/circle`:
   - Convert click latlng to percent.
@@ -192,12 +192,12 @@ All vertices clamped to 0-100 range.
   - Do NOT enter drawing mode — single click creates the zone.
 - Keep freeform behavior (click vertices) only for `freeform` tool.
 
-**`assets/js/hooks/map_canvas.js`**
+**`assets/js/hooks/scene_canvas.js`**
 - Pass `hook.currentTool` to zone handler so it knows which shape preset to use.
 
 ### Ghost Preview (cursor feedback)
 
-**`assets/js/map_canvas/handlers/zone_handler.js`**
+**`assets/js/scene_canvas/handlers/zone_handler.js`**
 - When a shape tool is active, on `mousemove`:
   - Show a semi-transparent preview polygon (the shape centered on cursor).
   - Use `L.polygon` with dashed border, low opacity, `interactive: false`.
@@ -206,7 +206,7 @@ All vertices clamped to 0-100 range.
 
 ### Tests
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - `create_zone` with rectangle preset vertices (4 vertices) creates zone
 - `create_zone` with triangle preset vertices (3 vertices) creates zone
 - `create_zone` with circle preset vertices (16 vertices) creates zone
@@ -214,7 +214,7 @@ All vertices clamped to 0-100 range.
 
 ### Verification
 ```bash
-mix test test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -227,7 +227,7 @@ Replace the confusing double-click-to-close with auto-close: when the user click
 
 ### Files to modify
 
-**`assets/js/map_canvas/handlers/zone_handler.js`**
+**`assets/js/scene_canvas/handlers/zone_handler.js`**
 - Remove the `dblclick` handler for closing zones.
 - In the click handler (freeform tool):
   - If `drawingVertices.length >= 3` and click is within 15px of first vertex marker → call `finishDrawing()`.
@@ -257,13 +257,13 @@ Replace the confusing double-click-to-close with auto-close: when the user click
 
 ### Tests
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - Existing `create_zone` tests still pass (backend doesn't change).
 - Existing zone validation tests still pass.
 
 ### Verification
 ```bash
-mix test test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -276,7 +276,7 @@ In Select mode, clicking a zone selects it. Dragging a selected zone moves the e
 
 ### Files to modify
 
-**`assets/js/map_canvas/handlers/zone_handler.js`**
+**`assets/js/scene_canvas/handlers/zone_handler.js`**
 - In `addZoneToMap()`, when tool is `:select`:
   - On `mousedown` on a selected polygon: start drag.
   - Store initial mouse position and initial vertices.
@@ -285,7 +285,7 @@ In Select mode, clicking a zone selects it. Dragging a selected zone moves the e
 - Prevent drag when in freeform/shape tool mode (those tools handle clicks differently).
 - Set cursor to `grab` on hover over selected zone, `grabbing` while dragging.
 
-**`assets/js/map_canvas/zone_renderer.js`**
+**`assets/js/scene_canvas/zone_renderer.js`**
 - No changes needed — `updateZoneVertices` already handles new vertex arrays.
 
 ### Important: Clamp vertices
@@ -293,13 +293,13 @@ When dragging, all shifted vertices must stay within 0-100 range. If any vertex 
 
 ### Tests
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - `update_zone_vertices` with shifted vertices (simulating drag) updates correctly
 - Vertices remain within 0-100 range after drag
 
 ### Verification
 ```bash
-mix test test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -312,7 +312,7 @@ Add right-click context menus to all canvas elements (zones, pins, connections) 
 
 ### Files to create
 
-**`assets/js/map_canvas/context_menu.js`**
+**`assets/js/scene_canvas/context_menu.js`**
 - Factory function `createContextMenu(hook)` that manages a single context menu DOM element.
 - API: `show(x, y, items)`, `hide()`.
 - `items` is an array of `{ label, icon, action, danger? }`.
@@ -344,23 +344,23 @@ Add right-click context menus to all canvas elements (zones, pins, connections) 
 
 ### Files to modify
 
-**`assets/js/map_canvas/handlers/pin_handler.js`**
+**`assets/js/scene_canvas/handlers/pin_handler.js`**
 - Add `contextmenu` event on each pin marker → `hook.contextMenu.show(...)` with pin-specific items.
 
-**`assets/js/map_canvas/handlers/zone_handler.js`**
+**`assets/js/scene_canvas/handlers/zone_handler.js`**
 - Add `contextmenu` event on each zone polygon → show zone-specific items.
 - "Edit Vertices" item → calls `vertexEditor.show(polygon)`.
 - "Duplicate" item → pushes `duplicate_zone` event.
 
-**`assets/js/map_canvas/handlers/connection_handler.js`**
+**`assets/js/scene_canvas/handlers/connection_handler.js`**
 - Add `contextmenu` event on each connection line → show connection-specific items.
 
-**`assets/js/hooks/map_canvas.js`**
+**`assets/js/hooks/scene_canvas.js`**
 - Create context menu instance and pass to handlers.
 - Add `contextmenu` on canvas background → show canvas-level items.
 - Prevent browser default context menu on the canvas container.
 
-**`lib/storyarn_web/live/map_live/show.ex`**
+**`lib/storyarn_web/live/scene_live/show.ex`**
 - Add `handle_event("duplicate_zone", ...)` → copies zone with shifted vertices (+5% offset).
 
 **`assets/css/app.css`**
@@ -368,17 +368,17 @@ Add right-click context menus to all canvas elements (zones, pins, connections) 
 
 ### Tests
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - `duplicate_zone` creates a new zone with shifted vertices
 - `duplicate_zone` rejected for viewer
 - Original zone unchanged after duplication
 
-**`test/storyarn/maps_test.exs`**
+**`test/storyarn/scenes_test.exs`**
 - No context changes needed — uses existing CRUD functions.
 
 ### Verification
 ```bash
-mix test test/storyarn_web/live/map_live/show_test.exs test/storyarn/maps_test.exs
+mix test test/storyarn_web/live/scene_live/show_test.exs test/storyarn/scenes_test.exs
 mix credo
 ```
 
@@ -411,7 +411,7 @@ create index(:map_pins, [:sheet_id])
 - Add `belongs_to :sheet, Storyarn.Sheets.Sheet`
 - Add `:sheet_id` to changeset cast.
 
-**`lib/storyarn_web/live/map_live/show.ex`**
+**`lib/storyarn_web/live/scene_live/show.ex`**
 - Add `handle_event("create_pin_from_sheet", %{"sheet_id" => id, "position_x" => x, "position_y" => y}, socket)`.
 - Loads sheet (with avatar_asset), creates pin with:
   - `label` = sheet.name
@@ -421,27 +421,27 @@ create index(:map_pins, [:sheet_id])
 - Serialization: include `sheet_id`, `avatar_url` (from sheet's avatar_asset.url) in `serialize_pin/1`.
 - Pass `project_sheets` (with avatar preloaded) to dock for the sheet picker.
 
-**`lib/storyarn_web/live/map_live/components/dock.ex`**
+**`lib/storyarn_web/live/scene_live/components/dock.ex`**
 - Pin tool button: on click, show dropdown with "Free Pin" and "From Sheet".
 - "From Sheet" opens a popover/modal with a searchable list of project sheets.
 - Each sheet row shows: avatar thumbnail + name + shortcut.
 - Clicking a sheet enters "place pin from sheet" mode → next canvas click creates the pin.
 
-**`assets/js/map_canvas/pin_renderer.js`**
+**`assets/js/scene_canvas/pin_renderer.js`**
 - If pin has `avatar_url`, render the marker as a circular avatar image instead of a Lucide icon.
 - Use `L.divIcon` with an `<img>` element for avatar, or Lucide icon as fallback.
 - If `sheet_id` but no `avatar_url`, render initials (first 2 chars of label) in a colored circle.
 
-**`assets/js/map_canvas/handlers/pin_handler.js`**
+**`assets/js/scene_canvas/handlers/pin_handler.js`**
 - Handle `create_pin_from_sheet` tool mode: when canvas clicked, push `create_pin_from_sheet` event with sheet_id + coordinates.
 
 ### Tests
 
-**`test/storyarn/maps_test.exs`**
+**`test/storyarn/scenes_test.exs`**
 - `create_pin` with `sheet_id` stores the reference
 - Pin with `sheet_id` preloads sheet and avatar_asset
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - `create_pin_from_sheet` creates pin linked to sheet
 - Pin serialization includes `avatar_url` when sheet has avatar
 - Pin serialization handles sheet without avatar (nil avatar_url)
@@ -449,7 +449,7 @@ create index(:map_pins, [:sheet_id])
 
 ### Verification
 ```bash
-mix test test/storyarn/maps_test.exs test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn/scenes_test.exs test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -492,12 +492,12 @@ create index(:map_annotations, [:scene_id, :layer_id])
 - `move_annotation/3` (position_x/y only, drag optimization)
 - `delete_annotation/1`
 
-**`assets/js/map_canvas/annotation_renderer.js`**:
+**`assets/js/scene_canvas/annotation_renderer.js`**:
 - `createAnnotationMarker(annotation, w, h, opts)` → `L.marker` with `L.divIcon` containing a text element.
 - Editable on double-click (inline contenteditable).
 - Draggable in edit mode.
 
-**`assets/js/map_canvas/handlers/annotation_handler.js`**:
+**`assets/js/scene_canvas/handlers/annotation_handler.js`**:
 - Similar pattern to pin_handler: manages annotation markers, wires events.
 - Click to place (Annotation tool active), drag to move, double-click to edit text inline.
 - Server events: `annotation_created`, `annotation_updated`, `annotation_deleted`.
@@ -508,27 +508,27 @@ create index(:map_annotations, [:scene_id, :layer_id])
 
 **`lib/storyarn/maps/map.ex`** — Add `has_many :annotations, MapAnnotation`.
 
-**`lib/storyarn_web/live/map_live/show.ex`**:
+**`lib/storyarn_web/live/scene_live/show.ex`**:
 - Mount: load annotations.
 - Serialize annotations in `build_map_data`.
 - Add handlers: `create_annotation`, `update_annotation`, `move_annotation`, `delete_annotation`.
 - Add annotation to `select_element` types.
 
-**`lib/storyarn_web/live/map_live/components/properties_panel.ex`**:
+**`lib/storyarn_web/live/scene_live/components/properties_panel.ex`**:
 - Add `annotation_properties/1` component (text, font_size, color, layer, delete).
 
-**`assets/js/hooks/map_canvas.js`**:
+**`assets/js/hooks/scene_canvas.js`**:
 - Init annotation handler.
 - Wire annotation events.
 
 ### Tests
 
-**`test/storyarn/maps_test.exs`**
+**`test/storyarn/scenes_test.exs`**
 - Annotation CRUD (create, update, move, delete)
 - Validation (text required, position 0-100, font_size enum)
 - Layer association
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - `create_annotation` creates annotation
 - `create_annotation` rejected for viewer
 - `update_annotation` updates text
@@ -537,7 +537,7 @@ create index(:map_annotations, [:scene_id, :layer_id])
 
 ### Verification
 ```bash
-mix test test/storyarn/maps_test.exs test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn/scenes_test.exs test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -550,14 +550,14 @@ Add missing UI for layer management: delete button (with confirmation) and inlin
 
 ### Files to modify
 
-**`lib/storyarn_web/live/map_live/show.ex` (template — layer bar)**
+**`lib/storyarn_web/live/scene_live/show.ex` (template — layer bar)**
 - Each layer in the bar gets a right-click context menu or a small kebab menu (`...`) with:
   - "Rename" → inline text input
   - "Delete" → confirm modal (existing `delete-layer-confirm` pattern)
 - Rename: `handle_event("rename_layer", %{"id" => id, "name" => name})` → `Maps.update_layer(layer, %{name: name})`.
 - Delete: Use existing `delete_layer` handler (already implemented).
 
-**`lib/storyarn_web/live/map_live/show.ex` (handlers)**
+**`lib/storyarn_web/live/scene_live/show.ex` (handlers)**
 - Add `handle_event("rename_layer", ...)`.
 
 ### Alternative: Inline edit
@@ -571,14 +571,14 @@ Add a small dropdown triggered by right-click or kebab icon on each layer item:
 
 ### Tests
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - `rename_layer` updates layer name
 - `rename_layer` rejected for viewer
 - Delete layer button triggers existing delete flow
 
 ### Verification
 ```bash
-mix test test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 

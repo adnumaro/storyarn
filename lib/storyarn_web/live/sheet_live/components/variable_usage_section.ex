@@ -27,7 +27,7 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
           <%= if @total_refs == 0 do %>
             <div class="bg-base-200/50 rounded-lg p-6 text-center">
               <p class="text-base-content/70 text-sm">
-                {dgettext("sheets", "No variables on this sheet are used in any flow or map yet.")}
+                {dgettext("sheets", "No variables on this sheet are used in any flow or scene yet.")}
               </p>
             </div>
           <% else %>

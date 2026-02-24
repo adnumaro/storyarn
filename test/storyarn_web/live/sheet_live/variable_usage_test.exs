@@ -148,7 +148,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
       html = render_click(view, "switch_tab", %{"tab" => "references"})
 
       # Section shows but with empty state message
-      assert html =~ "No variables on this sheet are used in any flow or map yet."
+      assert html =~ "No variables on this sheet are used in any flow or scene yet."
     end
 
     test "sheet without variables does not show section at all",

@@ -46,27 +46,27 @@ User drags element
 
 | Action | File | What changes |
 |--------|------|-------------|
-| CREATE | `lib/storyarn_web/live/map_live/components/toolbar_widgets.ex` | Shared widgets: color_picker, border_picker, size_picker, layer_picker, target_picker, opacity_slider |
-| CREATE | `lib/storyarn_web/live/map_live/components/floating_toolbar.ex` | Per-type toolbars: zone, pin, connection, annotation |
-| CREATE | `assets/js/map_canvas/floating_toolbar.js` | JS positioning module |
-| MODIFY | `lib/storyarn_web/live/map_live/show.ex` | Remove both sidebars, add floating toolbar div + map settings panel, add settings button to header |
-| MODIFY | `assets/js/hooks/map_canvas.js` | Import + wire floating toolbar, add map move/zoom handlers |
-| MODIFY | `assets/js/map_canvas/handlers/connection_handler.js` | Expose `lines` Map in return object |
-| MODIFY | `assets/js/map_canvas/handlers/annotation_handler.js` | Add dblclick → inline text editing, expose `enableInlineEditing` |
-| MODIFY | `assets/js/map_canvas/annotation_renderer.js` | Add `data-annotation-text` attr to text div for DOM access |
+| CREATE | `lib/storyarn_web/live/scene_live/components/toolbar_widgets.ex` | Shared widgets: color_picker, border_picker, size_picker, layer_picker, target_picker, opacity_slider |
+| CREATE | `lib/storyarn_web/live/scene_live/components/floating_toolbar.ex` | Per-type toolbars: zone, pin, connection, annotation |
+| CREATE | `assets/js/scene_canvas/floating_toolbar.js` | JS positioning module |
+| MODIFY | `lib/storyarn_web/live/scene_live/show.ex` | Remove both sidebars, add floating toolbar div + map settings panel, add settings button to header |
+| MODIFY | `assets/js/hooks/scene_canvas.js` | Import + wire floating toolbar, add map move/zoom handlers |
+| MODIFY | `assets/js/scene_canvas/handlers/connection_handler.js` | Expose `lines` Map in return object |
+| MODIFY | `assets/js/scene_canvas/handlers/annotation_handler.js` | Add dblclick → inline text editing, expose `enableInlineEditing` |
+| MODIFY | `assets/js/scene_canvas/annotation_renderer.js` | Add `data-annotation-text` attr to text div for DOM access |
 | MODIFY | `assets/css/app.css` | Add floating toolbar + widget styles |
-| DELETE (code only) | `lib/storyarn_web/live/map_live/components/properties_panel.ex` | Replaced by floating_toolbar.ex |
-| DELETE (code only) | `lib/storyarn_web/live/map_live/components/element_panels.ex` | Replaced by floating_toolbar.ex |
-| MODIFY | `lib/storyarn_web/live/map_live/components/map_header.ex` | Add settings gear button |
+| DELETE (code only) | `lib/storyarn_web/live/scene_live/components/properties_panel.ex` | Replaced by floating_toolbar.ex |
+| DELETE (code only) | `lib/storyarn_web/live/scene_live/components/element_panels.ex` | Replaced by floating_toolbar.ex |
+| MODIFY | `lib/storyarn_web/live/scene_live/components/scene_header.ex` | Add settings gear button |
 | MODIFY | `priv/gettext/*/LC_MESSAGES/maps.po` | New strings |
 
 ---
 
 ## Phase 1 — Shared Toolbar Widget Components
 
-### File: `lib/storyarn_web/live/map_live/components/toolbar_widgets.ex`
+### File: `lib/storyarn_web/live/scene_live/components/toolbar_widgets.ex`
 
-Module `StoryarnWeb.MapLive.Components.ToolbarWidgets` with `use Phoenix.Component`.
+Module `StoryarnWeb.SceneLive.Components.ToolbarWidgets` with `use Phoenix.Component`.
 
 ### 1.1 Color Swatch Picker (`toolbar_color_picker/1`)
 
@@ -178,9 +178,9 @@ attr :disabled, :boolean, default: false
 
 ## Phase 2 — Per-Type Floating Toolbars
 
-### File: `lib/storyarn_web/live/map_live/components/floating_toolbar.ex`
+### File: `lib/storyarn_web/live/scene_live/components/floating_toolbar.ex`
 
-Module `StoryarnWeb.MapLive.Components.FloatingToolbar` importing toolbar_widgets.
+Module `StoryarnWeb.SceneLive.Components.FloatingToolbar` importing toolbar_widgets.
 
 ### 2.1 Main dispatcher (`floating_toolbar/1`)
 
@@ -263,9 +263,9 @@ Compact — no "more" button needed. Text editing is done inline on the canvas (
 </div>
 ```
 
-**Add gear button** in `map_header.ex` (next to Edit/View toggle).
+**Add gear button** in `scene_header.ex` (next to Edit/View toggle).
 
-### 3.2 JS Positioning Module (`assets/js/map_canvas/floating_toolbar.js`)
+### 3.2 JS Positioning Module (`assets/js/scene_canvas/floating_toolbar.js`)
 
 Factory function `createFloatingToolbar(hook)` returning `{ show, hide, reposition, setDragging }`.
 
@@ -284,10 +284,10 @@ Core logic:
 
 **Edge clamping**: Clamp left to `[MARGIN, canvasWidth - toolbarWidth - MARGIN]`. If top < MARGIN, flip toolbar below the element.
 
-### 3.3 Wiring into `map_canvas.js`
+### 3.3 Wiring into `scene_canvas.js`
 
 ```javascript
-import { createFloatingToolbar } from "../map_canvas/floating_toolbar.js";
+import { createFloatingToolbar } from "../scene_canvas/floating_toolbar.js";
 
 // In initCanvas(), after handlers:
 this.floatingToolbar = createFloatingToolbar(this);
@@ -311,7 +311,7 @@ this.leafletMap.on("zoom", () => this.floatingToolbar?.reposition());
 
 ### 3.4 Connection handler fix
 
-**File: `assets/js/map_canvas/handlers/connection_handler.js`**
+**File: `assets/js/scene_canvas/handlers/connection_handler.js`**
 
 Add `lines` to the return object (currently private, not exposed):
 ```javascript
@@ -345,7 +345,7 @@ marker.on("dblclick", (e) => {
 
 **`annotation_renderer.js`** — Add an id or data attribute to the text div so it can be found by the handler (e.g., `data-annotation-text`).
 
-**`map_canvas.js`** — Update `focus_annotation_text` handler to use the new inline editing:
+**`scene_canvas.js`** — Update `focus_annotation_text` handler to use the new inline editing:
 ```javascript
 this.handleEvent("focus_annotation_text", ({ id }) => {
   requestAnimationFrame(() => {

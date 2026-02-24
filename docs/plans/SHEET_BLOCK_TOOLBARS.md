@@ -1,6 +1,6 @@
 # Sheet Block Toolbars — Replace Config Sidebar with Inline Toolbars
 
-> **Goal:** Eliminate the sheet config sidebar (`config_panel.ex`) by migrating all block configuration to inline hover toolbars + floating popovers, consistent with the Maps and Flows pattern.
+> **Goal:** Eliminate the sheet config sidebar (`config_panel.ex`) by migrating all block configuration to inline hover toolbars + floating popovers, consistent with the Scenes and Flows pattern.
 >
 > **Parent Epic:** [FOCUS_MODE_REDESIGN.md](completed/FOCUS_MODE_REDESIGN.md)
 >
@@ -33,7 +33,7 @@
 
 3. **Sidebar occupies permanent space.** The config panel is `fixed inset-y-0 right-0 w-80` — it takes 320px and overlays content with a backdrop that blocks interaction with the sheet.
 
-4. **Inconsistency with other editors.** Maps and Flows already use inline floating toolbars for element configuration (zones, pins, nodes). Sheets is the only editor still using a sidebar panel.
+4. **Inconsistency with other editors.** Scenes and Flows already use inline floating toolbars for element configuration (zones, pins, nodes). Sheets is the only editor still using a sidebar panel.
 
 ### Reference Patterns (Already in App)
 
@@ -56,7 +56,7 @@ The config panel (`lib/storyarn_web/components/block_components/config_panel.ex`
 | Field         | Control              | Notes                                     |
 |---------------|----------------------|-------------------------------------------|
 | Type          | Badge (read-only)    | Shows block type + Inherited/Detached tag |
-| Scope         | Radio buttons (2)    | "This page only" / "This page and all children" |
+| Scope         | Radio buttons (2)    | "This sheet only" / "This sheet and all children" |
 | Required      | Toggle               | Only when scope = "children"              |
 | Re-attach     | Button               | Only for detached inherited blocks        |
 | Use as constant | Toggle             | Only for variable-capable types           |

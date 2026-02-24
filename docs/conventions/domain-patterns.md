@@ -184,7 +184,7 @@ def handle_event("save", params, socket) do
 end
 ```
 
-### Private helpers with auth (e.g., map_live/show.ex pattern):
+### Private helpers with auth (e.g., scene_live/show.ex pattern):
 
 ```elixir
 defp with_auth(socket, action, fun) do

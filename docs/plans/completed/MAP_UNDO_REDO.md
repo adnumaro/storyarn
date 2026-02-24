@@ -10,7 +10,7 @@
 
 ## Current State
 
-Maps use a **server-side** undo/redo system stored in socket assigns (`undo_stack`, `redo_stack` — lists of tagged tuples, capped at 50). Keyboard shortcuts `Ctrl+Z`/`Ctrl+Y` fire `pushEvent("undo")`/`pushEvent("redo")` from `map_canvas.js`, handled by `UndoRedoHandlers`.
+Maps use a **server-side** undo/redo system stored in socket assigns (`undo_stack`, `redo_stack` — lists of tagged tuples, capped at 50). Keyboard shortcuts `Ctrl+Z`/`Ctrl+Y` fire `pushEvent("undo")`/`pushEvent("redo")` from `scene_canvas.js`, handled by `UndoRedoHandlers`.
 
 Currently only **delete** operations are tracked:
 
@@ -393,9 +393,9 @@ Group by operation type with shared private helpers to keep the code DRY.
 
 | File                                                             | Changes                                                                    |
 |------------------------------------------------------------------|----------------------------------------------------------------------------|
-| `lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex`  | All undo/redo action handlers, compound dispatch, ID rebasing helpers      |
-| `lib/storyarn_web/live/map_live/handlers/element_handlers.ex`    | `push_undo` calls for all element operations (pin, zone, connection, annotation) |
-| `lib/storyarn_web/live/map_live/handlers/layer_handlers.ex`      | `push_undo` calls for layer create/delete/rename/fog                       |
+| `lib/storyarn_web/live/scene_live/handlers/undo_redo_handlers.ex`  | All undo/redo action handlers, compound dispatch, ID rebasing helpers      |
+| `lib/storyarn_web/live/scene_live/handlers/element_handlers.ex`    | `push_undo` calls for all element operations (pin, zone, connection, annotation) |
+| `lib/storyarn_web/live/scene_live/handlers/layer_handlers.ex`      | `push_undo` calls for layer create/delete/rename/fog                       |
 
 ### Verification
 

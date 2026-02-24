@@ -106,8 +106,8 @@ mix test
 - **Update** `handle_update_zone_action_type` in `element_handlers.ex` — currently resets `action_data` on type switch, which is correct, but must NOT touch `target_type`/`target_id`
 
 **Files:**
-- `lib/storyarn_web/live/map_live/components/floating_toolbar.ex` — remove conditional, restructure UI
-- `lib/storyarn_web/live/map_live/handlers/element_handlers.ex` — update `handle_update_zone_action_type`
+- `lib/storyarn_web/live/scene_live/components/floating_toolbar.ex` — remove conditional, restructure UI
+- `lib/storyarn_web/live/scene_live/handlers/element_handlers.ex` — update `handle_update_zone_action_type`
 
 ### 2.3 Data migration for existing zones
 
@@ -164,7 +164,7 @@ mix test
 - **Add** `condition_effect` toggle (hide/disable)
 
 **Files:**
-- `lib/storyarn_web/live/map_live/` — zone/pin config components
+- `lib/storyarn_web/live/scene_live/` — zone/pin config components
 - Existing: `lib/storyarn_web/components/condition_builder.ex`
 
 ### 3.3 Variable reference tracking for conditions
@@ -190,18 +190,18 @@ mix test
 ### 4.1 Exploration LiveView
 
 - **New route:** `/workspaces/:ws/projects/:ps/maps/:id/play`
-- **New LiveView:** `StoryarnWeb.MapLive.ExplorationLive`
+- **New LiveView:** `StoryarnWeb.SceneLive.ExplorationLive`
 - **Mount:**
   1. Load map with zones, pins, layers, background asset
   2. Load project variables via `VariableHelpers.build_variables(project_id)`
   3. Evaluate zone/pin conditions against variables (using `ConditionEvaluator` from Phase 3)
-  4. Serialize map data for the JS hook — **reuse** existing `Serializer.build_map_data/1`, `serialize_zone/1`, `serialize_pin/1`, and `background_url/1` from `lib/storyarn_web/live/map_live/helpers/serializer.ex`
+  4. Serialize map data for the JS hook — **reuse** existing `Serializer.build_map_data/1`, `serialize_zone/1`, `serialize_pin/1`, and `background_url/1` from `lib/storyarn_web/live/scene_live/helpers/serializer.ex`
 - **Socket assigns:** `map`, `project`, `zones` (with visibility), `pins` (with visibility), `variables` (local state), `active_flow` (nil initially)
 
 **Files:**
-- `lib/storyarn_web/live/map_live/exploration_live.ex`
+- `lib/storyarn_web/live/scene_live/exploration_live.ex`
 - `lib/storyarn_web/router.ex`
-- Existing (reuse): `lib/storyarn_web/live/map_live/helpers/serializer.ex`
+- Existing (reuse): `lib/storyarn_web/live/scene_live/helpers/serializer.ex`
 
 ### 4.2 Exploration JS hook
 
@@ -229,7 +229,7 @@ mix test
 - **Re-evaluation:** After any state change, re-evaluate ALL zone/pin conditions and push updated visibility
 
 **Files:**
-- `lib/storyarn_web/live/map_live/exploration_live.ex`
+- `lib/storyarn_web/live/scene_live/exploration_live.ex`
 
 ### 4.4 Play button on maps
 
@@ -237,7 +237,7 @@ mix test
 - **Links to** `/workspaces/:ws/projects/:ps/maps/:id/play`
 
 **Files:**
-- `lib/storyarn_web/live/map_live/show.ex` — toolbar
+- `lib/storyarn_web/live/scene_live/show.ex` — toolbar
 
 ### Verification
 ```bash
@@ -284,8 +284,8 @@ ExplorationLive needs to handle all flow events (`choose_response`, `continue`, 
 - **UI:** Map stays visible but dimmed. Flow dialogue UI overlays on top.
 
 **Files:**
-- `lib/storyarn_web/live/map_live/exploration_live.ex`
-- New component: `lib/storyarn_web/live/map_live/components/exploration_flow_overlay.ex`
+- `lib/storyarn_web/live/scene_live/exploration_live.ex`
+- New component: `lib/storyarn_web/live/scene_live/components/exploration_flow_overlay.ex`
 
 ### 5.2 Map backdrop during flow dialogue
 
@@ -294,7 +294,7 @@ ExplorationLive needs to handle all flow events (`choose_response`, `continue`, 
 - **CSS:** Map at z-index 0 (dimmed), dialogue overlay at z-index 10
 
 **Files:**
-- `lib/storyarn_web/live/map_live/exploration_live.ex` — template
+- `lib/storyarn_web/live/scene_live/exploration_live.ex` — template
 - `assets/css/exploration.css` — overlay styles
 
 ### 5.3 Flow execution within exploration
@@ -307,7 +307,7 @@ ExplorationLive needs to handle all flow events (`choose_response`, `continue`, 
 - **Slide building:** Via `FlowRunner.build_slide/4`
 
 **Files:**
-- `lib/storyarn_web/live/map_live/exploration_live.ex` — event handlers
+- `lib/storyarn_web/live/scene_live/exploration_live.ex` — event handlers
 
 ### 5.4 Exit node targeting
 
@@ -354,7 +354,7 @@ Exit nodes currently have three `exit_mode` values: `"terminal"`, `"flow_referen
   3. Stay in flow mode with new flow
 
 **Files:**
-- `lib/storyarn_web/live/map_live/exploration_live.ex`
+- `lib/storyarn_web/live/scene_live/exploration_live.ex`
 
 ### Verification
 ```bash

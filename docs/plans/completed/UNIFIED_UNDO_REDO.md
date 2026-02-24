@@ -32,14 +32,14 @@
 | Aspect                 | Detail                                                                                     |
 |------------------------|--------------------------------------------------------------------------------------------|
 | **Architecture**       | Server-side stacks in socket assigns (`undo_stack`, `redo_stack`)                          |
-| **Module**             | `StoryarnWeb.MapLive.Handlers.UndoRedoHandlers`                                            |
+| **Module**             | `StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers`                                            |
 | **Action format**      | Tagged tuples: `{:create_pin, pin}`, `{:move_pin, id, prev, new}`, etc.                    |
 | **Stack cap**          | 50 entries (`@max_undo 50`)                                                                |
 | **Coalescing**         | Yes — `push_undo_coalesced/2` for move operations                                          |
 | **Compound actions**   | Yes — `{:compound, [sub_actions]}` with reverse-order undo                                 |
 | **ID rebasing**        | Yes — `rebase_ids/2`, `track_rebased_id/3` for post-recreation ID mapping                  |
 | **Deletion model**     | Hard-delete + full struct storage for recreation                                           |
-| **Keyboard shortcuts** | `map_canvas.js` hook: `Cmd+Z` → `pushEvent("undo")`, `Cmd+Shift+Z/Y` → `pushEvent("redo")` |
+| **Keyboard shortcuts** | `scene_canvas.js` hook: `Cmd+Z` → `pushEvent("undo")`, `Cmd+Shift+Z/Y` → `pushEvent("redo")` |
 | **Test coverage**      | 750+ lines in `undo_redo_test.exs`                                                         |
 | **Collaboration**      | No per-user awareness                                                                      |
 
@@ -80,7 +80,7 @@
 
 ## 2. Architecture Decision: Server-Side for Sheets
 
-**Decision: Use the Maps pattern (server-side stacks in socket assigns).**
+**Decision: Use the Scenes pattern (server-side stacks in socket assigns).**
 
 **Rationale:**
 1. Sheets use standard Phoenix LiveView forms and events — no JS framework like Rete.js
@@ -218,7 +218,7 @@ end
 
 ### 0.2 Refactor Maps to Use Shared Module
 
-Refactor `StoryarnWeb.MapLive.Handlers.UndoRedoHandlers` to delegate stack operations to the shared module. The domain-specific `undo_action/2` and `redo_action/2` dispatch functions remain in the maps handler.
+Refactor `StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers` to delegate stack operations to the shared module. The domain-specific `undo_action/2` and `redo_action/2` dispatch functions remain in the maps handler.
 
 **Changes to `undo_redo_handlers.ex`:**
 
@@ -313,7 +313,7 @@ const Hooks = {
 };
 ```
 
-**Note:** Maps and Flows already have their own keyboard handling embedded in their respective hooks (`map_canvas.js`, `keyboard_handler.js`). The new `UndoRedo` hook is specifically for Sheets and any future editor that doesn't have its own keyboard handler. We do NOT refactor existing editors to use this hook — that would be disruptive for no gain.
+**Note:** Maps and Flows already have their own keyboard handling embedded in their respective hooks (`scene_canvas.js`, `keyboard_handler.js`). The new `UndoRedo` hook is specifically for Sheets and any future editor that doesn't have its own keyboard handler. We do NOT refactor existing editors to use this hook — that would be disruptive for no gain.
 
 ---
 
@@ -437,7 +437,7 @@ end
 
 ### 1.4 Coalescing for Name/Shortcut/Description
 
-Name and description edits should coalesce within a time window. Since the server doesn't have a timer-based coalescing mechanism (unlike JS), we use the Maps approach: **coalesce by matching the top of the stack**.
+Name and description edits should coalesce within a time window. Since the server doesn't have a timer-based coalescing mechanism (unlike JS), we use the Scenes approach: **coalesce by matching the top of the stack**.
 
 ```elixir
 # For sheet name edits, if the top of the stack is also a name edit, merge:
@@ -811,7 +811,7 @@ end
 
 ### 5.1 Compound Action Pattern
 
-Some operations affect multiple entities and must undo/redo as a single step. Use the Maps compound pattern:
+Some operations affect multiple entities and must undo/redo as a single step. Use the Scenes compound pattern:
 
 ```elixir
 # Compound action = list of sub-actions
@@ -882,14 +882,14 @@ Block inheritance operations (`detach_block`, `reattach_block`, `hide_for_childr
 
 | Editor   | Hook         | Location                     | Approach                         |
 |----------|--------------|------------------------------|----------------------------------|
-| Maps     | `MapCanvas`  | `map_canvas.js:308-321`      | Embedded in hook keydown handler |
+| Maps     | `SceneCanvas`  | `scene_canvas.js:308-321`      | Embedded in hook keydown handler |
 | Flows    | `FlowCanvas` | `keyboard_handler.js:91-105` | Separate handler module          |
 | Sheets   | None         | —                            | Not implemented                  |
 
 ### 6.2 Plan
 
 - **Sheets:** Use the new `UndoRedo` hook (Phase 0.3) attached to the sheet editor container
-- **Maps:** Keep existing (embedded in `MapCanvas` hook — refactoring would be risky for no benefit)
+- **Maps:** Keep existing (embedded in `SceneCanvas` hook — refactoring would be risky for no benefit)
 - **Flows:** Keep existing (deeply integrated with Rete.js history plugin)
 
 ### 6.3 Sheet LiveView Integration
@@ -932,9 +932,9 @@ end
 
 | File                                                               | Changes                                  |
 |--------------------------------------------------------------------|------------------------------------------|
-| `lib/storyarn_web/live/map_live/handlers/undo_redo_handlers.ex`    | Delegate stack ops to shared module      |
-| `lib/storyarn_web/live/map_live/handlers/element_handlers.ex`      | Update imports for shared module         |
-| `lib/storyarn_web/live/map_live/handlers/layer_handlers.ex`        | Update imports for shared module         |
+| `lib/storyarn_web/live/scene_live/handlers/undo_redo_handlers.ex`    | Delegate stack ops to shared module      |
+| `lib/storyarn_web/live/scene_live/handlers/element_handlers.ex`      | Update imports for shared module         |
+| `lib/storyarn_web/live/scene_live/handlers/layer_handlers.ex`        | Update imports for shared module         |
 | `lib/storyarn_web/live/sheet_live/show.ex`                         | Add undo/redo event handlers, init stack |
 | `lib/storyarn_web/live/sheet_live/handlers/block_crud_handlers.ex` | Add undo recording to all operations     |
 | `lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex`      | Add undo recording to all operations     |
@@ -949,7 +949,7 @@ end
 |------------------------------------------------------|-----------------------------------------------------|
 | `assets/js/flow_canvas/history_preset.js`            | Flows use client-side undo — different architecture |
 | `assets/js/flow_canvas/handlers/keyboard_handler.js` | Flows keyboard shortcuts are Rete-integrated        |
-| `assets/js/hooks/map_canvas.js`                      | Maps keyboard shortcuts work fine as-is             |
+| `assets/js/hooks/scene_canvas.js`                      | Maps keyboard shortcuts work fine as-is             |
 | `lib/storyarn_web/live/flow_live/*`                  | Flows undo/redo is independent                      |
 
 ---
@@ -1041,7 +1041,7 @@ end
 After refactoring Maps to use the shared module, run the existing test suite:
 
 ```bash
-mix test test/storyarn_web/live/map_live/undo_redo_test.exs
+mix test test/storyarn_web/live/scene_live/undo_redo_test.exs
 ```
 
 All 25+ existing tests must pass unchanged.
@@ -1212,7 +1212,7 @@ AutoLayoutAction(prevPositions, newPositions)
 | Coalescing     | `push_undo_coalesced/2`          | Timestamp-based                | `push_coalesced/4`              |
 | Compound       | `{:compound, [...]}`             | N/A                            | `{:compound, [...]}`            |
 | ID handling    | Hard-delete + new IDs + rebasing | Soft-delete + preserved IDs    | Hard-delete + UUID preservation |
-| Keyboard hook  | Embedded in `MapCanvas`          | Embedded in `keyboard_handler` | Standalone `UndoRedo` hook      |
+| Keyboard hook  | Embedded in `SceneCanvas`          | Embedded in `keyboard_handler` | Standalone `UndoRedo` hook      |
 | Collaboration  | None                             | `self` flag + locking          | None (v1)                       |
 | Test coverage  | 750+ lines                       | Minimal                        | Target: 500+ lines              |
 | Shared module  | After refactor: `UndoRedoStack`  | Independent                    | `UndoRedoStack`                 |

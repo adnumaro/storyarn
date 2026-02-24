@@ -782,7 +782,7 @@ msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:279
 #, elixir-autogen, elixir-format
-msgid "Property propagated to %{count} pages."
+msgid "Property propagated to %{count} sheets."
 msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/handlers/inheritance_handlers.ex:82
@@ -909,7 +909,7 @@ msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/components/propagation_modal.ex:41
 #, elixir-autogen, elixir-format
-msgid "Select all (%{count} pages)"
+msgid "Select all (%{count} sheets)"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/config_panel.ex:348
@@ -978,13 +978,13 @@ msgstr ""
 #: lib/storyarn_web/components/block_components/block_menu.ex:54
 #: lib/storyarn_web/components/block_components/config_panel.ex:89
 #, elixir-autogen, elixir-format
-msgid "This page and all children"
+msgid "This sheet and all children"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:41
 #: lib/storyarn_web/components/block_components/config_panel.ex:76
 #, elixir-autogen, elixir-format
-msgid "This page only"
+msgid "This sheet only"
 msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/components/propagation_modal.ex:25
@@ -1044,7 +1044,7 @@ msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/components/propagation_modal.ex:56
 #, elixir-autogen, elixir-format
-msgid "Unselected pages won't get this property but can add it manually later."
+msgid "Unselected sheets won't get this property but can add it manually later."
 msgstr ""
 
 #: lib/storyarn_web/components/audio_picker.ex:228
@@ -1183,7 +1183,7 @@ msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/components/scene_appearances_section.ex:106
 #, elixir-autogen, elixir-format
-msgid "This sheet doesn't appear on any maps yet."
+msgid "This sheet doesn't appear on any scenes yet."
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/table_blocks.ex:28
@@ -1397,5 +1397,5 @@ msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/components/variable_usage_section.ex:30
 #, elixir-autogen, elixir-format
-msgid "No variables on this sheet are used in any flow or map yet."
+msgid "No variables on this sheet are used in any flow or scene yet."
 msgstr ""

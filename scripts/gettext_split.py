@@ -29,9 +29,9 @@ DOMAIN_RULES = [
     ("storyarn_web/components/instruction_builder.ex", "flows"),
     ("storyarn_web/components/sidebar/flow_tree.ex", "flows"),
 
-    # maps
-    ("storyarn_web/live/map_live/", "maps"),
-    ("storyarn_web/components/sidebar/map_tree.ex", "maps"),
+    # scenes
+    ("storyarn_web/live/scene_live/", "scenes"),
+    ("storyarn_web/components/sidebar/scene_tree.ex", "scenes"),
 
     # sheets
     ("storyarn_web/live/sheet_live/", "sheets"),

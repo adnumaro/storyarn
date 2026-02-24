@@ -235,7 +235,7 @@ export const versionHistory = new VersionHistory();
 ### LiveView Integration
 
 ```javascript
-// In flow_canvas.js or page editor hook
+// In flow_canvas.js or sheet editor hook
 
 Hooks.PageEditor = {
   mounted() {
@@ -657,7 +657,7 @@ When demand exists, add full server-side page history:
 ### Phase 1: IndexedDB History
 1. Add `idb` npm package
 2. Implement `VersionHistory` class
-3. Integrate with page editor saves
+3. Integrate with sheet editor saves
 4. Add basic "View history" UI
 
 ### Phase 2: Activity Log

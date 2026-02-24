@@ -49,9 +49,9 @@ The sidebar (`properties_panels.ex`) is **removed entirely**. Zero side panel.
 
 | Pattern           | Source files                                                                                                |
 |-------------------|-------------------------------------------------------------------------------------------------------------|
-| Floating toolbar  | `assets/js/map_canvas/floating_toolbar.js`, `lib/storyarn_web/live/map_live/components/floating_toolbar.ex` |
-| Context menu      | `assets/js/map_canvas/context_menu.js`, `assets/js/map_canvas/context_menu_builder.js`                      |
-| Per-type dispatch | `lib/storyarn_web/live/map_live/components/floating_toolbar.ex` (zone_toolbar, pin_toolbar, etc.)           |
+| Floating toolbar  | `assets/js/scene_canvas/floating_toolbar.js`, `lib/storyarn_web/live/scene_live/components/floating_toolbar.ex` |
+| Context menu      | `assets/js/scene_canvas/context_menu.js`, `assets/js/scene_canvas/context_menu_builder.js`                      |
+| Per-type dispatch | `lib/storyarn_web/live/scene_live/components/floating_toolbar.ex` (zone_toolbar, pin_toolbar, etc.)           |
 
 ### Current key files
 
@@ -350,7 +350,7 @@ Replaces the current `ScreenplayEditor`. Fullscreen overlay (`fixed inset-0 z-50
 
 ### Subtask 1: Context menu infrastructure (JS)
 
-**Description:** Adapt `assets/js/map_canvas/context_menu.js` for the flow canvas. Create a positioned menu that appears on right-click, with per-type items.
+**Description:** Adapt `assets/js/scene_canvas/context_menu.js` for the flow canvas. Create a positioned menu that appears on right-click, with per-type items.
 
 **New files:**
 
@@ -394,7 +394,7 @@ Replaces the current `ScreenplayEditor`. Fullscreen overlay (`fixed inset-0 z-50
 
 ### Subtask 2: Floating toolbar infrastructure (JS)
 
-**Description:** Adapt `assets/js/map_canvas/floating_toolbar.js` for Rete.js coordinates. Position a toolbar element above the selected node, repositioning on pan/zoom/drag.
+**Description:** Adapt `assets/js/scene_canvas/floating_toolbar.js` for Rete.js coordinates. Position a toolbar element above the selected node, repositioning on pan/zoom/drag.
 
 **New files:**
 

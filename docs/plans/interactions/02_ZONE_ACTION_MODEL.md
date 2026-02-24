@@ -113,7 +113,7 @@ defmodule Storyarn.Repo.Migrations.AddActionFieldsToMapZones do
       add :action_data, :map, default: %{}, null: false
     end
 
-    # Index for filtering zones by action type (useful for interaction node queries)
+    # Index for filtering zones by action type
     create index(:map_zones, [:scene_id, :action_type])
   end
 end
@@ -129,7 +129,7 @@ end
 | `lib/storyarn/maps/map_zone.ex`                        | Add fields, validation             |
 | `lib/storyarn/maps/zone_crud.ex`                       | Accept new fields in create/update |
 | `lib/storyarn/maps.ex`                                 | New query functions                |
-| `lib/storyarn_web/live/map_live/helpers/serializer.ex` | Include action fields in JSON      |
+| `lib/storyarn_web/live/scene_live/helpers/serializer.ex` | Include action fields in JSON      |
 | `test/storyarn/maps/zone_test.exs`                     | New tests                          |
 
 ---
@@ -223,7 +223,7 @@ end
 
 ```elixir
 @doc """
-Lists all event zones for a map (used to generate interaction node outputs).
+Lists all event zones for a scene.
 """
 @spec list_event_zones(integer()) :: [MapZone.t()]
 defdelegate list_event_zones(scene_id), to: ZoneCrud
@@ -259,7 +259,7 @@ end
 
 ## Task 3 — Serializer
 
-**`lib/storyarn_web/live/map_live/helpers/serializer.ex`** — In `serialize_zone/1`, include the new fields:
+**`lib/storyarn_web/live/scene_live/helpers/serializer.ex`** — In `serialize_zone/1`, include the new fields:
 
 ```elixir
 defp serialize_zone(zone) do

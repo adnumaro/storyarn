@@ -36,11 +36,11 @@ end
 - Add fields: `fog_enabled` (boolean), `fog_color` (string), `fog_opacity` (float 0-1).
 - Validation: fog_opacity 0-1.
 
-**`lib/storyarn_web/live/map_live/show.ex`**
+**`lib/storyarn_web/live/scene_live/show.ex`**
 - Include fog fields in `serialize_layer/1`.
 - Add `handle_event("update_layer_fog", %{"id" => id, "fog_enabled" => val})`.
 
-**`assets/js/map_canvas/handlers/layer_handler.js`**
+**`assets/js/scene_canvas/handlers/layer_handler.js`**
 - When rendering layers, if a layer has `fog_enabled: true`:
   - Create a full-canvas dark overlay (`L.rectangle` with fog_color and fog_opacity).
   - For each zone in the fog layer, cut out the zone's polygon from the overlay.
@@ -63,7 +63,7 @@ const fogOverlay = L.polygon([canvasBounds, ...holes], {
 });
 ```
 
-**`lib/storyarn_web/live/map_live/components/properties_panel.ex`**
+**`lib/storyarn_web/live/scene_live/components/properties_panel.ex`**
 - In layer properties (if we add a layer properties section) or in the layer bar context menu:
   - "Enable Fog of War" toggle.
   - Fog color picker.
@@ -83,18 +83,18 @@ Layer: "Chapter 2 Reveal"
 
 ### Tests
 
-**`test/storyarn/maps_test.exs`**
+**`test/storyarn/scenes_test.exs`**
 - `create_layer` with `fog_enabled: true` stores the flag.
 - `update_layer` fog fields validation (opacity 0-1).
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - `update_layer_fog` enables fog on a layer.
 - `update_layer_fog` rejected for viewer.
 - Layer serialization includes fog fields.
 
 ### Verification
 ```bash
-mix test test/storyarn/maps_test.exs test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn/scenes_test.exs test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -110,7 +110,7 @@ Use Leaflet's `L.Control` to create a custom mini-map control. The mini-map is a
 
 ### Files to create
 
-**`assets/js/map_canvas/minimap.js`**
+**`assets/js/scene_canvas/minimap.js`**
 - `createMinimap(hook)` factory function.
 - Creates a secondary Leaflet map in a small container (200×150px).
 - Positioned bottom-right (above legend if present).
@@ -122,7 +122,7 @@ Use Leaflet's `L.Control` to create a custom mini-map control. The mini-map is a
 
 ### Files to modify
 
-**`assets/js/hooks/map_canvas.js`**
+**`assets/js/hooks/scene_canvas.js`**
 - Import and initialize minimap after map setup.
 - Pass background image URL to minimap.
 - Wire main map events to minimap updates.
@@ -134,13 +134,13 @@ Use Leaflet's `L.Control` to create a custom mini-map control. The mini-map is a
 
 ### Tests
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - No backend tests needed — minimap is purely client-side.
 - Verify map_data still includes background_url for minimap to use.
 
 ### Verification
 ```bash
-mix test test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -179,7 +179,7 @@ end
 
 ### Files to create
 
-**`assets/js/map_canvas/ruler.js`**
+**`assets/js/scene_canvas/ruler.js`**
 - `createRuler(hook)` factory function.
 - State: `measurements` array, `drawing` boolean, `startPoint`.
 - When ruler tool active:
@@ -192,37 +192,37 @@ end
 
 ### Files to modify
 
-**`assets/js/hooks/map_canvas.js`**
+**`assets/js/hooks/scene_canvas.js`**
 - Import and init ruler.
 - Pass `mapData.scale_unit` and `mapData.scale_value` to ruler.
 
-**`lib/storyarn_web/live/map_live/show.ex`**
+**`lib/storyarn_web/live/scene_live/show.ex`**
 - Include `scale_unit` and `scale_value` in `build_map_data`.
 - Add `handle_event("update_map_scale", %{"scale_unit" => unit, "scale_value" => value})`.
 
-**`lib/storyarn_web/live/map_live/components/properties_panel.ex`**
+**`lib/storyarn_web/live/scene_live/components/properties_panel.ex`**
 - In map properties (when nothing selected): add Scale section.
   - Unit input (text, e.g. "km", "leagues")
   - Value input (number, e.g. "500")
   - Help text: "1 map width = {value} {unit}"
 
-**`lib/storyarn_web/live/map_live/components/dock.ex`**
+**`lib/storyarn_web/live/scene_live/components/dock.ex`**
 - Add Ruler tool button (icon: `ruler`).
 
 ### Tests
 
-**`test/storyarn/maps_test.exs`**
+**`test/storyarn/scenes_test.exs`**
 - `update_map` with `scale_unit` and `scale_value` stores them.
 - `scale_value` must be positive (if set).
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - `update_map_scale` persists scale settings.
 - `update_map_scale` rejected for viewer.
 - Map data serialization includes scale fields.
 
 ### Verification
 ```bash
-mix test test/storyarn/maps_test.exs test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn/scenes_test.exs test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 
@@ -248,19 +248,19 @@ Iterate over all visible Leaflet layers, serialize their geometries to SVG eleme
 
 ### Files to create
 
-**`assets/js/map_canvas/exporter.js`**
+**`assets/js/scene_canvas/exporter.js`**
 - `exportPNG(hook)` → captures canvas, triggers download.
 - `exportSVG(hook)` → builds SVG from layer data, triggers download.
 - Both respect current layer visibility (hidden layers excluded).
 
 ### Files to modify
 
-**`lib/storyarn_web/live/map_live/show.ex` (template)**
+**`lib/storyarn_web/live/scene_live/show.ex` (template)**
 - Add export buttons in the header or settings panel:
   - "Export as PNG" → pushes JS command via `push_event("export_map", %{format: "png"})`.
   - "Export as SVG" → pushes JS command via `push_event("export_map", %{format: "svg"})`.
 
-**`assets/js/hooks/map_canvas.js`**
+**`assets/js/hooks/scene_canvas.js`**
 - Handle `export_map` event → call `exportPNG` or `exportSVG` from exporter module.
 
 **`assets/package.json`**
@@ -268,13 +268,13 @@ Iterate over all visible Leaflet layers, serialize their geometries to SVG eleme
 
 ### Tests
 
-**`test/storyarn_web/live/map_live/show_test.exs`**
+**`test/storyarn_web/live/scene_live/show_test.exs`**
 - Export buttons render for editor.
 - Export buttons do not render for viewer (or render as read-only).
 
 ### Verification
 ```bash
-mix test test/storyarn_web/live/map_live/show_test.exs
+mix test test/storyarn_web/live/scene_live/show_test.exs
 mix credo
 ```
 

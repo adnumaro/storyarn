@@ -8,8 +8,8 @@
 
 ## Overview
 
-This phase enhances the Flows system to mirror the Pages tree structure, adding:
-- Hierarchical flow organization (tree like Pages)
+This phase enhances the Flows system to mirror the Sheets tree structure, adding:
+- Hierarchical flow organization (tree like Sheets)
 - Explicit Entry and Exit nodes per flow
 - Inter-flow navigation (Subflow node, Exit caller_return mode)
 - Intra-flow convergence (Hub, Jump)
@@ -826,7 +826,7 @@ When exporting flows to JSON for game engines:
 
 ## Success Criteria
 
-- [x] Flows organized in tree structure (like Pages)
+- [x] Flows organized in tree structure (like Sheets)
 - [x] Any flow can have children AND content (unified model)
 - [x] Soft delete with trash recovery
 - [x] Every flow has exactly one Entry node

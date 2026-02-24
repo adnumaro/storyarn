@@ -276,8 +276,8 @@ The existing block type menu gets a new entry.
 ┌────────────────────────────────────────┐
 │  SCOPE                                 │
 │  ─────────────────────────────────     │
-│  (○) This page only                    │
-│  (◉) This page and all children        │
+│  (○) This sheet only                   │
+│  (◉) This sheet and all children       │
 │                                        │
 │  BASIC BLOCKS                          │
 │  ─────────────────────────────────     │

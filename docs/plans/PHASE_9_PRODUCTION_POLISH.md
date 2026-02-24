@@ -58,9 +58,9 @@ SELECT * FROM entity_references WHERE target_type = ? AND target_id = ?;
 
 **Recommended Indexes:**
 ```elixir
-# Pages tree traversal
-create index(:pages, [:project_id, :parent_id, :position])
-create index(:pages, [:project_id, :shortcut]) # Already exists
+# Sheets tree traversal
+create index(:sheets, [:project_id, :parent_id, :position])
+create index(:sheets, [:project_id, :shortcut]) # Already exists
 
 # Flows with nodes
 create index(:flow_nodes, [:flow_id, :type])

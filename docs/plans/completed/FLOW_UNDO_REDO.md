@@ -25,7 +25,7 @@ Everything else (node creation, duplication, all property edits) goes straight t
 - **`isLoadingFromServer` guard** — counter-based flag that prevents server-pushed changes (collaborator updates, initial load) from entering the history stack
 - **`_historyTriggeredDelete` flag** — prevents redo of deletion from double-recording into history
 - **Collaboration** — `data.self` flag ensures only the initiating user records actions; collaborators see the effect but don't get it in their own stack
-- **Soft-delete** — node IDs are preserved across undo/redo cycles (unlike Maps which re-create with new IDs)
+- **Soft-delete** — node IDs are preserved across undo/redo cycles (unlike Scenes which re-create with new IDs)
 - **Orphaned cascades** — deleting a hub that cascades orphaned jumps triggers `flow_updated` which calls `history.clear()`, wiping all prior history
 
 ---

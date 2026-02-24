@@ -414,14 +414,14 @@ defmodule Storyarn.Flows.Condition do
 
   defp valid_rule_structure?(_), do: false
 
-  # A rule is considered valid/complete if it has page, variable, and operator set
+  # A rule is considered valid/complete if it has sheet, variable, and operator set
   # (value may be nil for operators like is_empty, is_true, is_false, is_nil)
   defp valid_rule?(rule) when is_map(rule) do
-    page = rule["sheet"]
+    sheet = rule["sheet"]
     variable = rule["variable"]
     operator = rule["operator"]
 
-    is_binary(page) and page != "" and
+    is_binary(sheet) and sheet != "" and
       is_binary(variable) and variable != "" and
       is_binary(operator) and operator in @all_operators
   end

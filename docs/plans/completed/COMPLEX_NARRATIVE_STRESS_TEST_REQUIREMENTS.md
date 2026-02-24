@@ -377,7 +377,7 @@ The original concern about 34 responses in a 320px sidebar accordion is eliminat
 
 *Floating Toolbar:*
 - New: `lib/storyarn_web/live/flow_live/components/dialogue_toolbar.ex` — floating toolbar HEEx component
-- New: `assets/js/flow_canvas/floating_toolbar.js` — JS positioning module (reuse pattern from `map_canvas/floating_toolbar.js`)
+- New: `assets/js/flow_canvas/floating_toolbar.js` — JS positioning module (reuse pattern from `scene_canvas/floating_toolbar.js`)
 - `assets/js/hooks/flow_canvas.js` — show/hide toolbar on selection, reposition on pan/zoom/drag
 - `lib/storyarn_web/live/flow_live/show.ex` — toolbar container div, event wiring
 
