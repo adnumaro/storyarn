@@ -176,17 +176,17 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
   attr :workspace_slug, :string, required: true
   attr :project_slug, :string, required: true
 
-  defp usage_ref_row(%{ref: %{source_type: "map_zone"}} = assigns) do
+  defp usage_ref_row(%{ref: %{source_type: "scene_zone"}} = assigns) do
     detail = format_zone_ref_detail(assigns.ref)
     assigns = assign(assigns, :detail, detail)
 
     ~H"""
     <.link
-      navigate={~p"/workspaces/#{@workspace_slug}/projects/#{@project_slug}/maps/#{@ref.map_id}"}
+      navigate={~p"/workspaces/#{@workspace_slug}/projects/#{@project_slug}/scenes/#{@ref.scene_id}"}
       class="flex items-center gap-2 text-xs hover:text-primary group py-0.5"
     >
       <.icon name="map" class="size-3 text-base-content/40 group-hover:text-primary" />
-      <span class="font-medium">{@ref.map_name}</span>
+      <span class="font-medium">{@ref.scene_name}</span>
       <.icon name="arrow-right" class="size-3 text-base-content/40" />
       <span class="badge badge-xs badge-ghost">{@ref.zone_name}</span>
       <span :if={@detail} class="text-base-content/40">{@detail}</span>

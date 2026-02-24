@@ -11,33 +11,33 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:376
+#: lib/storyarn_web/live/asset_live/index.ex:366
 #, elixir-autogen, elixir-format
 msgid "All"
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:395
+#: lib/storyarn_web/live/asset_live/index.ex:385
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to delete this asset? This cannot be undone."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:345
+#: lib/storyarn_web/live/asset_live/index.ex:335
 #, elixir-autogen, elixir-format
 msgid "Asset deleted."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:303
+#: lib/storyarn_web/live/asset_live/index.ex:293
 #, elixir-autogen, elixir-format
 msgid "Asset uploaded successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:28
+#: lib/storyarn_web/components/focus_layout.ex:39
 #, elixir-autogen, elixir-format
 msgid "Assets"
 msgstr ""
 
 #: lib/storyarn_web/live/asset_live/components/asset_components.ex:186
-#: lib/storyarn_web/live/asset_live/index.ex:378
+#: lib/storyarn_web/live/asset_live/index.ex:368
 #, elixir-autogen, elixir-format
 msgid "Audio"
 msgstr ""
@@ -52,12 +52,12 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:348
+#: lib/storyarn_web/live/asset_live/index.ex:338
 #, elixir-autogen, elixir-format
 msgid "Could not delete asset."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:319
+#: lib/storyarn_web/live/asset_live/index.ex:309
 #, elixir-autogen, elixir-format
 msgid "Could not save asset."
 msgstr ""
@@ -122,19 +122,14 @@ msgstr ""
 msgid "Image"
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:377
+#: lib/storyarn_web/live/asset_live/index.ex:367
 #, elixir-autogen, elixir-format
 msgid "Images"
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:273
+#: lib/storyarn_web/live/asset_live/index.ex:263
 #, elixir-autogen, elixir-format
 msgid "Invalid file data."
-msgstr ""
-
-#: lib/storyarn_web/live/asset_live/index.ex:30
-#, elixir-autogen, elixir-format
-msgid "Manage images, audio, and other files for your project"
 msgstr ""
 
 #: lib/storyarn_web/live/components/asset_upload.ex:66
@@ -162,7 +157,7 @@ msgstr ""
 msgid "Size"
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:387
+#: lib/storyarn_web/live/asset_live/index.ex:377
 #, elixir-autogen, elixir-format
 msgid "This asset is used in %{count} place. Are you sure you want to delete it?"
 msgid_plural "This asset is used in %{count} places. Are you sure you want to delete it?"
@@ -179,18 +174,18 @@ msgstr ""
 msgid "Type"
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:315
+#: lib/storyarn_web/live/asset_live/index.ex:305
 #, elixir-autogen, elixir-format
 msgid "Unsupported file type."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:37
+#: lib/storyarn_web/live/asset_live/index.ex:36
 #: lib/storyarn_web/live/components/asset_upload.ex:94
 #, elixir-autogen, elixir-format
 msgid "Upload"
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:320
+#: lib/storyarn_web/live/asset_live/index.ex:310
 #, elixir-autogen, elixir-format
 msgid "Upload failed. Please try again."
 msgstr ""
@@ -201,7 +196,7 @@ msgstr ""
 msgid "Uploaded"
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:36
+#: lib/storyarn_web/live/asset_live/index.ex:35
 #, elixir-autogen, elixir-format
 msgid "Uploading..."
 msgstr ""
@@ -211,19 +206,9 @@ msgstr ""
 msgid "Usage"
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:161
+#: lib/storyarn_web/live/asset_live/index.ex:160
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
-msgstr ""
-
-#: lib/storyarn_web/live/asset_live/index.ex:225
-#, elixir-autogen, elixir-format
-msgid "You don't have permission to delete assets."
-msgstr ""
-
-#: lib/storyarn_web/live/asset_live/index.ex:254
-#, elixir-autogen, elixir-format
-msgid "You don't have permission to upload files."
 msgstr ""
 
 #: lib/storyarn_web/live/asset_live/components/asset_components.ex:146

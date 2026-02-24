@@ -248,13 +248,13 @@ msgstr "¡Bienvenido de nuevo!"
 msgid "You are running the local mail adapter."
 msgstr "Estás usando el adaptador de correo local."
 
-#: lib/storyarn_web/user_auth.ex:233
-#: lib/storyarn_web/user_auth.ex:314
+#: lib/storyarn_web/user_auth.ex:235
+#: lib/storyarn_web/user_auth.ex:316
 #, elixir-autogen, elixir-format
 msgid "You must log in to access this page."
 msgstr "Debes iniciar sesión para acceder a esta página."
 
-#: lib/storyarn_web/user_auth.ex:251
+#: lib/storyarn_web/user_auth.ex:253
 #, elixir-autogen, elixir-format
 msgid "You must re-authenticate to access this page."
 msgstr "Debes re-autenticarte para acceder a esta página."

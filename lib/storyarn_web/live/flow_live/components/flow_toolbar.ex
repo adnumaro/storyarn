@@ -24,8 +24,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   attr :subflow_exits, :list, default: []
   attr :referencing_jumps, :list, default: []
   attr :referencing_flows, :list, default: []
-  attr :project_maps, :list, default: []
-  attr :available_maps, :list, default: []
+  attr :project_scenes, :list, default: []
+  attr :available_scenes, :list, default: []
 
   def node_toolbar(assigns) do
     ~H"""
@@ -417,7 +417,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       target_type={@target_type}
       target_id={@target_id}
       exit_target_label={@exit_target_label}
-      available_maps={@available_maps}
+      available_scenes={@available_scenes}
       available_flows={@available_flows}
     />
     <button
@@ -690,7 +690,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   # ── Exit target picker ──────────────────────────────────────────────────
 
   defp exit_target_picker(assigns) do
-    target_options = build_exit_target_options(assigns.available_maps, assigns.available_flows)
+    target_options = build_exit_target_options(assigns.available_scenes, assigns.available_flows)
 
     selected_value =
       if assigns.target_type && assigns.target_id do
@@ -717,7 +717,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   end
 
   defp build_exit_target_options(maps, flows) do
-    map_opts = Enum.map(maps, fn m -> {"#{m.name}", "map:#{m.id}"} end)
+    map_opts = Enum.map(maps, fn m -> {"#{m.name}", "scene:#{m.id}"} end)
     flow_opts = Enum.map(flows, fn f -> {"#{f.name}", "flow:#{f.id}"} end)
     map_opts ++ flow_opts
   end
@@ -738,8 +738,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   defp resolve_exit_target_label(nil, _, _), do: nil
   defp resolve_exit_target_label(_, nil, _), do: nil
 
-  defp resolve_exit_target_label("map", target_id, assigns) do
-    Enum.find_value(assigns.available_maps, fn m ->
+  defp resolve_exit_target_label("scene", target_id, assigns) do
+    Enum.find_value(assigns.available_scenes, fn m ->
       if to_string(m.id) == to_string(target_id), do: m.name
     end)
   end

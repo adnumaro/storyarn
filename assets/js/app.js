@@ -46,8 +46,8 @@ import { FlowFloatingToolbar } from "./hooks/flow_floating_toolbar";
 import { FlowLoader } from "./hooks/flow_loader";
 import { FountainImport } from "./hooks/fountain_import";
 import { InstructionBuilder } from "./hooks/instruction_builder";
-import { MapCanvas } from "./hooks/map_canvas";
 import { ReferenceSearch } from "./hooks/reference_search";
+import { SceneCanvas } from "./hooks/scene_canvas";
 import { ScreenplayEditor } from "./hooks/screenplay_editor";
 import { SearchableSelect } from "./hooks/searchable_select";
 import { SortableList } from "./hooks/sortable_list";
@@ -100,7 +100,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ConditionBuilder,
     DebugPanelResize,
     FountainImport,
-    MapCanvas,
+    SceneCanvas,
     FloatingToolbar,
     FlowFloatingToolbar,
     ReferenceSearch,

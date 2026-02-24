@@ -9,7 +9,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   Called after every node data or zone action_data save. Extracts variable
   references from the source's structured data and upserts them into the
-  variable_references table with `source_type` ("flow_node" or "map_zone").
+  variable_references table with `source_type` ("flow_node" or "scene_zone").
 
   Stores `source_sheet` and `source_variable` alongside each reference so that
   staleness detection and repair can be done with simple SQL comparisons
@@ -24,8 +24,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   import Ecto.Query
 
   alias Storyarn.Flows.{Condition, Flow, FlowNode, VariableReference}
-  alias Storyarn.Maps.{MapPin, MapZone}
   alias Storyarn.Repo
+  alias Storyarn.Scenes.{ScenePin, SceneZone}
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
 
@@ -67,11 +67,11 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   Updates variable references for a map zone after its action_data changes.
   Extracts assignment write refs and display read refs.
   """
-  @spec update_map_zone_references(map(), keyword()) :: :ok
-  def update_map_zone_references(zone, opts \\ [])
+  @spec update_scene_zone_references(map(), keyword()) :: :ok
+  def update_scene_zone_references(zone, opts \\ [])
 
-  def update_map_zone_references(%{id: zone_id, map_id: map_id} = zone, opts) do
-    project_id = opts[:project_id] || Storyarn.Maps.get_map_project_id(map_id)
+  def update_scene_zone_references(%{id: zone_id, scene_id: scene_id} = zone, opts) do
+    project_id = opts[:project_id] || Storyarn.Scenes.get_scene_project_id(scene_id)
 
     refs =
       if project_id do
@@ -80,10 +80,10 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         []
       end
 
-    replace_references("map_zone", zone_id, refs)
+    replace_references("scene_zone", zone_id, refs)
   end
 
-  def update_map_zone_references(_zone, _opts), do: :ok
+  def update_scene_zone_references(_zone, _opts), do: :ok
 
   @doc """
   Deletes all variable references for a map zone.
@@ -91,7 +91,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   @spec delete_map_zone_references(integer()) :: :ok
   def delete_map_zone_references(zone_id) do
     from(vr in VariableReference,
-      where: vr.source_type == "map_zone" and vr.source_id == ^zone_id
+      where: vr.source_type == "scene_zone" and vr.source_id == ^zone_id
     )
     |> Repo.delete_all()
 
@@ -106,11 +106,11 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   Updates variable references for a map pin after its action_data changes.
   Extracts assignment write refs and display read refs.
   """
-  @spec update_map_pin_references(map(), keyword()) :: :ok
-  def update_map_pin_references(pin, opts \\ [])
+  @spec update_scene_pin_references(map(), keyword()) :: :ok
+  def update_scene_pin_references(pin, opts \\ [])
 
-  def update_map_pin_references(%{id: pin_id, map_id: map_id} = pin, opts) do
-    project_id = opts[:project_id] || Storyarn.Maps.get_map_project_id(map_id)
+  def update_scene_pin_references(%{id: pin_id, scene_id: scene_id} = pin, opts) do
+    project_id = opts[:project_id] || Storyarn.Scenes.get_scene_project_id(scene_id)
 
     refs =
       if project_id do
@@ -119,10 +119,10 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         []
       end
 
-    replace_references("map_pin", pin_id, refs)
+    replace_references("scene_pin", pin_id, refs)
   end
 
-  def update_map_pin_references(_pin, _opts), do: :ok
+  def update_scene_pin_references(_pin, _opts), do: :ok
 
   @doc """
   Deletes all variable references for a map pin.
@@ -130,7 +130,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   @spec delete_map_pin_references(integer()) :: :ok
   def delete_map_pin_references(pin_id) do
     from(vr in VariableReference,
-      where: vr.source_type == "map_pin" and vr.source_id == ^pin_id
+      where: vr.source_type == "scene_pin" and vr.source_id == ^pin_id
     )
     |> Repo.delete_all()
 
@@ -145,8 +145,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   @spec get_variable_usage(integer(), integer()) :: [map()]
   def get_variable_usage(block_id, project_id) do
     flow_refs = get_flow_node_variable_usage(block_id, project_id)
-    zone_refs = get_map_zone_variable_usage(block_id, project_id)
-    pin_refs = get_map_pin_variable_usage(block_id, project_id)
+    zone_refs = get_scene_zone_variable_usage(block_id, project_id)
+    pin_refs = get_scene_pin_variable_usage(block_id, project_id)
     flow_refs ++ zone_refs ++ pin_refs
   end
 
@@ -174,20 +174,20 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     |> Repo.all()
   end
 
-  defp get_map_zone_variable_usage(block_id, project_id) do
+  defp get_scene_zone_variable_usage(block_id, project_id) do
     from(vr in VariableReference,
-      join: z in MapZone,
-      on: vr.source_type == "map_zone" and z.id == vr.source_id,
-      join: m in Storyarn.Maps.Map,
-      on: m.id == z.map_id,
+      join: z in SceneZone,
+      on: vr.source_type == "scene_zone" and z.id == vr.source_id,
+      join: m in Storyarn.Scenes.Scene,
+      on: m.id == z.scene_id,
       where: vr.block_id == ^block_id,
       where: m.project_id == ^project_id,
       where: is_nil(m.deleted_at),
       select: %{
         source_type: vr.source_type,
         kind: vr.kind,
-        map_id: m.id,
-        map_name: m.name,
+        scene_id: m.id,
+        scene_name: m.name,
         zone_id: z.id,
         zone_name: z.name,
         zone_action_data: z.action_data
@@ -197,20 +197,20 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     |> Repo.all()
   end
 
-  defp get_map_pin_variable_usage(block_id, project_id) do
+  defp get_scene_pin_variable_usage(block_id, project_id) do
     from(vr in VariableReference,
-      join: p in MapPin,
-      on: vr.source_type == "map_pin" and p.id == vr.source_id,
-      join: m in Storyarn.Maps.Map,
-      on: m.id == p.map_id,
+      join: p in ScenePin,
+      on: vr.source_type == "scene_pin" and p.id == vr.source_id,
+      join: m in Storyarn.Scenes.Scene,
+      on: m.id == p.scene_id,
       where: vr.block_id == ^block_id,
       where: m.project_id == ^project_id,
       where: is_nil(m.deleted_at),
       select: %{
         source_type: vr.source_type,
         kind: vr.kind,
-        map_id: m.id,
-        map_name: m.name,
+        scene_id: m.id,
+        scene_name: m.name,
         pin_id: p.id,
         pin_label: p.label,
         pin_action_data: p.action_data
@@ -242,15 +242,15 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   block variable_name.
 
   Returns both flow node and map zone sources. Each result includes a
-  `:source_type` field ("flow_node" or "map_zone") to distinguish them.
+  `:source_type` field ("flow_node" or "scene_zone") to distinguish them.
 
   Filters out references whose sheet or block has been soft-deleted.
   """
   @spec check_stale_references(integer(), integer()) :: [map()]
   def check_stale_references(block_id, project_id) do
     flow_refs = check_stale_flow_node_references(block_id, project_id)
-    zone_refs = check_stale_map_zone_references(block_id, project_id)
-    pin_refs = check_stale_map_pin_references(block_id, project_id)
+    zone_refs = check_stale_scene_zone_references(block_id, project_id)
+    pin_refs = check_stale_scene_pin_references(block_id, project_id)
     flow_refs ++ zone_refs ++ pin_refs
   end
 
@@ -311,12 +311,12 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     |> Repo.all()
   end
 
-  defp check_stale_map_zone_references(block_id, project_id) do
+  defp check_stale_scene_zone_references(block_id, project_id) do
     from(vr in VariableReference,
-      join: z in MapZone,
-      on: vr.source_type == "map_zone" and z.id == vr.source_id,
-      join: m in Storyarn.Maps.Map,
-      on: m.id == z.map_id,
+      join: z in SceneZone,
+      on: vr.source_type == "scene_zone" and z.id == vr.source_id,
+      join: m in Storyarn.Scenes.Scene,
+      on: m.id == z.scene_id,
       join: b in Block,
       on: b.id == vr.block_id,
       join: s in Sheet,
@@ -329,8 +329,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       select: %{
         source_type: vr.source_type,
         kind: vr.kind,
-        map_id: m.id,
-        map_name: m.name,
+        scene_id: m.id,
+        scene_name: m.name,
         zone_id: z.id,
         zone_name: z.name,
         zone_action_data: z.action_data,
@@ -367,12 +367,12 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     |> Repo.all()
   end
 
-  defp check_stale_map_pin_references(block_id, project_id) do
+  defp check_stale_scene_pin_references(block_id, project_id) do
     from(vr in VariableReference,
-      join: p in MapPin,
-      on: vr.source_type == "map_pin" and p.id == vr.source_id,
-      join: m in Storyarn.Maps.Map,
-      on: m.id == p.map_id,
+      join: p in ScenePin,
+      on: vr.source_type == "scene_pin" and p.id == vr.source_id,
+      join: m in Storyarn.Scenes.Scene,
+      on: m.id == p.scene_id,
       join: b in Block,
       on: b.id == vr.block_id,
       join: s in Sheet,
@@ -385,8 +385,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       select: %{
         source_type: vr.source_type,
         kind: vr.kind,
-        map_id: m.id,
-        map_name: m.name,
+        scene_id: m.id,
+        scene_name: m.name,
         pin_id: p.id,
         pin_label: p.label,
         pin_action_data: p.action_data,

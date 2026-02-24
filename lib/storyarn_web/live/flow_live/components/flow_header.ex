@@ -72,9 +72,9 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
   attr :can_edit, :boolean, required: true
   attr :save_status, :atom, default: :idle
   attr :nav_history, :map, default: nil
-  attr :scene_map_name, :string, default: nil
-  attr :scene_map_inherited, :boolean, default: false
-  attr :available_maps, :list, default: []
+  attr :scene_name, :string, default: nil
+  attr :scene_inherited, :boolean, default: false
+  attr :available_scenes, :list, default: []
 
   def flow_info_bar(assigns) do
     ~H"""
@@ -151,13 +151,13 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
         </span>
       </div>
 
-      <%!-- Scene map indicator --%>
-      <.scene_map_indicator
-        :if={@can_edit || @scene_map_name}
-        scene_map_name={@scene_map_name}
-        scene_map_inherited={@scene_map_inherited}
+      <%!-- Scene indicator --%>
+      <.scene_indicator
+        :if={@can_edit || @scene_name}
+        scene_name={@scene_name}
+        scene_inherited={@scene_inherited}
         can_edit={@can_edit}
-        available_maps={@available_maps}
+        available_scenes={@available_scenes}
       />
 
       <%!-- Save indicator --%>
@@ -166,12 +166,12 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
     """
   end
 
-  attr :scene_map_name, :string, default: nil
-  attr :scene_map_inherited, :boolean, default: false
+  attr :scene_name, :string, default: nil
+  attr :scene_inherited, :boolean, default: false
   attr :can_edit, :boolean, required: true
-  attr :available_maps, :list, default: []
+  attr :available_scenes, :list, default: []
 
-  defp scene_map_indicator(assigns) do
+  defp scene_indicator(assigns) do
     ~H"""
     <div class="hidden lg:block">
       <div class="dropdown dropdown-bottom dropdown-end">
@@ -180,18 +180,18 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
           tabindex="0"
           class={[
             "flex items-center gap-1.5 bg-base-200/95 backdrop-blur rounded-xl shadow-lg border px-2.5 py-1.5 text-xs",
-            if(@scene_map_name,
+            if(@scene_name,
               do: "border-primary/30 text-base-content",
               else: "border-base-300 text-base-content/50"
             )
           ]}
-          title={dgettext("flows", "Scene map backdrop")}
+          title={dgettext("flows", "Scene backdrop")}
         >
           <.icon name="map" class="size-3.5" />
-          <span :if={@scene_map_name} class="truncate max-w-[120px]">{@scene_map_name}</span>
-          <span :if={!@scene_map_name}>{dgettext("flows", "No scene")}</span>
+          <span :if={@scene_name} class="truncate max-w-[120px]">{@scene_name}</span>
+          <span :if={!@scene_name}>{dgettext("flows", "No scene")}</span>
           <span
-            :if={@scene_map_inherited}
+            :if={@scene_inherited}
             class="text-base-content/40 text-[10px]"
             title={dgettext("flows", "Inherited from parent flow")}
           >
@@ -206,22 +206,22 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
           <li>
             <button
               type="button"
-              phx-click="update_scene_map"
-              phx-value-map_id=""
+              phx-click="update_scene"
+              phx-value-scene_id=""
               class={[
                 "flex items-center gap-2",
-                if(!@scene_map_name, do: "active")
+                if(!@scene_name, do: "active")
               ]}
             >
               <.icon name="x" class="size-3 opacity-60" />
               <span class="text-base-content/60">{dgettext("flows", "No scene (inherit)")}</span>
             </button>
           </li>
-          <li :for={map <- @available_maps}>
+          <li :for={map <- @available_scenes}>
             <button
               type="button"
-              phx-click="update_scene_map"
-              phx-value-map_id={map.id}
+              phx-click="update_scene"
+              phx-value-scene_id={map.id}
             >
               <.icon name="map" class="size-3 opacity-60" />
               <span class="truncate">{map.name}</span>

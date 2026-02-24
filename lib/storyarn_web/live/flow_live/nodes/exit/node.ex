@@ -9,7 +9,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Flows
-  alias Storyarn.Maps
+  alias Storyarn.Scenes
   alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
@@ -63,11 +63,11 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
         Phoenix.Component.assign(socket, :available_flows, available_flows)
 
       "terminal" ->
-        available_maps = Maps.search_maps(project_id, "")
+        available_scenes = Scenes.search_scenes(project_id, "")
         available_flows = Flows.search_flows(project_id, "", exclude_id: flow_id)
 
         socket
-        |> Phoenix.Component.assign(:available_maps, available_maps)
+        |> Phoenix.Component.assign(:available_scenes, available_scenes)
         |> Phoenix.Component.assign(:available_flows, available_flows)
 
       _ ->
@@ -114,7 +114,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
 
   defp parse_referenced_flow_id(_), do: nil
 
-  @valid_target_types ~w(map flow)
+  @valid_target_types ~w(scene flow)
   defp validate_target_type(type) when type in @valid_target_types, do: type
   defp validate_target_type(_), do: nil
 
@@ -169,12 +169,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
           {:noreply, Phoenix.Component.assign(socket, :available_flows, available_flows)}
 
         "terminal" ->
-          available_maps = Maps.search_maps(project_id, "")
+          available_scenes = Scenes.search_scenes(project_id, "")
           available_flows = Flows.search_flows(project_id, "", exclude_id: current_flow_id)
 
           {:noreply,
            socket
-           |> Phoenix.Component.assign(:available_maps, available_maps)
+           |> Phoenix.Component.assign(:available_scenes, available_scenes)
            |> Phoenix.Component.assign(:available_flows, available_flows)}
 
         _ ->
@@ -268,7 +268,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
     end)
   end
 
-  @doc "Updates exit target (map or flow transition on terminal exit)."
+  @doc "Updates exit target (scene or flow transition on terminal exit)."
   def handle_update_exit_target(%{"target_type" => type, "target_id" => id}, socket) do
     node = socket.assigns.selected_node
     validated_type = validate_target_type(type)

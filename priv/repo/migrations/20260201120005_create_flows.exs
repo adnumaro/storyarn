@@ -32,6 +32,8 @@ defmodule Storyarn.Repo.Migrations.CreateFlows do
       add :position_x, :float, default: 0.0, null: false
       add :position_y, :float, default: 0.0, null: false
       add :data, :map, default: %{}
+      add :source, :string, default: "manual", null: false
+      add :deleted_at, :utc_datetime
       add :flow_id, references(:flows, on_delete: :delete_all), null: false
 
       timestamps(type: :utc_datetime)
@@ -39,6 +41,27 @@ defmodule Storyarn.Repo.Migrations.CreateFlows do
 
     create index(:flow_nodes, [:flow_id])
     create index(:flow_nodes, [:flow_id, :type])
+    create index(:flow_nodes, [:source])
+
+    create index(:flow_nodes, [:flow_id],
+             where: "deleted_at IS NULL",
+             name: :flow_nodes_active_flow_id_index
+           )
+
+    create index(:flow_nodes, [:deleted_at],
+             where: "deleted_at IS NOT NULL",
+             name: :flow_nodes_trash_index
+           )
+
+    create index(:flow_nodes, [:flow_id, :type],
+             where: "deleted_at IS NULL",
+             name: :flow_nodes_active_by_type_index
+           )
+
+    create index(:flow_nodes, ["(data)"],
+             using: "GIN",
+             name: :flow_nodes_data_gin_index
+           )
 
     create table(:flow_connections) do
       add :source_pin, :string, null: false

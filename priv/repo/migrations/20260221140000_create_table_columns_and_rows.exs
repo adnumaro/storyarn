@@ -8,6 +8,7 @@ defmodule Storyarn.Repo.Migrations.CreateTableColumnsAndRows do
       add :slug, :string, null: false
       add :type, :string, null: false, default: "number"
       add :is_constant, :boolean, null: false, default: false
+      add :required, :boolean, null: false, default: false
       add :position, :integer, null: false, default: 0
       add :config, :map, null: false, default: %{}
 

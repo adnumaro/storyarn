@@ -167,23 +167,23 @@ defmodule Storyarn.Flows do
   defdelegate change_flow(flow, attrs \\ %{}), to: FlowCrud
 
   @doc """
-  Updates only the scene_map_id of a flow.
+  Updates only the scene_id of a flow.
   Used to associate a flow with a map as its scene backdrop.
   """
   @spec update_flow_scene(flow(), attrs()) :: {:ok, flow()} | {:error, Ecto.Changeset.t()}
   defdelegate update_flow_scene(flow, attrs), to: FlowCrud
 
   @doc """
-  Resolves the scene_map_id for a flow using inheritance chain.
+  Resolves the scene_id for a flow using inheritance chain.
 
   Resolution order:
-  1. `flow.scene_map_id` (explicit)
-  2. `opts[:caller_scene_map_id]` (runtime inheritance from calling flow)
+  1. `flow.scene_id` (explicit)
+  2. `opts[:caller_scene_id]` (runtime inheritance from calling flow)
   3. Parent chain (walk up parent_id)
   4. `nil`
   """
-  @spec resolve_scene_map_id(flow(), keyword()) :: integer() | nil
-  defdelegate resolve_scene_map_id(flow, opts \\ []), to: SceneResolver
+  @spec resolve_scene_id(flow(), keyword()) :: integer() | nil
+  defdelegate resolve_scene_id(flow, opts \\ []), to: SceneResolver
 
   @doc """
   Sets a flow as the main flow for its project.

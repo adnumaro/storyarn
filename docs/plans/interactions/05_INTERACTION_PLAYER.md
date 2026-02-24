@@ -53,7 +53,7 @@ Flow reaches interaction node
    state.pending_choices = %{
      type: :interaction,
      node_id: node_id,
-     map_id: map_id,
+     scene_id: scene_id,
      zones: [zone_data...]
    }
 
@@ -152,9 +152,9 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InteractionEvaluator do
   def evaluate(node, state, _connections) do
     data = node.data || %{}
     label = EngineHelpers.node_label(node) || data["label"] || "Interaction"
-    map_id = data["map_id"]
+    scene_id = data["scene_id"]
 
-    if is_nil(map_id) do
+    if is_nil(scene_id) do
       state = EngineHelpers.add_console(state, :error, node.id, label, "No map assigned")
       {:error, state, :no_map}
     else
@@ -163,7 +163,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InteractionEvaluator do
       pending = %{
         type: :interaction,
         node_id: node.id,
-        map_id: map_id,
+        scene_id: scene_id,
         label: label
       }
 
@@ -302,15 +302,15 @@ No change needed. When the engine returns `{:waiting_input, state}`, the player 
 ```elixir
 def build(%{type: "interaction"} = node, state, _sheets_map, project_id) do
   data = node.data || %{}
-  map_id = data["map_id"]
+  scene_id = data["scene_id"]
 
   # Load map with zones for rendering
   # Note: this is the only place where the slide builder needs DB access
   # via the project_id. The map data is loaded here for the player UI.
   {map_data, zones} =
-    if map_id do
-      map = Storyarn.Maps.get_map(project_id, map_id)
-      zones = if map, do: Storyarn.Maps.list_zones(map_id), else: []
+    if scene_id do
+      map = Storyarn.Maps.get_map(project_id, scene_id)
+      zones = if map, do: Storyarn.Maps.list_zones(scene_id), else: []
       {map, zones}
     else
       {nil, []}
@@ -320,7 +320,7 @@ def build(%{type: "interaction"} = node, state, _sheets_map, project_id) do
     type: :interaction,
     node_id: node.id,
     label: data["label"] || (map_data && map_data.name) || "Interaction",
-    map_id: map_id,
+    scene_id: scene_id,
     map_name: map_data && map_data.name,
     background_url: map_data && extract_background_url(map_data),
     map_width: map_data && map_data.width,
@@ -724,15 +724,15 @@ The console will log:
 ```elixir
 describe "interaction evaluator" do
   test "evaluate sets waiting_input with pending choices" do
-    node = %{id: 1, type: "interaction", data: %{"map_id" => 42, "label" => "Test"}}
+    node = %{id: 1, type: "interaction", data: %{"scene_id" => 42, "label" => "Test"}}
     {:waiting_input, state} = InteractionEvaluator.evaluate(node, init_state(), [])
     assert state.status == :waiting_input
     assert state.pending_choices.type == :interaction
-    assert state.pending_choices.map_id == 42
+    assert state.pending_choices.scene_id == 42
   end
 
-  test "evaluate without map_id returns error" do
-    node = %{id: 1, type: "interaction", data: %{"map_id" => nil}}
+  test "evaluate without scene_id returns error" do
+    node = %{id: 1, type: "interaction", data: %{"scene_id" => nil}}
     {:error, _state, :no_map} = InteractionEvaluator.evaluate(node, init_state(), [])
   end
 

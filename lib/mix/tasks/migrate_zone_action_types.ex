@@ -14,8 +14,8 @@ defmodule Mix.Tasks.MigrateZoneActionTypes do
 
   import Ecto.Query
 
-  alias Storyarn.Maps.MapZone
   alias Storyarn.Repo
+  alias Storyarn.Scenes.SceneZone
 
   @shortdoc "Migrate legacy zone action_types (navigate/event → none)"
 
@@ -68,7 +68,7 @@ defmodule Mix.Tasks.MigrateZoneActionTypes do
   end
 
   defp list_zones_by_action_type(action_type) do
-    from(z in MapZone,
+    from(z in SceneZone,
       where: z.action_type == ^action_type,
       order_by: [asc: z.id]
     )

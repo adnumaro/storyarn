@@ -22,7 +22,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
   @tools [
     %{key: :sheets, icon: "file-text", section: "sheets"},
     %{key: :flows, icon: "git-branch", section: "flows"},
-    %{key: :maps, icon: "map", section: "maps"},
+    %{key: :scenes, icon: "map", section: "scenes"},
     %{key: :screenplays, icon: "scroll-text", section: "screenplays"},
     %{key: :assets, icon: "image", section: "assets"},
     %{key: :localization, icon: "languages", section: "localization"}
@@ -34,7 +34,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
 
   defp tool_label(:sheets), do: dgettext("sheets", "Sheets")
   defp tool_label(:flows), do: dgettext("flows", "Flows")
-  defp tool_label(:maps), do: dgettext("maps", "Maps")
+  defp tool_label(:scenes), do: dgettext("scenes", "Scenes")
   defp tool_label(:screenplays), do: dgettext("screenplays", "Screenplays")
   defp tool_label(:assets), do: dgettext("assets", "Assets")
   defp tool_label(:localization), do: dgettext("localization", "Localization")
@@ -243,7 +243,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
 
   defp tool_path(ws, proj, "sheets"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/sheets"
   defp tool_path(ws, proj, "flows"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows"
-  defp tool_path(ws, proj, "maps"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/maps"
+  defp tool_path(ws, proj, "scenes"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/scenes"
 
   defp tool_path(ws, proj, "screenplays"),
     do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/screenplays"

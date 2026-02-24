@@ -82,7 +82,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ExitEvaluator do
     target_id = data["target_id"]
 
     exit_transition =
-      if target_type in ["map", "flow"] and target_id do
+      if target_type in ["scene", "flow"] and target_id do
         %{type: target_type, id: target_id}
       else
         nil

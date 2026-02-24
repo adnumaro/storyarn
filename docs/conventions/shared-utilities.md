@@ -35,7 +35,7 @@ NameNormalizer.shortcutify("MC.Jaime")  # => "mc.jaime"
 
 **File:** `lib/storyarn/shared/shortcut_helpers.ex`
 
-Shortcut lifecycle management shared by ALL CRUD modules (FlowCrud, SheetCrud, MapCrud, ScreenplayCrud).
+Shortcut lifecycle management shared by ALL CRUD modules (FlowCrud, SheetCrud, SceneCrud, ScreenplayCrud).
 
 | Function                              | Purpose                                                                |
 |---------------------------------------|------------------------------------------------------------------------|
@@ -62,7 +62,7 @@ attrs = ShortcutHelpers.maybe_generate_shortcut_on_update(entity, attrs, &genera
 
 **File:** `lib/storyarn/shared/tree_operations.ex`
 
-Generic tree manipulation for ANY entity with `parent_id` + `position` fields. Used by sheets, flows, maps, screenplays.
+Generic tree manipulation for ANY entity with `parent_id` + `position` fields. Used by sheets, flows, scenes, screenplays.
 
 | Function                     | Purpose                                               |
 |------------------------------|-------------------------------------------------------|

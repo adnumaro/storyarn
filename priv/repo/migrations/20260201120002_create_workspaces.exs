@@ -8,6 +8,7 @@ defmodule Storyarn.Repo.Migrations.CreateWorkspaces do
       add :description, :text
       add :banner_url, :string
       add :color, :string
+      add :source_locale, :string, size: 10, default: "en"
       add :owner_id, references(:users, on_delete: :restrict), null: false
 
       timestamps(type: :utc_datetime)

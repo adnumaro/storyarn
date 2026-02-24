@@ -52,7 +52,7 @@ Router, sidebar integration, MapLive.Index, MapLive.Form, MapLive.Show (list-bas
 
 **Files created/modified:**
 - `lib/storyarn_web/router.ex` — 3 map routes added
-- `lib/storyarn_web/components/layouts.ex` — `maps_tree`, `selected_map_id` attrs
+- `lib/storyarn_web/components/layouts.ex` — `maps_tree`, `selected_scene_id` attrs
 - `lib/storyarn_web/components/project_sidebar.ex` — Maps tool link + `:maps` branch
 - `lib/storyarn_web/components/sidebar/map_tree.ex` — sidebar tree component
 - `lib/storyarn_web/live/map_live/index.ex` — map list page
@@ -162,7 +162,7 @@ maps
 
 map_layers
 ├── id (integer, PK)
-├── map_id (FK → maps, on_delete: delete_all)
+├── scene_id (FK → maps, on_delete: delete_all)
 ├── name (string, not null)            # "Default", "After the Fire", "Winter"
 ├── is_default (boolean, default: false)
 ├── position (integer, default: 0)
@@ -175,7 +175,7 @@ map_layers
 
 map_zones                              # Polygonal regions (territories, districts, areas)
 ├── id (integer, PK)
-├── map_id (FK → maps, on_delete: delete_all)
+├── scene_id (FK → maps, on_delete: delete_all)
 ├── layer_id (FK → map_layers, on_delete: nilify_all)  # nil = visible on all layers
 ├── name (string, not null)            # "Northern Kingdom", "Market District"
 ├── vertices (jsonb, not null)         # [{x: 10.5, y: 20.3}, {x: 45.0, y: 15.0}, ...]
@@ -192,7 +192,7 @@ map_zones                              # Polygonal regions (territories, distric
 
 map_pins
 ├── id (integer, PK)
-├── map_id (FK → maps, on_delete: delete_all)
+├── scene_id (FK → maps, on_delete: delete_all)
 ├── layer_id (FK → map_layers, on_delete: nilify_all)  # nil = visible on all layers
 ├── position_x (float, not null)       # Percentage 0-100 for responsiveness
 ├── position_y (float, not null)
@@ -209,7 +209,7 @@ map_pins
 
 map_connections
 ├── id (integer, PK)
-├── map_id (FK → maps, on_delete: delete_all)
+├── scene_id (FK → maps, on_delete: delete_all)
 ├── from_pin_id (FK → map_pins, on_delete: delete_all)
 ├── to_pin_id (FK → map_pins, on_delete: delete_all)
 ├── line_style (string, default: "solid")  # solid | dashed | dotted
@@ -334,7 +334,7 @@ World Map (parent_id: nil)
 
 #### Database & Schema
 - [x] Create `map_layers` table (migration) — same migration file
-- [x] Index on `(map_id, position)`
+- [x] Index on `(scene_id, position)`
 - [x] Schema: `MapLayer` with changesets — `lib/storyarn/maps/map_layer.ex`
 
 #### Context Functions
@@ -377,7 +377,7 @@ Polygonal regions that define interactive areas on the map. Zones are first-clas
 
 #### Database & Schema
 - [x] Create `map_zones` table (migration) — same migration file
-- [x] Index on `(map_id, layer_id)`
+- [x] Index on `(scene_id, layer_id)`
 - [x] Index on `(target_type, target_id)`
 - [x] Schema: `MapZone` with changesets — `lib/storyarn/maps/map_zone.ex`
 - [x] Vertex validation (minimum 3 points, all within 0-100 range)
@@ -425,7 +425,7 @@ vertices: [%{"x" => 20.0, "y" => 10.0}, %{"x" => 60.0, "y" => 10.0}, %{"x" => 40
 
 #### Database & Schema
 - [x] Create `map_pins` table (migration) — same migration file
-- [x] Index on `(map_id, layer_id)`
+- [x] Index on `(scene_id, layer_id)`
 - [x] Index on `(target_type, target_id)`
 
 #### Context Functions
@@ -464,7 +464,7 @@ Visual lines connecting pins (travel routes, relationships).
 
 #### Database & Schema
 - [x] Create `map_connections` table (migration) — same migration file
-- [x] Index on `(map_id)`
+- [x] Index on `(scene_id)`
 
 #### Context Functions
 - [x] `Maps.list_connections/1` - List connections for map (with from_pin/to_pin preloaded)
@@ -737,7 +737,7 @@ create index(:maps, [:project_id])
 
 # -- Map Layers --
 create table(:map_layers) do
-  add :map_id, references(:maps, on_delete: :delete_all), null: false
+  add :scene_id, references(:maps, on_delete: :delete_all), null: false
   add :name, :string, null: false
   add :is_default, :boolean, default: false, null: false
   add :trigger_sheet, :string
@@ -749,11 +749,11 @@ create table(:map_layers) do
   timestamps(type: :utc_datetime)
 end
 
-create index(:map_layers, [:map_id, :position])
+create index(:map_layers, [:scene_id, :position])
 
 # -- Map Zones --
 create table(:map_zones) do
-  add :map_id, references(:maps, on_delete: :delete_all), null: false
+  add :scene_id, references(:maps, on_delete: :delete_all), null: false
   add :layer_id, references(:map_layers, on_delete: :nilify_all)
   add :name, :string, null: false
   add :vertices, :jsonb, null: false    # [{x, y}, ...] percentage-based
@@ -770,12 +770,12 @@ create table(:map_zones) do
   timestamps(type: :utc_datetime)
 end
 
-create index(:map_zones, [:map_id, :layer_id])
+create index(:map_zones, [:scene_id, :layer_id])
 create index(:map_zones, [:target_type, :target_id])
 
 # -- Map Pins --
 create table(:map_pins) do
-  add :map_id, references(:maps, on_delete: :delete_all), null: false
+  add :scene_id, references(:maps, on_delete: :delete_all), null: false
   add :layer_id, references(:map_layers, on_delete: :nilify_all)
   add :position_x, :float, null: false
   add :position_y, :float, null: false
@@ -792,12 +792,12 @@ create table(:map_pins) do
   timestamps(type: :utc_datetime)
 end
 
-create index(:map_pins, [:map_id, :layer_id])
+create index(:map_pins, [:scene_id, :layer_id])
 create index(:map_pins, [:target_type, :target_id])
 
 # -- Map Connections --
 create table(:map_connections) do
-  add :map_id, references(:maps, on_delete: :delete_all), null: false
+  add :scene_id, references(:maps, on_delete: :delete_all), null: false
   add :from_pin_id, references(:map_pins, on_delete: :delete_all), null: false
   add :to_pin_id, references(:map_pins, on_delete: :delete_all), null: false
   add :line_style, :string, default: "solid"
@@ -808,7 +808,7 @@ create table(:map_connections) do
   timestamps(type: :utc_datetime)
 end
 
-create index(:map_connections, [:map_id])
+create index(:map_connections, [:scene_id])
 ```
 
 ---

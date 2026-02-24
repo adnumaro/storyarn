@@ -16,18 +16,18 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:484
-#: lib/storyarn_web/components/layouts.ex:496
+#: lib/storyarn_web/components/layouts.ex:486
+#: lib/storyarn_web/components/layouts.ex:498
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:491
+#: lib/storyarn_web/components/layouts.ex:493
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:479
+#: lib/storyarn_web/components/layouts.ex:481
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""
@@ -53,12 +53,12 @@ msgstr ""
 msgid "Continue with Google"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:291
+#: lib/storyarn_web/components/layouts.ex:293
 #, elixir-autogen, elixir-format
 msgid "Log in"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:424
+#: lib/storyarn_web/components/layouts.ex:426
 #: lib/storyarn_web/components/sidebar.ex:92
 #, elixir-autogen, elixir-format
 msgid "Profile"
@@ -70,7 +70,7 @@ msgstr ""
 msgid "Saving..."
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:294
+#: lib/storyarn_web/components/layouts.ex:296
 #, elixir-autogen, elixir-format
 msgid "Sign up"
 msgstr ""
@@ -95,11 +95,6 @@ msgstr ""
 msgid "Pending"
 msgstr ""
 
-#: lib/storyarn_web/components/project_sidebar.ex:144
-#, elixir-autogen, elixir-format
-msgid "Settings"
-msgstr ""
-
 #: lib/storyarn_web/components/collaboration_components.ex:64
 #, elixir-autogen, elixir-format
 msgid "%{count} collaborator"
@@ -114,23 +109,23 @@ msgid_plural "%{count} more users"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/components/layouts.ex:422
+#: lib/storyarn_web/components/layouts.ex:424
 #, elixir-autogen, elixir-format
 msgid "Account"
 msgstr ""
 
-#: lib/storyarn_web/components/project_sidebar.ex:43
+#: lib/storyarn_web/components/focus_layout.ex:67
 #, elixir-autogen, elixir-format
 msgid "Back to Workspace"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:362
-#: lib/storyarn_web/components/layouts.ex:398
+#: lib/storyarn_web/components/layouts.ex:364
+#: lib/storyarn_web/components/layouts.ex:400
 #, elixir-autogen, elixir-format
 msgid "Back to app"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:431
+#: lib/storyarn_web/components/layouts.ex:433
 #, elixir-autogen, elixir-format
 msgid "Connected accounts"
 msgstr ""
@@ -146,17 +141,12 @@ msgstr ""
 msgid "Dark mode"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:287
+#: lib/storyarn_web/components/layouts.ex:289
 #, elixir-autogen, elixir-format
 msgid "Dashboard"
 msgstr ""
 
-#: lib/storyarn_web/components/project_sidebar.ex:61
-#, elixir-autogen, elixir-format
-msgid "Flows"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:444
+#: lib/storyarn_web/components/layouts.ex:446
 #, elixir-autogen, elixir-format
 msgid "General"
 msgstr ""
@@ -166,7 +156,7 @@ msgstr ""
 msgid "Log out"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:449
+#: lib/storyarn_web/components/layouts.ex:451
 #, elixir-autogen, elixir-format
 msgid "Members"
 msgstr ""
@@ -192,22 +182,13 @@ msgstr ""
 msgid "Saved"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:426
+#: lib/storyarn_web/components/layouts.ex:428
 #, elixir-autogen, elixir-format
 msgid "Security"
 msgstr ""
 
-#: lib/storyarn_web/components/project_sidebar.ex:79
-#, elixir-autogen, elixir-format
-msgid "Sheets"
-msgstr ""
-
-#: lib/storyarn_web/components/project_sidebar.ex:59
-#, elixir-autogen, elixir-format
-msgid "Tools"
-msgstr ""
-
-#: lib/storyarn_web/components/project_sidebar.ex:138
+#: lib/storyarn_web/components/focus_layout.ex:292
+#: lib/storyarn_web/components/focus_layout.ex:295
 #, elixir-autogen, elixir-format
 msgid "Trash"
 msgstr ""
@@ -267,21 +248,6 @@ msgstr ""
 msgid "updated a node"
 msgstr ""
 
-#: lib/storyarn_web/components/project_sidebar.ex:85
-#, elixir-autogen, elixir-format
-msgid "Assets"
-msgstr ""
-
-#: lib/storyarn_web/components/project_sidebar.ex:91
-#, elixir-autogen, elixir-format
-msgid "Localization"
-msgstr ""
-
-#: lib/storyarn_web/components/project_sidebar.ex:67
-#, elixir-autogen, elixir-format
-msgid "Maps"
-msgstr ""
-
 #: lib/storyarn_web/components/member_components.ex:145
 #, elixir-autogen, elixir-format
 msgid "Remove member?"
@@ -297,7 +263,52 @@ msgstr ""
 msgid "Revoke invitation?"
 msgstr ""
 
-#: lib/storyarn_web/components/project_sidebar.ex:73
+#: lib/storyarn_web/components/focus_layout.ex:199
 #, elixir-autogen, elixir-format
-msgid "Screenplays"
+msgid "Account settings"
+msgstr ""
+
+#: lib/storyarn_web/components/focus_layout.ex:205
+#, elixir-autogen, elixir-format
+msgid "All workspaces"
+msgstr ""
+
+#: lib/storyarn_web/components/focus_layout.ex:318
+#, elixir-autogen, elixir-format
+msgid "Close panel"
+msgstr ""
+
+#: lib/storyarn_web/components/focus_layout.ex:81
+#, elixir-autogen, elixir-format
+msgid "Hide panel"
+msgstr ""
+
+#: lib/storyarn_web/components/focus_layout.ex:311
+#, elixir-autogen, elixir-format
+msgid "Pin"
+msgstr ""
+
+#: lib/storyarn_web/components/focus_layout.ex:307
+#, elixir-autogen, elixir-format
+msgid "Pin panel"
+msgstr ""
+
+#: lib/storyarn_web/components/focus_layout.ex:311
+#, elixir-autogen, elixir-format
+msgid "Pinned"
+msgstr ""
+
+#: lib/storyarn_web/components/focus_layout.ex:153
+#, elixir-autogen, elixir-format
+msgid "Project settings"
+msgstr ""
+
+#: lib/storyarn_web/components/focus_layout.ex:81
+#, elixir-autogen, elixir-format
+msgid "Show panel"
+msgstr ""
+
+#: lib/storyarn_web/components/focus_layout.ex:307
+#, elixir-autogen, elixir-format
+msgid "Unpin panel"
 msgstr ""

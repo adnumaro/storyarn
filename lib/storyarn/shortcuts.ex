@@ -9,8 +9,8 @@ defmodule Storyarn.Shortcuts do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.Flow
-  alias Storyarn.Maps.Map, as: MapSchema
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
   alias Storyarn.Screenplays.Screenplay
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Sheets.Sheet
@@ -30,8 +30,8 @@ defmodule Storyarn.Shortcuts do
   def generate_screenplay_shortcut(name, project_id, exclude_id \\ nil),
     do: generate_unique(name, &list_screenplay_shortcuts(project_id, &1), exclude_id)
 
-  def generate_map_shortcut(name, project_id, exclude_id \\ nil),
-    do: generate_unique(name, &list_map_shortcuts(project_id, &1), exclude_id)
+  def generate_scene_shortcut(name, project_id, exclude_id \\ nil),
+    do: generate_unique(name, &list_scene_shortcuts(project_id, &1), exclude_id)
 
   defp generate_unique(name, list_fn, exclude_id) do
     base_shortcut = NameNormalizer.shortcutify(name)
@@ -106,9 +106,9 @@ defmodule Storyarn.Shortcuts do
     Repo.all(query)
   end
 
-  defp list_map_shortcuts(project_id, exclude_map_id) do
+  defp list_scene_shortcuts(project_id, exclude_scene_id) do
     query =
-      from(m in MapSchema,
+      from(m in Scene,
         where:
           m.project_id == ^project_id and
             is_nil(m.deleted_at) and
@@ -117,8 +117,8 @@ defmodule Storyarn.Shortcuts do
       )
 
     query =
-      if exclude_map_id do
-        where(query, [m], m.id != ^exclude_map_id)
+      if exclude_scene_id do
+        where(query, [m], m.id != ^exclude_scene_id)
       else
         query
       end

@@ -114,7 +114,7 @@ defmodule Storyarn.Repo.Migrations.AddActionFieldsToMapZones do
     end
 
     # Index for filtering zones by action type (useful for interaction node queries)
-    create index(:map_zones, [:map_id, :action_type])
+    create index(:map_zones, [:scene_id, :action_type])
   end
 end
 ```
@@ -226,29 +226,29 @@ end
 Lists all event zones for a map (used to generate interaction node outputs).
 """
 @spec list_event_zones(integer()) :: [MapZone.t()]
-defdelegate list_event_zones(map_id), to: ZoneCrud
+defdelegate list_event_zones(scene_id), to: ZoneCrud
 
 @doc """
 Lists all actionable zones for a map (non-navigate zones).
 """
 @spec list_actionable_zones(integer()) :: [MapZone.t()]
-defdelegate list_actionable_zones(map_id), to: ZoneCrud
+defdelegate list_actionable_zones(scene_id), to: ZoneCrud
 ```
 
 In `zone_crud.ex`:
 
 ```elixir
-def list_event_zones(map_id) do
+def list_event_zones(scene_id) do
   from(z in MapZone,
-    where: z.map_id == ^map_id and z.action_type == "event",
+    where: z.scene_id == ^scene_id and z.action_type == "event",
     order_by: [asc: z.position]
   )
   |> Repo.all()
 end
 
-def list_actionable_zones(map_id) do
+def list_actionable_zones(scene_id) do
   from(z in MapZone,
-    where: z.map_id == ^map_id and z.action_type != "navigate",
+    where: z.scene_id == ^scene_id and z.action_type != "navigate",
     order_by: [asc: z.position]
   )
   |> Repo.all()

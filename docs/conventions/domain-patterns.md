@@ -25,7 +25,7 @@ lib/storyarn/{context}/
 |---------------|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Sheets        | `Storyarn.Sheets`        | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `PropertyInheritance`, `ReferenceTracker`, `Versioning`, `TreeOperations`                                            |
 | Flows         | `Storyarn.Flows`         | `FlowCrud`, `NodeCrud` (→ `NodeCreate`, `NodeUpdate`, `NodeDelete`), `ConnectionCrud`, `TreeOperations`, `VariableReferenceTracker`, `HubColors`                            |
-| Maps          | `Storyarn.Maps`          | `MapCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `TreeOperations`                                                                         |
+| Scenes        | `Storyarn.Scenes`        | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `TreeOperations`                                                                       |
 | Screenplays   | `Storyarn.Screenplays`   | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `TreeOperations`, `ElementGrouping`, `FlowSync`, `LinkedPageCrud`, `AutoDetect`, `Export.Fountain`, `Import.Fountain` |
 | Localization  | `Storyarn.Localization`* | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`                                                                   |
 | Assets        | `Storyarn.Assets`        | `Asset` (schema), `Storage` (behaviour), `Storage.Local`, `Storage.R2`, `ImageProcessor`                                                                                    |
@@ -233,7 +233,7 @@ All user-facing text uses domain-specific Gettext:
 | Generic      | `gettext("Saved")`                          | Default domain        |
 | Sheets       | `dgettext("sheets", "Untitled")`            | Sheet-specific        |
 | Flows        | `dgettext("flows", "Add node")`             | Flow-specific         |
-| Maps         | `dgettext("maps", "Default Layer")`         | Map-specific          |
+| Scenes       | `dgettext("scenes", "Default Layer")`       | Scene-specific        |
 | Screenplays  | `dgettext("screenplays", "New Screenplay")` | Screenplay-specific   |
 | Localization | `dgettext("localization", "Pending")`       | Localization-specific |
 | Identity     | `dgettext("identity", "Sign in")`           | Auth/user-specific    |

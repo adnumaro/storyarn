@@ -41,7 +41,7 @@ The interaction node is a **blocking node** in the flow — when the Story Playe
 
 ```elixir
 %{
-  "map_id" => 42,           # reference to the map entity
+  "scene_id" => 42,           # reference to the map entity
   "description" => "",       # optional designer note
   "label" => ""              # optional display label (overrides map name on canvas)
 }
@@ -110,7 +110,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Interaction.Node do
 
   def default_data do
     %{
-      "map_id" => nil,
+      "scene_id" => nil,
       "description" => "",
       "label" => ""
     }
@@ -118,7 +118,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Interaction.Node do
 
   def extract_form_data(data) do
     %{
-      "map_id" => data["map_id"],
+      "scene_id" => data["scene_id"],
       "description" => data["description"] || "",
       "label" => data["label"] || ""
     }
@@ -126,13 +126,13 @@ defmodule StoryarnWeb.FlowLive.Nodes.Interaction.Node do
 
   def on_select(node, socket) do
     # Load map info + event zones for sidebar display
-    map_id = node.data["map_id"]
+    scene_id = node.data["scene_id"]
     project_id = socket.assigns.project.id
 
     {map_info, event_zones} =
-      if map_id do
-        map = Maps.get_map_brief(project_id, map_id)
-        zones = if map, do: Maps.list_event_zones(map_id), else: []
+      if scene_id do
+        map = Maps.get_map_brief(project_id, scene_id)
+        zones = if map, do: Maps.list_event_zones(scene_id), else: []
         {map, zones}
       else
         {nil, []}
@@ -146,7 +146,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Interaction.Node do
   def on_double_click(_node), do: :toolbar
 
   def duplicate_data_cleanup(data) do
-    # Keep map_id reference (it's a shared resource, not unique per node)
+    # Keep scene_id reference (it's a shared resource, not unique per node)
     data
   end
 
@@ -155,17 +155,17 @@ defmodule StoryarnWeb.FlowLive.Nodes.Interaction.Node do
   @doc """
   Handle map selection for the interaction node.
   """
-  def handle_select_map(%{"map-id" => map_id_str} = _params, socket) do
-    map_id = String.to_integer(map_id_str)
+  def handle_select_map(%{"map-id" => scene_id_str} = _params, socket) do
+    scene_id = String.to_integer(scene_id_str)
 
     NodeHelpers.persist_node_update(socket, socket.assigns.selected_node.id, fn data ->
-      Map.put(data, "map_id", map_id)
+      Map.put(data, "scene_id", scene_id)
     end)
   end
 
   def handle_clear_map(_params, socket) do
     NodeHelpers.persist_node_update(socket, socket.assigns.selected_node.id, fn data ->
-      Map.put(data, "map_id", nil)
+      Map.put(data, "scene_id", nil)
     end)
   end
 end
@@ -447,7 +447,7 @@ export default {
   getPreviewText(data) {
     if (data.label) return data.label;
     if (data.map_name) return data.map_name;
-    if (data.map_id) return `Map #${data.map_id}`;
+    if (data.scene_id) return `Map #${data.scene_id}`;
     return "No map selected";
   },
 
@@ -472,8 +472,8 @@ export default {
   },
 
   needsRebuild(oldData, newData) {
-    // Rebuild if map_id or event zones changed
-    if (oldData.map_id !== newData.map_id) return true;
+    // Rebuild if scene_id or event zones changed
+    if (oldData.scene_id !== newData.scene_id) return true;
     if (JSON.stringify(oldData.event_zone_names) !== JSON.stringify(newData.event_zone_names))
       return true;
     return false;
@@ -508,11 +508,11 @@ When loading flow nodes for the canvas, enrich interaction nodes with their even
 
 ```elixir
 defp enrich_node_data(%{type: "interaction", data: data} = node) do
-  map_id = data["map_id"]
+  scene_id = data["scene_id"]
 
-  if map_id do
-    event_zones = Maps.list_event_zones(map_id)
-    map_info = Maps.get_map_brief(node_project_id, map_id)
+  if scene_id do
+    event_zones = Maps.list_event_zones(scene_id)
+    map_info = Maps.get_map_brief(node_project_id, scene_id)
 
     enriched = data
     |> Map.put("event_zone_names", Enum.map(event_zones, & &1.action_data["event_name"]))
@@ -531,7 +531,7 @@ end
 defp enrich_node_data(node), do: node
 ```
 
-This enrichment happens at serialization time only (not stored in DB). The canonical data stays clean (`map_id` only).
+This enrichment happens at serialization time only (not stored in DB). The canonical data stays clean (`scene_id` only).
 
 ### 5b — Re-enrich after map selection
 
@@ -584,8 +584,8 @@ Lists all interaction nodes that reference a given map.
 Returns node + flow info for navigation.
 """
 @spec list_interaction_nodes_for_map(integer()) :: [map()]
-def list_interaction_nodes_for_map(map_id) do
-  map_id_str = to_string(map_id)
+def list_interaction_nodes_for_map(scene_id) do
+  scene_id_str = to_string(scene_id)
 
   from(n in FlowNode,
     join: f in Flow,
@@ -594,7 +594,7 @@ def list_interaction_nodes_for_map(map_id) do
     on: f.project_id == p.id,
     where: n.type == "interaction",
     where: is_nil(n.deleted_at) and is_nil(f.deleted_at),
-    where: fragment("?->>'map_id' = ?", n.data, ^map_id_str),
+    where: fragment("?->>'scene_id' = ?", n.data, ^scene_id_str),
     select: %{
       node_id: n.id,
       flow_id: f.id,
@@ -612,7 +612,7 @@ Expose via facade:
 
 ```elixir
 # lib/storyarn/flows.ex
-defdelegate list_interaction_nodes_for_map(map_id), to: FlowQueries
+defdelegate list_interaction_nodes_for_map(scene_id), to: FlowQueries
 ```
 
 ### 7b — Map editor: load referencing flows on mount
@@ -687,7 +687,7 @@ This is optional / best-effort — if multiple flows reference the same map, sho
 
 ```elixir
 @spec list_event_zone_destinations(integer(), String.t()) :: [map()]
-def list_event_zone_destinations(map_id, event_name) do
+def list_event_zone_destinations(scene_id, event_name) do
   # Find interaction nodes for this map
   # Then find connections from those nodes with source_pin = event_name
   # Return target node info
@@ -700,7 +700,7 @@ def list_event_zone_destinations(map_id, event_name) do
     on: n.flow_id == f.id,
     where: n.type == "interaction",
     where: is_nil(n.deleted_at) and is_nil(f.deleted_at),
-    where: fragment("?->>'map_id' = ?", n.data, ^to_string(map_id)),
+    where: fragment("?->>'scene_id' = ?", n.data, ^to_string(scene_id)),
     where: c.source_pin == ^event_name,
     select: %{
       flow_id: f.id,
@@ -730,7 +730,7 @@ Manual:
 4. Verify the node displays the map name as preview text
 5. Verify "Open Map Editor" link navigates correctly
 6. Connect event zone outputs to other nodes → verify connections work
-7. Duplicate the node → verify map_id is preserved
+7. Duplicate the node → verify scene_id is preserved
 8. Change the map → verify output pins update
 9. **Open the referenced map** → verify "Used in N flows" badge appears in map header
 10. **Click a flow link** → verify it navigates to the flow editor

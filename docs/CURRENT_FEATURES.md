@@ -12,7 +12,7 @@
 3. [Flows](#3-flows)
 4. [Screenplay](#4-screenplay)
 5. [Assets](#5-assets)
-6. [Maps](#6-maps)
+6. [Scenes](#6-scenes)
 7. [Localization](#7-localization)
 
 ---
@@ -73,7 +73,7 @@
 
 ### 1.6 Collaboration (Real-Time)
 
-**Scope:** Flow Editor only. Sheets, maps, and screenplays have no collaboration infrastructure.
+**Scope:** Flow Editor only. Sheets, scenes, and screenplays have no collaboration infrastructure.
 
 **PubSub topics per flow:** `flow:{id}:presence`, `flow:{id}:cursors`, `flow:{id}:locks`, `flow:{id}:changes`.
 
@@ -97,7 +97,7 @@
 | `errors` | Ecto changeset validation errors | 24 |
 | `identity` | Auth, login, registration, sessions | 56 |
 | `flows` | Flow editor — nodes, connections, sidebar, debugger, player | 285 |
-| `maps` | Map canvas — pins, zones, annotations, toolbar, settings | 214 |
+| `scenes` | Scene canvas — pins, zones, annotations, toolbar, settings | 214 |
 | `sheets` | Sheet editor — blocks, variables, versions | 220 |
 | `projects` | Projects — CRUD, membership, invitations, trash | 111 |
 | `workspaces` | Workspaces — CRUD, membership, invitations | 90 |
@@ -107,8 +107,8 @@
 | `assets` | Asset library — uploads, management | 45 |
 | `emails` | Email notification templates | 5 |
 
-- **Spanish coverage** — ~98.7% (~1,299 of ~1,316 strings translated); 16 real gaps across `maps` (10), `localization` (3), `sheets` (3)
-- **Client-side i18n** — no JS i18n library; translated strings injected from server via `data-i18n` JSON attribute (used by map canvas hooks for context menu labels, with English string fallbacks); flow canvas renders translated text via server-rendered HTML
+- **Spanish coverage** — ~98.7% (~1,299 of ~1,316 strings translated); 16 real gaps across `scenes` (10), `localization` (3), `sheets` (3)
+- **Client-side i18n** — no JS i18n library; translated strings injected from server via `data-i18n` JSON attribute (used by scene canvas hooks for context menu labels, with English string fallbacks); flow canvas renders translated text via server-rendered HTML
 - **Date/number formatting** — `Calendar.strftime` (English month names only, not locale-aware); no locale-aware number or currency formatting
 - **No locale switcher UI** — locale change only via `?locale=` URL parameter (persists in session); no dropdown, menu item, or settings page option
 - **LiveView limitation** — `Gettext.put_locale` runs in the HTTP plug only; LiveView WebSocket mounts do not re-set the locale from session (may default to `"en"` during live events)
@@ -405,7 +405,7 @@ All canvas shortcuts are blocked when focus is in `INPUT`, `TEXTAREA`, `SELECT`,
 | D          | Toggle dark/light theme   |
 | E          | Navigate to user settings |
 
-Note: There are no toolbar buttons for undo/redo — keyboard-only access. Multi-select (`Ctrl+Click`) accumulates selection but Delete/Duplicate operate on single selected node only. Copy/paste is not supported in the flow canvas (available in maps only).
+Note: There are no toolbar buttons for undo/redo — keyboard-only access. Multi-select (`Ctrl+Click`) accumulates selection but Delete/Duplicate operate on single selected node only. Copy/paste is not supported in the flow canvas (available in scenes only).
 
 ### 3.7 Properties Panel (Sidebar)
 
@@ -811,10 +811,10 @@ Input rules automatically convert block types as the user types:
 - **Audio on dialogue nodes** (`audio_asset_id`) — attach audio via AudioPicker component in sidebar; dropdown to select from project audio assets + upload button; 🔊 indicator on node canvas; remove (unlinks)
 - **Audio tab on sheets** — centralized view of all voice lines for a character; per-node audio select/upload/remove directly from the sheet
 
-### 5.11 Map Integration
+### 5.11 Scene Integration
 
-- **Background image** (`background_asset_id`) — maps store a reference to an image asset used as the Leaflet overlay background; upload/change/remove from map settings panel
-- **Custom pin icons** (`icon_asset_id`) — map pins can use a custom uploaded icon image (max 512 KB); displayed instead of the default Lucide icon; sheet-linked pins display the sheet's avatar image
+- **Background image** (`background_asset_id`) — scenes store a reference to an image asset used as the Leaflet overlay background; upload/change/remove from scene settings panel
+- **Custom pin icons** (`icon_asset_id`) — scene pins can use a custom uploaded icon image (max 512 KB); displayed instead of the default Lucide icon; sheet-linked pins display the sheet's avatar image
 
 ### 5.12 Analytics
 
@@ -824,19 +824,19 @@ Input rules automatically convert block types as the user types:
 
 ---
 
-## 6. Maps
+## 6. Scenes
 
 ### 6.1 Core Data Model
 
-- **Map** — name (max 200), shortcut (project-unique), description (max 2000), width/height (pixels), scale_value/scale_unit (for ruler), position (sibling order)
-- **Tree structure** — self-referential `parent_id`; maps can nest arbitrarily deep
+- **Scene** — name (max 200), shortcut (project-unique), description (max 2000), width/height (pixels), scale_value/scale_unit (for ruler), position (sibling order)
+- **Tree structure** — self-referential `parent_id`; scenes can nest arbitrarily deep
 - **Background image** — `background_asset_id` FK to assets; displayed as Leaflet image overlay
 - **Soft delete** — `deleted_at` timestamp; recursive child soft-delete; trash, restore, permanent delete
-- **Coordinate system** — all positions stored as **percentages (0–100%)** of map dimensions, making layouts resolution-independent
+- **Coordinate system** — all positions stored as **percentages (0–100%)** of scene dimensions, making layouts resolution-independent
 
 ### 6.2 Element Types
 
-**Layers** — ordered visibility groups; every map auto-creates a default layer; each layer has: name, visible toggle, position, fog of war settings (fog_enabled, fog_color, fog_opacity). Cannot delete last layer; deleting a layer nullifies `layer_id` on its elements.
+**Layers** — ordered visibility groups; every scene auto-creates a default layer; each layer has: name, visible toggle, position, fog of war settings (fog_enabled, fog_color, fog_opacity). Cannot delete last layer; deleting a layer nullifies `layer_id` on its elements.
 
 **Zones** — polygonal regions defined by 3–100 vertices (percentage coords). Four drawing shapes:
 - **Rectangle** — drag bounding box → 4 vertices
@@ -844,11 +844,11 @@ Input rules automatically convert block types as the user types:
 - **Circle** — drag radius → approximated as 32-point polygon
 - **Freeform** — click points, close by clicking near first point or pressing Escape
 
-Zone fields: name (max 200), vertices, fill_color, opacity (0–1), border_color, border_style (solid/dashed/dotted), border_width (0–10), tooltip (max 500), locked, target_type (sheet/flow/map), target_id, action_type (none/instruction/display), action_data (map), condition (map), condition_effect (hide/disable). Vertex editing mode allows individual vertex drag.
+Zone fields: name (max 200), vertices, fill_color, opacity (0–1), border_color, border_style (solid/dashed/dotted), border_width (0–10), tooltip (max 500), locked, target_type (sheet/flow/scene), target_id, action_type (none/instruction/display), action_data (map), condition (map), condition_effect (hide/disable). Vertex editing mode allows individual vertex drag.
 
-**Pins** — point markers with types: `location`, `character`, `event`, `custom`. Fields: label (max 200), position_x/y (%), pin_type, icon (Lucide name), color, opacity (0–1), size (sm/md/lg), tooltip (max 500), locked, target_type (sheet/flow/map/url), target_id, sheet_id (direct sheet link), icon_asset_id (custom uploaded icon, max 512KB), action_type (none/instruction/display), action_data (map), condition (map), condition_effect (hide/disable). Sheet-linked pins display the sheet's avatar image.
+**Pins** — point markers with types: `location`, `character`, `event`, `custom`. Fields: label (max 200), position_x/y (%), pin_type, icon (Lucide name), color, opacity (0–1), size (sm/md/lg), tooltip (max 500), locked, target_type (sheet/flow/scene/url), target_id, sheet_id (direct sheet link), icon_asset_id (custom uploaded icon, max 512KB), action_type (none/instruction/display), action_data (map), condition (map), condition_effect (hide/disable). Sheet-linked pins display the sheet's avatar image.
 
-**Connections** — lines between two pins with: line_style (solid/dashed/dotted), line_width (0–10), color, label (max 200), bidirectional toggle, show_label toggle, waypoints (max 50 `{x,y}` percentage coords). Self-connections prevented. Both pins must belong to same map.
+**Connections** — lines between two pins with: line_style (solid/dashed/dotted), line_width (0–10), color, label (max 200), bidirectional toggle, show_label toggle, waypoints (max 50 `{x,y}` percentage coords). Self-connections prevented. Both pins must belong to same scene.
 
 **Annotations** — free-floating text labels: text (1–500 chars), position_x/y (%), font_size (sm/md/lg), color, locked.
 
@@ -866,7 +866,7 @@ Bottom dock in edit mode, 10 tools in 5 groups:
 | Tool           | Shortcut  | Description                                                          |
 |----------------|-----------|----------------------------------------------------------------------|
 | Select         | Shift+V   | Click to select, drag to move                                        |
-| Pan            | Shift+H   | Drag map, scroll to zoom                                             |
+| Pan            | Shift+H   | Drag scene, scroll to zoom                                           |
 | Rectangle zone | Shift+R   | Draw rectangular zone                                                |
 | Triangle zone  | Shift+T   | Draw triangular zone                                                 |
 | Circle zone    | Shift+C   | Draw circular zone                                                   |
@@ -883,9 +883,9 @@ Dock hidden in view mode.
 
 FigJam-style floating toolbar above selected element. Content varies by type:
 
-**Zone:** Name input, fill color (swatches + opacity slider), border (style/width/color), layer picker, lock toggle, More (...): tooltip, link-to target picker (sheet/flow/map), action type (none/instruction/display), condition builder, condition effect (hide/disable)
+**Zone:** Name input, fill color (swatches + opacity slider), border (style/width/color), layer picker, lock toggle, More (...): tooltip, link-to target picker (sheet/flow/scene), action type (none/instruction/display), condition builder, condition effect (hide/disable)
 
-**Pin:** Label input, type picker (location/character/event/custom with icons), color + opacity, size (S/M/L pills), layer picker, lock toggle, More (...): tooltip, link-to (sheet/flow/map/url), change icon (upload overlay), action type (none/instruction/display), condition builder, condition effect (hide/disable)
+**Pin:** Label input, type picker (location/character/event/custom with icons), color + opacity, size (S/M/L pills), layer picker, lock toggle, More (...): tooltip, link-to (sheet/flow/scene/url), change icon (upload overlay), action type (none/instruction/display), condition builder, condition effect (hide/disable)
 
 **Connection:** Label input, line style (style/width/color), show-label toggle, bidirectional toggle, More (...): straighten path (clears waypoints)
 
@@ -904,16 +904,16 @@ Top-left layer bar overlay on canvas:
 - Kebab menu: rename (inline), enable/disable fog, delete (protected — cannot delete last layer)
 - Reorder layers via `reorder_layers` event
 
-### 6.8 Zone → Child Map Drill-Down
+### 6.8 Zone → Child Scene Drill-Down
 
-Double-click a named zone → `create_child_map_from_zone`:
+Double-click a named zone → `create_child_scene_from_zone`:
 1. Zone must have a name (error if blank)
 2. `ZoneImageExtractor` crops parent's background to zone's bounding box, upscales to min 1000px, sharpens (sigma=1.5), saves as WebP asset
-3. Creates child map with: zone name, parent_id, extracted background, computed dimensions, proportional scale_value
-4. Updates zone with `target_type: "map"`, `target_id: child_map.id`
-5. Navigates to child map
+3. Creates child scene with: zone name, parent_id, extracted background, computed dimensions, proportional scale_value
+4. Updates zone with `target_type: "scene"`, `target_id: child_scene.id`
+5. Navigates to child scene
 
-If no background image, creates 1000x1000px child map without background. Child maps display a boundary polygon fog overlay (zone vertices normalized to child coordinate space).
+If no background image, creates 1000x1000px child scene without background. Child scenes display a boundary polygon fog overlay (zone vertices normalized to child coordinate space).
 
 ### 6.9 Keyboard Shortcuts
 
@@ -949,7 +949,7 @@ Note: Create, move, and edit operations are NOT tracked in undo history (only de
 
 ### 6.11 Copy/Paste & Duplicate
 
-- **Copy** (Ctrl/Cmd+Shift+C) → stores element data in `localStorage` key `"storyarn_map_clipboard"`
+- **Copy** (Ctrl/Cmd+Shift+C) → stores element data in `localStorage` key `"storyarn_scene_clipboard"`
 - **Paste** (Ctrl/Cmd+Shift+V) → creates copy at +5% offset in both axes; respects active layer
 - **Duplicate** (Ctrl/Cmd+Shift+D or context menu) → same as copy+paste; label gets " (copy)" suffix; sheet/target links NOT copied
 - Connections cannot be copied/pasted/duplicated
@@ -980,59 +980,59 @@ Auto-generated bottom-right panel. Groups:
 - **Zones** by `fill_color` — swatch + count
 - **Connections** by `(line_style, color)` — line preview + count
 
-Only shown when map has at least one element. Click to expand/collapse.
+Only shown when scene has at least one element. Click to expand/collapse.
 
 ### 6.16 Ruler Tool
 
 Click two points to measure distance. Displays:
 - Orange dashed line with circle markers at endpoints
-- Midpoint label: real-world distance if scale configured (e.g., "42 km"), otherwise percentage of map width
+- Midpoint label: real-world distance if scale configured (e.g., "42 km"), otherwise percentage of scene width
 - Multiple measurements simultaneously; Escape or tool switch clears all
 - Measurements are ephemeral (not persisted)
 
 ### 6.17 Export
 
-- **PNG** — `modern-screenshot` (`domToPng`) at 2x retina scale; Leaflet controls hidden during capture; downloads as `{map_name}.png`
-- **SVG** — custom serializer: zones → `<polygon>`, connections → `<polyline>` + label `<text>`, pins → `<circle>` + `<text>`, annotations → `<text>`; hidden layers excluded; downloads as `{map_name}.svg`
+- **PNG** — `modern-screenshot` (`domToPng`) at 2x retina scale; Leaflet controls hidden during capture; downloads as `{scene_name}.png`
+- **SVG** — custom serializer: zones → `<polygon>`, connections → `<polyline>` + label `<text>`, pins → `<circle>` + `<text>`, annotations → `<text>`; hidden layers excluded; downloads as `{scene_name}.svg`
 
-### 6.18 Map Settings
+### 6.18 Scene Settings
 
 Gear icon in header opens floating panel:
 - **Background Image:** upload (JPEG/PNG/GIF/WebP, no SVG), change, remove
-- **Map Scale:** scale_value (number) + scale_unit (string) — defines "1 map width = N units" for ruler
+- **Scene Scale:** scale_value (number) + scale_unit (string) — defines "1 scene width = N units" for ruler
 - **Dimensions:** read-only width x height px display
 
 ### 6.19 Header & Navigation
 
-- Back link to maps index
-- **Breadcrumb** showing ancestor map names (clickable, up to depth 50)
-- **Editable map name** (contenteditable, saves on blur)
+- Back link to scenes index
+- **Breadcrumb** showing ancestor scene names (clickable, up to depth 50)
+- **Editable scene name** (contenteditable, saves on blur)
 - **Shortcut badge** (`#shortcut`)
 - **Export dropdown** (PNG / SVG)
-- **Map Settings** gear button (edit mode only)
+- **Scene Settings** gear button (edit mode only)
 - **View/Edit mode toggle** (segmented control; only for users with `edit_content` permission)
 - **Highlight from URL** — `?highlight=pin:ID` or `?highlight=zone:ID` focuses and selects element on load
 
-### 6.20 Hierarchical Map Tree
+### 6.20 Hierarchical Scene Tree
 
 Sidebar tree with:
 - Expand/collapse nodes
-- Up to 10 zones + 10 pins previewed per map; overflow as "N more zones…" / "N more pins…"
+- Up to 10 zones + 10 pins previewed per scene; overflow as "N more zones…" / "N more pins…"
 - Drag-to-reorder among siblings
-- "Add child map" per node
+- "Add child scene" per node
 - "Move to Trash" per node
-- Filter/search input ("Filter maps…")
-- Zone → child map drill-down links
+- Filter/search input ("Filter scenes…")
+- Zone → child scene drill-down links
 
 ### 6.21 Backlinks
 
-`Maps.get_elements_for_target(target_type, target_id)` returns all zones and pins across all maps that link to a given sheet/flow/map — used for "Appears on these maps" views.
+`Scenes.get_elements_for_target(target_type, target_id)` returns all zones and pins across all scenes that link to a given sheet/flow/scene — used for "Appears on these scenes" views.
 
 ### 6.22 Authorization
 
 All edit operations gated by `ProjectMembership.can?(role, :edit_content)` via `with_auth/3` helper.
 
-**View-only users can:** view map, pan/zoom, search elements, export.
+**View-only users can:** view scene, pan/zoom, search elements, export.
 
 **View-only users cannot:** create/edit/delete elements, manage layers, change settings/background, access dock or floating toolbar.
 
@@ -1041,7 +1041,7 @@ All edit operations gated by `ProjectMembership.can?(role, :edit_content)` via `
 Zones and pins support interactive behavior for the exploration/player mode:
 
 - **Action types:**
-  - `none` — element acts as a pure navigation target (links to sheet/flow/map/url)
+  - `none` — element acts as a pure navigation target (links to sheet/flow/scene/url)
   - `instruction` — executes variable assignments when clicked (via action_data map containing assignment rules)
   - `display` — displays a variable value when clicked
 - **Conditions** — variable-based condition expressions (same condition builder as flow nodes); evaluated against current variable state
@@ -1052,20 +1052,20 @@ Zones and pins support interactive behavior for the exploration/player mode:
 
 ### 6.24 Exploration Mode (Player)
 
-Full-screen exploration mode for maps. Route: `/workspaces/:ws/projects/:proj/maps/:id/explore`.
+Full-screen exploration mode for scenes. Route: `/workspaces/:ws/projects/:proj/scenes/:id/explore`.
 
 - **Architecture:** `ExplorationLive` (layout: false) renders a Leaflet canvas with interactive zones and pins
 - **Interactions:**
   - Click zones/pins with `action_type="instruction"` to execute variable assignments
-  - Click zones/pins with target links to navigate (sheet/flow/map)
-  - Launch flows overlaid on a dimmed map background
+  - Click zones/pins with target links to navigate (sheet/flow/scene)
+  - Launch flows overlaid on a dimmed scene background
 - **Flow execution** — full flow engine integration: auto-advances through non-interactive nodes, stops at dialogue (waiting for input), handles cross-flow jumps and returns
-- **Variable state** — tracked across map/flow navigation; condition evaluation uses live variable state
+- **Variable state** — tracked across scene/flow navigation; condition evaluation uses live variable state
 - **Keyboard:** Escape exits flow overlay; standard flow player controls when a flow is active
 
 ### 6.25 Collaboration
 
-No real-time collaboration for maps. No presence, cursor sharing, or conflict resolution. Last write wins at DB level.
+No real-time collaboration for scenes. No presence, cursor sharing, or conflict resolution. Last write wins at DB level.
 
 ---
 

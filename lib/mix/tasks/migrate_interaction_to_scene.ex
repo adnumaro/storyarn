@@ -1,9 +1,9 @@
 defmodule Mix.Tasks.MigrateInteractionToScene do
   @moduledoc """
-  Migrates interaction node data to flow scene_map_id.
+  Migrates interaction node data to flow scene_id.
 
-  For each flow containing interaction nodes, sets the flow's scene_map_id
-  to the first interaction node's map_id (if not already set).
+  For each flow containing interaction nodes, sets the flow's scene_id
+  to the first interaction node's scene_id (if not already set).
 
   Usage:
     mix migrate_interaction_to_scene          # execute migration
@@ -18,7 +18,7 @@ defmodule Mix.Tasks.MigrateInteractionToScene do
   alias Storyarn.Flows.{Flow, FlowNode}
   alias Storyarn.Repo
 
-  @shortdoc "Migrate interaction node map_id to flow scene_map_id"
+  @shortdoc "Migrate interaction node scene_id to flow scene_id"
 
   @impl Mix.Task
   def run(args) do
@@ -36,14 +36,14 @@ defmodule Mix.Tasks.MigrateInteractionToScene do
           node_id: n.id,
           flow_id: f.id,
           flow_name: f.name,
-          scene_map_id: f.scene_map_id,
-          map_id: fragment("?->>'map_id'", n.data)
+          scene_id: f.scene_id,
+          scene_id: fragment("?->>'scene_id'", n.data)
         },
         order_by: [asc: f.id, asc: n.inserted_at]
       )
       |> Repo.all()
 
-    # Group by flow — take first node's map_id per flow
+    # Group by flow — take first node's scene_id per flow
     by_flow = Enum.group_by(interaction_nodes, & &1.flow_id)
 
     Mix.shell().info(
@@ -60,28 +60,28 @@ defmodule Mix.Tasks.MigrateInteractionToScene do
   defp dry_run_report(by_flow) do
     Mix.shell().info("\n[DRY RUN] No changes will be made.\n")
 
-    {would_migrate, already_set, no_map} =
+    {would_migrate, already_set, no_scene} =
       Enum.reduce(by_flow, {0, 0, 0}, fn {_flow_id, nodes}, {m, a, n} ->
         first = hd(nodes)
 
         cond do
-          first.scene_map_id != nil ->
+          first.scene_id != nil ->
             Mix.shell().info(
-              "  Skipped flow #{first.flow_id} \"#{first.flow_name}\": scene_map_id already set"
+              "  Skipped flow #{first.flow_id} \"#{first.flow_name}\": scene_id already set"
             )
 
             {m, a + 1, n}
 
-          is_nil(first.map_id) or first.map_id == "" ->
+          is_nil(first.scene_id) or first.scene_id == "" ->
             Mix.shell().info(
-              "  Skipped flow #{first.flow_id}, node #{first.node_id}: map_id is nil"
+              "  Skipped flow #{first.flow_id}, node #{first.node_id}: scene_id is nil"
             )
 
             {m, a, n + 1}
 
           true ->
             Mix.shell().info(
-              "  Would set scene_map_id=#{first.map_id} on flow #{first.flow_id} " <>
+              "  Would set scene_id=#{first.scene_id} on flow #{first.flow_id} " <>
                 "\"#{first.flow_name}\" (from interaction node #{first.node_id})"
             )
 
@@ -90,20 +90,20 @@ defmodule Mix.Tasks.MigrateInteractionToScene do
       end)
 
     Mix.shell().info(
-      "\nSummary: #{would_migrate} would migrate, #{already_set} already set, #{no_map} skipped (no map)"
+      "\nSummary: #{would_migrate} would migrate, #{already_set} already set, #{no_scene} skipped (no scene)"
     )
   end
 
   defp execute_migration(by_flow) do
-    {migrated, skipped_set, skipped_no_map, errors} =
+    {migrated, skipped_set, skipped_no_scene, errors} =
       Enum.reduce(by_flow, {0, 0, 0, 0}, fn {_flow_id, nodes}, {m, s, n, e} ->
         first = hd(nodes)
 
         cond do
-          first.scene_map_id != nil ->
+          first.scene_id != nil ->
             {m, s + 1, n, e}
 
-          is_nil(first.map_id) or first.map_id == "" ->
+          is_nil(first.scene_id) or first.scene_id == "" ->
             {m, s, n + 1, e}
 
           true ->
@@ -112,21 +112,24 @@ defmodule Mix.Tasks.MigrateInteractionToScene do
       end)
 
     Mix.shell().info(
-      "\nMigrated #{migrated} flows. Skipped: #{skipped_set} already set, #{skipped_no_map} no map. Errors: #{errors}."
+      "\nMigrated #{migrated} flows. Skipped: #{skipped_set} already set, #{skipped_no_scene} no scene. Errors: #{errors}."
     )
   end
 
   defp do_migrate_flow(first, {m, s, n, e}) do
-    map_id = safe_to_integer(first.map_id)
+    scene_id = safe_to_integer(first.scene_id)
 
-    if is_nil(map_id) do
-      Mix.shell().error("  Could not parse map_id \"#{first.map_id}\" for flow #{first.flow_id}")
+    if is_nil(scene_id) do
+      Mix.shell().error(
+        "  Could not parse scene_id \"#{first.scene_id}\" for flow #{first.flow_id}"
+      )
+
       {m, s, n, e + 1}
     else
-      case update_flow_scene_map(first.flow_id, map_id) do
+      case update_flow_scene(first.flow_id, scene_id) do
         {:ok, _} ->
           Mix.shell().info(
-            "  Set scene_map_id=#{map_id} on flow #{first.flow_id} \"#{first.flow_name}\""
+            "  Set scene_id=#{scene_id} on flow #{first.flow_id} \"#{first.flow_name}\""
           )
 
           {m + 1, s, n, e}
@@ -138,13 +141,13 @@ defmodule Mix.Tasks.MigrateInteractionToScene do
     end
   end
 
-  defp update_flow_scene_map(flow_id, map_id) do
+  defp update_flow_scene(flow_id, scene_id) do
     case Repo.get(Flow, flow_id) do
       nil ->
         {:error, :flow_not_found}
 
       flow ->
-        Flows.update_flow_scene(flow, %{"scene_map_id" => map_id})
+        Flows.update_flow_scene(flow, %{"scene_id" => scene_id})
     end
   end
 

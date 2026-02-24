@@ -159,8 +159,8 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     block_backlinks = query_block_backlinks(target_type, target_id, project_id)
     flow_backlinks = query_flow_node_backlinks(target_type, target_id, project_id)
     screenplay_backlinks = query_screenplay_element_backlinks(target_type, target_id, project_id)
-    map_pin_backlinks = query_map_pin_backlinks(target_type, target_id, project_id)
-    map_zone_backlinks = query_map_zone_backlinks(target_type, target_id, project_id)
+    map_pin_backlinks = query_scene_pin_backlinks(target_type, target_id, project_id)
+    map_zone_backlinks = query_scene_zone_backlinks(target_type, target_id, project_id)
 
     (block_backlinks ++
        flow_backlinks ++ screenplay_backlinks ++ map_pin_backlinks ++ map_zone_backlinks)
@@ -311,15 +311,15 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   Updates references from a map pin.
   Tracks target_type/target_id and sheet_id references.
   """
-  @spec update_map_pin_references(map()) :: :ok
-  def update_map_pin_references(%{id: pin_id} = pin) do
+  @spec update_scene_pin_references(map()) :: :ok
+  def update_scene_pin_references(%{id: pin_id} = pin) do
     delete_map_pin_references(pin_id)
 
     refs = extract_map_pin_refs(pin)
-    batch_insert_references("map_pin", pin_id, refs)
+    batch_insert_references("scene_pin", pin_id, refs)
   end
 
-  def update_map_pin_references(_pin), do: :ok
+  def update_scene_pin_references(_pin), do: :ok
 
   @doc """
   Deletes all references from a map pin.
@@ -327,7 +327,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   @spec delete_map_pin_references(any()) :: {integer(), nil}
   def delete_map_pin_references(pin_id) do
     from(r in EntityReference,
-      where: r.source_type == "map_pin" and r.source_id == ^pin_id
+      where: r.source_type == "scene_pin" and r.source_id == ^pin_id
     )
     |> Repo.delete_all()
   end
@@ -336,15 +336,15 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   Updates references from a map zone.
   Tracks target_type/target_id references.
   """
-  @spec update_map_zone_references(map()) :: :ok
-  def update_map_zone_references(%{id: zone_id} = zone) do
+  @spec update_scene_zone_references(map()) :: :ok
+  def update_scene_zone_references(%{id: zone_id} = zone) do
     delete_map_zone_references(zone_id)
 
     refs = extract_map_zone_refs(zone)
-    batch_insert_references("map_zone", zone_id, refs)
+    batch_insert_references("scene_zone", zone_id, refs)
   end
 
-  def update_map_zone_references(_zone), do: :ok
+  def update_scene_zone_references(_zone), do: :ok
 
   @doc """
   Deletes all references from a map zone.
@@ -352,7 +352,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   @spec delete_map_zone_references(any()) :: {integer(), nil}
   def delete_map_zone_references(zone_id) do
     from(r in EntityReference,
-      where: r.source_type == "map_zone" and r.source_id == ^zone_id
+      where: r.source_type == "scene_zone" and r.source_id == ^zone_id
     )
     |> Repo.delete_all()
   end
@@ -369,14 +369,14 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     |> Repo.delete_all()
   end
 
-  defp query_map_pin_backlinks(target_type, target_id, project_id) do
-    alias Storyarn.Maps.{Map, MapPin}
+  defp query_scene_pin_backlinks(target_type, target_id, project_id) do
+    alias Storyarn.Scenes.{Scene, ScenePin}
 
     from(r in EntityReference,
-      join: p in MapPin,
-      on: r.source_type == "map_pin" and r.source_id == p.id,
-      join: m in Map,
-      on: p.map_id == m.id,
+      join: p in ScenePin,
+      on: r.source_type == "scene_pin" and r.source_id == p.id,
+      join: m in Scene,
+      on: p.scene_id == m.id,
       where: r.target_type == ^target_type and r.target_id == ^target_id,
       where: m.project_id == ^project_id,
       select: %{
@@ -386,8 +386,8 @@ defmodule Storyarn.Sheets.ReferenceTracker do
         context: r.context,
         inserted_at: r.inserted_at,
         pin_label: p.label,
-        map_id: m.id,
-        map_name: m.name
+        scene_id: m.id,
+        scene_name: m.name
       },
       order_by: [desc: r.inserted_at]
     )
@@ -395,14 +395,14 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     |> Enum.map(fn ref ->
       %{
         id: ref.id,
-        source_type: "map_pin",
+        source_type: "scene_pin",
         source_id: ref.source_id,
         context: ref.context,
         inserted_at: ref.inserted_at,
         source_info: %{
-          type: :map,
-          map_id: ref.map_id,
-          map_name: ref.map_name,
+          type: :scene,
+          scene_id: ref.scene_id,
+          scene_name: ref.scene_name,
           element_type: "pin",
           element_label: ref.pin_label
         }
@@ -410,14 +410,14 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     end)
   end
 
-  defp query_map_zone_backlinks(target_type, target_id, project_id) do
-    alias Storyarn.Maps.{Map, MapZone}
+  defp query_scene_zone_backlinks(target_type, target_id, project_id) do
+    alias Storyarn.Scenes.{Scene, SceneZone}
 
     from(r in EntityReference,
-      join: z in MapZone,
-      on: r.source_type == "map_zone" and r.source_id == z.id,
-      join: m in Map,
-      on: z.map_id == m.id,
+      join: z in SceneZone,
+      on: r.source_type == "scene_zone" and r.source_id == z.id,
+      join: m in Scene,
+      on: z.scene_id == m.id,
       where: r.target_type == ^target_type and r.target_id == ^target_id,
       where: m.project_id == ^project_id,
       select: %{
@@ -427,8 +427,8 @@ defmodule Storyarn.Sheets.ReferenceTracker do
         context: r.context,
         inserted_at: r.inserted_at,
         zone_name: z.name,
-        map_id: m.id,
-        map_name: m.name
+        scene_id: m.id,
+        scene_name: m.name
       },
       order_by: [desc: r.inserted_at]
     )
@@ -436,14 +436,14 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     |> Enum.map(fn ref ->
       %{
         id: ref.id,
-        source_type: "map_zone",
+        source_type: "scene_zone",
         source_id: ref.source_id,
         context: ref.context,
         inserted_at: ref.inserted_at,
         source_info: %{
-          type: :map,
-          map_id: ref.map_id,
-          map_name: ref.map_name,
+          type: :scene,
+          scene_id: ref.scene_id,
+          scene_name: ref.scene_name,
           element_type: "zone",
           element_label: ref.zone_name
         }
@@ -640,7 +640,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
        )
        when is_map(action_data) do
     assignments = action_data["assignments"] || []
-    project_id = get_project_id_from_map(zone.map_id)
+    project_id = get_project_id_from_scene(zone.scene_id)
 
     if project_id do
       assignments
@@ -654,16 +654,16 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   defp extract_zone_action_data_refs(%{action_type: "display", action_data: action_data} = zone)
        when is_map(action_data) do
     variable_ref = action_data["variable_ref"]
-    resolve_display_sheet_ref(zone.map_id, variable_ref)
+    resolve_display_sheet_ref(zone.scene_id, variable_ref)
   end
 
   defp extract_zone_action_data_refs(_zone), do: []
 
-  defp resolve_display_sheet_ref(_map_id, ref) when not is_binary(ref) or ref == "", do: []
+  defp resolve_display_sheet_ref(_scene_id, ref) when not is_binary(ref) or ref == "", do: []
 
-  defp resolve_display_sheet_ref(map_id, variable_ref) do
+  defp resolve_display_sheet_ref(scene_id, variable_ref) do
     with [sheet_shortcut, _variable] <- String.split(variable_ref, ".", parts: 2),
-         project_id when not is_nil(project_id) <- get_project_id_from_map(map_id) do
+         project_id when not is_nil(project_id) <- get_project_id_from_scene(scene_id) do
       resolve_sheet_ref(project_id, sheet_shortcut, "display")
     else
       _ -> []
@@ -703,6 +703,6 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     end
   end
 
-  defp get_project_id_from_map(nil), do: nil
-  defp get_project_id_from_map(map_id), do: Storyarn.Maps.get_map_project_id(map_id)
+  defp get_project_id_from_scene(nil), do: nil
+  defp get_project_id_from_scene(scene_id), do: Storyarn.Scenes.get_scene_project_id(scene_id)
 end

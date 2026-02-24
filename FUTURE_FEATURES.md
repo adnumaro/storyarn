@@ -996,7 +996,7 @@ New entity separate from layers:
 
 ```elixir
 create table(:map_marker_groups) do
-  add :map_id, references(:maps, on_delete: :delete_all), null: false
+  add :scene_id, references(:maps, on_delete: :delete_all), null: false
   add :name, :string, null: false
   add :visibility, :string, default: "all"
   add :visible_to_roles, {:array, :string}, default: []

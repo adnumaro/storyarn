@@ -1,10 +1,10 @@
 /**
- * ExplorationPlayer hook — renders a map with clickable zones and pins
+ * ExplorationPlayer hook — renders a scene with clickable zones and pins
  * for the exploration mode player.
  *
  * Data attributes:
  * - data-exploration: JSON object containing:
- *   { background_url, map_width, map_height, zones[], pins[] }
+ *   { background_url, scene_width, scene_height, zones[], pins[] }
  *
  * Zone/pin action types:
  * - instruction: Clickable, pushes "exploration_instruction"
@@ -29,8 +29,8 @@ export const ExplorationPlayer = {
   mounted() {
     const data = JSON.parse(this.el.dataset.exploration || "{}");
     this.backgroundUrl = data.background_url;
-    this.mapWidth = data.map_width || 800;
-    this.mapHeight = data.map_height || 600;
+    this.sceneWidth = data.scene_width || 800;
+    this.sceneHeight = data.scene_height || 600;
     this.zones = data.zones || [];
     this.pins = data.pins || [];
     this.variables = {};
@@ -55,7 +55,7 @@ export const ExplorationPlayer = {
     wrapper.className = "exploration-wrapper";
     wrapper.style.position = "relative";
     wrapper.style.width = "100%";
-    wrapper.style.aspectRatio = `${this.mapWidth} / ${this.mapHeight}`;
+    wrapper.style.aspectRatio = `${this.sceneWidth} / ${this.sceneHeight}`;
     wrapper.style.margin = "0 auto";
     wrapper.style.overflow = "hidden";
     wrapper.style.borderRadius = "0.5rem";

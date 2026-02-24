@@ -121,7 +121,7 @@ defmodule StoryarnWeb.Layouts do
 
   attr :active_tool, :atom,
     default: :sheets,
-    doc: "active tool (:sheets, :flows, :screenplays, :maps, :assets, :localization)"
+    doc: "active tool (:sheets, :flows, :screenplays, :scenes, :assets, :localization)"
 
   attr :has_tree, :boolean, default: true, doc: "whether this page has a tree panel"
   attr :tree_panel_open, :boolean, default: false, doc: "whether the tree panel is open"

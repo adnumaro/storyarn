@@ -10,7 +10,7 @@ export const FloatingToolbar = {
   updated() {
     // After LiveView patches the toolbar content, re-apply positioning.
     // The MapCanvas hook exposes its floatingToolbar on #map-canvas.__floatingToolbar
-    const mapCanvas = document.getElementById("map-canvas");
+    const mapCanvas = document.getElementById("scene-canvas");
     if (mapCanvas?.__floatingToolbar) {
       mapCanvas.__floatingToolbar.reposition();
     }

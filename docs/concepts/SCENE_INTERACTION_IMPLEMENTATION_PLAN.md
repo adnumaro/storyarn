@@ -9,16 +9,16 @@
 
 **Goal:** All DB schema changes, no UI or player changes. Everything compiles and tests pass.
 
-### 1.1 Add `scene_map_id` to Flow schema
+### 1.1 Add `scene_scene_id` to Flow schema
 
-- **Migration:** Add `scene_map_id` (references `maps`, nullable, on_delete: nilify_all)
+- **Migration:** Add `scene_scene_id` (references `maps`, nullable, on_delete: nilify_all)
 - **Schema:** Add `belongs_to :scene_map, Storyarn.Maps.Map` to `flow.ex`
-- **Changesets:** Add `scene_map_id` to both `create_changeset/2` and `update_changeset/2`. The field is nullable — flows can be created with or without a scene map.
-- **Foreign key constraint:** Add `foreign_key_constraint(:scene_map_id)` to changesets
+- **Changesets:** Add `scene_scene_id` to both `create_changeset/2` and `update_changeset/2`. The field is nullable — flows can be created with or without a scene map.
+- **Foreign key constraint:** Add `foreign_key_constraint(:scene_scene_id)` to changesets
 - **Context facade:** Add `update_flow_scene/2` to `Storyarn.Flows`
 
 **Files:**
-- `priv/repo/migrations/TIMESTAMP_add_scene_map_id_to_flows.exs`
+- `priv/repo/migrations/TIMESTAMP_add_scene_scene_id_to_flows.exs`
 - `lib/storyarn/flows/flow.ex`
 - `lib/storyarn/flows/flow_crud.ex`
 - `lib/storyarn/flows.ex`
@@ -343,7 +343,7 @@ Exit nodes currently have three `exit_mode` values: `"terminal"`, `"flow_referen
   4. Push updated map state to JS hook
   5. UI transitions back to exploration mode
 
-- **When** `state.exit_transition == %{type: :map, id: map_id}`:
+- **When** `state.exit_transition == %{type: :map, id: scene_id}`:
   1. Transfer variable state
   2. Load the target map
   3. Re-initialize exploration on the new map (scene transition)
@@ -368,24 +368,24 @@ mix test
 
 ---
 
-## Phase 6: `scene_map_id` Integration
+## Phase 6: `scene_scene_id` Integration
 
-**Goal:** Flows with `scene_map_id` show the map as backdrop. Inheritance works.
+**Goal:** Flows with `scene_scene_id` show the map as backdrop. Inheritance works.
 
-### 6.1 `scene_map_id` inheritance resolution
+### 6.1 `scene_scene_id` inheritance resolution
 
 - **Create** `Storyarn.Flows.SceneResolver` module
 - **Function:** `resolve_scene_map(flow, opts \\ [])`:
-  1. If `flow.scene_map_id` is set → return it (authoritative)
-  2. If `opts[:caller_scene_map_id]` is set → return it (runtime inheritance)
-  3. Walk up `parent_id` chain looking for `scene_map_id` → return first found
+  1. If `flow.scene_scene_id` is set → return it (authoritative)
+  2. If `opts[:caller_scene_scene_id]` is set → return it (runtime inheritance)
+  3. Walk up `parent_id` chain looking for `scene_scene_id` → return first found
   4. Return `nil`
 - **Preload optimization:** When loading a flow for the player, preload the scene resolution chain in a single query
 
 **Files:**
 - `lib/storyarn/flows/scene_resolver.ex`
 
-### 6.2 Flow editor UI for `scene_map_id`
+### 6.2 Flow editor UI for `scene_scene_id`
 
 - **Add** a "Scene Map" field to flow settings/config panel
 - **Searchable select** to pick from project maps
@@ -397,7 +397,7 @@ mix test
 
 ### 6.3 Map backdrop in flow player
 
-- **Modify** `PlayerLive` mount to resolve `scene_map_id` for the flow
+- **Modify** `PlayerLive` mount to resolve `scene_scene_id` for the flow
 - **If resolved:** Load map data (background image, dimensions)
 - **Render** map as background behind dialogue slides
 - **CSS:** Map dimmed at z-index 0, dialogue at z-index 10 (same as Phase 5)
@@ -408,16 +408,16 @@ mix test
 
 ### 6.4 Cross-flow scene transitions
 
-Scene resolution happens in the **LiveView layer**, not in the engine. The engine is pure functional and has no concept of `scene_map_id`. The LiveView detects scene changes after the engine reports a `flow_jump` or `flow_return`.
+Scene resolution happens in the **LiveView layer**, not in the engine. The engine is pure functional and has no concept of `scene_scene_id`. The LiveView detects scene changes after the engine reports a `flow_jump` or `flow_return`.
 
 - **When** `FlowRunner` handles a `flow_jump` to a subflow:
-  1. LiveView resolves `scene_map_id` for the target subflow via `SceneResolver.resolve_scene_map/2` (passing `caller_scene_map_id` from current context)
+  1. LiveView resolves `scene_scene_id` for the target subflow via `SceneResolver.resolve_scene_map/2` (passing `caller_scene_scene_id` from current context)
   2. If the resolved scene differs from the current backdrop → push scene transition event to frontend
   3. Frontend loads new map background
 - **When** `FlowRunner` handles a `flow_return`:
   1. LiveView restores the parent flow's resolved scene
   2. If different from subflow's scene → push scene transition event (revert)
-- **Track** resolved scene in socket assigns: `current_scene_map_id` updated on every flow jump/return
+- **Track** resolved scene in socket assigns: `current_scene_scene_id` updated on every flow jump/return
 
 **Files:**
 - `lib/storyarn_web/live/flow_live/player_live.ex` — subflow handling, scene tracking
@@ -428,8 +428,8 @@ Scene resolution happens in the **LiveView layer**, not in the engine. The engin
 ```bash
 mix compile --warnings-as-errors
 mix test
-# Manual: Set scene_map_id on flow → Play flow → see map behind dialogue
-# Manual: Child flow with different scene_map_id → background changes
+# Manual: Set scene_scene_id on flow → Play flow → see map behind dialogue
+# Manual: Child flow with different scene_scene_id → background changes
 # Manual: Return from child flow → background reverts
 ```
 
@@ -445,8 +445,8 @@ mix test
 
 **Automated (safe) part:**
 - **For each existing interaction node:**
-  1. Get `map_id` from node data
-  2. Set `scene_map_id = map_id` on the node's parent flow (if not already set)
+  1. Get `scene_id` from node data
+  2. Set `scene_scene_id = scene_id` on the node's parent flow (if not already set)
   3. Record the migration for user notification
 
 **Semi-manual (requires designer review) part:**
@@ -523,7 +523,7 @@ Phase 1 (Schema) ──→ Phase 2 (Zone Cleanup) ──→ Phase 3 (Conditions)
 Phase 1 (Schema) ──────────────────────────→ Phase 5 (Flow-Exploration Integration)
                                                         │
                                                         ▼
-                                              Phase 6 (scene_map_id Integration)
+                                              Phase 6 (scene_scene_id Integration)
                                                         │
                                                         ▼
                                               Phase 7 (Interaction Deprecation)

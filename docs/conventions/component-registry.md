@@ -144,7 +144,7 @@ Components: `<.tree_node>`, `<.tree_leaf>`, `<.tree_section>`, `<.tree_link>`
 import StoryarnWeb.Components.Sidebar.SheetTree
 import StoryarnWeb.Components.Sidebar.FlowTree
 import StoryarnWeb.Components.Sidebar.ScreenplayTree
-import StoryarnWeb.Components.Sidebar.MapTree
+import StoryarnWeb.Components.Sidebar.SceneTree
 ```
 
 ### Other Shared Components
@@ -184,17 +184,17 @@ import StoryarnWeb.Components.Sidebar.MapTree
 </Layouts.settings>
 ```
 
-**Layouts.project** additional attrs: `flows_tree`, `screenplays_tree`, `maps_tree`, `current_path`, `selected_sheet_id`, `selected_flow_id`, `selected_screenplay_id`, `selected_map_id`, `can_edit`
+**Layouts.project** additional attrs: `flows_tree`, `screenplays_tree`, `scenes_tree`, `current_path`, `selected_sheet_id`, `selected_flow_id`, `selected_screenplay_id`, `selected_scene_id`, `can_edit`
 
 ---
 
-## Changeset Helpers (Maps domain)
+## Changeset Helpers (Scenes domain)
 
-**File:** `lib/storyarn/maps/changeset_helpers.ex`
+**File:** `lib/storyarn/scenes/changeset_helpers.ex`
 
 | Function                 | Purpose                                                    |
 |--------------------------|------------------------------------------------------------|
 | `validate_target_pair/2` | Ensures target_type and target_id are both set or both nil |
 | `validate_color/2`       | Validates hex color format (#RGB, #RRGGBB, #RRGGBBAA)      |
 
-These are Maps-specific but could be promoted to `Storyarn.Shared` if needed elsewhere.
+These are Scenes-specific but could be promoted to `Storyarn.Shared` if needed elsewhere.

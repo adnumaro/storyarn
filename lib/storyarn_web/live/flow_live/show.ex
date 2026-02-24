@@ -19,8 +19,8 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NavigationHistoryStore
-  alias Storyarn.Maps
   alias Storyarn.Projects
+  alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
@@ -83,9 +83,9 @@ defmodule StoryarnWeb.FlowLive.Show do
           can_edit={@can_edit}
           save_status={@save_status}
           nav_history={@nav_history}
-          scene_map_name={@scene_map_name}
-          scene_map_inherited={@scene_map_inherited}
-          available_maps={@available_maps}
+          scene_name={@scene_name}
+          scene_inherited={@scene_inherited}
+          available_scenes={@available_scenes}
         />
       </:top_bar_extra>
       <:top_bar_extra_right>
@@ -141,13 +141,13 @@ defmodule StoryarnWeb.FlowLive.Show do
                   all_sheets={@all_sheets}
                   flow_hubs={@flow_hubs}
                   available_flows={@available_flows}
-                  available_maps={assigns[:available_maps] || []}
+                  available_scenes={assigns[:available_scenes] || []}
                   flow_search_has_more={@flow_search_has_more}
                   flow_search_deep={@flow_search_deep}
                   subflow_exits={@subflow_exits}
                   referencing_jumps={@referencing_jumps}
                   referencing_flows={@referencing_flows}
-                  project_maps={@project_maps}
+                  project_scenes={@project_scenes}
                 />
               </div>
 
@@ -266,9 +266,9 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:nav_history, nil)
           |> assign(:flows_tree, [])
           |> assign(:pending_delete_id, nil)
-          |> assign(:scene_map_name, nil)
-          |> assign(:scene_map_inherited, false)
-          |> assign(:available_maps, [])
+          |> assign(:scene_name, nil)
+          |> assign(:scene_inherited, false)
+          |> assign(:available_scenes, [])
 
         {:ok, socket}
     end
@@ -368,7 +368,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           flow_hubs: Flows.list_hubs(flow.id),
           project_variables: Sheets.list_project_variables(project.id),
           flows_tree: Flows.list_flows_tree(project.id),
-          available_maps: Maps.list_maps(project.id)
+          available_scenes: Scenes.list_scenes(project.id)
         }
       end)
 
@@ -727,17 +727,19 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   # Scene map
-  def handle_event("update_scene_map", %{"map_id" => map_id}, socket) do
+  def handle_event("update_scene", %{"scene_id" => scene_id}, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
-      map_id =
-        if map_id in [nil, "", "null"], do: nil, else: Storyarn.Shared.MapUtils.parse_int(map_id)
+      scene_id =
+        if scene_id in [nil, "", "null"],
+          do: nil,
+          else: Storyarn.Shared.MapUtils.parse_int(scene_id)
 
-      case Flows.update_flow_scene(socket.assigns.flow, %{scene_map_id: map_id}) do
+      case Flows.update_flow_scene(socket.assigns.flow, %{scene_id: scene_id}) do
         {:ok, updated_flow} ->
           {:noreply,
            socket
            |> assign(:flow, updated_flow)
-           |> assign_scene_map_info(updated_flow)}
+           |> assign_scene_info(updated_flow)}
 
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, dgettext("flows", "Could not update scene map."))}
@@ -1025,7 +1027,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:subflow_exits, [])
       |> assign(:outcome_tags_suggestions, [])
       |> assign(:referencing_flows, [])
-      |> assign(:project_maps, [])
+      |> assign(:project_scenes, [])
       |> assign(:editing_mode, nil)
       |> assign(:save_status, :idle)
       |> assign(:preview_show, false)
@@ -1047,9 +1049,9 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:debug_var_changed_only, false)
       |> assign(:debug_auto_timer, nil)
       |> assign(:debug_step_limit_reached, false)
-      |> assign(:available_maps, data.available_maps)
+      |> assign(:available_scenes, data.available_scenes)
       |> assign(:loading, false)
-      |> assign_scene_map_info(flow)
+      |> assign_scene_info(flow)
 
     socket =
       socket
@@ -1147,20 +1149,20 @@ defmodule StoryarnWeb.FlowLive.Show do
     NavigationHistoryStore.put({user_id, project_id}, history)
   end
 
-  defp assign_scene_map_info(socket, flow) do
-    resolved_id = Flows.resolve_scene_map_id(flow)
-    is_inherited = resolved_id != nil and resolved_id != flow.scene_map_id
+  defp assign_scene_info(socket, flow) do
+    resolved_id = Flows.resolve_scene_id(flow)
+    is_inherited = resolved_id != nil and resolved_id != flow.scene_id
 
-    scene_map_name =
+    scene_name =
       if resolved_id do
-        case Maps.get_map_brief(socket.assigns.project.id, resolved_id) do
+        case Scenes.get_scene_brief(socket.assigns.project.id, resolved_id) do
           nil -> nil
           map -> map.name
         end
       end
 
     socket
-    |> assign(:scene_map_name, scene_map_name)
-    |> assign(:scene_map_inherited, is_inherited)
+    |> assign(:scene_name, scene_name)
+    |> assign(:scene_inherited, is_inherited)
   end
 end

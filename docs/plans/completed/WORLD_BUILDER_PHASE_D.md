@@ -790,12 +790,12 @@ LiveComponent following the exact `BacklinksSection` pattern:
 - `load_appearances/1` calls `Maps.get_elements_for_target("sheet", sheet.id)`
   and flattens `%{zones: zones, pins: pins}` into:
   ```elixir
-  [%{element_type: "pin"|"zone", element_name: ..., map_id: ..., map_name: ...}, ...]
+  [%{element_type: "pin"|"zone", element_name: ..., scene_id: ..., map_name: ...}, ...]
   ```
 - Each row: map icon + map name (link to map) + badge "Pin"/"Zone" + element name
 - Empty state: *"This sheet doesn't appear on any maps yet."*
 - The link to the map uses the full path:
-  `~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/maps/#{map_id}"`
+  `~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/maps/#{scene_id}"`
 
 ### Modified: `lib/storyarn_web/live/sheet_live/components/references_tab.ex`
 
@@ -871,13 +871,13 @@ def list_maps_tree_with_elements(project_id) do
     )
     |> Repo.all()
 
-  map_ids = Enum.map(all_maps, & &1.id)
+  scene_ids = Enum.map(all_maps, & &1.id)
 
   # Load limited zones and pins per map in two bulk queries
-  zones_by_map = load_sidebar_zones(map_ids)
-  pins_by_map = load_sidebar_pins(map_ids)
-  zone_counts = count_elements_by_map(MapZone, map_ids)
-  pin_counts = count_elements_by_map(MapPin, map_ids)
+  zones_by_map = load_sidebar_zones(scene_ids)
+  pins_by_map = load_sidebar_pins(scene_ids)
+  zone_counts = count_elements_by_map(MapZone, scene_ids)
+  pin_counts = count_elements_by_map(MapPin, scene_ids)
 
   all_maps =
     Enum.map(all_maps, fn map ->
@@ -892,39 +892,39 @@ def list_maps_tree_with_elements(project_id) do
 end
 
 # Loads up to @sidebar_element_limit zones per map, ordered by position
-defp load_sidebar_zones(map_ids) do
+defp load_sidebar_zones(scene_ids) do
   from(z in MapZone,
-    where: z.map_id in ^map_ids and is_nil(z.deleted_at),
+    where: z.scene_id in ^scene_ids and is_nil(z.deleted_at),
     where: not is_nil(z.name) and z.name != "",
     order_by: [asc: z.position, asc: z.name],
-    select: %{id: z.id, name: z.name, map_id: z.map_id,
-              row: over(row_number(), partition_by: z.map_id, order_by: [asc: z.position])}
+    select: %{id: z.id, name: z.name, scene_id: z.scene_id,
+              row: over(row_number(), partition_by: z.scene_id, order_by: [asc: z.position])}
   )
   |> subquery()
   |> where([s], s.row <= ^@sidebar_element_limit)
   |> Repo.all()
-  |> Enum.group_by(& &1.map_id)
+  |> Enum.group_by(& &1.scene_id)
 end
 
 # Same pattern for pins
-defp load_sidebar_pins(map_ids) do
+defp load_sidebar_pins(scene_ids) do
   from(p in MapPin,
-    where: p.map_id in ^map_ids and is_nil(p.deleted_at),
+    where: p.scene_id in ^scene_ids and is_nil(p.deleted_at),
     order_by: [asc: p.position, asc: p.label],
-    select: %{id: p.id, label: p.label, map_id: p.map_id,
-              row: over(row_number(), partition_by: p.map_id, order_by: [asc: p.position])}
+    select: %{id: p.id, label: p.label, scene_id: p.scene_id,
+              row: over(row_number(), partition_by: p.scene_id, order_by: [asc: p.position])}
   )
   |> subquery()
   |> where([s], s.row <= ^@sidebar_element_limit)
   |> Repo.all()
-  |> Enum.group_by(& &1.map_id)
+  |> Enum.group_by(& &1.scene_id)
 end
 
-defp count_elements_by_map(schema, map_ids) do
+defp count_elements_by_map(schema, scene_ids) do
   from(e in schema,
-    where: e.map_id in ^map_ids and is_nil(e.deleted_at),
-    group_by: e.map_id,
-    select: {e.map_id, count(e.id)}
+    where: e.scene_id in ^scene_ids and is_nil(e.deleted_at),
+    group_by: e.scene_id,
+    select: {e.scene_id, count(e.id)}
   )
   |> Repo.all()
   |> Elixir.Map.new()

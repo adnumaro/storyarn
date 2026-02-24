@@ -16,7 +16,7 @@ Different games relate to space differently:
 |------|---------|-----------------|-------------------|
 | Visual novel | Doki Doki, Ren'Py games | A backdrop. Flow is everything. | Flows only. Scene nodes for context. |
 | Point & click | Torment, Monkey Island | The protagonist. Exploration IS gameplay. | Maps as scenes. Zones/pins trigger flows. |
-| RPG action | Witcher 3, Cyberpunk | A container. Narrative occurs within the world. | Flows with `scene_map_id` for backdrop. |
+| RPG action | Witcher 3, Cyberpunk | A container. Narrative occurs within the world. | Flows with `scene_scene_id` for backdrop. |
 | Sandbox | Dwarf Fortress | Emergent. No predefined narrative. | Out of scope. |
 
 Storyarn must cover the first two well, and the third reasonably. The model must adapt without being excessively complex for any single case.
@@ -36,7 +36,7 @@ Sheets = State    (variables, the single source of truth)
 
 ### Interaction Nodes (flow node type: `interaction`)
 
-Currently functional. An interaction node references a map (`map_id` in node data). When the preview player reaches this node:
+Currently functional. An interaction node references a map (`scene_id` in node data). When the preview player reaches this node:
 
 1. The map renders as a full background image
 2. Zones overlay the map as clickable polygons
@@ -92,18 +92,18 @@ Variable reference format: `{sheet_shortcut}.{variable_name}` (e.g., `mc.morte.i
 **Rationale:** If the map is the scene container, and pins/zones on the map trigger flows, then an "interaction node" inside a flow is redundant. The map already IS the interaction. Exploration is the default state — flows are interruptions of exploration, not the other way around.
 
 **What replaces them:**
-- Maps render as scenes via `scene_map_id` on flows, or as standalone preview entry points
+- Maps render as scenes via `scene_scene_id` on flows, or as standalone preview entry points
 - Zone actions (instruction, display) work during exploration mode on the map
 - Zone/pin `target_type: "flow"` triggers flows directly
 - Zone/pin `target_type: "map"` performs scene transitions
 
-**Migration path:** Existing interaction nodes will be converted. The `map_id` from the node data becomes `scene_map_id` on the parent flow. Zone configurations are preserved on the referenced map. Event-type zones that advanced the flow's internal connections will be migrated to reference their target flows directly via `target_type/target_id`.
+**Migration path:** Existing interaction nodes will be converted. The `scene_id` from the node data becomes `scene_scene_id` on the parent flow. Zone configurations are preserved on the referenced map. Event-type zones that advanced the flow's internal connections will be migrated to reference their target flows directly via `target_type/target_id`.
 
 ### Preservation: Scene Nodes
 
 Scene nodes remain for screenplay/narrative workflows. They serve a formatting purpose ("INT. MORTUARY - NIGHT") useful for visual novels, Fountain export, and narrative structure in projects that don't use maps.
 
-| | Scene node | `scene_map_id` |
+| | Scene node | `scene_scene_id` |
 |---|-----------|----------------|
 | Purpose | Narrative formatting | Spatial context |
 | Visual | Transition card (auto-advances) | Map backdrop (interactive) |
@@ -112,7 +112,7 @@ Scene nodes remain for screenplay/narrative workflows. They serve a formatting p
 
 A flow can use both, one, or neither. They are complementary.
 
-### New: `scene_map_id` on Flows
+### New: `scene_scene_id` on Flows
 
 An optional field on the Flow schema referencing a Map entity.
 
@@ -122,17 +122,17 @@ An optional field on the Flow schema referencing a Map entity.
 - `nil` = no spatial context (visual novel mode, current behavior)
 
 **Resolution order** (first match wins):
-1. Flow's own `scene_map_id` (if explicitly set) — authoritative, IS a scene transition
-2. Caller's `scene_map_id` (if flow is invoked as subflow) — inherited from runtime context
-3. Tree parent's `scene_map_id` (if flow is organized under a parent) — inherited from hierarchy
+1. Flow's own `scene_scene_id` (if explicitly set) — authoritative, IS a scene transition
+2. Caller's `scene_scene_id` (if flow is invoked as subflow) — inherited from runtime context
+3. Tree parent's `scene_scene_id` (if flow is organized under a parent) — inherited from hierarchy
 4. `nil` — no spatial context
 
-This means: a child flow with its own `scene_map_id` always triggers a scene transition, regardless of what the caller has. A child flow without `scene_map_id` inherits from whoever called it at runtime, not from its organizational parent.
+This means: a child flow with its own `scene_scene_id` always triggers a scene transition, regardless of what the caller has. A child flow without `scene_scene_id` inherits from whoever called it at runtime, not from its organizational parent.
 
 **In the player:**
 - **Play from a map** → exploration mode on that map (zones/pins interactive)
-- **Play from a flow** → flow mode (the flow executes normally). If `scene_map_id` resolves, the map renders as static backdrop behind dialogue slides. Does NOT enter exploration mode.
-- Flow has no `scene_map_id` → no backdrop (current behavior preserved)
+- **Play from a flow** → flow mode (the flow executes normally). If `scene_scene_id` resolves, the map renders as static backdrop behind dialogue slides. Does NOT enter exploration mode.
+- Flow has no `scene_scene_id` → no backdrop (current behavior preserved)
 - Exploration mode is ONLY entered from: (a) playing a map directly, or (b) a flow returning to the map after exit (exit node with no target during an exploration session)
 
 ### Exploration Mode
@@ -161,7 +161,7 @@ Exploration mode maintains a **local variable state** initialized from sheets on
 
 **Entry points:**
 - **From a map:** Click "Play" on a map → exploration mode on that map directly. Pins/zones with flow targets are interactive.
-- **From a flow:** Click "Play" on a flow → flow mode (the flow executes). If `scene_map_id` resolves, the map renders as static backdrop. Exploration mode is NOT entered — the flow runs normally.
+- **From a flow:** Click "Play" on a flow → flow mode (the flow executes). If `scene_scene_id` resolves, the map renders as static backdrop. Exploration mode is NOT entered — the flow runs normally.
 
 ### The Game Loop
 
@@ -290,7 +290,7 @@ Interactive elements:
 ### Flow tree
 
 ```
-Mortuary Escape (scene_map_id: Mortuary 2F)
+Mortuary Escape (scene_scene_id: Mortuary 2F)
 ├── DMORTE1 - First Meeting
 │   ├── 18 dialogue states
 │   ├── Condition: alignment check
@@ -303,7 +303,7 @@ Mortuary Escape (scene_map_id: Mortuary 2F)
 ├── Zombie Combat
 │   ├── Condition: combat outcome
 │   └── Instruction: set zm782_dead = true
-└── Mortuary 1F Exploration (scene_map_id: Mortuary 1F ← override = transition)
+└── Mortuary 1F Exploration (scene_scene_id: Mortuary 1F ← override = transition)
     └── (next scene)
 ```
 
@@ -341,17 +341,17 @@ Mortuary Escape (scene_map_id: Mortuary 2F)
 
 | Feature | Priority | Scope |
 |---------|----------|-------|
-| **`scene_map_id` on Flow schema** | High | DB migration, schema change, inheritance logic |
+| **`scene_scene_id` on Flow schema** | High | DB migration, schema change, inheritance logic |
 | **Zone/pin conditions** | High | `condition` + `condition_effect` fields on MapZone/MapPin, evaluation in player |
 | **Pin interactivity in player** | High | Render pins in exploration, handle clicks, trigger flows |
-| **Map backdrop during flow mode** | High | Render map behind dialogue slides when `scene_map_id` is set |
+| **Map backdrop during flow mode** | High | Render map behind dialogue slides when `scene_scene_id` is set |
 | **Exploration mode player** | High | Map player that renders map, evaluates conditions, handles zone/pin clicks. Reuses `interaction_player.js` rendering logic. |
 | **Return-to-exploration after flow** | High | When triggered flow ends (exit with no target), resume exploration on same map |
 | **Zone action_type cleanup** | High | Remove `event`/`navigate` action types, migrate to `target_type/target_id` |
 | **Pin `action_type` + `action_data`** | High | Add to MapPin schema (same fields as zones) for simple interactions without flows |
 | **Exit node targeting** | Medium | Add `target_type/target_id` to exit nodes |
 | **Map-as-preview-entry-point** | Medium | "Play" button on maps, new route for map preview |
-| **Flow `scene_map_id` inheritance** | Medium | Child flows inherit parent's scene, caller context overrides |
+| **Flow `scene_scene_id` inheritance** | Medium | Child flows inherit parent's scene, caller context overrides |
 | **Create flow from map pin** | Medium | UX: place pin → create linked flow directly from map editor |
 | **Remove interaction node type** | Medium | Remove from node registry, UI, engine. Migrate existing data. |
 | **Scene transition animations** | Low | Visual transition when map changes |
@@ -367,7 +367,7 @@ Mortuary Escape (scene_map_id: Mortuary 2F)
 | Exploration | Abstract (boxes and arrows) | Visual map with interactive elements |
 | Dialogue trigger | Fragment connection | Zone/pin click |
 | Variable conditions | On fragments | On zones/pins + flow conditions |
-| Scene transition | Fragment → fragment | `scene_map_id` override or zone/pin `target: map` |
+| Scene transition | Fragment → fragment | `scene_scene_id` override or zone/pin `target: map` |
 | State management | Global variables | Sheets (hierarchical, inherited) |
 | Exit behavior | Fragment terminates | Exit node targets (map, flow, or return to exploration) |
 

@@ -6,9 +6,9 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Collaboration
   alias Storyarn.Flows.{Flow, FlowNode, NodeCrud, TreeOperations}
   alias Storyarn.Localization.TextExtractor
-  alias Storyarn.Maps
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
+  alias Storyarn.Scenes
   alias Storyarn.Shared.{MapUtils, SearchHelpers, ShortcutHelpers, SoftDelete}
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Shortcuts
@@ -374,26 +374,26 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   @doc """
-  Updates only the scene_map_id of a flow.
+  Updates only the scene_id of a flow.
   Used to associate a flow with a map as its scene backdrop.
   Validates that the map belongs to the same project.
   """
   def update_flow_scene(%Flow{} = flow, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
-    map_id = MapUtils.parse_int(attrs["scene_map_id"])
+    scene_id = MapUtils.parse_int(attrs["scene_id"])
 
     cond do
-      is_nil(map_id) ->
-        flow |> Flow.scene_changeset(%{"scene_map_id" => nil}) |> Repo.update()
+      is_nil(scene_id) ->
+        flow |> Flow.scene_changeset(%{"scene_id" => nil}) |> Repo.update()
 
-      Maps.get_map_project_id(map_id) == flow.project_id ->
+      Scenes.get_scene_project_id(scene_id) == flow.project_id ->
         flow |> Flow.scene_changeset(attrs) |> Repo.update()
 
       true ->
         {:error,
          Ecto.Changeset.add_error(
            Ecto.Changeset.change(flow),
-           :scene_map_id,
+           :scene_id,
            "map not found in project"
          )}
     end

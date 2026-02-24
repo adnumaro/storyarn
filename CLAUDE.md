@@ -76,7 +76,7 @@ lib/storyarn/                    # Domain (Contexts)
 ├── projects.ex                  # Projects, memberships, invitations
 ├── sheets.ex                    # Sheets, blocks, variables, tables, versioning
 ├── flows.ex                     # Flows, nodes, connections, variable tracking
-├── maps.ex                      # Maps, layers, zones, pins, annotations, connections
+├── scenes.ex                    # Scenes, layers, zones, pins, annotations, connections
 ├── screenplays.ex               # Screenplays, elements, Fountain export/import
 ├── localization.ex              # Languages, texts, glossary, DeepL, export/import
 ├── collaboration.ex             # Presence, cursors, locking
@@ -89,7 +89,7 @@ lib/storyarn_web/
 ├── live/
 │   ├── flow_live/               # Flow editor
 │   ├── sheet_live/              # Sheet editor
-│   ├── map_live/                # Map editor
+│   ├── scene_live/              # Scene editor
 │   ├── screenplay_live/         # Screenplay editor
 │   ├── localization_live/       # Localization editor
 │   └── ...
@@ -226,7 +226,7 @@ lib/storyarn_web/live/flow_live/
 assets/js/
 ├── hooks/                               # ONLY Phoenix LiveView hooks (flat)
 │   ├── flow_canvas.js                   # Flow editor hook (orchestrator)
-│   ├── map_canvas.js                    # Map editor hook
+│   ├── scene_canvas.js                  # Scene editor hook
 │   ├── screenplay_editor.js             # Screenplay editor hook
 │   ├── instruction_builder.js           # Instruction builder hook
 │   ├── tiptap_editor.js                # Rich text editor hook
@@ -363,7 +363,7 @@ fp.destroy();                  // remove from DOM + cleanup
 <Layouts.public ...>   # Public/landing pages
 <Layouts.settings ...> # Settings with nav sidebar
 ```
-The Story Player and Map Exploration use `layout: false` with their own fullscreen layout inline.
+The Story Player and Scene Exploration use `layout: false` with their own fullscreen layout inline.
 
 **LiveView Authorization:**
 ```elixir
@@ -385,6 +385,6 @@ Actions: `:edit_content`, `:manage_project`, `:manage_members`, `:manage_workspa
 
 ## Implementation Status
 
-**Completed:** Auth, Workspaces, Projects, Sheets/Blocks (incl. tables, versioning, property inheritance), Assets, Flow Editor (all 9 node types, debug mode, story player, undo/redo), Maps (canvas, exploration mode, actions/conditions), Screenplays (editor, Fountain import/export, flow sync), Localization (extraction, DeepL, glossary, reports), Collaboration (presence, cursors, locks)
+**Completed:** Auth, Workspaces, Projects, Sheets/Blocks (incl. tables, versioning, property inheritance), Assets, Flow Editor (all 9 node types, debug mode, story player, undo/redo), Scenes (canvas, exploration mode, actions/conditions), Screenplays (editor, Fountain import/export, flow sync), Localization (extraction, DeepL, glossary, reports), Collaboration (presence, cursors, locks)
 
 **See `docs/CURRENT_FEATURES.md`** for the comprehensive feature reference.
