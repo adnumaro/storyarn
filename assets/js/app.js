@@ -36,6 +36,7 @@ import { ColumnSortable } from "./hooks/column_sortable";
 import { ConditionBuilder } from "./hooks/condition_builder";
 import { DebugPanelResize } from "./hooks/debug_panel_resize";
 import { DialogueScreenplayEditor } from "./hooks/dialogue_screenplay_editor";
+import { EditableBlockLabel } from "./hooks/editable_block_label";
 import { EditableShortcut } from "./hooks/editable_shortcut";
 import { EditableTitle } from "./hooks/editable_title";
 import { ExplorationPlayer } from "./hooks/exploration_player";
@@ -83,6 +84,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     AvatarUpload,
     BannerUpload,
     ColumnSortable,
+    EditableBlockLabel,
     EditableShortcut,
     EditableTitle,
     SortableList,

@@ -26,7 +26,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
 
     ~H"""
     <div class="py-1">
-      <.block_label label={@label} is_constant={@is_constant} />
+      <.block_label label={@label} is_constant={@is_constant} block_id={@block.id} can_edit={@can_edit} target={@target} />
       <input
         :if={@can_edit}
         type="text"
@@ -66,7 +66,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
 
     ~H"""
     <div class="py-1">
-      <.block_label label={@label} is_constant={@is_constant} />
+      <.block_label label={@label} is_constant={@is_constant} block_id={@block.id} can_edit={@can_edit} target={@target} />
       <div
         id={"tiptap-#{@block.id}"}
         phx-hook="TiptapEditor"
@@ -101,7 +101,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocks do
 
     ~H"""
     <div class="py-1">
-      <.block_label label={@label} is_constant={@is_constant} />
+      <.block_label label={@label} is_constant={@is_constant} block_id={@block.id} can_edit={@can_edit} target={@target} />
       <input
         :if={@can_edit}
         type="number"

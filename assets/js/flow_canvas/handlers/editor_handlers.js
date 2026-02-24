@@ -93,6 +93,13 @@ export function createEditorHandlers(hook) {
     async handleNodeRemoved(data) {
       const node = hook.nodeMap.get(data.id);
       if (node) {
+        // Cancel any pending debounce timer (e.g. node_moved) to prevent
+        // the timer firing after the node is gone, which would crash the server.
+        if (hook.debounceTimers?.[data.id]) {
+          clearTimeout(hook.debounceTimers[data.id]);
+          delete hook.debounceTimers[data.id];
+        }
+
         // Record in history if this user initiated the delete (not a redo replay)
         if (data.self && hook._historyTriggeredDelete !== data.id) {
           hook.history?.add(new DeleteNodeAction(hook, data.id));

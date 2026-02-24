@@ -30,7 +30,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
 
     ~H"""
     <div class="py-1">
-      <.block_label label={@label} is_constant={@is_constant} />
+      <.block_label label={@label} is_constant={@is_constant} block_id={@block.id} can_edit={@can_edit} target={@target} />
       <select
         :if={@can_edit}
         class="select select-bordered w-full"
@@ -63,7 +63,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
 
     ~H"""
     <div class="py-1">
-      <.block_label label={@label} is_constant={@is_constant} />
+      <.block_label label={@label} is_constant={@is_constant} block_id={@block.id} can_edit={@can_edit} target={@target} />
       <div
         :if={@can_edit}
         class="block-input w-full min-h-12 py-2 flex flex-wrap items-center gap-1.5 px-4"

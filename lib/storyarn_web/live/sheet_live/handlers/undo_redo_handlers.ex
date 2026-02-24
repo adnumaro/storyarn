@@ -808,7 +808,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
       id: row.id,
       block_id: row.block_id,
       name: row.name,
-      shortcut: row.shortcut,
+      slug: row.slug,
       position: row.position,
       cells: row.cells
     }

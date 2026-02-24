@@ -437,6 +437,13 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     end)
   end
 
+  def handle_event("update_block_label", %{"id" => block_id, "label" => label}, socket) do
+    with_edit_authorization(socket, fn socket ->
+      block_id = ContentTabHelpers.to_integer(block_id)
+      do_update_block_label(block_id, label, socket)
+    end)
+  end
+
   def handle_event("close_config_panel", _params, socket) do
     {:noreply, assign(socket, :configuring_block, nil)}
   end
@@ -704,6 +711,25 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       Sheets.list_reference_options(project_id)
     else
       []
+    end
+  end
+
+  defp do_update_block_label(block_id, label, socket) do
+    case Sheets.get_block_in_project(block_id, socket.assigns.project.id) do
+      nil ->
+        {:noreply, socket}
+
+      block ->
+        case Sheets.update_block_config(block, %{"label" => label}) do
+          {:ok, _updated_block} ->
+            helpers = content_helpers()
+            helpers.maybe_create_version.(socket)
+            helpers.notify_parent.(socket, :saved)
+            {:noreply, helpers.reload_blocks.(socket)}
+
+          {:error, _} ->
+            {:noreply, socket}
+        end
     end
   end
 

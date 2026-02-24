@@ -95,7 +95,15 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
       <span :if={@is_constant} class="text-error tooltip tooltip-right" data-tip={gettext("Constant")}>
         <.icon name="lock" class="size-3" />
       </span>
-      <span class="text-base-content/70">{@label}</span>
+      <span
+        id={"block-label-#{@block.id}"}
+        phx-hook="EditableBlockLabel"
+        phx-update="ignore"
+        data-label={@label}
+        data-block-id={@block.id}
+        data-phx-target={@target}
+        class="text-base-content/70 cursor-default hover:text-base-content transition-colors"
+      >{@label}</span>
       <span :if={@collapsed} class="text-base-content/40">({@summary})</span>
     </button>
     <%!-- Read-only or schema-locked: no collapse, just label --%>
@@ -116,9 +124,9 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
   defp expanded_table(assigns) do
     ~H"""
     <div class="group/table">
-      <%!-- Table grid --%>
-      <div class="relative">
-        <div class="border border-base-content/20 rounded-lg overflow-x-auto">
+      <%!-- Table grid + add column button in a flex row --%>
+      <div class="flex items-stretch gap-2">
+        <div class="flex-1 min-w-0 border border-base-content/20 rounded-lg overflow-x-auto">
           <table
             class="table table-sm table-fixed w-full [&_:is(th,td)]:border-base-content/20 [&_:is(th,td)]:border-r [&_:is(th,td):last-child]:border-r-0"
             id={@can_manage && "table-resize-#{@block.id}"}
@@ -274,14 +282,14 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
           </table>
         </div>
 
-        <%!-- Add column bar — absolute, outside right edge --%>
+        <%!-- Add column bar — flex sibling, outside overflow container --%>
         <button
           :if={@can_manage}
           type="button"
           phx-click="add_table_column"
           phx-value-block-id={@block.id}
           phx-target={@target}
-          class="absolute left-full top-0 h-full flex items-center justify-center w-6 ml-2 rounded-lg border border-base-content/10 bg-base-content/[0.02] hover:bg-base-content/5 text-base-content/30 hover:text-base-content/50 transition-all cursor-pointer opacity-0 group-hover/table:opacity-100 tooltip tooltip-right"
+          class="flex items-center justify-center w-6 shrink-0 rounded-lg border border-base-content/10 bg-base-content/[0.02] hover:bg-base-content/5 text-base-content/30 hover:text-base-content/50 transition-all cursor-pointer opacity-0 group-hover/table:opacity-100 tooltip tooltip-right"
           data-tip={dgettext("sheets", "Add column")}
         >
           <.icon name="plus" class="size-3.5" />

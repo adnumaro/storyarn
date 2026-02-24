@@ -102,9 +102,10 @@ export function createZoneHandler(hook, i18n = {}) {
     const polygon = createZonePolygon(zone, hook.canvasWidth, hook.canvasHeight);
     polygon.zoneData = zone;
 
-    // Click → select
+    // Click → select (only in select mode; other tools like pin/connector pass through)
     polygon.on("click", (e) => {
       L.DomEvent.stopPropagation(e);
+      if (hook.currentTool !== "select") return;
       hook.pushEvent("select_element", { type: "zone", id: polygon.zoneData.id });
     });
 
@@ -115,6 +116,7 @@ export function createZoneHandler(hook, i18n = {}) {
 
       const isZoneTool = hook.isZoneTool?.(hook.currentTool);
       if (isZoneTool) return;
+      if (hook.currentTool !== "select") return;
 
       // Only navigate/create-child-map for navigate zones
       const actionType = polygon.zoneData.action_type || "navigate";

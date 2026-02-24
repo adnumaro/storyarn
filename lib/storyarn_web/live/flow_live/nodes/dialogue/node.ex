@@ -14,6 +14,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   use Gettext, backend: StoryarnWeb.Gettext
 
   import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [push_event: 3]
 
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
@@ -75,28 +76,41 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
     responses = node.data["responses"] || []
     new_id = "r#{length(responses) + 1}_#{:erlang.unique_integer([:positive])}"
+    first_response? = responses == []
 
     # If this is the first response, migrate existing "output" connections to new response ID
-    if responses == [] do
+    if first_response? do
       migrate_node_output_connections(node.id, "output", new_id)
     end
 
     response_number = length(responses) + 1
 
-    NodeHelpers.persist_node_update(socket, node_id, fn data ->
-      default_text =
-        Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Response %{n}", n: response_number)
+    result =
+      NodeHelpers.persist_node_update(socket, node_id, fn data ->
+        default_text =
+          Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Response %{n}", n: response_number)
 
-      new_response = %{
-        "id" => new_id,
-        "text" => default_text,
-        "condition" => nil,
-        "instruction" => nil,
-        "instruction_assignments" => []
-      }
+        new_response = %{
+          "id" => new_id,
+          "text" => default_text,
+          "condition" => nil,
+          "instruction" => nil,
+          "instruction_assignments" => []
+        }
 
-      Map.update(data, "responses", [new_response], &(&1 ++ [new_response]))
-    end)
+        Map.update(data, "responses", [new_response], &(&1 ++ [new_response]))
+      end)
+
+    # When adding the first response, connections were migrated from "output" pin
+    # to the new response pin. The canvas still has the old pin name in memory,
+    # so push a full flow_updated to sync canvas connections with DB state.
+    case {first_response?, result} do
+      {true, {:noreply, socket}} ->
+        {:noreply, push_event(socket, "flow_updated", socket.assigns.flow_data)}
+
+      _ ->
+        result
+    end
   end
 
   @doc "Removes a response from a dialogue node."
@@ -105,19 +119,31 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
     responses = node.data["responses"] || []
     remaining = Enum.reject(responses, fn r -> r["id"] == response_id end)
+    last_response? = remaining == []
 
     # Clean up connections from the deleted response pin
-    if remaining == [] do
+    if last_response? do
       migrate_node_output_connections(node.id, response_id, "output")
     else
       delete_node_output_connections(node.id, response_id)
     end
 
-    NodeHelpers.persist_node_update(socket, node_id, fn data ->
-      Map.update(data, "responses", [], fn resps ->
-        Enum.reject(resps, &(&1["id"] == response_id))
+    result =
+      NodeHelpers.persist_node_update(socket, node_id, fn data ->
+        Map.update(data, "responses", [], fn resps ->
+          Enum.reject(resps, &(&1["id"] == response_id))
+        end)
       end)
-    end)
+
+    # When removing the last response, connections were migrated back to "output" pin.
+    # Push full flow_updated to sync canvas with DB state.
+    case {last_response?, result} do
+      {true, {:noreply, socket}} ->
+        {:noreply, push_event(socket, "flow_updated", socket.assigns.flow_data)}
+
+      _ ->
+        result
+    end
   end
 
   @doc "Updates response text."

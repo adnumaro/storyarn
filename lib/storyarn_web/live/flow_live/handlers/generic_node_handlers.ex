@@ -346,19 +346,29 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   @spec handle_node_moved(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_node_moved(%{"id" => node_id, "position_x" => x, "position_y" => y}, socket) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-
-    case Flows.update_node_position(node, %{position_x: x, position_y: y}) do
-      {:ok, _} ->
-        schedule_save_status_reset()
-
-        {:noreply,
-         socket
-         |> assign(:save_status, :saved)
-         |> CollaborationHelpers.broadcast_change(:node_moved, %{node_id: node_id, x: x, y: y})}
-
-      {:error, _} ->
+    # Use non-raising get_node/2 — the node may have been deleted while a
+    # debounced move event was still in flight.
+    case Flows.get_node(socket.assigns.flow.id, node_id) do
+      nil ->
         {:noreply, socket}
+
+      node ->
+        case Flows.update_node_position(node, %{position_x: x, position_y: y}) do
+          {:ok, _} ->
+            schedule_save_status_reset()
+
+            {:noreply,
+             socket
+             |> assign(:save_status, :saved)
+             |> CollaborationHelpers.broadcast_change(:node_moved, %{
+               node_id: node_id,
+               x: x,
+               y: y
+             })}
+
+          {:error, _} ->
+            {:noreply, socket}
+        end
     end
   end
 
