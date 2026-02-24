@@ -300,6 +300,52 @@ defmodule Storyarn.Assets do
   end
 
   @doc """
+  Uploads a file from a temporary path and creates the corresponding asset record.
+
+  Used by LiveView's `consume_uploaded_entries/3` to process file uploads directly
+  from the parent LiveView (without going through the AssetUpload LiveComponent).
+
+  Returns `{:ok, asset}` on success or `{:error, reason}` on failure.
+  """
+  @spec upload_and_create_asset(String.t(), Phoenix.LiveView.UploadEntry.t(), project(), user()) ::
+          {:ok, asset()} | {:error, term()}
+  def upload_and_create_asset(path, entry, %Project{} = project, %User{} = user) do
+    alias Storyarn.Assets.ImageProcessor
+    alias Storyarn.Assets.Storage
+
+    key = generate_key(project, entry.client_name)
+    content = File.read!(path)
+
+    with {:ok, url} <- Storage.upload(key, content, entry.client_type) do
+      metadata =
+        if String.starts_with?(entry.client_type, "image/") and ImageProcessor.available?() do
+          case ImageProcessor.get_dimensions(path) do
+            {:ok, %{width: w, height: h}} -> %{"width" => w, "height" => h}
+            {:error, _} -> %{}
+          end
+        else
+          %{}
+        end
+
+      case create_asset(project, user, %{
+             filename: entry.client_name,
+             content_type: entry.client_type,
+             size: entry.client_size,
+             key: key,
+             url: url,
+             metadata: metadata
+           }) do
+        {:ok, asset} ->
+          {:ok, asset}
+
+        {:error, changeset} ->
+          Storage.delete(key)
+          {:error, changeset}
+      end
+    end
+  end
+
+  @doc """
   Sanitizes a filename for safe storage.
 
   Strips path components, replaces unsafe characters, downcases, and limits length.
@@ -313,5 +359,4 @@ defmodule Storyarn.Assets do
     |> String.downcase()
     |> String.slice(0, 255)
   end
-
 end

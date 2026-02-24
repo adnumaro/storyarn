@@ -4,11 +4,18 @@
  * Replaces JS.toggle + phx-click-away pattern with createFloatingPopover.
  * Re-pushes data-event/data-params clicks from cloned template content.
  *
+ * Supported data attributes on elements inside the template:
+ *   data-event="event_name"        — pushEvent on click
+ *   data-params='{"key":"val"}'    — JSON payload merged into event
+ *   data-close-on-click="false"    — don't close popover after click
+ *   data-blur-event="event_name"   — pushEvent on blur (for inputs)
+ *   data-click-input="selector"    — click an element matching selector on click
+ *
  * Expected DOM structure:
  *   <div phx-hook="ToolbarPopover" id="..." data-width="14rem" data-placement="bottom-start">
  *     <button data-role="trigger">...</button>
  *     <template data-role="popover-template">
- *       ... popover content with data-event/data-params buttons ...
+ *       ... popover content ...
  *     </template>
  *   </div>
  */
@@ -38,12 +45,18 @@ export const ToolbarPopover = {
     const placement = this.el.dataset.placement || "bottom-start";
     const offsetVal = parseInt(this.el.dataset.offset, 10);
 
-    this._fp = createFloatingPopover(this.trigger, {
-      class:
-        "bg-base-100 border border-base-300 rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.18)]",
+    // Stretch wrapper to parent height so popover anchors below the toolbar pill,
+    // not below the (potentially centered) trigger button.
+    // Also center children vertically within the stretched wrapper.
+    this.el.style.alignSelf = "stretch";
+    this.el.style.display = "inline-flex";
+    this.el.style.alignItems = "center";
+
+    this._fp = createFloatingPopover(this.el, {
+      class: "bg-base-200 border border-base-300 rounded-lg shadow-lg",
       width,
       placement,
-      offset: Number.isFinite(offsetVal) ? offsetVal : undefined,
+      offset: Number.isFinite(offsetVal) ? offsetVal : 12,
     });
 
     // Clone template content
@@ -62,24 +75,23 @@ export const ToolbarPopover = {
     };
     this.trigger.addEventListener("click", this._onTriggerClick);
 
-    // Re-push events from cloned buttons
+    // Re-push click events from cloned buttons
     this._onPopoverClick = (e) => {
+      // data-click-input: click an element in the main DOM (e.g. file input)
+      const clickInputBtn = e.target.closest("[data-click-input]");
+      if (clickInputBtn) {
+        const target = document.querySelector(clickInputBtn.dataset.clickInput);
+        if (target) target.click();
+        return;
+      }
+
       const btn = e.target.closest("[data-event]");
       if (!btn || btn.disabled) return;
 
       const event = btn.dataset.event;
       if (!event) return;
 
-      const payload = {};
-      if (btn.dataset.params) {
-        try {
-          Object.assign(payload, JSON.parse(btn.dataset.params));
-        } catch {
-          /* no params */
-        }
-      }
-
-      this.pushEvent(event, payload);
+      this.pushEvent(event, parseParams(btn));
 
       // Close after selection (default behavior)
       if (btn.dataset.closeOnClick !== "false") {
@@ -87,6 +99,21 @@ export const ToolbarPopover = {
       }
     };
     this._fp.el.addEventListener("click", this._onPopoverClick);
+
+    // Re-push blur events from cloned inputs
+    this._onPopoverBlur = (e) => {
+      const input = e.target.closest("[data-blur-event]");
+      if (!input) return;
+
+      const event = input.dataset.blurEvent;
+      if (!event) return;
+
+      const payload = parseParams(input);
+      payload.value = input.value;
+
+      this.pushEvent(event, payload);
+    };
+    this._fp.el.addEventListener("focusout", this._onPopoverBlur);
   },
 
   _destroyPopover() {
@@ -101,3 +128,15 @@ export const ToolbarPopover = {
     this._destroyPopover();
   },
 };
+
+function parseParams(el) {
+  const payload = {};
+  if (el.dataset.params) {
+    try {
+      Object.assign(payload, JSON.parse(el.dataset.params));
+    } catch {
+      /* no params */
+    }
+  }
+  return payload;
+}

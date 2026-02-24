@@ -10,9 +10,9 @@ defmodule StoryarnWeb.MapLive.Show do
   import StoryarnWeb.MapLive.Components.Legend
   import StoryarnWeb.MapLive.Components.MapHeader
   import StoryarnWeb.MapLive.Components.MapSearchPanel
-  import StoryarnWeb.MapLive.Components.MapPanel
   import StoryarnWeb.MapLive.Components.FloatingToolbar
 
+  alias Storyarn.Assets
   alias Storyarn.Maps
   alias Storyarn.Projects
   alias Storyarn.Repo
@@ -98,11 +98,19 @@ defmodule StoryarnWeb.MapLive.Show do
           workspace={@workspace}
           project={@project}
           map={@map}
+          bg_upload_input_id={@uploads[:background] && @uploads.background.ref}
         />
       </:top_bar_extra_right>
       <div class="h-full relative">
         <%!-- Canvas fills the entire area --%>
-        <div class="absolute inset-0 overflow-hidden">
+        <div
+          id="map-canvas-wrapper"
+          class="absolute inset-0 overflow-hidden"
+          phx-drop-target={
+            @can_edit && @edit_mode && @uploads[:background] && @uploads.background.ref
+          }
+          phx-hook="CanvasDropZone"
+        >
           <div
             id="map-canvas"
             phx-hook="MapCanvas"
@@ -112,6 +120,80 @@ defmodule StoryarnWeb.MapLive.Show do
             class="w-full h-full"
           >
             <div id="map-canvas-container" class="w-full h-full"></div>
+          </div>
+
+          <%!-- Hidden file input for background upload --%>
+          <form
+            :if={@can_edit && @uploads[:background]}
+            id="bg-upload-form"
+            phx-change="validate_bg_upload"
+            class="sr-only"
+          >
+            <.live_file_input upload={@uploads.background} />
+          </form>
+
+          <%!-- Empty canvas — upload prompt --%>
+          <div
+            :if={!background_set?(@map) && @can_edit && @edit_mode && @uploads[:background]}
+            class="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none"
+          >
+            <label
+              for={@uploads.background.ref}
+              class="pointer-events-auto cursor-pointer group flex flex-col items-center gap-3
+                     p-8 rounded-xl border-2 border-dashed border-base-content/15
+                     hover:border-primary/40 hover:bg-base-100/50 transition-colors"
+            >
+              <.icon
+                name="image-plus"
+                class="size-10 opacity-20 group-hover:opacity-50 transition-opacity"
+              />
+              <span class="text-sm text-base-content/40 group-hover:text-base-content/60 transition-colors">
+                {dgettext("maps", "Upload background image")}
+              </span>
+              <span class="text-xs text-base-content/25">
+                {dgettext("maps", "or drag & drop")}
+              </span>
+            </label>
+          </div>
+
+          <%!-- Drag & drop overlay (shown by CanvasDropZone hook) --%>
+          <div
+            :if={@can_edit && @edit_mode}
+            id="canvas-drop-indicator"
+            class="hidden absolute inset-0 z-[999] bg-primary/5 border-2 border-dashed border-primary/30
+                   flex items-center justify-center pointer-events-none"
+          >
+            <div class="text-center">
+              <.icon name="image-plus" class="size-12 text-primary/50 mx-auto mb-2" />
+              <p class="text-sm font-medium text-primary/60">
+                {dgettext("maps", "Drop image to set background")}
+              </p>
+            </div>
+          </div>
+
+          <%!-- Upload progress indicator --%>
+          <div
+            :for={
+              entry <-
+                if(@can_edit && @uploads[:background],
+                  do: @uploads.background.entries,
+                  else: []
+                )
+            }
+            class="absolute bottom-20 left-1/2 -translate-x-1/2 z-[1000]
+                   bg-base-100 rounded-lg border border-base-300 shadow-lg px-4 py-2 flex items-center gap-3"
+          >
+            <.icon name="upload" class="size-4 animate-pulse text-primary" />
+            <div class="w-32">
+              <div class="text-xs text-base-content/60 mb-1">{entry.client_name}</div>
+              <div class="w-full bg-base-300 rounded-full h-1.5">
+                <div
+                  class="bg-primary h-1.5 rounded-full transition-all"
+                  style={"width: #{entry.progress}%"}
+                >
+                </div>
+              </div>
+            </div>
           </div>
 
           <%!-- Search panel (below toolbar row) --%>
@@ -178,64 +260,36 @@ defmodule StoryarnWeb.MapLive.Show do
               panel_sections={@panel_sections}
             />
           </div>
-
-          <%!-- Pin icon upload overlay --%>
-          <div
-            :if={@show_pin_icon_upload && @selected_type == "pin" && @project && @current_scope}
-            class="absolute top-3 right-3 z-[1060] w-64 bg-base-100 rounded-xl border border-base-300 shadow-xl p-3"
-          >
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-medium">{dgettext("maps", "Upload Icon")}</span>
-              <button
-                type="button"
-                phx-click="toggle_pin_icon_upload"
-                class="btn btn-ghost btn-xs btn-square"
-              >
-                <.icon name="x" class="size-3" />
-              </button>
-            </div>
-            <.live_component
-              module={StoryarnWeb.Components.AssetUpload}
-              id="pin-icon-upload"
-              project={@project}
-              current_user={@current_scope.user}
-              on_upload={fn asset -> send(self(), {:pin_icon_uploaded, asset}) end}
-              accept={~w(image/jpeg image/png image/gif image/webp image/svg+xml)}
-              max_entries={1}
-              max_file_size={524_288}
-            />
-          </div>
-
-          <%!-- Map settings floating panel (gear button) --%>
-          <div
-            id="map-settings-floating"
-            class="hidden absolute top-3 right-3 z-[1000] w-72 max-h-[calc(100vh-8rem)]
-                     overflow-y-auto bg-base-100 rounded-xl border border-base-300 shadow-xl"
-            phx-click-away={JS.add_class("hidden", to: "#map-settings-floating")}
-          >
-            <div class="p-3 border-b border-base-300 flex items-center justify-between">
-              <h2 class="font-medium text-sm flex items-center gap-2">
-                <.icon name="settings" class="size-4" />
-                {dgettext("maps", "Map Settings")}
-              </h2>
-              <button
-                type="button"
-                class="btn btn-ghost btn-xs btn-square"
-                phx-click={JS.add_class("hidden", to: "#map-settings-floating")}
-              >
-                <.icon name="x" class="size-4" />
-              </button>
-            </div>
-            <div :if={@can_edit && @edit_mode} class="p-3">
-              <.map_properties
-                map={@map}
-                show_background_upload={@show_background_upload}
-                project={@project}
-                current_user={@current_scope.user}
-              />
-            </div>
-          </div>
         </div>
+      </div>
+
+      <%!-- Pin icon upload overlay (fixed, outside canvas overflow) --%>
+      <div
+        :if={@show_pin_icon_upload && @selected_type == "pin" && @project && @current_scope}
+        id="pin-icon-upload-panel"
+        class="fixed top-16 right-4 z-[1030] w-64 bg-base-200 border border-base-300 rounded-lg
+               shadow-lg p-3"
+      >
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-medium">{dgettext("maps", "Upload Icon")}</span>
+          <button
+            type="button"
+            phx-click="toggle_pin_icon_upload"
+            class="btn btn-ghost btn-xs btn-square"
+          >
+            <.icon name="x" class="size-3" />
+          </button>
+        </div>
+        <.live_component
+          module={StoryarnWeb.Components.AssetUpload}
+          id="pin-icon-upload"
+          project={@project}
+          current_user={@current_scope.user}
+          on_upload={fn asset -> send(self(), {:pin_icon_uploaded, asset}) end}
+          accept={~w(image/jpeg image/png image/gif image/webp image/svg+xml)}
+          max_entries={1}
+          max_file_size={524_288}
+        />
       </div>
 
       <%!-- Confirm modals --%>
@@ -333,7 +387,6 @@ defmodule StoryarnWeb.MapLive.Show do
     |> assign(:selected_type, nil)
     |> assign(:active_layer_id, default_layer_id(map.layers))
     |> assign(:renaming_layer_id, nil)
-    |> assign(:show_background_upload, false)
     |> assign(:show_pin_icon_upload, false)
     |> assign(:show_sheet_picker, false)
     |> assign(:pending_sheet_for_pin, nil)
@@ -364,6 +417,19 @@ defmodule StoryarnWeb.MapLive.Show do
       create_child_map: dgettext("maps", "Create child map"),
       name_zone_first: dgettext("maps", "Name the zone first")
     })
+    |> then(fn socket ->
+      if can_edit do
+        allow_upload(socket, :background,
+          accept: ~w(image/jpeg image/png image/gif image/webp),
+          max_entries: 1,
+          max_file_size: 10_485_760,
+          auto_upload: true,
+          progress: &handle_progress/3
+        )
+      else
+        socket
+      end
+    end)
   end
 
   @impl true
@@ -452,6 +518,8 @@ defmodule StoryarnWeb.MapLive.Show do
       when type in ~w(pin zone connection annotation) do
     CanvasEventHandlers.handle_select_element(params, socket)
   end
+
+  def handle_event("validate_bg_upload", _params, socket), do: {:noreply, socket}
 
   def handle_event("noop", _params, socket), do: {:noreply, socket}
 
@@ -621,10 +689,6 @@ defmodule StoryarnWeb.MapLive.Show do
 
   def handle_event("toggle_legend", params, socket) do
     LayerHandlers.handle_toggle_legend(params, socket)
-  end
-
-  def handle_event("toggle_background_upload", params, socket) do
-    LayerHandlers.handle_toggle_background_upload(params, socket)
   end
 
   def handle_event("remove_background", params, socket) do
@@ -909,20 +973,7 @@ defmodule StoryarnWeb.MapLive.Show do
 
   @impl true
   def handle_info({:background_uploaded, asset}, socket) do
-    case Maps.update_map(socket.assigns.map, %{background_asset_id: asset.id}) do
-      {:ok, updated} ->
-        updated = Repo.preload(updated, :background_asset, force: true)
-
-        {:noreply,
-         socket
-         |> assign(:map, updated)
-         |> assign(:show_background_upload, false)
-         |> push_event("background_changed", %{url: asset.url})
-         |> put_flash(:info, dgettext("maps", "Background image updated."))}
-
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update background."))}
-    end
+    process_background_upload(socket, asset)
   end
 
   def handle_info({:pin_icon_uploaded, asset}, socket) do
@@ -952,6 +1003,52 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
+
+  defp handle_progress(:background, entry, socket) do
+    if entry.done? do
+      results =
+        consume_uploaded_entries(socket, :background, fn %{path: path}, entry ->
+          case Assets.upload_and_create_asset(
+                 path,
+                 entry,
+                 socket.assigns.project,
+                 socket.assigns.current_scope.user
+               ) do
+            {:ok, asset} -> {:ok, {:ok, asset}}
+            {:error, reason} -> {:ok, {:error, reason}}
+          end
+        end)
+
+      case results do
+        [{:ok, asset}] ->
+          process_background_upload(socket, asset)
+
+        _ ->
+          {:noreply, put_flash(socket, :error, dgettext("maps", "Could not upload background."))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  defp process_background_upload(socket, asset) do
+    case Maps.update_map(socket.assigns.map, %{background_asset_id: asset.id}) do
+      {:ok, updated} ->
+        updated = Repo.preload(updated, :background_asset, force: true)
+
+        {:noreply,
+         socket
+         |> assign(:map, updated)
+         |> push_event("background_changed", %{url: asset.url})
+         |> put_flash(:info, dgettext("maps", "Background image updated."))}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("maps", "Could not update background."))}
+    end
+  end
+
+  defp background_set?(%{background_asset_id: id}) when not is_nil(id), do: true
+  defp background_set?(_), do: false
 
   attr :sheets, :list, required: true
 

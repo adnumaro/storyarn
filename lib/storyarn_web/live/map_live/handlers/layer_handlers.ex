@@ -81,10 +81,6 @@ defmodule StoryarnWeb.MapLive.Handlers.LayerHandlers do
     end
   end
 
-  def handle_toggle_background_upload(_params, socket) do
-    {:noreply, assign(socket, :show_background_upload, !socket.assigns.show_background_upload)}
-  end
-
   def handle_remove_background(_params, socket) do
     case Maps.update_map(socket.assigns.map, %{background_asset_id: nil}) do
       {:ok, updated} ->

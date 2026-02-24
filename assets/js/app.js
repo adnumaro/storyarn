@@ -27,6 +27,7 @@ import topbar from "topbar";
 
 import { AssetUpload } from "./hooks/asset_upload";
 import { AudioUpload } from "./hooks/audio_upload";
+import { CanvasDropZone } from "./hooks/canvas_drop_zone";
 import { AvatarUpload } from "./hooks/avatar_upload";
 import { BannerUpload } from "./hooks/banner_upload";
 import { ColorPicker } from "./hooks/color_picker";
@@ -78,6 +79,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ...colocatedHooks,
     AssetUpload,
     AudioUpload,
+    CanvasDropZone,
     AvatarUpload,
     BannerUpload,
     ColumnSortable,

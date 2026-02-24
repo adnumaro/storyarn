@@ -51,7 +51,7 @@ export const SearchableSelect = {
 
     // Create floating popover (appended to body)
     this._fp = createFloatingPopover(this.trigger, {
-      class: "bg-base-100 border border-base-300 rounded-lg shadow-lg",
+      class: "bg-base-200 border border-base-300 rounded-lg shadow-lg",
       width: "14rem",
     });
 
