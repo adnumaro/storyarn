@@ -19,14 +19,11 @@
 
 ## Related Documentation
 
-| File                                  | Purpose                                            |
-|---------------------------------------|----------------------------------------------------|
-| `IMPLEMENTATION_PLAN.md`              | Full roadmap and task breakdown                    |
-| `DIALOGUE_NODE_ENHANCEMENT.md`        | Dialogue node features (Phases 1-4 ✓, 5-7 pending) |
-| `CONDITION_NODE_ENHANCEMENT.md`       | Condition node variable integration (pending)      |
-| `INSTRUCTION_VARIABLE_SYSTEM_PLAN.md` | Instruction node + variable tracking (pending)     |
-| `FLOW_NODES_IMPROVEMENT_PLAN.md`      | Flow node fixes and improvements (Phases 1-2 ✓)    |
-| `FUTURE_FEATURES.md`                  | Deferred features + competitive analysis           |
+| File                                  | Purpose                                     |
+|---------------------------------------|---------------------------------------------|
+| `docs/CURRENT_FEATURES.md`           | Comprehensive feature reference (canonical) |
+| `IMPLEMENTATION_PLAN.md`              | Full roadmap and task breakdown             |
+| `FUTURE_FEATURES.md`                  | Deferred features + competitive analysis    |
 
 ## Language Policy
 
@@ -127,8 +124,11 @@ Sheet (shortcut: "mc.jaime")
 **Block types → Operators:**
 - `number`: equals, greater_than, less_than, etc.
 - `select`: equals, not_equals, is_nil
+- `multi_select`: contains, not_contains, is_empty
 - `boolean`: is_true, is_false, is_nil
-- `text`: equals, contains, starts_with, is_empty
+- `text`/`rich_text`: equals, contains, starts_with, is_empty
+- `date`: equals, before, after
+- `table`: cell-level variable references via `{sheet}.{table}.{row}.{column}`
 - Non-variable: `divider`, `reference`
 
 **API:**
@@ -149,7 +149,7 @@ Sheets.list_project_variables(project_id)
 
 ## Flow Editor
 
-**Node types:** `start`, `end`, `dialogue`, `condition`, `hub`
+**Node types:** `entry`, `exit`, `dialogue`, `condition`, `instruction`, `hub`, `jump`, `scene`, `subflow`
 
 **Dialogue node data:**
 ```elixir
@@ -196,6 +196,12 @@ lib/storyarn_web/live/flow_live/
 │   ├── jump/
 │   │   ├── node.ex                      # Metadata only
 │   │   └── config_sidebar.ex
+│   ├── scene/
+│   │   ├── node.ex                      # Metadata + handlers (location, slug line)
+│   │   └── config_sidebar.ex
+│   ├── subflow/
+│   │   ├── node.ex                      # Metadata + handlers (flow reference, exits)
+│   │   └── config_sidebar.ex
 │   ├── entry/
 │   │   ├── node.ex                      # Metadata + on_select (load referencing_flows)
 │   │   └── config_sidebar.ex
@@ -220,9 +226,13 @@ lib/storyarn_web/live/flow_live/
 assets/js/
 ├── hooks/                               # ONLY Phoenix LiveView hooks (flat)
 │   ├── flow_canvas.js                   # Flow editor hook (orchestrator)
+│   ├── map_canvas.js                    # Map editor hook
+│   ├── screenplay_editor.js             # Screenplay editor hook
 │   ├── instruction_builder.js           # Instruction builder hook
 │   ├── tiptap_editor.js                # Rich text editor hook
-│   └── ...                              # 12 more hooks (all flat, no subdirs)
+│   ├── story_player.js                 # Story player hook
+│   ├── undo_redo.js                    # Undo/redo hook (sheets)
+│   └── ...                              # 41 hooks total (all flat, no subdirs)
 ├── flow_canvas/                         # Flow editor utilities (non-hooks)
 │   ├── nodes/
 │   │   ├── index.js                     # Registry: type → module lookup
@@ -231,6 +241,8 @@ assets/js/
 │   │   ├── instruction.js               # Config, preview formatting
 │   │   ├── hub.js                       # Config, nav links, color
 │   │   ├── jump.js                      # Config, nav links, indicators
+│   │   ├── scene.js                     # Config, slug line formatting, location
+│   │   ├── subflow.js                   # Config, flow reference, dynamic exits
 │   │   ├── entry.js                     # Config, referencing flows, nav links
 │   │   └── exit.js                      # Config, color logic
 │   ├── node_config.js                   # Thin re-export from nodes/index.js + createIconSvg
@@ -343,12 +355,15 @@ fp.destroy();                  // remove from DOM + cleanup
 
 ## Storyarn-Specific Patterns
 
-**Layouts** (3 independent, not nested):
+**Layouts** (5 independent, not nested):
 ```elixir
-<Layouts.app ...>      # Main app with sidebar
+<Layouts.app ...>      # Main app with workspace sidebar
+<Layouts.focus ...>    # Project view with tool sidebar (flows, sheets, etc.)
 <Layouts.auth ...>     # Login/register (centered)
-<Layouts.settings ...> # Settings with nav
+<Layouts.public ...>   # Public/landing pages
+<Layouts.settings ...> # Settings with nav sidebar
 ```
+The Story Player and Map Exploration use `layout: false` with their own fullscreen layout inline.
 
 **LiveView Authorization:**
 ```elixir
@@ -370,8 +385,6 @@ Actions: `:edit_content`, `:manage_project`, `:manage_members`, `:manage_workspa
 
 ## Implementation Status
 
-**Completed:** Auth, Workspaces, Projects, Sheets/Blocks, Assets, Flow Editor, Collaboration, Dialogue Enhancement (1-4), Flow Node Improvements (Phases 1-2)
+**Completed:** Auth, Workspaces, Projects, Sheets/Blocks (incl. tables, versioning, property inheritance), Assets, Flow Editor (all 9 node types, debug mode, story player, undo/redo), Maps (canvas, exploration mode, actions/conditions), Screenplays (editor, Fountain import/export, flow sync), Localization (extraction, DeepL, glossary, reports), Collaboration (presence, cursors, locks)
 
-**In Progress:** Instruction Node + Variable System
-
-**Next:** Dialogue Enhancement (5-7), Connection hardening, Export system
+**See `docs/CURRENT_FEATURES.md`** for the comprehensive feature reference.

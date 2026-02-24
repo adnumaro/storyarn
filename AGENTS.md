@@ -38,7 +38,7 @@ custom classes must fully style the input
 
 - **Always use and maintain this import syntax** in the app.css file for projects generated with `phx.new`
 - **Never** use `@apply` when writing raw css
-- **Always** manually write your own tailwind-based components instead of using daisyUI for a unique, world-class design
+- **Use daisyUI components and Tailwind CSS classes** for consistent UI design
 - Out of the box **only the app.js and app.css bundles are supported**
   - You cannot reference an external vendor'd script `src` or link `href` in the layouts
   - You must import the vendor deps into app.js and app.css to use them
@@ -462,12 +462,14 @@ And **never** do this:
 | Type          | Fields                                                                                                                                                    | Consumed By                                                                      |
 |---------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
 | `entry`       | `%{}`                                                                                                                                                     | `node_type_helpers.ex`, `storyarn_node.js`                                       |
-| `exit`        | `%{label}`                                                                                                                                                | `properties_panels.ex`, `storyarn_node.js`                                       |
+| `exit`        | `%{label, technical_id, outcome_tags, outcome_color, exit_mode, referenced_flow_id, target_type, target_id}`                                              | `properties_panels.ex`, `storyarn_node.js`                                       |
 | `dialogue`    | `%{speaker_sheet_id, text, stage_directions, menu_text, audio_asset_id, technical_id, localization_id, responses: [%{id, text, condition, instruction}]}` | `properties_panels.ex`, `storyarn_node.js`, `node_helpers.ex`, `form_helpers.ex` |
 | `hub`         | `%{hub_id, color}`                                                                                                                                        | `properties_panels.ex`, `storyarn_node.js`                                       |
 | `condition`   | `%{condition: %{logic, rules: [%{id, sheet, variable, operator, value, label}]}, switch_mode}`                                                            | `properties_panels.ex`, `storyarn_node.js`, `condition_builder.ex`               |
-| `instruction` | `%{action, parameters}`                                                                                                                                   | `properties_panels.ex`, `storyarn_node.js`                                       |
+| `instruction` | `%{assignments: [%{...}], description}`                                                                                                                   | `properties_panels.ex`, `storyarn_node.js`, `instruction_builder.ex`             |
 | `jump`        | `%{target_hub_id}`                                                                                                                                        | `properties_panels.ex`, `storyarn_node.js`                                       |
+| `scene`       | `%{location_sheet_id, int_ext, sub_location, time_of_day, description, technical_id}`                                                                     | `properties_panels.ex`, `storyarn_node.js`                                       |
+| `subflow`     | `%{referenced_flow_id}`                                                                                                                                   | `properties_panels.ex`, `storyarn_node.js`                                       |
 
 ### File Size Limits
 

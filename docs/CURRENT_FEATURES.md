@@ -1,6 +1,6 @@
 # Storyarn — Current Features
 
-> **Last updated:** 2026-02-19
+> **Last updated:** 2026-02-24
 > **Stack:** Elixir 1.15+ / Phoenix 1.8 / LiveView 1.1 / PostgreSQL / Redis / Tailwind v4 / daisyUI
 
 ---
@@ -146,7 +146,7 @@
 
 ### 2.2 Blocks (Fields as Variables)
 
-Nine block types:
+Ten block types:
 
 | Type           | Variable-capable  | Config                                       | Value                                  |
 |----------------|:-----------------:|----------------------------------------------|----------------------------------------|
@@ -157,6 +157,7 @@ Nine block types:
 | `multi_select` |        Yes        | label, placeholder, options `[{key, value}]` | array of keys                          |
 | `boolean`      |        Yes        | label, mode (`two_state`)                    | true/false/nil                         |
 | `date`         |        Yes        | label                                        | date value                             |
+| `table`        |        Yes        | label, typed columns                         | rows with cell data (see below)        |
 | `divider`      |        No         | —                                            | —                                      |
 | `reference`    |        No         | label, allowed_types `["sheet","flow"]`      | target_type + target_id                |
 
@@ -167,6 +168,14 @@ Nine block types:
 - **Required flag** — marks inherited blocks as mandatory for child sheets
 - **Drag-and-drop reordering** via JS hook
 - **Column layout** — blocks can be grouped into 2 or 3-column layouts; groups dissolve when fewer than 2 blocks remain
+
+**Table block details:**
+- Columns with typed fields (`number`, `text`, `boolean`, `select`, `multi_select`, `date`, `reference`)
+- Rows with auto-generated row IDs and cell data per column
+- Automatic slug generation from column names
+- Full CRUD for columns and rows; cell value management
+- Inheritance support: table columns sync to child sheet instances
+- Variable reference path: `{sheet_shortcut}.{table_name}.{row_id}.{column_slug}`
 
 ### 2.3 Property Inheritance
 
@@ -236,6 +245,13 @@ Nine block types:
 - **Save status indicator** — :idle / :saved states, auto-resets after 4 seconds
 - **Search** — ILIKE search on name and shortcut; used for `@mention` autocomplete, reference block pickers, speaker selection
 - **Tree operations** — create, move (with cycle prevention), delete, reorder via drag-and-drop
+
+### 2.9 Undo/Redo
+
+- **Keyboard shortcuts** — Ctrl/Cmd+Z (undo), Ctrl/Cmd+Y (redo)
+- **Coalesced updates** — typing in the same field within a short window is grouped as a single undo entry to prevent excessive undo steps
+- **Tracked actions** — sheet name changes, shortcut changes, block create/delete/update, table column/row operations
+- **Stack management** — via `UndoRedoStack` with `UndoRedo` JS hook
 
 ---
 
@@ -720,7 +736,7 @@ Input rules automatically convert block types as the user types:
 
 ### 5.1 Core Data Model
 
-- **Fields:** filename, content_type (MIME), size (bytes), key (storage path), url (public), metadata (JSON: width/height/thumbnail for images, duration for audio)
+- **Fields:** filename, content_type (MIME), size (bytes), key (storage path), url (public), metadata (JSON: width/height for images)
 - **Associations:** belongs to project + uploaded_by user
 - **Scoped to projects** — each project has its own isolated asset store
 - **Unique constraint** — `(project_id, key)` prevents duplicate storage keys
@@ -795,7 +811,12 @@ Input rules automatically convert block types as the user types:
 - **Audio on dialogue nodes** (`audio_asset_id`) — attach audio via AudioPicker component in sidebar; dropdown to select from project audio assets + upload button; 🔊 indicator on node canvas; remove (unlinks)
 - **Audio tab on sheets** — centralized view of all voice lines for a character; per-node audio select/upload/remove directly from the sheet
 
-### 5.11 Analytics
+### 5.11 Map Integration
+
+- **Background image** (`background_asset_id`) — maps store a reference to an image asset used as the Leaflet overlay background; upload/change/remove from map settings panel
+- **Custom pin icons** (`icon_asset_id`) — map pins can use a custom uploaded icon image (max 512 KB); displayed instead of the default Lucide icon; sheet-linked pins display the sheet's avatar image
+
+### 5.12 Analytics
 
 - **Count by type** — `%{"image" => N, "audio" => N}` (SQL group by MIME prefix)
 - **Total storage size** — sum of all asset sizes per project (in bytes)
@@ -823,9 +844,9 @@ Input rules automatically convert block types as the user types:
 - **Circle** — drag radius → approximated as 32-point polygon
 - **Freeform** — click points, close by clicking near first point or pressing Escape
 
-Zone fields: name (max 200), vertices, fill_color, fill_opacity (0–1), stroke_color, stroke_style (solid/dashed/dotted), stroke_width (0–10), tooltip (max 500), locked, target_type (sheet/flow/map), target_id. Vertex editing mode allows individual vertex drag.
+Zone fields: name (max 200), vertices, fill_color, opacity (0–1), border_color, border_style (solid/dashed/dotted), border_width (0–10), tooltip (max 500), locked, target_type (sheet/flow/map), target_id, action_type (none/instruction/display), action_data (map), condition (map), condition_effect (hide/disable). Vertex editing mode allows individual vertex drag.
 
-**Pins** — point markers with types: `location`, `character`, `event`, `custom`. Fields: label (max 200), position_x/y (%), pin_type, icon (Lucide name), color, opacity (0–1), size (sm/md/lg), tooltip (max 500), locked, target_type (sheet/flow/map/url), target_id, sheet_id (direct sheet link), icon_asset_id (custom uploaded icon, max 512KB). Sheet-linked pins display the sheet's avatar image.
+**Pins** — point markers with types: `location`, `character`, `event`, `custom`. Fields: label (max 200), position_x/y (%), pin_type, icon (Lucide name), color, opacity (0–1), size (sm/md/lg), tooltip (max 500), locked, target_type (sheet/flow/map/url), target_id, sheet_id (direct sheet link), icon_asset_id (custom uploaded icon, max 512KB), action_type (none/instruction/display), action_data (map), condition (map), condition_effect (hide/disable). Sheet-linked pins display the sheet's avatar image.
 
 **Connections** — lines between two pins with: line_style (solid/dashed/dotted), line_width (0–10), color, label (max 200), bidirectional toggle, show_label toggle, waypoints (max 50 `{x,y}` percentage coords). Self-connections prevented. Both pins must belong to same map.
 
@@ -862,9 +883,9 @@ Dock hidden in view mode.
 
 FigJam-style floating toolbar above selected element. Content varies by type:
 
-**Zone:** Name input, fill color (swatches + opacity slider), border (style/width/color), layer picker, lock toggle, More (...): tooltip, link-to target picker (sheet/flow/map)
+**Zone:** Name input, fill color (swatches + opacity slider), border (style/width/color), layer picker, lock toggle, More (...): tooltip, link-to target picker (sheet/flow/map), action type (none/instruction/display), condition builder, condition effect (hide/disable)
 
-**Pin:** Label input, type picker (location/character/event/custom with icons), color + opacity, size (S/M/L pills), layer picker, lock toggle, More (...): tooltip, link-to (sheet/flow/map/url), change icon (upload overlay)
+**Pin:** Label input, type picker (location/character/event/custom with icons), color + opacity, size (S/M/L pills), layer picker, lock toggle, More (...): tooltip, link-to (sheet/flow/map/url), change icon (upload overlay), action type (none/instruction/display), condition builder, condition effect (hide/disable)
 
 **Connection:** Label input, line style (style/width/color), show-label toggle, bidirectional toggle, More (...): straighten path (clears waypoints)
 
@@ -971,7 +992,7 @@ Click two points to measure distance. Displays:
 
 ### 6.17 Export
 
-- **PNG** — `html2canvas` at 2x retina scale; Leaflet controls hidden during capture; downloads as `{map_name}.png`
+- **PNG** — `modern-screenshot` (`domToPng`) at 2x retina scale; Leaflet controls hidden during capture; downloads as `{map_name}.png`
 - **SVG** — custom serializer: zones → `<polygon>`, connections → `<polyline>` + label `<text>`, pins → `<circle>` + `<text>`, annotations → `<text>`; hidden layers excluded; downloads as `{map_name}.svg`
 
 ### 6.18 Map Settings
@@ -1015,7 +1036,34 @@ All edit operations gated by `ProjectMembership.can?(role, :edit_content)` via `
 
 **View-only users cannot:** create/edit/delete elements, manage layers, change settings/background, access dock or floating toolbar.
 
-### 6.23 Collaboration
+### 6.23 Actions & Conditions
+
+Zones and pins support interactive behavior for the exploration/player mode:
+
+- **Action types:**
+  - `none` — element acts as a pure navigation target (links to sheet/flow/map/url)
+  - `instruction` — executes variable assignments when clicked (via action_data map containing assignment rules)
+  - `display` — displays a variable value when clicked
+- **Conditions** — variable-based condition expressions (same condition builder as flow nodes); evaluated against current variable state
+- **Condition effects:**
+  - `hide` — element is not rendered when condition is false
+  - `disable` — element is rendered but non-interactive when condition is false
+- UI: condition builder and action configuration in the "More (...)" popover of the floating toolbar
+
+### 6.24 Exploration Mode (Player)
+
+Full-screen exploration mode for maps. Route: `/workspaces/:ws/projects/:proj/maps/:id/explore`.
+
+- **Architecture:** `ExplorationLive` (layout: false) renders a Leaflet canvas with interactive zones and pins
+- **Interactions:**
+  - Click zones/pins with `action_type="instruction"` to execute variable assignments
+  - Click zones/pins with target links to navigate (sheet/flow/map)
+  - Launch flows overlaid on a dimmed map background
+- **Flow execution** — full flow engine integration: auto-advances through non-interactive nodes, stops at dialogue (waiting for input), handles cross-flow jumps and returns
+- **Variable state** — tracked across map/flow navigation; condition evaluation uses live variable state
+- **Keyboard:** Escape exits flow overlay; standard flow player controls when a flow is active
+
+### 6.25 Collaboration
 
 No real-time collaboration for maps. No presence, cursor sharing, or conflict resolution. Last write wins at DB level.
 
@@ -1032,7 +1080,7 @@ Content localization system for translating game text (dialogue, descriptions, l
 - Unique constraint: `(project_id, locale_code)`
 
 **LocalizedText** — one row per translatable field per locale:
-- **Source fields:** `source_type` (one of: `flow_node`, `block`, `sheet`, `flow`, `screenplay`), `source_id`, `source_field` (e.g., `text`, `response.r1_123.text`), `source_text` (original content, may contain HTML), `source_text_hash` (SHA-256 for change detection), `word_count` (auto-computed, HTML stripped)
+- **Source fields:** `source_type` (one of: `flow_node`, `block`, `sheet`, `flow`), `source_id`, `source_field` (e.g., `text`, `response.r1_123.text`), `source_text` (original content, may contain HTML), `source_text_hash` (SHA-256 for change detection), `word_count` (auto-computed, HTML stripped). Note: `screenplay` is defined as a valid source_type in the schema but screenplay text extraction is not yet implemented.
 - **Translation fields:** `locale_code`, `translated_text`, `status` (workflow: `pending` → `draft` → `in_progress` → `review` → `final`), `machine_translated` (boolean), `last_translated_at`, `translated_by_id` (user FK)
 - **Review fields:** `translator_notes`, `reviewer_notes`, `last_reviewed_at`, `reviewed_by_id` (user FK)
 - **Voice-over fields:** `vo_status` (`none` → `needed` → `recorded` → `approved`), `vo_asset_id` (FK to audio asset)
@@ -1073,7 +1121,7 @@ Content localization system for translating game text (dialogue, descriptions, l
 
 - **Source language** — auto-created from `workspace.source_locale` on first visit (`ensure_source_language/1`); displayed as primary badge with flag icon; cannot be removed
 - **Target languages** — added via "Add Language" dropdown (filters out already-added locales); adding a language triggers immediate `extract_all` to populate `localized_text` rows for the new locale
-- **Language registry** — static list of ~44 languages covering all DeepL-supported targets plus major game localization markets; each entry: `{code, name, native, region}`
+- **Language registry** — static list of ~49 languages covering all DeepL-supported targets plus major game localization markets; each entry: `{code, name, native, region}`
 - **Set source language** — atomic transaction: unset old source, set new source
 - **Remove language** — deletes language record and all its translations (with confirmation modal)
 - **Reorder languages** — bulk position update by ordered ID list
