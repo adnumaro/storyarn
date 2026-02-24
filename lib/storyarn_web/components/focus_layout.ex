@@ -148,6 +148,12 @@ defmodule StoryarnWeb.Components.FocusLayout do
           <%!-- Menu items --%>
           <ul class="menu p-1 text-base">
             <li>
+              <.link navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/export-import"}>
+                <.icon name="package" class="size-5" />
+                {gettext("Export & Import")}
+              </.link>
+            </li>
+            <li>
               <.link navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings"}>
                 <.icon name="settings" class="size-5" />
                 {gettext("Project settings")}

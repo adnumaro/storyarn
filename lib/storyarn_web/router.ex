@@ -90,6 +90,10 @@ defmodule StoryarnWeb.Router do
         LocalizationExportController,
         :export
 
+    get "/workspaces/:workspace_slug/projects/:project_slug/export/storyarn",
+        ExportController,
+        :storyarn
+
     live_session :require_authenticated_user,
       on_mount: [
         {StoryarnWeb.UserAuth, :require_authenticated},
@@ -117,6 +121,11 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/settings",
            ProjectLive.Settings,
            :edit
+
+      # Export & Import
+      live "/workspaces/:workspace_slug/projects/:project_slug/export-import",
+           ExportImportLive.Index,
+           :index
 
       # Sheets (character sheets, location sheets, etc.)
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets", SheetLive.Index, :index
