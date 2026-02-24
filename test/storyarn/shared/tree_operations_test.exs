@@ -169,7 +169,7 @@ defmodule Storyarn.Shared.TreeOperationsTest do
       {:ok, result} =
         TreeOperations.reorder(Sheet, project.id, nil, [nil, sheet1.id, nil], &list_sheets/2)
 
-      assert length(result) >= 1
+      assert result != []
     end
   end
 

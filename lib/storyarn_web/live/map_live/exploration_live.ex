@@ -614,12 +614,17 @@ defmodule StoryarnWeb.MapLive.ExplorationLive do
   end
 
   defp handle_flow_response_key(key, responses, socket) do
-    idx = String.to_integer(key)
-    valid_responses = Enum.filter(responses, & &1.valid)
+    case Integer.parse(key) do
+      {idx, ""} ->
+        valid_responses = Enum.filter(responses, & &1.valid)
 
-    case Enum.at(valid_responses, idx - 1) do
-      nil -> {:noreply, socket}
-      resp -> handle_event("choose_response", %{"id" => resp.id}, socket)
+        case Enum.at(valid_responses, idx - 1) do
+          nil -> {:noreply, socket}
+          resp -> handle_event("choose_response", %{"id" => resp.id}, socket)
+        end
+
+      _ ->
+        {:noreply, socket}
     end
   end
 

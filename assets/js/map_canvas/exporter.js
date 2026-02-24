@@ -1,11 +1,11 @@
 /**
  * Map export utilities — PNG (raster) and SVG (vector).
  *
- * PNG uses html2canvas to capture the Leaflet container.
+ * PNG uses modern-screenshot to capture the Leaflet container.
  * SVG iterates visible Leaflet layers and serializes geometries.
  */
 
-import html2canvas from "html2canvas";
+import { domToPng } from "modern-screenshot";
 import { sanitizeColor } from "./color_utils.js";
 
 /** Maps pin size keys to pixel values. */
@@ -31,18 +31,14 @@ export async function exportPNG(hook, filename = "map") {
   });
 
   try {
-    const canvas = await html2canvas(container, {
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: null,
+    const dataUrl = await domToPng(container, {
       scale: 2, // Retina-quality
-      logging: false,
+      backgroundColor: null,
     });
 
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      downloadBlob(blob, `${filename}.png`);
-    }, "image/png");
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    downloadBlob(blob, `${filename}.png`);
   } finally {
     // Restore hidden controls
     controlElements.forEach((el) => {

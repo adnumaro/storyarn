@@ -2,7 +2,6 @@ defmodule Storyarn.Maps.TreeOperations do
   @moduledoc false
 
   alias Storyarn.Maps.Map, as: MapSchema
-  alias Storyarn.Repo
   alias Storyarn.Shared.TreeOperations, as: SharedTree
 
   @doc """
@@ -26,7 +25,7 @@ defmodule Storyarn.Maps.TreeOperations do
   Returns `{:ok, map}` with the moved map or `{:error, reason}`.
   """
   def move_map_to_position(%MapSchema{} = map, new_parent_id, new_position) do
-    if new_parent_id && descendant?(new_parent_id, map.id) do
+    if new_parent_id && SharedTree.descendant?(MapSchema, new_parent_id, map.id) do
       {:error, :cyclic_parent}
     else
       SharedTree.move_to_position(
@@ -52,20 +51,5 @@ defmodule Storyarn.Maps.TreeOperations do
   """
   def list_maps_by_parent(project_id, parent_id) do
     SharedTree.list_by_parent(MapSchema, project_id, parent_id)
-  end
-
-  # Walks upward from map_id through parent_id links.
-  # Returns true if potential_ancestor_id is found in the chain.
-  # Depth limit prevents stack overflow if the DB has a cycle.
-  defp descendant?(map_id, potential_ancestor_id, depth \\ 0)
-  defp descendant?(_map_id, _potential_ancestor_id, depth) when depth > 100, do: false
-
-  defp descendant?(map_id, potential_ancestor_id, depth) do
-    case Repo.get(MapSchema, map_id) do
-      nil -> false
-      %MapSchema{id: id} when id == potential_ancestor_id -> true
-      %MapSchema{parent_id: nil} -> false
-      %MapSchema{parent_id: parent_id} -> descendant?(parent_id, potential_ancestor_id, depth + 1)
-    end
   end
 end

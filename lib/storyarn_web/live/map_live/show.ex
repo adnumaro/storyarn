@@ -15,7 +15,6 @@ defmodule StoryarnWeb.MapLive.Show do
   alias Storyarn.Assets
   alias Storyarn.Maps
   alias Storyarn.Projects
-  alias Storyarn.Repo
 
   alias StoryarnWeb.Components.Sidebar.MapTree
 
@@ -98,7 +97,7 @@ defmodule StoryarnWeb.MapLive.Show do
           workspace={@workspace}
           project={@project}
           map={@map}
-          bg_upload_input_id={@uploads[:background] && @uploads.background.ref}
+          bg_upload_input_id={@can_edit && @uploads[:background] && @uploads.background.ref}
         />
       </:top_bar_extra_right>
       <div class="h-full relative">
@@ -127,7 +126,7 @@ defmodule StoryarnWeb.MapLive.Show do
             :if={@can_edit && @uploads[:background]}
             id="bg-upload-form"
             phx-change="validate_bg_upload"
-            class="sr-only"
+            class="hidden"
           >
             <.live_file_input upload={@uploads.background} />
           </form>
@@ -363,8 +362,6 @@ defmodule StoryarnWeb.MapLive.Show do
   end
 
   defp mount_map(socket, project, membership, can_edit, map) do
-    maps_tree = Maps.list_maps_tree_with_elements(project.id)
-
     socket
     |> assign(focus_layout_defaults())
     |> assign(:tree_panel_tab, "maps")
@@ -374,7 +371,7 @@ defmodule StoryarnWeb.MapLive.Show do
     |> assign(:can_edit, can_edit)
     |> assign(:map, map)
     |> assign(:ancestors, Maps.list_ancestors(map))
-    |> assign(:maps_tree, maps_tree)
+    |> assign(:maps_tree, [])
     |> assign(:layers, map.layers || [])
     |> assign(:zones, map.zones || [])
     |> assign(:pins, map.pins || [])
@@ -397,11 +394,21 @@ defmodule StoryarnWeb.MapLive.Show do
     |> assign(:undo_stack, [])
     |> assign(:redo_stack, [])
     |> assign(:panel_sections, %{})
-    |> assign(:project_maps, Maps.list_maps(project.id))
-    |> assign(:project_sheets, Storyarn.Sheets.list_sheets_tree(project.id))
-    |> assign(:project_flows, Storyarn.Flows.list_flows(project.id))
-    |> assign(:project_variables, Storyarn.Sheets.list_project_variables(project.id))
+    |> assign(:project_maps, [])
+    |> assign(:project_sheets, [])
+    |> assign(:project_flows, [])
+    |> assign(:project_variables, [])
     |> assign(:referencing_flows, [])
+    |> assign(:sidebar_loaded, false)
+    |> start_async(:load_sidebar_data, fn ->
+      %{
+        maps_tree: Maps.list_maps_tree_with_elements(project.id),
+        project_maps: Maps.list_maps(project.id),
+        project_sheets: Storyarn.Sheets.list_sheets_tree(project.id),
+        project_flows: Storyarn.Flows.list_flows(project.id),
+        project_variables: Storyarn.Sheets.list_project_variables(project.id)
+      }
+    end)
     |> assign(:canvas_i18n, %{
       edit_properties: dgettext("maps", "Edit Properties"),
       connect_to: dgettext("maps", "Connect To\u2026"),
@@ -424,7 +431,7 @@ defmodule StoryarnWeb.MapLive.Show do
           max_entries: 1,
           max_file_size: 10_485_760,
           auto_upload: true,
-          progress: &handle_progress/3
+          progress: fn name, entry, socket -> handle_progress(name, entry, socket) end
         )
       else
         socket
@@ -972,6 +979,22 @@ defmodule StoryarnWeb.MapLive.Show do
   # ---------------------------------------------------------------------------
 
   @impl true
+  def handle_async(:load_sidebar_data, {:ok, data}, socket) do
+    {:noreply,
+     socket
+     |> assign(:maps_tree, data.maps_tree)
+     |> assign(:project_maps, data.project_maps)
+     |> assign(:project_sheets, data.project_sheets)
+     |> assign(:project_flows, data.project_flows)
+     |> assign(:project_variables, data.project_variables)
+     |> assign(:sidebar_loaded, true)}
+  end
+
+  def handle_async(:load_sidebar_data, {:exit, _reason}, socket) do
+    {:noreply, assign(socket, :sidebar_loaded, true)}
+  end
+
+  @impl true
   def handle_info({:background_uploaded, asset}, socket) do
     process_background_upload(socket, asset)
   end
@@ -981,7 +1004,7 @@ defmodule StoryarnWeb.MapLive.Show do
       %{__struct__: Storyarn.Maps.MapPin} = pin ->
         case Maps.update_pin(pin, %{"icon_asset_id" => asset.id}) do
           {:ok, updated} ->
-            updated = Repo.preload(updated, [:icon_asset, sheet: :avatar_asset], force: true)
+            updated = Maps.preload_pin_associations(updated)
 
             {:noreply,
              socket
@@ -1006,35 +1029,36 @@ defmodule StoryarnWeb.MapLive.Show do
 
   defp handle_progress(:background, entry, socket) do
     if entry.done? do
-      results =
-        consume_uploaded_entries(socket, :background, fn %{path: path}, entry ->
-          case Assets.upload_and_create_asset(
-                 path,
-                 entry,
-                 socket.assigns.project,
-                 socket.assigns.current_scope.user
-               ) do
-            {:ok, asset} -> {:ok, {:ok, asset}}
-            {:error, reason} -> {:ok, {:error, reason}}
-          end
-        end)
-
-      case results do
-        [{:ok, asset}] ->
-          process_background_upload(socket, asset)
-
-        _ ->
-          {:noreply, put_flash(socket, :error, dgettext("maps", "Could not upload background."))}
-      end
+      socket
+      |> consume_uploaded_entries(:background, &consume_background_entry(&1, &2, socket))
+      |> handle_background_result(socket)
     else
       {:noreply, socket}
     end
   end
 
+  defp consume_background_entry(%{path: path}, entry, socket) do
+    case Assets.upload_and_create_asset(
+           path,
+           entry,
+           socket.assigns.project,
+           socket.assigns.current_scope.user
+         ) do
+      {:ok, asset} -> {:ok, {:ok, asset}}
+      {:error, reason} -> {:ok, {:error, reason}}
+    end
+  end
+
+  defp handle_background_result([{:ok, asset}], socket),
+    do: process_background_upload(socket, asset)
+
+  defp handle_background_result(_results, socket),
+    do: {:noreply, put_flash(socket, :error, dgettext("maps", "Could not upload background."))}
+
   defp process_background_upload(socket, asset) do
     case Maps.update_map(socket.assigns.map, %{background_asset_id: asset.id}) do
       {:ok, updated} ->
-        updated = Repo.preload(updated, :background_asset, force: true)
+        updated = Maps.preload_map_background(updated)
 
         {:noreply,
          socket

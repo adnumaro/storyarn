@@ -12,6 +12,7 @@ defmodule Storyarn.Assets do
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Project
+  alias Storyarn.Shared.SearchHelpers
 
   # =============================================================================
   # Type Definitions
@@ -55,8 +56,12 @@ defmodule Storyarn.Assets do
 
   defp apply_content_type_filter(query, opts) do
     case Keyword.get(opts, :content_type) do
-      nil -> query
-      prefix -> where(query, [a], ilike(a.content_type, ^"#{prefix}%"))
+      nil ->
+        query
+
+      prefix ->
+        sanitized = SearchHelpers.sanitize_like_query(prefix)
+        where(query, [a], ilike(a.content_type, ^"#{sanitized}%"))
     end
   end
 
@@ -317,15 +322,7 @@ defmodule Storyarn.Assets do
     content = File.read!(path)
 
     with {:ok, url} <- Storage.upload(key, content, entry.client_type) do
-      metadata =
-        if String.starts_with?(entry.client_type, "image/") and ImageProcessor.available?() do
-          case ImageProcessor.get_dimensions(path) do
-            {:ok, %{width: w, height: h}} -> %{"width" => w, "height" => h}
-            {:error, _} -> %{}
-          end
-        else
-          %{}
-        end
+      metadata = extract_image_metadata(path, entry.client_type)
 
       case create_asset(project, user, %{
              filename: entry.client_name,
@@ -342,6 +339,19 @@ defmodule Storyarn.Assets do
           Storage.delete(key)
           {:error, changeset}
       end
+    end
+  end
+
+  defp extract_image_metadata(path, content_type) do
+    alias Storyarn.Assets.ImageProcessor
+
+    if String.starts_with?(content_type, "image/") and ImageProcessor.available?() do
+      case ImageProcessor.get_dimensions(path) do
+        {:ok, %{width: w, height: h}} -> %{"width" => w, "height" => h}
+        {:error, _} -> %{}
+      end
+    else
+      %{}
     end
   end
 

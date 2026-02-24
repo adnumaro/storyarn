@@ -524,4 +524,23 @@ defmodule Storyarn.Maps do
 
     %{zones: zones, pins: pins}
   end
+
+  # =============================================================================
+  # Preload Helpers (wrap Repo.preload to keep web layer clean)
+  # =============================================================================
+
+  @doc "Preloads pin associations (icon_asset, sheet with avatar_asset)."
+  def preload_pin_associations(pin) do
+    Repo.preload(pin, [:icon_asset, sheet: :avatar_asset], force: true)
+  end
+
+  @doc "Preloads map background_asset association."
+  def preload_map_background(map) do
+    Repo.preload(map, :background_asset, force: true)
+  end
+
+  @doc "Preloads sheet avatar_asset association."
+  def preload_sheet_avatar(sheet) do
+    Repo.preload(sheet, avatar_asset: [])
+  end
 end

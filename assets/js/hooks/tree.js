@@ -32,7 +32,7 @@ export const TreeToggle = {
   },
 
   setupClickHandler() {
-    this.el.addEventListener("click", (e) => {
+    this._clickHandler = (e) => {
       e.preventDefault();
       e.stopPropagation();
 
@@ -50,6 +50,11 @@ export const TreeToggle = {
         // Save state to localStorage
         localStorage.setItem(`tree-${this.nodeId}`, expanded);
       }
-    });
+    };
+    this.el.addEventListener("click", this._clickHandler);
+  },
+
+  destroyed() {
+    this.el.removeEventListener("click", this._clickHandler);
   },
 };

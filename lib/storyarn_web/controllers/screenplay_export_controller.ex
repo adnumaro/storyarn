@@ -17,7 +17,7 @@ defmodule StoryarnWeb.ScreenplayExportController do
            Screenplays.get_screenplay(project.id, id) do
       elements = Screenplays.list_elements(screenplay.id)
       text = Screenplays.export_fountain(elements)
-      filename = slugify(screenplay.name) <> ".fountain"
+      filename = String.slice(slugify(screenplay.name), 0, 200) <> ".fountain"
 
       conn
       |> put_resp_content_type("text/plain")

@@ -126,6 +126,23 @@ defmodule Storyarn.Shared.TreeOperations do
   end
 
   @doc """
+  Walks upward from `id` through `parent_id` links in `schema`.
+  Returns true if `potential_ancestor_id` is found in the ancestor chain.
+  Depth-limited to 100 to prevent cycles.
+  """
+  def descendant?(schema, id, potential_ancestor_id, depth \\ 0)
+  def descendant?(_schema, _id, _potential_ancestor_id, depth) when depth > 100, do: false
+
+  def descendant?(schema, id, potential_ancestor_id, depth) do
+    case Repo.get(schema, id) do
+      nil -> false
+      %{id: ^potential_ancestor_id} -> true
+      %{parent_id: nil} -> false
+      %{parent_id: parent_id} -> descendant?(schema, parent_id, potential_ancestor_id, depth + 1)
+    end
+  end
+
+  @doc """
   Adds a parent_id filter to a query.
   Handles nil (root level) vs specific parent_id.
   """

@@ -25,7 +25,7 @@ defmodule Storyarn.Screenplays.TreeOperations do
   Moves a screenplay to a new parent at a specific position.
   """
   def move_screenplay_to_position(%Screenplay{} = screenplay, new_parent_id, new_position) do
-    if new_parent_id && descendant?(new_parent_id, screenplay.id) do
+    if new_parent_id && SharedTree.descendant?(Screenplay, new_parent_id, screenplay.id) do
       {:error, :cyclic_parent}
     else
       SharedTree.move_to_position(
@@ -35,27 +35,6 @@ defmodule Storyarn.Screenplays.TreeOperations do
         new_position,
         &list_screenplays_by_parent/2
       )
-    end
-  end
-
-  # Walks upward from id through parent_id links.
-  # Returns true if potential_ancestor_id is found in the chain.
-  defp descendant?(id, potential_ancestor_id, depth \\ 0)
-  defp descendant?(_id, _potential_ancestor_id, depth) when depth > 100, do: false
-
-  defp descendant?(id, potential_ancestor_id, depth) do
-    case Repo.get(Screenplay, id) do
-      nil ->
-        false
-
-      %Screenplay{id: ^potential_ancestor_id} ->
-        true
-
-      %Screenplay{parent_id: nil} ->
-        false
-
-      %Screenplay{parent_id: parent_id} ->
-        descendant?(parent_id, potential_ancestor_id, depth + 1)
     end
   end
 

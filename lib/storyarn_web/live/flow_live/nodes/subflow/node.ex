@@ -13,7 +13,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
   import Phoenix.LiveView, only: [put_flash: 3]
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.NodeCrud
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
   def type, do: "subflow"
@@ -42,7 +41,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
           []
 
         flow_id ->
-          case NodeCrud.safe_to_integer(flow_id) do
+          case Flows.safe_to_integer(flow_id) do
             nil -> []
             id -> Flows.list_exit_nodes_for_flow(id)
           end
@@ -88,7 +87,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
   defp validate_reference(nil, _current_flow_id), do: :ok
 
   defp validate_reference(ref_id, current_flow_id) do
-    parsed = NodeCrud.safe_to_integer(ref_id)
+    parsed = Flows.safe_to_integer(ref_id)
 
     cond do
       is_nil(parsed) ->
@@ -110,7 +109,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
   end
 
   defp persist_reference(node, ref_id, socket) do
-    parsed_ref_id = if ref_id, do: NodeCrud.safe_to_integer(ref_id)
+    parsed_ref_id = if ref_id, do: Flows.safe_to_integer(ref_id)
 
     case NodeHelpers.persist_node_update(socket, node.id, fn data ->
            Map.put(data, "referenced_flow_id", ref_id)

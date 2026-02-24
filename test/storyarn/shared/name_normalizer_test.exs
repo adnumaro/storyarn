@@ -163,7 +163,9 @@ defmodule Storyarn.Shared.NameNormalizerTest do
   describe "generate_unique_slug/4" do
     test "generates slug from name when no collision" do
       # Using Storyarn.Workspaces.Workspace which has a slug field
-      slug = NameNormalizer.generate_unique_slug(Storyarn.Workspaces.Workspace, [], "My Workspace")
+      slug =
+        NameNormalizer.generate_unique_slug(Storyarn.Workspaces.Workspace, [], "My Workspace")
+
       assert slug == "my-workspace"
     end
 

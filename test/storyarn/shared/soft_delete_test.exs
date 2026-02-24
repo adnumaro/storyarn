@@ -126,9 +126,7 @@ defmodule Storyarn.Shared.SoftDeleteTest do
         send(test_pid, {:pre_delete_called, child.id})
       end
 
-      SoftDelete.soft_delete_children(Sheet, project.id, parent.id,
-        pre_delete: pre_delete_fn
-      )
+      SoftDelete.soft_delete_children(Sheet, project.id, parent.id, pre_delete: pre_delete_fn)
 
       assert_received {:pre_delete_called, id1}
       assert_received {:pre_delete_called, id2}
@@ -152,9 +150,7 @@ defmodule Storyarn.Shared.SoftDeleteTest do
         send(test_pid, {:pre_delete_called, entity.id})
       end
 
-      SoftDelete.soft_delete_children(Sheet, project.id, parent.id,
-        pre_delete: pre_delete_fn
-      )
+      SoftDelete.soft_delete_children(Sheet, project.id, parent.id, pre_delete: pre_delete_fn)
 
       assert_received {:pre_delete_called, child_id}
       assert_received {:pre_delete_called, grandchild_id}

@@ -361,6 +361,11 @@ defmodule Storyarn.Flows do
   @spec has_circular_reference?(integer(), integer()) :: boolean()
   defdelegate has_circular_reference?(source_flow_id, target_flow_id), to: NodeCrud
 
+  @doc """
+  Safely parses a value to integer. Returns nil if parsing fails.
+  """
+  defdelegate safe_to_integer(value), to: NodeCrud
+
   # =============================================================================
   # Variable Reference Tracking
   # =============================================================================

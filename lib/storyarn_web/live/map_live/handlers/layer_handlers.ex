@@ -120,8 +120,7 @@ defmodule StoryarnWeb.MapLive.Handlers.LayerHandlers do
     if is_struct(pin, Storyarn.Maps.MapPin) do
       case Maps.update_pin(pin, %{"icon_asset_id" => nil}) do
         {:ok, updated} ->
-          updated =
-            Storyarn.Repo.preload(updated, [:icon_asset, sheet: :avatar_asset], force: true)
+          updated = Maps.preload_pin_associations(updated)
 
           {:noreply,
            socket

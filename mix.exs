@@ -63,7 +63,6 @@ defmodule Storyarn.MixProject do
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.1.0"},
-      {:lazy_html, "~> 0.1"},
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
@@ -84,11 +83,9 @@ defmodule Storyarn.MixProject do
       # S3-compatible storage (Cloudflare R2)
       {:ex_aws, "~> 2.5"},
       {:ex_aws_s3, "~> 2.5"},
-      {:hackney, "~> 1.20"},
-      {:sweet_xml, "~> 0.7"},
 
       # Image processing (libvips - much safer than ImageMagick)
-      {:image, "~> 0.62"},
+      {:image, "~> 0.63"},
 
       # Excel export for localization
       {:elixlsx, "~> 0.6"},

@@ -21,7 +21,7 @@ defmodule StoryarnWeb.LocalizationExportController do
         case format do
           "xlsx" ->
             {:ok, binary} = Localization.export_xlsx(project.id, opts)
-            filename = "#{project.slug}_translations_#{locale}.xlsx"
+            filename = sanitize_filename("#{project.slug}_translations_#{locale}") <> ".xlsx"
 
             conn
             |> put_resp_content_type(
@@ -32,7 +32,7 @@ defmodule StoryarnWeb.LocalizationExportController do
 
           "csv" ->
             {:ok, csv} = Localization.export_csv(project.id, opts)
-            filename = "#{project.slug}_translations_#{locale}.csv"
+            filename = sanitize_filename("#{project.slug}_translations_#{locale}") <> ".csv"
 
             conn
             |> put_resp_content_type("text/csv")
@@ -55,4 +55,10 @@ defmodule StoryarnWeb.LocalizationExportController do
   defp maybe_add_filter(opts, _key, nil), do: opts
   defp maybe_add_filter(opts, _key, ""), do: opts
   defp maybe_add_filter(opts, key, value), do: Keyword.put(opts, key, value)
+
+  defp sanitize_filename(name) do
+    name
+    |> String.replace(~r/[^\w\s\-\.]/, "")
+    |> String.slice(0, 200)
+  end
 end

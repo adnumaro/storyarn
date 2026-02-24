@@ -8,7 +8,12 @@
  */
 export const FountainImport = {
   mounted() {
-    this.el.addEventListener("click", () => this.openFilePicker());
+    this._clickHandler = () => this.openFilePicker();
+    this.el.addEventListener("click", this._clickHandler);
+  },
+
+  destroyed() {
+    this.el.removeEventListener("click", this._clickHandler);
   },
 
   openFilePicker() {

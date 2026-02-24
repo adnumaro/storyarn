@@ -1938,25 +1938,6 @@ defmodule StoryarnWeb.MapLive.ShowTest do
       unchanged = Maps.get_map(project.id, map.id)
       assert unchanged.background_asset_id == asset.id
     end
-
-    test "toggle_background_upload toggles the upload form", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      map = map_fixture(project)
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/maps/#{map.id}"
-        )
-
-      # Initially the upload component should not be visible
-      html = render(view)
-      refute html =~ "background-upload"
-
-      # Toggle it on
-      html = render_click(view, "toggle_background_upload", %{})
-      assert html =~ "background-upload"
-    end
   end
 
   describe "duplicate_zone event" do

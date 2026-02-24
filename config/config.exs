@@ -97,7 +97,8 @@ config :hammer,
 # ExAws configuration for Cloudflare R2 (S3-compatible)
 # Credentials are configured in runtime.exs
 config :ex_aws,
-  json_codec: Jason
+  json_codec: Jason,
+  http_client: ExAws.Request.Req
 
 config :ex_aws, :s3,
   scheme: "https://",

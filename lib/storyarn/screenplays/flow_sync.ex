@@ -201,7 +201,12 @@ defmodule Storyarn.Screenplays.FlowSync do
     mappeable_existing = Enum.reject(existing, &(&1.type in non_mappeable))
 
     {result_elements, orphaned} = diff_elements(screenplay, new_attrs, mappeable_existing)
-    Enum.each(orphaned, &Repo.delete!/1)
+
+    orphan_ids = Enum.map(orphaned, & &1.id)
+
+    if orphan_ids != [] do
+      from(e in ScreenplayElement, where: e.id in ^orphan_ids) |> Repo.delete_all()
+    end
 
     final_order = insert_non_mappeable(result_elements, non_mappeable_anchored)
     recompact_positions!(final_order)

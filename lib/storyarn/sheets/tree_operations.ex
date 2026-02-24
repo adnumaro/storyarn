@@ -1,7 +1,6 @@
 defmodule Storyarn.Sheets.TreeOperations do
   @moduledoc false
 
-  alias Storyarn.Repo
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.Sheet
 
@@ -26,7 +25,7 @@ defmodule Storyarn.Sheets.TreeOperations do
   Returns `{:ok, sheet}` with the moved sheet or `{:error, reason}`.
   """
   def move_sheet_to_position(%Sheet{} = sheet, new_parent_id, new_position) do
-    if new_parent_id && descendant?(new_parent_id, sheet.id) do
+    if new_parent_id && SharedTree.descendant?(Sheet, new_parent_id, sheet.id) do
       {:error, :cyclic_parent}
     else
       SharedTree.move_to_position(
@@ -41,19 +40,5 @@ defmodule Storyarn.Sheets.TreeOperations do
 
   defp list_sheets_by_parent(project_id, parent_id) do
     SharedTree.list_by_parent(Sheet, project_id, parent_id)
-  end
-
-  # Walks upward from id through parent_id links.
-  # Returns true if potential_ancestor_id is found in the chain.
-  defp descendant?(id, potential_ancestor_id, depth \\ 0)
-  defp descendant?(_id, _potential_ancestor_id, depth) when depth > 100, do: false
-
-  defp descendant?(id, potential_ancestor_id, depth) do
-    case Repo.get(Sheet, id) do
-      nil -> false
-      %Sheet{id: ^potential_ancestor_id} -> true
-      %Sheet{parent_id: nil} -> false
-      %Sheet{parent_id: parent_id} -> descendant?(parent_id, potential_ancestor_id, depth + 1)
-    end
   end
 end

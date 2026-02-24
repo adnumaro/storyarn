@@ -190,17 +190,9 @@ defmodule StoryarnWeb.AssetLive.Index do
   def handle_event("select_asset", %{"id" => id}, socket) do
     project_id = socket.assigns.project.id
 
-    case Assets.get_asset(project_id, String.to_integer(id)) do
-      nil ->
-        {:noreply, socket}
-
-      asset ->
-        usages = Assets.get_asset_usages(project_id, asset.id)
-
-        {:noreply,
-         socket
-         |> assign(:selected_asset, asset)
-         |> assign(:asset_usages, usages)}
+    case Integer.parse(id) do
+      {int_id, ""} -> handle_select_asset(socket, project_id, int_id)
+      _ -> {:noreply, socket}
     end
   end
 
@@ -236,6 +228,21 @@ defmodule StoryarnWeb.AssetLive.Index do
     with_authorization(socket, :edit_content, fn socket ->
       process_upload(socket, filename, content_type, data)
     end)
+  end
+
+  defp handle_select_asset(socket, project_id, int_id) do
+    case Assets.get_asset(project_id, int_id) do
+      nil ->
+        {:noreply, socket}
+
+      asset ->
+        usages = Assets.get_asset_usages(project_id, asset.id)
+
+        {:noreply,
+         socket
+         |> assign(:selected_asset, asset)
+         |> assign(:asset_usages, usages)}
+    end
   end
 
   # ===========================================================================

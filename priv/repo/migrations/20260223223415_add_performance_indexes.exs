@@ -8,9 +8,9 @@ defmodule Storyarn.Repo.Migrations.AddPerformanceIndexes do
 
     # MI2: flow_nodes — partial index for soft-deleted nodes (trash queries)
     create index(:flow_nodes, [:deleted_at],
-      where: "deleted_at IS NOT NULL",
-      name: :flow_nodes_trash_index
-    )
+             where: "deleted_at IS NOT NULL",
+             name: :flow_nodes_trash_index
+           )
 
     # MI4: map_connections — missing individual pin reference indexes
     create index(:map_connections, [:from_pin_id])

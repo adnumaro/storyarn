@@ -2,7 +2,6 @@ defmodule Storyarn.Flows.TreeOperations do
   @moduledoc false
 
   alias Storyarn.Flows.Flow
-  alias Storyarn.Repo
   alias Storyarn.Shared.TreeOperations, as: SharedTree
 
   @doc """
@@ -26,7 +25,7 @@ defmodule Storyarn.Flows.TreeOperations do
   Returns `{:ok, flow}` with the moved flow or `{:error, reason}`.
   """
   def move_flow_to_position(%Flow{} = flow, new_parent_id, new_position) do
-    if new_parent_id && descendant?(new_parent_id, flow.id) do
+    if new_parent_id && SharedTree.descendant?(Flow, new_parent_id, flow.id) do
       {:error, :cyclic_parent}
     else
       SharedTree.move_to_position(
@@ -52,19 +51,5 @@ defmodule Storyarn.Flows.TreeOperations do
   """
   def list_flows_by_parent(project_id, parent_id) do
     SharedTree.list_by_parent(Flow, project_id, parent_id)
-  end
-
-  # Walks upward from id through parent_id links.
-  # Returns true if potential_ancestor_id is found in the chain.
-  defp descendant?(id, potential_ancestor_id, depth \\ 0)
-  defp descendant?(_id, _potential_ancestor_id, depth) when depth > 100, do: false
-
-  defp descendant?(id, potential_ancestor_id, depth) do
-    case Repo.get(Flow, id) do
-      nil -> false
-      %Flow{id: ^potential_ancestor_id} -> true
-      %Flow{parent_id: nil} -> false
-      %Flow{parent_id: parent_id} -> descendant?(parent_id, potential_ancestor_id, depth + 1)
-    end
   end
 end

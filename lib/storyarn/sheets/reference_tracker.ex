@@ -29,6 +29,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   import Ecto.Query
   alias Storyarn.Repo
+
   alias Storyarn.Sheets.{EntityReference, Sheet}
 
   @doc """
@@ -47,26 +48,9 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     )
     |> Repo.delete_all()
 
-    # Extract and create new references
+    # Extract and batch-insert new references
     references = extract_block_references(block)
-
-    for ref <- references do
-      target_id = parse_id(ref.id)
-
-      if target_id do
-        %EntityReference{}
-        |> EntityReference.changeset(%{
-          source_type: "block",
-          source_id: block_id,
-          target_type: ref.type,
-          target_id: target_id,
-          context: ref.context
-        })
-        |> Repo.insert(on_conflict: :nothing)
-      end
-    end
-
-    :ok
+    batch_insert_references("block", block_id, references)
   end
 
   @doc """
@@ -91,24 +75,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     delete_flow_node_references(node_id)
 
     references = extract_flow_node_refs(data)
-
-    for ref <- references do
-      target_id = parse_id(ref.id)
-
-      if target_id do
-        %EntityReference{}
-        |> EntityReference.changeset(%{
-          source_type: "flow_node",
-          source_id: node_id,
-          target_type: ref.type,
-          target_id: target_id,
-          context: ref.context
-        })
-        |> Repo.insert(on_conflict: :nothing)
-      end
-    end
-
-    :ok
+    batch_insert_references("flow_node", node_id, references)
   end
 
   def update_flow_node_references(_node), do: :ok
@@ -144,23 +111,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
       extract_screenplay_element_refs(type, data, content)
       |> Enum.uniq_by(fn ref -> {ref.type, ref.id, ref.context} end)
 
-    for ref <- references do
-      target_id = parse_id(ref.id)
-
-      if target_id do
-        %EntityReference{}
-        |> EntityReference.changeset(%{
-          source_type: "screenplay_element",
-          source_id: element_id,
-          target_type: ref.type,
-          target_id: target_id,
-          context: ref.context
-        })
-        |> Repo.insert(on_conflict: :nothing)
-      end
-    end
-
-    :ok
+    batch_insert_references("screenplay_element", element_id, references)
   end
 
   def update_screenplay_element_references(_element), do: :ok
@@ -365,24 +316,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     delete_map_pin_references(pin_id)
 
     refs = extract_map_pin_refs(pin)
-
-    for ref <- refs do
-      target_id = parse_id(ref.id)
-
-      if target_id do
-        %EntityReference{}
-        |> EntityReference.changeset(%{
-          source_type: "map_pin",
-          source_id: pin_id,
-          target_type: ref.type,
-          target_id: target_id,
-          context: ref.context
-        })
-        |> Repo.insert(on_conflict: :nothing)
-      end
-    end
-
-    :ok
+    batch_insert_references("map_pin", pin_id, refs)
   end
 
   def update_map_pin_references(_pin), do: :ok
@@ -407,24 +341,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     delete_map_zone_references(zone_id)
 
     refs = extract_map_zone_refs(zone)
-
-    for ref <- refs do
-      target_id = parse_id(ref.id)
-
-      if target_id do
-        %EntityReference{}
-        |> EntityReference.changeset(%{
-          source_type: "map_zone",
-          source_id: zone_id,
-          target_type: ref.type,
-          target_id: target_id,
-          context: ref.context
-        })
-        |> Repo.insert(on_conflict: :nothing)
-      end
-    end
-
-    :ok
+    batch_insert_references("map_zone", zone_id, refs)
   end
 
   def update_map_zone_references(_zone), do: :ok
@@ -535,6 +452,30 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   # Private functions
+
+  defp batch_insert_references(source_type, source_id, references) do
+    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+
+    entries =
+      references
+      |> Enum.map(fn ref -> parse_id(ref.id) |> then(&{&1, ref}) end)
+      |> Enum.reject(fn {target_id, _} -> is_nil(target_id) end)
+      |> Enum.map(fn {target_id, ref} ->
+        %{
+          source_type: source_type,
+          source_id: source_id,
+          target_type: ref.type,
+          target_id: target_id,
+          context: ref.context,
+          inserted_at: now,
+          updated_at: now
+        }
+      end)
+
+    if entries != [], do: Repo.insert_all(EntityReference, entries, on_conflict: :nothing)
+
+    :ok
+  end
 
   defp parse_id(id) when is_integer(id), do: id
 
