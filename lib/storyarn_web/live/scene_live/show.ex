@@ -338,7 +338,7 @@ defmodule StoryarnWeb.SceneLive.Show do
            project_slug
          ) do
       {:ok, project, membership} ->
-        can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+        can_edit = Projects.can?(membership.role, :edit_content)
 
         case Scenes.get_scene(project.id, scene_id) do
           nil ->

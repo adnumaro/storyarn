@@ -2,7 +2,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   @moduledoc """
   Full-screen cinematic story player for flows.
 
-  Reuses the existing `Evaluator.Engine` state machine with a
+  Reuses the Flows evaluator state machine with a
   `PlayerEngine.step_until_interactive/3` wrapper that auto-advances
   through non-interactive nodes (conditions, instructions, hubs, etc.).
   """
@@ -17,7 +17,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
   alias Storyarn.Flows
   alias Storyarn.Flows.DebugSessionStore
-  alias Storyarn.Flows.Evaluator.Engine
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Sheets
@@ -161,7 +160,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         {:error, dgettext("flows", "No entry node found in this flow.")}
 
       entry_node_id ->
-        state = Engine.init(variables, entry_node_id)
+        state = Flows.evaluator_init(variables, entry_node_id)
         state = %{state | current_flow_id: flow_id}
 
         case PlayerEngine.step_until_interactive(state, nodes_map, connections) do
@@ -232,7 +231,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   def handle_event("choose_response", %{"id" => response_id}, socket) do
     %{engine_state: state, connections: connections, nodes: nodes} = socket.assigns
 
-    case Engine.choose_response(state, response_id, connections) do
+    case Flows.evaluator_choose_response(state, response_id, connections) do
       {:ok, new_state} ->
         case PlayerEngine.step_until_interactive(new_state, nodes, connections) do
           {:flow_jump, stepped_state, target_flow_id, _skipped} ->
@@ -268,7 +267,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   end
 
   def handle_event("go_back", _params, socket) do
-    case Engine.step_back(socket.assigns.engine_state) do
+    case Flows.evaluator_step_back(socket.assigns.engine_state) do
       {:ok, new_state} ->
         {:noreply, update_slide(socket, new_state)}
 
@@ -285,7 +284,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   def handle_event("restart", _params, socket) do
     %{engine_state: state, nodes: nodes, connections: connections} = socket.assigns
 
-    new_state = Engine.reset(state)
+    new_state = Flows.evaluator_reset(state)
 
     case PlayerEngine.step_until_interactive(new_state, nodes, connections) do
       {:flow_jump, stepped_state, target_flow_id, _skipped} ->
@@ -313,7 +312,14 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   defp handle_flow_jump(socket, state, target_flow_id) do
     %{nodes: nodes, connections: connections, flow: flow} = socket.assigns
 
-    state = Engine.push_flow_context(state, state.current_node_id, nodes, connections, flow.name)
+    state =
+      Flows.evaluator_push_flow_context(
+        state,
+        state.current_node_id,
+        nodes,
+        connections,
+        flow.name
+      )
 
     target_nodes = DebugExecutionHandlers.build_nodes_map(target_flow_id)
     target_connections = DebugExecutionHandlers.build_connections(target_flow_id)
@@ -369,7 +375,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   end
 
   defp handle_flow_return(socket, state) do
-    case Engine.pop_flow_context(state) do
+    case Flows.evaluator_pop_flow_context(state) do
       {:ok, frame, new_state} ->
         parent_nodes = frame.nodes
         parent_connections = frame.connections

@@ -135,7 +135,7 @@ defmodule StoryarnWeb.AssetLive.Index do
            project_slug
          ) do
       {:ok, project, membership} ->
-        can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+        can_edit = Projects.can?(membership.role, :edit_content)
         type_counts = Assets.count_assets_by_type(project.id)
 
         socket =

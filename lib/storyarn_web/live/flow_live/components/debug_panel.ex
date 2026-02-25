@@ -17,7 +17,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   import StoryarnWeb.FlowLive.Components.DebugVariablesTab
   import StoryarnWeb.FlowLive.Components.DebugHistoryTab
 
-  alias Storyarn.Flows.Evaluator.Helpers, as: EvalHelpers
+  alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Components.DebugHistoryTab
 
   # Delegate public function that tests call directly
@@ -295,7 +295,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
   defp start_node_label(node, id) do
     type_label = String.capitalize(node.type)
     data = node.data || %{}
-    name = EvalHelpers.strip_html(data["text"], 20)
+    name = Flows.evaluator_strip_html(data["text"], 20)
 
     if name do
       "#{type_label}: #{name}"

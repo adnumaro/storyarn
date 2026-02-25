@@ -169,7 +169,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
            project_slug
          ) do
       {:ok, project, membership} ->
-        can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+        can_edit = Projects.can?(membership.role, :edit_content)
         target_languages = Localization.get_target_languages(project.id)
 
         selected_locale =

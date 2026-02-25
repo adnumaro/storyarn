@@ -1,5 +1,5 @@
 defmodule StoryarnWeb.FlowLive.CollaborationTest do
-  use StoryarnWeb.ConnCase
+  use StoryarnWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures

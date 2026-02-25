@@ -194,7 +194,7 @@ defmodule StoryarnWeb.SceneLive.Index do
       {:ok, project, membership} ->
         scenes = Scenes.list_scenes(project.id)
         scenes_tree = Scenes.list_scenes_tree(project.id)
-        can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+        can_edit = Projects.can?(membership.role, :edit_content)
 
         socket =
           socket

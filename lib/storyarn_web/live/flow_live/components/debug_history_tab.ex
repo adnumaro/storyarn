@@ -10,7 +10,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugHistoryTab do
 
   import StoryarnWeb.Components.CoreComponents
 
-  alias Storyarn.Flows.Evaluator.Helpers, as: EvalHelpers
+  alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   # ===========================================================================
@@ -227,7 +227,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugHistoryTab do
   defp path_node_label(node) do
     data = node.data || %{}
     text = data["text"]
-    if is_binary(text) and text != "", do: EvalHelpers.strip_html(text, 30)
+    if is_binary(text) and text != "", do: Flows.evaluator_strip_html(text, 30)
   end
 
   defp path_icon(type), do: NodeTypeRegistry.icon_name(type)
@@ -240,5 +240,5 @@ defmodule StoryarnWeb.FlowLive.Components.DebugHistoryTab do
 
   defp format_ts(_), do: "0.000s"
 
-  defp format_value(value), do: EvalHelpers.format_value(value)
+  defp format_value(value), do: Flows.evaluator_format_value(value)
 end

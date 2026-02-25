@@ -164,7 +164,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
       {:ok, project, membership} ->
         screenplays = Screenplays.list_screenplays(project.id)
         screenplays_tree = Screenplays.list_screenplays_tree(project.id)
-        can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+        can_edit = Projects.can?(membership.role, :edit_content)
 
         socket =
           socket

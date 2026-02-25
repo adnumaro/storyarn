@@ -10,7 +10,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugConsoleTab do
 
   import StoryarnWeb.Components.CoreComponents
 
-  alias Storyarn.Flows.Evaluator.Helpers, as: EvalHelpers
+  alias Storyarn.Flows
 
   # ===========================================================================
   # Console tab
@@ -145,10 +145,10 @@ defmodule StoryarnWeb.FlowLive.Components.DebugConsoleTab do
 
   defp format_ts(_), do: "0.000s"
 
-  defp format_value(value), do: EvalHelpers.format_value(value)
+  defp format_value(value), do: Flows.evaluator_format_value(value)
 
   defp clean_response_text(text) when is_binary(text) do
-    EvalHelpers.strip_html(text, 40) || dgettext("flows", "(empty)")
+    Flows.evaluator_strip_html(text, 40) || dgettext("flows", "(empty)")
   end
 
   defp clean_response_text(_), do: dgettext("flows", "(empty)")

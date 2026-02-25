@@ -388,7 +388,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
            project_slug
          ) do
       {:ok, project, membership} ->
-        can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+        can_edit = Projects.can?(membership.role, :edit_content)
 
         # Auto-create source language from workspace if missing
         {:ok, source_language} = Localization.ensure_source_language(project)

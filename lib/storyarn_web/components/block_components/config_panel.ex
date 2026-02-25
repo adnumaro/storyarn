@@ -485,9 +485,9 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPanel do
     assigns
     |> assign(:is_constant, block.is_constant || false)
     |> assign(:variable_name, block.variable_name)
-    |> assign(:can_be_variable, Storyarn.Sheets.Block.can_be_variable?(block.type))
+    |> assign(:can_be_variable, Storyarn.Sheets.can_be_variable?(block.type))
     |> assign(:scope, block.scope || "self")
-    |> assign(:is_inherited, Storyarn.Sheets.Block.inherited?(block))
+    |> assign(:is_inherited, Storyarn.Sheets.inherited?(block))
     |> assign(:is_detached, block.detached || false)
     |> assign(:required, block.required || false)
   end

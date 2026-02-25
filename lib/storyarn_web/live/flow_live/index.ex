@@ -179,7 +179,7 @@ defmodule StoryarnWeb.FlowLive.Index do
       {:ok, project, membership} ->
         flows = Flows.list_flows(project.id)
         flows_tree = Flows.list_flows_tree(project.id)
-        can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+        can_edit = Projects.can?(membership.role, :edit_content)
 
         # Leaving the flow editor — clear navigation history for this user/project
         user_id = socket.assigns.current_scope.user.id

@@ -9,7 +9,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
 
   use Gettext, backend: StoryarnWeb.Gettext
 
-  alias Storyarn.Flows.Evaluator.Engine
+  alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
 
@@ -28,7 +28,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
         nodes = socket.assigns.debug_nodes
 
         if Map.has_key?(nodes, node_id) do
-          new_state = Engine.reset(%{state | start_node_id: node_id})
+          new_state = Flows.evaluator_reset(%{state | start_node_id: node_id})
 
           {:noreply,
            socket
@@ -52,7 +52,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
       root_frame = List.last(state.call_stack)
       root_flow_id = root_frame.flow_id
 
-      new_state = Engine.reset(state)
+      new_state = Flows.evaluator_reset(state)
       new_state = %{new_state | current_flow_id: root_flow_id}
 
       socket =
@@ -69,7 +69,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
 
       {:noreply, navigated_socket}
     else
-      new_state = Engine.reset(state)
+      new_state = Flows.evaluator_reset(state)
 
       {:noreply,
        socket
@@ -114,12 +114,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
 
     state =
       if parse_warning do
-        Engine.add_console_entry(state, :warning, nil, "", parse_warning)
+        Flows.evaluator_add_console_entry(state, :warning, nil, "", parse_warning)
       else
         state
       end
 
-    case Engine.set_variable(state, key, parsed) do
+    case Flows.evaluator_set_variable(state, key, parsed) do
       {:ok, new_state} ->
         {:noreply,
          socket
@@ -141,7 +141,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
 
   def handle_debug_continue_past_limit(socket) do
     state = socket.assigns.debug_state
-    new_state = Engine.extend_step_limit(state)
+    new_state = Flows.evaluator_extend_step_limit(state)
 
     {:noreply,
      socket
@@ -152,7 +152,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
   def handle_debug_toggle_breakpoint(%{"node_id" => node_id_str}, socket) do
     case Integer.parse(node_id_str) do
       {node_id, ""} ->
-        state = Engine.toggle_breakpoint(socket.assigns.debug_state, node_id)
+        state = Flows.evaluator_toggle_breakpoint(socket.assigns.debug_state, node_id)
 
         {:noreply,
          socket
@@ -184,7 +184,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
 
       entry_node_id ->
         variables = VariableHelpers.build_variables(project.id)
-        state = Engine.init(variables, entry_node_id)
+        state = Flows.evaluator_init(variables, entry_node_id)
         state = %{state | current_flow_id: flow.id}
 
         {:noreply,

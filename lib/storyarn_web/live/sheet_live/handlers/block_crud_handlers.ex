@@ -17,7 +17,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Sheets
-  alias Storyarn.Sheets.Constraints.Number, as: NumberConstraints
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
   alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
 
@@ -195,7 +194,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
   # ---------------------------------------------------------------------------
 
   defp maybe_clamp_number_value(%{type: "number", config: config}, value) when is_binary(value) do
-    NumberConstraints.clamp_and_format(value, config)
+    Sheets.number_clamp_and_format(value, config)
   end
 
   defp maybe_clamp_number_value(_block, value), do: value

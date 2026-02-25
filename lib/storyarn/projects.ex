@@ -114,6 +114,12 @@ defmodule Storyarn.Projects do
   # =============================================================================
 
   @doc """
+  Checks if a role can perform a given action.
+  """
+  @spec can?(role(), action()) :: boolean()
+  defdelegate can?(role, action), to: ProjectMembership
+
+  @doc """
   Lists all members of a project.
   """
   @spec list_project_members(integer()) :: [membership()]

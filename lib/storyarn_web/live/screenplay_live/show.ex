@@ -101,7 +101,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
          ) do
       {:ok, project, membership} ->
         screenplay = Screenplays.get_screenplay!(project.id, screenplay_id)
-        can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+        can_edit = Projects.can?(membership.role, :edit_content)
 
         socket =
           socket

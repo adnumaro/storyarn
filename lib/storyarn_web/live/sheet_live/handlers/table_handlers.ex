@@ -16,7 +16,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Sheets
-  alias Storyarn.Sheets.Constraints.Number, as: NumberConstraints
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
   alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
 
@@ -337,7 +336,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     with :ok <- verify_column_ownership(socket, column),
          true <- field in ~w(min max step) do
       prev_config = column.config
-      parsed = NumberConstraints.parse_constraint(value)
+      parsed = Sheets.number_parse_constraint(value)
       new_config = Map.put(prev_config || %{}, field, parsed)
 
       case Sheets.update_table_column(column, %{config: new_config}) do
@@ -719,7 +718,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   end
 
   defp maybe_clamp_cell(value, %{type: "number", config: config}) when is_binary(value),
-    do: NumberConstraints.clamp_and_format(value, config)
+    do: Sheets.number_clamp_and_format(value, config)
 
   defp maybe_clamp_cell(value, _col), do: value
 

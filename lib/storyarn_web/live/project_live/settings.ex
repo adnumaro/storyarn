@@ -241,7 +241,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
            project_slug
          ) do
       {:ok, project, membership} ->
-        if Projects.ProjectMembership.can?(membership.role, :manage_project) do
+        if Projects.can?(membership.role, :manage_project) do
           members = Projects.list_project_members(project.id)
           pending_invitations = Projects.list_pending_invitations(project.id)
 

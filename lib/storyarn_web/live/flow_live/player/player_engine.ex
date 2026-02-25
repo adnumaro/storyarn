@@ -1,14 +1,14 @@
 defmodule StoryarnWeb.FlowLive.Player.PlayerEngine do
   @moduledoc """
-  Thin wrapper around `Storyarn.Flows.Evaluator.Engine` that auto-advances
-  through non-interactive nodes (entry, hub, condition, instruction, jump, scene)
+  Thin wrapper around the Flows evaluator that auto-advances through
+  non-interactive nodes (entry, hub, condition, instruction, jump, scene)
   until it reaches a dialogue, exit, or error.
 
-  The Engine itself is a pure functional state machine — this module simply
-  calls `Engine.step/3` in a loop.
+  The evaluator is a pure functional state machine — this module simply
+  calls `Flows.evaluator_step/3` in a loop.
   """
 
-  alias Storyarn.Flows.Evaluator.Engine
+  alias Storyarn.Flows
   alias Storyarn.Flows.Evaluator.State
 
   @max_auto_steps 100
@@ -59,7 +59,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngine do
   defp do_step(state, nodes, connections, max, count, skipped) do
     current_node = Map.get(nodes, state.current_node_id)
 
-    case Engine.step(state, nodes, connections) do
+    case Flows.evaluator_step(state, nodes, connections) do
       {:ok, new_state} ->
         # Node was processed, check if we should continue auto-advancing
         node_type = if current_node, do: current_node.type, else: nil

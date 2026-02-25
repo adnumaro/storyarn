@@ -67,7 +67,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
       ) do
     case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
       {:ok, project, membership} ->
-        can_manage = Projects.ProjectMembership.can?(membership.role, :manage_project)
+        can_manage = Projects.can?(membership.role, :manage_project)
         sheets_tree = Sheets.list_sheets_tree(project.id)
 
         socket =

@@ -10,7 +10,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugVariablesTab do
 
   import StoryarnWeb.Components.CoreComponents
 
-  alias Storyarn.Flows.Evaluator.Helpers, as: EvalHelpers
+  alias Storyarn.Flows
 
   # ===========================================================================
   # Variables tab
@@ -215,5 +215,5 @@ defmodule StoryarnWeb.FlowLive.Components.DebugVariablesTab do
   defp var_source_color(:user_override), do: "text-info"
   defp var_source_color(_), do: "text-base-content/50"
 
-  defp format_value(value), do: EvalHelpers.format_value(value)
+  defp format_value(value), do: Flows.evaluator_format_value(value)
 end

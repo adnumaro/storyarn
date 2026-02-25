@@ -187,7 +187,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
          ) do
       {:ok, project, membership} ->
         trashed_sheets = Sheets.list_trashed_sheets(project.id)
-        can_manage = Projects.ProjectMembership.can?(membership.role, :edit_content)
+        can_manage = Projects.can?(membership.role, :edit_content)
 
         socket =
           socket

@@ -252,7 +252,7 @@ defmodule StoryarnWeb.FlowLive.Show do
          |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/flows")}
 
       flow ->
-        can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+        can_edit = Projects.can?(membership.role, :edit_content)
 
         socket =
           socket

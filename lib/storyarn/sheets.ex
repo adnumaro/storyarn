@@ -301,6 +301,36 @@ defmodule Storyarn.Sheets do
   defdelegate list_inherited_instances(parent_block_id), to: SheetQueries
 
   # =============================================================================
+  # Blocks - Type Helpers
+  # =============================================================================
+
+  @doc """
+  Returns true if the given block type can act as a variable.
+  """
+  @spec can_be_variable?(String.t()) :: boolean()
+  defdelegate can_be_variable?(block_type), to: Block
+
+  @doc """
+  Returns true if the block is inherited from a parent sheet.
+  """
+  @spec inherited?(block()) :: boolean()
+  defdelegate inherited?(block), to: Block
+
+  @doc """
+  Parses a string value, clamps to min/max constraints, and formats back to string.
+  """
+  defdelegate number_clamp_and_format(value, config),
+    to: Storyarn.Sheets.Constraints.Number,
+    as: :clamp_and_format
+
+  @doc """
+  Parses a constraint value (from form params or config) into a number or nil.
+  """
+  defdelegate number_parse_constraint(value),
+    to: Storyarn.Sheets.Constraints.Number,
+    as: :parse_constraint
+
+  # =============================================================================
   # Blocks - CRUD Operations
   # =============================================================================
 

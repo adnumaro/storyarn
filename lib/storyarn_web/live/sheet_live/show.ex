@@ -237,7 +237,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
     children = Sheets.get_children(sheet.id)
     blocks = ReferenceHelpers.load_blocks_with_references(sheet.id, project.id)
-    can_edit = Projects.ProjectMembership.can?(membership.role, :edit_content)
+    can_edit = Projects.can?(membership.role, :edit_content)
 
     socket
     |> assign(focus_layout_defaults())

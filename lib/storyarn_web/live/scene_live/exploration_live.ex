@@ -18,10 +18,6 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   import StoryarnWeb.FlowLive.Player.Components.PlayerChoices, only: [player_choices: 1]
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.Evaluator.ConditionEval
-  alias Storyarn.Flows.Evaluator.Engine
-  alias Storyarn.Flows.Evaluator.Helpers, as: EvalHelpers
-  alias Storyarn.Flows.Evaluator.InstructionExec
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Shared.MapUtils
@@ -216,7 +212,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     nodes = socket.assigns.flow_nodes
     connections = socket.assigns.flow_connections
 
-    case Engine.choose_response(state, response_id, connections) do
+    case Flows.evaluator_choose_response(state, response_id, connections) do
       {:ok, new_state} ->
         case PlayerEngine.step_until_interactive(new_state, nodes, connections) do
           {:flow_jump, stepped, target_flow_id, _} ->
@@ -241,7 +237,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   def handle_event("go_back", _params, socket) do
     %{engine_state: state} = socket.assigns.active_flow
 
-    case Engine.step_back(state) do
+    case Flows.evaluator_step_back(state) do
       {:ok, new_state} -> {:noreply, update_flow_slide(socket, new_state)}
       {:error, :no_history} -> {:noreply, socket}
     end
@@ -288,7 +284,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
        ) do
     assignments = action_data["assignments"] || []
 
-    case InstructionExec.execute(assignments, socket.assigns.variables) do
+    case Flows.execute_instructions(assignments, socket.assigns.variables) do
       {:ok, new_variables, _changes, _errors} ->
         refresh_exploration_state(socket, new_variables)
 
@@ -371,7 +367,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
       entry_id ->
         state =
-          Engine.init(variables, entry_id)
+          Flows.evaluator_init(variables, entry_id)
           |> Map.put(:current_flow_id, flow_id)
 
         case PlayerEngine.step_until_interactive(state, nodes_map, connections) do
@@ -389,7 +385,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp handle_exploration_flow_jump(socket, state, target_flow_id) do
     state =
-      Engine.push_flow_context(
+      Flows.evaluator_push_flow_context(
         state,
         state.current_node_id,
         socket.assigns.flow_nodes,
@@ -437,7 +433,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp handle_exploration_flow_return(socket, state) do
-    case Engine.pop_flow_context(state) do
+    case Flows.evaluator_pop_flow_context(state) do
       {:ok, frame, new_state} ->
         parent_nodes = frame.nodes
         parent_connections = frame.connections
@@ -580,7 +576,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     pins = evaluate_elements(socket.assigns.scene.pins || [], new_variables)
 
     display_vars =
-      Map.new(new_variables, fn {ref, v} -> {ref, EvalHelpers.format_value(v.value)} end)
+      Map.new(new_variables, fn {ref, v} -> {ref, Flows.evaluator_format_value(v.value)} end)
 
     socket
     |> assign(:variables, new_variables)
@@ -655,7 +651,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   defp evaluate_visibility(condition, _effect, _vars) when condition == %{}, do: :visible
 
   defp evaluate_visibility(condition, effect, variables) do
-    {passed, _} = ConditionEval.evaluate(condition, variables)
+    {passed, _} = Flows.evaluate_condition(condition, variables)
 
     if passed do
       :visible

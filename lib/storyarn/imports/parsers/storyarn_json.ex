@@ -435,7 +435,13 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     # Pass 1: create flows without parent_id
     {id_map, flow_records} =
       Enum.reduce(flows, {id_map, []}, fn flow_data, {map, records} ->
-        case resolve_shortcut(flow_data["shortcut"], strategy, project.id, Flow, existing_shortcuts) do
+        case resolve_shortcut(
+               flow_data["shortcut"],
+               strategy,
+               project.id,
+               Flow,
+               existing_shortcuts
+             ) do
           :skip ->
             {map, records}
 
@@ -504,28 +510,48 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   defp clean_node_data(data), do: data
 
   defp import_flow_connections(flow_id, connections, id_map) do
-    Enum.reduce(connections, {id_map, []}, fn conn_data, {map, results} ->
-      source_node_id = Map.get(map, {:node, conn_data["source_node_id"]})
-      target_node_id = Map.get(map, {:node, conn_data["target_node_id"]})
+    now = Storyarn.Shared.TimeHelpers.now()
 
-      if source_node_id && target_node_id do
-        attrs = %{
-          "source_node_id" => source_node_id,
-          "target_node_id" => target_node_id,
-          "source_pin" => conn_data["source_pin"],
-          "target_pin" => conn_data["target_pin"],
-          "label" => conn_data["label"]
-        }
+    # Build valid connection attrs, filtering out those with missing node references
+    {valid_attrs, _} =
+      Enum.reduce(connections, {[], id_map}, fn conn_data, {acc, map} ->
+        source_node_id = Map.get(map, {:node, conn_data["source_node_id"]})
+        target_node_id = Map.get(map, {:node, conn_data["target_node_id"]})
 
-        changeset = FlowConnection.create_changeset(%FlowConnection{flow_id: flow_id}, attrs)
-        conn = insert_or_rollback!(changeset, {:flow_connection, conn_data["id"]})
+        if source_node_id && target_node_id && source_node_id != target_node_id do
+          attrs = %{
+            flow_id: flow_id,
+            source_node_id: source_node_id,
+            target_node_id: target_node_id,
+            source_pin: truncate_string(conn_data["source_pin"], 100),
+            target_pin: truncate_string(conn_data["target_pin"], 100),
+            label: truncate_string(conn_data["label"], 200),
+            inserted_at: now,
+            updated_at: now
+          }
 
-        {Map.put(map, {:flow_connection, conn_data["id"]}, conn.id), [conn | results]}
-      else
-        {map, results}
-      end
-    end)
+          {[attrs | acc], map}
+        else
+          {acc, map}
+        end
+      end)
+
+    # Batch insert in chunks of 500
+    results =
+      valid_attrs
+      |> Enum.reverse()
+      |> Enum.chunk_every(500)
+      |> Enum.flat_map(fn chunk ->
+        {_count, inserted} = Repo.insert_all(FlowConnection, chunk, returning: [:id])
+        inserted
+      end)
+
+    {id_map, results}
   end
+
+  defp truncate_string(nil, _max), do: nil
+  defp truncate_string(str, max) when is_binary(str), do: String.slice(str, 0, max)
+  defp truncate_string(val, _max), do: val
 
   # =============================================================================
   # Scenes import (two-pass for parent_id)
@@ -542,7 +568,13 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   defp do_import_scenes(project, scenes, id_map, strategy, existing_shortcuts) do
     {id_map, scene_records} =
       Enum.reduce(scenes, {id_map, []}, fn scene_data, {map, records} ->
-        case resolve_shortcut(scene_data["shortcut"], strategy, project.id, Scene, existing_shortcuts) do
+        case resolve_shortcut(
+               scene_data["shortcut"],
+               strategy,
+               project.id,
+               Scene,
+               existing_shortcuts
+             ) do
           :skip ->
             {map, records}
 
@@ -667,53 +699,83 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   end
 
   defp import_scene_connections(scene_id, connections, id_map) do
-    Enum.reduce(connections, {id_map, []}, fn conn_data, {map, results} ->
-      from_pin_id = Map.get(map, {:pin, conn_data["from_pin_id"]})
-      to_pin_id = Map.get(map, {:pin, conn_data["to_pin_id"]})
+    now = Storyarn.Shared.TimeHelpers.now()
 
-      if from_pin_id && to_pin_id do
-        attrs = %{
-          "from_pin_id" => from_pin_id,
-          "to_pin_id" => to_pin_id,
-          "line_style" => conn_data["line_style"],
-          "line_width" => conn_data["line_width"],
-          "color" => conn_data["color"],
-          "label" => conn_data["label"],
-          "show_label" => conn_data["show_label"],
-          "bidirectional" => conn_data["bidirectional"] || false,
-          "waypoints" => conn_data["waypoints"] || []
-        }
+    # Build valid connection attrs, filtering out those with missing pin references
+    valid_attrs =
+      Enum.reduce(connections, [], fn conn_data, acc ->
+        from_pin_id = Map.get(id_map, {:pin, conn_data["from_pin_id"]})
+        to_pin_id = Map.get(id_map, {:pin, conn_data["to_pin_id"]})
 
-        changeset = SceneConnection.create_changeset(%SceneConnection{scene_id: scene_id}, attrs)
-        conn = insert_or_rollback!(changeset, {:scene_connection, conn_data["id"]})
+        if from_pin_id && to_pin_id do
+          attrs = %{
+            scene_id: scene_id,
+            from_pin_id: from_pin_id,
+            to_pin_id: to_pin_id,
+            line_style: conn_data["line_style"] || "solid",
+            line_width: conn_data["line_width"] || 2,
+            color: conn_data["color"],
+            label: conn_data["label"],
+            show_label: Map.get(conn_data, "show_label", true),
+            bidirectional: conn_data["bidirectional"] || false,
+            waypoints: conn_data["waypoints"] || [],
+            inserted_at: now,
+            updated_at: now
+          }
 
-        {Map.put(map, {:scene_connection, conn_data["id"]}, conn.id), [conn | results]}
-      else
-        {map, results}
-      end
-    end)
+          [attrs | acc]
+        else
+          acc
+        end
+      end)
+
+    # Batch insert in chunks of 500
+    results =
+      valid_attrs
+      |> Enum.reverse()
+      |> Enum.chunk_every(500)
+      |> Enum.flat_map(fn chunk ->
+        {_count, inserted} = Repo.insert_all(SceneConnection, chunk, returning: [:id])
+        inserted
+      end)
+
+    {id_map, results}
   end
 
   defp import_annotations(scene_id, annotations, id_map) do
-    Enum.reduce(annotations, {id_map, []}, fn ann_data, {map, results} ->
-      attrs = %{
-        "text" => ann_data["text"],
-        "position_x" => ann_data["position_x"] || 0.0,
-        "position_y" => ann_data["position_y"] || 0.0,
-        "font_size" => ann_data["font_size"],
-        "color" => ann_data["color"],
-        "layer_id" => remap_id(map, :layer, ann_data["layer_id"]),
-        "position" => ann_data["position"] || 0,
-        "locked" => ann_data["locked"] || false
-      }
+    now = Storyarn.Shared.TimeHelpers.now()
 
-      changeset =
-        SceneAnnotation.create_changeset(%SceneAnnotation{scene_id: scene_id}, attrs)
+    # Build annotation attrs with remapped layer_id references
+    valid_attrs =
+      Enum.reduce(annotations, [], fn ann_data, acc ->
+        attrs = %{
+          scene_id: scene_id,
+          text: ann_data["text"],
+          position_x: ann_data["position_x"] || 0.0,
+          position_y: ann_data["position_y"] || 0.0,
+          font_size: ann_data["font_size"] || "md",
+          color: ann_data["color"],
+          layer_id: remap_id(id_map, :layer, ann_data["layer_id"]),
+          position: ann_data["position"] || 0,
+          locked: ann_data["locked"] || false,
+          inserted_at: now,
+          updated_at: now
+        }
 
-      ann = insert_or_rollback!(changeset, {:annotation, ann_data["text"]})
+        [attrs | acc]
+      end)
 
-      {Map.put(map, {:annotation, ann_data["id"]}, ann.id), [ann | results]}
-    end)
+    # Batch insert in chunks of 500
+    results =
+      valid_attrs
+      |> Enum.reverse()
+      |> Enum.chunk_every(500)
+      |> Enum.flat_map(fn chunk ->
+        {_count, inserted} = Repo.insert_all(SceneAnnotation, chunk, returning: [:id])
+        inserted
+      end)
+
+    {id_map, results}
   end
 
   # =============================================================================
@@ -731,7 +793,13 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   defp do_import_screenplays(project, screenplays, id_map, strategy, existing_shortcuts) do
     {id_map, sp_records} =
       Enum.reduce(screenplays, {id_map, []}, fn sp_data, {map, records} ->
-        case resolve_shortcut(sp_data["shortcut"], strategy, project.id, Screenplay, existing_shortcuts) do
+        case resolve_shortcut(
+               sp_data["shortcut"],
+               strategy,
+               project.id,
+               Screenplay,
+               existing_shortcuts
+             ) do
           :skip ->
             {map, records}
 
@@ -848,61 +916,86 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   end
 
   defp import_localized_texts(project_id, strings, id_map) do
-    for entry <- strings,
-        {locale_code, translation} <- entry["translations"] || %{} do
-      # Remap source_id based on source_type (flow_node, block, sheet, etc.)
-      remapped_source_id = remap_source_id(id_map, entry["source_type"], entry["source_id"])
+    now = Storyarn.Shared.TimeHelpers.now()
 
-      attrs = %{
-        "source_type" => entry["source_type"],
-        "source_id" => remapped_source_id || MapUtils.parse_int(entry["source_id"]),
-        "source_field" => entry["source_field"],
-        "source_text" => entry["source_text"],
-        "source_text_hash" => entry["source_text_hash"],
-        "speaker_sheet_id" => remap_id(id_map, :sheet, entry["speaker_sheet_id"]),
-        "locale_code" => locale_code,
-        "translated_text" => translation["translated_text"],
-        "status" => translation["status"] || "pending",
-        "vo_status" => translation["vo_status"],
-        "word_count" => translation["word_count"],
-        "machine_translated" => translation["machine_translated"] || false
-      }
+    # Build all text attrs from the nested strings/translations structure
+    valid_attrs =
+      Enum.reduce(strings, [], fn entry, acc ->
+        translations = entry["translations"] || %{}
+        remapped_source_id = remap_source_id(id_map, entry["source_type"], entry["source_id"])
+        source_id = remapped_source_id || MapUtils.parse_int(entry["source_id"])
 
-      # Two-step: create_changeset doesn't cast vo_asset_id, translator/reviewer notes, datetimes
-      changeset =
-        LocalizedText.create_changeset(%LocalizedText{project_id: project_id}, attrs)
-        |> maybe_put_change(:vo_asset_id, remap_id(id_map, :asset, translation["vo_asset_id"]))
-        |> maybe_put_change(:translator_notes, translation["translator_notes"])
-        |> maybe_put_change(:reviewer_notes, translation["reviewer_notes"])
-        |> maybe_put_change(
-          :last_translated_at,
-          parse_datetime(translation["last_translated_at"])
-        )
-        |> maybe_put_change(:last_reviewed_at, parse_datetime(translation["last_reviewed_at"]))
+        Enum.reduce(translations, acc, fn {locale_code, translation}, inner_acc ->
+          attrs = %{
+            project_id: project_id,
+            source_type: entry["source_type"],
+            source_id: source_id,
+            source_field: entry["source_field"],
+            source_text: entry["source_text"],
+            source_text_hash: entry["source_text_hash"],
+            speaker_sheet_id: remap_id(id_map, :sheet, entry["speaker_sheet_id"]),
+            locale_code: locale_code,
+            translated_text: translation["translated_text"],
+            status: translation["status"] || "pending",
+            vo_status: translation["vo_status"] || "none",
+            vo_asset_id: remap_id(id_map, :asset, translation["vo_asset_id"]),
+            translator_notes: translation["translator_notes"],
+            reviewer_notes: translation["reviewer_notes"],
+            word_count: translation["word_count"],
+            machine_translated: translation["machine_translated"] || false,
+            last_translated_at: parse_datetime(translation["last_translated_at"]),
+            last_reviewed_at: parse_datetime(translation["last_reviewed_at"]),
+            translated_by_id: nil,
+            reviewed_by_id: nil,
+            inserted_at: now,
+            updated_at: now
+          }
 
-      insert_or_rollback!(changeset, {:localized_text, entry["source_type"]},
-        on_conflict: :nothing
-      )
-    end
+          [attrs | inner_acc]
+        end)
+      end)
+
+    # Batch insert in chunks of 500 with on_conflict: :nothing for duplicates
+    valid_attrs
+    |> Enum.reverse()
+    |> Enum.chunk_every(500)
+    |> Enum.each(fn chunk ->
+      Repo.insert_all(LocalizedText, chunk, on_conflict: :nothing)
+    end)
   end
 
   defp import_glossary(project_id, glossary_entries) do
-    for entry <- glossary_entries,
-        {target_locale, target_term} <- entry["translations"] || %{} do
-      attrs = %{
-        "source_term" => entry["source_term"],
-        "source_locale" => entry["source_locale"],
-        "target_locale" => target_locale,
-        "target_term" => target_term,
-        "do_not_translate" => entry["do_not_translate"] || false,
-        "context" => entry["context"]
-      }
+    now = Storyarn.Shared.TimeHelpers.now()
 
-      changeset =
-        GlossaryEntry.create_changeset(%GlossaryEntry{project_id: project_id}, attrs)
+    # Build all glossary attrs from the nested entries/translations structure
+    valid_attrs =
+      Enum.reduce(glossary_entries, [], fn entry, acc ->
+        translations = entry["translations"] || %{}
 
-      insert_or_rollback!(changeset, {:glossary, entry["source_term"]})
-    end
+        Enum.reduce(translations, acc, fn {target_locale, target_term}, inner_acc ->
+          attrs = %{
+            project_id: project_id,
+            source_term: entry["source_term"],
+            source_locale: entry["source_locale"],
+            target_locale: target_locale,
+            target_term: target_term,
+            do_not_translate: entry["do_not_translate"] || false,
+            context: entry["context"],
+            inserted_at: now,
+            updated_at: now
+          }
+
+          [attrs | inner_acc]
+        end)
+      end)
+
+    # Batch insert in chunks of 500
+    valid_attrs
+    |> Enum.reverse()
+    |> Enum.chunk_every(500)
+    |> Enum.each(fn chunk ->
+      Repo.insert_all(GlossaryEntry, chunk)
+    end)
   end
 
   # =============================================================================

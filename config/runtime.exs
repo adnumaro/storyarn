@@ -111,6 +111,15 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret 32
       """
 
+  # LiveView signing salt - used to sign LiveView socket connections
+  # Generate with: mix phx.gen.secret 32
+  live_view_signing_salt =
+    System.get_env("LIVE_VIEW_SIGNING_SALT") ||
+      raise """
+      environment variable LIVE_VIEW_SIGNING_SALT is missing.
+      You can generate one by calling: mix phx.gen.secret 32
+      """
+
   config :storyarn, StoryarnWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
@@ -123,7 +132,8 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base,
     session_signing_salt: session_signing_salt,
-    session_encryption_salt: session_encryption_salt
+    session_encryption_salt: session_encryption_salt,
+    live_view: [signing_salt: live_view_signing_salt]
 
   # ## SSL Support
   #

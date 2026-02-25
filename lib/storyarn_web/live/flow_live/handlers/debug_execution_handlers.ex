@@ -12,7 +12,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
 
   alias Storyarn.Flows
   alias Storyarn.Flows.DebugSessionStore
-  alias Storyarn.Flows.Evaluator.Engine
 
   @doc "Advances the debugger by one step. May trigger cross-flow navigation."
   def handle_debug_step(socket) do
@@ -20,7 +19,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     nodes = socket.assigns.debug_nodes
     connections = socket.assigns.debug_connections
 
-    result = Engine.step(state, nodes, connections)
+    result = Flows.evaluator_step(state, nodes, connections)
 
     case apply_step_result(result, socket) do
       {:navigating, socket} ->
@@ -35,7 +34,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   def handle_debug_step_back(socket) do
     state = socket.assigns.debug_state
 
-    case Engine.step_back(state) do
+    case Flows.evaluator_step_back(state) do
       {:ok, new_state} ->
         {:noreply,
          socket
@@ -52,7 +51,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     state = socket.assigns.debug_state
     connections = socket.assigns.debug_connections
 
-    case Engine.choose_response(state, response_id, connections) do
+    case Flows.evaluator_choose_response(state, response_id, connections) do
       {:ok, new_state} ->
         socket =
           socket
@@ -201,7 +200,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   defp do_auto_step(socket, state) do
     nodes = socket.assigns.debug_nodes
     connections = socket.assigns.debug_connections
-    result = Engine.step(state, nodes, connections)
+    result = Flows.evaluator_step(state, nodes, connections)
 
     case apply_step_result(result, socket) do
       {:navigating, socket} -> {:noreply, socket}
@@ -222,8 +221,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   end
 
   defp maybe_hit_breakpoint(state) do
-    if state.status not in [:finished, :waiting_input] and Engine.at_breakpoint?(state) do
-      {Engine.add_breakpoint_hit(state, state.current_node_id), true}
+    if state.status not in [:finished, :waiting_input] and Flows.evaluator_at_breakpoint?(state) do
+      {Flows.evaluator_add_breakpoint_hit(state, state.current_node_id), true}
     else
       {state, false}
     end
@@ -247,7 +246,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     connections = socket.assigns.debug_connections
     flow_name = socket.assigns.flow.name
 
-    state = Engine.push_flow_context(state, current_node_id, nodes, connections, flow_name)
+    state =
+      Flows.evaluator_push_flow_context(state, current_node_id, nodes, connections, flow_name)
 
     target_nodes = build_nodes_map(target_flow_id)
     target_connections = build_connections(target_flow_id)
@@ -278,7 +278,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   end
 
   defp apply_step_result({:flow_return, state}, socket) do
-    case Engine.pop_flow_context(state) do
+    case Flows.evaluator_pop_flow_context(state) do
       {:error, :empty_stack} ->
         {:continue, assign(socket, :debug_state, %{state | status: :finished})}
 
