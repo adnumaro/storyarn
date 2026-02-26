@@ -151,101 +151,89 @@ defmodule Storyarn.Localization.TextExtractor do
   end
 
   defp extract_many_flows(flows, target_locales) do
-    Enum.reduce(flows, 0, fn flow, acc ->
-      fields = []
-      fields = if non_blank?(flow.name), do: [{"name", flow.name} | fields], else: fields
+    entries =
+      for flow <- flows,
+          {field, text} <- extract_entity_fields(flow.name, flow.description),
+          locale <- target_locales do
+        %{
+          "source_type" => "flow",
+          "source_id" => flow.id,
+          "source_field" => field,
+          "source_text" => text,
+          "source_text_hash" => hash(text),
+          "locale_code" => locale,
+          "word_count" => word_count(text),
+          "speaker_sheet_id" => nil
+        }
+      end
 
-      fields =
-        if non_blank?(flow.description),
-          do: [{"description", flow.description} | fields],
-          else: fields
-
-      upserted =
-        for {field, text} <- fields, locale <- target_locales do
-          TextCrud.upsert_text(flow.project_id, %{
-            "source_type" => "flow",
-            "source_id" => flow.id,
-            "source_field" => field,
-            "source_text" => text,
-            "source_text_hash" => hash(text),
-            "locale_code" => locale,
-            "word_count" => word_count(text)
-          })
-        end
-
-      acc + length(upserted)
-    end)
+    case flows do
+      [first | _] -> TextCrud.batch_upsert_texts(first.project_id, entries)
+      [] -> 0
+    end
   end
 
   defp extract_many_nodes(nodes, project_id, target_locales) do
-    Enum.reduce(nodes, 0, fn node, acc ->
-      fields = extract_node_fields(node)
-      speaker_sheet_id = get_speaker_sheet_id(node)
+    entries =
+      for node <- nodes,
+          {field, text} <- extract_node_fields(node),
+          locale <- target_locales do
+        %{
+          "source_type" => "flow_node",
+          "source_id" => node.id,
+          "source_field" => field,
+          "source_text" => text,
+          "source_text_hash" => hash(text),
+          "locale_code" => locale,
+          "word_count" => word_count(text),
+          "speaker_sheet_id" => get_speaker_sheet_id(node)
+        }
+      end
 
-      upserted =
-        for {field, text} <- fields, locale <- target_locales do
-          TextCrud.upsert_text(project_id, %{
-            "source_type" => "flow_node",
-            "source_id" => node.id,
-            "source_field" => field,
-            "source_text" => text,
-            "source_text_hash" => hash(text),
-            "locale_code" => locale,
-            "word_count" => word_count(text),
-            "speaker_sheet_id" => speaker_sheet_id
-          })
-        end
-
-      acc + length(upserted)
-    end)
+    TextCrud.batch_upsert_texts(project_id, entries)
   end
 
   defp extract_many_sheets(sheets, target_locales) do
-    Enum.reduce(sheets, 0, fn sheet, acc ->
-      fields = []
-      fields = if non_blank?(sheet.name), do: [{"name", sheet.name} | fields], else: fields
+    entries =
+      for sheet <- sheets,
+          {field, text} <- extract_entity_fields(sheet.name, sheet.description),
+          locale <- target_locales do
+        %{
+          "source_type" => "sheet",
+          "source_id" => sheet.id,
+          "source_field" => field,
+          "source_text" => text,
+          "source_text_hash" => hash(text),
+          "locale_code" => locale,
+          "word_count" => word_count(text),
+          "speaker_sheet_id" => nil
+        }
+      end
 
-      fields =
-        if non_blank?(sheet.description),
-          do: [{"description", sheet.description} | fields],
-          else: fields
-
-      upserted =
-        for {field, text} <- fields, locale <- target_locales do
-          TextCrud.upsert_text(sheet.project_id, %{
-            "source_type" => "sheet",
-            "source_id" => sheet.id,
-            "source_field" => field,
-            "source_text" => text,
-            "source_text_hash" => hash(text),
-            "locale_code" => locale,
-            "word_count" => word_count(text)
-          })
-        end
-
-      acc + length(upserted)
-    end)
+    case sheets do
+      [first | _] -> TextCrud.batch_upsert_texts(first.project_id, entries)
+      [] -> 0
+    end
   end
 
   defp extract_many_blocks(blocks, project_id, target_locales) do
-    Enum.reduce(blocks, 0, fn block, acc ->
-      fields = extract_block_fields(block)
+    entries =
+      for block <- blocks,
+          {field, text} <- extract_block_fields(block),
+          locale <- target_locales do
+        %{
+          "source_type" => "block",
+          "source_id" => block.id,
+          "source_field" => field,
+          "source_text" => text,
+          "source_text_hash" => hash(text),
+          "locale_code" => locale,
+          "word_count" => word_count(text),
+          "speaker_sheet_id" => nil
+        }
+      end
 
-      upserted =
-        for {field, text} <- fields, locale <- target_locales do
-          TextCrud.upsert_text(project_id, %{
-            "source_type" => "block",
-            "source_id" => block.id,
-            "source_field" => field,
-            "source_text" => text,
-            "source_text_hash" => hash(text),
-            "locale_code" => locale,
-            "word_count" => word_count(text)
-          })
-        end
-
-      acc + length(upserted)
-    end)
+    TextCrud.batch_upsert_texts(project_id, entries)
   end
 
   # =============================================================================
@@ -497,6 +485,13 @@ defmodule Storyarn.Localization.TextExtractor do
   defp non_blank?(""), do: false
   defp non_blank?(text) when is_binary(text), do: String.trim(text) != ""
   defp non_blank?(_), do: false
+
+  defp extract_entity_fields(name, description) do
+    fields = []
+    fields = if non_blank?(name), do: [{"name", name} | fields], else: fields
+    fields = if non_blank?(description), do: [{"description", description} | fields], else: fields
+    fields
+  end
 
   defp cleanup_removed_fields(_project_id, source_type, source_id, current_fields) do
     current_field_names = MapSet.new(current_fields, fn {field, _} -> field end)

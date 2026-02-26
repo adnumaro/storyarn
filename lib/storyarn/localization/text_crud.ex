@@ -54,12 +54,14 @@ defmodule Storyarn.Localization.TextCrud do
     |> Repo.one!()
   end
 
-  def get_text(id) do
-    Repo.get(LocalizedText, id)
+  def get_text(project_id, id) do
+    from(t in LocalizedText, where: t.id == ^id and t.project_id == ^project_id)
+    |> Repo.one()
   end
 
-  def get_text!(id) do
-    Repo.get!(LocalizedText, id)
+  def get_text!(project_id, id) do
+    from(t in LocalizedText, where: t.id == ^id and t.project_id == ^project_id)
+    |> Repo.one!()
   end
 
   @doc """
@@ -322,6 +324,123 @@ defmodule Storyarn.Localization.TextCrud do
     )
     |> Repo.all()
     |> Map.new()
+  end
+
+  @doc """
+  Batch-upserts localized texts for a project using insert_all with on_conflict.
+
+  Each entry in `entries` should be a map with string keys:
+  `source_type`, `source_id`, `source_field`, `source_text`, `source_text_hash`,
+  `locale_code`, `word_count`, and optionally `speaker_sheet_id`.
+
+  On conflict (same source_type/source_id/source_field/locale_code):
+  - Updates source_text, source_text_hash, word_count, speaker_sheet_id
+  - Downgrades status from "final" to "review" if source_text_hash changed
+
+  Returns the total number of entries processed.
+  """
+  @spec batch_upsert_texts(integer(), [map()]) :: non_neg_integer()
+  def batch_upsert_texts(_project_id, []), do: 0
+
+  def batch_upsert_texts(project_id, entries) when is_list(entries) do
+    now = Storyarn.Shared.TimeHelpers.now()
+
+    rows =
+      Enum.map(entries, fn attrs ->
+        %{
+          project_id: project_id,
+          source_type: attrs["source_type"],
+          source_id: attrs["source_id"],
+          source_field: attrs["source_field"],
+          source_text: attrs["source_text"],
+          source_text_hash: attrs["source_text_hash"],
+          locale_code: attrs["locale_code"],
+          word_count: attrs["word_count"],
+          speaker_sheet_id: attrs["speaker_sheet_id"],
+          status: "pending",
+          vo_status: "none",
+          machine_translated: false,
+          inserted_at: now,
+          updated_at: now
+        }
+      end)
+
+    rows
+    |> Enum.chunk_every(500)
+    |> Enum.each(&do_batch_upsert_chunk/1)
+
+    length(rows)
+  end
+
+  @upsert_sql """
+  INSERT INTO localized_texts (
+    project_id, source_type, source_id, source_field, source_text,
+    source_text_hash, locale_code, word_count, speaker_sheet_id,
+    status, vo_status, machine_translated, inserted_at, updated_at
+  )
+  SELECT * FROM unnest(
+    $1::bigint[], $2::text[], $3::bigint[], $4::text[], $5::text[],
+    $6::text[], $7::text[], $8::int[], $9::bigint[], $10::text[],
+    $11::text[], $12::boolean[], $13::timestamp[], $14::timestamp[]
+  )
+  ON CONFLICT (source_type, source_id, source_field, locale_code)
+  DO UPDATE SET
+    source_text = EXCLUDED.source_text,
+    source_text_hash = EXCLUDED.source_text_hash,
+    word_count = EXCLUDED.word_count,
+    speaker_sheet_id = EXCLUDED.speaker_sheet_id,
+    status = CASE
+      WHEN localized_texts.source_text_hash IS DISTINCT FROM EXCLUDED.source_text_hash
+        AND localized_texts.status = 'final'
+      THEN 'review'
+      ELSE localized_texts.status
+    END,
+    updated_at = EXCLUDED.updated_at
+  WHERE localized_texts.source_text_hash IS DISTINCT FROM EXCLUDED.source_text_hash
+    OR localized_texts.speaker_sheet_id IS DISTINCT FROM EXCLUDED.speaker_sheet_id
+  """
+
+  defp do_batch_upsert_chunk(chunk) do
+    {project_ids, source_types, source_ids, source_fields, source_texts, source_text_hashes,
+     locale_codes, word_counts, speaker_sheet_ids, statuses, vo_statuses, machine_translateds,
+     inserted_ats, updated_ats} =
+      Enum.reduce(chunk, {[], [], [], [], [], [], [], [], [], [], [], [], [], []}, fn row, acc ->
+        {p, st, si, sf, stxt, sth, lc, wc, ssi, s, vs, mt, ia, ua} = acc
+
+        {
+          [row.project_id | p],
+          [row.source_type | st],
+          [row.source_id | si],
+          [row.source_field | sf],
+          [row.source_text | stxt],
+          [row.source_text_hash | sth],
+          [row.locale_code | lc],
+          [row.word_count | wc],
+          [row.speaker_sheet_id | ssi],
+          [row.status | s],
+          [row.vo_status | vs],
+          [row.machine_translated | mt],
+          [row.inserted_at | ia],
+          [row.updated_at | ua]
+        }
+      end)
+
+    Repo.query!(@upsert_sql, [
+      Enum.reverse(project_ids),
+      Enum.reverse(source_types),
+      Enum.reverse(source_ids),
+      Enum.reverse(source_fields),
+      Enum.reverse(source_texts),
+      Enum.reverse(source_text_hashes),
+      Enum.reverse(locale_codes),
+      Enum.reverse(word_counts),
+      Enum.reverse(speaker_sheet_ids),
+      Enum.reverse(statuses),
+      Enum.reverse(vo_statuses),
+      Enum.reverse(machine_translateds),
+      Enum.reverse(inserted_ats),
+      Enum.reverse(updated_ats)
+    ])
   end
 
   @doc """
