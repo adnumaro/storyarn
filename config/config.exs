@@ -89,11 +89,6 @@ config :storyarn, StoryarnWeb.Gettext,
 # Disable Tesla deprecation warning (used by OAuth libraries)
 config :tesla, disable_deprecated_builder_warning: true
 
-# Configure Hammer rate limiting
-# Using ETS backend for simplicity (suitable for single-node deployments)
-config :hammer,
-  backend: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60, cleanup_interval_ms: 60_000 * 10]}
-
 # ExAws configuration for Cloudflare R2 (S3-compatible)
 # Credentials are configured in runtime.exs
 config :ex_aws,
@@ -109,7 +104,7 @@ config :ueberauth, Ueberauth,
   providers: [
     github: {Ueberauth.Strategy.Github, [default_scope: "user:email"]},
     google: {Ueberauth.Strategy.Google, [default_scope: "email profile"]},
-    discord: {Ueberauth.Strategy.Discord, [default_scope: "identify email"]}
+    discord: {StoryarnWeb.OAuth.DiscordStrategy, [default_scope: "identify email"]}
   ]
 
 # OAuth provider credentials (configured in runtime.exs for production)
@@ -121,7 +116,7 @@ config :ueberauth, Ueberauth.Strategy.Google.OAuth,
   client_id: System.get_env("GOOGLE_CLIENT_ID"),
   client_secret: System.get_env("GOOGLE_CLIENT_SECRET")
 
-config :ueberauth, Ueberauth.Strategy.Discord.OAuth,
+config :ueberauth, StoryarnWeb.OAuth.DiscordOAuth,
   client_id: System.get_env("DISCORD_CLIENT_ID"),
   client_secret: System.get_env("DISCORD_CLIENT_SECRET")
 

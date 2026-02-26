@@ -1,9 +1,9 @@
 defmodule Storyarn.RateLimiter do
   @moduledoc """
-  Rate limiting service using Hammer.
+  Rate limiting service using Hammer v7.
 
-  Uses ETS backend in development/test and Redis backend in production
-  for multi-node support. Configuration is in config.exs and runtime.exs.
+  Uses ETS backend by default and Redis backend in production when
+  REDIS_URL is configured (for multi-node support).
 
   ## Rate Limits
 
@@ -17,6 +17,10 @@ defmodule Storyarn.RateLimiter do
   Rate limiting can be disabled for testing:
 
       config :storyarn, Storyarn.RateLimiter, enabled: false
+
+  Backend selection (set in runtime.exs for prod):
+
+      config :storyarn, :rate_limiter_backend, :redis
 
   ## Usage
 
@@ -83,13 +87,38 @@ defmodule Storyarn.RateLimiter do
     check_rate("invitation:#{context}:#{context_id}:#{user_id}", window_ms, limit)
   end
 
+  @doc """
+  Returns the backend module to use for rate limiting.
+  """
+  def backend do
+    case Application.get_env(:storyarn, :rate_limiter_backend) do
+      :redis -> Storyarn.RateLimiter.RedisBackend
+      _ -> Storyarn.RateLimiter.ETSBackend
+    end
+  end
+
+  @doc """
+  Returns the child spec for the rate limiter backend.
+  Called from Application.start/2.
+  """
+  def child_spec_for_backend do
+    case Application.get_env(:storyarn, :rate_limiter_backend) do
+      :redis ->
+        redis_url = System.get_env("REDIS_URL") || "redis://localhost:6379"
+        {Storyarn.RateLimiter.RedisBackend, url: redis_url}
+
+      _ ->
+        {Storyarn.RateLimiter.ETSBackend, clean_period: :timer.minutes(10)}
+    end
+  end
+
   # Private
 
   defp check_rate(key, window_ms, limit) do
     if enabled?() do
-      case Hammer.check_rate(key, window_ms, limit) do
+      case backend().hit(key, window_ms, limit) do
         {:allow, _count} -> :ok
-        {:deny, _limit} -> {:error, :rate_limited}
+        {:deny, _retry_after_ms} -> {:error, :rate_limited}
       end
     else
       :ok

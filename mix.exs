@@ -57,7 +57,6 @@ defmodule Storyarn.MixProject do
       {:ueberauth, "~> 0.10"},
       {:ueberauth_github, "~> 0.8"},
       {:ueberauth_google, "~> 0.12"},
-      {:ueberauth_discord, "~> 0.6"},
       {:phoenix, "~> 1.8.1"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
@@ -77,8 +76,8 @@ defmodule Storyarn.MixProject do
       {:gettext, "~> 0.26 or ~> 1.0"},
       {:jason, "~> 1.2"},
       {:floki, "~> 0.36"},
-      {:hammer, "~> 6.2"},
-      {:hammer_backend_redis, "~> 6.1"},
+      {:hammer, "~> 7.0"},
+      {:hammer_backend_redis, "~> 7.0"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
 

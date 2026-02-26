@@ -28,18 +28,10 @@ if System.get_env("TRUST_PROXY") in ~w(true 1) do
 end
 
 # Rate limiting with Redis for production (multi-node support)
-# Development and test use ETS backend (configured in config.exs)
+# Development and test use ETS backend (started in application.ex)
 if config_env() == :prod do
-  if redis_url = System.get_env("REDIS_URL") do
-    config :hammer,
-      backend:
-        {Hammer.Backend.Redis,
-         [
-           expiry_ms: 60_000 * 60,
-           redix_config: [url: redis_url],
-           pool_size: 4,
-           pool_max_overflow: 2
-         ]}
+  if System.get_env("REDIS_URL") do
+    config :storyarn, :rate_limiter_backend, :redis
   end
 
   # Cloak encryption key for OAuth tokens
@@ -69,7 +61,7 @@ if config_env() == :prod do
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
   config :storyarn, Storyarn.Repo,
-    # ssl: true,
+    ssl: if(System.get_env("DATABASE_SSL") != "false", do: true, else: false),
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     # For machines with several cores, consider starting multiple pools of `pool_size`

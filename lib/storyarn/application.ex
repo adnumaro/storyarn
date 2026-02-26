@@ -13,6 +13,7 @@ defmodule Storyarn.Application do
       StoryarnWeb.Telemetry,
       Storyarn.Repo,
       Storyarn.Vault,
+      Storyarn.RateLimiter.child_spec_for_backend(),
       {DNSCluster, query: Application.get_env(:storyarn, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Storyarn.PubSub},
       Storyarn.Collaboration.Presence,
