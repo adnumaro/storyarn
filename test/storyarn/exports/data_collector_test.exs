@@ -237,5 +237,40 @@ defmodule Storyarn.Exports.DataCollectorTest do
 
       assert counts.sheets == 0
     end
+
+    test "returns zero for disabled flows, scenes, and screenplays", %{project: project} do
+      flow_fixture(project, %{name: "F1"})
+
+      opts = %ExportOptions{
+        format: :storyarn,
+        include_flows: false,
+        include_scenes: false,
+        include_screenplays: false
+      }
+
+      counts = DataCollector.count_entities(project.id, opts)
+
+      assert counts.flows == 0
+      assert counts.scenes == 0
+      assert counts.screenplays == 0
+    end
+  end
+
+  # ===========================================================================
+  # collect/3 with specific language filtering
+  # ===========================================================================
+
+  describe "collect/3 with language filtering" do
+    setup [:setup_project]
+
+    test "filters localization by specific language codes", %{project: project} do
+      # When languages is a list of codes (not :all), it uses that list
+      opts = %ExportOptions{format: :storyarn, languages: ["en", "es"]}
+      data = DataCollector.collect(project.id, opts)
+
+      assert is_map(data.localization)
+      assert is_list(data.localization.languages)
+      assert is_list(data.localization.strings)
+    end
   end
 end

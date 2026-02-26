@@ -475,18 +475,19 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
   # -- Metadata --
 
   defp put_metadata(result, project_data) do
+    flows = project_data.flows || []
+
+    {node_count, connection_count} =
+      Enum.reduce(flows, {0, 0}, fn f, {nc, cc} ->
+        {nc + length(f.nodes), cc + length(f.connections)}
+      end)
+
     Map.put(result, "metadata", %{
       "statistics" => %{
         "sheet_count" => length(project_data.sheets || []),
-        "flow_count" => length(project_data.flows || []),
-        "node_count" =>
-          (project_data.flows || [])
-          |> Enum.flat_map(fn f -> f.nodes end)
-          |> length(),
-        "connection_count" =>
-          (project_data.flows || [])
-          |> Enum.flat_map(fn f -> f.connections end)
-          |> length(),
+        "flow_count" => length(flows),
+        "node_count" => node_count,
+        "connection_count" => connection_count,
         "scene_count" => length(project_data.scenes || []),
         "screenplay_count" => length(project_data.screenplays || []),
         "asset_count" => length(Map.get(project_data, :assets, []))

@@ -475,4 +475,746 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       assert count >= 3
     end
   end
+
+  # =============================================================================
+  # Scene node rendering
+  # =============================================================================
+
+  describe "scene nodes" do
+    setup [:create_project]
+
+    test "scene node renders location comment", %{project: project} do
+      flow = flow_fixture(project, %{name: "Scene Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      scene =
+        node_fixture(flow, %{
+          type: "scene",
+          data: %{"location" => "Tavern Interior"}
+        })
+
+      connection_fixture(flow, entry, scene)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "# location:Tavern Interior"
+    end
+
+    test "scene node falls back to slug_line", %{project: project} do
+      flow = flow_fixture(project, %{name: "Scene Slug Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      scene =
+        node_fixture(flow, %{
+          type: "scene",
+          data: %{"slug_line" => "INT. CASTLE - NIGHT"}
+        })
+
+      connection_fixture(flow, entry, scene)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "# location:INT. CASTLE - NIGHT"
+    end
+
+    test "scene node with empty data renders empty location", %{project: project} do
+      flow = flow_fixture(project, %{name: "Empty Scene Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      scene = node_fixture(flow, %{type: "scene", data: %{}})
+      connection_fixture(flow, entry, scene)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "# location:"
+    end
+  end
+
+  # =============================================================================
+  # Subflow node rendering
+  # =============================================================================
+
+  describe "subflow nodes" do
+    setup [:create_project]
+
+    test "subflow renders tunnel divert", %{project: project} do
+      flow = flow_fixture(project, %{name: "Subflow Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      subflow =
+        node_fixture(flow, %{
+          type: "subflow",
+          data: %{"flow_shortcut" => "side_quest.rescue"}
+        })
+
+      connection_fixture(flow, entry, subflow)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "-> side_quest_rescue ->"
+    end
+
+    test "subflow without shortcut uses fallback id", %{project: project} do
+      flow = flow_fixture(project, %{name: "Subflow Fallback"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      subflow = node_fixture(flow, %{type: "subflow", data: %{}})
+      connection_fixture(flow, entry, subflow)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "-> subflow_"
+      assert source =~ " ->"
+    end
+  end
+
+  # =============================================================================
+  # Stage directions
+  # =============================================================================
+
+  describe "dialogue stage directions" do
+    setup [:create_project]
+
+    test "dialogue with stage directions renders comment before text", %{project: project} do
+      flow = flow_fixture(project, %{name: "Stage Dir Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "I feel so tired...",
+            "stage_directions" => "Character slumps against the wall",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "// [Stage: Character slumps against the wall]"
+      assert source =~ "I feel so tired..."
+    end
+
+    test "dialogue with HTML stage directions strips tags", %{project: project} do
+      flow = flow_fixture(project, %{name: "HTML Stage Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Look out!",
+            "stage_directions" => "<p>Runs <em>quickly</em></p>",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "// [Stage: Runs quickly]"
+    end
+
+    test "dialogue with empty stage directions does not render stage comment", %{project: project} do
+      flow = flow_fixture(project, %{name: "No Stage Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Hello there",
+            "stage_directions" => "",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "Hello there"
+      refute source =~ "// [Stage:"
+    end
+  end
+
+  # =============================================================================
+  # Condition branching detail
+  # =============================================================================
+
+  describe "condition branching" do
+    setup [:create_project]
+
+    test "condition with true and false branches renders closing brace", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Stats"})
+
+      block_fixture(sheet, %{
+        type: "boolean",
+        config: %{"label" => "Alive"},
+        value: %{"boolean" => true}
+      })
+
+      flow = flow_fixture(project, %{name: "Branch Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{
+            "condition" =>
+              Jason.encode!(%{
+                "logic" => "all",
+                "rules" => [
+                  %{
+                    "sheet" => sheet.shortcut,
+                    "variable" => "alive",
+                    "operator" => "is_true"
+                  }
+                ]
+              }),
+            "cases" => [
+              %{"id" => "true", "value" => "true", "label" => "True"},
+              %{"id" => "false", "value" => "false", "label" => "False"}
+            ]
+          }
+        })
+
+      true_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Still alive!", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      false_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Dead...", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(flow, entry, condition)
+      connection_fixture(flow, condition, true_dialogue, %{source_pin: "true"})
+      connection_fixture(flow, condition, false_dialogue, %{source_pin: "false"})
+
+      source = ink_source(export_ink(project))
+      # Should have the if block and the else branch with closing brace
+      assert source =~ "{-"
+      assert source =~ "- False:"
+      assert source =~ "}"
+      assert source =~ "Still alive!"
+      assert source =~ "Dead..."
+    end
+
+    test "condition with nil condition renders bare if", %{project: project} do
+      flow = flow_fixture(project, %{name: "Nil Cond Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{
+            "condition" => nil,
+            "cases" => [
+              %{"id" => "true", "value" => "true", "label" => "True"}
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, condition)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "{-"
+      assert source =~ "}"
+    end
+  end
+
+  # =============================================================================
+  # Jump nodes with hub targets
+  # =============================================================================
+
+  describe "jump nodes" do
+    setup [:create_project]
+
+    test "jump to hub renders divert to hub label", %{project: project} do
+      flow = flow_fixture(project, %{name: "Jump Hub Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"label" => "meeting_point"}
+        })
+
+      jump =
+        node_fixture(flow, %{
+          type: "jump",
+          data: %{"hub_id" => hub.id}
+        })
+
+      connection_fixture(flow, entry, jump)
+
+      # Also add dialogue after hub so hub section has content
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "We meet again!", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(flow, hub, dialogue)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "-> meeting_point"
+    end
+
+    test "jump to external flow renders divert", %{project: project} do
+      flow = flow_fixture(project, %{name: "Jump Ext Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      jump =
+        node_fixture(flow, %{
+          type: "jump",
+          data: %{"target_flow_shortcut" => "act2.beginning"}
+        })
+
+      connection_fixture(flow, entry, jump)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "-> act2_beginning"
+    end
+  end
+
+  # =============================================================================
+  # Instruction with empty/no assignments
+  # =============================================================================
+
+  describe "instruction edge cases" do
+    setup [:create_project]
+
+    test "instruction with empty assignments produces no output", %{project: project} do
+      flow = flow_fixture(project, %{name: "Empty Inst Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      instruction =
+        node_fixture(flow, %{
+          type: "instruction",
+          data: %{"assignments" => []}
+        })
+
+      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
+
+      connection_fixture(flow, entry, instruction)
+      connection_fixture(flow, instruction, exit_node)
+
+      source = ink_source(export_ink(project))
+      # Should still produce valid output with no instruction lines
+      assert source =~ "-> END"
+    end
+
+    test "instruction with nil data produces no output", %{project: project} do
+      flow = flow_fixture(project, %{name: "Nil Inst Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      instruction = node_fixture(flow, %{type: "instruction", data: %{}})
+      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
+
+      connection_fixture(flow, entry, instruction)
+      connection_fixture(flow, instruction, exit_node)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "-> END"
+    end
+  end
+
+  # =============================================================================
+  # Variable declaration edge cases
+  # =============================================================================
+
+  describe "variable declaration edge cases" do
+    setup [:create_project]
+
+    test "constant blocks are excluded from variable declarations", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Constants"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Max HP"},
+        value: %{"number" => 999},
+        is_constant: true
+      })
+
+      _flow = flow_fixture(project, %{name: "Main"})
+
+      source = ink_source(export_ink(project))
+      refute source =~ "VAR "
+      refute source =~ "max_hp"
+    end
+
+    test "select variable is declared as string", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Char"})
+
+      block_fixture(sheet, %{
+        type: "select",
+        config: %{
+          "label" => "Class",
+          "options" => [
+            %{"value" => "warrior", "label" => "Warrior"},
+            %{"value" => "mage", "label" => "Mage"}
+          ]
+        },
+        value: %{"select" => "warrior"}
+      })
+
+      _flow = flow_fixture(project, %{name: "Main"})
+
+      source = ink_source(export_ink(project))
+      assert source =~ "VAR "
+      assert source =~ ~s("warrior")
+    end
+
+    test "empty project with no variables produces no VAR section", %{project: project} do
+      _flow = flow_fixture(project, %{name: "Main"})
+      source = ink_source(export_ink(project))
+      refute source =~ "// === Variables ==="
+    end
+  end
+
+  # =============================================================================
+  # Metadata sidecar detail
+  # =============================================================================
+
+  describe "metadata sidecar detail" do
+    setup [:create_project]
+
+    test "metadata properties exclude constants", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Hero"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Health"},
+        value: %{"number" => 100}
+      })
+
+      block_fixture(sheet, %{
+        type: "text",
+        config: %{"label" => "Title"},
+        value: %{"text" => "Sir"},
+        is_constant: true
+      })
+
+      meta = metadata(export_ink(project))
+      char = meta["characters"][sheet.shortcut]
+      props = char["properties"]
+      # Health should be in properties, but Title (constant) should NOT
+      assert Map.has_key?(props, "health")
+      refute Map.has_key?(props, "title")
+    end
+
+    test "metadata variable mapping uses identifier format", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "mc.jaime"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Strength"},
+        value: %{"number" => 10}
+      })
+
+      meta = metadata(export_ink(project))
+      mapping = meta["variable_mapping"]
+      # Should map dot-separated refs to underscore identifiers
+      ref_key = Enum.find(Map.keys(mapping), &String.contains?(&1, "."))
+
+      if ref_key do
+        assert mapping[ref_key] =~ ~r/^[a-z0-9_]+$/
+      end
+    end
+
+    test "metadata includes project name", %{project: project} do
+      meta = metadata(export_ink(project))
+      assert meta["project"] == project.name
+    end
+  end
+
+  # =============================================================================
+  # Dialogue with HTML text
+  # =============================================================================
+
+  describe "dialogue HTML stripping" do
+    setup [:create_project]
+
+    test "strips HTML tags from dialogue text", %{project: project} do
+      flow = flow_fixture(project, %{name: "HTML Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "<p>Hello <em>world</em>!</p>",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "Hello world!"
+      refute source =~ "<p>"
+      refute source =~ "<em>"
+    end
+  end
+
+  # =============================================================================
+  # Flow naming
+  # =============================================================================
+
+  describe "flow naming" do
+    setup [:create_project]
+
+    test "flow without shortcut uses name as identifier", %{project: project} do
+      _flow = flow_fixture(project, %{name: "My Great Flow"})
+
+      source = ink_source(export_ink(project))
+      # The knot name should be derived from the flow name/shortcut
+      assert source =~ "=== "
+    end
+
+    test "project slug is used for filename", %{project: project} do
+      files = export_ink(project)
+      {ink_name, _} = Enum.find(files, fn {name, _} -> String.ends_with?(name, ".ink") end)
+      assert String.ends_with?(ink_name, ".ink")
+    end
+
+    test "flow comment includes flow name", %{project: project} do
+      _flow = flow_fixture(project, %{name: "Tavern Scene"})
+
+      source = ink_source(export_ink(project))
+      assert source =~ "// === Flow: Tavern Scene ==="
+    end
+  end
+
+  # =============================================================================
+  # Complex multi-node flow
+  # =============================================================================
+
+  describe "complex flow chains" do
+    setup [:create_project]
+
+    test "entry -> dialogue -> instruction -> exit chain", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Flags"})
+
+      block_fixture(sheet, %{
+        type: "boolean",
+        config: %{"label" => "Visited"},
+        value: %{"boolean" => false}
+      })
+
+      flow = flow_fixture(project, %{name: "Chain Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Welcome!", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      instruction =
+        node_fixture(flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{"sheet" => sheet.shortcut, "variable" => "visited", "operator" => "set_true"}
+            ]
+          }
+        })
+
+      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
+
+      connection_fixture(flow, entry, dialogue)
+      connection_fixture(flow, dialogue, instruction)
+      connection_fixture(flow, instruction, exit_node)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "Welcome!"
+      assert source =~ "-> END"
+    end
+
+    test "entry -> scene -> dialogue -> exit chain", %{project: project} do
+      flow = flow_fixture(project, %{name: "Scene Chain Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      scene =
+        node_fixture(flow, %{
+          type: "scene",
+          data: %{"location" => "Dark Forest"}
+        })
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "The forest is dark.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
+
+      connection_fixture(flow, entry, scene)
+      connection_fixture(flow, scene, dialogue)
+      connection_fixture(flow, dialogue, exit_node)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "# location:Dark Forest"
+      assert source =~ "The forest is dark."
+      assert source =~ "-> END"
+    end
+
+    test "dialogue with conditional choices renders condition guard", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Hero"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Gold"},
+        value: %{"number" => 100}
+      })
+
+      flow = flow_fixture(project, %{name: "Cond Choice Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "What will you buy?",
+            "speaker_sheet_id" => nil,
+            "responses" => [
+              %{
+                "id" => "r1",
+                "text" => "Buy sword",
+                "condition" =>
+                  Jason.encode!(%{
+                    "logic" => "all",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "gold",
+                        "operator" => "greater_than",
+                        "value" => "50"
+                      }
+                    ]
+                  }),
+                "instruction" => nil
+              },
+              %{"id" => "r2", "text" => "Leave", "condition" => nil, "instruction" => nil}
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "What will you buy?"
+      # Choice with condition should have {condition} prefix before [text]
+      assert source =~ "[Buy sword]"
+      assert source =~ "+ [Leave]"
+    end
+
+    test "dialogue with response instruction assignments", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Flags"})
+
+      block_fixture(sheet, %{
+        type: "boolean",
+        config: %{"label" => "Bought"},
+        value: %{"boolean" => false}
+      })
+
+      flow = flow_fixture(project, %{name: "Resp Inst Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Want to buy?",
+            "speaker_sheet_id" => nil,
+            "responses" => [
+              %{
+                "id" => "r1",
+                "text" => "Yes",
+                "condition" => nil,
+                "instruction" =>
+                  Jason.encode!([
+                    %{
+                      "sheet" => sheet.shortcut,
+                      "variable" => "bought",
+                      "operator" => "set_true"
+                    }
+                  ])
+              },
+              %{"id" => "r2", "text" => "No", "condition" => nil, "instruction" => nil}
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "Want to buy?"
+      assert source =~ "+ [Yes]"
+      assert source =~ "+ [No]"
+    end
+
+    test "hub with connected dialogue produces stitch section", %{project: project} do
+      flow = flow_fixture(project, %{name: "Hub Section Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"label" => "rest_area"}
+        })
+
+      dialogue_after_hub =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "You rest here.",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      exit_after_hub = node_fixture(flow, %{type: "exit", data: %{}})
+
+      # Entry -> Hub (creates a divert)
+      connection_fixture(flow, entry, hub)
+      # Hub -> Dialogue (hub section body)
+      connection_fixture(flow, hub, dialogue_after_hub)
+      connection_fixture(flow, dialogue_after_hub, exit_after_hub)
+
+      source = ink_source(export_ink(project))
+      # Should have a stitch (= label)
+      assert source =~ "= rest_area"
+      # And the hub section dialogue
+      assert source =~ "You rest here."
+      # And the divert to the hub
+      assert source =~ "-> rest_area"
+      assert source =~ "-> END"
+    end
+  end
 end

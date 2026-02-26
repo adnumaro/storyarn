@@ -6,14 +6,10 @@ defmodule Storyarn.Exports.Validator do
   and other issues that would cause problems in exported files.
   """
 
-  import Ecto.Query, warn: false
-
   alias Storyarn.Exports.ExportOptions
-  alias Storyarn.Repo
-
-  alias Storyarn.Flows.{Flow, FlowNode, VariableReference}
-  alias Storyarn.Localization.{LocalizedText, ProjectLanguage}
-  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Flows
+  alias Storyarn.Localization
+  alias Storyarn.Sheets
 
   defmodule ValidationResult do
     @moduledoc "Result of a project validation pass."
@@ -73,6 +69,62 @@ defmodule Storyarn.Exports.Validator do
     validate_project(project_id, %ExportOptions{format: :storyarn})
   end
 
+  @doc """
+  Validate and return preloaded data for reuse by DataCollector.
+
+  Returns `{%ValidationResult{}, %{flows: flows_data}}` so that the caller
+  can thread the already-loaded flows into the data collection step.
+  """
+  def validate_with_data(project_id, %ExportOptions{} = opts) do
+    flows_data = load_flows_data(project_id, opts)
+    sheets = load_sheets(project_id)
+
+    findings = run_checks_with_data(project_id, opts, flows_data, sheets)
+
+    errors = Enum.filter(findings, &(&1.level == :error))
+    warnings = Enum.filter(findings, &(&1.level == :warning))
+    info = Enum.filter(findings, &(&1.level == :info))
+
+    status =
+      cond do
+        errors != [] -> :errors
+        warnings != [] -> :warnings
+        true -> :passed
+      end
+
+    result = %ValidationResult{
+      status: status,
+      errors: errors,
+      warnings: warnings,
+      info: info,
+      statistics: %{
+        project_id: project_id,
+        total_findings: length(findings),
+        error_count: length(errors),
+        warning_count: length(warnings),
+        info_count: length(info)
+      }
+    }
+
+    {result, %{flows: flows_data}}
+  end
+
+  defp run_checks_with_data(project_id, opts, flows_data, sheets) do
+    checks = [
+      fn -> check_missing_entry(flows_data) end,
+      fn -> check_orphan_nodes(flows_data) end,
+      fn -> check_unreachable_nodes(flows_data) end,
+      fn -> check_empty_dialogue(flows_data) end,
+      fn -> check_missing_speakers(flows_data) end,
+      fn -> check_circular_subflows(flows_data) end,
+      fn -> check_broken_references(project_id, flows_data) end,
+      fn -> check_missing_translations(project_id, opts) end,
+      fn -> check_orphan_sheets(project_id, sheets) end
+    ]
+
+    Enum.flat_map(checks, fn check -> check.() end)
+  end
+
   # =============================================================================
   # Check runner
   # =============================================================================
@@ -102,21 +154,11 @@ defmodule Storyarn.Exports.Validator do
   # =============================================================================
 
   defp load_flows_data(project_id, _opts) do
-    active_nodes_query = from(n in FlowNode, where: is_nil(n.deleted_at))
-
-    from(f in Flow,
-      where: f.project_id == ^project_id and is_nil(f.deleted_at),
-      preload: [nodes: ^active_nodes_query, connections: []]
-    )
-    |> Repo.all()
+    Flows.list_flows_for_export(project_id)
   end
 
   defp load_sheets(project_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
-      select: %{id: s.id, name: s.name, shortcut: s.shortcut}
-    )
-    |> Repo.all()
+    Sheets.list_sheets_brief(project_id)
   end
 
   # =============================================================================
@@ -208,7 +250,7 @@ defmodule Storyarn.Exports.Validator do
       flow.nodes
       |> Enum.filter(fn node ->
         node.type == "dialogue" and
-          ((get_in(node.data, ["text"]) || "") |> strip_html() |> String.trim()) == ""
+          (get_in(node.data, ["text"]) || "") |> strip_html() |> String.trim() == ""
       end)
       |> Enum.map(fn node ->
         %{
@@ -232,7 +274,7 @@ defmodule Storyarn.Exports.Validator do
       flow.nodes
       |> Enum.filter(fn node ->
         node.type == "dialogue" and
-          (get_in(node.data, ["speaker_sheet_id"]) |> nil_or_empty?())
+          get_in(node.data, ["speaker_sheet_id"]) |> nil_or_empty?()
       end)
       |> Enum.map(fn node ->
         %{
@@ -295,7 +337,7 @@ defmodule Storyarn.Exports.Validator do
     jump_findings = check_broken_jump_refs(flows)
 
     # Check subflow nodes referencing deleted/non-existent flows
-    subflow_findings = check_broken_subflow_refs(project_id, flows)
+    subflow_findings = check_broken_subflow_refs(flows)
 
     # Check scene nodes referencing non-existent scenes
     scene_findings = check_broken_scene_refs(project_id, flows)
@@ -332,7 +374,7 @@ defmodule Storyarn.Exports.Validator do
     end)
   end
 
-  defp check_broken_subflow_refs(_project_id, flows) do
+  defp check_broken_subflow_refs(flows) do
     valid_flow_ids = MapSet.new(flows, & &1.id)
 
     Enum.flat_map(flows, fn flow ->
@@ -356,13 +398,7 @@ defmodule Storyarn.Exports.Validator do
   end
 
   defp check_broken_scene_refs(project_id, flows) do
-    valid_scene_ids =
-      from(s in Storyarn.Scenes.Scene,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at),
-        select: s.id
-      )
-      |> Repo.all()
-      |> MapSet.new()
+    valid_scene_ids = Flows.list_valid_scene_ids_in_project(project_id)
 
     Enum.flat_map(flows, fn flow ->
       flow.nodes
@@ -389,12 +425,7 @@ defmodule Storyarn.Exports.Validator do
   # =============================================================================
 
   defp check_missing_translations(project_id, _opts) do
-    languages =
-      from(l in ProjectLanguage,
-        where: l.project_id == ^project_id and l.is_source == false,
-        select: l.locale_code
-      )
-      |> Repo.all()
+    languages = Localization.list_target_locale_codes(project_id)
 
     if languages == [] do
       []
@@ -404,25 +435,8 @@ defmodule Storyarn.Exports.Validator do
   end
 
   defp do_check_missing_translations(project_id, languages) do
-    total_sources =
-      from(lt in LocalizedText,
-        where: lt.project_id == ^project_id,
-        select:
-          fragment("count(DISTINCT (?, ?, ?))", lt.source_type, lt.source_id, lt.source_field)
-      )
-      |> Repo.one() || 0
-
-    pending_by_locale =
-      from(lt in LocalizedText,
-        where:
-          lt.project_id == ^project_id and
-            lt.locale_code in ^languages and
-            lt.status in ["pending", "draft"],
-        group_by: lt.locale_code,
-        select: {lt.locale_code, count(lt.id)}
-      )
-      |> Repo.all()
-      |> Map.new()
+    total_sources = Localization.count_distinct_source_entries(project_id)
+    pending_by_locale = Localization.count_pending_by_locale(project_id, languages)
 
     languages
     |> Enum.filter(&(Map.get(pending_by_locale, &1, 0) > 0))
@@ -447,43 +461,15 @@ defmodule Storyarn.Exports.Validator do
 
   defp check_orphan_sheets(project_id, sheets) do
     # Find sheets referenced by flow nodes (speaker_sheet_id)
-    # speaker_sheet_id is stored as string in JSONB — only cast valid integers
-    referenced_sheet_ids =
-      from(n in FlowNode,
-        join: f in Flow,
-        on: n.flow_id == f.id,
-        where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at),
-        where: fragment("?->>'speaker_sheet_id' ~ '^[0-9]+$'", n.data),
-        select: fragment("(?->>'speaker_sheet_id')::integer", n.data)
-      )
-      |> Repo.all()
-      |> MapSet.new()
+    referenced_sheet_ids = Flows.list_speaker_sheet_ids(project_id)
 
     # Also check variable_references — blocks referenced by flow nodes
-    block_sheet_ids =
-      from(vr in VariableReference,
-        join: b in Storyarn.Sheets.Block,
-        on: vr.block_id == b.id,
-        join: s in Sheet,
-        on: b.sheet_id == s.id,
-        where: s.project_id == ^project_id,
-        select: s.id
-      )
-      |> Repo.all()
-      |> MapSet.new()
+    block_sheet_ids = Flows.list_variable_referenced_sheet_ids(project_id)
 
     all_referenced = MapSet.union(referenced_sheet_ids, block_sheet_ids)
 
     # Also check scene pin/zone sheet references
-    pin_sheet_ids =
-      from(p in Storyarn.Scenes.ScenePin,
-        join: s in Storyarn.Scenes.Scene,
-        on: p.scene_id == s.id,
-        where: s.project_id == ^project_id and not is_nil(p.sheet_id),
-        select: p.sheet_id
-      )
-      |> Repo.all()
-      |> MapSet.new()
+    pin_sheet_ids = Sheets.list_pin_referenced_sheet_ids(project_id)
 
     all_referenced = MapSet.union(all_referenced, pin_sheet_ids)
 

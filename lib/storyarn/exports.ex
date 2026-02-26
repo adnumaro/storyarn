@@ -43,9 +43,9 @@ defmodule Storyarn.Exports do
   """
   def export_project(project, opts \\ %{}) do
     with {:ok, options} <- ExportOptions.new(opts),
-         {:ok, options} <- maybe_validate(project, options),
+         {:ok, options, preloaded} <- maybe_validate(project, options),
          {:ok, serializer} <- SerializerRegistry.get(options.format) do
-      project_data = DataCollector.collect(project.id, options)
+      project_data = DataCollector.collect(project.id, options, preloaded)
       serializer.serialize(project_data, options)
     end
   end
@@ -67,12 +67,29 @@ defmodule Storyarn.Exports do
   """
   defdelegate list_formats(), to: SerializerRegistry, as: :list
 
+  @doc """
+  List all formats with display metadata (label, extension, supported sections).
+  """
+  defdelegate list_formats_with_metadata(), to: SerializerRegistry, as: :list_with_metadata
+
+  @doc """
+  Get the serializer module for a given format atom.
+  """
+  defdelegate get_serializer(format), to: SerializerRegistry, as: :get
+
+  @doc """
+  Return the list of valid export format atoms.
+  """
+  defdelegate valid_export_formats(), to: ExportOptions, as: :valid_formats
+
   defp maybe_validate(project, %ExportOptions{validate_before_export: true} = options) do
-    case Validator.validate_project(project.id, options) do
-      %{status: :errors} = result -> {:error, {:validation_failed, result}}
-      _result -> {:ok, options}
+    {result, preloaded} = Validator.validate_with_data(project.id, options)
+
+    case result do
+      %{status: :errors} -> {:error, {:validation_failed, result}}
+      _result -> {:ok, options, preloaded}
     end
   end
 
-  defp maybe_validate(_project, options), do: {:ok, options}
+  defp maybe_validate(_project, options), do: {:ok, options, %{}}
 end

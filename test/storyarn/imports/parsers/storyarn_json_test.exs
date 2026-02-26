@@ -59,6 +59,57 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
   end
 
   # =============================================================================
+  # Parse errors
+  # =============================================================================
+
+  describe "parse — error paths" do
+    test "returns error for invalid JSON" do
+      assert {:error, :invalid_json} = Imports.parse_file("not valid json {{{")
+    end
+
+    test "returns error for non-map JSON (array)" do
+      json = Jason.encode!([1, 2, 3])
+      assert {:error, :invalid_json_structure} = Imports.parse_file(json)
+    end
+
+    test "returns error for missing required keys" do
+      json = Jason.encode!(%{"foo" => "bar"})
+      assert {:error, {:missing_required_keys, missing}} = Imports.parse_file(json)
+      assert "storyarn_version" in missing
+      assert "export_version" in missing
+      assert "project" in missing
+    end
+  end
+
+  # =============================================================================
+  # Entity count validation
+  # =============================================================================
+
+  describe "execute — entity count validation" do
+    setup [:setup_projects]
+
+    test "rejects import with too many sheets", %{target: target} do
+      # Build data that exceeds the sheets limit (1000)
+      sheets = Enum.map(1..1001, fn i -> %{"id" => i, "name" => "Sheet #{i}"} end)
+
+      data = %{
+        "storyarn_version" => "1.0.0",
+        "export_version" => "1.0.0",
+        "project" => %{},
+        "sheets" => sheets,
+        "flows" => [],
+        "scenes" => [],
+        "screenplays" => []
+      }
+
+      assert {:error, {:entity_limits_exceeded, details}} = Imports.execute(target, data)
+      assert Map.has_key?(details, :sheets)
+      assert details.sheets.count == 1001
+      assert details.sheets.limit == 1000
+    end
+  end
+
+  # =============================================================================
   # Preview
   # =============================================================================
 

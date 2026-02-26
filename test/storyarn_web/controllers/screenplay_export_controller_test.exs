@@ -115,5 +115,29 @@ defmodule StoryarnWeb.ScreenplayExportControllerTest do
       [disposition] = get_resp_header(conn, "content-disposition")
       assert disposition =~ "my-great-script.fountain"
     end
+
+    test "filename defaults to 'screenplay' when name slugifies to empty string", %{
+      conn: conn,
+      project: project
+    } do
+      # Create screenplay with a name that becomes empty after slugification
+      screenplay = screenplay_fixture(project, %{name: "!!!"})
+
+      # Manually update the name to special chars only (bypassing validation)
+      import Ecto.Query
+      screenplay_id = screenplay.id
+
+      Storyarn.Repo.update_all(
+        from(s in Storyarn.Screenplays.Screenplay, where: s.id == ^screenplay_id),
+        set: [name: "!!!"]
+      )
+
+      element_fixture(screenplay, %{type: "action", content: "Test."})
+
+      conn = get(conn, export_url(project, screenplay))
+
+      [disposition] = get_resp_header(conn, "content-disposition")
+      assert disposition =~ "screenplay.fountain"
+    end
   end
 end

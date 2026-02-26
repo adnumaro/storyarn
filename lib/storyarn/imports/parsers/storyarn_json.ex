@@ -8,17 +8,14 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   - Import execution with ID remapping and conflict resolution
   """
 
-  import Ecto.Query, warn: false
-
+  alias Storyarn.Assets
+  alias Storyarn.Flows
+  alias Storyarn.Localization
   alias Storyarn.Repo
+  alias Storyarn.Scenes
+  alias Storyarn.Screenplays
   alias Storyarn.Shared.MapUtils
-
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Flows.{Flow, FlowConnection, FlowNode}
-  alias Storyarn.Localization.{GlossaryEntry, LocalizedText, ProjectLanguage}
-  alias Storyarn.Scenes.{Scene, SceneAnnotation, SceneConnection, SceneLayer, ScenePin, SceneZone}
-  alias Storyarn.Screenplays.{Screenplay, ScreenplayElement}
-  alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
+  alias Storyarn.Sheets
 
   @required_top_keys ~w(storyarn_version export_version project)
 
@@ -103,13 +100,13 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   defp detect_conflicts(project_id, data) do
     conflicts = %{}
 
-    conflicts = detect_shortcut_conflicts(conflicts, project_id, Sheet, data["sheets"] || [])
-    conflicts = detect_shortcut_conflicts(conflicts, project_id, Flow, data["flows"] || [])
-    conflicts = detect_shortcut_conflicts(conflicts, project_id, Scene, data["scenes"] || [])
-    detect_shortcut_conflicts(conflicts, project_id, Screenplay, data["screenplays"] || [])
+    conflicts = detect_shortcut_conflicts(conflicts, project_id, :sheet, data["sheets"] || [])
+    conflicts = detect_shortcut_conflicts(conflicts, project_id, :flow, data["flows"] || [])
+    conflicts = detect_shortcut_conflicts(conflicts, project_id, :scene, data["scenes"] || [])
+    detect_shortcut_conflicts(conflicts, project_id, :screenplay, data["screenplays"] || [])
   end
 
-  defp detect_shortcut_conflicts(conflicts, project_id, schema, entities) do
+  defp detect_shortcut_conflicts(conflicts, project_id, entity_type, entities) do
     shortcuts =
       entities
       |> Enum.map(& &1["shortcut"])
@@ -118,22 +115,27 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     if shortcuts == [] do
       conflicts
     else
-      existing =
-        from(e in schema,
-          where:
-            e.project_id == ^project_id and e.shortcut in ^shortcuts and is_nil(e.deleted_at),
-          select: e.shortcut
-        )
-        |> Repo.all()
+      existing = detect_conflicts_for_type(entity_type, project_id, shortcuts)
 
       if existing == [] do
         conflicts
       else
-        key = schema |> Module.split() |> List.last() |> String.downcase() |> String.to_atom()
-        Map.put(conflicts, key, existing)
+        Map.put(conflicts, entity_type, existing)
       end
     end
   end
+
+  defp detect_conflicts_for_type(:sheet, project_id, shortcuts),
+    do: Sheets.detect_sheet_shortcut_conflicts(project_id, shortcuts)
+
+  defp detect_conflicts_for_type(:flow, project_id, shortcuts),
+    do: Flows.detect_flow_shortcut_conflicts(project_id, shortcuts)
+
+  defp detect_conflicts_for_type(:scene, project_id, shortcuts),
+    do: Scenes.detect_scene_shortcut_conflicts(project_id, shortcuts)
+
+  defp detect_conflicts_for_type(:screenplay, project_id, shortcuts),
+    do: Screenplays.detect_screenplay_shortcut_conflicts(project_id, shortcuts)
 
   # =============================================================================
   # Execute
@@ -251,20 +253,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   defp preload_existing_shortcuts(project_id) do
     %{
-      sheet: load_shortcuts(Sheet, project_id),
-      flow: load_shortcuts(Flow, project_id),
-      scene: load_shortcuts(Scene, project_id),
-      screenplay: load_shortcuts(Screenplay, project_id)
+      sheet: Sheets.list_sheet_shortcuts(project_id),
+      flow: Flows.list_flow_shortcuts(project_id),
+      scene: Scenes.list_scene_shortcuts(project_id),
+      screenplay: Screenplays.list_screenplay_shortcuts(project_id)
     }
-  end
-
-  defp load_shortcuts(schema, project_id) do
-    from(e in schema,
-      where: e.project_id == ^project_id and is_nil(e.deleted_at),
-      select: e.shortcut
-    )
-    |> Repo.all()
-    |> MapSet.new()
   end
 
   # =============================================================================
@@ -284,8 +277,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "metadata" => item["metadata"] || %{}
       }
 
-      changeset = Asset.create_changeset(%Asset{project_id: project_id}, attrs)
-      asset = insert_or_rollback!(changeset, {:asset, item["filename"]})
+      asset =
+        facade_insert_or_rollback!(
+          Assets.import_asset(project_id, attrs),
+          {:asset, item["filename"]}
+        )
 
       {Map.put(map, {:asset, item["id"]}, asset.id), [asset | results]}
     end)
@@ -311,7 +307,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
                sheet_data["shortcut"],
                strategy,
                project.id,
-               Sheet,
+               :sheet,
                existing_shortcuts
              ) do
           :skip ->
@@ -329,8 +325,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
               "hidden_inherited_block_ids" => []
             }
 
-            changeset = Sheet.create_changeset(%Sheet{project_id: project.id}, attrs)
-            sheet = insert_or_rollback!(changeset, {:sheet, sheet_data["name"]})
+            sheet =
+              facade_insert_or_rollback!(
+                Sheets.import_sheet(project.id, attrs),
+                {:sheet, sheet_data["name"]}
+              )
 
             map = Map.put(map, {:sheet, sheet_data["id"]}, sheet.id)
 
@@ -351,8 +350,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     Enum.reduce(blocks, {id_map, []}, fn block_data, {map, results} ->
       attrs = build_block_attrs(block_data)
 
-      changeset = Block.create_changeset(%Block{sheet_id: sheet_id}, attrs)
-      block = insert_or_rollback!(changeset, {:block, block_data["type"]})
+      block =
+        facade_insert_or_rollback!(
+          Sheets.import_block(sheet_id, attrs),
+          {:block, block_data["type"]}
+        )
 
       map = Map.put(map, {:block, block_data["id"]}, block.id)
       map = maybe_import_table_data(map, block, block_data)
@@ -397,8 +399,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "config" => col_data["config"] || %{}
       }
 
-      changeset = TableColumn.create_changeset(%TableColumn{block_id: block_id}, attrs)
-      col = insert_or_rollback!(changeset, {:table_column, col_data["name"]})
+      col =
+        facade_insert_or_rollback!(
+          Sheets.import_table_column(block_id, attrs),
+          {:table_column, col_data["name"]}
+        )
 
       {Map.put(map, {:table_column, col_data["id"]}, col.id), [col | results]}
     end)
@@ -412,8 +417,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "cells" => row_data["cells"] || %{}
       }
 
-      changeset = TableRow.create_changeset(%TableRow{block_id: block_id}, attrs)
-      row = insert_or_rollback!(changeset, {:table_row, row_data["name"]})
+      row =
+        facade_insert_or_rollback!(
+          Sheets.import_table_row(block_id, attrs),
+          {:table_row, row_data["name"]}
+        )
 
       {Map.put(map, {:table_row, row_data["id"]}, row.id), [row | results]}
     end)
@@ -439,7 +447,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
                flow_data["shortcut"],
                strategy,
                project.id,
-               Flow,
+               :flow,
                existing_shortcuts
              ) do
           :skip ->
@@ -468,8 +476,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       "scene_id" => remap_id(map, :scene, flow_data["scene_id"])
     }
 
-    changeset = Flow.create_changeset(%Flow{project_id: project.id}, attrs)
-    flow = insert_or_rollback!(changeset, {:flow, flow_data["name"]})
+    flow =
+      facade_insert_or_rollback!(Flows.import_flow(project.id, attrs), {:flow, flow_data["name"]})
 
     map = Map.put(map, {:flow, flow_data["id"]}, flow.id)
     {map, _} = import_nodes(flow.id, flow_data["nodes"] || [], map)
@@ -488,8 +496,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "data" => clean_node_data(node_data["data"])
       }
 
-      changeset = FlowNode.create_changeset(%FlowNode{flow_id: flow_id}, attrs)
-      node = insert_or_rollback!(changeset, {:node, node_data["type"]})
+      node =
+        facade_insert_or_rollback!(Flows.import_node(flow_id, attrs), {:node, node_data["type"]})
 
       {Map.put(map, {:node, node_data["id"]}, node.id), [node | results]}
     end)
@@ -536,15 +544,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         end
       end)
 
-    # Batch insert in chunks of 500
-    results =
-      valid_attrs
-      |> Enum.reverse()
-      |> Enum.chunk_every(500)
-      |> Enum.flat_map(fn chunk ->
-        {_count, inserted} = Repo.insert_all(FlowConnection, chunk, returning: [:id])
-        inserted
-      end)
+    results = Flows.bulk_import_connections(Enum.reverse(valid_attrs))
 
     {id_map, results}
   end
@@ -572,7 +572,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
                scene_data["shortcut"],
                strategy,
                project.id,
-               Scene,
+               :scene,
                existing_shortcuts
              ) do
           :skip ->
@@ -605,8 +605,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       "scale_value" => scene_data["scale_value"]
     }
 
-    changeset = Scene.create_changeset(%Scene{project_id: project.id}, attrs)
-    scene = insert_or_rollback!(changeset, {:scene, scene_data["name"]})
+    scene =
+      facade_insert_or_rollback!(
+        Scenes.import_scene(project.id, attrs),
+        {:scene, scene_data["name"]}
+      )
 
     map = Map.put(map, {:scene, scene_data["id"]}, scene.id)
     {map, _} = import_layers(scene.id, scene_data["layers"] || [], map)
@@ -630,8 +633,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "fog_opacity" => layer_data["fog_opacity"]
       }
 
-      changeset = SceneLayer.create_changeset(%SceneLayer{scene_id: scene_id}, attrs)
-      layer = insert_or_rollback!(changeset, {:layer, layer_data["name"]})
+      layer =
+        facade_insert_or_rollback!(
+          Scenes.import_layer(scene_id, attrs),
+          {:layer, layer_data["name"]}
+        )
 
       {Map.put(map, {:layer, layer_data["id"]}, layer.id), [layer | results]}
     end)
@@ -662,8 +668,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "condition_effect" => pin_data["condition_effect"]
       }
 
-      changeset = ScenePin.create_changeset(%ScenePin{scene_id: scene_id}, attrs)
-      pin = insert_or_rollback!(changeset, {:pin, pin_data["label"]})
+      pin =
+        facade_insert_or_rollback!(Scenes.import_pin(scene_id, attrs), {:pin, pin_data["label"]})
 
       {Map.put(map, {:pin, pin_data["id"]}, pin.id), [pin | results]}
     end)
@@ -691,8 +697,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "condition_effect" => zone_data["condition_effect"]
       }
 
-      changeset = SceneZone.create_changeset(%SceneZone{scene_id: scene_id}, attrs)
-      zone = insert_or_rollback!(changeset, {:zone, zone_data["name"]})
+      zone =
+        facade_insert_or_rollback!(
+          Scenes.import_zone(scene_id, attrs),
+          {:zone, zone_data["name"]}
+        )
 
       {Map.put(map, {:zone, zone_data["id"]}, zone.id), [zone | results]}
     end)
@@ -729,15 +738,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         end
       end)
 
-    # Batch insert in chunks of 500
-    results =
-      valid_attrs
-      |> Enum.reverse()
-      |> Enum.chunk_every(500)
-      |> Enum.flat_map(fn chunk ->
-        {_count, inserted} = Repo.insert_all(SceneConnection, chunk, returning: [:id])
-        inserted
-      end)
+    results = Scenes.bulk_import_scene_connections(Enum.reverse(valid_attrs))
 
     {id_map, results}
   end
@@ -765,15 +766,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         [attrs | acc]
       end)
 
-    # Batch insert in chunks of 500
-    results =
-      valid_attrs
-      |> Enum.reverse()
-      |> Enum.chunk_every(500)
-      |> Enum.flat_map(fn chunk ->
-        {_count, inserted} = Repo.insert_all(SceneAnnotation, chunk, returning: [:id])
-        inserted
-      end)
+    results = Scenes.bulk_import_scene_annotations(Enum.reverse(valid_attrs))
 
     {id_map, results}
   end
@@ -797,7 +790,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
                sp_data["shortcut"],
                strategy,
                project.id,
-               Screenplay,
+               :screenplay,
                existing_shortcuts
              ) do
           :skip ->
@@ -823,13 +816,17 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       "position" => sp_data["position"] || 0
     }
 
-    changeset =
-      Screenplay.create_changeset(%Screenplay{project_id: project.id}, attrs)
-      |> maybe_put_change(:linked_flow_id, remap_id(map, :flow, sp_data["linked_flow_id"]))
-      |> maybe_put_change(:draft_label, sp_data["draft_label"])
-      |> maybe_put_change(:draft_status, sp_data["draft_status"] || "active")
+    extra_changes =
+      %{}
+      |> maybe_put_extra(:linked_flow_id, remap_id(map, :flow, sp_data["linked_flow_id"]))
+      |> maybe_put_extra(:draft_label, sp_data["draft_label"])
+      |> maybe_put_extra(:draft_status, sp_data["draft_status"] || "active")
 
-    sp = insert_or_rollback!(changeset, {:screenplay, sp_data["name"]})
+    sp =
+      facade_insert_or_rollback!(
+        Screenplays.import_screenplay(project.id, attrs, extra_changes),
+        {:screenplay, sp_data["name"]}
+      )
 
     map = Map.put(map, {:screenplay, sp_data["id"]}, sp.id)
     {map, _} = import_elements(sp.id, sp_data["elements"] || [], map)
@@ -845,7 +842,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         |> maybe_remap_ref(:draft_of_id, id_map, :screenplay, sp_data["draft_of_id"])
 
       if changes != %{} do
-        sp |> Ecto.Changeset.change(changes) |> Repo.update!()
+        Screenplays.link_screenplay_import_refs(sp, changes)
       end
     end
   end
@@ -861,15 +858,14 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "branch" => el_data["branch"]
       }
 
-      # Two-step: create_changeset doesn't cast linked_node_id
-      changeset =
-        ScreenplayElement.create_changeset(
-          %ScreenplayElement{screenplay_id: screenplay_id},
-          attrs
-        )
-        |> maybe_put_change(:linked_node_id, remap_id(map, :node, el_data["linked_node_id"]))
+      extra_changes =
+        maybe_put_extra(%{}, :linked_node_id, remap_id(map, :node, el_data["linked_node_id"]))
 
-      el = insert_or_rollback!(changeset, {:element, el_data["type"]})
+      el =
+        facade_insert_or_rollback!(
+          Screenplays.import_element(screenplay_id, attrs, extra_changes),
+          {:element, el_data["type"]}
+        )
 
       {Map.put(map, {:element, el_data["id"]}, el.id), [el | results]}
     end)
@@ -906,10 +902,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "position" => lang_data["position"] || 0
       }
 
-      changeset =
-        ProjectLanguage.create_changeset(%ProjectLanguage{project_id: project_id}, attrs)
-
-      lang = insert_or_rollback!(changeset, {:language, lang_data["locale_code"]})
+      lang =
+        facade_insert_or_rollback!(
+          Localization.import_language(project_id, attrs),
+          {:language, lang_data["locale_code"]}
+        )
 
       {Map.put(map, {:language, lang_data["locale_code"]}, lang.id), [lang | results]}
     end)
@@ -955,13 +952,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         end)
       end)
 
-    # Batch insert in chunks of 500 with on_conflict: :nothing for duplicates
-    valid_attrs
-    |> Enum.reverse()
-    |> Enum.chunk_every(500)
-    |> Enum.each(fn chunk ->
-      Repo.insert_all(LocalizedText, chunk, on_conflict: :nothing)
-    end)
+    Localization.bulk_import_texts(Enum.reverse(valid_attrs))
   end
 
   defp import_glossary(project_id, glossary_entries) do
@@ -989,13 +980,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         end)
       end)
 
-    # Batch insert in chunks of 500
-    valid_attrs
-    |> Enum.reverse()
-    |> Enum.chunk_every(500)
-    |> Enum.each(fn chunk ->
-      Repo.insert_all(GlossaryEntry, chunk)
-    end)
+    Localization.bulk_import_glossary_entries(Enum.reverse(valid_attrs))
   end
 
   # =============================================================================
@@ -1033,11 +1018,10 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     if type, do: Map.get(map, {type, target_id}), else: nil
   end
 
-  defp resolve_shortcut(nil, _strategy, _project_id, _schema, _existing_shortcuts), do: nil
+  defp resolve_shortcut(nil, _strategy, _project_id, _entity_type, _existing_shortcuts), do: nil
 
-  defp resolve_shortcut(shortcut, strategy, project_id, schema, existing_shortcuts) do
-    key = schema_shortcut_key(schema)
-    existing_set = Map.fetch!(existing_shortcuts, key)
+  defp resolve_shortcut(shortcut, strategy, project_id, entity_type, existing_shortcuts) do
+    existing_set = Map.fetch!(existing_shortcuts, entity_type)
     exists? = MapSet.member?(existing_set, shortcut)
 
     cond do
@@ -1048,7 +1032,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         :skip
 
       strategy == :overwrite ->
-        overwrite_existing(shortcut, project_id, schema)
+        overwrite_existing(shortcut, project_id, entity_type)
 
       strategy == :rename ->
         suffix = :crypto.strong_rand_bytes(4) |> Base.encode16(case: :lower)
@@ -1059,34 +1043,33 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     end
   end
 
-  defp schema_shortcut_key(Sheet), do: :sheet
-  defp schema_shortcut_key(Flow), do: :flow
-  defp schema_shortcut_key(Scene), do: :scene
-  defp schema_shortcut_key(Screenplay), do: :screenplay
-
-  defp overwrite_existing(shortcut, project_id, schema) do
-    now = Storyarn.Shared.TimeHelpers.now()
-
-    from(e in schema,
-      where: e.project_id == ^project_id and e.shortcut == ^shortcut and is_nil(e.deleted_at)
-    )
-    |> Repo.update_all(set: [deleted_at: now])
-
+  defp overwrite_existing(shortcut, project_id, :sheet) do
+    Sheets.soft_delete_sheet_by_shortcut(project_id, shortcut)
     shortcut
   end
 
-  defp maybe_put_change(changeset, _field, nil), do: changeset
-
-  defp maybe_put_change(changeset, field, value) do
-    Ecto.Changeset.put_change(changeset, field, value)
+  defp overwrite_existing(shortcut, project_id, :flow) do
+    Flows.soft_delete_flow_by_shortcut(project_id, shortcut)
+    shortcut
   end
 
-  defp insert_or_rollback!(changeset, context, opts \\ []) do
-    case Repo.insert(changeset, opts) do
-      {:ok, record} -> record
-      {:error, changeset} -> Repo.rollback({:import_failed, context, changeset})
-    end
+  defp overwrite_existing(shortcut, project_id, :scene) do
+    Scenes.soft_delete_scene_by_shortcut(project_id, shortcut)
+    shortcut
   end
+
+  defp overwrite_existing(shortcut, project_id, :screenplay) do
+    Screenplays.soft_delete_screenplay_by_shortcut(project_id, shortcut)
+    shortcut
+  end
+
+  defp maybe_put_extra(map, _key, nil), do: map
+  defp maybe_put_extra(map, key, value), do: Map.put(map, key, value)
+
+  defp facade_insert_or_rollback!({:ok, record}, _context), do: record
+
+  defp facade_insert_or_rollback!({:error, changeset}, context),
+    do: Repo.rollback({:import_failed, context, changeset})
 
   defp regenerate_asset_key(filename) do
     uuid = Ecto.UUID.generate()
@@ -1094,15 +1077,24 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     "imports/#{uuid}/#{sanitized}"
   end
 
-  defp link_parent_ids(records, id_map, type) do
+  defp link_parent_ids(records, id_map, entity_type) do
     for {entity, data} <- records,
         parent_old_id = data["parent_id"],
         not is_nil(parent_old_id),
-        new_parent_id = Map.get(id_map, {type, parent_old_id}),
+        new_parent_id = Map.get(id_map, {entity_type, parent_old_id}),
         not is_nil(new_parent_id) do
-      entity |> Ecto.Changeset.change(%{parent_id: new_parent_id}) |> Repo.update!()
+      link_import_parent(entity_type, entity, new_parent_id)
     end
   end
+
+  defp link_import_parent(:sheet, entity, parent_id),
+    do: Sheets.link_sheet_import_parent(entity, parent_id)
+
+  defp link_import_parent(:flow, entity, parent_id),
+    do: Flows.link_flow_import_parent(entity, parent_id)
+
+  defp link_import_parent(:scene, entity, parent_id),
+    do: Scenes.link_scene_import_parent(entity, parent_id)
 
   defp maybe_remap_ref(changes, field, id_map, type, nil) when is_map(changes) do
     _ = {field, id_map, type}
