@@ -6,9 +6,9 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
 
   use ExUnit.Case, async: true
 
-  alias StoryarnWeb.FlowLive.Player.PlayerEngine
   alias Storyarn.Flows.Evaluator.Engine
   alias Storyarn.Flows.Evaluator.State
+  alias StoryarnWeb.FlowLive.Player.PlayerEngine
 
   # ===========================================================================
   # Test helpers — build pure in-memory flow data (no DB required)

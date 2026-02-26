@@ -394,8 +394,7 @@ defmodule Storyarn.Flows.InstructionTest do
   describe "all_operators/0" do
     test "returns a non-empty list of unique operators" do
       ops = Instruction.all_operators()
-      assert is_list(ops)
-      assert length(ops) > 0
+      assert [_ | _] = ops
       assert length(ops) == length(Enum.uniq(ops))
     end
   end

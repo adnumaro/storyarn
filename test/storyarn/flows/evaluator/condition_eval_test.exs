@@ -821,7 +821,7 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
 
   describe "parse_date catch-all" do
     test "non-string non-date value in date comparison returns false" do
-      variables = %{"world.date" => var(12345, "date")}
+      variables = %{"world.date" => var(12_345, "date")}
       condition = make_condition("all", [make_rule("world", "date", "equals", "2024-06-15")])
       assert {false, _} = ConditionEval.evaluate(condition, variables)
     end

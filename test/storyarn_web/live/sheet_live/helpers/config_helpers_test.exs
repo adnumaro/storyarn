@@ -411,7 +411,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ConfigHelpersTest do
       {:noreply, updated} = ConfigHelpers.toggle_constant(socket)
 
       assert is_list(updated.assigns.blocks)
-      assert length(updated.assigns.blocks) >= 1
+      assert updated.assigns.blocks != []
     end
   end
 

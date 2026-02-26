@@ -157,7 +157,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockValueHelpersTest do
                BlockValueHelpers.toggle_multi_select_value(socket, block.id, "fire")
 
       assert is_list(blocks)
-      assert length(blocks) >= 1
+      assert blocks != []
     end
   end
 

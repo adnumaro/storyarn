@@ -646,7 +646,7 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       options = SheetQueries.list_reference_options(project.id)
 
       # Both should have shortcuts since they auto-generate
-      assert length(options) >= 1
+      assert options != []
       shortcuts = Enum.map(options, & &1["key"])
       assert "test" in shortcuts
     end
@@ -899,7 +899,7 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
 
       instances = SheetQueries.list_inherited_instances(parent_block.id)
 
-      assert length(instances) >= 1
+      assert instances != []
       assert Enum.all?(instances, &(&1.inherited_from_block_id == parent_block.id))
     end
 

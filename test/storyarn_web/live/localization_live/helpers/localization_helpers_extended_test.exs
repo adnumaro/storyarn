@@ -5,8 +5,8 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpersExtendedTest d
   import Storyarn.ProjectsFixtures
   import Storyarn.LocalizationFixtures
 
-  alias StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
   alias Storyarn.{Localization, Repo}
+  alias StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
 
   # ── strip_html/1 ────────────────────────────────────────────────
 
@@ -73,7 +73,7 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpersExtendedTest d
     test "returns all options when no languages exist", %{project: _project} do
       assigns = %{languages: []}
       options = LocalizationHelpers.language_picker_options(assigns)
-      assert length(options) > 0
+      assert options != []
     end
   end
 

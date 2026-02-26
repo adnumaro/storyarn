@@ -713,8 +713,8 @@ defmodule Storyarn.Scenes.SceneCrud do
   Used by the Sheets.ReferenceTracker to avoid cross-context schema queries.
   """
   def query_scene_zone_backlinks(target_type, target_id, project_id) do
-    alias Storyarn.Sheets.EntityReference
     alias Storyarn.Scenes.SceneZone
+    alias Storyarn.Sheets.EntityReference
 
     from(r in EntityReference,
       join: z in SceneZone,

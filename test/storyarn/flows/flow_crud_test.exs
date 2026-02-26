@@ -101,7 +101,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       flow_fixture(project, %{name: "My Test Flow"})
 
       results = Flows.search_flows(project.id, "")
-      assert length(results) >= 1
+      assert results != []
     end
 
     test "searches by name" do
@@ -178,7 +178,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       %{project: project} = create_project_and_flow()
 
       results = Flows.search_flows_deep(project.id, "")
-      assert length(results) >= 1
+      assert results != []
     end
 
     test "searches flow names" do
@@ -195,7 +195,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       node_fixture(flow, %{type: "dialogue", data: %{"text" => "UniqueNodeDialogue999"}})
 
       results = Flows.search_flows_deep(project.id, "UniqueNodeDialogue999")
-      assert length(results) >= 1
+      assert results != []
       assert Enum.any?(results, &(&1.id == flow.id))
     end
 
@@ -645,7 +645,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
       %{project: project, flow: flow} = create_project_and_flow()
 
       results = Flows.list_flows_for_export(project.id)
-      assert length(results) >= 1
+      assert results != []
 
       exported = Enum.find(results, &(&1.id == flow.id))
       assert is_list(exported.nodes)

@@ -128,7 +128,7 @@ defmodule StoryarnWeb.FlowLive.FormTest do
       # The form should notify the parent which triggers a redirect
       # Verify the flow was created in the database
       flows = Flows.list_flows(project.id)
-      assert length(flows) >= 1
+      assert flows != []
       chapter_flow = Enum.find(flows, &(&1.name == "Chapter One"))
       assert chapter_flow
       assert chapter_flow.description == "The first chapter"

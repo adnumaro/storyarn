@@ -798,7 +798,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlersTest do
 
       # Undo pin 1 creation
       render_hook(view, "undo", %{})
-      assert length(Scenes.list_pins(ctx.scene.id)) == 0
+      assert Scenes.list_pins(ctx.scene.id) == []
 
       # Redo pin 1 creation
       render_hook(view, "redo", %{})

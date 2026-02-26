@@ -3,26 +3,25 @@ defmodule Storyarn.Assets.Storage.LocalTest do
 
   alias Storyarn.Assets.Storage.Local
 
-  @test_dir "test/tmp/uploads"
-
   setup do
-    # Create a unique subdirectory for each test to avoid conflicts
-    test_key = "test_#{System.unique_integer([:positive])}/file.txt"
+    # Each test gets its own unique directory to avoid async race conditions
+    unique_id = System.unique_integer([:positive])
+    test_dir = "test/tmp/uploads_#{unique_id}"
+    test_key = "test_#{unique_id}/file.txt"
 
-    # Configure local storage for test
     original_config = Application.get_env(:storyarn, :storage, [])
 
     Application.put_env(:storyarn, :storage,
-      upload_dir: @test_dir,
+      upload_dir: test_dir,
       public_path: "/test-uploads"
     )
 
     on_exit(fn ->
       Application.put_env(:storyarn, :storage, original_config)
-      File.rm_rf!(@test_dir)
+      File.rm_rf(test_dir)
     end)
 
-    %{test_key: test_key}
+    %{test_key: test_key, test_dir: test_dir}
   end
 
   # =============================================================================
@@ -30,32 +29,32 @@ defmodule Storyarn.Assets.Storage.LocalTest do
   # =============================================================================
 
   describe "upload/3" do
-    test "writes file to disk and returns URL", %{test_key: key} do
+    test "writes file to disk and returns URL", %{test_key: key, test_dir: test_dir} do
       data = "Hello, World!"
       assert {:ok, url} = Local.upload(key, data, "text/plain")
       assert url == "/test-uploads/#{key}"
 
       # Verify file was written
-      path = Path.join(@test_dir, key)
+      path = Path.join(test_dir, key)
       assert File.exists?(path)
       assert File.read!(path) == data
     end
 
-    test "creates intermediate directories", %{test_key: _key} do
+    test "creates intermediate directories", %{test_dir: test_dir} do
       nested_key = "deep/nested/dir/file.txt"
       assert {:ok, _url} = Local.upload(nested_key, "content", "text/plain")
 
-      path = Path.join(@test_dir, nested_key)
+      path = Path.join(test_dir, nested_key)
       assert File.exists?(path)
     end
 
-    test "handles binary data" do
+    test "handles binary data", %{test_dir: test_dir} do
       key = "test_binary_#{System.unique_integer([:positive])}/image.png"
       # Small PNG header bytes
       data = <<137, 80, 78, 71, 13, 10, 26, 10>>
       assert {:ok, _url} = Local.upload(key, data, "image/png")
 
-      path = Path.join(@test_dir, key)
+      path = Path.join(test_dir, key)
       assert File.read!(path) == data
     end
   end
@@ -65,13 +64,13 @@ defmodule Storyarn.Assets.Storage.LocalTest do
   # =============================================================================
 
   describe "delete/1" do
-    test "deletes existing file" do
+    test "deletes existing file", %{test_dir: test_dir} do
       key = "delete_test_#{System.unique_integer([:positive])}/file.txt"
       {:ok, _} = Local.upload(key, "content", "text/plain")
 
       assert :ok = Local.delete(key)
 
-      path = Path.join(@test_dir, key)
+      path = Path.join(test_dir, key)
       refute File.exists?(path)
     end
 

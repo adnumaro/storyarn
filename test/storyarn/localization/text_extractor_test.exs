@@ -674,7 +674,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
 
       # Trigger extraction
       {:ok, _} = Sheets.update_block_value(block, %{"content" => "A hero"})
-      assert length(Localization.get_texts_for_source("block", block.id)) > 0
+      assert Localization.get_texts_for_source("block", block.id) != []
 
       {:ok, _} = Sheets.delete_block(block)
       assert Localization.get_texts_for_source("block", block.id) == []
@@ -1074,7 +1074,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
         })
 
       {:ok, _} = Sheets.update_block_value(block, %{"content" => "Hero"})
-      assert length(Localization.get_texts_for_source("block", block.id)) > 0
+      assert Localization.get_texts_for_source("block", block.id) != []
 
       assert :ok = TextExtractor.delete_block_texts(block.id)
       assert Localization.get_texts_for_source("block", block.id) == []
@@ -1085,7 +1085,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
     test "removes all texts for a sheet ID", %{project: project} do
       {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
       {:ok, _} = Sheets.update_sheet(sheet, %{name: "Hero"})
-      assert length(Localization.get_texts_for_source("sheet", sheet.id)) > 0
+      assert Localization.get_texts_for_source("sheet", sheet.id) != []
 
       assert :ok = TextExtractor.delete_sheet_texts(sheet.id)
       assert Localization.get_texts_for_source("sheet", sheet.id) == []
@@ -1096,7 +1096,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
     test "removes all texts for a flow ID", %{project: project} do
       flow = flow_fixture(project)
       {:ok, _} = Flows.update_flow(flow, %{name: "Chapter 1"})
-      assert length(Localization.get_texts_for_source("flow", flow.id)) > 0
+      assert Localization.get_texts_for_source("flow", flow.id) != []
 
       assert :ok = TextExtractor.delete_flow_texts(flow.id)
       assert Localization.get_texts_for_source("flow", flow.id) == []

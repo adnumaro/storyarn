@@ -1073,7 +1073,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       # Verify auto-created entry node is present
       entry_nodes = Enum.filter(result, fn {_id, n} -> n.type == "entry" end)
-      assert length(entry_nodes) >= 1
+      assert entry_nodes != []
     end
 
     test "includes auto-created nodes from flow fixture", %{flow: flow} do
@@ -1093,7 +1093,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       result = DebugExecutionHandlers.build_nodes_map(flow.id)
 
       hub_nodes = Enum.filter(result, fn {_id, n} -> n.type == "hub" end)
-      assert length(hub_nodes) >= 1
+      assert hub_nodes != []
 
       {_id, hub} = hd(hub_nodes)
       assert is_map(hub.data)
@@ -1119,7 +1119,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       result = DebugExecutionHandlers.build_connections(flow.id)
 
-      assert length(result) >= 1
+      assert result != []
 
       matching_conn =
         Enum.find(result, fn c ->

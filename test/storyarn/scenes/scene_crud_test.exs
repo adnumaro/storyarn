@@ -257,7 +257,7 @@ defmodule Storyarn.Scenes.SceneCrudTest do
 
       result = SceneCrud.get_scene(project.id, scene.id)
 
-      assert length(result.layers) >= 1
+      assert result.layers != []
       assert length(result.zones) == 1
       assert length(result.pins) == 1
       assert length(result.annotations) == 1

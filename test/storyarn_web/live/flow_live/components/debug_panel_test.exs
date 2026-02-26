@@ -3,8 +3,8 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanelTest do
 
   import Phoenix.LiveViewTest
 
-  alias StoryarnWeb.FlowLive.Components.DebugPanel
   alias Storyarn.Flows.Evaluator.State
+  alias StoryarnWeb.FlowLive.Components.DebugPanel
 
   # ===========================================================================
   # Test helpers

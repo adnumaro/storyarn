@@ -39,9 +39,7 @@ export function setupFileUpload(hook, config) {
     // Type validation
     const typeMatch = acceptTypes.some((type) => file.type.startsWith(type));
     if (!typeMatch) {
-      const msg =
-        typeErrorMessage ||
-        `Invalid file type. Accepted: ${acceptTypes.join(", ")}`;
+      const msg = typeErrorMessage || `Invalid file type. Accepted: ${acceptTypes.join(", ")}`;
       if (errorEventName) {
         pushWithTarget(hook, errorEventName, { message: msg, ...extra });
       }

@@ -1621,7 +1621,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       # list_connections joins on active source/target nodes,
       # so connections with a soft-deleted endpoint are excluded
       connections = Flows.list_connections(flow.id)
-      assert length(connections) == 0
+      assert connections == []
     end
 
     test "node with incoming and outgoing connections" do
@@ -1643,7 +1643,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert Flows.get_node(flow.id, node_c.id) != nil
 
       # Both connections are excluded since node_b is soft-deleted
-      assert length(Flows.list_connections(flow.id)) == 0
+      assert Flows.list_connections(flow.id) == []
     end
 
     test "connections between surviving nodes are preserved" do

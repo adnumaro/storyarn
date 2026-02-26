@@ -1,8 +1,8 @@
 defmodule StoryarnWeb.FlowLive.Player.SlideTest do
   use ExUnit.Case, async: true
 
-  alias StoryarnWeb.FlowLive.Player.Slide
   alias Storyarn.Flows.Evaluator.State
+  alias StoryarnWeb.FlowLive.Player.Slide
 
   # ---------------------------------------------------------------------------
   # Helpers — minimal structs for testing

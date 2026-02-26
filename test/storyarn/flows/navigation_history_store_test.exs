@@ -49,8 +49,8 @@ defmodule Storyarn.Flows.NavigationHistoryStoreTest do
 
   describe "isolation" do
     test "different keys store independent histories" do
-      key1 = {10001, 20001}
-      key2 = {10002, 20002}
+      key1 = {10_001, 20_001}
+      key2 = {10_002, 20_002}
 
       NavigationHistoryStore.put(key1, [%{flow_id: 1}])
       NavigationHistoryStore.put(key2, [%{flow_id: 2}])

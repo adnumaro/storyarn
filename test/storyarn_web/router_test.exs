@@ -156,7 +156,7 @@ defmodule StoryarnWeb.RouterTest do
     test "sets content-security-policy header", %{conn: conn} do
       conn = get(conn, ~p"/")
       csp = Plug.Conn.get_resp_header(conn, "content-security-policy")
-      assert length(csp) > 0
+      assert csp != []
       [policy] = csp
       assert policy =~ "default-src 'self'"
       assert policy =~ "script-src 'self'"

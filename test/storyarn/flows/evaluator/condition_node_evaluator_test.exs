@@ -173,7 +173,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
       state = make_state(variables)
 
       {:ok, result_state} = ConditionNodeEvaluator.evaluate(node, state, connections)
-      assert length(result_state.console) > 0
+      assert result_state.console != []
 
       console_msg = hd(result_state.console)
       assert console_msg.message =~ "Condition"

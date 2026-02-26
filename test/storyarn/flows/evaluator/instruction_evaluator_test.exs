@@ -91,7 +91,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluatorTest do
 
       assert {:finished, final_state} = result
       assert final_state.variables["mc.health"].value == 50
-      assert length(final_state.console) >= 1
+      assert final_state.console != []
     end
 
     test "logs boolean set_true change" do
@@ -149,7 +149,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluatorTest do
 
       assert {:finished, final_state} = result
       error_messages = final_state.console |> Enum.filter(&(&1.level == :error))
-      assert length(error_messages) >= 1
+      assert error_messages != []
     end
   end
 

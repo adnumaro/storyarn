@@ -175,7 +175,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   defp maybe_restore_player_session(socket, project) do
     # Only restore on connected mount — disconnected mount would consume the
     # session from the Agent, leaving nothing for the connected mount.
-    if not connected?(socket), do: nil, else: do_restore_player_session(socket, project)
+    if connected?(socket), do: do_restore_player_session(socket, project), else: nil
   end
 
   defp do_restore_player_session(socket, project) do

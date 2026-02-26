@@ -64,9 +64,11 @@ defmodule Mix.Tasks.Convention.Check do
     files =
       paths
       |> list_elixir_files()
-      |> Enum.reject(&String.contains?(&1, "_build/"))
-      |> Enum.reject(&String.contains?(&1, "deps/"))
-      |> Enum.reject(&String.contains?(&1, "convention_check.ex"))
+      |> Enum.reject(fn path ->
+        String.contains?(path, "_build/") or
+          String.contains?(path, "deps/") or
+          String.contains?(path, "convention_check.ex")
+      end)
 
     violations =
       files
@@ -89,13 +91,15 @@ defmodule Mix.Tasks.Convention.Check do
   end
 
   defp list_elixir_files(paths) do
-    Enum.flat_map(paths, fn path ->
-      if File.dir?(path) do
-        Path.wildcard(Path.join(path, "**/*.{ex,exs}"))
-      else
-        if File.exists?(path), do: [path], else: []
-      end
-    end)
+    Enum.flat_map(paths, &list_files_at_path/1)
+  end
+
+  defp list_files_at_path(path) do
+    cond do
+      File.dir?(path) -> Path.wildcard(Path.join(path, "**/*.{ex,exs}"))
+      File.exists?(path) -> [path]
+      true -> []
+    end
   end
 
   defp check_file(file_path) do
@@ -106,63 +110,64 @@ defmodule Mix.Tasks.Convention.Check do
 
     lines
     |> Enum.with_index(1)
-    |> Enum.flat_map(fn {line, line_num} ->
-      if Map.get(suppressed, line_num, false) == :all do
-        []
-      else
-        rules_for_line(line, line_num, file_path, is_web)
-        |> Enum.reject(fn {rule, _, _, _} ->
-          rule_suppressed?(suppressed, line_num, rule)
-        end)
-      end
-    end)
+    |> Enum.flat_map(&check_line(&1, file_path, is_web, suppressed))
+  end
+
+  defp check_line({line, line_num}, file_path, is_web, suppressed) do
+    if Map.get(suppressed, line_num, false) == :all do
+      []
+    else
+      rules_for_line(line, line_num, file_path, is_web)
+      |> Enum.reject(fn {rule, _, _, _} ->
+        rule_suppressed?(suppressed, line_num, rule)
+      end)
+    end
   end
 
   defp build_suppression_map(lines) do
     {map, _in_block} =
       lines
       |> Enum.with_index(1)
-      |> Enum.reduce({%{}, false}, fn {line, num}, {map, in_block} ->
-        cond do
-          String.contains?(line, "storyarn:disable-start") ->
-            {map, true}
-
-          String.contains?(line, "storyarn:disable-end") ->
-            {map, false}
-
-          in_block ->
-            {Map.put(map, num, :all), true}
-
-          String.match?(line, ~r/storyarn:disable($|[^-])/) ->
-            # Disable all rules for this line AND next line
-            {map |> Map.put(num, :all) |> Map.put(num + 1, :all), false}
-
-          String.match?(line, ~r/storyarn:disable:(\w+)/) ->
-            [_, rule] = Regex.run(~r/storyarn:disable:(\w+)/, line)
-            rule_atom = String.to_atom(rule)
-            # Suppress on this line and next line
-            existing = Map.get(map, num, [])
-            existing_next = Map.get(map, num + 1, [])
-
-            new_map =
-              map
-              |> Map.put(num, if(is_list(existing), do: [rule_atom | existing], else: existing))
-              |> Map.put(
-                num + 1,
-                if(is_list(existing_next),
-                  do: [rule_atom | existing_next],
-                  else: existing_next
-                )
-              )
-
-            {new_map, false}
-
-          true ->
-            {map, in_block}
-        end
-      end)
+      |> Enum.reduce({%{}, false}, &process_suppression_line/2)
 
     map
+  end
+
+  defp process_suppression_line({line, num}, {map, in_block}) do
+    cond do
+      String.contains?(line, "storyarn:disable-start") ->
+        {map, true}
+
+      String.contains?(line, "storyarn:disable-end") ->
+        {map, false}
+
+      in_block ->
+        {Map.put(map, num, :all), true}
+
+      String.match?(line, ~r/storyarn:disable($|[^-])/) ->
+        {map |> Map.put(num, :all) |> Map.put(num + 1, :all), false}
+
+      String.match?(line, ~r/storyarn:disable:(\w+)/) ->
+        {add_rule_suppression(map, line, num), false}
+
+      true ->
+        {map, in_block}
+    end
+  end
+
+  defp add_rule_suppression(map, line, num) do
+    [_, rule] = Regex.run(~r/storyarn:disable:(\w+)/, line)
+    rule_atom = String.to_atom(rule)
+
+    map
+    |> prepend_rule_if_list(num, rule_atom)
+    |> prepend_rule_if_list(num + 1, rule_atom)
+  end
+
+  defp prepend_rule_if_list(map, line_num, rule_atom) do
+    existing = Map.get(map, line_num, [])
+    value = if is_list(existing), do: [rule_atom | existing], else: existing
+    Map.put(map, line_num, value)
   end
 
   defp rule_suppressed?(suppressed, line_num, rule) do

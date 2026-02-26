@@ -3,8 +3,8 @@ defmodule StoryarnWeb.ScreenplayLive.Components.ScreenplayToolbarTest do
 
   import Phoenix.LiveViewTest
 
-  alias StoryarnWeb.ScreenplayLive.Components.ScreenplayToolbar
   alias Storyarn.Screenplays.Screenplay
+  alias StoryarnWeb.ScreenplayLive.Components.ScreenplayToolbar
 
   defp make_screenplay(overrides \\ %{}) do
     struct(

@@ -110,7 +110,7 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
       ReferenceTracker.update_flow_node_references(node)
 
       backlinks = ReferenceTracker.get_backlinks("sheet", target_sheet.id)
-      assert length(backlinks) >= 1
+      assert backlinks != []
 
       speaker_ref = Enum.find(backlinks, &(&1.context == "speaker"))
       assert speaker_ref != nil
@@ -135,7 +135,7 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
       ReferenceTracker.update_flow_node_references(node)
 
       backlinks = ReferenceTracker.get_backlinks("sheet", target_sheet.id)
-      assert length(backlinks) >= 1
+      assert backlinks != []
 
       dialogue_ref = Enum.find(backlinks, &(&1.context == "dialogue"))
       assert dialogue_ref != nil

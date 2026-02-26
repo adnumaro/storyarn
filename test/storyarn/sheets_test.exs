@@ -1689,7 +1689,7 @@ defmodule Storyarn.SheetsTest do
       ReferenceTracker.update_flow_node_references(node)
 
       backlinks = ReferenceTracker.get_backlinks("sheet", target_sheet.id)
-      assert length(backlinks) >= 1
+      assert backlinks != []
       assert Enum.any?(backlinks, &(&1.source_type == "flow_node"))
     end
 
@@ -1785,7 +1785,7 @@ defmodule Storyarn.SheetsTest do
 
       options = Sheets.list_reference_options(project.id)
 
-      assert length(options) >= 1
+      assert options != []
       assert Enum.any?(options, &(&1["key"] == "mc.jaime"))
     end
   end

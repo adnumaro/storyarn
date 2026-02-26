@@ -942,7 +942,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       cells = UndoRedoHandlers.snapshot_column_cells(table_block.id, column.slug)
 
       assert is_list(cells)
-      assert length(cells) >= 1
+      assert cells != []
 
       # Should contain the row with value "hello"
       row_cell = Enum.find(cells, fn {id, _val} -> id == default_row.id end)

@@ -1001,7 +1001,7 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
       [node] = doc["content"]
       # The <div> is unknown, so it should traverse its children
       texts = Enum.filter(node["content"], &(&1["type"] == "text"))
-      assert length(texts) > 0
+      assert texts != []
       text_content = Enum.map_join(texts, "", & &1["text"])
       assert text_content =~ "inner text"
     end
@@ -1016,7 +1016,7 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
 
       [node] = doc["content"]
       texts = Enum.filter(node["content"], &(&1["type"] == "text"))
-      assert length(texts) > 0
+      assert texts != []
       text_content = Enum.map_join(texts, "", & &1["text"])
       assert text_content =~ "colored text"
     end

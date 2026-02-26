@@ -526,7 +526,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
         end)
 
       # Should find at least one variable from the table with the cell value coerced
-      assert length(matching) > 0
+      assert matching != []
 
       {_key, var} = hd(matching)
       assert var.value == 5

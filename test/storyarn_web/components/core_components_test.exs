@@ -9,8 +9,8 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
   import Phoenix.LiveViewTest
   import Phoenix.Component, only: [sigil_H: 2]
 
-  alias StoryarnWeb.Components.CoreComponents
   alias Phoenix.LiveView.JS
+  alias StoryarnWeb.Components.CoreComponents
 
   # =============================================================================
   # flash/1

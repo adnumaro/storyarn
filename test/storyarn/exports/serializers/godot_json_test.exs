@@ -361,7 +361,7 @@ defmodule Storyarn.Exports.Serializers.GodotJSONTest do
       nodes = result["flows"][flow_key]["nodes"]
 
       jump_nodes = Enum.filter(nodes, fn {_k, v} -> v["type"] == "jump" end)
-      assert length(jump_nodes) >= 1
+      assert jump_nodes != []
     end
 
     test "exit node exports", %{project: project} do
@@ -387,7 +387,7 @@ defmodule Storyarn.Exports.Serializers.GodotJSONTest do
       # The flow should contain the scene node
       flow_data = result["flows"] |> Map.values() |> hd()
       scene_nodes = Enum.filter(flow_data["nodes"], fn {_k, v} -> v["type"] == "scene" end)
-      assert length(scene_nodes) >= 1
+      assert scene_nodes != []
     end
 
     test "subflow node exports with flow reference", %{project: project} do
@@ -409,7 +409,7 @@ defmodule Storyarn.Exports.Serializers.GodotJSONTest do
       subflow_nodes =
         Enum.filter(parent_flow_data["nodes"], fn {_k, v} -> v["type"] == "subflow" end)
 
-      assert length(subflow_nodes) >= 1
+      assert subflow_nodes != []
     end
 
     test "dialogue node with responses exports choices", %{project: project} do
@@ -433,7 +433,7 @@ defmodule Storyarn.Exports.Serializers.GodotJSONTest do
       flow_key = flow.shortcut || flow.name
       nodes = result["flows"][flow_key]["nodes"]
       dlg_nodes = Enum.filter(nodes, fn {_k, v} -> v["type"] == "dialogue" end)
-      assert length(dlg_nodes) >= 1
+      assert dlg_nodes != []
 
       {_id, dlg_data} = hd(dlg_nodes)
       assert is_list(dlg_data["responses"])

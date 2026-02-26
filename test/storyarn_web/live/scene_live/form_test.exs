@@ -126,7 +126,7 @@ defmodule StoryarnWeb.SceneLive.FormTest do
       # The parent (SceneLive.Index) receives {:saved, scene} and redirects
       # to the scene show page. Assert that a scene was created.
       scenes = Scenes.list_scenes(project.id)
-      assert length(scenes) >= 1
+      assert scenes != []
       assert Enum.any?(scenes, &(&1.name == "Tavern"))
     end
 

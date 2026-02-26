@@ -681,7 +681,7 @@ defmodule Storyarn.LocalizationTest do
 
     test "language_options_for_select/0 returns list of {label, code} tuples" do
       options = Localization.language_options_for_select()
-      assert length(options) > 0
+      assert options != []
 
       {label, code} = hd(options)
       assert is_binary(label)

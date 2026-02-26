@@ -232,36 +232,44 @@ defmodule Storyarn.Screenplays do
   def replace_elements_from_fountain(screenplay, existing_elements, parsed_elements) do
     Ecto.Multi.new()
     |> Ecto.Multi.run(:delete_existing, fn _repo, _ ->
-      result =
-        Enum.reduce_while(existing_elements, :ok, fn el, _ ->
-          Sheets.delete_screenplay_element_references(el.id)
-
-          case delete_element(el) do
-            {:ok, _} -> {:cont, :ok}
-            {:error, reason} -> {:halt, {:error, reason}}
-          end
-        end)
-
-      case result do
-        :ok -> {:ok, :deleted}
-        error -> error
-      end
+      delete_existing_elements(existing_elements)
     end)
     |> Ecto.Multi.run(:create_imported, fn _repo, _ ->
-      result =
-        Enum.reduce_while(parsed_elements, {:ok, []}, fn attrs, {:ok, acc} ->
-          case create_element(screenplay, attrs) do
-            {:ok, el} -> {:cont, {:ok, [el | acc]}}
-            {:error, reason} -> {:halt, {:error, reason}}
-          end
-        end)
-
-      case result do
-        {:ok, elements} -> {:ok, Enum.reverse(elements)}
-        error -> error
-      end
+      create_imported_elements(screenplay, parsed_elements)
     end)
     |> Repo.transaction()
+  end
+
+  defp delete_existing_elements(existing_elements) do
+    result =
+      Enum.reduce_while(existing_elements, :ok, fn el, _ ->
+        Sheets.delete_screenplay_element_references(el.id)
+
+        case delete_element(el) do
+          {:ok, _} -> {:cont, :ok}
+          {:error, reason} -> {:halt, {:error, reason}}
+        end
+      end)
+
+    case result do
+      :ok -> {:ok, :deleted}
+      error -> error
+    end
+  end
+
+  defp create_imported_elements(screenplay, parsed_elements) do
+    result =
+      Enum.reduce_while(parsed_elements, {:ok, []}, fn attrs, {:ok, acc} ->
+        case create_element(screenplay, attrs) do
+          {:ok, el} -> {:cont, {:ok, [el | acc]}}
+          {:error, reason} -> {:halt, {:error, reason}}
+        end
+      end)
+
+    case result do
+      {:ok, elements} -> {:ok, Enum.reverse(elements)}
+      error -> error
+    end
   end
 
   # =============================================================================

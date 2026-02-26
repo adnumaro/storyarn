@@ -13,8 +13,7 @@ defmodule StoryarnWeb.TelemetryTest do
     test "returns a non-empty list of telemetry metric structs" do
       metrics = Telemetry.metrics()
 
-      assert is_list(metrics)
-      assert length(metrics) > 0
+      assert [_ | _] = metrics
       assert Enum.all?(metrics, &is_struct/1)
     end
 
