@@ -1,3 +1,5 @@
+import { pushWithTarget } from "../utils/event_dispatcher";
+
 /**
  * TriStateCheckbox hook for handling checkbox with indeterminate state.
  *
@@ -26,12 +28,7 @@ export const TriStateCheckbox = {
         nextValue = "true";
       }
 
-      const target = this.el.dataset.phxTarget;
-      if (target) {
-        this.pushEventTo(target, "set_boolean_block", { id: blockId, value: nextValue });
-      } else {
-        this.pushEvent("set_boolean_block", { id: blockId, value: nextValue });
-      }
+      pushWithTarget(this, "set_boolean_block", { id: blockId, value: nextValue });
     };
 
     this.el.addEventListener("click", this.handleClick);

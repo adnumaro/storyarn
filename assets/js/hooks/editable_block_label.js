@@ -1,3 +1,5 @@
+import { pushWithTarget } from "../utils/event_dispatcher";
+
 /**
  * EditableBlockLabel hook for inline block label editing.
  * Double-click to edit, blur/Enter to save, Escape to revert.
@@ -43,19 +45,10 @@ export const EditableBlockLabel = {
 
       if (newLabel && newLabel !== this.originalLabel) {
         this.originalLabel = newLabel;
-        const target = this.el.dataset.phxTarget;
-
-        if (target) {
-          this.pushEventTo(target, "update_block_label", {
-            id: this.blockId,
-            label: newLabel,
-          });
-        } else {
-          this.pushEvent("update_block_label", {
-            id: this.blockId,
-            label: newLabel,
-          });
-        }
+        pushWithTarget(this, "update_block_label", {
+          id: this.blockId,
+          label: newLabel,
+        });
       } else if (!newLabel) {
         // Revert if empty
         this.el.textContent = this.originalLabel;

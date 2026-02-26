@@ -1,3 +1,5 @@
+import { pushWithTarget } from "../utils/event_dispatcher";
+
 /**
  * TableColumnResize hook — mounted on <table>.
  *
@@ -71,18 +73,10 @@ export const TableColumnResize = {
 
     // Only persist if width actually changed
     if (width !== startWidth) {
-      const target = this.el.dataset.phxTarget;
-      if (target) {
-        this.pushEventTo(target, "resize_table_column", {
-          "column-id": colId,
-          width,
-        });
-      } else {
-        this.pushEvent("resize_table_column", {
-          "column-id": colId,
-          width,
-        });
-      }
+      pushWithTarget(this, "resize_table_column", {
+        "column-id": colId,
+        width,
+      });
     }
 
     this._cleanup();

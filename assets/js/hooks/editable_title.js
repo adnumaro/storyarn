@@ -1,3 +1,5 @@
+import { pushWithTarget } from "../utils/event_dispatcher";
+
 /**
  * EditableTitle hook for inline sheet title editing.
  * Works like Notion - transparent editing with auto-save.
@@ -60,14 +62,7 @@ export const EditableTitle = {
     // Only save if changed and not empty
     if (name && name !== this.originalName) {
       this.originalName = name;
-      const target = this.el.dataset.target;
-      const payload = { name: name };
-
-      if (target) {
-        this.pushEventTo(target, "save_name", payload);
-      } else {
-        this.pushEvent("save_name", payload);
-      }
+      pushWithTarget(this, "save_name", { name: name });
     } else if (!name) {
       // Revert to original if empty
       this.el.textContent = this.originalName;

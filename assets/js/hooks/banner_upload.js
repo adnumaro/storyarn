@@ -1,65 +1,28 @@
+import { setupFileUpload } from "../utils/file_upload_handler";
+
 /**
- * BannerUpload hook for handling sheet banner file selection
+ * BannerUpload hook for handling sheet banner file selection.
  *
  * Reads the selected file and sends it as base64 to the server.
  */
 export const BannerUpload = {
   mounted() {
-    this.el.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      // Validate file type
-      if (!file.type.startsWith("image/")) {
-        const target = this.el.dataset.target;
-        if (target) {
-          this.pushEventTo(target, "upload_validation_error", {
-            message: "Please select an image file.",
-          });
-        } else {
-          this.pushEvent("upload_validation_error", { message: "Please select an image file." });
-        }
-        return;
-      }
-
-      // Validate file size (max 10MB for banners)
-      const maxSize = 10 * 1024 * 1024;
-      if (file.size > maxSize) {
-        const target = this.el.dataset.target;
-        if (target) {
-          this.pushEventTo(target, "upload_validation_error", {
-            message: "Image must be less than 10MB.",
-          });
-        } else {
-          this.pushEvent("upload_validation_error", { message: "Image must be less than 10MB." });
-        }
-        return;
-      }
-
-      // Read file as base64
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64 = event.target.result;
-        const sheetId = this.el.dataset.sheetId;
-        const target = this.el.dataset.target;
-
-        const payload = {
-          sheet_id: sheetId,
-          filename: file.name,
-          content_type: file.type,
-          data: base64,
-        };
-
-        if (target) {
-          this.pushEventTo(target, "upload_banner", payload);
-        } else {
-          this.pushEvent("upload_banner", payload);
-        }
-      };
-      reader.readAsDataURL(file);
-
-      // Reset input so same file can be selected again
-      e.target.value = "";
+    this._cleanup = setupFileUpload(this, {
+      acceptTypes: ["image/"],
+      maxSize: 10 * 1024 * 1024,
+      eventName: "upload_banner",
+      errorEventName: "upload_validation_error",
+      typeErrorMessage: "Please select an image file.",
+      sizeErrorMessage: "Image must be less than 10MB.",
+      buildPayload: (file, base64) => ({
+        sheet_id: this.el.dataset.sheetId,
+        filename: file.name,
+        content_type: file.type,
+        data: base64,
+      }),
     });
+  },
+  destroyed() {
+    this._cleanup?.();
   },
 };

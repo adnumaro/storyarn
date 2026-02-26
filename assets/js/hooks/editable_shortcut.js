@@ -1,3 +1,5 @@
+import { pushWithTarget } from "../utils/event_dispatcher";
+
 /**
  * EditableShortcut hook for inline sheet/flow shortcut editing.
  * Similar to EditableTitle but with format validation.
@@ -97,14 +99,7 @@ export const EditableShortcut = {
     // Only save if changed
     if (shortcut !== this.originalShortcut) {
       this.originalShortcut = shortcut;
-      const target = this.el.dataset.target;
-      const payload = { shortcut: shortcut || null };
-
-      if (target) {
-        this.pushEventTo(target, "save_shortcut", payload);
-      } else {
-        this.pushEvent("save_shortcut", payload);
-      }
+      pushWithTarget(this, "save_shortcut", { shortcut: shortcut || null });
     }
   },
 

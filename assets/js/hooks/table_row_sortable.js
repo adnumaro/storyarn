@@ -1,4 +1,5 @@
 import Sortable from "sortablejs";
+import { pushWithTarget } from "../utils/event_dispatcher";
 
 /**
  * TableRowSortable hook for drag-and-drop row reordering in table blocks.
@@ -28,19 +29,11 @@ export const TableRowSortable = {
         );
 
         const blockId = this.el.dataset.blockId;
-        const target = this.el.dataset.phxTarget;
 
-        if (target) {
-          this.pushEventTo(target, "reorder_table_rows", {
-            block_id: blockId,
-            row_ids: rowIds,
-          });
-        } else {
-          this.pushEvent("reorder_table_rows", {
-            block_id: blockId,
-            row_ids: rowIds,
-          });
-        }
+        pushWithTarget(this, "reorder_table_rows", {
+          block_id: blockId,
+          row_ids: rowIds,
+        });
       },
     });
   },

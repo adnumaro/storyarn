@@ -1,4 +1,5 @@
 import Sortable from "sortablejs";
+import { pushWithTarget } from "../utils/event_dispatcher";
 
 /**
  * SortableList hook for LiveView drag-and-drop functionality.
@@ -34,12 +35,7 @@ export const SortableList = {
         const ids = Array.from(this.el.querySelectorAll("[data-id]")).map(
           (item) => item.dataset.id,
         );
-        const target = this.el.dataset.phxTarget;
-        if (target) {
-          this.pushEventTo(target, "reorder", { ids: ids, group: group });
-        } else {
-          this.pushEvent("reorder", { ids: ids, group: group });
-        }
+        pushWithTarget(this, "reorder", { ids: ids, group: group });
       },
     });
   },
