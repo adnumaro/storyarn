@@ -7,7 +7,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Repo
-  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Shared.{NameNormalizer, TreeOperations}
 
   alias Storyarn.Sheets.{
     Block,
@@ -400,23 +400,38 @@ defmodule Storyarn.Sheets.BlockCrud do
   Updates each block's position (= list index), column_group_id, and column_index.
   Only updates blocks that belong to the given sheet.
   """
+  @reorder_blocks_with_columns_sql """
+  UPDATE blocks
+  SET position = data.pos,
+      column_group_id = data.gid::uuid,
+      column_index = data.cidx
+  FROM unnest($1::bigint[], $2::int[], $3::text[], $4::int[]) AS data(id, pos, gid, cidx)
+  WHERE blocks.id = data.id AND blocks.sheet_id = $5 AND blocks.deleted_at IS NULL
+  """
+
   def reorder_blocks_with_columns(sheet_id, items) when is_list(items) do
     Repo.transaction(fn ->
-      items
-      |> Enum.with_index()
-      |> Enum.each(fn {item, index} ->
-        block_id = item.id
-        column_group_id = item.column_group_id
-        column_index = item[:column_index] || 0
-        column_index = max(0, min(column_index, 2))
+      {ids, positions, group_ids, col_indexes} =
+        items
+        |> Enum.with_index()
+        |> Enum.reduce({[], [], [], []}, fn {item, index}, {ids, pos, gids, cidxs} ->
+          col_idx = max(0, min(item[:column_index] || 0, 2))
 
-        from(b in Block,
-          where: b.id == ^block_id and b.sheet_id == ^sheet_id and is_nil(b.deleted_at)
-        )
-        |> Repo.update_all(
-          set: [position: index, column_group_id: column_group_id, column_index: column_index]
-        )
-      end)
+          {
+            [item.id | ids],
+            [index | pos],
+            [item.column_group_id | gids],
+            [col_idx | cidxs]
+          }
+        end)
+
+      Repo.query!(@reorder_blocks_with_columns_sql, [
+        Enum.reverse(ids),
+        Enum.reverse(positions),
+        Enum.reverse(group_ids),
+        Enum.reverse(col_indexes),
+        sheet_id
+      ])
 
       list_blocks(sheet_id)
     end)
@@ -472,16 +487,16 @@ defmodule Storyarn.Sheets.BlockCrud do
   # =============================================================================
 
   def reorder_blocks(sheet_id, block_ids) when is_list(block_ids) do
-    Repo.transaction(fn ->
+    pairs =
       block_ids
       |> Enum.reject(&is_nil/1)
       |> Enum.with_index()
-      |> Enum.each(fn {block_id, index} ->
-        from(b in Block,
-          where: b.id == ^block_id and b.sheet_id == ^sheet_id and is_nil(b.deleted_at)
-        )
-        |> Repo.update_all(set: [position: index])
-      end)
+
+    Repo.transaction(fn ->
+      TreeOperations.batch_set_positions("blocks", pairs,
+        scope: {"sheet_id", sheet_id},
+        soft_delete: true
+      )
 
       list_blocks(sheet_id)
     end)

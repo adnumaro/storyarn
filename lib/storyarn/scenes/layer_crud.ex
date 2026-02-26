@@ -5,6 +5,7 @@ defmodule Storyarn.Scenes.LayerCrud do
 
   alias Storyarn.Repo
   alias Storyarn.Scenes.{PositionUtils, SceneAnnotation, SceneLayer, ScenePin, SceneZone}
+  alias Storyarn.Shared.TreeOperations
 
   @doc """
   Lists all layers for a map, ordered by position.
@@ -101,13 +102,10 @@ defmodule Storyarn.Scenes.LayerCrud do
   Reorders layers by updating positions in a transaction.
   """
   def reorder_layers(scene_id, layer_ids) when is_list(layer_ids) do
+    pairs = Enum.with_index(layer_ids)
+
     Repo.transaction(fn ->
-      layer_ids
-      |> Enum.with_index()
-      |> Enum.each(fn {layer_id, index} ->
-        from(l in SceneLayer, where: l.id == ^layer_id and l.scene_id == ^scene_id)
-        |> Repo.update_all(set: [position: index])
-      end)
+      TreeOperations.batch_set_positions("scene_layers", pairs, scope: {"scene_id", scene_id})
 
       list_layers(scene_id)
     end)

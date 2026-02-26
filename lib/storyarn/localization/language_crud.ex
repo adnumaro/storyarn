@@ -7,7 +7,7 @@ defmodule Storyarn.Localization.LanguageCrud do
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.{MapUtils, TreeOperations}
 
   # =============================================================================
   # Queries
@@ -98,15 +98,12 @@ defmodule Storyarn.Localization.LanguageCrud do
   Reorders languages by setting their positions based on the provided list of IDs.
   """
   def reorder_languages(project_id, language_ids) when is_list(language_ids) do
+    pairs = Enum.with_index(language_ids)
+
     Repo.transaction(fn ->
-      language_ids
-      |> Enum.with_index()
-      |> Enum.each(fn {id, index} ->
-        from(l in ProjectLanguage,
-          where: l.project_id == ^project_id and l.id == ^id
-        )
-        |> Repo.update_all(set: [position: index])
-      end)
+      TreeOperations.batch_set_positions("project_languages", pairs,
+        scope: {"project_id", project_id}
+      )
     end)
   end
 

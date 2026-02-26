@@ -26,16 +26,30 @@ defmodule Storyarn.Flows.NodeUpdate do
   Accepts a flow_id and a list of maps with :id, :position_x, :position_y.
   Returns {:ok, count} with the number of updated nodes.
   """
+  @batch_node_positions_sql """
+  UPDATE flow_nodes
+  SET position_x = data.x, position_y = data.y, updated_at = $4
+  FROM unnest($1::bigint[], $2::int[], $3::int[]) AS data(id, x, y)
+  WHERE flow_nodes.id = data.id AND flow_nodes.flow_id = $5 AND flow_nodes.deleted_at IS NULL
+  """
+
   def batch_update_positions(flow_id, positions) when is_list(positions) do
     now = TimeHelpers.now()
 
     Repo.transaction(fn ->
-      Enum.each(positions, fn %{id: node_id, position_x: x, position_y: y} ->
-        from(n in FlowNode,
-          where: n.id == ^node_id and n.flow_id == ^flow_id and is_nil(n.deleted_at)
-        )
-        |> Repo.update_all(set: [position_x: x, position_y: y, updated_at: now])
-      end)
+      {ids, xs, ys} =
+        Enum.reduce(positions, {[], [], []}, fn %{id: id, position_x: x, position_y: y},
+                                                {ids, xs, ys} ->
+          {[id | ids], [trunc(x) | xs], [trunc(y) | ys]}
+        end)
+
+      Repo.query!(@batch_node_positions_sql, [
+        Enum.reverse(ids),
+        Enum.reverse(xs),
+        Enum.reverse(ys),
+        now,
+        flow_id
+      ])
 
       length(positions)
     end)
