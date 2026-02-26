@@ -21,7 +21,7 @@ config :storyarn, Storyarn.Repo,
 
 # Server is enabled for E2E tests (Playwright requires a running server)
 config :storyarn, StoryarnWeb.Endpoint,
-  http: [ip: {127, 0, 0, 1}, port: 4002],
+  http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("MIX_TEST_PORT", "4002"))],
   secret_key_base: "FeJDhWpJbfABMyHLm9bPO4lWdhmwJVzNdRuhnukQFhXRYMedUbeO/fZg+/TfwqMK",
   server: true,
   check_origin: false

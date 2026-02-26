@@ -3,10 +3,69 @@
 > **Parent document:** [PHASE_8_EXPORT.md](../PHASE_8_EXPORT.md)
 >
 > **Tasks:** 9-11 of 25
+>
+> **Last verified:** 2026-02-24 (against `condition.ex`, `instruction.ex`, expression editor JS, exported JSON format)
 
 **Goal:** Build the expression transpiler that converts Storyarn's structured conditions and instructions into each game engine's scripting language.
 
 **This is the hardest piece of the entire export system.** See [ARCHITECTURE.md](./ARCHITECTURE.md#expression-transpiler-critical-complexity) for full design rationale.
+
+---
+
+## Data Reality (verified against codebase)
+
+### Condition node data (actual DB format)
+
+```json
+{
+  "condition": {"logic": "all", "rules": [...]},
+  "switch_mode": false
+}
+```
+
+> **IMPORTANT:** There is NO `expression` field and NO separate `cases` field on condition nodes. The document previously showed both — they don't exist.
+>
+> - **Code mode** is a UI-only feature: the JS expression editor (`assets/js/expression_editor/`) converts between a DSL text representation and structured data in the browser. What gets saved to the DB is **always structured data**.
+> - **Switch mode outputs** are derived dynamically from condition block/rule IDs (not from a separate `cases` array).
+
+### Where conditions appear (all structured)
+
+| Location | Storage | Format |
+|----------|---------|--------|
+| Condition node `data["condition"]` | JSONB map | `{logic, rules}` or `{logic, blocks}` |
+| Dialogue response `condition` | JSON string within JSONB | Same format as above, but as a JSON-encoded string. Must `Jason.decode/1` before transpiling. |
+| Scene pin `condition` | Ecto `:map` field | `{logic, rules}` or `{logic, blocks}` |
+| Scene zone `condition` | Ecto `:map` field | `{logic, rules}` or `{logic, blocks}` |
+
+### Legacy edge case
+
+`Condition.parse/1` handles a `:legacy` case for plain-text strings that aren't valid JSON (pre-builder conditions). The transpiler should emit these as warnings, not attempt to parse them.
+
+### Block types → operator sets (complete)
+
+**Source of truth:** `lib/storyarn/flows/condition.ex`
+
+| Block Type | Operators | Notes |
+|------------|-----------|-------|
+| `text` | equals, not_equals, contains, starts_with, ends_with, is_empty | |
+| `rich_text` | equals, not_equals, contains, starts_with, ends_with, is_empty | Same as `text` |
+| `number` | equals, not_equals, greater_than, greater_than_or_equal, less_than, less_than_or_equal | |
+| `boolean` | is_true, is_false, is_nil | |
+| `select` | equals, not_equals, is_nil | |
+| `multi_select` | contains, not_contains, is_empty | |
+| `date` | equals, not_equals, before, after | |
+| `reference` | equals, not_equals, is_nil | Same as `select` |
+
+**Source of truth:** `lib/storyarn/flows/instruction.ex`
+
+| Block Type | Operators | Notes |
+|------------|-----------|-------|
+| `number` | set, add, subtract, set_if_unset | |
+| `boolean` | set_true, set_false, toggle, set_if_unset | |
+| `text` / `rich_text` | set, clear, set_if_unset | |
+| `select` / `multi_select` | set, set_if_unset | |
+| `date` | set, set_if_unset | |
+| `reference` | set, set_if_unset | Same as `select` |
 
 ---
 
@@ -16,22 +75,23 @@
 |--------|----------------------------------------------------------------------|---------------|---------------------------------------------------|
 | 9      | Structured condition transpiler (builder-mode rules → target syntax) | None          | All operators transpile correctly for all engines |
 | 10     | Structured assignment transpiler (builder-mode assignments → target) | None          | All assignment operators transpile correctly      |
-| 11     | Code-mode parser (free-text `{var} op val` → AST) + emitters         | None          | Fallback path for code-mode expressions           |
+| 11     | Legacy condition handler + condition helpers                          | None          | Legacy strings emit warnings, JSON strings decoded |
 
 ---
 
 ## Task 9: Structured Condition Transpiler
 
-Create `Storyarn.Exports.ExpressionTranspiler` behaviour with 3 callbacks:
+Create `Storyarn.Exports.ExpressionTranspiler` behaviour with 2 callbacks:
 - `transpile_condition/2`
 - `transpile_instruction/2`
-- `transpile_code_expression/2`
 
 Implement the **structured fast-path** for conditions:
 - Iterate `rules[]` with operator lookup table → target syntax
 - No parsing needed — direct map traversal
 - Handle `all` (AND) and `any` (OR) logic combinators
-- Handle response-level conditions (dialogue node `responses[].condition`)
+- Handle both flat format (`{logic, rules}`) and block format (`{logic, blocks}`)
+- Handle response-level conditions (dialogue node `responses[].condition` — stored as JSON strings, must decode first)
+- Handle scene pin/zone conditions (stored as Ecto maps)
 
 ### Engine-specific emitters (6 targets)
 
@@ -46,7 +106,7 @@ Implement the **structured fast-path** for conditions:
 
 ### Operator mapping table (conditions)
 
-**Source of truth:** `lib/storyarn/flows/condition.ex` — 6 type-specific operator sets.
+All 16 operators verified against `condition.ex`:
 
 | Storyarn operator       | Ink          | Yarn       | Lua (Unity)  | GDScript (Godot)  | Unreal      | articy     |
 |-------------------------|--------------|------------|--------------|-------------------|-------------|------------|
@@ -77,7 +137,7 @@ Implement the **structured fast-path** for assignments:
 
 ### Operator mapping table (assignments)
 
-**Source of truth:** `lib/storyarn/flows/instruction.ex` — 5 type-specific operator sets. There is NO `multiply` operator.
+All 8 operators verified against `instruction.ex`. There is NO `multiply` operator.
 
 | Storyarn operator  | Ink                    | Yarn                                            | Lua (Unity)                                            | GDScript (Godot)        | Unreal                  | articy                   |
 |--------------------|------------------------|-------------------------------------------------|--------------------------------------------------------|-------------------------|-------------------------|--------------------------|
@@ -92,18 +152,27 @@ Implement the **structured fast-path** for assignments:
 
 **Variable-to-variable assignments:** When `value_type == "variable_ref"`, the value is another variable reference (not a literal). All emitters must handle this — e.g., Lua: `Variable["x"] = Variable["y"]`, Ink: `~ x = y`.
 
-## Task 11: Code-Mode Parser (Fallback)
+## Task 11: Legacy Condition Handler + Helpers
 
-Create `ExpressionTranspiler.Parser` for free-text expressions:
-- Parse `{mc.jaime.health} > 50` → `{:comparison, {:var_ref, "mc.jaime.health"}, :gt, {:literal, 50}}`
-- Handle variable references in `{curly.brace.notation}`
-- Handle boolean operators (`and`, `or`, `not`)
-- Handle arithmetic operators (`+`, `-`, `*`, `/`)
-- Handle parenthesized sub-expressions
+> **Previously:** This task was "Code-mode parser (free-text → AST) + emitters." That was based on the incorrect assumption that condition nodes store an `expression` field with free-text DSL. They don't — the DB always stores structured data. Code mode is a UI-only feature (JS parser/serializer).
 
-Then per-engine AST → string emitters.
+**Revised scope:**
 
-**This is only needed for the <10% of conditions authored in code mode.** The structured fast-path (Tasks 9-10) handles the majority.
+1. **Condition decoder helper** — Normalize conditions from all storage formats:
+   - Map (condition node, scene pins/zones) → pass through
+   - JSON string (dialogue response conditions) → `Jason.decode/1` → map
+   - Legacy plain string → return `{:legacy, string}` for warning emission
+   - `nil` → skip
+
+2. **Warning collection** — Report untranspilable patterns:
+   - Legacy plain-text conditions
+   - Unsupported operators for target engine (e.g., `contains` for Ink)
+   - Unknown/empty operators
+
+3. **Shared helpers** extracted for reuse across all 6 emitters:
+   - `format_var_ref/2` — converts `{sheet, variable}` to engine-specific reference
+   - `format_literal/2` — formats value with proper quoting/typing per engine
+   - `join_with_logic/3` — joins transpiled parts with engine-specific AND/OR
 
 ---
 
@@ -111,13 +180,18 @@ Then per-engine AST → string emitters.
 
 - Include raw Storyarn structured data as metadata/comment alongside transpiled output
 - Validation: report untranspilable expressions/operators as export warnings (not silent failures)
-- Handle response-level conditions (dialogue node `responses[].condition`) — same structured format
+- Handle response-level conditions (dialogue node `responses[].condition` — stored as JSON strings, must decode first)
+- Handle scene pin/zone conditions (stored as Ecto maps)
 
 ## Testing Strategy
 
-- All operator types per engine (`equals`, `greater_than`, `contains`, `is_nil`, etc.)
-- All assignment operators per engine (`set`, `add`, `subtract`, etc.)
-- Logic combinators: `all` (AND) and `any` (OR) rule groups, nested groups
-- Response-level conditions: dialogue response conditions transpile correctly
-- Code-mode parser: free-text `{var} op value` → AST (edge cases, malformed input)
+- All 16 condition operator types per engine (`equals`, `greater_than`, `contains`, `is_nil`, etc.)
+- All 8 assignment operators per engine (`set`, `add`, `subtract`, `toggle`, `clear`, etc.)
+- Logic combinators: `all` (AND) and `any` (OR) rule groups
+- Block-format conditions: nested blocks and groups (max 1 level)
+- Response-level conditions: JSON string → decode → transpile
+- Scene pin/zone conditions: map → transpile
+- Legacy plain-text conditions: emit warning, don't crash
+- Variable-to-variable assignments: `value_type == "variable_ref"`
+- Empty/nil conditions: graceful handling
 - Expression transpiler integration: structured condition → Unity Lua → valid Lua syntax

@@ -268,12 +268,7 @@ Sheets are the entity/character/location data containers (previously called "pag
                 { "id": "rule_001", "sheet": "mc.jaime", "variable": "health", "operator": "greater_than", "value": "50" }
               ]
             },
-            "expression": null,
-            "switch_mode": false,
-            "cases": [
-              { "id": "case_true", "value": "true", "label": "True" },
-              { "id": "case_false", "value": "false", "label": "False" }
-            ]
+            "switch_mode": false
           }
         },
         {

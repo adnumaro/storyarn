@@ -127,7 +127,7 @@ This is the **hardest piece** of the entire export system. Storyarn conditions a
 
 **Storyarn's two input modes:**
 1. **Builder mode (primary):** Structured JSON — `{logic, rules: [{sheet, variable, operator, value}]}` for conditions, `{assignments: [{sheet, variable, operator, value}]}` for instructions. This is how 90%+ of conditions/instructions are authored.
-2. **Code mode (secondary):** Free-text expressions like `{mc.jaime.health} > 50`. Used by advanced users. Requires parsing into an intermediate representation before transpilation.
+2. **Code mode (secondary):** Free-text expressions like `mc.jaime.health > 50`. Used by advanced users via a tabbed UI. **Crucially, code mode is a UI-only feature** — the JS expression editor (`assets/js/expression_editor/`) converts DSL text to structured data before saving. The DB always stores structured data. The export transpiler never sees free-text expressions.
 
 ```elixir
 defmodule Storyarn.Exports.ExpressionTranspiler do
@@ -138,12 +138,10 @@ defmodule Storyarn.Exports.ExpressionTranspiler do
   @doc "Transpile structured Storyarn instruction assignments to target engine syntax"
   @callback transpile_instruction(assignments :: [map()], context :: map()) ::
               {:ok, String.t()} | {:error, term()}
-
-  @doc "Transpile a free-text code-mode expression (fallback path)"
-  @callback transpile_code_expression(expression :: String.t(), context :: map()) ::
-              {:ok, String.t()} | {:error, term()}
 end
 ```
+
+> **Note:** The previous design included a `transpile_code_expression/2` callback for parsing free-text DSL expressions server-side. This was removed after verifying that code mode is handled entirely in the browser JS — the DB always stores structured data.
 
 ### Transpilation targets — Structured conditions (builder mode)
 
@@ -204,25 +202,10 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Unity do
     "#{ref} = #{ref} - #{val}"
   end
 
-  # Code-mode fallback — requires parsing
-  def transpile_code_expression(expr, ctx) do
-    with {:ok, ast} <- Parser.parse(expr) do
-      {:ok, emit_lua(ast, ctx)}
-    end
-  end
-end
-
-# Parser only needed for code-mode expressions
-defmodule Storyarn.Exports.ExpressionTranspiler.Parser do
-  @doc "Parse free-text Storyarn expression into AST"
-  def parse(expression) do
-    # "{mc.jaime.health} > 50" →
-    # {:comparison, {:var_ref, "mc.jaime.health"}, :gt, {:literal, 50}}
-  end
 end
 ```
 
-**Key insight:** Since the builder stores structured data, the transpiler for builder-mode conditions/instructions is just a lookup table + string concatenation — no parser, no AST, no ambiguity. The parser is only needed for the code-mode fallback path, which is used by <10% of conditions.
+**Key insight:** Since the DB always stores structured data (code mode converts to structured before saving), the transpiler is just a lookup table + string concatenation — no parser, no AST, no ambiguity. The only edge case is legacy plain-text conditions (pre-builder), which should be emitted as warnings.
 
 ---
 

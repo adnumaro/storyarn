@@ -12,6 +12,8 @@ defmodule Storyarn.MixProject do
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
+      test_coverage: [summary: [threshold: 85]],
+      test_ignore_filters: [~r/generate_snapshots/],
       dialyzer: [
         # Ignore known false positive with Gettext plural handling
         ignore_warnings: ".dialyzer_ignore.exs",
