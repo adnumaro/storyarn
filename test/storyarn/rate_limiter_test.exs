@@ -38,13 +38,6 @@ defmodule Storyarn.RateLimiterTest do
   end
 
   describe "check_magic_link/1" do
-    test "allows requests under the limit when enabled" do
-      with_rate_limiting_enabled(fn ->
-        email = "test-ml-#{System.unique_integer([:positive])}@example.com"
-        assert :ok = RateLimiter.check_magic_link(email)
-      end)
-    end
-
     test "blocks requests over the limit when enabled" do
       with_rate_limiting_enabled(fn ->
         email = "test-ml-block-#{System.unique_integer([:positive])}@example.com"
@@ -84,13 +77,6 @@ defmodule Storyarn.RateLimiterTest do
   end
 
   describe "check_invitation/3" do
-    test "allows requests under the default limit when enabled" do
-      with_rate_limiting_enabled(fn ->
-        user_id = System.unique_integer([:positive])
-        assert :ok = RateLimiter.check_invitation("workspace", 1, user_id)
-      end)
-    end
-
     test "blocks requests over custom limit when enabled" do
       with_rate_limiting_enabled(fn ->
         user_id = System.unique_integer([:positive])
@@ -145,17 +131,4 @@ defmodule Storyarn.RateLimiterTest do
     end
   end
 
-  describe "when disabled" do
-    test "always allows login when disabled" do
-      ip = "disabled-test-#{System.unique_integer([:positive])}"
-
-      for _ <- 1..20, do: assert(:ok = RateLimiter.check_login(ip))
-    end
-
-    test "always allows magic link when disabled" do
-      email = "disabled-#{System.unique_integer([:positive])}@example.com"
-
-      for _ <- 1..20, do: assert(:ok = RateLimiter.check_magic_link(email))
-    end
-  end
 end

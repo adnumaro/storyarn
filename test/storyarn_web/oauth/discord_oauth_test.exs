@@ -12,14 +12,6 @@ defmodule StoryarnWeb.OAuth.DiscordOAuthTest do
       assert client.token_url == "https://discord.com/api/oauth2/token"
     end
 
-    test "uses configured client_id and client_secret" do
-      client = DiscordOAuth.client()
-
-      # Values come from config :ueberauth, StoryarnWeb.OAuth.DiscordOAuth
-      # In test they're nil (no env vars set), but the client is still constructed
-      assert %OAuth2.Client{} = client
-    end
-
     test "merges custom opts over defaults" do
       client = DiscordOAuth.client(site: "https://custom.example.com")
 

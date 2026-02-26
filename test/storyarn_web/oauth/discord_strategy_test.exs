@@ -132,7 +132,7 @@ defmodule StoryarnWeb.OAuth.DiscordStrategyTest do
       assert extra.raw_info[:user] == user
     end
 
-    test "omits nil private keys" do
+    test "includes keys present in private even if nil, excludes absent keys" do
       conn =
         %Plug.Conn{}
         |> Plug.Conn.put_private(:discord_token, nil)
@@ -140,8 +140,11 @@ defmodule StoryarnWeb.OAuth.DiscordStrategyTest do
 
       extra = DiscordStrategy.extra(conn)
 
-      # discord_user not in private at all, discord_token is nil (still present in private)
-      assert %Extra{} = extra
+      # discord_token exists in private (even if nil) → included as :token
+      assert Map.has_key?(extra.raw_info, :token)
+      assert extra.raw_info[:token] == nil
+      # discord_user was never put_private'd → excluded
+      refute Map.has_key?(extra.raw_info, :user)
     end
   end
 
