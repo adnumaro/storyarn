@@ -3,11 +3,11 @@ defmodule Storyarn.Scenes.PinCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.VariableReferenceTracker
+  alias Storyarn.Flows
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.{PositionUtils, ScenePin}
-  alias Storyarn.Sheets.ReferenceTracker
+  alias Storyarn.Sheets
 
   @doc """
   Lists pins for a map, with optional layer_id filter.
@@ -70,8 +70,8 @@ defmodule Storyarn.Scenes.PinCrud do
     case result do
       {:ok, pin} ->
         project_id = Scenes.get_scene_project_id(scene_id)
-        ReferenceTracker.update_scene_pin_references(pin)
-        VariableReferenceTracker.update_scene_pin_references(pin, project_id: project_id)
+        Sheets.update_scene_pin_references(pin)
+        Flows.update_scene_pin_references(pin, project_id: project_id)
 
       _ ->
         :ok
@@ -89,8 +89,8 @@ defmodule Storyarn.Scenes.PinCrud do
     case result do
       {:ok, updated_pin} ->
         project_id = Scenes.get_scene_project_id(pin.scene_id)
-        ReferenceTracker.update_scene_pin_references(updated_pin)
-        VariableReferenceTracker.update_scene_pin_references(updated_pin, project_id: project_id)
+        Sheets.update_scene_pin_references(updated_pin)
+        Flows.update_scene_pin_references(updated_pin, project_id: project_id)
 
       _ ->
         :ok
@@ -109,8 +109,8 @@ defmodule Storyarn.Scenes.PinCrud do
   end
 
   def delete_pin(%ScenePin{} = pin) do
-    ReferenceTracker.delete_map_pin_references(pin.id)
-    VariableReferenceTracker.delete_map_pin_references(pin.id)
+    Sheets.delete_map_pin_references(pin.id)
+    Flows.delete_map_pin_references(pin.id)
     Repo.delete(pin)
   end
 

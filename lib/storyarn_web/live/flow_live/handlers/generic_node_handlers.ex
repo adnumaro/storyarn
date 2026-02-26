@@ -44,12 +44,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
     case Flows.update_flow(flow, %{name: name}) do
       {:ok, updated_flow} ->
-        schedule_save_status_reset()
-
         {:noreply,
          socket
          |> assign(:flow, updated_flow)
-         |> assign(:save_status, :saved)
+         |> mark_saved()
          |> push_event("flow_meta_changed", %{field: "name", prev: prev_name, new: name})}
 
       {:error, _changeset} ->
@@ -66,12 +64,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
     case Flows.update_flow(flow, %{shortcut: shortcut}) do
       {:ok, updated_flow} ->
-        schedule_save_status_reset()
-
         {:noreply,
          socket
          |> assign(:flow, updated_flow)
-         |> assign(:save_status, :saved)
+         |> mark_saved()
          |> push_event("flow_meta_changed", %{
            field: "shortcut",
            prev: prev_shortcut,
@@ -91,12 +87,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
     case Flows.update_flow(flow, %{name: value}) do
       {:ok, updated_flow} ->
-        schedule_save_status_reset()
-
         {:noreply,
          socket
          |> assign(:flow, updated_flow)
-         |> assign(:save_status, :saved)
+         |> mark_saved()
          |> push_event("restore_page_content", %{
            name: updated_flow.name,
            shortcut: updated_flow.shortcut || ""
@@ -113,12 +107,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
     case Flows.update_flow(flow, %{shortcut: shortcut}) do
       {:ok, updated_flow} ->
-        schedule_save_status_reset()
-
         {:noreply,
          socket
          |> assign(:flow, updated_flow)
-         |> assign(:save_status, :saved)
+         |> mark_saved()
          |> push_event("restore_page_content", %{
            name: updated_flow.name,
            shortcut: updated_flow.shortcut || ""
@@ -274,11 +266,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
     case Flows.batch_update_positions(flow.id, parsed) do
       {:ok, _count} ->
-        schedule_save_status_reset()
-
         {:noreply,
          socket
-         |> assign(:save_status, :saved)
+         |> mark_saved()
          |> CollaborationHelpers.broadcast_change(:flow_refresh, %{})}
 
       {:error, _reason} ->
@@ -355,11 +345,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       node ->
         case Flows.update_node_position(node, %{position_x: x, position_y: y}) do
           {:ok, _} ->
-            schedule_save_status_reset()
-
             {:noreply,
              socket
-             |> assign(:save_status, :saved)
+             |> mark_saved()
              |> CollaborationHelpers.broadcast_change(:node_moved, %{
                node_id: node_id,
                x: x,

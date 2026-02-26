@@ -7,8 +7,6 @@ defmodule StoryarnWeb.AssetLive.Index do
   import StoryarnWeb.AssetLive.Components.AssetComponents
 
   alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Assets.Storage
   alias Storyarn.Projects
 
   @impl true
@@ -265,7 +263,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   end
 
   defp do_upload(socket, filename, content_type, binary_data) do
-    if Asset.allowed_content_type?(content_type) do
+    if Assets.allowed_content_type?(content_type) do
       project = socket.assigns.project
       user = socket.assigns.current_scope.user
       safe_filename = Assets.sanitize_filename(filename)
@@ -278,7 +276,7 @@ defmodule StoryarnWeb.AssetLive.Index do
         key: key
       }
 
-      with {:ok, url} <- Storage.upload(key, binary_data, content_type),
+      with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
            {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
         type_counts = Assets.count_assets_by_type(project.id)
         usages = Assets.get_asset_usages(project.id, asset.id)
@@ -316,10 +314,10 @@ defmodule StoryarnWeb.AssetLive.Index do
 
       asset ->
         # Delete from storage (best-effort)
-        Storage.delete(asset.key)
+        Assets.storage_delete(asset.key)
 
         if thumbnail_key = asset.metadata["thumbnail_key"] do
-          Storage.delete(thumbnail_key)
+          Assets.storage_delete(thumbnail_key)
         end
 
         case Assets.delete_asset(asset) do

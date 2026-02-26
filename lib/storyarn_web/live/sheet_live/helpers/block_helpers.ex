@@ -55,8 +55,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
         {:noreply,
          socket
          |> assign(:blocks, blocks)
-         |> assign(:save_status, :saved)
-         |> schedule_reset()}
+         |> mark_saved()}
 
       {:error, _} ->
         {:noreply, socket}
@@ -130,8 +129,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
         {:noreply,
          socket
          |> assign(:blocks, blocks)
-         |> assign(:save_status, :saved)
-         |> schedule_reset()}
+         |> mark_saved()}
 
       {:error, _} ->
         {:noreply, socket}
@@ -166,7 +164,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
     case Sheets.update_block_value(block, %{"content" => content}) do
       {:ok, _block} ->
         # Don't reload blocks to avoid disrupting the editor
-        {:noreply, socket |> assign(:save_status, :saved) |> schedule_reset()}
+        {:noreply, mark_saved(socket)}
 
       {:error, _} ->
         {:noreply, socket}
@@ -198,8 +196,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
         {:noreply,
          socket
          |> assign(:blocks, blocks)
-         |> assign(:save_status, :saved)
-         |> schedule_reset()}
+         |> mark_saved()}
 
       {:error, _} ->
         {:noreply, socket}
@@ -252,8 +249,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
         {:noreply,
          socket
          |> assign(:blocks, blocks)
-         |> assign(:save_status, :saved)
-         |> schedule_reset()}
+         |> mark_saved()}
       else
         _ -> {:noreply, socket}
       end
@@ -268,8 +264,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
         {:noreply,
          socket
          |> assign(:blocks, blocks)
-         |> assign(:save_status, :saved)
-         |> schedule_reset()}
+         |> mark_saved()}
 
       {:error, _} ->
         {:noreply, socket}

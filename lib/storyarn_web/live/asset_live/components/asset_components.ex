@@ -7,6 +7,7 @@ defmodule StoryarnWeb.AssetLive.Components.AssetComponents do
 
   import StoryarnWeb.Components.CoreComponents
 
+  alias Storyarn.Assets
   alias Storyarn.Assets.Asset
 
   attr :asset, :map, required: true
@@ -25,15 +26,15 @@ defmodule StoryarnWeb.AssetLive.Components.AssetComponents do
     >
       <figure class="h-32 bg-base-200 flex items-center justify-center">
         <img
-          :if={Asset.image?(@asset)}
+          :if={Assets.image?(@asset)}
           src={@asset.url}
           alt={@asset.filename}
           class="w-full h-full object-cover"
         />
-        <div :if={Asset.audio?(@asset)} class="text-center">
+        <div :if={Assets.audio?(@asset)} class="text-center">
           <.icon name="music" class="size-10 text-base-content/30" />
         </div>
-        <div :if={!Asset.image?(@asset) and !Asset.audio?(@asset)} class="text-center">
+        <div :if={!Assets.image?(@asset) and !Assets.audio?(@asset)} class="text-center">
           <.icon name="file" class="size-10 text-base-content/30" />
         </div>
       </figure>
@@ -74,18 +75,18 @@ defmodule StoryarnWeb.AssetLive.Components.AssetComponents do
 
       <div class="rounded-lg overflow-hidden bg-base-200">
         <img
-          :if={Asset.image?(@asset)}
+          :if={Assets.image?(@asset)}
           src={@asset.url}
           alt={@asset.filename}
           class="w-full object-contain max-h-48"
         />
-        <div :if={Asset.audio?(@asset)} class="p-4">
+        <div :if={Assets.audio?(@asset)} class="p-4">
           <audio controls class="w-full">
             <source src={@asset.url} type={@asset.content_type} />
           </audio>
         </div>
         <div
-          :if={!Asset.image?(@asset) and !Asset.audio?(@asset)}
+          :if={!Assets.image?(@asset) and !Assets.audio?(@asset)}
           class="p-6 flex items-center justify-center"
         >
           <.icon name="file" class="size-12 text-base-content/30" />
@@ -182,16 +183,16 @@ defmodule StoryarnWeb.AssetLive.Components.AssetComponents do
 
   def type_label(%Asset{} = asset) do
     cond do
-      Asset.image?(asset) -> dgettext("assets", "Image")
-      Asset.audio?(asset) -> dgettext("assets", "Audio")
+      Assets.image?(asset) -> dgettext("assets", "Image")
+      Assets.audio?(asset) -> dgettext("assets", "Audio")
       true -> dgettext("assets", "File")
     end
   end
 
   def type_badge_class(%Asset{} = asset) do
     cond do
-      Asset.image?(asset) -> "badge-primary"
-      Asset.audio?(asset) -> "badge-secondary"
+      Assets.image?(asset) -> "badge-primary"
+      Assets.audio?(asset) -> "badge-secondary"
       true -> "badge-ghost"
     end
   end

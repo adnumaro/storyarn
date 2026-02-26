@@ -35,14 +35,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
   def handle_node_updated(updated_node, socket) do
     # The ScreenplayEditor already wrote to DB, so just reload state and push canvas data
     form = FormHelpers.node_data_to_form(updated_node)
-    schedule_save_status_reset()
 
     {:noreply,
      socket
      |> reload_flow_data()
      |> assign(:selected_node, updated_node)
      |> assign(:node_form, form)
-     |> assign(:save_status, :saved)
+     |> mark_saved()
      |> push_event("node_updated", %{
        id: updated_node.id,
        data: Flows.resolve_node_colors(updated_node.type, updated_node.data)

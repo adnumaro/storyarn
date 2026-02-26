@@ -29,7 +29,13 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
 
     ~H"""
     <div class="py-1">
-      <.block_label label={@label} is_constant={@is_constant} block_id={@block.id} can_edit={@can_edit} target={@target} />
+      <.block_label
+        label={@label}
+        is_constant={@is_constant}
+        block_id={@block.id}
+        can_edit={@can_edit}
+        target={@target}
+      />
 
       <%= if @can_edit do %>
         <div class="dropdown w-full">

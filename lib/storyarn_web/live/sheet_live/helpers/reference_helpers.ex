@@ -45,8 +45,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
       {:noreply,
        socket
        |> assign(:blocks, blocks)
-       |> assign(:save_status, :saved)
-       |> schedule_reset()}
+       |> mark_saved()}
     else
       :error ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid reference ID."))}
@@ -75,8 +74,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
         {:noreply,
          socket
          |> assign(:blocks, blocks)
-         |> assign(:save_status, :saved)
-         |> schedule_reset()}
+         |> mark_saved()}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not clear reference."))}

@@ -11,7 +11,7 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Localization
-  alias Storyarn.Screenplays.ContentUtils
+  alias Storyarn.Screenplays
 
   @spec load_texts(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
   def load_texts(socket) do
@@ -99,7 +99,7 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   def non_blank(s), do: s
 
   @spec strip_html(String.t() | nil) :: String.t()
-  def strip_html(text), do: ContentUtils.strip_html(text)
+  def strip_html(text), do: Screenplays.content_strip_html(text)
 
   @spec status_label(String.t()) :: String.t()
   def status_label("pending"), do: dgettext("localization", "Pending")

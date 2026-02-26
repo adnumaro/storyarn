@@ -7,10 +7,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers do
 
   use Gettext, backend: StoryarnWeb.Gettext
 
-  alias Storyarn.Flows.Condition
-  alias Storyarn.Flows.Instruction
+  alias Storyarn.Flows
   alias Storyarn.Screenplays
-  alias Storyarn.Screenplays.ContentUtils
   alias Storyarn.Sheets
 
   alias StoryarnWeb.ScreenplayLive.Helpers.SocketHelpers
@@ -78,7 +76,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers do
 
         attrs = %{
           type: type,
-          content: ContentUtils.sanitize_html(el["content"]),
+          content: Screenplays.content_sanitize_html(el["content"]),
           data: sanitize_element_data(type, el["data"])
         }
 
@@ -132,11 +130,11 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers do
   # ---------------------------------------------------------------------------
 
   def sanitize_element_data("conditional", data) when is_map(data) do
-    %{"condition" => Condition.sanitize(data["condition"])}
+    %{"condition" => Flows.condition_sanitize(data["condition"])}
   end
 
   def sanitize_element_data("instruction", data) when is_map(data) do
-    %{"assignments" => Instruction.sanitize(data["assignments"])}
+    %{"assignments" => Flows.instruction_sanitize(data["assignments"])}
   end
 
   def sanitize_element_data("response", data) when is_map(data) do
@@ -166,8 +164,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers do
         side_data
         |> Map.take(@valid_dual_fields)
         |> Map.new(fn
-          {"dialogue", v} -> {"dialogue", ContentUtils.sanitize_html(v)}
-          {"parenthetical", v} -> {"parenthetical", ContentUtils.sanitize_html(v)}
+          {"dialogue", v} -> {"dialogue", Screenplays.content_sanitize_html(v)}
+          {"parenthetical", v} -> {"parenthetical", Screenplays.content_sanitize_html(v)}
           {"character", v} -> {"character", sanitize_plain_text(v)}
         end)
 
@@ -187,8 +185,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers do
   def sanitize_choice_fields(choice) do
     choice
     |> update_if_present("text", &sanitize_plain_text/1)
-    |> update_if_present("condition", &Condition.sanitize/1)
-    |> update_if_present("instruction", &Instruction.sanitize/1)
+    |> update_if_present("condition", &Flows.condition_sanitize/1)
+    |> update_if_present("instruction", &Flows.instruction_sanitize/1)
   end
 
   def update_if_present(map, key, fun) do

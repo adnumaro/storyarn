@@ -90,9 +90,9 @@ defmodule StoryarnWeb.Router do
         LocalizationExportController,
         :export
 
-    get "/workspaces/:workspace_slug/projects/:project_slug/export/storyarn",
+    get "/workspaces/:workspace_slug/projects/:project_slug/export/:format",
         ExportController,
-        :storyarn
+        :export
 
     live_session :require_authenticated_user,
       on_mount: [

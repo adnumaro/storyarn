@@ -30,7 +30,8 @@ defmodule Storyarn.Scenes do
     ScenePin,
     SceneZone,
     TreeOperations,
-    ZoneCrud
+    ZoneCrud,
+    ZoneImageExtractor
   }
 
   alias Storyarn.Projects.Project
@@ -337,6 +338,32 @@ defmodule Storyarn.Scenes do
   defdelegate list_actionable_zones(scene_id), to: ZoneCrud
 
   # =============================================================================
+  # Zone Image Extraction
+  # =============================================================================
+
+  @doc """
+  Extracts a zone's bounding-box region from the parent scene's background image,
+  upscales to a minimum usable size, and returns the new Asset with dimensions.
+
+  The `parent_scene` must have `:background_asset` preloaded.
+  """
+  defdelegate extract_zone_image(parent_scene, zone, project),
+    to: ZoneImageExtractor,
+    as: :extract
+
+  @doc """
+  Computes the bounding box of zone vertices as {min_x, min_y, max_x, max_y} in percentages.
+  """
+  defdelegate zone_bounding_box(vertices), to: ZoneImageExtractor, as: :bounding_box
+
+  @doc """
+  Normalizes zone vertices into child coordinate space (0-100% relative to bounding box).
+  """
+  defdelegate normalize_zone_vertices(vertices),
+    to: ZoneImageExtractor,
+    as: :normalize_vertices_to_bbox
+
+  # =============================================================================
   # Pins
   # =============================================================================
 
@@ -543,4 +570,76 @@ defmodule Storyarn.Scenes do
   def preload_sheet_avatar(sheet) do
     Repo.preload(sheet, avatar_asset: [])
   end
+
+  # =============================================================================
+  # Export / Import helpers
+  # =============================================================================
+
+  @doc "Lists scenes with all associations preloaded. Opts: [filter_ids: :all | [ids]]."
+  defdelegate list_scenes_for_export(project_id, opts \\ []), to: SceneCrud
+
+  @doc "Counts non-deleted scenes for a project."
+  defdelegate count_scenes(project_id), to: SceneCrud
+
+  @doc "Returns variable usage for a block from scene zones."
+  defdelegate get_scene_zone_variable_usage(block_id, project_id), to: SceneCrud
+
+  @doc "Returns variable usage for a block from scene pins."
+  defdelegate get_scene_pin_variable_usage(block_id, project_id), to: SceneCrud
+
+  @doc "Returns stale variable reference data for scene zones."
+  defdelegate check_stale_scene_zone_variable_references(block_id, project_id), to: SceneCrud
+
+  @doc "Returns stale variable reference data for scene pins."
+  defdelegate check_stale_scene_pin_variable_references(block_id, project_id), to: SceneCrud
+
+  @doc "Resolves scene pin backlinks for entity reference tracking."
+  defdelegate query_scene_pin_backlinks(target_type, target_id, project_id), to: SceneCrud
+
+  @doc "Resolves scene zone backlinks for entity reference tracking."
+  defdelegate query_scene_zone_backlinks(target_type, target_id, project_id), to: SceneCrud
+
+  @doc "Lists sheet IDs referenced by scene pins in a project."
+  defdelegate list_pin_referenced_sheet_ids(project_id), to: SceneCrud
+
+  @doc "Lists active scene IDs for a project."
+  defdelegate list_active_scene_ids(project_id), to: SceneCrud
+
+  @doc "Lists existing scene shortcuts for a project."
+  defdelegate list_scene_shortcuts(project_id), to: SceneCrud, as: :list_shortcuts
+
+  @doc "Detects shortcut conflicts between imported scenes and existing ones."
+  defdelegate detect_scene_shortcut_conflicts(project_id, shortcuts),
+    to: SceneCrud,
+    as: :detect_shortcut_conflicts
+
+  @doc "Soft-deletes existing scenes with the given shortcut (overwrite import strategy)."
+  defdelegate soft_delete_scene_by_shortcut(project_id, shortcut),
+    to: SceneCrud,
+    as: :soft_delete_by_shortcut
+
+  @doc "Bulk-inserts scene connections from a list of attr maps."
+  defdelegate bulk_import_scene_connections(attrs_list),
+    to: SceneCrud,
+    as: :bulk_import_connections
+
+  @doc "Bulk-inserts scene annotations from a list of attr maps."
+  defdelegate bulk_import_scene_annotations(attrs_list),
+    to: SceneCrud,
+    as: :bulk_import_annotations
+
+  @doc "Creates a scene for import (raw insert, no side effects)."
+  defdelegate import_scene(project_id, attrs), to: SceneCrud
+
+  @doc "Creates a scene layer for import (raw insert, no side effects)."
+  defdelegate import_layer(scene_id, attrs), to: SceneCrud
+
+  @doc "Creates a scene pin for import (raw insert, no side effects)."
+  defdelegate import_pin(scene_id, attrs), to: SceneCrud
+
+  @doc "Creates a scene zone for import (raw insert, no side effects)."
+  defdelegate import_zone(scene_id, attrs), to: SceneCrud
+
+  @doc "Updates a scene's parent_id after import."
+  defdelegate link_scene_import_parent(scene, parent_id), to: SceneCrud, as: :link_import_parent
 end

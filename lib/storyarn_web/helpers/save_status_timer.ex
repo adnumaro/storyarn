@@ -9,4 +9,14 @@ defmodule StoryarnWeb.Helpers.SaveStatusTimer do
     Process.send_after(self(), :reset_save_status, timeout_ms)
     socket
   end
+
+  @doc """
+  Marks the save status as :saved and schedules the automatic reset.
+  Convenience function that combines assign + schedule_reset.
+  """
+  def mark_saved(socket) do
+    socket
+    |> Phoenix.Component.assign(:save_status, :saved)
+    |> schedule_reset()
+  end
 end

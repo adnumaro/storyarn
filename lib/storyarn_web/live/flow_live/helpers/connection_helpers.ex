@@ -34,8 +34,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
 
     case Flows.create_connection_with_attrs(socket.assigns.flow, attrs) do
       {:ok, conn} ->
-        schedule_save_status_reset()
-
         connection_data = %{
           id: conn.id,
           source_node_id: source_id,
@@ -47,7 +45,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
         {:noreply,
          socket
          |> reload_flow_data()
-         |> assign(:save_status, :saved)
+         |> mark_saved()
          |> push_event("connection_added", connection_data)
          |> CollaborationHelpers.broadcast_change(:connection_added, %{
            connection_data: connection_data
@@ -73,13 +71,12 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
     Flows.delete_connection_by_nodes(socket.assigns.flow.id, source_id, target_id)
     flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
     flow_data = Flows.serialize_for_canvas(flow)
-    schedule_save_status_reset()
 
     {:noreply,
      socket
      |> assign(:flow, flow)
      |> assign(:flow_data, flow_data)
-     |> assign(:save_status, :saved)
+     |> mark_saved()
      |> CollaborationHelpers.broadcast_change(:connection_deleted, %{
        source_node_id: source_id,
        target_node_id: target_id

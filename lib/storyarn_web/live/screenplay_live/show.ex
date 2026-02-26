@@ -6,7 +6,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
   alias Storyarn.Projects
   alias Storyarn.Screenplays
-  alias Storyarn.Screenplays.TiptapSerialization
   alias Storyarn.Sheets
   alias StoryarnWeb.Components.ConditionBuilder
   alias StoryarnWeb.Components.InstructionBuilder
@@ -116,7 +115,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           |> assign(:screenplays_tree, [])
           |> assign(:sheets_map, %{})
           |> assign(:elements, [])
-          |> assign(:editor_doc, TiptapSerialization.elements_to_doc([]))
+          |> assign(:editor_doc, Screenplays.elements_to_doc([]))
           |> assign(:project_variables, [])
           |> assign(:link_status, :unlinked)
           |> assign(:linked_flow, nil)
@@ -256,7 +255,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       ) do
     with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.update_choice_field(socket, id, choice_id, fn choice ->
-        Map.put(choice, "condition", Storyarn.Flows.Condition.sanitize(condition))
+        Map.put(choice, "condition", Storyarn.Flows.condition_sanitize(condition))
       end)
     end)
   end
@@ -268,7 +267,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       ) do
     with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.update_choice_field(socket, id, choice_id, fn choice ->
-        Map.put(choice, "instruction", Storyarn.Flows.Instruction.sanitize(assignments))
+        Map.put(choice, "instruction", Storyarn.Flows.instruction_sanitize(assignments))
       end)
     end)
   end

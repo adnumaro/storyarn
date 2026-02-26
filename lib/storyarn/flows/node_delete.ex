@@ -4,9 +4,9 @@ defmodule Storyarn.Flows.NodeDelete do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.{FlowNode, VariableReferenceTracker}
-  alias Storyarn.Localization.TextExtractor
+  alias Storyarn.Localization
   alias Storyarn.Repo
-  alias Storyarn.Sheets.ReferenceTracker
+  alias Storyarn.Sheets
 
   def delete_node(%FlowNode{type: "entry"}), do: {:error, :cannot_delete_entry_node}
 
@@ -44,9 +44,9 @@ defmodule Storyarn.Flows.NodeDelete do
     Repo.transaction(fn ->
       orphaned_count = maybe_clear_orphaned_jumps(node)
 
-      ReferenceTracker.delete_flow_node_references(node.id)
+      Sheets.delete_flow_node_references(node.id)
       VariableReferenceTracker.delete_references(node.id)
-      TextExtractor.delete_flow_node_texts(node.id)
+      Localization.delete_flow_node_texts(node.id)
 
       case node |> FlowNode.soft_delete_changeset() |> Repo.update() do
         {:ok, deleted_node} -> {deleted_node, %{orphaned_jumps: orphaned_count}}

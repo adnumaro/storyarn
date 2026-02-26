@@ -212,83 +212,11 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   defp query_flow_node_backlinks(target_type, target_id, project_id) do
-    alias Storyarn.Flows.{Flow, FlowNode}
-
-    from(r in EntityReference,
-      join: n in FlowNode,
-      on: r.source_type == "flow_node" and r.source_id == n.id,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where: r.target_type == ^target_type and r.target_id == ^target_id,
-      where: f.project_id == ^project_id,
-      select: %{
-        id: r.id,
-        source_type: r.source_type,
-        source_id: r.source_id,
-        context: r.context,
-        inserted_at: r.inserted_at,
-        node_type: n.type,
-        flow_id: f.id,
-        flow_name: f.name,
-        flow_shortcut: f.shortcut
-      },
-      order_by: [desc: r.inserted_at]
-    )
-    |> Repo.all()
-    |> Enum.map(fn ref ->
-      %{
-        id: ref.id,
-        source_type: "flow_node",
-        source_id: ref.source_id,
-        context: ref.context,
-        inserted_at: ref.inserted_at,
-        source_info: %{
-          type: :flow,
-          flow_id: ref.flow_id,
-          flow_name: ref.flow_name,
-          flow_shortcut: ref.flow_shortcut,
-          node_type: ref.node_type
-        }
-      }
-    end)
+    Storyarn.Flows.query_flow_node_backlinks(target_type, target_id, project_id)
   end
 
   defp query_screenplay_element_backlinks(target_type, target_id, project_id) do
-    from(r in EntityReference,
-      join: e in Storyarn.Screenplays.ScreenplayElement,
-      on: r.source_type == "screenplay_element" and r.source_id == e.id,
-      join: s in Storyarn.Screenplays.Screenplay,
-      on: e.screenplay_id == s.id,
-      where: r.target_type == ^target_type and r.target_id == ^target_id,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
-      select: %{
-        id: r.id,
-        source_type: r.source_type,
-        source_id: r.source_id,
-        context: r.context,
-        inserted_at: r.inserted_at,
-        element_type: e.type,
-        screenplay_id: s.id,
-        screenplay_name: s.name
-      },
-      order_by: [desc: r.inserted_at]
-    )
-    |> Repo.all()
-    |> Enum.map(fn ref ->
-      %{
-        id: ref.id,
-        source_type: "screenplay_element",
-        source_id: ref.source_id,
-        context: ref.context,
-        inserted_at: ref.inserted_at,
-        source_info: %{
-          type: :screenplay,
-          screenplay_id: ref.screenplay_id,
-          screenplay_name: ref.screenplay_name,
-          element_type: ref.element_type
-        }
-      }
-    end)
+    Storyarn.Screenplays.query_screenplay_element_backlinks(target_type, target_id, project_id)
   end
 
   @doc """
@@ -370,85 +298,11 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   defp query_scene_pin_backlinks(target_type, target_id, project_id) do
-    alias Storyarn.Scenes.{Scene, ScenePin}
-
-    from(r in EntityReference,
-      join: p in ScenePin,
-      on: r.source_type == "scene_pin" and r.source_id == p.id,
-      join: m in Scene,
-      on: p.scene_id == m.id,
-      where: r.target_type == ^target_type and r.target_id == ^target_id,
-      where: m.project_id == ^project_id,
-      select: %{
-        id: r.id,
-        source_type: r.source_type,
-        source_id: r.source_id,
-        context: r.context,
-        inserted_at: r.inserted_at,
-        pin_label: p.label,
-        scene_id: m.id,
-        scene_name: m.name
-      },
-      order_by: [desc: r.inserted_at]
-    )
-    |> Repo.all()
-    |> Enum.map(fn ref ->
-      %{
-        id: ref.id,
-        source_type: "scene_pin",
-        source_id: ref.source_id,
-        context: ref.context,
-        inserted_at: ref.inserted_at,
-        source_info: %{
-          type: :scene,
-          scene_id: ref.scene_id,
-          scene_name: ref.scene_name,
-          element_type: "pin",
-          element_label: ref.pin_label
-        }
-      }
-    end)
+    Storyarn.Scenes.query_scene_pin_backlinks(target_type, target_id, project_id)
   end
 
   defp query_scene_zone_backlinks(target_type, target_id, project_id) do
-    alias Storyarn.Scenes.{Scene, SceneZone}
-
-    from(r in EntityReference,
-      join: z in SceneZone,
-      on: r.source_type == "scene_zone" and r.source_id == z.id,
-      join: m in Scene,
-      on: z.scene_id == m.id,
-      where: r.target_type == ^target_type and r.target_id == ^target_id,
-      where: m.project_id == ^project_id,
-      select: %{
-        id: r.id,
-        source_type: r.source_type,
-        source_id: r.source_id,
-        context: r.context,
-        inserted_at: r.inserted_at,
-        zone_name: z.name,
-        scene_id: m.id,
-        scene_name: m.name
-      },
-      order_by: [desc: r.inserted_at]
-    )
-    |> Repo.all()
-    |> Enum.map(fn ref ->
-      %{
-        id: ref.id,
-        source_type: "scene_zone",
-        source_id: ref.source_id,
-        context: ref.context,
-        inserted_at: ref.inserted_at,
-        source_info: %{
-          type: :scene,
-          scene_id: ref.scene_id,
-          scene_name: ref.scene_name,
-          element_type: "zone",
-          element_label: ref.zone_name
-        }
-      }
-    end)
+    Storyarn.Scenes.query_scene_zone_backlinks(target_type, target_id, project_id)
   end
 
   # Private functions

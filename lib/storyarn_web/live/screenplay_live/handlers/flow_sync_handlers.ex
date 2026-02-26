@@ -9,7 +9,6 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FlowSyncHandlers do
   use StoryarnWeb, :verified_routes
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.Flow
   alias Storyarn.Screenplays
   alias Storyarn.Screenplays.Screenplay
 
@@ -117,7 +116,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FlowSyncHandlers do
         {:flow_missing, nil}
 
       flow ->
-        if Flow.deleted?(flow),
+        if Flows.flow_deleted?(flow),
           do: {:flow_deleted, flow},
           else: {:linked, flow}
     end

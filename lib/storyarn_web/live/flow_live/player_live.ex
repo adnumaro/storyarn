@@ -16,7 +16,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   import StoryarnWeb.FlowLive.Player.Components.PlayerOutcome
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Sheets
@@ -174,9 +173,15 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   end
 
   defp maybe_restore_player_session(socket, project) do
+    # Only restore on connected mount — disconnected mount would consume the
+    # session from the Agent, leaving nothing for the connected mount.
+    if not connected?(socket), do: nil, else: do_restore_player_session(socket, project)
+  end
+
+  defp do_restore_player_session(socket, project) do
     user_id = socket.assigns.current_scope.user.id
 
-    case DebugSessionStore.take({user_id, project.id}) do
+    case Flows.debug_session_take({user_id, project.id}) do
       nil ->
         nil
 
@@ -441,7 +446,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
     target_flow = Flows.get_flow_brief(proj.id, flow_id)
 
-    DebugSessionStore.store({user_id, proj.id}, %{
+    Flows.debug_session_store({user_id, proj.id}, %{
       engine_state: state,
       nodes: nodes,
       connections: connections,

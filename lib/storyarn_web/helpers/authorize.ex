@@ -31,8 +31,8 @@ defmodule StoryarnWeb.Helpers.Authorize do
   - `:manage_workspace_members` - Invite/remove members in workspace
   """
 
-  alias Storyarn.Projects.ProjectMembership
-  alias Storyarn.Workspaces.WorkspaceMembership
+  alias Storyarn.Projects
+  alias Storyarn.Workspaces
 
   defmacro __using__(_opts) do
     quote do
@@ -117,7 +117,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
   Returns `:ok` if authorized, `{:error, :unauthorized}` otherwise.
 
   The function looks at socket assigns to determine authorization:
-  - For project actions: checks `@can_edit` or `@membership` with ProjectMembership.can?
+  - For project actions: checks `@can_edit` or `@membership` with Projects.can?
   - For workspace actions: checks `@membership` role
 
   ## Examples
@@ -141,7 +141,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
   def authorize(%{assigns: assigns}, :edit_content) do
     case Map.get(assigns, :membership) do
       %{role: role} when is_binary(role) ->
-        if ProjectMembership.can?(role, :edit_content) do
+        if Projects.can?(role, :edit_content) do
           :ok
         else
           {:error, :unauthorized}
@@ -156,7 +156,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
   def authorize(%{assigns: assigns}, :manage_project) do
     case Map.get(assigns, :membership) do
       %{role: role} when is_binary(role) ->
-        if ProjectMembership.can?(role, :manage_project) do
+        if Projects.can?(role, :manage_project) do
           :ok
         else
           {:error, :unauthorized}
@@ -171,7 +171,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
   def authorize(%{assigns: assigns}, :manage_members) do
     case Map.get(assigns, :membership) do
       %{role: role} when is_binary(role) ->
-        if ProjectMembership.can?(role, :manage_members) do
+        if Projects.can?(role, :manage_members) do
           :ok
         else
           {:error, :unauthorized}
@@ -197,7 +197,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
   def authorize(%{assigns: assigns}, :manage_workspace_members) do
     case Map.get(assigns, :membership) do
       %{role: role} when is_binary(role) ->
-        if WorkspaceMembership.can?(role, :manage_members) do
+        if Workspaces.can?(role, :manage_members) do
           :ok
         else
           {:error, :unauthorized}

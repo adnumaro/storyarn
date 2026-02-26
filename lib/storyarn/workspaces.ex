@@ -129,6 +129,12 @@ defmodule Storyarn.Workspaces do
   # =============================================================================
 
   @doc """
+  Checks if a role can perform a given action.
+  """
+  @spec can?(role(), action()) :: boolean()
+  defdelegate can?(role, action), to: WorkspaceMembership
+
+  @doc """
   Lists all members of a workspace.
   """
   @spec list_workspace_members(integer()) :: [membership()]

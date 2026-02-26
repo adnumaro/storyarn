@@ -13,16 +13,34 @@ defmodule Storyarn.Screenplays do
   - `ElementGrouping` — Dialogue group computation from adjacency
   """
 
+  alias Storyarn.Repo
+  alias Storyarn.Sheets
+
   alias Storyarn.Screenplays.{
     AutoDetect,
+    CharacterExtension,
+    ContentUtils,
     ElementCrud,
     ElementGrouping,
     FlowSync,
     LinkedPageCrud,
+    Screenplay,
     ScreenplayCrud,
     ScreenplayQueries,
+    TiptapSerialization,
     TreeOperations
   }
+
+  # =============================================================================
+  # Screenplay Helpers
+  # =============================================================================
+
+  @doc """
+  Checks if a screenplay is a draft (has a non-nil draft_of_id).
+
+  Delegates to `Storyarn.Screenplays.Screenplay.draft?/1`.
+  """
+  defdelegate draft?(screenplay), to: Screenplay
 
   # =============================================================================
   # Screenplays — CRUD Operations
@@ -73,6 +91,10 @@ defmodule Storyarn.Screenplays do
 
   @doc "Lists all drafts of a given screenplay."
   defdelegate list_drafts(screenplay_id), to: ScreenplayQueries
+
+  @doc "Resolves screenplay element backlinks for entity reference tracking."
+  defdelegate query_screenplay_element_backlinks(target_type, target_id, project_id),
+    to: ScreenplayQueries
 
   # =============================================================================
   # Tree Operations
@@ -171,6 +193,78 @@ defmodule Storyarn.Screenplays do
   defdelegate detect_type(content), to: AutoDetect
 
   # =============================================================================
+  # TiptapSerialization
+  # =============================================================================
+
+  @doc "Converts screenplay elements to a TipTap document JSON structure."
+  defdelegate elements_to_doc(elements), to: TiptapSerialization
+
+  # =============================================================================
+  # ContentUtils
+  # =============================================================================
+
+  @doc "Strips HTML tags and decodes common entities, returning plain text."
+  defdelegate content_strip_html(html), to: ContentUtils, as: :strip_html
+
+  @doc "Sanitizes HTML content, keeping only safe tags/attributes."
+  defdelegate content_sanitize_html(html), to: ContentUtils, as: :sanitize_html
+
+  # =============================================================================
+  # CharacterExtension
+  # =============================================================================
+
+  @doc "Extracts the base character name (without extensions like V.O., CONT'D)."
+  defdelegate character_base_name(name), to: CharacterExtension, as: :base_name
+
+  # =============================================================================
+  # Fountain Import (transactional)
+  # =============================================================================
+
+  @doc """
+  Replaces all elements of a screenplay with elements parsed from a Fountain import.
+
+  Runs inside a transaction:
+  1. Deletes all existing elements (clearing sheet references for each).
+  2. Creates new elements from the parsed Fountain data.
+
+  Returns `{:ok, elements}` on success or `{:error, reason}` on failure.
+  """
+  def replace_elements_from_fountain(screenplay, existing_elements, parsed_elements) do
+    Ecto.Multi.new()
+    |> Ecto.Multi.run(:delete_existing, fn _repo, _ ->
+      result =
+        Enum.reduce_while(existing_elements, :ok, fn el, _ ->
+          Sheets.delete_screenplay_element_references(el.id)
+
+          case delete_element(el) do
+            {:ok, _} -> {:cont, :ok}
+            {:error, reason} -> {:halt, {:error, reason}}
+          end
+        end)
+
+      case result do
+        :ok -> {:ok, :deleted}
+        error -> error
+      end
+    end)
+    |> Ecto.Multi.run(:create_imported, fn _repo, _ ->
+      result =
+        Enum.reduce_while(parsed_elements, {:ok, []}, fn attrs, {:ok, acc} ->
+          case create_element(screenplay, attrs) do
+            {:ok, el} -> {:cont, {:ok, [el | acc]}}
+            {:error, reason} -> {:halt, {:error, reason}}
+          end
+        end)
+
+      case result do
+        {:ok, elements} -> {:ok, Enum.reverse(elements)}
+        error -> error
+      end
+    end)
+    |> Repo.transaction()
+  end
+
+  # =============================================================================
   # Export / Import
   # =============================================================================
 
@@ -182,4 +276,38 @@ defmodule Storyarn.Screenplays do
 
   @doc "Parses a Fountain format string into element attribute maps."
   defdelegate parse_fountain(text), to: FountainImport, as: :parse
+
+  # =============================================================================
+  # Export / Import helpers
+  # =============================================================================
+
+  @doc "Lists screenplays with elements preloaded for export."
+  defdelegate list_screenplays_for_export(project_id), to: ScreenplayCrud
+
+  @doc "Counts non-deleted screenplays for a project."
+  defdelegate count_screenplays(project_id), to: ScreenplayCrud
+
+  @doc "Lists existing screenplay shortcuts for a project."
+  defdelegate list_screenplay_shortcuts(project_id), to: ScreenplayCrud, as: :list_shortcuts
+
+  @doc "Detects shortcut conflicts between imported screenplays and existing ones."
+  defdelegate detect_screenplay_shortcut_conflicts(project_id, shortcuts),
+    to: ScreenplayCrud,
+    as: :detect_shortcut_conflicts
+
+  @doc "Soft-deletes existing screenplays with the given shortcut (overwrite import strategy)."
+  defdelegate soft_delete_screenplay_by_shortcut(project_id, shortcut),
+    to: ScreenplayCrud,
+    as: :soft_delete_by_shortcut
+
+  @doc "Creates a screenplay for import (raw insert, no side effects)."
+  defdelegate import_screenplay(project_id, attrs, extra_changes \\ %{}), to: ScreenplayCrud
+
+  @doc "Creates a screenplay element for import (raw insert, no side effects)."
+  defdelegate import_element(screenplay_id, attrs, extra_changes \\ %{}), to: ScreenplayCrud
+
+  @doc "Updates a screenplay's parent_id and/or draft_of_id after import."
+  defdelegate link_screenplay_import_refs(screenplay, changes),
+    to: ScreenplayCrud,
+    as: :link_import_refs
 end

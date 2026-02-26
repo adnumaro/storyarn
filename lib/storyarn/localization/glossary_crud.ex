@@ -94,4 +94,30 @@ defmodule Storyarn.Localization.GlossaryCrud do
       ilike(e.source_term, ^pattern) or ilike(e.target_term, ^pattern)
     )
   end
+
+  # =============================================================================
+  # Export / Import helpers
+  # =============================================================================
+
+  @doc """
+  Lists all glossary entries for a project for export.
+  """
+  def list_entries_for_export(project_id) do
+    from(g in GlossaryEntry,
+      where: g.project_id == ^project_id,
+      order_by: [asc: g.source_term, asc: g.target_locale]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Bulk-inserts glossary entries from a list of attr maps.
+  """
+  def bulk_import_entries(attrs_list) do
+    attrs_list
+    |> Enum.chunk_every(500)
+    |> Enum.each(fn chunk ->
+      Repo.insert_all(GlossaryEntry, chunk)
+    end)
+  end
 end

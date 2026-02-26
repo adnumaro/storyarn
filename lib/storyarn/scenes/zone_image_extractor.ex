@@ -15,7 +15,6 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
   require Logger
 
   alias Storyarn.Assets
-  alias Storyarn.Assets.Storage
   alias Storyarn.Scenes.SceneZone
 
   # Target minimum dimension for the output image
@@ -151,7 +150,7 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
     content_type = "image/webp"
 
     with {:ok, binary_data} <- File.read(temp_path),
-         {:ok, url} <- Storage.upload(key, binary_data, content_type) do
+         {:ok, url} <- Assets.storage_upload(key, binary_data, content_type) do
       Assets.create_asset(project, %{
         filename: filename,
         content_type: content_type,

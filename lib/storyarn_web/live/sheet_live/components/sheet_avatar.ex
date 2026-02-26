@@ -136,7 +136,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
       key: key
     }
 
-    with {:ok, url} <- Assets.Storage.upload(key, binary_data, content_type),
+    with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
          {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
          {:ok, _updated_sheet} <- Sheets.update_sheet(sheet, %{avatar_asset_id: asset.id}) do
       updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)

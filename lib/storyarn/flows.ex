@@ -12,12 +12,16 @@ defmodule Storyarn.Flows do
   """
 
   alias Storyarn.Flows.{
+    Condition,
     ConnectionCrud,
+    DebugSessionStore,
     Flow,
     FlowConnection,
     FlowCrud,
     FlowNode,
     HubColors,
+    Instruction,
+    NavigationHistoryStore,
     NodeCrud,
     SceneResolver,
     TreeOperations,
@@ -42,6 +46,16 @@ defmodule Storyarn.Flows do
   @type connection :: FlowConnection.t()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
+
+  # =============================================================================
+  # Node Types
+  # =============================================================================
+
+  @doc """
+  Returns the list of valid node types.
+  """
+  @spec node_types() :: [String.t()]
+  defdelegate node_types(), to: FlowNode
 
   # =============================================================================
   # Flows - CRUD Operations
@@ -191,6 +205,17 @@ defmodule Storyarn.Flows do
   """
   @spec set_main_flow(flow()) :: {:ok, flow()} | {:error, term()}
   defdelegate set_main_flow(flow), to: FlowCrud
+
+  # =============================================================================
+  # Flow Helpers
+  # =============================================================================
+
+  @doc """
+  Checks if a flow has been soft-deleted (has a non-nil deleted_at).
+
+  Delegates to `Storyarn.Flows.Flow.deleted?/1`.
+  """
+  defdelegate flow_deleted?(flow), to: Flow, as: :deleted?
 
   # =============================================================================
   # Tree Operations
@@ -404,6 +429,37 @@ defmodule Storyarn.Flows do
   @spec list_stale_node_ids(integer()) :: MapSet.t()
   defdelegate list_stale_node_ids(flow_id), to: VariableReferenceTracker
 
+  @doc """
+  Updates variable references for a scene zone after its action_data changes.
+  """
+  @spec update_scene_zone_references(map(), keyword()) :: :ok
+  defdelegate update_scene_zone_references(zone, opts \\ []), to: VariableReferenceTracker
+
+  @doc """
+  Deletes all variable references for a scene zone.
+  """
+  @spec delete_map_zone_references(integer()) :: :ok
+  defdelegate delete_map_zone_references(zone_id), to: VariableReferenceTracker
+
+  @doc """
+  Updates variable references for a scene pin after its action_data changes.
+  """
+  @spec update_scene_pin_references(map(), keyword()) :: :ok
+  defdelegate update_scene_pin_references(pin, opts \\ []), to: VariableReferenceTracker
+
+  @doc """
+  Deletes all variable references for a scene pin.
+  """
+  @spec delete_map_pin_references(integer()) :: :ok
+  defdelegate delete_map_pin_references(pin_id), to: VariableReferenceTracker
+
+  @doc """
+  Deletes all variable references for a flow node.
+  Called when a node is deleted.
+  """
+  @spec delete_references(integer()) :: :ok
+  defdelegate delete_references(node_id), to: VariableReferenceTracker
+
   # =============================================================================
   # Connections - CRUD Operations
   # =============================================================================
@@ -503,6 +559,13 @@ defmodule Storyarn.Flows do
   """
   @spec get_incoming_connections(integer()) :: [connection()]
   defdelegate get_incoming_connections(node_id), to: ConnectionCrud
+
+  @doc """
+  Deletes all connections within a flow where both source and target are in the given node IDs list.
+  Used by FlowSync to clear internal connections before rebuilding them.
+  """
+  @spec delete_connections_among_nodes(integer(), [integer()]) :: {integer(), nil | term()}
+  defdelegate delete_connections_among_nodes(flow_id, node_ids), to: ConnectionCrud
 
   # =============================================================================
   # Evaluator — Engine
@@ -678,4 +741,95 @@ defmodule Storyarn.Flows do
       data
     end
   end
+
+  # =============================================================================
+  # Condition
+  # =============================================================================
+
+  defdelegate condition_sanitize(condition), to: Condition, as: :sanitize
+  defdelegate condition_new(), to: Condition, as: :new
+  defdelegate condition_has_rules?(condition), to: Condition, as: :has_rules?
+  defdelegate condition_to_json(condition), to: Condition, as: :to_json
+  defdelegate condition_parse(condition), to: Condition, as: :parse
+
+  # =============================================================================
+  # Instruction
+  # =============================================================================
+
+  defdelegate instruction_sanitize(assignments), to: Instruction, as: :sanitize
+  defdelegate instruction_format_short(assignment), to: Instruction, as: :format_assignment_short
+
+  # =============================================================================
+  # DebugSessionStore
+  # =============================================================================
+
+  defdelegate debug_session_store(key, data), to: DebugSessionStore, as: :store
+  defdelegate debug_session_take(key), to: DebugSessionStore, as: :take
+
+  # =============================================================================
+  # NavigationHistoryStore
+  # =============================================================================
+
+  defdelegate nav_history_get(key), to: NavigationHistoryStore, as: :get
+  defdelegate nav_history_put(key, data), to: NavigationHistoryStore, as: :put
+  defdelegate nav_history_clear(key), to: NavigationHistoryStore, as: :clear
+
+  # =============================================================================
+  # Export / Import helpers
+  # =============================================================================
+
+  @doc "Returns the project_id for a flow by its ID."
+  defdelegate get_flow_project_id(flow_id), to: FlowCrud
+
+  @doc "Lists flows with nodes and connections preloaded. Opts: [filter_ids: :all | [ids]]."
+  defdelegate list_flows_for_export(project_id, opts \\ []), to: FlowCrud
+
+  @doc "Counts non-deleted flows for a project."
+  defdelegate count_flows(project_id), to: FlowCrud
+
+  @doc "Counts non-deleted flow nodes across all flows in a project."
+  defdelegate count_nodes_for_project(project_id), to: FlowCrud
+
+  @doc "Lists all non-deleted nodes for the given flow IDs."
+  defdelegate list_nodes_for_flow_ids(flow_ids), to: FlowCrud
+
+  @doc "Lists active scene IDs in a project (for validator cross-reference checks)."
+  defdelegate list_valid_scene_ids_in_project(project_id), to: FlowCrud
+
+  @doc "Lists flow nodes using a specific asset (audio_asset_id in data)."
+  defdelegate list_nodes_using_asset(project_id, asset_id), to: FlowCrud
+
+  @doc "Resolves flow node backlinks for entity reference tracking."
+  defdelegate query_flow_node_backlinks(target_type, target_id, project_id), to: FlowCrud
+
+  @doc "Lists sheet IDs referenced as speakers by flow nodes in a project."
+  defdelegate list_speaker_sheet_ids(project_id), to: FlowCrud
+
+  @doc "Lists sheet IDs referenced through variable_references in a project."
+  defdelegate list_variable_referenced_sheet_ids(project_id), to: FlowCrud
+
+  @doc "Lists existing flow shortcuts for a project."
+  defdelegate list_flow_shortcuts(project_id), to: FlowCrud, as: :list_shortcuts
+
+  @doc "Detects shortcut conflicts between imported flows and existing ones."
+  defdelegate detect_flow_shortcut_conflicts(project_id, shortcuts),
+    to: FlowCrud,
+    as: :detect_shortcut_conflicts
+
+  @doc "Soft-deletes existing flows with the given shortcut (overwrite import strategy)."
+  defdelegate soft_delete_flow_by_shortcut(project_id, shortcut),
+    to: FlowCrud,
+    as: :soft_delete_by_shortcut
+
+  @doc "Bulk-inserts flow connections from a list of attr maps."
+  defdelegate bulk_import_connections(attrs_list), to: FlowCrud
+
+  @doc "Creates a flow for import (raw insert, no side effects)."
+  defdelegate import_flow(project_id, attrs), to: FlowCrud
+
+  @doc "Creates a flow node for import (raw insert, no side effects)."
+  defdelegate import_node(flow_id, attrs), to: FlowCrud
+
+  @doc "Updates a flow's parent_id after import."
+  defdelegate link_flow_import_parent(flow, parent_id), to: FlowCrud, as: :link_import_parent
 end

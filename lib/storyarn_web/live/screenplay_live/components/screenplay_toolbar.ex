@@ -7,7 +7,7 @@ defmodule StoryarnWeb.ScreenplayLive.Components.ScreenplayToolbar do
 
   import StoryarnWeb.Components.CoreComponents
 
-  alias Storyarn.Screenplays.Screenplay
+  alias Storyarn.Screenplays
 
   attr :screenplay, :map, required: true
   attr :elements, :list, required: true
@@ -43,7 +43,7 @@ defmodule StoryarnWeb.ScreenplayLive.Components.ScreenplayToolbar do
           {dngettext("screenplays", "%{count} element", "%{count} elements", length(@elements))}
         </span>
         <span
-          :if={Screenplay.draft?(@screenplay)}
+          :if={Screenplays.draft?(@screenplay)}
           class="screenplay-toolbar-badge screenplay-toolbar-draft"
         >
           {dgettext("screenplays", "Draft")}

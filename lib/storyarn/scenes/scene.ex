@@ -20,7 +20,7 @@ defmodule Storyarn.Scenes.Scene do
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Project
   alias Storyarn.Scenes.{SceneAnnotation, SceneConnection, SceneLayer, ScenePin, SceneZone}
-  alias Storyarn.Shared.{TimeHelpers, Validations}
+  alias Storyarn.Shared.{HierarchicalSchema, Validations}
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -106,9 +106,8 @@ defmodule Storyarn.Scenes.Scene do
       :scale_unit,
       :scale_value
     ])
-    |> validate_required([:name])
-    |> validate_length(:name, min: 1, max: 200)
-    |> validate_length(:description, max: 2000)
+    |> HierarchicalSchema.validate_core_fields()
+    |> HierarchicalSchema.validate_description()
     |> validate_number(:width, greater_than: 0)
     |> validate_number(:height, greater_than: 0)
     |> validate_number(:default_zoom, greater_than: 0)
@@ -124,32 +123,22 @@ defmodule Storyarn.Scenes.Scene do
   @doc """
   Changeset for moving a map (changing parent or position).
   """
-  def move_changeset(map, attrs) do
-    map
-    |> cast(attrs, [:parent_id, :position])
-    |> foreign_key_constraint(:parent_id)
-  end
+  def move_changeset(map, attrs), do: HierarchicalSchema.move_changeset(map, attrs)
 
   @doc """
   Changeset for soft deleting a map.
   """
-  def delete_changeset(map) do
-    map
-    |> change(%{deleted_at: TimeHelpers.now()})
-  end
+  def delete_changeset(map), do: HierarchicalSchema.delete_changeset(map)
 
   @doc """
   Changeset for restoring a soft-deleted map.
   """
-  def restore_changeset(map) do
-    map
-    |> change(%{deleted_at: nil})
-  end
+  def restore_changeset(map), do: HierarchicalSchema.restore_changeset(map)
 
   @doc """
   Returns true if the map is soft-deleted.
   """
-  def deleted?(%__MODULE__{deleted_at: deleted_at}), do: not is_nil(deleted_at)
+  def deleted?(map), do: HierarchicalSchema.deleted?(map)
 
   # Private functions
 

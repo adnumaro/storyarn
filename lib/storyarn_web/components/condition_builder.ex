@@ -13,7 +13,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  alias Storyarn.Flows.Condition
+  alias Storyarn.Flows
 
   @doc """
   Renders the condition builder hook container.
@@ -29,11 +29,11 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   def condition_builder(assigns) do
     parsed_condition =
       case assigns.condition do
-        nil -> Condition.new()
+        nil -> Flows.condition_new()
         %{"logic" => _, "blocks" => _} = cond -> cond
         %{"logic" => _, "rules" => _} = cond -> cond
-        :legacy -> Condition.new()
-        _string -> Condition.new()
+        :legacy -> Flows.condition_new()
+        _string -> Flows.condition_new()
       end
 
     assigns =

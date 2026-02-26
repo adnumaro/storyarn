@@ -4,7 +4,7 @@ defmodule Storyarn.Sheets.TableCrud do
   import Ecto.Query, warn: false
 
   alias Ecto.Multi
-  alias Storyarn.Flows.VariableReferenceTracker
+  alias Storyarn.Flows
   alias Storyarn.Repo
   alias Storyarn.Shared.{NameNormalizer, TimeHelpers}
   alias Storyarn.Sheets.{Block, TableColumn, TableRow}
@@ -640,7 +640,7 @@ defmodule Storyarn.Sheets.TableCrud do
 
     if name do
       current_slug = Ecto.Changeset.get_field(changeset, :slug)
-      referenced? = VariableReferenceTracker.count_variable_usage(block_id) != %{}
+      referenced? = Flows.count_variable_usage(block_id) != %{}
 
       new_slug =
         NameNormalizer.maybe_regenerate(
@@ -764,5 +764,30 @@ defmodule Storyarn.Sheets.TableCrud do
     |> Repo.update_all([])
 
     {:ok, :done}
+  end
+
+  # =============================================================================
+  # Import helpers (raw insert, no side effects)
+  # =============================================================================
+
+  @doc """
+  Creates a table column for import. Raw insert — no auto-slug dedup,
+  no auto-position, no cell propagation, no child sync.
+  Returns `{:ok, column}` or `{:error, changeset}`.
+  """
+  def import_column(block_id, attrs) do
+    %TableColumn{block_id: block_id}
+    |> TableColumn.create_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Creates a table row for import. Raw insert — no auto-position, no slug dedup.
+  Returns `{:ok, row}` or `{:error, changeset}`.
+  """
+  def import_row(block_id, attrs) do
+    %TableRow{block_id: block_id}
+    |> TableRow.create_changeset(attrs)
+    |> Repo.insert()
   end
 end

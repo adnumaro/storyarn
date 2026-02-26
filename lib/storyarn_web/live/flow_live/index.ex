@@ -183,7 +183,7 @@ defmodule StoryarnWeb.FlowLive.Index do
 
         # Leaving the flow editor — clear navigation history for this user/project
         user_id = socket.assigns.current_scope.user.id
-        Flows.NavigationHistoryStore.clear({user_id, project.id})
+        Flows.nav_history_clear({user_id, project.id})
 
         socket =
           socket

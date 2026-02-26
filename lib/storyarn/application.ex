@@ -7,6 +7,8 @@ defmodule Storyarn.Application do
 
   @impl true
   def start(_type, _args) do
+    :ets.new(:import_staging, [:set, :public, :named_table, read_concurrency: true])
+
     children = [
       StoryarnWeb.Telemetry,
       Storyarn.Repo,

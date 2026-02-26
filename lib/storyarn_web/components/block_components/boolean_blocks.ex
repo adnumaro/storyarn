@@ -50,7 +50,13 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
 
     ~H"""
     <div class="py-1">
-      <.block_label label={@label} is_constant={@is_constant} block_id={@block.id} can_edit={@can_edit} target={@target} />
+      <.block_label
+        label={@label}
+        is_constant={@is_constant}
+        block_id={@block.id}
+        can_edit={@can_edit}
+        target={@target}
+      />
 
       <%= if @can_edit do %>
         <%= if @mode == "two_state" do %>

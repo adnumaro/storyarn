@@ -3,7 +3,7 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization.TextExtractor
+  alias Storyarn.Localization
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.{MapUtils, ShortcutHelpers, TimeHelpers}
@@ -47,7 +47,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       |> Repo.update()
 
     case result do
-      {:ok, updated_sheet} -> TextExtractor.extract_sheet(updated_sheet)
+      {:ok, updated_sheet} -> Localization.extract_sheet(updated_sheet)
       _ -> :ok
     end
 
@@ -78,11 +78,11 @@ defmodule Storyarn.Sheets.SheetCrud do
         |> Repo.update_all(set: [deleted_at: now])
 
         # Clean up localization texts for descendants
-        Enum.each(descendant_ids, &TextExtractor.delete_sheet_texts/1)
+        Enum.each(descendant_ids, &Localization.delete_sheet_texts/1)
       end
 
       # Clean up localization texts for this sheet
-      TextExtractor.delete_sheet_texts(sheet.id)
+      Localization.delete_sheet_texts(sheet.id)
 
       # Soft delete the sheet itself
       sheet
@@ -230,5 +230,28 @@ defmodule Storyarn.Sheets.SheetCrud do
       &Shortcuts.generate_sheet_shortcut/3,
       check_backlinks_fn: &(ReferenceTracker.count_backlinks("sheet", &1.id) > 0)
     )
+  end
+
+  # =============================================================================
+  # Import helpers (raw insert, no side effects)
+  # =============================================================================
+
+  @doc """
+  Creates a sheet for import. Raw insert — no auto-shortcut, no auto-position,
+  no property inheritance. Returns `{:ok, sheet}` or `{:error, changeset}`.
+  """
+  def import_sheet(project_id, attrs) do
+    %Sheet{project_id: project_id}
+    |> Sheet.create_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a sheet's parent_id after import (two-pass parent linking).
+  """
+  def link_import_parent(%Sheet{} = sheet, parent_id) do
+    sheet
+    |> Ecto.Changeset.change(%{parent_id: parent_id})
+    |> Repo.update!()
   end
 end

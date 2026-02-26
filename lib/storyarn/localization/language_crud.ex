@@ -137,6 +137,20 @@ defmodule Storyarn.Localization.LanguageCrud do
   end
 
   # =============================================================================
+  # Import helpers (raw insert, no side effects)
+  # =============================================================================
+
+  @doc """
+  Creates a language for import. Raw insert — no auto-position.
+  Returns `{:ok, language}` or `{:error, changeset}`.
+  """
+  def import_language(project_id, attrs) do
+    %ProjectLanguage{project_id: project_id}
+    |> ProjectLanguage.create_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  # =============================================================================
   # Private
   # =============================================================================
 

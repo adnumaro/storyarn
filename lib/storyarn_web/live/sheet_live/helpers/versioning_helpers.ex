@@ -149,8 +149,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.VersioningHelpers do
      |> assign(:blocks, blocks)
      |> assign(:sheets_tree, sheets_tree)
      |> assign(:versions, versions)
-     |> assign(:save_status, :saved)
-     |> schedule_reset()
+     |> mark_saved()
      |> push_event("restore_sheet_content", %{
        name: updated_sheet.name,
        shortcut: updated_sheet.shortcut || ""

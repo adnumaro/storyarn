@@ -22,12 +22,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
   """
 
   alias Storyarn.Flows.Instruction
-
-  alias Storyarn.Sheets.Constraints.Boolean, as: BooleanConstraints
-  alias Storyarn.Sheets.Constraints.Date, as: DateConstraints
-  alias Storyarn.Sheets.Constraints.Number, as: NumberConstraints
-  alias Storyarn.Sheets.Constraints.Selector, as: SelectorConstraints
-  alias Storyarn.Sheets.Constraints.String, as: StringConstraints
+  alias Storyarn.Sheets
 
   @type change :: %{
           variable_ref: String.t(),
@@ -203,25 +198,10 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
     old_n - val_n
   end
 
-  # -- Constraint clamping (dispatches by block_type) --
+  # -- Constraint clamping (delegates to Sheets facade) --
 
-  defp clamp_to_constraints(value, %{block_type: "number", constraints: c}),
-    do: NumberConstraints.clamp(value, c)
-
-  defp clamp_to_constraints(value, %{block_type: "text", constraints: c}),
-    do: StringConstraints.clamp(value, c)
-
-  defp clamp_to_constraints(value, %{block_type: "rich_text"}), do: value
-
-  defp clamp_to_constraints(value, %{block_type: t, constraints: c})
-       when t in ["select", "multi_select"],
-       do: SelectorConstraints.clamp(value, c)
-
-  defp clamp_to_constraints(value, %{block_type: "date", constraints: c}),
-    do: DateConstraints.clamp(value, c)
-
-  defp clamp_to_constraints(value, %{block_type: "boolean", constraints: c}),
-    do: BooleanConstraints.clamp(value, c)
+  defp clamp_to_constraints(value, %{block_type: block_type, constraints: constraints}),
+    do: Sheets.clamp_to_constraints(value, constraints, block_type)
 
   defp clamp_to_constraints(value, _), do: value
 end

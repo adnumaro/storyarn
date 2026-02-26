@@ -13,7 +13,7 @@ defmodule StoryarnWeb.Components.ExpressionEditor do
   import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.InstructionBuilder
 
-  alias Storyarn.Flows.Instruction
+  alias Storyarn.Flows
 
   attr :id, :string, required: true
   attr :mode, :string, required: true, values: ~w(condition instruction)
@@ -177,7 +177,7 @@ defmodule StoryarnWeb.Components.ExpressionEditor do
 
   def serialize_assignments_to_text(assignments) do
     assignments
-    |> Enum.map(&Instruction.format_assignment_short/1)
+    |> Enum.map(&Flows.instruction_format_short/1)
     |> Enum.reject(&(&1 == ""))
     |> Enum.join("\n")
   end

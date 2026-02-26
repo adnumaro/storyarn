@@ -27,9 +27,6 @@ defmodule StoryarnWeb.Components.AssetUpload do
   use StoryarnWeb, :live_component
 
   alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Assets.ImageProcessor
-  alias Storyarn.Assets.Storage
 
   @default_accept ~w(image/jpeg image/png image/gif image/webp)
   @default_max_size 10 * 1024 * 1024
@@ -104,12 +101,12 @@ defmodule StoryarnWeb.Components.AssetUpload do
             class="relative aspect-square bg-base-200 rounded overflow-hidden"
           >
             <img
-              :if={Asset.image?(asset)}
+              :if={Assets.image?(asset)}
               src={asset.url}
               alt={asset.filename}
               class="w-full h-full object-cover"
             />
-            <div :if={not Asset.image?(asset)} class="flex items-center justify-center h-full">
+            <div :if={not Assets.image?(asset)} class="flex items-center justify-center h-full">
               <.icon name="file" class="size-8 text-base-content/50" />
             </div>
           </div>
@@ -230,7 +227,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
     key = Assets.generate_key(project, entry.client_name)
     content = File.read!(path)
 
-    with {:ok, url} <- Storage.upload(key, content, entry.client_type),
+    with {:ok, url} <- Assets.storage_upload(key, content, entry.client_type),
          {:ok, asset} <- create_asset_record(path, entry, project, user, key, url) do
       if on_upload, do: on_upload.(asset)
       {:ok, asset}
@@ -257,14 +254,14 @@ defmodule StoryarnWeb.Components.AssetUpload do
         {:ok, asset}
 
       {:error, changeset} ->
-        Storage.delete(key)
+        Assets.storage_delete(key)
         {:error, changeset}
     end
   end
 
   defp process_image_metadata(path, content_type) do
-    if String.starts_with?(content_type, "image/") and ImageProcessor.available?() do
-      case ImageProcessor.get_dimensions(path) do
+    if String.starts_with?(content_type, "image/") and Assets.image_processor_available?() do
+      case Assets.image_processor_get_dimensions(path) do
         {:ok, %{width: w, height: h}} ->
           %{"width" => w, "height" => h}
 

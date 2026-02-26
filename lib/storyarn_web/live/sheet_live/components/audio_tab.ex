@@ -9,7 +9,6 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
   use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Assets
-  alias Storyarn.Assets.Storage
   alias Storyarn.Flows
 
   @impl true
@@ -164,9 +163,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
   end
 
   defp process_upload(socket, node_id, filename, content_type, binary_data) do
-    alias Storyarn.Assets.Asset
-
-    if Asset.allowed_content_type?(content_type) do
+    if Assets.allowed_content_type?(content_type) do
       project = socket.assigns.project
       user = socket.assigns.current_user
       safe_filename = Assets.sanitize_filename(filename)
@@ -179,7 +176,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
         key: key
       }
 
-      with {:ok, url} <- Storage.upload(key, binary_data, content_type),
+      with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
            {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
         audio_assets = [asset | socket.assigns.audio_assets]
         socket = assign(socket, audio_assets: audio_assets, uploading_node_id: nil)

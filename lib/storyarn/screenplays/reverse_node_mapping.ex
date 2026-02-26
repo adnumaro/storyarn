@@ -7,7 +7,8 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   No side effects — all functions are deterministic and database-free.
   """
 
-  alias Storyarn.Flows.{Condition, FlowNode}
+  alias Storyarn.Flows
+  alias Storyarn.Flows.FlowNode
 
   @doc """
   Converts a single flow node into a list of element attr maps.
@@ -266,7 +267,9 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
 
   defp deserialize_condition(nil), do: nil
   defp deserialize_condition(condition) when is_map(condition), do: condition
-  defp deserialize_condition(condition) when is_binary(condition), do: Condition.parse(condition)
+
+  defp deserialize_condition(condition) when is_binary(condition),
+    do: Flows.condition_parse(condition)
 
   defp deserialize_instruction(nil), do: nil
   defp deserialize_instruction(assignments) when is_list(assignments), do: assignments

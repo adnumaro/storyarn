@@ -16,9 +16,6 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows
-  alias Storyarn.Flows.DebugSessionStore
-  alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.NavigationHistoryStore
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Sheets
@@ -40,7 +37,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.Subflow
 
   # Filter out entry from user-addable node types (entry is auto-created with flow)
-  @node_types FlowNode.node_types() |> Enum.reject(&(&1 == "entry"))
+  @node_types Flows.node_types() |> Enum.reject(&(&1 == "entry"))
 
   @impl true
   def render(%{loading: true} = assigns) do
@@ -278,7 +275,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     user_id = socket.assigns.current_scope.user.id
     project_id = socket.assigns.project.id
 
-    case DebugSessionStore.take({user_id, project_id}) do
+    case Flows.debug_session_take({user_id, project_id}) do
       nil ->
         socket
 
@@ -1136,9 +1133,9 @@ defmodule StoryarnWeb.FlowLive.Show do
     flow = socket.assigns.flow
     key = {user_id, project_id}
 
-    history = NavigationHistoryStore.get(key) || NavigationHistory.new(flow.id, flow.name)
+    history = Flows.nav_history_get(key) || NavigationHistory.new(flow.id, flow.name)
     history = NavigationHistory.push(history, flow.id, flow.name)
-    NavigationHistoryStore.put(key, history)
+    Flows.nav_history_put(key, history)
 
     assign(socket, :nav_history, history)
   end
@@ -1146,7 +1143,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   defp store_nav_history(socket, history) do
     user_id = socket.assigns.current_scope.user.id
     project_id = socket.assigns.project.id
-    NavigationHistoryStore.put({user_id, project_id}, history)
+    Flows.nav_history_put({user_id, project_id}, history)
   end
 
   defp assign_scene_info(socket, flow) do

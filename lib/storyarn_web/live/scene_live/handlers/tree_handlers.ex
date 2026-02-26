@@ -11,7 +11,6 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
   require Logger
 
   alias Storyarn.Scenes
-  alias Storyarn.Scenes.ZoneImageExtractor
   alias Storyarn.Shared.MapUtils
 
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
@@ -82,7 +81,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
     with zone when not is_nil(zone) <- Scenes.get_zone(scene.id, zone_id),
          :ok <- validate_zone_has_name(zone),
          {:ok, bg_asset, img_dims} <-
-           ZoneImageExtractor.extract(scene, zone, socket.assigns.project),
+           Scenes.extract_zone_image(scene, zone, socket.assigns.project),
          child_attrs <- build_child_scene_attrs(zone, scene, bg_asset, img_dims),
          {:ok, child_scene} <- Scenes.create_scene(socket.assigns.project, child_attrs),
          {:ok, _updated_zone} <-
@@ -178,7 +177,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
   defp validate_zone_has_name(_zone), do: :ok
 
   defp build_child_scene_attrs(zone, parent_scene, bg_asset, {img_w, img_h}) do
-    {min_x, _min_y, max_x, _max_y} = ZoneImageExtractor.bounding_box(zone.vertices)
+    {min_x, _min_y, max_x, _max_y} = Scenes.zone_bounding_box(zone.vertices)
     bw_percent = max_x - min_x
 
     child_scale =

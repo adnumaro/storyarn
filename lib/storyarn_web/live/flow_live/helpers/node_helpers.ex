@@ -45,14 +45,13 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     case Flows.update_node_data(node, new_data) do
       {:ok, updated_node, %{renamed_jumps: renamed_count}} ->
         form = FormHelpers.node_data_to_form(updated_node)
-        schedule_save_status_reset()
 
         socket =
           socket
           |> reload_flow_data()
           |> assign(:selected_node, updated_node)
           |> assign(:node_form, form)
-          |> assign(:save_status, :saved)
+          |> mark_saved()
           |> maybe_refresh_referencing_jumps(updated_node)
           |> push_node_or_flow_update(updated_node, renamed_count)
 
@@ -345,14 +344,13 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     case Flows.update_node_data(node, data) do
       {:ok, updated_node, _meta} ->
         form = FormHelpers.node_data_to_form(updated_node)
-        schedule_save_status_reset()
 
         {:noreply,
          socket
          |> reload_flow_data()
          |> assign(:selected_node, updated_node)
          |> assign(:node_form, form)
-         |> assign(:save_status, :saved)
+         |> mark_saved()
          |> maybe_refresh_referencing_jumps(updated_node)
          |> push_event("node_updated", %{id: node_id, data: canvas_data(updated_node)})}
 

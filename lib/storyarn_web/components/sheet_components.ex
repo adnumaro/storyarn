@@ -4,6 +4,7 @@ defmodule StoryarnWeb.Components.SheetComponents do
   """
   use StoryarnWeb, :html
 
+  alias Storyarn.Assets
   alias Storyarn.Assets.Asset
 
   @avatar_sizes %{
@@ -48,7 +49,7 @@ defmodule StoryarnWeb.Components.SheetComponents do
 
   defp has_avatar?(nil), do: false
   defp has_avatar?(%Ecto.Association.NotLoaded{}), do: false
-  defp has_avatar?(%Asset{} = asset), do: Asset.image?(asset)
+  defp has_avatar?(%Asset{} = asset), do: Assets.image?(asset)
   defp has_avatar?(_), do: false
 
   @doc """

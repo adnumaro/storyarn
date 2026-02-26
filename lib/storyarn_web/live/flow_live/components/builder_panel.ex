@@ -10,7 +10,7 @@ defmodule StoryarnWeb.FlowLive.Components.BuilderPanel do
 
   import StoryarnWeb.Components.ExpressionEditor
 
-  alias Storyarn.Flows.Condition
+  alias Storyarn.Flows
 
   attr :node, :map, required: true
   attr :form, :any, required: true
@@ -56,13 +56,13 @@ defmodule StoryarnWeb.FlowLive.Components.BuilderPanel do
       active_tab={Map.get(@panel_sections, "tab_#{@expr_id}", "builder")}
     />
     <p
-      :if={!Condition.has_rules?(@condition_data) && !@switch_mode}
+      :if={!Flows.condition_has_rules?(@condition_data) && !@switch_mode}
       class="text-xs text-base-content/50 mt-2"
     >
       {dgettext("flows", "Add rules to define when to route to True/False.")}
     </p>
     <p
-      :if={!Condition.has_rules?(@condition_data) && @switch_mode}
+      :if={!Flows.condition_has_rules?(@condition_data) && @switch_mode}
       class="text-xs text-base-content/50 mt-2"
     >
       {dgettext("flows", "Add conditions. Each one creates a separate output.")}

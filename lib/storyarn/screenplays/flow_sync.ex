@@ -9,7 +9,7 @@ defmodule Storyarn.Screenplays.FlowSync do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.{FlowConnection, FlowNode}
+  alias Storyarn.Flows.FlowNode
   alias Storyarn.Repo
 
   alias Storyarn.Screenplays.{
@@ -501,14 +501,7 @@ defmodule Storyarn.Screenplays.FlowSync do
 
   defp delete_connections_between!(flow_id, result_nodes) do
     node_ids = Enum.map(result_nodes, & &1.id)
-
-    if node_ids != [] do
-      from(c in FlowConnection,
-        where: c.flow_id == ^flow_id,
-        where: c.source_node_id in ^node_ids and c.target_node_id in ^node_ids
-      )
-      |> Repo.delete_all()
-    end
+    Flows.delete_connections_among_nodes(flow_id, node_ids)
   end
 
   defp create_connections_from_specs!(flow, result_nodes, connection_specs) do

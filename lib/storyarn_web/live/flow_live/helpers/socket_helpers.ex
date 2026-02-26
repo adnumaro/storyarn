@@ -36,4 +36,13 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   def schedule_save_status_reset do
     Process.send_after(self(), :reset_save_status, 2000)
   end
+
+  @doc """
+  Marks the save status as :saved and schedules the automatic reset.
+  Convenience function that combines assign + schedule_save_status_reset.
+  """
+  def mark_saved(socket) do
+    schedule_save_status_reset()
+    assign(socket, :save_status, :saved)
+  end
 end

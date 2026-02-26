@@ -3,11 +3,11 @@ defmodule Storyarn.Scenes.ZoneCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.VariableReferenceTracker
+  alias Storyarn.Flows
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.{PositionUtils, SceneZone}
-  alias Storyarn.Sheets.ReferenceTracker
+  alias Storyarn.Sheets
 
   @doc """
   Lists zones for a map, with optional layer_id filter.
@@ -64,8 +64,8 @@ defmodule Storyarn.Scenes.ZoneCrud do
     case result do
       {:ok, zone} ->
         project_id = Scenes.get_scene_project_id(scene_id)
-        ReferenceTracker.update_scene_zone_references(zone)
-        VariableReferenceTracker.update_scene_zone_references(zone, project_id: project_id)
+        Sheets.update_scene_zone_references(zone)
+        Flows.update_scene_zone_references(zone, project_id: project_id)
 
       _ ->
         :ok
@@ -83,9 +83,9 @@ defmodule Storyarn.Scenes.ZoneCrud do
     case result do
       {:ok, updated_zone} ->
         project_id = Scenes.get_scene_project_id(zone.scene_id)
-        ReferenceTracker.update_scene_zone_references(updated_zone)
+        Sheets.update_scene_zone_references(updated_zone)
 
-        VariableReferenceTracker.update_scene_zone_references(updated_zone,
+        Flows.update_scene_zone_references(updated_zone,
           project_id: project_id
         )
 
@@ -106,8 +106,8 @@ defmodule Storyarn.Scenes.ZoneCrud do
   end
 
   def delete_zone(%SceneZone{} = zone) do
-    ReferenceTracker.delete_map_zone_references(zone.id)
-    VariableReferenceTracker.delete_map_zone_references(zone.id)
+    Sheets.delete_map_zone_references(zone.id)
+    Flows.delete_map_zone_references(zone.id)
     Repo.delete(zone)
   end
 

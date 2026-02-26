@@ -10,6 +10,7 @@ defmodule Storyarn.Sheets.SheetQueries do
 
   alias Storyarn.Repo
   alias Storyarn.Shared.SearchHelpers
+  alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
 
   # =============================================================================
@@ -31,7 +32,7 @@ defmodule Storyarn.Sheets.SheetQueries do
       )
       |> Repo.all()
 
-    build_tree(all_sheets, nil)
+    SharedTree.build_tree_from_flat_list(all_sheets)
   end
 
   @doc """
@@ -115,8 +116,8 @@ defmodule Storyarn.Sheets.SheetQueries do
           )
           |> Repo.all()
 
-        grouped = Enum.group_by(all_sheets, & &1.parent_id)
-        %{sheet | children: build_subtree(grouped, sheet.id)}
+        children = SharedTree.build_tree_from_flat_list(all_sheets, sheet.id)
+        %{sheet | children: children}
     end
   end
 
@@ -744,18 +745,400 @@ defmodule Storyarn.Sheets.SheetQueries do
   end
 
   # =============================================================================
-  # Private Helpers
+  # Export / Import helpers
   # =============================================================================
 
-  defp build_tree(all_items, root_parent_id) do
-    grouped = Enum.group_by(all_items, & &1.parent_id)
-    build_subtree(grouped, root_parent_id)
+  @doc """
+  Returns the project_id for a sheet by its ID.
+  Used by the Localization TextExtractor to resolve project scope.
+  """
+  def get_sheet_project_id(sheet_id) do
+    from(s in Sheet, where: s.id == ^sheet_id, select: s.project_id)
+    |> Repo.one()
   end
 
-  defp build_subtree(grouped, parent_id) do
-    (Map.get(grouped, parent_id) || [])
-    |> Enum.map(fn item ->
-      %{item | children: build_subtree(grouped, item.id)}
-    end)
+  @doc """
+  Lists all non-deleted sheets with blocks, table_columns, and table_rows preloaded.
+  Used by the export DataCollector.
+  """
+  def list_sheets_for_export(project_id, opts \\ []) do
+    filter_ids = Keyword.get(opts, :filter_ids, :all)
+
+    blocks_query =
+      from(b in Block,
+        where: is_nil(b.deleted_at),
+        preload: [:table_columns, :table_rows],
+        order_by: [asc: b.position]
+      )
+
+    query =
+      from(s in Sheet,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
+        preload: [blocks: ^blocks_query],
+        order_by: [asc: s.position, asc: s.name]
+      )
+
+    query
+    |> maybe_filter_export_ids(filter_ids)
+    |> Repo.all()
+  end
+
+  @doc """
+  Counts non-deleted sheets for a project.
+  """
+  def count_sheets(project_id) do
+    from(s in Sheet, where: s.project_id == ^project_id and is_nil(s.deleted_at))
+    |> Repo.aggregate(:count)
+  end
+
+  @doc """
+  Lists all non-deleted blocks for the given sheet IDs.
+  Used by the Localization TextExtractor for bulk extraction.
+  """
+  def list_blocks_for_sheet_ids(sheet_ids) do
+    from(b in Block, where: b.sheet_id in ^sheet_ids)
+    |> Repo.all()
+  end
+
+  @doc """
+  Lists brief sheet data (id, name, shortcut) for a project.
+  Used by the export Validator for orphan sheet detection.
+  """
+  def list_sheets_brief(project_id) do
+    from(s in Sheet,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
+      select: %{id: s.id, name: s.name, shortcut: s.shortcut}
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Lists existing shortcuts for sheets in a project.
+  Used by the import parser for conflict detection.
+  """
+  def list_shortcuts(project_id) do
+    from(s in Sheet,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
+      select: s.shortcut
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  @doc """
+  Detects shortcut conflicts between imported sheets and existing ones.
+  """
+  def detect_shortcut_conflicts(project_id, shortcuts) when is_list(shortcuts) do
+    if shortcuts == [] do
+      []
+    else
+      from(s in Sheet,
+        where: s.project_id == ^project_id and s.shortcut in ^shortcuts and is_nil(s.deleted_at),
+        select: s.shortcut
+      )
+      |> Repo.all()
+    end
+  end
+
+  @doc """
+  Soft-deletes existing sheets with the given shortcut (for overwrite import strategy).
+  """
+  def soft_delete_by_shortcut(project_id, shortcut) do
+    now = Storyarn.Shared.TimeHelpers.now()
+
+    from(s in Sheet,
+      where: s.project_id == ^project_id and s.shortcut == ^shortcut and is_nil(s.deleted_at)
+    )
+    |> Repo.update_all(set: [deleted_at: now])
+  end
+
+  @doc """
+  Returns stale variable reference data for flow nodes.
+  Joins variable_references with flow_nodes, flows, blocks, and sheets
+  to detect staleness via SQL comparison of stored vs current names.
+  Used by the Flows.VariableReferenceTracker for stale reference detection.
+  """
+  def check_stale_flow_node_variable_references(block_id, project_id) do
+    alias Storyarn.Flows.{Flow, FlowNode, VariableReference}
+
+    from(vr in VariableReference,
+      join: n in FlowNode,
+      on: vr.source_type == "flow_node" and n.id == vr.source_id,
+      join: f in Flow,
+      on: f.id == n.flow_id,
+      join: b in Block,
+      on: b.id == vr.block_id,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      where: vr.block_id == ^block_id,
+      where: f.project_id == ^project_id,
+      where: is_nil(f.deleted_at),
+      where: is_nil(s.deleted_at),
+      where: is_nil(b.deleted_at),
+      select: %{
+        source_type: vr.source_type,
+        kind: vr.kind,
+        flow_id: f.id,
+        flow_name: f.name,
+        flow_shortcut: f.shortcut,
+        node_id: n.id,
+        node_type: n.type,
+        node_data: n.data,
+        source_sheet: vr.source_sheet,
+        source_variable: vr.source_variable,
+        stale:
+          fragment(
+            """
+            CASE WHEN ? = 'table' THEN
+              ? != ? OR NOT EXISTS (
+                SELECT 1 FROM table_rows tr
+                JOIN table_columns tc ON tc.block_id = tr.block_id
+                WHERE tr.block_id = ?
+                  AND ? = ? || '.' || tr.slug || '.' || tc.slug
+              )
+            ELSE
+              ? != ? OR ? != ?
+            END
+            """,
+            b.type,
+            vr.source_sheet,
+            s.shortcut,
+            b.id,
+            vr.source_variable,
+            b.variable_name,
+            vr.source_sheet,
+            s.shortcut,
+            vr.source_variable,
+            b.variable_name
+          )
+      },
+      order_by: [asc: vr.kind, asc: f.name]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Returns variable references with current block info for stale repair.
+  Joins variable_references with flow_nodes, flows, blocks, and sheets.
+  Used by the Flows.VariableReferenceTracker for stale reference repair.
+  """
+  def list_variable_refs_with_block_info_for_repair(project_id) do
+    alias Storyarn.Flows.{Flow, FlowNode, VariableReference}
+
+    from(vr in VariableReference,
+      join: n in FlowNode,
+      on: vr.source_type == "flow_node" and n.id == vr.source_id,
+      join: f in Flow,
+      on: f.id == n.flow_id,
+      join: b in Block,
+      on: b.id == vr.block_id,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      where: f.project_id == ^project_id,
+      where: is_nil(f.deleted_at),
+      where: is_nil(s.deleted_at),
+      where: is_nil(b.deleted_at),
+      select: %{
+        node_id: n.id,
+        node_type: n.type,
+        node_data: n.data,
+        kind: vr.kind,
+        block_id: vr.block_id,
+        current_shortcut: s.shortcut,
+        current_variable: b.variable_name,
+        source_sheet: vr.source_sheet,
+        source_variable: vr.source_variable
+      }
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Lists stale regular (non-table) node IDs in a flow.
+  Joins variable_references with flow_nodes, blocks, and sheets.
+  Returns node IDs where stored source_sheet/source_variable don't match current values.
+  Used by the Flows.VariableReferenceTracker for stale node detection.
+  """
+  def list_stale_regular_node_ids(flow_id) do
+    alias Storyarn.Flows.{FlowNode, VariableReference}
+
+    from(vr in VariableReference,
+      join: n in FlowNode,
+      on: vr.source_type == "flow_node" and n.id == vr.source_id,
+      join: b in Block,
+      on: b.id == vr.block_id,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      where: n.flow_id == ^flow_id,
+      where: is_nil(s.deleted_at),
+      where: is_nil(b.deleted_at),
+      where: b.type != "table",
+      where: vr.source_sheet != s.shortcut or vr.source_variable != b.variable_name,
+      distinct: true,
+      select: n.id
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  @doc """
+  Lists stale table node IDs in a flow.
+  Joins variable_references with flow_nodes, blocks, sheets, table_rows, and table_columns.
+  Returns node IDs where stored source references don't match current table cell paths.
+  Used by the Flows.VariableReferenceTracker for stale node detection.
+  """
+  def list_stale_table_node_ids(flow_id) do
+    alias Storyarn.Flows.{FlowNode, VariableReference}
+
+    table_cell_exists =
+      from(tr in TableRow,
+        join: tc in TableColumn,
+        on: tc.block_id == tr.block_id,
+        where:
+          parent_as(:vr).source_variable ==
+            fragment(
+              "? || '.' || ? || '.' || ?",
+              parent_as(:block).variable_name,
+              tr.slug,
+              tc.slug
+            ),
+        select: 1
+      )
+
+    from(vr in VariableReference,
+      as: :vr,
+      join: n in FlowNode,
+      on: vr.source_type == "flow_node" and n.id == vr.source_id,
+      join: b in Block,
+      as: :block,
+      on: b.id == vr.block_id,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      where: n.flow_id == ^flow_id,
+      where: is_nil(s.deleted_at),
+      where: is_nil(b.deleted_at),
+      where: b.type == "table",
+      where: vr.source_sheet != s.shortcut or not exists(table_cell_exists),
+      distinct: true,
+      select: n.id
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  @doc """
+  Resolves a block ID by sheet shortcut and variable name.
+  Returns the block ID or nil if not found.
+  Used by the Flows.VariableReferenceTracker for variable reference resolution.
+  """
+  def resolve_block_id_by_variable(project_id, sheet_shortcut, variable_name) do
+    from(b in Block,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      where: s.project_id == ^project_id,
+      where: s.shortcut == ^sheet_shortcut,
+      where: b.variable_name == ^variable_name,
+      where: is_nil(s.deleted_at),
+      where: is_nil(b.deleted_at),
+      select: b.id,
+      limit: 1
+    )
+    |> Repo.one()
+  end
+
+  @doc """
+  Resolves a table block ID by sheet shortcut, table name, row slug, and column slug.
+  Returns the block ID or nil if not found.
+  Used by the Flows.VariableReferenceTracker for table variable reference resolution.
+  """
+  def resolve_table_block_id_by_variable(
+        project_id,
+        sheet_shortcut,
+        table_name,
+        row_slug,
+        column_slug
+      ) do
+    from(b in Block,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      join: tr in TableRow,
+      on: tr.block_id == b.id,
+      join: tc in TableColumn,
+      on: tc.block_id == b.id,
+      where: s.project_id == ^project_id,
+      where: s.shortcut == ^sheet_shortcut,
+      where: b.variable_name == ^table_name,
+      where: b.type == "table",
+      where: tr.slug == ^row_slug,
+      where: tc.slug == ^column_slug,
+      where: is_nil(s.deleted_at),
+      where: is_nil(b.deleted_at),
+      select: b.id,
+      limit: 1
+    )
+    |> Repo.one()
+  end
+
+  @doc """
+  Lists sheet IDs that are referenced through variable_references in a project.
+  Joins VariableReference -> Block -> Sheet to find all referenced sheet IDs.
+  Used by the export Validator for orphan sheet detection.
+  """
+  def list_variable_referenced_sheet_ids(project_id) do
+    alias Storyarn.Flows.VariableReference
+
+    from(vr in VariableReference,
+      join: b in Block,
+      on: vr.block_id == b.id,
+      join: s in Sheet,
+      on: b.sheet_id == s.id,
+      where: s.project_id == ^project_id,
+      select: s.id
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  @doc """
+  Lists sheets using a specific asset as their avatar.
+  Used by the Assets context for usage tracking.
+  """
+  def list_sheets_using_asset_as_avatar(project_id, asset_id) do
+    from(s in Sheet,
+      where: s.project_id == ^project_id,
+      where: is_nil(s.deleted_at),
+      where: s.avatar_asset_id == ^asset_id,
+      order_by: [asc: s.name]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Lists sheets using a specific asset as their banner.
+  Used by the Assets context for usage tracking.
+  """
+  def list_sheets_using_asset_as_banner(project_id, asset_id) do
+    from(s in Sheet,
+      where: s.project_id == ^project_id,
+      where: is_nil(s.deleted_at),
+      where: s.banner_asset_id == ^asset_id,
+      order_by: [asc: s.name]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Lists sheet IDs referenced by scene pins in a project.
+  Used by the export Validator for orphan sheet detection.
+  Delegates to the Scenes context to avoid cross-context schema queries.
+  """
+  def list_pin_referenced_sheet_ids(project_id) do
+    Storyarn.Scenes.list_pin_referenced_sheet_ids(project_id)
+  end
+
+  defp maybe_filter_export_ids(query, :all), do: query
+
+  defp maybe_filter_export_ids(query, ids) when is_list(ids) do
+    from(q in query, where: q.id in ^ids)
   end
 end

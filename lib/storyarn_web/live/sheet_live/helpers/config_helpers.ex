@@ -52,8 +52,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ConfigHelpers do
          socket
          |> assign(:blocks, blocks)
          |> assign(:configuring_block, updated_block)
-         |> assign(:save_status, :saved)
-         |> schedule_reset()}
+         |> mark_saved()}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not save configuration."))}

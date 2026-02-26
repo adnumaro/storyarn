@@ -9,8 +9,6 @@ defmodule StoryarnWeb.ScreenplayLive.Helpers.SocketHelpers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Screenplays
-  alias Storyarn.Screenplays.ContentUtils
-  alias Storyarn.Screenplays.TiptapSerialization
   alias Storyarn.Shared.MapUtils
 
   defdelegate parse_int(value), to: MapUtils
@@ -57,7 +55,7 @@ defmodule StoryarnWeb.ScreenplayLive.Helpers.SocketHelpers do
   def assign_elements_with_editor_doc(socket, elements) do
     socket
     |> assign(:elements, elements)
-    |> assign(:editor_doc, TiptapSerialization.elements_to_doc(elements))
+    |> assign(:editor_doc, Screenplays.elements_to_doc(elements))
   end
 
   # Post-mount updates: skips editor_doc recomputation (client owns the doc)
@@ -99,6 +97,6 @@ defmodule StoryarnWeb.ScreenplayLive.Helpers.SocketHelpers do
   # Shared sanitization helper
   # ---------------------------------------------------------------------------
 
-  def sanitize_plain_text(value) when is_binary(value), do: ContentUtils.strip_html(value)
+  def sanitize_plain_text(value) when is_binary(value), do: Screenplays.content_strip_html(value)
   def sanitize_plain_text(_), do: ""
 end

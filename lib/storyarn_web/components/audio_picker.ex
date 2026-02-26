@@ -30,7 +30,6 @@ defmodule StoryarnWeb.Components.AudioPicker do
   use StoryarnWeb, :live_component
 
   alias Storyarn.Assets
-  alias Storyarn.Assets.Storage
 
   @impl true
   def render(assigns) do
@@ -187,9 +186,7 @@ defmodule StoryarnWeb.Components.AudioPicker do
   # ===========================================================================
 
   defp process_upload(socket, filename, content_type, binary_data) do
-    alias Storyarn.Assets.Asset
-
-    if Asset.allowed_content_type?(content_type) do
+    if Assets.allowed_content_type?(content_type) do
       project = socket.assigns.project
       user = socket.assigns.current_user
       safe_filename = Assets.sanitize_filename(filename)
@@ -202,7 +199,7 @@ defmodule StoryarnWeb.Components.AudioPicker do
         key: key
       }
 
-      with {:ok, url} <- Storage.upload(key, binary_data, content_type),
+      with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
            {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
         audio_assets = [asset | socket.assigns.audio_assets]
 

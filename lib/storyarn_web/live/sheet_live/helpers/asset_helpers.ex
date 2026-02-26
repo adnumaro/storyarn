@@ -24,8 +24,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          socket
          |> assign(:sheet, updated_sheet)
          |> assign(:sheets_tree, sheets_tree)
-         |> assign(:save_status, :saved)
-         |> schedule_reset()}
+         |> mark_saved()}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove avatar."))}
@@ -47,8 +46,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          socket
          |> assign(:sheet, updated_sheet)
          |> assign(:sheets_tree, sheets_tree)
-         |> assign(:save_status, :saved)
-         |> schedule_reset()}
+         |> mark_saved()}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not set avatar."))}
@@ -84,8 +82,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
         {:noreply,
          socket
          |> assign(:sheet, updated_sheet)
-         |> assign(:save_status, :saved)
-         |> schedule_reset()}
+         |> mark_saved()}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove banner."))}
@@ -111,9 +108,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
   # Private functions
 
   defp upload_avatar_file(socket, filename, content_type, binary_data) do
-    alias Storyarn.Assets.Asset
-
-    if Asset.allowed_content_type?(content_type) do
+    if Assets.allowed_content_type?(content_type) do
       project = socket.assigns.project
       user = socket.assigns.current_scope.user
       sheet = socket.assigns.sheet
@@ -127,7 +122,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
         key: key
       }
 
-      with {:ok, url} <- Assets.Storage.upload(key, binary_data, content_type),
+      with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
            {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
            {:ok, _updated_sheet} <- Sheets.update_sheet(sheet, %{avatar_asset_id: asset.id}) do
         updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
@@ -137,8 +132,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          socket
          |> assign(:sheet, updated_sheet)
          |> assign(:sheets_tree, sheets_tree)
-         |> assign(:save_status, :saved)
-         |> schedule_reset()}
+         |> mark_saved()}
       else
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload avatar."))}
@@ -149,9 +143,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
   end
 
   defp upload_banner_file(socket, filename, content_type, binary_data) do
-    alias Storyarn.Assets.Asset
-
-    if Asset.allowed_content_type?(content_type) do
+    if Assets.allowed_content_type?(content_type) do
       project = socket.assigns.project
       user = socket.assigns.current_scope.user
       sheet = socket.assigns.sheet
@@ -165,7 +157,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
         key: key
       }
 
-      with {:ok, url} <- Assets.Storage.upload(key, binary_data, content_type),
+      with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
            {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
            {:ok, _updated_sheet} <- Sheets.update_sheet(sheet, %{banner_asset_id: asset.id}) do
         updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
@@ -173,8 +165,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
         {:noreply,
          socket
          |> assign(:sheet, updated_sheet)
-         |> assign(:save_status, :saved)
-         |> schedule_reset()}
+         |> mark_saved()}
       else
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload banner."))}

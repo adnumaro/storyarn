@@ -33,7 +33,13 @@ defmodule StoryarnWeb.Components.BlockComponents.LayoutBlocks do
 
     ~H"""
     <div class="py-1">
-      <.block_label label={@label} is_constant={@is_constant} block_id={@block.id} can_edit={@can_edit} target={@target} />
+      <.block_label
+        label={@label}
+        is_constant={@is_constant}
+        block_id={@block.id}
+        can_edit={@can_edit}
+        target={@target}
+      />
       <input
         :if={@can_edit}
         type="date"

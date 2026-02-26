@@ -8,7 +8,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
 
   use Gettext, backend: StoryarnWeb.Gettext
 
-  alias Storyarn.Flows.Condition
+  alias Storyarn.Flows
 
   def type, do: "condition"
   def icon_name, do: "git-branch"
@@ -42,7 +42,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
 
     if node && node.type == "condition" do
       NodeHelpers.persist_node_update(socket, node.id, fn data ->
-        Map.put(data, "condition", Condition.sanitize(condition_data))
+        Map.put(data, "condition", Flows.condition_sanitize(condition_data))
       end)
     else
       {:noreply, socket}
@@ -88,8 +88,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
     Map.update(data, "responses", [], fn responses ->
       Enum.map(responses, fn
         %{"id" => ^response_id} = resp ->
-          sanitized = Condition.sanitize(condition_data)
-          Map.put(resp, "condition", Condition.to_json(sanitized))
+          sanitized = Flows.condition_sanitize(condition_data)
+          Map.put(resp, "condition", Flows.condition_to_json(sanitized))
 
         resp ->
           resp
@@ -107,7 +107,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
   end
 
   defp maybe_add_labels(condition, true) do
-    condition = condition || Condition.new()
+    condition = condition || Flows.condition_new()
 
     # Block format: add labels to blocks, not individual rules
     if condition["blocks"] do

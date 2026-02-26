@@ -1,12 +1,11 @@
 defmodule Storyarn.Localization.TextExtractor do
   @moduledoc false
 
-  import Ecto.Query, warn: false
-
-  alias Storyarn.Flows.{Flow, FlowNode}
+  alias Storyarn.Flows
+  alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization.{LanguageCrud, TextCrud}
-  alias Storyarn.Repo
-  alias Storyarn.Sheets.{Block, Sheet}
+  alias Storyarn.Sheets
+  alias Storyarn.Sheets.Block
 
   # =============================================================================
   # Flow Node Extraction
@@ -62,8 +61,8 @@ defmodule Storyarn.Localization.TextExtractor do
   @doc """
   Extracts localizable texts from a sheet after its metadata is updated.
   """
-  @spec extract_sheet(Sheet.t()) :: :ok
-  def extract_sheet(%Sheet{} = sheet) do
+  @spec extract_sheet(Storyarn.Sheets.Sheet.t()) :: :ok
+  def extract_sheet(%Storyarn.Sheets.Sheet{} = sheet) do
     target_locales = get_target_locales(sheet.project_id)
     if target_locales != [], do: do_extract_sheet(sheet, target_locales)
     :ok
@@ -85,8 +84,8 @@ defmodule Storyarn.Localization.TextExtractor do
   @doc """
   Extracts localizable texts from a flow after its metadata is updated.
   """
-  @spec extract_flow(Flow.t()) :: :ok
-  def extract_flow(%Flow{} = flow) do
+  @spec extract_flow(Storyarn.Flows.Flow.t()) :: :ok
+  def extract_flow(%Storyarn.Flows.Flow{} = flow) do
     target_locales = get_target_locales(flow.project_id)
     if target_locales != [], do: do_extract_flow(flow, target_locales)
     :ok
@@ -124,36 +123,26 @@ defmodule Storyarn.Localization.TextExtractor do
       count = 0
 
       # Flows
-      flows =
-        from(f in Flow, where: f.project_id == ^project_id)
-        |> Repo.all()
+      flows = Flows.list_flows(project_id)
 
       count = count + extract_many_flows(flows, target_locales)
 
       # Flow nodes (through flows)
       flow_ids = Enum.map(flows, & &1.id)
 
-      nodes =
-        from(n in FlowNode,
-          where: n.flow_id in ^flow_ids and is_nil(n.deleted_at)
-        )
-        |> Repo.all()
+      nodes = Flows.list_nodes_for_flow_ids(flow_ids)
 
       count = count + extract_many_nodes(nodes, project_id, target_locales)
 
       # Sheets
-      sheets =
-        from(s in Sheet, where: s.project_id == ^project_id)
-        |> Repo.all()
+      sheets = Sheets.list_all_sheets(project_id)
 
       count = count + extract_many_sheets(sheets, target_locales)
 
       # Blocks (through sheets)
       sheet_ids = Enum.map(sheets, & &1.id)
 
-      blocks =
-        from(b in Block, where: b.sheet_id in ^sheet_ids)
-        |> Repo.all()
+      blocks = Sheets.list_blocks_for_sheet_ids(sheet_ids)
 
       count = count + extract_many_blocks(blocks, project_id, target_locales)
 
@@ -476,13 +465,11 @@ defmodule Storyarn.Localization.TextExtractor do
   # =============================================================================
 
   defp get_project_id_for_node(%FlowNode{flow_id: flow_id}) do
-    from(f in Flow, where: f.id == ^flow_id, select: f.project_id)
-    |> Repo.one()
+    Flows.get_flow_project_id(flow_id)
   end
 
   defp get_project_id_for_block(%Block{sheet_id: sheet_id}) do
-    from(s in Sheet, where: s.id == ^sheet_id, select: s.project_id)
-    |> Repo.one()
+    Sheets.get_sheet_project_id(sheet_id)
   end
 
   defp get_target_locales(project_id) do

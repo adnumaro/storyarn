@@ -6,7 +6,7 @@ defmodule Storyarn.Screenplays.NodeMapping do
   No side effects — all functions are deterministic and database-free.
   """
 
-  alias Storyarn.Flows.Condition
+  alias Storyarn.Flows
   alias Storyarn.Screenplays.ContentUtils
 
   @doc """
@@ -294,7 +294,10 @@ defmodule Storyarn.Screenplays.NodeMapping do
   end
 
   defp serialize_condition(nil), do: nil
-  defp serialize_condition(condition) when is_map(condition), do: Condition.to_json(condition)
+
+  defp serialize_condition(condition) when is_map(condition),
+    do: Flows.condition_to_json(condition)
+
   defp serialize_condition(condition) when is_binary(condition), do: condition
 
   defp serialize_instruction(nil), do: nil

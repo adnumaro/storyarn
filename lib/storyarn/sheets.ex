@@ -330,6 +330,32 @@ defmodule Storyarn.Sheets do
     to: Storyarn.Sheets.Constraints.Number,
     as: :parse_constraint
 
+  @doc """
+  Clamps a value to its block type constraints.
+
+  Dispatches to the appropriate constraint module based on `block_type`.
+  Rich text values pass through unclamped.
+  """
+  @spec clamp_to_constraints(any(), map() | nil, String.t()) :: any()
+  def clamp_to_constraints(value, constraints, "number"),
+    do: Storyarn.Sheets.Constraints.Number.clamp(value, constraints)
+
+  def clamp_to_constraints(value, constraints, "text"),
+    do: Storyarn.Sheets.Constraints.String.clamp(value, constraints)
+
+  def clamp_to_constraints(value, _constraints, "rich_text"), do: value
+
+  def clamp_to_constraints(value, constraints, type) when type in ["select", "multi_select"],
+    do: Storyarn.Sheets.Constraints.Selector.clamp(value, constraints)
+
+  def clamp_to_constraints(value, constraints, "date"),
+    do: Storyarn.Sheets.Constraints.Date.clamp(value, constraints)
+
+  def clamp_to_constraints(value, constraints, "boolean"),
+    do: Storyarn.Sheets.Constraints.Boolean.clamp(value, constraints)
+
+  def clamp_to_constraints(value, _constraints, _block_type), do: value
+
   # =============================================================================
   # Blocks - CRUD Operations
   # =============================================================================
@@ -661,6 +687,55 @@ defmodule Storyarn.Sheets do
   defdelegate count_backlinks(target_type, target_id), to: ReferenceTracker
 
   @doc """
+  Updates references from a flow node.
+  Called after node data is saved to track mentions and references.
+  """
+  @spec update_flow_node_references(map()) :: :ok
+  defdelegate update_flow_node_references(node), to: ReferenceTracker
+
+  @doc """
+  Deletes all references from a flow node.
+  Called when a node is deleted.
+  """
+  @spec delete_flow_node_references(integer()) :: {integer(), nil}
+  defdelegate delete_flow_node_references(node_id), to: ReferenceTracker
+
+  @doc """
+  Updates references from a scene zone.
+  Called after zone data is saved to track target references.
+  """
+  @spec update_scene_zone_references(map()) :: :ok
+  defdelegate update_scene_zone_references(zone), to: ReferenceTracker
+
+  @doc """
+  Deletes all references from a scene zone.
+  Called when a zone is deleted.
+  """
+  @spec delete_map_zone_references(integer()) :: {integer(), nil}
+  defdelegate delete_map_zone_references(zone_id), to: ReferenceTracker
+
+  @doc """
+  Updates references from a scene pin.
+  Called after pin data is saved to track target references.
+  """
+  @spec update_scene_pin_references(map()) :: :ok
+  defdelegate update_scene_pin_references(pin), to: ReferenceTracker
+
+  @doc """
+  Deletes all references from a scene pin.
+  Called when a pin is deleted.
+  """
+  @spec delete_map_pin_references(integer()) :: {integer(), nil}
+  defdelegate delete_map_pin_references(pin_id), to: ReferenceTracker
+
+  @doc """
+  Deletes all references where a given entity is the target.
+  Used for permanent deletion cleanup.
+  """
+  @spec delete_target_references(String.t(), integer()) :: {integer(), nil}
+  defdelegate delete_target_references(target_type, target_id), to: ReferenceTracker
+
+  @doc """
   Updates references from a screenplay element.
   Called after element content is saved to track character sheet refs and mentions.
   """
@@ -673,4 +748,89 @@ defmodule Storyarn.Sheets do
   """
   @spec delete_screenplay_element_references(id()) :: {integer(), nil}
   defdelegate delete_screenplay_element_references(element_id), to: ReferenceTracker
+
+  # =============================================================================
+  # Export / Import helpers
+  # =============================================================================
+
+  @doc "Returns the project_id for a sheet by its ID."
+  defdelegate get_sheet_project_id(sheet_id), to: SheetQueries
+
+  @doc "Lists sheets with blocks and table data preloaded. Opts: [filter_ids: :all | [ids]]."
+  defdelegate list_sheets_for_export(project_id, opts \\ []), to: SheetQueries
+
+  @doc "Counts non-deleted sheets for a project."
+  defdelegate count_sheets(project_id), to: SheetQueries
+
+  @doc "Lists all non-deleted blocks for the given sheet IDs."
+  defdelegate list_blocks_for_sheet_ids(sheet_ids), to: SheetQueries
+
+  @doc "Lists brief sheet data (id, name, shortcut) for validator."
+  defdelegate list_sheets_brief(project_id), to: SheetQueries
+
+  @doc "Lists existing sheet shortcuts for a project."
+  defdelegate list_sheet_shortcuts(project_id), to: SheetQueries, as: :list_shortcuts
+
+  @doc "Detects shortcut conflicts between imported sheets and existing ones."
+  defdelegate detect_sheet_shortcut_conflicts(project_id, shortcuts),
+    to: SheetQueries,
+    as: :detect_shortcut_conflicts
+
+  @doc "Soft-deletes existing sheets with the given shortcut (overwrite import strategy)."
+  defdelegate soft_delete_sheet_by_shortcut(project_id, shortcut),
+    to: SheetQueries,
+    as: :soft_delete_by_shortcut
+
+  @doc "Returns stale variable reference data for flow nodes."
+  defdelegate check_stale_flow_node_variable_references(block_id, project_id), to: SheetQueries
+
+  @doc "Returns variable references with current block info for stale repair."
+  defdelegate list_variable_refs_with_block_info_for_repair(project_id), to: SheetQueries
+
+  @doc "Lists stale regular (non-table) node IDs in a flow."
+  defdelegate list_stale_regular_node_ids(flow_id), to: SheetQueries
+
+  @doc "Lists stale table node IDs in a flow."
+  defdelegate list_stale_table_node_ids(flow_id), to: SheetQueries
+
+  @doc "Resolves a block ID by sheet shortcut and variable name."
+  defdelegate resolve_block_id_by_variable(project_id, sheet_shortcut, variable_name),
+    to: SheetQueries
+
+  @doc "Resolves a table block ID by sheet shortcut, table name, row slug, and column slug."
+  defdelegate resolve_table_block_id_by_variable(
+                project_id,
+                sheet_shortcut,
+                table_name,
+                row_slug,
+                column_slug
+              ),
+              to: SheetQueries
+
+  @doc "Lists sheet IDs referenced through variable_references in a project."
+  defdelegate list_variable_referenced_sheet_ids(project_id), to: SheetQueries
+
+  @doc "Lists sheets using a specific asset as their avatar."
+  defdelegate list_sheets_using_asset_as_avatar(project_id, asset_id), to: SheetQueries
+
+  @doc "Lists sheets using a specific asset as their banner."
+  defdelegate list_sheets_using_asset_as_banner(project_id, asset_id), to: SheetQueries
+
+  @doc "Lists sheet IDs referenced by scene pins in a project."
+  defdelegate list_pin_referenced_sheet_ids(project_id), to: SheetQueries
+
+  @doc "Creates a sheet for import (raw insert, no side effects)."
+  defdelegate import_sheet(project_id, attrs), to: SheetCrud
+
+  @doc "Updates a sheet's parent_id after import."
+  defdelegate link_sheet_import_parent(sheet, parent_id), to: SheetCrud, as: :link_import_parent
+
+  @doc "Creates a block for import (raw insert, no side effects)."
+  defdelegate import_block(sheet_id, attrs), to: BlockCrud
+
+  @doc "Creates a table column for import (raw insert, no side effects)."
+  defdelegate import_table_column(block_id, attrs), to: TableCrud, as: :import_column
+
+  @doc "Creates a table row for import (raw insert, no side effects)."
+  defdelegate import_table_row(block_id, attrs), to: TableCrud, as: :import_row
 end

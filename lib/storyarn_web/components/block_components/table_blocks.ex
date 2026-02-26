@@ -103,7 +103,9 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
         data-block-id={@block.id}
         data-phx-target={@target}
         class="text-base-content/70 cursor-default hover:text-base-content transition-colors"
-      >{@label}</span>
+      >
+        {@label}
+      </span>
       <span :if={@collapsed} class="text-base-content/40">({@summary})</span>
     </button>
     <%!-- Read-only or schema-locked: no collapse, just label --%>

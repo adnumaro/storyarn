@@ -8,7 +8,6 @@ defmodule StoryarnWeb.SceneLive.Helpers.Serializer do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Scenes
-  alias Storyarn.Scenes.ZoneImageExtractor
 
   def build_scene_data(map, can_edit) do
     %{
@@ -189,7 +188,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.Serializer do
   defp boundary_vertices(%{parent_id: parent_id, id: scene_id}) do
     case Scenes.get_zone_linking_to_scene(parent_id, scene_id) do
       nil -> nil
-      zone -> ZoneImageExtractor.normalize_vertices_to_bbox(zone.vertices)
+      zone -> Scenes.normalize_zone_vertices(zone.vertices)
     end
   end
 end

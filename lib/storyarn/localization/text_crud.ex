@@ -260,4 +260,79 @@ defmodule Storyarn.Localization.TextCrud do
     |> limit(^limit)
     |> offset(^(offset || 0))
   end
+
+  # =============================================================================
+  # Export / Import helpers
+  # =============================================================================
+
+  @doc """
+  Lists localized texts for export, filtered by locale codes.
+  """
+  def list_texts_for_export(project_id, locale_codes) do
+    from(lt in LocalizedText,
+      where: lt.project_id == ^project_id and lt.locale_code in ^locale_codes,
+      order_by: [
+        asc: lt.source_type,
+        asc: lt.source_id,
+        asc: lt.source_field,
+        asc: lt.locale_code
+      ]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Lists target (non-source) locale codes for a project.
+  Used by the export Validator.
+  """
+  def list_target_locale_codes(project_id) do
+    alias Storyarn.Localization.ProjectLanguage
+
+    from(l in ProjectLanguage,
+      where: l.project_id == ^project_id and l.is_source == false,
+      select: l.locale_code
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Counts distinct source entries (unique source_type + source_id + source_field) for a project.
+  Used by the export Validator.
+  """
+  def count_distinct_source_entries(project_id) do
+    from(lt in LocalizedText,
+      where: lt.project_id == ^project_id,
+      select: fragment("count(DISTINCT (?, ?, ?))", lt.source_type, lt.source_id, lt.source_field)
+    )
+    |> Repo.one() || 0
+  end
+
+  @doc """
+  Counts pending/draft texts grouped by locale for specified languages.
+  Returns a map of `%{locale_code => count}`.
+  """
+  def count_pending_by_locale(project_id, languages) do
+    from(lt in LocalizedText,
+      where:
+        lt.project_id == ^project_id and
+          lt.locale_code in ^languages and
+          lt.status in ["pending", "draft"],
+      group_by: lt.locale_code,
+      select: {lt.locale_code, count(lt.id)}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  @doc """
+  Bulk-inserts localized texts from a list of attr maps.
+  Uses on_conflict: :nothing for deduplication.
+  """
+  def bulk_import_texts(attrs_list) do
+    attrs_list
+    |> Enum.chunk_every(500)
+    |> Enum.each(fn chunk ->
+      Repo.insert_all(LocalizedText, chunk, on_conflict: :nothing)
+    end)
+  end
 end

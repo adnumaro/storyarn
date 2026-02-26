@@ -19,7 +19,7 @@ defmodule Storyarn.Sheets.Sheet do
 
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Project
-  alias Storyarn.Shared.{TimeHelpers, Validations}
+  alias Storyarn.Shared.{HierarchicalSchema, Validations}
   alias Storyarn.Sheets.{Block, SheetVersion}
 
   # Color format: hex color with 3, 6, or 8 characters (e.g., #fff, #3b82f6, #3b82f680)
@@ -87,8 +87,7 @@ defmodule Storyarn.Sheets.Sheet do
       :position,
       :hidden_inherited_block_ids
     ])
-    |> validate_required([:name])
-    |> validate_length(:name, min: 1, max: 200)
+    |> HierarchicalSchema.validate_core_fields()
     |> validate_shortcut()
     |> validate_color()
     |> foreign_key_constraint(:parent_id)
@@ -112,8 +111,7 @@ defmodule Storyarn.Sheets.Sheet do
       :position,
       :hidden_inherited_block_ids
     ])
-    |> validate_required([:name])
-    |> validate_length(:name, min: 1, max: 200)
+    |> HierarchicalSchema.validate_core_fields()
     |> validate_shortcut()
     |> validate_color()
     |> foreign_key_constraint(:parent_id)
@@ -124,27 +122,17 @@ defmodule Storyarn.Sheets.Sheet do
   @doc """
   Changeset for moving a sheet (changing parent or position).
   """
-  def move_changeset(sheet, attrs) do
-    sheet
-    |> cast(attrs, [:parent_id, :position])
-    |> foreign_key_constraint(:parent_id)
-  end
+  def move_changeset(sheet, attrs), do: HierarchicalSchema.move_changeset(sheet, attrs)
 
   @doc """
   Changeset for soft deleting a sheet.
   """
-  def delete_changeset(sheet) do
-    sheet
-    |> change(%{deleted_at: TimeHelpers.now()})
-  end
+  def delete_changeset(sheet), do: HierarchicalSchema.delete_changeset(sheet)
 
   @doc """
   Changeset for restoring a soft-deleted sheet.
   """
-  def restore_changeset(sheet) do
-    sheet
-    |> change(%{deleted_at: nil})
-  end
+  def restore_changeset(sheet), do: HierarchicalSchema.restore_changeset(sheet)
 
   @doc """
   Changeset for updating the current version pointer.
@@ -158,7 +146,7 @@ defmodule Storyarn.Sheets.Sheet do
   @doc """
   Returns true if the sheet is soft-deleted.
   """
-  def deleted?(%__MODULE__{deleted_at: deleted_at}), do: not is_nil(deleted_at)
+  def deleted?(sheet), do: HierarchicalSchema.deleted?(sheet)
 
   # Private functions
 

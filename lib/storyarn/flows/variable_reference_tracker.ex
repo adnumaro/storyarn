@@ -25,9 +25,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   alias Storyarn.Flows.{Condition, Flow, FlowNode, VariableReference}
   alias Storyarn.Repo
-  alias Storyarn.Scenes.{ScenePin, SceneZone}
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
 
   @doc """
   Updates variable references for a node after its data changes.
@@ -175,49 +173,11 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp get_scene_zone_variable_usage(block_id, project_id) do
-    from(vr in VariableReference,
-      join: z in SceneZone,
-      on: vr.source_type == "scene_zone" and z.id == vr.source_id,
-      join: m in Storyarn.Scenes.Scene,
-      on: m.id == z.scene_id,
-      where: vr.block_id == ^block_id,
-      where: m.project_id == ^project_id,
-      where: is_nil(m.deleted_at),
-      select: %{
-        source_type: vr.source_type,
-        kind: vr.kind,
-        scene_id: m.id,
-        scene_name: m.name,
-        zone_id: z.id,
-        zone_name: z.name,
-        zone_action_data: z.action_data
-      },
-      order_by: [asc: vr.kind, asc: m.name]
-    )
-    |> Repo.all()
+    Storyarn.Scenes.get_scene_zone_variable_usage(block_id, project_id)
   end
 
   defp get_scene_pin_variable_usage(block_id, project_id) do
-    from(vr in VariableReference,
-      join: p in ScenePin,
-      on: vr.source_type == "scene_pin" and p.id == vr.source_id,
-      join: m in Storyarn.Scenes.Scene,
-      on: m.id == p.scene_id,
-      where: vr.block_id == ^block_id,
-      where: m.project_id == ^project_id,
-      where: is_nil(m.deleted_at),
-      select: %{
-        source_type: vr.source_type,
-        kind: vr.kind,
-        scene_id: m.id,
-        scene_name: m.name,
-        pin_id: p.id,
-        pin_label: p.label,
-        pin_action_data: p.action_data
-      },
-      order_by: [asc: vr.kind, asc: m.name]
-    )
-    |> Repo.all()
+    Storyarn.Scenes.get_scene_pin_variable_usage(block_id, project_id)
   end
 
   @doc """
@@ -255,172 +215,15 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp check_stale_flow_node_references(block_id, project_id) do
-    from(vr in VariableReference,
-      join: n in FlowNode,
-      on: vr.source_type == "flow_node" and n.id == vr.source_id,
-      join: f in Flow,
-      on: f.id == n.flow_id,
-      join: b in Block,
-      on: b.id == vr.block_id,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: vr.block_id == ^block_id,
-      where: f.project_id == ^project_id,
-      where: is_nil(f.deleted_at),
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      select: %{
-        source_type: vr.source_type,
-        kind: vr.kind,
-        flow_id: f.id,
-        flow_name: f.name,
-        flow_shortcut: f.shortcut,
-        node_id: n.id,
-        node_type: n.type,
-        node_data: n.data,
-        source_sheet: vr.source_sheet,
-        source_variable: vr.source_variable,
-        stale:
-          fragment(
-            """
-            CASE WHEN ? = 'table' THEN
-              ? != ? OR NOT EXISTS (
-                SELECT 1 FROM table_rows tr
-                JOIN table_columns tc ON tc.block_id = tr.block_id
-                WHERE tr.block_id = ?
-                  AND ? = ? || '.' || tr.slug || '.' || tc.slug
-              )
-            ELSE
-              ? != ? OR ? != ?
-            END
-            """,
-            b.type,
-            vr.source_sheet,
-            s.shortcut,
-            b.id,
-            vr.source_variable,
-            b.variable_name,
-            vr.source_sheet,
-            s.shortcut,
-            vr.source_variable,
-            b.variable_name
-          )
-      },
-      order_by: [asc: vr.kind, asc: f.name]
-    )
-    |> Repo.all()
+    Storyarn.Sheets.check_stale_flow_node_variable_references(block_id, project_id)
   end
 
   defp check_stale_scene_zone_references(block_id, project_id) do
-    from(vr in VariableReference,
-      join: z in SceneZone,
-      on: vr.source_type == "scene_zone" and z.id == vr.source_id,
-      join: m in Storyarn.Scenes.Scene,
-      on: m.id == z.scene_id,
-      join: b in Block,
-      on: b.id == vr.block_id,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: vr.block_id == ^block_id,
-      where: m.project_id == ^project_id,
-      where: is_nil(m.deleted_at),
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      select: %{
-        source_type: vr.source_type,
-        kind: vr.kind,
-        scene_id: m.id,
-        scene_name: m.name,
-        zone_id: z.id,
-        zone_name: z.name,
-        zone_action_data: z.action_data,
-        source_sheet: vr.source_sheet,
-        source_variable: vr.source_variable,
-        stale:
-          fragment(
-            """
-            CASE WHEN ? = 'table' THEN
-              ? != ? OR NOT EXISTS (
-                SELECT 1 FROM table_rows tr
-                JOIN table_columns tc ON tc.block_id = tr.block_id
-                WHERE tr.block_id = ?
-                  AND ? = ? || '.' || tr.slug || '.' || tc.slug
-              )
-            ELSE
-              ? != ? OR ? != ?
-            END
-            """,
-            b.type,
-            vr.source_sheet,
-            s.shortcut,
-            b.id,
-            vr.source_variable,
-            b.variable_name,
-            vr.source_sheet,
-            s.shortcut,
-            vr.source_variable,
-            b.variable_name
-          )
-      },
-      order_by: [asc: vr.kind, asc: m.name]
-    )
-    |> Repo.all()
+    Storyarn.Scenes.check_stale_scene_zone_variable_references(block_id, project_id)
   end
 
   defp check_stale_scene_pin_references(block_id, project_id) do
-    from(vr in VariableReference,
-      join: p in ScenePin,
-      on: vr.source_type == "scene_pin" and p.id == vr.source_id,
-      join: m in Storyarn.Scenes.Scene,
-      on: m.id == p.scene_id,
-      join: b in Block,
-      on: b.id == vr.block_id,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: vr.block_id == ^block_id,
-      where: m.project_id == ^project_id,
-      where: is_nil(m.deleted_at),
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      select: %{
-        source_type: vr.source_type,
-        kind: vr.kind,
-        scene_id: m.id,
-        scene_name: m.name,
-        pin_id: p.id,
-        pin_label: p.label,
-        pin_action_data: p.action_data,
-        source_sheet: vr.source_sheet,
-        source_variable: vr.source_variable,
-        stale:
-          fragment(
-            """
-            CASE WHEN ? = 'table' THEN
-              ? != ? OR NOT EXISTS (
-                SELECT 1 FROM table_rows tr
-                JOIN table_columns tc ON tc.block_id = tr.block_id
-                WHERE tr.block_id = ?
-                  AND ? = ? || '.' || tr.slug || '.' || tc.slug
-              )
-            ELSE
-              ? != ? OR ? != ?
-            END
-            """,
-            b.type,
-            vr.source_sheet,
-            s.shortcut,
-            b.id,
-            vr.source_variable,
-            b.variable_name,
-            vr.source_sheet,
-            s.shortcut,
-            vr.source_variable,
-            b.variable_name
-          )
-      },
-      order_by: [asc: vr.kind, asc: m.name]
-    )
-    |> Repo.all()
+    Storyarn.Scenes.check_stale_scene_pin_variable_references(block_id, project_id)
   end
 
   @doc """
@@ -433,32 +236,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   def repair_stale_references(project_id) do
     # Get all variable references for this project with current block info + source fields
     refs_with_info =
-      from(vr in VariableReference,
-        join: n in FlowNode,
-        on: vr.source_type == "flow_node" and n.id == vr.source_id,
-        join: f in Flow,
-        on: f.id == n.flow_id,
-        join: b in Block,
-        on: b.id == vr.block_id,
-        join: s in Sheet,
-        on: s.id == b.sheet_id,
-        where: f.project_id == ^project_id,
-        where: is_nil(f.deleted_at),
-        where: is_nil(s.deleted_at),
-        where: is_nil(b.deleted_at),
-        select: %{
-          node_id: n.id,
-          node_type: n.type,
-          node_data: n.data,
-          kind: vr.kind,
-          block_id: vr.block_id,
-          current_shortcut: s.shortcut,
-          current_variable: b.variable_name,
-          source_sheet: vr.source_sheet,
-          source_variable: vr.source_variable
-        }
-      )
-      |> Repo.all()
+      Storyarn.Sheets.list_variable_refs_with_block_info_for_repair(project_id)
       |> Enum.map(&compute_table_current_variable/1)
 
     # Group by node_id to batch repairs per node
@@ -500,60 +278,11 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp list_stale_regular_node_ids(flow_id) do
-    from(vr in VariableReference,
-      join: n in FlowNode,
-      on: vr.source_type == "flow_node" and n.id == vr.source_id,
-      join: b in Block,
-      on: b.id == vr.block_id,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: n.flow_id == ^flow_id,
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      where: b.type != "table",
-      where: vr.source_sheet != s.shortcut or vr.source_variable != b.variable_name,
-      distinct: true,
-      select: n.id
-    )
-    |> Repo.all()
-    |> MapSet.new()
+    Storyarn.Sheets.list_stale_regular_node_ids(flow_id)
   end
 
   defp list_stale_table_node_ids(flow_id) do
-    table_cell_exists =
-      from(tr in TableRow,
-        join: tc in TableColumn,
-        on: tc.block_id == tr.block_id,
-        where:
-          parent_as(:vr).source_variable ==
-            fragment(
-              "? || '.' || ? || '.' || ?",
-              parent_as(:block).variable_name,
-              tr.slug,
-              tc.slug
-            ),
-        select: 1
-      )
-
-    from(vr in VariableReference,
-      as: :vr,
-      join: n in FlowNode,
-      on: vr.source_type == "flow_node" and n.id == vr.source_id,
-      join: b in Block,
-      as: :block,
-      on: b.id == vr.block_id,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: n.flow_id == ^flow_id,
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      where: b.type == "table",
-      where: vr.source_sheet != s.shortcut or not exists(table_cell_exists),
-      distinct: true,
-      select: n.id
-    )
-    |> Repo.all()
-    |> MapSet.new()
+    Storyarn.Sheets.list_stale_table_node_ids(flow_id)
   end
 
   # -- Private --
@@ -659,40 +388,17 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   defp resolve_block(_, _, _), do: nil
 
   defp resolve_regular_block(project_id, sheet_shortcut, variable_name) do
-    from(b in Block,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: s.project_id == ^project_id,
-      where: s.shortcut == ^sheet_shortcut,
-      where: b.variable_name == ^variable_name,
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      select: b.id,
-      limit: 1
-    )
-    |> Repo.one()
+    Storyarn.Sheets.resolve_block_id_by_variable(project_id, sheet_shortcut, variable_name)
   end
 
   defp resolve_table_block(project_id, sheet_shortcut, table_name, row_slug, column_slug) do
-    from(b in Block,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      join: tr in TableRow,
-      on: tr.block_id == b.id,
-      join: tc in TableColumn,
-      on: tc.block_id == b.id,
-      where: s.project_id == ^project_id,
-      where: s.shortcut == ^sheet_shortcut,
-      where: b.variable_name == ^table_name,
-      where: b.type == "table",
-      where: tr.slug == ^row_slug,
-      where: tc.slug == ^column_slug,
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      select: b.id,
-      limit: 1
+    Storyarn.Sheets.resolve_table_block_id_by_variable(
+      project_id,
+      sheet_shortcut,
+      table_name,
+      row_slug,
+      column_slug
     )
-    |> Repo.one()
   end
 
   # Repairs node data by replacing stale shortcut/variable references with current values.

@@ -20,7 +20,7 @@ defmodule Storyarn.Screenplays.Screenplay do
   alias Storyarn.Flows.Flow
   alias Storyarn.Projects.Project
   alias Storyarn.Screenplays.ScreenplayElement
-  alias Storyarn.Shared.{TimeHelpers, Validations}
+  alias Storyarn.Shared.{HierarchicalSchema, Validations}
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -77,7 +77,7 @@ defmodule Storyarn.Screenplays.Screenplay do
   @doc """
   Returns true if the screenplay is soft-deleted.
   """
-  def deleted?(%__MODULE__{deleted_at: deleted_at}), do: not is_nil(deleted_at)
+  def deleted?(screenplay), do: HierarchicalSchema.deleted?(screenplay)
 
   @doc """
   Changeset for creating a new screenplay.
@@ -85,9 +85,8 @@ defmodule Storyarn.Screenplays.Screenplay do
   def create_changeset(screenplay, attrs) do
     screenplay
     |> cast(attrs, [:name, :shortcut, :description, :parent_id, :position])
-    |> validate_required([:name])
-    |> validate_length(:name, min: 1, max: 200)
-    |> validate_length(:description, max: 2000)
+    |> HierarchicalSchema.validate_core_fields()
+    |> HierarchicalSchema.validate_description()
     |> validate_shortcut()
     |> foreign_key_constraint(:parent_id)
   end
@@ -98,36 +97,25 @@ defmodule Storyarn.Screenplays.Screenplay do
   def update_changeset(screenplay, attrs) do
     screenplay
     |> cast(attrs, [:name, :shortcut, :description])
-    |> validate_required([:name])
-    |> validate_length(:name, min: 1, max: 200)
-    |> validate_length(:description, max: 2000)
+    |> HierarchicalSchema.validate_core_fields()
+    |> HierarchicalSchema.validate_description()
     |> validate_shortcut()
   end
 
   @doc """
   Changeset for moving a screenplay (changing parent or position).
   """
-  def move_changeset(screenplay, attrs) do
-    screenplay
-    |> cast(attrs, [:parent_id, :position])
-    |> foreign_key_constraint(:parent_id)
-  end
+  def move_changeset(screenplay, attrs), do: HierarchicalSchema.move_changeset(screenplay, attrs)
 
   @doc """
   Changeset for soft deleting a screenplay.
   """
-  def delete_changeset(screenplay) do
-    screenplay
-    |> change(%{deleted_at: TimeHelpers.now()})
-  end
+  def delete_changeset(screenplay), do: HierarchicalSchema.delete_changeset(screenplay)
 
   @doc """
   Changeset for restoring a soft-deleted screenplay.
   """
-  def restore_changeset(screenplay) do
-    screenplay
-    |> change(%{deleted_at: nil})
-  end
+  def restore_changeset(screenplay), do: HierarchicalSchema.restore_changeset(screenplay)
 
   @doc """
   Changeset for linking/unlinking a flow.

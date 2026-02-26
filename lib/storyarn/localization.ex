@@ -150,6 +150,38 @@ defmodule Storyarn.Localization do
   @spec extract_all(id()) :: {:ok, non_neg_integer()}
   defdelegate extract_all(project_id), to: TextExtractor
 
+  @doc "Extracts localizable texts from a flow node after its data is updated."
+  @spec extract_flow_node(struct()) :: :ok
+  defdelegate extract_flow_node(node), to: TextExtractor
+
+  @doc "Extracts localizable texts from a flow after its metadata is updated."
+  @spec extract_flow(struct()) :: :ok
+  defdelegate extract_flow(flow), to: TextExtractor
+
+  @doc "Extracts localizable texts from a block after its value or config is updated."
+  @spec extract_block(struct()) :: :ok
+  defdelegate extract_block(block), to: TextExtractor
+
+  @doc "Extracts localizable texts from a sheet after its metadata is updated."
+  @spec extract_sheet(struct()) :: :ok
+  defdelegate extract_sheet(sheet), to: TextExtractor
+
+  @doc "Cleans up localized texts when a flow node is deleted."
+  @spec delete_flow_node_texts(id()) :: :ok
+  defdelegate delete_flow_node_texts(node_id), to: TextExtractor
+
+  @doc "Cleans up localized texts when a flow is deleted."
+  @spec delete_flow_texts(id()) :: :ok
+  defdelegate delete_flow_texts(flow_id), to: TextExtractor
+
+  @doc "Cleans up localized texts when a block is deleted."
+  @spec delete_block_texts(id()) :: :ok
+  defdelegate delete_block_texts(block_id), to: TextExtractor
+
+  @doc "Cleans up localized texts when a sheet is deleted."
+  @spec delete_sheet_texts(id()) :: :ok
+  defdelegate delete_sheet_texts(sheet_id), to: TextExtractor
+
   # =============================================================================
   # Translation
   # =============================================================================
@@ -295,4 +327,32 @@ defmodule Storyarn.Localization do
 
   @doc "Gets DeepL API usage stats."
   defdelegate get_deepl_usage(config), to: Providers.DeepL, as: :get_usage
+
+  # =============================================================================
+  # Export / Import helpers
+  # =============================================================================
+
+  @doc "Lists localized texts for export, filtered by locale codes."
+  defdelegate list_texts_for_export(project_id, locale_codes), to: TextCrud
+
+  @doc "Lists target (non-source) locale codes for a project."
+  defdelegate list_target_locale_codes(project_id), to: TextCrud
+
+  @doc "Counts distinct source entries for a project."
+  defdelegate count_distinct_source_entries(project_id), to: TextCrud
+
+  @doc "Counts pending/draft texts grouped by locale."
+  defdelegate count_pending_by_locale(project_id, languages), to: TextCrud
+
+  @doc "Bulk-inserts localized texts from a list of attr maps."
+  defdelegate bulk_import_texts(attrs_list), to: TextCrud
+
+  @doc "Lists all glossary entries for a project for export."
+  defdelegate list_glossary_for_export(project_id), to: GlossaryCrud, as: :list_entries_for_export
+
+  @doc "Bulk-inserts glossary entries from a list of attr maps."
+  defdelegate bulk_import_glossary_entries(attrs_list), to: GlossaryCrud, as: :bulk_import_entries
+
+  @doc "Creates a language for import (raw insert, no side effects)."
+  defdelegate import_language(project_id, attrs), to: LanguageCrud
 end

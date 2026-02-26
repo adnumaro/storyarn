@@ -6,7 +6,7 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Screenplays.Screenplay
-  alias Storyarn.Shared.{MapUtils, ShortcutHelpers, SoftDelete}
+  alias Storyarn.Shared.{ImportHelpers, MapUtils, ShortcutHelpers, SoftDelete}
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Shortcuts
 
@@ -40,19 +40,7 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
       )
       |> Repo.all()
 
-    build_tree(all, nil)
-  end
-
-  defp build_tree(all_items, root_parent_id) do
-    grouped = Enum.group_by(all_items, & &1.parent_id)
-    build_subtree(grouped, root_parent_id)
-  end
-
-  defp build_subtree(grouped, parent_id) do
-    (Map.get(grouped, parent_id) || [])
-    |> Enum.map(fn item ->
-      %{item | children: build_subtree(grouped, item.id)}
-    end)
+    SharedTree.build_tree_from_flat_list(all)
   end
 
   @doc """
@@ -216,5 +204,117 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
       nil -> 0
       max -> max + 1
     end
+  end
+
+  # =============================================================================
+  # Export / Import helpers
+  # =============================================================================
+
+  @doc """
+  Lists all non-deleted screenplays with elements preloaded.
+  Used by the export DataCollector.
+  """
+  def list_screenplays_for_export(project_id) do
+    alias Storyarn.Screenplays.ScreenplayElement
+
+    elements_query = from(e in ScreenplayElement, order_by: [asc: e.position])
+
+    from(sp in Screenplay,
+      where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
+      preload: [elements: ^elements_query],
+      order_by: [asc: sp.position, asc: sp.name]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Counts non-deleted screenplays for a project.
+  """
+  def count_screenplays(project_id) do
+    from(sp in Screenplay, where: sp.project_id == ^project_id and is_nil(sp.deleted_at))
+    |> Repo.aggregate(:count)
+  end
+
+  @doc """
+  Lists existing shortcuts for screenplays in a project.
+  """
+  def list_shortcuts(project_id) do
+    from(sp in Screenplay,
+      where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
+      select: sp.shortcut
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  @doc """
+  Detects shortcut conflicts between imported screenplays and existing ones.
+  """
+  def detect_shortcut_conflicts(project_id, shortcuts) when is_list(shortcuts) do
+    ImportHelpers.detect_shortcut_conflicts(Screenplay, project_id, shortcuts)
+  end
+
+  # =============================================================================
+  # Import helpers (raw insert, no side effects)
+  # =============================================================================
+
+  @doc """
+  Creates a screenplay for import. Raw insert — no auto-shortcut, no auto-position.
+  Accepts optional `extra_changes` for fields not in the create_changeset cast
+  (e.g., `linked_flow_id`, `draft_label`, `draft_status`).
+  Returns `{:ok, screenplay}` or `{:error, changeset}`.
+  """
+  def import_screenplay(project_id, attrs, extra_changes \\ %{}) do
+    changeset =
+      %Screenplay{project_id: project_id}
+      |> Screenplay.create_changeset(attrs)
+
+    changeset =
+      Enum.reduce(extra_changes, changeset, fn
+        {_key, nil}, cs -> cs
+        {key, value}, cs -> Ecto.Changeset.put_change(cs, key, value)
+      end)
+
+    Repo.insert(changeset)
+  end
+
+  @doc """
+  Creates a screenplay element for import. Raw insert — no auto-position.
+  Accepts optional `extra_changes` for fields not in the create_changeset cast
+  (e.g., `linked_node_id`).
+  Returns `{:ok, element}` or `{:error, changeset}`.
+  """
+  def import_element(screenplay_id, attrs, extra_changes \\ %{}) do
+    alias Storyarn.Screenplays.ScreenplayElement
+
+    changeset =
+      %ScreenplayElement{screenplay_id: screenplay_id}
+      |> ScreenplayElement.create_changeset(attrs)
+
+    changeset =
+      Enum.reduce(extra_changes, changeset, fn
+        {_key, nil}, cs -> cs
+        {key, value}, cs -> Ecto.Changeset.put_change(cs, key, value)
+      end)
+
+    Repo.insert(changeset)
+  end
+
+  @doc """
+  Updates a screenplay's parent_id and/or draft_of_id after import (two-pass linking).
+  """
+  def link_import_refs(%Screenplay{} = screenplay, changes) when changes != %{} do
+    screenplay
+    |> Ecto.Changeset.change(changes)
+    |> Repo.update!()
+  end
+
+  def link_import_refs(%Screenplay{}, _changes), do: :ok
+
+  @doc """
+  Soft-deletes existing screenplays with the given shortcut (for overwrite import strategy).
+  """
+  def soft_delete_by_shortcut(project_id, shortcut) do
+    ImportHelpers.soft_delete_by_shortcut(Screenplay, project_id, shortcut)
   end
 end

@@ -20,7 +20,7 @@ defmodule Storyarn.Flows.Flow do
   alias Storyarn.Flows.{FlowConnection, FlowNode}
   alias Storyarn.Projects.Project
   alias Storyarn.Scenes
-  alias Storyarn.Shared.{TimeHelpers, Validations}
+  alias Storyarn.Shared.{HierarchicalSchema, Validations}
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -78,9 +78,8 @@ defmodule Storyarn.Flows.Flow do
       :position,
       :scene_id
     ])
-    |> validate_required([:name])
-    |> validate_length(:name, min: 1, max: 200)
-    |> validate_length(:description, max: 2000)
+    |> HierarchicalSchema.validate_core_fields()
+    |> HierarchicalSchema.validate_description()
     |> validate_shortcut()
     |> foreign_key_constraint(:parent_id)
     |> foreign_key_constraint(:scene_id)
@@ -101,9 +100,8 @@ defmodule Storyarn.Flows.Flow do
       :position,
       :scene_id
     ])
-    |> validate_required([:name])
-    |> validate_length(:name, min: 1, max: 200)
-    |> validate_length(:description, max: 2000)
+    |> HierarchicalSchema.validate_core_fields()
+    |> HierarchicalSchema.validate_description()
     |> validate_shortcut()
     |> foreign_key_constraint(:parent_id)
     |> foreign_key_constraint(:scene_id)
@@ -121,32 +119,22 @@ defmodule Storyarn.Flows.Flow do
   @doc """
   Changeset for moving a flow (changing parent or position).
   """
-  def move_changeset(flow, attrs) do
-    flow
-    |> cast(attrs, [:parent_id, :position])
-    |> foreign_key_constraint(:parent_id)
-  end
+  def move_changeset(flow, attrs), do: HierarchicalSchema.move_changeset(flow, attrs)
 
   @doc """
   Changeset for soft deleting a flow.
   """
-  def delete_changeset(flow) do
-    flow
-    |> change(%{deleted_at: TimeHelpers.now()})
-  end
+  def delete_changeset(flow), do: HierarchicalSchema.delete_changeset(flow)
 
   @doc """
   Changeset for restoring a soft-deleted flow.
   """
-  def restore_changeset(flow) do
-    flow
-    |> change(%{deleted_at: nil})
-  end
+  def restore_changeset(flow), do: HierarchicalSchema.restore_changeset(flow)
 
   @doc """
   Returns true if the flow is soft-deleted.
   """
-  def deleted?(%__MODULE__{deleted_at: deleted_at}), do: not is_nil(deleted_at)
+  def deleted?(flow), do: HierarchicalSchema.deleted?(flow)
 
   # Private functions
 

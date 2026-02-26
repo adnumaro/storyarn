@@ -7,10 +7,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
   use Gettext, backend: StoryarnWeb.Gettext
   use StoryarnWeb, :verified_routes
 
-  alias Storyarn.Flows.Condition
-  alias Storyarn.Flows.Instruction
+  alias Storyarn.Flows
   alias Storyarn.Screenplays
-  alias Storyarn.Screenplays.ContentUtils
   alias Storyarn.Sheets
 
   alias StoryarnWeb.ScreenplayLive.Helpers.SocketHelpers
@@ -62,7 +60,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
         {:noreply, socket}
 
       element ->
-        sanitized = Condition.sanitize(condition)
+        sanitized = Flows.condition_sanitize(condition)
         data = Map.put(element.data || %{}, "condition", sanitized)
 
         case Screenplays.update_element(element, %{data: data}) do
@@ -85,7 +83,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
         {:noreply, socket}
 
       element ->
-        sanitized = Instruction.sanitize(assignments)
+        sanitized = Flows.instruction_sanitize(assignments)
         data = Map.put(element.data || %{}, "assignments", sanitized)
 
         case Screenplays.update_element(element, %{data: data}) do
@@ -161,7 +159,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
     update_choice_field(socket, id, choice_id, fn choice ->
       if choice["condition"],
         do: Map.delete(choice, "condition"),
-        else: Map.put(choice, "condition", Condition.new())
+        else: Map.put(choice, "condition", Flows.condition_new())
     end)
   end
 
@@ -219,7 +217,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
 
     sanitized_value =
       case field do
-        f when f in ~w(dialogue parenthetical) -> ContentUtils.sanitize_html(value)
+        f when f in ~w(dialogue parenthetical) -> Screenplays.content_sanitize_html(value)
         "character" -> sanitize_plain_text(value)
       end
 

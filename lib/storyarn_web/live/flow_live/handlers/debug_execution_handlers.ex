@@ -11,7 +11,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   use StoryarnWeb, :verified_routes
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.DebugSessionStore
 
   @doc "Advances the debugger by one step. May trigger cross-flow navigation."
   def handle_debug_step(socket) do
@@ -165,7 +164,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
       debug_step_limit_reached: socket.assigns[:debug_step_limit_reached] || false
     }
 
-    DebugSessionStore.store({user_id, project_id}, debug_assigns)
+    Flows.debug_session_store({user_id, project_id}, debug_assigns)
 
     path =
       ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{target_flow_id}"

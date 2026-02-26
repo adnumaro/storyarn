@@ -149,6 +149,23 @@ defmodule Storyarn.Shared.TreeOperations do
   def add_parent_filter(query, nil), do: where(query, [s], is_nil(s.parent_id))
   def add_parent_filter(query, parent_id), do: where(query, [s], s.parent_id == ^parent_id)
 
+  @doc """
+  Builds a nested tree structure from a flat list of entities with `parent_id` and `id` fields.
+  Entities with `parent_id` matching `root_parent_id` (default `nil`) become root nodes.
+  Each entity gets a `:children` key populated with its direct children, recursively.
+  """
+  def build_tree_from_flat_list(items, root_parent_id \\ nil) do
+    grouped = Enum.group_by(items, & &1.parent_id)
+    do_build_subtree(grouped, root_parent_id)
+  end
+
+  defp do_build_subtree(grouped, parent_id) do
+    (Map.get(grouped, parent_id) || [])
+    |> Enum.map(fn item ->
+      Map.put(item, :children, do_build_subtree(grouped, item.id))
+    end)
+  end
+
   # Updates position scoped by project_id, parent_id, and non-deleted.
   defp update_scoped_position(schema, id, position, project_id, parent_id) do
     from(s in schema,

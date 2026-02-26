@@ -6,9 +6,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FountainImportHandlers do
   import Phoenix.LiveView, only: [put_flash: 3]
   use Gettext, backend: StoryarnWeb.Gettext
 
-  alias Storyarn.Repo
   alias Storyarn.Screenplays
-  alias Storyarn.Screenplays.CharacterExtension
   alias Storyarn.Sheets
 
   import StoryarnWeb.ScreenplayLive.Helpers.SocketHelpers
@@ -23,14 +21,11 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FountainImportHandlers do
       screenplay = socket.assigns.screenplay
 
       result =
-        Ecto.Multi.new()
-        |> Ecto.Multi.run(:delete_existing, fn _repo, _ ->
-          delete_all_elements(socket.assigns.elements)
-        end)
-        |> Ecto.Multi.run(:create_imported, fn _repo, _ ->
-          create_elements_from_parsed(screenplay, parsed)
-        end)
-        |> Repo.transaction()
+        Screenplays.replace_elements_from_fountain(
+          screenplay,
+          socket.assigns.elements,
+          parsed
+        )
 
       case result do
         {:ok, _} ->
@@ -51,38 +46,6 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FountainImportHandlers do
   end
 
   def do_import_fountain(socket, _content), do: {:noreply, socket}
-
-  defp delete_all_elements(elements) do
-    result =
-      Enum.reduce_while(elements, :ok, fn el, _ ->
-        Sheets.delete_screenplay_element_references(el.id)
-
-        case Screenplays.delete_element(el) do
-          {:ok, _} -> {:cont, :ok}
-          {:error, reason} -> {:halt, {:error, reason}}
-        end
-      end)
-
-    case result do
-      :ok -> {:ok, :deleted}
-      error -> error
-    end
-  end
-
-  defp create_elements_from_parsed(screenplay, parsed) do
-    result =
-      Enum.reduce_while(parsed, {:ok, []}, fn attrs, {:ok, acc} ->
-        case Screenplays.create_element(screenplay, attrs) do
-          {:ok, el} -> {:cont, {:ok, [el | acc]}}
-          {:error, reason} -> {:halt, {:error, reason}}
-        end
-      end)
-
-    case result do
-      {:ok, elements} -> {:ok, Enum.reverse(elements)}
-      error -> error
-    end
-  end
 
   defp create_character_sheets_from_import(project, elements) do
     followed_by_dialogue = character_ids_followed_by_dialogue(elements)
@@ -113,7 +76,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FountainImportHandlers do
 
   defp create_sheets_for_characters(project, character_elements) do
     character_elements
-    |> Enum.map(&CharacterExtension.base_name(&1.content))
+    |> Enum.map(&Screenplays.character_base_name(&1.content))
     |> Enum.reject(&(&1 == ""))
     |> Enum.filter(&valid_character_sheet_name?/1)
     |> Enum.uniq()
@@ -136,7 +99,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FountainImportHandlers do
   end
 
   defp link_sheet_to_element(el, name_to_sheet) do
-    base = CharacterExtension.base_name(el.content)
+    base = Screenplays.character_base_name(el.content)
 
     case Map.get(name_to_sheet, base) do
       nil -> el

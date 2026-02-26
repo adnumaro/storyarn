@@ -216,7 +216,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
         {:error, socket}
 
       block ->
-        current = block.value
+        current = get_in(block.value, ["content"])
 
         case Sheets.update_block_value(block, %{"content" => prev}) do
           {:ok, _} -> {:ok, socket, {:update_block_value, block_id, prev, current}}
@@ -533,7 +533,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
         {:error, socket}
 
       block ->
-        current = block.value
+        current = get_in(block.value, ["content"])
 
         case Sheets.update_block_value(block, %{"content" => new}) do
           {:ok, _} -> {:ok, socket, {:update_block_value, block_id, current, new}}

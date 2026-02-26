@@ -100,6 +100,20 @@ defmodule Storyarn.Flows.ConnectionCrud do
     |> Repo.delete_all()
   end
 
+  @doc """
+  Deletes all connections within a flow where both source and target are in the given node IDs list.
+  Used by FlowSync to clear internal connections before rebuilding them.
+  """
+  def delete_connections_among_nodes(_flow_id, []), do: {0, nil}
+
+  def delete_connections_among_nodes(flow_id, node_ids) when is_list(node_ids) do
+    from(c in FlowConnection,
+      where: c.flow_id == ^flow_id,
+      where: c.source_node_id in ^node_ids and c.target_node_id in ^node_ids
+    )
+    |> Repo.delete_all()
+  end
+
   defp validate_connection_rules(nil, _), do: {:error, :source_node_not_found}
   defp validate_connection_rules(_, nil), do: {:error, :target_node_not_found}
 

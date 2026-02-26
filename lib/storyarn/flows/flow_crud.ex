@@ -5,12 +5,13 @@ defmodule Storyarn.Flows.FlowCrud do
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows.{Flow, FlowNode, NodeCrud, TreeOperations}
-  alias Storyarn.Localization.TextExtractor
+  alias Storyarn.Localization
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
-  alias Storyarn.Shared.{MapUtils, SearchHelpers, ShortcutHelpers, SoftDelete}
-  alias Storyarn.Sheets.ReferenceTracker
+  alias Storyarn.Shared.{ImportHelpers, MapUtils, SearchHelpers, ShortcutHelpers, SoftDelete}
+  alias Storyarn.Shared.TreeOperations, as: SharedTree
+  alias Storyarn.Sheets
   alias Storyarn.Shortcuts
 
   @doc """
@@ -30,7 +31,6 @@ defmodule Storyarn.Flows.FlowCrud do
   Returns root-level flows with their children preloaded (up to 5 levels deep).
   """
   def list_flows_tree(project_id) do
-    # Load all non-deleted flows for the project
     all_flows =
       from(f in Flow,
         where: f.project_id == ^project_id and is_nil(f.deleted_at),
@@ -38,20 +38,7 @@ defmodule Storyarn.Flows.FlowCrud do
       )
       |> Repo.all()
 
-    # Build tree structure in memory
-    build_tree(all_flows, nil)
-  end
-
-  defp build_tree(all_items, root_parent_id) do
-    grouped = Enum.group_by(all_items, & &1.parent_id)
-    build_subtree(grouped, root_parent_id)
-  end
-
-  defp build_subtree(grouped, parent_id) do
-    (Map.get(grouped, parent_id) || [])
-    |> Enum.map(fn item ->
-      %{item | children: build_subtree(grouped, item.id)}
-    end)
+    SharedTree.build_tree_from_flat_list(all_flows)
   end
 
   @default_search_limit 25
@@ -295,7 +282,7 @@ defmodule Storyarn.Flows.FlowCrud do
       |> Repo.update()
 
     case result do
-      {:ok, updated_flow} -> TextExtractor.extract_flow(updated_flow)
+      {:ok, updated_flow} -> Localization.extract_flow(updated_flow)
       _ -> :ok
     end
 
@@ -310,14 +297,14 @@ defmodule Storyarn.Flows.FlowCrud do
     result =
       Repo.transaction(fn ->
         # Clean up localization texts
-        TextExtractor.delete_flow_texts(flow.id)
+        Localization.delete_flow_texts(flow.id)
 
         # Soft delete the flow itself
         case flow |> Flow.delete_changeset() |> Repo.update() do
           {:ok, deleted_flow} ->
             # Also soft-delete all children recursively
             SoftDelete.soft_delete_children(Flow, flow.project_id, flow.id,
-              pre_delete: &TextExtractor.delete_flow_texts(&1.id)
+              pre_delete: &Localization.delete_flow_texts(&1.id)
             )
 
             deleted_flow
@@ -429,7 +416,7 @@ defmodule Storyarn.Flows.FlowCrud do
       flow,
       attrs,
       &Shortcuts.generate_flow_shortcut/3,
-      check_backlinks_fn: &(ReferenceTracker.count_backlinks("flow", &1.id) > 0)
+      check_backlinks_fn: &(Sheets.count_backlinks("flow", &1.id) > 0)
     )
   end
 
@@ -442,5 +429,244 @@ defmodule Storyarn.Flows.FlowCrud do
       parent_id,
       &TreeOperations.next_position/2
     )
+  end
+
+  # =============================================================================
+  # Export / Import helpers
+  # =============================================================================
+
+  @doc """
+  Returns the project_id for a flow by its ID.
+  Used by the Localization TextExtractor to resolve project scope.
+  """
+  def get_flow_project_id(flow_id) do
+    from(f in Flow, where: f.id == ^flow_id, select: f.project_id)
+    |> Repo.one()
+  end
+
+  @doc """
+  Lists all non-deleted flows for a project with nodes and connections preloaded.
+  Used by the export DataCollector and Validator.
+  """
+  def list_flows_for_export(project_id, opts \\ []) do
+    nodes_query = from(n in FlowNode, where: is_nil(n.deleted_at), order_by: [asc: n.id])
+    filter_ids = Keyword.get(opts, :filter_ids, :all)
+
+    query =
+      from(f in Flow,
+        where: f.project_id == ^project_id and is_nil(f.deleted_at),
+        preload: [nodes: ^nodes_query, connections: []],
+        order_by: [asc: f.position, asc: f.name]
+      )
+
+    query
+    |> maybe_filter_export_ids(filter_ids)
+    |> Repo.all()
+  end
+
+  @doc """
+  Counts non-deleted flows for a project.
+  """
+  def count_flows(project_id) do
+    from(f in Flow, where: f.project_id == ^project_id and is_nil(f.deleted_at))
+    |> Repo.aggregate(:count)
+  end
+
+  @doc """
+  Counts non-deleted flow nodes across all non-deleted flows in a project.
+  """
+  def count_nodes_for_project(project_id) do
+    from(n in FlowNode,
+      join: f in Flow,
+      on: n.flow_id == f.id,
+      where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at)
+    )
+    |> Repo.aggregate(:count)
+  end
+
+  @doc """
+  Lists all non-deleted nodes for the given flow IDs.
+  Used by the Localization TextExtractor for bulk extraction.
+  """
+  def list_nodes_for_flow_ids(flow_ids) do
+    from(n in FlowNode,
+      where: n.flow_id in ^flow_ids and is_nil(n.deleted_at)
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Lists active scene IDs referenced by scene nodes in a project.
+  Delegates to the Scenes context to avoid cross-context schema queries.
+  """
+  def list_valid_scene_ids_in_project(project_id) do
+    Scenes.list_active_scene_ids(project_id)
+  end
+
+  @doc """
+  Lists flow nodes using a specific asset (audio_asset_id in data).
+  Used by the Assets context for usage tracking.
+  Returns a list of maps with node and flow info.
+  """
+  def list_nodes_using_asset(project_id, asset_id) do
+    asset_id_str = to_string(asset_id)
+
+    from(n in FlowNode,
+      join: f in Flow,
+      on: n.flow_id == f.id,
+      where: f.project_id == ^project_id,
+      where: is_nil(n.deleted_at),
+      where: fragment("?->>'audio_asset_id' = ?", n.data, ^asset_id_str),
+      order_by: [asc: f.name],
+      select: %{node_id: n.id, node_type: n.type, flow_id: f.id, flow_name: f.name}
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Resolves flow node source info for entity reference backlinks.
+  Joins entity_references with flow_nodes and flows to return enriched backlink data.
+  Used by the Sheets.ReferenceTracker to avoid cross-context schema queries.
+  """
+  def query_flow_node_backlinks(target_type, target_id, project_id) do
+    alias Storyarn.Sheets.EntityReference
+
+    from(r in EntityReference,
+      join: n in FlowNode,
+      on: r.source_type == "flow_node" and r.source_id == n.id,
+      join: f in Flow,
+      on: n.flow_id == f.id,
+      where: r.target_type == ^target_type and r.target_id == ^target_id,
+      where: f.project_id == ^project_id,
+      select: %{
+        id: r.id,
+        source_type: r.source_type,
+        source_id: r.source_id,
+        context: r.context,
+        inserted_at: r.inserted_at,
+        node_type: n.type,
+        flow_id: f.id,
+        flow_name: f.name,
+        flow_shortcut: f.shortcut
+      },
+      order_by: [desc: r.inserted_at]
+    )
+    |> Repo.all()
+    |> Enum.map(fn ref ->
+      %{
+        id: ref.id,
+        source_type: "flow_node",
+        source_id: ref.source_id,
+        context: ref.context,
+        inserted_at: ref.inserted_at,
+        source_info: %{
+          type: :flow,
+          flow_id: ref.flow_id,
+          flow_name: ref.flow_name,
+          flow_shortcut: ref.flow_shortcut,
+          node_type: ref.node_type
+        }
+      }
+    end)
+  end
+
+  @doc """
+  Lists sheet IDs referenced by flow nodes as speakers, across all active flows.
+  Used by the export Validator for orphan sheet detection.
+  """
+  def list_speaker_sheet_ids(project_id) do
+    from(n in FlowNode,
+      join: f in Flow,
+      on: n.flow_id == f.id,
+      where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at),
+      where: fragment("?->>'speaker_sheet_id' ~ '^[0-9]+$'", n.data),
+      select: fragment("(?->>'speaker_sheet_id')::integer", n.data)
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  @doc """
+  Lists sheet IDs referenced through variable_references in a project.
+  Delegates to the Sheets context to avoid cross-context schema queries.
+  """
+  def list_variable_referenced_sheet_ids(project_id) do
+    Sheets.list_variable_referenced_sheet_ids(project_id)
+  end
+
+  @doc """
+  Lists existing shortcuts of the given schema type for a project.
+  Used by the import parser for conflict detection.
+  """
+  def list_shortcuts(project_id) do
+    from(f in Flow,
+      where: f.project_id == ^project_id and is_nil(f.deleted_at),
+      select: f.shortcut
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  @doc """
+  Detects shortcut conflicts between imported flows and existing ones.
+  Returns a list of conflicting shortcuts.
+  """
+  def detect_shortcut_conflicts(project_id, shortcuts) when is_list(shortcuts) do
+    ImportHelpers.detect_shortcut_conflicts(Flow, project_id, shortcuts)
+  end
+
+  @doc """
+  Soft-deletes existing entities with the given shortcut (for overwrite import strategy).
+  """
+  def soft_delete_by_shortcut(project_id, shortcut) do
+    ImportHelpers.soft_delete_by_shortcut(Flow, project_id, shortcut)
+  end
+
+  @doc """
+  Bulk-inserts flow connections from a list of attr maps.
+  Returns the inserted records.
+  """
+  def bulk_import_connections(attrs_list) do
+    ImportHelpers.bulk_insert(Storyarn.Flows.FlowConnection, attrs_list)
+  end
+
+  # =============================================================================
+  # Import helpers (raw insert, no side effects)
+  # =============================================================================
+
+  @doc """
+  Creates a flow for import. Raw insert — no auto-shortcut, no auto-position,
+  no auto-entry/exit nodes. Returns `{:ok, flow}` or `{:error, changeset}`.
+  """
+  def import_flow(project_id, attrs) do
+    %Flow{project_id: project_id}
+    |> Flow.create_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Creates a flow node for import. Raw insert — no entry-node uniqueness check,
+  no hub_id generation, no subflow validation.
+  Returns `{:ok, node}` or `{:error, changeset}`.
+  """
+  def import_node(flow_id, attrs) do
+    %FlowNode{flow_id: flow_id}
+    |> FlowNode.create_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a flow's parent_id after import (two-pass parent linking).
+  """
+  def link_import_parent(%Flow{} = flow, parent_id) do
+    flow
+    |> Ecto.Changeset.change(%{parent_id: parent_id})
+    |> Repo.update!()
+  end
+
+  defp maybe_filter_export_ids(query, :all), do: query
+
+  defp maybe_filter_export_ids(query, ids) when is_list(ids) do
+    from(q in query, where: q.id in ^ids)
   end
 end

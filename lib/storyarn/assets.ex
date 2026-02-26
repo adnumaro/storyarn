@@ -11,6 +11,8 @@ defmodule Storyarn.Assets do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.ImageProcessor
+  alias Storyarn.Assets.Storage
   alias Storyarn.Projects.Project
   alias Storyarn.Shared.SearchHelpers
 
@@ -257,40 +259,9 @@ defmodule Storyarn.Assets do
           sheet_banners: [Storyarn.Sheets.Sheet.t()]
         }
   def get_asset_usages(project_id, asset_id) do
-    alias Storyarn.Flows.{Flow, FlowNode}
-    alias Storyarn.Sheets.Sheet
-
-    asset_id_str = to_string(asset_id)
-
-    flow_nodes =
-      from(n in FlowNode,
-        join: f in Flow,
-        on: n.flow_id == f.id,
-        where: f.project_id == ^project_id,
-        where: is_nil(n.deleted_at),
-        where: fragment("?->>'audio_asset_id' = ?", n.data, ^asset_id_str),
-        order_by: [asc: f.name],
-        select: %{node_id: n.id, node_type: n.type, flow_id: f.id, flow_name: f.name}
-      )
-      |> Repo.all()
-
-    sheet_avatars =
-      from(s in Sheet,
-        where: s.project_id == ^project_id,
-        where: is_nil(s.deleted_at),
-        where: s.avatar_asset_id == ^asset_id,
-        order_by: [asc: s.name]
-      )
-      |> Repo.all()
-
-    sheet_banners =
-      from(s in Sheet,
-        where: s.project_id == ^project_id,
-        where: is_nil(s.deleted_at),
-        where: s.banner_asset_id == ^asset_id,
-        order_by: [asc: s.name]
-      )
-      |> Repo.all()
+    flow_nodes = Storyarn.Flows.list_nodes_using_asset(project_id, asset_id)
+    sheet_avatars = Storyarn.Sheets.list_sheets_using_asset_as_avatar(project_id, asset_id)
+    sheet_banners = Storyarn.Sheets.list_sheets_using_asset_as_banner(project_id, asset_id)
 
     %{flow_nodes: flow_nodes, sheet_avatars: sheet_avatars, sheet_banners: sheet_banners}
   end
@@ -315,9 +286,6 @@ defmodule Storyarn.Assets do
   @spec upload_and_create_asset(String.t(), Phoenix.LiveView.UploadEntry.t(), project(), user()) ::
           {:ok, asset()} | {:error, term()}
   def upload_and_create_asset(path, entry, %Project{} = project, %User{} = user) do
-    alias Storyarn.Assets.ImageProcessor
-    alias Storyarn.Assets.Storage
-
     key = generate_key(project, entry.client_name)
     content = File.read!(path)
 
@@ -343,8 +311,6 @@ defmodule Storyarn.Assets do
   end
 
   defp extract_image_metadata(path, content_type) do
-    alias Storyarn.Assets.ImageProcessor
-
     if String.starts_with?(content_type, "image/") and ImageProcessor.available?() do
       case ImageProcessor.get_dimensions(path) do
         {:ok, %{width: w, height: h}} -> %{"width" => w, "height" => h}
@@ -354,6 +320,67 @@ defmodule Storyarn.Assets do
       %{}
     end
   end
+
+  # =============================================================================
+  # Asset Type Checks
+  # =============================================================================
+
+  @doc """
+  Checks if an asset is an image based on its content type.
+
+  Delegates to `Storyarn.Assets.Asset.image?/1`.
+  """
+  defdelegate image?(asset), to: Asset
+
+  @doc """
+  Checks if an asset is an audio file based on its content type.
+
+  Delegates to `Storyarn.Assets.Asset.audio?/1`.
+  """
+  defdelegate audio?(asset), to: Asset
+
+  @doc """
+  Checks if a content type is in the allowed list for uploads.
+
+  Delegates to `Storyarn.Assets.Asset.allowed_content_type?/1`.
+  """
+  defdelegate allowed_content_type?(content_type), to: Asset
+
+  # =============================================================================
+  # Storage Delegations
+  # =============================================================================
+
+  @doc """
+  Uploads a file to storage.
+
+  Delegates to `Storyarn.Assets.Storage.upload/3`.
+  """
+  defdelegate storage_upload(key, data, content_type), to: Storage, as: :upload
+
+  @doc """
+  Deletes a file from storage.
+
+  Delegates to `Storyarn.Assets.Storage.delete/1`.
+  """
+  defdelegate storage_delete(key), to: Storage, as: :delete
+
+  # =============================================================================
+  # ImageProcessor Delegations
+  # =============================================================================
+
+  @doc """
+  Checks if the image processor (ImageMagick) is available.
+
+  Delegates to `Storyarn.Assets.ImageProcessor.available?/0`.
+  """
+  defdelegate image_processor_available?(), to: ImageProcessor, as: :available?
+
+  @doc """
+  Gets the dimensions of an image file.
+
+  Delegates to `Storyarn.Assets.ImageProcessor.get_dimensions/1`.
+  """
+  defdelegate image_processor_get_dimensions(path), to: ImageProcessor, as: :get_dimensions
 
   @doc """
   Sanitizes a filename for safe storage.
@@ -368,5 +395,46 @@ defmodule Storyarn.Assets do
     |> String.replace(~r/[^\w\.\-]/, "_")
     |> String.downcase()
     |> String.slice(0, 255)
+  end
+
+  # =============================================================================
+  # Export / Import helpers
+  # =============================================================================
+
+  @doc """
+  Lists all assets for a project for export.
+  Ordered by insertion time.
+  """
+  @spec list_assets_for_export(integer()) :: [asset()]
+  def list_assets_for_export(project_id) do
+    from(a in Asset,
+      where: a.project_id == ^project_id,
+      order_by: [asc: a.inserted_at]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Counts all assets for a project.
+  """
+  @spec count_assets(integer()) :: non_neg_integer()
+  def count_assets(project_id) do
+    from(a in Asset, where: a.project_id == ^project_id)
+    |> Repo.aggregate(:count)
+  end
+
+  # =============================================================================
+  # Import helpers (raw insert, no side effects)
+  # =============================================================================
+
+  @doc """
+  Creates an asset record for import. Raw insert with no upload logic or user tracking.
+  Returns `{:ok, asset}` or `{:error, changeset}`.
+  """
+  @spec import_asset(integer(), attrs()) :: {:ok, asset()} | {:error, changeset()}
+  def import_asset(project_id, attrs) do
+    %Asset{project_id: project_id}
+    |> Asset.create_changeset(attrs)
+    |> Repo.insert()
   end
 end

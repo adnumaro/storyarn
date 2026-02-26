@@ -177,7 +177,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
         %{"assignments" => assignments, "response-id" => response_id, "node-id" => node_id},
         socket
       ) do
-    sanitized = Storyarn.Flows.Instruction.sanitize(assignments)
+    sanitized = Flows.instruction_sanitize(assignments)
     update_response_field(socket, node_id, response_id, "instruction_assignments", sanitized)
   end
 

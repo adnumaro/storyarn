@@ -7,7 +7,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.Node do
 
   use Gettext, backend: StoryarnWeb.Gettext
 
-  alias Storyarn.Flows.Instruction
+  alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
   def type, do: "instruction"
@@ -35,7 +35,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.Node do
 
     if node && node.type == "instruction" do
       NodeHelpers.persist_node_update(socket, node.id, fn data ->
-        Map.put(data, "assignments", Instruction.sanitize(assignments))
+        Map.put(data, "assignments", Flows.instruction_sanitize(assignments))
       end)
     else
       {:noreply, socket}

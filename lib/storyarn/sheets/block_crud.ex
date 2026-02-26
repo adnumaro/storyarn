@@ -4,10 +4,9 @@ defmodule Storyarn.Sheets.BlockCrud do
   import Ecto.Query, warn: false
   require Logger
 
-  alias Storyarn.Localization.TextExtractor
+  alias Storyarn.Flows
+  alias Storyarn.Localization
   alias Storyarn.Repo
-
-  alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Shared.NameNormalizer
 
   alias Storyarn.Sheets.{
@@ -173,7 +172,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     |> Repo.transaction()
     |> case do
       {:ok, %{block: updated_block}} ->
-        TextExtractor.extract_block(updated_block)
+        Localization.extract_block(updated_block)
         {:ok, updated_block}
 
       {:error, :block, changeset, _} ->
@@ -200,10 +199,10 @@ defmodule Storyarn.Sheets.BlockCrud do
           {:error, reason} -> Logger.error("Failed to sync config change: #{inspect(reason)}")
         end
 
-        TextExtractor.extract_block(updated_block)
+        Localization.extract_block(updated_block)
 
       {:ok, updated_block} ->
-        TextExtractor.extract_block(updated_block)
+        Localization.extract_block(updated_block)
 
       _ ->
         :ok
@@ -218,7 +217,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   def delete_block(%Block{} = block) do
     # Clean up references and localization texts before soft-deleting
     ReferenceTracker.delete_block_references(block.id)
-    TextExtractor.delete_block_texts(block.id)
+    Localization.delete_block_texts(block.id)
 
     # If this is a parent block with scope: "children", soft-delete all instances
     if block.scope == "children" do
@@ -320,7 +319,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     label = Map.get(config, "label")
 
     if label do
-      referenced? = VariableReferenceTracker.count_variable_usage(block.id) != %{}
+      referenced? = Flows.count_variable_usage(block.id) != %{}
 
       new_name =
         NameNormalizer.maybe_regenerate(
@@ -565,5 +564,20 @@ defmodule Storyarn.Sheets.BlockCrud do
     else
       candidate
     end
+  end
+
+  # =============================================================================
+  # Import helpers (raw insert, no side effects)
+  # =============================================================================
+
+  @doc """
+  Creates a block for import. Raw insert — no auto-position, no default config/value,
+  no variable name uniqueness, no property propagation.
+  Returns `{:ok, block}` or `{:error, changeset}`.
+  """
+  def import_block(sheet_id, attrs) do
+    %Block{sheet_id: sheet_id}
+    |> Block.create_changeset(attrs)
+    |> Repo.insert()
   end
 end
