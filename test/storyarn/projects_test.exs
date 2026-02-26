@@ -210,6 +210,16 @@ defmodule Storyarn.ProjectsTest do
       assert invitation.project_id == project.id
     end
 
+    test "create_invitation/3 uses default role of editor" do
+      owner = user_fixture()
+      project = project_fixture(owner)
+      email = unique_user_email()
+
+      # Call with 3 args to exercise the default role argument (line 33)
+      assert {:ok, invitation} = Projects.create_invitation(project, owner, email)
+      assert invitation.role == "editor"
+    end
+
     test "create_invitation/4 returns error for existing member" do
       owner = user_fixture()
       member = user_fixture()
@@ -361,6 +371,17 @@ defmodule Storyarn.ProjectsTest do
 
       scope = user_scope_fixture(non_member)
       assert {:error, :not_found} = Projects.authorize(scope, project.id, :view)
+    end
+  end
+
+  describe "ProjectMembership.roles/0" do
+    test "returns the list of valid roles" do
+      roles = ProjectMembership.roles()
+      assert is_list(roles)
+      assert "owner" in roles
+      assert "editor" in roles
+      assert "viewer" in roles
+      assert length(roles) == 3
     end
   end
 

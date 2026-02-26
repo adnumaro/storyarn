@@ -978,4 +978,164 @@ defmodule Storyarn.Screenplays.TiptapSerializationTest do
       assert result.content == "(whispering)"
     end
   end
+
+  # -- Coverage gap tests: private function edge cases -------------------------
+
+  describe "edge cases for uncovered private functions" do
+    test "html_to_inline_content with nil element content produces empty list" do
+      # Covers line 164: defp html_to_inline_content(nil), do: []
+      # We must go through elements_to_doc with a nil-content text element
+      doc = TiptapSerialization.elements_to_doc([element(id: 1, type: "action", content: nil)])
+      [node] = doc["content"]
+      assert node["content"] == []
+    end
+
+    test "unknown HTML tag traverses children (line 208)" do
+      # Covers line 208: {_tag, _tag_attrs, children} -> parse_inline_tree(children, marks)
+      # Use a <div> or <p> tag which is not in the recognized set
+      content = "<span><div>inner text</div></span>"
+
+      doc =
+        TiptapSerialization.elements_to_doc([element(id: 1, type: "action", content: content)])
+
+      [node] = doc["content"]
+      # The <div> is unknown, so it should traverse its children
+      texts = Enum.filter(node["content"], &(&1["type"] == "text"))
+      assert length(texts) > 0
+      text_content = Enum.map_join(texts, "", & &1["text"])
+      assert text_content =~ "inner text"
+    end
+
+    test "non-mention span passes through children (line 225)" do
+      # Covers line 225: parse_inline_tree(children, marks) for non-mention spans
+      # and line 230: mention_span?(_) -> false
+      content = ~s(<span style="color: red">colored text</span>)
+
+      doc =
+        TiptapSerialization.elements_to_doc([element(id: 1, type: "action", content: content)])
+
+      [node] = doc["content"]
+      texts = Enum.filter(node["content"], &(&1["type"] == "text"))
+      assert length(texts) > 0
+      text_content = Enum.map_join(texts, "", & &1["text"])
+      assert text_content =~ "colored text"
+    end
+
+    test "unknown mark type is silently skipped (line 288)" do
+      # Covers line 288: defp wrap_marks(html, [_ | rest]), do: wrap_marks(html, rest)
+      doc = %{
+        "type" => "doc",
+        "content" => [
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [
+              %{
+                "type" => "text",
+                "text" => "test",
+                "marks" => [%{"type" => "underline"}, %{"type" => "bold"}]
+              }
+            ]
+          }
+        ]
+      }
+
+      [attrs] = TiptapSerialization.doc_to_element_attrs(doc)
+      # The "underline" mark is unknown and gets skipped, but bold still works
+      assert attrs.content == "<strong>test</strong>"
+    end
+
+    test "unknown inline node type produces empty string in needs_html path (line 261)" do
+      # Covers line 261: _ -> "" in the needs_html_output? true branch
+      doc = %{
+        "type" => "doc",
+        "content" => [
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [
+              %{"type" => "text", "text" => "before "},
+              %{
+                "type" => "mention",
+                "attrs" => %{"id" => "1", "label" => "X", "type" => "sheet"}
+              },
+              %{"type" => "unknownNode", "data" => %{}}
+            ]
+          }
+        ]
+      }
+
+      [attrs] = TiptapSerialization.doc_to_element_attrs(doc)
+      assert attrs.content =~ "before "
+      assert attrs.content =~ "mention"
+      # The unknown node should produce empty string, not crash
+    end
+
+    test "unknown inline node type in plain text path produces empty string (line 267)" do
+      # Covers line 267: _ -> "" in the non-html output path
+      doc = %{
+        "type" => "doc",
+        "content" => [
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [
+              %{"type" => "text", "text" => "hello "},
+              %{"type" => "unknownNode"}
+            ]
+          }
+        ]
+      }
+
+      [attrs] = TiptapSerialization.doc_to_element_attrs(doc)
+      # No marks/mentions/breaks, so goes through the non-html path
+      assert attrs.content == "hello "
+    end
+
+    test "escape_html with non-binary value converts to string (line 297)" do
+      # Covers line 297: defp escape_html(val), do: escape_html(to_string(val))
+      # This is triggered when a non-string text value appears in inline content
+      # We can trigger it through marks wrapping with a numeric "text" value
+      doc = %{
+        "type" => "doc",
+        "content" => [
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [
+              %{"type" => "text", "text" => 42, "marks" => [%{"type" => "bold"}]}
+            ]
+          }
+        ]
+      }
+
+      [attrs] = TiptapSerialization.doc_to_element_attrs(doc)
+      assert attrs.content =~ "42"
+      assert attrs.content =~ "<strong>"
+    end
+
+    test "escape_attr with non-binary value converts to string (line 307)" do
+      # Covers line 307: defp escape_attr(val), do: escape_attr(to_string(val))
+      doc = %{
+        "type" => "doc",
+        "content" => [
+          %{
+            "type" => "action",
+            "attrs" => %{},
+            "content" => [
+              %{
+                "type" => "mention",
+                "attrs" => %{"id" => 42, "label" => 99, "type" => "sheet"}
+              }
+            ]
+          }
+        ]
+      }
+
+      [attrs] = TiptapSerialization.doc_to_element_attrs(doc)
+      assert attrs.content =~ "42"
+      assert attrs.content =~ "99"
+      assert attrs.content =~ "mention"
+    end
+  end
 end

@@ -35,7 +35,7 @@ defmodule StoryarnWeb.WorkspaceLive.NewTest do
         |> form("form", %{"workspace" => %{"name" => "", "description" => ""}})
         |> render_submit()
 
-      assert html =~ "can" or html =~ "required" or html =~ "blank"
+      assert html =~ "can&#39;t be blank" or html =~ "can't be blank"
     end
 
     test "successfully creates a workspace and redirects", %{conn: conn} do

@@ -371,6 +371,19 @@ defmodule StoryarnWeb.FlowLive.Helpers.HtmlSanitizerTest do
     end
   end
 
+  # ── Processing instructions trigger catch-all strip_unsafe_node ──
+
+  describe "processing instructions (XML PI)" do
+    test "XML processing instruction is stripped, content preserved" do
+      # The <?xml ...?> PI produces {:pi, "xml", [{"version", "1.0"}]} in Floki's AST.
+      # The 2-tuple attributes inside the PI hit the catch-all strip_unsafe_node(_),
+      # covering the defensive fallback on line 35.
+      result = HtmlSanitizer.sanitize_html("<?xml version=\"1.0\"?><p>hello</p>")
+      assert result =~ "<p>hello</p>"
+      refute result =~ "<?xml"
+    end
+  end
+
   # ── Malformed HTML handling ───────────────────────────────────────
 
   describe "malformed HTML" do

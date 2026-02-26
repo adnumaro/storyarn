@@ -29,7 +29,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistryTest do
     end
   end
 
-  for type <- ~w(entry exit dialogue hub condition instruction jump) do
+  for type <- ~w(entry exit dialogue hub condition instruction jump scene subflow) do
     describe "icon_name/1 for #{type}" do
       test "returns a non-empty string" do
         result = NodeTypeRegistry.icon_name(unquote(type))
@@ -125,6 +125,111 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistryTest do
   describe "unknown type extract_form_data" do
     test "returns empty map" do
       assert NodeTypeRegistry.extract_form_data("unknown", %{"foo" => "bar"}) == %{}
+    end
+  end
+
+  # ===========================================================================
+  # node_module/1
+  # ===========================================================================
+
+  describe "node_module/1" do
+    test "returns a module for each valid type" do
+      for type <- ~w(entry exit dialogue hub condition instruction jump scene subflow) do
+        mod = NodeTypeRegistry.node_module(type)
+        assert is_atom(mod) and mod != nil, "Expected module for #{type}"
+      end
+    end
+
+    test "returns nil for unknown type" do
+      assert NodeTypeRegistry.node_module("nonexistent") == nil
+    end
+
+    test "returns nil for empty string" do
+      assert NodeTypeRegistry.node_module("") == nil
+    end
+  end
+
+  # ===========================================================================
+  # label/1 — fallback
+  # ===========================================================================
+
+  describe "label/1 for unknown type" do
+    test "returns the type string itself" do
+      assert NodeTypeRegistry.label("unknown_type") == "unknown_type"
+    end
+  end
+
+  # ===========================================================================
+  # default_data/1 — fallback
+  # ===========================================================================
+
+  describe "default_data/1 for unknown type" do
+    test "returns empty map" do
+      assert NodeTypeRegistry.default_data("unknown") == %{}
+    end
+  end
+
+  # ===========================================================================
+  # on_double_click/2
+  # ===========================================================================
+
+  describe "on_double_click/2" do
+    for type <- ~w(entry exit dialogue hub condition instruction jump scene subflow) do
+      test "returns valid action for #{type}" do
+        data = NodeTypeRegistry.default_data(unquote(type))
+        node = %{type: unquote(type), data: data}
+        result = NodeTypeRegistry.on_double_click(unquote(type), node)
+
+        assert result in [:toolbar, :editor, :builder] or match?({:navigate, _}, result),
+               "Unexpected result for #{unquote(type)}: #{inspect(result)}"
+      end
+    end
+
+    test "returns :toolbar for unknown type" do
+      assert NodeTypeRegistry.on_double_click("unknown", %{}) == :toolbar
+    end
+  end
+
+  # ===========================================================================
+  # on_select/3
+  # ===========================================================================
+
+  describe "on_select/3" do
+    test "returns socket unchanged for unknown type" do
+      socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}}}
+      assert NodeTypeRegistry.on_select("unknown", %{}, socket) == socket
+    end
+  end
+
+  # ===========================================================================
+  # duplicate_data_cleanup/2
+  # ===========================================================================
+
+  describe "duplicate_data_cleanup/2" do
+    for type <- ~w(entry exit dialogue hub condition instruction jump scene subflow) do
+      test "returns a map for #{type}" do
+        data = NodeTypeRegistry.default_data(unquote(type))
+        result = NodeTypeRegistry.duplicate_data_cleanup(unquote(type), data)
+        assert is_map(result)
+      end
+    end
+
+    test "returns data unchanged for unknown type" do
+      data = %{"foo" => "bar"}
+      assert NodeTypeRegistry.duplicate_data_cleanup("unknown", data) == data
+    end
+
+    test "dialogue cleanup clears unique identifiers" do
+      data = %{
+        "text" => "hello",
+        "localization_id" => "loc_123",
+        "technical_id" => "tech_1",
+        "responses" => []
+      }
+
+      result = NodeTypeRegistry.duplicate_data_cleanup("dialogue", data)
+      assert result["localization_id"] != "loc_123"
+      assert result["technical_id"] != "tech_1"
     end
   end
 end

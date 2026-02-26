@@ -192,5 +192,140 @@ defmodule Storyarn.AuthorizationTest do
 
       assert {:error, :not_found} = Authorization.authorize_project(user, 999_999, :view)
     end
+
+    test "returns unauthorized when user has no access at all" do
+      owner = user_fixture()
+      project = project_fixture(owner)
+      stranger = user_fixture()
+
+      assert {:error, :unauthorized} =
+               Authorization.authorize_project(stranger, project.id, :view)
+    end
+  end
+
+  describe "get_role_in_workspace/2" do
+    test "returns role for a workspace member" do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+
+      assert {:ok, "owner"} = Authorization.get_role_in_workspace(owner, workspace)
+    end
+
+    test "returns no_access for a non-member" do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      stranger = user_fixture()
+
+      assert {:error, :no_access} = Authorization.get_role_in_workspace(stranger, workspace)
+    end
+
+    test "returns the correct role for different membership levels" do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+
+      admin = user_fixture()
+      workspace_membership_fixture(workspace, admin, "admin")
+      assert {:ok, "admin"} = Authorization.get_role_in_workspace(admin, workspace)
+
+      member = user_fixture()
+      workspace_membership_fixture(workspace, member, "member")
+      assert {:ok, "member"} = Authorization.get_role_in_workspace(member, workspace)
+
+      viewer = user_fixture()
+      workspace_membership_fixture(workspace, viewer, "viewer")
+      assert {:ok, "viewer"} = Authorization.get_role_in_workspace(viewer, workspace)
+    end
+  end
+
+  describe "can?/3 for projects with admin role (via workspace inheritance)" do
+    test "admin can edit content and view" do
+      workspace_owner = user_fixture()
+      workspace = workspace_fixture(workspace_owner)
+
+      admin = user_fixture()
+      workspace_membership_fixture(workspace, admin, "admin")
+
+      scope = user_scope_fixture(workspace_owner)
+
+      {:ok, project} =
+        Storyarn.Projects.create_project(scope, %{
+          name: "Admin Test Project",
+          workspace_id: workspace.id
+        })
+
+      # Admin inherits workspace role -> project_action_allowed?("admin", ...)
+      assert Authorization.can?(admin, :edit_content, project)
+      assert Authorization.can?(admin, :view, project)
+    end
+
+    test "admin cannot manage project or members" do
+      workspace_owner = user_fixture()
+      workspace = workspace_fixture(workspace_owner)
+
+      admin = user_fixture()
+      workspace_membership_fixture(workspace, admin, "admin")
+
+      scope = user_scope_fixture(workspace_owner)
+
+      {:ok, project} =
+        Storyarn.Projects.create_project(scope, %{
+          name: "Admin Test Project 2",
+          workspace_id: workspace.id
+        })
+
+      refute Authorization.can?(admin, :manage_project, project)
+      refute Authorization.can?(admin, :manage_members, project)
+    end
+  end
+
+  describe "can?/3 for projects with member role (via workspace inheritance)" do
+    test "member can edit content and view" do
+      workspace_owner = user_fixture()
+      workspace = workspace_fixture(workspace_owner)
+
+      member = user_fixture()
+      workspace_membership_fixture(workspace, member, "member")
+
+      scope = user_scope_fixture(workspace_owner)
+
+      {:ok, project} =
+        Storyarn.Projects.create_project(scope, %{
+          name: "Member Test Project",
+          workspace_id: workspace.id
+        })
+
+      # Member inherits workspace role -> project_action_allowed?("member", ...)
+      assert Authorization.can?(member, :edit_content, project)
+      assert Authorization.can?(member, :view, project)
+    end
+
+    test "member cannot manage project or members" do
+      workspace_owner = user_fixture()
+      workspace = workspace_fixture(workspace_owner)
+
+      member = user_fixture()
+      workspace_membership_fixture(workspace, member, "member")
+
+      scope = user_scope_fixture(workspace_owner)
+
+      {:ok, project} =
+        Storyarn.Projects.create_project(scope, %{
+          name: "Member Test Project 2",
+          workspace_id: workspace.id
+        })
+
+      refute Authorization.can?(member, :manage_project, project)
+      refute Authorization.can?(member, :manage_members, project)
+    end
+  end
+
+  describe "permission_source_label/1" do
+    test "returns 'project' for :project source" do
+      assert Authorization.permission_source_label(:project) == "project"
+    end
+
+    test "returns 'workspace (inherited)' for :workspace source" do
+      assert Authorization.permission_source_label(:workspace) == "workspace (inherited)"
+    end
   end
 end

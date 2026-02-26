@@ -222,5 +222,97 @@ defmodule StoryarnWeb.ScreenplayLive.IndexTest do
 
       assert html =~ "Are you sure you want to delete this screenplay?"
     end
+
+    test "set_pending_delete stores the id for confirmation", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      screenplay = screenplay_fixture(project, %{name: "Pending Delete"})
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays")
+
+      view |> render_click("set_pending_delete", %{"id" => to_string(screenplay.id)})
+
+      # Now confirm_delete should trigger the actual delete
+      view |> render_click("confirm_delete")
+
+      html = render(view)
+      assert html =~ "Screenplay moved to trash"
+      refute html =~ "Pending Delete"
+    end
+
+    test "set_pending_delete_screenplay stores the id for confirmation", %{
+      conn: conn,
+      user: user
+    } do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      screenplay = screenplay_fixture(project, %{name: "Pending Delete SP"})
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays")
+
+      view
+      |> render_click("set_pending_delete_screenplay", %{"id" => to_string(screenplay.id)})
+
+      # Confirm via confirm_delete_screenplay
+      view |> render_click("confirm_delete_screenplay")
+
+      html = render(view)
+      assert html =~ "Screenplay moved to trash"
+      refute html =~ "Pending Delete SP"
+    end
+
+    test "confirm_delete does nothing when no pending id", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      screenplay_fixture(project, %{name: "Still Here"})
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays")
+
+      # Call confirm_delete without setting a pending ID first
+      view |> render_click("confirm_delete")
+
+      html = render(view)
+      assert html =~ "Still Here"
+    end
+
+    test "confirm_delete_screenplay does nothing when no pending id", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      screenplay_fixture(project, %{name: "Also Here"})
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays")
+
+      view |> render_click("confirm_delete_screenplay")
+
+      html = render(view)
+      assert html =~ "Also Here"
+    end
+
+    test "delete_screenplay event delegates to delete", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      screenplay = screenplay_fixture(project, %{name: "Delete Via Alias"})
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays")
+
+      view |> render_click("delete_screenplay", %{"id" => to_string(screenplay.id)})
+
+      html = render(view)
+      assert html =~ "Screenplay moved to trash"
+      refute html =~ "Delete Via Alias"
+    end
+
+    test "tree_panel_toggle event is handled", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays")
+
+      # Toggle tree panel - tests the tree_panel_* event delegation
+      view |> render_click("tree_panel_toggle")
+
+      # Should not crash
+      assert render(view) =~ "Screenplays"
+    end
   end
 end

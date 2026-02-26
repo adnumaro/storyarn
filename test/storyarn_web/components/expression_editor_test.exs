@@ -336,6 +336,244 @@ defmodule StoryarnWeb.Components.ExpressionEditorTest do
       assert ExpressionEditor.serialize_condition_to_text(condition) == ""
     end
 
+    test "serializes is_nil operator" do
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "class",
+            "operator" => "is_nil",
+            "value" => nil
+          }
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) == "mc.jaime.class == nil"
+    end
+
+    test "serializes is_empty operator" do
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "name",
+            "operator" => "is_empty",
+            "value" => nil
+          }
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) ==
+               ~s(mc.jaime.name == "")
+    end
+
+    test "serializes contains operator" do
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "bio",
+            "operator" => "contains",
+            "value" => "hero"
+          }
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) ==
+               ~s(mc.jaime.bio contains "hero")
+    end
+
+    test "serializes starts_with operator" do
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "name",
+            "operator" => "starts_with",
+            "value" => "Sir"
+          }
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) ==
+               ~s(mc.jaime.name starts_with "Sir")
+    end
+
+    test "serializes ends_with operator" do
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "name",
+            "operator" => "ends_with",
+            "value" => "III"
+          }
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) ==
+               ~s(mc.jaime.name ends_with "III")
+    end
+
+    test "serializes not_contains operator" do
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "bio",
+            "operator" => "not_contains",
+            "value" => "villain"
+          }
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) ==
+               ~s(mc.jaime.bio not_contains "villain")
+    end
+
+    test "serializes before operator (date)" do
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "sheet" => "events",
+            "variable" => "deadline",
+            "operator" => "before",
+            "value" => "2025-01-01"
+          }
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) ==
+               ~s(events.deadline < "2025-01-01")
+    end
+
+    test "serializes after operator (date)" do
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "sheet" => "events",
+            "variable" => "start_date",
+            "operator" => "after",
+            "value" => "2025-06-01"
+          }
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) ==
+               ~s(events.start_date > "2025-06-01")
+    end
+
+    test "serializes unknown operator as-is" do
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "custom_op",
+            "value" => "50"
+          }
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) ==
+               "mc.jaime.health custom_op 50"
+    end
+
+    test "formats non-string non-nil value with to_string" do
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "equals",
+            "value" => 42
+          }
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) == "mc.jaime.health == 42"
+    end
+
+    test "handles serialize_block fallback for unknown block structure" do
+      # A block that is neither a group nor has rules should return ""
+      condition = %{
+        "logic" => "all",
+        "blocks" => [
+          %{"type" => "unknown", "id" => "bad_block"}
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) == ""
+    end
+
+    test "group block with empty inner blocks returns empty" do
+      condition = %{
+        "logic" => "all",
+        "blocks" => [
+          %{
+            "type" => "group",
+            "logic" => "all",
+            "blocks" => []
+          }
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) == ""
+    end
+
+    test "group block with single inner block returns unwrapped" do
+      condition = %{
+        "logic" => "all",
+        "blocks" => [
+          %{
+            "type" => "group",
+            "logic" => "any",
+            "blocks" => [
+              %{
+                "type" => "block",
+                "logic" => "all",
+                "rules" => [
+                  %{
+                    "sheet" => "mc.jaime",
+                    "variable" => "alive",
+                    "operator" => "is_true",
+                    "value" => nil
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) == "mc.jaime.alive"
+    end
+
+    test "block with empty rules returns empty" do
+      condition = %{
+        "logic" => "all",
+        "blocks" => [
+          %{
+            "type" => "block",
+            "logic" => "all",
+            "rules" => []
+          }
+        ]
+      }
+
+      assert ExpressionEditor.serialize_condition_to_text(condition) == ""
+    end
+
     test "escapes quotes in string values" do
       condition = %{
         "logic" => "all",

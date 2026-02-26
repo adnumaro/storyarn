@@ -205,6 +205,8 @@ defmodule Storyarn.WorkspacesTest do
     end
   end
 
+  # NOTE: Invitation tests live in workspaces/invitations_test.exs (382 lines, more thorough)
+
   describe "authorization" do
     test "authorize/3 allows owner all actions" do
       user = user_fixture()

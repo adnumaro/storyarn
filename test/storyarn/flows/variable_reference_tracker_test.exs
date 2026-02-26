@@ -1882,4 +1882,156 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       assert rule["variable"] == "attributes.strength.value"
     end
   end
+
+  # ===========================================================================
+  # Module 3C: Additional coverage tests
+  # ===========================================================================
+
+  describe "update_references/1 with dialogue nodes" do
+    test "dialogue node produces no variable references", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "<p>Hello world</p>",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      refs =
+        from(vr in VariableReference, where: vr.flow_node_id == ^node.id)
+        |> Repo.all()
+
+      assert refs == []
+    end
+
+    test "hub node produces no variable references", ctx do
+      {:ok, node} =
+        Flows.create_node(ctx.flow, %{
+          type: "hub",
+          data: %{"hub_id" => "test_hub_refs", "label" => "Test"}
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      refs =
+        from(vr in VariableReference, where: vr.flow_node_id == ^node.id)
+        |> Repo.all()
+
+      assert refs == []
+    end
+  end
+
+  describe "count_variable_usage/1 — coverage" do
+    test "returns read and write counts grouped by kind", ctx do
+      # Create instruction node with write ref
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      # Create condition node with read ref
+      cond_node =
+        node_fixture(ctx.flow, %{
+          type: "condition",
+          data: %{
+            "condition" => %{
+              "logic" => "all",
+              "rules" => [
+                %{
+                  "sheet" => "mc.jaime",
+                  "variable" => "health",
+                  "operator" => "greater_than",
+                  "value" => "50"
+                }
+              ]
+            }
+          }
+        })
+
+      VariableReferenceTracker.update_references(cond_node)
+
+      counts = VariableReferenceTracker.count_variable_usage(ctx.health_block.id)
+      assert counts["write"] == 1
+      assert counts["read"] == 1
+    end
+
+    test "returns empty map for block with no references", ctx do
+      counts = VariableReferenceTracker.count_variable_usage(ctx.health_block.id)
+      assert counts == %{}
+    end
+  end
+
+  describe "resolve_block with nil/empty shortcut" do
+    test "instruction with nil sheet produces no references", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => nil,
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      refs =
+        from(vr in VariableReference, where: vr.flow_node_id == ^node.id)
+        |> Repo.all()
+
+      assert refs == []
+    end
+
+    test "instruction with empty string variable produces no references", ctx do
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "a1",
+                "sheet" => "mc.jaime",
+                "variable" => "",
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      VariableReferenceTracker.update_references(node)
+
+      refs =
+        from(vr in VariableReference, where: vr.flow_node_id == ^node.id)
+        |> Repo.all()
+
+      assert refs == []
+    end
+  end
 end

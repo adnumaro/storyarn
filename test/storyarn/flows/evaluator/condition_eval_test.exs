@@ -693,6 +693,141 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
   end
 
   # =============================================================================
+  # Coverage: uncovered edge cases
+  # =============================================================================
+
+  describe "blocks with nil value" do
+    test "nil blocks passes" do
+      assert {true, []} = ConditionEval.evaluate(%{"blocks" => nil}, %{})
+    end
+  end
+
+  describe "evaluate_string/2 when Condition.parse returns nil" do
+    test "returns nil for unparseable JSON that decodes to non-condition map" do
+      # A valid JSON string that doesn't match condition shape returns nil from Condition.parse
+      json = Jason.encode!(%{"not_a" => "condition"})
+      assert {true, []} = ConditionEval.evaluate_string(json, %{})
+    end
+  end
+
+  describe "unknown block structure falls through to catch-all evaluate_block" do
+    test "malformed block without type/rules passes" do
+      block = %{"some" => "garbage"}
+      condition = %{"logic" => "all", "blocks" => [block]}
+      assert {true, []} = ConditionEval.evaluate(condition, %{})
+    end
+  end
+
+  describe "multi_select not_contains with non-list actual" do
+    test "returns true when actual is not a list" do
+      variables = %{"mc.jaime.skills" => var("not_a_list", "multi_select")}
+
+      condition =
+        make_condition("all", [make_rule("mc.jaime", "skills", "not_contains", "sword")])
+
+      assert {true, _} = ConditionEval.evaluate(condition, variables)
+    end
+  end
+
+  describe "generic fallback not_equals operator" do
+    test "not_equals with unknown block_type uses to_string_safe" do
+      variables = %{"mc.jaime.status" => var("alive", "custom_type")}
+
+      condition =
+        make_condition("all", [make_rule("mc.jaime", "status", "not_equals", "dead")])
+
+      assert {true, [%{passed: true}]} = ConditionEval.evaluate(condition, variables)
+    end
+
+    test "not_equals with unknown block_type fails when values match" do
+      variables = %{"mc.jaime.status" => var("alive", "custom_type")}
+
+      condition =
+        make_condition("all", [make_rule("mc.jaime", "status", "not_equals", "alive")])
+
+      assert {false, [%{passed: false}]} = ConditionEval.evaluate(condition, variables)
+    end
+  end
+
+  describe "complete_rule? catch-all" do
+    test "non-map rules are treated as incomplete" do
+      condition = make_condition("all", ["not a map", 42, nil])
+      assert {true, []} = ConditionEval.evaluate(condition, %{})
+    end
+  end
+
+  describe "parse_number edge cases" do
+    test "nil actual in number equals compares as nil" do
+      variables = %{"mc.jaime.health" => var(nil, "number")}
+      condition = make_condition("all", [make_rule("mc.jaime", "health", "equals", "0")])
+      # nil parses to nil, "0" parses to 0.0, nil != 0.0
+      assert {false, _} = ConditionEval.evaluate(condition, variables)
+    end
+
+    test "non-numeric string returns nil from parse_number" do
+      variables = %{"mc.jaime.health" => var("abc", "number")}
+      condition = make_condition("all", [make_rule("mc.jaime", "health", "equals", "abc")])
+      # Both parse to nil, nil == nil => true
+      assert {true, _} = ConditionEval.evaluate(condition, variables)
+    end
+
+    test "non-string non-number actual returns nil from parse_number" do
+      variables = %{"mc.jaime.health" => var([1, 2, 3], "number")}
+      condition = make_condition("all", [make_rule("mc.jaime", "health", "equals", "5")])
+      # list parses to nil, "5" parses to 5.0, nil != 5.0
+      assert {false, _} = ConditionEval.evaluate(condition, variables)
+    end
+  end
+
+  describe "safe_parse_number edge cases" do
+    test "nil actual in greater_than returns false" do
+      variables = %{"mc.jaime.health" => var(nil, "number")}
+      condition = make_condition("all", [make_rule("mc.jaime", "health", "greater_than", "50")])
+      assert {false, _} = ConditionEval.evaluate(condition, variables)
+    end
+
+    test "non-string non-number actual in greater_than returns false" do
+      variables = %{"mc.jaime.health" => var([1, 2], "number")}
+
+      condition =
+        make_condition("all", [make_rule("mc.jaime", "health", "greater_than", "50")])
+
+      assert {false, _} = ConditionEval.evaluate(condition, variables)
+    end
+  end
+
+  describe "to_string_safe edge cases" do
+    test "number value in text equals uses to_string" do
+      variables = %{"mc.jaime.name" => var(42, "text")}
+      condition = make_condition("all", [make_rule("mc.jaime", "name", "equals", "42")])
+      assert {true, _} = ConditionEval.evaluate(condition, variables)
+    end
+
+    test "boolean value in text equals uses to_string" do
+      variables = %{"mc.jaime.flag" => var(true, "text")}
+      condition = make_condition("all", [make_rule("mc.jaime", "flag", "equals", "true")])
+      assert {true, _} = ConditionEval.evaluate(condition, variables)
+    end
+
+    test "non-primitive value in text equals uses inspect" do
+      variables = %{"mc.jaime.data" => var(%{a: 1}, "text")}
+
+      condition =
+        make_condition("all", [make_rule("mc.jaime", "data", "equals", "%{a: 1}")])
+
+      assert {true, _} = ConditionEval.evaluate(condition, variables)
+    end
+  end
+
+  describe "parse_date catch-all" do
+    test "non-string non-date value in date comparison returns false" do
+      variables = %{"world.date" => var(12345, "date")}
+      condition = make_condition("all", [make_rule("world", "date", "equals", "2024-06-15")])
+      assert {false, _} = ConditionEval.evaluate(condition, variables)
+    end
+  end
+
+  # =============================================================================
   # Rule result structure
   # =============================================================================
 

@@ -90,6 +90,52 @@ defmodule StoryarnWeb.UserLive.LoginTest do
     end
   end
 
+  describe "user login - magic link rate limited" do
+    test "shows rate limited error when too many requests", %{conn: conn} do
+      # Temporarily enable rate limiting for this test
+      Application.put_env(:storyarn, Storyarn.RateLimiter, enabled: true)
+
+      # Use a unique email to avoid cross-test interference
+      unique_email = "ratelimit_#{System.unique_integer([:positive])}@example.com"
+
+      # Submit magic link requests until rate limited (limit is 3 per minute)
+      Enum.each(1..3, fn _ ->
+        {:ok, lv, _html} = live(conn, ~p"/users/log-in")
+
+        form(lv, "#login_form_magic", user: %{email: unique_email})
+        |> render_submit()
+      end)
+
+      # The 4th request should be rate limited
+      {:ok, lv, _html} = live(conn, ~p"/users/log-in")
+
+      {:ok, _lv, html} =
+        form(lv, "#login_form_magic", user: %{email: unique_email})
+        |> render_submit()
+        |> follow_redirect(conn, ~p"/users/log-in")
+
+      assert html =~ "Too many requests"
+    after
+      # Restore original config
+      Application.put_env(:storyarn, Storyarn.RateLimiter, enabled: false)
+    end
+  end
+
+  describe "local mail adapter info" do
+    test "shows local mail adapter info when adapter is Local", %{conn: conn} do
+      # Temporarily set the mailer adapter to Local
+      Application.put_env(:storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Local)
+
+      {:ok, _lv, html} = live(conn, ~p"/users/log-in")
+
+      assert html =~ "local mail adapter"
+      assert html =~ "the mailbox"
+      assert html =~ "/dev/mailbox"
+    after
+      Application.put_env(:storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Test)
+    end
+  end
+
   describe "re-authentication (sudo mode)" do
     setup %{conn: conn} do
       user = user_fixture()

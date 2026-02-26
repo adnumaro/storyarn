@@ -1586,4 +1586,207 @@ defmodule Storyarn.SheetsTest do
       assert name_var.constraints == nil
     end
   end
+
+  # ===========================================================================
+  # Coverage gap tests: clamp_to_constraints, search_referenceable, get_reference_target
+  # ===========================================================================
+
+  describe "clamp_to_constraints/3" do
+    test "unknown block type passes value through unchanged" do
+      assert Sheets.clamp_to_constraints("anything", %{"min" => 0}, "unknown_type") == "anything"
+    end
+
+    test "unknown block type with nil constraints passes value through" do
+      assert Sheets.clamp_to_constraints(42, nil, "custom_widget") == 42
+    end
+  end
+
+  describe "search_referenceable/3 type filtering" do
+    test "with only flow type excludes sheets from results" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _sheet = sheet_fixture(project, %{name: "Test Sheet"})
+      flow = flow_fixture(project, %{name: "Test Flow"})
+
+      results = Sheets.search_referenceable(project.id, "Test", ["flow"])
+
+      assert length(results) == 1
+      assert hd(results).type == "flow"
+      assert hd(results).id == flow.id
+    end
+
+    test "with empty allowed_types returns no results" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _sheet = sheet_fixture(project, %{name: "Test Sheet"})
+      _flow = flow_fixture(project, %{name: "Test Flow"})
+
+      results = Sheets.search_referenceable(project.id, "Test", [])
+
+      assert results == []
+    end
+  end
+
+  describe "get_reference_target/3 flow branch" do
+    test "returns nil when flow does not exist" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert Sheets.get_reference_target("flow", -1, project.id) == nil
+    end
+
+    test "returns flow info when flow exists" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "My Flow"})
+
+      result = Sheets.get_reference_target("flow", flow.id, project.id)
+
+      assert result.type == "flow"
+      assert result.id == flow.id
+      assert result.name == "My Flow"
+    end
+  end
+
+  describe "delete_target_references/2" do
+    alias Storyarn.Sheets.ReferenceTracker
+
+    test "removes all references pointing to a target" do
+      user = user_fixture()
+      project = project_fixture(user)
+      source_sheet = sheet_fixture(project, %{name: "Source"})
+      target_sheet = sheet_fixture(project, %{name: "Target"})
+
+      {:ok, block} =
+        Sheets.create_block(source_sheet, %{
+          type: "reference",
+          value: %{"target_type" => "sheet", "target_id" => target_sheet.id}
+        })
+
+      ReferenceTracker.update_block_references(block)
+      assert Sheets.count_backlinks("sheet", target_sheet.id) == 1
+
+      Sheets.delete_target_references("sheet", target_sheet.id)
+      assert Sheets.count_backlinks("sheet", target_sheet.id) == 0
+    end
+  end
+
+  describe "update_flow_node_references/1" do
+    alias Storyarn.Sheets.ReferenceTracker
+
+    test "creates references from flow node with speaker_sheet_id" do
+      user = user_fixture()
+      project = project_fixture(user)
+      target_sheet = sheet_fixture(project, %{name: "Speaker"})
+      flow = flow_fixture(project, %{name: "Test Flow"})
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"speaker_sheet_id" => target_sheet.id, "text" => "Hello"}
+        })
+
+      ReferenceTracker.update_flow_node_references(node)
+
+      backlinks = ReferenceTracker.get_backlinks("sheet", target_sheet.id)
+      assert length(backlinks) >= 1
+      assert Enum.any?(backlinks, &(&1.source_type == "flow_node"))
+    end
+
+    test "returns :ok for node without data map" do
+      assert ReferenceTracker.update_flow_node_references(%{id: 1, data: nil}) == :ok
+    end
+  end
+
+  # ===========================================================================
+  # Additional facade delegate coverage
+  # ===========================================================================
+
+  describe "list_leaf_sheets/1" do
+    test "returns sheets that have no children" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      parent = sheet_fixture(project, %{name: "Parent"})
+      child = child_sheet_fixture(project, parent, %{name: "Child"})
+      standalone = sheet_fixture(project, %{name: "Standalone"})
+
+      leaves = Sheets.list_leaf_sheets(project.id)
+
+      leaf_ids = Enum.map(leaves, & &1.id)
+      assert child.id in leaf_ids
+      assert standalone.id in leaf_ids
+      refute parent.id in leaf_ids
+    end
+  end
+
+  describe "get_sheet_by_shortcut/2" do
+    test "returns sheet when shortcut matches" do
+      user = user_fixture()
+      project = project_fixture(user)
+      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Jaime", shortcut: "mc.jaime"})
+
+      found = Sheets.get_sheet_by_shortcut(project.id, "mc.jaime")
+
+      assert found.id == sheet.id
+      assert found.shortcut == "mc.jaime"
+    end
+
+    test "returns nil for non-existent shortcut" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert Sheets.get_sheet_by_shortcut(project.id, "nonexistent") == nil
+    end
+  end
+
+  describe "get_block!/1" do
+    test "returns block when it exists" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project)
+      {:ok, block} = Sheets.create_block(sheet, %{type: "text", config: %{"label" => "Name"}})
+
+      found = Sheets.get_block!(block.id)
+
+      assert found.id == block.id
+    end
+
+    test "raises when block does not exist" do
+      assert_raise Ecto.NoResultsError, fn ->
+        Sheets.get_block!(-1)
+      end
+    end
+  end
+
+  describe "resolve_variable_values/2" do
+    test "resolves values via the facade" do
+      user = user_fixture()
+      project = project_fixture(user)
+      sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Health"},
+        value: %{"content" => 100}
+      })
+
+      result = Sheets.resolve_variable_values(project.id, ["mc.health"])
+
+      assert result["mc.health"] == 100
+    end
+  end
+
+  describe "list_reference_options/1" do
+    test "returns sheet options via the facade" do
+      user = user_fixture()
+      project = project_fixture(user)
+      {:ok, _} = Sheets.create_sheet(project, %{name: "Jaime", shortcut: "mc.jaime"})
+
+      options = Sheets.list_reference_options(project.id)
+
+      assert length(options) >= 1
+      assert Enum.any?(options, &(&1["key"] == "mc.jaime"))
+    end
+  end
 end

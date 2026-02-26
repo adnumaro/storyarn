@@ -103,5 +103,50 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
 
       assert html =~ "Invalid Invitation"
     end
+
+    test "shows error when accepting invitation with mismatched email", %{conn: conn} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      other_user = user_fixture()
+
+      # Create invitation for a different email
+      {token, _invitation} =
+        create_invitation_with_token(project, owner, "someone_else@example.com", "editor")
+
+      # Log in as the other_user, but invitation is for someone_else@example.com
+      conn = log_in_user(conn, other_user)
+
+      {:ok, view, _html} = live(conn, ~p"/projects/invitations/#{token}")
+
+      # The UI hides the button when email doesn't match, but we test the server-side guard
+      # by pushing the event directly
+      view |> render_click("accept")
+
+      html = render(view)
+      assert html =~ "email"
+    end
+
+    test "shows info when accepting invitation for already-member user", %{conn: conn} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      invitee = user_fixture()
+
+      # Create invitation for invitee first, then add them as member
+      {token, _invitation} = create_invitation_with_token(project, owner, invitee.email, "editor")
+
+      conn = log_in_user(conn, invitee)
+      {:ok, view, _html} = live(conn, ~p"/projects/invitations/#{token}")
+
+      # Add the invitee as member between page load and accept click
+      membership_fixture(project, invitee, "editor")
+
+      view
+      |> element("button", "Accept Invitation")
+      |> render_click()
+
+      {path, flash} = assert_redirect(view)
+      assert path =~ "/projects/"
+      assert flash["info"] =~ "already a member"
+    end
   end
 end

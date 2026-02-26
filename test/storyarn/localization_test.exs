@@ -598,6 +598,132 @@ defmodule Storyarn.LocalizationTest do
   end
 
   # =============================================================================
+  # Provider Configuration
+  # =============================================================================
+
+  describe "provider_config" do
+    test "get_provider_config/1 returns nil when no config exists" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert Localization.get_provider_config(project.id) == nil
+    end
+
+    test "has_active_provider?/1 returns false when no config exists" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      refute Localization.has_active_provider?(project.id)
+    end
+
+    test "upsert_provider_config/2 creates config when none exists" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      attrs = %{
+        "is_active" => true,
+        "api_endpoint" => "https://api-free.deepl.com"
+      }
+
+      assert {:ok, config} = Localization.upsert_provider_config(project, attrs)
+      assert config.project_id == project.id
+      assert config.provider == "deepl"
+      assert config.is_active == true
+    end
+
+    test "upsert_provider_config/2 updates existing config" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, _config} =
+        Localization.upsert_provider_config(project, %{
+          "is_active" => true,
+          "api_endpoint" => "https://api-free.deepl.com"
+        })
+
+      {:ok, updated} =
+        Localization.upsert_provider_config(project, %{
+          "is_active" => false
+        })
+
+      assert updated.is_active == false
+    end
+
+    test "change_provider_config/0 returns changeset with defaults" do
+      changeset = Localization.change_provider_config()
+      assert %Ecto.Changeset{} = changeset
+    end
+
+    test "change_provider_config/1 returns changeset for existing config" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, config} =
+        Localization.upsert_provider_config(project, %{
+          "is_active" => true,
+          "api_endpoint" => "https://api-free.deepl.com"
+        })
+
+      changeset = Localization.change_provider_config(config)
+      assert %Ecto.Changeset{} = changeset
+    end
+  end
+
+  # =============================================================================
+  # Static Language Helpers
+  # =============================================================================
+
+  describe "language helpers" do
+    test "language_name/1 returns display name for a language code" do
+      assert Localization.language_name("en") == "English"
+      assert Localization.language_name("es") == "Spanish"
+    end
+
+    test "language_options_for_select/0 returns list of {label, code} tuples" do
+      options = Localization.language_options_for_select()
+      assert length(options) > 0
+
+      {label, code} = hd(options)
+      assert is_binary(label)
+      assert is_binary(code)
+    end
+
+    test "change_localized_text/1 returns a valid changeset" do
+      user = user_fixture()
+      project = project_fixture(user)
+      text = localized_text_fixture(project.id)
+
+      changeset = Localization.change_localized_text(text)
+      assert %Ecto.Changeset{} = changeset
+      assert changeset.valid?
+    end
+
+    test "change_localized_text/2 returns a changeset with changes" do
+      user = user_fixture()
+      project = project_fixture(user)
+      text = localized_text_fixture(project.id)
+
+      changeset = Localization.change_localized_text(text, %{translated_text: "Hola"})
+      assert %Ecto.Changeset{} = changeset
+      assert Ecto.Changeset.get_change(changeset, :translated_text) == "Hola"
+    end
+  end
+
+  # =============================================================================
+  # Text Extraction
+  # =============================================================================
+
+  describe "extract_all/1" do
+    test "extracts texts for a project with no flows or sheets" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert {:ok, count} = Localization.extract_all(project.id)
+      assert count == 0
+    end
+  end
+
+  # =============================================================================
   # Helpers
   # =============================================================================
 

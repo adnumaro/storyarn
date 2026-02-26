@@ -556,5 +556,325 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
       assert Enum.at(result, 2).type == "dialogue"
       assert Enum.at(result, 3).type == "exit"
     end
+
+    test "child_page option offsets indices (no entry at 0)" do
+      groups = [
+        %{
+          type: :scene_heading,
+          elements: [el(%{id: 1, type: "scene_heading", content: "INT. OFFICE - DAY"})],
+          group_id: nil
+        },
+        %{
+          type: :action,
+          elements: [el(%{id: 2, type: "action", content: "A desk."})],
+          group_id: nil
+        }
+      ]
+
+      result = NodeMapping.groups_to_node_attrs(groups, child_page: true)
+
+      # With child_page: true, offset is 1, so scene_heading at index 1 → scene node
+      assert length(result) == 2
+      assert Enum.at(result, 0).type == "scene"
+      assert Enum.at(result, 1).type == "dialogue"
+    end
+
+    test "empty groups list returns empty" do
+      assert NodeMapping.groups_to_node_attrs([]) == []
+    end
+
+    test "child_page with empty groups returns empty" do
+      assert NodeMapping.groups_to_node_attrs([], child_page: true) == []
+    end
+  end
+
+  # =============================================================================
+  # parse_scene_heading edge cases
+  # =============================================================================
+
+  describe "group_to_node_attrs/2 — scene heading edge cases" do
+    test "heading without time_of_day" do
+      group = %{
+        type: :scene_heading,
+        elements: [el(%{id: 1, type: "scene_heading", content: "INT. OFFICE"})],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group, 1)
+      assert result.data["int_ext"] == "int"
+      assert result.data["description"] == "OFFICE"
+      assert result.data["time_of_day"] == ""
+    end
+
+    test "heading without INT/EXT defaults to int" do
+      group = %{
+        type: :scene_heading,
+        elements: [el(%{id: 1, type: "scene_heading", content: "RANDOM LOCATION - NIGHT"})],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group, 1)
+      assert result.data["int_ext"] == "int"
+      assert result.data["description"] == "RANDOM LOCATION"
+      assert result.data["time_of_day"] == "NIGHT"
+    end
+
+    test "heading with nil content" do
+      group = %{
+        type: :scene_heading,
+        elements: [el(%{id: 1, type: "scene_heading", content: nil})],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group, 1)
+      assert result.data["int_ext"] == "int"
+    end
+
+    test "heading with EXT prefix" do
+      group = %{
+        type: :scene_heading,
+        elements: [el(%{id: 1, type: "scene_heading", content: "EXT BEACH - SUNSET"})],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group, 1)
+      assert result.data["int_ext"] == "ext"
+      assert result.data["description"] == "BEACH"
+      assert result.data["time_of_day"] == "SUNSET"
+    end
+  end
+
+  # =============================================================================
+  # Hub and jump markers
+  # =============================================================================
+
+  describe "group_to_node_attrs/2 hub marker" do
+    test "maps hub_marker to hub node" do
+      group = %{
+        type: :hub_marker,
+        elements: [
+          el(%{
+            id: 1,
+            type: "hub_marker",
+            content: "Checkpoint",
+            data: %{"hub_node_id" => "hub_123", "color" => "#FF0000"}
+          })
+        ],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+      assert result.type == "hub"
+      assert result.data["hub_id"] == "hub_123"
+      assert result.data["label"] == "Checkpoint"
+      assert result.data["color"] == "#FF0000"
+    end
+
+    test "hub_marker defaults hub_id to empty when missing" do
+      group = %{
+        type: :hub_marker,
+        elements: [el(%{id: 1, type: "hub_marker", content: "X", data: %{}})],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+      assert result.data["hub_id"] == ""
+      assert result.data["color"] == "#8b5cf6"
+    end
+  end
+
+  describe "group_to_node_attrs/2 jump marker" do
+    test "maps jump_marker to jump node" do
+      group = %{
+        type: :jump_marker,
+        elements: [
+          el(%{id: 1, type: "jump_marker", data: %{"target_hub_id" => "hub_456"}})
+        ],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+      assert result.type == "jump"
+      assert result.data["target_hub_id"] == "hub_456"
+    end
+
+    test "jump_marker defaults target_hub_id when missing" do
+      group = %{
+        type: :jump_marker,
+        elements: [el(%{id: 1, type: "jump_marker", data: %{}})],
+        group_id: nil
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+      assert result.data["target_hub_id"] == ""
+    end
+  end
+
+  # =============================================================================
+  # Response serialization edge cases
+  # =============================================================================
+
+  describe "group_to_node_attrs/2 — response with serialized condition/instruction" do
+    test "passes through string condition as-is" do
+      json_condition = Jason.encode!(%{"logic" => "all", "rules" => []})
+
+      group = %{
+        type: :dialogue_group,
+        elements: [
+          el(%{id: 1, type: "character", content: "NPC"}),
+          el(%{id: 2, type: "dialogue", content: "Hello."}),
+          el(%{
+            id: 3,
+            type: "response",
+            data: %{
+              "choices" => [
+                %{
+                  "id" => "c1",
+                  "text" => "OK",
+                  "condition" => json_condition,
+                  "instruction" => nil
+                }
+              ]
+            }
+          })
+        ],
+        group_id: "g-ser"
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+      [resp] = result.data["responses"]
+      assert resp["condition"] == json_condition
+    end
+
+    test "serializes map condition to JSON" do
+      condition = %{
+        "logic" => "all",
+        "rules" => [
+          %{
+            "sheet" => "mc",
+            "variable" => "health",
+            "operator" => "greater_than",
+            "value" => "50"
+          }
+        ]
+      }
+
+      group = %{
+        type: :dialogue_group,
+        elements: [
+          el(%{id: 1, type: "character", content: "NPC"}),
+          el(%{id: 2, type: "dialogue", content: "Hello."}),
+          el(%{
+            id: 3,
+            type: "response",
+            data: %{
+              "choices" => [
+                %{"id" => "c1", "text" => "OK", "condition" => condition, "instruction" => nil}
+              ]
+            }
+          })
+        ],
+        group_id: "g-map"
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+      [resp] = result.data["responses"]
+      assert is_binary(resp["condition"])
+    end
+
+    test "serializes nil condition as nil" do
+      group = %{
+        type: :dialogue_group,
+        elements: [
+          el(%{id: 1, type: "character", content: "NPC"}),
+          el(%{id: 2, type: "dialogue", content: "Hello."}),
+          el(%{
+            id: 3,
+            type: "response",
+            data: %{
+              "choices" => [
+                %{"id" => "c1", "text" => "OK", "condition" => nil, "instruction" => nil}
+              ]
+            }
+          })
+        ],
+        group_id: "g-nil"
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+      [resp] = result.data["responses"]
+      assert is_nil(resp["condition"])
+    end
+
+    test "serializes list instruction to JSON" do
+      assignments = [
+        %{"sheet" => "mc", "variable" => "gold", "operator" => "add", "value" => "1"}
+      ]
+
+      group = %{
+        type: :dialogue_group,
+        elements: [
+          el(%{id: 1, type: "character", content: "NPC"}),
+          el(%{id: 2, type: "dialogue", content: "Hi."}),
+          el(%{
+            id: 3,
+            type: "response",
+            data: %{
+              "choices" => [
+                %{
+                  "id" => "c1",
+                  "text" => "OK",
+                  "condition" => nil,
+                  "instruction" => assignments
+                }
+              ]
+            }
+          })
+        ],
+        group_id: "g-inst"
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+      [resp] = result.data["responses"]
+      assert is_binary(resp["instruction"])
+      assert Jason.decode!(resp["instruction"]) == assignments
+    end
+
+    test "passes through string instruction as-is" do
+      json_inst = Jason.encode!([%{"op" => "set"}])
+
+      group = %{
+        type: :dialogue_group,
+        elements: [
+          el(%{id: 1, type: "character", content: "NPC"}),
+          el(%{id: 2, type: "dialogue", content: "Hi."}),
+          el(%{
+            id: 3,
+            type: "response",
+            data: %{
+              "choices" => [
+                %{"id" => "c1", "text" => "OK", "condition" => nil, "instruction" => json_inst}
+              ]
+            }
+          })
+        ],
+        group_id: "g-str"
+      }
+
+      result = NodeMapping.group_to_node_attrs(group)
+      [resp] = result.data["responses"]
+      assert resp["instruction"] == json_inst
+    end
+  end
+
+  # =============================================================================
+  # Unknown group type
+  # =============================================================================
+
+  describe "group_to_node_attrs/2 — unknown type" do
+    test "returns nil for unknown group type" do
+      group = %{type: :some_future_type, elements: [], group_id: nil}
+      assert NodeMapping.group_to_node_attrs(group) == nil
+    end
   end
 end

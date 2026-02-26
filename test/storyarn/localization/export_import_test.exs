@@ -143,5 +143,139 @@ defmodule Storyarn.Localization.ExportImportTest do
       updated = Localization.get_text!(text.id)
       assert updated.translated_text == "Hola, mundo"
     end
+
+    test "skips rows with empty translation and invalid status" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _source = source_language_fixture(project)
+
+      text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: 1,
+          source_field: "text",
+          source_text: "Hello",
+          locale_code: "es"
+        })
+
+      # Empty translation + invalid status = empty attrs = :skip
+      csv = "ID,Translation,Status\n#{text.id},,invalid_status"
+
+      {:ok, result} = Localization.import_csv(csv)
+      assert result.skipped == 1
+      assert result.updated == 0
+    end
+
+    test "handles quoted fields with escaped quotes" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _source = source_language_fixture(project)
+
+      text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: 1,
+          source_field: "text",
+          source_text: "Hello",
+          locale_code: "es"
+        })
+
+      # Escaped quotes in CSV: "" inside quoted field becomes "
+      csv = "ID,Translation,Status\n#{text.id},\"She said \"\"hello\"\"\",draft"
+
+      {:ok, result} = Localization.import_csv(csv)
+      assert result.updated == 1
+
+      updated = Localization.get_text!(text.id)
+      assert updated.translated_text == "She said \"hello\""
+    end
+
+    test "skips row with only whitespace translation" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _source = source_language_fixture(project)
+
+      text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: 1,
+          source_field: "text",
+          source_text: "Hello",
+          locale_code: "es"
+        })
+
+      # Whitespace-only translation with valid status should still update status
+      csv = "ID,Translation,Status\n#{text.id},   ,draft"
+
+      {:ok, result} = Localization.import_csv(csv)
+      # Status is valid so attrs won't be empty, will update
+      assert result.updated == 1
+    end
+
+    test "imports CSV with no Translation column" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _source = source_language_fixture(project)
+
+      text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: 1,
+          source_field: "text",
+          source_text: "Hello",
+          locale_code: "es"
+        })
+
+      # Only ID and Status, no Translation column -> maybe_put_translation receives nil
+      csv = "ID,Status\n#{text.id},draft"
+
+      {:ok, result} = Localization.import_csv(csv)
+      assert result.updated == 1
+    end
+  end
+
+  describe "export_csv/2 with special characters" do
+    test "escapes commas, quotes, and newlines in text fields" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _source = source_language_fixture(project)
+
+      _text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: 1,
+          source_field: "text",
+          source_text: "Hello, \"world\"\nNew line",
+          locale_code: "es"
+        })
+
+      {:ok, csv} = Localization.export_csv(project.id, locale_code: "es")
+
+      # The source text with comma/quote/newline should be quoted and escaped
+      assert csv =~ ~s("Hello, ""world"")
+    end
+
+    test "handles nil translated_text in CSV export" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _source = source_language_fixture(project)
+
+      _text =
+        localized_text_fixture(project.id, %{
+          source_type: "flow_node",
+          source_id: 1,
+          source_field: "text",
+          source_text: "Hello",
+          translated_text: nil,
+          locale_code: "es"
+        })
+
+      {:ok, csv} = Localization.export_csv(project.id, locale_code: "es")
+
+      # csv_escape(nil) should return "" and not crash
+      assert is_binary(csv)
+      lines = String.split(csv, "\n", trim: true)
+      assert length(lines) == 2
+    end
   end
 end

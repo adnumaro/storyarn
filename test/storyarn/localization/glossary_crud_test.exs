@@ -153,5 +153,200 @@ defmodule Storyarn.Localization.GlossaryCrudTest do
       {:ok, _} = Localization.delete_glossary_entry(entry)
       assert Localization.list_glossary_entries(project.id) == []
     end
+
+    test "get_glossary_entry/1 returns the entry" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, entry} =
+        Localization.create_glossary_entry(project, %{
+          source_term: "mana",
+          source_locale: "en",
+          target_term: "maná",
+          target_locale: "es"
+        })
+
+      result = Localization.get_glossary_entry(entry.id)
+      assert result.id == entry.id
+      assert result.source_term == "mana"
+    end
+
+    test "get_glossary_entry/1 returns nil for non-existent id" do
+      assert Localization.get_glossary_entry(-1) == nil
+    end
+
+    test "list_glossary_entries/2 searches by source and target term" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, _} =
+        Localization.create_glossary_entry(project, %{
+          source_term: "mana",
+          source_locale: "en",
+          target_term: "maná",
+          target_locale: "es"
+        })
+
+      {:ok, _} =
+        Localization.create_glossary_entry(project, %{
+          source_term: "Eldoria",
+          source_locale: "en",
+          target_term: "Eldoria",
+          target_locale: "es"
+        })
+
+      # Search by source_term
+      entries = Localization.list_glossary_entries(project.id, search: "mana")
+      assert length(entries) == 1
+      assert hd(entries).source_term == "mana"
+
+      # Search by target_term
+      entries = Localization.list_glossary_entries(project.id, search: "Eldoria")
+      assert length(entries) == 1
+      assert hd(entries).source_term == "Eldoria"
+    end
+
+    test "list_glossary_entries/2 returns all when search is nil or empty" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, _} =
+        Localization.create_glossary_entry(project, %{
+          source_term: "mana",
+          source_locale: "en",
+          target_term: "maná",
+          target_locale: "es"
+        })
+
+      assert length(Localization.list_glossary_entries(project.id, search: nil)) == 1
+      assert length(Localization.list_glossary_entries(project.id, search: "")) == 1
+    end
+
+    test "list_glossary_entries/2 returns empty when only source_locale given" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, _} =
+        Localization.create_glossary_entry(project, %{
+          source_term: "mana",
+          source_locale: "en",
+          target_term: "maná",
+          target_locale: "es"
+        })
+
+      # Only source_locale, no target_locale — should return all (filter bypassed)
+      entries = Localization.list_glossary_entries(project.id, source_locale: "en")
+      assert length(entries) == 1
+    end
+
+    test "list_glossary_for_export/1 returns all entries for export" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, _} =
+        Localization.create_glossary_entry(project, %{
+          source_term: "mana",
+          source_locale: "en",
+          target_term: "maná",
+          target_locale: "es"
+        })
+
+      {:ok, _} =
+        Localization.create_glossary_entry(project, %{
+          source_term: "Eldoria",
+          source_locale: "en",
+          target_term: "Eldoria",
+          target_locale: "fr"
+        })
+
+      entries = Localization.list_glossary_for_export(project.id)
+      assert length(entries) == 2
+      # Ordered by source_term, then target_locale
+      assert hd(entries).source_term == "Eldoria"
+    end
+
+    test "list_glossary_for_export/1 returns empty for project without entries" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert Localization.list_glossary_for_export(project.id) == []
+    end
+
+    test "bulk_import_glossary_entries/1 inserts entries in bulk" do
+      user = user_fixture()
+      project = project_fixture(user)
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+      attrs_list = [
+        %{
+          project_id: project.id,
+          source_term: "mana",
+          source_locale: "en",
+          target_term: "maná",
+          target_locale: "es",
+          do_not_translate: false,
+          inserted_at: now,
+          updated_at: now
+        },
+        %{
+          project_id: project.id,
+          source_term: "Eldoria",
+          source_locale: "en",
+          target_term: "Eldoria",
+          target_locale: "es",
+          do_not_translate: true,
+          inserted_at: now,
+          updated_at: now
+        }
+      ]
+
+      Localization.bulk_import_glossary_entries(attrs_list)
+
+      entries = Localization.list_glossary_entries(project.id)
+      assert length(entries) == 2
+    end
+
+    test "bulk_import_glossary_entries/1 handles empty list" do
+      Localization.bulk_import_glossary_entries([])
+      # No error raised
+    end
+
+    test "create_glossary_entry/2 with context field" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, entry} =
+        Localization.create_glossary_entry(project, %{
+          source_term: "level",
+          source_locale: "en",
+          target_term: "nivel",
+          target_locale: "es",
+          context: "Game difficulty level"
+        })
+
+      assert entry.context == "Game difficulty level"
+    end
+
+    test "update_glossary_entry/2 can update context and do_not_translate" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      {:ok, entry} =
+        Localization.create_glossary_entry(project, %{
+          source_term: "mana",
+          source_locale: "en",
+          target_term: "maná",
+          target_locale: "es"
+        })
+
+      {:ok, updated} =
+        Localization.update_glossary_entry(entry, %{
+          context: "Magical energy",
+          do_not_translate: true
+        })
+
+      assert updated.context == "Magical energy"
+      assert updated.do_not_translate == true
+    end
   end
 end

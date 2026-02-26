@@ -70,6 +70,42 @@ defmodule Storyarn.Screenplays.ScreenplayElementTest do
     end
   end
 
+  describe "tiptap_types/0" do
+    test "returns types that use TipTap rich text editor" do
+      types = ScreenplayElement.tiptap_types()
+      assert is_list(types)
+      assert "dialogue" in types
+      assert "action" in types
+      assert "scene_heading" in types
+      assert "parenthetical" in types
+      assert "transition" in types
+      assert "note" in types
+      assert "section" in types
+      # Interactive types should not be in tiptap_types
+      refute "conditional" in types
+      refute "instruction" in types
+    end
+  end
+
+  describe "keyboard_types/0" do
+    test "returns types that support keyboard shortcuts" do
+      types = ScreenplayElement.keyboard_types()
+      assert is_list(types)
+      assert "scene_heading" in types
+      assert "action" in types
+      assert "character" in types
+      assert "dialogue" in types
+      assert "parenthetical" in types
+      assert "transition" in types
+      assert "note" in types
+      assert "section" in types
+      # Non-keyboard types should not be included
+      refute "conditional" in types
+      refute "instruction" in types
+      refute "response" in types
+    end
+  end
+
   describe "create_changeset/2" do
     test "valid with type only" do
       changeset = ScreenplayElement.create_changeset(%ScreenplayElement{}, %{type: "action"})

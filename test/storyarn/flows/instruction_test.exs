@@ -351,6 +351,138 @@ defmodule Storyarn.Flows.InstructionTest do
     end
   end
 
+  describe "operators_for_type/1 — additional types" do
+    test "returns select operators for multi_select" do
+      assert Instruction.operators_for_type("multi_select") == ~w(set set_if_unset)
+    end
+
+    test "returns select operators for reference" do
+      assert Instruction.operators_for_type("reference") == ~w(set set_if_unset)
+    end
+  end
+
+  describe "operator_label/1 — all operators" do
+    test "returns correct labels for all known operators" do
+      assert Instruction.operator_label("set") == "="
+      assert Instruction.operator_label("add") == "+="
+      assert Instruction.operator_label("subtract") == "-="
+      assert Instruction.operator_label("set_true") == "= true"
+      assert Instruction.operator_label("set_false") == "= false"
+      assert Instruction.operator_label("toggle") == "toggle"
+      assert Instruction.operator_label("clear") == "clear"
+    end
+
+    test "returns the operator itself for unknown operators" do
+      assert Instruction.operator_label("unknown_op") == "unknown_op"
+    end
+  end
+
+  describe "valid_operator?/1" do
+    test "returns true for all known operators" do
+      for op <- Instruction.all_operators() do
+        assert Instruction.valid_operator?(op), "Expected '#{op}' to be valid"
+      end
+    end
+
+    test "returns false for unknown operators" do
+      refute Instruction.valid_operator?("unknown")
+      refute Instruction.valid_operator?("")
+      refute Instruction.valid_operator?("SET")
+    end
+  end
+
+  describe "all_operators/0" do
+    test "returns a non-empty list of unique operators" do
+      ops = Instruction.all_operators()
+      assert is_list(ops)
+      assert length(ops) > 0
+      assert length(ops) == length(Enum.uniq(ops))
+    end
+  end
+
+  describe "known_keys/0" do
+    test "includes expected keys" do
+      keys = Instruction.known_keys()
+      assert "id" in keys
+      assert "sheet" in keys
+      assert "variable" in keys
+      assert "operator" in keys
+      assert "value" in keys
+      assert "value_type" in keys
+      assert "value_sheet" in keys
+    end
+  end
+
+  describe "complete_assignment?/1 — edge cases" do
+    test "returns false for non-map input" do
+      refute Instruction.complete_assignment?("not a map")
+      refute Instruction.complete_assignment?(nil)
+      refute Instruction.complete_assignment?([])
+    end
+
+    test "returns false for incomplete variable_ref assignment" do
+      refute Instruction.complete_assignment?(%{
+               "sheet" => "mc.jaime",
+               "variable" => "health",
+               "operator" => "set",
+               "value_type" => "variable_ref",
+               "value_sheet" => "",
+               "value" => "damage"
+             })
+    end
+  end
+
+  describe "has_assignments?/1 — edge cases" do
+    test "returns false for non-list input" do
+      refute Instruction.has_assignments?("not a list")
+      refute Instruction.has_assignments?(42)
+    end
+  end
+
+  describe "format_assignment_short/1 — edge cases" do
+    test "shows ? when value is missing" do
+      result =
+        Instruction.format_assignment_short(%{
+          "sheet" => "mc.jaime",
+          "variable" => "health",
+          "operator" => "set",
+          "value_type" => "literal",
+          "value" => nil
+        })
+
+      assert result == "mc.jaime.health = ?"
+    end
+
+    test "shows value when variable_ref has empty value_sheet" do
+      result =
+        Instruction.format_assignment_short(%{
+          "sheet" => "mc.jaime",
+          "variable" => "health",
+          "operator" => "set",
+          "value_type" => "variable_ref",
+          "value_sheet" => "",
+          "value" => "damage"
+        })
+
+      # Falls back to literal value display since value_sheet is empty
+      assert result == "mc.jaime.health = damage"
+    end
+
+    test "shows ? when both value and value_sheet are nil" do
+      result =
+        Instruction.format_assignment_short(%{
+          "sheet" => "mc.jaime",
+          "variable" => "health",
+          "operator" => "set",
+          "value_type" => "variable_ref",
+          "value_sheet" => nil,
+          "value" => nil
+        })
+
+      assert result == "mc.jaime.health = ?"
+    end
+  end
+
   describe "set_if_unset operator" do
     test "is included in operators_for_type for all types" do
       for type <- ~w(number boolean text rich_text select multi_select date) do

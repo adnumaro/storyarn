@@ -133,6 +133,88 @@ defmodule Storyarn.Screenplays.ContentUtilsTest do
     end
   end
 
+  describe "sanitize_html/1 — nil and empty" do
+    test "returns empty for nil" do
+      assert ContentUtils.sanitize_html(nil) == ""
+    end
+
+    test "returns empty for empty string" do
+      assert ContentUtils.sanitize_html("") == ""
+    end
+  end
+
+  describe "sanitize_html/1 — comment and doctype nodes" do
+    test "strips HTML comments" do
+      result = ContentUtils.sanitize_html("<!-- hidden --><p>Visible</p>")
+      refute result =~ "hidden"
+      assert result =~ "<p>Visible</p>"
+    end
+
+    test "strips doctype" do
+      result = ContentUtils.sanitize_html("<!DOCTYPE html><p>Content</p>")
+      assert result =~ "<p>Content</p>"
+    end
+  end
+
+  describe "sanitize_html/1 — allowed tags preservation" do
+    test "preserves div, span, br tags" do
+      result = ContentUtils.sanitize_html("<div><span>text</span><br></div>")
+      assert result =~ "<div>"
+      assert result =~ "<span>"
+    end
+
+    test "preserves del and s tags" do
+      result = ContentUtils.sanitize_html("<del>deleted</del><s>striked</s>")
+      assert result =~ "<del>"
+      assert result =~ "<s>"
+    end
+
+    test "preserves anchor tags with safe href" do
+      result = ContentUtils.sanitize_html(~s[<a href="https://example.com">Link</a>])
+      assert result =~ "<a"
+      assert result =~ "https://example.com"
+    end
+  end
+
+  describe "sanitize_html/1 — attribute safety" do
+    test "strips srcdoc attribute" do
+      result = ContentUtils.sanitize_html(~s[<div srcdoc="<script>x</script>">text</div>])
+      refute result =~ "srcdoc"
+    end
+
+    test "strips formaction attribute" do
+      result = ContentUtils.sanitize_html(~s[<div formaction="evil.com">text</div>])
+      refute result =~ "formaction"
+    end
+  end
+
+  describe "strip_html/1 — nested and complex" do
+    test "strips deeply nested tags" do
+      result = ContentUtils.strip_html("<div><p><strong><em>Deep</em></strong></p></div>")
+      assert result == "Deep"
+    end
+
+    test "handles consecutive br tags" do
+      result = ContentUtils.strip_html("One<br><br>Two")
+      assert result == "One\n\nTwo"
+    end
+
+    test "handles mixed entities and tags" do
+      result = ContentUtils.strip_html("<p>A &amp; B &lt; C</p>")
+      assert result == "A & B < C"
+    end
+  end
+
+  describe "html?/1 — edge cases" do
+    test "returns true for self-closing tags" do
+      assert ContentUtils.html?("<br/>")
+    end
+
+    test "returns true for tags with attributes" do
+      assert ContentUtils.html?(~s[<div class="test">text</div>])
+    end
+  end
+
   describe "plain_to_html/1" do
     test "wraps nil in empty p" do
       assert ContentUtils.plain_to_html(nil) == "<p></p>"

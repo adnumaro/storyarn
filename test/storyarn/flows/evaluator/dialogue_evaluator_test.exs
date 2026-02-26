@@ -170,4 +170,130 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluatorTest do
       assert new_state.variables["mc.jaime.health"].value == 50
     end
   end
+
+  # ===========================================================================
+  # Module 3D: Additional coverage tests
+  # ===========================================================================
+
+  describe "evaluate/3 — no responses follows output" do
+    test "dialogue with no responses follows default output connection" do
+      state = make_state(%{})
+      node = make_node([])
+      connections = [make_connection(1, "default", 2)]
+
+      {:ok, new_state} = DialogueEvaluator.evaluate(node, state, connections)
+
+      assert new_state.current_node_id == 2
+
+      assert Enum.any?(new_state.console, fn entry ->
+               String.contains?(entry.message, "no responses, following output")
+             end)
+    end
+
+    test "dialogue with no responses and no output connection returns finished" do
+      state = make_state(%{})
+      node = make_node([])
+      connections = []
+
+      {:finished, finished_state} = DialogueEvaluator.evaluate(node, state, connections)
+
+      assert finished_state.status == :finished
+
+      assert Enum.any?(finished_state.console, fn entry ->
+               String.contains?(entry.message, "No outgoing connection")
+             end)
+    end
+  end
+
+  describe "evaluate/3 — single response auto-selects" do
+    test "single valid response auto-selects and advances" do
+      state = make_state(%{})
+
+      responses = [
+        %{
+          "id" => "r1",
+          "text" => "Continue",
+          "condition" => nil,
+          "instruction" => nil,
+          "instruction_assignments" => []
+        }
+      ]
+
+      node = make_node(responses)
+      connections = [make_connection(1, "r1", 3)]
+
+      {:ok, new_state} = DialogueEvaluator.evaluate(node, state, connections)
+
+      assert new_state.current_node_id == 3
+
+      assert Enum.any?(new_state.console, fn entry ->
+               String.contains?(entry.message, "auto-selected")
+             end)
+    end
+  end
+
+  describe "evaluate/3 — multiple responses wait for input" do
+    test "multiple valid responses return :waiting_input" do
+      state = make_state(%{})
+
+      responses = [
+        %{
+          "id" => "r1",
+          "text" => "Yes",
+          "condition" => nil,
+          "instruction" => nil,
+          "instruction_assignments" => []
+        },
+        %{
+          "id" => "r2",
+          "text" => "No",
+          "condition" => nil,
+          "instruction" => nil,
+          "instruction_assignments" => []
+        }
+      ]
+
+      node = make_node(responses)
+
+      connections = [
+        make_connection(1, "r1", 2),
+        make_connection(1, "r2", 3)
+      ]
+
+      {:waiting_input, waiting_state} = DialogueEvaluator.evaluate(node, state, connections)
+
+      assert waiting_state.status == :waiting_input
+      assert waiting_state.pending_choices != nil
+      assert waiting_state.pending_choices.node_id == 1
+      assert length(waiting_state.pending_choices.responses) == 2
+    end
+  end
+
+  describe "evaluate/3 — auto-selected response with no connection returns finished" do
+    test "single response with no connection returns finished" do
+      state = make_state(%{})
+
+      responses = [
+        %{
+          "id" => "r1",
+          "text" => "Dead end",
+          "condition" => nil,
+          "instruction" => nil,
+          "instruction_assignments" => []
+        }
+      ]
+
+      node = make_node(responses)
+      # No connection for r1
+      connections = []
+
+      {:finished, finished_state} = DialogueEvaluator.evaluate(node, state, connections)
+
+      assert finished_state.status == :finished
+
+      assert Enum.any?(finished_state.console, fn entry ->
+               String.contains?(entry.message, "No connection from response")
+             end)
+    end
+  end
 end
