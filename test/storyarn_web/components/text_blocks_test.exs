@@ -433,11 +433,13 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocksTest do
           value: %{"content" => "Jaime Lannister"}
         })
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
+
+      html = render_async(view, 500)
 
       assert html =~ "Full Name"
       assert html =~ "Jaime Lannister"
@@ -454,11 +456,13 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocksTest do
           value: %{"content" => 100}
         })
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
+
+      html = render_async(view, 500)
 
       assert html =~ "Health Points"
       assert html =~ "100"
@@ -475,11 +479,13 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocksTest do
           value: %{"content" => "<p>A brave knight</p>"}
         })
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
+
+      html = render_async(view, 500)
 
       assert html =~ "Biography"
       assert html =~ "TiptapEditor"
@@ -496,11 +502,13 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocksTest do
           value: %{"content" => ""}
         })
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
+
+      html = render_async(view, 500)
 
       assert html =~ "type=\"text\""
       assert html =~ "Enter nickname..."
@@ -520,11 +528,13 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocksTest do
           value: %{"content" => "Cersei"}
         })
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
+
+      html = render_async(view, 500)
 
       assert html =~ "Cersei"
       # Viewer should not see editable input
@@ -553,11 +563,13 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocksTest do
         value: %{"content" => "<p>Beta</p>"}
       })
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
+
+      html = render_async(view, 500)
 
       assert html =~ "Text Field"
       assert html =~ "Alpha"

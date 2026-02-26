@@ -56,7 +56,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
   # Simulates the FlowLoader JS hook: triggers the event + waits for start_async
   defp load_flow(view) do
     render_click(view, "load_flow_data", %{})
-    render_async(view)
+    render_async(view, 500)
   end
 
   # ===========================================================================

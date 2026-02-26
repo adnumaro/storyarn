@@ -105,6 +105,46 @@ defmodule Storyarn.RateLimiterTest do
     end
   end
 
+  describe "backend/0" do
+    test "defaults to ETS backend" do
+      assert RateLimiter.backend() == Storyarn.RateLimiter.ETSBackend
+    end
+
+    test "returns Redis backend when configured" do
+      original = Application.get_env(:storyarn, :rate_limiter_backend)
+      Application.put_env(:storyarn, :rate_limiter_backend, :redis)
+
+      try do
+        assert RateLimiter.backend() == Storyarn.RateLimiter.RedisBackend
+      after
+        if original, do: Application.put_env(:storyarn, :rate_limiter_backend, original),
+          else: Application.delete_env(:storyarn, :rate_limiter_backend)
+      end
+    end
+  end
+
+  describe "child_spec_for_backend/0" do
+    test "returns ETS child spec by default" do
+      {module, opts} = RateLimiter.child_spec_for_backend()
+      assert module == Storyarn.RateLimiter.ETSBackend
+      assert Keyword.has_key?(opts, :clean_period)
+    end
+
+    test "returns Redis child spec when configured" do
+      original = Application.get_env(:storyarn, :rate_limiter_backend)
+      Application.put_env(:storyarn, :rate_limiter_backend, :redis)
+
+      try do
+        {module, opts} = RateLimiter.child_spec_for_backend()
+        assert module == Storyarn.RateLimiter.RedisBackend
+        assert Keyword.has_key?(opts, :url)
+      after
+        if original, do: Application.put_env(:storyarn, :rate_limiter_backend, original),
+          else: Application.delete_env(:storyarn, :rate_limiter_backend)
+      end
+    end
+  end
+
   describe "when disabled" do
     test "always allows login when disabled" do
       ip = "disabled-test-#{System.unique_integer([:positive])}"

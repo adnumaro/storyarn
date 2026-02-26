@@ -19,7 +19,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.ConfigPanelHandlersTest do
   end
 
   defp mount_sheet(conn, workspace, project, sheet) do
-    live(conn, sheet_path(workspace, project, sheet))
+    {:ok, view, _html} = live(conn, sheet_path(workspace, project, sheet))
+    html = render_async(view, 500)
+    {:ok, view, html}
   end
 
   defp send_to_content_tab(view, event, params) do

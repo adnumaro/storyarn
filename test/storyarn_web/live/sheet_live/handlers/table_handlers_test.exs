@@ -26,7 +26,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
   end
 
   defp mount_sheet(conn, workspace, project, sheet) do
-    live(conn, sheet_path(workspace, project, sheet))
+    {:ok, view, _html} = live(conn, sheet_path(workspace, project, sheet))
+    html = render_async(view, 500)
+    {:ok, view, html}
   end
 
   defp send_to_content_tab(view, event, params) do
@@ -69,7 +71,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "width" => 200
       })
 
-      updated = Sheets.get_table_column!(ctx.default_col.id)
+      updated = Sheets.get_table_column!(ctx.default_col.block_id, ctx.default_col.id)
       assert updated.config["width"] == 200
     end
 
@@ -81,7 +83,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "width" => 30
       })
 
-      updated = Sheets.get_table_column!(ctx.default_col.id)
+      updated = Sheets.get_table_column!(ctx.default_col.block_id, ctx.default_col.id)
       assert updated.config["width"] == 80
     end
 
@@ -93,7 +95,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "width" => 5000
       })
 
-      updated = Sheets.get_table_column!(ctx.default_col.id)
+      updated = Sheets.get_table_column!(ctx.default_col.block_id, ctx.default_col.id)
       assert updated.config["width"] == 2000
     end
 
@@ -106,7 +108,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
       })
 
       # Should not crash; config unchanged
-      updated = Sheets.get_table_column!(ctx.default_col.id)
+      updated = Sheets.get_table_column!(ctx.default_col.block_id, ctx.default_col.id)
       assert updated.config["width"] == nil
     end
   end
@@ -152,7 +154,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
       })
 
       # Column still exists — deletion was prevented
-      assert Sheets.get_table_column!(ctx.default_col.id) != nil
+      assert Sheets.get_table_column!(ctx.default_col.block_id, ctx.default_col.id) != nil
 
       # Table data still has exactly 1 column
       data = Sheets.batch_load_table_data([ctx.table_block.id])
@@ -200,7 +202,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "value" => ctx.default_col.name
       })
 
-      updated = Sheets.get_table_column!(ctx.default_col.id)
+      updated = Sheets.get_table_column!(ctx.default_col.block_id, ctx.default_col.id)
       assert updated.name == ctx.default_col.name
     end
 
@@ -212,7 +214,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "value" => "  Strength  "
       })
 
-      updated = Sheets.get_table_column!(ctx.default_col.id)
+      updated = Sheets.get_table_column!(ctx.default_col.block_id, ctx.default_col.id)
       assert updated.name == "Strength"
     end
   end
@@ -325,7 +327,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         }
       })
 
-      %{select_col: Sheets.get_table_column!(col.id)}
+      %{select_col: Sheets.get_table_column!(col.block_id, col.id)}
     end
 
     test "sets a select cell value", ctx do
@@ -382,7 +384,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         }
       })
 
-      %{multi_col: Sheets.get_table_column!(col.id)}
+      %{multi_col: Sheets.get_table_column!(col.block_id, col.id)}
     end
 
     test "adds key to empty multi-select cell", ctx do
@@ -445,7 +447,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
 
       Sheets.update_table_column(col, %{config: %{"options" => []}})
 
-      %{option_col: Sheets.get_table_column!(col.id)}
+      %{option_col: Sheets.get_table_column!(col.block_id, col.id)}
     end
 
     test "adds option and selects it in cell for select column", ctx do
@@ -460,7 +462,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
       })
 
       # Verify option was added to column config
-      updated_col = Sheets.get_table_column!(ctx.option_col.id)
+      updated_col = Sheets.get_table_column!(ctx.option_col.block_id, ctx.option_col.id)
       options = updated_col.config["options"]
       assert length(options) == 1
       assert hd(options)["value"] == "Weapon"
@@ -481,7 +483,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "value" => ""
       })
 
-      updated_col = Sheets.get_table_column!(ctx.option_col.id)
+      updated_col = Sheets.get_table_column!(ctx.option_col.block_id, ctx.option_col.id)
       assert updated_col.config["options"] == []
     end
   end
@@ -498,7 +500,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
 
       Sheets.update_table_column(col, %{config: %{"options" => []}})
 
-      %{ms_col: Sheets.get_table_column!(col.id)}
+      %{ms_col: Sheets.get_table_column!(col.block_id, col.id)}
     end
 
     test "adds option and toggles it in cell for multi_select column", ctx do
@@ -512,7 +514,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "value" => "Burning"
       })
 
-      updated_col = Sheets.get_table_column!(ctx.ms_col.id)
+      updated_col = Sheets.get_table_column!(ctx.ms_col.block_id, ctx.ms_col.id)
       assert length(updated_col.config["options"]) == 1
 
       updated_row = Sheets.get_table_row!(ctx.default_row.id)
@@ -536,7 +538,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
 
       Sheets.update_table_column(col, %{config: %{"options" => []}})
 
-      %{grade_col: Sheets.get_table_column!(col.id)}
+      %{grade_col: Sheets.get_table_column!(col.block_id, col.id)}
     end
 
     test "adds option to column on Enter", ctx do
@@ -548,7 +550,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "value" => "A+"
       })
 
-      updated = Sheets.get_table_column!(ctx.grade_col.id)
+      updated = Sheets.get_table_column!(ctx.grade_col.block_id, ctx.grade_col.id)
       assert length(updated.config["options"]) == 1
       assert hd(updated.config["options"])["value"] == "A+"
     end
@@ -562,7 +564,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "value" => "Should Not Add"
       })
 
-      updated = Sheets.get_table_column!(ctx.grade_col.id)
+      updated = Sheets.get_table_column!(ctx.grade_col.block_id, ctx.grade_col.id)
       assert updated.config["options"] == []
     end
 
@@ -575,7 +577,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "value" => "  "
       })
 
-      updated = Sheets.get_table_column!(ctx.grade_col.id)
+      updated = Sheets.get_table_column!(ctx.grade_col.block_id, ctx.grade_col.id)
       assert updated.config["options"] == []
     end
   end
@@ -599,7 +601,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         }
       })
 
-      %{status_col: Sheets.get_table_column!(col.id)}
+      %{status_col: Sheets.get_table_column!(col.block_id, col.id)}
     end
 
     test "removes an option by key", ctx do
@@ -610,7 +612,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "key" => "active"
       })
 
-      updated = Sheets.get_table_column!(ctx.status_col.id)
+      updated = Sheets.get_table_column!(ctx.status_col.block_id, ctx.status_col.id)
       keys = Enum.map(updated.config["options"], & &1["key"])
       assert keys == ["inactive"]
     end
@@ -635,7 +637,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         }
       })
 
-      %{tier_col: Sheets.get_table_column!(col.id)}
+      %{tier_col: Sheets.get_table_column!(col.block_id, col.id)}
     end
 
     test "updates option value at index", ctx do
@@ -647,7 +649,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "value" => "Gold"
       })
 
-      updated = Sheets.get_table_column!(ctx.tier_col.id)
+      updated = Sheets.get_table_column!(ctx.tier_col.block_id, ctx.tier_col.id)
       first_option = hd(updated.config["options"])
       assert first_option["value"] == "Gold"
       assert first_option["key"] == "gold"
@@ -670,7 +672,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
 
       Sheets.update_table_column(col, %{config: %{"multiple" => false}})
 
-      %{ref_col: Sheets.get_table_column!(col.id)}
+      %{ref_col: Sheets.get_table_column!(col.block_id, col.id)}
     end
 
     test "toggles multiple flag on reference column", ctx do
@@ -680,7 +682,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "column-id" => to_string(ctx.ref_col.id)
       })
 
-      updated = Sheets.get_table_column!(ctx.ref_col.id)
+      updated = Sheets.get_table_column!(ctx.ref_col.block_id, ctx.ref_col.id)
       assert updated.config["multiple"] == true
     end
 
@@ -696,7 +698,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "column-id" => to_string(ctx.ref_col.id)
       })
 
-      updated_col = Sheets.get_table_column!(ctx.ref_col.id)
+      updated_col = Sheets.get_table_column!(ctx.ref_col.block_id, ctx.ref_col.id)
       assert updated_col.config["multiple"] == false
 
       # Cell with list value should have been cleared
@@ -731,7 +733,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "value" => "0"
       })
 
-      updated = Sheets.get_table_column!(ctx.num_col.id)
+      updated = Sheets.get_table_column!(ctx.num_col.block_id, ctx.num_col.id)
       assert updated.config["min"] == 0
     end
 
@@ -744,7 +746,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "value" => "100"
       })
 
-      updated = Sheets.get_table_column!(ctx.num_col.id)
+      updated = Sheets.get_table_column!(ctx.num_col.block_id, ctx.num_col.id)
       assert updated.config["max"] == 100
     end
 
@@ -757,7 +759,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "value" => "5"
       })
 
-      updated = Sheets.get_table_column!(ctx.num_col.id)
+      updated = Sheets.get_table_column!(ctx.num_col.block_id, ctx.num_col.id)
       assert updated.config["step"] == 5
     end
 
@@ -770,7 +772,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "value" => "10"
       })
 
-      updated = Sheets.get_table_column!(ctx.num_col.id)
+      updated = Sheets.get_table_column!(ctx.num_col.block_id, ctx.num_col.id)
       assert updated.config == %{}
     end
   end
@@ -791,7 +793,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
 
       Sheets.update_table_column(col, %{required: true})
 
-      %{req_col: Sheets.get_table_column!(col.id)}
+      %{req_col: Sheets.get_table_column!(col.block_id, col.id)}
     end
 
     test "rejects empty value on required column", ctx do
@@ -851,7 +853,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         }
       })
 
-      %{ms_col: Sheets.get_table_column!(col.id)}
+      %{ms_col: Sheets.get_table_column!(col.block_id, col.id)}
     end
 
     test "splits comma-separated values into list", ctx do
@@ -906,7 +908,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "new-type" => "number"
       })
 
-      updated_col = Sheets.get_table_column!(ctx.mixed_col.id)
+      updated_col = Sheets.get_table_column!(ctx.mixed_col.block_id, ctx.mixed_col.id)
       assert updated_col.type == "number"
 
       # Cell value should be reset
@@ -935,14 +937,16 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "column-id" => to_string(ctx.const_col.id)
       })
 
-      assert Sheets.get_table_column!(ctx.const_col.id).is_constant == true
+      assert Sheets.get_table_column!(ctx.const_col.block_id, ctx.const_col.id).is_constant ==
+               true
 
       # Toggle off
       send_to_content_tab(view, "toggle_table_column_constant", %{
         "column-id" => to_string(ctx.const_col.id)
       })
 
-      assert Sheets.get_table_column!(ctx.const_col.id).is_constant == false
+      assert Sheets.get_table_column!(ctx.const_col.block_id, ctx.const_col.id).is_constant ==
+               false
     end
   end
 
@@ -966,14 +970,14 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "column-id" => to_string(ctx.req_col.id)
       })
 
-      assert Sheets.get_table_column!(ctx.req_col.id).required == true
+      assert Sheets.get_table_column!(ctx.req_col.block_id, ctx.req_col.id).required == true
 
       # Toggle off
       send_to_content_tab(view, "toggle_table_column_required", %{
         "column-id" => to_string(ctx.req_col.id)
       })
 
-      assert Sheets.get_table_column!(ctx.req_col.id).required == false
+      assert Sheets.get_table_column!(ctx.req_col.block_id, ctx.req_col.id).required == false
     end
   end
 
@@ -1118,7 +1122,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
         "value" => "Renamed Column"
       })
 
-      updated = Sheets.get_table_column!(ctx.default_col.id)
+      updated = Sheets.get_table_column!(ctx.default_col.block_id, ctx.default_col.id)
       assert updated.name == "Renamed Column"
     end
   end
@@ -1159,7 +1163,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
 
       Sheets.update_table_column(col, %{config: %{"min" => 0, "max" => 100}})
 
-      %{clamp_col: Sheets.get_table_column!(col.id)}
+      %{clamp_col: Sheets.get_table_column!(col.block_id, col.id)}
     end
 
     test "clamps number cell value within range", ctx do

@@ -271,12 +271,13 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
       parent = sheet_fixture(project, %{name: "Parent Character"})
       child = sheet_fixture(project, %{name: "Child Character", parent_id: parent.id})
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{child.id}"
         )
 
+      html = render_async(view, 500)
       assert html =~ "Parent Character"
     end
 
@@ -284,12 +285,13 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
       project = project_fixture(user) |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Root Sheet"})
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
+      html = render_async(view, 500)
       # Breadcrumb uses sheet_breadcrumb component which renders ancestor names as links
       # Root-level sheets have no ancestors, so no breadcrumb navigation links appear
       refute html =~ "sheet-breadcrumb"

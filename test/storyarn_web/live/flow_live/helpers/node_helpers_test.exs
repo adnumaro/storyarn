@@ -585,7 +585,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
 
       # Trigger async load and select node so selected_node is set
       render_click(view, "load_flow_data", %{})
-      render_async(view)
+      render_async(view, 500)
       render_click(view, "node_selected", %{"id" => node.id})
 
       render_click(view, "update_node_text", %{
@@ -617,7 +617,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
         )
 
       render_click(view, "load_flow_data", %{})
-      render_async(view)
+      render_async(view, 500)
       render_click(view, "node_selected", %{"id" => node.id})
 
       render_click(view, "update_node_text", %{
@@ -646,7 +646,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
         )
 
       render_click(view, "load_flow_data", %{})
-      render_async(view)
+      render_async(view, 500)
       render_click(view, "node_selected", %{"id" => node.id})
 
       render_click(view, "update_node_text", %{
@@ -689,7 +689,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
 
       # Must load flow data and select node so selected_node assign is set
       render_click(view, "load_flow_data", %{})
-      render_async(view)
+      render_async(view, 500)
       render_click(view, "node_selected", %{"id" => node.id})
 
       render_click(view, "update_node_data", %{
@@ -721,7 +721,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
         )
 
       render_click(view, "load_flow_data", %{})
-      render_async(view)
+      render_async(view, 500)
       render_click(view, "node_selected", %{"id" => node.id})
 
       render_click(view, "update_node_data", %{
@@ -747,7 +747,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
         )
 
       render_click(view, "load_flow_data", %{})
-      render_async(view)
+      render_async(view, 500)
       render_click(view, "node_selected", %{"id" => node.id})
 
       render_click(view, "update_node_data", %{
@@ -785,7 +785,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
         )
 
       render_click(view, "load_flow_data", %{})
-      render_async(view)
+      render_async(view, 500)
       render_click(view, "node_selected", %{"id" => node.id})
 
       render_click(view, "update_node_data", %{

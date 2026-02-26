@@ -97,7 +97,12 @@ defmodule StoryarnWeb.SheetLive.Show do
           <.save_indicator status={@save_status} variant={:floating} />
         </div>
 
-        <div>
+        <%!-- Loading state while async data loads --%>
+        <div :if={!@sheet_data_loaded} class="flex justify-center py-12">
+          <span class="loading loading-spinner loading-lg text-base-content/30"></span>
+        </div>
+
+        <div :if={@sheet_data_loaded}>
           <%!-- Tabs Navigation --%>
           <div role="tablist" class="tabs tabs-border mb-6">
             <button
@@ -227,16 +232,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   defp setup_sheet_view(socket, project, membership, sheet) do
-    sheets_tree = Sheets.list_sheets_tree(project.id)
-
-    ancestors =
-      case Sheets.get_sheet_with_ancestors(project.id, sheet.id) do
-        nil -> []
-        list -> List.delete_at(list, -1)
-      end
-
-    children = Sheets.get_children(sheet.id)
-    blocks = ReferenceHelpers.load_blocks_with_references(sheet.id, project.id)
     can_edit = Projects.can?(membership.role, :edit_content)
 
     socket
@@ -245,19 +240,55 @@ defmodule StoryarnWeb.SheetLive.Show do
     |> assign(:workspace, project.workspace)
     |> assign(:membership, membership)
     |> assign(:sheet, sheet)
-    |> assign(:sheets_tree, sheets_tree)
-    |> assign(:ancestors, ancestors)
-    |> assign(:children, children)
-    |> assign(:blocks, blocks)
     |> assign(:can_edit, can_edit)
     |> assign(:save_status, :idle)
     |> assign(:current_tab, "content")
-    |> UndoRedoStack.init()
+    # Defaults while async loading
+    |> assign(:sheets_tree, [])
+    |> assign(:ancestors, [])
+    |> assign(:children, [])
+    |> assign(:blocks, [])
+    |> assign(:sheet_data_loaded, false)
+    |> start_async(:load_sheet_data, fn ->
+      %{
+        sheets_tree: Sheets.list_sheets_tree(project.id),
+        ancestors:
+          case Sheets.get_sheet_with_ancestors(project.id, sheet.id) do
+            nil -> []
+            list -> List.delete_at(list, -1)
+          end,
+        children: Sheets.get_children(sheet.id),
+        blocks: ReferenceHelpers.load_blocks_with_references(sheet.id, project.id)
+      }
+    end)
   end
 
   @impl true
   def handle_params(_params, _url, socket) do
     {:noreply, socket}
+  end
+
+  # ===========================================================================
+  # Async Loading
+  # ===========================================================================
+
+  @impl true
+  def handle_async(:load_sheet_data, {:ok, data}, socket) do
+    {:noreply,
+     socket
+     |> assign(:sheets_tree, data.sheets_tree)
+     |> assign(:ancestors, data.ancestors)
+     |> assign(:children, data.children)
+     |> assign(:blocks, data.blocks)
+     |> assign(:sheet_data_loaded, true)
+     |> UndoRedoStack.init()}
+  end
+
+  def handle_async(:load_sheet_data, {:exit, _reason}, socket) do
+    {:noreply,
+     socket
+     |> put_flash(:error, dgettext("sheets", "Could not load sheet data."))
+     |> assign(:sheet_data_loaded, true)}
   end
 
   # ===========================================================================
@@ -279,11 +310,15 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
 
   def handle_event("undo", params, socket) do
-    UndoRedoHandlers.handle_undo(params, socket)
+    with_authorization(socket, :edit_content, fn _socket ->
+      UndoRedoHandlers.handle_undo(params, socket)
+    end)
   end
 
   def handle_event("redo", params, socket) do
-    UndoRedoHandlers.handle_redo(params, socket)
+    with_authorization(socket, :edit_content, fn _socket ->
+      UndoRedoHandlers.handle_redo(params, socket)
+    end)
   end
 
   # ===========================================================================

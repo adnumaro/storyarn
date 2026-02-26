@@ -39,7 +39,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlersTest do
   # ===========================================================================
 
   defp mount_sheet(conn, url) do
-    live(conn, url)
+    {:ok, view, _html} = live(conn, url)
+    html = render_async(view, 500)
+    {:ok, view, html}
   end
 
   defp send_to_content_tab(view, event, params \\ %{}) do

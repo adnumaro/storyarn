@@ -21,6 +21,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
   defp mount_references_tab(conn, project, sheet) do
     {:ok, view, _html} = live(conn, sheet_url(project, sheet))
+    render_async(view, 500)
     html = render_click(view, "switch_tab", %{"tab" => "references"})
     {view, html}
   end
@@ -750,7 +751,8 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
       VariableReferenceTracker.update_references(node)
 
       # Mount the sheet (starts on content tab)
-      {:ok, view, html} = live(conn, sheet_url(project, sheet))
+      {:ok, view, _html} = live(conn, sheet_url(project, sheet))
+      html = render_async(view, 500)
 
       # Content tab should not contain variable usage
       refute html =~ "Variable Usage"
@@ -767,6 +769,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
          %{conn: conn, project: project, sheet: sheet} do
       # Mount the sheet
       {:ok, view, _html} = live(conn, sheet_url(project, sheet))
+      render_async(view, 500)
 
       # Switch to references tab — the section should render
       html = render_click(view, "switch_tab", %{"tab" => "references"})

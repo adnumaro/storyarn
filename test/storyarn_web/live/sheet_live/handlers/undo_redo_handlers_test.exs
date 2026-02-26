@@ -45,7 +45,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
   # ===========================================================================
 
   defp mount_sheet(conn, url) do
-    live(conn, url)
+    {:ok, view, _html} = live(conn, url)
+    html = render_async(view, 500)
+    {:ok, view, html}
   end
 
   # Builds a minimal socket for unit testing coalescing helpers
@@ -647,10 +649,10 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
         "value" => "Mana"
       })
 
-      assert Sheets.get_table_column!(column.id).name == "Mana"
+      assert Sheets.get_table_column!(column.block_id, column.id).name == "Mana"
 
       render_hook(view, "undo", %{})
-      assert Sheets.get_table_column!(column.id).name == "Health"
+      assert Sheets.get_table_column!(column.block_id, column.id).name == "Health"
     end
 
     test "redo re-applies column rename after undo", %{conn: conn, url: url, sheet: sheet} do
@@ -665,10 +667,10 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       })
 
       render_hook(view, "undo", %{})
-      assert Sheets.get_table_column!(column.id).name == "Strength"
+      assert Sheets.get_table_column!(column.block_id, column.id).name == "Strength"
 
       render_hook(view, "redo", %{})
-      assert Sheets.get_table_column!(column.id).name == "Power"
+      assert Sheets.get_table_column!(column.block_id, column.id).name == "Power"
     end
   end
 
@@ -765,10 +767,10 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
         "new-type" => "text"
       })
 
-      assert Sheets.get_table_column!(column.id).type == "text"
+      assert Sheets.get_table_column!(column.block_id, column.id).type == "text"
 
       render_hook(view, "undo", %{})
-      assert Sheets.get_table_column!(column.id).type == "number"
+      assert Sheets.get_table_column!(column.block_id, column.id).type == "number"
     end
 
     test "redo re-applies column type change after undo", %{
@@ -788,10 +790,10 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       })
 
       render_hook(view, "undo", %{})
-      assert Sheets.get_table_column!(column.id).type == "number"
+      assert Sheets.get_table_column!(column.block_id, column.id).type == "number"
 
       render_hook(view, "redo", %{})
-      assert Sheets.get_table_column!(column.id).type == "boolean"
+      assert Sheets.get_table_column!(column.block_id, column.id).type == "boolean"
     end
   end
 
@@ -811,10 +813,10 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
         "column-id" => to_string(column.id)
       })
 
-      assert Sheets.get_table_column!(column.id).is_constant == true
+      assert Sheets.get_table_column!(column.block_id, column.id).is_constant == true
 
       render_hook(view, "undo", %{})
-      assert Sheets.get_table_column!(column.id).is_constant == false
+      assert Sheets.get_table_column!(column.block_id, column.id).is_constant == false
     end
   end
 
@@ -834,10 +836,10 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
         "column-id" => to_string(column.id)
       })
 
-      assert Sheets.get_table_column!(column.id).required == true
+      assert Sheets.get_table_column!(column.block_id, column.id).required == true
 
       render_hook(view, "undo", %{})
-      assert Sheets.get_table_column!(column.id).required == false
+      assert Sheets.get_table_column!(column.block_id, column.id).required == false
     end
   end
 
@@ -859,11 +861,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
         "value" => "0"
       })
 
-      updated_config = Sheets.get_table_column!(column.id).config
+      updated_config = Sheets.get_table_column!(column.block_id, column.id).config
       assert updated_config["min"] != nil
 
       render_hook(view, "undo", %{})
-      assert Sheets.get_table_column!(column.id).config == original_config
+      assert Sheets.get_table_column!(column.block_id, column.id).config == original_config
     end
   end
 
@@ -1344,14 +1346,14 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
         "value" => "10"
       })
 
-      updated_config = Sheets.get_table_column!(column.id).config
+      updated_config = Sheets.get_table_column!(column.block_id, column.id).config
       assert updated_config != original_config
 
       render_hook(view, "undo", %{})
-      assert Sheets.get_table_column!(column.id).config == original_config
+      assert Sheets.get_table_column!(column.block_id, column.id).config == original_config
 
       render_hook(view, "redo", %{})
-      assert Sheets.get_table_column!(column.id).config == updated_config
+      assert Sheets.get_table_column!(column.block_id, column.id).config == updated_config
     end
   end
 
@@ -1375,13 +1377,13 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
         "column-id" => to_string(column.id)
       })
 
-      assert Sheets.get_table_column!(column.id).is_constant == true
+      assert Sheets.get_table_column!(column.block_id, column.id).is_constant == true
 
       render_hook(view, "undo", %{})
-      assert Sheets.get_table_column!(column.id).is_constant == false
+      assert Sheets.get_table_column!(column.block_id, column.id).is_constant == false
 
       render_hook(view, "redo", %{})
-      assert Sheets.get_table_column!(column.id).is_constant == true
+      assert Sheets.get_table_column!(column.block_id, column.id).is_constant == true
     end
   end
 
@@ -1405,13 +1407,13 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
         "column-id" => to_string(column.id)
       })
 
-      assert Sheets.get_table_column!(column.id).required == true
+      assert Sheets.get_table_column!(column.block_id, column.id).required == true
 
       render_hook(view, "undo", %{})
-      assert Sheets.get_table_column!(column.id).required == false
+      assert Sheets.get_table_column!(column.block_id, column.id).required == false
 
       render_hook(view, "redo", %{})
-      assert Sheets.get_table_column!(column.id).required == true
+      assert Sheets.get_table_column!(column.block_id, column.id).required == true
     end
   end
 
@@ -1444,7 +1446,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       })
 
       # Verify the option was added to column config
-      updated_col = Sheets.get_table_column!(column.id)
+      updated_col = Sheets.get_table_column!(column.block_id, column.id)
       assert Enum.any?(updated_col.config["options"] || [], &(&1["value"] == "Active"))
 
       # Verify cell was set
@@ -1453,7 +1455,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
 
       # Undo the compound action — should revert both config and cell
       render_hook(view, "undo", %{})
-      col_after_undo = Sheets.get_table_column!(column.id)
+      col_after_undo = Sheets.get_table_column!(column.block_id, column.id)
       refute Enum.any?(col_after_undo.config["options"] || [], &(&1["value"] == "Active"))
 
       row_after_undo = Sheets.get_table_row!(default_row.id)
@@ -1461,7 +1463,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
 
       # Redo should restore both
       render_hook(view, "redo", %{})
-      col_after_redo = Sheets.get_table_column!(column.id)
+      col_after_redo = Sheets.get_table_column!(column.block_id, column.id)
       assert Enum.any?(col_after_redo.config["options"] || [], &(&1["value"] == "Active"))
     end
   end
@@ -1643,7 +1645,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       })
 
       # Delete column out-of-band
-      Sheets.delete_table_column(Sheets.get_table_column(column.id))
+      Sheets.delete_table_column(Sheets.get_table_column(column.block_id, column.id))
 
       # Undo should not crash
       render_hook(view, "undo", %{})
@@ -1690,7 +1692,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       })
 
       # Delete column out-of-band
-      Sheets.delete_table_column(Sheets.get_table_column(column.id))
+      Sheets.delete_table_column(Sheets.get_table_column(column.block_id, column.id))
 
       # Undo should not crash
       render_hook(view, "undo", %{})
@@ -1712,7 +1714,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       })
 
       # Delete column out-of-band
-      Sheets.delete_table_column(Sheets.get_table_column(column.id))
+      Sheets.delete_table_column(Sheets.get_table_column(column.block_id, column.id))
 
       # Undo should not crash
       render_hook(view, "undo", %{})
@@ -1735,7 +1737,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       })
 
       # Delete column out-of-band
-      Sheets.delete_table_column(Sheets.get_table_column(column.id))
+      Sheets.delete_table_column(Sheets.get_table_column(column.block_id, column.id))
 
       # Undo should not crash
       render_hook(view, "undo", %{})
@@ -1927,7 +1929,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       })
 
       render_hook(view, "undo", %{})
-      Sheets.delete_table_column(Sheets.get_table_column(column.id))
+      Sheets.delete_table_column(Sheets.get_table_column(column.block_id, column.id))
 
       render_hook(view, "redo", %{})
       assert render(view) =~ "Undo Redo Sheet"
@@ -1972,7 +1974,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       })
 
       render_hook(view, "undo", %{})
-      Sheets.delete_table_column(Sheets.get_table_column(column.id))
+      Sheets.delete_table_column(Sheets.get_table_column(column.block_id, column.id))
 
       render_hook(view, "redo", %{})
       assert render(view) =~ "Undo Redo Sheet"
@@ -1993,7 +1995,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       })
 
       render_hook(view, "undo", %{})
-      Sheets.delete_table_column(Sheets.get_table_column(column.id))
+      Sheets.delete_table_column(Sheets.get_table_column(column.block_id, column.id))
 
       render_hook(view, "redo", %{})
       assert render(view) =~ "Undo Redo Sheet"
@@ -2015,7 +2017,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       })
 
       render_hook(view, "undo", %{})
-      Sheets.delete_table_column(Sheets.get_table_column(column.id))
+      Sheets.delete_table_column(Sheets.get_table_column(column.block_id, column.id))
 
       render_hook(view, "redo", %{})
       assert render(view) =~ "Undo Redo Sheet"

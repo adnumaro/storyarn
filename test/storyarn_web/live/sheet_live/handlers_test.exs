@@ -32,7 +32,9 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
   end
 
   defp mount_sheet(conn, workspace, project, sheet) do
-    live(conn, sheet_path(workspace, project, sheet))
+    {:ok, view, _html} = live(conn, sheet_path(workspace, project, sheet))
+    html = render_async(view, 500)
+    {:ok, view, html}
   end
 
   # Sends an event to the ContentTab LiveComponent via with_target.
@@ -529,7 +531,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
         "value" => "Mana"
       })
 
-      updated_column = Sheets.get_table_column!(column.id)
+      updated_column = Sheets.get_table_column!(column.block_id, column.id)
       assert updated_column.name == "Mana"
     end
 
@@ -547,7 +549,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
         "value" => ""
       })
 
-      updated_column = Sheets.get_table_column!(column.id)
+      updated_column = Sheets.get_table_column!(column.block_id, column.id)
       assert updated_column.name == "Health"
     end
   end
@@ -791,7 +793,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
         "new-type" => "number"
       })
 
-      updated_column = Sheets.get_table_column!(column.id)
+      updated_column = Sheets.get_table_column!(column.block_id, column.id)
       assert updated_column.type == "number"
     end
   end
@@ -829,7 +831,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
         "column-id" => to_string(column.id)
       })
 
-      updated_column = Sheets.get_table_column!(column.id)
+      updated_column = Sheets.get_table_column!(column.block_id, column.id)
       assert updated_column.is_constant == true
     end
   end
@@ -867,7 +869,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
         "column-id" => to_string(column.id)
       })
 
-      updated_column = Sheets.get_table_column!(column.id)
+      updated_column = Sheets.get_table_column!(column.block_id, column.id)
       assert updated_column.required == true
     end
   end
