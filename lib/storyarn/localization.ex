@@ -102,13 +102,13 @@ defmodule Storyarn.Localization do
   @spec count_texts(id(), keyword()) :: non_neg_integer()
   defdelegate count_texts(project_id, opts \\ []), to: TextCrud
 
-  @doc "Gets a single localized text by ID."
-  @spec get_text(id()) :: localized_text() | nil
-  defdelegate get_text(id), to: TextCrud
+  @doc "Gets a single localized text by ID, scoped to project."
+  @spec get_text(id(), id()) :: localized_text() | nil
+  defdelegate get_text(project_id, id), to: TextCrud
 
-  @doc "Gets a single localized text by ID, raises if not found."
-  @spec get_text!(id()) :: localized_text()
-  defdelegate get_text!(id), to: TextCrud
+  @doc "Gets a single localized text by ID (scoped to project), raises if not found."
+  @spec get_text!(id(), id()) :: localized_text()
+  defdelegate get_text!(project_id, id), to: TextCrud
 
   @doc "Gets a localized text by its composite source key."
   @spec get_text_by_source(String.t(), id(), String.t(), String.t()) :: localized_text() | nil
@@ -208,8 +208,8 @@ defmodule Storyarn.Localization do
   defdelegate export_csv(project_id, opts), to: ExportImport
 
   @doc "Imports translations from CSV content."
-  @spec import_csv(String.t()) :: {:ok, map()} | {:error, term()}
-  defdelegate import_csv(csv_content), to: ExportImport
+  @spec import_csv(id(), String.t()) :: {:ok, map()} | {:error, term()}
+  defdelegate import_csv(project_id, csv_content), to: ExportImport
 
   # =============================================================================
   # Glossary
@@ -219,9 +219,9 @@ defmodule Storyarn.Localization do
   @spec list_glossary_entries(id(), keyword()) :: [glossary_entry()]
   defdelegate list_glossary_entries(project_id, opts \\ []), to: GlossaryCrud, as: :list_entries
 
-  @doc "Gets a single glossary entry."
-  @spec get_glossary_entry(id()) :: glossary_entry() | nil
-  defdelegate get_glossary_entry(id), to: GlossaryCrud, as: :get_entry
+  @doc "Gets a single glossary entry, scoped to project."
+  @spec get_glossary_entry(id(), id()) :: glossary_entry() | nil
+  defdelegate get_glossary_entry(project_id, id), to: GlossaryCrud, as: :get_entry
 
   @doc "Gets glossary entries for a language pair as tuples."
   @spec get_glossary_entries_for_pair(id(), String.t(), String.t()) ::

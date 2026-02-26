@@ -582,7 +582,10 @@ defmodule Storyarn.AssetsTest do
       assert is_boolean(result)
     end
 
-    @tag skip: unless(Storyarn.Assets.image_processor_available?(), do: "Image processor not available")
+    @tag skip:
+           unless(Storyarn.Assets.image_processor_available?(),
+             do: "Image processor not available"
+           )
     test "image_processor_get_dimensions/1 with valid image" do
       image_path = Path.join(["test", "fixtures", "images", "quadrant_map.png"])
 
@@ -591,7 +594,10 @@ defmodule Storyarn.AssetsTest do
       assert is_integer(h) and h > 0
     end
 
-    @tag skip: unless(Storyarn.Assets.image_processor_available?(), do: "Image processor not available")
+    @tag skip:
+           unless(Storyarn.Assets.image_processor_available?(),
+             do: "Image processor not available"
+           )
     test "image_processor_get_dimensions/1 with nonexistent file" do
       assert {:error, _reason} = Assets.image_processor_get_dimensions("/nonexistent/image.png")
     end

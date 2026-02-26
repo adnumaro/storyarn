@@ -22,12 +22,14 @@ defmodule Storyarn.Localization.GlossaryCrud do
     |> Repo.all()
   end
 
-  def get_entry(id) do
-    Repo.get(GlossaryEntry, id)
+  def get_entry(project_id, id) do
+    from(e in GlossaryEntry, where: e.id == ^id and e.project_id == ^project_id)
+    |> Repo.one()
   end
 
-  def get_entry!(id) do
-    Repo.get!(GlossaryEntry, id)
+  def get_entry!(project_id, id) do
+    from(e in GlossaryEntry, where: e.id == ^id and e.project_id == ^project_id)
+    |> Repo.one!()
   end
 
   @doc """

@@ -84,38 +84,47 @@ defmodule Storyarn.Localization.ExportImportTest do
       #{text.id},Hola,draft
       """
 
-      {:ok, result} = Localization.import_csv(csv)
+      {:ok, result} = Localization.import_csv(project.id, csv)
 
       assert result.updated == 1
       assert result.skipped == 0
 
-      updated = Localization.get_text!(text.id)
+      updated = Localization.get_text!(text.project_id, text.id)
       assert updated.translated_text == "Hola"
       assert updated.status == "draft"
     end
 
     test "skips rows with invalid IDs" do
+      user = user_fixture()
+      project = project_fixture(user)
+
       csv = """
       ID,Translation,Status
       999999,Hola,draft
       """
 
-      {:ok, result} = Localization.import_csv(csv)
+      {:ok, result} = Localization.import_csv(project.id, csv)
       assert result.updated == 0
       assert result.errors != []
     end
 
     test "returns error for empty file" do
-      assert {:error, :empty_file} = Localization.import_csv("")
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert {:error, :empty_file} = Localization.import_csv(project.id, "")
     end
 
     test "returns error when ID column is missing" do
+      user = user_fixture()
+      project = project_fixture(user)
+
       csv = """
       Name,Translation,Status
       test,Hola,draft
       """
 
-      assert {:error, :missing_id_column} = Localization.import_csv(csv)
+      assert {:error, :missing_id_column} = Localization.import_csv(project.id, csv)
     end
 
     test "handles quoted CSV fields with commas" do
@@ -137,10 +146,10 @@ defmodule Storyarn.Localization.ExportImportTest do
       #{text.id},"Hola, mundo",draft
       """
 
-      {:ok, result} = Localization.import_csv(csv)
+      {:ok, result} = Localization.import_csv(project.id, csv)
       assert result.updated == 1
 
-      updated = Localization.get_text!(text.id)
+      updated = Localization.get_text!(text.project_id, text.id)
       assert updated.translated_text == "Hola, mundo"
     end
 
@@ -161,7 +170,7 @@ defmodule Storyarn.Localization.ExportImportTest do
       # Empty translation + invalid status = empty attrs = :skip
       csv = "ID,Translation,Status\n#{text.id},,invalid_status"
 
-      {:ok, result} = Localization.import_csv(csv)
+      {:ok, result} = Localization.import_csv(project.id, csv)
       assert result.skipped == 1
       assert result.updated == 0
     end
@@ -183,10 +192,10 @@ defmodule Storyarn.Localization.ExportImportTest do
       # Escaped quotes in CSV: "" inside quoted field becomes "
       csv = "ID,Translation,Status\n#{text.id},\"She said \"\"hello\"\"\",draft"
 
-      {:ok, result} = Localization.import_csv(csv)
+      {:ok, result} = Localization.import_csv(project.id, csv)
       assert result.updated == 1
 
-      updated = Localization.get_text!(text.id)
+      updated = Localization.get_text!(text.project_id, text.id)
       assert updated.translated_text == "She said \"hello\""
     end
 
@@ -207,7 +216,7 @@ defmodule Storyarn.Localization.ExportImportTest do
       # Whitespace-only translation with valid status should still update status
       csv = "ID,Translation,Status\n#{text.id},   ,draft"
 
-      {:ok, result} = Localization.import_csv(csv)
+      {:ok, result} = Localization.import_csv(project.id, csv)
       # Status is valid so attrs won't be empty, will update
       assert result.updated == 1
     end
@@ -229,7 +238,7 @@ defmodule Storyarn.Localization.ExportImportTest do
       # Only ID and Status, no Translation column -> maybe_put_translation receives nil
       csv = "ID,Status\n#{text.id},draft"
 
-      {:ok, result} = Localization.import_csv(csv)
+      {:ok, result} = Localization.import_csv(project.id, csv)
       assert result.updated == 1
     end
   end

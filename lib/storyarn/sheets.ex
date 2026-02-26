@@ -471,8 +471,8 @@ defmodule Storyarn.Sheets do
   # =============================================================================
 
   defdelegate list_table_columns(block_id), to: TableCrud, as: :list_columns
-  defdelegate get_table_column!(id), to: TableCrud, as: :get_column!
-  defdelegate get_table_column(id), to: TableCrud, as: :get_column
+  defdelegate get_table_column!(block_id, id), to: TableCrud, as: :get_column!
+  defdelegate get_table_column(block_id, id), to: TableCrud, as: :get_column
   defdelegate create_table_column(block, attrs), to: TableCrud, as: :create_column
 
   defdelegate create_table_column_from_snapshot(block_id, snapshot, cell_values),

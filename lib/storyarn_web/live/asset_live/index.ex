@@ -247,9 +247,23 @@ defmodule StoryarnWeb.AssetLive.Index do
   # Private: Data Loading
   # ===========================================================================
 
+  # base64 is ~4/3 ratio, so 20MB file ≈ 27MB base64
+  @max_base64_size 28_000_000
+
   defp process_upload(socket, filename, content_type, data) do
     [_header, base64_data] = String.split(data, ",", parts: 2)
 
+    if byte_size(base64_data) > @max_base64_size do
+      {:noreply,
+       socket
+       |> assign(:uploading, false)
+       |> put_flash(:error, dgettext("assets", "File too large (max 20MB)."))}
+    else
+      decode_and_upload(socket, filename, content_type, base64_data)
+    end
+  end
+
+  defp decode_and_upload(socket, filename, content_type, base64_data) do
     case Base.decode64(base64_data) do
       {:ok, binary_data} ->
         do_upload(socket, filename, content_type, binary_data)

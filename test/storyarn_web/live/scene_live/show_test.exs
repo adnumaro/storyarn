@@ -1148,7 +1148,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         "value" => "Trade Route"
       })
 
-      updated = Scenes.get_connection!(connection.id)
+      updated = Scenes.get_connection!(scene.id, connection.id)
       assert updated.label == "Trade Route"
     end
 
@@ -1171,7 +1171,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         "value" => "dashed"
       })
 
-      updated = Scenes.get_connection!(connection.id)
+      updated = Scenes.get_connection!(scene.id, connection.id)
       assert updated.line_style == "dashed"
     end
 
@@ -1194,7 +1194,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         "toggle" => "false"
       })
 
-      updated = Scenes.get_connection!(connection.id)
+      updated = Scenes.get_connection!(scene.id, connection.id)
       assert updated.bidirectional == false
     end
   end
@@ -1243,7 +1243,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       html = render_hook(view, "confirm_delete_element", %{})
 
       refute html =~ "properties-panel"
-      assert Scenes.get_connection(connection.id) == nil
+      assert Scenes.get_connection(scene.id, connection.id) == nil
     end
   end
 
@@ -1754,7 +1754,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         "value" => "Hacked"
       })
 
-      unchanged = Scenes.get_connection!(connection.id)
+      unchanged = Scenes.get_connection!(scene.id, connection.id)
       assert unchanged.label != "Hacked"
     end
   end
@@ -2268,7 +2268,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         "value" => "Updated text"
       })
 
-      updated = Scenes.get_annotation!(annotation.id)
+      updated = Scenes.get_annotation!(scene.id, annotation.id)
       assert updated.text == "Updated text"
     end
   end
@@ -2289,7 +2289,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       render_hook(view, "delete_annotation", %{"id" => to_string(annotation.id)})
 
-      assert Scenes.get_annotation(annotation.id) == nil
+      assert Scenes.get_annotation(scene.id, annotation.id) == nil
     end
 
     test "rejected for viewer", %{conn: conn, user: user} do
@@ -2307,7 +2307,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       render_hook(view, "delete_annotation", %{"id" => to_string(annotation.id)})
 
-      assert Scenes.get_annotation(annotation.id) != nil
+      assert Scenes.get_annotation(scene.id, annotation.id) != nil
     end
   end
 
@@ -2367,7 +2367,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         "waypoints" => waypoints
       })
 
-      updated = Scenes.get_connection!(connection.id)
+      updated = Scenes.get_connection!(scene.id, connection.id)
       assert length(updated.waypoints) == 2
     end
 
@@ -2391,7 +2391,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       render_click(view, "clear_connection_waypoints", %{"id" => to_string(connection.id)})
 
-      updated = Scenes.get_connection!(connection.id)
+      updated = Scenes.get_connection!(scene.id, connection.id)
       assert updated.waypoints == []
     end
 
@@ -2415,7 +2415,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         "waypoints" => [%{"x" => 50.0, "y" => 50.0}]
       })
 
-      unchanged = Scenes.get_connection!(connection.id)
+      unchanged = Scenes.get_connection!(scene.id, connection.id)
       assert unchanged.waypoints == []
     end
   end
@@ -3400,7 +3400,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         "position_y" => 90.0
       })
 
-      unchanged = Scenes.get_annotation!(annotation.id)
+      unchanged = Scenes.get_annotation!(scene.id, annotation.id)
       assert_in_delta unchanged.position_x, 10.0, 0.01
       assert_in_delta unchanged.position_y, 20.0, 0.01
     end
@@ -3420,7 +3420,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       html = render_hook(view, "delete_annotation", %{"id" => to_string(annotation.id)})
 
       assert html =~ "Cannot delete a locked element"
-      assert Scenes.get_annotation(annotation.id) != nil
+      assert Scenes.get_annotation(scene.id, annotation.id) != nil
     end
   end
 end

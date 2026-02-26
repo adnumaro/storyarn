@@ -345,7 +345,7 @@ defmodule Storyarn.LocalizationTest do
       project = project_fixture(user)
       text = localized_text_fixture(project.id)
 
-      result = Localization.get_text(text.id)
+      result = Localization.get_text(text.project_id, text.id)
       assert result.id == text.id
     end
 

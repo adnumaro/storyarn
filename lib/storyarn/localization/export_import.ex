@@ -115,8 +115,8 @@ defmodule Storyarn.Localization.ExportImport do
 
   Returns `{:ok, %{updated: N, skipped: M, errors: []}}`.
   """
-  @spec import_csv(String.t()) :: {:ok, map()} | {:error, term()}
-  def import_csv(csv_content) do
+  @spec import_csv(integer(), String.t()) :: {:ok, map()} | {:error, term()}
+  def import_csv(project_id, csv_content) do
     lines = String.split(csv_content, ~r/\r?\n/, trim: true)
 
     case lines do
@@ -132,7 +132,7 @@ defmodule Storyarn.Localization.ExportImport do
             |> Enum.with_index(2)
             |> Enum.reduce(
               {0, 0, []},
-              &reduce_csv_row(&1, &2, id_col, translation_col, status_col)
+              &reduce_csv_row(&1, &2, project_id, id_col, translation_col, status_col)
             )
 
           {:ok, %{updated: updated, skipped: skipped, errors: Enum.reverse(errors)}}
@@ -149,22 +149,29 @@ defmodule Storyarn.Localization.ExportImport do
   # Private
   # =============================================================================
 
-  defp reduce_csv_row({line, line_num}, {upd, skip, errs}, id_col, translation_col, status_col) do
+  defp reduce_csv_row(
+         {line, line_num},
+         {upd, skip, errs},
+         project_id,
+         id_col,
+         translation_col,
+         status_col
+       ) do
     fields = parse_csv_line(line)
     id = Enum.at(fields, id_col)
     translation = if translation_col, do: Enum.at(fields, translation_col)
     status = if status_col, do: Enum.at(fields, status_col)
 
-    case import_row(id, translation, status) do
+    case import_row(project_id, id, translation, status) do
       :ok -> {upd + 1, skip, errs}
       :skip -> {upd, skip + 1, errs}
       {:error, reason} -> {upd, skip, [{line_num, reason} | errs]}
     end
   end
 
-  defp import_row(id_str, translation, status) do
+  defp import_row(project_id, id_str, translation, status) do
     with {id, ""} <- Integer.parse(id_str || ""),
-         text when not is_nil(text) <- TextCrud.get_text(id) do
+         text when not is_nil(text) <- TextCrud.get_text(project_id, id) do
       attrs = build_import_attrs(translation, status)
       apply_import_attrs(text, attrs)
     else

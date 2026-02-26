@@ -139,7 +139,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
       {:ok, project, membership} ->
         can_edit = Projects.can?(membership.role, :edit_content)
         {text_id_int, ""} = Integer.parse(text_id)
-        text = Localization.get_text!(text_id_int)
+        text = Localization.get_text!(project.id, text_id_int)
 
         form = build_form(text)
 

@@ -6,7 +6,7 @@ defmodule Storyarn.Sheets.TableCrud do
   alias Ecto.Multi
   alias Storyarn.Flows
   alias Storyarn.Repo
-  alias Storyarn.Shared.{NameNormalizer, TimeHelpers}
+  alias Storyarn.Shared.{NameNormalizer, TimeHelpers, TreeOperations}
   alias Storyarn.Sheets.{Block, TableColumn, TableRow}
 
   # =============================================================================
@@ -22,14 +22,16 @@ defmodule Storyarn.Sheets.TableCrud do
     |> Repo.all()
   end
 
-  @doc "Gets a single column by ID. Raises if not found."
-  def get_column!(column_id) do
-    Repo.get!(TableColumn, column_id)
+  @doc "Gets a single column by ID, scoped to a block. Raises if not found."
+  def get_column!(block_id, column_id) do
+    from(c in TableColumn, where: c.id == ^column_id and c.block_id == ^block_id)
+    |> Repo.one!()
   end
 
-  @doc "Gets a single column by ID. Returns nil if not found."
-  def get_column(column_id) do
-    Repo.get(TableColumn, column_id)
+  @doc "Gets a single column by ID, scoped to a block. Returns nil if not found."
+  def get_column(block_id, column_id) do
+    from(c in TableColumn, where: c.id == ^column_id and c.block_id == ^block_id)
+    |> Repo.one()
   end
 
   @doc """
@@ -215,15 +217,10 @@ defmodule Storyarn.Sheets.TableCrud do
 
   @doc "Reorders columns by updating their positions."
   def reorder_columns(block_id, column_ids) when is_list(column_ids) do
+    pairs = Enum.with_index(column_ids)
+
     Repo.transaction(fn ->
-      column_ids
-      |> Enum.with_index()
-      |> Enum.each(fn {column_id, index} ->
-        from(c in TableColumn,
-          where: c.id == ^column_id and c.block_id == ^block_id
-        )
-        |> Repo.update_all(set: [position: index])
-      end)
+      TreeOperations.batch_set_positions("table_columns", pairs, scope: {"block_id", block_id})
 
       list_columns(block_id)
     end)
@@ -405,15 +402,10 @@ defmodule Storyarn.Sheets.TableCrud do
 
   @doc "Reorders rows by updating their positions."
   def reorder_rows(block_id, row_ids) when is_list(row_ids) do
+    pairs = Enum.with_index(row_ids)
+
     Repo.transaction(fn ->
-      row_ids
-      |> Enum.with_index()
-      |> Enum.each(fn {row_id, index} ->
-        from(r in TableRow,
-          where: r.id == ^row_id and r.block_id == ^block_id
-        )
-        |> Repo.update_all(set: [position: index])
-      end)
+      TreeOperations.batch_set_positions("table_rows", pairs, scope: {"block_id", block_id})
 
       list_rows(block_id)
     end)

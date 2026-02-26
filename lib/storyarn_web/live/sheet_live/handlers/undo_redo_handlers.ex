@@ -263,7 +263,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
   # ===========================================================================
 
   defp undo_action({:add_table_column, block_id, column_snapshot}, socket) do
-    case Sheets.get_table_column(column_snapshot.id) do
+    case Sheets.get_table_column(block_id, column_snapshot.id) do
       nil ->
         {:error, socket}
 
@@ -329,7 +329,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
   end
 
   defp undo_action({:rename_table_column, block_id, col_id, prev_name, _new_name}, socket) do
-    case Sheets.get_table_column(col_id) do
+    case Sheets.get_table_column(block_id, col_id) do
       nil ->
         {:error, socket}
 
@@ -375,7 +375,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
          {:update_table_column_config, block_id, col_id, prev_config, _new_config},
          socket
        ) do
-    case Sheets.get_table_column(col_id) do
+    case Sheets.get_table_column(block_id, col_id) do
       nil ->
         {:error, socket}
 
@@ -394,7 +394,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
   end
 
   defp undo_action({:toggle_column_flag, block_id, col_id, flag, prev, _new}, socket) do
-    case Sheets.get_table_column(col_id) do
+    case Sheets.get_table_column(block_id, col_id) do
       nil ->
         {:error, socket}
 
@@ -415,7 +415,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
          {:change_column_type, block_id, col_id, prev_type, _new_type, prev_cells},
          socket
        ) do
-    case Sheets.get_table_column(col_id) do
+    case Sheets.get_table_column(block_id, col_id) do
       nil ->
         {:error, socket}
 
@@ -588,7 +588,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
   end
 
   defp redo_action({:delete_table_column, block_id, column_snapshot, _cell_values}, socket) do
-    case Sheets.get_table_column(column_snapshot.id) do
+    case Sheets.get_table_column(block_id, column_snapshot.id) do
       nil ->
         {:error, socket}
 
@@ -647,7 +647,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
   end
 
   defp redo_action({:rename_table_column, block_id, col_id, _prev_name, new_name}, socket) do
-    case Sheets.get_table_column(col_id) do
+    case Sheets.get_table_column(block_id, col_id) do
       nil ->
         {:error, socket}
 
@@ -692,7 +692,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
          {:update_table_column_config, block_id, col_id, _prev_config, new_config},
          socket
        ) do
-    case Sheets.get_table_column(col_id) do
+    case Sheets.get_table_column(block_id, col_id) do
       nil ->
         {:error, socket}
 
@@ -711,7 +711,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
   end
 
   defp redo_action({:toggle_column_flag, block_id, col_id, flag, _prev, new}, socket) do
-    case Sheets.get_table_column(col_id) do
+    case Sheets.get_table_column(block_id, col_id) do
       nil ->
         {:error, socket}
 
@@ -732,7 +732,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
          {:change_column_type, block_id, col_id, _prev_type, new_type, _prev_cells},
          socket
        ) do
-    case Sheets.get_table_column(col_id) do
+    case Sheets.get_table_column(block_id, col_id) do
       nil ->
         {:error, socket}
 

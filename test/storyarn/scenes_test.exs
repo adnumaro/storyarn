@@ -1045,7 +1045,7 @@ defmodule Storyarn.ScenesTest do
 
       {:ok, _} = Scenes.delete_connection(conn)
 
-      assert Scenes.get_connection(conn.id) == nil
+      assert Scenes.get_connection(scene.id, conn.id) == nil
     end
 
     test "create_connection/2 with waypoints stores them" do
@@ -1413,7 +1413,7 @@ defmodule Storyarn.ScenesTest do
 
       {:ok, _} = Scenes.delete_annotation(annotation)
 
-      assert Scenes.get_annotation(annotation.id) == nil
+      assert Scenes.get_annotation(scene.id, annotation.id) == nil
     end
 
     test "list_annotations/1 returns annotations for a scene" do

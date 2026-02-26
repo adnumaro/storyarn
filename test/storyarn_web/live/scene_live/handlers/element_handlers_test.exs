@@ -797,7 +797,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
 
       render_hook(view, "clear_connection_waypoints", %{"id" => to_string(conn_rec.id)})
 
-      updated = Scenes.get_connection!(conn_rec.id)
+      updated = Scenes.get_connection!(ctx.scene.id, conn_rec.id)
       assert updated.waypoints == []
     end
 
@@ -826,7 +826,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
         "position_y" => 80.0
       })
 
-      updated = Scenes.get_annotation!(ann.id)
+      updated = Scenes.get_annotation!(ctx.scene.id, ann.id)
       assert_in_delta updated.position_x, 70.0, 0.01
       assert_in_delta updated.position_y, 80.0, 0.01
     end
@@ -900,7 +900,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
         "value" => "Road"
       })
 
-      updated = Scenes.get_connection!(conn_rec.id)
+      updated = Scenes.get_connection!(ctx.scene.id, conn_rec.id)
       assert updated.label == "Road"
     end
   end
@@ -1055,7 +1055,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
         "value" => "Updated Text"
       })
 
-      updated = Scenes.get_annotation!(ann.id)
+      updated = Scenes.get_annotation!(ctx.scene.id, ann.id)
       assert updated.text == "Updated Text"
     end
 
@@ -1070,7 +1070,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
         "value" => "lg"
       })
 
-      updated = Scenes.get_annotation!(ann.id)
+      updated = Scenes.get_annotation!(ctx.scene.id, ann.id)
       assert updated.font_size == "lg"
     end
 
@@ -1085,7 +1085,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
         "value" => "#00ff00"
       })
 
-      updated = Scenes.get_annotation!(ann.id)
+      updated = Scenes.get_annotation!(ctx.scene.id, ann.id)
       assert updated.color == "#00ff00"
     end
   end
@@ -1237,7 +1237,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
         "value" => "#ff00ff"
       })
 
-      updated = Scenes.get_connection!(conn_rec.id)
+      updated = Scenes.get_connection!(ctx.scene.id, conn_rec.id)
       assert updated.color == "#ff00ff"
     end
 
@@ -1254,7 +1254,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
         "value" => "3"
       })
 
-      updated = Scenes.get_connection!(conn_rec.id)
+      updated = Scenes.get_connection!(ctx.scene.id, conn_rec.id)
       assert updated.line_width == 3
     end
   end

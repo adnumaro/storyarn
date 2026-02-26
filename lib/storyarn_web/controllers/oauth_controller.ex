@@ -9,10 +9,13 @@ defmodule StoryarnWeb.OAuthController do
 
   plug Ueberauth
 
+  @allowed_providers ~w(github google discord)
+
   @doc """
   Handles the OAuth callback from providers.
   """
-  def callback(%{assigns: %{ueberauth_auth: auth}} = conn, %{"provider" => provider}) do
+  def callback(%{assigns: %{ueberauth_auth: auth}} = conn, %{"provider" => provider})
+      when provider in @allowed_providers do
     case Accounts.find_or_create_user_from_oauth(provider, auth) do
       {:ok, user} ->
         conn
@@ -34,7 +37,8 @@ defmodule StoryarnWeb.OAuthController do
     end
   end
 
-  def callback(%{assigns: %{ueberauth_failure: failure}} = conn, %{"provider" => provider}) do
+  def callback(%{assigns: %{ueberauth_failure: failure}} = conn, %{"provider" => provider})
+      when provider in @allowed_providers do
     message = Enum.map_join(failure.errors, ", ", & &1.message)
 
     conn
@@ -48,18 +52,31 @@ defmodule StoryarnWeb.OAuthController do
     |> redirect(to: ~p"/users/log-in")
   end
 
+  def callback(conn, _params) do
+    conn
+    |> put_flash(:error, dgettext("identity", "Unknown authentication provider."))
+    |> redirect(to: ~p"/users/log-in")
+  end
+
   @doc """
   Initiates the OAuth flow - Ueberauth handles this automatically.
   """
-  def request(conn, _params) do
+  def request(conn, %{"provider" => provider}) when provider in @allowed_providers do
     # Ueberauth handles the redirect automatically
     conn
+  end
+
+  def request(conn, _params) do
+    conn
+    |> put_flash(:error, dgettext("identity", "Unknown authentication provider."))
+    |> redirect(to: ~p"/users/log-in")
   end
 
   @doc """
   Links an OAuth provider to the current user's account.
   """
-  def link(%{assigns: %{ueberauth_auth: auth}} = conn, %{"provider" => provider}) do
+  def link(%{assigns: %{ueberauth_auth: auth}} = conn, %{"provider" => provider})
+      when provider in @allowed_providers do
     user = conn.assigns.current_scope.user
 
     case Accounts.link_oauth_identity(user, provider, auth) do
@@ -83,7 +100,8 @@ defmodule StoryarnWeb.OAuthController do
     end
   end
 
-  def link(%{assigns: %{ueberauth_failure: failure}} = conn, %{"provider" => provider}) do
+  def link(%{assigns: %{ueberauth_failure: failure}} = conn, %{"provider" => provider})
+      when provider in @allowed_providers do
     message = Enum.map_join(failure.errors, ", ", & &1.message)
 
     conn

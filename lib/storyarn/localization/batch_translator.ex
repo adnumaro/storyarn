@@ -53,7 +53,7 @@ defmodule Storyarn.Localization.BatchTranslator do
   def translate_single(project_id, text_id) do
     with {:ok, config} <- get_provider_config(project_id),
          {:ok, source_lang} <- get_source_locale(project_id),
-         text when not is_nil(text) <- TextCrud.get_text(text_id) do
+         text when not is_nil(text) <- TextCrud.get_text(project_id, text_id) do
       do_translate_single(text, source_lang, config)
     else
       nil -> {:error, :text_not_found}

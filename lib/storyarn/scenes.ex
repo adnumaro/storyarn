@@ -438,22 +438,10 @@ defmodule Storyarn.Scenes do
   defdelegate list_connections(scene_id), to: ConnectionCrud
 
   @doc """
-  Gets a connection by ID with pins preloaded. Returns `nil` if not found.
-  """
-  @spec get_connection(integer()) :: connection() | nil
-  defdelegate get_connection(connection_id), to: ConnectionCrud
-
-  @doc """
   Gets a connection by ID, scoped to a specific scene. Returns `nil` if not found.
   """
   @spec get_connection(integer(), integer()) :: connection() | nil
   defdelegate get_connection(scene_id, connection_id), to: ConnectionCrud
-
-  @doc """
-  Gets a connection by ID with pins preloaded. Raises if not found.
-  """
-  @spec get_connection!(integer()) :: connection()
-  defdelegate get_connection!(connection_id), to: ConnectionCrud
 
   @doc """
   Gets a connection by ID, scoped to a specific scene. Raises if not found.
@@ -498,14 +486,8 @@ defmodule Storyarn.Scenes do
   @spec list_annotations(integer()) :: [annotation()]
   defdelegate list_annotations(scene_id), to: AnnotationCrud
 
-  @spec get_annotation(integer()) :: annotation() | nil
-  defdelegate get_annotation(annotation_id), to: AnnotationCrud
-
   @spec get_annotation(integer(), integer()) :: annotation() | nil
   defdelegate get_annotation(scene_id, annotation_id), to: AnnotationCrud
-
-  @spec get_annotation!(integer()) :: annotation()
-  defdelegate get_annotation!(annotation_id), to: AnnotationCrud
 
   @spec get_annotation!(integer(), integer()) :: annotation()
   defdelegate get_annotation!(scene_id, annotation_id), to: AnnotationCrud

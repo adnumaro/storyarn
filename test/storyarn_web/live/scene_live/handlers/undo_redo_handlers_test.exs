@@ -513,7 +513,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlersTest do
         "value" => "Path B"
       })
 
-      assert Scenes.get_connection!(conn_rec.id).label == "Path B"
+      assert Scenes.get_connection!(ctx.scene.id, conn_rec.id).label == "Path B"
 
       # Undo
       render_hook(view, "undo", %{})
@@ -543,7 +543,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlersTest do
         "value" => "Final"
       })
 
-      assert Scenes.get_annotation!(ann.id).text == "Final"
+      assert Scenes.get_annotation!(ctx.scene.id, ann.id).text == "Final"
 
       # Undo
       render_hook(view, "undo", %{})
@@ -609,7 +609,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlersTest do
         "position_y" => 75.0
       })
 
-      moved = Scenes.get_annotation!(ann.id)
+      moved = Scenes.get_annotation!(ctx.scene.id, ann.id)
       assert moved.position_x == 65.0
       assert moved.position_y == 75.0
 
@@ -848,7 +848,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlersTest do
         "waypoints" => new_waypoints
       })
 
-      updated = Scenes.get_connection!(conn_rec.id)
+      updated = Scenes.get_connection!(ctx.scene.id, conn_rec.id)
       assert length(updated.waypoints) == 2
 
       # Undo

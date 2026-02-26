@@ -106,7 +106,7 @@ defmodule Storyarn.Assets.Asset do
     |> validate_inclusion(:content_type, @allowed_content_types,
       message: "is not a supported file type"
     )
-    |> validate_number(:size, greater_than: 0)
+    |> validate_number(:size, greater_than: 0, less_than_or_equal_to: 20_000_000)
     |> unique_constraint(:key, name: :assets_project_id_key_index)
   end
 

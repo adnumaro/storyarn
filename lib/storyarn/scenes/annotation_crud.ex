@@ -14,14 +14,6 @@ defmodule Storyarn.Scenes.AnnotationCrud do
     |> Repo.all()
   end
 
-  def get_annotation(annotation_id) do
-    Repo.get(SceneAnnotation, annotation_id)
-  end
-
-  def get_annotation!(annotation_id) do
-    Repo.get!(SceneAnnotation, annotation_id)
-  end
-
   def get_annotation(scene_id, annotation_id) do
     from(a in SceneAnnotation, where: a.scene_id == ^scene_id and a.id == ^annotation_id)
     |> Repo.one()

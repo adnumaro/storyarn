@@ -17,20 +17,8 @@ defmodule Storyarn.Scenes.ConnectionCrud do
     |> Repo.all()
   end
 
-  def get_connection(connection_id) do
-    SceneConnection
-    |> Repo.get(connection_id)
-    |> Repo.preload([:from_pin, :to_pin])
-  end
-
-  def get_connection!(connection_id) do
-    SceneConnection
-    |> Repo.get!(connection_id)
-    |> Repo.preload([:from_pin, :to_pin])
-  end
-
   @doc """
-  Gets a connection by ID, scoped to a specific map. Returns `nil` if not found.
+  Gets a connection by ID, scoped to a specific scene. Returns `nil` if not found.
   """
   def get_connection(scene_id, connection_id) do
     from(c in SceneConnection,

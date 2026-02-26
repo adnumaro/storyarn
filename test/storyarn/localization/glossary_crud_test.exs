@@ -166,13 +166,16 @@ defmodule Storyarn.Localization.GlossaryCrudTest do
           target_locale: "es"
         })
 
-      result = Localization.get_glossary_entry(entry.id)
+      result = Localization.get_glossary_entry(entry.project_id, entry.id)
       assert result.id == entry.id
       assert result.source_term == "mana"
     end
 
-    test "get_glossary_entry/1 returns nil for non-existent id" do
-      assert Localization.get_glossary_entry(-1) == nil
+    test "get_glossary_entry/2 returns nil for non-existent id" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert Localization.get_glossary_entry(project.id, -1) == nil
     end
 
     test "list_glossary_entries/2 searches by source and target term" do
