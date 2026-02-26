@@ -26,9 +26,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   @doc "Persists a column width after drag-resize. No reload, no save indicator."
   def handle_resize_column(params, socket) do
     column_id = ContentTabHelpers.to_integer(params["column-id"])
-    column = Sheets.get_table_column!(column_id)
 
-    with :ok <- verify_column_ownership(socket, column),
+    with {:ok, block_id} <- find_block_id_for_column(socket, column_id),
+         column <- Sheets.get_table_column!(block_id, column_id),
          {:ok, width} <- sanitize_width(params["width"]) do
       new_config = Map.put(column.config || %{}, "width", width)
 
@@ -38,7 +38,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
       end
     else
       :invalid_width -> {:noreply, socket}
-      other -> other
+      :not_found -> {:noreply, err(socket, :column_update)}
     end
   end
 
@@ -173,14 +173,19 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   def handle_rename_column(params, socket, helpers) do
     column_id = ContentTabHelpers.to_integer(params["column-id"])
     new_name = String.trim(params["value"] || "")
-    column = Sheets.get_table_column!(column_id)
 
-    with :ok <- verify_column_ownership(socket, column) do
-      if new_name == "" or new_name == column.name do
-        {:noreply, socket}
-      else
-        do_rename_column(column, new_name, socket, helpers)
-      end
+    case find_block_id_for_column(socket, column_id) do
+      {:ok, block_id} ->
+        column = Sheets.get_table_column!(block_id, column_id)
+
+        if new_name == "" or new_name == column.name do
+          {:noreply, socket}
+        else
+          do_rename_column(column, new_name, socket, helpers)
+        end
+
+      :not_found ->
+        {:noreply, err(socket, :column_update)}
     end
   end
 
@@ -188,66 +193,82 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   def handle_change_column_type(params, socket, helpers) do
     column_id = ContentTabHelpers.to_integer(params["column-id"])
     new_type = params["new-type"]
-    column = Sheets.get_table_column!(column_id)
 
-    with :ok <- verify_column_ownership(socket, column) do
-      do_change_column_type(column, new_type, socket, helpers)
+    case find_block_id_for_column(socket, column_id) do
+      {:ok, block_id} ->
+        column = Sheets.get_table_column!(block_id, column_id)
+        do_change_column_type(column, new_type, socket, helpers)
+
+      :not_found ->
+        {:noreply, err(socket, :column_update)}
     end
   end
 
   @doc "Toggles the is_constant flag on a column."
   def handle_toggle_column_constant(params, socket, helpers) do
     column_id = ContentTabHelpers.to_integer(params["column-id"])
-    column = Sheets.get_table_column!(column_id)
 
-    with :ok <- verify_column_ownership(socket, column) do
-      prev = column.is_constant
-      new_val = !prev
+    case find_block_id_for_column(socket, column_id) do
+      {:ok, block_id} ->
+        column = Sheets.get_table_column!(block_id, column_id)
+        prev = column.is_constant
+        new_val = !prev
 
-      case Sheets.update_table_column(column, %{is_constant: new_val}) do
-        {:ok, _} ->
-          helpers.push_undo.(
-            {:toggle_column_flag, column.block_id, column.id, :is_constant, prev, new_val}
-          )
+        case Sheets.update_table_column(column, %{is_constant: new_val}) do
+          {:ok, _} ->
+            helpers.push_undo.(
+              {:toggle_column_flag, column.block_id, column.id, :is_constant, prev, new_val}
+            )
 
-          save_and_reload(socket, helpers)
+            save_and_reload(socket, helpers)
 
-        {:error, _} ->
-          {:noreply, err(socket, :column_update)}
-      end
+          {:error, _} ->
+            {:noreply, err(socket, :column_update)}
+        end
+
+      :not_found ->
+        {:noreply, err(socket, :column_update)}
     end
   end
 
   @doc "Toggles the required flag on a column."
   def handle_toggle_column_required(params, socket, helpers) do
     column_id = ContentTabHelpers.to_integer(params["column-id"])
-    column = Sheets.get_table_column!(column_id)
 
-    with :ok <- verify_column_ownership(socket, column) do
-      prev = column.required
-      new_val = !prev
+    case find_block_id_for_column(socket, column_id) do
+      {:ok, block_id} ->
+        column = Sheets.get_table_column!(block_id, column_id)
+        prev = column.required
+        new_val = !prev
 
-      case Sheets.update_table_column(column, %{required: new_val}) do
-        {:ok, _} ->
-          helpers.push_undo.(
-            {:toggle_column_flag, column.block_id, column.id, :required, prev, new_val}
-          )
+        case Sheets.update_table_column(column, %{required: new_val}) do
+          {:ok, _} ->
+            helpers.push_undo.(
+              {:toggle_column_flag, column.block_id, column.id, :required, prev, new_val}
+            )
 
-          save_and_reload(socket, helpers)
+            save_and_reload(socket, helpers)
 
-        {:error, _} ->
-          {:noreply, err(socket, :column_update)}
-      end
+          {:error, _} ->
+            {:noreply, err(socket, :column_update)}
+        end
+
+      :not_found ->
+        {:noreply, err(socket, :column_update)}
     end
   end
 
   @doc "Deletes a table column directly."
   def handle_delete_column(params, socket, helpers) do
     column_id = ContentTabHelpers.to_integer(params["column-id"])
-    column = Sheets.get_table_column!(column_id)
 
-    with :ok <- verify_column_ownership(socket, column) do
-      do_delete_column(column, socket, helpers)
+    case find_block_id_for_column(socket, column_id) do
+      {:ok, block_id} ->
+        column = Sheets.get_table_column!(block_id, column_id)
+        do_delete_column(column, socket, helpers)
+
+      :not_found ->
+        {:noreply, err(socket, :column_update)}
     end
   end
 
@@ -315,10 +336,14 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   @doc "Toggles the multiple flag on a reference column."
   def handle_toggle_reference_multiple(params, socket, helpers) do
     column_id = ContentTabHelpers.to_integer(params["column-id"])
-    column = Sheets.get_table_column!(column_id)
 
-    with :ok <- verify_column_ownership(socket, column) do
-      do_toggle_reference_multiple(column, socket, helpers)
+    case find_block_id_for_column(socket, column_id) do
+      {:ok, block_id} ->
+        column = Sheets.get_table_column!(block_id, column_id)
+        do_toggle_reference_multiple(column, socket, helpers)
+
+      :not_found ->
+        {:noreply, err(socket, :column_update)}
     end
   end
 
@@ -331,10 +356,10 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     column_id = ContentTabHelpers.to_integer(params["column-id"])
     field = params["field"]
     value = params["value"]
-    column = Sheets.get_table_column!(column_id)
 
-    with :ok <- verify_column_ownership(socket, column),
+    with {:ok, block_id} <- find_block_id_for_column(socket, column_id),
          true <- field in ~w(min max step) do
+      column = Sheets.get_table_column!(block_id, column_id)
       prev_config = column.config
       parsed = Sheets.number_parse_constraint(value)
       new_config = Map.put(prev_config || %{}, field, parsed)
@@ -352,7 +377,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
       end
     else
       false -> {:noreply, socket}
-      other -> other
+      :not_found -> {:noreply, err(socket, :column_update)}
     end
   end
 
@@ -437,10 +462,13 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     if label == "" do
       {:noreply, socket}
     else
-      column = Sheets.get_table_column!(column_id)
+      case find_block_id_for_column(socket, column_id) do
+        {:ok, block_id} ->
+          column = Sheets.get_table_column!(block_id, column_id)
+          do_add_cell_option(column, row_id, column_slug, label, socket, helpers)
 
-      with :ok <- verify_column_ownership(socket, column) do
-        do_add_cell_option(column, row_id, column_slug, label, socket, helpers)
+        :not_found ->
+          {:noreply, err(socket, :column_update)}
       end
     end
   end
@@ -457,10 +485,13 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     if label == "" do
       {:noreply, socket}
     else
-      column = Sheets.get_table_column!(column_id)
+      case find_block_id_for_column(socket, column_id) do
+        {:ok, block_id} ->
+          column = Sheets.get_table_column!(block_id, column_id)
+          do_add_column_option(column, label, socket, helpers)
 
-      with :ok <- verify_column_ownership(socket, column) do
-        do_add_column_option(column, label, socket, helpers)
+        :not_found ->
+          {:noreply, err(socket, :column_update)}
       end
     end
   end
@@ -469,25 +500,29 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   def handle_remove_column_option(params, socket, helpers) do
     column_id = ContentTabHelpers.to_integer(params["column-id"])
     key = params["key"]
-    column = Sheets.get_table_column!(column_id)
 
-    with :ok <- verify_column_ownership(socket, column) do
-      prev_config = column.config
-      existing_options = (prev_config || %{})["options"] || []
-      new_options = Enum.reject(existing_options, fn opt -> opt["key"] == key end)
-      new_config = Map.put(prev_config || %{}, "options", new_options)
+    case find_block_id_for_column(socket, column_id) do
+      {:ok, block_id} ->
+        column = Sheets.get_table_column!(block_id, column_id)
+        prev_config = column.config
+        existing_options = (prev_config || %{})["options"] || []
+        new_options = Enum.reject(existing_options, fn opt -> opt["key"] == key end)
+        new_config = Map.put(prev_config || %{}, "options", new_options)
 
-      case Sheets.update_table_column(column, %{config: new_config}) do
-        {:ok, _} ->
-          helpers.push_undo.(
-            {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
-          )
+        case Sheets.update_table_column(column, %{config: new_config}) do
+          {:ok, _} ->
+            helpers.push_undo.(
+              {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
+            )
 
-          save_and_reload(socket, helpers)
+            save_and_reload(socket, helpers)
 
-        {:error, _} ->
-          {:noreply, err(socket, :column_update)}
-      end
+          {:error, _} ->
+            {:noreply, err(socket, :column_update)}
+        end
+
+      :not_found ->
+        {:noreply, err(socket, :column_update)}
     end
   end
 
@@ -496,31 +531,35 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     column_id = ContentTabHelpers.to_integer(params["column-id"])
     index = ContentTabHelpers.to_integer(params["index"])
     new_value = String.trim(params["value"] || "")
-    column = Sheets.get_table_column!(column_id)
 
-    with :ok <- verify_column_ownership(socket, column) do
-      prev_config = column.config
-      existing_options = (prev_config || %{})["options"] || []
+    case find_block_id_for_column(socket, column_id) do
+      {:ok, block_id} ->
+        column = Sheets.get_table_column!(block_id, column_id)
+        prev_config = column.config
+        existing_options = (prev_config || %{})["options"] || []
 
-      new_options =
-        List.update_at(existing_options, index, fn opt ->
-          %{"key" => slugify(new_value), "value" => new_value}
-          |> Map.merge(Map.drop(opt, ["key", "value"]))
-        end)
+        new_options =
+          List.update_at(existing_options, index, fn opt ->
+            %{"key" => slugify(new_value), "value" => new_value}
+            |> Map.merge(Map.drop(opt, ["key", "value"]))
+          end)
 
-      new_config = Map.put(prev_config || %{}, "options", new_options)
+        new_config = Map.put(prev_config || %{}, "options", new_options)
 
-      case Sheets.update_table_column(column, %{config: new_config}) do
-        {:ok, _} ->
-          helpers.push_undo.(
-            {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
-          )
+        case Sheets.update_table_column(column, %{config: new_config}) do
+          {:ok, _} ->
+            helpers.push_undo.(
+              {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
+            )
 
-          save_and_reload(socket, helpers)
+            save_and_reload(socket, helpers)
 
-        {:error, _} ->
-          {:noreply, err(socket, :column_update)}
-      end
+          {:error, _} ->
+            {:noreply, err(socket, :column_update)}
+        end
+
+      :not_found ->
+        {:noreply, err(socket, :column_update)}
     end
   end
 
@@ -528,10 +567,15 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   # Private helpers — IDOR verification
   # ===========================================================================
 
-  defp verify_column_ownership(socket, column) do
-    if Map.has_key?(socket.assigns.table_data, column.block_id),
-      do: :ok,
-      else: {:noreply, err(socket, :column_update)}
+  # Finds the block_id that owns a column by checking the in-memory table_data
+  # (which is already project-scoped). Returns {:ok, block_id} or :not_found.
+  defp find_block_id_for_column(socket, column_id) do
+    result =
+      Enum.find_value(socket.assigns.table_data, fn {block_id, %{columns: columns}} ->
+        if Enum.any?(columns, &(&1.id == column_id)), do: block_id
+      end)
+
+    if result, do: {:ok, result}, else: :not_found
   end
 
   defp verify_row_ownership(socket, row) do
