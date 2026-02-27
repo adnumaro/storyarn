@@ -1,3 +1,67 @@
+# Test LiveView that hosts the AssetUpload component
+# Defined before the test module to avoid async compilation race conditions
+defmodule AssetUploadTestLive do
+  use Phoenix.LiveView
+
+  def mount(_params, session, socket) do
+    project = Storyarn.Projects.get_project!(session["project_id"])
+    user = Storyarn.Accounts.get_user!(session["user_id"])
+
+    {:ok,
+     assign(socket,
+       project: project,
+       current_user: user,
+       uploaded_asset: nil
+     )}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <.live_component
+      module={StoryarnWeb.Components.AssetUpload}
+      id="test-upload"
+      project={@project}
+      current_user={@current_user}
+      on_upload={fn asset -> send(self(), {:asset_uploaded, asset}) end}
+    />
+    """
+  end
+
+  def handle_info({:asset_uploaded, asset}, socket) do
+    {:noreply, assign(socket, :uploaded_asset, asset)}
+  end
+end
+
+defmodule AssetUploadTestLiveCustom do
+  use Phoenix.LiveView
+
+  def mount(_params, session, socket) do
+    project = Storyarn.Projects.get_project!(session["project_id"])
+    user = Storyarn.Accounts.get_user!(session["user_id"])
+
+    {:ok,
+     assign(socket,
+       project: project,
+       current_user: user
+     )}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <.live_component
+      module={StoryarnWeb.Components.AssetUpload}
+      id="test-upload-custom"
+      project={@project}
+      current_user={@current_user}
+      on_upload={fn _asset -> :ok end}
+      accept={~w(audio/mpeg audio/wav)}
+      max_entries={3}
+      max_file_size={5 * 1024 * 1024}
+    />
+    """
+  end
+end
+
 defmodule StoryarnWeb.Components.AssetUploadTest do
   use StoryarnWeb.ConnCase, async: true
 
@@ -219,68 +283,5 @@ defmodule StoryarnWeb.Components.AssetUploadTest do
     <<137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 2,
       0, 0, 0, 144, 119, 83, 222, 0, 0, 0, 12, 73, 68, 65, 84, 8, 215, 99, 248, 207, 192, 0, 0, 0,
       2, 0, 1, 226, 33, 188, 51, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130>>
-  end
-end
-
-# Test LiveView that hosts the AssetUpload component
-defmodule AssetUploadTestLive do
-  use Phoenix.LiveView
-
-  def mount(_params, session, socket) do
-    project = Storyarn.Projects.get_project!(session["project_id"])
-    user = Storyarn.Accounts.get_user!(session["user_id"])
-
-    {:ok,
-     assign(socket,
-       project: project,
-       current_user: user,
-       uploaded_asset: nil
-     )}
-  end
-
-  def render(assigns) do
-    ~H"""
-    <.live_component
-      module={StoryarnWeb.Components.AssetUpload}
-      id="test-upload"
-      project={@project}
-      current_user={@current_user}
-      on_upload={fn asset -> send(self(), {:asset_uploaded, asset}) end}
-    />
-    """
-  end
-
-  def handle_info({:asset_uploaded, asset}, socket) do
-    {:noreply, assign(socket, :uploaded_asset, asset)}
-  end
-end
-
-defmodule AssetUploadTestLiveCustom do
-  use Phoenix.LiveView
-
-  def mount(_params, session, socket) do
-    project = Storyarn.Projects.get_project!(session["project_id"])
-    user = Storyarn.Accounts.get_user!(session["user_id"])
-
-    {:ok,
-     assign(socket,
-       project: project,
-       current_user: user
-     )}
-  end
-
-  def render(assigns) do
-    ~H"""
-    <.live_component
-      module={StoryarnWeb.Components.AssetUpload}
-      id="test-upload-custom"
-      project={@project}
-      current_user={@current_user}
-      on_upload={fn _asset -> :ok end}
-      accept={~w(audio/mpeg audio/wav)}
-      max_entries={3}
-      max_file_size={5 * 1024 * 1024}
-    />
-    """
   end
 end
