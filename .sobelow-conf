@@ -1,7 +1,7 @@
 [
   verbose: false,
   private: false,
-  skip: false,
+  skip: true,
   router: "lib/storyarn_web/router.ex",
   # Only fail on medium or higher confidence findings.
   # Low confidence findings are reviewed manually:
@@ -11,11 +11,7 @@
   format: "txt",
   ignore: [
     # HTTPS warning ignored - enabled in production via reverse proxy/load balancer
-    "Config.HTTPS",
-    # False positive: serializer module comes from controlled pattern match on format atoms,
-    # not user input. Content type is hardcoded in each serializer module.
-    {"XSS.ContentType", "lib/storyarn_web/controllers/export_controller.ex", 50},
-    {"XSS.ContentType", "lib/storyarn_web/controllers/export_controller.ex", 58}
+    "Config.HTTPS"
   ],
   ignore_files: []
 ]

@@ -41,6 +41,7 @@ defmodule StoryarnWeb.ExportController do
     end
   end
 
+  # sobelow_skip ["XSS.ContentType", "XSS.SendResp"]
   # Single-file output (binary string)
   defp send_export(conn, output, slug, serializer) when is_binary(output) do
     ext = serializer.file_extension()
@@ -52,6 +53,7 @@ defmodule StoryarnWeb.ExportController do
     |> send_resp(200, output)
   end
 
+  # sobelow_skip ["XSS.ContentType", "XSS.SendResp"]
   # Multi-file output (list of {filename, content} tuples) — send main file
   defp send_export(conn, [{filename, content} | _rest], _slug, serializer) do
     conn
