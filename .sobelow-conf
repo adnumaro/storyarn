@@ -11,7 +11,11 @@
   format: "txt",
   ignore: [
     # HTTPS warning ignored - enabled in production via reverse proxy/load balancer
-    "Config.HTTPS"
+    "Config.HTTPS",
+    # False positive: serializer module comes from controlled pattern match on format atoms,
+    # not user input. Content type is hardcoded in each serializer module.
+    {"XSS.ContentType", "lib/storyarn_web/controllers/export_controller.ex", 50},
+    {"XSS.ContentType", "lib/storyarn_web/controllers/export_controller.ex", 58}
   ],
   ignore_files: []
 ]
