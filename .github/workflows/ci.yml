@@ -13,7 +13,7 @@ env:
 
 jobs:
   test:
-    name: Build and Test
+    name: Lint + Test
     runs-on: ubuntu-latest
 
     services:
@@ -51,6 +51,13 @@ jobs:
           elixir-version: ${{ env.ELIXIR_VERSION }}
           otp-version: ${{ env.OTP_VERSION }}
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: assets/package-lock.json
+
       - name: Cache deps
         uses: actions/cache@v4
         with:
@@ -68,13 +75,17 @@ jobs:
             ${{ runner.os }}-build-${{ env.MIX_ENV }}-
             ${{ runner.os }}-build-
 
-      - name: Install dependencies
+      - name: Install Elixir dependencies
         run: mix deps.get
+
+      - name: Install JS dependencies
+        run: npm ci
+        working-directory: assets
 
       - name: Compile (warnings as errors)
         run: mix compile --warnings-as-errors
 
-      - name: Check formatting
+      - name: Check Elixir formatting
         run: mix format --check-formatted
 
       - name: Run Credo
@@ -83,18 +94,57 @@ jobs:
       - name: Run Sobelow (security)
         run: mix sobelow --config
 
-      - name: Run tests
+      - name: Run JS lint (Biome)
+        run: npm run check
+        working-directory: assets
+
+      - name: Run Elixir tests
         run: mix test
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/storyarn_test
 
-  js-lint:
-    name: JavaScript Lint
+      - name: Run JS tests (Vitest)
+        run: npm test
+        working-directory: assets
+
+  e2e:
+    name: E2E Tests (Playwright)
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: storyarn_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -103,16 +153,50 @@ jobs:
           cache: "npm"
           cache-dependency-path: assets/package-lock.json
 
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-
+
+      - name: Cache _build
+        uses: actions/cache@v4
+        with:
+          path: _build
+          key: ${{ runner.os }}-build-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.MIX_ENV }}-
+            ${{ runner.os }}-build-
+
+      - name: Install Elixir dependencies
+        run: mix deps.get
+
       - name: Install JS dependencies
         run: npm ci
         working-directory: assets
 
-      - name: Run Biome check
-        run: npm run check
+      - name: Install Playwright browsers
+        run: npm exec -- playwright install chromium --with-deps
         working-directory: assets
 
+      - name: Compile
+        run: mix compile
+
+      - name: Setup database
+        run: mix ecto.create && mix ecto.migrate
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/storyarn_test
+
+      - name: Run E2E tests
+        run: mix test.e2e
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/storyarn_test
+          PLAYWRIGHT_HEADLESS: true
+
   validate-exports:
-    name: Validate Export Formats (ysc)
+    name: Validate Yarn Exports (ysc)
     runs-on: ubuntu-latest
 
     services:
@@ -205,91 +289,3 @@ jobs:
         run: mix test --only ysc_validation
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/storyarn_test
-
-  e2e:
-    name: E2E Tests (Playwright)
-    runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: storyarn_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
-        with:
-          elixir-version: ${{ env.ELIXIR_VERSION }}
-          otp-version: ${{ env.OTP_VERSION }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: assets/package-lock.json
-
-      - name: Cache deps
-        uses: actions/cache@v4
-        with:
-          path: deps
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-mix-
-
-      - name: Cache _build
-        uses: actions/cache@v4
-        with:
-          path: _build
-          key: ${{ runner.os }}-build-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.MIX_ENV }}-
-            ${{ runner.os }}-build-
-
-      - name: Install dependencies
-        run: mix deps.get
-
-      - name: Install JS dependencies
-        run: npm ci
-        working-directory: assets
-
-      - name: Install Playwright browsers
-        run: npm exec -- playwright install chromium --with-deps
-        working-directory: assets
-
-      - name: Compile
-        run: mix compile
-
-      - name: Setup database
-        run: mix ecto.create && mix ecto.migrate
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/storyarn_test
-
-      - name: Run E2E tests
-        run: mix test.e2e
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/storyarn_test
-          PLAYWRIGHT_HEADLESS: true
