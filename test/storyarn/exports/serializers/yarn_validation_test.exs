@@ -454,6 +454,243 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
   end
 
   # =============================================================================
+  # Audit bug regression tests
+  # These tests expose known bugs from the Yarn export audit.
+  # Each should FAIL until the corresponding bug is fixed.
+  # =============================================================================
+
+  describe "ysc compilation — audit bugs" do
+    setup [:create_project]
+
+    # C1: null does not exist in Yarn Spinner v2
+    test "is_nil condition compiles (C1 — null not valid in Yarn v2)", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Inventory"})
+
+      block_fixture(sheet, %{
+        type: "text",
+        config: %{"label" => "Weapon"},
+        value: %{"text" => ""}
+      })
+
+      flow = flow_fixture(project, %{name: "NilCheck"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{
+            "condition" =>
+              Jason.encode!(%{
+                "logic" => "all",
+                "rules" => [
+                  %{
+                    "sheet" => sheet.shortcut,
+                    "variable" => "weapon",
+                    "operator" => "is_nil"
+                  }
+                ]
+              }),
+            "cases" => [
+              %{"id" => "true", "value" => "true", "label" => "True"},
+              %{"id" => "false", "value" => "false", "label" => "False"}
+            ]
+          }
+        })
+
+      true_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "No weapon!", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      false_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Armed.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(flow, entry, condition)
+      connection_fixture(flow, condition, true_dialogue, %{source_pin: "true"})
+      connection_fixture(flow, condition, false_dialogue, %{source_pin: "false"})
+
+      source = yarn_source(export_files(project))
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected is_nil condition (C1):\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
+    # C1: set_if_unset also uses null
+    test "set_if_unset instruction compiles (C1 — null not valid in Yarn v2)", %{
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "Config"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Difficulty"},
+        value: %{"number" => 1}
+      })
+
+      flow = flow_fixture(project, %{name: "SetIfUnset"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      instruction =
+        node_fixture(flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "sheet" => sheet.shortcut,
+                "variable" => "difficulty",
+                "operator" => "set_if_unset",
+                "value" => "3"
+              }
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, instruction)
+
+      source = yarn_source(export_files(project))
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected set_if_unset (C1):\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
+    # C2: duplicate variable declarations across multiple flows in single-file mode
+    test "multiple flows with shared variables compile (C2 — duplicate declares)", %{
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "Player"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Health"},
+        value: %{"number" => 100}
+      })
+
+      block_fixture(sheet, %{
+        type: "boolean",
+        config: %{"label" => "Alive"},
+        value: %{"boolean" => true}
+      })
+
+      # Create 3 flows (<=5 = single-file mode) — all share the same variables
+      for name <- ["Intro", "Battle", "Ending"] do
+        flow = flow_fixture(project, %{name: name})
+        flow = reload_flow(flow)
+        entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+        dialogue =
+          node_fixture(flow, %{
+            type: "dialogue",
+            data: %{"text" => "#{name} scene.", "speaker_sheet_id" => nil, "responses" => []}
+          })
+
+        connection_fixture(flow, entry, dialogue)
+      end
+
+      source = yarn_source(export_files(project))
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected duplicate declarations (C2):\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
+    # H1: node titles starting with digits are invalid in Yarn
+    test "flow with digit-starting name compiles (H1 — titles must start with letter)", %{
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "1st Quest"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "The first quest!", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = yarn_source(export_files(project))
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected digit-starting title (H1):\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
+    # M1: multi-case conditions (3+ branches) produce multiple <<else>> blocks
+    test "condition with 3 cases compiles (M1 — multiple else blocks invalid)", %{
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "World"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Weather"},
+        value: %{"number" => 0}
+      })
+
+      flow = flow_fixture(project, %{name: "MultiCase"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{
+            "condition" =>
+              Jason.encode!(%{
+                "logic" => "all",
+                "rules" => [
+                  %{
+                    "sheet" => sheet.shortcut,
+                    "variable" => "weather",
+                    "operator" => "equals",
+                    "value" => "0"
+                  }
+                ]
+              }),
+            "cases" => [
+              %{"id" => "sunny", "value" => "sunny", "label" => "Sunny"},
+              %{"id" => "rainy", "value" => "rainy", "label" => "Rainy"},
+              %{"id" => "stormy", "value" => "stormy", "label" => "Stormy"}
+            ]
+          }
+        })
+
+      sunny_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Nice day!", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      rainy_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Bring umbrella.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      stormy_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Stay inside!", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(flow, entry, condition)
+      connection_fixture(flow, condition, sunny_dialogue, %{source_pin: "sunny"})
+      connection_fixture(flow, condition, rainy_dialogue, %{source_pin: "rainy"})
+      connection_fixture(flow, condition, stormy_dialogue, %{source_pin: "stormy"})
+
+      source = yarn_source(export_files(project))
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected 3-case condition (M1):\n#{inspect(YarnCompiler.validate(source))}"
+    end
+  end
+
+  # =============================================================================
   # Multi-file validation
   # =============================================================================
 
