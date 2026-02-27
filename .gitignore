@@ -68,3 +68,6 @@ priv/static/uploads/projects
 
 docs/game_references
 priv/static/images/temp
+
+.claude/plans
+.claude/audit
