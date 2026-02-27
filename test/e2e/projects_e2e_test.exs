@@ -7,25 +7,30 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
   Run with: mix test.e2e
   """
 
-  use PhoenixTest.Playwright.Case, async: false
+  use PhoenixTest.Playwright.Case, async: true
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Accounts
   alias Storyarn.Repo
 
   @moduletag :e2e
 
-  # Helper to authenticate via magic link
-  # The magic link sheet shows a form that requires clicking to complete login
-  # We verify login completed by checking for "Settings" link before returning
-  defp authenticate_user(conn, user) do
-    {token, _db_token} = generate_user_magic_link_token(user)
+  @session_options [
+    store: :cookie,
+    key: "_storyarn_key",
+    signing_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
+    encryption_salt:
+      Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt])
+  ]
 
-    conn
-    |> visit("/users/log-in/#{token}")
-    |> click_button("Keep me logged in on this device")
-    |> assert_has("a", text: "Settings")
+  # Authenticate by injecting a signed session cookie directly.
+  # This avoids the phx-trigger-action race condition from the magic link login flow.
+  defp authenticate(conn, user) do
+    token = Accounts.generate_user_session_token(user)
+
+    add_session_cookie(conn, [value: %{user_token: token}], @session_options)
   end
 
   describe "unauthenticated access" do
@@ -48,7 +53,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       workspace = Storyarn.Workspaces.get_default_workspace(user)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{workspace.slug}")
       |> assert_has("h1", text: workspace.name)
       |> assert_has("p", text: "No projects yet")
@@ -59,7 +64,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       project = project_fixture(user, %{name: "My Narrative Project"}) |> Repo.preload(:workspace)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}")
       |> assert_has("h3", text: project.name)
     end
@@ -69,7 +74,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       workspace = Storyarn.Workspaces.get_default_workspace(user)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{workspace.slug}")
       |> click_link("New Project")
       |> assert_has("h1", text: "New Project")
@@ -80,8 +85,9 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       workspace = Storyarn.Workspaces.get_default_workspace(user)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{workspace.slug}/projects/new")
+      |> assert_has("h1", text: "New Project")
       |> fill_in("Project Name", with: "My New Story")
       |> fill_in("Description", with: "A narrative adventure")
       |> click_button("Create Project")
@@ -98,7 +104,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
         |> Repo.preload(:workspace)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
       |> assert_has("h1", text: "Epic Tale")
     end
@@ -108,7 +114,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
       |> assert_has("a", text: "Settings")
     end
@@ -120,7 +126,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       project = project_fixture(user, %{name: "Settings Test"}) |> Repo.preload(:workspace)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
       |> assert_has("h1", text: "Project Settings")
       |> assert_has("h3", text: "Project Details")
@@ -131,8 +137,9 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       project = project_fixture(user, %{name: "Old Name"}) |> Repo.preload(:workspace)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
+      |> assert_has("h1", text: "Project Settings")
       |> fill_in("Project Name", with: "New Name")
       |> click_button("Save Changes")
       |> assert_has("p", text: "Project updated successfully")
@@ -143,7 +150,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
       |> assert_has("h3", text: "Team Members")
     end
@@ -153,7 +160,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
       |> assert_has("h4", text: "Invite a new member")
       |> assert_has("input[type=email]")
@@ -166,7 +173,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       membership_fixture(project, viewer, "viewer")
 
       conn
-      |> authenticate_user(viewer)
+      |> authenticate(viewer)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
       |> assert_path("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
     end
@@ -215,7 +222,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
         create_invitation_with_token(project, owner, "invitee@example.com", "editor")
 
       conn
-      |> authenticate_user(invitee)
+      |> authenticate(invitee)
       |> visit("/projects/invitations/#{token}")
       |> assert_has("button", text: "Accept Invitation")
       |> click_button("Accept Invitation")
@@ -231,26 +238,27 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
         create_invitation_with_token(project, owner, "invitee@example.com")
 
       conn
-      |> authenticate_user(other_user)
+      |> authenticate(other_user)
       |> visit("/projects/invitations/#{token}")
       |> assert_has("span", text: "This invitation was sent to")
     end
   end
 
-  describe "home sheet" do
-    test "renders landing sheet with login link", %{conn: conn} do
+  describe "home page" do
+    test "renders landing page for unauthenticated user", %{conn: conn} do
       conn
       |> visit("/")
-      |> assert_has("a", text: "Log in")
+      |> assert_has("h1", text: "Phoenix Framework")
     end
 
-    test "authenticated user sees settings link", %{conn: conn} do
+    test "authenticated user is redirected to workspace", %{conn: conn} do
       user = user_fixture()
+      workspace = Storyarn.Workspaces.get_default_workspace(user)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/")
-      |> assert_has("a", text: "Settings")
+      |> assert_path("/workspaces/#{workspace.slug}")
     end
   end
 end

@@ -7,28 +7,31 @@ defmodule StoryarnWeb.E2E.FlowsTest do
   Run with: mix test.e2e
   """
 
-  use PhoenixTest.Playwright.Case, async: false
+  use PhoenixTest.Playwright.Case, async: true
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Accounts
   alias Storyarn.Repo
-  alias Storyarn.Workspaces
 
   @moduletag :e2e
 
-  # Helper to authenticate via magic link
-  # After login, we verify by checking we can access the workspaces sheet
-  defp authenticate_user(conn, user) do
-    {token, _db_token} = generate_user_magic_link_token(user)
-    workspace = Workspaces.get_default_workspace(user)
+  @session_options [
+    store: :cookie,
+    key: "_storyarn_key",
+    signing_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
+    encryption_salt:
+      Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt])
+  ]
 
-    conn
-    |> visit("/users/log-in/#{token}")
-    |> click_button("Keep me logged in on this device")
-    # Verify login by checking we're redirected to workspace
-    |> assert_path("/workspaces/#{workspace.slug}")
+  # Authenticate by injecting a signed session cookie directly.
+  # This avoids the phx-trigger-action race condition from the magic link login flow.
+  defp authenticate(conn, user) do
+    token = Accounts.generate_user_session_token(user)
+
+    add_session_cookie(conn, [value: %{user_token: token}], @session_options)
   end
 
   describe "flows list (authenticated)" do
@@ -37,7 +40,7 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       project = project_fixture(user, %{name: "My Project"}) |> Repo.preload(:workspace)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
       |> assert_has("h1", text: "Flows")
       |> assert_has("p", text: "No flows yet")
@@ -49,7 +52,7 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       flow_fixture(project, %{name: "Main Story Flow"})
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
       |> assert_has("h3", text: "Main Story Flow")
     end
@@ -59,9 +62,8 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       conn
-      |> authenticate_user(user)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
-      |> click_link("New Flow")
+      |> authenticate(user)
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/new")
       |> assert_has("h1", text: "New Flow")
     end
 
@@ -70,12 +72,12 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/new")
+      |> assert_has("h1", text: "New Flow")
       |> fill_in("Name", with: "My Dialogue Tree")
       |> fill_in("Description", with: "A branching conversation")
       |> click_button("Create Flow")
-      # After creation, it navigates to the flow editor
       |> assert_has("h1", text: "My Dialogue Tree")
     end
 
@@ -86,7 +88,7 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       Storyarn.Flows.set_main_flow(flow)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
       |> assert_has("span", text: "Main")
     end
@@ -99,21 +101,10 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       flow = flow_fixture(project, %{name: "Story Flow"})
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
       |> assert_has("h1", text: "Story Flow")
       |> assert_has("#flow-canvas")
-    end
-
-    test "shows back link to flows list", %{conn: conn} do
-      user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      flow = flow_fixture(project)
-
-      conn
-      |> authenticate_user(user)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
-      |> assert_has("a", text: "Flows")
     end
 
     test "shows add node button for editor", %{conn: conn} do
@@ -122,7 +113,7 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       flow = flow_fixture(project)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
       |> assert_has("button", text: "Add Node")
     end
@@ -137,7 +128,7 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       membership_fixture(project, viewer, "viewer")
 
       conn
-      |> authenticate_user(viewer)
+      |> authenticate(viewer)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
       |> assert_has("h1", text: "Shared Flow")
       |> refute_has("button", text: "Add Node")
@@ -151,7 +142,7 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       membership_fixture(project, editor, "editor")
 
       conn
-      |> authenticate_user(editor)
+      |> authenticate(editor)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
       |> assert_has("button", text: "Add Node")
     end

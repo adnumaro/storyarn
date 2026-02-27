@@ -95,10 +95,15 @@ defmodule StoryarnWeb.Router do
         :export
 
     live_session :require_authenticated_user,
-      on_mount: [
-        {StoryarnWeb.UserAuth, :require_authenticated},
-        {StoryarnWeb.UserAuth, :load_workspaces}
-      ] do
+      on_mount:
+        if(Application.compile_env(:storyarn, :sql_sandbox),
+          do: [StoryarnWeb.LiveSandbox],
+          else: []
+        ) ++
+          [
+            {StoryarnWeb.UserAuth, :require_authenticated},
+            {StoryarnWeb.UserAuth, :load_workspaces}
+          ] do
       # User Settings (Linear-style)
       live "/users/settings", SettingsLive.Profile, :edit
       live "/users/settings/security", SettingsLive.Security, :edit
@@ -197,10 +202,15 @@ defmodule StoryarnWeb.Router do
     pipe_through [:browser]
 
     live_session :current_user,
-      on_mount: [
-        {StoryarnWeb.UserAuth, :mount_current_scope},
-        {StoryarnWeb.UserAuth, :load_workspaces}
-      ] do
+      on_mount:
+        if(Application.compile_env(:storyarn, :sql_sandbox),
+          do: [StoryarnWeb.LiveSandbox],
+          else: []
+        ) ++
+          [
+            {StoryarnWeb.UserAuth, :mount_current_scope},
+            {StoryarnWeb.UserAuth, :load_workspaces}
+          ] do
       live "/users/register", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
       live "/users/log-in/:token", UserLive.Confirmation, :new

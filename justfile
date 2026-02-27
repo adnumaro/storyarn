@@ -41,6 +41,10 @@ js-test-watch:
 test:
     mix test
 
+# Run E2E tests (Playwright)
+e2e:
+    mix test.e2e
+
 # Run Credo strict
 credo:
     mix credo --strict
@@ -51,9 +55,10 @@ server:
 
 # ─── Quality ────────────────────────────────────────────────────
 
-# Run all quality checks: Biome fix, Credo strict, Elixir tests, JS tests
+# Run all quality checks: Biome fix, Credo strict, Elixir tests, JS tests, E2E tests
 quality:
     cd assets && npx biome check --write js/
     mix credo --strict
     mix test
+    mix test.e2e
     cd assets && ./node_modules/.bin/vitest run

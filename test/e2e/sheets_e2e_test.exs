@@ -7,28 +7,31 @@ defmodule StoryarnWeb.E2E.SheetsTest do
   Run with: mix test.e2e
   """
 
-  use PhoenixTest.Playwright.Case, async: false
+  use PhoenixTest.Playwright.Case, async: true
 
   import Storyarn.AccountsFixtures
   import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Accounts
   alias Storyarn.Repo
-  alias Storyarn.Workspaces
 
   @moduletag :e2e
 
-  # Helper to authenticate via magic link
-  # After login, we verify by checking we can access the workspaces sheet
-  defp authenticate_user(conn, user) do
-    {token, _db_token} = generate_user_magic_link_token(user)
-    workspace = Workspaces.get_default_workspace(user)
+  @session_options [
+    store: :cookie,
+    key: "_storyarn_key",
+    signing_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
+    encryption_salt:
+      Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt])
+  ]
 
-    conn
-    |> visit("/users/log-in/#{token}")
-    |> click_button("Keep me logged in on this device")
-    # Verify login by checking we're redirected to workspace
-    |> assert_path("/workspaces/#{workspace.slug}")
+  # Authenticate by injecting a signed session cookie directly.
+  # This avoids the phx-trigger-action race condition from the magic link login flow.
+  defp authenticate(conn, user) do
+    token = Accounts.generate_user_session_token(user)
+
+    add_session_cookie(conn, [value: %{user_token: token}], @session_options)
   end
 
   describe "sheets list (authenticated)" do
@@ -37,7 +40,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       project = project_fixture(user, %{name: "My Project"}) |> Repo.preload(:workspace)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
       |> assert_has("h1", text: "Sheets")
       |> assert_has("p", text: "No sheets yet")
@@ -49,34 +52,21 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       sheet_fixture(project, %{name: "Character Sheet"})
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
       |> assert_has("h3", text: "Character Sheet")
     end
 
-    test "can open new sheet modal", %{conn: conn} do
+    test "can create a new sheet via sidebar button", %{conn: conn} do
       user = user_fixture()
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
       |> click_button("New Sheet")
-      |> assert_has("h1", text: "New Sheet")
-    end
-
-    test "can create a new sheet", %{conn: conn} do
-      user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
-
-      conn
-      |> authenticate_user(user)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
-      |> click_button("New Sheet")
-      |> fill_in("Name", with: "Hero Character")
-      |> click_button("Create Sheet")
-      # After creation, it navigates to the sheet detail
-      |> assert_has("h1", text: "Hero Character")
+      # Sheet is created directly with default name and navigates to detail
+      |> assert_has("h1", text: "Untitled")
     end
 
     test "shows subsheet count on parent sheets", %{conn: conn} do
@@ -87,7 +77,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       sheet_fixture(project, %{name: "Villain", parent_id: parent.id})
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
       |> assert_has("h3", text: "Characters")
       |> assert_has("p", text: "2 subsheets")
@@ -101,7 +91,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       sheet = sheet_fixture(project, %{name: "World Settings"})
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit(
         "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
       )
@@ -114,7 +104,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       sheet = sheet_fixture(project)
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit(
         "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
       )
@@ -128,7 +118,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       child = sheet_fixture(project, %{name: "Main Hero", parent_id: parent.id})
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit(
         "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{child.id}"
       )
@@ -146,7 +136,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       membership_fixture(project, viewer, "viewer")
 
       conn
-      |> authenticate_user(viewer)
+      |> authenticate(viewer)
       |> visit(
         "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
       )
@@ -162,7 +152,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       membership_fixture(project, editor, "editor")
 
       conn
-      |> authenticate_user(editor)
+      |> authenticate(editor)
       |> visit(
         "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
       )
@@ -183,7 +173,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       })
 
       conn
-      |> authenticate_user(user)
+      |> authenticate(user)
       |> visit(
         "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
       )
