@@ -6,7 +6,7 @@ defmodule StoryarnWeb.Router do
   # Content Security Policy
   # Uses hash for the minimal inline theme script to avoid FOUC
   # 'unsafe-inline' kept for styles (Tailwind dynamic classes)
-  @csp_theme_hash "sha256-6CXaPRQcvY3uuxgDq5301jz8AUYHWysV03bGOw7axQk="
+  @csp_theme_hash "sha256-7iNU1myL14qKRh0R+cX+kTMGRQbzBP60jwUPVTiyh0U="
   @csp_policy "default-src 'self'; " <>
                 "script-src 'self' '#{@csp_theme_hash}'; " <>
                 "style-src 'self' 'unsafe-inline'; " <>

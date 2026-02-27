@@ -20,7 +20,8 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
   @session_options [
     store: :cookie,
     key: "_storyarn_key",
-    signing_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
+    signing_salt:
+      Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
     encryption_salt:
       Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt])
   ]
