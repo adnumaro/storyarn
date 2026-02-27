@@ -647,7 +647,6 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       assert el.data["condition"]["logic"] == "all"
       assert length(el.data["condition"]["rules"]) == 1
     end
-
   end
 
   # -------------------------------------------------------------------------

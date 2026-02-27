@@ -1183,7 +1183,6 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
       blocks = Sheets.list_blocks(sheet.id)
       assert length(blocks) == 1
     end
-
   end
 
   # ===========================================================================

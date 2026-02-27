@@ -623,5 +623,4 @@ defmodule Storyarn.ScreenplaysTest do
       assert "scene_heading" in types
     end
   end
-
 end

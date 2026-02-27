@@ -103,7 +103,8 @@ defmodule Storyarn.RateLimiterTest do
       try do
         assert RateLimiter.backend() == Storyarn.RateLimiter.RedisBackend
       after
-        if original, do: Application.put_env(:storyarn, :rate_limiter_backend, original),
+        if original,
+          do: Application.put_env(:storyarn, :rate_limiter_backend, original),
           else: Application.delete_env(:storyarn, :rate_limiter_backend)
       end
     end
@@ -125,10 +126,10 @@ defmodule Storyarn.RateLimiterTest do
         assert module == Storyarn.RateLimiter.RedisBackend
         assert Keyword.has_key?(opts, :url)
       after
-        if original, do: Application.put_env(:storyarn, :rate_limiter_backend, original),
+        if original,
+          do: Application.put_env(:storyarn, :rate_limiter_backend, original),
           else: Application.delete_env(:storyarn, :rate_limiter_backend)
       end
     end
   end
-
 end

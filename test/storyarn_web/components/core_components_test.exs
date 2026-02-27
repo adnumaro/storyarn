@@ -1034,7 +1034,6 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
       assert html =~ "Email"
       assert html =~ "alice@example.com"
     end
-
   end
 
   # =============================================================================

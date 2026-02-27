@@ -62,7 +62,9 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
     test "empty flow compiles", %{project: project} do
       _flow = flow_fixture(project, %{name: "Empty"})
       source = yarn_source(export_files(project))
-      assert YarnCompiler.valid?(source), "ysc rejected empty flow:\n#{inspect(YarnCompiler.validate(source))}"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected empty flow:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
     test "dialogue flow compiles", %{project: project} do
@@ -83,7 +85,9 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       connection_fixture(flow, entry, dialogue)
 
       source = yarn_source(export_files(project))
-      assert YarnCompiler.valid?(source), "ysc rejected dialogue flow:\n#{inspect(YarnCompiler.validate(source))}"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected dialogue flow:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
     test "dialogue with speaker compiles", %{project: project} do
@@ -105,7 +109,9 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       connection_fixture(flow, entry, dialogue)
 
       source = yarn_source(export_files(project))
-      assert YarnCompiler.valid?(source), "ysc rejected speaker dialogue:\n#{inspect(YarnCompiler.validate(source))}"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected speaker dialogue:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
     test "dialogue with choices compiles", %{project: project} do
@@ -129,7 +135,9 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       connection_fixture(flow, entry, dialogue)
 
       source = yarn_source(export_files(project))
-      assert YarnCompiler.valid?(source), "ysc rejected choices:\n#{inspect(YarnCompiler.validate(source))}"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected choices:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
     test "variable declarations compile", %{project: project} do
@@ -156,7 +164,9 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       _flow = flow_fixture(project, %{name: "Main"})
 
       source = yarn_source(export_files(project))
-      assert YarnCompiler.valid?(source), "ysc rejected variable declarations:\n#{inspect(YarnCompiler.validate(source))}"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected variable declarations:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
     test "condition if/else compiles", %{project: project} do
@@ -211,7 +221,9 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       connection_fixture(flow, condition, false_dialogue, %{source_pin: "false"})
 
       source = yarn_source(export_files(project))
-      assert YarnCompiler.valid?(source), "ysc rejected condition:\n#{inspect(YarnCompiler.validate(source))}"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected condition:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
     test "instruction set commands compile", %{project: project} do
@@ -244,7 +256,9 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       connection_fixture(flow, entry, instruction)
 
       source = yarn_source(export_files(project))
-      assert YarnCompiler.valid?(source), "ysc rejected instruction:\n#{inspect(YarnCompiler.validate(source))}"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected instruction:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
     test "jump to hub compiles", %{project: project} do
@@ -274,7 +288,9 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       connection_fixture(flow, hub, dialogue)
 
       source = yarn_source(export_files(project))
-      assert YarnCompiler.valid?(source), "ysc rejected jump/hub:\n#{inspect(YarnCompiler.validate(source))}"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected jump/hub:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
     test "scene command compiles", %{project: project} do
@@ -291,7 +307,9 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       connection_fixture(flow, entry, scene)
 
       source = yarn_source(export_files(project))
-      assert YarnCompiler.valid?(source), "ysc rejected scene:\n#{inspect(YarnCompiler.validate(source))}"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected scene:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
     test "conditional choice compiles", %{project: project} do
@@ -339,10 +357,14 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       connection_fixture(flow, entry, dialogue)
 
       source = yarn_source(export_files(project))
-      assert YarnCompiler.valid?(source), "ysc rejected conditional choice:\n#{inspect(YarnCompiler.validate(source))}"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected conditional choice:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
-    test "complex chain: dialogue -> instruction -> condition -> exit compiles", %{project: project} do
+    test "complex chain: dialogue -> instruction -> condition -> exit compiles", %{
+      project: project
+    } do
       sheet = sheet_fixture(project, %{name: "Game"})
 
       block_fixture(sheet, %{
@@ -373,7 +395,12 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
           data: %{
             "assignments" => [
               %{"sheet" => sheet.shortcut, "variable" => "visited", "operator" => "set_true"},
-              %{"sheet" => sheet.shortcut, "variable" => "score", "operator" => "add", "value" => "10"}
+              %{
+                "sheet" => sheet.shortcut,
+                "variable" => "score",
+                "operator" => "add",
+                "value" => "10"
+              }
             ]
           }
         })
@@ -420,7 +447,9 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       connection_fixture(flow, condition, lose_dialogue, %{source_pin: "false"})
 
       source = yarn_source(export_files(project))
-      assert YarnCompiler.valid?(source), "ysc rejected complex chain:\n#{inspect(YarnCompiler.validate(source))}"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected complex chain:\n#{inspect(YarnCompiler.validate(source))}"
     end
   end
 
@@ -451,6 +480,7 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       end
 
       files = export_files(project)
+
       assert YarnCompiler.validate_multi(files) == :ok,
              "ysc rejected multi-file export:\n#{inspect(YarnCompiler.validate_multi(files))}"
     end
@@ -489,6 +519,7 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
       end
 
       files = export_files(project)
+
       assert YarnCompiler.validate_multi(files) == :ok,
              "ysc rejected cross-flow jump:\n#{inspect(YarnCompiler.validate_multi(files))}"
     end
