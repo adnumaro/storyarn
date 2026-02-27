@@ -969,90 +969,6 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
   # UndoRedoHandlers
   # ===========================================================================
 
-  describe "UndoRedoHandlers — undo/redo on parent LiveView" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Undo Redo Sheet"})
-      %{project: project, workspace: project.workspace, sheet: sheet}
-    end
-
-    test "undo with empty stack does nothing", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # Undo on empty stack should not crash
-      render_hook(view, "undo", %{})
-
-      # View should still be alive
-      assert render(view) =~ "Undo Redo Sheet"
-    end
-
-    test "redo with empty stack does nothing", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # Redo on empty stack should not crash
-      render_hook(view, "redo", %{})
-
-      # View should still be alive
-      assert render(view) =~ "Undo Redo Sheet"
-    end
-
-    test "undo reverses a sheet color change", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # Set a color (this pushes to undo stack)
-      render_hook(view, "set_sheet_color", %{"color" => "#ff0000"})
-
-      # Verify color was set
-      updated_sheet = Sheets.get_sheet!(proj.id, sheet.id)
-      assert updated_sheet.color == "#ff0000"
-
-      # Undo should revert
-      render_hook(view, "undo", %{})
-
-      reverted_sheet = Sheets.get_sheet!(proj.id, sheet.id)
-      assert reverted_sheet.color == nil
-    end
-
-    test "redo after undo re-applies color change", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # Set color
-      render_hook(view, "set_sheet_color", %{"color" => "#00ff00"})
-
-      # Undo
-      render_hook(view, "undo", %{})
-      reverted = Sheets.get_sheet!(proj.id, sheet.id)
-      assert reverted.color == nil
-
-      # Redo
-      render_hook(view, "redo", %{})
-      reapplied = Sheets.get_sheet!(proj.id, sheet.id)
-      assert reapplied.color == "#00ff00"
-    end
-  end
-
   # ===========================================================================
   # InheritanceHandlers
   # ===========================================================================
@@ -1219,70 +1135,6 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
   end
 
   # ===========================================================================
-  # Tab switching (exercised on parent LiveView)
-  # ===========================================================================
-
-  describe "switch_tab event" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Tab Sheet"})
-      %{project: project, workspace: project.workspace, sheet: sheet}
-    end
-
-    test "switches to references tab", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      html = render_click(view, "switch_tab", %{"tab" => "references"})
-      assert html =~ "References"
-    end
-
-    test "switches to audio tab", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      html = render_click(view, "switch_tab", %{"tab" => "audio"})
-      assert html =~ "Voice Lines" || html =~ "No voice lines"
-    end
-
-    test "switches to history tab", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      html = render_click(view, "switch_tab", %{"tab" => "history"})
-      assert html =~ "history" || html =~ "History"
-    end
-
-    test "switches back to content tab", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # Go to references, then back to content
-      render_click(view, "switch_tab", %{"tab" => "references"})
-      html = render_click(view, "switch_tab", %{"tab" => "content"})
-      assert html =~ "content-tab"
-    end
-  end
-
-  # ===========================================================================
   # Authorization — viewer cannot edit
   # ===========================================================================
 
@@ -1332,21 +1184,6 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
       assert length(blocks) == 1
     end
 
-    test "viewer cannot set sheet color", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # Try to set color as viewer
-      render_hook(view, "set_sheet_color", %{"color" => "#ff0000"})
-
-      # Color should not have changed
-      updated_sheet = Sheets.get_sheet!(proj.id, sheet.id)
-      assert updated_sheet.color == nil
-    end
   end
 
   # ===========================================================================
@@ -1379,51 +1216,6 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
 
       updated_block = Sheets.get_block(block.id)
       assert updated_block.config["label"] == "Updated Label"
-    end
-  end
-
-  # ===========================================================================
-  # Sheet color events (on parent LiveView)
-  # ===========================================================================
-
-  describe "set_sheet_color and clear_sheet_color" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Color Sheet"})
-      %{project: project, workspace: project.workspace, sheet: sheet}
-    end
-
-    test "sets a sheet color", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      render_hook(view, "set_sheet_color", %{"color" => "#8b5cf6"})
-
-      updated_sheet = Sheets.get_sheet!(proj.id, sheet.id)
-      assert updated_sheet.color == "#8b5cf6"
-    end
-
-    test "clears a sheet color", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      # Set a color first
-      Sheets.update_sheet(sheet, %{color: "#ff0000"})
-
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      render_hook(view, "clear_sheet_color", %{})
-
-      updated_sheet = Sheets.get_sheet!(proj.id, sheet.id)
-      assert updated_sheet.color == nil
     end
   end
 

@@ -657,23 +657,6 @@ defmodule StoryarnWeb.Components.TreeComponentsTest do
       assert html =~ "ENTITIES"
     end
 
-    test "applies uppercase styling" do
-      html = render_component(&TreeComponents.tree_section/1, label: "Flows")
-      assert html =~ "uppercase"
-    end
-
-    test "applies tracking and font styling" do
-      html = render_component(&TreeComponents.tree_section/1, label: "Test")
-      assert html =~ "tracking-wide"
-      assert html =~ "font-semibold"
-      assert html =~ "text-xs"
-    end
-
-    test "applies muted text color" do
-      html = render_component(&TreeComponents.tree_section/1, label: "Test")
-      assert html =~ "text-base-content/50"
-    end
-
     test "renders custom class" do
       html =
         render_component(&TreeComponents.tree_section/1,

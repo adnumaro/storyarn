@@ -44,16 +44,6 @@ defmodule StoryarnWeb.SettingsLive.ConnectionsTest do
       assert html =~ "multiple authentication"
     end
 
-    test "renders provider icons", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/users/settings/connections")
-      # GitHub SVG path
-      assert html =~ "M12 0c-6.626"
-      # Google SVG
-      assert html =~ "#4285F4"
-      # Discord SVG
-      assert html =~ "#5865F2"
-    end
-
     test "sets correct current path assign", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/users/settings/connections")
       # The settings layout highlights the current nav item

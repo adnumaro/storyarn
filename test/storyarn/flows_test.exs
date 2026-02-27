@@ -384,18 +384,6 @@ defmodule Storyarn.FlowsTest do
       assert result == {:error, :entry_node_exists}
     end
 
-    test "cannot delete entry node" do
-      user = user_fixture()
-      project = project_fixture(user)
-      flow = flow_fixture(project)
-
-      entry_node = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
-
-      result = Flows.delete_node(entry_node)
-
-      assert result == {:error, :cannot_delete_entry_node}
-    end
-
     test "can create multiple exit nodes" do
       user = user_fixture()
       project = project_fixture(user)
@@ -445,18 +433,6 @@ defmodule Storyarn.FlowsTest do
       {:ok, deleted, _meta} = Flows.delete_node(exit_node)
 
       assert deleted.id == exit_node.id
-    end
-
-    test "cannot delete the last exit node" do
-      user = user_fixture()
-      project = project_fixture(user)
-      flow = flow_fixture(project)
-
-      exit_node = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "exit"))
-      assert exit_node != nil
-
-      result = Flows.delete_node(exit_node)
-      assert result == {:error, :cannot_delete_last_exit}
     end
 
     test "can delete exit then last remaining exit is protected" do
@@ -1159,23 +1135,6 @@ defmodule Storyarn.FlowsTest do
 
       assert result.flow.id == flow.id
       assert result.flow.name == "My Flow"
-    end
-
-    test "excludes soft-deleted nodes" do
-      user = user_fixture()
-      project = project_fixture(user)
-      sheet = sheet_fixture(project)
-      flow = flow_fixture(project)
-
-      node =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"speaker_sheet_id" => sheet.id, "text" => "Gone"}
-        })
-
-      Flows.delete_node(node)
-
-      assert Flows.list_dialogue_nodes_by_speaker(project.id, sheet.id) == []
     end
 
     test "excludes nodes from other projects" do

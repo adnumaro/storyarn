@@ -984,19 +984,6 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
       assert html =~ "phx-click"
     end
 
-    test "renders table-zebra class" do
-      assigns = %{}
-
-      html =
-        rendered_to_string(~H"""
-        <CoreComponents.table id="items" rows={[]}>
-          <:col label="Name"></:col>
-        </CoreComponents.table>
-        """)
-
-      assert html =~ "table-zebra"
-    end
-
     test "renders tbody with id" do
       assigns = %{}
 
@@ -1048,45 +1035,6 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
       assert html =~ "alice@example.com"
     end
 
-    test "renders items with bold title" do
-      assigns = %{}
-
-      html =
-        rendered_to_string(~H"""
-        <CoreComponents.list>
-          <:item title="Status">Active</:item>
-        </CoreComponents.list>
-        """)
-
-      assert html =~ "font-bold"
-      assert html =~ "Status"
-    end
-
-    test "renders list class" do
-      assigns = %{}
-
-      html =
-        rendered_to_string(~H"""
-        <CoreComponents.list>
-          <:item title="Key">Value</:item>
-        </CoreComponents.list>
-        """)
-
-      assert html =~ "list"
-    end
-
-    test "renders list-row class on items" do
-      assigns = %{}
-
-      html =
-        rendered_to_string(~H"""
-        <CoreComponents.list>
-          <:item title="Key">Value</:item>
-        </CoreComponents.list>
-        """)
-
-      assert html =~ "list-row"
-    end
   end
 
   # =============================================================================

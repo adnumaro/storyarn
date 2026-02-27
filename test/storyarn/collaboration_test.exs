@@ -68,45 +68,8 @@ defmodule Storyarn.CollaborationTest do
     end
   end
 
-  # =============================================================================
-  # Facade — PubSub subscriptions
-  # =============================================================================
-
-  describe "subscribe_changes/1" do
-    test "subscribes to changes topic" do
-      flow_id = System.unique_integer([:positive])
-      assert :ok = Collaboration.subscribe_changes(flow_id)
-    end
-  end
-
-  describe "subscribe_locks/1" do
-    test "subscribes to locks topic" do
-      flow_id = System.unique_integer([:positive])
-      assert :ok = Collaboration.subscribe_locks(flow_id)
-    end
-  end
-
-  describe "subscribe_presence/1" do
-    test "subscribes to presence topic" do
-      flow_id = System.unique_integer([:positive])
-      assert :ok = Collaboration.subscribe_presence(flow_id)
-    end
-  end
-
-  describe "subscribe_cursors/1" do
-    test "subscribes to cursors topic" do
-      flow_id = System.unique_integer([:positive])
-      assert :ok = Collaboration.subscribe_cursors(flow_id)
-    end
-  end
-
-  describe "unsubscribe_cursors/1" do
-    test "unsubscribes from cursors topic" do
-      flow_id = System.unique_integer([:positive])
-      Collaboration.subscribe_cursors(flow_id)
-      assert :ok = Collaboration.unsubscribe_cursors(flow_id)
-    end
-  end
+  # NOTE: subscribe_*/1 and unsubscribe_*/1 only return :ok (PubSub always succeeds).
+  # The broadcast tests below verify the full subscribe→broadcast→receive cycle.
 
   # =============================================================================
   # Facade — Broadcasting
