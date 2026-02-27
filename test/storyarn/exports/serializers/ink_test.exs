@@ -296,6 +296,48 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       source = ink_source(export_ink(project))
       assert source =~ "{-"
     end
+
+    test "condition with unsupported operator emits true fallback", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Inventory"})
+
+      block_fixture(sheet, %{
+        type: "text",
+        config: %{"label" => "Weapon"},
+        value: %{"text" => "sword"}
+      })
+
+      flow = flow_fixture(project, %{name: "UnsupOp"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{
+            "condition" =>
+              Jason.encode!(%{
+                "logic" => "all",
+                "rules" => [
+                  %{
+                    "sheet" => sheet.shortcut,
+                    "variable" => "weapon",
+                    "operator" => "contains",
+                    "value" => "sw"
+                  }
+                ]
+              }),
+            "cases" => [
+              %{"id" => "true", "value" => "true", "label" => "True"},
+              %{"id" => "false", "value" => "false", "label" => "False"}
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, condition)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "true /* unsupported: contains */"
+    end
   end
 
   # =============================================================================
@@ -346,20 +388,6 @@ defmodule Storyarn.Exports.Serializers.InkTest do
 
   describe "hub and jump nodes" do
     setup [:create_project]
-
-    test "hub produces stitch label", %{project: project} do
-      flow = flow_fixture(project, %{name: "Hub Flow"})
-
-      _hub =
-        node_fixture(flow, %{
-          type: "hub",
-          data: %{"label" => "after_greeting"}
-        })
-
-      source = ink_source(export_ink(project))
-      # Hub sections are emitted as stitches or diverts
-      assert source =~ "after_greeting" or String.length(source) > 0
-    end
   end
 
   # =============================================================================
@@ -408,10 +436,10 @@ defmodule Storyarn.Exports.Serializers.InkTest do
     test "handles flow with no connected nodes gracefully", %{project: project} do
       # Flow with only auto-created entry node, nothing connected
       _flow = flow_fixture(project, %{name: "Lonely Flow"})
-      files = export_ink(project)
-      source = ink_source(files)
+      source = ink_source(export_ink(project))
       # Should produce a knot but no content errors
-      assert is_binary(source)
+      assert source =~ "=== "
+      refute source =~ "** ("
     end
 
     test "handles dialogue node without speaker sheet", %{project: project} do
@@ -453,8 +481,8 @@ defmodule Storyarn.Exports.Serializers.InkTest do
 
       connection_fixture(flow, entry, dialogue)
 
-      files = export_ink(project)
-      assert is_list(files)
+      source = ink_source(export_ink(project))
+      assert source =~ "=== "
     end
   end
 
@@ -565,6 +593,36 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       source = ink_source(export_ink(project))
       assert source =~ "-> subflow_"
       assert source =~ " ->"
+    end
+
+    test "exit in tunnel flow emits ->-> not -> END", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Side Quest"})
+      target_flow = reload_flow(target_flow)
+      target_entry = Enum.find(target_flow.nodes, &(&1.type == "entry"))
+      target_exit = node_fixture(target_flow, %{type: "exit", data: %{}})
+      connection_fixture(target_flow, target_entry, target_exit)
+
+      caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = reload_flow(caller_flow)
+      caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      subflow_node =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"flow_shortcut" => target_flow.shortcut}
+        })
+
+      after_dialogue =
+        node_fixture(caller_flow, %{
+          type: "dialogue",
+          data: %{"text" => "Back!", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(caller_flow, caller_entry, subflow_node)
+      connection_fixture(caller_flow, subflow_node, after_dialogue)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "->->"
     end
   end
 
@@ -705,7 +763,7 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       source = ink_source(export_ink(project))
       # Should have the if block and the else branch with closing brace
       assert source =~ "{-"
-      assert source =~ "- False:"
+      assert source =~ "- else:"
       assert source =~ "}"
       assert source =~ "Still alive!"
       assert source =~ "Dead..."
@@ -732,6 +790,50 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       source = ink_source(export_ink(project))
       assert source =~ "{-"
       assert source =~ "}"
+    end
+
+    test "condition with 3+ cases uses else and merged branch comment", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "World"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Weather"},
+        value: %{"number" => 0}
+      })
+
+      flow = flow_fixture(project, %{name: "MultiCase"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{
+            "condition" =>
+              Jason.encode!(%{
+                "logic" => "all",
+                "rules" => [
+                  %{
+                    "sheet" => sheet.shortcut,
+                    "variable" => "weather",
+                    "operator" => "equals",
+                    "value" => "0"
+                  }
+                ]
+              }),
+            "cases" => [
+              %{"id" => "sunny", "value" => "sunny", "label" => "Sunny"},
+              %{"id" => "rainy", "value" => "rainy", "label" => "Rainy"},
+              %{"id" => "stormy", "value" => "stormy", "label" => "Stormy"}
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, condition)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "- else:"
+      assert source =~ "// (merged branch:"
     end
   end
 
@@ -983,18 +1085,10 @@ defmodule Storyarn.Exports.Serializers.InkTest do
   describe "flow naming" do
     setup [:create_project]
 
-    test "flow without shortcut uses name as identifier", %{project: project} do
-      _flow = flow_fixture(project, %{name: "My Great Flow"})
-
+    test "flow with digit-starting name gets _ prefix in knot", %{project: project} do
+      _flow = flow_fixture(project, %{name: "1st Quest"})
       source = ink_source(export_ink(project))
-      # The knot name should be derived from the flow name/shortcut
-      assert source =~ "=== "
-    end
-
-    test "project slug is used for filename", %{project: project} do
-      files = export_ink(project)
-      {ink_name, _} = Enum.find(files, fn {name, _} -> String.ends_with?(name, ".ink") end)
-      assert String.ends_with?(ink_name, ".ink")
+      assert source =~ "=== _1"
     end
 
     test "flow comment includes flow name", %{project: project} do
@@ -1176,6 +1270,73 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       assert source =~ "Want to buy?"
       assert source =~ "+ [Yes]"
       assert source =~ "+ [No]"
+      # Verify the assignment instruction renders inside choice body
+      assert source =~ "~ "
+    end
+
+    test "response with both condition and instruction renders guard and assignment", %{
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "Hero"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Gold"},
+        value: %{"number" => 100}
+      })
+
+      block_fixture(sheet, %{
+        type: "boolean",
+        config: %{"label" => "Bought"},
+        value: %{"boolean" => false}
+      })
+
+      flow = flow_fixture(project, %{name: "Both Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Shop?",
+            "speaker_sheet_id" => nil,
+            "responses" => [
+              %{
+                "id" => "r1",
+                "text" => "Buy",
+                "condition" =>
+                  Jason.encode!(%{
+                    "logic" => "all",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "gold",
+                        "operator" => "greater_than",
+                        "value" => "50"
+                      }
+                    ]
+                  }),
+                "instruction" =>
+                  Jason.encode!([
+                    %{
+                      "sheet" => sheet.shortcut,
+                      "variable" => "bought",
+                      "operator" => "set_true"
+                    }
+                  ])
+              },
+              %{"id" => "r2", "text" => "Leave", "condition" => nil, "instruction" => nil}
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "[Buy]"
+      assert source =~ "~ "
+      assert source =~ "+ [Leave]"
     end
 
     test "hub with connected dialogue produces stitch section", %{project: project} do
@@ -1215,6 +1376,174 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       # And the divert to the hub
       assert source =~ "-> rest_area"
       assert source =~ "-> END"
+    end
+  end
+
+  # =============================================================================
+  # Special character escaping (B1/B2/B6)
+  # =============================================================================
+
+  describe "special character escaping" do
+    setup [:create_project]
+
+    test "dialogue text with square brackets escapes them", %{project: project} do
+      flow = flow_fixture(project, %{name: "Bracket Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Check [inventory] now",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_ink(project))
+      # Square brackets must be escaped to avoid Ink treating them as choice markers
+      refute source =~ "Check [inventory] now"
+      assert source =~ ~S(Check \[inventory\] now)
+    end
+
+    test "response text with square brackets escapes them", %{project: project} do
+      flow = flow_fixture(project, %{name: "Bracket Choice"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "What do?",
+            "speaker_sheet_id" => nil,
+            "responses" => [
+              %{"id" => "r1", "text" => "Take [item]", "condition" => nil, "instruction" => nil}
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_ink(project))
+      # Brackets in response text must be escaped inside the [choice] wrapper
+      refute source =~ "[Take [item]]"
+    end
+
+    test "dialogue text with divert arrow is safe in context", %{project: project} do
+      flow = flow_fixture(project, %{name: "Arrow Flow"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Go -> forward",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_ink(project))
+      # The text "Go -> forward" is on the same line as dialogue, not at line start,
+      # so it won't be parsed as a divert. Verify the text appears.
+      assert source =~ "Go -> forward"
+    end
+  end
+
+  # =============================================================================
+  # Empty/invalid condition (B3)
+  # =============================================================================
+
+  describe "empty condition edge cases" do
+    setup [:create_project]
+
+    test "condition with empty/unparseable expression skips condition block", %{
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Empty Cond"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{
+            "condition" => "not valid json",
+            "cases" => [%{"id" => "true", "value" => "true", "label" => "True"}]
+          }
+        })
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Fallthrough", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      connection_fixture(flow, entry, condition)
+      connection_fixture(flow, condition, dialogue, %{source_pin: "true"})
+
+      source = ink_source(export_ink(project))
+      # A bare {- without expression is invalid Ink — should use {- true:
+      refute source =~ ~r/\{-\s*\n/
+    end
+  end
+
+  # =============================================================================
+  # Speaker shortcut dots (B4)
+  # =============================================================================
+
+  describe "speaker shortcut identifier conversion" do
+    setup [:create_project]
+
+    test "speaker shortcut with dots is converted to identifier", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "MC Jaime", shortcut: "mc.jaime"})
+      flow = flow_fixture(project, %{name: "Speaker Dot"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Hello!", "speaker_sheet_id" => sheet.id, "responses" => []}
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = ink_source(export_ink(project))
+      # Dots in shortcut should be converted to underscores
+      refute source =~ "#speaker:mc.jaime"
+      assert source =~ "#speaker:mc_jaime"
+    end
+  end
+
+  # =============================================================================
+  # String variable newline escaping (B5)
+  # =============================================================================
+
+  describe "string variable newline escaping" do
+    setup [:create_project]
+
+    test "string variable with newline escapes it in declaration", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Config"})
+
+      block_fixture(sheet, %{
+        type: "text",
+        config: %{"label" => "Greeting"},
+        value: %{"text" => "Hello\nWorld"}
+      })
+
+      _flow = flow_fixture(project, %{name: "Main"})
+
+      source = ink_source(export_ink(project))
+      # Newlines must be escaped in VAR string values (multi-line VAR is invalid Ink)
+      refute source =~ "\"Hello\nWorld\""
     end
   end
 end

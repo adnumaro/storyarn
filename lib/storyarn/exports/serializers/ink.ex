@@ -35,12 +35,13 @@ defmodule Storyarn.Exports.Serializers.Ink do
     flows = project_data.flows || []
     variables = Helpers.collect_variables(sheets)
     speaker_map = Helpers.build_speaker_map(sheets)
+    tunnel_targets = collect_tunnel_targets(flows)
 
     ink_lines =
       [
         header_lines(project_data.project),
         variable_declaration_lines(variables),
-        Enum.flat_map(flows, &flow_to_knot(&1, speaker_map))
+        Enum.flat_map(flows, &flow_to_knot(&1, speaker_map, tunnel_targets))
       ]
       |> List.flatten()
 
@@ -98,23 +99,25 @@ defmodule Storyarn.Exports.Serializers.Ink do
   # Flow → Knot
   # ---------------------------------------------------------------------------
 
-  defp flow_to_knot(flow, speaker_map) do
+  defp flow_to_knot(flow, speaker_map, tunnel_targets) do
     knot_name = Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")
     {instructions, hub_sections} = GraphTraversal.linearize(flow)
+    is_tunnel = MapSet.member?(tunnel_targets, flow.shortcut)
+    ctx = %{speaker_map: speaker_map, is_tunnel: is_tunnel}
 
     knot_lines =
       [
         "// === Flow: #{flow.name} ===",
         "=== #{knot_name} ===",
         ""
-      ] ++ render_instructions(instructions, speaker_map, 0)
+      ] ++ render_instructions(instructions, ctx, 0)
 
     hub_lines =
       Enum.flat_map(hub_sections, fn {label, instrs} ->
         [
           "",
           "= #{label}",
-          "" | render_instructions(instrs, speaker_map, 0)
+          "" | render_instructions(instrs, ctx, 0)
         ]
       end)
 
@@ -125,18 +128,20 @@ defmodule Storyarn.Exports.Serializers.Ink do
   # Instruction rendering
   # ---------------------------------------------------------------------------
 
-  defp render_instructions(instructions, speaker_map, depth) do
-    Enum.flat_map(instructions, &render_instruction(&1, speaker_map, depth))
+  defp render_instructions(instructions, ctx, depth) do
+    Enum.flat_map(instructions, &render_instruction(&1, ctx, depth))
   end
 
-  defp render_instruction({:dialogue, node}, speaker_map, depth) do
+  defp render_instruction({:dialogue, node}, ctx, depth) do
     data = node.data || %{}
-    text = Helpers.dialogue_text(data)
-    speaker = Helpers.speaker_name(data, speaker_map)
-    shortcut = Helpers.speaker_shortcut(data, speaker_map)
+    text = data |> Helpers.dialogue_text() |> escape_ink_text()
+    speaker = Helpers.speaker_name(data, ctx.speaker_map)
+
+    shortcut =
+      data |> Helpers.speaker_shortcut(ctx.speaker_map) |> Helpers.shortcut_to_identifier()
 
     line =
-      if speaker do
+      if speaker && shortcut != "" do
         "#{indent(depth)}#{text} #speaker:#{shortcut}"
       else
         "#{indent(depth)}#{text}"
@@ -151,10 +156,10 @@ defmodule Storyarn.Exports.Serializers.Ink do
     end
   end
 
-  defp render_instruction({:choices_start, _node}, _speaker_map, _depth), do: []
+  defp render_instruction({:choices_start, _node}, _ctx, _depth), do: []
 
-  defp render_instruction({:choice, resp, _idx}, _speaker_map, depth) do
-    text = Helpers.strip_html(resp["text"] || resp["menu_text"] || "")
+  defp render_instruction({:choice, resp, _idx}, _ctx, depth) do
+    text = (resp["text"] || resp["menu_text"] || "") |> Helpers.strip_html() |> escape_ink_text()
     condition = build_condition_prefix(resp["condition"])
 
     choice_line =
@@ -183,9 +188,9 @@ defmodule Storyarn.Exports.Serializers.Ink do
     [choice_line | assign_lines]
   end
 
-  defp render_instruction({:choices_end, _node}, _speaker_map, _depth), do: []
+  defp render_instruction({:choices_end, _node}, _ctx, _depth), do: []
 
-  defp render_instruction({:condition_start, node}, _speaker_map, depth) do
+  defp render_instruction({:condition_start, node}, _ctx, depth) do
     data = node.data || %{}
     condition = Helpers.extract_condition(data["condition"])
 
@@ -194,23 +199,27 @@ defmodule Storyarn.Exports.Serializers.Ink do
         ["#{indent(depth)}{- #{expr}:"]
 
       _ ->
-        ["#{indent(depth)}{-"]
+        ["#{indent(depth)}{- true:"]
     end
   end
 
-  defp render_instruction({:condition_branch, _pin, label, idx}, _speaker_map, depth) do
-    if idx == 0 do
-      []
-    else
-      ["#{indent(depth)}- #{label}:"]
-    end
+  # C1 fix: use "- else:" instead of "- Label:" for second branch
+  # M3 fix: for 3+ branches, merge into else with comment (Ink only supports if/else)
+  defp render_instruction({:condition_branch, _pin, _label, 0}, _ctx, _depth), do: []
+
+  defp render_instruction({:condition_branch, _pin, _label, 1}, _ctx, depth) do
+    ["#{indent(depth)}- else:"]
   end
 
-  defp render_instruction({:condition_end, _node}, _speaker_map, depth) do
+  defp render_instruction({:condition_branch, _pin, label, _idx}, _ctx, depth) do
+    ["#{indent(depth)}// (merged branch: #{label})"]
+  end
+
+  defp render_instruction({:condition_end, _node}, _ctx, depth) do
     ["#{indent(depth)}}"]
   end
 
-  defp render_instruction({:instruction, node}, _speaker_map, depth) do
+  defp render_instruction({:instruction, node}, _ctx, depth) do
     data = node.data || %{}
     assignments = Helpers.extract_assignments(data)
 
@@ -223,43 +232,58 @@ defmodule Storyarn.Exports.Serializers.Ink do
     end
   end
 
-  defp render_instruction({:scene, node}, _speaker_map, depth) do
+  defp render_instruction({:scene, node}, _ctx, depth) do
     data = node.data || %{}
     location = data["location"] || data["slug_line"] || ""
     ["#{indent(depth)}# location:#{location}"]
   end
 
-  defp render_instruction({:subflow, node}, _speaker_map, depth) do
+  defp render_instruction({:subflow, node}, _ctx, depth) do
     data = node.data || %{}
     target = Helpers.shortcut_to_identifier(data["flow_shortcut"] || "subflow_#{node.id}")
     ["#{indent(depth)}-> #{target} ->"]
   end
 
-  defp render_instruction({:jump, _node, target_label}, _speaker_map, depth) do
+  defp render_instruction({:jump, _node, target_label}, _ctx, depth) do
     ["#{indent(depth)}-> #{target_label}"]
   end
 
-  defp render_instruction({:divert, target_label}, _speaker_map, depth) do
+  defp render_instruction({:divert, target_label}, _ctx, depth) do
     ["#{indent(depth)}-> #{target_label}"]
   end
 
-  defp render_instruction({:exit, _node}, _speaker_map, depth) do
+  # C2 fix: tunnel flows use ->-> (tunnel return) instead of -> END
+  defp render_instruction({:exit, _node}, %{is_tunnel: true}, depth) do
+    ["#{indent(depth)}->->"]
+  end
+
+  defp render_instruction({:exit, _node}, _ctx, depth) do
     ["#{indent(depth)}-> END"]
   end
 
-  defp render_instruction({:label, _node, label}, _speaker_map, depth) do
-    ["#{indent(depth)}= #{label}"]
-  end
-
-  defp render_instruction({:comment, text}, _speaker_map, depth) do
-    ["#{indent(depth)}// #{text}"]
-  end
-
-  defp render_instruction(_, _speaker_map, _depth), do: []
+  defp render_instruction(_, _ctx, _depth), do: []
 
   # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
+
+  defp escape_ink_text(text) do
+    text
+    |> String.replace("\\", "\\\\")
+    |> String.replace("[", "\\[")
+    |> String.replace("]", "\\]")
+  end
+
+  defp collect_tunnel_targets(flows) do
+    flows
+    |> Enum.flat_map(fn flow ->
+      (flow.nodes || [])
+      |> Enum.filter(&(&1.type == "subflow"))
+      |> Enum.map(& &1.data["flow_shortcut"])
+      |> Enum.reject(&is_nil/1)
+    end)
+    |> MapSet.new()
+  end
 
   defp indent(0), do: ""
   defp indent(n), do: String.duplicate("    ", n)

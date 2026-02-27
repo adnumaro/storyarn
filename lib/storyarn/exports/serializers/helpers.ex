@@ -324,7 +324,8 @@ defmodule Storyarn.Exports.Serializers.Helpers do
 
   def format_var_declaration_value(%{type: :string, default: val})
       when is_binary(val) and val != "",
-      do: ~s("#{String.replace(val, "\"", "\\\"")}")
+      do:
+        ~s("#{val |> String.replace("\\", "\\\\") |> String.replace("\"", "\\\"") |> String.replace("\n", "\\n") |> String.replace("\r", "\\r")}")
 
   def format_var_declaration_value(%{type: :number}), do: "0"
   def format_var_declaration_value(%{type: :boolean}), do: "false"
