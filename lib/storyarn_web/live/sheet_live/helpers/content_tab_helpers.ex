@@ -11,7 +11,9 @@ defmodule StoryarnWeb.SheetLive.Helpers.ContentTabHelpers do
 
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Storyarn.Flows
   alias Storyarn.Sheets
+  alias Storyarn.Sheets.Block
 
   # ---------------------------------------------------------------------------
   # Integer parsing
@@ -69,6 +71,34 @@ defmodule StoryarnWeb.SheetLive.Helpers.ContentTabHelpers do
         Map.put(block, :reference_target, nil)
       end
     end)
+  end
+
+  @doc """
+  Annotates each block with `:is_referenced` (boolean).
+
+  Collects all variable-capable block IDs, queries for references in batch,
+  then tags each block.
+  """
+  def enrich_with_referenced_status(blocks, referenced_ids) do
+    Enum.map(blocks, fn block ->
+      Map.put(block, :is_referenced, MapSet.member?(referenced_ids, block.id))
+    end)
+  end
+
+  @doc """
+  Computes the set of referenced block IDs for all variable-capable blocks.
+  """
+  def compute_referenced_block_ids(own_blocks, inherited_groups) do
+    all_blocks =
+      own_blocks ++
+        Enum.flat_map(inherited_groups, fn group -> group.blocks end)
+
+    variable_block_ids =
+      all_blocks
+      |> Enum.filter(fn b -> Block.can_be_variable?(b.type) && !b.is_constant end)
+      |> Enum.map(& &1.id)
+
+    Flows.referenced_block_ids(variable_block_ids)
   end
 
   # ---------------------------------------------------------------------------

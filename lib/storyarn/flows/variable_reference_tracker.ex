@@ -196,6 +196,23 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   @doc """
+  Returns a MapSet of block IDs that have at least one variable reference.
+  Uses DISTINCT to avoid counting — just checks existence.
+  """
+  @spec referenced_block_ids([integer()]) :: MapSet.t()
+  def referenced_block_ids([]), do: MapSet.new()
+
+  def referenced_block_ids(block_ids) do
+    from(vr in VariableReference,
+      where: vr.block_id in ^block_ids,
+      distinct: vr.block_id,
+      select: vr.block_id
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  @doc """
   Returns variable usage for a block with stale detection.
   Each ref map gets an additional `:stale` boolean computed via SQL comparison
   of `source_sheet`/`source_variable` against the current sheet shortcut and

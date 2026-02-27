@@ -399,6 +399,27 @@ defmodule Storyarn.Sheets.BlockCrud do
     Block.update_changeset(block, attrs)
   end
 
+  @doc """
+  Updates a block's variable_name directly (user-initiated rename).
+  Normalizes via variablify and ensures uniqueness within the sheet.
+  """
+  def update_variable_name(%Block{} = block, variable_name) do
+    normalized = NameNormalizer.variablify(variable_name)
+
+    # Fall back to auto-generated name from label when input is cleared
+    normalized = normalized || default_variable_name(block)
+
+    block
+    |> Block.variable_changeset(%{variable_name: normalized})
+    |> ensure_unique_variable_name(block.sheet_id, block.id)
+    |> Repo.update()
+  end
+
+  defp default_variable_name(block) do
+    label = get_in(block.config || %{}, ["label"])
+    NameNormalizer.variablify(label) || "variable"
+  end
+
   @doc false
   def ensure_unique_variable_name_public(changeset, sheet_id, exclude_block_id) do
     ensure_unique_variable_name(changeset, sheet_id, exclude_block_id)

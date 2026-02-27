@@ -7,6 +7,9 @@ defmodule Storyarn.Application do
 
   @impl true
   def start(_type, _args) do
+    # Ensure Lucideicons atoms are in the atom table before any icon rendering
+    Code.ensure_loaded!(Lucideicons)
+
     :ets.new(:import_staging, [:set, :public, :named_table, read_concurrency: true])
 
     children = [

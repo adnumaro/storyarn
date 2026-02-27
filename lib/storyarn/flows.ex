@@ -410,6 +410,12 @@ defmodule Storyarn.Flows do
   defdelegate count_variable_usage(block_id), to: VariableReferenceTracker
 
   @doc """
+  Returns a MapSet of block IDs that have at least one variable reference.
+  """
+  @spec referenced_block_ids([integer()]) :: MapSet.t()
+  defdelegate referenced_block_ids(block_ids), to: VariableReferenceTracker
+
+  @doc """
   Returns variable usage for a block with stale detection.
   Each ref map gets an additional `:stale` boolean.
   """

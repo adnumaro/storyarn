@@ -95,7 +95,6 @@ defmodule StoryarnWeb.Components.BlockComponents do
       <.block_toolbar
         block={@block}
         can_edit={@can_edit}
-        is_inherited={@is_inherited}
         target={@target}
         component_id={@component_id}
       />

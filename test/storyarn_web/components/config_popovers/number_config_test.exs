@@ -92,15 +92,15 @@ defmodule StoryarnWeb.Components.ConfigPopovers.NumberConfigTest do
       assert html =~ "placeholder"
     end
 
-    test "renders advanced section" do
+    test "does not render advanced section (moved to toolbar)" do
       html =
         render_component(&NumberConfig.number_config/1,
           block: make_block(),
           can_edit: true
         )
 
-      assert html =~ "Advanced"
-      assert html =~ "change_block_scope"
+      refute html =~ "Advanced"
+      refute html =~ "change_block_scope"
     end
 
     test "data-blur-event attributes are correct" do

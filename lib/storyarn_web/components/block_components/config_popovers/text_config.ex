@@ -9,8 +9,6 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.TextConfig do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  import StoryarnWeb.Components.BlockComponents.BlockAdvancedConfig
-
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
 
@@ -52,9 +50,6 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.TextConfig do
           disabled={!@can_edit}
         />
       </div>
-
-      <%!-- Advanced section --%>
-      <.block_advanced_config block={@block} can_edit={@can_edit} />
     </div>
     """
   end

@@ -112,15 +112,15 @@ defmodule StoryarnWeb.Components.ConfigPopovers.SelectConfigTest do
       assert html =~ "Max Selections"
     end
 
-    test "renders advanced section" do
+    test "does not render advanced section (moved to toolbar)" do
       html =
         render_component(&SelectConfig.select_config/1,
           block: make_block(),
           can_edit: true
         )
 
-      assert html =~ "Advanced"
-      assert html =~ "change_block_scope"
+      refute html =~ "Advanced"
+      refute html =~ "change_block_scope"
     end
 
     test "data-blur-event attributes are correct for option inputs" do

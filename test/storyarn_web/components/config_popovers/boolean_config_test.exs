@@ -97,15 +97,15 @@ defmodule StoryarnWeb.Components.ConfigPopovers.BooleanConfigTest do
       refute html =~ "neutral_label"
     end
 
-    test "renders advanced section" do
+    test "does not render advanced section (moved to toolbar)" do
       html =
         render_component(&BooleanConfig.boolean_config/1,
           block: make_block(),
           can_edit: true
         )
 
-      assert html =~ "Advanced"
-      assert html =~ "change_block_scope"
+      refute html =~ "Advanced"
+      refute html =~ "change_block_scope"
     end
 
     test "data-event and data-blur-event attributes are correct" do

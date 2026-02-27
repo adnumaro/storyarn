@@ -42,6 +42,10 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
             :for={block <- group.blocks}
             class="group relative w-full px-2 sm:px-8 md:px-16 pt-2"
             id={"block-#{block.id}"}
+            data-id={block.id}
+            data-inherited="true"
+            data-inherited-from-block-id={block.inherited_from_block_id}
+            data-detached={to_string(block.detached || false)}
           >
             <.inherited_block_wrapper
               block={block}
@@ -126,6 +130,20 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
     own_blocks = ContentTabHelpers.enrich_with_references(own_blocks, project_id)
 
+    # Annotate blocks with :is_referenced for variable_name editability
+    referenced_ids =
+      ContentTabHelpers.compute_referenced_block_ids(own_blocks, inherited_groups)
+
+    own_blocks = ContentTabHelpers.enrich_with_referenced_status(own_blocks, referenced_ids)
+
+    inherited_groups =
+      Enum.map(inherited_groups, fn group ->
+        %{
+          group
+          | blocks: ContentTabHelpers.enrich_with_referenced_status(group.blocks, referenced_ids)
+        }
+      end)
+
     layout_items = ContentTabHelpers.group_blocks_for_layout(own_blocks)
 
     # Batch-load table data for all table blocks (own + inherited)
@@ -196,6 +214,21 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   def handle_event("toolbar_toggle_constant", %{"id" => block_id}, socket) do
     with_edit_authorization(socket, fn socket ->
       BlockToolbarHandlers.handle_toggle_constant(block_id, socket, content_helpers())
+    end)
+  end
+
+  def handle_event(
+        "update_variable_name",
+        %{"block_id" => block_id, "variable_name" => variable_name},
+        socket
+      ) do
+    with_edit_authorization(socket, fn socket ->
+      BlockToolbarHandlers.handle_update_variable_name(
+        block_id,
+        variable_name,
+        socket,
+        content_helpers()
+      )
     end)
   end
 

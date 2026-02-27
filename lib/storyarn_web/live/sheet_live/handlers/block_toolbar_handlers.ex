@@ -340,6 +340,43 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockToolbarHandlers do
   end
 
   # ---------------------------------------------------------------------------
+  # update_variable_name
+  # ---------------------------------------------------------------------------
+
+  @doc "Updates a block's variable_name from the toolbar inline input."
+  def handle_update_variable_name(block_id, variable_name, socket, helpers) do
+    block_id = ContentTabHelpers.to_integer(block_id)
+    project_id = socket.assigns.project.id
+
+    case Sheets.get_block_in_project(block_id, project_id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Block not found."))}
+
+      block ->
+        prev_name = block.variable_name
+
+        case Sheets.update_variable_name(block, variable_name) do
+          {:ok, updated} ->
+            helpers.push_undo.(
+              {:update_variable_name, block.id, prev_name, updated.variable_name}
+            )
+
+            helpers.maybe_create_version.(socket)
+            helpers.notify_parent.(socket, :saved)
+            {:noreply, helpers.reload_blocks.(socket)}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext("sheets", "Could not update variable name.")
+             )}
+        end
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
 

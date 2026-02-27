@@ -822,4 +822,105 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockToolbarHandlersTest do
       assert table_updated.position == 1
     end
   end
+
+  # ===========================================================================
+  # update_variable_name
+  # ===========================================================================
+
+  describe "update_variable_name" do
+    test "updates variable_name on blur", %{conn: conn, url: url, sheet: sheet} do
+      block =
+        block_fixture(sheet, %{
+          type: "text",
+          config: %{"label" => "Health"},
+          position: 0
+        })
+
+      {:ok, view, _html} = mount_sheet(conn, url)
+
+      view
+      |> with_target("#content-tab")
+      |> render_change("update_variable_name", %{
+        "block_id" => "#{block.id}",
+        "variable_name" => "player_hp"
+      })
+
+      updated = Sheets.get_block!(block.id)
+      assert updated.variable_name == "player_hp"
+    end
+
+    test "normalizes variable_name via variablify", %{conn: conn, url: url, sheet: sheet} do
+      block =
+        block_fixture(sheet, %{
+          type: "number",
+          config: %{"label" => "Score"},
+          position: 0
+        })
+
+      {:ok, view, _html} = mount_sheet(conn, url)
+
+      view
+      |> with_target("#content-tab")
+      |> render_change("update_variable_name", %{
+        "block_id" => "#{block.id}",
+        "variable_name" => "Player HP"
+      })
+
+      updated = Sheets.get_block!(block.id)
+      assert updated.variable_name == "player_hp"
+    end
+
+    test "ensures uniqueness with suffix", %{conn: conn, url: url, sheet: sheet} do
+      _existing =
+        block_fixture(sheet, %{
+          type: "text",
+          config: %{"label" => "Name"},
+          position: 0
+        })
+
+      block2 =
+        block_fixture(sheet, %{
+          type: "text",
+          config: %{"label" => "Other"},
+          position: 1
+        })
+
+      {:ok, view, _html} = mount_sheet(conn, url)
+
+      # Try to rename block2's variable to "name" which already exists
+      view
+      |> with_target("#content-tab")
+      |> render_change("update_variable_name", %{
+        "block_id" => "#{block2.id}",
+        "variable_name" => "name"
+      })
+
+      updated = Sheets.get_block!(block2.id)
+      # Should get a suffix to avoid collision
+      assert updated.variable_name =~ "name"
+      assert updated.variable_name != "name"
+    end
+
+    test "falls back to label-derived name when input is cleared",
+         %{conn: conn, url: url, sheet: sheet} do
+      block =
+        block_fixture(sheet, %{
+          type: "text",
+          config: %{"label" => "Health"},
+          position: 0
+        })
+
+      {:ok, view, _html} = mount_sheet(conn, url)
+
+      view
+      |> with_target("#content-tab")
+      |> render_change("update_variable_name", %{
+        "block_id" => "#{block.id}",
+        "variable_name" => ""
+      })
+
+      updated = Sheets.get_block!(block.id)
+      assert updated.variable_name == "health"
+    end
+  end
 end

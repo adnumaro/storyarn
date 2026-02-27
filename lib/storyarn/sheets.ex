@@ -411,6 +411,12 @@ defmodule Storyarn.Sheets do
   defdelegate update_block(block, attrs), to: BlockCrud
 
   @doc """
+  Updates a block's variable_name directly (user-initiated rename).
+  """
+  @spec update_variable_name(block(), String.t()) :: {:ok, block()} | {:error, changeset()}
+  defdelegate update_variable_name(block, variable_name), to: BlockCrud
+
+  @doc """
   Updates only the value of a block.
   """
   @spec update_block_value(block(), map()) :: {:ok, block()} | {:error, changeset()}
