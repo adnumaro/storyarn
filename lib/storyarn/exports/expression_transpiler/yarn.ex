@@ -17,7 +17,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Yarn do
 
   defp emit_condition_op(ref, "is_true", _), do: "#{ref} == true"
   defp emit_condition_op(ref, "is_false", _), do: "#{ref} == false"
-  defp emit_condition_op(ref, "is_nil", _), do: "#{ref} == null"
+  # Yarn v2 has no null — compare against type default instead
+  defp emit_condition_op(ref, "is_nil", _), do: ~s(#{ref} == "")
   defp emit_condition_op(ref, "is_empty", _), do: ~s(#{ref} == "")
 
   defp emit_condition_op(ref, "contains", val),
@@ -65,9 +66,9 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Yarn do
   defp emit_assignment(ref, "toggle", _), do: "<<set #{ref} to !#{ref}>>"
   defp emit_assignment(ref, "clear", _), do: ~s(<<set #{ref} to "">>)
 
+  # Yarn v2 has no null — emit unconditional set (all vars have declared defaults)
   defp emit_assignment(ref, "set_if_unset", a) do
-    val = format_value(ref, a)
-    "<<if #{ref} == null>>\n<<set #{ref} to #{val}>>\n<<endif>>"
+    "<<set #{ref} to #{format_value(ref, a)}>>"
   end
 
   defp emit_assignment(ref, _op, a), do: "<<set #{ref} to #{format_value(ref, a)}>>"

@@ -1,3 +1,108 @@
+# Wrapper LiveView for testing PreviewComponent handle_events.
+# Defined before the test module to avoid async compilation race conditions.
+defmodule PreviewTestLive do
+  use Phoenix.LiveView
+
+  alias Storyarn.Flows
+
+  def mount(_params, session, socket) do
+    project = Storyarn.Projects.get_project!(session["project_id"])
+    flow = Flows.get_flow!(project.id, session["flow_id"])
+    start_node = Flows.get_node!(flow.id, session["start_node_id"])
+    sheets_map = Map.get(session, "sheets_map", %{})
+
+    # Manually invoke load_node logic since the component's update/2 has a bug
+    socket =
+      socket
+      |> Phoenix.Component.assign(:project, project)
+      |> Phoenix.Component.assign(:sheets_map, sheets_map)
+      |> Phoenix.Component.assign(:preview_closed, false)
+
+    {current_node, speaker, responses, has_next} =
+      resolve_start_node(start_node, project, sheets_map)
+
+    socket =
+      socket
+      |> Phoenix.Component.assign(:current_node, current_node)
+      |> Phoenix.Component.assign(:speaker, speaker)
+      |> Phoenix.Component.assign(:responses, responses)
+      |> Phoenix.Component.assign(:has_next, has_next)
+      |> Phoenix.Component.assign(:history, [])
+      |> Phoenix.Component.assign(:show, true)
+
+    {:ok, socket}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div>
+      <%= if @preview_closed do %>
+        <p>Preview closed</p>
+      <% else %>
+        <.live_component
+          module={StoryarnWeb.FlowLive.PreviewComponent}
+          id="preview-1"
+          current_node={@current_node}
+          speaker={@speaker}
+          responses={@responses}
+          has_next={@has_next}
+          history={@history}
+          show={@show}
+          project={@project}
+          sheets_map={@sheets_map}
+        />
+      <% end %>
+    </div>
+    """
+  end
+
+  def handle_info({:close_preview}, socket) do
+    {:noreply, Phoenix.Component.assign(socket, :preview_closed, true)}
+  end
+
+  # Replicate the component's load_node logic for initial setup since
+  # update/2 has a bug that prevents load_node from running.
+  defp resolve_start_node(%{type: "dialogue"} = node, project, sheets_map) do
+    speaker = resolve_speaker(node.data["speaker_sheet_id"], project, sheets_map)
+    responses = node.data["responses"] || []
+    connections = Flows.get_outgoing_connections(node.id)
+    has_next = responses == [] && Enum.any?(connections, &(&1.source_pin == "output"))
+    {node, speaker, responses, has_next}
+  end
+
+  defp resolve_start_node(node, project, sheets_map) do
+    # Skip non-dialogue nodes and follow connections
+    connections = Flows.get_outgoing_connections(node.id)
+
+    case List.first(connections) do
+      nil ->
+        {nil, nil, [], false}
+
+      conn ->
+        next_node = Flows.get_node_by_id!(node.flow_id, conn.target_node_id)
+        resolve_start_node(next_node, project, sheets_map)
+    end
+  end
+
+  defp resolve_speaker(nil, _project, _sheets_map), do: nil
+  defp resolve_speaker("", _project, _sheets_map), do: nil
+
+  defp resolve_speaker(sheet_id, project, sheets_map) do
+    sheet_key = to_string(sheet_id)
+
+    case Map.get(sheets_map, sheet_key) do
+      %{name: name} ->
+        name
+
+      nil ->
+        case Storyarn.Sheets.get_sheet(project.id, sheet_id) do
+          nil -> nil
+          sheet -> sheet.name
+        end
+    end
+  end
+end
+
 defmodule StoryarnWeb.FlowLive.PreviewComponentTest do
   use StoryarnWeb.ConnCase, async: true
 
@@ -560,109 +665,5 @@ defmodule StoryarnWeb.FlowLive.PreviewComponentTest do
       assigns: Map.merge(base, extra_assigns),
       private: %{lifecycle_events: [], live_temp: %{}}
     }
-  end
-end
-
-# Wrapper LiveView for testing PreviewComponent handle_events
-defmodule PreviewTestLive do
-  use Phoenix.LiveView
-
-  alias Storyarn.Flows
-
-  def mount(_params, session, socket) do
-    project = Storyarn.Projects.get_project!(session["project_id"])
-    flow = Flows.get_flow!(project.id, session["flow_id"])
-    start_node = Flows.get_node!(flow.id, session["start_node_id"])
-    sheets_map = Map.get(session, "sheets_map", %{})
-
-    # Manually invoke load_node logic since the component's update/2 has a bug
-    socket =
-      socket
-      |> Phoenix.Component.assign(:project, project)
-      |> Phoenix.Component.assign(:sheets_map, sheets_map)
-      |> Phoenix.Component.assign(:preview_closed, false)
-
-    {current_node, speaker, responses, has_next} =
-      resolve_start_node(start_node, project, sheets_map)
-
-    socket =
-      socket
-      |> Phoenix.Component.assign(:current_node, current_node)
-      |> Phoenix.Component.assign(:speaker, speaker)
-      |> Phoenix.Component.assign(:responses, responses)
-      |> Phoenix.Component.assign(:has_next, has_next)
-      |> Phoenix.Component.assign(:history, [])
-      |> Phoenix.Component.assign(:show, true)
-
-    {:ok, socket}
-  end
-
-  def render(assigns) do
-    ~H"""
-    <div>
-      <%= if @preview_closed do %>
-        <p>Preview closed</p>
-      <% else %>
-        <.live_component
-          module={StoryarnWeb.FlowLive.PreviewComponent}
-          id="preview-1"
-          current_node={@current_node}
-          speaker={@speaker}
-          responses={@responses}
-          has_next={@has_next}
-          history={@history}
-          show={@show}
-          project={@project}
-          sheets_map={@sheets_map}
-        />
-      <% end %>
-    </div>
-    """
-  end
-
-  def handle_info({:close_preview}, socket) do
-    {:noreply, Phoenix.Component.assign(socket, :preview_closed, true)}
-  end
-
-  # Replicate the component's load_node logic for initial setup since
-  # update/2 has a bug that prevents load_node from running.
-  defp resolve_start_node(%{type: "dialogue"} = node, project, sheets_map) do
-    speaker = resolve_speaker(node.data["speaker_sheet_id"], project, sheets_map)
-    responses = node.data["responses"] || []
-    connections = Flows.get_outgoing_connections(node.id)
-    has_next = responses == [] && Enum.any?(connections, &(&1.source_pin == "output"))
-    {node, speaker, responses, has_next}
-  end
-
-  defp resolve_start_node(node, project, sheets_map) do
-    # Skip non-dialogue nodes and follow connections
-    connections = Flows.get_outgoing_connections(node.id)
-
-    case List.first(connections) do
-      nil ->
-        {nil, nil, [], false}
-
-      conn ->
-        next_node = Flows.get_node_by_id!(node.flow_id, conn.target_node_id)
-        resolve_start_node(next_node, project, sheets_map)
-    end
-  end
-
-  defp resolve_speaker(nil, _project, _sheets_map), do: nil
-  defp resolve_speaker("", _project, _sheets_map), do: nil
-
-  defp resolve_speaker(sheet_id, project, sheets_map) do
-    sheet_key = to_string(sheet_id)
-
-    case Map.get(sheets_map, sheet_key) do
-      %{name: name} ->
-        name
-
-      nil ->
-        case Storyarn.Sheets.get_sheet(project.id, sheet_id) do
-          nil -> nil
-          sheet -> sheet.name
-        end
-    end
   end
 end

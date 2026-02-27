@@ -159,7 +159,8 @@ defmodule Storyarn.Exports.Serializers.Helpers do
   def shortcut_to_identifier(""), do: ""
 
   def shortcut_to_identifier(shortcut) when is_binary(shortcut) do
-    String.replace(shortcut, ~r/[.\-]/, "_")
+    id = String.replace(shortcut, ~r/[.\-]/, "_")
+    if String.match?(id, ~r/^[0-9]/), do: "_#{id}", else: id
   end
 
   # ---------------------------------------------------------------------------

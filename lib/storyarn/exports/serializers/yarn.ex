@@ -40,17 +40,32 @@ defmodule Storyarn.Exports.Serializers.Yarn do
     project_name = Helpers.shortcut_to_identifier(project_data.project.slug || "story")
     line_counter = :counters.new(1, [:atomics])
 
+    var_decls = variable_declarations(variables)
+
     yarn_files =
       if length(flows) > 5 do
-        Enum.map(flows, fn flow ->
+        flows
+        |> Enum.with_index()
+        |> Enum.map(fn {flow, idx} ->
           filename = Helpers.shortcut_to_identifier(flow.shortcut || "flow_#{flow.id}")
-          content = flow_to_yarn(flow, variables, speaker_map, line_counter)
+          decls = if idx == 0, do: var_decls, else: []
+          content = flow_to_yarn(flow, decls, speaker_map, line_counter)
           {"#{filename}.yarn", content}
         end)
       else
-        content =
-          Enum.map_join(flows, "\n", &flow_to_yarn(&1, variables, speaker_map, line_counter))
+        {first_content, rest_content} =
+          case flows do
+            [first | rest] ->
+              {
+                flow_to_yarn(first, var_decls, speaker_map, line_counter),
+                Enum.map(rest, &flow_to_yarn(&1, [], speaker_map, line_counter))
+              }
 
+            [] ->
+              {"", []}
+          end
+
+        content = Enum.join([first_content | rest_content], "\n")
         [{"#{project_name}.yarn", content}]
       end
 
@@ -68,15 +83,12 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   # Flow → Yarn node(s)
   # ---------------------------------------------------------------------------
 
-  defp flow_to_yarn(flow, variables, speaker_map, line_counter) do
+  defp flow_to_yarn(flow, var_decls, speaker_map, line_counter) do
     node_title = Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")
     {instructions, hub_sections} = GraphTraversal.linearize(flow)
 
     # Main node
     main_body = render_instructions(instructions, speaker_map, line_counter, 0)
-
-    # Variable declarations at start of first node
-    var_decls = variable_declarations(variables)
 
     main_node =
       yarn_node(node_title, flow.name, var_decls ++ main_body)
@@ -191,10 +203,11 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   end
 
   defp render_instruction({:condition_branch, _pin, _label, idx}, _sm, _lc, depth) do
-    if idx == 0 do
-      []
-    else
-      ["#{indent(depth)}<<else>>"]
+    case idx do
+      0 -> []
+      1 -> ["#{indent(depth)}<<else>>"]
+      # Yarn only supports one <<else>> — additional branches are folded under it
+      _ -> ["#{indent(depth)}// (branch #{idx})"]
     end
   end
 
