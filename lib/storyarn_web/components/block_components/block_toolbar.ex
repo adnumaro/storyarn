@@ -40,25 +40,25 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
     <div
       :if={@can_edit}
       data-toolbar
-      class="absolute -top-9 left-0 flex items-center gap-0.5 p-1 bg-base-200 border border-base-300 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto"
+      class="absolute -top-11 left-1/2 -translate-x-1/2 flex items-center gap-0.5 p-1 bg-base-200 border border-base-300 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-10"
     >
       <%!-- Duplicate --%>
       <button
         type="button"
-        class="btn btn-ghost btn-xs btn-square"
+        class="btn btn-ghost btn-sm btn-square"
         title={dgettext("sheets", "Duplicate")}
         phx-click="duplicate_block"
         phx-value-id={@block.id}
         phx-target={@target}
       >
-        <.icon name="copy" class="size-3.5" />
+        <.icon name="copy" class="size-4" />
       </button>
 
       <%!-- Constant toggle --%>
       <button
         :if={@show_constant}
         type="button"
-        class={["btn btn-ghost btn-xs btn-square", @block.is_constant && "btn-active"]}
+        class={["btn btn-ghost btn-sm btn-square", @block.is_constant && "btn-active"]}
         title={
           if @block.is_constant,
             do: dgettext("sheets", "Make variable"),
@@ -68,7 +68,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
         phx-value-id={@block.id}
         phx-target={@target}
       >
-        <.icon name={if @block.is_constant, do: "lock", else: "unlock"} class="size-3.5" />
+        <.icon name={if @block.is_constant, do: "lock", else: "unlock"} class="size-4" />
       </button>
 
       <%!-- Config gear — popover with type-specific config --%>
@@ -84,9 +84,9 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
         <div
           tabindex="0"
           role="button"
-          class="btn btn-ghost btn-xs btn-square"
+          class="btn btn-ghost btn-sm btn-square"
         >
-          <.icon name="ellipsis-vertical" class="size-3.5" />
+          <.icon name="ellipsis-vertical" class="size-4" />
         </div>
         <ul
           tabindex="0"
@@ -206,10 +206,10 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
       <button
         type="button"
         data-role="trigger"
-        class="btn btn-ghost btn-xs btn-square"
+        class="btn btn-ghost btn-sm btn-square"
         title={dgettext("sheets", "Configure")}
       >
-        <.icon name="settings" class="size-3.5" />
+        <.icon name="settings" class="size-4" />
       </button>
       <div data-role="popover-template" hidden>
         <.popover_content block={@block} can_edit={@can_edit} />

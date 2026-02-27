@@ -27,10 +27,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.DateConfig do
       <%!-- Date Range --%>
       <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="text-xs text-base-content/60">{dgettext("sheets", "Min Date")}</label>
+          <label class="text-sm text-base-content/60">{dgettext("sheets", "Min Date")}</label>
           <input
             type="date"
-            class="input input-xs input-bordered w-full mt-1"
+            class="input input-sm input-bordered w-full mt-1"
             value={@min_date}
             data-blur-event="save_config_field"
             data-params={Jason.encode!(%{block_id: @block.id, field: "min_date"})}
@@ -38,10 +38,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.DateConfig do
           />
         </div>
         <div>
-          <label class="text-xs text-base-content/60">{dgettext("sheets", "Max Date")}</label>
+          <label class="text-sm text-base-content/60">{dgettext("sheets", "Max Date")}</label>
           <input
             type="date"
-            class="input input-xs input-bordered w-full mt-1"
+            class="input input-sm input-bordered w-full mt-1"
             value={@max_date}
             data-blur-event="save_config_field"
             data-params={Jason.encode!(%{block_id: @block.id, field: "max_date"})}

@@ -30,7 +30,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockAdvancedConfig do
     ~H"""
     <div class={["space-y-3", !@standalone && "pt-3 border-t border-base-300"]}>
 
-      <div class="text-xs font-medium text-base-content/60 uppercase tracking-wider">
+      <div class="text-sm font-medium text-base-content/60 uppercase tracking-wider">
         {dgettext("sheets", "Advanced")}
       </div>
 
@@ -40,7 +40,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockAdvancedConfig do
         <div class="flex gap-1">
           <button
             type="button"
-            class={["btn btn-xs", @block.scope == "self" && "btn-active"]}
+            class={["btn btn-sm", @block.scope == "self" && "btn-active"]}
             data-event="change_block_scope"
             data-params={Jason.encode!(%{scope: "self", id: @block.id})}
             data-close-on-click="false"
@@ -49,7 +49,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockAdvancedConfig do
           </button>
           <button
             type="button"
-            class={["btn btn-xs", @block.scope == "children" && "btn-active"]}
+            class={["btn btn-sm", @block.scope == "children" && "btn-active"]}
             data-event="change_block_scope"
             data-params={Jason.encode!(%{scope: "children", id: @block.id})}
             data-close-on-click="false"
@@ -67,14 +67,14 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockAdvancedConfig do
         data-params={Jason.encode!(%{id: @block.id})}
         data-close-on-click="false"
       >
-        <input type="checkbox" class="checkbox checkbox-xs" checked={@block.required} />
+        <input type="checkbox" class="checkbox checkbox-sm" checked={@block.required} />
         <span class="text-sm text-base-content/70">{dgettext("sheets", "Required")}</span>
       </label>
 
       <%!-- Variable name (read-only) --%>
       <div :if={@is_variable && @block.variable_name} class="flex items-center gap-2">
-        <.icon name="variable" class="size-3.5 text-base-content/50" />
-        <code class="text-xs text-base-content/60 bg-base-300 px-1.5 py-0.5 rounded">
+        <.icon name="variable" class="size-4 text-base-content/50" />
+        <code class="text-sm text-base-content/60 bg-base-300 px-1.5 py-0.5 rounded">
           {@block.variable_name}
         </code>
       </div>
@@ -83,11 +83,11 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockAdvancedConfig do
       <button
         :if={@is_inherited && @block.detached && @can_edit}
         type="button"
-        class="btn btn-ghost btn-xs gap-1"
+        class="btn btn-ghost btn-sm gap-1"
         data-event="reattach_block"
         data-params={Jason.encode!(%{id: @block.id})}
       >
-        <.icon name="link" class="size-3.5" />
+        <.icon name="link" class="size-4" />
         {dgettext("sheets", "Re-attach to source")}
       </button>
     </div>

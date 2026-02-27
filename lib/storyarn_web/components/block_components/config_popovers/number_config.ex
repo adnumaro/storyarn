@@ -29,10 +29,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.NumberConfig do
       <%!-- Min / Max --%>
       <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="text-xs text-base-content/60">{dgettext("sheets", "Min")}</label>
+          <label class="text-sm text-base-content/60">{dgettext("sheets", "Min")}</label>
           <input
             type="number"
-            class="input input-xs input-bordered w-full mt-1"
+            class="input input-sm input-bordered w-full mt-1"
             value={@min}
             placeholder={dgettext("sheets", "No min")}
             data-blur-event="save_config_field"
@@ -41,10 +41,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.NumberConfig do
           />
         </div>
         <div>
-          <label class="text-xs text-base-content/60">{dgettext("sheets", "Max")}</label>
+          <label class="text-sm text-base-content/60">{dgettext("sheets", "Max")}</label>
           <input
             type="number"
-            class="input input-xs input-bordered w-full mt-1"
+            class="input input-sm input-bordered w-full mt-1"
             value={@max}
             placeholder={dgettext("sheets", "No max")}
             data-blur-event="save_config_field"
@@ -56,10 +56,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.NumberConfig do
 
       <%!-- Step --%>
       <div>
-        <label class="text-xs text-base-content/60">{dgettext("sheets", "Step")}</label>
+        <label class="text-sm text-base-content/60">{dgettext("sheets", "Step")}</label>
         <input
           type="number"
-          class="input input-xs input-bordered w-full mt-1"
+          class="input input-sm input-bordered w-full mt-1"
           value={@step}
           placeholder="1"
           min="0.001"
@@ -71,10 +71,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.NumberConfig do
 
       <%!-- Placeholder --%>
       <div>
-        <label class="text-xs text-base-content/60">{dgettext("sheets", "Placeholder")}</label>
+        <label class="text-sm text-base-content/60">{dgettext("sheets", "Placeholder")}</label>
         <input
           type="text"
-          class="input input-xs input-bordered w-full mt-1"
+          class="input input-sm input-bordered w-full mt-1"
           value={@placeholder}
           placeholder={dgettext("sheets", "Enter placeholder...")}
           data-blur-event="save_config_field"

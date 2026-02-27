@@ -26,10 +26,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.TextConfig do
     <div class="p-3 space-y-3 min-w-0">
       <%!-- Placeholder --%>
       <div>
-        <label class="text-xs text-base-content/60">{dgettext("sheets", "Placeholder")}</label>
+        <label class="text-sm text-base-content/60">{dgettext("sheets", "Placeholder")}</label>
         <input
           type="text"
-          class="input input-xs input-bordered w-full mt-1"
+          class="input input-sm input-bordered w-full mt-1"
           value={@placeholder}
           placeholder={dgettext("sheets", "Enter placeholder...")}
           data-blur-event="save_config_field"
@@ -40,10 +40,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.TextConfig do
 
       <%!-- Max Length --%>
       <div>
-        <label class="text-xs text-base-content/60">{dgettext("sheets", "Max Length")}</label>
+        <label class="text-sm text-base-content/60">{dgettext("sheets", "Max Length")}</label>
         <input
           type="number"
-          class="input input-xs input-bordered w-full mt-1"
+          class="input input-sm input-bordered w-full mt-1"
           value={@max_length}
           placeholder={dgettext("sheets", "No limit")}
           min="1"

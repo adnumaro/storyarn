@@ -30,7 +30,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.BooleanConfig do
     <div class="p-3 space-y-3 min-w-0">
       <%!-- Mode toggle --%>
       <div>
-        <label class="text-xs text-base-content/60">
+        <label class="text-sm text-base-content/60">
           {dgettext("sheets", "Three states (Yes/Neutral/No)")}
         </label>
         <label
@@ -47,11 +47,11 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.BooleanConfig do
         >
           <input
             type="checkbox"
-            class="toggle toggle-xs"
+            class="toggle toggle-sm"
             checked={@mode == "tri_state"}
             disabled={!@can_edit}
           />
-          <span class="text-xs text-base-content/70">
+          <span class="text-sm text-base-content/70">
             {if @mode == "tri_state",
               do: dgettext("sheets", "Enabled"),
               else: dgettext("sheets", "Disabled")}
@@ -61,45 +61,45 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.BooleanConfig do
 
       <%!-- Custom Labels --%>
       <div>
-        <label class="text-xs text-base-content/60">{dgettext("sheets", "Custom Labels")}</label>
+        <label class="text-sm text-base-content/60">{dgettext("sheets", "Custom Labels")}</label>
         <div class="grid grid-cols-2 gap-2 mt-1">
           <div>
             <input
               type="text"
-              class="input input-xs input-bordered w-full"
+              class="input input-sm input-bordered w-full"
               value={@true_label}
               placeholder={dgettext("sheets", "Yes")}
               data-blur-event="save_config_field"
               data-params={Jason.encode!(%{block_id: @block.id, field: "true_label"})}
               disabled={!@can_edit}
             />
-            <span class="text-xs text-base-content/50">{dgettext("sheets", "True")}</span>
+            <span class="text-sm text-base-content/50">{dgettext("sheets", "True")}</span>
           </div>
           <div>
             <input
               type="text"
-              class="input input-xs input-bordered w-full"
+              class="input input-sm input-bordered w-full"
               value={@false_label}
               placeholder={dgettext("sheets", "No")}
               data-blur-event="save_config_field"
               data-params={Jason.encode!(%{block_id: @block.id, field: "false_label"})}
               disabled={!@can_edit}
             />
-            <span class="text-xs text-base-content/50">{dgettext("sheets", "False")}</span>
+            <span class="text-sm text-base-content/50">{dgettext("sheets", "False")}</span>
           </div>
         </div>
         <%!-- Neutral label (tri-state only) --%>
         <div :if={@mode == "tri_state"} class="mt-2">
           <input
             type="text"
-            class="input input-xs input-bordered w-full"
+            class="input input-sm input-bordered w-full"
             value={@neutral_label}
             placeholder={dgettext("sheets", "Neutral")}
             data-blur-event="save_config_field"
             data-params={Jason.encode!(%{block_id: @block.id, field: "neutral_label"})}
             disabled={!@can_edit}
           />
-          <span class="text-xs text-base-content/50">
+          <span class="text-sm text-base-content/50">
             {dgettext("sheets", "Neutral")}
           </span>
         </div>

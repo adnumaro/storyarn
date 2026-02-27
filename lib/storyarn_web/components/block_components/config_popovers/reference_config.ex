@@ -22,7 +22,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.ReferenceConfig 
     <div class="p-3 space-y-3 min-w-0">
       <%!-- Allowed Types --%>
       <div>
-        <label class="text-xs text-base-content/60">
+        <label class="text-sm text-base-content/60">
           {dgettext("sheets", "Allowed Types")}
         </label>
         <div class="flex flex-col gap-2 mt-1">
@@ -34,11 +34,11 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.ReferenceConfig 
           >
             <input
               type="checkbox"
-              class="checkbox checkbox-xs"
+              class="checkbox checkbox-sm"
               checked={"sheet" in @allowed_types}
               disabled={!@can_edit}
             />
-            <span class="text-xs text-base-content/70">{dgettext("sheets", "Sheets")}</span>
+            <span class="text-sm text-base-content/70">{dgettext("sheets", "Sheets")}</span>
           </label>
           <label
             class="flex items-center gap-2 cursor-pointer"
@@ -48,11 +48,11 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.ReferenceConfig 
           >
             <input
               type="checkbox"
-              class="checkbox checkbox-xs"
+              class="checkbox checkbox-sm"
               checked={"flow" in @allowed_types}
               disabled={!@can_edit}
             />
-            <span class="text-xs text-base-content/70">{dgettext("sheets", "Flows")}</span>
+            <span class="text-sm text-base-content/70">{dgettext("sheets", "Flows")}</span>
           </label>
         </div>
       </div>
