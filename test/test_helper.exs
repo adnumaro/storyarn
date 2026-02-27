@@ -1,7 +1,8 @@
-# Exclude E2E and ysc validation tests by default
+# Exclude E2E and compiler validation tests by default
 # Run E2E with: mix test --include e2e
 # Run ysc validation with: mix test --only ysc_validation (requires ysc in PATH)
-ExUnit.start(exclude: [:e2e, :ysc_validation])
+# Run ink validation with: mix test --only ink_validation (requires inklecate in PATH)
+ExUnit.start(exclude: [:e2e, :ysc_validation, :ink_validation])
 Ecto.Adapters.SQL.Sandbox.mode(Storyarn.Repo, :manual)
 
 # Ensure Lucideicons module is loaded so icon atoms exist for binary_to_existing_atom

@@ -196,7 +196,7 @@ jobs:
           PLAYWRIGHT_HEADLESS: true
 
   validate-exports:
-    name: Validate Yarn Exports (ysc)
+    name: Validate Exports (ysc + inklecate)
     runs-on: ubuntu-latest
 
     services:
@@ -262,6 +262,31 @@ jobs:
       - name: Verify ysc works
         run: ysc --help
 
+      - name: Cache inklecate build
+        uses: actions/cache@v4
+        id: inklecate-cache
+        with:
+          path: /opt/inklecate
+          key: inklecate-v1.2.0-linux-x64
+
+      - name: Build inklecate from source
+        if: steps.inklecate-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch v.1.2.0 \
+            https://github.com/inkle/ink.git /tmp/inklecate-src
+          dotnet publish /tmp/inklecate-src/inklecate/inklecate.csproj \
+            -c Release -r linux-x64 --self-contained true \
+            /p:PublishTrimmed=false /p:PublishSingleFile=true \
+            -o /opt/inklecate
+          chmod +x /opt/inklecate/inklecate
+          rm -rf /tmp/inklecate-src
+
+      - name: Add inklecate to PATH
+        run: echo "/opt/inklecate" >> $GITHUB_PATH
+
+      - name: Verify inklecate works
+        run: inklecate --help || true
+
       - name: Cache deps
         uses: actions/cache@v4
         with:
@@ -285,7 +310,12 @@ jobs:
       - name: Compile
         run: mix compile
 
-      - name: Run export validation tests
+      - name: Run Yarn export validation tests
         run: mix test --only ysc_validation
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/storyarn_test
+
+      - name: Run Ink export validation tests
+        run: mix test --only ink_validation
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/storyarn_test
