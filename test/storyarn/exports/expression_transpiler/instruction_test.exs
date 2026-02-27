@@ -211,12 +211,11 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
       assert result == ~s({mc_jaime_health == "": ~ mc_jaime_health = 10})
     end
 
-    test "yarn emits if/endif block" do
+    test "yarn emits unconditional set" do
       {:ok, result, _} =
         ExpressionTranspiler.transpile_instruction([assignment("set_if_unset")], :yarn)
 
-      assert result ==
-               "<<if $mc_jaime_health == null>>\n<<set $mc_jaime_health to 10>>\n<<endif>>"
+      assert result == "<<set $mc_jaime_health to 10>>"
     end
 
     test "unity emits Lua if/then/end" do

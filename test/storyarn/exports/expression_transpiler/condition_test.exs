@@ -128,7 +128,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
     end
 
     @is_nil_expected %{
-      yarn: "$mc_jaime_health == null",
+      yarn: ~s($mc_jaime_health == ""),
       unity: ~s(Variable["mc.jaime.health"] == nil),
       godot: "mc_jaime_health == null",
       unreal: "mc.jaime.health == None",
