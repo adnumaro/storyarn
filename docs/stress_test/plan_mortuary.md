@@ -150,7 +150,7 @@
 
 ### Features introduced
 - Property inheritance (scope:children, override, detach/reattach, required flag)
-- Block types: number, select, boolean, rich_text, text, multi_select, date, divider, reference
+- Block types: number, select, boolean, rich_text, text, multi_select, date, reference
 - Avatar, banner, sheet color, inline editing, column layout, shortcut editing
 - Scene creation, background, rectangle/freeform zones, character pins, annotations, connections
 - Flow: dialogue nodes, speaker colors, responses, instruction, auto-layout, node duplication, context menu, minimap
@@ -729,7 +729,6 @@
 | multi_select                  | 1       | Known languages                                              |
 | boolean                       | 1, 3    | Flags, abilities                                             |
 | date                          | 1, 2    | Last Death, table column                                     |
-| divider                       | 1       | Section separators                                           |
 | reference                     | 1, 7    | Location, HQ                                                 |
 | table                         | 2, 6    | Items (all 7 types), Bestiary                                |
 | **Table column types**        | 2       | text, number, boolean, select, multi_select, date, reference |

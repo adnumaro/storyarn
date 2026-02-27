@@ -294,9 +294,6 @@ The existing block type menu gets a new entry.
 │  ─────────────────────────────────     │
 │  [⊞]   Table                   ← NEW   │
 │                                        │
-│  LAYOUT                                │
-│  ─────────────────────────────────     │
-│  [─]   Divider                         │
 │                                        │
 │  ─────────────────────────────────     │
 │  Cancel                                │

@@ -367,7 +367,6 @@ New classes:
 - `.floating-toolbar` — dark background, rounded, flex layout, shadow
 - `.toolbar-btn` — 28px height, dark text on dark bg, hover highlight
 - `.toolbar-btn-active` — brighter background
-- `.toolbar-separator` — 1px vertical divider
 - `.toolbar-input` — dark input field (name/label text inputs)
 - `.toolbar-popover` — light theme popover (uses `--color-base-*` vars)
 - `.color-swatch` — 22px circle, hover scale, selected ring

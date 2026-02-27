@@ -160,7 +160,6 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 | multi_select | Yes             | array of strings |
 | date         | Yes             | string (ISO date) |
 | boolean      | Yes             | boolean / null (tri-state) |
-| divider      | No              | - |
 | reference    | No (for now)    | - |
 
 ---
@@ -347,7 +346,6 @@ Blocks can be arranged side-by-side in 2-3 column groups.
 - [x] `create_column_group/2` — group blocks side-by-side (min 2, max 3)
 - [x] `dissolve_column_group/2` — reset blocks to full-width
 - [x] Auto-dissolve when deletion leaves fewer than 2 blocks in group
-- [x] Divider blocks cannot be placed in columns
 
 #### 7.5.9.3 UI
 - [x] ColumnSortable hook (two-tier SortableJS: vertical + horizontal)

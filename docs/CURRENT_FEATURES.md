@@ -158,10 +158,9 @@ Ten block types:
 | `boolean`      |        Yes        | label, mode (`two_state`)                    | true/false/nil                         |
 | `date`         |        Yes        | label                                        | date value                             |
 | `table`        |        Yes        | label, typed columns                         | rows with cell data (see below)        |
-| `divider`      |        No         | —                                            | —                                      |
 | `reference`    |        No         | label, allowed_types `["sheet","flow"]`      | target_type + target_id                |
 
-- **Variable exposure** — blocks are variables unless type is `divider`/`reference` OR `is_constant: true`
+- **Variable exposure** — blocks are variables unless type is `reference` OR `is_constant: true`
 - **Variable name** — auto-generated from label via slugify (e.g., "Health Points" → `health_points`); unique per sheet (suffixed `_2`, `_3` on collision)
 - **Variable reference format** — `{sheet_shortcut}.{variable_name}` (e.g., `mc.jaime.health`)
 - **Scope** — `self` (block stays on this sheet) or `children` (cascades to all descendants)

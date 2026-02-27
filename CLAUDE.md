@@ -129,7 +129,7 @@ Sheet (shortcut: "mc.jaime")
 - `text`/`rich_text`: equals, contains, starts_with, is_empty
 - `date`: equals, before, after
 - `table`: cell-level variable references via `{sheet}.{table}.{row}.{column}`
-- Non-variable: `divider`, `reference`
+- Non-variable: `reference`
 
 **API:**
 ```elixir

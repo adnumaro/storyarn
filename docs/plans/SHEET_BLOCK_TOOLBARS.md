@@ -51,7 +51,7 @@
 
 The config panel (`lib/storyarn_web/components/block_components/config_panel.ex`) renders these fields based on block type:
 
-#### Universal Fields (all block types except divider)
+#### Universal Fields (all block types)
 
 | Field           | Control           | Notes                                             |
 |-----------------|-------------------|---------------------------------------------------|
@@ -76,7 +76,6 @@ The config panel (`lib/storyarn_web/components/block_components/config_panel.ex`
 | `date`         | Min Date, Max Date                                                 | Low          |
 | `reference`    | Allowed Types (sheet/flow checkboxes)                              | Low          |
 | `table`        | (nothing extra — columns managed inline already)                   | **None**     |
-| `divider`      | (no config at all)                                                 | **None**     |
 
 ### Current Interaction Flow
 
@@ -147,7 +146,7 @@ Every block's hover toolbar contains these base elements:
 - 🔒 Constant toggle: only for variable-capable types
 - 📋 Copy reference: only when not constant
 - ⬆⬇ Move: always (existing reorder functionality)
-- ⚙ Config: only for types with extra config (not divider, not table)
+- ⚙ Config: only for types with extra config (not table)
 
 ### 4.2 Number Block
 
@@ -313,16 +312,6 @@ Table blocks have **no config popover**. All configuration is already inline:
 - Add column → "+" button on right edge
 
 The hover toolbar for table only shows: drag handle, type badge, label edit, move, duplicate, delete. No ⚙.
-
-### 4.9 Divider Block — Minimal Toolbar
-
-```
-┌───────────────────────┐
-│ ⠿ │ ── │ ⬆ │ ⬇ │ 🗑 │
-└───────────────────────┘
-```
-
-No label, no config, no constant toggle. Just reorder and delete.
 
 ---
 

@@ -7,17 +7,16 @@
 
 ## Summary
 
-| #   | Severity | Area    | Issue                                                  | Status             |
-|-----|----------|---------|--------------------------------------------------------|--------------------|
-| 1   | Minor    | Sheets  | Table block label not editable inline                  | Open               |
+| #   | Severity | Area    | Issue                                                  | Status               |
+|-----|----------|---------|--------------------------------------------------------|----------------------|
+| 1   | Minor    | Sheets  | Table block label not editable inline                  | Open                 |
 | 2   | Major    | Sheets  | KeyError crash in undo/redo snapshot (row.shortcut)    | **Open — confirmed** |
-| 3   | Minor    | Sheets  | "Add column" button unresponsive to mouse clicks       | Open               |
-| 4   | Moderate | Flows   | Drag-to-connect nodes is unreliable on canvas          | Open               |
-| 5   | Minor    | Scenes  | Pin placement blocked by zone click targets            | Open               |
+| 3   | Minor    | Sheets  | "Add column" button unresponsive to mouse clicks       | Open                 |
+| 4   | Moderate | Flows   | Drag-to-connect nodes is unreliable on canvas          | Open                 |
+| 5   | Minor    | Scenes  | Pin placement blocked by zone click targets            | Open                 |
 | 6   | Major    | Flows   | GenServer crash: node_moved fires after node deletion  | **Open — confirmed** |
-| 7   | Moderate | Flows   | "+ Add response" creates hidden first response         | Open               |
-| 8   | Minor    | Assets  | No multi-file upload — must upload one file at a time  | Open               |
-| 9   | Minor    | Sheets  | Divider block has no label field — cannot name sections | Open               |
+| 7   | Moderate | Flows   | "+ Add response" creates hidden first response         | Open                 |
+| 8   | Minor    | Assets  | No multi-file upload — must upload one file at a time  | Open                 |
 
 **2 major bugs** (Issue #2 — undo crash; Issue #6 — GenServer crash on move after delete)
 **2 moderate UX issues** (Issue #4 — drag-to-connect unreliable; Issue #7 — hidden first response)
@@ -149,22 +148,6 @@
 
 ---
 
-## Issue #9: Divider block has no label field — cannot name sections
-
-- **Severity:** minor / missing feature
-- **Status:** Open
-- **Phase:** Phase 1 — The Awakening
-- **Context:** Adding a Divider block on "Main Characters" sheet to create an "Attributes" section header. Selected scope "This sheet and all children", then added the Divider block type.
-- **Problem:** The Divider block renders as a thin horizontal line only. There is no label/title text visible on the block. Opening the "Configure Block" panel shows only "Type: divider" and a "Required" toggle — no Label or Name field. There is no way to give the divider a section title like "Attributes" or "Alignment".
-- **Expected:** Dividers should act as section headers with an editable label. The block picker should create a divider with a default label (e.g., "Label" or "Section"), and the Configure panel should include a "Label" text input. The label should render as text next to or above the divider line.
-- **Impact:** Without labels, dividers are purely visual separators. Users cannot create named sections to organize blocks into logical groups (e.g., "Attributes", "Class & Progression", "Notes"). This significantly reduces the organizational value of divider blocks.
-- **Proposal:** Add a `label` field to the Divider block's Configure panel and render it inline with the divider line (e.g., left-aligned text with a line extending to the right, similar to HTML `<fieldset>` legends).
-- **Relevant files:**
-  - `lib/storyarn_web/components/block_components/layout_blocks.ex` — divider rendering
-  - `lib/storyarn_web/live/sheet_live/show.ex` — block config panel
-
----
-
 ## What Worked Well
 
 Features that functioned correctly during the stress test:
@@ -172,7 +155,7 @@ Features that functioned correctly during the stress test:
 ### Sheets & Blocks
 - Project creation with workspace assignment
 - Sheet hierarchy (parent-child: Characters > Main Characters > The Nameless One, Morte)
-- All block types tested: number, text, select, boolean, divider
+- All block types tested: number, text, select, boolean
 - Table blocks: creation, row addition (despite undo crash), column addition (via JS), cell editing
 - Property inheritance: parent sheet blocks inherited by child sheets
 - Block override: child sheets can override inherited values
