@@ -13,5 +13,7 @@ Code.ensure_loaded!(Lucideicons)
 # Configure base URL for PhoenixTest Playwright (E2E tests)
 Application.put_env(:phoenix_test, :base_url, "http://127.0.0.1:4002")
 
-# Start Playwright supervisor for E2E tests
-{:ok, _} = PhoenixTest.Playwright.Supervisor.start_link()
+# Start Playwright supervisor only when Playwright is installed (not in CI unit test job)
+if File.dir?(Path.join(["assets", "node_modules", "playwright"])) do
+  {:ok, _} = PhoenixTest.Playwright.Supervisor.start_link()
+end
