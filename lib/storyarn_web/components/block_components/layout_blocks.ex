@@ -6,14 +6,6 @@ defmodule StoryarnWeb.Components.BlockComponents.LayoutBlocks do
 
   import StoryarnWeb.Components.CoreComponents, only: [block_label: 1]
 
-  def divider_block(assigns) do
-    ~H"""
-    <div class="py-3">
-      <hr class="border-base-content/20" />
-    </div>
-    """
-  end
-
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :target, :any, default: nil

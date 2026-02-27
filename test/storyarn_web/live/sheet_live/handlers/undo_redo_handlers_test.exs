@@ -5,7 +5,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
   Tests cover all action types dispatched through UndoRedoHandlers:
   - Sheet metadata: name, shortcut, color
   - Block CRUD: create, delete, reorder
-  - Block values & config: update_block_value, update_block_config, toggle_constant
+  - Block values & config: update_block_value, toggle_constant
   - Table operations: column/row add/delete/rename, cell updates, column type change,
     column flag toggle, row reorder, column config update
   - Compound actions
@@ -314,48 +314,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
   end
 
   # ===========================================================================
-  # Block config undo/redo
-  # ===========================================================================
-
-  describe "block config undo/redo" do
-    test "undo reverses block config update", %{conn: conn, url: url, sheet: sheet} do
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "OldLabel"}})
-
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      # Open config panel then save new config
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      send_to_content_tab(view, "save_block_config", %{
-        "config" => %{"label" => "NewLabel", "placeholder" => "Type..."}
-      })
-
-      assert Sheets.get_block(block.id).config["label"] == "NewLabel"
-
-      render_hook(view, "undo", %{})
-      assert Sheets.get_block(block.id).config["label"] == "OldLabel"
-    end
-
-    test "redo re-applies config after undo", %{conn: conn, url: url, sheet: sheet} do
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "Before"}})
-
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      send_to_content_tab(view, "save_block_config", %{
-        "config" => %{"label" => "After", "placeholder" => ""}
-      })
-
-      render_hook(view, "undo", %{})
-      assert Sheets.get_block(block.id).config["label"] == "Before"
-
-      render_hook(view, "redo", %{})
-      assert Sheets.get_block(block.id).config["label"] == "After"
-    end
-  end
-
-  # ===========================================================================
   # Toggle constant undo/redo
   # ===========================================================================
 
@@ -366,8 +324,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
 
       {:ok, view, _html} = mount_sheet(conn, url)
 
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-      send_to_content_tab(view, "toggle_constant")
+      send_to_content_tab(view, "toolbar_toggle_constant", %{"id" => to_string(block.id)})
       assert Sheets.get_block(block.id).is_constant == true
 
       render_hook(view, "undo", %{})
@@ -379,8 +336,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
 
       {:ok, view, _html} = mount_sheet(conn, url)
 
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-      send_to_content_tab(view, "toggle_constant")
+      send_to_content_tab(view, "toolbar_toggle_constant", %{"id" => to_string(block.id)})
 
       render_hook(view, "undo", %{})
       assert Sheets.get_block(block.id).is_constant == false
@@ -1516,29 +1472,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       assert render(view) =~ "Undo Redo Sheet"
     end
 
-    test "undo update_block_config when block was deleted is no-op", %{
-      conn: conn,
-      url: url,
-      sheet: sheet
-    } do
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "Gone"}})
-
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      send_to_content_tab(view, "save_block_config", %{
-        "config" => %{"label" => "NewConfig"}
-      })
-
-      # Delete block out-of-band
-      Sheets.delete_block(block)
-
-      # Undo should not crash
-      render_hook(view, "undo", %{})
-      assert render(view) =~ "Undo Redo Sheet"
-    end
-
     test "undo toggle_constant when block was deleted is no-op", %{
       conn: conn,
       url: url,
@@ -1548,8 +1481,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
 
       {:ok, view, _html} = mount_sheet(conn, url)
 
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-      send_to_content_tab(view, "toggle_constant")
+      send_to_content_tab(view, "toolbar_toggle_constant", %{"id" => to_string(block.id)})
 
       # Delete block out-of-band
       Sheets.delete_block(Sheets.get_block(block.id))
@@ -1795,28 +1727,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       assert render(view) =~ "Undo Redo Sheet"
     end
 
-    test "redo update_block_config when block was deleted is no-op", %{
-      conn: conn,
-      url: url,
-      sheet: sheet
-    } do
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "RedoConf"}})
-
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      send_to_content_tab(view, "save_block_config", %{
-        "config" => %{"label" => "Changed"}
-      })
-
-      render_hook(view, "undo", %{})
-      Sheets.delete_block(Sheets.get_block(block.id))
-
-      render_hook(view, "redo", %{})
-      assert render(view) =~ "Undo Redo Sheet"
-    end
-
     test "redo toggle_constant when block was deleted is no-op", %{
       conn: conn,
       url: url,
@@ -1826,8 +1736,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
 
       {:ok, view, _html} = mount_sheet(conn, url)
 
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-      send_to_content_tab(view, "toggle_constant")
+      send_to_content_tab(view, "toolbar_toggle_constant", %{"id" => to_string(block.id)})
 
       render_hook(view, "undo", %{})
       Sheets.delete_block(Sheets.get_block(block.id))

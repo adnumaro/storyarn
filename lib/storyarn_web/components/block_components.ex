@@ -5,10 +5,9 @@ defmodule StoryarnWeb.Components.BlockComponents do
   This module serves as a facade, delegating to specialized submodules:
   - `TextBlocks` - text, rich_text, number blocks
   - `SelectBlocks` - select, multi_select blocks
-  - `LayoutBlocks` - divider, date blocks
+  - `LayoutBlocks` - date blocks
   - `BlockMenu` - block type selection menu
   - `BlockToolbar` - hover toolbar for block actions
-  - `ConfigPanel` - block configuration sidebar
   """
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
@@ -26,7 +25,6 @@ defmodule StoryarnWeb.Components.BlockComponents do
   # Re-export public components
   defdelegate block_menu(assigns), to: StoryarnWeb.Components.BlockComponents.BlockMenu
   defdelegate block_toolbar(assigns), to: StoryarnWeb.Components.BlockComponents.BlockToolbar
-  defdelegate config_panel(assigns), to: StoryarnWeb.Components.BlockComponents.ConfigPanel
 
   # =============================================================================
   # Block Component (Main Dispatcher)
@@ -44,6 +42,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
   attr :editing_block_id, :any, default: nil
   attr :selected_block_id, :any, default: nil
   attr :target, :any, default: nil
+  attr :component_id, :string, default: nil
   attr :table_data, :map, default: %{}
   attr :reference_options, :list, default: []
 
@@ -98,6 +97,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
         can_edit={@can_edit}
         is_inherited={@is_inherited}
         target={@target}
+        component_id={@component_id}
       />
 
       <%!-- Block content --%>
@@ -138,8 +138,6 @@ defmodule StoryarnWeb.Components.BlockComponents do
               is_editing={@is_editing}
               target={@target}
             />
-          <% "divider" -> %>
-            <.divider_block />
           <% "date" -> %>
             <.date_block block={@block} can_edit={@can_edit} target={@target} />
           <% "boolean" -> %>

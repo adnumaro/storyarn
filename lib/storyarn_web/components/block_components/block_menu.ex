@@ -154,20 +154,6 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
         <span>{dgettext("sheets", "Table")}</span>
       </button>
 
-      <div class="text-xs text-base-content/50 px-2 py-1 uppercase mt-2">
-        {dgettext("sheets", "Layout")}
-      </div>
-      <button
-        type="button"
-        class="w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2"
-        phx-click="add_block"
-        phx-value-type="divider"
-        phx-target={@target}
-      >
-        <.icon name="minus" class="size-4" />
-        <span>{dgettext("sheets", "Divider")}</span>
-      </button>
-
       <div class="border-t border-base-300 mt-2 pt-2">
         <button
           type="button"

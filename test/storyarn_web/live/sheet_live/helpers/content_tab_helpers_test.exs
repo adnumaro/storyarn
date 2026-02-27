@@ -151,7 +151,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ContentTabHelpersTest do
 
     test "handles mixed full_width and column groups" do
       blocks = [
-        %{id: 1, column_group_id: nil, column_index: 0, type: "divider"},
+        %{id: 1, column_group_id: nil, column_index: 0, type: "text"},
         %{id: 2, column_group_id: "g1", column_index: 0, type: "text"},
         %{id: 3, column_group_id: "g1", column_index: 1, type: "number"},
         %{id: 4, column_group_id: nil, column_index: 0, type: "text"}
@@ -189,18 +189,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.ContentTabHelpersTest do
       item = %{"id" => "999", "column_group_id" => "g1", "column_index" => 0}
 
       assert ContentTabHelpers.sanitize_column_item(item, blocks_by_id) == nil
-    end
-
-    test "clears column_group_id for divider blocks" do
-      blocks_by_id = %{
-        1 => %{id: 1, type: "divider"}
-      }
-
-      item = %{"id" => "1", "column_group_id" => "g1", "column_index" => 2}
-      result = ContentTabHelpers.sanitize_column_item(item, blocks_by_id)
-
-      assert result.column_group_id == nil
-      assert result.column_index == 0
     end
 
     test "clears column_group_id for table blocks" do
@@ -253,15 +241,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.ContentTabHelpersTest do
 
     test "returns error when any block is nil" do
       blocks = [%{type: "text", column_group_id: nil}, nil]
-      assert {:error, _msg} = ContentTabHelpers.validate_column_group_blocks(blocks)
-    end
-
-    test "returns error for divider blocks" do
-      blocks = [
-        %{type: "divider", column_group_id: nil},
-        %{type: "text", column_group_id: nil}
-      ]
-
       assert {:error, _msg} = ContentTabHelpers.validate_column_group_blocks(blocks)
     end
 

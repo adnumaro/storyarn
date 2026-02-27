@@ -578,12 +578,16 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       assert hd(vars).variable_name == "health"
     end
 
-    test "excludes non-variable types (divider, reference)" do
+    test "excludes non-variable types (reference)" do
       %{project: project} = setup_project()
 
       sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc"})
       block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
-      block_fixture(sheet, %{type: "divider", config: %{"label" => "---"}})
+
+      block_fixture(sheet, %{
+        type: "reference",
+        config: %{"label" => "Link", "allowed_types" => ["sheet"]}
+      })
 
       vars = SheetQueries.list_project_variables(project.id)
 

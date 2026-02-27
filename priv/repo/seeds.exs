@@ -178,28 +178,23 @@ Seed.block!(detective_sheet, "text", "Name",
   position: 0
 )
 
-Seed.block!(detective_sheet, "divider", "", position: 1)
-Seed.block!(detective_sheet, "number", "Health", value: 5, position: 2, placeholder: "0-10")
-Seed.block!(detective_sheet, "number", "Morale", value: 5, position: 3, placeholder: "0-10")
+Seed.block!(detective_sheet, "number", "Health", value: 5, position: 1, placeholder: "0-10")
+Seed.block!(detective_sheet, "number", "Morale", value: 5, position: 2, placeholder: "0-10")
 
-Seed.block!(detective_sheet, "divider", "", position: 4)
-
-Seed.block!(detective_sheet, "number", "Intellect", value: 3, position: 5, placeholder: "1-6")
-Seed.block!(detective_sheet, "number", "Psyche", value: 4, position: 6, placeholder: "1-6")
-Seed.block!(detective_sheet, "number", "Physique", value: 2, position: 7, placeholder: "1-6")
-Seed.block!(detective_sheet, "number", "Motorics", value: 3, position: 8, placeholder: "1-6")
-
-Seed.block!(detective_sheet, "divider", "", position: 9)
+Seed.block!(detective_sheet, "number", "Intellect", value: 3, position: 3, placeholder: "1-6")
+Seed.block!(detective_sheet, "number", "Psyche", value: 4, position: 4, placeholder: "1-6")
+Seed.block!(detective_sheet, "number", "Physique", value: 2, position: 5, placeholder: "1-6")
+Seed.block!(detective_sheet, "number", "Motorics", value: 3, position: 6, placeholder: "1-6")
 
 Seed.block!(detective_sheet, "boolean", "Is Alive",
   value: true,
-  position: 10,
+  position: 7,
   mode: "two_state"
 )
 
 Seed.block!(detective_sheet, "select", "Archetype",
   value: nil,
-  position: 11,
+  position: 8,
   options:
     Seed.select_opts([
       {"thinker", "Thinker"},
@@ -222,14 +217,13 @@ IO.puts("  ✓ Detective sheet")
   })
 
 Seed.block!(kim_sheet, "text", "Name", value: "Kim Kitsuragi", is_constant: true, position: 0)
-Seed.block!(kim_sheet, "divider", "", position: 1)
-Seed.block!(kim_sheet, "number", "Trust", value: 50, position: 2, placeholder: "0-100")
-Seed.block!(kim_sheet, "number", "Respect", value: 40, position: 3, placeholder: "0-100")
-Seed.block!(kim_sheet, "boolean", "Is Partner", value: true, position: 4, mode: "two_state")
+Seed.block!(kim_sheet, "number", "Trust", value: 50, position: 1, placeholder: "0-100")
+Seed.block!(kim_sheet, "number", "Respect", value: 40, position: 2, placeholder: "0-100")
+Seed.block!(kim_sheet, "boolean", "Is Partner", value: true, position: 3, mode: "two_state")
 
 Seed.block!(kim_sheet, "select", "Mood",
   value: "neutral",
-  position: 5,
+  position: 4,
   options:
     Seed.select_opts([
       {"neutral", "Neutral"},
@@ -252,13 +246,12 @@ IO.puts("  ✓ Kim Kitsuragi sheet")
   })
 
 Seed.block!(evrart_sheet, "text", "Name", value: "Evrart Claire", is_constant: true, position: 0)
-Seed.block!(evrart_sheet, "divider", "", position: 1)
-Seed.block!(evrart_sheet, "boolean", "Favor Owed", value: false, position: 2, mode: "two_state")
-Seed.block!(evrart_sheet, "number", "Trust", value: 10, position: 3, placeholder: "0-100")
+Seed.block!(evrart_sheet, "boolean", "Favor Owed", value: false, position: 1, mode: "two_state")
+Seed.block!(evrart_sheet, "number", "Trust", value: 10, position: 2, placeholder: "0-100")
 
 Seed.block!(evrart_sheet, "boolean", "Quest Completed",
   value: false,
-  position: 4,
+  position: 3,
   mode: "two_state"
 )
 
@@ -280,18 +273,17 @@ Seed.block!(klaasje_sheet, "text", "Name",
   position: 0
 )
 
-Seed.block!(klaasje_sheet, "divider", "", position: 1)
-Seed.block!(klaasje_sheet, "number", "Trust", value: 20, position: 2, placeholder: "0-100")
+Seed.block!(klaasje_sheet, "number", "Trust", value: 20, position: 1, placeholder: "0-100")
 
 Seed.block!(klaasje_sheet, "boolean", "Told Truth",
   value: false,
-  position: 3,
+  position: 2,
   mode: "two_state"
 )
 
 Seed.block!(klaasje_sheet, "boolean", "Has Escaped",
   value: false,
-  position: 4,
+  position: 3,
   mode: "two_state"
 )
 

@@ -11,6 +11,17 @@
  *   data-blur-event="event_name"   — pushEvent on blur (for inputs)
  *   data-click-input="selector"    — click an element matching selector on click
  *
+ * Container-level data attributes:
+ *   data-target=".css-selector"   — pushEventTo target (for LiveComponents)
+ *   data-width="14rem"            — popover width
+ *   data-placement="bottom-start" — floating-ui placement
+ *   data-offset="12"              — floating-ui offset
+ *
+ * Toolbar pinning:
+ *   When placed inside a toolbar with [data-toolbar], the hook pins
+ *   the toolbar visible (opacity + pointer-events) while the popover
+ *   is open, and unpins it when the popover closes.
+ *
  * Expected DOM structure:
  *   <div phx-hook="ToolbarPopover" id="..." data-width="14rem" data-placement="bottom-start">
  *     <button data-role="trigger">...</button>
@@ -32,6 +43,7 @@ export const ToolbarPopover = {
     this.setup();
     if (wasOpen && this._fp) {
       this._fp.open();
+      this._pinToolbar(true);
     }
   },
 
@@ -40,6 +52,9 @@ export const ToolbarPopover = {
     this.template = this.el.querySelector('[data-role="popover-template"]');
 
     if (!this.trigger || !this.template) return;
+
+    this._target = this.el.dataset.target || null;
+    this._toolbar = this.el.closest("[data-toolbar]");
 
     const width = this.el.dataset.width || "";
     const placement = this.el.dataset.placement || "bottom-start";
@@ -59,21 +74,35 @@ export const ToolbarPopover = {
       offset: Number.isFinite(offsetVal) ? offsetVal : 12,
     });
 
-    // Clone template content
-    const content = this.template.content.cloneNode(true);
-    this._fp.el.appendChild(content);
+    // Clone content — <template> uses .content, hidden <div> uses children directly.
+    // Hidden divs are preferred when LiveView needs to diff the content reactively.
+    if (this.template.content) {
+      this._fp.el.appendChild(this.template.content.cloneNode(true));
+    } else {
+      this._fp.el.innerHTML = this.template.innerHTML;
+    }
 
     // Trigger click toggles
     this._onTriggerClick = (e) => {
       e.stopPropagation();
       if (this.trigger.disabled) return;
       if (this._fp.isOpen) {
-        this._fp.close();
+        this._closePopover();
       } else {
         this._fp.open();
+        this._pinToolbar(true);
       }
     };
     this.trigger.addEventListener("click", this._onTriggerClick);
+
+    // Click-outside closes popover
+    this._onDocumentClick = (e) => {
+      if (!this._fp?.isOpen) return;
+      if (this._fp.el.contains(e.target)) return;
+      if (this.trigger.contains(e.target)) return;
+      this._closePopover();
+    };
+    document.addEventListener("mousedown", this._onDocumentClick);
 
     // Re-push click events from cloned buttons
     this._onPopoverClick = (e) => {
@@ -91,11 +120,11 @@ export const ToolbarPopover = {
       const event = btn.dataset.event;
       if (!event) return;
 
-      this.pushEvent(event, parseParams(btn));
+      this._pushEvent(event, parseParams(btn));
 
       // Close after selection (default behavior)
       if (btn.dataset.closeOnClick !== "false") {
-        requestAnimationFrame(() => this._fp.close());
+        requestAnimationFrame(() => this._closePopover());
       }
     };
     this._fp.el.addEventListener("click", this._onPopoverClick);
@@ -111,15 +140,43 @@ export const ToolbarPopover = {
       const payload = parseParams(input);
       payload.value = input.value;
 
-      this.pushEvent(event, payload);
+      this._pushEvent(event, payload);
     };
     this._fp.el.addEventListener("focusout", this._onPopoverBlur);
+  },
+
+  _closePopover() {
+    this._fp?.close();
+    this._pinToolbar(false);
+  },
+
+  _pinToolbar(pinned) {
+    if (!this._toolbar) return;
+    if (pinned) {
+      this._toolbar.style.opacity = "1";
+      this._toolbar.style.pointerEvents = "auto";
+    } else {
+      this._toolbar.style.opacity = "";
+      this._toolbar.style.pointerEvents = "";
+    }
+  },
+
+  _pushEvent(event, payload) {
+    if (this._target) {
+      this.pushEventTo(this._target, event, payload);
+    } else {
+      this.pushEvent(event, payload);
+    }
   },
 
   _destroyPopover() {
     if (this.trigger && this._onTriggerClick) {
       this.trigger.removeEventListener("click", this._onTriggerClick);
     }
+    if (this._onDocumentClick) {
+      document.removeEventListener("mousedown", this._onDocumentClick);
+    }
+    this._pinToolbar(false);
     this._fp?.destroy();
     this._fp = null;
   },

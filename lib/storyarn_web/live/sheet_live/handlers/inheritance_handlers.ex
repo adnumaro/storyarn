@@ -77,7 +77,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlers do
 
             {:noreply,
              socket
-             |> assign(:configuring_block, nil)
              |> helpers.reload_blocks.()
              |> put_flash(:info, dgettext("sheets", "Property re-synced with source."))}
 
@@ -162,9 +161,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlers do
   # ---------------------------------------------------------------------------
 
   @doc ~S[Changes the scope of a block ("self" | "children"), opening the propagation modal when needed.]
-  def handle_change_scope(scope, socket, helpers) do
-    block = socket.assigns.configuring_block
-
+  def handle_change_scope(block, scope, socket, helpers) do
     if block.scope == scope do
       {:noreply, socket}
     else
@@ -176,19 +173,14 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlers do
   # toggle_required
   # ---------------------------------------------------------------------------
 
-  @doc "Toggles the `required` flag on the currently-configuring block."
-  def handle_toggle_required(socket, helpers) do
-    block = socket.assigns.configuring_block
+  @doc "Toggles the `required` flag on the given block."
+  def handle_toggle_required(block, socket, helpers) do
     new_value = !block.required
 
     case Sheets.update_block(block, %{required: new_value}) do
-      {:ok, updated_block} ->
+      {:ok, _updated_block} ->
         helpers.notify_parent.(socket, :saved)
-
-        {:noreply,
-         socket
-         |> assign(:configuring_block, updated_block)
-         |> helpers.reload_blocks.()}
+        {:noreply, helpers.reload_blocks.(socket)}
 
       {:error, _} ->
         {:noreply,
@@ -243,7 +235,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlers do
 
         socket =
           socket
-          |> assign(:configuring_block, updated_block)
           |> helpers.reload_blocks.()
           |> maybe_open_propagation_modal(scope, updated_block)
 

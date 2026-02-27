@@ -16,7 +16,6 @@ defmodule Storyarn.Sheets.BlockTest do
       assert "number" in types
       assert "select" in types
       assert "multi_select" in types
-      assert "divider" in types
       assert "date" in types
       assert "boolean" in types
       assert "reference" in types
@@ -58,10 +57,6 @@ defmodule Storyarn.Sheets.BlockTest do
       assert config["options"] == []
     end
 
-    test "returns empty map for divider" do
-      assert Block.default_config("divider") == %{}
-    end
-
     test "returns config for boolean type" do
       config = Block.default_config("boolean")
       assert config["mode"] == "two_state"
@@ -96,7 +91,6 @@ defmodule Storyarn.Sheets.BlockTest do
       assert Block.default_value("number") == %{"content" => nil}
       assert Block.default_value("select") == %{"content" => nil}
       assert Block.default_value("multi_select") == %{"content" => []}
-      assert Block.default_value("divider") == %{}
       assert Block.default_value("boolean") == %{"content" => nil}
       assert Block.default_value("date") == %{"content" => nil}
       assert Block.default_value("reference") == %{"target_type" => nil, "target_id" => nil}
@@ -120,7 +114,6 @@ defmodule Storyarn.Sheets.BlockTest do
     end
 
     test "returns false for non-variable types" do
-      refute Block.can_be_variable?("divider")
       refute Block.can_be_variable?("reference")
     end
   end
@@ -137,11 +130,6 @@ defmodule Storyarn.Sheets.BlockTest do
 
     test "returns false for constant block" do
       block = %Block{type: "text", is_constant: true}
-      refute Block.variable?(block)
-    end
-
-    test "returns false for divider" do
-      block = %Block{type: "divider", is_constant: false}
       refute Block.variable?(block)
     end
 
@@ -220,12 +208,7 @@ defmodule Storyarn.Sheets.BlockTest do
       assert errors_on(cs)[:type]
     end
 
-    test "divider does not require label" do
-      cs = Block.create_changeset(%Block{}, %{type: "divider"})
-      assert cs.valid?
-    end
-
-    test "non-divider requires label in config" do
+    test "requires label in config" do
       cs = Block.create_changeset(%Block{}, %{type: "text", config: %{}})
       refute cs.valid?
       assert errors_on(cs)[:config]
@@ -268,7 +251,8 @@ defmodule Storyarn.Sheets.BlockTest do
     test "sets variable_name to nil for non-variable types" do
       cs =
         Block.create_changeset(%Block{}, %{
-          type: "divider"
+          type: "reference",
+          config: %{"label" => "Link", "allowed_types" => ["sheet"]}
         })
 
       assert Ecto.Changeset.get_change(cs, :variable_name) == nil

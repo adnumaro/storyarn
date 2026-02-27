@@ -448,11 +448,6 @@ msgstr ""
 msgid "Dialogue nodes using this sheet as speaker will appear here."
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/block_menu.ex:168
-#, elixir-autogen, elixir-format
-msgid "Divider"
-msgstr ""
-
 #: lib/storyarn_web/components/block_components.ex:62
 #, elixir-autogen, elixir-format
 msgid "Drag to reorder"

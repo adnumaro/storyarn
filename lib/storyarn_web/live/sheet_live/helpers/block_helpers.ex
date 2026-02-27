@@ -79,10 +79,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
         user_id = socket.assigns.current_scope.user.id
         Sheets.maybe_create_version(socket.assigns.sheet, user_id)
 
-        {:noreply,
-         socket
-         |> assign(:blocks, blocks)
-         |> assign(:configuring_block, nil)}
+        {:noreply, assign(socket, :blocks, blocks)}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete block."))}

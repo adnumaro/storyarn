@@ -72,10 +72,6 @@ Own block (variable-capable):
 │ [Duplicate 📋] [Constant 🔒/🔓] [Config ⚙] [⋮]    │
 └─────────────────────────────────────────────────────┘
 
-Own block (divider):
-┌──────────────────┐
-│ [Duplicate] [⋮]  │
-└──────────────────┘
 
 Own block (table):
 ┌──────────────────┐
@@ -97,8 +93,8 @@ Inherited block (variable-capable):
 **[⋮] for inherited blocks also contains:** Go to source, Detach, Hide for children
 
 **Conditional rendering flags:**
-- `show_constant` = type not in `["divider", "reference", "table"]`
-- `show_config` = type not in `["divider", "table"]`
+- `show_constant` = type not in `["reference", "table"]`
+- `show_config` = type not in `["table"]`
 
 ---
 
@@ -291,15 +287,14 @@ describe "move_block_down/2" (3 tests)
 describe "block_toolbar/1" (~12 tests)
   - renders duplicate button for own blocks
   - renders constant toggle for variable-capable types
-  - hides constant toggle for divider/reference/table
+  - hides constant toggle for reference/table
   - renders config gear for configurable types
-  - hides config gear for divider/table
+  - hides config gear for table
   - renders [⋮] menu with delete
   - renders inherited actions in [⋮] for inherited blocks
   - hides toolbar when can_edit=false
   - shows lock icon when is_constant=true
   - shows unlock icon when is_constant=false
-  - renders duplicate for divider (only action besides [⋮])
   - renders duplicate for table (only action besides [⋮])
 ```
 

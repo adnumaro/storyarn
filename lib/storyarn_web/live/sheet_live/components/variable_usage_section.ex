@@ -104,7 +104,7 @@ defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
   defp variable_block?(%{variable_name: nil}), do: false
   defp variable_block?(%{variable_name: ""}), do: false
   defp variable_block?(%{is_constant: true}), do: false
-  defp variable_block?(%{type: type}) when type in ~w(divider reference), do: false
+  defp variable_block?(%{type: "reference"}), do: false
   defp variable_block?(%{deleted_at: d}) when not is_nil(d), do: false
   defp variable_block?(_), do: true
 

@@ -294,17 +294,6 @@ defmodule Storyarn.Sheets.BlockCrudTest do
     end
   end
 
-  describe "create_block/2 - divider block" do
-    setup :setup_context
-
-    test "creates a divider block with no variable name", %{sheet: sheet} do
-      {:ok, block} = Sheets.create_block(sheet, %{type: "divider"})
-
-      assert block.type == "divider"
-      assert block.variable_name == nil
-    end
-  end
-
   describe "create_block/2 - reference block" do
     setup :setup_context
 
@@ -349,14 +338,14 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       assert errors_on(changeset)[:type] != nil
     end
 
-    test "rejects empty label for non-divider blocks", %{sheet: sheet} do
+    test "rejects empty label", %{sheet: sheet} do
       {:error, changeset} =
         Sheets.create_block(sheet, %{type: "text", config: %{"label" => ""}})
 
       assert errors_on(changeset)[:config] != nil
     end
 
-    test "rejects missing label for non-divider blocks", %{sheet: sheet} do
+    test "rejects missing label", %{sheet: sheet} do
       {:error, changeset} = Sheets.create_block(sheet, %{type: "text", config: %{}})
       assert errors_on(changeset)[:config] != nil
     end
@@ -783,9 +772,14 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       assert "strength" in names
     end
 
-    test "excludes divider blocks (they have nil variable_name)", %{sheet: sheet} do
+    test "excludes non-variable blocks (they have nil variable_name)", %{sheet: sheet} do
       {:ok, _} = Sheets.create_block(sheet, %{type: "text", config: %{"label" => "Health"}})
-      {:ok, _} = Sheets.create_block(sheet, %{type: "divider"})
+
+      {:ok, _} =
+        Sheets.create_block(sheet, %{
+          type: "reference",
+          config: %{"label" => "Link", "allowed_types" => ["sheet"]}
+        })
 
       names = Storyarn.Sheets.BlockCrud.list_variable_names(sheet.id)
       assert length(names) == 1
@@ -1044,10 +1038,13 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       assert Ecto.Changeset.get_field(result, :variable_name) == "health"
     end
 
-    test "handles nil variable_name (divider)", %{sheet: sheet} do
+    test "handles nil variable_name (reference)", %{sheet: sheet} do
       changeset =
         %Block{sheet_id: sheet.id}
-        |> Block.create_changeset(%{type: "divider"})
+        |> Block.create_changeset(%{
+          type: "reference",
+          config: %{"label" => "Link", "allowed_types" => ["sheet"]}
+        })
 
       result =
         Storyarn.Sheets.BlockCrud.ensure_unique_variable_name_public(changeset, sheet.id, nil)

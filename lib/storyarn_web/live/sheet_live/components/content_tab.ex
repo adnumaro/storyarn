@@ -7,7 +7,6 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   use StoryarnWeb, :live_component
   use StoryarnWeb.Helpers.Authorize
 
-  import StoryarnWeb.Components.BlockComponents
   import StoryarnWeb.SheetLive.Components.InheritedBlockComponents
   import StoryarnWeb.SheetLive.Components.ChildrenSheetsSection
   import StoryarnWeb.SheetLive.Components.OwnBlocksComponents
@@ -15,11 +14,9 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers
   alias StoryarnWeb.SheetLive.Handlers.BlockToolbarHandlers
-  alias StoryarnWeb.SheetLive.Handlers.ConfigPanelHandlers
   alias StoryarnWeb.SheetLive.Handlers.InheritanceHandlers
   alias StoryarnWeb.SheetLive.Handlers.TableHandlers
   alias StoryarnWeb.SheetLive.Helpers.BlockHelpers
-  alias StoryarnWeb.SheetLive.Helpers.ConfigHelpers
   alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
   alias StoryarnWeb.SheetLive.Helpers.ReferenceHelpers
 
@@ -52,6 +49,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
               editing_block_id={@editing_block_id}
               selected_block_id={@selected_block_id}
               target={@myself}
+              component_id={@id}
               table_data={@table_data}
               reference_options={@reference_options}
             />
@@ -90,9 +88,6 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         project={@project}
       />
 
-      <%!-- Configuration Panel (Right Sidebar) --%>
-      <.config_panel :if={@configuring_block} block={@configuring_block} target={@myself} />
-
       <%!-- Propagation Modal --%>
       <.live_component
         :if={@propagation_block}
@@ -113,7 +108,6 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       |> assign(assigns)
       |> assign_new(:show_block_menu, fn -> false end)
       |> assign_new(:editing_block_id, fn -> nil end)
-      |> assign_new(:configuring_block, fn -> nil end)
       |> assign_new(:selected_block_id, fn -> nil end)
       |> assign_new(:block_scope, fn -> "self" end)
       |> assign_new(:propagation_block, fn -> nil end)
@@ -469,12 +463,66 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   end
 
   # ===========================================================================
-  # Configuration Panel Events
+  # Configuration Events (popover-based)
   # ===========================================================================
 
-  def handle_event("configure_block", %{"id" => block_id}, socket) do
+  def handle_event(
+        "save_config_field",
+        %{"block_id" => block_id, "field" => field, "value" => value},
+        socket
+      ) do
     with_edit_authorization(socket, fn socket ->
-      ConfigPanelHandlers.handle_configure_block(block_id, socket, content_helpers())
+      BlockToolbarHandlers.handle_save_config_field(
+        block_id,
+        field,
+        value,
+        socket,
+        content_helpers()
+      )
+    end)
+  end
+
+  def handle_event("add_select_option", %{"block_id" => block_id}, socket) do
+    with_edit_authorization(socket, fn socket ->
+      BlockToolbarHandlers.handle_add_option(block_id, socket, content_helpers())
+    end)
+  end
+
+  def handle_event("remove_select_option", %{"block_id" => block_id, "index" => index}, socket) do
+    with_edit_authorization(socket, fn socket ->
+      BlockToolbarHandlers.handle_remove_option(block_id, index, socket, content_helpers())
+    end)
+  end
+
+  def handle_event(
+        "update_select_option",
+        %{"block_id" => block_id, "index" => index, "key_field" => key_field, "value" => value},
+        socket
+      ) do
+    with_edit_authorization(socket, fn socket ->
+      BlockToolbarHandlers.handle_update_option(
+        block_id,
+        index,
+        key_field,
+        value,
+        socket,
+        content_helpers()
+      )
+    end)
+  end
+
+  def handle_event(
+        "toggle_allowed_type",
+        %{"block_id" => block_id, "type" => type},
+        socket
+      ) do
+    with_edit_authorization(socket, fn socket ->
+      BlockToolbarHandlers.handle_toggle_allowed_type(
+        block_id,
+        type,
+        socket,
+        content_helpers()
+      )
     end)
   end
 
@@ -482,48 +530,6 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     with_edit_authorization(socket, fn socket ->
       block_id = ContentTabHelpers.to_integer(block_id)
       do_update_block_label(block_id, label, socket)
-    end)
-  end
-
-  def handle_event("close_config_panel", _params, socket) do
-    {:noreply, assign(socket, :configuring_block, nil)}
-  end
-
-  def handle_event("save_block_config", %{"config" => config_params}, socket) do
-    with_edit_authorization(socket, fn socket ->
-      ConfigPanelHandlers.handle_save_block_config(config_params, socket, content_helpers())
-    end)
-  end
-
-  def handle_event("toggle_constant", _params, socket) do
-    with_edit_authorization(socket, fn socket ->
-      ConfigPanelHandlers.handle_toggle_constant(socket, content_helpers())
-    end)
-  end
-
-  # ===========================================================================
-  # Select Options Events
-  # ===========================================================================
-
-  def handle_event("add_select_option", _params, socket) do
-    with_edit_authorization(socket, fn socket ->
-      ConfigHelpers.add_select_option(socket)
-    end)
-  end
-
-  def handle_event("remove_select_option", %{"index" => index}, socket) do
-    with_edit_authorization(socket, fn socket ->
-      ConfigHelpers.remove_select_option(socket, index)
-    end)
-  end
-
-  def handle_event(
-        "update_select_option",
-        %{"index" => index, "key" => key, "value" => value},
-        socket
-      ) do
-    with_edit_authorization(socket, fn socket ->
-      ConfigHelpers.update_select_option(socket, index, key, value)
     end)
   end
 
@@ -591,16 +597,25 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     InheritanceHandlers.handle_navigate_to_source(block_id, socket, inheritance_helpers(socket))
   end
 
-  def handle_event("change_block_scope", %{"scope" => scope}, socket)
+  def handle_event("change_block_scope", %{"scope" => scope, "id" => block_id}, socket)
       when scope in ["self", "children"] do
     with_edit_authorization(socket, fn socket ->
-      InheritanceHandlers.handle_change_scope(scope, socket, inheritance_helpers(socket))
+      BlockToolbarHandlers.handle_change_scope(
+        block_id,
+        scope,
+        socket,
+        inheritance_helpers(socket)
+      )
     end)
   end
 
-  def handle_event("toggle_required", _params, socket) do
+  def handle_event("toggle_required", %{"id" => block_id}, socket) do
     with_edit_authorization(socket, fn socket ->
-      InheritanceHandlers.handle_toggle_required(socket, inheritance_helpers(socket))
+      BlockToolbarHandlers.handle_toggle_required_by_id(
+        block_id,
+        socket,
+        inheritance_helpers(socket)
+      )
     end)
   end
 

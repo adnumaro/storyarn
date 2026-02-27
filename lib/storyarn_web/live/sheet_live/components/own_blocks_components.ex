@@ -71,6 +71,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
                 editing_block_id={@editing_block_id}
                 selected_block_id={@selected_block_id}
                 target={@target}
+                component_id={@component_id}
                 table_data={@table_data}
                 reference_options={@reference_options}
               />
@@ -97,6 +98,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
                   editing_block_id={@editing_block_id}
                   selected_block_id={@selected_block_id}
                   target={@target}
+                  component_id={@component_id}
                   table_data={@table_data}
                   reference_options={@reference_options}
                 />

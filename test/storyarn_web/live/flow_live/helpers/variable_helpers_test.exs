@@ -364,15 +364,15 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
       assert result == %{}
     end
 
-    test "excludes divider blocks" do
+    test "excludes reference blocks" do
       %{project: project} = setup_project()
       sheet = sheet_fixture(project, %{name: "Layout"})
 
-      # Divider blocks don't generate variable_name
+      # Reference blocks don't generate variable_name
       {:ok, _block} =
         Storyarn.Sheets.create_block(sheet, %{
-          type: "divider",
-          config: %{}
+          type: "reference",
+          config: %{"label" => "Link", "allowed_types" => ["sheet"]}
         })
 
       result = VariableHelpers.build_variables(project.id)

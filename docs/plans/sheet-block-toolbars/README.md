@@ -15,7 +15,7 @@
 | 4 | [Select / Multi-Select](04-SELECT-MULTI-SELECT.md) | Config popover: options list, placeholder, max selections | Medium-High | Pending |
 | 5 | [Date](05-DATE.md) | Config popover: min/max date | Low | Pending |
 | 6 | [Reference](06-REFERENCE.md) | Config popover: allowed types checkboxes | Low | Pending |
-| 7 | [Table & Divider](07-TABLE-DIVIDER.md) | Toolbar variants (no config popover) | Low | Pending |
+| 7 | [Table](07-TABLE.md) | Toolbar variants (no config popover) | Low | Pending |
 | 8 | [Cleanup](08-CLEANUP.md) | Remove old config sidebar + dead code | Low | Pending |
 
 ## Dependency Graph
@@ -28,9 +28,7 @@ Plan 0 (Universal Toolbar) ─── foundation for all
   │     ├── Plan 4 (Select/Multi-Select) ─── most complex popover
   │     ├── Plan 5 (Date)
   │     └── Plan 6 (Reference)
-  └── Plan 7 (Table & Divider) ─── verification only, no popover
-        │
-        └── Plan 8 (Cleanup) ─── after all plans complete
+  └──────── Plan 8 (Cleanup) ─── after all plans complete
 ```
 
 ## Reusable Components

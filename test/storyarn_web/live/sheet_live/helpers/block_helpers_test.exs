@@ -23,8 +23,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpersTest do
         sheet: sheet,
         blocks: [],
         show_block_menu: true,
-        save_status: :idle,
-        configuring_block: nil
+        save_status: :idle
       },
       private: %{live_temp: %{}}
     }
@@ -81,11 +80,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpersTest do
     test "creates a date block", %{socket: socket} do
       assert {:noreply, socket} = BlockHelpers.add_block(socket, "date")
       assert hd(socket.assigns.blocks).type == "date"
-    end
-
-    test "creates a divider block", %{socket: socket} do
-      assert {:noreply, socket} = BlockHelpers.add_block(socket, "divider")
-      assert hd(socket.assigns.blocks).type == "divider"
     end
 
     test "hides block menu after successful creation", %{socket: socket} do
@@ -178,16 +172,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpersTest do
 
       assert {:noreply, socket} = BlockHelpers.delete_block(socket, block.id)
       assert socket.assigns.blocks == []
-      assert socket.assigns.configuring_block == nil
-    end
-
-    test "clears configuring_block on successful delete", %{socket: socket, sheet: sheet} do
-      block = block_fixture(sheet, %{type: "text"})
-
-      socket = %{socket | assigns: Map.put(socket.assigns, :configuring_block, block)}
-
-      assert {:noreply, socket} = BlockHelpers.delete_block(socket, block.id)
-      assert socket.assigns.configuring_block == nil
     end
 
     test "raises when block does not belong to project", %{socket: socket} do

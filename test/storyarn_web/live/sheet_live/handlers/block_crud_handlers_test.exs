@@ -110,17 +110,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlersTest do
       assert hd(blocks).type == "rich_text"
     end
 
-    test "creates a divider block", %{conn: conn, url: url, sheet: sheet} do
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      send_to_content_tab(view, "show_block_menu")
-      send_to_content_tab(view, "add_block", %{"type" => "divider"})
-
-      blocks = Sheets.list_blocks(sheet.id)
-      assert length(blocks) == 1
-      assert hd(blocks).type == "divider"
-    end
-
     test "creates multiple blocks with sequential positions", %{
       conn: conn,
       url: url,

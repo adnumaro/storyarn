@@ -120,7 +120,13 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
     label = get_in(assigns.block.config, ["label"]) || ""
     placeholder = get_in(assigns.block.config, ["placeholder"]) || ""
     options = get_in(assigns.block.config, ["options"]) || []
-    content = get_in(assigns.block.value, ["content"]) || []
+
+    content =
+      case get_in(assigns.block.value, ["content"]) do
+        list when is_list(list) -> list
+        _ -> []
+      end
+
     is_constant = assigns.block.is_constant || false
 
     selected_options = resolve_selected_options(content, options)

@@ -17,21 +17,6 @@ defmodule StoryarnWeb.Components.BlockComponents.LayoutBlocksTest do
     }
   end
 
-  # ── divider_block ────────────────────────────────────────────────
-
-  describe "divider_block/1" do
-    test "renders a horizontal rule" do
-      html = render_component(&LayoutBlocks.divider_block/1, %{})
-      assert html =~ "<hr"
-      assert html =~ "border-base-content/20"
-    end
-
-    test "has padding wrapper" do
-      html = render_component(&LayoutBlocks.divider_block/1, %{})
-      assert html =~ "py-3"
-    end
-  end
-
   # ── date_block ────────────────────────────────────────────────────
 
   describe "date_block/1" do

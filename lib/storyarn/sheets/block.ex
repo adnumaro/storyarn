@@ -13,7 +13,6 @@ defmodule Storyarn.Sheets.Block do
   - `select` - Single select dropdown
   - `multi_select` - Multiple select (tags)
   - `boolean` - Boolean toggle (two-state or tri-state)
-  - `divider` - Visual separator
   - `date` - Date picker
 
   ## Config Structure
@@ -48,7 +47,7 @@ defmodule Storyarn.Sheets.Block do
   alias Storyarn.Shared.{NameNormalizer, TimeHelpers}
   alias Storyarn.Sheets.Sheet
 
-  @block_types ~w(text rich_text number select multi_select divider date boolean reference table)
+  @block_types ~w(text rich_text number select multi_select date boolean reference table)
 
   @default_configs %{
     "text" => %{"label" => "Label", "placeholder" => ""},
@@ -62,7 +61,6 @@ defmodule Storyarn.Sheets.Block do
     },
     "select" => %{"label" => "Label", "placeholder" => "Select...", "options" => []},
     "multi_select" => %{"label" => "Label", "placeholder" => "Select...", "options" => []},
-    "divider" => %{},
     "date" => %{"label" => "Label"},
     "boolean" => %{"label" => "Label", "mode" => "two_state"},
     "reference" => %{"label" => "Label", "allowed_types" => ["sheet", "flow"]},
@@ -75,7 +73,6 @@ defmodule Storyarn.Sheets.Block do
     "number" => %{"content" => nil},
     "select" => %{"content" => nil},
     "multi_select" => %{"content" => []},
-    "divider" => %{},
     "date" => %{"content" => nil},
     "boolean" => %{"content" => nil},
     "reference" => %{"target_type" => nil, "target_id" => nil},
@@ -83,7 +80,7 @@ defmodule Storyarn.Sheets.Block do
   }
 
   # Block types that cannot be variables (no meaningful value to expose)
-  @non_variable_types ~w(divider reference)
+  @non_variable_types ~w(reference)
 
   @scopes ~w(self children)
 
@@ -236,9 +233,6 @@ defmodule Storyarn.Sheets.Block do
     |> validate_select_options(type, config)
   end
 
-  # All blocks except divider require a non-empty label
-  defp validate_label(changeset, "divider", _config), do: changeset
-
   defp validate_label(changeset, _type, config) do
     label = Map.get(config, "label")
 
@@ -294,7 +288,7 @@ defmodule Storyarn.Sheets.Block do
 
   @doc """
   Returns true if the block type can be a variable.
-  Dividers cannot be variables as they have no meaningful value.
+  Reference blocks cannot be variables as they have no meaningful value.
   """
   def can_be_variable?(type), do: type not in @non_variable_types
 

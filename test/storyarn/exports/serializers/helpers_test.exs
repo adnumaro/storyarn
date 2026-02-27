@@ -126,7 +126,7 @@ defmodule Storyarn.Exports.Serializers.HelpersTest do
     end
 
     test "returns empty string for unknown types" do
-      assert Helpers.infer_default_value(%{type: "divider", value: %{}}) == ""
+      assert Helpers.infer_default_value(%{type: "unknown_type", value: %{}}) == ""
     end
   end
 

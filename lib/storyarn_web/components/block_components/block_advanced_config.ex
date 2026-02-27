@@ -16,6 +16,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockAdvancedConfig do
 
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
+  attr :standalone, :boolean, default: false
 
   def block_advanced_config(assigns) do
     is_inherited = assigns.block.inherited_from_block_id != nil
@@ -27,7 +28,8 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockAdvancedConfig do
       |> assign(:is_variable, is_variable)
 
     ~H"""
-    <div class="space-y-3 pt-3 border-t border-base-300">
+    <div class={["space-y-3", !@standalone && "pt-3 border-t border-base-300"]}>
+
       <div class="text-xs font-medium text-base-content/60 uppercase tracking-wider">
         {dgettext("sheets", "Advanced")}
       </div>
@@ -35,31 +37,37 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockAdvancedConfig do
       <%!-- Scope selector (own blocks only) --%>
       <div :if={!@is_inherited && @can_edit} class="flex items-center gap-2">
         <span class="text-sm text-base-content/70">{dgettext("sheets", "Scope")}</span>
-        <select
-          class="select select-xs select-bordered"
-          data-event="change_block_scope"
-          data-params-scope=""
-        >
-          <option value="self" selected={@block.scope == "self"}>
+        <div class="flex gap-1">
+          <button
+            type="button"
+            class={["btn btn-xs", @block.scope == "self" && "btn-active"]}
+            data-event="change_block_scope"
+            data-params={Jason.encode!(%{scope: "self", id: @block.id})}
+            data-close-on-click="false"
+          >
             {dgettext("sheets", "Self")}
-          </option>
-          <option value="children" selected={@block.scope == "children"}>
+          </button>
+          <button
+            type="button"
+            class={["btn btn-xs", @block.scope == "children" && "btn-active"]}
+            data-event="change_block_scope"
+            data-params={Jason.encode!(%{scope: "children", id: @block.id})}
+            data-close-on-click="false"
+          >
             {dgettext("sheets", "Children")}
-          </option>
-        </select>
+          </button>
+        </div>
       </div>
 
       <%!-- Required toggle (only when scope=children) --%>
       <label
         :if={!@is_inherited && @block.scope == "children" && @can_edit}
         class="flex items-center gap-2 cursor-pointer"
+        data-event="toggle_required"
+        data-params={Jason.encode!(%{id: @block.id})}
+        data-close-on-click="false"
       >
-        <input
-          type="checkbox"
-          class="checkbox checkbox-xs"
-          checked={@block.required}
-          data-event="toggle_required"
-        />
+        <input type="checkbox" class="checkbox checkbox-xs" checked={@block.required} />
         <span class="text-sm text-base-content/70">{dgettext("sheets", "Required")}</span>
       </label>
 
@@ -77,7 +85,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockAdvancedConfig do
         type="button"
         class="btn btn-ghost btn-xs gap-1"
         data-event="reattach_block"
-        data-params-id={@block.id}
+        data-params={Jason.encode!(%{id: @block.id})}
       >
         <.icon name="link" class="size-3.5" />
         {dgettext("sheets", "Re-attach to source")}

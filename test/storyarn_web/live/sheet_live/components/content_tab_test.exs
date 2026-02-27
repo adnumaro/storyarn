@@ -12,10 +12,8 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTabTest do
   - Multi-select events (toggle_multi_select, multi_select_keydown)
   - Rich text events (update_rich_text, mention_suggestions)
   - Boolean block events (set_boolean_block)
-  - Configuration panel events (configure_block, close_config_panel, save_block_config)
-  - Toggle constant event
+  - Toggle constant event (toolbar_toggle_constant)
   - Block label update event
-  - Select options events (add/remove/update_select_option)
   - Reference block events (search_references, select_reference, clear_reference)
   """
 
@@ -144,7 +142,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTabTest do
       %{project: project, workspace: project.workspace, sheet: sheet}
     end
 
-    for type <- ~w(text number boolean select multi_select date rich_text divider reference table) do
+    for type <- ~w(text number boolean select multi_select date rich_text reference table) do
       test "adds a #{type} block to the sheet", %{
         conn: conn,
         workspace: ws,
@@ -512,128 +510,6 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTabTest do
   end
 
   # ===========================================================================
-  # Configuration Panel Events
-  # ===========================================================================
-
-  describe "configure_block / close_config_panel" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Config Panel Sheet"})
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "Description"}})
-      %{project: project, workspace: project.workspace, sheet: sheet, block: block}
-    end
-
-    test "opens config panel for a block", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      html = send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-      assert html =~ "Configure Block"
-    end
-
-    test "closes config panel", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-      assert render(view) =~ "Configure Block"
-
-      send_to_content_tab(view, "close_config_panel")
-      refute render(view) =~ "Configure Block"
-    end
-  end
-
-  describe "save_block_config" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Save Config Sheet"})
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "OldLabel"}})
-      %{project: project, workspace: project.workspace, sheet: sheet, block: block}
-    end
-
-    test "saves new block configuration", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      send_to_content_tab(view, "save_block_config", %{
-        "config" => %{"label" => "NewLabel", "placeholder" => "Type here"}
-      })
-
-      updated_block = Sheets.get_block(block.id)
-      assert updated_block.config["label"] == "NewLabel"
-    end
-  end
-
-  describe "toggle_constant" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Constant Sheet"})
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "Static"}})
-      %{project: project, workspace: project.workspace, sheet: sheet, block: block}
-    end
-
-    test "toggles is_constant flag on", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      assert block.is_constant == false
-
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-      send_to_content_tab(view, "toggle_constant")
-
-      updated_block = Sheets.get_block(block.id)
-      assert updated_block.is_constant == true
-    end
-
-    test "toggles is_constant flag off after toggling on", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-      send_to_content_tab(view, "toggle_constant")
-
-      assert Sheets.get_block(block.id).is_constant == true
-
-      send_to_content_tab(view, "toggle_constant")
-
-      assert Sheets.get_block(block.id).is_constant == false
-    end
-  end
-
-  # ===========================================================================
   # Block Label Update
   # ===========================================================================
 
@@ -684,86 +560,6 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTabTest do
 
       # View should still be alive
       assert html =~ "content-tab"
-    end
-  end
-
-  # ===========================================================================
-  # Select Options Events
-  # ===========================================================================
-
-  describe "select option management" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Select Options Sheet"})
-
-      block =
-        block_fixture(sheet, %{
-          type: "select",
-          config: %{
-            "label" => "Class",
-            "options" => [
-              %{"key" => "warrior", "label" => "Warrior"},
-              %{"key" => "mage", "label" => "Mage"}
-            ]
-          }
-        })
-
-      %{project: project, workspace: project.workspace, sheet: sheet, block: block}
-    end
-
-    test "add_select_option adds an option when config panel is open", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # Open config panel first (required for select option operations)
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      html = send_to_content_tab(view, "add_select_option")
-      # View should still be alive, panel should show the new option
-      assert html =~ "Configure Block"
-    end
-
-    test "remove_select_option removes an option", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      html = send_to_content_tab(view, "remove_select_option", %{"index" => "0"})
-      assert html =~ "Configure Block"
-    end
-
-    test "update_select_option updates an option's label", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      html =
-        send_to_content_tab(view, "update_select_option", %{
-          "index" => "0",
-          "key" => "label",
-          "value" => "Knight"
-        })
-
-      assert html =~ "Configure Block"
     end
   end
 
@@ -939,8 +735,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTabTest do
     } do
       {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
 
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-      send_to_content_tab(view, "toggle_constant")
+      send_to_content_tab(view, "toolbar_toggle_constant", %{"id" => to_string(block.id)})
 
       # is_constant should remain false
       updated_block = Sheets.get_block(block.id)

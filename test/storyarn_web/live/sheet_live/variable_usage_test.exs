@@ -149,9 +149,9 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
     test "sheet without variables does not show section at all",
          %{conn: conn, project: project} do
-      # Create a sheet with only a divider (non-variable block)
+      # Create a sheet with only a constant block (non-variable)
       sheet = sheet_fixture(project, %{name: "Empty Sheet"})
-      block_fixture(sheet, %{type: "divider", config: %{}})
+      block_fixture(sheet, %{type: "text", config: %{"label" => "Title"}, is_constant: true})
 
       {_view, html} = mount_references_tab(conn, project, sheet)
 
@@ -629,25 +629,24 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
          %{conn: conn, project: project} do
       sheet = sheet_fixture(project, %{name: "NilVarSheet"})
 
-      # Create a block that has no variable_name (e.g., a freshly created block
-      # that hasn't been assigned a variable_name yet)
+      # Reference blocks don't generate variable_name
       block_fixture(sheet, %{
-        type: "divider",
-        config: %{}
+        type: "reference",
+        config: %{"label" => "Link", "allowed_types" => ["sheet"]}
       })
 
       {_view, html} = mount_references_tab(conn, project, sheet)
 
-      # No variable usage section because divider blocks are not variables
+      # No variable usage section because reference blocks are not variables
       refute html =~ "Variable Usage"
     end
 
-    test "sheet with empty variable_name block does not show it in variable usage",
+    test "sheet with constant block does not show it in variable usage",
          %{conn: conn, project: project} do
-      sheet = sheet_fixture(project, %{name: "EmptyVarSheet"})
+      sheet = sheet_fixture(project, %{name: "ConstVarSheet"})
 
-      # Divider blocks have empty variable_name
-      block_fixture(sheet, %{type: "divider", config: %{}})
+      # Constant blocks are not variables
+      block_fixture(sheet, %{type: "text", config: %{"label" => "Title"}, is_constant: true})
 
       {_view, html} = mount_references_tab(conn, project, sheet)
 

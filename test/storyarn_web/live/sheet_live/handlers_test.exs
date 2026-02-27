@@ -3,7 +3,6 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
   Tests for SheetLive handler modules exercised through the LiveView:
 
   - BlockCrudHandlers (add, delete, reorder, update)
-  - ConfigPanelHandlers (configure, save config, toggle constant)
   - TableHandlers (add column/row, delete column/row, rename, cell updates)
   - UndoRedoHandlers (undo/redo via parent LiveView)
   - InheritanceHandlers (detach, reattach, hide/unhide for children)
@@ -141,22 +140,6 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
       assert length(blocks) == 1
       assert hd(blocks).type == "table"
     end
-
-    test "adds a divider block to the sheet", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      send_to_content_tab(view, "show_block_menu")
-      send_to_content_tab(view, "add_block", %{"type" => "divider"})
-
-      blocks = Sheets.list_blocks(sheet.id)
-      assert length(blocks) == 1
-      assert hd(blocks).type == "divider"
-    end
   end
 
   describe "BlockCrudHandlers — delete_block" do
@@ -292,140 +275,6 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
       blocks = Sheets.list_blocks(sheet.id)
       ids = Enum.map(blocks, & &1.id)
       assert ids == [b3.id, b1.id, b2.id]
-    end
-  end
-
-  # ===========================================================================
-  # ConfigPanelHandlers
-  # ===========================================================================
-
-  describe "ConfigPanelHandlers — configure_block" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Config Sheet"})
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "Name"}})
-      %{project: project, workspace: project.workspace, sheet: sheet, block: block}
-    end
-
-    test "opens config panel for a block", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      html = send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      # Verify config panel is rendered
-      assert html =~ "Configure Block"
-    end
-
-    test "closes config panel", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # Open config panel first
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-      assert render(view) =~ "Configure Block"
-
-      # Close it
-      send_to_content_tab(view, "close_config_panel")
-      refute render(view) =~ "Configure Block"
-    end
-  end
-
-  describe "ConfigPanelHandlers — save_block_config" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Save Config Sheet"})
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "OldLabel"}})
-      %{project: project, workspace: project.workspace, sheet: sheet, block: block}
-    end
-
-    test "saves block configuration", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # Open config panel first
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      # Save new config
-      send_to_content_tab(view, "save_block_config", %{
-        "config" => %{"label" => "NewLabel", "placeholder" => "Enter..."}
-      })
-
-      # Verify config was updated
-      updated_block = Sheets.get_block(block.id)
-      assert updated_block.config["label"] == "NewLabel"
-    end
-  end
-
-  describe "ConfigPanelHandlers — toggle_constant" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Toggle Constant Sheet"})
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "Name"}})
-      %{project: project, workspace: project.workspace, sheet: sheet, block: block}
-    end
-
-    test "toggles is_constant flag on a block", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      assert block.is_constant == false
-
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      # Open config panel
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      # Toggle constant
-      send_to_content_tab(view, "toggle_constant")
-
-      # Verify is_constant was toggled
-      updated_block = Sheets.get_block(block.id)
-      assert updated_block.is_constant == true
-    end
-
-    test "toggle constant twice returns to original state", %{
-      conn: conn,
-      workspace: ws,
-      project: proj,
-      sheet: sheet,
-      block: block
-    } do
-      {:ok, view, _html} = mount_sheet(conn, ws, proj, sheet)
-
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      # Toggle on
-      send_to_content_tab(view, "toggle_constant")
-      assert Sheets.get_block(block.id).is_constant == true
-
-      # Toggle off
-      send_to_content_tab(view, "toggle_constant")
-      assert Sheets.get_block(block.id).is_constant == false
     end
   end
 
@@ -1024,11 +873,11 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
 
       {:ok, view, _html} = mount_sheet(conn, ws, proj, parent_sheet)
 
-      # Open config panel
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      # Change scope to children
-      send_to_content_tab(view, "change_block_scope", %{"scope" => "children"})
+      # Change scope to children (via popover event with block id)
+      send_to_content_tab(view, "change_block_scope", %{
+        "scope" => "children",
+        "id" => to_string(block.id)
+      })
 
       updated_block = Sheets.get_block(block.id)
       assert updated_block.scope == "children"
@@ -1123,11 +972,8 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     } do
       {:ok, view, _html} = mount_sheet(conn, ws, proj, parent_sheet)
 
-      # Open config panel for the block
-      send_to_content_tab(view, "configure_block", %{"id" => to_string(block.id)})
-
-      # Toggle required
-      send_to_content_tab(view, "toggle_required")
+      # Toggle required (via popover event with block id)
+      send_to_content_tab(view, "toggle_required", %{"id" => to_string(block.id)})
 
       updated_block = Sheets.get_block(block.id)
       assert updated_block.required == true

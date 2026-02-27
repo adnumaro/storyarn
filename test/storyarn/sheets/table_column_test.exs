@@ -24,7 +24,6 @@ defmodule Storyarn.Sheets.TableColumnTest do
       assert "date" in types
       assert "reference" in types
       refute "rich_text" in types
-      refute "divider" in types
     end
   end
 

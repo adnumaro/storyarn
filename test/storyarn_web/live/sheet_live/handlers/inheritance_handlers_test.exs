@@ -55,7 +55,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlersTest do
             socket.assigns
             |> Map.put(:sheet, child_sheet)
             |> Map.put(:blocks, Sheets.list_blocks(child_sheet.id))
-            |> Map.put(:configuring_block, nil)
       }
 
       {:noreply, result} =
@@ -163,18 +162,24 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlersTest do
   # handle_change_scope/3
   # =============================================================================
 
-  describe "handle_change_scope/3" do
+  describe "handle_change_scope/4" do
     setup :setup_scope_context
 
-    test "does nothing when scope is same", %{socket: socket, helpers: helpers} do
-      {:noreply, result} = InheritanceHandlers.handle_change_scope("self", socket, helpers)
+    test "does nothing when scope is same", %{socket: socket, helpers: helpers, block: block} do
+      {:noreply, result} = InheritanceHandlers.handle_change_scope(block, "self", socket, helpers)
       assert result == socket
     end
 
-    test "changes scope from self to children", %{socket: socket, helpers: helpers} do
-      {:noreply, result} = InheritanceHandlers.handle_change_scope("children", socket, helpers)
+    test "changes scope from self to children", %{
+      socket: socket,
+      helpers: helpers,
+      block: block
+    } do
+      {:noreply, result} =
+        InheritanceHandlers.handle_change_scope(block, "children", socket, helpers)
 
-      updated_block = result.assigns.configuring_block
+      # Verify the block was updated in the DB
+      updated_block = Sheets.get_block!(block.id)
       assert updated_block.scope == "children"
     end
   end
@@ -183,23 +188,22 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlersTest do
   # handle_toggle_required/2
   # =============================================================================
 
-  describe "handle_toggle_required/2" do
+  describe "handle_toggle_required/3" do
     setup :setup_scope_context
 
-    test "toggles required from false to true", %{socket: socket, helpers: helpers} do
-      {:noreply, result} = InheritanceHandlers.handle_toggle_required(socket, helpers)
+    test "toggles required from false to true", %{socket: socket, helpers: helpers, block: block} do
+      {:noreply, _result} = InheritanceHandlers.handle_toggle_required(block, socket, helpers)
 
-      updated_block = result.assigns.configuring_block
+      updated_block = Sheets.get_block!(block.id)
       assert updated_block.required == true
     end
 
     test "toggles required from true to false", %{socket: socket, helpers: helpers, block: block} do
       {:ok, block} = Sheets.update_block(block, %{required: true})
-      socket = %{socket | assigns: %{socket.assigns | configuring_block: block}}
 
-      {:noreply, result} = InheritanceHandlers.handle_toggle_required(socket, helpers)
+      {:noreply, _result} = InheritanceHandlers.handle_toggle_required(block, socket, helpers)
 
-      updated_block = result.assigns.configuring_block
+      updated_block = Sheets.get_block!(block.id)
       assert updated_block.required == false
     end
   end
@@ -358,8 +362,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlersTest do
         project: project,
         workspace: workspace,
         sheet: sheet,
-        blocks: Sheets.list_blocks(sheet.id),
-        configuring_block: block
+        blocks: Sheets.list_blocks(sheet.id)
       })
 
     %{project: project, sheet: sheet, block: block, socket: socket, helpers: helpers}

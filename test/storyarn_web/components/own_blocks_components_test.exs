@@ -90,7 +90,6 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponentsTest do
       assert html =~ "Number"
       assert html =~ "Boolean"
       assert html =~ "Select"
-      assert html =~ "Divider"
     end
 
     test "passes block_scope to block menu" do
@@ -379,14 +378,6 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponentsTest do
       {:ok, _view, html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
 
       assert html =~ "Race"
-    end
-
-    test "renders divider block as hr element", ctx do
-      _block = block_fixture(ctx.sheet, %{type: "divider", config: %{}})
-
-      {:ok, _view, html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      assert html =~ "<hr"
     end
 
     test "renders date block", ctx do

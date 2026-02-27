@@ -5,7 +5,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
   Renders a minimal set of actions above the block:
   - Duplicate
   - Constant toggle (for variable-capable types)
-  - Config gear (for configurable types)
+  - Config gear — popover with type-specific config + shared Advanced section
   - [...] overflow menu with Delete + inherited actions
   """
 
@@ -13,27 +13,33 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
   use Gettext, backend: StoryarnWeb.Gettext
 
   import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
+  import StoryarnWeb.Components.BlockComponents.ConfigPopovers.TextConfig
+  import StoryarnWeb.Components.BlockComponents.ConfigPopovers.NumberConfig
+  import StoryarnWeb.Components.BlockComponents.ConfigPopovers.BooleanConfig
+  import StoryarnWeb.Components.BlockComponents.ConfigPopovers.SelectConfig
+  import StoryarnWeb.Components.BlockComponents.ConfigPopovers.DateConfig
+  import StoryarnWeb.Components.BlockComponents.ConfigPopovers.ReferenceConfig
+  import StoryarnWeb.Components.BlockComponents.BlockAdvancedConfig
 
-  @non_constant_types ~w(divider reference table)
-  @non_config_types ~w(divider table)
+  @non_constant_types ~w(reference table)
 
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :is_inherited, :boolean, default: false
   attr :target, :any, default: nil
+  attr :component_id, :string, default: nil
 
   def block_toolbar(assigns) do
     show_constant = assigns.block.type not in @non_constant_types
-    show_config = assigns.block.type not in @non_config_types
 
     assigns =
       assigns
       |> assign(:show_constant, show_constant)
-      |> assign(:show_config, show_config)
 
     ~H"""
     <div
       :if={@can_edit}
+      data-toolbar
       class="absolute -top-9 left-0 flex items-center gap-0.5 p-1 bg-base-200 border border-base-300 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto"
     >
       <%!-- Duplicate --%>
@@ -65,18 +71,13 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
         <.icon name={if @block.is_constant, do: "lock", else: "unlock"} class="size-3.5" />
       </button>
 
-      <%!-- Config gear --%>
-      <button
-        :if={@show_config}
-        type="button"
-        class="btn btn-ghost btn-xs btn-square"
-        title={dgettext("sheets", "Configure")}
-        phx-click="configure_block"
-        phx-value-id={@block.id}
-        phx-target={@target}
-      >
-        <.icon name="settings" class="size-3.5" />
-      </button>
+      <%!-- Config gear — popover with type-specific config --%>
+      <.config_trigger
+        block={@block}
+        can_edit={@can_edit}
+        target={@target}
+        component_id={@component_id}
+      />
 
       <%!-- Overflow menu --%>
       <div class="dropdown dropdown-end">
@@ -143,4 +144,80 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
     </div>
     """
   end
+
+  # ---------------------------------------------------------------------------
+  # Popover content — dispatches to the right config component by block type
+  # ---------------------------------------------------------------------------
+
+  attr :block, :map, required: true
+  attr :can_edit, :boolean, required: true
+
+  defp popover_content(%{block: %{type: "number"}} = assigns) do
+    ~H"<.number_config block={@block} can_edit={@can_edit} />"
+  end
+
+  defp popover_content(%{block: %{type: "boolean"}} = assigns) do
+    ~H"<.boolean_config block={@block} can_edit={@can_edit} />"
+  end
+
+  defp popover_content(%{block: %{type: type}} = assigns) when type in ~w(select multi_select) do
+    ~H"<.select_config block={@block} can_edit={@can_edit} />"
+  end
+
+  defp popover_content(%{block: %{type: "date"}} = assigns) do
+    ~H"<.date_config block={@block} can_edit={@can_edit} />"
+  end
+
+  defp popover_content(%{block: %{type: "reference"}} = assigns) do
+    ~H"<.reference_config block={@block} can_edit={@can_edit} />"
+  end
+
+  defp popover_content(%{block: %{type: "table"}} = assigns) do
+    ~H"""
+    <div class="p-3 min-w-0">
+      <.block_advanced_config block={@block} can_edit={@can_edit} standalone={true} />
+    </div>
+    """
+  end
+
+  defp popover_content(assigns) do
+    ~H"<.text_config block={@block} can_edit={@can_edit} />"
+  end
+
+  # ---------------------------------------------------------------------------
+  # Config trigger — popover or plain button
+  # ---------------------------------------------------------------------------
+
+  attr :block, :map, required: true
+  attr :can_edit, :boolean, required: true
+  attr :target, :any, default: nil
+  attr :component_id, :string, default: nil
+
+  defp config_trigger(assigns) do
+    assigns = assign(assigns, :popover_width, popover_width(assigns.block.type))
+
+    ~H"""
+    <div
+      phx-hook="ToolbarPopover"
+      id={"config-popover-#{@block.id}"}
+      data-width={@popover_width}
+      data-target={"##{@component_id}"}
+    >
+      <button
+        type="button"
+        data-role="trigger"
+        class="btn btn-ghost btn-xs btn-square"
+        title={dgettext("sheets", "Configure")}
+      >
+        <.icon name="settings" class="size-3.5" />
+      </button>
+      <div data-role="popover-template" hidden>
+        <.popover_content block={@block} can_edit={@can_edit} />
+      </div>
+    </div>
+    """
+  end
+
+  defp popover_width(type) when type in ~w(select multi_select), do: "20rem"
+  defp popover_width(_type), do: "16rem"
 end
