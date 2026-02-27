@@ -44,29 +44,9 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
     yarn_files =
       if length(flows) > 5 do
-        flows
-        |> Enum.with_index()
-        |> Enum.map(fn {flow, idx} ->
-          filename = Helpers.shortcut_to_identifier(flow.shortcut || "flow_#{flow.id}")
-          decls = if idx == 0, do: var_decls, else: []
-          content = flow_to_yarn(flow, decls, speaker_map, line_counter)
-          {"#{filename}.yarn", content}
-        end)
+        serialize_multi_file(flows, var_decls, speaker_map, line_counter)
       else
-        {first_content, rest_content} =
-          case flows do
-            [first | rest] ->
-              {
-                flow_to_yarn(first, var_decls, speaker_map, line_counter),
-                Enum.map(rest, &flow_to_yarn(&1, [], speaker_map, line_counter))
-              }
-
-            [] ->
-              {"", []}
-          end
-
-        content = Enum.join([first_content | rest_content], "\n")
-        [{"#{project_name}.yarn", content}]
+        serialize_single_file(flows, var_decls, speaker_map, line_counter, project_name)
       end
 
     metadata = build_metadata(project_data.project, sheets, variables, flows)
@@ -77,6 +57,38 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   @impl true
   def serialize_to_file(_data, _file_path, _options, _callbacks) do
     {:error, :not_implemented}
+  end
+
+  # ---------------------------------------------------------------------------
+  # Multi-file / single-file strategies
+  # ---------------------------------------------------------------------------
+
+  defp serialize_multi_file(flows, var_decls, speaker_map, line_counter) do
+    flows
+    |> Enum.with_index()
+    |> Enum.map(fn {flow, idx} ->
+      filename = Helpers.shortcut_to_identifier(flow.shortcut || "flow_#{flow.id}")
+      decls = if idx == 0, do: var_decls, else: []
+      content = flow_to_yarn(flow, decls, speaker_map, line_counter)
+      {"#{filename}.yarn", content}
+    end)
+  end
+
+  defp serialize_single_file(flows, var_decls, speaker_map, line_counter, project_name) do
+    {first_content, rest_content} =
+      case flows do
+        [first | rest] ->
+          {
+            flow_to_yarn(first, var_decls, speaker_map, line_counter),
+            Enum.map(rest, &flow_to_yarn(&1, [], speaker_map, line_counter))
+          }
+
+        [] ->
+          {"", []}
+      end
+
+    content = Enum.join([first_content | rest_content], "\n")
+    [{"#{project_name}.yarn", content}]
   end
 
   # ---------------------------------------------------------------------------
