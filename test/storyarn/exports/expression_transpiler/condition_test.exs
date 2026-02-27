@@ -174,7 +174,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
         {:ok, result, warnings} = ExpressionTranspiler.transpile_condition(condition, :ink)
 
         assert Enum.any?(warnings, &(&1.type == :unsupported_operator))
-        assert result =~ "true /* unsupported:"
+        assert result == "true"
       end
     end
   end

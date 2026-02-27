@@ -37,8 +37,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Ink do
 
     if op in @unsupported_condition_ops do
       warning = Helpers.unsupported_op_warning(op, "Ink", "#{sheet}.#{var}")
-      safe_val = String.replace(rule["value"] || "", "*/", "* /")
-      fallback = "/* #{op}(#{ref}, #{safe_val}) */"
+      # H2 fix: emit valid expression instead of bare comment
+      fallback = "true"
       {:warning, fallback, warning}
     else
       {:ok, emit_condition_op(ref, op, rule["value"])}
@@ -79,9 +79,11 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Ink do
   defp emit_assignment(ref, "toggle", _), do: "~ #{ref} = not #{ref}"
   defp emit_assignment(ref, "clear", _), do: ~s(~ #{ref} = "")
 
+  # M1/M2 fix: Ink has no null — all variables are initialized at declaration.
+  # Emit unconditional assignment instead of broken null check.
   defp emit_assignment(ref, "set_if_unset", a) do
     val = format_value(ref, a)
-    ~s({#{ref} == "": ~ #{ref} = #{val}})
+    "~ #{ref} = #{val}"
   end
 
   defp emit_assignment(ref, _op, a), do: "~ #{ref} = #{format_value(ref, a)}"

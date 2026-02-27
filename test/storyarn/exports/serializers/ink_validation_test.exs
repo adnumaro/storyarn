@@ -765,6 +765,43 @@ defmodule Storyarn.Exports.Serializers.InkValidationTest do
              "inklecate rejected empty condition (B3):\n#{inspect(InkCompiler.validate(source))}"
     end
 
+    # F3: set_if_unset instruction compiles (no /* */ comments)
+    test "set_if_unset instruction compiles (F3)", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Hero"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Health"},
+        value: %{"number" => 100}
+      })
+
+      flow = flow_fixture(project, %{name: "SetIfUnset"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      instruction =
+        node_fixture(flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "sheet" => sheet.shortcut,
+                "variable" => "health",
+                "operator" => "set_if_unset",
+                "value" => "50"
+              }
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, instruction)
+
+      source = ink_source(export_files(project))
+
+      assert InkCompiler.valid?(source),
+             "inklecate rejected set_if_unset:\n#{inspect(InkCompiler.validate(source))}"
+    end
+
     # B5: String variable with newline
     test "string variable with newline compiles (B5)", %{project: project} do
       sheet = sheet_fixture(project, %{name: "Config"})

@@ -336,7 +336,7 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       connection_fixture(flow, entry, condition)
 
       source = ink_source(export_ink(project))
-      assert source =~ "true /* unsupported: contains */"
+      assert source =~ "{- true:"
     end
   end
 
@@ -437,8 +437,9 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       # Flow with only auto-created entry node, nothing connected
       _flow = flow_fixture(project, %{name: "Lonely Flow"})
       source = ink_source(export_ink(project))
-      # Should produce a knot but no content errors
+      # Should produce a knot with -> END placeholder
       assert source =~ "=== "
+      assert source =~ "-> END"
       refute source =~ "** ("
     end
 
@@ -788,7 +789,7 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       connection_fixture(flow, entry, condition)
 
       source = ink_source(export_ink(project))
-      assert source =~ "{-"
+      assert source =~ "{ true:"
       assert source =~ "}"
     end
 
@@ -874,6 +875,8 @@ defmodule Storyarn.Exports.Serializers.InkTest do
 
       source = ink_source(export_ink(project))
       assert source =~ "-> meeting_point"
+      assert source =~ "= meeting_point"
+      assert source =~ "We meet again!"
     end
 
     test "jump to external flow renders divert", %{project: project} do

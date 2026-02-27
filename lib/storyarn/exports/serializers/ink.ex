@@ -105,12 +105,16 @@ defmodule Storyarn.Exports.Serializers.Ink do
     is_tunnel = MapSet.member?(tunnel_targets, flow.shortcut)
     ctx = %{speaker_map: speaker_map, is_tunnel: is_tunnel}
 
+    body = render_instructions(instructions, ctx, 0)
+    # Ink requires at least one content line per knot
+    body = if body == [], do: ["-> END"], else: body
+
     knot_lines =
       [
         "// === Flow: #{flow.name} ===",
         "=== #{knot_name} ===",
         ""
-      ] ++ render_instructions(instructions, ctx, 0)
+      ] ++ body
 
     hub_lines =
       Enum.flat_map(hub_sections, fn {label, instrs} ->
@@ -199,7 +203,7 @@ defmodule Storyarn.Exports.Serializers.Ink do
         ["#{indent(depth)}{- #{expr}:"]
 
       _ ->
-        ["#{indent(depth)}{- true:"]
+        ["#{indent(depth)}{ true:"]
     end
   end
 

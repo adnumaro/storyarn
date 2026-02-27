@@ -204,11 +204,11 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
   # =============================================================================
 
   describe "set_if_unset operator" do
-    test "ink emits conditional block" do
+    test "ink emits unconditional assignment" do
       {:ok, result, _} =
         ExpressionTranspiler.transpile_instruction([assignment("set_if_unset")], :ink)
 
-      assert result == ~s({mc_jaime_health == "": ~ mc_jaime_health = 10})
+      assert result == "~ mc_jaime_health = 10"
     end
 
     test "yarn emits unconditional set" do

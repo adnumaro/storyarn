@@ -177,7 +177,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
   defp traverse_node(%{type: "jump"} = node, state) do
     # Jump references a target hub or flow
-    target_label = resolve_jump_target(node, state)
+    {target_label, state} = resolve_jump_target(node, state)
     %{state | instructions: [{:jump, node, target_label} | state.instructions]}
   end
 
@@ -286,22 +286,28 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
     cond do
       # Jump to a hub within same flow
       hub_id = data["hub_id"] ->
-        state.hub_labels[hub_id] || Helpers.shortcut_to_identifier("hub_#{hub_id}")
+        label = state.hub_labels[hub_id] || Helpers.shortcut_to_identifier("hub_#{hub_id}")
+        # Queue the hub for section emission (same as inline hub traversal)
+        state = %{state | hub_queue: [{hub_id, label} | state.hub_queue]}
+        {label, state}
 
       # Jump to another flow
       flow_shortcut = data["target_flow_shortcut"] ->
-        Helpers.shortcut_to_identifier(flow_shortcut)
+        {Helpers.shortcut_to_identifier(flow_shortcut), state}
 
       true ->
         # Follow the connection to find the target
-        case outgoing(state, node.id) do
-          [{target_id, _, _} | _] ->
-            state.hub_labels[target_id] ||
-              Helpers.shortcut_to_identifier("node_#{target_id}")
+        label =
+          case outgoing(state, node.id) do
+            [{target_id, _, _} | _] ->
+              state.hub_labels[target_id] ||
+                Helpers.shortcut_to_identifier("node_#{target_id}")
 
-          [] ->
-            "unknown"
-        end
+            [] ->
+              "unknown"
+          end
+
+        {label, state}
     end
   end
 end
