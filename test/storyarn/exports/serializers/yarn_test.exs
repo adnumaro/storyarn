@@ -1044,8 +1044,9 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       source = yarn_source(export_yarn(project))
       assert source =~ "-> Buy sword"
       assert source =~ "-> Leave"
-      # The conditional choice should have <<if>> guard
+      # The conditional choice should have <<if>> guard before #line: tag
       assert source =~ "<<if"
+      assert source =~ ~r/-> Buy sword <<if .+>> #line:/
     end
   end
 end

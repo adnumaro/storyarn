@@ -152,7 +152,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
     choice_line =
       if condition do
-        "#{indent(depth)}-> #{text} #line:#{line_id} <<if #{condition}>>"
+        "#{indent(depth)}-> #{text} <<if #{condition}>> #line:#{line_id}"
       else
         "#{indent(depth)}-> #{text} #line:#{line_id}"
       end
