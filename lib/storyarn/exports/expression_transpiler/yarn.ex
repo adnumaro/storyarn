@@ -11,6 +11,41 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Yarn do
     logic_opts: [and_keyword: " and ", or_keyword: " or "],
     literal_opts: []
 
+  # Operators that require custom function registration in the Yarn runtime
+  @custom_function_ops ~w(contains not_contains starts_with ends_with)
+
+  # ---------------------------------------------------------------------------
+  # Conditions — override transpile_rules for custom-function warnings
+  # ---------------------------------------------------------------------------
+
+  defp transpile_rules(rules) do
+    {parts, warnings} =
+      Enum.reduce(rules, {[], []}, fn rule, {parts_acc, warn_acc} ->
+        case yarn_transpile_rule(rule) do
+          {:ok, expr} -> {[expr | parts_acc], warn_acc}
+          {:warning, expr, w} -> {[expr | parts_acc], [w | warn_acc]}
+          :skip -> {parts_acc, warn_acc}
+        end
+      end)
+
+    {Enum.reverse(parts), Enum.reverse(warnings)}
+  end
+
+  defp yarn_transpile_rule(%{"sheet" => sheet, "variable" => var, "operator" => op} = rule)
+       when is_binary(sheet) and sheet != "" and is_binary(var) and var != "" do
+    ref = Helpers.format_var_ref(sheet, var, @var_style)
+
+    if op in @custom_function_ops do
+      expr = emit_condition_op(ref, op, rule["value"])
+      warning = Helpers.custom_function_warning(op, "Yarn", "#{sheet}.#{var}")
+      {:warning, expr, warning}
+    else
+      {:ok, emit_condition_op(ref, op, rule["value"])}
+    end
+  end
+
+  defp yarn_transpile_rule(_), do: :skip
+
   # ---------------------------------------------------------------------------
   # Condition operators
   # ---------------------------------------------------------------------------
@@ -50,6 +85,39 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Yarn do
   defp condition_op("greater_than_or_equal"), do: ">="
   defp condition_op("less_than_or_equal"), do: "<="
   defp condition_op(op), do: op
+
+  # ---------------------------------------------------------------------------
+  # Instructions — override to add set_if_unset semantic loss warnings
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def transpile_instruction(assignments, ctx) when is_list(assignments) do
+    {:ok, result, warnings} = super(assignments, ctx)
+
+    extra_warnings =
+      assignments
+      |> Enum.filter(fn
+        %{"sheet" => s, "variable" => v, "operator" => "set_if_unset"}
+        when is_binary(s) and s != "" and is_binary(v) and v != "" ->
+          true
+
+        _ ->
+          false
+      end)
+      |> Enum.map(fn %{"sheet" => s, "variable" => v} ->
+        %{
+          type: :semantic_loss,
+          message: "set_if_unset emits unconditional set in Yarn (no null type)",
+          operator: "set_if_unset",
+          engine: "Yarn",
+          variable: "#{s}.#{v}"
+        }
+      end)
+
+    {:ok, result, warnings ++ extra_warnings}
+  end
+
+  def transpile_instruction(other, ctx), do: super(other, ctx)
 
   # ---------------------------------------------------------------------------
   # Instruction operators

@@ -139,6 +139,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
 
       def transpile_instruction(_, _ctx), do: {:ok, "", []}
 
+      defoverridable transpile_instruction: 2
+
       defp transpile_assignment(%{"sheet" => s, "variable" => v, "operator" => op} = a)
            when is_binary(s) and s != "" and is_binary(v) and v != "" do
         ref = Helpers.format_var_ref(s, v, @var_style)

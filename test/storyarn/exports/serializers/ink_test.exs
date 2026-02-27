@@ -294,7 +294,8 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       connection_fixture(flow, entry, condition)
 
       source = ink_source(export_ink(project))
-      assert source =~ "{-"
+      assert source =~ "- "
+      assert source =~ ":"
     end
 
     test "condition with unsupported operator emits true fallback", %{project: project} do
@@ -336,7 +337,7 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       connection_fixture(flow, entry, condition)
 
       source = ink_source(export_ink(project))
-      assert source =~ "{- true:"
+      assert source =~ "- true:"
     end
   end
 
@@ -763,7 +764,7 @@ defmodule Storyarn.Exports.Serializers.InkTest do
 
       source = ink_source(export_ink(project))
       # Should have the if block and the else branch with closing brace
-      assert source =~ "{-"
+      assert source =~ "- "
       assert source =~ "- else:"
       assert source =~ "}"
       assert source =~ "Still alive!"
@@ -789,7 +790,7 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       connection_fixture(flow, entry, condition)
 
       source = ink_source(export_ink(project))
-      assert source =~ "{ true:"
+      assert source =~ "- true:"
       assert source =~ "}"
     end
 
@@ -1493,8 +1494,8 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       connection_fixture(flow, condition, dialogue, %{source_pin: "true"})
 
       source = ink_source(export_ink(project))
-      # A bare {- without expression is invalid Ink — should use {- true:
-      refute source =~ ~r/\{-\s*\n/
+      # A bare "- " without expression is invalid Ink — should use "- true:"
+      refute source =~ ~r/-\s*\n/
     end
   end
 

@@ -153,7 +153,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
   defp render_instruction({:dialogue, node}, speaker_map, line_counter, depth) do
     data = node.data || %{}
-    text = Helpers.dialogue_text(data)
+    text = data |> Helpers.dialogue_text() |> escape_yarn_text()
     speaker = Helpers.speaker_name(data, speaker_map)
     line_id = next_line_id(line_counter)
 
@@ -170,7 +170,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   defp render_instruction({:choices_start, _node}, _speaker_map, _lc, _depth), do: []
 
   defp render_instruction({:choice, resp, _idx}, _speaker_map, line_counter, depth) do
-    text = Helpers.strip_html(resp["text"] || resp["menu_text"] || "")
+    text = (resp["text"] || resp["menu_text"] || "") |> Helpers.strip_html() |> escape_yarn_text()
     line_id = next_line_id(line_counter)
     condition = build_yarn_condition(resp["condition"])
 
@@ -268,6 +268,18 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   # Helpers
   # ---------------------------------------------------------------------------
 
+  defp escape_yarn_text(text) when is_binary(text) do
+    text
+    |> String.replace("\\", "\\\\")
+    |> String.replace("#", "\\#")
+    |> String.replace("{", "\\{")
+    |> String.replace("}", "\\}")
+    |> String.replace("[", "\\[")
+    |> String.replace("]", "\\]")
+  end
+
+  defp escape_yarn_text(_), do: ""
+
   defp indent(0), do: ""
   defp indent(n), do: String.duplicate("    ", n)
 
@@ -314,12 +326,74 @@ defmodule Storyarn.Exports.Serializers.Yarn do
          Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")}
       end)
 
-    %{
+    required_functions = collect_required_functions(flows)
+
+    metadata = %{
       "storyarn_yarn_metadata" => "1.0.0",
       "project" => project.name,
       "characters" => characters,
       "variable_mapping" => variable_mapping,
       "flow_mapping" => flow_mapping
     }
+
+    if required_functions == [] do
+      metadata
+    else
+      Map.put(metadata, "required_functions", required_functions)
+    end
   end
+
+  @custom_function_ops %{
+    "contains" => "string_contains",
+    "not_contains" => "string_contains",
+    "starts_with" => "string_starts_with",
+    "ends_with" => "string_ends_with"
+  }
+
+  defp collect_required_functions(flows) do
+    flows
+    |> Enum.flat_map(fn flow ->
+      (flow.nodes || [])
+      |> Enum.flat_map(&extract_condition_operators/1)
+    end)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp extract_condition_operators(%{type: "condition", data: data}) when is_map(data) do
+    condition = Helpers.extract_condition(data["condition"])
+    extract_ops_from_condition(condition)
+  end
+
+  defp extract_condition_operators(%{type: "dialogue", data: data}) when is_map(data) do
+    (data["responses"] || [])
+    |> Enum.flat_map(fn resp ->
+      condition = Helpers.extract_condition(resp["condition"])
+      extract_ops_from_condition(condition)
+    end)
+  end
+
+  defp extract_condition_operators(_), do: []
+
+  defp extract_ops_from_condition(%{"rules" => rules}) when is_list(rules) do
+    rules
+    |> Enum.map(& &1["operator"])
+    |> Enum.filter(&Map.has_key?(@custom_function_ops, &1))
+    |> Enum.map(&Map.fetch!(@custom_function_ops, &1))
+  end
+
+  defp extract_ops_from_condition(%{"blocks" => blocks}) when is_list(blocks) do
+    Enum.flat_map(blocks, fn
+      %{"rules" => rules} when is_list(rules) ->
+        rules
+        |> Enum.map(& &1["operator"])
+        |> Enum.filter(&Map.has_key?(@custom_function_ops, &1))
+        |> Enum.map(&Map.fetch!(@custom_function_ops, &1))
+
+      _ ->
+        []
+    end)
+  end
+
+  defp extract_ops_from_condition(_), do: []
 end

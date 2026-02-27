@@ -211,11 +211,14 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
       assert result == "~ mc_jaime_health = 10"
     end
 
-    test "yarn emits unconditional set" do
-      {:ok, result, _} =
+    test "yarn emits unconditional set with semantic_loss warning" do
+      {:ok, result, warnings} =
         ExpressionTranspiler.transpile_instruction([assignment("set_if_unset")], :yarn)
 
       assert result == "<<set $mc_jaime_health to 10>>"
+      assert length(warnings) == 1
+      assert hd(warnings).type == :semantic_loss
+      assert hd(warnings).operator == "set_if_unset"
     end
 
     test "unity emits Lua if/then/end" do

@@ -180,28 +180,40 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
   end
 
   describe "yarn string operators" do
-    test "contains" do
+    test "contains emits expression and custom_function_required warning" do
       condition = flat_condition([simple_rule("contains", "test")])
-      {:ok, result, _} = ExpressionTranspiler.transpile_condition(condition, :yarn)
+      {:ok, result, warnings} = ExpressionTranspiler.transpile_condition(condition, :yarn)
       assert result == ~s[string_contains($mc_jaime_health, "test")]
+      assert length(warnings) == 1
+      assert hd(warnings).type == :custom_function_required
+      assert hd(warnings).function == "string_contains"
     end
 
-    test "not_contains" do
+    test "not_contains emits expression and custom_function_required warning" do
       condition = flat_condition([simple_rule("not_contains", "test")])
-      {:ok, result, _} = ExpressionTranspiler.transpile_condition(condition, :yarn)
+      {:ok, result, warnings} = ExpressionTranspiler.transpile_condition(condition, :yarn)
       assert result == ~s[!string_contains($mc_jaime_health, "test")]
+      assert length(warnings) == 1
+      assert hd(warnings).type == :custom_function_required
+      assert hd(warnings).function == "string_contains"
     end
 
-    test "starts_with" do
+    test "starts_with emits expression and custom_function_required warning" do
       condition = flat_condition([simple_rule("starts_with", "test")])
-      {:ok, result, _} = ExpressionTranspiler.transpile_condition(condition, :yarn)
+      {:ok, result, warnings} = ExpressionTranspiler.transpile_condition(condition, :yarn)
       assert result == ~s[string_starts_with($mc_jaime_health, "test")]
+      assert length(warnings) == 1
+      assert hd(warnings).type == :custom_function_required
+      assert hd(warnings).function == "string_starts_with"
     end
 
-    test "ends_with" do
+    test "ends_with emits expression and custom_function_required warning" do
       condition = flat_condition([simple_rule("ends_with", "test")])
-      {:ok, result, _} = ExpressionTranspiler.transpile_condition(condition, :yarn)
+      {:ok, result, warnings} = ExpressionTranspiler.transpile_condition(condition, :yarn)
       assert result == ~s[string_ends_with($mc_jaime_health, "test")]
+      assert length(warnings) == 1
+      assert hd(warnings).type == :custom_function_required
+      assert hd(warnings).function == "string_ends_with"
     end
   end
 

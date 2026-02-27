@@ -691,6 +691,269 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
   end
 
   # =============================================================================
+  # Escape validation (F2)
+  # =============================================================================
+
+  describe "ysc compilation — escape characters" do
+    setup [:create_project]
+
+    test "dialogue with special characters compiles (F2)", %{project: project} do
+      flow = flow_fixture(project, %{name: "EscapeTest"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Item #3 in [chest] costs {gold}",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = yarn_source(export_files(project))
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected escaped dialogue (F2):\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
+    test "choice with special characters compiles (F2)", %{project: project} do
+      flow = flow_fixture(project, %{name: "EscapeChoice"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "What do you do?",
+            "speaker_sheet_id" => nil,
+            "responses" => [
+              %{
+                "id" => "r1",
+                "text" => "Pick up item #1",
+                "condition" => nil,
+                "instruction" => nil
+              },
+              %{
+                "id" => "r2",
+                "text" => "Open [chest]",
+                "condition" => nil,
+                "instruction" => nil
+              }
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = yarn_source(export_files(project))
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected escaped choices (F2):\n#{inspect(YarnCompiler.validate(source))}"
+    end
+  end
+
+  # =============================================================================
+  # Instruction operator validation (T1)
+  # =============================================================================
+
+  describe "ysc compilation — instruction operators" do
+    setup [:create_project]
+
+    test "add instruction compiles", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Stats"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Score"},
+        value: %{"number" => 0}
+      })
+
+      flow = flow_fixture(project, %{name: "AddInst"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      instruction =
+        node_fixture(flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "sheet" => sheet.shortcut,
+                "variable" => "score",
+                "operator" => "add",
+                "value" => "10"
+              }
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, instruction)
+
+      source = yarn_source(export_files(project))
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected add instruction:\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
+    test "subtract instruction compiles", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Stats"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Health"},
+        value: %{"number" => 100}
+      })
+
+      flow = flow_fixture(project, %{name: "SubInst"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      instruction =
+        node_fixture(flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "sheet" => sheet.shortcut,
+                "variable" => "health",
+                "operator" => "subtract",
+                "value" => "25"
+              }
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, instruction)
+
+      source = yarn_source(export_files(project))
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected subtract instruction:\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
+    test "toggle instruction compiles", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Flags"})
+
+      block_fixture(sheet, %{
+        type: "boolean",
+        config: %{"label" => "Active"},
+        value: %{"boolean" => false}
+      })
+
+      flow = flow_fixture(project, %{name: "ToggleInst"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      instruction =
+        node_fixture(flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "sheet" => sheet.shortcut,
+                "variable" => "active",
+                "operator" => "toggle"
+              }
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, instruction)
+
+      source = yarn_source(export_files(project))
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected toggle instruction:\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
+    test "clear instruction compiles", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Text"})
+
+      block_fixture(sheet, %{
+        type: "text",
+        config: %{"label" => "Note"},
+        value: %{"text" => "hello"}
+      })
+
+      flow = flow_fixture(project, %{name: "ClearInst"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      instruction =
+        node_fixture(flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "sheet" => sheet.shortcut,
+                "variable" => "note",
+                "operator" => "clear"
+              }
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, instruction)
+
+      source = yarn_source(export_files(project))
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected clear instruction:\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
+    test "variable-to-variable assignment compiles", %{project: project} do
+      sheet_a = sheet_fixture(project, %{name: "Source"})
+
+      block_fixture(sheet_a, %{
+        type: "number",
+        config: %{"label" => "Max Health"},
+        value: %{"number" => 100}
+      })
+
+      sheet_b = sheet_fixture(project, %{name: "Target"})
+
+      block_fixture(sheet_b, %{
+        type: "number",
+        config: %{"label" => "Health"},
+        value: %{"number" => 0}
+      })
+
+      flow = flow_fixture(project, %{name: "VarToVar"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      instruction =
+        node_fixture(flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "sheet" => sheet_b.shortcut,
+                "variable" => "health",
+                "operator" => "set",
+                "value" => "max_health",
+                "value_type" => "variable_ref",
+                "value_sheet" => sheet_a.shortcut
+              }
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, instruction)
+
+      source = yarn_source(export_files(project))
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected var-to-var assignment:\n#{inspect(YarnCompiler.validate(source))}"
+    end
+  end
+
+  # =============================================================================
   # Multi-file validation
   # =============================================================================
 

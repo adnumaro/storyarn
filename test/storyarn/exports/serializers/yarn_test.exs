@@ -224,6 +224,121 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
   end
 
   # =============================================================================
+  # Special character escaping (F2)
+  # =============================================================================
+
+  describe "special character escaping" do
+    setup [:create_project]
+
+    test "dialogue text with hashtag escapes it", %{project: project} do
+      flow = flow_fixture(project, %{name: "Escape Hash"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Check item #3",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = yarn_source(export_yarn(project))
+      assert source =~ "Check item \\#3"
+    end
+
+    test "dialogue text with brackets escapes them", %{project: project} do
+      flow = flow_fixture(project, %{name: "Escape Brackets"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Check [inventory]",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = yarn_source(export_yarn(project))
+      assert source =~ "Check \\[inventory\\]"
+    end
+
+    test "dialogue text with curly braces escapes them", %{project: project} do
+      flow = flow_fixture(project, %{name: "Escape Braces"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Use {potion}",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = yarn_source(export_yarn(project))
+      assert source =~ "Use \\{potion\\}"
+    end
+
+    test "response text with special chars escapes them", %{project: project} do
+      flow = flow_fixture(project, %{name: "Escape Choice"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "What now?",
+            "speaker_sheet_id" => nil,
+            "responses" => [
+              %{"id" => "r1", "text" => "Option #1", "condition" => nil, "instruction" => nil}
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = yarn_source(export_yarn(project))
+      assert source =~ "-> Option \\#1"
+    end
+
+    test "dialogue with backslash escapes it", %{project: project} do
+      flow = flow_fixture(project, %{name: "Escape Backslash"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "path\\to\\file",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      source = yarn_source(export_yarn(project))
+      assert source =~ "path\\\\to\\\\file"
+    end
+  end
+
+  # =============================================================================
   # Condition nodes
   # =============================================================================
 
@@ -867,6 +982,54 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
     test "metadata includes project name", %{project: project} do
       meta = metadata(export_yarn(project))
       assert meta["project"] == project.name
+    end
+
+    test "metadata includes required_functions when string ops used", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Text"})
+
+      block_fixture(sheet, %{
+        type: "text",
+        config: %{"label" => "Desc"},
+        value: %{"text" => "hello"}
+      })
+
+      flow = flow_fixture(project, %{name: "String Ops"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{
+            "condition" =>
+              Jason.encode!(%{
+                "logic" => "all",
+                "rules" => [
+                  %{
+                    "sheet" => sheet.shortcut,
+                    "variable" => "desc",
+                    "operator" => "contains",
+                    "value" => "test"
+                  }
+                ]
+              }),
+            "cases" => [
+              %{"id" => "true", "value" => "true", "label" => "True"},
+              %{"id" => "false", "value" => "false", "label" => "False"}
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, condition)
+
+      meta = metadata(export_yarn(project))
+      assert "string_contains" in meta["required_functions"]
+    end
+
+    test "metadata omits required_functions when no string ops", %{project: project} do
+      _flow = flow_fixture(project, %{name: "No String Ops"})
+      meta = metadata(export_yarn(project))
+      refute Map.has_key?(meta, "required_functions")
     end
   end
 

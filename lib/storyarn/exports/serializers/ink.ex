@@ -200,10 +200,10 @@ defmodule Storyarn.Exports.Serializers.Ink do
 
     case ExpressionTranspiler.transpile_condition(condition, :ink) do
       {:ok, expr, _} when expr != "" ->
-        ["#{indent(depth)}{- #{expr}:"]
+        ["#{indent(depth)}{", "#{indent(depth)}- #{expr}:"]
 
       _ ->
-        ["#{indent(depth)}{ true:"]
+        ["#{indent(depth)}{", "#{indent(depth)}- true:"]
     end
   end
 

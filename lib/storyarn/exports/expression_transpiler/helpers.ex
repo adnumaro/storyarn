@@ -204,4 +204,26 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
       details: %{operator: operator, engine: engine, variable: var_ref}
     }
   end
+
+  @doc "Creates a structured warning for operators requiring custom function registration."
+  @spec custom_function_warning(String.t(), String.t(), String.t()) :: map()
+  def custom_function_warning(operator, engine, var_ref) do
+    func_name =
+      case operator do
+        "contains" -> "string_contains"
+        "not_contains" -> "string_contains"
+        "starts_with" -> "string_starts_with"
+        "ends_with" -> "string_ends_with"
+        _ -> operator
+      end
+
+    %{
+      type: :custom_function_required,
+      message: "Operator '#{operator}' requires custom function '#{func_name}' in #{engine}",
+      operator: operator,
+      function: func_name,
+      engine: engine,
+      variable: var_ref
+    }
+  end
 end
