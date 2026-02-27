@@ -14,6 +14,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers
+  alias StoryarnWeb.SheetLive.Handlers.BlockToolbarHandlers
   alias StoryarnWeb.SheetLive.Handlers.ConfigPanelHandlers
   alias StoryarnWeb.SheetLive.Handlers.InheritanceHandlers
   alias StoryarnWeb.SheetLive.Handlers.TableHandlers
@@ -25,7 +26,12 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   @impl true
   def render(assigns) do
     ~H"""
-    <div id={@id}>
+    <div
+      id={@id}
+      phx-hook="BlockKeyboard"
+      data-selected-block-id={@selected_block_id}
+      data-phx-target={"##{@id}"}
+    >
       <%!-- Inherited Properties (grouped by source sheet) --%>
       <div :for={group <- @inherited_groups} class="mb-6">
         <.inherited_section_header
@@ -34,16 +40,17 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           workspace={@workspace}
           project={@project}
         />
-        <div class="flex flex-col gap-2 -mx-2 sm:-mx-8 md:-mx-16 border-l-2 border-info/30 ml-1">
+        <div class="flex flex-col gap-2 -mx-2 sm:-mx-8 md:-mx-16 -mt-2 border-l-2 border-info/30 ml-1">
           <div
             :for={block <- group.blocks}
-            class="group relative w-full px-2 sm:px-8 md:px-16"
+            class="group relative w-full px-2 sm:px-8 md:px-16 pt-2"
             id={"block-#{block.id}"}
           >
             <.inherited_block_wrapper
               block={block}
               can_edit={@can_edit}
               editing_block_id={@editing_block_id}
+              selected_block_id={@selected_block_id}
               target={@myself}
               table_data={@table_data}
               reference_options={@reference_options}
@@ -60,6 +67,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         layout_items={@layout_items}
         can_edit={@can_edit}
         editing_block_id={@editing_block_id}
+        selected_block_id={@selected_block_id}
         target={@myself}
         component_id={@id}
         table_data={@table_data}
@@ -106,6 +114,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       |> assign_new(:show_block_menu, fn -> false end)
       |> assign_new(:editing_block_id, fn -> nil end)
       |> assign_new(:configuring_block, fn -> nil end)
+      |> assign_new(:selected_block_id, fn -> nil end)
       |> assign_new(:block_scope, fn -> "self" end)
       |> assign_new(:propagation_block, fn -> nil end)
 
@@ -182,6 +191,38 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     with_edit_authorization(socket, fn socket ->
       BlockCrudHandlers.handle_delete_block(block_id, socket, content_helpers())
     end)
+  end
+
+  def handle_event("duplicate_block", %{"id" => block_id}, socket) do
+    with_edit_authorization(socket, fn socket ->
+      BlockToolbarHandlers.handle_duplicate_block(block_id, socket, content_helpers())
+    end)
+  end
+
+  def handle_event("toolbar_toggle_constant", %{"id" => block_id}, socket) do
+    with_edit_authorization(socket, fn socket ->
+      BlockToolbarHandlers.handle_toggle_constant(block_id, socket, content_helpers())
+    end)
+  end
+
+  def handle_event("move_block_up", %{"id" => block_id}, socket) do
+    with_edit_authorization(socket, fn socket ->
+      BlockToolbarHandlers.handle_move_block_up(block_id, socket, content_helpers())
+    end)
+  end
+
+  def handle_event("move_block_down", %{"id" => block_id}, socket) do
+    with_edit_authorization(socket, fn socket ->
+      BlockToolbarHandlers.handle_move_block_down(block_id, socket, content_helpers())
+    end)
+  end
+
+  def handle_event("select_block", %{"id" => block_id}, socket) do
+    {:noreply, assign(socket, :selected_block_id, ContentTabHelpers.to_integer(block_id))}
+  end
+
+  def handle_event("deselect_block", _params, socket) do
+    {:noreply, assign(socket, :selected_block_id, nil)}
   end
 
   def handle_event("reorder", %{"ids" => ids, "group" => "blocks"}, socket) do

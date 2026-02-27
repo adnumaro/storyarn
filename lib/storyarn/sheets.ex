@@ -461,6 +461,21 @@ defmodule Storyarn.Sheets do
   defdelegate create_column_group(sheet_id, block_ids), to: BlockCrud
 
   @doc """
+  Duplicates a block, placing the copy immediately after the original.
+  """
+  defdelegate duplicate_block(block), to: BlockCrud
+
+  @doc """
+  Moves a block up by swapping with the previous block.
+  """
+  defdelegate move_block_up(block_id, sheet_id), to: BlockCrud
+
+  @doc """
+  Moves a block down by swapping with the next block.
+  """
+  defdelegate move_block_down(block_id, sheet_id), to: BlockCrud
+
+  @doc """
   Returns a changeset for tracking block changes.
   """
   @spec change_block(block(), attrs()) :: changeset()

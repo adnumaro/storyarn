@@ -50,6 +50,7 @@ defmodule StoryarnWeb.SheetLive.Components.InheritedBlockComponents do
   attr :block, :map, required: true
   attr :can_edit, :boolean, required: true
   attr :editing_block_id, :any, default: nil
+  attr :selected_block_id, :any, default: nil
   attr :target, :any, default: nil
   attr :table_data, :map, default: %{}
   attr :reference_options, :list, default: []
@@ -61,6 +62,7 @@ defmodule StoryarnWeb.SheetLive.Components.InheritedBlockComponents do
         block={@block}
         can_edit={@can_edit}
         editing_block_id={@editing_block_id}
+        selected_block_id={@selected_block_id}
         target={@target}
         table_data={@table_data}
         reference_options={@reference_options}

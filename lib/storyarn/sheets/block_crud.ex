@@ -304,6 +304,97 @@ defmodule Storyarn.Sheets.BlockCrud do
     end
   end
 
+  @doc """
+  Duplicates a block, placing the copy immediately after the original.
+  Shifts subsequent blocks' positions by +1.
+  Generates a unique variable_name for the copy.
+  Does NOT copy inherited_from_block_id (duplicate is always "own").
+  """
+  def duplicate_block(%Block{} = block) do
+    sheet_id = block.sheet_id
+
+    Repo.transaction(fn ->
+      # Shift all blocks after the original position by +1
+      from(b in Block,
+        where:
+          b.sheet_id == ^sheet_id and
+            b.position > ^block.position and
+            is_nil(b.deleted_at)
+      )
+      |> Repo.update_all(inc: [position: 1])
+
+      attrs = %{
+        type: block.type,
+        config: block.config,
+        value: block.value,
+        scope: block.scope,
+        is_constant: block.is_constant,
+        position: block.position + 1,
+        column_group_id: block.column_group_id,
+        column_index: block.column_index
+      }
+
+      sheet = Repo.get!(Sheet, sheet_id)
+
+      case create_block(sheet, attrs) do
+        {:ok, new_block} -> new_block
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
+  end
+
+  @doc """
+  Moves a block up by swapping positions with the previous block.
+  Returns `{:ok, :moved}`, `{:ok, :already_first}`, or `{:error, :not_found}`.
+  """
+  def move_block_up(block_id, sheet_id) do
+    blocks = list_blocks(sheet_id)
+
+    case Enum.find_index(blocks, &(&1.id == block_id)) do
+      nil ->
+        {:error, :not_found}
+
+      0 ->
+        {:ok, :already_first}
+
+      idx ->
+        swap_block_positions(Enum.at(blocks, idx), Enum.at(blocks, idx - 1))
+    end
+  end
+
+  @doc """
+  Moves a block down by swapping positions with the next block.
+  Returns `{:ok, :moved}`, `{:ok, :already_last}`, or `{:error, :not_found}`.
+  """
+  def move_block_down(block_id, sheet_id) do
+    blocks = list_blocks(sheet_id)
+    last_idx = length(blocks) - 1
+
+    case Enum.find_index(blocks, &(&1.id == block_id)) do
+      nil ->
+        {:error, :not_found}
+
+      ^last_idx ->
+        {:ok, :already_last}
+
+      idx ->
+        swap_block_positions(Enum.at(blocks, idx), Enum.at(blocks, idx + 1))
+    end
+  end
+
+  defp swap_block_positions(%Block{} = a, %Block{} = b) do
+    Repo.transaction(fn ->
+      # Use a temporary position to avoid unique constraint violations
+      temp_pos = -1
+
+      Repo.update!(Block.position_changeset(a, %{position: temp_pos}))
+      Repo.update!(Block.position_changeset(b, %{position: a.position}))
+      Repo.update!(Block.position_changeset(a, %{position: b.position}))
+    end)
+
+    {:ok, :moved}
+  end
+
   def change_block(%Block{} = block, attrs \\ %{}) do
     Block.update_changeset(block, attrs)
   end

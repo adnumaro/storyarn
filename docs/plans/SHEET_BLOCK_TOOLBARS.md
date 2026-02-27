@@ -53,30 +53,30 @@ The config panel (`lib/storyarn_web/components/block_components/config_panel.ex`
 
 #### Universal Fields (all block types except divider)
 
-| Field         | Control              | Notes                                     |
-|---------------|----------------------|-------------------------------------------|
-| Type          | Badge (read-only)    | Shows block type + Inherited/Detached tag |
-| Scope         | Radio buttons (2)    | "This sheet only" / "This sheet and all children" |
-| Required      | Toggle               | Only when scope = "children"              |
-| Re-attach     | Button               | Only for detached inherited blocks        |
-| Use as constant | Toggle             | Only for variable-capable types           |
-| Label         | Text input           | Block label/name                          |
-| Variable Name | Code (read-only)     | Derived from label                        |
+| Field           | Control           | Notes                                             |
+|-----------------|-------------------|---------------------------------------------------|
+| Type            | Badge (read-only) | Shows block type + Inherited/Detached tag         |
+| Scope           | Radio buttons (2) | "This sheet only" / "This sheet and all children" |
+| Required        | Toggle            | Only when scope = "children"                      |
+| Re-attach       | Button            | Only for detached inherited blocks                |
+| Use as constant | Toggle            | Only for variable-capable types                   |
+| Label           | Text input        | Block label/name                                  |
+| Variable Name   | Code (read-only)  | Derived from label                                |
 
 #### Type-Specific Fields
 
-| Block Type     | Extra Fields                                           | Complexity |
-|----------------|--------------------------------------------------------|------------|
-| `text`         | Placeholder, Max Length                                | Low        |
-| `rich_text`    | Placeholder, Max Length                                | Low        |
-| `number`       | Placeholder, Min, Max, Step                            | Low        |
-| `boolean`      | Mode (two/tri-state), Custom Labels (true/false/neutral) | Medium   |
-| `select`       | Placeholder, Max Selections*, Options list (key+label, add/remove) | Medium |
-| `multi_select` | Placeholder, Max Selections, Options list              | Medium     |
-| `date`         | Min Date, Max Date                                     | Low        |
-| `reference`    | Allowed Types (sheet/flow checkboxes)                  | Low        |
-| `table`        | (nothing extra — columns managed inline already)       | **None**   |
-| `divider`      | (no config at all)                                     | **None**   |
+| Block Type     | Extra Fields                                                       | Complexity   |
+|----------------|--------------------------------------------------------------------|--------------|
+| `text`         | Placeholder, Max Length                                            | Low          |
+| `rich_text`    | Placeholder, Max Length                                            | Low          |
+| `number`       | Placeholder, Min, Max, Step                                        | Low          |
+| `boolean`      | Mode (two/tri-state), Custom Labels (true/false/neutral)           | Medium       |
+| `select`       | Placeholder, Max Selections*, Options list (key+label, add/remove) | Medium       |
+| `multi_select` | Placeholder, Max Selections, Options list                          | Medium       |
+| `date`         | Min Date, Max Date                                                 | Low          |
+| `reference`    | Allowed Types (sheet/flow checkboxes)                              | Low          |
+| `table`        | (nothing extra — columns managed inline already)                   | **None**     |
+| `divider`      | (no config at all)                                                 | **None**     |
 
 ### Current Interaction Flow
 
@@ -535,21 +535,21 @@ No label, no config, no constant toggle. Just reorder and delete.
 
 ### Components (Modify/Create)
 
-| File | Action | Notes |
-|------|--------|-------|
-| `components/block_components/config_panel.ex` | **DELETE** | Entire file removed in Phase 4 |
-| `components/block_components/block_toolbar.ex` | **CREATE** | New hover toolbar component |
-| `components/block_components.ex` | Modify | Remove `config_panel` import, add `block_toolbar` |
-| `components/block_components/*.ex` (per type) | Modify | Add toolbar trigger integration |
+| File                                           | Action     | Notes                                             |
+|------------------------------------------------|------------|---------------------------------------------------|
+| `components/block_components/config_panel.ex`  | **DELETE** | Entire file removed in Phase 4                    |
+| `components/block_components/block_toolbar.ex` | **CREATE** | New hover toolbar component                       |
+| `components/block_components.ex`               | Modify     | Remove `config_panel` import, add `block_toolbar` |
+| `components/block_components/*.ex` (per type)  | Modify     | Add toolbar trigger integration                   |
 
 ### LiveView Handlers
 
-| File | Action | Notes |
-|------|--------|-------|
-| `sheet_live/handlers/config_panel_handlers.ex` | **DELETE** | Events move to block toolbar handler |
-| `sheet_live/handlers/block_toolbar_handlers.ex` | **CREATE** | New handler for toolbar+popover events |
-| `sheet_live/components/content_tab.ex` | Modify | Remove `configuring_block` assign, `show_block_menu` |
-| `sheet_live/components/own_blocks_components.ex` | Modify | Replace "⋮" menu with toolbar trigger |
+| File                                             | Action     | Notes                                                |
+|--------------------------------------------------|------------|------------------------------------------------------|
+| `sheet_live/handlers/config_panel_handlers.ex`   | **DELETE** | Events move to block toolbar handler                 |
+| `sheet_live/handlers/block_toolbar_handlers.ex`  | **CREATE** | New handler for toolbar+popover events               |
+| `sheet_live/components/content_tab.ex`           | Modify     | Remove `configuring_block` assign, `show_block_menu` |
+| `sheet_live/components/own_blocks_components.ex` | Modify     | Replace "⋮" menu with toolbar trigger                |
 
 ### JS / Hooks
 
@@ -560,10 +560,10 @@ No label, no config, no constant toggle. Just reorder and delete.
 
 ### Helpers
 
-| File | Action | Notes |
-|------|--------|-------|
-| `sheet_live/helpers/config_helpers.ex` | Evaluate | May be deletable or reduced |
-| `sheet_live/helpers/block_helpers.ex` | Modify | Remove `show_block_menu` references |
+| File                                   | Action   | Notes                               |
+|----------------------------------------|----------|-------------------------------------|
+| `sheet_live/helpers/config_helpers.ex` | Evaluate | May be deletable or reduced         |
+| `sheet_live/helpers/block_helpers.ex`  | Modify   | Remove `show_block_menu` references |
 
 ---
 

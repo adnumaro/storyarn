@@ -1096,4 +1096,134 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       assert remaining_b3.column_group_id == group_id
     end
   end
+
+  # ===========================================================================
+  # duplicate_block/1
+  # ===========================================================================
+
+  describe "duplicate_block/1" do
+    setup :setup_context
+
+    test "creates copy with same type, config, value, and scope", %{sheet: sheet} do
+      block =
+        block_fixture(sheet, %{
+          type: "number",
+          config: %{"label" => "Health", "placeholder" => "0"},
+          value: %{"content" => 42},
+          scope: "children"
+        })
+
+      {:ok, copy} = Sheets.duplicate_block(block)
+
+      assert copy.type == block.type
+      assert copy.config == block.config
+      assert copy.value == block.value
+      assert copy.scope == block.scope
+    end
+
+    test "position is original + 1", %{sheet: sheet} do
+      block = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
+
+      {:ok, copy} = Sheets.duplicate_block(block)
+
+      assert copy.position == 1
+    end
+
+    test "shifts subsequent block positions", %{sheet: sheet} do
+      b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
+      b2 = block_fixture(sheet, %{config: %{"label" => "B"}, position: 1})
+      b3 = block_fixture(sheet, %{config: %{"label" => "C"}, position: 2})
+
+      {:ok, _copy} = Sheets.duplicate_block(b1)
+
+      blocks = Sheets.list_blocks(sheet.id)
+      positions = Map.new(blocks, &{&1.id, &1.position})
+
+      assert positions[b1.id] == 0
+      # copy is at position 1
+      assert positions[b2.id] == 2
+      assert positions[b3.id] == 3
+    end
+
+    test "generates unique variable_name", %{sheet: sheet} do
+      block = block_fixture(sheet, %{config: %{"label" => "Health"}, position: 0})
+
+      {:ok, copy} = Sheets.duplicate_block(block)
+
+      assert copy.variable_name != nil
+      assert copy.variable_name != block.variable_name
+    end
+
+    test "does NOT copy inherited_from_block_id", %{sheet: sheet} do
+      block = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
+
+      {:ok, copy} = Sheets.duplicate_block(block)
+
+      assert copy.inherited_from_block_id == nil
+    end
+  end
+
+  # ===========================================================================
+  # move_block_up/2
+  # ===========================================================================
+
+  describe "move_block_up/2" do
+    setup :setup_context
+
+    test "swaps with previous block", %{sheet: sheet} do
+      b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
+      b2 = block_fixture(sheet, %{config: %{"label" => "B"}, position: 1})
+
+      {:ok, :moved} = Sheets.move_block_up(b2.id, sheet.id)
+
+      blocks = Sheets.list_blocks(sheet.id)
+      ids = Enum.map(blocks, & &1.id)
+      assert ids == [b2.id, b1.id]
+    end
+
+    test "returns {:ok, :already_first} for first block", %{sheet: sheet} do
+      b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
+      _b2 = block_fixture(sheet, %{config: %{"label" => "B"}, position: 1})
+
+      assert {:ok, :already_first} = Sheets.move_block_up(b1.id, sheet.id)
+    end
+
+    test "returns {:error, :not_found} for invalid id", %{sheet: sheet} do
+      _b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
+
+      assert {:error, :not_found} = Sheets.move_block_up(0, sheet.id)
+    end
+  end
+
+  # ===========================================================================
+  # move_block_down/2
+  # ===========================================================================
+
+  describe "move_block_down/2" do
+    setup :setup_context
+
+    test "swaps with next block", %{sheet: sheet} do
+      b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
+      b2 = block_fixture(sheet, %{config: %{"label" => "B"}, position: 1})
+
+      {:ok, :moved} = Sheets.move_block_down(b1.id, sheet.id)
+
+      blocks = Sheets.list_blocks(sheet.id)
+      ids = Enum.map(blocks, & &1.id)
+      assert ids == [b2.id, b1.id]
+    end
+
+    test "returns {:ok, :already_last} for last block", %{sheet: sheet} do
+      _b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
+      b2 = block_fixture(sheet, %{config: %{"label" => "B"}, position: 1})
+
+      assert {:ok, :already_last} = Sheets.move_block_down(b2.id, sheet.id)
+    end
+
+    test "returns {:error, :not_found} for invalid id", %{sheet: sheet} do
+      _b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
+
+      assert {:error, :not_found} = Sheets.move_block_down(0, sheet.id)
+    end
+  end
 end

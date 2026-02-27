@@ -7,6 +7,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
   - `SelectBlocks` - select, multi_select blocks
   - `LayoutBlocks` - divider, date blocks
   - `BlockMenu` - block type selection menu
+  - `BlockToolbar` - hover toolbar for block actions
   - `ConfigPanel` - block configuration sidebar
   """
   use Phoenix.Component
@@ -24,6 +25,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
 
   # Re-export public components
   defdelegate block_menu(assigns), to: StoryarnWeb.Components.BlockComponents.BlockMenu
+  defdelegate block_toolbar(assigns), to: StoryarnWeb.Components.BlockComponents.BlockToolbar
   defdelegate config_panel(assigns), to: StoryarnWeb.Components.BlockComponents.ConfigPanel
 
   # =============================================================================
@@ -40,6 +42,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
   attr :editing_block_id, :any, default: nil
+  attr :selected_block_id, :any, default: nil
   attr :target, :any, default: nil
   attr :table_data, :map, default: %{}
   attr :reference_options, :list, default: []
@@ -47,10 +50,25 @@ defmodule StoryarnWeb.Components.BlockComponents do
   def block_component(assigns) do
     is_editing = assigns.editing_block_id == assigns.block.id
     is_inherited = assigns.block.inherited_from_block_id != nil
-    assigns = assign(assigns, is_editing: is_editing, is_inherited: is_inherited)
+    is_selected = assigns.selected_block_id == assigns.block.id
+
+    assigns =
+      assign(assigns,
+        is_editing: is_editing,
+        is_inherited: is_inherited,
+        is_selected: is_selected
+      )
 
     ~H"""
-    <div class="relative flex items-start gap-2 lg:block w-full">
+    <div
+      class={[
+        "relative flex items-start gap-2 lg:block w-full p-2",
+        @is_selected && "ring-2 ring-primary/30 rounded-lg"
+      ]}
+      phx-click="select_block"
+      phx-value-id={@block.id}
+      phx-target={@target}
+    >
       <%!-- Drag handle (left side) --%>
       <div
         :if={@can_edit && !@is_inherited}
@@ -74,13 +92,13 @@ defmodule StoryarnWeb.Components.BlockComponents do
         <.icon name="arrow-down" class="size-3 text-info/60" />
       </div>
 
-      <%!-- Context menu (top-right, at label height) --%>
-      <div
-        :if={@can_edit}
-        class="absolute right-0 top-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-      >
-        <.block_context_menu block={@block} target={@target} is_inherited={@is_inherited} />
-      </div>
+      <%!-- Block toolbar (replaces old context menu) --%>
+      <.block_toolbar
+        block={@block}
+        can_edit={@can_edit}
+        is_inherited={@is_inherited}
+        target={@target}
+      />
 
       <%!-- Block content --%>
       <div class="flex-1 lg:flex-none">
@@ -147,94 +165,6 @@ defmodule StoryarnWeb.Components.BlockComponents do
             <div class="text-base-content/50">{dgettext("sheets", "Unknown block type")}</div>
         <% end %>
       </div>
-    </div>
-    """
-  end
-
-  # =============================================================================
-  # Block Context Menu
-  # =============================================================================
-
-  attr :block, :map, required: true
-  attr :target, :any, default: nil
-  attr :is_inherited, :boolean, default: false
-
-  defp block_context_menu(assigns) do
-    ~H"""
-    <%!-- Go to source shortcut (inherited only) --%>
-    <button
-      :if={@is_inherited}
-      type="button"
-      class="btn btn-ghost btn-xs btn-square tooltip tooltip-left"
-      data-tip={dgettext("sheets", "Go to source")}
-      phx-click="navigate_to_source"
-      phx-value-id={@block.id}
-      phx-target={@target}
-    >
-      <.icon name="arrow-up-right" class="size-3 text-info" />
-    </button>
-
-    <%!-- Dropdown menu --%>
-    <div class="dropdown dropdown-end">
-      <div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square">
-        <.icon name="ellipsis-vertical" class="size-3" />
-      </div>
-      <ul tabindex="0" class="dropdown-content z-50 menu p-2 shadow-lg bg-base-200 rounded-box w-52">
-        <%!-- Inherited block actions --%>
-        <li :if={@is_inherited}>
-          <button phx-click="navigate_to_source" phx-value-id={@block.id} phx-target={@target}>
-            <.icon name="arrow-up-right" class="size-4" />
-            {dgettext("sheets", "Go to source")}
-          </button>
-        </li>
-        <li :if={@is_inherited}>
-          <button phx-click="detach_inherited_block" phx-value-id={@block.id} phx-target={@target}>
-            <.icon name="scissors" class="size-4" />
-            {dgettext("sheets", "Detach property")}
-          </button>
-        </li>
-        <li :if={@is_inherited}>
-          <button
-            phx-click="hide_inherited_for_children"
-            phx-value-id={@block.inherited_from_block_id}
-            phx-target={@target}
-          >
-            <.icon name="eye-off" class="size-4" />
-            {dgettext("sheets", "Hide for children")}
-          </button>
-        </li>
-
-        <%!-- Divider between sections --%>
-        <div :if={@is_inherited} class="divider my-0.5"></div>
-
-        <%!-- Common actions --%>
-        <li>
-          <button
-            type="button"
-            phx-click="configure_block"
-            phx-value-id={@block.id}
-            phx-target={@target}
-          >
-            <.icon name="settings" class="size-4" />
-            {dgettext("sheets", "Configure")}
-          </button>
-        </li>
-
-        <%!-- Danger zone --%>
-        <div class="divider my-0.5"></div>
-        <li>
-          <button
-            type="button"
-            class="text-error"
-            phx-click="delete_block"
-            phx-value-id={@block.id}
-            phx-target={@target}
-          >
-            <.icon name="trash-2" class="size-4" />
-            {dgettext("sheets", "Delete")}
-          </button>
-        </li>
-      </ul>
     </div>
     """
   end

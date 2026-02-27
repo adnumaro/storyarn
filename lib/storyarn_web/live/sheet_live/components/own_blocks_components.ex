@@ -40,6 +40,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
   attr :layout_items, :list, required: true
   attr :can_edit, :boolean, required: true
   attr :editing_block_id, :any, default: nil
+  attr :selected_block_id, :any, default: nil
   attr :target, :any, required: true
   attr :component_id, :string, required: true
   attr :table_data, :map, default: %{}
@@ -49,7 +50,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
     ~H"""
     <div
       id="blocks-container"
-      class="flex flex-col gap-2 -mx-2 sm:-mx-8 md:-mx-16"
+      class="flex flex-col gap-2 -mx-2 sm:-mx-8 md:-mx-16 -mt-2"
       phx-hook={if @can_edit, do: "ColumnSortable", else: nil}
       phx-target={@target}
       data-phx-target={"##{@component_id}"}
@@ -60,7 +61,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
         <%= case item.type do %>
           <% :full_width -> %>
             <div
-              class="group relative w-full px-2 sm:px-8 md:px-16"
+              class="group relative w-full px-2 sm:px-8 md:px-16 pt-2"
               id={"block-#{item.block.id}"}
               data-id={item.block.id}
             >
@@ -68,6 +69,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
                 block={item.block}
                 can_edit={@can_edit}
                 editing_block_id={@editing_block_id}
+                selected_block_id={@selected_block_id}
                 target={@target}
                 table_data={@table_data}
                 reference_options={@reference_options}
@@ -83,7 +85,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
             >
               <div
                 :for={block <- item.blocks}
-                class="column-item group relative w-full"
+                class="column-item group relative w-full pt-2"
                 id={"block-#{block.id}"}
                 data-id={block.id}
                 data-column-group={item.group_id}
@@ -93,6 +95,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
                   block={block}
                   can_edit={@can_edit}
                   editing_block_id={@editing_block_id}
+                  selected_block_id={@selected_block_id}
                   target={@target}
                   table_data={@table_data}
                   reference_options={@reference_options}
