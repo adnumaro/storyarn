@@ -17,7 +17,9 @@ config :storyarn, Storyarn.Repo,
   hostname: "localhost",
   database: "storyarn_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2
+  pool_size: System.schedulers_online() * 2,
+  queue_target: 500,
+  queue_interval: 1000
 
 # Server is enabled for E2E tests (Playwright requires a running server)
 config :storyarn, StoryarnWeb.Endpoint,

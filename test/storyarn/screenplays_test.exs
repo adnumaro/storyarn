@@ -6,7 +6,6 @@ defmodule Storyarn.ScreenplaysTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
-  import Storyarn.ScreenplaysFixtures
 
   defp setup_project(_context) do
     user = user_fixture()
