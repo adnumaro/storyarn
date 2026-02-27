@@ -409,7 +409,7 @@ defmodule Storyarn.Assets do
   def list_assets_for_export(project_id) do
     from(a in Asset,
       where: a.project_id == ^project_id,
-      order_by: [asc: a.inserted_at]
+      order_by: [asc: a.inserted_at, asc: a.id]
     )
     |> Repo.all()
   end
