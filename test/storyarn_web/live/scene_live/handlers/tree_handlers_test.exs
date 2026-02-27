@@ -492,6 +492,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       # Copy test image to priv/static/uploads where ZoneImageExtractor can resolve it.
       src = Path.join(File.cwd!(), "test/fixtures/images/quadrant_map.png")
       dest = Path.join(File.cwd!(), "priv/static/uploads/test_quadrant.png")
+      File.mkdir_p!(Path.dirname(dest))
       File.cp!(src, dest)
       on_exit(fn -> File.rm(dest) end)
 
