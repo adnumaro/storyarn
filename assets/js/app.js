@@ -30,6 +30,7 @@ import { AudioUpload } from "./hooks/audio_upload";
 import { AvatarUpload } from "./hooks/avatar_upload";
 import { BannerUpload } from "./hooks/banner_upload";
 import { BlockKeyboard } from "./hooks/block_keyboard";
+import { BlockMenu } from "./hooks/block_menu";
 import { CanvasDropZone } from "./hooks/canvas_drop_zone";
 import { ColorPicker } from "./hooks/color_picker";
 // Custom hooks
@@ -86,6 +87,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     AvatarUpload,
     BannerUpload,
     BlockKeyboard,
+    BlockMenu,
     ColumnSortable,
     EditableBlockLabel,
     EditableShortcut,

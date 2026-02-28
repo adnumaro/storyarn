@@ -82,10 +82,11 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponentsTest do
           target: nil
         )
 
-      # When block menu is shown, the prompt text should be hidden
-      refute html =~ "Type / to add a block"
+      # Both prompt and menu should be visible
+      assert html =~ "Type / to add a block"
 
       # Block menu should render block type options
+      assert html =~ "block-menu"
       assert html =~ "Text"
       assert html =~ "Number"
       assert html =~ "Boolean"
@@ -309,8 +310,9 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponentsTest do
       send_to_content_tab(view, "show_block_menu")
       html = render(view)
 
-      # Block menu should be visible now, prompt text should be hidden
-      refute html =~ "Type / to add a block"
+      # Block menu should be visible alongside the prompt
+      assert html =~ "block-menu"
+      assert html =~ "Type / to add a block"
     end
 
     test "adds a block via block menu", ctx do
@@ -448,9 +450,10 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponentsTest do
       {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
 
       send_to_content_tab(view, "show_block_menu")
-      refute render(view) =~ "Type / to add a block"
+      assert render(view) =~ "block-menu"
 
       send_to_content_tab(view, "hide_block_menu")
+      refute render(view) =~ "block-menu"
       assert render(view) =~ "Type / to add a block"
     end
   end

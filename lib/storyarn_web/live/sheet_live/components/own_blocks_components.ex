@@ -123,7 +123,6 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
     ~H"""
     <div :if={@can_edit} class="relative mt-2">
       <div
-        :if={!@show_block_menu}
         class="flex items-center gap-2 py-2 text-base-content/50 hover:text-base-content cursor-pointer group"
         phx-click="show_block_menu"
         phx-target={@target}
