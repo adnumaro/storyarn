@@ -1,17 +1,13 @@
 /**
  * SortableTree — custom pointer-event drag-and-drop for sidebar trees.
  *
- * Replaces SortableJS with a lightweight custom system:
- *  - Pointer events → works on mouse and touch
- *  - position:fixed preview of the visible row
- *  - 3-zone drop: top 30% (before), middle 40% (nest), bottom 30% (after)
- *  - Auto-scroll when cursor approaches viewport edges
- *  - Auto-expand collapsed nodes on 600ms hover
- *  - No DOM moves — LiveView patches the tree after the event
+ * Drop zones (Notion-style):
+ *  - Top 25%: indicator line → insert before (reorder)
+ *  - Middle 50%: highlight → nest as last child
+ *  - Bottom 25%: indicator line → insert after (last sibling only)
  *
- * Events pushed (unchanged from previous implementation):
- * - Sheets:  pushEvent("move_sheet", { sheet_id, parent_id, position })
- * - Others:  pushEvent("move_to_parent", { item_id, new_parent_id, position })
+ * Features: auto-scroll, auto-expand collapsed nodes on 600ms hover.
+ * No DOM moves — LiveView patches the tree after the push event.
  */
 export const SortableTree = {
   mounted() {
@@ -20,6 +16,7 @@ export const SortableTree = {
     this._scrollParent = null;
     this._scrollRaf = null;
     this._preview = null;
+    this._highlightTarget = null;
     this._expandTimer = null;
     this._expandTarget = null;
     this.treeType = this.el.dataset.treeType || "sheets";
@@ -36,9 +33,7 @@ export const SortableTree = {
     document.body.appendChild(this._ind);
   },
 
-  updated() {
-    // LiveView patched the DOM — drag is already complete, nothing to rebuild
-  },
+  updated() {},
 
   destroyed() {
     this.el.removeEventListener("pointerdown", this._onDown);
@@ -46,20 +41,16 @@ export const SortableTree = {
     this._cleanup();
   },
 
-  // ── Pointer handlers ────────────────────────────────────────────────────────
+  // ── Pointer handlers ──────────────────────────────────────────────────────
 
   _pointerDown(e) {
     if (e.button > 0 && e.pointerType === "mouse") return;
 
-    // Only drag items with cursor-grab (i.e. can_drag is true)
     const item = e.target.closest("[data-item-id]");
-    if (!item || !item.classList.contains("cursor-grab")) return;
+    if (!item?.classList.contains("cursor-grab")) return;
     if (!this.el.contains(item)) return;
-
-    // Don't intercept clicks on buttons (menus, toggles, add-child)
     if (e.target.closest("button, input, .dropdown")) return;
 
-    // Prevent native link drag (browser shows URL tooltip otherwise)
     e.preventDefault();
 
     this._drag = {
@@ -88,14 +79,13 @@ export const SortableTree = {
 
     this._updatePreview(e.clientX, e.clientY);
     this._updateIndicator(e.clientX, e.clientY);
-    this._checkAutoExpand(e.clientX, e.clientY);
+    this._checkAutoExpand();
   },
 
-  _pointerUp(e) {
+  _pointerUp() {
     if (!this._drag) return;
 
     if (!this._drag.active) {
-      // No drag happened — simulate the click for navigation
       const link = this._drag.el.querySelector(".group\\/item a");
       if (link) link.click();
       this._cleanup();
@@ -106,7 +96,7 @@ export const SortableTree = {
     this._cleanup();
   },
 
-  // ── Drag lifecycle ───────────────────────────────────────────────────────────
+  // ── Drag lifecycle ────────────────────────────────────────────────────────
 
   _startDrag() {
     this._drag.active = true;
@@ -114,7 +104,6 @@ export const SortableTree = {
     document.body.classList.add("dnd-active");
     this._scrollParent = this._findScrollParent(this.el);
     this._preview = this._createPreview(this._drag.el);
-    this._ind.style.display = "block";
     this._startAutoScroll();
   },
 
@@ -128,23 +117,21 @@ export const SortableTree = {
     this._preview?.remove();
     this._preview = null;
     this._ind.style.display = "none";
-    this._ind.classList.remove("dnd-nest");
     this._highlightTarget?.classList.remove("dnd-drop-target");
     this._highlightTarget = null;
+    this._clearExpandTimer();
 
     if (this._scrollRaf) {
       cancelAnimationFrame(this._scrollRaf);
       this._scrollRaf = null;
     }
 
-    this._clearExpandTimer();
     this._drag = null;
   },
 
-  // ── Drag preview ─────────────────────────────────────────────────────────────
+  // ── Drag preview ──────────────────────────────────────────────────────────
 
   _createPreview(item) {
-    // Clone only the visible row (group/item), not children containers
     const row = item.querySelector(".group\\/item");
     if (!row) return null;
 
@@ -152,6 +139,7 @@ export const SortableTree = {
     const el = row.cloneNode(true);
     el.removeAttribute("id");
     for (const child of el.querySelectorAll("[id]")) child.removeAttribute("id");
+
     Object.assign(el.style, {
       position: "fixed",
       width: `${r.width}px`,
@@ -177,13 +165,12 @@ export const SortableTree = {
     this._preview.style.left = `${r.left}px`;
   },
 
-  // ── Hit-testing & indicator ──────────────────────────────────────────────────
+  // ── Hit-testing & indicator ───────────────────────────────────────────────
 
   _updateIndicator(x, y) {
     const drop = this._findDrop(x, y);
     this._drag.drop = drop;
 
-    // Clear previous highlight
     this._highlightTarget?.classList.remove("dnd-drop-target");
     this._highlightTarget = null;
 
@@ -193,7 +180,6 @@ export const SortableTree = {
     }
 
     if (drop.zone === "center") {
-      // Highlight the item row instead of showing the indicator line
       this._ind.style.display = "none";
       const row = drop.el.querySelector(".group\\/item");
       if (row) {
@@ -212,7 +198,8 @@ export const SortableTree = {
 
     let cur = hit;
     while (cur && cur !== document.body) {
-      if (cur.dataset.itemId && this.el.contains(cur) && cur !== this._drag.el && !this._drag.el.contains(cur)) {
+      const id = cur.dataset?.itemId;
+      if (id && this.el.contains(cur) && cur !== this._drag.el && !this._drag.el.contains(cur)) {
         return { el: cur, zone: this._getZone(cur, y) };
       }
       cur = cur.parentElement;
@@ -223,17 +210,12 @@ export const SortableTree = {
   _getZone(item, y) {
     const row = item.querySelector(".group\\/item");
     if (!row) return "top";
+
     const r = row.getBoundingClientRect();
     const ratio = (y - r.top) / r.height;
-    const isLast = this._isLastSibling(item);
-
-    if (isLast) {
-      if (ratio < 0.25) return "top";
-      if (ratio > 0.75) return "bottom";
-      return "center";
-    }
 
     if (ratio < 0.25) return "top";
+    if (this._isLastSibling(item) && ratio > 0.75) return "bottom";
     return "center";
   },
 
@@ -247,56 +229,35 @@ export const SortableTree = {
   _placeIndicator(drop) {
     const row = drop.el.querySelector(".group\\/item");
     if (!row) return;
+
     const r = row.getBoundingClientRect();
-    // Clamp width to the tree panel boundary
     const panel = this.el.closest("#tree-panel");
-    const pb = panel ? panel.getBoundingClientRect() : null;
-    const left = r.left;
+    const pb = panel?.getBoundingClientRect();
     const right = pb ? Math.min(r.right, pb.right) : r.right;
-    const width = right - left;
     const s = this._ind.style;
 
-    // Only called for top/bottom zones (center uses highlight instead)
     s.top = `${drop.zone === "top" ? r.top - 1 : r.bottom - 1}px`;
-    s.left = `${left}px`;
-    s.width = `${width}px`;
+    s.left = `${r.left}px`;
+    s.width = `${right - r.left}px`;
     s.height = "3px";
   },
 
-  _isExpanded(item) {
-    const container = item.querySelector("[data-sortable-container]");
-    return container && !container.classList.contains("hidden");
-  },
+  // ── Auto-expand collapsed nodes on hover ──────────────────────────────────
 
-  // ── Auto-expand collapsed nodes on hover ─────────────────────────────────────
-
-  _checkAutoExpand(x, y) {
+  _checkAutoExpand() {
     const drop = this._drag?.drop;
-    if (!drop || drop.zone !== "center") {
-      this._clearExpandTimer();
-      return;
-    }
+    if (!drop || drop.zone !== "center") return this._clearExpandTimer();
 
     const target = drop.el;
-    // Only expand if it's a tree-node with a collapsed children container
-    if (!target.classList.contains("tree-node")) {
-      this._clearExpandTimer();
-      return;
-    }
+    if (!target.classList.contains("tree-node")) return this._clearExpandTimer();
 
     const content = target.querySelector("[data-sortable-container]");
-    if (!content || !content.classList.contains("hidden")) {
-      this._clearExpandTimer();
-      return;
-    }
-
-    // Same target — timer already running
+    if (!content?.classList.contains("hidden")) return this._clearExpandTimer();
     if (this._expandTarget === target) return;
 
     this._clearExpandTimer();
     this._expandTarget = target;
     this._expandTimer = setTimeout(() => {
-      // Simulate clicking the TreeToggle button to expand
       const toggle = target.querySelector("[phx-hook='TreeToggle']");
       if (toggle) toggle.click();
       this._expandTarget = null;
@@ -311,53 +272,47 @@ export const SortableTree = {
     this._expandTarget = null;
   },
 
-  // ── Drop application ─────────────────────────────────────────────────────────
+  // ── Drop application ──────────────────────────────────────────────────────
 
   _applyDrop() {
-    const { el: dragged } = this._drag;
+    const draggedId = this._drag.el.dataset.itemId;
     const { el: target, zone } = this._drag.drop;
-
-    const draggedId = dragged.dataset.itemId;
     const targetId = target.dataset.itemId;
 
-    let parentId, position;
+    const { parentId, position } =
+      zone === "center" ? this._nestPosition(target, draggedId) : this._siblingPosition(target, zone, draggedId);
 
-    if (zone === "center") {
-      // Nest as child — parent becomes the target, position is last
-      parentId = targetId;
-      const container = target.querySelector("[data-sortable-container]");
-      position = container
-        ? Array.from(container.children).filter((el) => el.dataset.itemId && el.dataset.itemId !== draggedId).length
-        : 0;
-    } else {
-      // Insert before/after — same parent as target
-      const parentContainer = target.parentElement?.closest("[data-sortable-container]");
-      parentId = parentContainer?.dataset.parentId ?? "";
+    const event = this.treeType === "sheets" ? "move_sheet" : "move_to_parent";
+    const key = this.treeType === "sheets" ? "sheet_id" : "item_id";
+    const parentKey = this.treeType === "sheets" ? "parent_id" : "new_parent_id";
 
-      const siblings = Array.from(parentContainer?.children ?? []).filter(
-        (el) => el.dataset.itemId && el.dataset.itemId !== draggedId,
-      );
-      const targetIndex = siblings.indexOf(target);
-      position = zone === "top" ? targetIndex : targetIndex + 1;
-      if (position < 0) position = 0;
-    }
-
-    if (this.treeType === "sheets") {
-      this.pushEvent("move_sheet", {
-        sheet_id: draggedId,
-        parent_id: String(parentId),
-        position: String(position),
-      });
-    } else {
-      this.pushEvent("move_to_parent", {
-        item_id: draggedId,
-        new_parent_id: String(parentId),
-        position: String(position),
-      });
-    }
+    this.pushEvent(event, {
+      [key]: draggedId,
+      [parentKey]: String(parentId),
+      position: String(position),
+    });
   },
 
-  // ── Auto-scroll ──────────────────────────────────────────────────────────────
+  _nestPosition(target, draggedId) {
+    const container = target.querySelector("[data-sortable-container]");
+    const count = container
+      ? Array.from(container.children).filter((el) => el.dataset.itemId && el.dataset.itemId !== draggedId).length
+      : 0;
+    return { parentId: target.dataset.itemId, position: count };
+  },
+
+  _siblingPosition(target, zone, draggedId) {
+    const parentContainer = target.parentElement?.closest("[data-sortable-container]");
+    const parentId = parentContainer?.dataset.parentId ?? "";
+    const siblings = Array.from(parentContainer?.children ?? []).filter(
+      (el) => el.dataset.itemId && el.dataset.itemId !== draggedId,
+    );
+    const idx = siblings.indexOf(target);
+    const position = Math.max(0, zone === "top" ? idx : idx + 1);
+    return { parentId, position };
+  },
+
+  // ── Auto-scroll ───────────────────────────────────────────────────────────
 
   _findScrollParent(el) {
     let cur = el.parentElement;
@@ -376,11 +331,8 @@ export const SortableTree = {
       if (!this._drag?.active) return;
       const { y } = this._ptr;
       const sp = this._scrollParent;
-      if (y < margin) {
-        sp.scrollTop -= (margin - y) * speed;
-      } else if (y > window.innerHeight - margin) {
-        sp.scrollTop += (y - (window.innerHeight - margin)) * speed;
-      }
+      if (y < margin) sp.scrollTop -= (margin - y) * speed;
+      else if (y > window.innerHeight - margin) sp.scrollTop += (y - (window.innerHeight - margin)) * speed;
       this._scrollRaf = requestAnimationFrame(tick);
     };
     this._scrollRaf = requestAnimationFrame(tick);
