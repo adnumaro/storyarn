@@ -108,8 +108,21 @@ body.dnd-active [data-toolbar] {
   z-index: 9999;
 }
 
+/* Drop target highlight — item will receive the dragged element as child */
+.dnd-drop-target {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
+  outline-offset: -2px;
+  border-radius: 0.5rem;
+}
+
 /* Drag handle — disable browser touch-scroll so pointer events fire reliably */
 .drag-handle {
+  touch-action: none;
+}
+
+/* Tree items — disable browser touch-scroll for drag */
+.cursor-grab {
   touch-action: none;
 }
 

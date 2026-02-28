@@ -54,7 +54,6 @@ import { SceneCanvas } from "./hooks/scene_canvas";
 import { ScreenplayEditor } from "./hooks/screenplay_editor";
 import { ScrollCollapse } from "./hooks/scroll_collapse";
 import { SearchableSelect } from "./hooks/searchable_select";
-import { SortableList } from "./hooks/sortable_list";
 import { SortableTree } from "./hooks/sortable_tree";
 import { StoryPlayer } from "./hooks/story_player";
 import { TableCellCheckbox } from "./hooks/table_cell_checkbox";
@@ -92,7 +91,6 @@ const liveSocket = new LiveSocket("/live", Socket, {
     EditableBlockLabel,
     EditableShortcut,
     EditableTitle,
-    SortableList,
     SortableTree,
     TreePanel,
     TreeToggle,
