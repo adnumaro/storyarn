@@ -274,6 +274,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
   Shows tool name header, search slot, tree content slot, and pin/close footer.
   """
   attr :active_tool, :atom, required: true
+  attr :tree_panel_open, :boolean, default: false
   attr :tree_panel_pinned, :boolean, default: true
   attr :can_edit, :boolean, default: false
   attr :workspace, :map, required: true
@@ -287,7 +288,14 @@ defmodule StoryarnWeb.Components.FocusLayout do
       id="tree-panel"
       phx-hook="TreePanel"
       data-pinned={to_string(@tree_panel_pinned)}
-      class="fixed left-3 top-[76px] bottom-3 z-[1010] w-60 flex flex-col surface-panel overflow-hidden"
+      class={[
+        "fixed left-3 top-[76px] bottom-3 z-[1010] w-60 flex flex-col surface-panel overflow-hidden",
+        "transition-[transform,opacity] duration-200 ease-in-out",
+        if(@tree_panel_open,
+          do: "translate-x-0 opacity-100",
+          else: "-translate-x-[calc(100%+12px)] opacity-0 pointer-events-none"
+        )
+      ]}
     >
       <%!-- Tree content (scrollable) --%>
       <div class="flex-1 overflow-y-auto p-2">

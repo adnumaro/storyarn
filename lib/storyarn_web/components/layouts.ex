@@ -174,9 +174,10 @@ defmodule StoryarnWeb.Layouts do
         />
       </div>
 
-      <%!-- Tree panel (when page has tree and panel is open) --%>
+      <%!-- Tree panel (always in DOM for animation, slides in/out) --%>
       <.tree_panel
-        :if={@has_tree && @tree_panel_open && @tree_content != []}
+        :if={@has_tree && @tree_content != []}
+        tree_panel_open={@tree_panel_open}
         active_tool={@active_tool}
         tree_panel_pinned={@tree_panel_pinned}
         can_edit={@can_edit}

@@ -33,30 +33,28 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlers do
   Handles tree panel events. Call from your LiveView's handle_event/3.
   """
   def handle_tree_panel_event("tree_panel_init", %{"pinned" => pinned}, socket) do
-    # On first mount, the JS hook tells us the localStorage-persisted pin state.
-    # If pinned, open the panel automatically.
-    {:noreply,
-     socket
-     |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+    # The JS hook tells us the localStorage-persisted pin state.
+    # Only sync the pinned assign — don't touch tree_panel_open,
+    # since the panel is already open if this hook mounted.
+    {:noreply, assign(socket, :tree_panel_pinned, pinned)}
   end
 
   def handle_tree_panel_event("tree_panel_toggle", _params, socket) do
     open = !socket.assigns.tree_panel_open
 
-    # When closing, also unpin (so next open starts unpinned unless user pins again)
-    pinned = if open, do: socket.assigns.tree_panel_pinned, else: false
-
-    {:noreply,
-     socket
-     |> assign(:tree_panel_open, open)
-     |> assign(:tree_panel_pinned, pinned)}
+    {:noreply, assign(socket, :tree_panel_open, open)}
   end
 
   def handle_tree_panel_event("tree_panel_pin", _params, socket) do
     pinned = !socket.assigns.tree_panel_pinned
 
-    {:noreply, assign(socket, :tree_panel_pinned, pinned)}
+    # Unpinning closes the panel; pinning keeps it as-is
+    open = if pinned, do: socket.assigns.tree_panel_open, else: false
+
+    {:noreply,
+     socket
+     |> assign(:tree_panel_pinned, pinned)
+     |> assign(:tree_panel_open, open)}
   end
 
   @doc """
