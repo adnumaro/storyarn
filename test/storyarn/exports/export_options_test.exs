@@ -28,7 +28,7 @@ defmodule Storyarn.Exports.ExportOptionsTest do
     end
 
     test "accepts all valid format atoms" do
-      valid = ~w(storyarn ink yarn unity godot godot_dialogic unreal articy)a
+      valid = ~w(storyarn ink yarn unity godot unreal articy)a
 
       for format <- valid do
         assert {:ok, %ExportOptions{format: ^format}} = ExportOptions.new(%{format: format})

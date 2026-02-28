@@ -14,7 +14,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler do
   | Ink    | `ExpressionTranspiler.Ink`    | `mc_jaime_health` |
   | Yarn   | `ExpressionTranspiler.Yarn`   | `$mc_jaime_health` |
   | Unity  | `ExpressionTranspiler.Unity`  | `Variable["mc.jaime.health"]` |
-  | Godot  | `ExpressionTranspiler.Godot`  | `mc_jaime_health` |
+  | Godot  | `ExpressionTranspiler.Dialogic` | `{mc_jaime.health}` |
   | Unreal | `ExpressionTranspiler.Unreal` | `mc.jaime.health` |
   | articy | `ExpressionTranspiler.Articy` | `mc.jaime.health` |
 
@@ -44,7 +44,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler do
     ink: Storyarn.Exports.ExpressionTranspiler.Ink,
     yarn: Storyarn.Exports.ExpressionTranspiler.Yarn,
     unity: Storyarn.Exports.ExpressionTranspiler.Unity,
-    godot: Storyarn.Exports.ExpressionTranspiler.Godot,
+    godot: Storyarn.Exports.ExpressionTranspiler.Dialogic,
     unreal: Storyarn.Exports.ExpressionTranspiler.Unreal,
     articy: Storyarn.Exports.ExpressionTranspiler.Articy
   }

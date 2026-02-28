@@ -21,7 +21,7 @@ defmodule Storyarn.Exports.SerializerRegistry do
     ink: Storyarn.Exports.Serializers.Ink,
     yarn: Storyarn.Exports.Serializers.Yarn,
     unity: Storyarn.Exports.Serializers.UnityJSON,
-    godot: Storyarn.Exports.Serializers.GodotJSON,
+    godot: Storyarn.Exports.Serializers.GodotDialogic,
     unreal: Storyarn.Exports.Serializers.UnrealCSV,
     articy: Storyarn.Exports.Serializers.ArticyXML
   }

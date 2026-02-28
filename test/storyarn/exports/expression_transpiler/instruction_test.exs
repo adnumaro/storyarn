@@ -40,7 +40,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
       ink: "~ mc_jaime_health = 10",
       yarn: "<<set $mc_jaime_health to 10>>",
       unity: ~s(Variable["mc.jaime.health"] = 10),
-      godot: "mc_jaime_health = 10",
+      godot: "set {mc_jaime.health} = 10",
       unreal: "mc.jaime.health = 10",
       articy: "mc.jaime.health = 10"
     }
@@ -64,7 +64,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
       ink: "~ mc_jaime_health += 10",
       yarn: "<<set $mc_jaime_health to $mc_jaime_health + 10>>",
       unity: ~s(Variable["mc.jaime.health"] = Variable["mc.jaime.health"] + 10),
-      godot: "mc_jaime_health += 10",
+      godot: "set {mc_jaime.health} += 10",
       unreal: "mc.jaime.health += 10",
       articy: "mc.jaime.health += 10"
     }
@@ -84,7 +84,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
       ink: "~ mc_jaime_health -= 10",
       yarn: "<<set $mc_jaime_health to $mc_jaime_health - 10>>",
       unity: ~s(Variable["mc.jaime.health"] = Variable["mc.jaime.health"] - 10),
-      godot: "mc_jaime_health -= 10",
+      godot: "set {mc_jaime.health} -= 10",
       unreal: "mc.jaime.health -= 10",
       articy: "mc.jaime.health -= 10"
     }
@@ -108,7 +108,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
       ink: "~ mc_jaime_health = true",
       yarn: "<<set $mc_jaime_health to true>>",
       unity: ~s(Variable["mc.jaime.health"] = true),
-      godot: "mc_jaime_health = true",
+      godot: "set {mc_jaime.health} = true",
       unreal: "mc.jaime.health = true",
       articy: "mc.jaime.health = true"
     }
@@ -131,7 +131,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
       ink: "~ mc_jaime_health = false",
       yarn: "<<set $mc_jaime_health to false>>",
       unity: ~s(Variable["mc.jaime.health"] = false),
-      godot: "mc_jaime_health = false",
+      godot: "set {mc_jaime.health} = false",
       unreal: "mc.jaime.health = false",
       articy: "mc.jaime.health = false"
     }
@@ -154,7 +154,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
       ink: "~ mc_jaime_health = not mc_jaime_health",
       yarn: "<<set $mc_jaime_health to !$mc_jaime_health>>",
       unity: ~s(Variable["mc.jaime.health"] = not Variable["mc.jaime.health"]),
-      godot: "mc_jaime_health = !mc_jaime_health",
+      godot: "set {mc_jaime.health} = !{mc_jaime.health}",
       unreal: "mc.jaime.health = !mc.jaime.health",
       articy: "mc.jaime.health = !mc.jaime.health"
     }
@@ -181,7 +181,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
       ink: ~s(~ mc_jaime_health = ""),
       yarn: ~s(<<set $mc_jaime_health to "">>),
       unity: ~s(Variable["mc.jaime.health"] = ""),
-      godot: ~s(mc_jaime_health = ""),
+      godot: ~s(set {mc_jaime.health} = ""),
       unreal: ~s(mc.jaime.health = ""),
       articy: ~s(mc.jaime.health = "")
     }
@@ -229,11 +229,14 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
                ~s(if Variable["mc.jaime.health"] == nil then Variable["mc.jaime.health"] = 10 end)
     end
 
-    test "godot emits if null block" do
-      {:ok, result, _} =
+    test "godot emits unconditional set with semantic_loss warning" do
+      {:ok, result, warnings} =
         ExpressionTranspiler.transpile_instruction([assignment("set_if_unset")], :godot)
 
-      assert result == "if mc_jaime_health == null: mc_jaime_health = 10"
+      assert result == "set {mc_jaime.health} = 10"
+      assert length(warnings) == 1
+      assert hd(warnings).type == :semantic_loss
+      assert hd(warnings).operator == "set_if_unset"
     end
 
     test "unreal emits if None block" do
@@ -260,7 +263,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
       ink: "~ mc_jaime_health = stats_base_max_health",
       yarn: "<<set $mc_jaime_health to $stats_base_max_health>>",
       unity: ~s(Variable["mc.jaime.health"] = Variable["stats.base.max_health"]),
-      godot: "mc_jaime_health = stats_base_max_health",
+      godot: "set {mc_jaime.health} = {stats_base.max_health}",
       unreal: "mc.jaime.health = stats.base.max_health",
       articy: "mc.jaime.health = stats.base.max_health"
     }
@@ -333,13 +336,13 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
     test "string value gets quoted" do
       a = assignment("set", "warrior", variable: "class")
       {:ok, result, _} = ExpressionTranspiler.transpile_instruction([a], :godot)
-      assert result == ~s(mc_jaime_class = "warrior")
+      assert result == ~s(set {mc_jaime.class} = "warrior")
     end
 
     test "assignment with no value key defaults to 0" do
       a = %{"sheet" => "mc.jaime", "variable" => "health", "operator" => "set"}
       {:ok, result, _} = ExpressionTranspiler.transpile_instruction([a], :godot)
-      assert result == "mc_jaime_health = 0"
+      assert result == "set {mc_jaime.health} = 0"
     end
   end
 end

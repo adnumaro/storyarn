@@ -50,7 +50,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
     ink: "mc_jaime_health",
     yarn: "$mc_jaime_health",
     unity: ~s(Variable["mc.jaime.health"]),
-    godot: "mc_jaime_health",
+    godot: "{mc_jaime.health}",
     unreal: "mc.jaime.health",
     articy: "mc.jaime.health"
   }
@@ -87,7 +87,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
       ink: "mc_jaime_health",
       yarn: "$mc_jaime_health == true",
       unity: ~s(Variable["mc.jaime.health"] == true),
-      godot: "mc_jaime_health == true",
+      godot: "{mc_jaime.health} == true",
       unreal: "mc.jaime.health == true",
       articy: "mc.jaime.health == true"
     }
@@ -106,7 +106,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
       ink: "not mc_jaime_health",
       yarn: "$mc_jaime_health == false",
       unity: ~s(Variable["mc.jaime.health"] == false),
-      godot: "mc_jaime_health == false",
+      godot: "{mc_jaime.health} == false",
       unreal: "mc.jaime.health == false",
       articy: "mc.jaime.health == false"
     }
@@ -130,7 +130,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
     @is_nil_expected %{
       yarn: ~s($mc_jaime_health == ""),
       unity: ~s(Variable["mc.jaime.health"] == nil),
-      godot: "mc_jaime_health == null",
+      godot: "{mc_jaime.health} == null",
       unreal: "mc.jaime.health == None",
       articy: "mc.jaime.health == null"
     }
@@ -149,7 +149,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
       ink: ~s(mc_jaime_health == ""),
       yarn: ~s($mc_jaime_health == ""),
       unity: ~s(Variable["mc.jaime.health"] == ""),
-      godot: ~s(mc_jaime_health == ""),
+      godot: ~s({mc_jaime.health} == ""),
       unreal: ~s(mc.jaime.health == ""),
       articy: ~s(mc.jaime.health == "")
     }
@@ -249,25 +249,25 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
     test "contains uses in keyword" do
       condition = flat_condition([simple_rule("contains", "test")])
       {:ok, result, _} = ExpressionTranspiler.transpile_condition(condition, :godot)
-      assert result == ~s("test" in mc_jaime_health)
+      assert result == ~s("test" in {mc_jaime.health})
     end
 
     test "not_contains uses not in" do
       condition = flat_condition([simple_rule("not_contains", "test")])
       {:ok, result, _} = ExpressionTranspiler.transpile_condition(condition, :godot)
-      assert result == ~s("test" not in mc_jaime_health)
+      assert result == ~s("test" not in {mc_jaime.health})
     end
 
     test "starts_with uses begins_with" do
       condition = flat_condition([simple_rule("starts_with", "test")])
       {:ok, result, _} = ExpressionTranspiler.transpile_condition(condition, :godot)
-      assert result == ~s[mc_jaime_health.begins_with("test")]
+      assert result == ~s[{mc_jaime.health}.begins_with("test")]
     end
 
     test "ends_with uses ends_with" do
       condition = flat_condition([simple_rule("ends_with", "test")])
       {:ok, result, _} = ExpressionTranspiler.transpile_condition(condition, :godot)
-      assert result == ~s[mc_jaime_health.ends_with("test")]
+      assert result == ~s[{mc_jaime.health}.ends_with("test")]
     end
   end
 
@@ -427,9 +427,9 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
       assert result == ~s(Variable["mc.jaime.health"] == 50)
     end
 
-    test "godot uses underscore", %{condition: c} do
+    test "godot uses dialogic curly braces", %{condition: c} do
       {:ok, result, _} = ExpressionTranspiler.transpile_condition(c, :godot)
-      assert result == "mc_jaime_health == 50"
+      assert result == "{mc_jaime.health} == 50"
     end
 
     test "unreal preserves dots", %{condition: c} do

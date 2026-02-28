@@ -15,10 +15,11 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
 
   ## Styles
 
-  - `:underscore` — `mc_jaime_health` (Ink, Godot)
+  - `:underscore` — `mc_jaime_health` (Ink)
   - `:dollar_underscore` — `$mc_jaime_health` (Yarn)
   - `:lua_dict` — `Variable["mc.jaime.health"]` (Unity)
   - `:dot` — `mc.jaime.health` (Unreal, articy)
+  - `:dialogic_curly` — `{mc_jaime.health}` (Godot Dialogic)
   """
   @spec format_var_ref(String.t(), String.t(), atom()) :: String.t()
   def format_var_ref(sheet, variable, :underscore) do
@@ -37,6 +38,10 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
 
   def format_var_ref(sheet, variable, :dot) do
     "#{sanitize_identifier(sheet)}.#{sanitize_identifier(variable)}"
+  end
+
+  def format_var_ref(sheet, variable, :dialogic_curly) do
+    "{#{dotted_to_underscore(sheet)}.#{sanitize_identifier(variable)}}"
   end
 
   defp dotted_to_underscore(str) do

@@ -41,7 +41,7 @@ defmodule Storyarn.Exports.ExportOptions do
             validate_before_export: true,
             pretty_print: true
 
-  @valid_formats ~w(storyarn ink yarn unity godot godot_dialogic unreal articy)a
+  @valid_formats ~w(storyarn ink yarn unity godot unreal articy)a
   @valid_asset_modes ~w(references embedded bundled)a
 
   @doc """

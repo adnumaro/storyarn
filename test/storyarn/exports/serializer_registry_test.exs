@@ -21,7 +21,7 @@ defmodule Storyarn.Exports.SerializerRegistryTest do
     end
 
     test "returns the godot serializer module" do
-      assert {:ok, Storyarn.Exports.Serializers.GodotJSON} = SerializerRegistry.get(:godot)
+      assert {:ok, Storyarn.Exports.Serializers.GodotDialogic} = SerializerRegistry.get(:godot)
     end
 
     test "returns the unreal serializer module" do
@@ -47,7 +47,7 @@ defmodule Storyarn.Exports.SerializerRegistryTest do
       assert serializers[:ink] == Storyarn.Exports.Serializers.Ink
       assert serializers[:yarn] == Storyarn.Exports.Serializers.Yarn
       assert serializers[:unity] == Storyarn.Exports.Serializers.UnityJSON
-      assert serializers[:godot] == Storyarn.Exports.Serializers.GodotJSON
+      assert serializers[:godot] == Storyarn.Exports.Serializers.GodotDialogic
       assert serializers[:unreal] == Storyarn.Exports.Serializers.UnrealCSV
       assert serializers[:articy] == Storyarn.Exports.Serializers.ArticyXML
     end
