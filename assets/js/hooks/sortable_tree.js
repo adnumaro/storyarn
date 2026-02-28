@@ -150,7 +150,7 @@ export const SortableTree = {
     return el;
   },
 
-  _updatePreview(x, y) {
+  _updatePreview(_x, y) {
     if (!this._preview) return;
     const row = this._drag.el.querySelector(".group\\/item");
     if (!row) return;

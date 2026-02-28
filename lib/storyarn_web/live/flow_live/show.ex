@@ -1125,6 +1125,11 @@ defmodule StoryarnWeb.FlowLive.Show do
     {:noreply, put_flash(socket, :error, message)}
   end
 
+  # Ignore EXIT messages from linked processes (e.g. PubSub subscriptions)
+  def handle_info({:EXIT, _pid, _reason}, socket) do
+    {:noreply, socket}
+  end
+
   # ===========================================================================
   # Private Helpers
   # ===========================================================================

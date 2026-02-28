@@ -513,6 +513,11 @@ defmodule StoryarnWeb.SheetLive.Show do
     {:noreply, route_undo_push(socket, action)}
   end
 
+  # Ignore EXIT messages from linked processes (e.g. PubSub subscriptions)
+  def handle_info({:EXIT, _pid, _reason}, socket) do
+    {:noreply, socket}
+  end
+
   defp route_undo_push(socket, {:update_block_value, block_id, prev, new}) do
     UndoRedoHandlers.push_block_value_coalesced(socket, block_id, prev, new)
   end
