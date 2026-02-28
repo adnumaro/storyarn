@@ -169,11 +169,13 @@ export const TableRowSortable = {
 
   _findDrop(y) {
     const rows = this.el.querySelectorAll("[data-row-id]");
+    const last = rows[rows.length - 1];
     for (const row of rows) {
       if (row === this._drag.el) continue;
       const r = row.getBoundingClientRect();
       if (y < r.top || y > r.bottom) continue;
-      const edge = (y - r.top) / r.height < 0.5 ? "top" : "bottom";
+      const ratio = (y - r.top) / r.height;
+      const edge = ratio < 0.5 ? "top" : row === last ? "bottom" : "top";
       return { el: row, edge };
     }
     return null;

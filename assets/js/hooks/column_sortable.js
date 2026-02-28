@@ -202,10 +202,11 @@ export const ColumnSortable = {
 
   _getEdge(el, x, y) {
     const r = this._contentRect(el);
-    const verticalEdge = () => ((y - r.top) / r.height < 0.5 ? "top" : "bottom");
 
     if (el.classList.contains("column-item")) {
-      return x < r.left + r.width / 2 ? "left" : "right";
+      const ratio = (x - r.left) / r.width;
+      if (ratio < 0.5) return "left";
+      return this._isLastSibling(el) ? "right" : "left";
     }
 
     if (el.classList.contains("block-wrapper")) {
@@ -217,7 +218,24 @@ export const ColumnSortable = {
       }
     }
 
-    return verticalEdge();
+    const ratio = (y - r.top) / r.height;
+    if (ratio < 0.5) return "top";
+    return this._isLastSibling(el) ? "bottom" : "top";
+  },
+
+  _isLastSibling(el) {
+    const parent = el.parentElement;
+    if (!parent) return true;
+
+    if (el.classList.contains("column-item")) {
+      const siblings = parent.querySelectorAll(":scope > .column-item");
+      return siblings[siblings.length - 1] === el;
+    }
+
+    const siblings = parent.querySelectorAll(
+      ":scope > .block-wrapper, :scope > .column-group",
+    );
+    return siblings[siblings.length - 1] === el;
   },
 
   _placeIndicator(el, edge) {
