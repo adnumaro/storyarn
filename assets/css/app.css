@@ -19,6 +19,15 @@
   --radius-field: 0.5rem;
 }
 
+/* Override daisyUI hover colors — subtler than default 10% */
+.menu :where(li:not(.menu-title, .disabled) > :not(ul, details, .menu-title):not(.menu-active, :active, .btn):hover) {
+  background-color: color-mix(in oklab, var(--color-base-content) 5%, transparent);
+}
+
+.btn-ghost:hover {
+  background-color: color-mix(in oklab, var(--color-base-content) 5%, transparent);
+}
+
 
 /* Add variants based on LiveView classes */
 @custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
@@ -44,6 +53,27 @@
 
 /* Story player styles */
 @import "./player.css";
+
+/* Shared surface for floating toolbars, sidebars, and panels.
+   Single source of truth — change here to update all UI chrome. */
+.surface-panel {
+  @apply bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-sm;
+}
+
+/* Scroll-collapsible toolbar text (project name fades out on scroll) */
+.toolbar-collapsible {
+  max-width: 200px;
+  opacity: 1;
+  transition: max-width 550ms ease-in-out, opacity 400ms ease-in-out;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+[data-scrolled] .toolbar-collapsible {
+  max-width: 0;
+  opacity: 0;
+  transition: max-width 550ms ease-in-out, opacity 450ms ease-in-out 80ms;
+}
 
 /* This file is for your main application CSS */
 

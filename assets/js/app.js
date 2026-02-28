@@ -49,6 +49,7 @@ import { FlowLoader } from "./hooks/flow_loader";
 import { FountainImport } from "./hooks/fountain_import";
 import { InstructionBuilder } from "./hooks/instruction_builder";
 import { ReferenceSearch } from "./hooks/reference_search";
+import { ScrollCollapse } from "./hooks/scroll_collapse";
 import { SceneCanvas } from "./hooks/scene_canvas";
 import { ScreenplayEditor } from "./hooks/screenplay_editor";
 import { SearchableSelect } from "./hooks/searchable_select";
@@ -108,6 +109,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     FloatingToolbar,
     FlowFloatingToolbar,
     ReferenceSearch,
+    ScrollCollapse,
     SearchableSelect,
     DialogueScreenplayEditor,
     ScreenplayEditor,

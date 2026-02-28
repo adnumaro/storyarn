@@ -149,7 +149,7 @@ defmodule StoryarnWeb.Layouts do
     assigns = assign(assigns, :current_user_id, current_user_id)
 
     ~H"""
-    <div class="h-screen w-screen overflow-hidden relative bg-base-100">
+    <div id="layout-wrapper" class="h-screen w-screen overflow-hidden relative bg-base-100">
       <%!-- Left floating toolbar row (top-left) --%>
       <div class="fixed top-3 left-3 z-[1020] flex items-stretch gap-2">
         <.left_toolbar
@@ -189,16 +189,20 @@ defmodule StoryarnWeb.Layouts do
       </.tree_panel>
 
       <%!-- Main content area --%>
-      <main class={[
-        "h-full",
-        if(@canvas_mode,
-          do: "overflow-hidden",
-          else: [
-            "overflow-y-auto pt-[76px] pb-4 px-4 transition-[padding-left] duration-200",
-            @has_tree && @tree_panel_open && "pl-[264px]"
-          ]
-        )
-      ]}>
+      <main
+        id="main-content"
+        phx-hook={unless(@canvas_mode, do: "ScrollCollapse")}
+        class={[
+          "h-full",
+          if(@canvas_mode,
+            do: "overflow-hidden",
+            else: [
+              "overflow-y-auto pt-[76px] pb-4 px-4 transition-[padding-left] duration-200",
+              @has_tree && @tree_panel_open && "pl-[264px]"
+            ]
+          )
+        ]}
+      >
         <div :if={@content_header != []} class="mb-4">
           {render_slot(@content_header)}
         </div>

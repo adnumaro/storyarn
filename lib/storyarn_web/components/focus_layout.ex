@@ -61,7 +61,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
     assigns = assign(assigns, :active_icon, tool_icon(assigns.active_tool))
 
     ~H"""
-    <nav class="flex items-center gap-1 px-2 py-1.5 bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg">
+    <nav class="flex items-center gap-1 px-2 py-1.5 surface-panel">
       <%!-- Back to workspace --%>
       <.link
         navigate={~p"/workspaces/#{@workspace.slug}"}
@@ -130,16 +130,16 @@ defmodule StoryarnWeb.Components.FocusLayout do
     assigns = assign(assigns, :other_users, Enum.take(other_users, 5))
 
     ~H"""
-    <nav class="flex items-center gap-1 px-2 py-1.5 bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg">
+    <nav class="flex items-center gap-1 px-2 py-1.5 surface-panel">
       <%!-- Project name dropdown --%>
       <div class="dropdown dropdown-end">
         <button tabindex="0" class="btn btn-ghost btn-md gap-2 font-medium max-w-52">
           <.icon name="folder" class="size-5 opacity-60 shrink-0" />
-          <span class="hidden xl:inline truncate text-base">{@project.name}</span>
+          <span class="hidden xl:inline truncate text-base toolbar-collapsible">{@project.name}</span>
         </button>
         <div
           tabindex="0"
-          class="dropdown-content bg-base-200 border border-base-300 rounded-lg shadow-lg w-60 z-[60] mt-3"
+          class="dropdown-content bg-base-200 border border-base-300 rounded-lg shadow-sm w-max max-w-72 z-[60] mt-3"
         >
           <%!-- Project info (non-selectable) --%>
           <div class="px-4 py-3">
@@ -189,7 +189,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
         </button>
         <div
           tabindex="0"
-          class="dropdown-content bg-base-200 border border-base-300 rounded-lg shadow-lg w-60 z-[60] mt-3"
+          class="dropdown-content bg-base-200 border border-base-300 rounded-lg shadow-sm w-max max-w-72 z-[60] mt-3"
         >
           <%!-- User info (non-selectable) --%>
           <div class="px-4 py-3">
@@ -236,13 +236,10 @@ defmodule StoryarnWeb.Components.FocusLayout do
     ~H"""
     <ul
       tabindex="0"
-      class="dropdown-content menu bg-base-200 border border-base-300 rounded-lg shadow-lg w-52 z-[60] mt-3 text-base"
+      class="dropdown-content menu bg-base-200 border border-base-300 rounded-lg shadow-sm w-52 z-[60] mt-3 text-base"
     >
-      <li :for={tool <- @tools}>
-        <.link
-          navigate={tool_path(@workspace, @project, tool.section)}
-          class={[@active_tool == tool.key && "active"]}
-        >
+      <li :for={tool <- @tools} :if={tool.key != @active_tool}>
+        <.link navigate={tool_path(@workspace, @project, tool.section)}>
           <.icon name={tool.icon} class="size-5" />
           {tool_label(tool.key)}
         </.link>
@@ -290,7 +287,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
       id="tree-panel"
       phx-hook="TreePanel"
       data-pinned={to_string(@tree_panel_pinned)}
-      class="fixed left-3 top-[76px] bottom-3 z-[1010] w-60 flex flex-col bg-base-200 border border-base-300 rounded-xl shadow-lg overflow-hidden"
+      class="fixed left-3 top-[76px] bottom-3 z-[1010] w-60 flex flex-col surface-panel overflow-hidden"
     >
       <%!-- Tree content (scrollable) --%>
       <div class="flex-1 overflow-y-auto p-2">
