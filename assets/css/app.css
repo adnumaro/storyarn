@@ -77,18 +77,40 @@
 
 /* This file is for your main application CSS */
 
-/* SortableJS styles */
-.sortable-ghost {
-  opacity: 0.4;
-  background: color-mix(in oklch, var(--color-primary) 10%, transparent);
+/* Drag-and-drop styles */
+
+/* Element being dragged — stays in place, dimmed */
+.dnd-dragging {
+  opacity: 0.35;
 }
 
-.sortable-chosen {
-  background: var(--color-base-200);
+/* Drop position indicator line — positioned via JS, no ghost placeholder */
+body.dnd-active [data-toolbar] {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
-.sortable-drag {
-  opacity: 0.9;
+.dnd-dropped {
+  opacity: 0;
+  animation: dnd-appear 120ms 200ms ease forwards;
+}
+
+@keyframes dnd-appear {
+  to { opacity: 1; }
+}
+
+.dnd-indicator {
+  display: none;
+  position: fixed;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  border-radius: 2px;
+  z-index: 9999;
+}
+
+/* Drag handle — disable browser touch-scroll so pointer events fire reliably */
+.drag-handle {
+  touch-action: none;
 }
 
 /* Side columns in block-wrapper: visual padding */

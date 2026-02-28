@@ -67,6 +67,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
                 class="group relative w-full min-w-0 pt-2"
                 id={"block-#{item.block.id}"}
                 data-id={item.block.id}
+                data-block-type={item.block.type}
               >
                 <.block_component
                   block={item.block}
