@@ -52,7 +52,7 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTree do
         phx-hook={if @can_edit, do: "SortableTree", else: nil}
         data-tree-type="scenes"
       >
-        <div data-sortable-container data-parent-id="">
+        <div data-sortable-container data-parent-id="" class="flex flex-col gap-1">
           <.scene_tree_items
             :for={scene <- @scenes_tree}
             scene={scene}
@@ -123,6 +123,7 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTree do
         id={"scene-#{@scene.id}"}
         label={@scene.name}
         icon="map"
+        active={@is_selected}
         expanded={@is_expanded}
         has_children={true}
         href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes/#{@scene.id}"}

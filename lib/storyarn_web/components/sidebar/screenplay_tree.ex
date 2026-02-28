@@ -52,7 +52,7 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
         phx-hook={if @can_edit, do: "SortableTree", else: nil}
         data-tree-type="screenplays"
       >
-        <div data-sortable-container data-parent-id="">
+        <div data-sortable-container data-parent-id="" class="flex flex-col gap-1">
           <.screenplay_tree_items
             :for={screenplay <- @screenplays_tree}
             screenplay={screenplay}
@@ -119,6 +119,7 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
         id={"screenplay-#{@screenplay.id}"}
         label={@screenplay.name}
         icon="scroll-text"
+        active={@is_selected}
         expanded={@is_expanded}
         has_children={true}
         href={

@@ -52,7 +52,7 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
         phx-hook={if @can_edit, do: "SortableTree", else: nil}
         data-tree-type="flows"
       >
-        <div data-sortable-container data-parent-id="">
+        <div data-sortable-container data-parent-id="" class="flex flex-col gap-1">
           <.flow_tree_items
             :for={flow <- @flows_tree}
             flow={flow}
@@ -116,6 +116,7 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
         id={"flow-#{@flow.id}"}
         label={@flow.name}
         icon="git-branch"
+        active={@is_selected}
         expanded={@is_expanded}
         has_children={true}
         href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"}

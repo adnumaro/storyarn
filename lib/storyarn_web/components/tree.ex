@@ -33,6 +33,7 @@ defmodule StoryarnWeb.Components.TreeComponents do
   attr :avatar_url, :string, default: nil
   attr :color, :string, default: nil
   attr :badge, :any, default: nil
+  attr :active, :boolean, default: false
   attr :expanded, :boolean, default: false
   attr :has_children, :boolean, default: false
   attr :class, :string, default: ""
@@ -46,16 +47,20 @@ defmodule StoryarnWeb.Components.TreeComponents do
   def tree_node(assigns) do
     ~H"""
     <div
-      class={["tree-node group", @can_drag && "cursor-grab active:cursor-grabbing", @class]}
+      class={["tree-node flex flex-col gap-1", @can_drag && "cursor-grab active:cursor-grabbing", @class]}
       data-item-id={@item_id}
       data-item-name={@item_name}
     >
-      <div class="relative flex items-center">
+      <div class={[
+        "group/item flex items-center rounded-lg",
+        @active && "bg-base-content/5 font-medium",
+        !@active && "hover:bg-base-content/5"
+      ]}>
         <%!-- Expand/collapse toggle --%>
         <button
           :if={@has_children}
           type="button"
-          class="flex items-center justify-center w-5 h-5 hover:bg-base-300 rounded shrink-0"
+          class="flex items-center justify-center w-5 h-5 rounded shrink-0"
           phx-hook="TreeToggle"
           id={"tree-toggle-#{@id}"}
           data-node-id={@id}
@@ -76,24 +81,24 @@ defmodule StoryarnWeb.Components.TreeComponents do
         <%= if @href do %>
           <.link
             navigate={@href}
-            class="flex-1 flex items-center gap-2 px-2 py-1 rounded hover:bg-base-300 text-sm truncate"
+            class="flex-1 min-w-0 flex items-center gap-2 px-2 py-1 text-sm truncate"
           >
             <.tree_icon icon={@icon} icon_text={@icon_text} avatar_url={@avatar_url} color={@color} />
             <span class="truncate">{@label}</span>
             <span :if={@badge} class="badge badge-xs badge-ghost ml-auto shrink-0">{@badge}</span>
           </.link>
         <% else %>
-          <div class="flex-1 flex items-center gap-2 px-2 py-1 text-sm truncate">
+          <div class="flex-1 min-w-0 flex items-center gap-2 px-2 py-1 text-sm truncate">
             <.tree_icon icon={@icon} icon_text={@icon_text} avatar_url={@avatar_url} color={@color} />
             <span class="truncate">{@label}</span>
             <span :if={@badge} class="badge badge-xs badge-ghost ml-auto shrink-0">{@badge}</span>
           </div>
         <% end %>
 
-        <%!-- Actions slot (+ button and menu) --%>
+        <%!-- Actions slot: zero-width by default, expands on hover (Notion-style) --%>
         <div
           :if={@actions != [] || @menu != []}
-          class="absolute right-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          class="shrink-0 flex items-center gap-0.5 w-0 overflow-hidden group-hover/item:w-auto group-hover/item:overflow-visible"
         >
           {render_slot(@actions)}
           {render_slot(@menu)}
@@ -104,7 +109,7 @@ defmodule StoryarnWeb.Components.TreeComponents do
       <div
         :if={@has_children}
         id={"tree-content-#{@id}"}
-        class={["pl-5", !@expanded && "hidden"]}
+        class={["pl-5 flex flex-col gap-1", !@expanded && "hidden"]}
         data-sortable-container
         data-parent-id={@item_id}
       >
@@ -142,28 +147,28 @@ defmodule StoryarnWeb.Components.TreeComponents do
   def tree_leaf(assigns) do
     ~H"""
     <div
-      class={["tree-leaf group", @can_drag && "cursor-grab active:cursor-grabbing", @class]}
+      class={["tree-leaf", @can_drag && "cursor-grab active:cursor-grabbing", @class]}
       data-item-id={@item_id}
       data-item-name={@item_name}
     >
-      <div class="relative flex items-center">
+      <div class={[
+        "group/item flex items-center rounded-lg",
+        @active && "bg-base-content/5 font-medium",
+        !@active && "hover:bg-base-content/5"
+      ]}>
         <%!-- Spacer to align with tree_node (expand/collapse area) --%>
         <span class="w-5 shrink-0"></span>
 
         <.link
           navigate={@href}
-          class={[
-            "flex-1 flex items-center gap-2 px-2 py-1 rounded text-sm truncate",
-            @active && "bg-base-300 font-medium",
-            !@active && "hover:bg-base-300"
-          ]}
+          class="flex-1 min-w-0 flex items-center gap-2 px-2 py-1 text-sm truncate"
         >
           <.tree_icon icon={@icon} icon_text={@icon_text} avatar_url={@avatar_url} color={@color} />
           <span class="truncate">{@label}</span>
         </.link>
         <div
           :if={@actions != [] || @menu != []}
-          class="absolute right-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          class="shrink-0 flex items-center gap-0.5 w-0 overflow-hidden group-hover/item:w-auto group-hover/item:overflow-visible"
         >
           {render_slot(@actions)}
           {render_slot(@menu)}
@@ -237,9 +242,9 @@ defmodule StoryarnWeb.Components.TreeComponents do
     <.link
       navigate={@href}
       class={[
-        "flex items-center gap-2 px-2 py-1.5 rounded text-sm",
-        @active && "bg-base-300 font-medium",
-        !@active && "hover:bg-base-300",
+        "flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm",
+        @active && "bg-base-content/5 font-medium",
+        !@active && "hover:bg-base-content/5",
         @class
       ]}
     >

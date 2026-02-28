@@ -51,7 +51,7 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
         id="sheets-tree-container"
         phx-hook={if @can_edit, do: "SortableTree", else: nil}
       >
-        <div data-sortable-container data-parent-id="">
+        <div data-sortable-container data-parent-id="" class="flex flex-col gap-1">
           <.sheet_tree_items
             :for={sheet <- @sheets_tree}
             sheet={sheet}
@@ -116,6 +116,7 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
         id={"sheet-#{@sheet.id}"}
         label={@sheet.name}
         avatar_url={@avatar_url}
+        active={@is_selected}
         expanded={@is_expanded}
         has_children={true}
         href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{@sheet.id}"}
