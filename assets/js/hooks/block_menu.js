@@ -1,10 +1,4 @@
-import {
-  computePosition,
-  flip,
-  shift,
-  offset,
-  autoUpdate,
-} from "@floating-ui/dom";
+import { autoUpdate, computePosition, flip, offset, shift } from "@floating-ui/dom";
 
 export const BlockMenu = {
   mounted() {
