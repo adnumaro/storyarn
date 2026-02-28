@@ -149,48 +149,45 @@ export const ColumnSortable = {
   _updateIndicator(x, y) {
     const drop = this._findDrop(x, y);
     this._drag.drop = drop;
-    if (!drop) {
-      this._ind.style.display = "none";
-      return;
-    }
-    this._ind.style.display = "block";
-    this._placeIndicator(drop.el, drop.edge);
+    this._ind.style.display = drop ? "block" : "none";
+    if (drop) this._placeIndicator(drop.el, drop.edge);
+  },
+
+  _isDropTarget(el) {
+    return (
+      this.el.contains(el) &&
+      (el.classList.contains("block-wrapper") ||
+        el.classList.contains("column-group") ||
+        el.classList.contains("column-item")) &&
+      el !== this._drag.el &&
+      !this._drag.el.contains(el)
+    );
   },
 
   _findDrop(x, y) {
     const hit = document.elementFromPoint(x, y);
     if (!hit) return null;
-
     let cur = hit;
     while (cur && cur !== document.body) {
-      if (
-        this.el.contains(cur) &&
-        (cur.classList.contains("block-wrapper") ||
-          cur.classList.contains("column-group") ||
-          cur.classList.contains("column-item")) &&
-        cur !== this._drag.el &&
-        !this._drag.el.contains(cur)
-      ) {
-        return { el: cur, edge: this._getEdge(cur, x, y) };
-      }
+      if (this._isDropTarget(cur)) return { el: cur, edge: this._getEdge(cur, x, y) };
       cur = cur.parentElement;
     }
     return null;
   },
 
-  // Returns the bounding rect to use for indicator placement and edge detection.
-  // For block-wrappers, the [data-id] inner element reflects the visual content
-  // bounds — the wrapper itself extends into negative-margin page padding.
+  // Returns the visual content bounds, accounting for:
+  //  - block-wrappers: use inner [data-id] (wrapper extends into negative-margin gutters)
+  //  - column-groups: strip horizontal padding (same overflow issue as block-wrappers)
   _contentRect(el) {
     if (el.classList.contains("block-wrapper")) {
       const inner = el.querySelector("[data-id]");
       if (inner) return inner.getBoundingClientRect();
     }
     if (el.classList.contains("column-group")) {
-      const style = getComputedStyle(el);
+      const { paddingLeft, paddingRight } = getComputedStyle(el);
       const r = el.getBoundingClientRect();
-      const pl = parseFloat(style.paddingLeft);
-      const pr = parseFloat(style.paddingRight);
+      const pl = parseFloat(paddingLeft);
+      const pr = parseFloat(paddingRight);
       return {
         left: r.left + pl,
         right: r.right - pr,
@@ -205,64 +202,51 @@ export const ColumnSortable = {
 
   _getEdge(el, x, y) {
     const r = this._contentRect(el);
+    const verticalEdge = () => ((y - r.top) / r.height < 0.5 ? "top" : "bottom");
 
-    // Column items are always horizontal context
     if (el.classList.contains("column-item")) {
       return x < r.left + r.width / 2 ? "left" : "right";
     }
 
-    // Block wrappers: left/right edges → column creation; center → vertical reorder
-    // Some block types (e.g. table) do not support column layout — vertical only.
     if (el.classList.contains("block-wrapper")) {
       const inner = el.querySelector("[data-id]");
-      const noColumns = inner?.dataset.blockType === "table";
-      if (!noColumns) {
+      if (inner?.dataset.blockType !== "table") {
         const relX = (x - r.left) / r.width;
         if (relX < 0.25) return "left";
         if (relX > 0.75) return "right";
       }
-      return (y - r.top) / r.height < 0.5 ? "top" : "bottom";
     }
 
-    // Column groups: top/bottom only
-    return (y - r.top) / r.height < 0.5 ? "top" : "bottom";
+    return verticalEdge();
   },
 
   _placeIndicator(el, edge) {
     const r = this._contentRect(el);
     const s = this._ind.style;
-    if (edge === "top") {
+
+    if (edge === "top" || edge === "bottom") {
+      s.top = `${edge === "top" ? r.top - 1 : r.bottom - 1}px`;
       s.left = `${r.left}px`;
       s.width = `${r.width}px`;
-      s.top = `${r.top - 1}px`;
       s.height = "3px";
-    } else if (edge === "bottom") {
-      s.left = `${r.left}px`;
-      s.width = `${r.width}px`;
-      s.top = `${r.bottom - 1}px`;
-      s.height = "3px";
-    } else if (edge === "left") {
-      const h = r.height * 0.8;
-      s.top = `${r.top + (r.height - h) / 2}px`;
-      s.height = `${h}px`;
-      s.left = `${r.left - 5}px`;
-      s.width = "3px";
-    } else {
-      const h = r.height * 0.8;
-      s.top = `${r.top + (r.height - h) / 2}px`;
-      s.height = `${h}px`;
-      s.left = `${r.right + 3}px`;
-      s.width = "3px";
+      return;
     }
+
+    const h = r.height * 0.8;
+    s.top = `${r.top + (r.height - h) / 2}px`;
+    s.height = `${h}px`;
+    s.left = `${edge === "left" ? r.left - 5 : r.right + 3}px`;
+    s.width = "3px";
   },
 
   // ── FLIP animation ───────────────────────────────────────────────────────────
 
   _snapshotPositions() {
     const map = new Map();
-    for (const el of this.el.querySelectorAll(
-      ":scope > .block-wrapper, :scope > .column-group, .column-item"
-    )) {
+    const elements = this.el.querySelectorAll(
+      ":scope > .block-wrapper, :scope > .column-group, .column-item",
+    );
+    for (const el of elements) {
       const r = el.getBoundingClientRect();
       map.set(el, { top: r.top, left: r.left });
     }
@@ -273,6 +257,7 @@ export const ColumnSortable = {
     const dragged = this._drag.el;
     for (const [el, before] of snapshot) {
       if (el === dragged || el.contains(dragged) || !this.el.contains(el)) continue;
+
       const after = el.getBoundingClientRect();
       const dy = before.top - after.top;
       const dx = before.left - after.left;
@@ -300,88 +285,92 @@ export const ColumnSortable = {
 
   _applyDrop() {
     const snapshot = this._snapshotPositions();
-    const dragged = this._drag.el;
+    const { el: dragged } = this._drag;
     const { el: target, edge } = this._drag.drop;
 
-    const isBlock = dragged.classList.contains("block-wrapper");
-    const isItem = dragged.classList.contains("column-item");
-    const targetIsBlock = target.classList.contains("block-wrapper");
-    const targetIsItem = target.classList.contains("column-item");
-
     if (edge === "left" || edge === "right") {
-      if (isBlock && targetIsBlock) {
-        // Two full-width blocks → merge into column
-        const content = dragged.querySelector("[data-id]");
-        edge === "right" ? target.appendChild(content) : target.prepend(content);
-        dragged.remove();
-      } else if (isItem && targetIsBlock) {
-        // column-item + full-width block → create new column
-        const sourceGroup = dragged.parentElement;
-        edge === "right" ? target.appendChild(dragged) : target.prepend(dragged);
-        // Clean up source group if it now has 0 or 1 items
-        if (sourceGroup?.classList.contains("column-group")) {
-          const remaining = sourceGroup.querySelectorAll("[data-id]");
-          if (remaining.length === 0) {
-            sourceGroup.remove();
-          } else if (remaining.length === 1) {
-            const promotedWrapper = document.createElement("div");
-            promotedWrapper.className = "block-wrapper flex dnd-dropped";
-            sourceGroup.after(promotedWrapper);
-            promotedWrapper.appendChild(remaining[0]);
-            sourceGroup.remove();
-          }
-        }
-      } else if (targetIsItem) {
-        // Insert into existing column group
-        const content = isBlock ? dragged.querySelector("[data-id]") : dragged;
-        edge === "right" ? target.after(content) : target.before(content);
-        if (isBlock) dragged.remove();
-      }
-    } else {
-      // Vertical reorder in main container
-      // If target is inside a column-group, use the group as the insertion anchor
-      const anchor = targetIsItem ? target.closest(".column-group") : target;
-      if (isItem) {
-        // Column item escaping to main container — wrap in a temporary block-wrapper
-        // so it already has the correct full-width appearance before LiveView patches.
-        const sourceGroup = dragged.parentElement;
-        const tempWrapper = document.createElement("div");
-        tempWrapper.className = "block-wrapper flex dnd-dropped";
-        edge === "bottom" ? anchor.after(tempWrapper) : anchor.before(tempWrapper);
-        tempWrapper.appendChild(dragged);
+      target.classList.contains("block-wrapper")
+        ? this._mergeIntoBlock(dragged, target, edge)
+        : this._insertIntoColumn(dragged, target, edge);
 
-        // If the source column-group is left with a single item, promote it to a
-        // full-width block-wrapper too so the DOM already matches what LiveView
-        // will render, eliminating the visible layout flash.
-        if (sourceGroup?.classList.contains("column-group")) {
-          const remaining = sourceGroup.querySelectorAll("[data-id]");
-          if (remaining.length === 0) {
-            sourceGroup.remove();
-          } else if (remaining.length === 1) {
-            const promotedWrapper = document.createElement("div");
-            promotedWrapper.className = "block-wrapper flex dnd-dropped";
-            sourceGroup.after(promotedWrapper);
-            promotedWrapper.appendChild(remaining[0]);
-            sourceGroup.remove();
-          }
-        }
-      } else {
-        edge === "bottom" ? anchor.after(dragged) : anchor.before(dragged);
-      }
+      this._animateFlip(snapshot);
+      this._sendLayout();
+
+      return;
     }
+
+    const anchor = target.classList.contains("column-item")
+      ? target.closest(".column-group")
+      : target;
+    dragged.classList.contains("column-item")
+      ? this._escapeToMain(dragged, anchor, edge)
+      : edge === "bottom"
+        ? anchor.after(dragged)
+        : anchor.before(dragged);
 
     this._animateFlip(snapshot);
     this._sendLayout();
   },
 
+  // Merge dragged (block-wrapper or column-item) into a block-wrapper target,
+  // creating or expanding a column group.
+  _mergeIntoBlock(dragged, target, edge) {
+    const isBlock = dragged.classList.contains("block-wrapper");
+    const sourceGroup = isBlock ? null : dragged.parentElement;
+    const content = isBlock ? dragged.querySelector("[data-id]") : dragged;
+    edge === "right" ? target.appendChild(content) : target.prepend(content);
+    if (isBlock) dragged.remove();
+    this._collapseSourceGroup(sourceGroup);
+  },
+
+  // Insert dragged (block-wrapper or column-item) adjacent to a column-item target.
+  _insertIntoColumn(dragged, target, edge) {
+    const isBlock = dragged.classList.contains("block-wrapper");
+    const content = isBlock ? dragged.querySelector("[data-id]") : dragged;
+    edge === "right" ? target.after(content) : target.before(content);
+    if (isBlock) dragged.remove();
+  },
+
+  // Move a column-item out of its group into the main container as a full-width block.
+  _escapeToMain(dragged, anchor, edge) {
+    const sourceGroup = dragged.parentElement;
+    const wrapper = this._tempWrapper();
+    edge === "bottom" ? anchor.after(wrapper) : anchor.before(wrapper);
+    wrapper.appendChild(dragged);
+    this._collapseSourceGroup(sourceGroup);
+  },
+
+  // After removing an item from a column-group: promote the last remaining item
+  // to a full-width block-wrapper, or remove the group if now empty.
+  _collapseSourceGroup(group) {
+    if (!group?.classList.contains("column-group")) return;
+    const remaining = group.querySelectorAll("[data-id]");
+    if (remaining.length === 0) {
+      group.remove();
+
+      return;
+    }
+
+    if (remaining.length === 1) {
+      const wrapper = this._tempWrapper();
+      group.after(wrapper);
+      wrapper.appendChild(remaining[0]);
+      group.remove();
+    }
+  },
+
+  _tempWrapper() {
+    const el = document.createElement("div");
+    el.className = "block-wrapper flex dnd-dropped";
+    return el;
+  },
+
   _sendLayout() {
     const items = this._collectLayout();
-    const target = this.el.dataset.phxTarget;
-    if (target) {
-      this.pushEventTo(target, "reorder_with_columns", { items });
-    } else {
-      this.pushEvent("reorder_with_columns", { items });
-    }
+    const phxTarget = this.el.dataset.phxTarget;
+    phxTarget
+      ? this.pushEventTo(phxTarget, "reorder_with_columns", { items })
+      : this.pushEvent("reorder_with_columns", { items });
   },
 
   // ── Layout collection ────────────────────────────────────────────────────────
@@ -391,24 +380,39 @@ export const ColumnSortable = {
     for (const child of this.el.children) {
       if (child.classList.contains("column-group")) {
         const groupId = child.dataset.columnGroup;
-        child.querySelectorAll("[data-id]").forEach((el, idx) => {
-          items.push({ id: el.dataset.id, column_group_id: groupId, column_index: idx });
-        });
-      } else if (child.classList.contains("block-wrapper")) {
+        let idx = 0;
+        for (const el of child.querySelectorAll("[data-id]")) {
+          items.push({ id: el.dataset.id, column_group_id: groupId, column_index: idx++ });
+        }
+
+        continue;
+      }
+
+      if (child.classList.contains("block-wrapper")) {
         const blockEls = child.querySelectorAll("[data-id]");
         if (blockEls.length === 1) {
           items.push({ id: blockEls[0].dataset.id, column_group_id: null, column_index: 0 });
-        } else if (blockEls.length > 1) {
-          const gid = crypto.randomUUID();
-          blockEls.forEach((el, idx) => {
-            items.push({ id: el.dataset.id, column_group_id: gid, column_index: idx });
-          });
+
+          continue;
         }
-      } else if (child.dataset.id) {
+
+        if (blockEls.length > 1) {
+          const gid = crypto.randomUUID();
+          let idx = 0;
+          for (const el of blockEls) {
+            items.push({ id: el.dataset.id, column_group_id: gid, column_index: idx++ });
+          }
+
+          continue;
+        }
+      }
+
+      if (child.dataset.id) {
         // Escaped column item → treat as full-width
         items.push({ id: child.dataset.id, column_group_id: null, column_index: 0 });
       }
     }
+
     return items;
   },
 
