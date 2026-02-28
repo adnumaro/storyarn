@@ -65,10 +65,10 @@ defmodule StoryarnWeb.Components.FocusLayout do
       <%!-- Back to workspace --%>
       <.link
         navigate={~p"/workspaces/#{@workspace.slug}"}
-        class="btn btn-ghost btn-md btn-square tooltip tooltip-bottom"
+        class="btn btn-ghost btn-sm btn-square tooltip tooltip-bottom"
         data-tip={gettext("Back to Workspace")}
       >
-        <.icon name="chevron-left" class="size-6" />
+        <.icon name="chevron-left" class="size-4" />
       </.link>
 
       <%!-- Tree panel toggle --%>
@@ -77,26 +77,26 @@ defmodule StoryarnWeb.Components.FocusLayout do
         type="button"
         phx-click="tree_panel_toggle"
         class={[
-          "btn btn-ghost btn-md btn-square tooltip tooltip-bottom",
+          "btn btn-ghost btn-sm btn-square tooltip tooltip-bottom",
           @tree_panel_open && "bg-base-300"
         ]}
         data-tip={if @tree_panel_open, do: gettext("Hide panel"), else: gettext("Show panel")}
       >
-        <.icon name="panel-left" class="size-6" />
+        <.icon name="panel-left" class="size-4" />
       </button>
 
-      <div class="w-px h-7 bg-base-300"></div>
+      <div class="w-px h-5 bg-base-300"></div>
 
       <%!-- Tool switcher: icon + label, opens dropdown to switch tools --%>
       <div class="dropdown dropdown-bottom">
         <button
           type="button"
           tabindex="0"
-          class="btn btn-ghost btn-md gap-2"
+          class="btn btn-ghost btn-sm gap-1.5"
         >
-          <.icon name={@active_icon} class="size-5" />
-          <span class="hidden xl:inline text-base font-medium">{tool_label(@active_tool)}</span>
-          <.icon name="chevron-down" class="size-3.5 opacity-50" />
+          <.icon name={@active_icon} class="size-4" />
+          <span class="hidden xl:inline text-sm font-medium">{tool_label(@active_tool)}</span>
+          <.icon name="chevron-down" class="size-3 opacity-50" />
         </button>
         <.tool_switcher_dropdown
           active_tool={@active_tool}
@@ -133,9 +133,9 @@ defmodule StoryarnWeb.Components.FocusLayout do
     <nav class="flex items-center gap-1 px-2 py-1.5 surface-panel">
       <%!-- Project name dropdown --%>
       <div class="dropdown dropdown-end">
-        <button tabindex="0" class="btn btn-ghost btn-md gap-2 font-medium max-w-52">
-          <.icon name="folder" class="size-5 opacity-60 shrink-0" />
-          <span class="hidden xl:inline truncate text-base toolbar-collapsible">{@project.name}</span>
+        <button tabindex="0" class="btn btn-ghost btn-sm gap-1.5 font-medium max-w-52">
+          <.icon name="folder" class="size-4 opacity-60 shrink-0" />
+          <span class="hidden xl:inline truncate text-sm toolbar-collapsible">{@project.name}</span>
         </button>
         <div
           tabindex="0"
@@ -143,12 +143,12 @@ defmodule StoryarnWeb.Components.FocusLayout do
         >
           <%!-- Project info (non-selectable) --%>
           <div class="px-4 py-3">
-            <p class="text-base font-medium truncate">{@project.name}</p>
-            <p class="text-sm text-base-content/50 truncate">{@workspace.name}</p>
+            <p class="text-sm font-medium truncate">{@project.name}</p>
+            <p class="text-xs text-base-content/50 truncate">{@workspace.name}</p>
           </div>
           <div class="border-t border-base-300"></div>
           <%!-- Menu items --%>
-          <ul class="menu p-1 text-base">
+          <ul class="menu p-1 text-sm">
             <li>
               <.link navigate={
                 ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/export-import"
@@ -180,10 +180,10 @@ defmodule StoryarnWeb.Components.FocusLayout do
 
       <%!-- User avatar --%>
       <div class="dropdown dropdown-end">
-        <button tabindex="0" class="btn btn-ghost btn-md btn-circle">
+        <button tabindex="0" class="btn btn-ghost btn-sm btn-circle">
           <div class="avatar placeholder">
-            <div class="bg-neutral text-neutral-content rounded-full size-8 content-center">
-              <span class="text-sm">{user_initials(assigns)}</span>
+            <div class="bg-neutral text-neutral-content rounded-full size-7 content-center">
+              <span class="text-xs">{user_initials(assigns)}</span>
             </div>
           </div>
         </button>
@@ -193,16 +193,16 @@ defmodule StoryarnWeb.Components.FocusLayout do
         >
           <%!-- User info (non-selectable) --%>
           <div class="px-4 py-3">
-            <p class="text-base font-medium truncate">
+            <p class="text-sm font-medium truncate">
               {user_display_name(assigns)}
             </p>
-            <p class="text-sm text-base-content/50 truncate">
+            <p class="text-xs text-base-content/50 truncate">
               {user_email(assigns)}
             </p>
           </div>
           <div class="border-t border-base-300"></div>
           <%!-- Menu items --%>
-          <ul class="menu p-1 text-base">
+          <ul class="menu p-1 text-sm">
             <li>
               <.link navigate={~p"/users/settings"}>
                 <.icon name="user" class="size-5" />
@@ -236,7 +236,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
     ~H"""
     <ul
       tabindex="0"
-      class="dropdown-content menu bg-base-200 border border-base-300 rounded-lg shadow-sm w-52 z-[60] mt-3 text-base"
+      class="dropdown-content menu bg-base-200 border border-base-300 rounded-lg shadow-sm w-52 z-[60] mt-3 text-sm"
     >
       <li :for={tool <- @tools} :if={tool.key != @active_tool}>
         <.link navigate={tool_path(@workspace, @project, tool.section)}>
