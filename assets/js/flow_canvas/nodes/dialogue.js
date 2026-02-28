@@ -5,12 +5,7 @@ import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { MessageSquare } from "lucide";
 import { createIconSvg } from "../node_config.js";
-import {
-  headerStyle,
-  nodeShell,
-  renderIndicators,
-  renderSockets,
-} from "./render_helpers.js";
+import { headerStyle, nodeShell, renderIndicators, renderSockets } from "./render_helpers.js";
 
 export default {
   config: {
@@ -67,14 +62,14 @@ export default {
     const bodyHtml = hasText
       ? html`
           <div class="dialogue-content">
-            ${nodeData.stage_directions
-              ? html`<div class="stage-directions-inline">
+            ${
+              nodeData.stage_directions
+                ? html`<div class="stage-directions-inline">
                   ${nodeData.stage_directions}
                 </div>`
-              : ""}
-            ${preview
-              ? html`<div class="dialogue-text">${preview}</div>`
-              : ""}
+                : ""
+            }
+            ${preview ? html`<div class="dialogue-text">${preview}</div>` : ""}
           </div>
         `
       : "";

@@ -11,6 +11,7 @@ defmodule StoryarnWeb.Components.BlockComponents.LayoutBlocksTest do
 
     %{
       id: "block-1",
+      type: "date",
       config: %{"label" => label},
       value: %{"content" => value},
       is_constant: is_constant
@@ -93,6 +94,7 @@ defmodule StoryarnWeb.Components.BlockComponents.LayoutBlocksTest do
     test "handles missing label gracefully" do
       block = %{
         id: "block-1",
+        type: "date",
         config: %{},
         value: %{"content" => "2024-01-01"},
         is_constant: false

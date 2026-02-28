@@ -18,6 +18,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
     Map.merge(
       %{
         id: "block-1",
+        type: "select",
         config: %{
           "label" => "Class",
           "placeholder" => "Choose...",
@@ -38,6 +39,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
     Map.merge(
       %{
         id: "block-2",
+        type: "multi_select",
         config: %{
           "label" => "Skills",
           "placeholder" => "Add skill...",

@@ -274,9 +274,7 @@ export const ColumnSortable = {
       return siblings[siblings.length - 1] === el;
     }
 
-    const siblings = parent.querySelectorAll(
-      ":scope > .block-wrapper, :scope > .column-group",
-    );
+    const siblings = parent.querySelectorAll(":scope > .block-wrapper, :scope > .column-group");
     return siblings[siblings.length - 1] === el;
   },
 

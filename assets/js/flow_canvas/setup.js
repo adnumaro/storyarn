@@ -159,7 +159,11 @@ export function createPlugins(container, hook) {
     // Cache socket rendered events for post-init position recalculation.
     // BaseSocketPosition only recalculates OUTPUT positions on noderesized;
     // replaying these events forces ALL sockets to recalculate.
-    if (context.type === "rendered" && context.data?.type === "socket" && !hook._isRecalculatingSockets) {
+    if (
+      context.type === "rendered" &&
+      context.data?.type === "socket" &&
+      !hook._isRecalculatingSockets
+    ) {
       if (!hook._socketRenderedEvents) hook._socketRenderedEvents = [];
       hook._socketRenderedEvents.push(context);
     }

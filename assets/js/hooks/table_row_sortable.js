@@ -262,7 +262,8 @@ export const TableRowSortable = {
       const { y } = this._ptr;
       const sp = this._scrollParent;
       if (y < margin) sp.scrollTop -= (margin - y) * speed;
-      if (y > window.innerHeight - margin) sp.scrollTop += (y - (window.innerHeight - margin)) * speed;
+      if (y > window.innerHeight - margin)
+        sp.scrollTop += (y - (window.innerHeight - margin)) * speed;
       this._scrollRaf = requestAnimationFrame(tick);
     };
     this._scrollRaf = requestAnimationFrame(tick);

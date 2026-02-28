@@ -80,9 +80,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
           id: 1,
           name: "Jaime",
           color: "#ff0000",
-          avatar_asset: %{url: "https://cdn.test/jaime.png"}
+          avatar_asset: %{url: "https://cdn.test/jaime.png"},
+          banner_asset: %{url: "https://cdn.test/jaime-banner.png"}
         },
-        %{id: 2, name: "Anya", color: "#00ff00", avatar_asset: nil}
+        %{id: 2, name: "Anya", color: "#00ff00", avatar_asset: nil, banner_asset: nil}
       ]
 
       result = FormHelpers.sheets_map(sheets)
@@ -93,6 +94,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
                id: 1,
                name: "Jaime",
                avatar_url: "https://cdn.test/jaime.png",
+               banner_url: "https://cdn.test/jaime-banner.png",
                color: "#ff0000"
              }
 
@@ -100,22 +102,24 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
                id: 2,
                name: "Anya",
                avatar_url: nil,
+               banner_url: nil,
                color: "#00ff00"
              }
     end
 
     test "handles avatar_asset with non-binary url" do
-      sheets = [%{id: 10, name: "NPC", color: nil, avatar_asset: %{url: nil}}]
+      sheets = [%{id: 10, name: "NPC", color: nil, avatar_asset: %{url: nil}, banner_asset: nil}]
       result = FormHelpers.sheets_map(sheets)
 
       assert result["10"].avatar_url == nil
     end
 
     test "handles avatar_asset without url key" do
-      sheets = [%{id: 10, name: "NPC", color: nil, avatar_asset: %{}}]
+      sheets = [%{id: 10, name: "NPC", color: nil, avatar_asset: %{}, banner_asset: %{}}]
       result = FormHelpers.sheets_map(sheets)
 
       assert result["10"].avatar_url == nil
+      assert result["10"].banner_url == nil
     end
 
     test "returns empty map for empty list" do

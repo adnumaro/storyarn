@@ -274,7 +274,9 @@ export const SortableTree = {
     const { el: target, zone } = this._drag.drop;
 
     const { parentId, position } =
-      zone === "center" ? this._nestPosition(target, draggedId) : this._siblingPosition(target, zone, draggedId);
+      zone === "center"
+        ? this._nestPosition(target, draggedId)
+        : this._siblingPosition(target, zone, draggedId);
 
     const isSheets = this.treeType === "sheets";
 
@@ -288,7 +290,9 @@ export const SortableTree = {
   _nestPosition(target, draggedId) {
     const container = target.querySelector("[data-sortable-container]");
     const count = container
-      ? Array.from(container.children).filter((el) => el.dataset.itemId && el.dataset.itemId !== draggedId).length
+      ? Array.from(container.children).filter(
+          (el) => el.dataset.itemId && el.dataset.itemId !== draggedId,
+        ).length
       : 0;
     return { parentId: target.dataset.itemId, position: count };
   },
@@ -330,7 +334,8 @@ export const SortableTree = {
       const { y } = this._ptr;
       const sp = this._scrollParent;
       if (y < margin) sp.scrollTop -= (margin - y) * speed;
-      if (y > window.innerHeight - margin) sp.scrollTop += (y - (window.innerHeight - margin)) * speed;
+      if (y > window.innerHeight - margin)
+        sp.scrollTop += (y - (window.innerHeight - margin)) * speed;
       this._scrollRaf = requestAnimationFrame(tick);
     };
     this._scrollRaf = requestAnimationFrame(tick);
