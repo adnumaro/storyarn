@@ -214,52 +214,51 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
               <tr :for={row <- @rows} data-row-id={row.id} class="group/row">
                 <%!-- Row label cell --%>
                 <td class="relative sticky left-0 z-10 bg-base-100 font-medium text-base-content/60 text-sm focus-within:border-primary focus-within:border-2">
-                  <div :if={@can_manage} class="flex items-center">
-                    <%!-- Row handle: grip (drag) + menu (delete) — visible on row hover --%>
-                    <div
-                      phx-hook="TableRowMenu"
-                      id={"row-menu-#{row.id}"}
-                      data-phx-target={@target}
-                      class="flex items-center opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0"
+                  <%!-- Row handle: grip (drag) + menu (delete) — aligned to top border --%>
+                  <div
+                    :if={@can_manage}
+                    phx-hook="TableRowMenu"
+                    id={"row-menu-#{row.id}"}
+                    data-phx-target={@target}
+                    class="absolute -left-[5px] top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/row:opacity-100 transition-opacity"
+                  >
+                    <button
+                      data-role="trigger"
+                      type="button"
+                      class="cursor-grab row-drag-handle p-0.5 rounded hover:bg-base-content/10"
                     >
-                      <button
-                        data-role="trigger"
-                        type="button"
-                        class="cursor-grab row-drag-handle p-0.5 rounded hover:bg-base-content/10"
-                      >
-                        <.icon name="grip-vertical" class="size-3.5 text-base-content/40" />
-                      </button>
-                      <template data-role="popover-template">
-                        <ul class="menu p-2">
-                          <li>
-                            <button
-                              disabled={length(@rows) <= 1}
-                              data-event="delete_table_row"
-                              data-params={Jason.encode!(%{"row-id" => row.id})}
-                              class="text-error disabled:opacity-30"
-                            >
-                              <.icon name="trash-2" class="size-3" />
-                              {dgettext("sheets", "Delete")}
-                            </button>
-                          </li>
-                        </ul>
-                      </template>
-                    </div>
-
-                    <label class="block cursor-text min-w-0 flex-1">
-                      <input
-                        type="text"
-                        value={row.name}
-                        class="w-full px-1 py-0.5 text-sm font-medium bg-transparent border-0 outline-none focus:outline-none"
-                        phx-blur="rename_table_row"
-                        phx-keydown="rename_table_row_keydown"
-                        phx-key="Enter"
-                        phx-value-row-id={row.id}
-                        phx-target={@target}
-                      />
-                      <span class="text-[10px] text-base-content/30 px-1">{row.slug}</span>
-                    </label>
+                      <.icon name="grip-vertical" class="size-3.5 text-base-content/40" />
+                    </button>
+                    <template data-role="popover-template">
+                      <ul class="menu p-2">
+                        <li>
+                          <button
+                            disabled={length(@rows) <= 1}
+                            data-event="delete_table_row"
+                            data-params={Jason.encode!(%{"row-id" => row.id})}
+                            class="text-error disabled:opacity-30"
+                          >
+                            <.icon name="trash-2" class="size-3" />
+                            {dgettext("sheets", "Delete")}
+                          </button>
+                        </li>
+                      </ul>
+                    </template>
                   </div>
+
+                  <label :if={@can_manage} class="block cursor-text">
+                    <input
+                      type="text"
+                      value={row.name}
+                      class="w-full px-1 py-0.5 text-sm font-medium bg-transparent border-0 outline-none focus:outline-none"
+                      phx-blur="rename_table_row"
+                      phx-keydown="rename_table_row_keydown"
+                      phx-key="Enter"
+                      phx-value-row-id={row.id}
+                      phx-target={@target}
+                    />
+                    <span class="text-[10px] text-base-content/30 px-1">{row.slug}</span>
+                  </label>
                   <div :if={!@can_manage}>
                     <span>{row.name}</span>
                     <div class="text-[10px] text-base-content/30">{row.slug}</div>
