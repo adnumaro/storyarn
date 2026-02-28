@@ -13,6 +13,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
   import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias PlaywrightEx.Frame
   alias Storyarn.Accounts
   alias Storyarn.Repo
 
@@ -66,8 +67,12 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
       |> click_button("New Sheet")
-      # Sheet is created directly with default name and navigates to detail
-      |> assert_has("h1", text: "Untitled")
+      # push_navigate triggers LiveView client-side navigation; wait for the
+      # detail page to mount by polling for the sheet title element.
+      |> unwrap(fn %{frame_id: frame_id} ->
+        Frame.wait_for_selector(frame_id, selector: "#sheet-title", timeout: 10_000)
+      end)
+      |> assert_has("#sheet-title")
     end
 
     test "shows subsheet count on parent sheets", %{conn: conn} do
