@@ -15,15 +15,22 @@ export const ScrollCollapse = {
       const isScrolled = this.el.scrollTop > 48;
       if (isScrolled !== this.scrolled) {
         this.scrolled = isScrolled;
-        if (isScrolled) {
-          this.wrapper.setAttribute("data-scrolled", "");
-        } else {
-          this.wrapper.removeAttribute("data-scrolled");
-        }
+        this._applyState();
       }
     };
 
     this.el.addEventListener("scroll", this.onScroll, { passive: true });
+  },
+
+  updated() {
+    if (!this.scrolled) return;
+    // Suppress transitions during patch to prevent flash
+    const els = document.querySelectorAll(".toolbar-collapsible");
+    for (const el of els) el.style.transition = "none";
+    this._applyState();
+    requestAnimationFrame(() => {
+      for (const el of els) el.style.transition = "";
+    });
   },
 
   destroyed() {
@@ -31,6 +38,15 @@ export const ScrollCollapse = {
       this.el.removeEventListener("scroll", this.onScroll);
     }
     if (this.wrapper) {
+      this.wrapper.removeAttribute("data-scrolled");
+    }
+  },
+
+  _applyState() {
+    if (!this.wrapper) return;
+    if (this.scrolled) {
+      this.wrapper.setAttribute("data-scrolled", "");
+    } else {
       this.wrapper.removeAttribute("data-scrolled");
     }
   },
