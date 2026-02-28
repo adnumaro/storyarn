@@ -22,7 +22,7 @@ defmodule StoryarnWeb.AssetLive.Index do
       can_edit={@can_edit}
     >
       <:top_bar_extra_right :if={@can_edit}>
-        <div class="flex items-center px-1.5 py-1 bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg">
+        <div class="flex items-center px-1.5 py-1 surface-panel">
           <label class={[
             "btn btn-ghost btn-sm gap-1.5",
             @uploading && "btn-disabled"

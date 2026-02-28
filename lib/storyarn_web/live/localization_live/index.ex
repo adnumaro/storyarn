@@ -25,7 +25,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       can_edit={@can_edit}
     >
       <:top_bar_extra_right :if={@can_edit && @target_languages != []}>
-        <div class="flex items-center gap-1 px-1.5 py-1 bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg">
+        <div class="flex items-center gap-1 px-1.5 py-1 surface-panel">
           <.link
             navigate={
               ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/report"

@@ -22,7 +22,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneHeader do
 
   def map_actions(assigns) do
     ~H"""
-    <div class="flex items-center gap-1 px-1.5 py-1 bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg">
+    <div class="flex items-center gap-1 px-1.5 py-1 surface-panel">
       <%!-- Play / Explore button --%>
       <.link
         navigate={
@@ -243,7 +243,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneHeader do
 
   def map_info_bar(assigns) do
     ~H"""
-    <div class="hidden lg:flex items-center gap-2 bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg px-3">
+    <div class="hidden lg:flex items-center gap-2 surface-panel px-3">
       <div class="flex items-baseline gap-1">
         <span
           :for={{ancestor, idx} <- Enum.with_index(@ancestors)}

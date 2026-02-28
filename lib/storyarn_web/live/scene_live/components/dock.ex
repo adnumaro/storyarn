@@ -28,7 +28,7 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
     ~H"""
     <div
       id="scene-dock"
-      class="absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-1 bg-base-100 rounded-2xl border border-base-300 shadow-lg px-2 py-2"
+      class="absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-1 surface-panel px-2 py-2"
     >
       <%!-- Group 1: Navigation --%>
       <.dock_button

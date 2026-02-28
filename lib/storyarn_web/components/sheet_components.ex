@@ -62,7 +62,7 @@ defmodule StoryarnWeb.Components.SheetComponents do
 
   def sheet_breadcrumb(assigns) do
     ~H"""
-    <div class="hidden lg:flex items-center gap-1 bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg px-3 py-1.5">
+    <div class="hidden lg:flex items-center gap-1 surface-panel px-3 py-1.5">
       <span
         :for={{ancestor, idx} <- Enum.with_index(@ancestors)}
         class="flex items-center gap-1 text-xs text-base-content/60"

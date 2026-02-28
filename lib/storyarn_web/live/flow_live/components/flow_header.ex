@@ -23,7 +23,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
 
   def flow_actions(assigns) do
     ~H"""
-    <div class="flex items-center gap-1 px-1.5 py-1 bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg">
+    <div class="flex items-center gap-1 px-1.5 py-1 surface-panel">
       <.link
         navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}/play"}
         class="btn btn-ghost btn-sm gap-1.5"
@@ -84,7 +84,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
       <% forward_entry = @nav_history && NavigationHistory.peek_forward(@nav_history) %>
       <div
         :if={back_entry || forward_entry}
-        class="flex items-center gap-0.5 bg-base-200/95 backdrop-blur rounded-xl shadow-lg border border-base-300 px-1"
+        class="flex items-center gap-0.5 surface-panel px-1"
       >
         <button
           :if={back_entry}
@@ -109,7 +109,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
       </div>
 
       <%!-- Flow title pill --%>
-      <div class="hidden lg:flex items-center gap-2 bg-base-200/95 backdrop-blur rounded-xl shadow-lg border border-base-300 px-3 py-1.5">
+      <div class="hidden lg:flex items-center gap-2 surface-panel px-3 py-1.5">
         <div>
           <h1
             :if={@can_edit}
@@ -179,10 +179,10 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
           type="button"
           tabindex="0"
           class={[
-            "flex items-center gap-1.5 bg-base-200/95 backdrop-blur rounded-xl shadow-lg border px-2.5 py-1.5 text-xs",
+            "flex items-center gap-1.5 surface-panel px-2.5 py-1.5 text-xs",
             if(@scene_name,
               do: "border-primary/30 text-base-content",
-              else: "border-base-300 text-base-content/50"
+              else: "text-base-content/50"
             )
           ]}
           title={dgettext("flows", "Scene backdrop")}
