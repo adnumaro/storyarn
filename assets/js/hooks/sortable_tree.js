@@ -194,7 +194,8 @@ export const SortableTree = {
     while (cur && cur !== document.body) {
       const id = cur.dataset?.itemId;
       if (id && this.el.contains(cur) && cur !== this._drag.el && !this._drag.el.contains(cur)) {
-        return { el: cur, zone: this._getZone(cur, y) };
+        const zone = this._getZone(cur, y);
+        if (zone) return { el: cur, zone };
       }
       cur = cur.parentElement;
     }
@@ -209,6 +210,7 @@ export const SortableTree = {
     const ratio = (y - r.top) / r.height;
 
     if (ratio < 0.25) return "top";
+    if (ratio > 1) return null;
     if (this._isLastSibling(item) && ratio > 0.75) return "bottom";
     return "center";
   },
