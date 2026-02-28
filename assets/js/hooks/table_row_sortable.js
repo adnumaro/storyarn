@@ -179,18 +179,54 @@ export const TableRowSortable = {
     return null;
   },
 
+  // ── FLIP animation ───────────────────────────────────────────────────────
+
+  _snapshotPositions() {
+    const map = new Map();
+    for (const row of this.el.querySelectorAll("[data-row-id]")) {
+      map.set(row, row.getBoundingClientRect().top);
+    }
+    return map;
+  },
+
+  _animateFlip(snapshot) {
+    const dragged = this._drag.el;
+    for (const [el, beforeTop] of snapshot) {
+      if (el === dragged) continue;
+      const dy = beforeTop - el.getBoundingClientRect().top;
+      if (Math.abs(dy) < 1) continue;
+
+      el.style.transition = "none";
+      el.style.transform = `translateY(${dy}px)`;
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          el.style.transition = "transform 220ms cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+          el.style.transform = "";
+          const cleanup = () => {
+            el.style.transition = "";
+            el.style.transform = "";
+            el.removeEventListener("transitionend", cleanup);
+          };
+          el.addEventListener("transitionend", cleanup);
+        });
+      });
+    }
+  },
+
   // ── Drop application ──────────────────────────────────────────────────────
 
   _applyDrop() {
+    const snapshot = this._snapshotPositions();
     const { el: target, edge } = this._drag.drop;
-    const draggedId = this._drag.el.dataset.rowId;
 
-    const rows = Array.from(this.el.querySelectorAll("[data-row-id]"));
-    const ids = rows.map((r) => r.dataset.rowId).filter((id) => id !== draggedId);
+    // Move the row in the DOM
+    edge === "top" ? target.before(this._drag.el) : target.after(this._drag.el);
 
-    const targetIdx = ids.indexOf(target.dataset.rowId);
-    const insertIdx = edge === "top" ? targetIdx : targetIdx + 1;
-    ids.splice(insertIdx, 0, draggedId);
+    this._animateFlip(snapshot);
+
+    // Collect new order and push
+    const ids = Array.from(this.el.querySelectorAll("[data-row-id]")).map((r) => r.dataset.rowId);
 
     pushWithTarget(this, "reorder_table_rows", {
       block_id: this.el.dataset.blockId,
