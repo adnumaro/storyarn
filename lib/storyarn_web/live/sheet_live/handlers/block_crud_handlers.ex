@@ -138,6 +138,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
       Sheets.list_blocks(sheet_id)
       |> Map.new(fn b -> {b.id, b} end)
 
+    # Snapshot current layout for undo
+    prev_layout = snapshot_block_layout(blocks_by_id)
+
     sanitized =
       items
       |> Enum.map(&ContentTabHelpers.sanitize_column_item(&1, blocks_by_id))
@@ -147,11 +150,21 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
       {:ok, _} ->
         helpers.maybe_create_version.(socket)
         helpers.notify_parent.(socket, :saved)
+        helpers.push_undo.({:reorder_blocks_with_columns, prev_layout, sanitized})
         {:noreply, helpers.reload_blocks.(socket)}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reorder blocks."))}
     end
+  end
+
+  defp snapshot_block_layout(blocks_by_id) do
+    blocks_by_id
+    |> Map.values()
+    |> Enum.sort_by(& &1.position)
+    |> Enum.map(fn b ->
+      %{id: b.id, column_group_id: b.column_group_id, column_index: b.column_index}
+    end)
   end
 
   # ---------------------------------------------------------------------------

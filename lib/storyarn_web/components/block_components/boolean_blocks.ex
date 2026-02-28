@@ -49,10 +49,11 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
       |> assign(:target_selector, target_selector)
 
     ~H"""
-    <div class="py-1">
+    <div>
       <.block_label
         label={@label}
         is_constant={@is_constant}
+        block_type={@block.type}
         block_id={@block.id}
         can_edit={@can_edit}
         target={@target}

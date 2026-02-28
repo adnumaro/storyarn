@@ -206,6 +206,13 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
     end
   end
 
+  defp undo_action({:reorder_blocks_with_columns, prev_layout, new_layout}, socket) do
+    case Sheets.reorder_blocks_with_columns(socket.assigns.sheet.id, prev_layout) do
+      {:ok, _} -> {:ok, socket, {:reorder_blocks_with_columns, prev_layout, new_layout}}
+      {:error, _} -> {:error, socket}
+    end
+  end
+
   # ===========================================================================
   # Undo: Block values & config
   # ===========================================================================
@@ -524,6 +531,22 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
 
       {:error, _} ->
         {:error, socket}
+    end
+  end
+
+  defp redo_action({:reorder_blocks_with_columns, _prev_layout, new_layout}, socket) do
+    sheet_id = socket.assigns.sheet.id
+
+    current_layout =
+      Sheets.list_blocks(sheet_id)
+      |> Enum.sort_by(& &1.position)
+      |> Enum.map(fn b ->
+        %{id: b.id, column_group_id: b.column_group_id, column_index: b.column_index}
+      end)
+
+    case Sheets.reorder_blocks_with_columns(sheet_id, new_layout) do
+      {:ok, _} -> {:ok, socket, {:reorder_blocks_with_columns, current_layout, new_layout}}
+      {:error, _} -> {:error, socket}
     end
   end
 

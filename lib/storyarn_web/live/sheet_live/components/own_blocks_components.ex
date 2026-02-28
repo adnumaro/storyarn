@@ -50,7 +50,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
     ~H"""
     <div
       id="blocks-container"
-      class="flex flex-col gap-2 -mx-2 sm:-mx-8 md:-mx-16 -mt-2"
+      class="flex flex-col gap-1 -mx-2 sm:-mx-8 md:-mx-16 -mt-2"
       phx-hook={if @can_edit, do: "ColumnSortable", else: nil}
       phx-target={@target}
       data-phx-target={"##{@component_id}"}
@@ -90,7 +90,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
           <% :column_group -> %>
             <div
               class={[
-                "column-group grid gap-8 px-2 sm:px-8 md:px-16",
+                "column-group grid gap-3 px-2 sm:px-8 md:px-16",
                 ContentTabHelpers.column_grid_class(item.column_count)
               ]}
               data-column-group={item.group_id}

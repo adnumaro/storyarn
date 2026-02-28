@@ -9,6 +9,7 @@
  *
  * Drop logic: physically moves DOM elements on drop, then calls collectLayout()
  * to build the layout array and push reorder_with_columns to LiveView.
+ * FLIP animation runs in updated() after LiveView patches the DOM to avoid flash.
  */
 export const ColumnSortable = {
   mounted() {
@@ -17,6 +18,8 @@ export const ColumnSortable = {
     this._scrollParent = null;
     this._scrollRaf = null;
     this._preview = null;
+    this._pendingFlip = null; // snapshot for deferred FLIP in updated()
+    this._flipTimeout = null;
 
     this._onDown = this._pointerDown.bind(this);
     this._onMove = this._pointerMove.bind(this);
@@ -31,12 +34,33 @@ export const ColumnSortable = {
   },
 
   updated() {
-    // LiveView patched the DOM — drag is already complete, nothing to rebuild
+    if (!this._pendingFlip) return;
+
+    clearTimeout(this._flipTimeout);
+    const snapshot = this._pendingFlip;
+    this._pendingFlip = null;
+
+    // Cleanup drag state (was deferred from _pointerUp)
+    this._drag?.el?.classList.remove("dnd-dragging");
+    document.body.classList.remove("dnd-active");
+    this._preview?.remove();
+    this._preview = null;
+    this._ind.style.display = "none";
+    if (this._scrollRaf) {
+      cancelAnimationFrame(this._scrollRaf);
+      this._scrollRaf = null;
+    }
+    this._drag = null;
+
+    // Animate from old positions to new (server-rendered) positions
+    this._animateFlipById(snapshot);
   },
 
   destroyed() {
     this.el.removeEventListener("pointerdown", this._onDown);
     this._ind.remove();
+    clearTimeout(this._flipTimeout);
+    this._pendingFlip = null;
     this._cleanup();
   },
 
@@ -81,8 +105,26 @@ export const ColumnSortable = {
 
   _pointerUp() {
     if (!this._drag) return;
-    if (this._drag.active && this._drag.drop) this._applyDrop();
-    this._cleanup();
+
+    if (this._drag.active && this._drag.drop) {
+      this._applyDrop();
+      // Remove listeners and non-essential visuals immediately
+      document.removeEventListener("pointermove", this._onMove);
+      document.removeEventListener("pointerup", this._onUp);
+      document.removeEventListener("pointercancel", this._onUp);
+      this._ind.style.display = "none";
+      if (this._scrollRaf) {
+        cancelAnimationFrame(this._scrollRaf);
+        this._scrollRaf = null;
+      }
+      // Fade out preview immediately (updated() removes it fully)
+      if (this._preview) {
+        this._preview.style.transition = "opacity 150ms ease";
+        this._preview.style.opacity = "0";
+      }
+    } else {
+      this._cleanup();
+    }
   },
 
   // ── Drag lifecycle ───────────────────────────────────────────────────────────
@@ -259,22 +301,22 @@ export const ColumnSortable = {
 
   // ── FLIP animation ───────────────────────────────────────────────────────────
 
-  _snapshotPositions() {
+  // Snapshot block positions by data-id (survives LiveView DOM morph)
+  _snapshotPositionsById() {
     const map = new Map();
-    const elements = this.el.querySelectorAll(
-      ":scope > .block-wrapper, :scope > .column-group, .column-item",
-    );
-    for (const el of elements) {
+    for (const el of this.el.querySelectorAll("[data-id]")) {
       const r = el.getBoundingClientRect();
-      map.set(el, { top: r.top, left: r.left });
+      map.set(el.dataset.id, { top: r.top, left: r.left });
     }
     return map;
   },
 
-  _animateFlip(snapshot) {
-    const dragged = this._drag.el;
-    for (const [el, before] of snapshot) {
-      if (el === dragged || el.contains(dragged) || !this.el.contains(el)) continue;
+  // Animate from old (snapshot) positions to new (server-rendered) positions
+  _animateFlipById(snapshot) {
+    for (const el of this.el.querySelectorAll("[data-id]")) {
+      const id = el.dataset.id;
+      const before = snapshot.get(id);
+      if (!before) continue;
 
       const after = el.getBoundingClientRect();
       const dy = before.top - after.top;
@@ -302,7 +344,9 @@ export const ColumnSortable = {
   // ── Drop application ─────────────────────────────────────────────────────────
 
   _applyDrop() {
-    const snapshot = this._snapshotPositions();
+    // Snapshot BEFORE DOM moves (keyed by block data-id, survives morph)
+    this._pendingFlip = this._snapshotPositionsById();
+
     const { el: dragged } = this._drag;
     const { el: target, edge } = this._drag.drop;
 
@@ -311,8 +355,15 @@ export const ColumnSortable = {
         ? this._mergeIntoBlock(dragged, target, edge)
         : this._insertIntoColumn(dragged, target, edge);
 
-      this._animateFlip(snapshot);
       this._sendLayout();
+
+      // Fallback: cleanup if updated() never fires
+      this._flipTimeout = setTimeout(() => {
+        if (this._pendingFlip) {
+          this._pendingFlip = null;
+          this._cleanup();
+        }
+      }, 2000);
 
       return;
     }
@@ -326,8 +377,15 @@ export const ColumnSortable = {
         ? anchor.after(dragged)
         : anchor.before(dragged);
 
-    this._animateFlip(snapshot);
     this._sendLayout();
+
+    // Fallback: cleanup if updated() never fires
+    this._flipTimeout = setTimeout(() => {
+      if (this._pendingFlip) {
+        this._pendingFlip = null;
+        this._cleanup();
+      }
+    }, 2000);
   },
 
   // Merge dragged (block-wrapper or column-item) into a block-wrapper target,

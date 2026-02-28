@@ -71,7 +71,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
       <%!-- Drag handle (left side) --%>
       <div
         :if={@can_edit && !@is_inherited}
-        class="flex items-center pt-2 lg:absolute lg:-left-6 lg:top-7 lg:opacity-0 lg:group-hover:opacity-100"
+        class="flex items-center pt-2 lg:absolute lg:-left-4 lg:top-7 lg:opacity-0 lg:group-hover:opacity-100"
       >
         <button
           type="button"

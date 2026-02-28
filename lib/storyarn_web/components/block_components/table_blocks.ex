@@ -45,7 +45,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
       |> assign(:summary, summary)
 
     ~H"""
-    <div class="py-1">
+    <div>
       <%!-- Unified header: chevron + table icon + label (+ summary when collapsed) --%>
       <.table_header
         block={@block}
