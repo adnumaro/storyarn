@@ -156,6 +156,13 @@ export function createPlugins(container, hook) {
       hook._deferredSockets.push(context);
       return undefined;
     }
+    // Cache socket rendered events for post-init position recalculation.
+    // BaseSocketPosition only recalculates OUTPUT positions on noderesized;
+    // replaying these events forces ALL sockets to recalculate.
+    if (context.type === "rendered" && context.data?.type === "socket" && !hook._isRecalculatingSockets) {
+      if (!hook._socketRenderedEvents) hook._socketRenderedEvents = [];
+      hook._socketRenderedEvents.push(context);
+    }
     return context;
   });
 
@@ -230,6 +237,13 @@ export async function finalizeSetup(area, editor, hasNodes) {
 // Inject global rete styles (uses daisyUI v5 CSS variables)
 const reteStyles = document.createElement("style");
 reteStyles.textContent = `
+  /* rete-root defaults to display:inline which breaks offsetParent chain
+     traversal in getElementCenter(). Force block so intermediate elements
+     have well-defined dimensions for socket position calculation. */
+  rete-root[fragment] {
+    display: block;
+  }
+
   #flow-canvas {
     background-color: var(--color-base-100, #1d232a);
     background-image:

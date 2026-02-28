@@ -46,6 +46,58 @@ export const FlowCanvas = {
     this._loadingFromServerCount = Math.max(0, this._loadingFromServerCount - 1);
   },
 
+  /**
+   * Sync the Rete area container size with the actual rendered node dimensions.
+   * Rete sets explicit width/height from FlowNode defaults, but dynamic content
+   * (images, long text) can make the node taller. Without resizing, connection
+   * endpoints won't align with socket positions.
+   */
+  async syncNodeSize(nodeId) {
+    const view = this.area.nodeViews.get(nodeId);
+    if (!view) return;
+    const el = view.element.querySelector("storyarn-node");
+    if (!el) return;
+
+    // Wait for Lit to finish rendering the shadow DOM
+    if (el.updateComplete) await el.updateComplete;
+
+    const nodeEl = el.shadowRoot?.querySelector(".node");
+    if (!nodeEl) return;
+    const w = nodeEl.offsetWidth;
+    const h = nodeEl.offsetHeight;
+    if (w > 0 && h > 0) {
+      await this.area.resize(nodeId, w, h);
+    }
+  },
+
+  /** Sync sizes for all nodes in the editor. */
+  async syncAllNodeSizes() {
+    // Wait one frame for all Lit elements to finish rendering
+    await new Promise((r) => requestAnimationFrame(r));
+    for (const [nodeId] of this.area.nodeViews) {
+      await this.syncNodeSize(nodeId);
+    }
+  },
+
+  /**
+   * Force recalculation of ALL socket positions (both input and output).
+   * Rete's noderesized event only recalculates OUTPUT sockets; this method
+   * replays cached socket rendered events so getElementCenter() runs again
+   * with the final DOM layout, fixing stale input socket positions.
+   */
+  async recalculateAllSockets() {
+    const events = this._socketRenderedEvents;
+    if (!events || events.length === 0) return;
+    this._socketRenderedEvents = [];
+    this._isRecalculatingSockets = true;
+    // Wait for DOM to be fully laid out
+    await new Promise((r) => requestAnimationFrame(r));
+    for (const ctx of events) {
+      await this.area.emit(ctx);
+    }
+    this._isRecalculatingSockets = false;
+  },
+
   async initEditor() {
     const container = this.el;
     const flowData = JSON.parse(container.dataset.flow || "{}");
@@ -83,11 +135,14 @@ export const FlowCanvas = {
     this.minimap = plugins.minimap;
     this.render = plugins.render;
 
-    // Start in simplified LOD so nodes render ~12 elements instead of ~50.
-    // zoomAt (100ms after finalizeSetup) fires a "zoomed" event that triggers
-    // a batched transition to full LOD if the zoom level warrants it.
-    this.currentLod = "simplified";
-    this.lodController = createLodController(this, "simplified");
+    // Choose initial LOD based on node count. For small flows (< 50 nodes),
+    // start in full LOD to avoid an unnecessary simplified→full transition
+    // that can leave socket positions stale. For large flows, start simplified
+    // for faster initial paint; zoomAt triggers the transition to full later.
+    const nodeCount = flowData.nodes?.length || 0;
+    const initialLod = nodeCount >= 50 ? "simplified" : "full";
+    this.currentLod = initialLod;
+    this.lodController = createLodController(this, initialLod);
 
     // Load initial flow data in 3 phases to minimize forced reflows:
     //   1. Add nodes  — socket positions deferred (no reflows)
@@ -141,8 +196,15 @@ export const FlowCanvas = {
     this.keyboardHandler = createKeyboardHandler(this, this.lockHandler);
     this.keyboardHandler.init();
 
+    // Sync node container sizes with actual rendered content (before fitView)
+    await this.syncAllNodeSizes();
+
     // Enable zoom, pan, fit view
     await finalizeSetup(this.area, this.editor, flowData.nodes?.length > 0);
+
+    // Recalculate ALL socket positions now that DOM is fully laid out.
+    // This fixes stale input socket positions that noderesized doesn't touch.
+    await this.recalculateAllSockets();
 
     // Single rebuild AFTER area is fully ready
     if (flowData.nodes?.length > 0) {

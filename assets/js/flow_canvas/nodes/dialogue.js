@@ -2,14 +2,14 @@
  * Dialogue node type definition.
  */
 import { html } from "lit";
+import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { MessageSquare } from "lucide";
 import { createIconSvg } from "../node_config.js";
 import {
-  defaultHeader,
+  headerStyle,
   nodeShell,
-  renderPreview,
+  renderIndicators,
   renderSockets,
-  speakerHeader,
 } from "./render_helpers.js";
 
 export default {
@@ -31,23 +31,64 @@ export default {
     const speakerId = nodeData.speaker_sheet_id;
     const speakerSheet = speakerId ? sheetsMap?.[String(speakerId)] : null;
 
-    const headerHtml = speakerSheet
-      ? speakerHeader(config, color, speakerSheet, indicators)
-      : defaultHeader(config, color, indicators);
+    // Header: always icon + speaker name (or "Dialogue")
+    const headerLabel = speakerSheet?.name || config.label;
+    const headerHtml = html`
+      <div class="header" style="${headerStyle(color)}">
+        <span class="icon">${unsafeSVG(config.icon)}</span>
+        <span class="speaker-name">${headerLabel}</span>
+        ${renderIndicators(indicators)}
+      </div>
+    `;
+
+    // Visual strip: banner > avatar+color > color only
+    const bannerUrl = speakerSheet?.banner_url;
+    const avatarUrl = speakerSheet?.avatar_url;
+
+    const visualHtml = bannerUrl
+      ? html`<img src="${bannerUrl}" class="dialogue-banner" alt="" />`
+      : avatarUrl
+        ? html`<div
+            class="dialogue-visual"
+            style="background-color: ${color}20"
+          >
+            <img src="${avatarUrl}" class="dialogue-avatar" alt="" />
+          </div>`
+        : speakerSheet
+          ? html`<div
+              class="dialogue-visual"
+              style="background-color: ${color}20"
+            ></div>`
+          : "";
+
+    // Body: stage directions + preview text (stacked rows)
+    const hasText = nodeData.stage_directions || preview;
+
+    const bodyHtml = hasText
+      ? html`
+          <div class="dialogue-content">
+            ${nodeData.stage_directions
+              ? html`<div class="stage-directions-inline">
+                  ${nodeData.stage_directions}
+                </div>`
+              : ""}
+            ${preview
+              ? html`<div class="dialogue-text">${preview}</div>`
+              : ""}
+          </div>
+        `
+      : "";
 
     return nodeShell(
       color,
       selected,
       html`
-      ${headerHtml}
-      ${
-        nodeData.stage_directions
-          ? html`<div class="stage-directions">${nodeData.stage_directions}</div>`
-          : ""
-      }
-      ${renderPreview(preview)}
-      <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
-    `,
+        ${headerHtml} ${visualHtml} ${bodyHtml}
+        <div class="content compact">
+          ${renderSockets(node, nodeData, this, emit)}
+        </div>
+      `,
+      "dialogue",
     );
   },
 

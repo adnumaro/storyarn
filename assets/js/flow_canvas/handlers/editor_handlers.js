@@ -143,7 +143,10 @@ export function createEditorHandlers(hook) {
         const node = await hook.addNodeToEditor(data.node);
         // Force re-render so sockets are positioned before wiring connections
         // (same pattern as rebuildNode)
-        if (node) await hook.area.update("node", node.id);
+        if (node) {
+          await hook.area.update("node", node.id);
+          await hook.syncNodeSize(node.id);
+        }
         for (const conn of data.connections || []) {
           // Skip connections that already exist in the editor (defensive)
           if (!hook.editor.getConnection(`conn-${conn.id}`)) {
@@ -180,6 +183,7 @@ export function createEditorHandlers(hook) {
         existingNode.nodeData = { ...nodeData };
         existingNode._updateTs = Date.now();
         await hook.area.update("node", existingNode.id);
+        await hook.syncNodeSize(existingNode.id);
       }
 
       if (existingNode.nodeType === "hub" || existingNode.nodeType === "jump")
@@ -231,6 +235,7 @@ export function createEditorHandlers(hook) {
 
         // Force re-render to update visual
         await hook.area.update("node", newNode.id);
+        await hook.syncNodeSize(newNode.id);
 
         // Restore connections with their metadata
         for (const connInfo of affectedConnections) {

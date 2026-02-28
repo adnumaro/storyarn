@@ -254,6 +254,8 @@ defmodule StoryarnWeb.FlowLive.Show do
         socket =
           socket
           |> assign(focus_layout_defaults())
+          |> assign(:tree_panel_open, false)
+          |> assign(:tree_panel_pinned, false)
           |> assign(:loading, true)
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)

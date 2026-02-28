@@ -12,6 +12,7 @@ const LOD_SIMPLIFIED = "simplified";
 const ZOOM_DOWN = 0.4; // switch to simplified below this
 const ZOOM_UP = 0.45; // switch to full above this
 const BATCH_SIZE = 50; // nodes per rAF frame during LOD transition
+const MIN_NODES_FOR_LOD = 50; // skip LOD when fewer nodes
 
 export function createLodController(hook, initialLod = LOD_FULL) {
   let currentLod = initialLod;
@@ -49,6 +50,12 @@ export function createLodController(hook, initialLod = LOD_FULL) {
         // Re-attach lock indicators after the last batch
         // (they live on nodeView.element, outside Shadow DOM)
         hook.lockHandler?.updateLockIndicators();
+
+        // After LOD transition, sync node sizes so that area.resize()
+        // fires 'noderesized' events, forcing socket position recalculation.
+        // Without this, connections may point to stale positions from
+        // the previous LOD tier.
+        hook.syncAllNodeSizes();
       }
     }
 
@@ -57,6 +64,11 @@ export function createLodController(hook, initialLod = LOD_FULL) {
 
   function check() {
     rafId = null;
+    const nodeCount = hook.area.nodeViews.size;
+    if (nodeCount < MIN_NODES_FOR_LOD) {
+      if (currentLod !== LOD_FULL) applyLod(LOD_FULL);
+      return;
+    }
     const k = hook.area.area.transform.k;
     applyLod(computeLod(k));
   }

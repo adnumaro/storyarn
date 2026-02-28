@@ -30,8 +30,20 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
           _ -> nil
         end
 
+      banner_url =
+        case sheet.banner_asset do
+          %{url: url} when is_binary(url) -> url
+          _ -> nil
+        end
+
       {to_string(sheet.id),
-       %{id: sheet.id, name: sheet.name, avatar_url: avatar_url, color: sheet.color}}
+       %{
+         id: sheet.id,
+         name: sheet.name,
+         avatar_url: avatar_url,
+         banner_url: banner_url,
+         color: sheet.color
+       }}
     end)
   end
 

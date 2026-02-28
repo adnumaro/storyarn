@@ -142,7 +142,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     from(s in Sheet,
       where: s.project_id == ^project_id and is_nil(s.deleted_at),
       order_by: [asc: s.position, asc: s.name],
-      preload: [:avatar_asset]
+      preload: [:avatar_asset, :banner_asset]
     )
     |> Repo.all()
   end

@@ -26,6 +26,10 @@ export class FlowNode extends ClassicPreset.Node {
     this.nodeId = id;
     this.nodeData = data;
 
+    if (type === "dialogue") {
+      this.width = 350;
+    }
+
     // Add inputs
     for (const inputName of config.inputs) {
       this.addInput(

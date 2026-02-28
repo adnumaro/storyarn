@@ -12,15 +12,20 @@ import { createIconHTML } from "../node_config.js";
 const AUDIO_ICON = createIconHTML(Volume2, { size: 12 });
 const ALERT_ICON = createIconHTML(TriangleAlert);
 
+/** Header style: solid color + right-shifted gradient highlight */
+export function headerStyle(color) {
+  return `background: linear-gradient(to right, ${color} 40%, color-mix(in oklch, ${color} 85%, white) 100%)`;
+}
+
 /**
  * Outer node wrapper with border color and selection state.
  */
-export function nodeShell(nodeColor, selected, content) {
+export function nodeShell(nodeColor, selected, content, extraClass = "") {
   const borderColor = `${nodeColor}40`;
   return html`
     <div
-      class="node ${selected ? "selected" : ""}"
-      style="--node-border-color: ${borderColor}"
+      class="node ${selected ? "selected" : ""} ${extraClass}"
+      style="--node-border-color: ${borderColor}; --node-color: ${nodeColor}"
     >
       ${content}
     </div>
@@ -32,7 +37,7 @@ export function nodeShell(nodeColor, selected, content) {
  */
 export function defaultHeader(config, nodeColor, indicators) {
   return html`
-    <div class="header" style="background-color: ${nodeColor}">
+    <div class="header" style="${headerStyle(nodeColor)}">
       <span class="icon">${unsafeSVG(config.icon)}</span>
       <span>${config.label}</span>
       ${renderIndicators(indicators)}
@@ -45,7 +50,7 @@ export function defaultHeader(config, nodeColor, indicators) {
  */
 export function speakerHeader(config, nodeColor, speakerSheet, indicators) {
   return html`
-    <div class="header" style="background-color: ${nodeColor}">
+    <div class="header" style="${headerStyle(nodeColor)}">
       ${
         speakerSheet.avatar_url
           ? html`<img src="${speakerSheet.avatar_url}" class="speaker-avatar" alt="" />`

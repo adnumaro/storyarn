@@ -13,24 +13,33 @@ export const storyarnNodeStyles = css`
   .node {
     position: relative;
     background: var(--color-base-200, #1d232a);
-    border-radius: 8px;
+    border-radius: 12px;
     min-width: 180px;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    box-shadow:
+      0 4px 6px -1px rgb(0 0 0 / 0.1),
+      0 2px 4px -2px rgb(0 0 0 / 0.1),
+      0 0 12px 1px color-mix(in oklch, var(--node-color, #666) 12%, transparent);
     border: 1.5px solid var(--node-border-color, transparent);
     transition: box-shadow 0.2s;
   }
 
   .node:hover {
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.1),
+      0 4px 6px -4px rgb(0 0 0 / 0.1),
+      0 0 18px 2px color-mix(in oklch, var(--node-color, #666) 18%, transparent);
   }
 
   .node.selected {
-    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary, #7c3aed) 50%, transparent), 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    box-shadow:
+      0 0 0 3px color-mix(in oklch, var(--color-primary, #7c3aed) 50%, transparent),
+      0 4px 6px -1px rgb(0 0 0 / 0.1),
+      0 0 16px 2px color-mix(in oklch, var(--node-color, #666) 15%, transparent);
   }
 
   .header {
     padding: 8px 12px;
-    border-radius: 6px 6px 0 0;
+    border-radius: 10px 10px 0 0;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -123,18 +132,6 @@ export const storyarnNodeStyles = css`
     line-height: 1.4;
   }
 
-  .stage-directions {
-    font-style: italic;
-    color: color-mix(in oklch, var(--color-base-content, #a6adbb) 50%, transparent);
-    font-size: 10px;
-    padding: 4px 12px;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    background: color-mix(in oklch, var(--color-base-content, #a6adbb) 3%, transparent);
-  }
-
   .speaker-avatar {
     width: 32px;
     height: 32px;
@@ -147,6 +144,73 @@ export const storyarnNodeStyles = css`
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* Dialogue node — fixed width to match Rete container */
+  .node.dialogue {
+    width: 350px;
+  }
+
+  /* Dialogue visual: inset image with rounded corners */
+  .dialogue-banner {
+    display: block;
+    width: calc(100% - 24px);
+    max-height: 200px;
+    object-fit: contain;
+    object-position: center;
+    border-radius: 8px;
+    margin: 12px 12px 0;
+  }
+
+  .dialogue-visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 12px 0;
+  }
+
+  .dialogue-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    object-fit: cover;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
+  }
+
+  /* Dialogue text content */
+  .dialogue-content {
+    padding: 10px 14px 12px;
+  }
+
+  .dialogue-text {
+    font-size: 14px;
+    color: color-mix(in oklch, var(--color-base-content, #a6adbb) 85%, transparent);
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  .stage-directions-inline {
+    font-style: italic;
+    color: color-mix(in oklch, var(--color-base-content, #a6adbb) 55%, transparent);
+    font-size: 12px;
+    margin-bottom: 4px;
+    word-break: break-word;
+  }
+
+  /* Compact sockets for dialogue responses */
+  .content.compact {
+    padding: 6px 0;
+    border-top: 1px solid color-mix(in oklch, var(--color-base-content, #a6adbb) 10%, transparent);
+  }
+
+  .content.compact .socket-row {
+    padding: 3px 0;
+    font-size: 12px;
+  }
+
+  .content.compact .socket-row .label {
+    max-width: 240px;
+    word-break: break-word;
   }
 
   .condition-badge {
