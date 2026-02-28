@@ -35,7 +35,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
 
-      assert has_element?(view, "a", "Assets")
+      assert has_element?(view, "button", "Assets")
     end
 
     test "redirects unauthorized user", %{conn: conn} do

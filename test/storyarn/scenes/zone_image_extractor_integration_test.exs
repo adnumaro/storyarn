@@ -21,7 +21,9 @@ defmodule Storyarn.Scenes.ZoneImageExtractorIntegrationTest do
   boxes match. Polygon rendering is a frontend concern (Leaflet canvas).
   The unit tests for bounding_box/1 already cover varied vertex counts.
   """
-  use Storyarn.DataCase, async: true
+  # async: false — writes to shared priv/static/uploads/ and reads back
+  # with libvips, which races under heavy parallel I/O (flaky :enoent)
+  use Storyarn.DataCase, async: false
 
   alias Storyarn.Assets
   alias Storyarn.Scenes.{SceneZone, ZoneImageExtractor}

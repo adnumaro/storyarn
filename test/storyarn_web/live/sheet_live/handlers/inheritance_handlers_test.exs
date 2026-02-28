@@ -175,7 +175,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlersTest do
       helpers: helpers,
       block: block
     } do
-      {:noreply, result} =
+      {:noreply, _result} =
         InheritanceHandlers.handle_change_scope(block, "children", socket, helpers)
 
       # Verify the block was updated in the DB

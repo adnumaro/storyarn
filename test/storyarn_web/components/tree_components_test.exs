@@ -137,7 +137,7 @@ defmodule StoryarnWeb.Components.TreeComponentsTest do
         )
 
       assert html =~ "/projects/1/sheets"
-      assert html =~ "hover:bg-base-300"
+      assert html =~ "hover:bg-base-content/5"
     end
 
     test "renders div when href is nil" do
@@ -390,7 +390,7 @@ defmodule StoryarnWeb.Components.TreeComponentsTest do
         </TreeComponents.tree_node>
         """)
 
-      assert html =~ "group-hover:opacity-100"
+      assert html =~ "group-hover/item:w-auto"
       assert html =~ "Act"
       assert html =~ "Menu"
     end
@@ -491,7 +491,7 @@ defmodule StoryarnWeb.Components.TreeComponentsTest do
           active: true
         )
 
-      assert html =~ "bg-base-300"
+      assert html =~ "bg-base-content/5"
       assert html =~ "font-medium"
     end
 
@@ -503,7 +503,7 @@ defmodule StoryarnWeb.Components.TreeComponentsTest do
           active: false
         )
 
-      assert html =~ "hover:bg-base-300"
+      assert html =~ "hover:bg-base-content/5"
       refute html =~ "font-medium"
     end
   end
@@ -617,7 +617,7 @@ defmodule StoryarnWeb.Components.TreeComponentsTest do
 
       assert html =~ "leaf-action"
       assert html =~ "Edit"
-      assert html =~ "group-hover:opacity-100"
+      assert html =~ "group-hover/item:w-auto"
     end
 
     test "renders menu slot" do
@@ -715,7 +715,7 @@ defmodule StoryarnWeb.Components.TreeComponentsTest do
           active: true
         )
 
-      assert html =~ "bg-base-300"
+      assert html =~ "bg-base-content/5"
       assert html =~ "font-medium"
     end
 
@@ -727,7 +727,7 @@ defmodule StoryarnWeb.Components.TreeComponentsTest do
           active: false
         )
 
-      assert html =~ "hover:bg-base-300"
+      assert html =~ "hover:bg-base-content/5"
       refute html =~ "font-medium"
     end
   end

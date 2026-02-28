@@ -238,10 +238,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
           project: project
         )
 
-      assert html =~ "bg-base-200/95"
-      assert html =~ "backdrop-blur"
-      assert html =~ "shadow-lg"
-      assert html =~ "rounded-xl"
+      assert html =~ "surface-panel"
     end
 
     test "truncates long ancestor names", %{project: project, workspace: workspace} do

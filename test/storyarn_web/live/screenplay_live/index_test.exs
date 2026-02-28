@@ -36,7 +36,7 @@ defmodule StoryarnWeb.ScreenplayLive.IndexTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays")
 
-      assert has_element?(view, "a", "Screenplays")
+      assert has_element?(view, "button", "Screenplays")
     end
 
     test "renders screenplay names in sidebar tree when screenplays exist", %{
