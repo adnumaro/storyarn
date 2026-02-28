@@ -71,3 +71,5 @@ priv/static/images/temp
 
 .claude/plans
 .claude/audit
+
+test/tmp
