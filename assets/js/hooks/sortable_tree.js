@@ -86,8 +86,7 @@ export const SortableTree = {
     if (!this._drag) return;
 
     if (!this._drag.active) {
-      const link = this._drag.el.querySelector(".group\\/item a");
-      if (link) link.click();
+      this._drag.el.querySelector(".group\\/item a")?.click();
       this._cleanup();
       return;
     }
@@ -120,12 +119,7 @@ export const SortableTree = {
     this._highlightTarget?.classList.remove("dnd-drop-target");
     this._highlightTarget = null;
     this._clearExpandTimer();
-
-    if (this._scrollRaf) {
-      cancelAnimationFrame(this._scrollRaf);
-      this._scrollRaf = null;
-    }
-
+    this._cancelAutoScroll();
     this._drag = null;
   },
 
@@ -179,17 +173,17 @@ export const SortableTree = {
       return;
     }
 
-    if (drop.zone === "center") {
-      this._ind.style.display = "none";
-      const row = drop.el.querySelector(".group\\/item");
-      if (row) {
-        row.classList.add("dnd-drop-target");
-        this._highlightTarget = row;
-      }
-    } else {
+    if (drop.zone !== "center") {
       this._ind.style.display = "block";
       this._placeIndicator(drop);
+      return;
     }
+
+    this._ind.style.display = "none";
+    const row = drop.el.querySelector(".group\\/item");
+    if (!row) return;
+    row.classList.add("dnd-drop-target");
+    this._highlightTarget = row;
   },
 
   _findDrop(x, y) {
@@ -265,10 +259,9 @@ export const SortableTree = {
   },
 
   _clearExpandTimer() {
-    if (this._expandTimer) {
-      clearTimeout(this._expandTimer);
-      this._expandTimer = null;
-    }
+    if (!this._expandTimer) return;
+    clearTimeout(this._expandTimer);
+    this._expandTimer = null;
     this._expandTarget = null;
   },
 
@@ -277,18 +270,15 @@ export const SortableTree = {
   _applyDrop() {
     const draggedId = this._drag.el.dataset.itemId;
     const { el: target, zone } = this._drag.drop;
-    const targetId = target.dataset.itemId;
 
     const { parentId, position } =
       zone === "center" ? this._nestPosition(target, draggedId) : this._siblingPosition(target, zone, draggedId);
 
-    const event = this.treeType === "sheets" ? "move_sheet" : "move_to_parent";
-    const key = this.treeType === "sheets" ? "sheet_id" : "item_id";
-    const parentKey = this.treeType === "sheets" ? "parent_id" : "new_parent_id";
+    const isSheets = this.treeType === "sheets";
 
-    this.pushEvent(event, {
-      [key]: draggedId,
-      [parentKey]: String(parentId),
+    this.pushEvent(isSheets ? "move_sheet" : "move_to_parent", {
+      [isSheets ? "sheet_id" : "item_id"]: draggedId,
+      [isSheets ? "parent_id" : "new_parent_id"]: String(parentId),
       position: String(position),
     });
   },
@@ -324,6 +314,12 @@ export const SortableTree = {
     return document.documentElement;
   },
 
+  _cancelAutoScroll() {
+    if (!this._scrollRaf) return;
+    cancelAnimationFrame(this._scrollRaf);
+    this._scrollRaf = null;
+  },
+
   _startAutoScroll() {
     const margin = 80;
     const speed = 0.3;
@@ -332,7 +328,7 @@ export const SortableTree = {
       const { y } = this._ptr;
       const sp = this._scrollParent;
       if (y < margin) sp.scrollTop -= (margin - y) * speed;
-      else if (y > window.innerHeight - margin) sp.scrollTop += (y - (window.innerHeight - margin)) * speed;
+      if (y > window.innerHeight - margin) sp.scrollTop += (y - (window.innerHeight - margin)) * speed;
       this._scrollRaf = requestAnimationFrame(tick);
     };
     this._scrollRaf = requestAnimationFrame(tick);
