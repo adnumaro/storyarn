@@ -131,7 +131,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert html =~ "Storyarn JSON"
       assert html =~ "Ink (.ink)"
       assert html =~ "Yarn Spinner (.yarn)"
-      assert html =~ "Godot (JSON)"
+      assert html =~ "Godot Dialogic (.dtl)"
       assert html =~ "Unity Dialogue System (JSON)"
       assert html =~ "Unreal Engine (CSV)"
       assert html =~ "articy:draft (XML)"
@@ -178,7 +178,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
       html = view |> render_click("set_format", %{"format" => "godot"})
 
-      assert html =~ "Download .json"
+      assert html =~ "Download .dtl"
     end
 
     test "switching to unreal format updates the download extension", %{

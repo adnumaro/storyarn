@@ -60,21 +60,31 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
       <%= for item <- @layout_items do %>
         <%= case item.type do %>
           <% :full_width -> %>
-            <div
-              class="group relative w-full px-2 sm:px-8 md:px-16 pt-2"
-              id={"block-#{item.block.id}"}
-              data-id={item.block.id}
-            >
-              <.block_component
-                block={item.block}
-                can_edit={@can_edit}
-                editing_block_id={@editing_block_id}
-                selected_block_id={@selected_block_id}
-                target={@target}
-                component_id={@component_id}
-                table_data={@table_data}
-                reference_options={@reference_options}
-              />
+            <div class="block-wrapper flex" data-block-id={item.block.id}>
+              <div class="column-dropzone w-8 shrink-0 pr-2 sm:pr-8 md:pr-16" data-dropzone="left" data-target-block={item.block.id}>
+              </div>
+              <div
+                class="group relative w-full min-w-0 pt-2"
+                id={"block-#{item.block.id}"}
+                data-id={item.block.id}
+              >
+                <.block_component
+                  block={item.block}
+                  can_edit={@can_edit}
+                  editing_block_id={@editing_block_id}
+                  selected_block_id={@selected_block_id}
+                  target={@target}
+                  component_id={@component_id}
+                  table_data={@table_data}
+                  reference_options={@reference_options}
+                />
+              </div>
+              <div
+                class="column-dropzone w-8 shrink-0 pl-2 sm:pl-8 md:pl-16"
+                data-dropzone="right"
+                data-target-block={item.block.id}
+              >
+              </div>
             </div>
           <% :column_group -> %>
             <div

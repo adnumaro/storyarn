@@ -704,7 +704,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
 
       # Sheet shortcut gets underscored as folder name
       folder_keys = Map.keys(folders)
-      assert length(folder_keys) >= 1
+      assert folder_keys != []
     end
 
     test "includes timeline_mapping", %{project: project} do
