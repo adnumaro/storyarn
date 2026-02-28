@@ -34,7 +34,7 @@ Full-fidelity export that preserves all Storyarn data for backup, migration, or 
 
 Sheets are the entity/character/location data containers (previously called "pages").
 
-**Block types:** `text`, `rich_text`, `number`, `select`, `multi_select`, `boolean`, `date`, `divider`, `reference`, `table`
+**Block types:** `text`, `rich_text`, `number`, `select`, `multi_select`, `boolean`, `date`, `reference`, `table`
 
 ```json
 {
@@ -166,18 +166,18 @@ Sheets are the entity/character/location data containers (previously called "pag
 
 **Block field reference:**
 
-| Field                     | Type                     | Description                                                                                                              |
-|---------------------------|--------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `is_constant`             | boolean                  | If true, block is NOT exposed as a variable (even for variable-capable types)                                            |
-| `variable_name`           | string\|null             | The variable identifier (auto-generated from label via `variablify`). null for dividers, references, and constant blocks |
-| `scope`                   | `"self"` \| `"children"` | `"self"` = block belongs to this sheet only. `"children"` = inherited by child sheets (property inheritance)             |
-| `required`                | boolean                  | Whether the block must have a value (validation)                                                                         |
-| `detached`                | boolean                  | If true, an inherited block has been detached from its parent (no longer syncs)                                          |
-| `inherited_from_block_id` | string\|null             | Points to the parent block this was inherited from (null for original blocks)                                            |
-| `column_group_id`         | string\|null             | UUID grouping blocks into visual columns (layout)                                                                        |
-| `column_index`            | integer                  | 0, 1, or 2 — column position within a column group                                                                       |
+| Field                     | Type                     | Description                                                                                                    |
+|---------------------------|--------------------------|----------------------------------------------------------------------------------------------------------------|
+| `is_constant`             | boolean                  | If true, block is NOT exposed as a variable (even for variable-capable types)                                  |
+| `variable_name`           | string\|null             | The variable identifier (auto-generated from label via `variablify`). null for references, and constant blocks |
+| `scope`                   | `"self"` \| `"children"` | `"self"` = block belongs to this sheet only. `"children"` = inherited by child sheets (property inheritance)   |
+| `required`                | boolean                  | Whether the block must have a value (validation)                                                               |
+| `detached`                | boolean                  | If true, an inherited block has been detached from its parent (no longer syncs)                                |
+| `inherited_from_block_id` | string\|null             | Points to the parent block this was inherited from (null for original blocks)                                  |
+| `column_group_id`         | string\|null             | UUID grouping blocks into visual columns (layout)                                                              |
+| `column_index`            | integer                  | 0, 1, or 2 — column position within a column group                                                             |
 
-**Variable derivation:** A block is a variable if `is_constant == false` AND `type` is NOT in `[divider, reference]`. The export uses `is_constant` + `variable_name` (not a computed `is_variable` flag) so importers can reconstruct the same logic.
+**Variable derivation:** A block is a variable if `is_constant == false` AND `type` is NOT in `[reference]`. The export uses `is_constant` + `variable_name` (not a computed `is_variable` flag) so importers can reconstruct the same logic.
 
 **Table column/row fields:**
 
