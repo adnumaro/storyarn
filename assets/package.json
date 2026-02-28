@@ -37,11 +37,11 @@
     "@tiptap/suggestion": "^3.18.0",
     "daisyui": "^5.5.14",
     "elkjs": "^0.8.2",
-    "modern-screenshot": "^4.5.0",
     "leaflet": "^1.9.4",
     "leaflet-polylinedecorator": "^1.6.0",
     "lit": "^3.3.2",
     "lucide": "^0.563.0",
+    "modern-screenshot": "^4.5.0",
     "rete": "^2.0.3",
     "rete-area-plugin": "^2.0.3",
     "rete-auto-arrange-plugin": "^2.0.2",
@@ -50,7 +50,6 @@
     "rete-history-plugin": "^2.1.1",
     "rete-minimap-plugin": "^2.0.3",
     "rete-render-utils": "^2.0.2",
-    "sortablejs": "^1.15.6",
     "topbar": "^3.0.0",
     "vanilla-colorful": "^0.7.2"
   }
