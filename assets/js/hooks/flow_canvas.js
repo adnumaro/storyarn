@@ -21,6 +21,7 @@ import {
 } from "../flow_canvas/handlers/index.js";
 import { buildBatchPositions } from "../flow_canvas/history_preset.js";
 import { createLodController } from "../flow_canvas/lod_controller.js";
+import { createMinimapToggle } from "../flow_canvas/minimap_toggle.js";
 import { createPlugins, finalizeSetup } from "../flow_canvas/setup.js";
 
 export const FlowCanvas = {
@@ -175,6 +176,10 @@ export const FlowCanvas = {
     if (this.minimap) {
       this.area.use(this.minimap);
     }
+
+    // Minimap toggle (expand/collapse button)
+    this.minimapToggle = createMinimapToggle(this);
+    this.minimapToggle.init();
 
     // Set up event handlers
     setupEventHandlers(this);
@@ -427,10 +432,7 @@ export const FlowCanvas = {
     this.editorHandlers?.destroy();
     this.navigationHandler?.destroy();
     this.debugHandler?.destroy();
-
-    if (this.minimap?.element) {
-      this.minimap.element.remove();
-    }
+    this.minimapToggle?.destroy();
 
     if (this.area) {
       this.area.destroy();
