@@ -167,12 +167,11 @@ function serializeOneRule(rule) {
   if (operator === "is_nil") return `${ref} == nil`;
   if (operator === "is_empty") return `${ref} == ""`;
 
-  // Text operators (function syntax fallback)
-  if (operator === "contains") return `contains(${ref}, ${formatConditionValue(rule.value)})`;
-  if (operator === "not_contains")
-    return `not_contains(${ref}, ${formatConditionValue(rule.value)})`;
-  if (operator === "starts_with") return `starts_with(${ref}, ${formatConditionValue(rule.value)})`;
-  if (operator === "ends_with") return `ends_with(${ref}, ${formatConditionValue(rule.value)})`;
+  // Text operators (infix syntax)
+  if (operator === "contains") return `${ref} contains ${formatConditionValue(rule.value)}`;
+  if (operator === "not_contains") return `${ref} not_contains ${formatConditionValue(rule.value)}`;
+  if (operator === "starts_with") return `${ref} starts_with ${formatConditionValue(rule.value)}`;
+  if (operator === "ends_with") return `${ref} ends_with ${formatConditionValue(rule.value)}`;
 
   const symbol = COMPARE_OP_TO_SYMBOL[operator];
   if (!symbol) return `${ref} ${operator} ${formatConditionValue(rule.value)}`;

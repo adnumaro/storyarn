@@ -13,6 +13,7 @@
 
 import { parseAssignments, parseCondition } from "../expression_editor/parser.js";
 import { createExpressionEditor } from "../expression_editor/setup.js";
+import { formatExpression } from "../expression_editor/formatter.js";
 
 export const ExpressionEditor = {
   mounted() {
@@ -36,10 +37,19 @@ export const ExpressionEditor = {
         this._pushParsedData(text);
       },
     });
+
+    this._isFormatting = false;
+    this._formatResetTimer = null;
+    this.el.addEventListener("expression-editor:format", () => this._format());
+
+    // Auto-format on mount so the Code tab always shows formatted content.
+    // _format() sets _isFormatting = true so the server data is not affected.
+    if (this.content) this._format();
   },
 
   destroyed() {
     this.editor?.destroy();
+    clearTimeout(this._formatResetTimer);
   },
 
   _defaultEventName() {
@@ -51,7 +61,26 @@ export const ExpressionEditor = {
     return "update_instruction_builder";
   },
 
+  _format() {
+    const text = this.editor.getContent();
+    const formatted = formatExpression(text, this.mode);
+    if (formatted === text) return;
+
+    // Suppress _pushParsedData for the duration of the format debounce.
+    // Format is a display-only operation — it must not corrupt the server's
+    // condition/assignment data by re-parsing the reformatted text (the parser
+    // has known limitations with nested paren groups).
+    this._isFormatting = true;
+    clearTimeout(this._formatResetTimer);
+    this.editor.setContent(formatted);
+    // 350ms > 300ms debounce delay, so the flag is still set when the debounce fires.
+    this._formatResetTimer = setTimeout(() => {
+      this._isFormatting = false;
+    }, 350);
+  },
+
   _pushParsedData(text) {
+    if (this._isFormatting) return;
     if (this.mode === "expression") {
       const result = parseCondition(text, this.variables);
       if (result.errors.length > 0) return; // Don't push invalid data

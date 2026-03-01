@@ -13,6 +13,7 @@ defmodule StoryarnWeb.Components.ExpressionEditor do
   import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.InstructionBuilder
 
+  alias Phoenix.LiveView.JS
   alias Storyarn.Flows
 
   attr :id, :string, required: true
@@ -55,6 +56,14 @@ defmodule StoryarnWeb.Components.ExpressionEditor do
           phx-value-tab="code"
         >
           {dgettext("flows", "Code")}
+        </button>
+        <button
+          :if={@active_tab == "code"}
+          type="button"
+          class="btn btn-xs btn-ghost ml-auto"
+          phx-click={JS.dispatch("expression-editor:format", to: "##{@id}-code-editor")}
+        >
+          {dgettext("flows", "Format")}
         </button>
       </div>
 
