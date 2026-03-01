@@ -57,6 +57,7 @@ export function createPlugins(container, hook) {
                 .emit=${emit}
                 .sheetsMap=${hook.sheetsMap}
                 .hubsMap=${hook.hubsMap}
+                .labels=${hook.labels}
                 .lod=${hook.currentLod || "full"}
               ></storyarn-node>
             `;

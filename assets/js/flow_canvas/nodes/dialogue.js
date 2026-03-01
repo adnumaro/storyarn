@@ -94,7 +94,7 @@ export default {
   },
 
   renderEdit(ctx) {
-    const { node, nodeData, config, selected, emit, sheetsMap, onSave } = ctx;
+    const { node, nodeData, config, selected, emit, sheetsMap, labels, onSave } = ctx;
     const { color, visualHtml } = this._renderChrome(nodeData, config, sheetsMap);
     const speakerId = nodeData.speaker_sheet_id;
     const speakerSheet = speakerId ? sheetsMap?.[String(speakerId)] : null;
@@ -131,7 +131,7 @@ export default {
       <div class="dialogue-content">
         <input
           class="inline-input"
-          placeholder="Stage directions…"
+          placeholder=${labels?.stage_directions || "Stage directions…"}
           .value=${nodeData.stage_directions || ""}
           @pointerdown=${stopDrag}
           @blur=${(e) => {
@@ -147,7 +147,7 @@ export default {
         />
         <textarea
           class="inline-textarea"
-          placeholder="Dialogue text…"
+          placeholder=${labels?.dialogue_text || "Dialogue text…"}
           .value=${plainText}
           @pointerdown=${stopDrag}
           @input=${(e) => {

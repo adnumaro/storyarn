@@ -60,16 +60,16 @@ const ICONS = {
   trash: createIconHTML(Trash2, { size: ICON_SIZE }),
 };
 
-/** Node types the user can add (all except entry). */
+/** Node types the user can add (all except entry). Keys match server label keys. */
 const ADDABLE_TYPES = [
-  { type: "dialogue", label: "Dialogue", icon: ICONS.dialogue },
-  { type: "condition", label: "Condition", icon: ICONS.condition },
-  { type: "instruction", label: "Instruction", icon: ICONS.instruction },
-  { type: "hub", label: "Hub", icon: ICONS.hub },
-  { type: "jump", label: "Jump", icon: ICONS.jump },
-  { type: "exit", label: "Exit", icon: ICONS.exit },
-  { type: "subflow", label: "Subflow", icon: ICONS.subflow },
-  { type: "scene", label: "Scene", icon: ICONS.scene },
+  { type: "dialogue", labelKey: "dialogue", icon: ICONS.dialogue },
+  { type: "condition", labelKey: "condition", icon: ICONS.condition },
+  { type: "instruction", labelKey: "instruction", icon: ICONS.instruction },
+  { type: "hub", labelKey: "hub", icon: ICONS.hub },
+  { type: "jump", labelKey: "jump", icon: ICONS.jump },
+  { type: "exit", labelKey: "exit", icon: ICONS.exit },
+  { type: "subflow", labelKey: "subflow", icon: ICONS.subflow },
+  { type: "scene", labelKey: "scene", icon: ICONS.scene },
 ];
 
 /**
@@ -78,6 +78,9 @@ const ADDABLE_TYPES = [
  * @returns {Function} items(context, plugin) → { searchBar, list }
  */
 export function createContextMenuItems(hook) {
+  /** Look up a translated label, falling back to the key itself. */
+  const t = (key) => hook.labels?.[key] || key;
+
   return function items(context, _plugin) {
     // Connection right-click — no items
     if (context !== "root" && "source" in context && "target" in context) {
@@ -92,11 +95,11 @@ export function createContextMenuItems(hook) {
         searchBar: false,
         list: [
           {
-            label: "Add node",
+            label: t("add_node"),
             key: "add_node",
             icon: ICONS.plus,
-            subitems: ADDABLE_TYPES.map(({ type, label, icon }) => ({
-              label,
+            subitems: ADDABLE_TYPES.map(({ type, labelKey, icon }) => ({
+              label: t(labelKey),
               icon,
               key: `add_${type}`,
               handler: () =>
@@ -108,7 +111,7 @@ export function createContextMenuItems(hook) {
             })),
           },
           {
-            label: "Play preview",
+            label: t("play_preview"),
             key: "play_preview",
             icon: ICONS.play,
             handler: () => {
@@ -117,13 +120,13 @@ export function createContextMenuItems(hook) {
             },
           },
           {
-            label: "Start debugging",
+            label: t("start_debugging"),
             key: "start_debug",
             icon: ICONS.bug,
             handler: () => hook.pushEvent("debug_start", {}),
           },
           {
-            label: "Auto-layout",
+            label: t("auto_layout"),
             key: "auto_layout",
             icon: ICONS.layoutGrid,
             handler: () => hook.performAutoLayout(),
@@ -148,7 +151,7 @@ export function createContextMenuItems(hook) {
     switch (nodeType) {
       case "entry":
         list.push({
-          label: "View referencing flows",
+          label: t("view_referencing_flows"),
           key: "view_refs",
           icon: ICONS.externalLink,
           handler: () => hook.pushEvent("navigate_to_node", { id: String(nodeDbId) }),
@@ -158,19 +161,19 @@ export function createContextMenuItems(hook) {
 
       case "dialogue":
         list.push({
-          label: "Edit",
+          label: t("open_editor_panel"),
           key: "edit",
           icon: ICONS.pencil,
           handler: () => hook.pushEvent("open_screenplay", {}),
         });
         list.push({
-          label: "Preview from here",
+          label: t("preview_from_here"),
           key: "preview",
           icon: ICONS.play,
           handler: () => hook.pushEvent("start_preview", { id: nodeDbId }),
         });
         list.push({
-          label: "Generate technical ID",
+          label: t("generate_technical_id"),
           key: "generate_id",
           icon: ICONS.hash,
           handler: () => hook.pushEvent("generate_technical_id", {}),
@@ -179,7 +182,7 @@ export function createContextMenuItems(hook) {
 
       case "condition":
         list.push({
-          label: "Toggle switch mode",
+          label: t("toggle_switch_mode"),
           key: "toggle_switch",
           icon: ICONS.toggleLeft,
           handler: () => hook.pushEvent("toggle_switch_mode", {}),
@@ -192,7 +195,7 @@ export function createContextMenuItems(hook) {
 
       case "hub":
         list.push({
-          label: "Locate referencing jumps",
+          label: t("locate_referencing_jumps"),
           key: "locate_jumps",
           icon: ICONS.search,
           handler: () => hook.pushEvent("navigate_to_jumps", { id: String(nodeDbId) }),
@@ -201,7 +204,7 @@ export function createContextMenuItems(hook) {
 
       case "jump":
         list.push({
-          label: "Locate target hub",
+          label: t("locate_target_hub"),
           key: "locate_hub",
           icon: ICONS.search,
           handler: () => hook.pushEvent("navigate_to_hub", { id: String(nodeDbId) }),
@@ -212,7 +215,7 @@ export function createContextMenuItems(hook) {
         const hasRef = nodeData.referenced_flow_id;
         if (hasRef) {
           list.push({
-            label: "Open referenced flow",
+            label: t("open_referenced_flow"),
             key: "open_flow",
             icon: ICONS.externalLink,
             handler: () =>
@@ -222,7 +225,7 @@ export function createContextMenuItems(hook) {
           });
         } else if (nodeData.exit_mode === "flow_reference") {
           list.push({
-            label: "Create linked flow",
+            label: t("create_linked_flow"),
             key: "create_flow",
             icon: ICONS.link,
             handler: () => hook.pushEvent("create_linked_flow", { "node-id": String(nodeDbId) }),
@@ -235,14 +238,14 @@ export function createContextMenuItems(hook) {
         const refId = nodeData.referenced_flow_id;
         if (refId) {
           list.push({
-            label: "Open referenced flow",
+            label: t("open_referenced_flow"),
             key: "open_flow",
             icon: ICONS.externalLink,
             handler: () => hook.pushEvent("navigate_to_subflow", { "flow-id": String(refId) }),
           });
         } else {
           list.push({
-            label: "Create linked flow",
+            label: t("create_linked_flow"),
             key: "create_flow",
             icon: ICONS.link,
             handler: () => hook.pushEvent("create_linked_flow", { "node-id": String(nodeDbId) }),
@@ -253,7 +256,7 @@ export function createContextMenuItems(hook) {
 
       case "scene":
         list.push({
-          label: "Generate technical ID",
+          label: t("generate_technical_id"),
           key: "generate_id",
           icon: ICONS.hash,
           handler: () => hook.pushEvent("generate_technical_id", {}),
@@ -263,13 +266,13 @@ export function createContextMenuItems(hook) {
 
     // Common items (all types except entry, which returned early)
     list.push({
-      label: "Duplicate",
+      label: t("duplicate"),
       key: "duplicate",
       icon: ICONS.copy,
       handler: () => hook.pushEvent("duplicate_node", { id: nodeDbId }),
     });
     list.push({
-      label: "Delete",
+      label: t("delete"),
       key: "delete",
       icon: ICONS.trash,
       handler: () => hook.pushEvent("delete_node", { id: nodeDbId }),

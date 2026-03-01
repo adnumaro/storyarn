@@ -18,6 +18,7 @@ export class StoryarnNode extends LitElement {
       emit: { type: Function },
       sheetsMap: { type: Object },
       hubsMap: { type: Object },
+      labels: { type: Object },
       lod: { type: String },
       editing: { type: Boolean },
     };
@@ -60,6 +61,7 @@ export class StoryarnNode extends LitElement {
       emit: this.emit,
       sheetsMap: this.sheetsMap,
       hubsMap: this.hubsMap,
+      labels: this.labels,
     };
 
     // Inline edit mode for dialogue nodes

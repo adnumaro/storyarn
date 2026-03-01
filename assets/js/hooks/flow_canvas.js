@@ -103,6 +103,7 @@ export const FlowCanvas = {
     const container = this.el;
     const flowData = JSON.parse(container.dataset.flow || "{}");
     this.sheetsMap = JSON.parse(container.dataset.sheets || "{}");
+    this.labels = JSON.parse(container.dataset.labels || "{}");
 
     // Collaboration data
     this.currentUserId = Number.parseInt(container.dataset.userId, 10);

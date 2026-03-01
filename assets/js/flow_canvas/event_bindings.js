@@ -250,7 +250,7 @@ export function setupEventHandlers(hook) {
 
     const searchInput = document.createElement("input");
     searchInput.type = "text";
-    searchInput.placeholder = "Search…";
+    searchInput.placeholder = hook.labels?.search || "Search…";
     searchInput.style.cssText =
       "padding:6px 8px;border:none;border-bottom:1px solid oklch(0.35 0 0);background:transparent;color:inherit;outline:none;font-size:13px;";
     wrap.appendChild(searchInput);
@@ -260,8 +260,9 @@ export function setupEventHandlers(hook) {
 
     // "No speaker" option
     const noSpeakerBtn = document.createElement("button");
-    noSpeakerBtn.textContent = "Dialogue";
-    noSpeakerBtn.dataset.searchText = "dialogue";
+    const noSpeakerLabel = hook.labels?.no_speaker || "Dialogue";
+    noSpeakerBtn.textContent = noSpeakerLabel;
+    noSpeakerBtn.dataset.searchText = noSpeakerLabel.toLowerCase();
     noSpeakerBtn.dataset.value = "";
     noSpeakerBtn.style.cssText =
       "display:block;width:100%;text-align:left;padding:4px 8px;font-size:13px;border:none;background:transparent;color:inherit;cursor:pointer;opacity:0.6;font-style:italic;";

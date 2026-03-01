@@ -118,6 +118,7 @@ defmodule StoryarnWeb.FlowLive.Show do
               data-locks={Jason.encode!(@node_locks)}
               data-user-id={@current_scope.user.id}
               data-user-color={Collaboration.user_color(@current_scope.user.id)}
+              data-labels={Jason.encode!(flow_canvas_labels())}
             >
             </div>
 
@@ -1133,6 +1134,42 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
   # Private Helpers
   # ===========================================================================
+
+  defp flow_canvas_labels do
+    %{
+      # Root menu
+      add_node: dgettext("flows", "Add node"),
+      play_preview: dgettext("flows", "Play preview"),
+      start_debugging: dgettext("flows", "Start debugging"),
+      auto_layout: dgettext("flows", "Auto-layout"),
+      # Node types
+      dialogue: dgettext("flows", "Dialogue"),
+      condition: dgettext("flows", "Condition"),
+      instruction: dgettext("flows", "Instruction"),
+      hub: dgettext("flows", "Hub"),
+      jump: dgettext("flows", "Jump"),
+      exit: dgettext("flows", "Exit"),
+      subflow: dgettext("flows", "Subflow"),
+      scene: dgettext("flows", "Scene"),
+      # Node actions
+      open_editor_panel: dgettext("flows", "Open editor panel"),
+      preview_from_here: dgettext("flows", "Preview from here"),
+      generate_technical_id: dgettext("flows", "Generate technical ID"),
+      toggle_switch_mode: dgettext("flows", "Toggle switch mode"),
+      locate_referencing_jumps: dgettext("flows", "Locate referencing jumps"),
+      locate_target_hub: dgettext("flows", "Locate target hub"),
+      open_referenced_flow: dgettext("flows", "Open referenced flow"),
+      create_linked_flow: dgettext("flows", "Create linked flow"),
+      view_referencing_flows: dgettext("flows", "View referencing flows"),
+      duplicate: dgettext("flows", "Duplicate"),
+      delete: dgettext("flows", "Delete"),
+      # Inline edit
+      search: dgettext("flows", "Search…"),
+      no_speaker: dgettext("flows", "Dialogue"),
+      stage_directions: dgettext("flows", "Stage directions…"),
+      dialogue_text: dgettext("flows", "Dialogue text…")
+    }
+  end
 
   defp maybe_restore_nav_history(socket) do
     user_id = socket.assigns.current_scope.user.id
