@@ -1,88 +1,138 @@
 /**
  * CodeMirror theme for Storyarn expression editor.
- * Uses CSS variables from daisyUI v5 / Tailwind v4 theme for consistency.
+ *
+ * Theme-adaptive: reads --cm-* CSS custom properties from app.css,
+ * which are set per [data-theme] (light / dark).
  */
 
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 
-/** Base editor theme: fonts, cursor, selection, tooltip, and diagnostic styles. */
+/** Theme-adaptive palette — reads CSS custom properties set per data-theme. */
+const COLORS = {
+  bg: "var(--cm-bg)",
+  gutterBg: "var(--cm-gutter-bg)",
+  gutterFg: "var(--cm-gutter-fg)",
+  gutterBorder: "var(--cm-gutter-border)",
+  activeLine: "var(--cm-active-line)",
+  activeGutter: "var(--cm-active-gutter)",
+  selection: "var(--cm-selection)",
+  cursor: "var(--cm-cursor)",
+  text: "var(--cm-text)",
+  placeholder: "var(--cm-placeholder)",
+  // Syntax
+  variable: "var(--cm-variable)", // identifiers / variable refs
+  string: "var(--cm-string)",     // string literals
+  number: "var(--cm-number)",     // numbers
+  keyword: "var(--cm-keyword)",   // &&, ||, !, true, false, nil
+  operator: "var(--cm-operator)", // ==, !=, >, <, +=, =, …
+  paren: "var(--cm-paren)",       // ( )
+  punct: "var(--cm-punct)",       // dots, other punctuation
+  comment: "var(--cm-comment)",   // // comments
+  // Tooltips
+  tooltipBg: "var(--cm-tooltip-bg)",
+  tooltipBorder: "var(--cm-tooltip-border)",
+};
+
+/** Base editor theme: layout, cursor, selection, gutters, tooltips. */
 export const storyarnEditorTheme = EditorView.theme({
   "&": {
     fontSize: "13px",
     fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace",
+    backgroundColor: COLORS.bg,
+    color: COLORS.text,
+  },
+  ".cm-scroller": {
+    fontFamily: "inherit",
   },
   ".cm-content": {
     padding: "8px 0",
-    caretColor: "var(--color-base-content)",
+    caretColor: COLORS.cursor,
   },
   ".cm-line": {
     padding: "0 8px",
   },
   "&.cm-focused .cm-cursor": {
-    borderLeftColor: "var(--color-base-content)",
+    borderLeftColor: COLORS.cursor,
   },
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
-    backgroundColor: "color-mix(in oklch, var(--color-base-content) 15%, transparent)",
+    backgroundColor: COLORS.selection,
   },
   ".cm-activeLine": {
-    backgroundColor: "color-mix(in oklch, var(--color-base-content) 5%, transparent)",
+    backgroundColor: COLORS.activeLine,
   },
+  // Gutters (line numbers)
   ".cm-gutters": {
-    display: "none",
+    backgroundColor: COLORS.gutterBg,
+    color: COLORS.gutterFg,
+    border: "none",
+    borderRight: `1px solid ${COLORS.gutterBorder}`,
   },
+  ".cm-lineNumbers .cm-gutterElement": {
+    padding: "0 8px 0 4px",
+    minWidth: "2rem",
+    textAlign: "right",
+    fontSize: "11px",
+  },
+  ".cm-activeLineGutter": {
+    backgroundColor: COLORS.activeGutter,
+    color: COLORS.text,
+  },
+  // Placeholder
   ".cm-placeholder": {
-    color: "color-mix(in oklch, var(--color-base-content) 35%, transparent)",
+    color: COLORS.placeholder,
     fontStyle: "italic",
   },
+  // Autocomplete tooltip
   ".cm-tooltip": {
-    backgroundColor: "var(--color-base-100)",
-    border: "1px solid var(--color-base-300)",
+    backgroundColor: COLORS.tooltipBg,
+    border: `1px solid ${COLORS.tooltipBorder}`,
     borderRadius: "0.5rem",
-    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.4)",
   },
   ".cm-tooltip-autocomplete ul li": {
     padding: "2px 8px",
+    color: COLORS.text,
   },
   ".cm-tooltip-autocomplete ul li[aria-selected]": {
-    backgroundColor: "color-mix(in oklch, var(--color-primary) 15%, transparent)",
-    color: "var(--color-base-content)",
+    backgroundColor: COLORS.activeLine,
+    color: COLORS.variable,
   },
+  // Diagnostics (linting underlines)
   ".cm-diagnostic-error": {
-    borderBottom: "2px solid var(--color-error)",
+    borderBottom: "2px solid #e06c75",
   },
   ".cm-diagnostic-warning": {
-    borderBottom: "2px solid var(--color-warning)",
+    borderBottom: "2px solid #e5c07b",
   },
 });
 
 const highlightStyle = HighlightStyle.define([
-  // Variable refs (identifiers)
-  { tag: tags.variableName, color: "var(--color-info)" },
-  { tag: tags.name, color: "var(--color-info)" },
-  // Operators
-  { tag: tags.operator, color: "var(--color-secondary)" },
-  { tag: tags.compareOperator, color: "var(--color-secondary)" },
-  // Strings
-  { tag: tags.string, color: "var(--color-success)" },
-  // Numbers
-  { tag: tags.number, color: "var(--color-warning)" },
-  // Booleans / keywords
-  { tag: tags.bool, color: "var(--color-accent)" },
-  { tag: tags.keyword, color: "var(--color-accent)" },
-  // Punctuation (dots, parens)
-  {
-    tag: tags.punctuation,
-    color: "color-mix(in oklch, var(--color-base-content) 50%, transparent)",
-  },
-  // Comments
-  {
-    tag: tags.lineComment,
-    color: "color-mix(in oklch, var(--color-base-content) 40%, transparent)",
-    fontStyle: "italic",
-  },
+  // Variable refs / identifiers — blue
+  { tag: tags.variableName, color: COLORS.variable },
+  { tag: tags.name, color: COLORS.variable },
+  // Assignment operators (=, +=, -=, ?=) — cyan
+  { tag: tags.operator, color: COLORS.operator },
+  // Compare operators (==, !=, >, <, >=, <=) — cyan
+  { tag: tags.compareOperator, color: COLORS.operator },
+  // Strings — green
+  { tag: tags.string, color: COLORS.string },
+  // Numbers — orange
+  { tag: tags.number, color: COLORS.number },
+  // Booleans (true, false) — purple
+  { tag: tags.bool, color: COLORS.keyword },
+  // Null (nil) — purple
+  { tag: tags.null, color: COLORS.keyword },
+  // Keywords (&&, ||, !) — purple
+  { tag: tags.keyword, color: COLORS.keyword },
+  // Parentheses ( ) — yellow
+  { tag: tags.paren, color: COLORS.paren },
+  // Other punctuation (dots, separators) — text color
+  { tag: tags.punctuation, color: COLORS.punct },
+  // Comments — gray italic
+  { tag: tags.lineComment, color: COLORS.comment, fontStyle: "italic" },
 ]);
 
-/** Syntax highlighting extension mapping language tokens to daisyUI CSS variables. */
+/** Syntax highlighting extension. */
 export const storyarnHighlighting = syntaxHighlighting(highlightStyle);

@@ -41,7 +41,7 @@ const NEGATE_OP = {
   less_than_or_equal: "greater_than",
 };
 
-const VALUE_TYPES = new Set(["VariableRef", "Number", "StringLiteral", "Boolean"]);
+const VALUE_TYPES = new Set(["VariableRef", "Number", "StringLiteral", "Boolean", "Null"]);
 
 // -- ID generation --
 

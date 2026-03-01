@@ -148,10 +148,18 @@ defmodule Storyarn.Screenplays.LinkedPageCrudTest do
   describe "list_child_screenplays/1" do
     test "lists children ordered by position", %{project: project, screenplay: sp} do
       child_b =
-        ScreenplaysFixtures.screenplay_fixture(project, %{name: "Branch B", parent_id: sp.id, position: 0})
+        ScreenplaysFixtures.screenplay_fixture(project, %{
+          name: "Branch B",
+          parent_id: sp.id,
+          position: 0
+        })
 
       child_a =
-        ScreenplaysFixtures.screenplay_fixture(project, %{name: "Branch A", parent_id: sp.id, position: 1})
+        ScreenplaysFixtures.screenplay_fixture(project, %{
+          name: "Branch A",
+          parent_id: sp.id,
+          position: 1
+        })
 
       children = LinkedPageCrud.list_child_screenplays(sp.id)
 

@@ -189,11 +189,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.NodeTest do
 
       updated = Storyarn.Flows.get_node!(result.assigns.flow.id, dialogue_node.id)
       response = Enum.find(updated.data["responses"], &(&1["id"] == "r1"))
-      # Condition is stored as JSON string on responses
-      condition =
-        if is_binary(response["condition"]),
-          do: Jason.decode!(response["condition"]),
-          else: response["condition"]
+      condition = response["condition"]
 
       assert condition["logic"] == "all"
       assert length(condition["rules"]) == 1

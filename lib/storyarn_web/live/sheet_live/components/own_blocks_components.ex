@@ -61,7 +61,11 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
         <%= case item.type do %>
           <% :full_width -> %>
             <div class="block-wrapper flex" data-block-id={item.block.id}>
-              <div class="column-dropzone w-8 shrink-0 pr-2 sm:pr-8 md:pr-16" data-dropzone="left" data-target-block={item.block.id}>
+              <div
+                class="column-dropzone w-8 shrink-0 pr-2 sm:pr-8 md:pr-16"
+                data-dropzone="left"
+                data-target-block={item.block.id}
+              >
               </div>
               <div
                 class="group relative w-full min-w-0 pt-2"

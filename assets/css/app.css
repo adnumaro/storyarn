@@ -19,6 +19,54 @@
   --radius-field: 0.5rem;
 }
 
+/* Expression editor (CodeMirror) — theme-adaptive colors */
+:root,
+[data-theme="light"] {
+  --cm-bg: #f8fafc;
+  --cm-gutter-bg: #f1f5f9;
+  --cm-gutter-fg: #94a3b8;
+  --cm-gutter-border: #e2e8f0;
+  --cm-active-line: #f1f5f9;
+  --cm-active-gutter: #e2e8f0;
+  --cm-selection: rgba(59, 130, 246, 0.2);
+  --cm-cursor: #2563eb;
+  --cm-text: #1e293b;
+  --cm-placeholder: #94a3b8;
+  --cm-variable: #0369a1;
+  --cm-string: #15803d;
+  --cm-number: #b45309;
+  --cm-keyword: #7c3aed;
+  --cm-operator: #0e7490;
+  --cm-paren: #b45309;
+  --cm-punct: #64748b;
+  --cm-comment: #94a3b8;
+  --cm-tooltip-bg: #ffffff;
+  --cm-tooltip-border: #e2e8f0;
+}
+
+[data-theme="dark"] {
+  --cm-bg: #282c34;
+  --cm-gutter-bg: #282c34;
+  --cm-gutter-fg: #495162;
+  --cm-gutter-border: #3e4451;
+  --cm-active-line: #2c313c;
+  --cm-active-gutter: #2c313c;
+  --cm-selection: rgba(67, 90, 136, 0.4);
+  --cm-cursor: #528bff;
+  --cm-text: #abb2bf;
+  --cm-placeholder: #5c6370;
+  --cm-variable: #61afef;
+  --cm-string: #98c379;
+  --cm-number: #d19a66;
+  --cm-keyword: #c678dd;
+  --cm-operator: #56b6c2;
+  --cm-paren: #e5c07b;
+  --cm-punct: #abb2bf;
+  --cm-comment: #5c6370;
+  --cm-tooltip-bg: #21252b;
+  --cm-tooltip-border: #3e4451;
+}
+
 /* Override daisyUI hover colors — subtler than default 10% */
 .menu :where(li:not(.menu-title, .disabled) > :not(ul, details, .menu-title):not(.menu-active, :active, .btn):hover) {
   background-color: color-mix(in oklab, var(--color-base-content) 5%, transparent);
@@ -878,6 +926,22 @@ body.dnd-active [data-toolbar] {
 .color-swatch:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* ===== Response Advanced section chevron ===== */
+
+details[open] > summary .details-chevron {
+  transform: rotate(90deg);
+}
+
+/* ===== Flow Canvas ===== */
+
+/* Prevent text selection when dragging nodes across the canvas.
+   user-select: none cascades through Shadow DOM boundaries in modern browsers,
+   so this covers text inside Rete.js web component nodes.
+   <input> and <textarea> elements remain selectable regardless of this rule. */
+#flow-canvas {
+  user-select: none;
 }
 
 /* ===== Flow Floating Toolbar ===== */

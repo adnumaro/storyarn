@@ -8,7 +8,13 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { LanguageSupport, LRLanguage } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
-import { EditorView, keymap, placeholder as placeholderExt, tooltips } from "@codemirror/view";
+import {
+  EditorView,
+  keymap,
+  lineNumbers,
+  placeholder as placeholderExt,
+  tooltips,
+} from "@codemirror/view";
 import { styleTags, tags } from "@lezer/highlight";
 import { variableAutocomplete } from "./autocomplete.js";
 import { expressionLinter } from "./linter.js";
@@ -60,6 +66,7 @@ export function createExpressionEditor(opts) {
         Lte: tags.compareOperator,
         Gt: tags.compareOperator,
         Lt: tags.compareOperator,
+        Null: tags.null,
         And: tags.keyword,
         Or: tags.keyword,
         Not: tags.keyword,
@@ -88,6 +95,7 @@ export function createExpressionEditor(opts) {
     : null;
 
   const extensions = [
+    lineNumbers(),
     languageSupport,
     storyarnEditorTheme,
     storyarnHighlighting,

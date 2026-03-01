@@ -270,7 +270,7 @@ export function setupEventHandlers(hook) {
     const node = hook.nodeMap.get(data.id);
     if (!node) return;
 
-    const SIDEBAR_WIDTH = 600;
+    const SIDEBAR_WIDTH = data.sidebar_width ?? 600;
     const isFullscreen = window.innerWidth < 1280;
 
     if (isFullscreen) {
@@ -364,12 +364,17 @@ export function setupEventHandlers(hook) {
     if (!storyarnEl && hook.selectedNodeId) {
       exitInlineEdit(hook);
 
-      // If the screenplay editor is open, animate it out first then deselect.
-      // The hook listens for "panel:close-deselect" and pushes "deselect_node"
-      // after the exit animation completes.
+      // If a sidebar panel is open, animate it out first.
+      // The screenplay editor hook pushes "deselect_node" after animation.
+      // The builder sidebar hook pushes "close_builder" (back to toolbar, no deselect).
       const editorEl = document.getElementById("dialogue-screenplay-editor");
+      const builderEl = document.getElementById("builder-sidebar");
+
       if (editorEl) {
         editorEl.dispatchEvent(new CustomEvent("panel:close-deselect"));
+      } else if (builderEl) {
+        // Builder: close sidebar but keep node selected (goes back to toolbar mode)
+        builderEl.dispatchEvent(new CustomEvent("panel:close"));
       } else {
         hook.pushEvent("deselect_node", {});
       }

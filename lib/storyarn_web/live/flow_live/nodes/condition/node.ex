@@ -88,8 +88,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
     Map.update(data, "responses", [], fn responses ->
       Enum.map(responses, fn
         %{"id" => ^response_id} = resp ->
-          sanitized = Flows.condition_sanitize(condition_data)
-          Map.put(resp, "condition", Flows.condition_to_json(sanitized))
+          Map.put(resp, "condition", Flows.condition_sanitize(condition_data))
 
         resp ->
           resp

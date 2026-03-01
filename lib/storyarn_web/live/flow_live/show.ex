@@ -129,7 +129,7 @@ defmodule StoryarnWeb.FlowLive.Show do
               class="absolute z-30"
             >
               <div
-                :if={@selected_node && @editing_mode in [:toolbar, :builder]}
+                :if={@selected_node && @editing_mode == :toolbar}
                 class="floating-toolbar"
               >
                 <.node_toolbar
@@ -146,21 +146,6 @@ defmodule StoryarnWeb.FlowLive.Show do
                   referencing_jumps={@referencing_jumps}
                   referencing_flows={@referencing_flows}
                   project_scenes={@project_scenes}
-                />
-              </div>
-
-              <%!-- Builder Panel (below toolbar) --%>
-              <div
-                :if={@selected_node && @editing_mode == :builder}
-                id="builder-panel-content"
-                class="mt-2 bg-base-100 border border-base-300 rounded-lg shadow-lg p-4 max-h-[60vh] overflow-y-auto w-[400px]"
-              >
-                <.builder_content
-                  node={@selected_node}
-                  form={@node_form}
-                  can_edit={@can_edit}
-                  project_variables={@project_variables}
-                  panel_sections={@panel_sections}
                 />
               </div>
             </div>
@@ -187,6 +172,27 @@ defmodule StoryarnWeb.FlowLive.Show do
           action={@collab_toast.action}
           user_email={@collab_toast.user_email}
           user_color={@collab_toast.user_color}
+        />
+      </div>
+
+      <%!-- Builder Sidebar (condition / instruction nodes) --%>
+      <div
+        :if={@selected_node && @editing_mode == :builder}
+        id="builder-sidebar"
+        phx-hook="BuilderSidebar"
+        class={[
+          "fixed flex flex-col overflow-hidden",
+          "inset-0 z-50 bg-base-100",
+          "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[480px]",
+          "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+        ]}
+      >
+        <.builder_content
+          node={@selected_node}
+          form={@node_form}
+          can_edit={@can_edit}
+          project_variables={@project_variables}
+          panel_sections={@panel_sections}
         />
       </div>
 
@@ -415,7 +421,12 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("open_builder", _params, socket) do
-    {:noreply, assign(socket, :editing_mode, :builder)}
+    socket =
+      socket
+      |> assign(:editing_mode, :builder)
+      |> push_event("center_on_node", %{id: socket.assigns.selected_node.id, sidebar_width: 480})
+
+    {:noreply, socket}
   end
 
   def handle_event("close_builder", _params, socket) do

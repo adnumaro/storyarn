@@ -29,11 +29,26 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
   def condition_builder(assigns) do
     parsed_condition =
       case assigns.condition do
-        nil -> Flows.condition_new()
-        %{"logic" => _, "blocks" => _} = cond -> cond
-        %{"logic" => _, "rules" => _} = cond -> cond
-        :legacy -> Flows.condition_new()
-        _string -> Flows.condition_new()
+        nil ->
+          Flows.condition_new()
+
+        %{"logic" => _, "blocks" => _} = cond ->
+          cond
+
+        %{"logic" => _, "rules" => _} = cond ->
+          cond
+
+        :legacy ->
+          Flows.condition_new()
+
+        string when is_binary(string) ->
+          case Flows.condition_parse(string) do
+            %{} = cond -> cond
+            _ -> Flows.condition_new()
+          end
+
+        _ ->
+          Flows.condition_new()
       end
 
     assigns =
@@ -85,6 +100,7 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
       any: dgettext("flows", "any"),
       of_the_rules: dgettext("flows", "of the rules"),
       of_the_blocks: dgettext("flows", "of the blocks"),
+      of_the_blocks_in_group: dgettext("flows", "of the blocks in the group"),
       switch_mode_info: dgettext("flows", "Each condition creates an output. First match wins."),
       add_condition: dgettext("flows", "Add condition"),
       add_block: dgettext("flows", "Add block"),
@@ -93,6 +109,8 @@ defmodule StoryarnWeb.Components.ConditionBuilder do
       cancel: dgettext("flows", "Cancel"),
       ungroup: dgettext("flows", "Ungroup"),
       no_conditions: dgettext("flows", "No conditions set"),
+      remove: dgettext("flows", "Remove"),
+      remove_block: dgettext("flows", "Remove block"),
       placeholder_sheet: dgettext("flows", "sheet"),
       placeholder_variable: dgettext("flows", "variable"),
       placeholder_operator: dgettext("flows", "op"),

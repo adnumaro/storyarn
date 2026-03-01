@@ -203,7 +203,7 @@ export function createConditionRuleRow(opts) {
       removeBtn.type = "button";
       removeBtn.className = "sp-row-action sp-row-action-danger";
       removeBtn.appendChild(createElement(X, { width: 12, height: 12 }));
-      removeBtn.title = "Remove";
+      removeBtn.title = t?.remove || "Remove";
       removeBtn.addEventListener("click", () => {
         if (onRemove) onRemove();
       });

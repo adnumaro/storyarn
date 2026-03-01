@@ -20,13 +20,19 @@ defmodule StoryarnWeb.FlowLive.Components.BuilderPanel do
 
   def builder_content(assigns) do
     ~H"""
-    <div class="flex items-center justify-between mb-3">
+    <div class="flex items-center justify-between p-4 border-b border-base-300 shrink-0">
       <h3 class="font-semibold text-sm">{builder_title(@node.type)}</h3>
-      <button type="button" phx-click="close_builder" class="btn btn-ghost btn-xs btn-square">
+      <button
+        type="button"
+        phx-click={JS.dispatch("panel:close", to: "#builder-sidebar")}
+        class="btn btn-ghost btn-xs btn-square"
+      >
         <.icon name="x" class="size-3.5" />
       </button>
     </div>
-    {render_builder(@node.type, assigns)}
+    <div class="p-4 overflow-y-auto flex-1">
+      {render_builder(@node.type, assigns)}
+    </div>
     """
   end
 

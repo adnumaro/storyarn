@@ -25,6 +25,7 @@ const DEFAULT_TRANSLATIONS = {
   any: "any",
   of_the_rules: "of the rules",
   of_the_blocks: "of the blocks",
+  of_the_blocks_in_group: "of the blocks in the group",
   switch_mode_info: "Each condition creates an output. First match wins.",
   add_condition: "Add condition",
   add_block: "Add block",
@@ -33,6 +34,8 @@ const DEFAULT_TRANSLATIONS = {
   cancel: "Cancel",
   ungroup: "Ungroup",
   no_conditions: "No conditions set",
+  remove: "Remove",
+  remove_block: "Remove block",
   placeholder_sheet: "sheet",
   placeholder_variable: "variable",
   placeholder_operator: "op",
@@ -162,11 +165,11 @@ export function createConditionBuilder({
       // Selection checkbox (for grouping mode)
       if (selectionMode && item.type === "block") {
         const checkWrap = document.createElement("label");
-        checkWrap.className = "flex items-start gap-2";
+        checkWrap.className = "relative block w-full cursor-pointer";
 
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
-        checkbox.className = "checkbox checkbox-xs checkbox-primary mt-2";
+        checkbox.className = "checkbox checkbox-xs checkbox-primary absolute top-2 left-2 z-10";
         checkbox.checked = selectedBlockIds.has(item.id);
         checkbox.addEventListener("change", () => {
           if (checkbox.checked) {
@@ -179,7 +182,7 @@ export function createConditionBuilder({
         checkWrap.appendChild(checkbox);
 
         const contentEl = document.createElement("div");
-        contentEl.className = "flex-1";
+        contentEl.className = "w-full";
         checkWrap.appendChild(contentEl);
         wrapper.appendChild(checkWrap);
 
@@ -289,7 +292,9 @@ export function createConditionBuilder({
           id: generateId("block"),
           type: "block",
           logic: "all",
-          rules: [],
+          rules: [
+            { id: generateId("rule"), sheet: null, variable: null, operator: "equals", value: null },
+          ],
         };
         if (switchMode) {
           newBlock.label = "";

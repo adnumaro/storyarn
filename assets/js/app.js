@@ -27,6 +27,7 @@ import topbar from "topbar";
 
 import { AssetUpload } from "./hooks/asset_upload";
 import { AudioUpload } from "./hooks/audio_upload";
+import { BuilderSidebar } from "./hooks/builder_sidebar";
 import { AvatarUpload } from "./hooks/avatar_upload";
 import { BannerUpload } from "./hooks/banner_upload";
 import { BlockKeyboard } from "./hooks/block_keyboard";
@@ -37,6 +38,7 @@ import { ColorPicker } from "./hooks/color_picker";
 import { ColumnSortable } from "./hooks/column_sortable";
 import { ConditionBuilder } from "./hooks/condition_builder";
 import { DebugPanelResize } from "./hooks/debug_panel_resize";
+import { DetailsPreserveOpen } from "./hooks/details_preserve_open";
 import { DialogueScreenplayEditor } from "./hooks/dialogue_screenplay_editor";
 import { EditableBlockLabel } from "./hooks/editable_block_label";
 import { EditableShortcut } from "./hooks/editable_shortcut";
@@ -82,6 +84,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ...colocatedHooks,
     AssetUpload,
     AudioUpload,
+    BuilderSidebar,
     CanvasDropZone,
     AvatarUpload,
     BannerUpload,
@@ -104,6 +107,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ColorPicker,
     ConditionBuilder,
     DebugPanelResize,
+    DetailsPreserveOpen,
     FountainImport,
     SceneCanvas,
     FloatingToolbar,

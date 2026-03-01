@@ -170,7 +170,10 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
           phx-value-type="sheet"
           phx-target={@target}
         >
-          <.icon name={if "sheet" in @allowed_types, do: "square-check", else: "square"} class="size-4" />
+          <.icon
+            name={if "sheet" in @allowed_types, do: "square-check", else: "square"}
+            class="size-4"
+          />
           <span class="text-sm text-base-content/70">{dgettext("sheets", "Sheets")}</span>
         </button>
         <button
@@ -181,7 +184,10 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
           phx-value-type="flow"
           phx-target={@target}
         >
-          <.icon name={if "flow" in @allowed_types, do: "square-check", else: "square"} class="size-4" />
+          <.icon
+            name={if "flow" in @allowed_types, do: "square-check", else: "square"}
+            class="size-4"
+          />
           <span class="text-sm text-base-content/70">{dgettext("sheets", "Flows")}</span>
         </button>
       </div>

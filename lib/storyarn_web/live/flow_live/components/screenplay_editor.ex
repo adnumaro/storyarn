@@ -44,14 +44,16 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
       id="dialogue-screenplay-editor"
       phx-hook="DialogueScreenplayEditor"
       phx-target={@myself}
-      class={[
-        "fixed flex flex-col overflow-hidden",
-        # Mobile: fullscreen overlay
-        "inset-0 z-50 bg-base-100",
-        # Desktop (xl): floating sidebar
-        "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[600px]",
-        "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
-      ]}
+      class={
+        [
+          "fixed flex flex-col overflow-hidden",
+          # Mobile: fullscreen overlay
+          "inset-0 z-50 bg-base-100",
+          # Desktop (xl): floating sidebar
+          "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[600px]",
+          "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+        ]
+      }
     >
       <%!-- Mobile header --%>
       <header class="navbar bg-base-100 border-b border-base-300 px-4 shrink-0 xl:hidden">
@@ -176,11 +178,13 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
               type="button"
               class="dialogue-sp-select-btn"
               data-speaker-id={@form[:speaker_sheet_id].value || ""}
-              data-speakers={Jason.encode!(
-                Enum.map(@speaker_options, fn {name, id} ->
-                  %{id: to_string(id), name: name}
-                end)
-              )}
+              data-speakers={
+                Jason.encode!(
+                  Enum.map(@speaker_options, fn {name, id} ->
+                    %{id: to_string(id), name: name}
+                  end)
+                )
+              }
               data-no-speaker-label={dgettext("flows", "DIALOGUE")}
               data-search-placeholder={dgettext("flows", "Search…")}
             >
@@ -263,16 +267,15 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
         <div class="flex items-start gap-2">
           <.icon name="corner-down-right" class="size-4 mt-1 opacity-50 shrink-0" />
           <div class="flex-1 min-w-0">
-            <input
+            <textarea
               :if={@can_edit}
-              type="text"
-              value={response["text"] || ""}
               placeholder={dgettext("flows", "Response text… (use $ref for variables)")}
               phx-blur="update_response_text"
               phx-value-response-id={response["id"]}
               phx-value-node-id={@node.id}
-              class="input input-sm input-bordered w-full"
-            />
+              rows="2"
+              class="textarea textarea-sm textarea-bordered w-full resize-none"
+            >{response["text"] || ""}</textarea>
             <span :if={!@can_edit} class="text-sm">
               {response["text"] || dgettext("flows", "(empty response)")}
             </span>
@@ -292,10 +295,16 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
         <%!-- Advanced section (condition + instruction) --%>
         <details
           :if={@can_edit}
+          id={"response-advanced-#{response["id"]}"}
+          phx-hook="DetailsPreserveOpen"
           class="mt-2"
           open={has_advanced?(response)}
         >
-          <summary class="text-xs cursor-pointer select-none flex items-center gap-1 opacity-60 hover:opacity-100">
+          <summary class="text-xs cursor-pointer select-none flex items-center gap-1 opacity-60 hover:opacity-100 list-none [&::-webkit-details-marker]:hidden">
+            <.icon
+              name="chevron-right"
+              class="size-3 details-chevron transition-transform duration-150"
+            />
             <span
               :if={has_advanced?(response)}
               class="inline-block w-1.5 h-1.5 rounded-full bg-warning"

@@ -30,7 +30,7 @@ defmodule StoryarnWeb.FlowLive.Components.BuilderPanelTest do
       html = render_component(&BuilderPanel.builder_content/1, assigns)
 
       assert html =~ "Condition Builder"
-      assert html =~ "close_builder"
+      assert html =~ "panel:close"
       assert html =~ "Add rules"
     end
 
@@ -111,7 +111,7 @@ defmodule StoryarnWeb.FlowLive.Components.BuilderPanelTest do
 
       html = render_component(&BuilderPanel.builder_content/1, assigns)
 
-      assert html =~ "close_builder"
+      assert html =~ "panel:close"
       refute html =~ "Condition Builder"
       refute html =~ "Instruction Builder"
     end

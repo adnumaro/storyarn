@@ -63,7 +63,7 @@ export function createConditionGroup(opts) {
         createLogicToggle({
           logic: currentGroup.logic,
           canEdit,
-          ofLabel: t?.of_the_blocks || "of the blocks",
+          ofLabel: t?.of_the_blocks_in_group || "of the blocks in the group",
           translations: t,
           onChange: (newLogic) => {
             currentGroup.logic = newLogic;
@@ -75,7 +75,7 @@ export function createConditionGroup(opts) {
     } else {
       const groupLabel = document.createElement("span");
       groupLabel.className = "text-xs text-base-content/60 font-medium";
-      groupLabel.textContent = "Group";
+      groupLabel.textContent = t?.group || "Group";
       leftSide.appendChild(groupLabel);
     }
 
@@ -139,7 +139,9 @@ export function createConditionGroup(opts) {
           id: generateId("block"),
           type: "block",
           logic: "all",
-          rules: [],
+          rules: [
+            { id: generateId("rule"), sheet: null, variable: null, operator: "equals", value: null },
+          ],
         };
         currentGroup.blocks.push(newBlock);
         notifyChange();

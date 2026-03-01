@@ -188,10 +188,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
           |> assign(:editing_mode, mode)
 
         socket =
-          if mode == :editor do
-            push_event(socket, "center_on_node", %{id: node_id})
-          else
-            socket
+          case mode do
+            :editor -> push_event(socket, "center_on_node", %{id: node_id, sidebar_width: 600})
+            :builder -> push_event(socket, "center_on_node", %{id: node_id, sidebar_width: 480})
+            _ -> socket
           end
 
         {:noreply, socket}

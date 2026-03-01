@@ -47,7 +47,11 @@ defmodule StoryarnWeb.Components.TreeComponents do
   def tree_node(assigns) do
     ~H"""
     <div
-      class={["tree-node flex flex-col gap-1", @can_drag && "cursor-grab active:cursor-grabbing", @class]}
+      class={[
+        "tree-node flex flex-col gap-1",
+        @can_drag && "cursor-grab active:cursor-grabbing",
+        @class
+      ]}
       data-item-id={@item_id}
       data-item-name={@item_name}
     >

@@ -24,6 +24,7 @@ value {
   StringLiteral |
   Number |
   Boolean |
+  Null |
   ParenExpr
 }
 
@@ -38,6 +39,7 @@ separator { ";" }
   StringLiteral { '"' (!["\\] | "\\" _)* '"' }
   Number { $[0-9]+ ("." $[0-9]+)? }
   Boolean { "true" | "false" }
+  Null { "nil" }
 
   SetOp { "=" }
   AddOp { "+=" }
@@ -58,7 +60,7 @@ separator { ";" }
   whitespace { $[ \t\n\r]+ }
   LineComment { "//" ![\n]* }
 
-  @precedence { AddOp, SubOp, SetIfUnsetOp, Eq, Neq, Gte, Lte, Gt, Lt, And, Or, Not, SetOp, Boolean, Identifier }
+  @precedence { AddOp, SubOp, SetIfUnsetOp, Eq, Neq, Gte, Lte, Gt, Lt, And, Or, Not, SetOp, Null, Boolean, Identifier }
 }
 
 @skip { whitespace | LineComment }

@@ -86,7 +86,7 @@ export function createConditionBlock(opts) {
       removeBtn.className =
         "btn btn-ghost btn-xs btn-square opacity-0 group-hover/block:opacity-100 transition-opacity";
       removeBtn.appendChild(createElement(X, { width: 12, height: 12 }));
-      removeBtn.title = "Remove block";
+      removeBtn.title = t?.remove_block || "Remove block";
       removeBtn.addEventListener("click", () => {
         if (onRemove) onRemove();
       });
