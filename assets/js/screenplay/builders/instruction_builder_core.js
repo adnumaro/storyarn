@@ -67,9 +67,14 @@ export function createInstructionBuilder({
     destroyRows();
     container.innerHTML = "";
 
+    // Block card — same visual style as a condition block
+    const blockEl = document.createElement("div");
+    blockEl.className = "condition-block rounded-lg border border-base-300/60 bg-base-100 p-2";
+    container.appendChild(blockEl);
+
     const rowsContainer = document.createElement("div");
     rowsContainer.className = "space-y-0";
-    container.appendChild(rowsContainer);
+    blockEl.appendChild(rowsContainer);
 
     currentAssignments.forEach((assignment, index) => {
       const rowEl = document.createElement("div");
@@ -104,11 +109,20 @@ export function createInstructionBuilder({
       rows.push(row);
     });
 
-    // Add assignment button
+    // Empty state (read-only)
+    if (currentAssignments.length === 0 && !canEdit) {
+      const empty = document.createElement("p");
+      empty.className = "text-xs text-base-content/50 italic";
+      empty.textContent = t.no_assignments;
+      blockEl.appendChild(empty);
+    }
+
+    // Add assignment button — inside the block, full-width, matches condition block style
     if (canEdit) {
       const addBtn = document.createElement("button");
       addBtn.type = "button";
-      addBtn.className = "btn btn-ghost btn-xs gap-1 border border-dashed border-base-300 mt-2";
+      addBtn.className =
+        "btn btn-ghost btn-xs gap-1 border border-dashed border-base-300 mt-1 w-full";
       addBtn.appendChild(createElement(Plus, { width: 12, height: 12 }));
       addBtn.append(` ${t.add_assignment}`);
       addBtn.addEventListener("click", () => {
@@ -132,15 +146,7 @@ export function createInstructionBuilder({
       });
 
       addButton = addBtn;
-      container.appendChild(addBtn);
-    }
-
-    // Empty state
-    if (currentAssignments.length === 0 && !canEdit) {
-      const empty = document.createElement("p");
-      empty.className = "text-xs text-base-content/50 italic";
-      empty.textContent = t.no_assignments;
-      container.appendChild(empty);
+      blockEl.appendChild(addBtn);
     }
   }
 

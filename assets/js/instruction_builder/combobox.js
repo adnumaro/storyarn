@@ -26,6 +26,7 @@ import { createFloatingPopover } from "../utils/floating_popover";
  * @param {boolean} opts.disabled - Whether the input is disabled
  * @param {Function} opts.onSelect - Callback when an option is selected: (option) => void
  * @param {boolean} opts.freeText - Allow free text input (no dropdown). Default false.
+ * @param {boolean} opts.numeric - Restrict input to numeric values (integers and floats). Default false.
  */
 export function createCombobox(opts) {
   const {
@@ -37,6 +38,7 @@ export function createCombobox(opts) {
     disabled = false,
     onSelect,
     freeText = false,
+    numeric = false,
   } = opts;
 
   let isOpen = false;
@@ -53,8 +55,40 @@ export function createCombobox(opts) {
   input.disabled = disabled;
   input.autocomplete = "off";
   input.spellcheck = false;
+  if (numeric) input.inputMode = "decimal";
 
   adjustInputWidth(input);
+
+  // Numeric filter: allow digits, a leading minus, and one decimal point
+  if (numeric) {
+    input.addEventListener("beforeinput", (e) => {
+      if (!e.data) return; // Allow deletions, pastes handled separately
+      const cur = input.value;
+      const selStart = input.selectionStart;
+      const selEnd = input.selectionEnd;
+      const next = cur.slice(0, selStart) + e.data + cur.slice(selEnd);
+
+      // Allow valid numeric patterns: optional leading minus, digits, optional single dot
+      if (!/^-?\d*\.?\d*$/.test(next)) {
+        e.preventDefault();
+      }
+    });
+
+    // Sanitize paste: strip any non-numeric characters
+    input.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const pasted = (e.clipboardData || window.clipboardData).getData("text");
+      const sanitized = pasted.replace(/[^0-9.\-]/g, "");
+      const cur = input.value;
+      const selStart = input.selectionStart;
+      const selEnd = input.selectionEnd;
+      const next = cur.slice(0, selStart) + sanitized + cur.slice(selEnd);
+      if (/^-?\d*\.?\d*$/.test(next)) {
+        input.value = next;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+  }
   container.appendChild(input);
 
   // Create floating popover for dropdown (escapes overflow containers)

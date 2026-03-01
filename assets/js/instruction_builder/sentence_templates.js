@@ -119,6 +119,32 @@ export function operatorsForType(type) {
 }
 
 /**
+ * All operators in display order.
+ */
+export const ALL_OPERATORS = ["set", "add", "subtract", "set_true", "set_false", "toggle", "clear"];
+
+/**
+ * Compatible variable types per operator.
+ * null means the operator works with all types.
+ */
+export const TYPES_FOR_OPERATOR = {
+  set: null,
+  add: ["number"],
+  subtract: ["number"],
+  set_true: ["boolean"],
+  set_false: ["boolean"],
+  toggle: ["boolean"],
+  clear: ["text", "rich_text"],
+};
+
+/**
+ * Returns compatible variable types for an operator, or null if all types are accepted.
+ */
+export function typesForOperator(op) {
+  return TYPES_FOR_OPERATOR[op] ?? null;
+}
+
+/**
  * The verb that starts each sentence template.
  * Used by the operator selector button.
  */

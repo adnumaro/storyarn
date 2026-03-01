@@ -11,12 +11,14 @@ import { createElement, X } from "lucide";
 import { createFloatingPopover } from "../utils/floating_popover";
 import { createCombobox } from "./combobox";
 import {
+  ALL_OPERATORS,
   expandTemplateForVariableRef,
   getTemplate,
   NO_VALUE_OPERATORS,
   OPERATOR_DROPDOWN_LABELS,
   OPERATOR_VERBS,
   operatorsForType,
+  typesForOperator,
 } from "./sentence_templates";
 
 /**
@@ -79,10 +81,12 @@ export function createAssignmentRow(opts) {
     // Track slot order for auto-advance
     const slotKeys = template.filter((t) => t.type === "slot").map((t) => t.key);
 
-    // Check if operator selector should be shown
+    // Operator selector: always shown when editing.
+    // Before variable selection: all operators available.
+    // After variable selection: filtered to compatible operators for the type.
     const varType = getVariableType();
-    const availableOps = varType ? operatorsForType(varType) : [];
-    const showOperatorSelector = canEdit && availableOps.length > 1;
+    const availableOps = varType ? operatorsForType(varType) : ALL_OPERATORS;
+    const showOperatorSelector = canEdit;
 
     // Render each template element
     for (const item of template) {
@@ -151,6 +155,10 @@ export function createAssignmentRow(opts) {
     const displayVal = getDisplayValueForSlot(key, currentVal);
 
     const isFreeText = key === "value" && currentAssignment.value_type !== "variable_ref";
+    const isNumeric =
+      key === "value" &&
+      currentAssignment.value_type !== "variable_ref" &&
+      (currentAssignment.operator === "add" || currentAssignment.operator === "subtract");
 
     const combobox = createCombobox({
       container: slotContainer,
@@ -160,6 +168,7 @@ export function createAssignmentRow(opts) {
       placeholder,
       disabled: !canEdit || isSlotDisabled(key),
       freeText: isFreeText,
+      numeric: isNumeric,
       onSelect: (option) => {
         handleSlotChange(key, option, slotKeys);
       },
@@ -170,7 +179,23 @@ export function createAssignmentRow(opts) {
 
   function getOptionsForSlot(key) {
     switch (key) {
-      case "sheet":
+      case "sheet": {
+        // Filter sheets to those with at least one variable compatible with the current operator
+        const compatibleTypes = typesForOperator(currentAssignment.operator || "set");
+        const filtered =
+          compatibleTypes === null
+            ? sheetsWithVariables
+            : sheetsWithVariables.filter((p) =>
+                p.vars.some((v) => compatibleTypes.includes(v.block_type)),
+              );
+        return filtered.map((p) => ({
+          value: p.shortcut,
+          label: p.name,
+          displayValue: p.shortcut,
+          meta: p.shortcut,
+        }));
+      }
+
       case "value_sheet":
         return sheetsWithVariables.map((p) => ({
           value: p.shortcut,
@@ -184,7 +209,13 @@ export function createAssignmentRow(opts) {
         if (!sheetShortcut) return [];
         const sheet = sheetsWithVariables.find((p) => p.shortcut === sheetShortcut);
         if (!sheet) return [];
-        return sheet.vars.map((v) => ({
+        // Filter variables by types compatible with the current operator
+        const compatibleTypes = typesForOperator(currentAssignment.operator || "set");
+        const vars =
+          compatibleTypes === null
+            ? sheet.vars
+            : sheet.vars.filter((v) => compatibleTypes.includes(v.block_type));
+        return vars.map((v) => ({
           value: v.variable_name,
           label: v.variable_name,
           group: v.table_name ? v.table_name.toUpperCase() : null,
@@ -245,6 +276,11 @@ export function createAssignmentRow(opts) {
         if (currentAssignment.value_type === "variable_ref") {
           return !currentAssignment.value_sheet;
         }
+        // For add/subtract the value is always a number — independent of the target variable.
+        // Allow entry before sheet/variable are selected.
+        if (currentAssignment.operator === "add" || currentAssignment.operator === "subtract") {
+          return false;
+        }
         return !currentAssignment.variable;
       case "value_sheet":
         return !currentAssignment.variable;
@@ -258,8 +294,12 @@ export function createAssignmentRow(opts) {
 
     if (key === "sheet") {
       currentAssignment.variable = null;
-      currentAssignment.operator = "set";
-      currentAssignment.value = null;
+      // Preserve operator — user may have chosen it first intentionally.
+      // Preserve value for add/subtract — it's a number independent of the target variable.
+      const op = currentAssignment.operator;
+      if (op !== "add" && op !== "subtract") {
+        currentAssignment.value = null;
+      }
       currentAssignment.value_sheet = null;
       notifyChange();
       // Defer re-render to next frame so the current combobox event finishes
@@ -271,15 +311,20 @@ export function createAssignmentRow(opts) {
     }
 
     if (key === "variable") {
-      // Auto-detect type and set first operator
+      // Only change operator if the current one is incompatible with the selected variable's type.
+      // If the user already chose an operator intentionally, keep it.
       const selectedVar = findVariable(variables, currentAssignment.sheet, option.value);
       if (selectedVar) {
         const ops = operatorsForType(selectedVar.block_type);
-        if (ops.length > 0) {
+        if (!ops.includes(currentAssignment.operator) && ops.length > 0) {
           currentAssignment.operator = ops[0];
         }
       }
-      currentAssignment.value = null;
+      // For add/subtract the value is independent of the variable — preserve it.
+      const op = currentAssignment.operator;
+      if (op !== "add" && op !== "subtract") {
+        currentAssignment.value = null;
+      }
       currentAssignment.value_sheet = null;
       notifyChange();
       requestAnimationFrame(() => {
@@ -342,12 +387,30 @@ export function createAssignmentRow(opts) {
         e.stopPropagation();
         const oldOp = currentAssignment.operator;
         currentAssignment.operator = op;
+
         // Clear value when switching between value/no-value operators
         if (NO_VALUE_OPERATORS.has(op) !== NO_VALUE_OPERATORS.has(oldOp)) {
           currentAssignment.value = null;
           currentAssignment.value_sheet = null;
           currentAssignment.value_type = "literal";
         }
+
+        // Clear variable (and value) if it's incompatible with the new operator
+        const compatibleTypes = typesForOperator(op);
+        if (compatibleTypes !== null && currentAssignment.variable) {
+          const currentVar = findVariable(
+            variables,
+            currentAssignment.sheet,
+            currentAssignment.variable,
+          );
+          if (currentVar && !compatibleTypes.includes(currentVar.block_type)) {
+            currentAssignment.variable = null;
+            currentAssignment.value = null;
+            currentAssignment.value_sheet = null;
+            currentAssignment.value_type = "literal";
+          }
+        }
+
         notifyChange();
         fp.close();
         render();
