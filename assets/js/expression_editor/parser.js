@@ -158,15 +158,62 @@ export function parseAssignments(text, knownVariables) {
   if (!text || !text.trim()) return { assignments: [], errors: [] };
 
   const knownLookup = buildKnownLookup(knownVariables);
+  const allErrors = [];
+  const allAssignments = [];
 
-  const tree = generatedParser.configure({ top: "AssignmentProgram" }).parse(text);
-  const errors = collectErrors(tree);
-  const children = getDirectChildren(tree.topNode);
+  // Parse line-by-line so that newline-separated assignments don't produce
+  // cross-line grammar errors (the grammar uses ";" as separator, not "\n").
+  const rawLines = text.split("\n");
+  let offset = 0;
 
-  // Split children into assignment groups.
-  // Each assignment starts with a VariableRef followed by an assign op.
-  // The semicolon separator is consumed by the grammar but not visible in the tree.
-  // We look ahead: a VariableRef starts a new assignment only if the NEXT token is an assign op.
+  for (const rawLine of rawLines) {
+    const line = rawLine.trim();
+    const lineOffset = offset + (rawLine.length - rawLine.trimStart().length);
+
+    if (line) {
+      const tree = generatedParser.configure({ top: "AssignmentProgram" }).parse(line);
+
+      // Collect parse errors, adjusting positions to be relative to the full text
+      tree.iterate({
+        enter(node) {
+          if (node.type.isError) {
+            allErrors.push({
+              from: lineOffset + node.from,
+              to: lineOffset + Math.max(node.to, node.from + 1),
+              message: "Syntax error",
+            });
+          }
+        },
+      });
+
+      // Group children into per-assignment chunks and parse each
+      const children = getDirectChildren(tree.topNode);
+      const groups = splitIntoAssignmentGroups(children);
+
+      for (const group of groups) {
+        const a = parseAssignmentGroup(group, line, knownLookup);
+        if (a) {
+          // Shift Lezer-relative positions to full-text positions for the linter
+          if (a.ref_from !== undefined) {
+            a.ref_from += lineOffset;
+            a.ref_to += lineOffset;
+          }
+          if (a.value_ref_from !== undefined) {
+            a.value_ref_from += lineOffset;
+            a.value_ref_to += lineOffset;
+          }
+          allAssignments.push(a);
+        }
+      }
+    }
+
+    offset += rawLine.length + 1; // +1 for the consumed "\n"
+  }
+
+  return { assignments: allAssignments, errors: allErrors };
+}
+
+function splitIntoAssignmentGroups(children) {
   const groups = [];
   let current = [];
   for (let i = 0; i < children.length; i++) {
@@ -185,14 +232,7 @@ export function parseAssignments(text, knownVariables) {
     current.push(child);
   }
   if (current.length) groups.push(current);
-
-  const assignments = [];
-  for (const group of groups) {
-    const a = parseAssignmentGroup(group, text, knownLookup);
-    if (a) assignments.push(a);
-  }
-
-  return { assignments, errors };
+  return groups;
 }
 
 function parseAssignmentGroup(children, text, knownLookup) {
