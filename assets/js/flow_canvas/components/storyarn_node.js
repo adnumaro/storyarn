@@ -19,6 +19,7 @@ export class StoryarnNode extends LitElement {
       sheetsMap: { type: Object },
       hubsMap: { type: Object },
       lod: { type: String },
+      editing: { type: Boolean },
     };
   }
 
@@ -51,7 +52,7 @@ export class StoryarnNode extends LitElement {
     const def = getNodeDef(node.nodeType);
     const config = NODE_CONFIGS[node.nodeType] || NODE_CONFIGS.dialogue;
 
-    return def.render({
+    const ctx = {
       node,
       nodeData: node.nodeData || {},
       config,
@@ -59,7 +60,37 @@ export class StoryarnNode extends LitElement {
       emit: this.emit,
       sheetsMap: this.sheetsMap,
       hubsMap: this.hubsMap,
-    });
+    };
+
+    // Inline edit mode for dialogue nodes
+    if (this.editing && node.nodeType === "dialogue" && def.renderEdit) {
+      ctx.onSave = (field, value) => {
+        this.dispatchEvent(
+          new CustomEvent("node-inline-edit", {
+            bubbles: true,
+            composed: true,
+            detail: { field, value },
+          }),
+        );
+      };
+      return def.renderEdit(ctx);
+    }
+
+    return def.render(ctx);
+  }
+
+  updated(changedProperties) {
+    super.updated(changedProperties);
+    if (changedProperties.has("editing") && this.editing) {
+      // Auto-size textarea fallback for browsers without field-sizing: content
+      requestAnimationFrame(() => {
+        const textarea = this.shadowRoot?.querySelector(".inline-textarea");
+        if (textarea) {
+          textarea.style.height = "auto";
+          textarea.style.height = `${textarea.scrollHeight}px`;
+        }
+      });
+    }
   }
 
   /** All sockets rendered as bare rete-ref elements (no labels/badges). */

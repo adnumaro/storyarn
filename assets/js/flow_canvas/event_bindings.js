@@ -4,6 +4,43 @@
  * Sets up Rete.js area pipes and LiveView handleEvent bindings.
  */
 
+import { createFloatingPopover } from "../utils/floating_popover.js";
+
+/**
+ * Enters inline edit mode for a dialogue node.
+ * @param {Object} hook - The FlowCanvas hook instance
+ * @param {string} reteNodeId - The Rete editor node ID
+ */
+export function enterInlineEdit(hook, reteNodeId) {
+  // Exit any existing inline edit first
+  exitInlineEdit(hook);
+
+  const nodeView = hook.area.nodeViews.get(reteNodeId);
+  const el = nodeView?.element?.querySelector("storyarn-node");
+  if (!el) return;
+
+  el.editing = true;
+  hook._inlineEditingNodeId = reteNodeId;
+}
+
+/**
+ * Exits inline edit mode if active.
+ * @param {Object} hook - The FlowCanvas hook instance
+ */
+export function exitInlineEdit(hook) {
+  if (!hook._inlineEditingNodeId) return;
+
+  // Close speaker combobox if open
+  hook._speakerPopover?.destroy();
+  hook._speakerPopover = null;
+
+  const nodeView = hook.area.nodeViews.get(hook._inlineEditingNodeId);
+  const el = nodeView?.element?.querySelector("storyarn-node");
+  if (el) el.editing = false;
+
+  hook._inlineEditingNodeId = null;
+}
+
 /**
  * Sets up all event handlers for the flow canvas.
  * @param {Object} hook - The FlowCanvas hook instance
@@ -41,7 +78,12 @@ export function setupEventHandlers(hook) {
         hook.selectedNodeId = node.nodeId;
 
         if (isDoubleClick) {
-          hook.pushEvent("node_double_clicked", { id: node.nodeId });
+          const reteNode = hook.editor.getNode(context.data.id);
+          if (reteNode?.nodeType === "dialogue") {
+            enterInlineEdit(hook, context.data.id);
+          } else {
+            hook.pushEvent("node_double_clicked", { id: node.nodeId });
+          }
         } else {
           hook.pushEvent("node_selected", { id: node.nodeId });
         }
@@ -148,6 +190,137 @@ export function setupEventHandlers(hook) {
     hook.pushEvent("navigate_to_referencing_flow", { "flow-id": String(e.detail.flowId) });
   });
 
+  // Inline edit save (composed from storyarn-node Shadow DOM)
+  hook.el.addEventListener("node-inline-edit", (e) => {
+    const { field, value } = e.detail;
+    const reteNode = hook._inlineEditingNodeId
+      ? hook.editor.getNode(hook._inlineEditingNodeId)
+      : null;
+    if (!reteNode) return;
+
+    if (field === "text") {
+      // Wrap plain text in <p> tags for rich text storage, preserving line breaks
+      const escaped = value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const content = escaped
+        ? escaped
+            .split("\n")
+            .map((line) => `<p>${line || "<br>"}</p>`)
+            .join("")
+        : "";
+      hook.pushEvent("update_node_text", { id: reteNode.nodeId, content });
+    } else {
+      hook.pushEvent("update_node_field", { field, value });
+    }
+  });
+
+  // Speaker combobox — opens a searchable popover from the inline edit header
+  hook._speakerPopover = null;
+  hook.el.addEventListener("speaker-select-open", (e) => {
+    const trigger = e.detail.trigger;
+    if (!trigger || !hook._inlineEditingNodeId) return;
+
+    // Close existing popover if open
+    if (hook._speakerPopover?.isOpen) {
+      hook._speakerPopover.destroy();
+      hook._speakerPopover = null;
+      return;
+    }
+
+    const reteNode = hook.editor.getNode(hook._inlineEditingNodeId);
+    if (!reteNode) return;
+    const currentSpeakerId = reteNode.nodeData?.speaker_sheet_id;
+
+    // Build sorted sheet list
+    const sheetsMap = hook.sheetsMap || {};
+    const sheets = Object.values(sheetsMap).sort((a, b) =>
+      (a.name || "").localeCompare(b.name || ""),
+    );
+
+    // Create popover anchored to the trigger button
+    const fp = createFloatingPopover(trigger, {
+      class: "bg-base-200 border border-base-300 rounded-lg shadow-lg",
+      width: "14rem",
+      placement: "bottom-start",
+      offset: 4,
+    });
+
+    // Build content
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex;flex-direction:column;max-height:240px;";
+
+    const searchInput = document.createElement("input");
+    searchInput.type = "text";
+    searchInput.placeholder = "Search…";
+    searchInput.style.cssText =
+      "padding:6px 8px;border:none;border-bottom:1px solid oklch(0.35 0 0);background:transparent;color:inherit;outline:none;font-size:13px;";
+    wrap.appendChild(searchInput);
+
+    const list = document.createElement("div");
+    list.style.cssText = "overflow-y:auto;flex:1;padding:4px 0;";
+
+    // "No speaker" option
+    const noSpeakerBtn = document.createElement("button");
+    noSpeakerBtn.textContent = "Dialogue";
+    noSpeakerBtn.dataset.searchText = "dialogue";
+    noSpeakerBtn.dataset.value = "";
+    noSpeakerBtn.style.cssText =
+      "display:block;width:100%;text-align:left;padding:4px 8px;font-size:13px;border:none;background:transparent;color:inherit;cursor:pointer;opacity:0.6;font-style:italic;";
+    if (!currentSpeakerId) noSpeakerBtn.style.opacity = "1";
+    list.appendChild(noSpeakerBtn);
+
+    for (const sheet of sheets) {
+      const btn = document.createElement("button");
+      btn.textContent = sheet.name;
+      btn.dataset.searchText = (sheet.name || "").toLowerCase();
+      btn.dataset.value = String(sheet.id);
+      btn.style.cssText =
+        "display:block;width:100%;text-align:left;padding:4px 8px;font-size:13px;border:none;background:transparent;color:inherit;cursor:pointer;";
+      if (String(sheet.id) === String(currentSpeakerId)) {
+        btn.style.fontWeight = "600";
+      }
+      list.appendChild(btn);
+    }
+
+    wrap.appendChild(list);
+    fp.el.appendChild(wrap);
+
+    // Filter
+    searchInput.addEventListener("input", () => {
+      const q = searchInput.value.toLowerCase().trim();
+      for (const btn of list.children) {
+        const text = btn.dataset.searchText || "";
+        btn.style.display = !q || text.includes(q) ? "" : "none";
+      }
+    });
+
+    // Hover highlight
+    list.addEventListener("mouseover", (ev) => {
+      const btn = ev.target.closest("button");
+      if (btn) btn.style.background = "oklch(0.35 0 0)";
+    });
+    list.addEventListener("mouseout", (ev) => {
+      const btn = ev.target.closest("button");
+      if (btn) btn.style.background = "transparent";
+    });
+
+    // Selection
+    list.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("button");
+      if (!btn) return;
+      const value = btn.dataset.value || null;
+      hook.pushEvent("update_node_field", {
+        field: "speaker_sheet_id",
+        value: value || null,
+      });
+      fp.destroy();
+      hook._speakerPopover = null;
+    });
+
+    fp.open();
+    requestAnimationFrame(() => searchInput.focus());
+    hook._speakerPopover = fp;
+  });
+
   // Handle server events - Debug
   hook.handleEvent("debug_highlight_node", (data) => hook.debugHandler.handleHighlightNode(data));
   hook.handleEvent("debug_highlight_connections", (data) =>
@@ -187,6 +360,7 @@ export function setupEventHandlers(hook) {
     if (e.button !== 0) return;
     const storyarnEl = e.composedPath().find((el) => el.tagName === "STORYARN-NODE");
     if (!storyarnEl && hook.selectedNodeId) {
+      exitInlineEdit(hook);
       hook.pushEvent("deselect_node", {});
       hook.selectedNodeId = null;
       hook.floatingToolbar?.hide();

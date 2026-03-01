@@ -3,9 +3,11 @@
  */
 import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
-import { MessageSquare } from "lucide";
-import { createIconSvg } from "../node_config.js";
+import { ChevronDown, MessageSquare } from "lucide";
+import { createIconHTML, createIconSvg } from "../node_config.js";
 import { headerStyle, nodeShell, renderIndicators, renderSockets } from "./render_helpers.js";
+
+const CHEVRON_ICON = createIconHTML(ChevronDown, { size: 14 });
 
 export default {
   config: {
@@ -17,16 +19,13 @@ export default {
     dynamicOutputs: true,
   },
 
-  render(ctx) {
-    const { node, nodeData, config, selected, emit, sheetsMap } = ctx;
+  /** Shared header + visual strip for both render modes. */
+  _renderChrome(nodeData, config, sheetsMap) {
     const color = this.nodeColor(nodeData, config, sheetsMap);
     const indicators = this.getIndicators(nodeData);
-    const preview = this.getPreviewText(nodeData);
-
     const speakerId = nodeData.speaker_sheet_id;
     const speakerSheet = speakerId ? sheetsMap?.[String(speakerId)] : null;
 
-    // Header: always icon + speaker name (or "Dialogue")
     const headerLabel = speakerSheet?.name || config.label;
     const headerHtml = html`
       <div class="header" style="${headerStyle(color)}">
@@ -36,7 +35,6 @@ export default {
       </div>
     `;
 
-    // Visual strip: banner > avatar+color > color only
     const bannerUrl = speakerSheet?.banner_url;
     const avatarUrl = speakerSheet?.avatar_url;
 
@@ -55,6 +53,14 @@ export default {
               style="background-color: ${color}20"
             ></div>`
           : "";
+
+    return { color, headerHtml, visualHtml };
+  },
+
+  render(ctx) {
+    const { node, nodeData, config, selected, emit, sheetsMap } = ctx;
+    const { color, headerHtml, visualHtml } = this._renderChrome(nodeData, config, sheetsMap);
+    const preview = this.getPreviewText(nodeData);
 
     // Body: stage directions + preview text (stacked rows)
     const hasText = nodeData.stage_directions || preview;
@@ -79,6 +85,94 @@ export default {
       selected,
       html`
         ${headerHtml} ${visualHtml} ${bodyHtml}
+        <div class="content compact">
+          ${renderSockets(node, nodeData, this, emit)}
+        </div>
+      `,
+      "dialogue",
+    );
+  },
+
+  renderEdit(ctx) {
+    const { node, nodeData, config, selected, emit, sheetsMap, onSave } = ctx;
+    const { color, visualHtml } = this._renderChrome(nodeData, config, sheetsMap);
+    const speakerId = nodeData.speaker_sheet_id;
+    const speakerSheet = speakerId ? sheetsMap?.[String(speakerId)] : null;
+    const speakerLabel = speakerSheet?.name || config.label;
+
+    const editHeaderHtml = html`
+      <div class="header" style="${headerStyle(color)}">
+        <span class="icon">${unsafeSVG(config.icon)}</span>
+        <button
+          class="inline-speaker-trigger"
+          @pointerdown=${(e) => e.stopPropagation()}
+          @keydown=${(e) => e.stopPropagation()}
+          @click=${(e) => {
+            e.stopPropagation();
+            const host = e.currentTarget.getRootNode().host;
+            host?.dispatchEvent(
+              new CustomEvent("speaker-select-open", {
+                bubbles: true,
+                composed: true,
+                detail: { trigger: e.currentTarget },
+              }),
+            );
+          }}
+        >
+          <span class="inline-speaker-label">${speakerLabel}</span>
+          ${unsafeSVG(CHEVRON_ICON)}
+        </button>
+      </div>
+    `;
+    const plainText = this.getPreviewText(nodeData);
+    const stopDrag = (e) => e.stopPropagation();
+
+    const bodyHtml = html`
+      <div class="dialogue-content">
+        <input
+          class="inline-input"
+          placeholder="Stage directions…"
+          .value=${nodeData.stage_directions || ""}
+          @pointerdown=${stopDrag}
+          @blur=${(e) => {
+            const val = e.target.value.trim();
+            if (val !== (nodeData.stage_directions || "")) {
+              onSave("stage_directions", val);
+            }
+          }}
+          @keydown=${(e) => {
+            if (e.key === "Enter") e.target.blur();
+            e.stopPropagation();
+          }}
+        />
+        <textarea
+          class="inline-textarea"
+          placeholder="Dialogue text…"
+          .value=${plainText}
+          @pointerdown=${stopDrag}
+          @input=${(e) => {
+            e.target.style.height = "auto";
+            e.target.style.height = `${e.target.scrollHeight}px`;
+          }}
+          @blur=${(e) => {
+            const val = e.target.value.trim();
+            if (val !== plainText) {
+              onSave("text", val);
+            }
+          }}
+          @keydown=${(e) => {
+            if (e.key === "Escape") e.target.blur();
+            e.stopPropagation();
+          }}
+        ></textarea>
+      </div>
+    `;
+
+    return nodeShell(
+      color,
+      selected,
+      html`
+        ${editHeaderHtml} ${visualHtml} ${bodyHtml}
         <div class="content compact">
           ${renderSockets(node, nodeData, this, emit)}
         </div>

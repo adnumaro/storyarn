@@ -8,7 +8,7 @@
 import { ClassicPreset } from "rete";
 
 import "../flow_canvas/components/index.js";
-import { setupEventHandlers } from "../flow_canvas/event_bindings.js";
+import { exitInlineEdit, setupEventHandlers } from "../flow_canvas/event_bindings.js";
 import { createFlowFloatingToolbar } from "../flow_canvas/floating_toolbar.js";
 import { FlowNode } from "../flow_canvas/flow_node.js";
 import {
@@ -422,6 +422,7 @@ export const FlowCanvas = {
   },
 
   destroyed() {
+    exitInlineEdit(this);
     this.floatingToolbar?.hide();
     if (this.el.parentElement?.__floatingToolbar) {
       delete this.el.parentElement.__floatingToolbar;

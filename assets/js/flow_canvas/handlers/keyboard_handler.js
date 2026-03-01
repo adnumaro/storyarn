@@ -2,6 +2,8 @@
  * Keyboard shortcuts handler for the flow canvas.
  */
 
+import { enterInlineEdit, exitInlineEdit } from "../event_bindings.js";
+
 /** Returns true if the element is an editable form field or contentEditable. */
 function isEditable(el) {
   const tag = el.tagName;
@@ -104,8 +106,45 @@ export function createKeyboardHandler(hook, lockHandler) {
         return;
       }
 
+      // Shift+Alt+F — fullscreen screenplay editor for dialogue
+      if (e.shiftKey && e.altKey && e.key === "F" && hook.selectedNodeId) {
+        const reteNode = hook.nodeMap?.get(hook.selectedNodeId);
+        if (reteNode?.nodeType === "dialogue") {
+          e.preventDefault();
+          exitInlineEdit(hook);
+          hook.pushEvent("open_screenplay", {});
+          return;
+        }
+      }
+
       // Ignore when typing in inputs for non-debug shortcuts
       if (isEditable(e.target)) return;
+
+      // Escape — priority chain: inline edit → editor → builder → toolbar → deselect
+      if (e.key === "Escape") {
+        e.preventDefault();
+
+        if (hook._inlineEditingNodeId) {
+          exitInlineEdit(hook);
+        } else {
+          const editorOpen = !!document.getElementById("screenplay-editor-container");
+          const builderOpen = !!document.getElementById("builder-panel-content");
+
+          if (editorOpen) {
+            hook.pushEvent("close_editor", {});
+          } else if (builderOpen) {
+            hook.pushEvent("close_builder", {});
+          } else if (hook.selectedNodeId) {
+            hook.pushEvent("deselect_node", {});
+            hook.selectedNodeId = null;
+            hook.floatingToolbar?.hide();
+          }
+        }
+        return;
+      }
+
+      // Skip canvas shortcuts while inline editing (shadow DOM inputs don't match isEditable)
+      if (hook._inlineEditingNodeId) return;
 
       // Delete/Backspace - delete selected node (not when builder panel is open)
       if ((e.key === "Delete" || e.key === "Backspace") && hook.selectedNodeId) {
@@ -125,7 +164,7 @@ export function createKeyboardHandler(hook, lockHandler) {
         return;
       }
 
-      // E — open editor/builder for selected node
+      // E — inline edit for dialogue, open builder for condition/instruction
       if (e.key === "e" && !e.ctrlKey && !e.metaKey && hook.selectedNodeId) {
         const reteNode = hook.nodeMap?.get(hook.selectedNodeId);
         if (!reteNode) return;
@@ -133,29 +172,10 @@ export function createKeyboardHandler(hook, lockHandler) {
 
         if (nodeType === "dialogue") {
           e.preventDefault();
-          hook.pushEvent("open_screenplay", {});
+          enterInlineEdit(hook, reteNode.id);
         } else if (nodeType === "condition" || nodeType === "instruction") {
           e.preventDefault();
           hook.pushEvent("open_builder", {});
-        }
-        return;
-      }
-
-      // Escape — priority chain: editor → builder → toolbar → deselect
-      if (e.key === "Escape") {
-        e.preventDefault();
-
-        const editorOpen = !!document.getElementById("screenplay-editor-container");
-        const builderOpen = !!document.getElementById("builder-panel-content");
-
-        if (editorOpen) {
-          hook.pushEvent("close_editor", {});
-        } else if (builderOpen) {
-          hook.pushEvent("close_builder", {});
-        } else if (hook.selectedNodeId) {
-          hook.pushEvent("deselect_node", {});
-          hook.selectedNodeId = null;
-          hook.floatingToolbar?.hide();
         }
         return;
       }

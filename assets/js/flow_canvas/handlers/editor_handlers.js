@@ -3,6 +3,7 @@
  */
 
 import { ClassicPreset } from "rete";
+import { exitInlineEdit } from "../event_bindings.js";
 import { FlowNode } from "../flow_node.js";
 import {
   CreateNodeAction,
@@ -93,6 +94,10 @@ export function createEditorHandlers(hook) {
     async handleNodeRemoved(data) {
       const node = hook.nodeMap.get(data.id);
       if (node) {
+        // Exit inline edit if the removed node is the one being edited
+        if (hook._inlineEditingNodeId === node.id) {
+          exitInlineEdit(hook);
+        }
         // Cancel any pending debounce timer (e.g. node_moved) to prevent
         // the timer firing after the node is gone, which would crash the server.
         if (hook.debounceTimers?.[data.id]) {
@@ -198,6 +203,10 @@ export function createEditorHandlers(hook) {
      * @param {Object} nodeData - The new node data
      */
     async rebuildNode(id, existingNode, nodeData) {
+      // Exit inline edit if the rebuilt node is the one being edited
+      if (hook._inlineEditingNodeId === existingNode.id) {
+        exitInlineEdit(hook);
+      }
       const view = hook.area.nodeViews.get(existingNode.id);
       const position = view ? { ...view.position } : { x: 0, y: 0 };
 

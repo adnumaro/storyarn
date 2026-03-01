@@ -197,6 +197,83 @@ export const storyarnNodeStyles = css`
     word-break: break-word;
   }
 
+  /* Inline speaker combobox trigger */
+  .inline-speaker-trigger {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    color: white;
+    font-weight: 500;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0;
+    outline: none;
+  }
+
+  .inline-speaker-trigger:hover {
+    opacity: 0.85;
+  }
+
+  .inline-speaker-trigger svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  .inline-speaker-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Inline edit fields */
+  .inline-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid color-mix(in oklch, var(--color-base-300, #2a323c) 50%, transparent);
+    color: color-mix(in oklch, var(--color-base-content, #a6adbb) 55%, transparent);
+    font-style: italic;
+    font-size: 12px;
+    padding: 2px 0;
+    margin-bottom: 4px;
+    outline: none;
+    font-family: inherit;
+  }
+
+  .inline-input:focus {
+    border-bottom-color: var(--color-primary, #7c3aed);
+  }
+
+  .inline-input::placeholder {
+    color: color-mix(in oklch, var(--color-base-content, #a6adbb) 30%, transparent);
+  }
+
+  .inline-textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: color-mix(in oklch, var(--color-base-content, #a6adbb) 85%, transparent);
+    font-size: 14px;
+    padding: 0;
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+    font-family: inherit;
+    box-sizing: border-box;
+    overflow: hidden;
+    field-sizing: content;
+    min-height: 2lh;
+  }
+
+  .inline-textarea::placeholder {
+    color: color-mix(in oklch, var(--color-base-content, #a6adbb) 30%, transparent);
+  }
+
   /* Compact sockets for dialogue responses */
   .content.compact {
     padding: 6px 0;
