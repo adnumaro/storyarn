@@ -17,7 +17,7 @@ andExpr { notExpr (And notExpr)* }
 notExpr { Not notExpr | comparison }
 comparison { value (compareOp value)? }
 
-compareOp { Eq | Neq | Gte | Lte | Gt | Lt }
+compareOp { Eq | Neq | Gte | Lte | Gt | Lt | StartsWithOp | EndsWithOp | ContainsOp | NotContainsOp }
 
 value {
   VariableRef |
@@ -57,10 +57,15 @@ separator { ";" }
   Or { "||" }
   Not { "!" }
 
+  StartsWithOp { "starts_with" }
+  EndsWithOp { "ends_with" }
+  ContainsOp { "contains" }
+  NotContainsOp { "not_contains" }
+
   whitespace { $[ \t\n\r]+ }
   LineComment { "//" ![\n]* }
 
-  @precedence { AddOp, SubOp, SetIfUnsetOp, Eq, Neq, Gte, Lte, Gt, Lt, And, Or, Not, SetOp, Null, Boolean, Identifier }
+  @precedence { AddOp, SubOp, SetIfUnsetOp, Eq, Neq, Gte, Lte, Gt, Lt, And, Or, Not, SetOp, StartsWithOp, EndsWithOp, ContainsOp, NotContainsOp, Null, Boolean, Identifier }
 }
 
 @skip { whitespace | LineComment }

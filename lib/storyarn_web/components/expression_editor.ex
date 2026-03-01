@@ -96,7 +96,7 @@ defmodule StoryarnWeb.Components.ExpressionEditor do
             do: dgettext("flows", "mc.jaime.health > 50"),
             else: dgettext("flows", "mc.jaime.health = 50")
         }
-        class="min-h-[60px] rounded-lg overflow-hidden"
+        class="min-h-[120px] rounded-lg overflow-hidden"
       >
       </div>
     </div>

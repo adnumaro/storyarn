@@ -20,6 +20,10 @@ export const
   Lte = 18,
   Gt = 19,
   Lt = 20,
-  And = 21,
-  Or = 22,
-  ExpressionProgram = 23
+  StartsWithOp = 21,
+  EndsWithOp = 22,
+  ContainsOp = 23,
+  NotContainsOp = 24,
+  And = 25,
+  Or = 26,
+  ExpressionProgram = 27

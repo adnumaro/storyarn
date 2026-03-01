@@ -21,7 +21,10 @@ const ASSIGN_OP_MAP = {
   SetIfUnsetOp: "set_if_unset",
 };
 
-const COMPARE_OPS = new Set(["Eq", "Neq", "Gt", "Lt", "Gte", "Lte"]);
+const COMPARE_OPS = new Set([
+  "Eq", "Neq", "Gt", "Lt", "Gte", "Lte",
+  "StartsWithOp", "EndsWithOp", "ContainsOp", "NotContainsOp",
+]);
 
 const COMPARE_OP_MAP = {
   Eq: "equals",
@@ -30,6 +33,10 @@ const COMPARE_OP_MAP = {
   Lt: "less_than",
   Gte: "greater_than_or_equal",
   Lte: "less_than_or_equal",
+  StartsWithOp: "starts_with",
+  EndsWithOp: "ends_with",
+  ContainsOp: "contains",
+  NotContainsOp: "not_contains",
 };
 
 const NEGATE_OP = {
@@ -39,6 +46,8 @@ const NEGATE_OP = {
   less_than: "greater_than_or_equal",
   greater_than_or_equal: "less_than",
   less_than_or_equal: "greater_than",
+  contains: "not_contains",
+  not_contains: "contains",
 };
 
 const VALUE_TYPES = new Set(["VariableRef", "Number", "StringLiteral", "Boolean", "Null"]);

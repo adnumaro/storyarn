@@ -84,12 +84,13 @@ export const storyarnEditorTheme = EditorView.theme({
     color: COLORS.placeholder,
     fontStyle: "italic",
   },
-  // Autocomplete tooltip
+  // Autocomplete tooltip — z-index above sidebars (z-1010)
   ".cm-tooltip": {
     backgroundColor: COLORS.tooltipBg,
     border: `1px solid ${COLORS.tooltipBorder}`,
     borderRadius: "0.5rem",
     boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.4)",
+    zIndex: "2000",
   },
   ".cm-tooltip-autocomplete ul li": {
     padding: "2px 8px",

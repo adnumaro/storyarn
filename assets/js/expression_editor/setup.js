@@ -66,6 +66,10 @@ export function createExpressionEditor(opts) {
         Lte: tags.compareOperator,
         Gt: tags.compareOperator,
         Lt: tags.compareOperator,
+        StartsWithOp: tags.keyword,
+        EndsWithOp: tags.keyword,
+        ContainsOp: tags.keyword,
+        NotContainsOp: tags.keyword,
         Null: tags.null,
         And: tags.keyword,
         Or: tags.keyword,
@@ -103,17 +107,6 @@ export function createExpressionEditor(opts) {
     keymap.of([...defaultKeymap, ...historyKeymap]),
     EditorView.editable.of(editable),
     EditorState.readOnly.of(!editable),
-    // Prevent Enter from inserting newlines in single-line expression mode
-    ...(mode === "expression"
-      ? [
-          keymap.of([
-            {
-              key: "Enter",
-              run: () => true, // consume the key, don't insert newline
-            },
-          ]),
-        ]
-      : []),
     // Variable autocomplete
     ...(variables.length > 0 ? [variableAutocomplete(variables)] : []),
     // Linting: syntax errors always, undefined variable warnings when variables available
