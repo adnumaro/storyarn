@@ -4,7 +4,8 @@
  * Sets up Rete.js area pipes and LiveView handleEvent bindings.
  */
 
-import { createFloatingPopover } from "../utils/floating_popover.js";
+import { AreaExtensions } from "rete-area-plugin";
+import { openSearchableDropdown } from "../utils/searchable_dropdown.js";
 
 /**
  * Enters inline edit mode for a dialogue node.
@@ -219,7 +220,6 @@ export function setupEventHandlers(hook) {
     const trigger = e.detail.trigger;
     if (!trigger || !hook._inlineEditingNodeId) return;
 
-    // Close existing popover if open
     if (hook._speakerPopover?.isOpen) {
       hook._speakerPopover.destroy();
       hook._speakerPopover = null;
@@ -228,98 +228,26 @@ export function setupEventHandlers(hook) {
 
     const reteNode = hook.editor.getNode(hook._inlineEditingNodeId);
     if (!reteNode) return;
-    const currentSpeakerId = reteNode.nodeData?.speaker_sheet_id;
 
-    // Build sorted sheet list
     const sheetsMap = hook.sheetsMap || {};
-    const sheets = Object.values(sheetsMap).sort((a, b) =>
-      (a.name || "").localeCompare(b.name || ""),
-    );
-
-    // Create popover anchored to the trigger button
-    const fp = createFloatingPopover(trigger, {
-      class: "bg-base-200 border border-base-300 rounded-lg shadow-lg",
-      width: "14rem",
-      placement: "bottom-start",
-      offset: 4,
-    });
-
-    // Build content
-    const wrap = document.createElement("div");
-    wrap.style.cssText = "display:flex;flex-direction:column;max-height:240px;";
-
-    const searchInput = document.createElement("input");
-    searchInput.type = "text";
-    searchInput.placeholder = hook.labels?.search || "Search…";
-    searchInput.style.cssText =
-      "padding:6px 8px;border:none;border-bottom:1px solid oklch(0.35 0 0);background:transparent;color:inherit;outline:none;font-size:13px;";
-    wrap.appendChild(searchInput);
-
-    const list = document.createElement("div");
-    list.style.cssText = "overflow-y:auto;flex:1;padding:4px 0;";
-
-    // "No speaker" option
-    const noSpeakerBtn = document.createElement("button");
     const noSpeakerLabel = hook.labels?.no_speaker || "Dialogue";
-    noSpeakerBtn.textContent = noSpeakerLabel;
-    noSpeakerBtn.dataset.searchText = noSpeakerLabel.toLowerCase();
-    noSpeakerBtn.dataset.value = "";
-    noSpeakerBtn.style.cssText =
-      "display:block;width:100%;text-align:left;padding:4px 8px;font-size:13px;border:none;background:transparent;color:inherit;cursor:pointer;opacity:0.6;font-style:italic;";
-    if (!currentSpeakerId) noSpeakerBtn.style.opacity = "1";
-    list.appendChild(noSpeakerBtn);
+    const currentSpeakerId = String(reteNode.nodeData?.speaker_sheet_id || "");
 
-    for (const sheet of sheets) {
-      const btn = document.createElement("button");
-      btn.textContent = sheet.name;
-      btn.dataset.searchText = (sheet.name || "").toLowerCase();
-      btn.dataset.value = String(sheet.id);
-      btn.style.cssText =
-        "display:block;width:100%;text-align:left;padding:4px 8px;font-size:13px;border:none;background:transparent;color:inherit;cursor:pointer;";
-      if (String(sheet.id) === String(currentSpeakerId)) {
-        btn.style.fontWeight = "600";
-      }
-      list.appendChild(btn);
-    }
-
-    wrap.appendChild(list);
-    fp.el.appendChild(wrap);
-
-    // Filter
-    searchInput.addEventListener("input", () => {
-      const q = searchInput.value.toLowerCase().trim();
-      for (const btn of list.children) {
-        const text = btn.dataset.searchText || "";
-        btn.style.display = !q || text.includes(q) ? "" : "none";
-      }
+    hook._speakerPopover = openSearchableDropdown(trigger, {
+      options: [
+        { value: "", label: noSpeakerLabel, italic: true },
+        ...Object.values(sheetsMap).map((s) => ({ value: String(s.id), label: s.name })),
+      ],
+      currentValue: currentSpeakerId,
+      placeholder: hook.labels?.search || "Search…",
+      onSelect: (value) => {
+        hook.pushEvent("update_node_field", {
+          field: "speaker_sheet_id",
+          value: value || null,
+        });
+        hook._speakerPopover = null;
+      },
     });
-
-    // Hover highlight
-    list.addEventListener("mouseover", (ev) => {
-      const btn = ev.target.closest("button");
-      if (btn) btn.style.background = "oklch(0.35 0 0)";
-    });
-    list.addEventListener("mouseout", (ev) => {
-      const btn = ev.target.closest("button");
-      if (btn) btn.style.background = "transparent";
-    });
-
-    // Selection
-    list.addEventListener("click", (ev) => {
-      const btn = ev.target.closest("button");
-      if (!btn) return;
-      const value = btn.dataset.value || null;
-      hook.pushEvent("update_node_field", {
-        field: "speaker_sheet_id",
-        value: value || null,
-      });
-      fp.destroy();
-      hook._speakerPopover = null;
-    });
-
-    fp.open();
-    requestAnimationFrame(() => searchInput.focus());
-    hook._speakerPopover = fp;
   });
 
   // Handle server events - Debug
@@ -336,6 +264,79 @@ export function setupEventHandlers(hook) {
   hook.handleEvent("cursor_update", (data) => hook.cursorHandler.handleCursorUpdate(data));
   hook.handleEvent("cursor_leave", (data) => hook.cursorHandler.handleCursorLeave(data));
   hook.handleEvent("locks_updated", (data) => hook.lockHandler.handleLocksUpdated(data));
+
+  // Center canvas on a node, accounting for sidebar on desktop
+  hook.handleEvent("center_on_node", async (data) => {
+    const node = hook.nodeMap.get(data.id);
+    if (!node) return;
+
+    const SIDEBAR_WIDTH = 600;
+    const isFullscreen = window.innerWidth < 1280;
+
+    if (isFullscreen) {
+      await AreaExtensions.zoomAt(hook.area, [node]);
+      return;
+    }
+
+    // Desktop: replicate zoomAt logic but for the visible area (left of sidebar)
+    const view = hook.area.nodeViews.get(node.id);
+    if (!view) return;
+
+    // Get actual rendered dimensions from DOM (accounts for images, shadow DOM, etc.)
+    // getBoundingClientRect gives screen pixels; divide by current zoom to get editor space
+    const currentZoom = hook.area.area.transform.k;
+    const rect = view.element.getBoundingClientRect();
+    const nodeW = rect.width / currentZoom;
+    const nodeH = rect.height / currentZoom;
+
+    const w = hook.area.container.clientWidth - SIDEBAR_WIDTH;
+    const h = hook.area.container.clientHeight;
+
+    // Scale to fit node in visible area (same formula as zoomAt, scale=0.9)
+    const k = Math.min((h / nodeH) * 0.9, (w / nodeW) * 0.9, 1);
+
+    // Center of node in editor space
+    const cx = view.position.x + nodeW / 2;
+    const cy = view.position.y + nodeH / 2;
+
+    // Translate so node center maps to center of visible area
+    const tx = w / 2 - cx * k;
+    const ty = h / 2 - cy * k;
+
+    // Animate the pan+zoom transition with ease-in-out cubic
+    const DURATION = 350;
+    const start = { ...hook.area.area.transform };
+    const startTime = performance.now();
+
+    function easeInOutCubic(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+    }
+
+    await new Promise((resolve) => {
+      function frame(now) {
+        const elapsed = now - startTime;
+        const t = Math.min(elapsed / DURATION, 1);
+        const e = easeInOutCubic(t);
+
+        // Directly update transform and repaint — bypasses pipe events for perf
+        hook.area.area.transform.x = start.x + (tx - start.x) * e;
+        hook.area.area.transform.y = start.y + (ty - start.y) * e;
+        hook.area.area.transform.k = start.k + (k - start.k) * e;
+        hook.area.area.update();
+
+        if (t < 1) {
+          requestAnimationFrame(frame);
+        } else {
+          resolve();
+        }
+      }
+      requestAnimationFrame(frame);
+    });
+
+    // Sync final state through Rete pipe system (fires translated/zoomed events)
+    await hook.area.area.zoom(k, 0, 0);
+    await hook.area.area.translate(tx, ty);
+  });
 
   // ===== Floating Toolbar — reposition on pan/zoom =====
 
@@ -362,7 +363,17 @@ export function setupEventHandlers(hook) {
     const storyarnEl = e.composedPath().find((el) => el.tagName === "STORYARN-NODE");
     if (!storyarnEl && hook.selectedNodeId) {
       exitInlineEdit(hook);
-      hook.pushEvent("deselect_node", {});
+
+      // If the screenplay editor is open, animate it out first then deselect.
+      // The hook listens for "panel:close-deselect" and pushes "deselect_node"
+      // after the exit animation completes.
+      const editorEl = document.getElementById("dialogue-screenplay-editor");
+      if (editorEl) {
+        editorEl.dispatchEvent(new CustomEvent("panel:close-deselect"));
+      } else {
+        hook.pushEvent("deselect_node", {});
+      }
+
       hook.selectedNodeId = null;
       hook.floatingToolbar?.hide();
     }

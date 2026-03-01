@@ -181,11 +181,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
             socket
           end
 
-        {:noreply,
-         socket
-         |> assign(:selected_node, node)
-         |> assign(:node_form, form)
-         |> assign(:editing_mode, mode)}
+        socket =
+          socket
+          |> assign(:selected_node, node)
+          |> assign(:node_form, form)
+          |> assign(:editing_mode, mode)
+
+        socket =
+          if mode == :editor do
+            push_event(socket, "center_on_node", %{id: node_id})
+          else
+            socket
+          end
+
+        {:noreply, socket}
     end
   end
 
@@ -198,6 +207,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   @spec handle_close_editor(Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_close_editor(socket) do
+    # Release the edit lock but keep selected_node set.
+    # Clearing selected_node here desynchronises server state from the client's
+    # hook.selectedNodeId, which causes the context menu "Open editor panel" to
+    # skip sending node_selected (thinking the node is still selected) and then
+    # open_screenplay finds selected_node nil → silent failure.
+    # The node stays visually selected (toolbar visible); deselect_node clears it.
     socket =
       if socket.assigns.selected_node && socket.assigns.can_edit do
         release_node_lock(socket, socket.assigns.selected_node.id)
@@ -207,7 +222,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
     {:noreply,
      socket
-     |> assign(:selected_node, nil)
      |> assign(:node_form, nil)
      |> assign(:editing_mode, nil)}
   end

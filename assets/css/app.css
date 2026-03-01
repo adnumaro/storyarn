@@ -416,6 +416,34 @@ body.dnd-active [data-toolbar] {
   background-color: var(--color-base-100);
 }
 
+/* Button-triggered searchable dropdown (speaker selector, etc.) — appended to body */
+.searchable-dropdown {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.searchable-dropdown__search {
+  padding: 6px 8px;
+  border: none;
+  border-bottom: 1px solid var(--color-base-300);
+  background: transparent;
+  color: var(--color-base-content);
+  outline: none;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.searchable-dropdown__list {
+  overflow-y: auto;
+  max-height: 200px;
+  padding: 4px 0;
+}
+
 /* Operator selector — clickable verb that opens a dropdown of operators */
 .instruction-builder .operator-selector-wrapper {
   position: relative;

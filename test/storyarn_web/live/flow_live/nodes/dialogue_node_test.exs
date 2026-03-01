@@ -352,25 +352,36 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.NodeTest do
   # handle_open_screenplay/1
   # =============================================================================
 
-  describe "handle_open_screenplay/1" do
+  describe "handle_open_screenplay/2" do
     setup :setup_dialogue_socket
 
     test "sets editing_mode to :editor when dialogue node selected", %{socket: socket} do
-      {:noreply, result} = DialogueNode.handle_open_screenplay(socket)
+      {:noreply, result} = DialogueNode.handle_open_screenplay(%{}, socket)
       assert result.assigns.editing_mode == :editor
     end
 
-    test "does nothing when no dialogue node selected", %{socket: socket} do
+    test "does nothing when no dialogue node selected and no id param", %{socket: socket} do
       socket = %{socket | assigns: %{socket.assigns | selected_node: nil}}
-      {:noreply, result} = DialogueNode.handle_open_screenplay(socket)
+      {:noreply, result} = DialogueNode.handle_open_screenplay(%{}, socket)
       refute Map.has_key?(result.assigns, :editing_mode)
     end
 
-    test "does nothing when non-dialogue node selected", %{socket: socket} do
+    test "does nothing when non-dialogue node selected and no id param", %{socket: socket} do
       non_dialogue = %{socket.assigns.selected_node | type: "condition"}
       socket = %{socket | assigns: %{socket.assigns | selected_node: non_dialogue}}
-      {:noreply, result} = DialogueNode.handle_open_screenplay(socket)
+      {:noreply, result} = DialogueNode.handle_open_screenplay(%{}, socket)
       refute Map.has_key?(result.assigns, :editing_mode)
+    end
+
+    test "opens editor via id param when selected_node is nil", %{socket: socket} do
+      node = socket.assigns.selected_node
+      socket = %{socket | assigns: %{socket.assigns | selected_node: nil}}
+
+      {:noreply, result} =
+        DialogueNode.handle_open_screenplay(%{"id" => to_string(node.id)}, socket)
+
+      assert result.assigns.editing_mode == :editor
+      assert result.assigns.selected_node.id == node.id
     end
   end
 

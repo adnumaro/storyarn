@@ -190,7 +190,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         />
       </div>
 
-      <%!-- Screenplay Editor (fullscreen overlay) --%>
+      <%!-- Screenplay Editor sidebar --%>
       <.live_component
         :if={@selected_node && @editing_mode in [:screenplay, :editor]}
         module={ScreenplayEditor}
@@ -202,7 +202,6 @@ defmodule StoryarnWeb.FlowLive.Show do
         project={@project}
         current_user={@current_scope.user}
         panel_sections={@panel_sections}
-        on_close={JS.push("close_editor")}
       />
 
       <%!-- Preview Modal --%>
@@ -407,8 +406,8 @@ defmodule StoryarnWeb.FlowLive.Show do
     GenericNodeHandlers.handle_node_double_clicked(params, socket)
   end
 
-  def handle_event("open_screenplay", _params, socket) do
-    Dialogue.Node.handle_open_screenplay(socket)
+  def handle_event("open_screenplay", params, socket) do
+    Dialogue.Node.handle_open_screenplay(params, socket)
   end
 
   def handle_event("open_sidebar", _params, socket) do

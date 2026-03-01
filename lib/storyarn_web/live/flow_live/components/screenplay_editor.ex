@@ -1,10 +1,11 @@
 defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
   @moduledoc """
-  Fullscreen two-panel editor for dialogue nodes.
+  Dialogue node editor panel — floating sidebar on desktop, fullscreen on mobile.
 
-  A LiveComponent that provides:
-  - Left panel: Screenplay-style writing (speaker, stage directions, TipTap text editor)
-  - Right panel: Tabbed interface (Responses tab with editable cards, Settings tab)
+  A LiveComponent that provides a tabbed interface:
+  - Text tab: Screenplay-style writing (speaker, stage directions, TipTap text editor)
+  - Responses tab: Editable response cards with condition/instruction builders
+  - Settings tab: Menu text, audio, technical ID, localization ID
 
   ## Usage
 
@@ -15,13 +16,18 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
         all_sheets={@all_sheets}
         can_edit={@can_edit}
         project_variables={@project_variables}
-        on_close={JS.push("close_editor")}
       />
 
   ## Events sent to parent
 
   - `{:node_updated, node}` - When node data changes
   - `{:mention_suggestions, query, cid}` - Mention autocomplete proxy
+
+  ## Close behavior
+
+  Close buttons dispatch the `panel:close` DOM event on `#dialogue-screenplay-editor`.
+  The `DialogueScreenplayEditor` hook intercepts it, plays the exit animation (desktop),
+  then pushes `close_editor` to the parent LiveView.
   """
 
   use StoryarnWeb, :live_component
@@ -38,142 +44,101 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
       id="dialogue-screenplay-editor"
       phx-hook="DialogueScreenplayEditor"
       phx-target={@myself}
-      class="fixed inset-0 z-50 bg-base-100 flex flex-col"
+      class={[
+        "fixed flex flex-col overflow-hidden",
+        # Mobile: fullscreen overlay
+        "inset-0 z-50 bg-base-100",
+        # Desktop (xl): floating sidebar
+        "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[600px]",
+        "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+      ]}
     >
-      <%!-- Header --%>
-      <header class="navbar bg-base-100 border-b border-base-300 px-4 shrink-0">
+      <%!-- Mobile header --%>
+      <header class="navbar bg-base-100 border-b border-base-300 px-4 shrink-0 xl:hidden">
         <div class="flex-none">
-          <button type="button" class="btn btn-ghost btn-sm gap-2" phx-click={@on_close}>
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm gap-2"
+            phx-click={JS.dispatch("panel:close", to: "#dialogue-screenplay-editor")}
+          >
             <.icon name="arrow-left" class="size-4" />
             {dgettext("flows", "Back to canvas")}
           </button>
         </div>
         <div class="flex-1"></div>
         <div class="flex-none">
-          <button type="button" class="btn btn-ghost btn-sm btn-square" phx-click={@on_close}>
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm btn-square"
+            phx-click={JS.dispatch("panel:close", to: "#dialogue-screenplay-editor")}
+          >
             <.icon name="x" class="size-5" />
           </button>
         </div>
       </header>
 
-      <%!-- Main Content - Two Panel Layout --%>
-      <div class="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-2">
-        <%!-- Left Panel: Screenplay --%>
-        <div class="overflow-y-auto screenplay-container border-r border-base-300">
-          <div class="screenplay-page">
-            <%!-- Speaker Selector --%>
-            <div class={["sp-character", @speaker_name && "sp-character-ref"]}>
-              <%= if @can_edit do %>
-                <.form
-                  for={@form}
-                  phx-change="update_speaker"
-                  phx-target={@myself}
-                  class="inline-block"
-                >
-                  <select name="speaker_sheet_id" class="dialogue-sp-select">
-                    <option value="" selected={@form[:speaker_sheet_id].value in [nil, ""]}>
-                      {dgettext("flows", "SELECT SPEAKER")}
-                    </option>
-                    <option
-                      :for={{name, id} <- @speaker_options}
-                      value={id}
-                      selected={to_string(@form[:speaker_sheet_id].value) == to_string(id)}
-                    >
-                      {String.upcase(name)}
-                    </option>
-                  </select>
-                </.form>
-              <% else %>
-                <span class="sp-character-content">
-                  {@speaker_name || dgettext("flows", "SPEAKER")}
-                </span>
-              <% end %>
-            </div>
+      <%!-- Desktop header --%>
+      <header class="hidden xl:flex items-center gap-2 px-3 py-2 border-b border-base-300 shrink-0">
+        <span class="opacity-60"><NodeTypeHelpers.node_type_icon type="dialogue" /></span>
+        <span class="text-sm font-medium truncate flex-1">
+          {@speaker_name || dgettext("flows", "Dialogue")}
+        </span>
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs btn-square"
+          phx-click={JS.dispatch("panel:close", to: "#dialogue-screenplay-editor")}
+        >
+          <.icon name="x" class="size-4" />
+        </button>
+      </header>
 
-            <%!-- Stage Directions --%>
-            <div class="sp-parenthetical">
-              <%= if @can_edit do %>
-                <.form
-                  for={@form}
-                  phx-change="update_stage_directions"
-                  phx-debounce="500"
-                  phx-target={@myself}
-                >
-                  <input
-                    type="text"
-                    id="screenplay-stage-directions"
-                    name="stage_directions"
-                    value={@form[:stage_directions].value || ""}
-                    placeholder={dgettext("flows", "(stage directions)")}
-                    class="dialogue-sp-input"
-                  />
-                </.form>
-              <% else %>
-                <span :if={@form[:stage_directions].value && @form[:stage_directions].value != ""}>
-                  ({@form[:stage_directions].value})
-                </span>
-              <% end %>
-            </div>
+      <%!-- Tabs --%>
+      <div role="tablist" class="tabs tabs-bordered shrink-0 px-4 pt-2">
+        <button
+          type="button"
+          role="tab"
+          class={"tab #{if @active_tab == "text", do: "tab-active"}"}
+          phx-click="switch_tab"
+          phx-value-tab="text"
+          phx-target={@myself}
+        >
+          {dgettext("flows", "Text")}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class={"tab #{if @active_tab == "responses", do: "tab-active"}"}
+          phx-click="switch_tab"
+          phx-value-tab="responses"
+          phx-target={@myself}
+        >
+          {dgettext("flows", "Responses")}
+          <span
+            :if={length(@form[:responses].value || []) > 0}
+            class="badge badge-xs badge-ghost ml-1"
+          >
+            {length(@form[:responses].value || [])}
+          </span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class={"tab #{if @active_tab == "settings", do: "tab-active"}"}
+          phx-click="switch_tab"
+          phx-value-tab="settings"
+          phx-target={@myself}
+        >
+          {dgettext("flows", "Settings")}
+        </button>
+      </div>
 
-            <%!-- Dialogue Text Editor --%>
-            <div class="sp-dialogue">
-              <div
-                id={"screenplay-text-editor-#{@node.id}"}
-                phx-hook="TiptapEditor"
-                phx-update="ignore"
-                data-phx-target={@myself}
-                data-node-id={@node.id}
-                data-content={@form[:text].value || ""}
-                data-editable={to_string(@can_edit)}
-                data-placeholder={dgettext("flows", "Enter dialogue text...")}
-                data-mode="dialogue-screenplay"
-                data-variables-enabled="true"
-                class="min-h-[200px] focus:outline-none"
-              >
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <%!-- Right Panel: Tabs --%>
-        <div class="flex flex-col overflow-hidden">
-          <div role="tablist" class="tabs tabs-bordered shrink-0 px-4 pt-2">
-            <button
-              type="button"
-              role="tab"
-              class={"tab #{if @active_tab == "responses", do: "tab-active"}"}
-              phx-click="switch_tab"
-              phx-value-tab="responses"
-              phx-target={@myself}
-            >
-              {dgettext("flows", "Responses")}
-              <span
-                :if={length(@form[:responses].value || []) > 0}
-                class="badge badge-xs badge-ghost ml-1"
-              >
-                {length(@form[:responses].value || [])}
-              </span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              class={"tab #{if @active_tab == "settings", do: "tab-active"}"}
-              phx-click="switch_tab"
-              phx-value-tab="settings"
-              phx-target={@myself}
-            >
-              {dgettext("flows", "Settings")}
-            </button>
-          </div>
-
-          <div class="flex-1 overflow-y-auto p-4">
-            {render_tab(@active_tab, assigns)}
-          </div>
-        </div>
+      <%!-- Tab content --%>
+      <div class="flex-1 overflow-y-auto">
+        {render_tab(@active_tab, assigns)}
       </div>
 
       <%!-- Footer Status Bar --%>
-      <footer class="bg-base-100 border-t border-base-300 px-4 py-2 flex items-center justify-between text-xs text-base-content/50">
+      <footer class="border-t border-base-300 px-4 py-2 flex items-center justify-between text-xs text-base-content/50 shrink-0">
         <div class="flex items-center gap-4">
           <span :if={@speaker_name}>
             <.icon name="user" class="size-3 inline mr-1" />
@@ -199,9 +164,98 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
 
   # ---- Tabs ----
 
+  defp render_tab("text", assigns) do
+    ~H"""
+    <div class="screenplay-container">
+      <div class="screenplay-page">
+        <%!-- Speaker Selector --%>
+        <div class={["sp-character", @speaker_name && "sp-character-ref"]}>
+          <%= if @can_edit do %>
+            <button
+              id="screenplay-speaker-btn"
+              type="button"
+              class="dialogue-sp-select-btn"
+              data-speaker-id={@form[:speaker_sheet_id].value || ""}
+              data-speakers={Jason.encode!(
+                Enum.map(@speaker_options, fn {name, id} ->
+                  %{id: to_string(id), name: name}
+                end)
+              )}
+              data-no-speaker-label={dgettext("flows", "DIALOGUE")}
+              data-search-placeholder={dgettext("flows", "Search…")}
+            >
+              {String.upcase(@speaker_name || dgettext("flows", "SELECT SPEAKER"))}
+            </button>
+            <%!-- Hidden form allows testing update_speaker without executing JS --%>
+            <form
+              phx-change="update_speaker"
+              phx-target={@myself}
+              class="hidden"
+              aria-hidden="true"
+            >
+              <input
+                type="hidden"
+                name="speaker_sheet_id"
+                value={@form[:speaker_sheet_id].value || ""}
+              />
+            </form>
+          <% else %>
+            <span class="sp-character-content">
+              {@speaker_name || dgettext("flows", "SPEAKER")}
+            </span>
+          <% end %>
+        </div>
+
+        <%!-- Stage Directions --%>
+        <div class="sp-parenthetical">
+          <%= if @can_edit do %>
+            <.form
+              for={@form}
+              phx-change="update_stage_directions"
+              phx-debounce="500"
+              phx-target={@myself}
+            >
+              <input
+                type="text"
+                id="screenplay-stage-directions"
+                name="stage_directions"
+                value={@form[:stage_directions].value || ""}
+                placeholder={dgettext("flows", "(stage directions)")}
+                class="dialogue-sp-input"
+              />
+            </.form>
+          <% else %>
+            <span :if={@form[:stage_directions].value && @form[:stage_directions].value != ""}>
+              ({@form[:stage_directions].value})
+            </span>
+          <% end %>
+        </div>
+
+        <%!-- Dialogue Text Editor --%>
+        <div class="sp-dialogue">
+          <div
+            id={"screenplay-text-editor-#{@node.id}"}
+            phx-hook="TiptapEditor"
+            phx-update="ignore"
+            data-phx-target={@myself}
+            data-node-id={@node.id}
+            data-content={@form[:text].value || ""}
+            data-editable={to_string(@can_edit)}
+            data-placeholder={dgettext("flows", "Enter dialogue text...")}
+            data-mode="dialogue-screenplay"
+            data-variables-enabled="true"
+            class="min-h-[200px] focus:outline-none"
+          >
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
   defp render_tab("responses", assigns) do
     ~H"""
-    <div class="space-y-3">
+    <div class="space-y-3 p-4">
       <div
         :for={response <- @form[:responses].value || []}
         class="border border-base-300 rounded-lg p-3"
@@ -299,7 +353,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
 
   defp render_tab("settings", assigns) do
     ~H"""
-    <div class="space-y-4">
+    <div class="space-y-4 p-4">
       <%!-- Menu Text --%>
       <div>
         <label class="label text-sm font-medium">{dgettext("flows", "Menu Text")}</label>
@@ -414,7 +468,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
     socket =
       socket
       |> assign(assigns)
-      |> assign_new(:active_tab, fn -> "responses" end)
+      |> assign_new(:active_tab, fn -> "text" end)
       |> assign_derived()
 
     {:ok, socket}

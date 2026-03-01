@@ -195,10 +195,33 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     NodeHelpers.update_node_field(socket, node.id, "technical_id", technical_id)
   end
 
-  @doc "Opens fullscreen editor for the selected dialogue node."
-  def handle_open_screenplay(socket) do
-    if socket.assigns.selected_node && socket.assigns.selected_node.type == "dialogue" do
-      {:noreply, assign(socket, :editing_mode, :editor)}
+  @doc """
+  Opens editor sidebar for a dialogue node.
+
+  Uses `selected_node` if it's already the correct node. Falls back to looking
+  up the node by `params["id"]` — needed when `close_editor` was called between
+  the last selection and this event (race condition via context menu / shortcut).
+  """
+  def handle_open_screenplay(params, socket) do
+    node =
+      cond do
+        socket.assigns.selected_node &&
+            socket.assigns.selected_node.type == "dialogue" ->
+          socket.assigns.selected_node
+
+        is_binary(params["id"]) ->
+          Flows.get_node(socket.assigns.flow.id, params["id"])
+
+        true ->
+          nil
+      end
+
+    if node && node.type == "dialogue" do
+      {:noreply,
+       socket
+       |> assign(:selected_node, node)
+       |> assign(:editing_mode, :editor)
+       |> push_event("center_on_node", %{id: node.id})}
     else
       {:noreply, socket}
     end

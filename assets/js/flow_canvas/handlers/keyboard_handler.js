@@ -112,7 +112,7 @@ export function createKeyboardHandler(hook, lockHandler) {
         if (reteNode?.nodeType === "dialogue") {
           e.preventDefault();
           exitInlineEdit(hook);
-          hook.pushEvent("open_screenplay", {});
+          hook.pushEvent("open_screenplay", { id: hook.selectedNodeId });
           return;
         }
       }

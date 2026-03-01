@@ -243,9 +243,9 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditorTest do
       load_flow(view)
       html = open_screenplay_editor(view, node)
 
-      # Both sheets should appear as speaker options (uppercased)
-      assert html =~ "ALICE"
-      assert html =~ "BOB"
+      # Both sheets should appear in the speaker button's data-speakers attribute
+      assert html =~ "Alice"
+      assert html =~ "Bob"
     end
 
     test "renders audio indicator when audio_asset_id is set", %{conn: conn, user: user} do
@@ -345,9 +345,15 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditorTest do
         )
 
       load_flow(view)
-      html = open_screenplay_editor(view, node)
+      open_screenplay_editor(view, node)
 
-      # Responses should be visible (default tab)
+      # Switch to responses tab
+      html =
+        view
+        |> element("#dialogue-screenplay-editor [phx-value-tab=responses]")
+        |> render_click()
+
+      # Responses should be visible
       assert html =~ "Yes, I agree"
       assert html =~ "No way"
       # Response count badge
@@ -402,7 +408,13 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditorTest do
         )
 
       load_flow(view)
-      html = open_screenplay_editor(view, node)
+      open_screenplay_editor(view, node)
+
+      # Switch to responses tab
+      html =
+        view
+        |> element("#dialogue-screenplay-editor [phx-value-tab=responses]")
+        |> render_click()
 
       # Advanced section should be present
       assert html =~ "Advanced"
@@ -437,7 +449,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditorTest do
       %{project: project, flow: flow, node: node}
     end
 
-    test "defaults to responses tab", %{
+    test "defaults to text tab", %{
       conn: conn,
       project: project,
       flow: flow,
@@ -452,11 +464,11 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditorTest do
       load_flow(view)
       html = open_screenplay_editor(view, node)
 
-      # Responses tab should be active
+      # Text tab should be active by default
       assert html =~ "tab-active"
-      # Response content should be visible
-      assert html =~ "OK"
-      assert html =~ "Add response"
+      # Screenplay content should be visible (speaker selector, text editor)
+      assert html =~ "SELECT SPEAKER"
+      assert html =~ "screenplay-text-editor"
     end
 
     test "switches to settings tab", %{
@@ -1171,7 +1183,13 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditorTest do
         )
 
       load_flow(view)
-      html = open_screenplay_editor(view, node)
+      open_screenplay_editor(view, node)
+
+      # Switch to responses tab
+      html =
+        view
+        |> element("#dialogue-screenplay-editor [phx-value-tab=responses]")
+        |> render_click()
 
       # Should show add response button but no response cards
       assert html =~ "Add response"

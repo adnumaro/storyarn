@@ -164,7 +164,7 @@ export function createContextMenuItems(hook) {
           label: t("open_editor_panel"),
           key: "edit",
           icon: ICONS.pencil,
-          handler: () => hook.pushEvent("open_screenplay", {}),
+          handler: () => hook.pushEvent("open_screenplay", { id: String(nodeDbId) }),
         });
         list.push({
           label: t("preview_from_here"),
