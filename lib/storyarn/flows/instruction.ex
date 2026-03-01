@@ -262,7 +262,22 @@ defmodule Storyarn.Flows.Instruction do
     "#{vp}.#{v}"
   end
 
-  defp format_value(%{"value" => value}) when is_binary(value) and value != "", do: value
+  defp format_value(%{"value" => value}) when is_binary(value) and value != "" do
+    case Float.parse(value) do
+      {_, ""} ->
+        # Numeric — no quotes
+        value
+
+      _ ->
+        if value in ["true", "false", "nil"] do
+          value
+        else
+          escaped = value |> String.replace("\\", "\\\\") |> String.replace("\"", "\\\"")
+          ~s("#{escaped}")
+        end
+    end
+  end
+
   defp format_value(_), do: "?"
 
   defp has_value?(%{"value_type" => "variable_ref"} = assignment) do
