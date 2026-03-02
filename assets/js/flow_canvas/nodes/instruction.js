@@ -57,7 +57,7 @@ function getInstructionSummary(nodeData) {
 export default {
   config: {
     label: "Instruction",
-    color: "#10b981",
+    color: "#ec4899",
     icon: createIconSvg(Zap),
     inputs: ["input"],
     outputs: ["output"],

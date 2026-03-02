@@ -13,7 +13,7 @@ const JUMP_ICON = createIconHTML(ArrowUpRight, { size: 12 });
 export default {
   config: {
     label: "Hub",
-    color: "#8b5cf6",
+    color: "#be185d",
     icon: createIconSvg(LogIn),
     inputs: ["input"],
     outputs: ["output"],

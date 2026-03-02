@@ -194,11 +194,13 @@ export function renderSockets(node, nodeData, def, emit) {
 
       return html`
         <div class="socket-row output">
-          ${badges.map((badge) =>
-            badge.type === "error"
-              ? html`<div class="error-badge" title="${badge.title}">${unsafeSVG(ALERT_ICON)}</div>`
-              : html`<span class="${badge.class}" title="${badge.title}">${badge.text}</span>`,
-          )}
+          ${badges.map((badge) => {
+            if (badge.type === "error")
+              return html`<div class="error-badge" title="${badge.title}">${unsafeSVG(ALERT_ICON)}</div>`;
+            if (badge.type === "indicator")
+              return html`<span class="response-indicator" style="background:${badge.color}" data-tip="${badge.title}"></span>`;
+            return html`<span class="${badge.class}" title="${badge.title}">${badge.text}</span>`;
+          })}
           <span class="label" title="${labelTitle}">${outputLabel}</span>
           <rete-ref
             class="output-socket"

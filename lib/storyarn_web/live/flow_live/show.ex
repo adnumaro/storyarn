@@ -8,6 +8,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   import StoryarnWeb.FlowLive.Components.BuilderPanel
   import StoryarnWeb.FlowLive.Components.DebugPanel
   import StoryarnWeb.FlowLive.Components.FlowHeader
+  import StoryarnWeb.Components.CanvasToolbar
   import StoryarnWeb.FlowLive.Components.FlowToolbar
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
@@ -127,32 +128,27 @@ defmodule StoryarnWeb.FlowLive.Show do
             </div>
 
             <%!-- Floating Toolbar --%>
-            <div
+            <.canvas_toolbar
               id="flow-floating-toolbar"
-              phx-hook="FlowFloatingToolbar"
-              class="absolute z-30"
+              canvas_id="flow-canvas"
+              visible={@selected_node != nil && @editing_mode == :toolbar}
             >
-              <div
-                :if={@selected_node && @editing_mode == :toolbar}
-                class="floating-toolbar"
-              >
-                <.node_toolbar
-                  node={@selected_node}
-                  form={@node_form}
-                  can_edit={@can_edit}
-                  all_sheets={@all_sheets}
-                  flow_hubs={@flow_hubs}
-                  available_flows={@available_flows}
-                  available_scenes={assigns[:available_scenes] || []}
-                  flow_search_has_more={@flow_search_has_more}
-                  flow_search_deep={@flow_search_deep}
-                  subflow_exits={@subflow_exits}
-                  referencing_jumps={@referencing_jumps}
-                  referencing_flows={@referencing_flows}
-                  project_scenes={@project_scenes}
-                />
-              </div>
-            </div>
+              <.node_toolbar
+                node={@selected_node}
+                form={@node_form}
+                can_edit={@can_edit}
+                all_sheets={@all_sheets}
+                flow_hubs={@flow_hubs}
+                available_flows={@available_flows}
+                available_scenes={assigns[:available_scenes] || []}
+                flow_search_has_more={@flow_search_has_more}
+                flow_search_deep={@flow_search_deep}
+                subflow_exits={@subflow_exits}
+                referencing_jumps={@referencing_jumps}
+                referencing_flows={@referencing_flows}
+                project_scenes={@project_scenes}
+              />
+            </.canvas_toolbar>
           </div>
 
           <.debug_panel

@@ -5,7 +5,7 @@ defmodule Storyarn.Flows.HubColors do
   All colors are stored and resolved as hex strings.
   """
 
-  @default_hex "#8b5cf6"
+  @default_hex "#be185d"
 
   @doc "Returns the default color hex value."
   @spec default_hex() :: String.t()

@@ -9,7 +9,7 @@ import { ClassicPreset } from "rete";
 
 import "../flow_canvas/components/index.js";
 import { exitInlineEdit, setupEventHandlers } from "../flow_canvas/event_bindings.js";
-import { createFlowFloatingToolbar } from "../flow_canvas/floating_toolbar.js";
+import { createFlowFloatingToolbar } from "../flow_canvas/rete_toolbar.js";
 import { FlowNode } from "../flow_canvas/flow_node.js";
 import {
   createCursorHandler,
@@ -187,8 +187,8 @@ export const FlowCanvas = {
 
     // Floating toolbar
     this.floatingToolbar = createFlowFloatingToolbar(this);
-    // Expose floatingToolbar on parent for the FlowFloatingToolbar hook
-    this.el.parentElement.__floatingToolbar = this.floatingToolbar;
+    // Expose on DOM element so the CanvasToolbar hook can access it
+    this.el.__floatingToolbar = this.floatingToolbar;
 
     // Wire LOD zoom watching (after setupEventHandlers, before finalizeSetup)
     this.area.addPipe((context) => {
@@ -425,8 +425,8 @@ export const FlowCanvas = {
   destroyed() {
     exitInlineEdit(this);
     this.floatingToolbar?.hide();
-    if (this.el.parentElement?.__floatingToolbar) {
-      delete this.el.parentElement.__floatingToolbar;
+    if (this.el.__floatingToolbar) {
+      delete this.el.__floatingToolbar;
     }
     this.lodController?.destroy();
     this.cursorHandler?.destroy();

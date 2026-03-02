@@ -18,7 +18,7 @@ const TERMINAL_ICON = createIconHTML(Square);
 export default {
   config: {
     label: "Subflow",
-    color: "#6366f1",
+    color: "#0d9488",
     icon: createIconSvg(Box),
     inputs: ["input"],
     outputs: ["output"],

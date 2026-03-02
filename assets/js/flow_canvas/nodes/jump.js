@@ -19,7 +19,7 @@ const ARROW_ICON = createIconHTML(ArrowRight, { size: 12 });
 export default {
   config: {
     label: "Jump",
-    color: "#a855f7",
+    color: "#78716c",
     icon: createIconSvg(LogOut),
     inputs: ["input"],
     outputs: [],

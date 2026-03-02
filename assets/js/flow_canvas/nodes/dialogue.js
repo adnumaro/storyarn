@@ -80,6 +80,9 @@ export default {
         `
       : "";
 
+    const hasContent = hasText || visualHtml !== "" || (nodeData.responses?.length > 0);
+    const extraClass = hasContent ? "dialogue has-content" : "dialogue";
+
     return nodeShell(
       color,
       selected,
@@ -89,7 +92,7 @@ export default {
           ${renderSockets(node, nodeData, this, emit)}
         </div>
       `,
-      "dialogue",
+      extraClass,
     );
   },
 
@@ -168,6 +171,7 @@ export default {
       </div>
     `;
 
+    // Edit mode always shows inputs, so it always has content
     return nodeShell(
       color,
       selected,
@@ -177,7 +181,7 @@ export default {
           ${renderSockets(node, nodeData, this, emit)}
         </div>
       `,
-      "dialogue",
+      "dialogue has-content",
     );
   },
 
@@ -221,7 +225,11 @@ export default {
       badges.push({ type: "error", title: "Type mismatch in assignments" });
     }
     if (response.condition) {
-      badges.push({ text: "?", class: "condition-badge", title: "Has condition" });
+      badges.push({ type: "indicator", color: "#eab308", title: "Has condition" });
+    }
+    const assignments = response.instruction_assignments || [];
+    if (assignments.length > 0) {
+      badges.push({ type: "indicator", color: "#ec4899", title: "Has instructions" });
     }
     return badges;
   },
@@ -246,6 +254,9 @@ export default {
       if (oldResp[i].id !== newResp[i].id) return true;
       if (oldResp[i].has_type_warnings !== newResp[i].has_type_warnings) return true;
       if (Boolean(oldResp[i].condition) !== Boolean(newResp[i].condition)) return true;
+      const oldAssign = oldResp[i].instruction_assignments?.length || 0;
+      const newAssign = newResp[i].instruction_assignments?.length || 0;
+      if ((oldAssign > 0) !== (newAssign > 0)) return true;
     }
 
     return false;

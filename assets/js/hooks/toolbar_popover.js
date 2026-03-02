@@ -68,7 +68,7 @@ export const ToolbarPopover = {
     this.el.style.alignItems = "center";
 
     this._fp = createFloatingPopover(this.el, {
-      class: "bg-base-200 border border-base-300 rounded-lg shadow-lg",
+      class: "bg-base-100 border border-base-content/20 rounded-lg shadow-lg",
       width,
       placement,
       offset: Number.isFinite(offsetVal) ? offsetVal : 12,

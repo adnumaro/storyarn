@@ -53,45 +53,38 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   # ── Dialogue ───────────────────────────────────────────────────────────
 
   defp render_toolbar("dialogue", assigns) do
-    speaker_id = assigns.form[:speaker_sheet_id].value
-    response_count = length(assigns.node.data["responses"] || [])
     has_audio = assigns.node.data["audio_asset_id"] not in [nil, ""]
-
-    selected_speaker =
-      Enum.find_value(assigns.all_sheets, fn s ->
-        if to_string(s.id) == to_string(speaker_id), do: s.name
-      end)
-
-    assigns =
-      assigns
-      |> assign(:response_count, response_count)
-      |> assign(:has_audio, has_audio)
-      |> assign(:selected_speaker, selected_speaker)
-      |> assign(:speaker_id, speaker_id)
+    assigns = assign(assigns, :has_audio, has_audio)
 
     ~H"""
-    <.toolbar_searchable_select
+    <.node_type_icon type="dialogue" />
+    <.form
       :if={@can_edit}
-      id={"dialogue-speaker-#{@node.id}"}
-      options={Enum.map(@all_sheets, &{&1.name, &1.id})}
-      selected_value={@speaker_id}
-      selected_label={@selected_speaker}
-      placeholder={dgettext("flows", "Speaker…")}
-      event="update_node_data"
-      event_params_fn={fn value -> %{node: %{speaker_sheet_id: value}} end}
-    />
-    <span :if={!@can_edit && @selected_speaker} class="text-xs truncate max-w-[100px]">
-      {@selected_speaker}
+      for={@form}
+      phx-change="update_node_data"
+      phx-debounce="500"
+      class="contents"
+    >
+      <input
+        type="text"
+        name="node[technical_id]"
+        value={@form[:technical_id].value}
+        placeholder="tech_id"
+        class="toolbar-input font-mono text-xs"
+      />
+    </.form>
+    <span :if={!@can_edit && @form[:technical_id].value != ""} class="text-xs font-mono truncate max-w-[100px]">
+      {@form[:technical_id].value}
     </span>
     <.icon :if={@has_audio} name="volume-2" class="size-3.5 text-info" />
-    <span :if={@response_count > 0} class="badge badge-xs badge-ghost">
-      {dngettext("flows", "%{count} response", "%{count} responses", @response_count,
-        count: @response_count
-      )}
-    </span>
     <span class="toolbar-separator"></span>
-    <button type="button" phx-click="open_screenplay" class="toolbar-btn text-xs font-medium">
-      {dgettext("flows", "Edit")}
+    <button
+      type="button"
+      phx-click="open_screenplay"
+      class="toolbar-btn text-xs"
+      title={dgettext("flows", "Open screenplay editor")}
+    >
+      <.icon name="settings" class="size-3.5" />
     </button>
     <button
       type="button"
@@ -119,7 +112,6 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
 
     ~H"""
     <.node_type_icon type="condition" />
-    <span class="text-xs font-medium opacity-70">{dgettext("flows", "Condition")}</span>
     <button
       :if={@can_edit}
       type="button"
@@ -133,8 +125,13 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       {dngettext("flows", "%{count} rule", "%{count} rules", @rule_count, count: @rule_count)}
     </span>
     <span class="toolbar-separator"></span>
-    <button type="button" phx-click="open_builder" class="toolbar-btn text-xs font-medium">
-      {dgettext("flows", "Edit")}
+    <button
+      type="button"
+      phx-click="open_builder"
+      class="toolbar-btn text-xs"
+      title={dgettext("flows", "Open condition builder")}
+    >
+      <.icon name="settings" class="size-3.5" />
     </button>
     """
   end
@@ -144,29 +141,24 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   defp render_toolbar("instruction", assigns) do
     assignments = assigns.node.data["assignments"] || []
     assignment_count = length(assignments)
-    description = assigns.node.data["description"] || ""
 
-    assigns =
-      assigns
-      |> assign(:assignment_count, assignment_count)
-      |> assign(:description, description)
+    assigns = assign(assigns, :assignment_count, assignment_count)
 
     ~H"""
     <.node_type_icon type="instruction" />
-    <span :if={@description != ""} class="text-xs opacity-70 max-w-[120px] truncate">
-      {@description}
-    </span>
-    <span :if={@description == ""} class="text-xs font-medium opacity-70">
-      {dgettext("flows", "Instruction")}
-    </span>
     <span :if={@assignment_count > 0} class="badge badge-xs badge-ghost">
       {dngettext("flows", "%{count} assignment", "%{count} assignments", @assignment_count,
         count: @assignment_count
       )}
     </span>
     <span class="toolbar-separator"></span>
-    <button type="button" phx-click="open_builder" class="toolbar-btn text-xs font-medium">
-      {dgettext("flows", "Edit")}
+    <button
+      type="button"
+      phx-click="open_builder"
+      class="toolbar-btn text-xs"
+      title={dgettext("flows", "Open instruction builder")}
+    >
+      <.icon name="settings" class="size-3.5" />
     </button>
     """
   end
@@ -174,16 +166,12 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   # ── Hub ────────────────────────────────────────────────────────────────
 
   defp render_toolbar("hub", assigns) do
-    jump_count = length(assigns.referencing_jumps)
-    color = assigns.node.data["color"] || "#3b82f6"
+    has_jumps = assigns.referencing_jumps != []
 
-    assigns =
-      assigns
-      |> assign(:jump_count, jump_count)
-      |> assign(:color, color)
-      |> assign(:color_swatches, @color_swatches)
+    assigns = assign(assigns, :has_jumps, has_jumps)
 
     ~H"""
+    <.node_type_icon type="hub" />
     <.form
       :if={@can_edit}
       for={@form}
@@ -196,59 +184,26 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
         name="node[label]"
         value={@form[:label].value}
         placeholder={dgettext("flows", "Label…")}
-        class="toolbar-input w-[100px]"
+        class="toolbar-input"
       />
       <input
         type="text"
         name="node[hub_id]"
         value={@form[:hub_id].value}
         placeholder="hub_id"
-        class="toolbar-input w-[80px] font-mono text-xs"
+        class="toolbar-input font-mono text-xs"
       />
     </.form>
-    <%!-- Color swatch — popover picker --%>
-    <div
-      phx-hook="ToolbarPopover"
-      id={"popover-hub-color-#{@node.id}"}
-      data-width="160px"
-      data-placement="bottom"
-      data-offset="6"
+    <button
+      :if={@has_jumps}
+      type="button"
+      phx-click="navigate_to_jumps"
+      phx-value-id={@node.id}
+      class="toolbar-btn text-xs"
+      title={dgettext("flows", "Locate referencing jumps")}
     >
-      <button
-        data-role="trigger"
-        type="button"
-        class="toolbar-btn"
-        title={dgettext("flows", "Hub color")}
-        disabled={!@can_edit}
-      >
-        <span
-          class="inline-block size-4 rounded-full border border-white/20 shrink-0"
-          style={"background:#{@color}"}
-        />
-      </button>
-      <template data-role="popover-template">
-        <div class="p-2">
-          <div class="text-xs font-medium text-base-content/60 mb-1.5">
-            {dgettext("flows", "Hub color")}
-          </div>
-          <div :for={row <- @color_swatches} class="flex gap-1 mb-1">
-            <button
-              :for={swatch <- row}
-              type="button"
-              data-event="update_hub_color"
-              data-params={Jason.encode!(%{color: swatch})}
-              class={"color-swatch #{if swatch == @color, do: "color-swatch-active"}"}
-              style={"background:#{swatch}"}
-              title={swatch}
-              disabled={!@can_edit}
-            />
-          </div>
-        </div>
-      </template>
-    </div>
-    <span :if={@jump_count > 0} class="badge badge-xs badge-ghost">
-      {dngettext("flows", "%{count} jump", "%{count} jumps", @jump_count, count: @jump_count)}
-    </span>
+      <.icon name="crosshair" class="size-3.5" />
+    </button>
     """
   end
 
@@ -329,7 +284,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
         name="node[label]"
         value={@form[:label].value}
         placeholder={dgettext("flows", "Label…")}
-        class="toolbar-input w-[100px]"
+        class="toolbar-input"
       />
     </.form>
     <%!-- Exit Mode — popover with icon + label + description --%>
@@ -356,7 +311,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
             type="button"
             data-event="update_exit_mode"
             data-params={Jason.encode!(%{mode: mode})}
-            class={"flex items-center gap-2.5 w-full px-2.5 py-2 rounded-md text-left hover:bg-base-200 #{if @exit_mode == mode, do: "bg-base-200 font-medium"}"}
+            class={"flex items-center gap-2.5 w-full px-2.5 py-2 rounded-md text-left hover:bg-base-content/10 #{if @exit_mode == mode, do: "bg-base-content/10 font-medium"}"}
             disabled={!@can_edit}
           >
             <.exit_mode_icon mode={mode} size="size-5" />
@@ -624,7 +579,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
             data-event={@event}
             data-params={Jason.encode!(@clear_params)}
             data-search-text=""
-            class="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs text-base-content/50 hover:bg-base-200"
+            class="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs text-base-content/50 hover:bg-base-content/10"
           >
             <.icon name="x" class="size-3" />
             {dgettext("flows", "Clear")}
@@ -635,7 +590,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
             data-event={@event}
             data-params={Jason.encode!(params)}
             data-search-text={String.downcase(label)}
-            class={"flex items-center w-full px-2 py-1.5 rounded text-xs hover:bg-base-200 truncate #{if to_string(value) == to_string(@selected_value), do: "font-semibold text-primary"}"}
+            class={"flex items-center w-full px-2 py-1.5 rounded text-xs hover:bg-base-content/10 truncate #{if to_string(value) == to_string(@selected_value), do: "font-semibold text-primary"}"}
           >
             {label}
           </button>
@@ -644,7 +599,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
             type="button"
             data-role="load-more"
             data-event={@load_more_event}
-            class="flex items-center justify-center w-full px-2 py-1.5 rounded text-xs text-primary hover:bg-base-200"
+            class="flex items-center justify-center w-full px-2 py-1.5 rounded text-xs text-primary hover:bg-base-content/10"
           >
             {dgettext("flows", "Show more…")}
           </button>

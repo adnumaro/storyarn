@@ -45,9 +45,8 @@ import { EditableShortcut } from "./hooks/editable_shortcut";
 import { EditableTitle } from "./hooks/editable_title";
 import { ExplorationPlayer } from "./hooks/exploration_player";
 import { ExpressionEditor } from "./hooks/expression_editor";
-import { FloatingToolbar } from "./hooks/floating_toolbar";
+import { CanvasToolbar } from "./hooks/canvas_toolbar";
 import { FlowCanvas } from "./hooks/flow_canvas";
-import { FlowFloatingToolbar } from "./hooks/flow_floating_toolbar";
 import { FlowLoader } from "./hooks/flow_loader";
 import { FountainImport } from "./hooks/fountain_import";
 import { InstructionBuilder } from "./hooks/instruction_builder";
@@ -110,8 +109,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     DetailsPreserveOpen,
     FountainImport,
     SceneCanvas,
-    FloatingToolbar,
-    FlowFloatingToolbar,
+    CanvasToolbar,
     ReferenceSearch,
     ScrollCollapse,
     SearchableSelect,

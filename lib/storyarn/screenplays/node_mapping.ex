@@ -224,7 +224,7 @@ defmodule Storyarn.Screenplays.NodeMapping do
       data: %{
         "hub_id" => element.data["hub_node_id"] || "",
         "label" => element.content || "",
-        "color" => element.data["color"] || "#8b5cf6"
+        "color" => element.data["color"] || "#be185d"
       },
       element_ids: [element.id],
       source: "screenplay_sync"

@@ -9,7 +9,7 @@ import L from "leaflet";
 import { createContextMenu } from "../scene_canvas/context_menu.js";
 import { imageBounds, toPercent } from "../scene_canvas/coordinate_utils.js";
 import { exportPNG, exportSVG } from "../scene_canvas/exporter.js";
-import { createFloatingToolbar } from "../scene_canvas/floating_toolbar.js";
+import { createFloatingToolbar } from "../scene_canvas/leaflet_toolbar.js";
 import { createAnnotationHandler } from "../scene_canvas/handlers/annotation_handler.js";
 import { createConnectionHandler } from "../scene_canvas/handlers/connection_handler.js";
 import { createLayerHandler } from "../scene_canvas/handlers/layer_handler.js";
@@ -123,7 +123,7 @@ export const SceneCanvas = {
     // Map click for deselection (when clicking empty canvas)
     map.on("click", (e) => {
       // Ignore clicks that originated from the floating toolbar or its popovers
-      const toolbar = document.getElementById("floating-toolbar-content");
+      const toolbar = document.getElementById("scene-floating-toolbar");
       if (toolbar && e.originalEvent && toolbar.contains(e.originalEvent.target)) return;
 
       // Only deselect if in select or pan mode (other tools use clicks for creation)

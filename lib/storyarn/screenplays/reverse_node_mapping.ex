@@ -208,7 +208,7 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
       %{
         type: "hub_marker",
         content: data["label"] || "",
-        data: %{"hub_node_id" => data["hub_id"] || "", "color" => data["color"] || "#8b5cf6"},
+        data: %{"hub_node_id" => data["hub_id"] || "", "color" => data["color"] || "#be185d"},
         source_node_id: id
       }
     ]

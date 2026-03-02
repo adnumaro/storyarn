@@ -62,13 +62,13 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
     <div
       :if={@can_edit}
       data-toolbar
-      class="absolute -top-11 left-1/2 -translate-x-1/2 flex items-center gap-0.5 p-1 bg-base-200 border border-base-300 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-10"
+      class="floating-toolbar absolute -top-11 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-10"
     >
       <%!-- Constant toggle --%>
       <button
         :if={@show_constant}
         type="button"
-        class={["btn btn-ghost btn-sm btn-square", @block.is_constant && "btn-active"]}
+        class={["toolbar-btn", @block.is_constant && "toolbar-btn-active"]}
         title={
           if @block.is_constant,
             do: dgettext("sheets", "Make variable"),
@@ -102,7 +102,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
               type="text"
               name="variable_name"
               id={"variable-name-#{@block.id}"}
-              class="input input-xs font-mono text-xs bg-base-300/30 min-w-0"
+              class="toolbar-input font-mono min-w-0"
               style="field-sizing: content; min-width: 4ch; max-width: 20ch;"
               value={@block.variable_name}
               title={@block.variable_name}
@@ -119,7 +119,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
       >
         <button
           type="button"
-          class={["btn btn-ghost btn-sm", @block.scope == "self" && "btn-active"]}
+          class={["toolbar-btn", @block.scope == "self" && "toolbar-btn-active"]}
           title={dgettext("sheets", "Scope: Self only")}
           phx-click="change_block_scope"
           phx-value-scope="self"
@@ -130,7 +130,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
         </button>
         <button
           type="button"
-          class={["btn btn-ghost btn-sm", @block.scope == "children" && "btn-active"]}
+          class={["toolbar-btn", @block.scope == "children" && "toolbar-btn-active"]}
           title={dgettext("sheets", "Scope: Inherited by children")}
           phx-click="change_block_scope"
           phx-value-scope="children"
@@ -144,7 +144,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
         <button
           :if={@block.scope == "children"}
           type="button"
-          class="btn btn-ghost btn-sm gap-1 ml-1"
+          class="toolbar-btn gap-1 ml-1"
           title={dgettext("sheets", "Required for children")}
           phx-click="toggle_required"
           phx-value-id={@block.id}
@@ -164,7 +164,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
       >
         <button
           type="button"
-          class="btn btn-ghost btn-sm gap-1"
+          class="toolbar-btn gap-1"
           phx-click="toggle_allowed_type"
           phx-value-block_id={@block.id}
           phx-value-type="sheet"
@@ -178,7 +178,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-sm gap-1"
+          class="toolbar-btn gap-1"
           phx-click="toggle_allowed_type"
           phx-value-block_id={@block.id}
           phx-value-type="flow"
@@ -253,7 +253,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
       <button
         type="button"
         data-role="trigger"
-        class="btn btn-ghost btn-sm btn-square"
+        class="toolbar-btn"
         title={dgettext("sheets", "Configure")}
       >
         <.icon name="settings" class="size-4" />

@@ -10,6 +10,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.SceneLive.Components.Legend
   import StoryarnWeb.SceneLive.Components.SceneHeader
   import StoryarnWeb.SceneLive.Components.SceneSearchPanel
+  import StoryarnWeb.Components.CanvasToolbar
   import StoryarnWeb.SceneLive.Components.FloatingToolbar
 
   alias Storyarn.Assets
@@ -240,11 +241,11 @@ defmodule StoryarnWeb.SceneLive.Show do
           />
 
           <%!-- Floating element toolbar --%>
-          <div
-            :if={@selected_element && @can_edit && @edit_mode}
-            id="floating-toolbar-content"
-            phx-hook="FloatingToolbar"
-            class="absolute z-[1050]"
+          <.canvas_toolbar
+            id="scene-floating-toolbar"
+            canvas_id="scene-canvas"
+            visible={@selected_element != nil && @can_edit && @edit_mode}
+            z_class="z-[1050]"
           >
             <.floating_toolbar
               selected_type={@selected_type}
@@ -258,7 +259,7 @@ defmodule StoryarnWeb.SceneLive.Show do
               project_variables={@project_variables}
               panel_sections={@panel_sections}
             />
-          </div>
+          </.canvas_toolbar>
         </div>
       </div>
 

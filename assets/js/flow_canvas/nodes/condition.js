@@ -140,7 +140,7 @@ function getConditionSummary(nodeData) {
 export default {
   config: {
     label: "Condition",
-    color: "#f59e0b",
+    color: "#eab308",
     icon: createIconSvg(GitBranch),
     inputs: ["input"],
     outputs: ["true", "false"],

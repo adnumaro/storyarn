@@ -146,9 +146,10 @@ export const storyarnNodeStyles = css`
     white-space: nowrap;
   }
 
-  /* Dialogue node — fixed width to match Rete container */
-  .node.dialogue {
-    width: 350px;
+  /* Dialogue node — compact when empty, expands with content */
+  .node.dialogue.has-content {
+    min-width: 280px;
+    max-width: 350px;
   }
 
   /* Dialogue visual: inset image with rounded corners */
@@ -291,18 +292,36 @@ export const storyarnNodeStyles = css`
     word-break: break-word;
   }
 
-  .condition-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 14px;
-    height: 14px;
-    font-size: 10px;
-    font-weight: bold;
-    background: color-mix(in oklch, var(--color-warning, #fbbd23) 20%, transparent);
-    color: var(--color-warning, #fbbd23);
-    border-radius: 50%;
+  .response-indicator {
+    position: relative;
+    width: 3px;
+    align-self: stretch;
+    border-radius: 2px;
+    flex-shrink: 0;
     margin-right: 2px;
+    cursor: default;
+  }
+
+  .response-indicator::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 11px;
+    line-height: 1;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: var(--color-base-300, #2a323c);
+    color: var(--color-base-content, #a6adbb);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+
+  .response-indicator:hover::after {
+    opacity: 1;
   }
 
   .error-badge {

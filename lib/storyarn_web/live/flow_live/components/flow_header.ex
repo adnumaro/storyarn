@@ -208,7 +208,11 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
       <%= cond do %>
         <% @error_count > 0 -> %>
           <div class="dropdown dropdown-bottom">
-            <div tabindex="0" role="button" class="flex items-center border-l border-base-content/10">
+            <div
+              tabindex="0"
+              role="button"
+              class="flex items-center border-l border-base-content/10 cursor-pointer rounded-r-lg hover:bg-base-content/5 transition-colors"
+            >
               <span class="flex items-center gap-1.5 px-2.5 py-1.5 text-error">
                 <.icon name="triangle-alert" class="size-3.5" />
                 <span>{@error_count}</span>
@@ -263,7 +267,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
             <button
               type="button"
               tabindex="0"
-              class="flex items-center gap-1.5 px-2.5 py-1.5 text-info border-l border-base-content/10"
+              class="flex items-center gap-1.5 px-2.5 py-1.5 text-info border-l border-base-content/10 rounded-r-lg hover:bg-base-content/5 transition-colors"
               title={
                 dngettext(
                   "flows",

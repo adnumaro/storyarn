@@ -25,7 +25,7 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
     assigns = assign(assigns, :icon, NodeTypeRegistry.icon_name(assigns.type))
 
     ~H"""
-    <.icon name={@icon} class="size-4" />
+    <.icon name={@icon} class="size-5" />
     """
   end
 

@@ -74,7 +74,7 @@ export function createFloatingToolbar(hook) {
   // ---------------------------------------------------------------------------
 
   function getToolbarEl() {
-    return document.getElementById("floating-toolbar-content");
+    return document.getElementById("scene-floating-toolbar");
   }
 
   /**

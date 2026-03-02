@@ -78,7 +78,7 @@ export function createNavigationHandler(hook) {
       const hub = findHubNodeByHubId(hook, targetHubId);
       if (!hub) return;
 
-      const hubColor = hub.nodeData.color_hex || "#8b5cf6";
+      const hubColor = hub.nodeData.color_hex || "#be185d";
 
       // Zoom to fit both nodes
       AreaExtensions.zoomAt(hook.area, [jumpNode, hub.reteNode]);
@@ -99,7 +99,7 @@ export function createNavigationHandler(hook) {
       const node = hook.nodeMap.get(nodeDbId);
       if (!node) return;
 
-      const color = node.nodeData?.color_hex || "#8b5cf6";
+      const color = node.nodeData?.color_hex || "#be185d";
 
       AreaExtensions.zoomAt(hook.area, [node]);
       this.highlightNodes([node.id], color);
@@ -121,7 +121,7 @@ export function createNavigationHandler(hook) {
       const jumps = findJumpNodesForHub(hook, hubId);
       if (jumps.length === 0) return;
 
-      const hubColor = hubNode.nodeData.color_hex || "#8b5cf6";
+      const hubColor = hubNode.nodeData.color_hex || "#be185d";
 
       // Zoom to fit hub + all jumps
       const allNodes = [hubNode, ...jumps.map((j) => j.reteNode)];

@@ -788,88 +788,47 @@ body.dnd-active [data-toolbar] {
 /* ===== Map Floating Toolbar ===== */
 
 .floating-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px;
-  background: oklch(0.22 0.01 260);
-  border: 1px solid oklch(0.30 0.01 260);
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.1);
-  white-space: nowrap;
-  color: oklch(0.85 0.01 260);
-  font-size: 0.8125rem;
+  @apply flex items-center gap-0.5 p-1 bg-base-200 border border-base-300 rounded-xl shadow-lg whitespace-nowrap text-base-content text-sm;
 }
 
-#floating-toolbar-content {
+.canvas-toolbar {
   pointer-events: none;
   opacity: 0;
   transform: translateY(4px);
   transition: opacity 0.12s ease, transform 0.12s ease;
 }
 
-#floating-toolbar-content.toolbar-visible {
+.canvas-toolbar.toolbar-visible {
   pointer-events: auto;
   opacity: 1;
   transform: translateY(0);
 }
 
 .toolbar-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 28px;
-  min-width: 28px;
-  padding: 0 4px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: oklch(0.75 0.01 260);
-  cursor: pointer;
-  transition: background-color 0.1s, color 0.1s;
-}
-
-.toolbar-btn:hover:not(:disabled) {
-  background: oklch(0.30 0.01 260);
-  color: oklch(0.95 0.01 260);
-}
-
-.toolbar-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+  @apply btn btn-ghost btn-sm;
 }
 
 .toolbar-btn-active {
-  background: oklch(0.35 0.02 260) !important;
-  color: oklch(0.95 0.01 260) !important;
+  @apply btn-active;
 }
 
 .toolbar-separator {
-  display: inline-block;
-  width: 1px;
-  height: 18px;
-  margin: 0 2px;
-  background: oklch(0.35 0.01 260);
+  @apply inline-block w-px h-4.5 mx-0.5 bg-base-content/15;
 }
 
 .toolbar-input {
-  height: 24px;
-  padding: 0 6px;
-  border: 1px solid oklch(0.35 0.01 260);
-  border-radius: 5px;
-  background: oklch(0.18 0.01 260);
-  color: oklch(0.90 0.01 260);
-  font-size: 0.75rem;
-  outline: none;
-  transition: border-color 0.1s;
+  @apply input input-xs bg-base-100 text-base-content text-xs border border-base-300 rounded-md;
+  field-sizing: content;
+  min-width: 3rem;
+  max-width: 12rem;
 }
 
 .toolbar-input:focus {
-  border-color: oklch(0.50 0.1 260);
+  @apply border-primary outline-none;
 }
 
 .toolbar-input::placeholder {
-  color: oklch(0.45 0.01 260);
+  @apply text-base-content/40;
 }
 
 /* Toolbar popovers use the app's light theme (base-* vars) */
@@ -942,21 +901,6 @@ details[open] > summary .details-chevron {
    <input> and <textarea> elements remain selectable regardless of this rule. */
 #flow-canvas {
   user-select: none;
-}
-
-/* ===== Flow Floating Toolbar ===== */
-
-#flow-floating-toolbar {
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(4px);
-  transition: opacity 0.12s ease, transform 0.12s ease;
-}
-
-#flow-floating-toolbar.toolbar-visible {
-  pointer-events: auto;
-  opacity: 1;
-  transform: translateY(0);
 }
 
 /* ===== Map Dock ===== */
