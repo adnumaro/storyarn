@@ -19,7 +19,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   @doc """
   Reloads flow data from the database and updates socket assigns.
 
-  Refreshes `:flow`, `:flow_data`, `:flow_hubs`, `:flow_word_count`, and `:flow_warning_nodes`.
+  Refreshes `:flow`, `:flow_data`, `:flow_hubs`, `:flow_word_count`,
+  `:flow_error_nodes`, and `:flow_info_nodes`.
   """
   @spec reload_flow_data(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
   def reload_flow_data(socket) do
@@ -35,7 +36,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   end
 
   @doc """
-  Computes flow-level stats (word count, warning nodes) and assigns them to the socket.
+  Computes flow-level stats (word count, error/info nodes) and assigns them to the socket.
   """
   @spec assign_flow_stats(Phoenix.LiveView.Socket.t(), map(), map()) ::
           Phoenix.LiveView.Socket.t()
@@ -50,16 +51,24 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
           response_word_count(node.data["responses"])
       end)
 
-    warning_nodes =
+    error_nodes =
       flow_data.nodes
-      |> Enum.filter(&node_has_warnings?/1)
+      |> Enum.filter(&node_has_errors?/1)
       |> Enum.map(fn n ->
         %{id: n.id, type: n.type, label: node_short_label(n)}
       end)
 
+    info_nodes =
+      flow_data.nodes
+      |> Enum.filter(&node_has_info?/1)
+      |> Enum.map(fn n ->
+        %{id: n.id, type: n.type, label: node_short_label(n), reason: info_reason(n)}
+      end)
+
     socket
     |> assign(:flow_word_count, word_count)
-    |> assign(:flow_warning_nodes, warning_nodes)
+    |> assign(:flow_error_nodes, error_nodes)
+    |> assign(:flow_info_nodes, info_nodes)
   end
 
   defp response_word_count(nil), do: 0
@@ -70,12 +79,23 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
     end)
   end
 
-  defp node_has_warnings?(%{data: data, type: type}) do
+  defp node_has_errors?(%{data: data, type: type}) do
     data["has_stale_refs"] == true ||
       data["has_type_warnings"] == true ||
       (type == "subflow" && (data["stale_reference"] == true || !data["referenced_flow_id"])) ||
       (type == "scene" && !data["location_sheet_id"]) ||
       (type == "dialogue" && has_response_warnings?(data["responses"]))
+  end
+
+  defp node_has_info?(%{data: data}) do
+    data["unreachable"] == true || data["dead_end"] == true
+  end
+
+  defp info_reason(%{data: data}) do
+    cond do
+      data["unreachable"] -> dgettext("flows", "Not reachable from any entry node")
+      data["dead_end"] -> dgettext("flows", "No outgoing connection")
+    end
   end
 
   defp has_response_warnings?(nil), do: false

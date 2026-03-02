@@ -657,6 +657,8 @@ defmodule Storyarn.Flows do
     project_variables = Storyarn.Sheets.list_project_variables(flow.project_id)
     subflow_cache = NodeCrud.batch_resolve_subflow_data(flow.nodes)
     referencing_flows = NodeCrud.list_nodes_referencing_flow(flow.id, flow.project_id)
+    unreachable_ids = compute_unreachable_ids(flow.nodes, flow.connections)
+    dead_end_ids = compute_dead_end_ids(flow.nodes, flow.connections)
 
     cache = %{subflow: subflow_cache}
 
@@ -671,6 +673,8 @@ defmodule Storyarn.Flows do
             |> maybe_add_stale_flag(node.id, stale_node_ids)
             |> maybe_add_type_warning_flag(node.type, project_variables)
             |> maybe_add_referencing_flows(node.type, referencing_flows)
+            |> maybe_add_unreachable_flag(node.id, node.type, unreachable_ids)
+            |> maybe_add_dead_end_flag(node.id, node.type, dead_end_ids)
 
           %{
             id: node.id,
@@ -777,6 +781,58 @@ defmodule Storyarn.Flows do
     else
       data
     end
+  end
+
+  defp maybe_add_unreachable_flag(data, id, type, unreachable_ids) do
+    if type != "entry" and MapSet.member?(unreachable_ids, id),
+      do: Map.put(data, "unreachable", true),
+      else: data
+  end
+
+  defp maybe_add_dead_end_flag(data, id, type, dead_end_ids) do
+    if type not in ~w(exit jump entry) and MapSet.member?(dead_end_ids, id),
+      do: Map.put(data, "dead_end", true),
+      else: data
+  end
+
+  defp compute_unreachable_ids(nodes, connections) do
+    entry_ids = for n <- nodes, n.type == "entry", do: n.id
+
+    if entry_ids == [] do
+      MapSet.new()
+    else
+      adj =
+        Enum.reduce(connections, %{}, fn c, acc ->
+          Map.update(acc, c.source_node_id, [c.target_node_id], &[c.target_node_id | &1])
+        end)
+
+      reachable = bfs(entry_ids, adj, MapSet.new(entry_ids))
+      all_ids = MapSet.new(nodes, & &1.id)
+      MapSet.difference(all_ids, reachable)
+    end
+  end
+
+  defp compute_dead_end_ids(nodes, connections) do
+    source_ids = MapSet.new(connections, & &1.source_node_id)
+
+    for n <- nodes,
+        n.type not in ~w(exit jump entry),
+        not MapSet.member?(source_ids, n.id),
+        into: MapSet.new(),
+        do: n.id
+  end
+
+  defp bfs([], _adj, visited), do: visited
+
+  defp bfs(queue, adj, visited) do
+    next =
+      Enum.flat_map(queue, fn id ->
+        Map.get(adj, id, [])
+        |> Enum.reject(&MapSet.member?(visited, &1))
+      end)
+      |> Enum.uniq()
+
+    bfs(next, adj, MapSet.union(visited, MapSet.new(next)))
   end
 
   # =============================================================================

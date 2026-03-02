@@ -85,7 +85,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           scene_inherited={@scene_inherited}
           available_scenes={@available_scenes}
           flow_word_count={@flow_word_count}
-          flow_warning_nodes={@flow_warning_nodes}
+          flow_error_nodes={@flow_error_nodes}
+          flow_info_nodes={@flow_info_nodes}
         />
       </:top_bar_extra>
       <:top_bar_extra_right>
@@ -278,7 +279,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:scene_inherited, false)
           |> assign(:available_scenes, [])
           |> assign(:flow_word_count, 0)
-          |> assign(:flow_warning_nodes, [])
+          |> assign(:flow_error_nodes, [])
+          |> assign(:flow_info_nodes, [])
 
         {:ok, socket}
     end
