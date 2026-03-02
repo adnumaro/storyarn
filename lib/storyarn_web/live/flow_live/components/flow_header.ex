@@ -198,42 +198,51 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
         <.icon name="text" class="size-3.5" />
         <span>{@flow_word_count}</span>
       </div>
-      <%!-- Warning badge with dropdown --%>
-      <div :if={@warning_count > 0} class="dropdown dropdown-bottom dropdown-end">
-        <button
-          type="button"
-          tabindex="0"
-          class="flex items-center gap-1.5 px-2.5 py-1.5 text-error border-l border-base-content/10"
-          title={
-            dngettext(
-              "flows",
-              "%{count} node with warnings",
-              "%{count} nodes with warnings",
-              @warning_count,
-              count: @warning_count
-            )
-          }
+      <%!-- Flow health indicator --%>
+      <%= if @warning_count > 0 do %>
+        <div class="dropdown dropdown-bottom dropdown-end">
+          <button
+            type="button"
+            tabindex="0"
+            class="flex items-center gap-1.5 px-2.5 py-1.5 text-error border-l border-base-content/10"
+            title={
+              dngettext(
+                "flows",
+                "%{count} node with warnings",
+                "%{count} nodes with warnings",
+                @warning_count,
+                count: @warning_count
+              )
+            }
+          >
+            <.icon name="triangle-alert" class="size-3.5" />
+            <span>{@warning_count}</span>
+          </button>
+          <ul
+            tabindex="0"
+            class="dropdown-content menu menu-xs bg-base-100 rounded-box shadow-lg border border-base-300 z-50 mt-2 max-h-60 overflow-y-auto w-max"
+          >
+            <li :for={node <- @flow_warning_nodes}>
+              <button
+                type="button"
+                phx-click="navigate_to_node"
+                phx-value-id={node.id}
+                class="flex items-center gap-2"
+              >
+                <.node_type_icon type={node.type} />
+                <span class="truncate">{node.label}</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+      <% else %>
+        <div
+          class="flex items-center gap-1.5 px-2.5 py-1.5 text-success/60 border-l border-base-content/10"
+          title={dgettext("flows", "This flow looks great!")}
         >
-          <.icon name="triangle-alert" class="size-3.5" />
-          <span>{@warning_count}</span>
-        </button>
-        <ul
-          tabindex="0"
-          class="dropdown-content menu menu-xs bg-base-100 rounded-box shadow-lg border border-base-300 z-50 mt-2 max-h-60 overflow-y-auto w-max"
-        >
-          <li :for={node <- @flow_warning_nodes}>
-            <button
-              type="button"
-              phx-click="navigate_to_node"
-              phx-value-id={node.id}
-              class="flex items-center gap-2"
-            >
-              <.node_type_icon type={node.type} />
-              <span class="truncate">{node.label}</span>
-            </button>
-          </li>
-        </ul>
-      </div>
+          <.icon name="circle-check" class="size-3.5" />
+        </div>
+      <% end %>
     </div>
     """
   end
