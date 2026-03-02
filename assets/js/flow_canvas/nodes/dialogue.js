@@ -192,10 +192,11 @@ export default {
   },
 
   getPreviewText(data) {
-    const textContent = data.text
-      ? new DOMParser().parseFromString(data.text, "text/html").body.textContent
-      : "";
-    return textContent || "";
+    if (!data.text) return "";
+    // Add newline after block-level closing tags so textContent preserves paragraph breaks
+    const spaced = data.text.replace(/<\/(p|div|h[1-6])>/gi, "</$1>\n");
+    const textContent = new DOMParser().parseFromString(spaced, "text/html").body.textContent || "";
+    return textContent.replace(/\n{3,}/g, "\n\n").trim();
   },
 
   getIndicators(data) {
@@ -232,6 +233,21 @@ export default {
   },
 
   needsRebuild(oldData, newData) {
-    return JSON.stringify(oldData) !== JSON.stringify(newData);
+    // Only rebuild for structural changes that affect pins or visual chrome.
+    // Text/stage_directions are content-only — skip to avoid exiting inline edit mode.
+    if (oldData?.speaker_sheet_id !== newData.speaker_sheet_id) return true;
+    if (oldData?.audio_asset_id !== newData.audio_asset_id) return true;
+    if (oldData?.has_stale_refs !== newData.has_stale_refs) return true;
+
+    const oldResp = oldData?.responses || [];
+    const newResp = newData.responses || [];
+    if (oldResp.length !== newResp.length) return true;
+    for (let i = 0; i < oldResp.length; i++) {
+      if (oldResp[i].id !== newResp[i].id) return true;
+      if (oldResp[i].has_type_warnings !== newResp[i].has_type_warnings) return true;
+      if (Boolean(oldResp[i].condition) !== Boolean(newResp[i].condition)) return true;
+    }
+
+    return false;
   },
 };

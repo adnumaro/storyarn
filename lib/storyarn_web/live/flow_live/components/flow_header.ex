@@ -67,7 +67,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
     """
   end
 
-  @doc "Flow info bar (nav history + title + scene map + save indicator) — overlays the canvas."
+  @doc "Flow info bar (nav history + title + stats + scene map + save indicator) — overlays the canvas."
   attr :flow, :map, required: true
   attr :can_edit, :boolean, required: true
   attr :save_status, :atom, default: :idle
@@ -75,6 +75,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
   attr :scene_name, :string, default: nil
   attr :scene_inherited, :boolean, default: false
   attr :available_scenes, :list, default: []
+  attr :flow_word_count, :integer, default: 0
+  attr :flow_warning_nodes, :list, default: []
 
   def flow_info_bar(assigns) do
     ~H"""
@@ -151,6 +153,12 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
         </span>
       </div>
 
+      <%!-- Flow stats (word count + warnings) --%>
+      <.flow_stats_bar
+        flow_word_count={@flow_word_count}
+        flow_warning_nodes={@flow_warning_nodes}
+      />
+
       <%!-- Scene indicator --%>
       <.scene_indicator
         :if={@can_edit || @scene_name}
@@ -162,6 +170,70 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
 
       <%!-- Save indicator --%>
       <.save_indicator :if={@can_edit} status={@save_status} />
+    </div>
+    """
+  end
+
+  attr :flow_word_count, :integer, required: true
+  attr :flow_warning_nodes, :list, required: true
+
+  defp flow_stats_bar(assigns) do
+    assigns = assign(assigns, :warning_count, length(assigns.flow_warning_nodes))
+
+    ~H"""
+    <div class="hidden lg:flex items-center gap-0 surface-panel text-xs">
+      <%!-- Word count --%>
+      <div
+        class="flex items-center gap-1.5 px-2.5 py-1.5 text-base-content/60"
+        title={
+          dngettext(
+            "flows",
+            "%{count} word in this flow",
+            "%{count} words in this flow",
+            @flow_word_count,
+            count: @flow_word_count
+          )
+        }
+      >
+        <.icon name="text" class="size-3.5" />
+        <span>{@flow_word_count}</span>
+      </div>
+      <%!-- Warning badge with dropdown --%>
+      <div :if={@warning_count > 0} class="dropdown dropdown-bottom dropdown-end">
+        <button
+          type="button"
+          tabindex="0"
+          class="flex items-center gap-1.5 px-2.5 py-1.5 text-error border-l border-base-content/10"
+          title={
+            dngettext(
+              "flows",
+              "%{count} node with warnings",
+              "%{count} nodes with warnings",
+              @warning_count,
+              count: @warning_count
+            )
+          }
+        >
+          <.icon name="triangle-alert" class="size-3.5" />
+          <span>{@warning_count}</span>
+        </button>
+        <ul
+          tabindex="0"
+          class="dropdown-content menu menu-xs bg-base-100 rounded-box shadow-lg border border-base-300 z-50 mt-2 max-h-60 overflow-y-auto w-max"
+        >
+          <li :for={node <- @flow_warning_nodes}>
+            <button
+              type="button"
+              phx-click="navigate_to_node"
+              phx-value-id={node.id}
+              class="flex items-center gap-2"
+            >
+              <.node_type_icon type={node.type} />
+              <span class="truncate">{node.label}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
     </div>
     """
   end

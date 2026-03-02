@@ -547,6 +547,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
         Enum.reduce(responses, 0, fn r, acc ->
           acc + NodeTypeHelpers.word_count(r["text"])
         end)
+
     speaker_options = build_speaker_options(all_sheets)
     audio_filename = get_audio_filename(node)
 

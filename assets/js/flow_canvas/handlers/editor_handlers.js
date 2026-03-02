@@ -177,6 +177,16 @@ export function createEditorHandlers(hook) {
         return;
       }
 
+      // Skip re-render while user is inline-editing this node to avoid
+      // overwriting the textarea value with server-echoed data.
+      // Note: structural changes from collaborators (e.g. adding/removing responses)
+      // are deferred until the user exits inline edit mode, when the next server
+      // update will apply them.
+      if (hook._inlineEditingNodeId === existingNode.id) {
+        existingNode.nodeData = { ...nodeData };
+        return;
+      }
+
       // Check per-type needsRebuild
       const def = getNodeDef(existingNode.nodeType);
       const shouldRebuild = def?.needsRebuild?.(existingNode.nodeData, nodeData) || false;

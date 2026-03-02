@@ -29,6 +29,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.NavigationHistory
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
+  alias StoryarnWeb.FlowLive.Helpers.SocketHelpers
   alias StoryarnWeb.FlowLive.Nodes.Condition
   alias StoryarnWeb.FlowLive.Nodes.Dialogue
   alias StoryarnWeb.FlowLive.Nodes.Exit, as: ExitNode
@@ -83,6 +84,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           scene_name={@scene_name}
           scene_inherited={@scene_inherited}
           available_scenes={@available_scenes}
+          flow_word_count={@flow_word_count}
+          flow_warning_nodes={@flow_warning_nodes}
         />
       </:top_bar_extra>
       <:top_bar_extra_right>
@@ -274,6 +277,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:scene_name, nil)
           |> assign(:scene_inherited, false)
           |> assign(:available_scenes, [])
+          |> assign(:flow_word_count, 0)
+          |> assign(:flow_warning_nodes, [])
 
         {:ok, socket}
     end
@@ -1062,6 +1067,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:available_scenes, data.available_scenes)
       |> assign(:loading, false)
       |> assign_scene_info(flow)
+      |> SocketHelpers.assign_flow_stats(flow, data.flow_data)
 
     socket =
       socket

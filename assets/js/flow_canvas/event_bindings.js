@@ -37,7 +37,15 @@ export function exitInlineEdit(hook) {
 
   const nodeView = hook.area.nodeViews.get(hook._inlineEditingNodeId);
   const el = nodeView?.element?.querySelector("storyarn-node");
-  if (el) el.editing = false;
+  if (el) {
+    // Blur the active input/textarea inside shadow DOM so its @blur handler
+    // fires and saves data BEFORE we remove the editing UI
+    const focused = el.shadowRoot?.activeElement;
+    if (focused && (focused.tagName === "TEXTAREA" || focused.tagName === "INPUT")) {
+      focused.blur();
+    }
+    el.editing = false;
+  }
 
   hook._inlineEditingNodeId = null;
 }
@@ -208,8 +216,12 @@ export function setupEventHandlers(hook) {
             .map((line) => `<p>${line || "<br>"}</p>`)
             .join("")
         : "";
+      // Optimistically update local nodeData so view mode shows new text immediately
+      reteNode.nodeData = { ...reteNode.nodeData, text: content };
       hook.pushEvent("update_node_text", { id: reteNode.nodeId, content });
     } else {
+      // Optimistically update local nodeData for non-text fields
+      reteNode.nodeData = { ...reteNode.nodeData, [field]: value };
       hook.pushEvent("update_node_field", { field, value });
     }
   });

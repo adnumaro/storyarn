@@ -305,7 +305,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   end
 
   defp push_node_or_flow_update(socket, node, _renamed_count) do
-    push_event(socket, "node_updated", %{id: node.id, data: canvas_data(node, socket.assigns.flow.project_id)})
+    push_event(socket, "node_updated", %{
+      id: node.id,
+      data: canvas_data(node, socket.assigns.flow.project_id)
+    })
   end
 
   # Refreshes referencing_jumps assign for hub nodes.
@@ -389,7 +392,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          |> assign(:node_form, form)
          |> mark_saved()
          |> maybe_refresh_referencing_jumps(updated_node)
-         |> push_event("node_updated", %{id: node_id, data: canvas_data(updated_node, socket.assigns.flow.project_id)})}
+         |> push_event("node_updated", %{
+           id: node_id,
+           data: canvas_data(updated_node, socket.assigns.flow.project_id)
+         })}
 
       {:error, :hub_id_required} ->
         {:noreply,

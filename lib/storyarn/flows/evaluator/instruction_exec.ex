@@ -134,7 +134,8 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
 
   Parses the string first, then executes.
   """
-  @spec execute_string(String.t() | nil, map()) :: {:ok, map(), [change()], [error()], [warning()]}
+  @spec execute_string(String.t() | nil, map()) ::
+          {:ok, map(), [change()], [error()], [warning()]}
   def execute_string(nil, variables), do: {:ok, variables, [], [], []}
   def execute_string("", variables), do: {:ok, variables, [], [], []}
 

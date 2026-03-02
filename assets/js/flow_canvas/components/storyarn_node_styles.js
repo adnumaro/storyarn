@@ -187,6 +187,7 @@ export const storyarnNodeStyles = css`
     color: color-mix(in oklch, var(--color-base-content, #a6adbb) 85%, transparent);
     line-height: 1.5;
     word-break: break-word;
+    white-space: pre-wrap;
   }
 
   .stage-directions-inline {
