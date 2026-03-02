@@ -34,7 +34,10 @@ defmodule StoryarnWeb.Components.ExpressionEditor do
         "instruction" -> serialize_assignments_to_text(assigns.assignments)
       end
 
-    assigns = assign(assigns, :serialized_text, serialized_text)
+    assigns =
+      assigns
+      |> assign(:serialized_text, serialized_text)
+      |> assign(:linter_translations, linter_translations())
 
     ~H"""
     <div id={@id} class="expression-editor">
@@ -100,6 +103,7 @@ defmodule StoryarnWeb.Components.ExpressionEditor do
         data-variables={Jason.encode!(@variables)}
         data-context={Jason.encode!(@context)}
         data-event-name={@event_name}
+        data-translations={Jason.encode!(@linter_translations)}
         data-placeholder={
           if @mode == "condition",
             do: dgettext("flows", "mc.jaime.health > 50"),
@@ -243,4 +247,13 @@ defmodule StoryarnWeb.Components.ExpressionEditor do
   end
 
   defp format_value(v), do: to_string(v)
+
+  defp linter_translations do
+    %{
+      "syntax_error" => dgettext("flows", "Syntax error"),
+      "unknown_variable" => dgettext("flows", "Unknown variable"),
+      "invalid_operator_for_type" => dgettext("flows", "is not a valid operator for"),
+      "valid_operators" => dgettext("flows", "valid")
+    }
+  end
 end

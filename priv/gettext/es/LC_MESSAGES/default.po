@@ -16,24 +16,24 @@ msgstr ""
 msgid "Actions"
 msgstr "Acciones"
 
-#: lib/storyarn_web/components/layouts.ex:486
-#: lib/storyarn_web/components/layouts.ex:498
+#: lib/storyarn_web/components/layouts.ex:491
+#: lib/storyarn_web/components/layouts.ex:503
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr "Intentando reconectar"
 
-#: lib/storyarn_web/components/layouts.ex:493
+#: lib/storyarn_web/components/layouts.ex:498
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr "¡Algo salió mal!"
 
-#: lib/storyarn_web/components/layouts.ex:481
+#: lib/storyarn_web/components/layouts.ex:486
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr "No podemos encontrar la conexión a internet"
 
 #: lib/storyarn_web/components/core_components.ex:74
-#: lib/storyarn_web/components/core_components.ex:530
+#: lib/storyarn_web/components/core_components.ex:565
 #, elixir-autogen, elixir-format
 msgid "close"
 msgstr "cerrar"
@@ -53,12 +53,12 @@ msgstr "Continuar con GitHub"
 msgid "Continue with Google"
 msgstr "Continuar con Google"
 
-#: lib/storyarn_web/components/layouts.ex:293
+#: lib/storyarn_web/components/layouts.ex:298
 #, elixir-autogen, elixir-format
 msgid "Log in"
 msgstr "Iniciar sesión"
 
-#: lib/storyarn_web/components/layouts.ex:426
+#: lib/storyarn_web/components/layouts.ex:431
 #: lib/storyarn_web/components/sidebar.ex:92
 #, elixir-autogen, elixir-format
 msgid "Profile"
@@ -70,7 +70,7 @@ msgstr "Perfil"
 msgid "Saving..."
 msgstr "Guardando..."
 
-#: lib/storyarn_web/components/layouts.ex:296
+#: lib/storyarn_web/components/layouts.ex:301
 #, elixir-autogen, elixir-format
 msgid "Sign up"
 msgstr "Registrarse"
@@ -109,29 +109,29 @@ msgid_plural "%{count} more users"
 msgstr[0] "%{count} usuario más"
 msgstr[1] "%{count} usuarios más"
 
-#: lib/storyarn_web/components/layouts.ex:424
+#: lib/storyarn_web/components/layouts.ex:429
 #, elixir-autogen, elixir-format
 msgid "Account"
 msgstr "Cuenta"
 
-#: lib/storyarn_web/components/focus_layout.ex:67
+#: lib/storyarn_web/components/focus_layout.ex:69
 #, elixir-autogen, elixir-format
 msgid "Back to Workspace"
 msgstr "Volver al espacio de trabajo"
 
-#: lib/storyarn_web/components/layouts.ex:364
-#: lib/storyarn_web/components/layouts.ex:400
+#: lib/storyarn_web/components/layouts.ex:369
+#: lib/storyarn_web/components/layouts.ex:405
 #, elixir-autogen, elixir-format
 msgid "Back to app"
 msgstr "Volver a la app"
 
-#: lib/storyarn_web/components/layouts.ex:433
+#: lib/storyarn_web/components/layouts.ex:438
 #, elixir-autogen, elixir-format
 msgid "Connected accounts"
 msgstr "Cuentas conectadas"
 
 #: lib/storyarn_web/components/block_components/table_blocks.ex:95
-#: lib/storyarn_web/components/core_components.ex:453
+#: lib/storyarn_web/components/core_components.ex:465
 #, elixir-autogen, elixir-format
 msgid "Constant"
 msgstr "Constante"
@@ -141,12 +141,12 @@ msgstr "Constante"
 msgid "Dark mode"
 msgstr "Modo oscuro"
 
-#: lib/storyarn_web/components/layouts.ex:289
+#: lib/storyarn_web/components/layouts.ex:294
 #, elixir-autogen, elixir-format
 msgid "Dashboard"
 msgstr "Panel"
 
-#: lib/storyarn_web/components/layouts.ex:446
+#: lib/storyarn_web/components/layouts.ex:451
 #, elixir-autogen, elixir-format
 msgid "General"
 msgstr "General"
@@ -156,7 +156,7 @@ msgstr "General"
 msgid "Log out"
 msgstr "Cerrar sesión"
 
-#: lib/storyarn_web/components/layouts.ex:451
+#: lib/storyarn_web/components/layouts.ex:456
 #, elixir-autogen, elixir-format
 msgid "Members"
 msgstr "Miembros"
@@ -182,13 +182,13 @@ msgstr "Eliminar"
 msgid "Saved"
 msgstr "Guardado"
 
-#: lib/storyarn_web/components/layouts.ex:428
+#: lib/storyarn_web/components/layouts.ex:433
 #, elixir-autogen, elixir-format
 msgid "Security"
 msgstr "Seguridad"
 
-#: lib/storyarn_web/components/focus_layout.ex:292
-#: lib/storyarn_web/components/focus_layout.ex:295
+#: lib/storyarn_web/components/focus_layout.ex:310
+#: lib/storyarn_web/components/focus_layout.ex:313
 #, elixir-autogen, elixir-format
 msgid "Trash"
 msgstr "Papelera"
@@ -263,52 +263,357 @@ msgstr "Eliminar"
 msgid "Revoke invitation?"
 msgstr "¿Revocar invitación?"
 
-#: lib/storyarn_web/components/focus_layout.ex:199
+#: lib/storyarn_web/components/focus_layout.ex:209
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Account settings"
 msgstr "Cuenta"
 
-#: lib/storyarn_web/components/focus_layout.ex:205
+#: lib/storyarn_web/components/focus_layout.ex:215
 #, elixir-autogen, elixir-format, fuzzy
 msgid "All workspaces"
 msgstr "Espacios de trabajo"
 
-#: lib/storyarn_web/components/focus_layout.ex:318
+#: lib/storyarn_web/components/focus_layout.ex:336
 #, elixir-autogen, elixir-format
 msgid "Close panel"
 msgstr ""
 
-#: lib/storyarn_web/components/focus_layout.ex:81
+#: lib/storyarn_web/components/focus_layout.ex:83
 #, elixir-autogen, elixir-format
 msgid "Hide panel"
 msgstr ""
 
-#: lib/storyarn_web/components/focus_layout.ex:311
+#: lib/storyarn_web/components/focus_layout.ex:329
 #, elixir-autogen, elixir-format
 msgid "Pin"
 msgstr ""
 
-#: lib/storyarn_web/components/focus_layout.ex:307
+#: lib/storyarn_web/components/focus_layout.ex:325
 #, elixir-autogen, elixir-format
 msgid "Pin panel"
 msgstr ""
 
-#: lib/storyarn_web/components/focus_layout.ex:311
+#: lib/storyarn_web/components/focus_layout.ex:329
 #, elixir-autogen, elixir-format
 msgid "Pinned"
 msgstr ""
 
-#: lib/storyarn_web/components/focus_layout.ex:153
+#: lib/storyarn_web/components/focus_layout.ex:163
 #, elixir-autogen, elixir-format
 msgid "Project settings"
 msgstr ""
 
-#: lib/storyarn_web/components/focus_layout.ex:81
+#: lib/storyarn_web/components/focus_layout.ex:83
 #, elixir-autogen, elixir-format
 msgid "Show panel"
 msgstr ""
 
-#: lib/storyarn_web/components/focus_layout.ex:307
+#: lib/storyarn_web/components/focus_layout.ex:325
 #, elixir-autogen, elixir-format
 msgid "Unpin panel"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:185
+#: lib/storyarn_web/live/export_import_live/index.ex:765
+#: lib/storyarn_web/live/export_import_live/index.ex:780
+#, elixir-autogen, elixir-format
+msgid "Assets"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:742
+#, elixir-autogen, elixir-format
+msgid "Bundled (ZIP with assets folder)"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:385
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:357
+#, elixir-autogen, elixir-format
+msgid "Conflict resolution strategy"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:153
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Content"
+msgstr "Constante"
+
+#: lib/storyarn_web/live/export_import_live/index.ex:335
+#, elixir-autogen, elixir-format
+msgid "Count"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:72
+#, elixir-autogen, elixir-format
+msgid "Download .%{ext}"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:741
+#, elixir-autogen, elixir-format
+msgid "Embedded (Base64 — larger file)"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:334
+#: lib/storyarn_web/live/export_import_live/index.ex:404
+#, elixir-autogen, elixir-format
+msgid "Entity"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:752
+#, elixir-autogen, elixir-format
+msgid "Errors"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:36
+#, elixir-autogen, elixir-format
+msgid "Export"
+msgstr ""
+
+#: lib/storyarn_web/components/focus_layout.ex:42
+#: lib/storyarn_web/components/focus_layout.ex:157
+#: lib/storyarn_web/live/export_import_live/index.ex:28
+#, elixir-autogen, elixir-format
+msgid "Export & Import"
+msgstr ""
+
+#: lib/storyarn_web/controllers/export_controller.ex:40
+#, elixir-autogen, elixir-format
+msgid "Export failed"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:30
+#, elixir-autogen, elixir-format
+msgid "Export your project data or import from a file."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:812
+#, elixir-autogen, elixir-format
+msgid "File exceeds the 50 MB size limit."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:810
+#, elixir-autogen, elixir-format
+msgid "File is not a valid JSON object."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:826
+#, elixir-autogen, elixir-format
+msgid "File is too large (max 50 MB)."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:731
+#: lib/storyarn_web/live/export_import_live/index.ex:761
+#: lib/storyarn_web/live/export_import_live/index.ex:782
+#, elixir-autogen, elixir-format
+msgid "Flows"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:125
+#, elixir-autogen, elixir-format
+msgid "Format"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:83
+#: lib/storyarn_web/live/export_import_live/index.ex:382
+#, elixir-autogen, elixir-format
+msgid "Import"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:418
+#, elixir-autogen, elixir-format
+msgid "Import another"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:397
+#, elixir-autogen, elixir-format
+msgid "Import completed successfully!"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:824
+#, elixir-autogen, elixir-format
+msgid "Import error: %{details}"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:821
+#, elixir-autogen, elixir-format
+msgid "Import failed at %{context}."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:818
+#, elixir-autogen, elixir-format
+msgid "Import file exceeds entity count limits."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:327
+#, elixir-autogen, elixir-format
+msgid "Import preview"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:805
+#, elixir-autogen, elixir-format
+msgid "Import session expired. Please upload the file again."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:405
+#, elixir-autogen, elixir-format
+msgid "Imported"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:807
+#, elixir-autogen, elixir-format
+msgid "Invalid JSON file."
+msgstr ""
+
+#: lib/storyarn_web/controllers/export_controller.ex:34
+#, elixir-autogen, elixir-format
+msgid "Invalid format"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:734
+#: lib/storyarn_web/live/export_import_live/index.ex:785
+#, elixir-autogen, elixir-format
+msgid "Localization"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:815
+#, elixir-autogen, elixir-format
+msgid "Missing required keys: %{keys}"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:284
+#, elixir-autogen, elixir-format
+msgid "No issues found. Project is ready for export."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:762
+#, elixir-autogen, elixir-format
+msgid "Nodes"
+msgstr ""
+
+#: lib/storyarn_web/controllers/export_controller.ex:37
+#, elixir-autogen, elixir-format
+msgid "Not found"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:827
+#, elixir-autogen, elixir-format
+msgid "Only .json files are accepted."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:828
+#, elixir-autogen, elixir-format
+msgid "Only one file at a time."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:210
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Options"
+msgstr "Acciones"
+
+#: lib/storyarn_web/live/export_import_live/index.ex:773
+#, elixir-autogen, elixir-format
+msgid "Overwrite — replace existing entities"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:750
+#, elixir-autogen, elixir-format
+msgid "Passed"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:230
+#, elixir-autogen, elixir-format
+msgid "Pretty print output"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:493
+#, elixir-autogen, elixir-format
+msgid "Project not found."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:740
+#, elixir-autogen, elixir-format
+msgid "References only (URLs in output)"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:774
+#, elixir-autogen, elixir-format
+msgid "Rename — import with a new shortcut"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:732
+#: lib/storyarn_web/live/export_import_live/index.ex:763
+#: lib/storyarn_web/live/export_import_live/index.ex:783
+#, elixir-autogen, elixir-format
+msgid "Scenes"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:733
+#: lib/storyarn_web/live/export_import_live/index.ex:764
+#: lib/storyarn_web/live/export_import_live/index.ex:784
+#, elixir-autogen, elixir-format
+msgid "Screenplays"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:299
+#, elixir-autogen, elixir-format
+msgid "Select a .storyarn.json file"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:730
+#: lib/storyarn_web/live/export_import_live/index.ex:760
+#: lib/storyarn_web/live/export_import_live/index.ex:781
+#, elixir-autogen, elixir-format
+msgid "Sheets"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:349
+#, elixir-autogen, elixir-format
+msgid "Shortcut conflicts detected"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:772
+#, elixir-autogen, elixir-format
+msgid "Skip — keep existing, ignore conflicts"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:433
+#, elixir-autogen, elixir-format
+msgid "Try again"
+msgstr ""
+
+#: lib/storyarn_web/controllers/export_controller.ex:31
+#, elixir-autogen, elixir-format
+msgid "Unknown format"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:318
+#, elixir-autogen, elixir-format
+msgid "Upload & Preview"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:831
+#, elixir-autogen, elixir-format
+msgid "Upload error: %{details}"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:64
+#, elixir-autogen, elixir-format
+msgid "Validate"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:220
+#, elixir-autogen, elixir-format
+msgid "Validate before export"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:751
+#, elixir-autogen, elixir-format
+msgid "Warnings"
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:109
+#, elixir-autogen, elixir-format
+msgid "You need edit permissions to import data."
 msgstr ""

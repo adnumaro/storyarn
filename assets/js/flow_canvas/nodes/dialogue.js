@@ -216,6 +216,9 @@ export default {
     if (!response.text) {
       badges.push({ type: "error", title: "Empty response text" });
     }
+    if (response.has_type_warnings) {
+      badges.push({ type: "error", title: "Type mismatch in assignments" });
+    }
     if (response.condition) {
       badges.push({ text: "?", class: "condition-badge", title: "Has condition" });
     }

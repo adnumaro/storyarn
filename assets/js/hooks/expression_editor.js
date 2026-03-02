@@ -11,9 +11,9 @@
  *   data-placeholder Placeholder text
  */
 
+import { formatExpression } from "../expression_editor/formatter.js";
 import { parseAssignments, parseCondition } from "../expression_editor/parser.js";
 import { createExpressionEditor } from "../expression_editor/setup.js";
-import { formatExpression } from "../expression_editor/formatter.js";
 
 export const ExpressionEditor = {
   mounted() {
@@ -25,6 +25,7 @@ export const ExpressionEditor = {
 
     // Determine event name: explicit > context-based default
     this.eventName = this.el.dataset.eventName || this._defaultEventName();
+    this.translations = JSON.parse(this.el.dataset.translations || "{}");
 
     this.editor = createExpressionEditor({
       container: this.el,
@@ -33,6 +34,7 @@ export const ExpressionEditor = {
       editable: this.editable,
       placeholderText: this.el.dataset.placeholder || "",
       variables: this.variables,
+      translations: this.translations,
       onChange: (text) => {
         this._pushParsedData(text);
       },
@@ -98,8 +100,12 @@ export const ExpressionEditor = {
       const result = parseAssignments(text, this.variables);
       if (result.errors.length > 0) return;
 
-      const assignments = result.assignments || [];
-      this.pushEvent(this.eventName, { assignments });
+      // Strip linter-only position metadata before sending to server
+      const assignments = (result.assignments || []).map(
+        // eslint-disable-next-line no-unused-vars
+        ({ ref_from, ref_to, value_ref_from, value_ref_to, ...a }) => a,
+      );
+      this.pushEvent(this.eventName, { assignments, ...this.context });
     }
   },
 };

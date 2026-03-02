@@ -18,8 +18,8 @@ msgid_plural "%{count} elements"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:137
-#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:173
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:138
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:174
 #, elixir-autogen, elixir-format
 msgid "Add child screenplay"
 msgstr ""
@@ -45,12 +45,12 @@ msgstr ""
 msgid "Choice not found."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:125
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:123
 #, elixir-autogen, elixir-format
 msgid "Could not add choice."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:77
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:76
 #, elixir-autogen, elixir-format
 msgid "Could not create flow."
 msgstr ""
@@ -72,7 +72,7 @@ msgstr ""
 msgid "Could not create screenplay."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:55
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:53
 #, elixir-autogen, elixir-format
 msgid "Could not delete element."
 msgstr ""
@@ -83,7 +83,7 @@ msgstr ""
 msgid "Could not delete screenplay."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/fountain_import_handlers.ex:48
+#: lib/storyarn_web/live/screenplay_live/handlers/fountain_import_handlers.ex:43
 #, elixir-autogen, elixir-format
 msgid "Could not import file."
 msgstr ""
@@ -94,17 +94,17 @@ msgstr ""
 msgid "Could not move screenplay."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:149
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:147
 #, elixir-autogen, elixir-format
 msgid "Could not remove choice."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:77
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:75
 #, elixir-autogen, elixir-format
 msgid "Could not save condition."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:100
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:98
 #, elixir-autogen, elixir-format
 msgid "Could not save instruction."
 msgstr ""
@@ -114,22 +114,22 @@ msgstr ""
 msgid "Could not save screenplay name."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:199
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:197
 #, elixir-autogen, elixir-format
 msgid "Could not set character sheet."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:58
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:57
 #, elixir-autogen, elixir-format
 msgid "Could not sync from flow."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:30
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:29
 #, elixir-autogen, elixir-format
 msgid "Could not sync screenplay."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:263
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:261
 #, elixir-autogen, elixir-format
 msgid "Could not toggle parenthetical."
 msgstr ""
@@ -139,22 +139,22 @@ msgstr ""
 msgid "Could not unlink choice."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:94
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:93
 #, elixir-autogen, elixir-format
 msgid "Could not unlink flow."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:324
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:322
 #, elixir-autogen, elixir-format
 msgid "Could not update choice."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:236
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:234
 #, elixir-autogen, elixir-format
 msgid "Could not update dual dialogue."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:289
+#: lib/storyarn_web/live/screenplay_live/handlers/element_handlers.ex:287
 #, elixir-autogen, elixir-format
 msgid "Could not update title page."
 msgstr ""
@@ -217,12 +217,12 @@ msgstr ""
 msgid "Filter screenplays..."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:74
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:73
 #, elixir-autogen, elixir-format
 msgid "Flow created and synced."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:54
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:53
 #, elixir-autogen, elixir-format
 msgid "Flow has no entry node."
 msgstr ""
@@ -237,12 +237,12 @@ msgstr ""
 msgid "Flow trashed"
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:91
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:90
 #, elixir-autogen, elixir-format
 msgid "Flow unlinked."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/fountain_import_handlers.ex:45
+#: lib/storyarn_web/live/screenplay_live/handlers/fountain_import_handlers.ex:40
 #, elixir-autogen, elixir-format
 msgid "Fountain file imported successfully."
 msgstr ""
@@ -272,7 +272,7 @@ msgstr ""
 msgid "Main Story"
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:213
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:214
 #, elixir-autogen, elixir-format
 msgid "Move to Trash"
 msgstr ""
@@ -288,7 +288,7 @@ msgstr ""
 msgid "New Screenplay"
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/fountain_import_handlers.ex:21
+#: lib/storyarn_web/live/screenplay_live/handlers/fountain_import_handlers.ex:19
 #, elixir-autogen, elixir-format
 msgid "No content found in imported file."
 msgstr ""
@@ -323,8 +323,8 @@ msgstr ""
 msgid "Screenplay created successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:21
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:40
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:20
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:39
 #, elixir-autogen, elixir-format
 msgid "Screenplay is not linked to a flow."
 msgstr ""
@@ -342,17 +342,17 @@ msgstr ""
 msgid "Screenplay not found."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:26
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:25
 #, elixir-autogen, elixir-format
 msgid "Screenplay synced to flow."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:50
+#: lib/storyarn_web/live/screenplay_live/handlers/flow_sync_handlers.ex:49
 #, elixir-autogen, elixir-format
 msgid "Screenplay updated from flow."
 msgstr ""
 
-#: lib/storyarn_web/components/focus_layout.ex:38
+#: lib/storyarn_web/components/focus_layout.ex:39
 #: lib/storyarn_web/live/screenplay_live/index.ex:38
 #, elixir-autogen, elixir-format
 msgid "Screenplays"
@@ -387,7 +387,7 @@ msgid "Write and format screenplays with industry-standard formatting"
 msgstr ""
 
 #: lib/storyarn_web/live/screenplay_live/index.ex:184
-#: lib/storyarn_web/live/screenplay_live/show.ex:134
+#: lib/storyarn_web/live/screenplay_live/show.ex:133
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
 msgstr ""

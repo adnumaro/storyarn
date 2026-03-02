@@ -22,8 +22,16 @@ const ASSIGN_OP_MAP = {
 };
 
 const COMPARE_OPS = new Set([
-  "Eq", "Neq", "Gt", "Lt", "Gte", "Lte",
-  "StartsWithOp", "EndsWithOp", "ContainsOp", "NotContainsOp",
+  "Eq",
+  "Neq",
+  "Gt",
+  "Lt",
+  "Gte",
+  "Lte",
+  "StartsWithOp",
+  "EndsWithOp",
+  "ContainsOp",
+  "NotContainsOp",
 ]);
 
 const COMPARE_OP_MAP = {

@@ -155,47 +155,55 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
     case editing_mode do
       {:navigate, flow_id} ->
-        socket =
-          if socket.assigns.selected_node && socket.assigns.can_edit do
-            release_node_lock(socket, socket.assigns.selected_node.id)
-          else
-            socket
-          end
-
-        flow_id = if is_binary(flow_id), do: flow_id, else: to_string(flow_id)
-
-        {:noreply,
-         push_navigate(socket,
-           to:
-             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
-         )}
+        handle_navigate_to_flow(socket, flow_id)
 
       mode ->
-        form = FormHelpers.node_data_to_form(node)
-        user = socket.assigns.current_scope.user
-
-        socket =
-          if socket.assigns.can_edit do
-            handle_node_lock_acquisition(socket, node_id, user)
-          else
-            socket
-          end
-
-        socket =
-          socket
-          |> assign(:selected_node, node)
-          |> assign(:node_form, form)
-          |> assign(:editing_mode, mode)
-
-        socket =
-          case mode do
-            :editor -> push_event(socket, "center_on_node", %{id: node_id, sidebar_width: 600})
-            :builder -> push_event(socket, "center_on_node", %{id: node_id, sidebar_width: 480})
-            _ -> socket
-          end
-
-        {:noreply, socket}
+        handle_open_editing_mode(socket, node, node_id, mode)
     end
+  end
+
+  defp handle_navigate_to_flow(socket, flow_id) do
+    socket =
+      if socket.assigns.selected_node && socket.assigns.can_edit do
+        release_node_lock(socket, socket.assigns.selected_node.id)
+      else
+        socket
+      end
+
+    flow_id = if is_binary(flow_id), do: flow_id, else: to_string(flow_id)
+
+    {:noreply,
+     push_navigate(socket,
+       to:
+         ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
+     )}
+  end
+
+  defp handle_open_editing_mode(socket, node, node_id, mode) do
+    form = FormHelpers.node_data_to_form(node)
+    user = socket.assigns.current_scope.user
+
+    socket =
+      if socket.assigns.can_edit do
+        handle_node_lock_acquisition(socket, node_id, user)
+      else
+        socket
+      end
+
+    socket =
+      socket
+      |> assign(:selected_node, node)
+      |> assign(:node_form, form)
+      |> assign(:editing_mode, mode)
+
+    socket =
+      case mode do
+        :editor -> push_event(socket, "center_on_node", %{id: node_id, sidebar_width: 600})
+        :builder -> push_event(socket, "center_on_node", %{id: node_id, sidebar_width: 480})
+        _ -> socket
+      end
+
+    {:noreply, socket}
   end
 
   @spec handle_open_sidebar(Phoenix.LiveView.Socket.t()) ::

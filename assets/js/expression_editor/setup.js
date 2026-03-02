@@ -43,6 +43,7 @@ export function createExpressionEditor(opts) {
     onChange,
     placeholderText = "",
     variables = [],
+    translations = {},
     extraExtensions = [],
   } = opts;
 
@@ -110,7 +111,7 @@ export function createExpressionEditor(opts) {
     // Variable autocomplete
     ...(variables.length > 0 ? [variableAutocomplete(variables)] : []),
     // Linting: syntax errors always, undefined variable warnings when variables available
-    expressionLinter(mode, variables),
+    expressionLinter(mode, variables, translations),
     // Render tooltips in document.body so they aren't clipped by overflow containers
     tooltips({ parent: document.body }),
     ...extraExtensions,

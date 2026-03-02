@@ -27,11 +27,11 @@ import topbar from "topbar";
 
 import { AssetUpload } from "./hooks/asset_upload";
 import { AudioUpload } from "./hooks/audio_upload";
-import { BuilderSidebar } from "./hooks/builder_sidebar";
 import { AvatarUpload } from "./hooks/avatar_upload";
 import { BannerUpload } from "./hooks/banner_upload";
 import { BlockKeyboard } from "./hooks/block_keyboard";
 import { BlockMenu } from "./hooks/block_menu";
+import { BuilderSidebar } from "./hooks/builder_sidebar";
 import { CanvasDropZone } from "./hooks/canvas_drop_zone";
 import { ColorPicker } from "./hooks/color_picker";
 // Custom hooks

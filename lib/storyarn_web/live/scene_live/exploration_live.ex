@@ -285,8 +285,15 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     assignments = action_data["assignments"] || []
 
     case Flows.execute_instructions(assignments, socket.assigns.variables) do
-      {:ok, new_variables, _changes, _errors} ->
-        refresh_exploration_state(socket, new_variables)
+      {:ok, new_variables, _changes, _errors, warnings} ->
+        socket = refresh_exploration_state(socket, new_variables)
+
+        if warnings != [] do
+          msg = Enum.map_join(warnings, "\n", & &1.message)
+          put_flash(socket, :warning, msg)
+        else
+          socket
+        end
 
       _ ->
         socket

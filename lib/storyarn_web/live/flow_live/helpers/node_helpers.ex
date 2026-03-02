@@ -117,7 +117,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
           id: node.id,
           type: node.type,
           position: %{x: node.position_x, y: node.position_y},
-          data: canvas_data(node)
+          data: canvas_data(node, socket.assigns.flow.project_id)
         }
 
         {:noreply,
@@ -176,7 +176,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
           id: new_node.id,
           type: new_node.type,
           position: %{x: new_node.position_x, y: new_node.position_y},
-          data: canvas_data(new_node)
+          data: canvas_data(new_node, socket.assigns.flow.project_id)
         }
 
         {:noreply,
@@ -244,11 +244,48 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
   # Private functions
 
-  # Resolves node data for canvas events (e.g., hub color name → hex).
+  # Resolves node data for canvas events (e.g., hub color name → hex, type warnings).
   # Also used by persist_node_update and add_node.
-  defp canvas_data(node) do
-    Flows.resolve_node_colors(node.type, node.data)
+  # Only fetches project_variables when the node type needs type-warning checks.
+  defp canvas_data(node, project_id) do
+    data = Flows.resolve_node_colors(node.type, node.data)
+
+    if node.type in ["instruction", "dialogue"] do
+      project_variables = Storyarn.Sheets.list_project_variables(project_id)
+      maybe_add_type_warning_flag(data, node.type, project_variables)
+    else
+      data
+    end
   end
+
+  defp maybe_add_type_warning_flag(data, "instruction", project_variables) do
+    assignments = data["assignments"] || []
+
+    if Flows.instruction_has_type_warnings?(assignments, project_variables) do
+      Map.put(data, "has_type_warnings", true)
+    else
+      data
+    end
+  end
+
+  defp maybe_add_type_warning_flag(data, "dialogue", project_variables) do
+    responses = data["responses"] || []
+
+    updated =
+      Enum.map(responses, fn response ->
+        assignments = response["instruction_assignments"] || []
+
+        if Flows.instruction_has_type_warnings?(assignments, project_variables) do
+          Map.put(response, "has_type_warnings", true)
+        else
+          response
+        end
+      end)
+
+    Map.put(data, "responses", updated)
+  end
+
+  defp maybe_add_type_warning_flag(data, _type, _project_variables), do: data
 
   # Pushes a full flow update when hub renames cascaded, otherwise a single node update.
   defp push_node_or_flow_update(socket, _node, renamed_count) when renamed_count > 0 do
@@ -268,7 +305,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   end
 
   defp push_node_or_flow_update(socket, node, _renamed_count) do
-    push_event(socket, "node_updated", %{id: node.id, data: canvas_data(node)})
+    push_event(socket, "node_updated", %{id: node.id, data: canvas_data(node, socket.assigns.flow.project_id)})
   end
 
   # Refreshes referencing_jumps assign for hub nodes.
@@ -352,7 +389,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          |> assign(:node_form, form)
          |> mark_saved()
          |> maybe_refresh_referencing_jumps(updated_node)
-         |> push_event("node_updated", %{id: node_id, data: canvas_data(updated_node)})}
+         |> push_event("node_updated", %{id: node_id, data: canvas_data(updated_node, socket.assigns.flow.project_id)})}
 
       {:error, :hub_id_required} ->
         {:noreply,
@@ -385,7 +422,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
       id: node.id,
       type: node.type,
       position: %{x: node.position_x, y: node.position_y},
-      data: canvas_data(node)
+      data: canvas_data(node, socket.assigns.flow.project_id)
     }
 
     # Use flow_data.connections (already serialized by reload_flow_data)

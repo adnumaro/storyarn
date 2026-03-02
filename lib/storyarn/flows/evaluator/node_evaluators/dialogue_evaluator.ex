@@ -26,7 +26,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
   Execute a response instruction (JSON string of assignments) and update state.
   """
   def execute_response_instruction(instruction_json, state, node_id) do
-    {:ok, new_variables, changes, errors} =
+    {:ok, new_variables, changes, errors, warnings} =
       InstructionExec.execute_string(instruction_json, state.variables)
 
     state = %{state | variables: new_variables}
@@ -44,13 +44,24 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
 
     state = EngineHelpers.add_history_entries(state, node_id, "", changes, :instruction)
 
-    Enum.reduce(errors, state, fn error, acc ->
+    state =
+      Enum.reduce(errors, state, fn error, acc ->
+        EngineHelpers.add_console(
+          acc,
+          :error,
+          node_id,
+          "",
+          "Response instruction error: #{error.reason}"
+        )
+      end)
+
+    Enum.reduce(warnings, state, fn w, acc ->
       EngineHelpers.add_console(
         acc,
-        :error,
+        :warning,
         node_id,
         "",
-        "Response instruction error: #{error.reason}"
+        "Response instruction: #{w.message}"
       )
     end)
   end
@@ -59,7 +70,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
   Execute structured response assignments and update state.
   """
   def execute_response_assignments(assignments, state, node_id) do
-    {:ok, new_variables, changes, errors} =
+    {:ok, new_variables, changes, errors, warnings} =
       InstructionExec.execute(assignments, state.variables)
 
     state = %{state | variables: new_variables}
@@ -77,13 +88,24 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
 
     state = EngineHelpers.add_history_entries(state, node_id, "", changes, :instruction)
 
-    Enum.reduce(errors, state, fn error, acc ->
+    state =
+      Enum.reduce(errors, state, fn error, acc ->
+        EngineHelpers.add_console(
+          acc,
+          :error,
+          node_id,
+          "",
+          "Response instruction error: #{error.reason}"
+        )
+      end)
+
+    Enum.reduce(warnings, state, fn w, acc ->
       EngineHelpers.add_console(
         acc,
-        :error,
+        :warning,
         node_id,
         "",
-        "Response instruction error: #{error.reason}"
+        "Response instruction: #{w.message}"
       )
     end)
   end

@@ -228,12 +228,12 @@ describe("serializeCondition", () => {
     expect(result).toBe('mc.jaime.name == ""');
   });
 
-  it("serializes text operators with function syntax", () => {
+  it("serializes text operators with infix syntax", () => {
     const result = serializeCondition({
       logic: "all",
       rules: [{ sheet: "mc.jaime", variable: "name", operator: "contains", value: "Annah" }],
     });
-    expect(result).toBe('contains(mc.jaime.name, "Annah")');
+    expect(result).toBe('mc.jaime.name contains "Annah"');
   });
 
   it("returns empty for null/empty input", () => {

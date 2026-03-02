@@ -26,7 +26,7 @@ msgstr "¿Ya tienes cuenta?"
 msgid "An email was sent to %{email}, please access it to confirm your account."
 msgstr "Se envió un email a %{email}, accede a él para confirmar tu cuenta."
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:127
+#: lib/storyarn_web/controllers/oauth_controller.ex:145
 #, elixir-autogen, elixir-format
 msgid "Cannot unlink your only authentication method. Set a password first."
 msgstr "No puedes desvincular tu único método de autenticación. Establece una contraseña primero."
@@ -47,12 +47,12 @@ msgstr "Confirmar y mantener la sesión"
 msgid "Confirming..."
 msgstr "Confirmando..."
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:31
+#: lib/storyarn_web/controllers/oauth_controller.ex:34
 #, elixir-autogen, elixir-format
 msgid "Could not authenticate: %{errors}"
 msgstr "No se pudo autenticar: %{errors}"
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:80
+#: lib/storyarn_web/controllers/oauth_controller.ex:97
 #, elixir-autogen, elixir-format
 msgid "Could not link account: %{errors}"
 msgstr "No se pudo vincular la cuenta: %{errors}"
@@ -79,12 +79,12 @@ msgstr "¿No tienes cuenta?"
 msgid "Email"
 msgstr "Email"
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:43
+#: lib/storyarn_web/controllers/oauth_controller.ex:47
 #, elixir-autogen, elixir-format
 msgid "Failed to authenticate with %{provider}: %{message}"
 msgstr "Error al autenticar con %{provider}: %{message}"
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:92
+#: lib/storyarn_web/controllers/oauth_controller.ex:110
 #, elixir-autogen, elixir-format
 msgid "Failed to link %{provider}: %{message}"
 msgstr "Error al vincular %{provider}: %{message}"
@@ -153,7 +153,7 @@ msgstr "Iniciando sesión..."
 msgid "Magic link is invalid or it has expired."
 msgstr "El enlace mágico no es válido o ha expirado."
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:119
+#: lib/storyarn_web/controllers/oauth_controller.ex:137
 #, elixir-autogen, elixir-format
 msgid "No %{provider} account linked."
 msgstr "No hay cuenta de %{provider} vinculada."
@@ -183,17 +183,17 @@ msgstr "Registrar una cuenta"
 msgid "Sign up"
 msgstr "Registrarse"
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:21
+#: lib/storyarn_web/controllers/oauth_controller.ex:24
 #, elixir-autogen, elixir-format
 msgid "Successfully authenticated with %{provider}."
 msgstr "Autenticado exitosamente con %{provider}."
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:70
+#: lib/storyarn_web/controllers/oauth_controller.ex:87
 #, elixir-autogen, elixir-format
 msgid "Successfully linked %{provider} account."
 msgstr "Cuenta de %{provider} vinculada exitosamente."
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:111
+#: lib/storyarn_web/controllers/oauth_controller.ex:129
 #, elixir-autogen, elixir-format
 msgid "Successfully unlinked %{provider} account."
 msgstr "Cuenta de %{provider} desvinculada exitosamente."
@@ -293,3 +293,9 @@ msgstr "la ficha del buzón"
 #, elixir-autogen, elixir-format
 msgid "to your account now."
 msgstr "a tu cuenta ahora."
+
+#: lib/storyarn_web/controllers/oauth_controller.ex:57
+#: lib/storyarn_web/controllers/oauth_controller.ex:71
+#, elixir-autogen, elixir-format
+msgid "Unknown authentication provider."
+msgstr ""

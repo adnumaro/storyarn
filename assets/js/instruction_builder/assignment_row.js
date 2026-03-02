@@ -7,7 +7,7 @@
  * are available for the selected variable's type.
  */
 
-import { createElement, X } from "lucide";
+import { createElement, TriangleAlert, X } from "lucide";
 import { createFloatingPopover } from "../utils/floating_popover";
 import { createCombobox } from "./combobox";
 import {
@@ -16,6 +16,7 @@ import {
   getTemplate,
   NO_VALUE_OPERATORS,
   OPERATOR_DROPDOWN_LABELS,
+  OPERATOR_SYMBOLS,
   OPERATOR_VERBS,
   operatorsForType,
   typesForOperator,
@@ -120,6 +121,20 @@ export function createAssignmentRow(opts) {
     }
 
     container.appendChild(sentenceWrap);
+
+    // Type mismatch warning badge
+    if (varType && currentAssignment.operator) {
+      const validOps = operatorsForType(varType);
+      if (!validOps.includes(currentAssignment.operator)) {
+        const badge = document.createElement("span");
+        badge.className = "text-warning flex items-center";
+        badge.title =
+          t?.type_mismatch_warning ||
+          `"${OPERATOR_SYMBOLS[currentAssignment.operator] || currentAssignment.operator}" is not valid for ${varType}`;
+        badge.appendChild(createElement(TriangleAlert, { width: 14, height: 14 }));
+        container.appendChild(badge);
+      }
+    }
 
     // Remove button (visible on hover)
     if (canEdit) {

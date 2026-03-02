@@ -140,7 +140,13 @@ export function createConditionGroup(opts) {
           type: "block",
           logic: "all",
           rules: [
-            { id: generateId("rule"), sheet: null, variable: null, operator: "equals", value: null },
+            {
+              id: generateId("rule"),
+              sheet: null,
+              variable: null,
+              operator: "equals",
+              value: null,
+            },
           ],
         };
         currentGroup.blocks.push(newBlock);

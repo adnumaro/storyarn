@@ -654,6 +654,7 @@ defmodule Storyarn.Flows do
   @spec serialize_for_canvas(flow()) :: map()
   def serialize_for_canvas(%Flow{} = flow) do
     stale_node_ids = VariableReferenceTracker.list_stale_node_ids(flow.id)
+    project_variables = Storyarn.Sheets.list_project_variables(flow.project_id)
     subflow_cache = NodeCrud.batch_resolve_subflow_data(flow.nodes)
     referencing_flows = NodeCrud.list_nodes_referencing_flow(flow.id, flow.project_id)
 
@@ -668,6 +669,7 @@ defmodule Storyarn.Flows do
             node.type
             |> resolve_node_colors(node.data, cache)
             |> maybe_add_stale_flag(node.id, stale_node_ids)
+            |> maybe_add_type_warning_flag(node.type, project_variables)
             |> maybe_add_referencing_flows(node.type, referencing_flows)
 
           %{
@@ -740,6 +742,35 @@ defmodule Storyarn.Flows do
 
   defp maybe_add_referencing_flows(data, _type, _referencing_flows), do: data
 
+  defp maybe_add_type_warning_flag(data, "instruction", project_variables) do
+    assignments = data["assignments"] || []
+
+    if Instruction.has_type_warnings?(assignments, project_variables) do
+      Map.put(data, "has_type_warnings", true)
+    else
+      data
+    end
+  end
+
+  defp maybe_add_type_warning_flag(data, "dialogue", project_variables) do
+    responses = data["responses"] || []
+
+    updated =
+      Enum.map(responses, fn response ->
+        assignments = response["instruction_assignments"] || []
+
+        if Instruction.has_type_warnings?(assignments, project_variables) do
+          Map.put(response, "has_type_warnings", true)
+        else
+          response
+        end
+      end)
+
+    Map.put(data, "responses", updated)
+  end
+
+  defp maybe_add_type_warning_flag(data, _type, _project_variables), do: data
+
   defp maybe_add_stale_flag(data, node_id, stale_node_ids) do
     if MapSet.member?(stale_node_ids, node_id) do
       Map.put(data, "has_stale_refs", true)
@@ -764,6 +795,10 @@ defmodule Storyarn.Flows do
 
   defdelegate instruction_sanitize(assignments), to: Instruction, as: :sanitize
   defdelegate instruction_format_short(assignment), to: Instruction, as: :format_assignment_short
+
+  defdelegate instruction_has_type_warnings?(assignments, variables),
+    to: Instruction,
+    as: :has_type_warnings?
 
   # =============================================================================
   # DebugSessionStore

@@ -78,7 +78,7 @@ export function createCombobox(opts) {
     input.addEventListener("paste", (e) => {
       e.preventDefault();
       const pasted = (e.clipboardData || window.clipboardData).getData("text");
-      const sanitized = pasted.replace(/[^0-9.\-]/g, "");
+      const sanitized = pasted.replace(/[^0-9.-]/g, "");
       const cur = input.value;
       const selStart = input.selectionStart;
       const selEnd = input.selectionEnd;

@@ -16,7 +16,9 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluator do
     label = EngineHelpers.node_label(node)
     assignments = data["assignments"] || []
 
-    {:ok, new_variables, changes, errors} = InstructionExec.execute(assignments, state.variables)
+    {:ok, new_variables, changes, errors, warnings} =
+      InstructionExec.execute(assignments, state.variables)
+
     state = %{state | variables: new_variables}
 
     # Log each change to console + history
@@ -43,6 +45,12 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluator do
           label,
           "#{error.variable_ref}: #{error.reason}"
         )
+      end)
+
+    # Log type mismatch warnings
+    state =
+      Enum.reduce(warnings, state, fn w, acc ->
+        EngineHelpers.add_console(acc, :warning, node.id, label, w.message)
       end)
 
     state =

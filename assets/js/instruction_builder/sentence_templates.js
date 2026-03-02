@@ -145,6 +145,20 @@ export function typesForOperator(op) {
 }
 
 /**
+ * DSL symbols shown in the Code tab, used in linter messages.
+ */
+export const OPERATOR_SYMBOLS = {
+  set: "=",
+  add: "+=",
+  subtract: "-=",
+  set_true: "= true",
+  set_false: "= false",
+  toggle: "toggle",
+  clear: "clear",
+  set_if_unset: "?=",
+};
+
+/**
  * The verb that starts each sentence template.
  * Used by the operator selector button.
  */

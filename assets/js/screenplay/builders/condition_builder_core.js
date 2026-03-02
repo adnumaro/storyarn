@@ -293,7 +293,13 @@ export function createConditionBuilder({
           type: "block",
           logic: "all",
           rules: [
-            { id: generateId("rule"), sheet: null, variable: null, operator: "equals", value: null },
+            {
+              id: generateId("rule"),
+              sheet: null,
+              variable: null,
+              operator: "equals",
+              value: null,
+            },
           ],
         };
         if (switchMode) {

@@ -118,6 +118,30 @@ defmodule Storyarn.Flows.Instruction do
   def known_keys, do: @known_keys
 
   @doc """
+  Returns true if any assignment has an operator incompatible with its variable type.
+  """
+  @spec has_type_warnings?(list(), list()) :: boolean()
+  def has_type_warnings?(assignments, project_variables) when is_list(assignments) do
+    type_map =
+      Map.new(project_variables, fn v ->
+        {"#{v.sheet_shortcut}.#{v.variable_name}", v.block_type}
+      end)
+
+    Enum.any?(assignments, fn a ->
+      with sheet when is_binary(sheet) <- a["sheet"],
+           var when is_binary(var) <- a["variable"],
+           op when is_binary(op) <- a["operator"],
+           type when is_binary(type) <- Map.get(type_map, "#{sheet}.#{var}") do
+        op not in operators_for_type(type)
+      else
+        _ -> false
+      end
+    end)
+  end
+
+  def has_type_warnings?(_, _), do: false
+
+  @doc """
   Creates a new empty assignments list.
   """
   @spec new() :: list()

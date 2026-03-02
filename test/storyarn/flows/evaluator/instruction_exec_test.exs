@@ -38,11 +38,11 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
 
   describe "execute/2 edge cases" do
     test "empty assignments list" do
-      assert {:ok, %{}, [], []} = InstructionExec.execute([], %{})
+      assert {:ok, %{}, [], [], []} = InstructionExec.execute([], %{})
     end
 
     test "nil assignments" do
-      assert {:ok, %{}, [], []} = InstructionExec.execute(nil, %{})
+      assert {:ok, %{}, [], [], []} = InstructionExec.execute(nil, %{})
     end
 
     test "incomplete assignments are skipped" do
@@ -58,13 +58,13 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
         }
       ]
 
-      assert {:ok, %{}, [], []} = InstructionExec.execute(assignments, %{})
+      assert {:ok, %{}, [], [], []} = InstructionExec.execute(assignments, %{})
     end
 
     test "missing variable produces error" do
       assignments = [make_assignment("mc.jaime", "health", "set", "50")]
 
-      assert {:ok, vars, [], [error]} = InstructionExec.execute(assignments, %{})
+      assert {:ok, vars, [], [error], _} = InstructionExec.execute(assignments, %{})
       assert vars == %{}
       assert error.variable_ref == "mc.jaime.health"
       assert error.reason =~ "not found"
@@ -82,7 +82,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
 
     test "set", %{variables: v} do
       assignments = [make_assignment("mc.jaime", "health", "set", "50")]
-      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, v)
+      {:ok, new_vars, changes, [], _} = InstructionExec.execute(assignments, v)
 
       assert new_vars["mc.jaime.health"].value == 50.0
       assert new_vars["mc.jaime.health"].source == :instruction
@@ -92,7 +92,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
 
     test "add", %{variables: v} do
       assignments = [make_assignment("mc.jaime", "health", "add", "20")]
-      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, v)
+      {:ok, new_vars, changes, [], _} = InstructionExec.execute(assignments, v)
 
       assert new_vars["mc.jaime.health"].value == 120
       assert [%{old_value: 100, new_value: 120.0, operator: "add"}] = changes
@@ -100,7 +100,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
 
     test "subtract", %{variables: v} do
       assignments = [make_assignment("mc.jaime", "health", "subtract", "30")]
-      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, v)
+      {:ok, new_vars, changes, [], _} = InstructionExec.execute(assignments, v)
 
       assert new_vars["mc.jaime.health"].value == 70
       assert [%{old_value: 100, new_value: 70.0, operator: "subtract"}] = changes
@@ -109,7 +109,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
     test "add with nil old value defaults to 0" do
       variables = %{"mc.jaime.health" => var(nil, "number")}
       assignments = [make_assignment("mc.jaime", "health", "add", "20")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 20
     end
@@ -117,7 +117,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
     test "add with non-numeric value defaults to 0" do
       variables = %{"mc.jaime.health" => var(100, "number")}
       assignments = [make_assignment("mc.jaime", "health", "add", "not_a_number")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 100
     end
@@ -131,7 +131,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
     test "set_true" do
       variables = %{"mc.jaime.alive" => var(false, "boolean")}
       assignments = [make_assignment("mc.jaime", "alive", "set_true")]
-      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, changes, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.alive"].value == true
       assert [%{old_value: false, new_value: true, operator: "set_true"}] = changes
@@ -140,7 +140,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
     test "set_false" do
       variables = %{"mc.jaime.alive" => var(true, "boolean")}
       assignments = [make_assignment("mc.jaime", "alive", "set_false")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.alive"].value == false
     end
@@ -148,7 +148,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
     test "toggle from true" do
       variables = %{"mc.jaime.alive" => var(true, "boolean")}
       assignments = [make_assignment("mc.jaime", "alive", "toggle")]
-      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, changes, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.alive"].value == false
       assert [%{operator: "toggle"}] = changes
@@ -157,7 +157,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
     test "toggle from false" do
       variables = %{"mc.jaime.alive" => var(false, "boolean")}
       assignments = [make_assignment("mc.jaime", "alive", "toggle")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.alive"].value == true
     end
@@ -171,7 +171,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
     test "set" do
       variables = %{"mc.jaime.name" => var("old name", "text")}
       assignments = [make_assignment("mc.jaime", "name", "set", "Jaime Lannister")]
-      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, changes, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.name"].value == "Jaime Lannister"
       assert [%{old_value: "old name", new_value: "Jaime Lannister"}] = changes
@@ -180,7 +180,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
     test "clear" do
       variables = %{"mc.jaime.name" => var("Jaime", "text")}
       assignments = [make_assignment("mc.jaime", "name", "clear")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.name"].value == nil
     end
@@ -188,7 +188,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
     test "rich_text set" do
       variables = %{"mc.jaime.bio" => var("old bio", "rich_text")}
       assignments = [make_assignment("mc.jaime", "bio", "set", "<p>New bio</p>")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.bio"].value == "<p>New bio</p>"
     end
@@ -196,7 +196,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
     test "rich_text clear" do
       variables = %{"mc.jaime.bio" => var("<p>Bio</p>", "rich_text")}
       assignments = [make_assignment("mc.jaime", "bio", "clear")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.bio"].value == nil
     end
@@ -210,7 +210,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
     test "set" do
       variables = %{"mc.jaime.class" => var("warrior", "select")}
       assignments = [make_assignment("mc.jaime", "class", "set", "mage")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.class"].value == "mage"
     end
@@ -220,7 +220,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
     test "set" do
       variables = %{"world.date" => var("2024-01-01", "date")}
       assignments = [make_assignment("world", "date", "set", "2024-12-31")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["world.date"].value == "2024-12-31"
     end
@@ -244,7 +244,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
         )
       ]
 
-      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, changes, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 100
       assert [%{old_value: 80, new_value: 100}] = changes
@@ -260,7 +260,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
         )
       ]
 
-      {:ok, vars, [], [error]} = InstructionExec.execute(assignments, variables)
+      {:ok, vars, [], [error], _} = InstructionExec.execute(assignments, variables)
 
       # Variable unchanged
       assert vars["mc.jaime.health"].value == 80
@@ -279,7 +279,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
         )
       ]
 
-      {:ok, vars, [], []} = InstructionExec.execute(assignments, variables)
+      {:ok, vars, [], [], _} = InstructionExec.execute(assignments, variables)
       assert vars["mc.jaime.health"].value == 80
     end
   end
@@ -300,7 +300,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
         make_assignment("mc.jaime", "alive", "set_false")
       ]
 
-      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, changes, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == -20
       assert new_vars["mc.jaime.alive"].value == false
@@ -315,7 +315,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
         make_assignment("mc.jaime", "health", "set", "50")
       ]
 
-      {:ok, new_vars, changes, errors} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, changes, errors, _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 50.0
       assert length(changes) == 1
@@ -330,7 +330,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
         %{make_assignment("mc.jaime", "health", "add", "10") | "id" => "assign_2"}
       ]
 
-      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, changes, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 80
       assert length(changes) == 2
@@ -345,11 +345,11 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
 
   describe "execute_string/2" do
     test "nil string" do
-      assert {:ok, %{}, [], []} = InstructionExec.execute_string(nil, %{})
+      assert {:ok, %{}, [], [], []} = InstructionExec.execute_string(nil, %{})
     end
 
     test "empty string" do
-      assert {:ok, %{}, [], []} = InstructionExec.execute_string("", %{})
+      assert {:ok, %{}, [], [], []} = InstructionExec.execute_string("", %{})
     end
 
     test "valid JSON assignments" do
@@ -367,14 +367,14 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
           }
         ])
 
-      {:ok, new_vars, [change], []} = InstructionExec.execute_string(json, variables)
+      {:ok, new_vars, [change], [], _} = InstructionExec.execute_string(json, variables)
 
       assert new_vars["mc.jaime.health"].value == 80
       assert change.operator == "subtract"
     end
 
     test "invalid JSON string" do
-      assert {:ok, %{}, [], []} = InstructionExec.execute_string("not json", %{})
+      assert {:ok, %{}, [], [], []} = InstructionExec.execute_string("not json", %{})
     end
   end
 
@@ -387,7 +387,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       variables = %{"mc.jaime.health" => var(100, "number")}
       assignments = [make_assignment("mc.jaime", "health", "set", "50")]
 
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].source == :instruction
     end
@@ -396,7 +396,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       variables = %{"mc.jaime.health" => var(100, "number")}
       assignments = [make_assignment("mc.jaime", "health", "set", "50")]
 
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].previous_value == 100
     end
@@ -407,7 +407,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       variables = %{"mc.jaime.health" => var(nil, "number")}
       assignments = [make_assignment("mc.jaime", "health", "set_if_unset", "100")]
 
-      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, changes, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 100.0
       assert length(changes) == 1
@@ -417,7 +417,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       variables = %{"mc.jaime.health" => var(50, "number")}
       assignments = [make_assignment("mc.jaime", "health", "set_if_unset", "100")]
 
-      {:ok, new_vars, _changes, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _changes, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 50
     end
@@ -426,7 +426,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       variables = %{"mc.jaime.class" => var(nil, "select")}
       assignments = [make_assignment("mc.jaime", "class", "set_if_unset", "warrior")]
 
-      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, changes, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.class"].value == "warrior"
       assert length(changes) == 1
@@ -436,7 +436,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       variables = %{"mc.jaime.class" => var("mage", "select")}
       assignments = [make_assignment("mc.jaime", "class", "set_if_unset", "warrior")]
 
-      {:ok, new_vars, _changes, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _changes, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.class"].value == "mage"
     end
@@ -455,7 +455,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       }
 
       assignments = [make_assignment("mc.jaime", "health", "add", "10")]
-      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, changes, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 100
       assert [%{new_value: 100}] = changes
@@ -469,7 +469,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       }
 
       assignments = [make_assignment("mc.jaime", "health", "subtract", "10")]
-      {:ok, new_vars, changes, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, changes, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 0
       assert [%{new_value: 0}] = changes
@@ -483,7 +483,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       }
 
       assignments = [make_assignment("mc.jaime", "health", "set", "999")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 100
     end
@@ -496,7 +496,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       }
 
       assignments = [make_assignment("mc.jaime", "health", "set", "-50")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 0
     end
@@ -507,7 +507,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       }
 
       assignments = [make_assignment("mc.jaime", "health", "add", "999")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 1099
     end
@@ -520,7 +520,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       }
 
       assignments = [make_assignment("mc.jaime", "health", "subtract", "20")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 0
     end
@@ -533,7 +533,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       }
 
       assignments = [make_assignment("mc.jaime", "health", "add", "20")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 100
     end
@@ -546,7 +546,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExecTest do
       }
 
       assignments = [make_assignment("mc.jaime", "health", "add", "10")]
-      {:ok, new_vars, _, []} = InstructionExec.execute(assignments, variables)
+      {:ok, new_vars, _, [], _} = InstructionExec.execute(assignments, variables)
 
       assert new_vars["mc.jaime.health"].value == 60
     end

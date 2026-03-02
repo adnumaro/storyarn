@@ -176,7 +176,7 @@ msgstr "Última traducción: %{time}"
 msgid "Lines"
 msgstr "Líneas"
 
-#: lib/storyarn_web/components/focus_layout.ex:40
+#: lib/storyarn_web/components/focus_layout.ex:41
 #, elixir-autogen, elixir-format
 msgid "Localization"
 msgstr "ID de localización"

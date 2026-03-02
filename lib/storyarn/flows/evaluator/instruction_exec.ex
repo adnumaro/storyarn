@@ -16,7 +16,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
       ]
       variables = %{"mc.jaime.health" => %{value: 100, block_type: "number", ...}}
 
-      {:ok, new_variables, changes} = InstructionExec.execute(assignments, variables)
+      {:ok, new_variables, changes, errors, warnings} = InstructionExec.execute(assignments, variables)
       # new_variables["mc.jaime.health"].value == 80
       # changes == [%{variable_ref: "mc.jaime.health", old_value: 100, new_value: 80, operator: "subtract"}]
   """
@@ -36,44 +36,69 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
           reason: String.t()
         }
 
+  @type warning :: %{
+          variable_ref: String.t(),
+          operator: String.t(),
+          block_type: String.t(),
+          message: String.t()
+        }
+
   @doc """
   Executes a list of assignments against the variable state.
 
-  Returns `{:ok, new_variables, changes, errors}` where:
+  Returns `{:ok, new_variables, changes, errors, warnings}` where:
   - `new_variables` is the updated variables map (with source set to `:instruction`)
   - `changes` is a list of successful mutations
   - `errors` is a list of skipped assignments with reasons
+  - `warnings` is a list of type mismatch warnings (operator still executes)
 
   Incomplete assignments are silently skipped.
   Missing variables are reported as errors and skipped.
   """
-  @spec execute(list(), map()) :: {:ok, map(), [change()], [error()]}
+  @spec execute(list(), map()) :: {:ok, map(), [change()], [error()], [warning()]}
   def execute(assignments, variables) when is_list(assignments) do
     assignments
     |> Enum.filter(&Instruction.complete_assignment?/1)
-    |> Enum.reduce({variables, [], []}, fn assignment, acc ->
+    |> Enum.reduce({variables, [], [], []}, fn assignment, acc ->
       execute_single_assignment(assignment, acc)
     end)
-    |> then(fn {vars, changes, errors} -> {:ok, vars, changes, errors} end)
+    |> then(fn {vars, changes, errors, warnings} -> {:ok, vars, changes, errors, warnings} end)
   end
 
-  def execute(_, variables), do: {:ok, variables, [], []}
+  def execute(_, variables), do: {:ok, variables, [], [], []}
 
-  defp execute_single_assignment(assignment, {vars, changes, errors}) do
+  defp execute_single_assignment(assignment, {vars, changes, errors, warnings}) do
     variable_ref = "#{assignment["sheet"]}.#{assignment["variable"]}"
 
     case Map.get(vars, variable_ref) do
       nil ->
         error = %{variable_ref: variable_ref, reason: "Variable not found in state"}
-        {vars, changes, errors ++ [error]}
+        {vars, changes, errors ++ [error], warnings}
 
       var_entry ->
-        apply_assignment(assignment, variable_ref, var_entry, vars, changes, errors)
+        apply_assignment(assignment, variable_ref, var_entry, vars, changes, errors, warnings)
     end
   end
 
-  defp apply_assignment(assignment, variable_ref, var_entry, vars, changes, errors) do
+  defp apply_assignment(assignment, variable_ref, var_entry, vars, changes, errors, warnings) do
     operator = assignment["operator"]
+
+    # Check operator-type compatibility — warn but still execute
+    warnings =
+      if operator in Instruction.operators_for_type(var_entry.block_type) do
+        warnings
+      else
+        w = %{
+          variable_ref: variable_ref,
+          operator: operator,
+          block_type: var_entry.block_type,
+          message:
+            "#{variable_ref}: operator \"#{Instruction.operator_label(operator)}\" " <>
+              "is not valid for #{var_entry.block_type} variables"
+        }
+
+        warnings ++ [w]
+      end
 
     case resolve_value(assignment, vars) do
       {:ok, resolved_value} ->
@@ -96,11 +121,11 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
           operator: operator
         }
 
-        {Map.put(vars, variable_ref, updated_entry), changes ++ [change], errors}
+        {Map.put(vars, variable_ref, updated_entry), changes ++ [change], errors, warnings}
 
       {:error, reason} ->
         error = %{variable_ref: variable_ref, reason: reason}
-        {vars, changes, errors ++ [error]}
+        {vars, changes, errors ++ [error], warnings}
     end
   end
 
@@ -109,9 +134,9 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
 
   Parses the string first, then executes.
   """
-  @spec execute_string(String.t() | nil, map()) :: {:ok, map(), [change()], [error()]}
-  def execute_string(nil, variables), do: {:ok, variables, [], []}
-  def execute_string("", variables), do: {:ok, variables, [], []}
+  @spec execute_string(String.t() | nil, map()) :: {:ok, map(), [change()], [error()], [warning()]}
+  def execute_string(nil, variables), do: {:ok, variables, [], [], []}
+  def execute_string("", variables), do: {:ok, variables, [], [], []}
 
   def execute_string(json_string, variables) when is_binary(json_string) do
     case Jason.decode(json_string) do
@@ -119,7 +144,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
         execute(Instruction.sanitize(assignments), variables)
 
       _ ->
-        {:ok, variables, [], []}
+        {:ok, variables, [], [], []}
     end
   end
 

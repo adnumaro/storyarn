@@ -464,7 +464,7 @@ defmodule Storyarn.Flows.InstructionTest do
         })
 
       # Falls back to literal value display since value_sheet is empty
-      assert result == "mc.jaime.health = damage"
+      assert result == ~s(mc.jaime.health = "damage")
     end
 
     test "shows ? when both value and value_sheet are nil" do

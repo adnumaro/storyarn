@@ -23,13 +23,13 @@ const COLORS = {
   placeholder: "var(--cm-placeholder)",
   // Syntax
   variable: "var(--cm-variable)", // identifiers / variable refs
-  string: "var(--cm-string)",     // string literals
-  number: "var(--cm-number)",     // numbers
-  keyword: "var(--cm-keyword)",   // &&, ||, !, true, false, nil
+  string: "var(--cm-string)", // string literals
+  number: "var(--cm-number)", // numbers
+  keyword: "var(--cm-keyword)", // &&, ||, !, true, false, nil
   operator: "var(--cm-operator)", // ==, !=, >, <, +=, =, …
-  paren: "var(--cm-paren)",       // ( )
-  punct: "var(--cm-punct)",       // dots, other punctuation
-  comment: "var(--cm-comment)",   // // comments
+  paren: "var(--cm-paren)", // ( )
+  punct: "var(--cm-punct)", // dots, other punctuation
+  comment: "var(--cm-comment)", // // comments
   // Tooltips
   tooltipBg: "var(--cm-tooltip-bg)",
   tooltipBorder: "var(--cm-tooltip-border)",

@@ -65,16 +65,25 @@ export default {
 
   render(ctx) {
     const { node, nodeData, config, selected, emit } = ctx;
+    const indicators = this.getIndicators(nodeData);
     const preview = this.getPreviewText(nodeData);
     return nodeShell(
       config.color,
       selected,
       html`
-      ${defaultHeader(config, config.color, [])}
+      ${defaultHeader(config, config.color, indicators)}
       ${renderPreview(preview)}
       <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
     `,
     );
+  },
+
+  getIndicators(data) {
+    const indicators = [];
+    if (data.has_stale_refs || data.has_type_warnings) {
+      indicators.push({ type: "error", title: "Type mismatch in assignments" });
+    }
+    return indicators;
   },
 
   getPreviewText(data) {
