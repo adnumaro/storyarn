@@ -1794,6 +1794,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
     test "node_types/0 returns all valid node types" do
       types = FlowNode.node_types()
       assert is_list(types)
+      assert "annotation" in types
       assert "dialogue" in types
       assert "hub" in types
       assert "condition" in types
@@ -1803,7 +1804,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert "exit" in types
       assert "subflow" in types
       assert "slug_line" in types
-      assert length(types) == 9
+      assert length(types) == 10
     end
 
     test "create_changeset rejects invalid type" do

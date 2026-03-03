@@ -146,15 +146,17 @@ export function createKeyboardHandler(hook, lockHandler) {
       // Skip canvas shortcuts while inline editing (shadow DOM inputs don't match isEditable)
       if (hook._inlineEditingNodeId) return;
 
-      // Delete/Backspace - delete selected node (not when builder panel is open)
-      if ((e.key === "Delete" || e.key === "Backspace") && hook.selectedNodeId) {
-        if (document.getElementById("builder-panel-content")) return;
-        e.preventDefault();
-        if (lockHandler.isNodeLocked(hook.selectedNodeId)) return;
-        hook.pushEvent("delete_node", { id: hook.selectedNodeId });
-        hook.selectedNodeId = null;
-        hook.floatingToolbar?.hide();
-        return;
+      // Delete/Backspace - delete selected node
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (hook.selectedNodeId) {
+          if (document.getElementById("builder-panel-content")) return;
+          e.preventDefault();
+          if (lockHandler.isNodeLocked(hook.selectedNodeId)) return;
+          hook.pushEvent("delete_node", { id: hook.selectedNodeId });
+          hook.selectedNodeId = null;
+          hook.floatingToolbar?.hide();
+          return;
+        }
       }
 
       // Ctrl+D / Cmd+D - duplicate selected node
@@ -164,13 +166,13 @@ export function createKeyboardHandler(hook, lockHandler) {
         return;
       }
 
-      // E — inline edit for dialogue, open builder for condition/instruction
+      // E — inline edit for dialogue/annotation, open builder for condition/instruction
       if (e.key === "e" && !e.ctrlKey && !e.metaKey && hook.selectedNodeId) {
         const reteNode = hook.nodeMap?.get(hook.selectedNodeId);
         if (!reteNode) return;
         const nodeType = reteNode.nodeType;
 
-        if (nodeType === "dialogue") {
+        if (nodeType === "dialogue" || nodeType === "annotation") {
           e.preventDefault();
           enterInlineEdit(hook, reteNode.id);
         } else if (nodeType === "condition" || nodeType === "instruction") {

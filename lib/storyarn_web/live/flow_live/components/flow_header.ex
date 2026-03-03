@@ -47,6 +47,15 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
             else: dgettext("flows", "Debug")}
         </span>
       </button>
+      <button
+        :if={@can_edit}
+        type="button"
+        phx-click="add_annotation"
+        class="btn btn-ghost btn-sm"
+        title={dgettext("flows", "Add Note")}
+      >
+        <.icon name="sticky-note" class="size-4" />
+      </button>
       <div :if={@can_edit} class="dropdown dropdown-end">
         <button type="button" tabindex="0" class="btn btn-primary btn-sm gap-1.5">
           <.icon name="plus" class="size-4" />

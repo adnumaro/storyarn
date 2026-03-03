@@ -23,11 +23,12 @@ defmodule Storyarn.Flows.FlowNode do
   alias Storyarn.Flows.{Flow, FlowConnection}
   alias Storyarn.Shared.TimeHelpers
 
-  @node_types ~w(dialogue hub condition instruction jump entry exit subflow slug_line)
+  @node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow slug_line)
   @valid_sources ~w(manual screenplay_sync)
 
   @type node_type ::
-          :dialogue
+          :annotation
+          | :dialogue
           | :hub
           | :condition
           | :instruction

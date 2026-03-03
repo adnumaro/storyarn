@@ -7,11 +7,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   """
   use StoryarnWeb, :html
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers, only: [node_type_icon: 1]
-
-  @color_swatches [
-    ~w(#ef4444 #f97316 #f59e0b #eab308 #22c55e #14b8a6 #3b82f6 #6366f1 #8b5cf6 #a855f7 #ec4899 #000000),
-    ~w(#fca5a5 #fdba74 #fde68a #a7f3d0 #a5f3fc #93c5fd #c4b5fd #e9d5ff #fbcfe8 #e5e7eb #ffffff)
-  ]
+  import StoryarnWeb.Components.ToolbarColorPicker
+  import StoryarnWeb.SceneLive.Components.ToolbarWidgets, only: [toolbar_size_picker: 1]
 
   attr :node, :map, required: true
   attr :form, :any, required: true
@@ -276,7 +273,6 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       |> assign(:target_type, target_type)
       |> assign(:target_id, target_id)
       |> assign(:exit_target_label, exit_target_label)
-      |> assign(:color_swatches, @color_swatches)
 
     ~H"""
     <.node_type_icon type="exit" />
@@ -334,46 +330,16 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
         </div>
       </template>
     </div>
-    <%!-- Color swatch — popover picker --%>
-    <div
-      phx-hook="ToolbarPopover"
-      id={"popover-exit-color-#{@node.id}"}
-      data-width="160px"
-      data-placement="bottom"
-      data-offset="6"
-    >
-      <button
-        data-role="trigger"
-        type="button"
-        class="toolbar-btn"
-        title={dgettext("flows", "Outcome color")}
-        disabled={!@can_edit}
-      >
-        <span
-          class="inline-block size-4 rounded-full border border-white/20 shrink-0"
-          style={"background:#{@color}"}
-        />
-      </button>
-      <template data-role="popover-template">
-        <div class="p-2">
-          <div class="text-xs font-medium text-base-content/60 mb-1.5">
-            {dgettext("flows", "Outcome color")}
-          </div>
-          <div :for={row <- @color_swatches} class="flex gap-1 mb-1">
-            <button
-              :for={swatch <- row}
-              type="button"
-              data-event="update_outcome_color"
-              data-params={Jason.encode!(%{color: swatch})}
-              class={"color-swatch #{if swatch == @color, do: "color-swatch-active"}"}
-              style={"background:#{swatch}"}
-              title={swatch}
-              disabled={!@can_edit}
-            />
-          </div>
-        </div>
-      </template>
-    </div>
+    <%!-- Color swatch — shared picker --%>
+    <.toolbar_color_picker
+      id={"exit-color-#{@node.id}"}
+      event="update_outcome_color"
+      element_id={@node.id}
+      field="color"
+      value={@color}
+      label={dgettext("flows", "Outcome color")}
+      disabled={!@can_edit}
+    />
     <%!-- Target picker (terminal mode only) --%>
     <.exit_target_picker
       :if={@exit_mode == "terminal" && @can_edit}
@@ -524,6 +490,59 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   defp render_toolbar(_type, assigns) do
     ~H"""
     <span class="text-xs opacity-50">{dgettext("flows", "No toolbar for this type")}</span>
+    """
+  end
+
+  # ════════════════════════════════════════════════════════════════════════
+  # Annotation Toolbar
+  # ════════════════════════════════════════════════════════════════════════
+
+  attr :node, :map, required: true
+  attr :can_edit, :boolean, required: true
+
+  def annotation_toolbar(assigns) do
+    assigns =
+      assigns
+      |> assign(:color, assigns.node.data["color"] || "#fbbf24")
+      |> assign(:font_size, assigns.node.data["font_size"] || "md")
+
+    ~H"""
+    <div class="flex items-center gap-1.5 text-sm">
+      <.icon name="sticky-note" class="size-3.5 opacity-60" />
+      <span class="toolbar-separator"></span>
+      <%!-- Color picker (shared component) --%>
+      <.toolbar_color_picker
+        id={"ann-#{@node.id}"}
+        event="update_annotation_color"
+        element_id={@node.id}
+        field="color"
+        value={@color}
+        label={dgettext("flows", "Note color")}
+        disabled={!@can_edit}
+      />
+      <span class="toolbar-separator"></span>
+      <%!-- Font size --%>
+      <.toolbar_size_picker
+        id={"ann-size-#{@node.id}"}
+        event="update_annotation_font_size"
+        element_id={@node.id}
+        field="size"
+        current={@font_size}
+        disabled={!@can_edit}
+      />
+      <span class="toolbar-separator"></span>
+      <%!-- Delete --%>
+      <button
+        :if={@can_edit}
+        type="button"
+        phx-click="delete_node"
+        phx-value-id={@node.id}
+        class="toolbar-btn text-error"
+        title={dgettext("flows", "Delete note")}
+      >
+        <.icon name="trash-2" class="size-3.5" />
+      </button>
+    </div>
     """
   end
 

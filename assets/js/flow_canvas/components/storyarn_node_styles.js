@@ -187,4 +187,81 @@ export const storyarnNodeStyles = css`
                   0 0 14px color-mix(in oklch, var(--color-warning) 8%, transparent);
     }
   }
+
+  /* ── Annotation (sticky note) ── */
+
+  .annotation-wrapper {
+    position: relative;
+    width: 200px;
+    min-height: 120px;
+    cursor: grab;
+    border-radius: 2px;
+  }
+
+  .annotation-bg {
+    position: absolute;
+    inset: 0;
+    opacity: 0.82;
+    background: var(--ann-color, #fbbf24);
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+    border-radius: 2px;
+  }
+
+  .annotation-text {
+    position: relative;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: rgba(0, 0, 0, 0.75);
+  }
+
+  .annotation-fold {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 14px;
+    height: 14px;
+    background: var(--ann-color, #fbbf24);
+    filter: brightness(0.6);
+    clip-path: polygon(0 0, 100% 100%, 0 100%);
+  }
+
+  .annotation-sm .annotation-text {
+    font-size: 11px;
+    padding: 4px calc(8px + 14px) 6px 8px;
+  }
+
+  .annotation-md .annotation-text {
+    font-size: 14px;
+    padding: 6px calc(10px + 14px) 8px 10px;
+  }
+
+  .annotation-lg .annotation-text {
+    font-size: 17px;
+    padding: 8px calc(12px + 14px) 10px 12px;
+  }
+
+  .annotation-wrapper.selected {
+    outline: 2px solid color-mix(in oklch, var(--color-primary) 70%, transparent);
+    outline-offset: 2px;
+  }
+
+  .annotation-edit-textarea {
+    position: relative;
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    font-weight: 600;
+    line-height: 1.4;
+    color: rgba(0, 0, 0, 0.75);
+    field-sizing: content;
+    min-height: 80px;
+  }
+
+  .annotation-edit-textarea::placeholder {
+    color: rgba(0, 0, 0, 0.35);
+  }
 `;

@@ -15,6 +15,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   alias StoryarnWeb.FlowLive.Nodes
 
   @node_modules %{
+    "annotation" => Nodes.Annotation.Node,
     "entry" => Nodes.Entry.Node,
     "exit" => Nodes.Exit.Node,
     "dialogue" => Nodes.Dialogue.Node,
@@ -32,9 +33,9 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   @spec types() :: [String.t()]
   def types, do: @types
 
-  @doc "Node types that users can add via the toolbar."
+  @doc "Node types that users can add via the 'Add Node' toolbar (excludes annotation and entry)."
   @spec user_addable_types() :: [String.t()]
-  def user_addable_types, do: @types -- ["entry"]
+  def user_addable_types, do: @types -- ["annotation", "entry"]
 
   @doc "Returns the node module for a given type."
   @spec node_module(String.t()) :: module() | nil

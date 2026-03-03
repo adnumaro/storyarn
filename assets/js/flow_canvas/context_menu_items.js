@@ -25,6 +25,7 @@ import {
   Plus,
   Search,
   Square,
+  StickyNote,
   ToggleLeft,
   Trash2,
   Zap,
@@ -37,6 +38,7 @@ const ICON_SIZE = 14;
 const ICONS = {
   // Root menu
   plus: createIconHTML(Plus, { size: ICON_SIZE }),
+  stickyNote: createIconHTML(StickyNote, { size: ICON_SIZE }),
   play: createIconHTML(Play, { size: ICON_SIZE }),
   bug: createIconHTML(Bug, { size: ICON_SIZE }),
   layoutGrid: createIconHTML(LayoutGrid, { size: ICON_SIZE }),
@@ -109,6 +111,16 @@ export function createContextMenuItems(hook) {
                   position_y: pos?.y ?? 200,
                 }),
             })),
+          },
+          {
+            label: t("add_note"),
+            key: "add_note",
+            icon: ICONS.stickyNote,
+            handler: () =>
+              hook.pushEvent("add_annotation", {
+                position_x: pos?.x ?? 200,
+                position_y: pos?.y ?? 200,
+              }),
           },
           {
             label: t("play_preview"),

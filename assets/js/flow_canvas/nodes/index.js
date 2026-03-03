@@ -7,6 +7,7 @@
  *   def.getPreviewText(data);
  */
 
+import annotation from "./annotation.js";
 import condition from "./condition.js";
 import dialogue from "./dialogue.js";
 import entry from "./entry.js";
@@ -18,6 +19,7 @@ import slugLine from "./slug_line.js";
 import subflow from "./subflow.js";
 
 const NODE_DEFS = {
+  annotation,
   entry,
   exit,
   dialogue,

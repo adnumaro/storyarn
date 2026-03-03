@@ -89,7 +89,8 @@ export function setupEventHandlers(hook) {
 
         if (isDoubleClick) {
           const reteNode = hook.editor.getNode(context.data.id);
-          if (reteNode?.nodeType === "dialogue") {
+          const type = reteNode?.nodeType;
+          if (type === "dialogue" || type === "annotation") {
             enterInlineEdit(hook, context.data.id);
           } else {
             hook.pushEvent("node_double_clicked", { id: node.nodeId });
@@ -214,8 +215,12 @@ export function setupEventHandlers(hook) {
       : null;
     if (!reteNode) return;
 
-    if (field === "text") {
-      // Wrap plain text in <p> tags for rich text storage, preserving line breaks
+    if (field === "text" && reteNode.nodeType === "annotation") {
+      // Annotations store plain text directly (no rich-text wrapping)
+      reteNode.nodeData = { ...reteNode.nodeData, text: value };
+      hook.pushEvent("update_node_field", { field: "text", value });
+    } else if (field === "text") {
+      // Dialogue: wrap plain text in <p> tags for rich text storage, preserving line breaks
       const escaped = value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const content = escaped
         ? escaped
@@ -359,7 +364,7 @@ export function setupEventHandlers(hook) {
 
   // ===== Floating Toolbar — reposition on pan/zoom =====
 
-  // Reposition toolbar on canvas pan (area translate)
+  // Reposition toolbars on canvas pan (area translate)
   hook.area.addPipe((context) => {
     if (context.type === "translated") {
       hook.floatingToolbar?.reposition();
@@ -367,7 +372,7 @@ export function setupEventHandlers(hook) {
     return context;
   });
 
-  // Reposition toolbar on zoom
+  // Reposition toolbars on zoom
   hook.area.addPipe((context) => {
     if (context.type === "zoomed") {
       hook.floatingToolbar?.reposition();
@@ -375,11 +380,12 @@ export function setupEventHandlers(hook) {
     return context;
   });
 
-  // Click on empty canvas — deselect node + hide toolbar
+  // Click on empty canvas — deselect node + annotations + hide toolbar
   hook.el.addEventListener("pointerdown", (e) => {
     // Only primary button (left click)
     if (e.button !== 0) return;
     const storyarnEl = e.composedPath().find((el) => el.tagName === "STORYARN-NODE");
+
     if (!storyarnEl && hook.selectedNodeId) {
       exitInlineEdit(hook);
 

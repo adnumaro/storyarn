@@ -70,8 +70,12 @@ export class StoryarnNode extends LitElement {
       labels: this.labels,
     };
 
-    // Inline edit mode for dialogue nodes
-    if (this.editing && node.nodeType === "dialogue" && def.renderEdit) {
+    // Inline edit mode for dialogue and annotation nodes
+    if (
+      this.editing &&
+      (node.nodeType === "dialogue" || node.nodeType === "annotation") &&
+      def.renderEdit
+    ) {
       ctx.onSave = (field, value) => {
         this.dispatchEvent(
           new CustomEvent("node-inline-edit", {
@@ -156,6 +160,8 @@ export class StoryarnNode extends LitElement {
     if (node.nodeType === "hub" && d.color_hex) return d.color_hex;
     // Exit custom color
     if (node.nodeType === "exit" && d.color_hex) return d.color_hex;
+    // Annotation color
+    if (node.nodeType === "annotation") return d.color || "#fbbf24";
     return config.color;
   }
 }

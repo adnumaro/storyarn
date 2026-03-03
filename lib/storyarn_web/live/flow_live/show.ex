@@ -39,8 +39,8 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.Subflow
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
-  # Filter out entry from user-addable node types (entry is auto-created with flow)
-  @node_types Flows.node_types() |> Enum.reject(&(&1 == "entry"))
+  # Filter out entry and annotation from the "Add Node" dropdown
+  @node_types Flows.node_types() |> Enum.reject(&(&1 in ["entry", "annotation"]))
 
   @impl true
   def render(%{loading: true} = assigns) do
@@ -132,24 +132,28 @@ defmodule StoryarnWeb.FlowLive.Show do
             <.canvas_toolbar
               id="flow-floating-toolbar"
               canvas_id="flow-canvas"
-              visible={@selected_node != nil && @editing_mode == :toolbar}
+              visible={@selected_node != nil && @editing_mode in [:toolbar, :annotation]}
             >
-              <.node_toolbar
-                node={@selected_node}
-                form={@node_form}
-                can_edit={@can_edit}
-                all_sheets={@all_sheets}
-                flow_hubs={@flow_hubs}
-                available_flows={@available_flows}
-                available_scenes={assigns[:available_scenes] || []}
-                flow_search_has_more={@flow_search_has_more}
-                flow_search_deep={@flow_search_deep}
-                subflow_exits={@subflow_exits}
-                referencing_jumps={@referencing_jumps}
-                referencing_flows={@referencing_flows}
-                project_scenes={@project_scenes}
-                node_select_loading={@node_select_loading}
-              />
+              <%= if @editing_mode == :annotation do %>
+                <.annotation_toolbar node={@selected_node} can_edit={@can_edit} />
+              <% else %>
+                <.node_toolbar
+                  node={@selected_node}
+                  form={@node_form}
+                  can_edit={@can_edit}
+                  all_sheets={@all_sheets}
+                  flow_hubs={@flow_hubs}
+                  available_flows={@available_flows}
+                  available_scenes={assigns[:available_scenes] || []}
+                  flow_search_has_more={@flow_search_has_more}
+                  flow_search_deep={@flow_search_deep}
+                  subflow_exits={@subflow_exits}
+                  referencing_jumps={@referencing_jumps}
+                  referencing_flows={@referencing_flows}
+                  project_scenes={@project_scenes}
+                  node_select_loading={@node_select_loading}
+                />
+              <% end %>
             </.canvas_toolbar>
           </div>
 
@@ -391,6 +395,19 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  def handle_event("add_annotation", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_add_node(
+        %{
+          "type" => "annotation",
+          "position_x" => params["position_x"] || 100,
+          "position_y" => params["position_y"] || 100
+        },
+        socket
+      )
+    end)
+  end
+
   def handle_event("save_name", params, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_save_name(params, socket)
@@ -544,6 +561,27 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("update_node_field", params, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_update_node_field(params, socket)
+    end)
+  end
+
+  def handle_event("update_annotation_color", %{"value" => color}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      node = socket.assigns.selected_node
+
+      NodeHelpers.persist_node_update(socket, node.id, fn data ->
+        Map.put(data, "color", color)
+      end)
+    end)
+  end
+
+  def handle_event("update_annotation_font_size", %{"value" => size}, socket)
+      when size in ["sm", "md", "lg"] do
+    with_authorization(socket, :edit_content, fn _socket ->
+      node = socket.assigns.selected_node
+
+      NodeHelpers.persist_node_update(socket, node.id, fn data ->
+        Map.put(data, "font_size", size)
+      end)
     end)
   end
 
@@ -729,7 +767,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
-  def handle_event("update_outcome_color", %{"color" => color}, socket) do
+  def handle_event("update_outcome_color", %{"value" => color}, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
       ExitNode.Node.handle_update_outcome_color(color, socket)
     end)
@@ -1161,6 +1199,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     %{
       # Root menu
       add_node: dgettext("flows", "Add node"),
+      add_note: dgettext("flows", "Add Note"),
       play_preview: dgettext("flows", "Play preview"),
       start_debugging: dgettext("flows", "Start debugging"),
       auto_layout: dgettext("flows", "Auto-layout"),
