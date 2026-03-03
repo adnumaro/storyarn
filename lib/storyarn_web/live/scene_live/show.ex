@@ -13,6 +13,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.Components.CanvasToolbar
   import StoryarnWeb.SceneLive.Components.FloatingToolbar
   import StoryarnWeb.SceneLive.Components.SceneElementPanel
+  import StoryarnWeb.SceneLive.Components.SceneSettingsPanel
 
   alias Storyarn.Assets
   alias Storyarn.Projects
@@ -111,7 +112,6 @@ defmodule StoryarnWeb.SceneLive.Show do
           workspace={@workspace}
           project={@project}
           scene={@scene}
-          bg_upload_input_id={@can_edit && @uploads[:background] && @uploads.background.ref}
         />
       </:top_bar_extra_right>
       <div class="h-full relative">
@@ -263,6 +263,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           :if={@element_panel_open && @selected_element != nil}
           id="scene-element-panel"
           phx-hook="SceneElementPanel"
+          data-close-event="close_element_panel"
           class={[
             "fixed flex flex-col overflow-hidden",
             "inset-0 z-50 bg-base-100",
@@ -279,6 +280,26 @@ defmodule StoryarnWeb.SceneLive.Show do
             project_flows={@project_flows}
             project_variables={@project_variables}
             panel_sections={@panel_sections}
+          />
+        </div>
+
+        <%!-- Scene Settings Sidebar --%>
+        <div
+          :if={@scene_settings_open && @can_edit && @edit_mode}
+          id="scene-settings-panel"
+          phx-hook="SceneElementPanel"
+          data-close-event="close_scene_settings"
+          class={[
+            "fixed flex flex-col overflow-hidden",
+            "inset-0 z-50 bg-base-100",
+            "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[320px]",
+            "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+          ]}
+        >
+          <.scene_settings_panel
+            scene={@scene}
+            can_edit={@can_edit}
+            bg_upload_input_id={@uploads[:background] && @uploads.background.ref}
           />
         </div>
       </div>
@@ -385,6 +406,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp mount_scene(socket, project, membership, can_edit, scene) do
     socket
     |> assign(focus_layout_defaults())
+    |> assign(:tree_panel_pinned, false)
     |> assign(:tree_panel_tab, "scenes")
     |> assign(:project, project)
     |> assign(:workspace, project.workspace)
@@ -404,6 +426,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> assign(:selected_element, nil)
     |> assign(:selected_type, nil)
     |> assign(:element_panel_open, false)
+    |> assign(:scene_settings_open, false)
     |> assign(:active_layer_id, default_layer_id(scene.layers))
     |> assign(:renaming_layer_id, nil)
     |> assign(:show_pin_icon_upload, false)
@@ -561,11 +584,25 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("open_element_panel", _params, socket) do
-    {:noreply, assign(socket, :element_panel_open, true)}
+    {:noreply,
+     socket
+     |> assign(:element_panel_open, true)
+     |> assign(:scene_settings_open, false)}
   end
 
   def handle_event("close_element_panel", _params, socket) do
     {:noreply, assign(socket, :element_panel_open, false)}
+  end
+
+  def handle_event("open_scene_settings", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:scene_settings_open, true)
+     |> assign(:element_panel_open, false)}
+  end
+
+  def handle_event("close_scene_settings", _params, socket) do
+    {:noreply, assign(socket, :scene_settings_open, false)}
   end
 
   # ---------------------------------------------------------------------------

@@ -45,8 +45,10 @@ export const SceneElementPanel = {
   },
 
   closeWithAnimation() {
+    const closeEvent = this.el.dataset.closeEvent || "close_element_panel";
+
     if (window.innerWidth < 1280) {
-      this.pushEvent("close_element_panel", {});
+      this.pushEvent(closeEvent, {});
       return;
     }
 
@@ -55,7 +57,7 @@ export const SceneElementPanel = {
     el.style.opacity = "0";
     el.style.transform = `translateX(${SLIDE_OFFSET})`;
 
-    setTimeout(() => this.pushEvent("close_element_panel", {}), CLOSE_DURATION);
+    setTimeout(() => this.pushEvent(closeEvent, {}), CLOSE_DURATION);
   },
 
   destroyed() {},
