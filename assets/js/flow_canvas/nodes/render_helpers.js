@@ -201,7 +201,7 @@ export function renderSockets(node, nodeData, def, emit) {
             if (badge.type === "error")
               return html`<div class="error-badge inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full mr-0.5 cursor-help" title="${badge.title}">${unsafeSVG(ALERT_ICON)}</div>`;
             if (badge.type === "indicator")
-              return html`<span class="response-indicator" style="background:${badge.color}" data-tip="${badge.title}"></span>`;
+              return html`<span class="response-indicator tooltip tooltip-top" style="background:${badge.color}" data-tip="${badge.title}"></span>`;
             return html`<span class="${badge.class}" title="${badge.title}">${badge.text}</span>`;
           })}
           <span class="px-2 max-w-[220px] break-words text-right" title="${labelTitle}">${outputLabel}</span>

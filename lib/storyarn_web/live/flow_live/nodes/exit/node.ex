@@ -16,7 +16,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   @valid_exit_modes ~w(terminal flow_reference caller_return)
 
   def type, do: "exit"
-  def icon_name, do: "square"
+  def icon_name, do: "arrow-right-to-line"
   def label, do: dgettext("flows", "Exit")
 
   def default_data do

@@ -276,6 +276,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       |> assign(:color_swatches, @color_swatches)
 
     ~H"""
+    <.node_type_icon type="exit" />
+    <span class="toolbar-separator"></span>
     <.form
       :if={@can_edit}
       for={@form}
@@ -636,7 +638,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
     assigns = assign_new(assigns, :size, fn -> "size-3.5" end)
 
     ~H"""
-    <.icon :if={@mode == "terminal"} name="square" class={@size} />
+    <.icon :if={@mode == "terminal"} name="arrow-right-to-line" class={@size} />
     <.icon :if={@mode == "flow_reference"} name="arrow-right" class={@size} />
     <.icon :if={@mode == "caller_return"} name="undo-2" class={@size} />
     """

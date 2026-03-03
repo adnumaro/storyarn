@@ -49,7 +49,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
   @doc """
   Renders the left floating horizontal toolbar (top-left pill).
 
-  Contains: back to workspace, tree toggle, project name, tool switcher, trash.
+  Contains: tree toggle, tool switcher.
   """
   attr :active_tool, :atom, required: true
   attr :has_tree, :boolean, default: true
@@ -62,22 +62,13 @@ defmodule StoryarnWeb.Components.FocusLayout do
 
     ~H"""
     <nav class="flex items-center gap-1 px-2 py-1.5 surface-panel">
-      <%!-- Back to workspace --%>
-      <.link
-        navigate={~p"/workspaces/#{@workspace.slug}"}
-        class="btn btn-ghost btn-sm btn-square tooltip tooltip-bottom"
-        data-tip={gettext("Back to Workspace")}
-      >
-        <.icon name="chevron-left" class="size-4" />
-      </.link>
-
       <%!-- Tree panel toggle --%>
       <button
         :if={@has_tree}
         type="button"
         phx-click="tree_panel_toggle"
         class={[
-          "btn btn-ghost btn-sm btn-square tooltip tooltip-bottom",
+          "btn btn-ghost btn-sm btn-square tooltip tooltip-bottom tooltip-bottom-start",
           @tree_panel_open && "bg-base-300"
         ]}
         data-tip={if @tree_panel_open, do: gettext("Hide panel"), else: gettext("Show panel")}
@@ -288,13 +279,10 @@ defmodule StoryarnWeb.Components.FocusLayout do
       id="tree-panel"
       phx-hook="TreePanel"
       data-pinned={to_string(@tree_panel_pinned)}
+      data-open={to_string(@tree_panel_open)}
       class={[
         "fixed left-3 top-[76px] bottom-3 z-[1010] w-60 flex flex-col surface-panel overflow-hidden",
-        "transition-[transform,opacity] duration-200 ease-in-out",
-        if(@tree_panel_open,
-          do: "translate-x-0 opacity-100",
-          else: "-translate-x-[calc(100%+12px)] opacity-0 pointer-events-none"
-        )
+        if(@tree_panel_open, do: "", else: "opacity-0 pointer-events-none")
       ]}
     >
       <%!-- Tree content (scrollable) --%>

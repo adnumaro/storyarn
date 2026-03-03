@@ -102,6 +102,31 @@
 /* Story player styles */
 @import "./player.css";
 
+/* Tooltip positioned below with left-aligned bubble (arrow at button center,
+   bubble extends right). Use when button is near the left viewport edge. */
+/* Delayed tooltip — shows after 600ms hover instead of immediately */
+.tooltip-delay {
+  &::before,
+  &::after {
+    transition-delay: 800ms;
+  }
+  &:not(:hover)::before,
+  &:not(:hover)::after {
+    transition-delay: 0ms;
+  }
+}
+
+.tooltip-bottom-start {
+  &[data-tip]::before {
+    transform: translateY(var(--tt-pos, -.25rem));
+    inset: var(--tt-off) auto auto 0;
+  }
+  &::after {
+    transform: translateX(-50%) translateY(var(--tt-pos, -.25rem)) rotate(180deg);
+    inset: var(--tt-tail) auto auto 0.9rem;
+  }
+}
+
 /* Shared surface for floating toolbars, sidebars, and panels.
    Single source of truth — change here to update all UI chrome. */
 .surface-panel {

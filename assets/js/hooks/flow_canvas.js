@@ -191,10 +191,12 @@ export const FlowCanvas = {
     // Expose on DOM element so the CanvasToolbar hook can access it
     this.el.__floatingToolbar = this.floatingToolbar;
 
-    // Wire LOD zoom watching (after setupEventHandlers, before finalizeSetup)
+    // Wire LOD zoom watching + canvas zoom CSS var (after setupEventHandlers, before finalizeSetup)
     this.area.addPipe((context) => {
       if (context.type === "zoomed") {
         this.lodController.onZoom();
+        const k = this.area.area.transform.k;
+        this.el.style.setProperty("--canvas-zoom", k);
       }
       return context;
     });

@@ -6,7 +6,7 @@
  */
 import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
-import { ArrowRight, CornerDownLeft, Square } from "lucide";
+import { ArrowRight, CornerDownLeft, ArrowRightToLine } from "lucide";
 import { createIconHTML, createIconSvg } from "../node_config.js";
 import {
   defaultHeader,
@@ -19,13 +19,13 @@ import {
 // Pre-create exit mode icons
 const NAV_ARROW_ICON = createIconHTML(ArrowRight, { size: 12 });
 const RETURN_ICON = createIconHTML(CornerDownLeft, { size: 12 });
-const TERMINAL_ICON = createIconHTML(Square);
+const TERMINAL_ICON = createIconHTML(ArrowRightToLine);
 
 export default {
   config: {
     label: "Exit",
     color: "#22c55e",
-    icon: createIconSvg(Square),
+    icon: createIconSvg(ArrowRightToLine),
     inputs: ["input"],
     outputs: [],
   },

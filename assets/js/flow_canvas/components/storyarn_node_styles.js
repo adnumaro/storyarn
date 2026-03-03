@@ -44,10 +44,10 @@ export const storyarnNodeStyles = css`
 
   /* --- Socket negative margins (structural for Rete.js) --- */
 
-  .sockets-row .input-socket { margin-left: -10px; }
-  .sockets-row .output-socket { margin-right: -10px; }
-  .input-socket { margin-left: -10px; }
-  .output-socket { margin-right: -10px; }
+  .sockets-row .input-socket { margin-left: -6px; }
+  .sockets-row .output-socket { margin-right: -6px; }
+  .input-socket { margin-left: -6px; }
+  .output-socket { margin-right: -6px; }
 
   /* --- Response indicator tooltip (::after pseudo-element) --- */
 
@@ -61,26 +61,9 @@ export const storyarnNodeStyles = css`
     cursor: default;
   }
 
-  .response-indicator::after {
-    content: attr(data-tip);
-    position: absolute;
-    bottom: calc(100% + 6px);
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
-    font-size: 11px;
-    line-height: 1;
-    padding: 4px 8px;
-    border-radius: 4px;
-    background: var(--color-base-300);
-    color: var(--color-base-content);
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.12s;
-  }
-
-  .response-indicator:hover::after {
-    opacity: 1;
+  /* Counter-scale tooltip to stay visually constant at any zoom level */
+  .tooltip::before {
+    font-size: calc(var(--tooltip-font-size, 0.75rem) / var(--canvas-zoom, 1));
   }
 
   /* --- Inline edit fields (field-sizing, color-mix placeholders) --- */
