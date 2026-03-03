@@ -5,13 +5,7 @@ import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { ArrowRight, LogOut } from "lucide";
 import { createIconHTML, createIconSvg } from "../node_config.js";
-import {
-  defaultHeader,
-  nodeShell,
-  renderNavLink,
-  renderPreview,
-  renderSockets,
-} from "./render_helpers.js";
+import { defaultHeader, nodeShell, renderPreview, renderSockets } from "./render_helpers.js";
 
 // Pre-create navigation arrow icon
 const ARROW_ICON = createIconHTML(ArrowRight, { size: 12 });
@@ -36,12 +30,8 @@ export default {
       selected,
       html`
       ${defaultHeader(config, color, indicators)}
-      ${
-        nodeData.target_hub_id && preview
-          ? renderNavLink(preview, "navigate-to-hub", "jumpDbId", node.nodeId, emit)
-          : renderPreview(preview)
-      }
-      <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
+      ${renderPreview(preview)}
+      <div class="py-1">${renderSockets(node, nodeData, this, emit)}</div>
     `,
     );
   },
@@ -50,7 +40,7 @@ export default {
     const targetHub = data.target_hub_id ? hubsMap?.[data.target_hub_id] : null;
     const label = targetHub?.label || data.target_hub_id;
     if (!label) return "";
-    return html`<span style="display:inline-flex;align-items:center;gap:4px">${unsafeSVG(ARROW_ICON)} ${label}</span>`;
+    return html`<span class="inline-flex items-center gap-1">${unsafeSVG(ARROW_ICON)} ${label}</span>`;
   },
 
   getIndicators(data) {

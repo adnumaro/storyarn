@@ -156,7 +156,7 @@ export default {
       html`
       ${defaultHeader(config, config.color, [])}
       ${renderPreview(preview)}
-      <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
+      <div class="py-1">${renderSockets(node, nodeData, this, emit)}</div>
     `,
     );
   },
@@ -182,7 +182,7 @@ export default {
     const summary = getConditionSummary(data);
     if (data.has_stale_refs) {
       const text = summary || "Stale references";
-      return html`<span style="display:inline-flex;align-items:center;gap:3px">${unsafeSVG(STALE_ICON)} ${text}</span>`;
+      return html`<span class="inline-flex items-center gap-1">${unsafeSVG(STALE_ICON)} ${text}</span>`;
     }
     return summary;
   },

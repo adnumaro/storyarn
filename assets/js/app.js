@@ -33,6 +33,7 @@ import { BlockKeyboard } from "./hooks/block_keyboard";
 import { BlockMenu } from "./hooks/block_menu";
 import { BuilderSidebar } from "./hooks/builder_sidebar";
 import { CanvasDropZone } from "./hooks/canvas_drop_zone";
+import { CanvasToolbar } from "./hooks/canvas_toolbar";
 import { ColorPicker } from "./hooks/color_picker";
 // Custom hooks
 import { ColumnSortable } from "./hooks/column_sortable";
@@ -45,7 +46,6 @@ import { EditableShortcut } from "./hooks/editable_shortcut";
 import { EditableTitle } from "./hooks/editable_title";
 import { ExplorationPlayer } from "./hooks/exploration_player";
 import { ExpressionEditor } from "./hooks/expression_editor";
-import { CanvasToolbar } from "./hooks/canvas_toolbar";
 import { FlowCanvas } from "./hooks/flow_canvas";
 import { FlowLoader } from "./hooks/flow_loader";
 import { FountainImport } from "./hooks/fountain_import";

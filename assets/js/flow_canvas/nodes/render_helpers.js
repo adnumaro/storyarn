@@ -1,6 +1,9 @@
 /**
  * Shared rendering primitives for per-type node render() methods.
  * Pure functions returning Lit html templates — no class, no state.
+ *
+ * Uses Tailwind classes (available via adoptedStyleSheets) for layout/typography.
+ * CSS-in-JS styles (storyarn_node_styles.js) handle shadows, animations, pseudo-elements.
  */
 
 import { html } from "lit";
@@ -24,8 +27,8 @@ export function nodeShell(nodeColor, selected, content, extraClass = "") {
   const borderColor = `${nodeColor}40`;
   return html`
     <div
-      class="node ${selected ? "selected" : ""} ${extraClass}"
-      style="--node-border-color: ${borderColor}; --node-color: ${nodeColor}"
+      class="node relative bg-base-200 rounded-xl min-w-[180px] border-[1.5px] ${selected ? "selected" : ""} ${extraClass}"
+      style="--node-border-color: ${borderColor}; --node-color: ${nodeColor}; border-color: var(--node-border-color, transparent)"
     >
       ${content}
     </div>
@@ -37,8 +40,8 @@ export function nodeShell(nodeColor, selected, content, extraClass = "") {
  */
 export function defaultHeader(config, nodeColor, indicators) {
   return html`
-    <div class="header" style="${headerStyle(nodeColor)}">
-      <span class="icon">${unsafeSVG(config.icon)}</span>
+    <div class="header px-3 py-2 rounded-t-[10px] flex items-center gap-2 text-white font-medium text-[13px]" style="${headerStyle(nodeColor)}">
+      <span class="flex items-center">${unsafeSVG(config.icon)}</span>
       <span>${config.label}</span>
       ${renderIndicators(indicators)}
     </div>
@@ -50,13 +53,13 @@ export function defaultHeader(config, nodeColor, indicators) {
  */
 export function speakerHeader(config, nodeColor, speakerSheet, indicators) {
   return html`
-    <div class="header" style="${headerStyle(nodeColor)}">
+    <div class="header px-3 py-2 rounded-t-[10px] flex items-center gap-2 text-white font-medium text-[13px]" style="${headerStyle(nodeColor)}">
       ${
         speakerSheet.avatar_url
-          ? html`<img src="${speakerSheet.avatar_url}" class="speaker-avatar" alt="" />`
-          : html`<span class="icon">${unsafeSVG(config.icon)}</span>`
+          ? html`<img src="${speakerSheet.avatar_url}" class="size-8 rounded-full object-cover shrink-0" alt="" />`
+          : html`<span class="flex items-center">${unsafeSVG(config.icon)}</span>`
       }
-      <span class="speaker-name">${speakerSheet.name}</span>
+      <span class="overflow-hidden text-ellipsis whitespace-nowrap">${speakerSheet.name}</span>
       ${renderIndicators(indicators)}
     </div>
   `;
@@ -68,22 +71,22 @@ export function speakerHeader(config, nodeColor, speakerSheet, indicators) {
 export function renderIndicators(indicators) {
   if (!indicators || indicators.length === 0) return "";
   return html`
-    <span class="header-indicators">
+    <span class="flex items-center gap-1 ml-auto">
       ${indicators.map((ind) => {
         if (ind.type === "audio")
-          return html`<span class="audio-indicator" title="${ind.title}"
+          return html`<span class="inline-flex items-center justify-center ml-auto opacity-80" title="${ind.title}"
             >${unsafeSVG(AUDIO_ICON)}</span
           >`;
         if (ind.type === "error")
-          return html`<span class="error-badge" title="${ind.title}"
+          return html`<span class="error-badge inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full mr-0.5 cursor-help" title="${ind.title}"
             >${unsafeSVG(ALERT_ICON)}</span
           >`;
         if (ind.svg)
-          return html`<span class="logic-indicator ${ind.class || ""}" title="${ind.title}"
+          return html`<span class="inline-flex items-center justify-center text-[10px] opacity-90 ${ind.class || ""}" title="${ind.title}"
             >${unsafeSVG(ind.svg)}</span
           >`;
         return html`<span
-          class="logic-indicator ${ind.class || ""}"
+          class="inline-flex items-center justify-center text-[10px] opacity-90 ${ind.class || ""}"
           title="${ind.title}"
           >${ind.text}</span
         >`;
@@ -97,16 +100,16 @@ export function renderIndicators(indicators) {
  */
 export function renderPreview(text) {
   if (!text) return "";
-  return html`<div class="node-data"><div class="node-data-text">${text}</div></div>`;
+  return html`<div class="text-[11px] text-base-content/80 px-3 py-2 max-w-[200px] border-b border-base-content/10 break-words"><div class="line-clamp-4 leading-[1.4]">${text}</div></div>`;
 }
 
 /**
  * Renders a clickable navigation link block (used by hub/jump).
  */
 export function renderNavLink(text, event, detailKey, nodeId, _emit) {
-  return html`<div class="node-data">
+  return html`<div class="text-[11px] text-base-content/80 px-3 py-2 max-w-[200px] border-b border-base-content/10 break-words">
     <div
-      class="node-data-text nav-link"
+      class="line-clamp-4 leading-[1.4] nav-link cursor-pointer underline decoration-dotted underline-offset-2"
       @pointerdown=${(e) => {
         e.stopPropagation();
         e.target.dispatchEvent(
@@ -140,7 +143,7 @@ export function renderSockets(node, nodeData, def, emit) {
     const [outputKey, output] = outputs[0];
 
     return html`
-      <div class="sockets-row">
+      <div class="sockets-row flex justify-between items-center py-1">
         <rete-ref
           class="input-socket"
           .data=${{
@@ -152,8 +155,8 @@ export function renderSockets(node, nodeData, def, emit) {
           }}
           .emit=${emit}
         ></rete-ref>
-        <span class="socket-label-left">${inputKey}</span>
-        <span class="socket-label-right">${outputKey}</span>
+        <span class="text-[11px] text-base-content/70 ml-1">${inputKey}</span>
+        <span class="text-[11px] text-base-content/70 ml-auto mr-1">${outputKey}</span>
         <rete-ref
           class="output-socket"
           .data=${{
@@ -172,7 +175,7 @@ export function renderSockets(node, nodeData, def, emit) {
   return html`
     ${inputs.map(
       ([key, input]) => html`
-        <div class="socket-row input">
+        <div class="flex items-center py-1 text-[11px] text-base-content/70 justify-start">
           <rete-ref
             class="input-socket"
             .data=${{
@@ -193,15 +196,15 @@ export function renderSockets(node, nodeData, def, emit) {
       const labelTitle = typeof outputLabel === "string" ? outputLabel : key;
 
       return html`
-        <div class="socket-row output">
+        <div class="flex items-center py-1 text-[11px] text-base-content/70 justify-end">
           ${badges.map((badge) => {
             if (badge.type === "error")
-              return html`<div class="error-badge" title="${badge.title}">${unsafeSVG(ALERT_ICON)}</div>`;
+              return html`<div class="error-badge inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full mr-0.5 cursor-help" title="${badge.title}">${unsafeSVG(ALERT_ICON)}</div>`;
             if (badge.type === "indicator")
               return html`<span class="response-indicator" style="background:${badge.color}" data-tip="${badge.title}"></span>`;
             return html`<span class="${badge.class}" title="${badge.title}">${badge.text}</span>`;
           })}
-          <span class="label" title="${labelTitle}">${outputLabel}</span>
+          <span class="px-2 max-w-[220px] break-words text-right" title="${labelTitle}">${outputLabel}</span>
           <rete-ref
             class="output-socket"
             .data=${{

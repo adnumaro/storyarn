@@ -7,12 +7,18 @@
  */
 
 import { css, html, LitElement } from "lit";
+import { adoptTailwind } from "../../utils/shadow_styles.js";
 
 export class StoryarnMagneticConnection extends LitElement {
   static get properties() {
     return {
       path: { type: String },
     };
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    adoptTailwind(this.shadowRoot);
   }
 
   static styles = css`
@@ -31,7 +37,7 @@ export class StoryarnMagneticConnection extends LitElement {
     path {
       fill: none;
       stroke-width: 2px;
-      stroke: color-mix(in oklch, var(--color-base-content, #a6adbb) 25%, transparent);
+      stroke: color-mix(in oklch, var(--color-base-content) 25%, transparent);
       pointer-events: none;
       stroke-dasharray: 6 4;
     }

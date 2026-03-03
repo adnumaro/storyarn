@@ -28,9 +28,9 @@ export default {
 
     const headerLabel = speakerSheet?.name || config.label;
     const headerHtml = html`
-      <div class="header" style="${headerStyle(color)}">
-        <span class="icon">${unsafeSVG(config.icon)}</span>
-        <span class="speaker-name">${headerLabel}</span>
+      <div class="header px-3 py-2 rounded-t-[10px] flex items-center gap-2 text-white font-medium text-[13px]" style="${headerStyle(color)}">
+        <span class="flex items-center">${unsafeSVG(config.icon)}</span>
+        <span class="overflow-hidden text-ellipsis whitespace-nowrap">${headerLabel}</span>
         ${renderIndicators(indicators)}
       </div>
     `;
@@ -39,17 +39,17 @@ export default {
     const avatarUrl = speakerSheet?.avatar_url;
 
     const visualHtml = bannerUrl
-      ? html`<img src="${bannerUrl}" class="dialogue-banner" alt="" />`
+      ? html`<img src="${bannerUrl}" class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3" alt="" />`
       : avatarUrl
         ? html`<div
-            class="dialogue-visual"
+            class="flex items-center justify-center px-3 pt-3"
             style="background-color: ${color}20"
           >
-            <img src="${avatarUrl}" class="dialogue-avatar" alt="" />
+            <img src="${avatarUrl}" class="size-16 rounded-lg object-cover shadow-md" alt="" />
           </div>`
         : speakerSheet
           ? html`<div
-              class="dialogue-visual"
+              class="flex items-center justify-center px-3 pt-3"
               style="background-color: ${color}20"
             ></div>`
           : "";
@@ -67,28 +67,28 @@ export default {
 
     const bodyHtml = hasText
       ? html`
-          <div class="dialogue-content">
+          <div class="px-3.5 pt-2.5 pb-3">
             ${
               nodeData.stage_directions
-                ? html`<div class="stage-directions-inline">
+                ? html`<div class="italic text-base-content/55 text-xs mb-1 break-words">
                   ${nodeData.stage_directions}
                 </div>`
                 : ""
             }
-            ${preview ? html`<div class="dialogue-text">${preview}</div>` : ""}
+            ${preview ? html`<div class="text-sm text-base-content/85 leading-relaxed break-words whitespace-pre-wrap">${preview}</div>` : ""}
           </div>
         `
       : "";
 
-    const hasContent = hasText || visualHtml !== "" || (nodeData.responses?.length > 0);
-    const extraClass = hasContent ? "dialogue has-content" : "dialogue";
+    const hasContent = hasText || visualHtml !== "" || nodeData.responses?.length > 0;
+    const extraClass = hasContent ? "dialogue min-w-[280px] max-w-[350px]" : "dialogue";
 
     return nodeShell(
       color,
       selected,
       html`
         ${headerHtml} ${visualHtml} ${bodyHtml}
-        <div class="content compact">
+        <div class="py-1.5 border-t border-base-content/10">
           ${renderSockets(node, nodeData, this, emit)}
         </div>
       `,
@@ -104,10 +104,10 @@ export default {
     const speakerLabel = speakerSheet?.name || config.label;
 
     const editHeaderHtml = html`
-      <div class="header" style="${headerStyle(color)}">
-        <span class="icon">${unsafeSVG(config.icon)}</span>
+      <div class="header px-3 py-2 rounded-t-[10px] flex items-center gap-2 text-white font-medium text-[13px]" style="${headerStyle(color)}">
+        <span class="flex items-center">${unsafeSVG(config.icon)}</span>
         <button
-          class="inline-speaker-trigger"
+          class="inline-speaker-trigger flex-1 min-w-0 flex items-center gap-1 bg-transparent border-none text-white font-medium text-[13px] cursor-pointer p-0 outline-none font-[inherit]"
           @pointerdown=${(e) => e.stopPropagation()}
           @keydown=${(e) => e.stopPropagation()}
           @click=${(e) => {
@@ -122,7 +122,7 @@ export default {
             );
           }}
         >
-          <span class="inline-speaker-label">${speakerLabel}</span>
+          <span class="overflow-hidden text-ellipsis whitespace-nowrap">${speakerLabel}</span>
           ${unsafeSVG(CHEVRON_ICON)}
         </button>
       </div>
@@ -131,9 +131,9 @@ export default {
     const stopDrag = (e) => e.stopPropagation();
 
     const bodyHtml = html`
-      <div class="dialogue-content">
+      <div class="px-3.5 pt-2.5 pb-3">
         <input
-          class="inline-input"
+          class="inline-input w-full bg-transparent border-0 border-b italic text-xs py-0.5 mb-1 outline-none font-[inherit]"
           placeholder=${labels?.stage_directions || "Stage directions…"}
           .value=${nodeData.stage_directions || ""}
           @pointerdown=${stopDrag}
@@ -149,7 +149,7 @@ export default {
           }}
         />
         <textarea
-          class="inline-textarea"
+          class="inline-textarea w-full bg-transparent border-0 text-sm p-0 resize-none outline-none leading-relaxed overflow-hidden font-[inherit]"
           placeholder=${labels?.dialogue_text || "Dialogue text…"}
           .value=${plainText}
           @pointerdown=${stopDrag}
@@ -177,11 +177,11 @@ export default {
       selected,
       html`
         ${editHeaderHtml} ${visualHtml} ${bodyHtml}
-        <div class="content compact">
+        <div class="py-1.5 border-t border-base-content/10">
           ${renderSockets(node, nodeData, this, emit)}
         </div>
       `,
-      "dialogue has-content",
+      "dialogue min-w-[280px] max-w-[350px]",
     );
   },
 
@@ -256,7 +256,7 @@ export default {
       if (Boolean(oldResp[i].condition) !== Boolean(newResp[i].condition)) return true;
       const oldAssign = oldResp[i].instruction_assignments?.length || 0;
       const newAssign = newResp[i].instruction_assignments?.length || 0;
-      if ((oldAssign > 0) !== (newAssign > 0)) return true;
+      if (oldAssign > 0 !== newAssign > 0) return true;
     }
 
     return false;

@@ -685,7 +685,7 @@ body.dnd-active [data-toolbar] {
   white-space: nowrap;
   font-size: 0.75rem;
   font-weight: 600;
-  color: white;
+  color: var(--color-base-100, white);
   text-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.5);
   transform: translateX(-50%);
 }
@@ -700,7 +700,7 @@ body.dnd-active [data-toolbar] {
 }
 
 .map-annotation-selected .map-annotation-label {
-  outline: 2px solid var(--color-primary, #3b82f6);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -777,9 +777,9 @@ body.dnd-active [data-toolbar] {
 .map-ruler-label {
   font-size: 12px;
   font-weight: 600;
-  color: #f97316;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #f97316;
+  color: var(--color-warning, #f97316);
+  background: color-mix(in oklch, var(--color-base-100, #fff) 90%, transparent);
+  border: 1px solid var(--color-warning, #f97316);
   border-radius: 4px;
   padding: 1px 6px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);

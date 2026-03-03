@@ -8,6 +8,7 @@
 
 import { html, LitElement } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
+import { adoptTailwind } from "../../utils/shadow_styles.js";
 import { getNodeDef, NODE_CONFIGS } from "../node_config.js";
 import { storyarnNodeStyles } from "./storyarn_node_styles.js";
 
@@ -26,6 +27,11 @@ export class StoryarnNode extends LitElement {
 
   static styles = storyarnNodeStyles;
 
+  connectedCallback() {
+    super.connectedCallback();
+    adoptTailwind(this.shadowRoot);
+  }
+
   render() {
     const node = this.data;
     if (!node) return html``;
@@ -37,14 +43,14 @@ export class StoryarnNode extends LitElement {
       const borderColor = `${color}40`;
       return html`
         <div
-          class="node simplified ${node.selected ? "selected" : ""}"
-          style="--node-border-color: ${borderColor}"
+          class="node relative bg-base-200 rounded-xl min-w-[120px] border-[1.5px] ${node.selected ? "selected" : ""}"
+          style="--node-border-color: ${borderColor}; --node-color: ${color}; border-color: var(--node-border-color, transparent)"
         >
-          <div class="header" style="background-color: ${color}">
-            <span class="icon">${unsafeSVG(config.icon)}</span>
+          <div class="px-3 py-2 rounded-t-[10px] flex items-center gap-2 text-white font-medium text-[13px]" style="background-color: ${color}">
+            <span class="flex items-center">${unsafeSVG(config.icon)}</span>
             <span>${config.label}</span>
           </div>
-          <div class="content">${this.renderSimplifiedSockets(node)}</div>
+          <div class="py-0.5">${this.renderSimplifiedSockets(node)}</div>
         </div>
       `;
     }
@@ -103,7 +109,7 @@ export class StoryarnNode extends LitElement {
     return html`
       ${inputs.map(
         ([key, input]) => html`
-          <div class="socket-row input">
+          <div class="flex items-center py-0.5 text-[11px] text-base-content/70 justify-start">
             <rete-ref
               class="input-socket"
               .data=${{
@@ -120,7 +126,7 @@ export class StoryarnNode extends LitElement {
       )}
       ${outputs.map(
         ([key, output]) => html`
-          <div class="socket-row output">
+          <div class="flex items-center py-0.5 text-[11px] text-base-content/70 justify-end">
             <rete-ref
               class="output-socket"
               .data=${{

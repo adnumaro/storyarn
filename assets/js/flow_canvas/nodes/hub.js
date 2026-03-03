@@ -5,7 +5,7 @@ import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { ArrowUpRight, LogIn } from "lucide";
 import { createIconHTML, createIconSvg } from "../node_config.js";
-import { defaultHeader, nodeShell, renderNavLink, renderSockets } from "./render_helpers.js";
+import { defaultHeader, nodeShell, renderPreview, renderSockets } from "./render_helpers.js";
 
 // Pre-create jump count icon
 const JUMP_ICON = createIconHTML(ArrowUpRight, { size: 12 });
@@ -24,15 +24,15 @@ export default {
     const color = this.nodeColor(nodeData, config);
     const hubEntry = hubsMap?.[nodeData.hub_id];
     const jumpCount = hubEntry?.jumpCount || 0;
-    const navContent = html`<span style="display:inline-flex;align-items:center;gap:4px">${unsafeSVG(JUMP_ICON)} ${jumpCount} jumps</span>`;
+    const navContent = html`<span class="inline-flex items-center gap-1">${unsafeSVG(JUMP_ICON)} ${jumpCount} jumps</span>`;
 
     return nodeShell(
       color,
       selected,
       html`
       ${defaultHeader(config, color, [])}
-      ${renderNavLink(navContent, "navigate-to-jumps", "hubDbId", node.nodeId, emit)}
-      <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
+      ${renderPreview(navContent)}
+      <div class="py-1">${renderSockets(node, nodeData, this, emit)}</div>
     `,
     );
   },

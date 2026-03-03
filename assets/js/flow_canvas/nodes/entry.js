@@ -27,7 +27,7 @@ export default {
     const navLinks = refs.map((ref) => {
       const shortcut = ref.flow_shortcut ? ` (#${ref.flow_shortcut})` : "";
       const iconSvg = ref.node_type === "exit" ? EXIT_REF_ICON : SUBFLOW_REF_ICON;
-      const navContent = html`<span style="display:inline-flex;align-items:center;gap:4px;vertical-align:middle">${unsafeSVG(iconSvg)} ${ref.flow_name}${shortcut}</span>`;
+      const navContent = html`<span class="inline-flex items-center gap-1 align-middle">${unsafeSVG(iconSvg)} ${ref.flow_name}${shortcut}</span>`;
       return renderNavLink(navContent, "navigate-to-referencing-flow", "flowId", ref.flow_id, emit);
     });
 
@@ -37,7 +37,7 @@ export default {
       html`
       ${defaultHeader(config, config.color, [])}
       ${navLinks}
-      <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
+      <div class="py-1">${renderSockets(node, nodeData, this, emit)}</div>
     `,
     );
   },

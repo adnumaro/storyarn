@@ -7,10 +7,11 @@
 import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { ArrowRight, Box, CornerDownLeft, Square } from "lucide";
-import { createIconHTML, createIconSvg } from "../node_config.js";
-import { defaultHeader, nodeShell, renderNavLink, renderSockets } from "./render_helpers.js";
 
-// Pre-create icons for nav link and exit mode labels
+import { createIconHTML, createIconSvg } from "../node_config.js";
+import { defaultHeader, nodeShell, renderPreview, renderSockets } from "./render_helpers.js";
+
+// Pre-create icons
 const NAV_ARROW_ICON = createIconHTML(ArrowRight, { size: 12 });
 const RETURN_ICON = createIconHTML(CornerDownLeft);
 const TERMINAL_ICON = createIconHTML(Square);
@@ -46,7 +47,7 @@ export default {
       if (exit) {
         const modeIconSvg = exit.exit_mode === "caller_return" ? RETURN_ICON : TERMINAL_ICON;
         const label = exit.label || "Exit";
-        return html`<span style="display:inline-flex;align-items:center;gap:3px">${unsafeSVG(modeIconSvg)} ${label}</span>`;
+        return html`<span class="inline-flex items-center gap-1">${unsafeSVG(modeIconSvg)} ${label}</span>`;
       }
       return "Exit";
     }
@@ -66,7 +67,7 @@ export default {
       const shortcut = nodeData.referenced_flow_shortcut
         ? ` (#${nodeData.referenced_flow_shortcut})`
         : "";
-      navContent = html`<span style="display:inline-flex;align-items:center;gap:4px">${unsafeSVG(NAV_ARROW_ICON)} ${nodeData.referenced_flow_name}${shortcut}</span>`;
+      navContent = html`<span class="inline-flex items-center gap-1">${unsafeSVG(NAV_ARROW_ICON)} ${nodeData.referenced_flow_name}${shortcut}</span>`;
     }
 
     return nodeShell(
@@ -74,19 +75,9 @@ export default {
       selected,
       html`
       ${defaultHeader(config, color, indicators)}
-      ${
-        navContent
-          ? renderNavLink(
-              navContent,
-              "navigate-to-subflow",
-              "flowId",
-              nodeData.referenced_flow_id,
-              emit,
-            )
-          : ""
-      }
-      ${!nodeData.referenced_flow_id ? html`<div class="node-data"><div class="node-data-text" style="opacity:0.5">No flow selected</div></div>` : ""}
-      <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
+      ${navContent ? renderPreview(navContent) : ""}
+      ${!nodeData.referenced_flow_id ? html`<div class="text-[11px] text-base-content/80 px-3 py-2 max-w-[200px] border-b border-base-content/10 break-words"><div class="line-clamp-4 leading-[1.4] opacity-50">No flow selected</div></div>` : ""}
+      <div class="py-1">${renderSockets(node, nodeData, this, emit)}</div>
     `,
     );
   },

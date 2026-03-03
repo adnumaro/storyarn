@@ -3,6 +3,7 @@
  */
 
 import { css, html, LitElement } from "lit";
+import { adoptTailwind } from "../../utils/shadow_styles.js";
 
 export class StoryarnSocket extends LitElement {
   static get properties() {
@@ -11,30 +12,24 @@ export class StoryarnSocket extends LitElement {
     };
   }
 
+  connectedCallback() {
+    super.connectedCallback();
+    adoptTailwind(this.shadowRoot);
+  }
+
   static styles = css`
     :host {
       display: inline-block;
     }
-
-    .socket {
-      width: 10px;
-      height: 10px;
-      background: color-mix(in oklch, var(--color-base-content, #a6adbb) 25%, transparent);
-      border: 2px solid color-mix(in oklch, var(--color-base-content, #a6adbb) 50%, transparent);
-      border-radius: 50%;
-      cursor: crosshair;
-      transition: all 0.15s ease;
-    }
-
-    .socket:hover {
-      background: var(--color-primary, #7c3aed);
-      border-color: var(--color-primary, #7c3aed);
-      transform: scale(1.3);
-    }
   `;
 
   render() {
-    return html`<div class="socket" title="${this.data?.name || ""}"></div>`;
+    return html`<div
+      class="size-2.5 bg-base-content/25 border-2 border-base-content/50 rounded-full
+             cursor-crosshair transition-all duration-150
+             hover:bg-primary hover:border-primary hover:scale-[1.3]"
+      title="${this.data?.name || ""}"
+    ></div>`;
   }
 }
 

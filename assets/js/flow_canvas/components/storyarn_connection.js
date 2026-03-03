@@ -6,6 +6,7 @@
  */
 
 import { css, html, LitElement } from "lit";
+import { adoptTailwind } from "../../utils/shadow_styles.js";
 
 export class StoryarnConnection extends LitElement {
   static get properties() {
@@ -15,6 +16,11 @@ export class StoryarnConnection extends LitElement {
       end: { type: Object },
       data: { type: Object },
     };
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    adoptTailwind(this.shadowRoot);
   }
 
   static styles = css`
@@ -41,7 +47,7 @@ export class StoryarnConnection extends LitElement {
     /* Visible connection line — uses CSS custom properties for debug overrides */
     path.visible {
       fill: none;
-      stroke: var(--conn-stroke, color-mix(in oklch, var(--color-base-content, #a6adbb) 40%, transparent));
+      stroke: var(--conn-stroke, color-mix(in oklch, var(--color-base-content) 40%, transparent));
       stroke-width: var(--conn-stroke-width, 2px);
       stroke-dasharray: var(--conn-dash, none);
       animation: var(--conn-animation, none);
@@ -51,7 +57,7 @@ export class StoryarnConnection extends LitElement {
 
     /* Hover state */
     path.hit-area:hover + path.visible {
-      stroke: var(--color-primary, #7c3aed);
+      stroke: var(--color-primary);
       stroke-width: 3px;
     }
 
@@ -66,15 +72,15 @@ export class StoryarnConnection extends LitElement {
     }
 
     .label-bg {
-      fill: var(--color-base-100, #1d232a);
-      stroke: color-mix(in oklch, var(--color-base-content, #a6adbb) 30%, transparent);
+      fill: var(--color-base-100);
+      stroke: color-mix(in oklch, var(--color-base-content) 30%, transparent);
       stroke-width: 1px;
       rx: 3;
       ry: 3;
     }
 
     .label-text {
-      fill: var(--color-base-content, #a6adbb);
+      fill: var(--color-base-content);
       font-size: 10px;
       font-family: system-ui, sans-serif;
       dominant-baseline: middle;

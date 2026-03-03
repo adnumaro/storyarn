@@ -42,7 +42,7 @@ export default {
       const shortcut = nodeData.referenced_flow_shortcut
         ? ` (#${nodeData.referenced_flow_shortcut})`
         : "";
-      const navContent = html`<span style="display:inline-flex;align-items:center;gap:4px">${unsafeSVG(NAV_ARROW_ICON)} ${nodeData.referenced_flow_name}${shortcut}</span>`;
+      const navContent = html`<span class="inline-flex items-center gap-1">${unsafeSVG(NAV_ARROW_ICON)} ${nodeData.referenced_flow_name}${shortcut}</span>`;
       navLink = renderNavLink(
         navContent,
         "navigate-to-exit-flow",
@@ -68,8 +68,8 @@ export default {
       ${defaultHeader(config, color, indicators)}
       ${renderPreview(preview)}
       ${navLink}
-      ${tagsText ? html`<div class="node-data"><div class="node-data-text" style="opacity:0.6;font-size:0.7em">${tagsText}</div></div>` : ""}
-      <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
+      ${tagsText ? html`<div class="text-[11px] text-base-content/80 px-3 py-2 max-w-[200px] border-b border-base-content/10 break-words"><div class="line-clamp-4 leading-[1.4] opacity-60 text-[0.7em]">${tagsText}</div></div>` : ""}
+      <div class="py-1">${renderSockets(node, nodeData, this, emit)}</div>
     `,
     );
   },
@@ -77,9 +77,9 @@ export default {
   getPreviewText(data) {
     const label = data.label || "Exit";
     if (data.exit_mode === "caller_return")
-      return html`<span style="display:inline-flex;align-items:center;gap:4px">${label} ${unsafeSVG(RETURN_ICON)}</span>`;
+      return html`<span class="inline-flex items-center gap-1">${label} ${unsafeSVG(RETURN_ICON)}</span>`;
     if (data.exit_mode === "flow_reference") return label;
-    return html`<span style="display:inline-flex;align-items:center;gap:4px">${label} ${unsafeSVG(TERMINAL_ICON)}</span>`;
+    return html`<span class="inline-flex items-center gap-1">${label} ${unsafeSVG(TERMINAL_ICON)}</span>`;
   },
 
   getIndicators(data) {
