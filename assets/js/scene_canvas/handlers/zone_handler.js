@@ -102,10 +102,11 @@ export function createZoneHandler(hook, i18n = {}) {
     const polygon = createZonePolygon(zone, hook.canvasWidth, hook.canvasHeight);
     polygon.zoneData = zone;
 
-    // Click → select (only in select mode; other tools like pin/connector pass through)
+    // Click → select (in any non-drawing tool, same as pins/annotations)
     polygon.on("click", (e) => {
       L.DomEvent.stopPropagation(e);
-      if (hook.currentTool !== "select") return;
+      const isZoneTool = hook.isZoneTool?.(hook.currentTool);
+      if (isZoneTool || hook.currentTool === "connector") return;
       hook.pushEvent("select_element", { type: "zone", id: polygon.zoneData.id });
     });
 

@@ -6,18 +6,13 @@
 
 import L from "leaflet";
 import { createElement, Lock } from "lucide";
-import { getCssVar, sanitizeColor } from "./color_utils.js";
+import { isValidHexColor } from "./color_utils.js";
 import { toLatLng } from "./coordinate_utils.js";
 
-// Font size → CSS values
-const FONT_SIZES = {
-  sm: { fontSize: "11px", padding: "2px 6px" },
-  md: { fontSize: "14px", padding: "4px 8px" },
-  lg: { fontSize: "16px", padding: "5px 10px" },
-};
+const VALID_SIZES = new Set(["sm", "md", "lg"]);
 
 function getDefaultColor() {
-  return getCssVar("--color-warning", "#fbbf24");
+  return "#fbbf24";
 }
 
 /**
@@ -89,35 +84,16 @@ const LOCK_ICON_SVG = lockEl.outerHTML;
  * Builds the HTML content for an annotation's divIcon.
  */
 function buildAnnotationHtml(annotation) {
-  const color = sanitizeColor(annotation.color || getDefaultColor());
-  const sizeKey = annotation.font_size || "md";
-  const dims = FONT_SIZES[sizeKey] || FONT_SIZES.md;
+  const color = isValidHexColor(annotation.color) ? annotation.color : getDefaultColor();
+  const sizeKey = VALID_SIZES.has(annotation.font_size) ? annotation.font_size : "md";
   const text = escapeHtml(annotation.text || "");
   const lockPrefix = annotation.locked ? LOCK_ICON_SVG : "";
 
-  // Post-it style: wrapper holds the clipped body + the solid fold triangle
-  const fold = 12;
   return (
-    `<div class="map-annotation-label" style="position:relative;cursor:grab;min-width:120px;max-width:300px;">` +
-    // Body with clipped top-right corner
-    `<div style="` +
-    `font-size:${dims.fontSize};padding:${dims.padding};padding-right:calc(${dims.padding.split(" ")[1] || dims.padding} + ${fold}px);` +
-    `background:${color};opacity:0.55;position:absolute;inset:0;` +
-    `clip-path:polygon(0 0, calc(100% - ${fold}px) 0, 100% ${fold}px, 100% 100%, 0 100%);` +
-    `"></div>` +
-    // Text layer (same padding, transparent bg)
-    `<div data-annotation-text style="` +
-    `position:relative;` +
-    `font-size:${dims.fontSize};padding:${dims.padding};padding-right:calc(${dims.padding.split(" ")[1] || dims.padding} + ${fold}px);` +
-    `color:${getCssVar("--color-base-content", "#111827")};font-weight:600;line-height:1.3;white-space:pre-wrap;` +
-    `">${lockPrefix}${text}</div>` +
-    // Fold triangle — solid color, sits at top-right
-    `<span style="` +
-    `position:absolute;top:0;right:0;` +
-    `width:${fold}px;height:${fold}px;` +
-    `background:${color};` +
-    `clip-path:polygon(0 0, 100% 100%, 0 100%);` +
-    `"></span>` +
+    `<div class="map-annotation-label map-annotation-${sizeKey}" style="--ann-color:${color}">` +
+    `<div class="map-annotation-bg"></div>` +
+    `<div data-annotation-text class="map-annotation-text">${lockPrefix}${text}</div>` +
+    `<span class="map-annotation-fold"></span>` +
     `</div>`
   );
 }

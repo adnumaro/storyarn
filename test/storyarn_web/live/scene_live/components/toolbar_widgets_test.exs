@@ -3,6 +3,7 @@ defmodule StoryarnWeb.SceneLive.Components.ToolbarWidgetsTest do
 
   import Phoenix.LiveViewTest
 
+  alias StoryarnWeb.Components.ToolbarColorPicker
   alias StoryarnWeb.SceneLive.Components.ToolbarWidgets
 
   # =============================================================================
@@ -129,7 +130,7 @@ defmodule StoryarnWeb.SceneLive.Components.ToolbarWidgetsTest do
   describe "toolbar_color_picker/1" do
     test "renders color swatch with current value" do
       html =
-        render_component(&ToolbarWidgets.toolbar_color_picker/1, %{
+        render_component(&ToolbarColorPicker.toolbar_color_picker/1, %{
           id: "fill-1",
           event: "update_fill",
           element_id: "z1",
@@ -256,18 +257,18 @@ defmodule StoryarnWeb.SceneLive.Components.ToolbarWidgetsTest do
     test "renders with default options" do
       html =
         render_component(&ToolbarWidgets.toolbar_size_picker/1, %{
+          id: "size-1",
           event: "update_size",
           element_id: "p1",
           field: "size",
           current: "md",
-          options: [{"sm", "S"}, {"md", "M"}, {"lg", "L"}],
           disabled: false
         })
 
-      assert html =~ "S"
-      assert html =~ "M"
-      assert html =~ "L"
-      assert html =~ "toolbar-btn-active"
+      assert html =~ "Small"
+      assert html =~ "Medium"
+      assert html =~ "Large"
+      assert html =~ "font-semibold text-primary"
     end
   end
 

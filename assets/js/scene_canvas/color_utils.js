@@ -1,9 +1,14 @@
+/** Returns true if `c` is a valid CSS hex color (#RGB, #RRGGBB, or #RRGGBBAA). */
+export function isValidHexColor(c) {
+  return typeof c === "string" && /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3}([0-9a-fA-F]{2})?)?$/.test(c);
+}
+
 /**
- * Strips non-hex characters from a CSS color value.
- * Only preserves # and hexadecimal digits.
+ * Returns `c` if it is a valid hex color, otherwise returns `fallback`.
+ * Replaces the old strip-based sanitizeColor which broke with daisyUI v5 oklch values.
  */
-export function sanitizeColor(c) {
-  return c.replace(/[^#a-fA-F0-9]/g, "");
+export function sanitizeColor(c, fallback = "#6b7280") {
+  return isValidHexColor(c) ? c : fallback;
 }
 
 /**

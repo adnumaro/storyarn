@@ -6,7 +6,7 @@
 
 import L from "leaflet";
 import { createElement, Lock, MapPin, Star, User, Zap } from "lucide";
-import { getCssVar, sanitizeColor } from "./color_utils.js";
+import { sanitizeColor } from "./color_utils.js";
 import { toLatLng } from "./coordinate_utils.js";
 
 // Pin type → Lucide icon mapping
@@ -19,14 +19,16 @@ const PIN_ICONS = {
 
 // Pin size → pixel dimensions
 const PIN_SIZES = {
-  sm: { icon: 20, anchor: 10 },
-  md: { icon: 28, anchor: 14 },
-  lg: { icon: 36, anchor: 18 },
+  sm: { icon: 28, anchor: 14 },
+  md: { icon: 36, anchor: 18 },
+  lg: { icon: 44, anchor: 22 },
 };
 
 const DEFAULT_COLOR_FALLBACK = "#3b82f6";
 function getDefaultColor() {
-  return getCssVar("--color-primary", DEFAULT_COLOR_FALLBACK);
+  // Use hardcoded hex — daisyUI v5 CSS variables use oklch() which can't be
+  // used directly as a CSS background value in inline styles.
+  return DEFAULT_COLOR_FALLBACK;
 }
 const SELECTED_RING_CLASS = "map-pin-selected";
 
@@ -140,7 +142,7 @@ const LOCK_BADGE = `<div style="position:absolute;top:-4px;right:-4px;width:14px
  * Priority: icon_asset_url (custom upload) > avatar_url (sheet) > initials > Lucide icon.
  */
 function buildPinHtml(pin, color, dims) {
-  const safeColor = sanitizeColor(color);
+  const safeColor = sanitizeColor(color, DEFAULT_COLOR_FALLBACK);
   const bgColor = hexWithOpacity(safeColor, pin.opacity);
   let inner;
 

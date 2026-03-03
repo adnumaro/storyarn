@@ -12,70 +12,7 @@ defmodule StoryarnWeb.SceneLive.Components.ToolbarWidgets do
   alias Phoenix.LiveView.JS
 
   import StoryarnWeb.Components.CoreComponents
-
-  @color_swatches [
-    ~w(#ef4444 #f97316 #f59e0b #eab308 #22c55e #14b8a6 #3b82f6 #6366f1 #8b5cf6 #a855f7 #ec4899 #000000),
-    ~w(#fca5a5 #fdba74 #fde68a #a7f3d0 #a5f3fc #93c5fd #c4b5fd #e9d5ff #fbcfe8 #e5e7eb #ffffff)
-  ]
-
-  # ---------------------------------------------------------------------------
-  # Color Swatch Picker
-  # ---------------------------------------------------------------------------
-
-  attr :id, :string, required: true
-  attr :event, :string, required: true
-  attr :element_id, :any, required: true
-  attr :field, :string, required: true
-  attr :value, :string, required: true
-  attr :label, :string, required: true
-  attr :disabled, :boolean, default: false
-  slot :extra_content
-
-  @doc "Color swatch picker with popover grid."
-  def toolbar_color_picker(assigns) do
-    assigns = assign(assigns, :swatches, @color_swatches)
-
-    ~H"""
-    <div class="relative">
-      <button
-        type="button"
-        class="toolbar-btn"
-        title={@label}
-        disabled={@disabled}
-        phx-click={JS.toggle(to: "#popover-color-#{@id}", display: "block")}
-      >
-        <span
-          class="inline-block size-4 rounded-full border border-white/20"
-          style={"background:#{@value}"}
-        />
-      </button>
-
-      <div
-        id={"popover-color-#{@id}"}
-        class="toolbar-popover"
-        style="display:none"
-        phx-click-away={JS.hide(to: "#popover-color-#{@id}")}
-      >
-        <div class="p-2">
-          <div class="text-xs font-medium text-base-content/60 mb-1.5">{@label}</div>
-          <.color_swatch_grid
-            swatches={@swatches}
-            event={@event}
-            element_id={@element_id}
-            field={@field}
-            current_color={@value}
-            picker_id={@id}
-            popover_id={"popover-color-#{@id}"}
-            disabled={@disabled}
-          />
-        </div>
-
-        <%!-- Extra content slot (e.g. opacity slider) --%>
-        {render_slot(@extra_content)}
-      </div>
-    </div>
-    """
-  end
+  import StoryarnWeb.Components.ToolbarColorPicker
 
   # ---------------------------------------------------------------------------
   # Stroke Picker (style + width + color in one popover — for zones & connections)
@@ -95,7 +32,7 @@ defmodule StoryarnWeb.SceneLive.Components.ToolbarWidgets do
 
   @doc "Border style/color/width picker with popover."
   def toolbar_stroke_picker(assigns) do
-    assigns = assign(assigns, :swatches, @color_swatches)
+    assigns = assign(assigns, :swatches, color_swatches())
 
     ~H"""
     <div class="relative">
@@ -484,83 +421,71 @@ defmodule StoryarnWeb.SceneLive.Components.ToolbarWidgets do
   end
 
   # ---------------------------------------------------------------------------
-  # Size Picker (inline pill buttons, no popover)
+  # Size Picker (dropdown selector)
   # ---------------------------------------------------------------------------
 
+  attr :id, :string, required: true
   attr :event, :string, required: true
   attr :element_id, :any, required: true
   attr :field, :string, default: "size"
   attr :current, :string, default: "md"
-  attr :options, :list, default: [{"sm", "S"}, {"md", "M"}, {"lg", "L"}]
   attr :disabled, :boolean, default: false
 
-  @doc "Size selector (S/M/L) for pins and annotations."
+  @size_options [
+    {"sm", "S"},
+    {"md", "M"},
+    {"lg", "L"}
+  ]
+
+  @doc "Size selector dropdown for pins and annotations."
   def toolbar_size_picker(assigns) do
+    assigns =
+      assigns
+      |> assign(:options, @size_options)
+      |> assign(:current_label, size_label(assigns.current))
+
     ~H"""
-    <div class="flex items-center">
+    <div class="relative">
       <button
-        :for={{value, label} <- @options}
         type="button"
-        phx-click={JS.push(@event, value: %{id: @element_id, field: @field, value: value})}
-        class={"toolbar-btn h-7 w-7 text-xs font-medium #{if value == @current, do: "toolbar-btn-active"}"}
+        class="toolbar-btn gap-1 px-1.5"
+        title={dgettext("scenes", "Size")}
         disabled={@disabled}
+        phx-click={JS.toggle(to: "#popover-size-#{@id}", display: "block")}
       >
-        {label}
+        <span class="text-xs font-medium">{@current_label}</span>
+        <.icon name="chevron-down" class="size-2.5 opacity-50" />
       </button>
-    </div>
-    """
-  end
 
-  # ---------------------------------------------------------------------------
-  # Color Swatch Grid (shared by color picker and stroke picker)
-  # ---------------------------------------------------------------------------
-
-  attr :swatches, :list, required: true
-  attr :event, :string, required: true
-  attr :element_id, :any, required: true
-  attr :field, :string, required: true
-  attr :current_color, :string, required: true
-  attr :picker_id, :string, required: true
-  attr :popover_id, :string, default: nil
-  attr :disabled, :boolean, default: false
-
-  defp color_swatch_grid(assigns) do
-    ~H"""
-    <div :for={{row, idx} <- Enum.with_index(@swatches)} class="flex gap-1 mb-1">
-      <button
-        :for={color <- row}
-        type="button"
-        phx-click={
-          js = JS.push(@event, value: %{id: @element_id, field: @field, value: color})
-          if @popover_id, do: JS.hide(js, to: "##{@popover_id}"), else: js
-        }
-        class={"color-swatch #{if color == @current_color, do: "color-swatch-active"}"}
-        style={"background:#{color}"}
-        title={color}
-        disabled={@disabled}
-      />
-      <%!-- Rainbow custom swatch at end of last row --%>
-      <form :if={idx == length(@swatches) - 1} phx-change={@event} phx-submit="noop" class="contents">
-        <input type="hidden" name="element_id" value={@element_id} />
-        <input type="hidden" name="field" value={@field} />
-        <label
-          for={"color-native-#{@picker_id}"}
-          class="color-swatch color-swatch-rainbow"
-          title={dgettext("scenes", "Custom")}
-        >
-          <input
-            type="color"
-            id={"color-native-#{@picker_id}"}
-            name="value"
-            value={@current_color}
-            class="sr-only"
+      <div
+        id={"popover-size-#{@id}"}
+        class="toolbar-popover"
+        style="display:none"
+        phx-click-away={JS.hide(to: "#popover-size-#{@id}")}
+      >
+        <div class="p-1 min-w-[120px]">
+          <button
+            :for={{value, short} <- @options}
+            type="button"
+            phx-click={
+              JS.push(@event, value: %{id: @element_id, field: @field, value: value})
+              |> JS.hide(to: "#popover-size-#{@id}")
+            }
+            class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm cursor-pointer hover:bg-base-content/10 #{if value == @current, do: "font-semibold text-primary"}"}
             disabled={@disabled}
-          />
-        </label>
-      </form>
+          >
+            {size_label(value)}
+          </button>
+        </div>
+      </div>
     </div>
     """
   end
+
+  defp size_label("sm"), do: dgettext("scenes", "Small")
+  defp size_label("md"), do: dgettext("scenes", "Medium")
+  defp size_label("lg"), do: dgettext("scenes", "Large")
+  defp size_label(_), do: dgettext("scenes", "Medium")
 
   # ---------------------------------------------------------------------------
   # Private helpers

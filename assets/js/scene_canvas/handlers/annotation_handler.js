@@ -31,10 +31,24 @@ export function createAnnotationHandler(hook, i18n = {}) {
   // Per-annotation drag debounce timers (annotation ID → timeout handle)
   const dragTimers = new Map();
 
+  let baseZoom = 0;
+
+  /** Updates the --annotation-scale CSS variable so annotations scale with the map. */
+  function updateScale() {
+    const scale = 2 ** (hook.leafletMap.getZoom() - baseZoom);
+    hook.el.style.setProperty("--annotation-scale", scale);
+  }
+
   function init() {
+    baseZoom = hook.leafletMap.getZoom();
+    updateScale();
     renderAnnotations();
     setupMapClickHandler();
     wireServerEvents();
+    hook.leafletMap.on("zoomend", () => {
+      updateScale();
+      hook.floatingToolbar?.reposition();
+    });
   }
 
   function destroy() {

@@ -174,7 +174,16 @@ export function createFloatingToolbar(hook) {
       }
       case "annotation": {
         const marker = hook.annotationHandler?.markers?.get(id);
-        return marker ? marker.getLatLng() : null;
+        if (!marker) return null;
+        const el = marker.getElement();
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          const canvasRect = hook.el.getBoundingClientRect();
+          const centerX = rect.left - canvasRect.left + rect.width / 2;
+          const topY = rect.top - canvasRect.top;
+          return hook.leafletMap.containerPointToLatLng(L.point(centerX, topY));
+        }
+        return marker.getLatLng();
       }
       case "connection": {
         const line = hook.connectionHandler?.lines?.get(id);

@@ -13,6 +13,7 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
   alias Phoenix.LiveView.JS
 
   import StoryarnWeb.Components.CoreComponents
+  import StoryarnWeb.Components.ToolbarColorPicker
   import StoryarnWeb.SceneLive.Components.ToolbarWidgets
 
   @pin_types ~w(location character event custom)
@@ -291,6 +292,7 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
 
       <%!-- Size --%>
       <.toolbar_size_picker
+        id={"pin-size-#{@pin.id}"}
         event="update_pin"
         element_id={@pin.id}
         field="size"
@@ -454,6 +456,7 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
 
       <%!-- Size --%>
       <.toolbar_size_picker
+        id={"ann-size-#{@annotation.id}"}
         event="update_annotation"
         element_id={@annotation.id}
         field="font_size"

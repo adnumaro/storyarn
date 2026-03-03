@@ -47,16 +47,12 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  // D - Toggle dark mode
+  // D — Toggle dark/light mode (global, no modifiers)
+  // NOTE: This shortcut fires everywhere outside inputs. Be careful adding new
+  // bare-letter shortcuts — they conflict with canvas shortcuts (flow E = inline edit).
   if (e.key === "d" && !e.metaKey && !e.ctrlKey && !e.altKey) {
     e.preventDefault();
     setTheme("toggle");
-  }
-
-  // E - Go to preferences/settings
-  if (e.key === "e" && !e.metaKey && !e.ctrlKey && !e.altKey) {
-    e.preventDefault();
-    window.location.href = "/users/settings";
   }
 });
 
