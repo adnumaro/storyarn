@@ -15,6 +15,7 @@
  */
 
 import L from "leaflet";
+import { getCssVar } from "../color_utils.js";
 import {
   addArrowsToLayer,
   createConnectionLine,
@@ -159,7 +160,7 @@ export function createConnectionHandler(hook, i18n = {}) {
       if (fromMarker) {
         const fromLatLng = fromMarker.getLatLng();
         previewLine = L.polyline([fromLatLng, fromLatLng], {
-          color: "#3b82f6",
+          color: getCssVar("--color-primary", "#3b82f6"),
           weight: 2,
           dashArray: "6, 4",
           opacity: 0.6,
@@ -329,8 +330,8 @@ export function createConnectionHandler(hook, i18n = {}) {
 
       const handle = L.circleMarker(latlng, {
         radius: 6,
-        color: "#3b82f6",
-        fillColor: "#ffffff",
+        color: getCssVar("--color-primary", "#3b82f6"),
+        fillColor: getCssVar("--color-base-100", "#ffffff"),
         fillOpacity: 1,
         weight: 2,
         interactive: true,

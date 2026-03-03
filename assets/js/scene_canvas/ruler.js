@@ -7,6 +7,7 @@
  */
 
 import L from "leaflet";
+import { getCssVar } from "./color_utils.js";
 import { toPercent } from "./coordinate_utils.js";
 
 /**
@@ -50,15 +51,15 @@ export function createRuler(hook) {
       startPoint = e.latlng;
       startMarker = L.circleMarker(startPoint, {
         radius: 5,
-        color: "#f97316",
-        fillColor: "#f97316",
+        color: getCssVar("--color-warning", "#f97316"),
+        fillColor: getCssVar("--color-warning", "#f97316"),
         fillOpacity: 1,
         weight: 2,
         interactive: false,
       }).addTo(map);
 
       previewLine = L.polyline([startPoint, startPoint], {
-        color: "#f97316",
+        color: getCssVar("--color-warning", "#f97316"),
         weight: 2,
         dashArray: "6 4",
         interactive: false,
@@ -107,7 +108,7 @@ export function createRuler(hook) {
 
     // Draw the measurement line
     const line = L.polyline([from, to], {
-      color: "#f97316",
+      color: getCssVar("--color-warning", "#f97316"),
       weight: 2,
       dashArray: "6 4",
       interactive: false,
@@ -116,8 +117,8 @@ export function createRuler(hook) {
     // Start & end markers
     const sMarker = L.circleMarker(from, {
       radius: 5,
-      color: "#f97316",
-      fillColor: "#f97316",
+      color: getCssVar("--color-warning", "#f97316"),
+      fillColor: getCssVar("--color-warning", "#f97316"),
       fillOpacity: 1,
       weight: 2,
       interactive: false,
@@ -125,8 +126,8 @@ export function createRuler(hook) {
 
     const eMarker = L.circleMarker(to, {
       radius: 5,
-      color: "#f97316",
-      fillColor: "#f97316",
+      color: getCssVar("--color-warning", "#f97316"),
+      fillColor: getCssVar("--color-warning", "#f97316"),
       fillOpacity: 1,
       weight: 2,
       interactive: false,

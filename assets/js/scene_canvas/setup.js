@@ -7,6 +7,7 @@
  */
 
 import L from "leaflet";
+import { getCssVar } from "./color_utils.js";
 import { imageBounds, toLatLng } from "./coordinate_utils.js";
 
 // Default dimensions when map has no explicit size
@@ -174,10 +175,10 @@ function addBoundaryFog(map, vertices, w, h) {
   });
 
   L.polygon([outerRing, innerRing], {
-    fillColor: "#000",
+    fillColor: getCssVar("--color-neutral", "#000"),
     fillOpacity: 0.35,
     stroke: true,
-    color: "#6b7280",
+    color: getCssVar("--color-base-content", "#6b7280"),
     weight: 1.5,
     dashArray: "6, 4",
     interactive: false,

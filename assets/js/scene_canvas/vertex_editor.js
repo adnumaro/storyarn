@@ -12,25 +12,30 @@
  */
 
 import L from "leaflet";
+import { getCssVar } from "./color_utils.js";
 import { toPercent } from "./coordinate_utils.js";
 
-const VERTEX_STYLE = {
-  radius: 6,
-  color: "#3b82f6",
-  fillColor: "#ffffff",
-  fillOpacity: 1,
-  weight: 2,
-  interactive: true,
-};
+function getVertexStyle() {
+  return {
+    radius: 6,
+    color: getCssVar("--color-primary", "#3b82f6"),
+    fillColor: getCssVar("--color-base-100", "#ffffff"),
+    fillOpacity: 1,
+    weight: 2,
+    interactive: true,
+  };
+}
 
-const MIDPOINT_STYLE = {
-  radius: 4,
-  color: "#94a3b8",
-  fillColor: "#e2e8f0",
-  fillOpacity: 0.8,
-  weight: 1,
-  interactive: true,
-};
+function getMidpointStyle() {
+  return {
+    radius: 4,
+    color: getCssVar("--color-base-content", "#94a3b8"),
+    fillColor: getCssVar("--color-base-300", "#e2e8f0"),
+    fillOpacity: 0.8,
+    weight: 1,
+    interactive: true,
+  };
+}
 
 /**
  * Creates a vertex editor instance.
@@ -104,7 +109,7 @@ export function createVertexEditor(hook) {
    */
   function createVertexHandle(latLng, index) {
     const marker = L.circleMarker(latLng, {
-      ...VERTEX_STYLE,
+      ...getVertexStyle(),
       className: "map-vertex-handle",
     });
 
@@ -129,7 +134,7 @@ export function createVertexEditor(hook) {
    */
   function createMidpointHandle(latLng, afterIndex) {
     const marker = L.circleMarker(latLng, {
-      ...MIDPOINT_STYLE,
+      ...getMidpointStyle(),
       className: "map-midpoint-handle",
     });
 

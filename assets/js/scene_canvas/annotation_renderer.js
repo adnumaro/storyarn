@@ -6,7 +6,7 @@
 
 import L from "leaflet";
 import { createElement, Lock } from "lucide";
-import { sanitizeColor } from "./color_utils.js";
+import { getCssVar, sanitizeColor } from "./color_utils.js";
 import { toLatLng } from "./coordinate_utils.js";
 
 // Font size → CSS values
@@ -16,7 +16,9 @@ const FONT_SIZES = {
   lg: { fontSize: "16px", padding: "5px 10px" },
 };
 
-const DEFAULT_COLOR = "#fbbf24";
+function getDefaultColor() {
+  return getCssVar("--color-warning", "#fbbf24");
+}
 
 /**
  * Creates a Leaflet marker for an annotation.
@@ -87,7 +89,7 @@ const LOCK_ICON_SVG = lockEl.outerHTML;
  * Builds the HTML content for an annotation's divIcon.
  */
 function buildAnnotationHtml(annotation) {
-  const color = sanitizeColor(annotation.color || DEFAULT_COLOR);
+  const color = sanitizeColor(annotation.color || getDefaultColor());
   const sizeKey = annotation.font_size || "md";
   const dims = FONT_SIZES[sizeKey] || FONT_SIZES.md;
   const text = escapeHtml(annotation.text || "");
@@ -107,7 +109,7 @@ function buildAnnotationHtml(annotation) {
     `<div data-annotation-text style="` +
     `position:relative;` +
     `font-size:${dims.fontSize};padding:${dims.padding};padding-right:calc(${dims.padding.split(" ")[1] || dims.padding} + ${fold}px);` +
-    `color:#111827;font-weight:600;line-height:1.3;white-space:pre-wrap;` +
+    `color:${getCssVar("--color-base-content", "#111827")};font-weight:600;line-height:1.3;white-space:pre-wrap;` +
     `">${lockPrefix}${text}</div>` +
     // Fold triangle — solid color, sits at top-right
     `<span style="` +

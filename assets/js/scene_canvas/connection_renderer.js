@@ -10,9 +10,12 @@
 import L from "leaflet";
 import "leaflet-polylinedecorator/src/L.Symbol.js";
 import "leaflet-polylinedecorator/src/L.PolylineDecorator.js";
+import { getCssVar } from "./color_utils.js";
 import { toLatLng } from "./coordinate_utils.js";
 
-const DEFAULT_COLOR = "#6b7280";
+function getDefaultColor() {
+  return getCssVar("--color-base-content", "#6b7280");
+}
 const SELECTED_WEIGHT = 4;
 const DEFAULT_WEIGHT = 2;
 const ARROW_SIZE = 14;
@@ -169,7 +172,7 @@ function removeArrows(line) {
 const ARROW_OFFSET_PX = "10%";
 
 function makeArrowDecorator(pathOrLatLngs, conn) {
-  const color = conn.color || DEFAULT_COLOR;
+  const color = conn.color || getDefaultColor();
   return L.polylineDecorator(pathOrLatLngs, {
     patterns: [
       {
@@ -223,7 +226,7 @@ function applyLabel(line) {
 
   const { point: midLatLng, angle } = pathMidpointAndAngle(latLngs, map);
 
-  const _color = data.color || DEFAULT_COLOR;
+  const _color = data.color || getDefaultColor();
   const escapedText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
   const icon = L.divIcon({
@@ -312,7 +315,7 @@ function pathMidpointAndAngle(latLngs, map) {
 
 function buildConnectionStyle(conn) {
   return {
-    color: conn.color || DEFAULT_COLOR,
+    color: conn.color || getDefaultColor(),
     weight: conn.line_width || DEFAULT_WEIGHT,
     dashArray: DASH_PATTERNS[conn.line_style] || null,
     opacity: 0.8,

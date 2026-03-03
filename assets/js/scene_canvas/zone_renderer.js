@@ -6,6 +6,7 @@
 
 import L from "leaflet";
 import { BarChart3, createElement, Map as MapIcon, Send, Zap } from "lucide";
+import { getCssVar } from "./color_utils.js";
 import { toLatLng } from "./coordinate_utils.js";
 
 const ACTION_ICONS = {
@@ -14,8 +15,12 @@ const ACTION_ICONS = {
   event: Send,
 };
 
-const DEFAULT_FILL_COLOR = "#3b82f6";
-const DEFAULT_BORDER_COLOR = "#1e40af";
+function getDefaultFillColor() {
+  return getCssVar("--color-primary", "#3b82f6");
+}
+function getDefaultBorderColor() {
+  return getCssVar("--color-primary", "#1e40af");
+}
 const SELECTED_BORDER_WEIGHT = 4;
 
 // border_style → Leaflet dashArray mapping
@@ -193,10 +198,10 @@ function createMapIndicatorIcon() {
  */
 function buildZoneStyle(zone) {
   return {
-    color: zone.border_color || DEFAULT_BORDER_COLOR,
+    color: zone.border_color || getDefaultBorderColor(),
     weight: zone.border_width || 2,
     dashArray: DASH_PATTERNS[zone.border_style] || null,
-    fillColor: zone.fill_color || DEFAULT_FILL_COLOR,
+    fillColor: zone.fill_color || getDefaultFillColor(),
     fillOpacity: zone.opacity != null ? zone.opacity : 0.3,
     interactive: true,
   };

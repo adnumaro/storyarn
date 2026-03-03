@@ -6,7 +6,7 @@
 
 import L from "leaflet";
 import { createElement, Lock, MapPin, Star, User, Zap } from "lucide";
-import { sanitizeColor } from "./color_utils.js";
+import { getCssVar, sanitizeColor } from "./color_utils.js";
 import { toLatLng } from "./coordinate_utils.js";
 
 // Pin type → Lucide icon mapping
@@ -24,7 +24,10 @@ const PIN_SIZES = {
   lg: { icon: 36, anchor: 18 },
 };
 
-const DEFAULT_COLOR = "#3b82f6";
+const DEFAULT_COLOR_FALLBACK = "#3b82f6";
+function getDefaultColor() {
+  return getCssVar("--color-primary", DEFAULT_COLOR_FALLBACK);
+}
 const SELECTED_RING_CLASS = "map-pin-selected";
 
 /** Converts a hex color + opacity (0-1) to an rgba string. */
@@ -55,7 +58,7 @@ function escapeHtml(str) {
 export function createPinMarker(pin, w, h, opts = {}) {
   const canEdit = opts.canEdit !== undefined ? opts.canEdit : true;
   const pos = toLatLng(pin.position_x, pin.position_y, w, h);
-  const color = pin.color || DEFAULT_COLOR;
+  const color = pin.color || getDefaultColor();
   const sizeKey = pin.size || "md";
   const dims = PIN_SIZES[sizeKey] || PIN_SIZES.md;
 
@@ -89,7 +92,7 @@ export function createPinMarker(pin, w, h, opts = {}) {
  */
 export function updatePinMarker(marker, pin) {
   marker.pinData = pin;
-  const color = pin.color || DEFAULT_COLOR;
+  const color = pin.color || getDefaultColor();
   const sizeKey = pin.size || "md";
   const dims = PIN_SIZES[sizeKey] || PIN_SIZES.md;
 
