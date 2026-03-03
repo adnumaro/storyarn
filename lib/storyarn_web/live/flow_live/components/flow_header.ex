@@ -6,6 +6,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
   use StoryarnWeb, :verified_routes
 
   import StoryarnWeb.Components.CoreComponents
+  import StoryarnWeb.Components.FocusLayout, only: [entity_title_pill: 1]
   import StoryarnWeb.Components.SaveIndicator
 
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers,
@@ -81,7 +82,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
 
   def flow_info_bar(assigns) do
     ~H"""
-    <div class="flex items-center gap-2">
+    <div class="flex items-stretch gap-2">
       <%!-- Nav history --%>
       <% back_entry = @nav_history && NavigationHistory.peek_back(@nav_history) %>
       <% forward_entry = @nav_history && NavigationHistory.peek_forward(@nav_history) %>
@@ -112,47 +113,25 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
       </div>
 
       <%!-- Flow title pill --%>
-      <div class="hidden lg:flex items-center gap-2 surface-panel px-3 py-1.5">
-        <div>
-          <h1
-            :if={@can_edit}
-            id="flow-title"
-            class="text-sm font-medium outline-none rounded px-1 -mx-1 empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
-            contenteditable="true"
-            phx-hook="EditableTitle"
-            phx-update="ignore"
-            data-placeholder={dgettext("flows", "Untitled")}
-            data-name={@flow.name}
+      <.entity_title_pill
+        name={@flow.name}
+        shortcut={@flow.shortcut}
+        can_edit={@can_edit}
+        name_id="flow-title"
+        name_placeholder={dgettext("flows", "Untitled")}
+        shortcut_id="flow-shortcut"
+        shortcut_placeholder={dgettext("flows", "add-shortcut")}
+      >
+        <:extra>
+          <span
+            :if={@flow.is_main}
+            class="badge badge-primary badge-xs"
+            title={dgettext("flows", "Main flow")}
           >
-            {@flow.name}
-          </h1>
-          <h1 :if={!@can_edit} class="text-sm font-medium">{@flow.name}</h1>
-          <div :if={@can_edit} class="flex items-center gap-1 text-xs">
-            <span class="text-base-content/50">#</span>
-            <span
-              id="flow-shortcut"
-              class="text-base-content/50 outline-none hover:text-base-content empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
-              contenteditable="true"
-              phx-hook="EditableShortcut"
-              phx-update="ignore"
-              data-placeholder={dgettext("flows", "add-shortcut")}
-              data-shortcut={@flow.shortcut || ""}
-            >
-              {@flow.shortcut}
-            </span>
-          </div>
-          <div :if={!@can_edit && @flow.shortcut} class="text-xs text-base-content/50">
-            #{@flow.shortcut}
-          </div>
-        </div>
-        <span
-          :if={@flow.is_main}
-          class="badge badge-primary badge-xs"
-          title={dgettext("flows", "Main flow")}
-        >
-          {dgettext("flows", "Main")}
-        </span>
-      </div>
+            {dgettext("flows", "Main")}
+          </span>
+        </:extra>
+      </.entity_title_pill>
 
       <%!-- Combined scene + stats pill --%>
       <.flow_stats_scene_panel

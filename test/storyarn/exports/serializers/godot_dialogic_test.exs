@@ -1124,7 +1124,9 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
   describe "additional coverage" do
     setup [:create_project]
 
-    test "slug_line node with slug_line field fallback renders location comment", %{project: project} do
+    test "slug_line node with slug_line field fallback renders location comment", %{
+      project: project
+    } do
       flow = flow_fixture(project, %{name: "Slug Line Field Flow"})
       flow = reload_flow(flow)
       entry = Enum.find(flow.nodes, &(&1.type == "entry"))

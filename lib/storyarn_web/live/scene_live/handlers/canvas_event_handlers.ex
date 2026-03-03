@@ -177,6 +177,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
      socket
      |> assign(:selected_type, nil)
      |> assign(:selected_element, nil)
+     |> assign(:element_panel_open, false)
      |> push_event("element_deselected", %{})}
   end
 end

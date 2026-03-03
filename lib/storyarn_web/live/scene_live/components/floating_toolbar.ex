@@ -4,6 +4,7 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
 
   Dispatches to per-type toolbars (zone, pin, connection, annotation).
   JS manages positioning; LiveView manages content and values.
+  Advanced properties (tooltip, link-to, conditions, actions) live in SceneElementPanel.
   """
 
   use Phoenix.Component
@@ -12,8 +13,6 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
   alias Phoenix.LiveView.JS
 
   import StoryarnWeb.Components.CoreComponents
-  import StoryarnWeb.Components.ConditionBuilder
-  import StoryarnWeb.Components.ExpressionEditor
   import StoryarnWeb.SceneLive.Components.ToolbarWidgets
 
   @pin_types ~w(location character event custom)
@@ -27,11 +26,6 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
   attr :layers, :list, default: []
   attr :can_edit, :boolean, default: true
   attr :can_toggle_lock, :boolean, default: true
-  attr :project_scenes, :list, default: []
-  attr :project_sheets, :list, default: []
-  attr :project_flows, :list, default: []
-  attr :project_variables, :list, default: []
-  attr :panel_sections, :map, default: %{}
 
   @doc "Renders the floating toolbar dispatching to the per-type toolbar variant."
   def floating_toolbar(assigns) do
@@ -43,11 +37,6 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
         layers={@layers}
         can_edit={@can_edit}
         can_toggle_lock={@can_toggle_lock}
-        project_scenes={@project_scenes}
-        project_sheets={@project_sheets}
-        project_flows={@project_flows}
-        project_variables={@project_variables}
-        panel_sections={@panel_sections}
       />
       <.pin_toolbar
         :if={@selected_type == "pin"}
@@ -55,11 +44,6 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
         layers={@layers}
         can_edit={@can_edit}
         can_toggle_lock={@can_toggle_lock}
-        project_scenes={@project_scenes}
-        project_sheets={@project_sheets}
-        project_flows={@project_flows}
-        project_variables={@project_variables}
-        panel_sections={@panel_sections}
       />
       <.connection_toolbar
         :if={@selected_type == "connection"}
@@ -79,7 +63,7 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
 
   # ---------------------------------------------------------------------------
   # Zone Toolbar
-  # [Name] | [Fill▾ (+opacity)] [Border▾] | [Layer▾] [Lock] | [… more]
+  # [Action▾] [Name] | [Fill▾ (+opacity)] [Border▾] | [Layer▾] [Lock] | [⚙]
   # ---------------------------------------------------------------------------
 
   @action_types ~w(none instruction display)
@@ -88,17 +72,9 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
   attr :layers, :list, default: []
   attr :can_edit, :boolean, default: true
   attr :can_toggle_lock, :boolean, default: true
-  attr :project_scenes, :list, default: []
-  attr :project_sheets, :list, default: []
-  attr :project_flows, :list, default: []
-  attr :project_variables, :list, default: []
-  attr :panel_sections, :map, default: %{}
 
   defp zone_toolbar(assigns) do
-    assigns =
-      assigns
-      |> assign(:action_types, @action_types)
-      |> assign(:action_data, assigns.zone.action_data || %{})
+    assigns = assign(assigns, :action_types, @action_types)
 
     ~H"""
     <div class="flex items-center gap-0.5">
@@ -215,153 +191,31 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
 
       <span class="toolbar-separator" />
 
-      <%!-- More (…) popover: tooltip + type-specific config --%>
-      <div class="relative">
-        <button
-          type="button"
-          class="toolbar-btn"
-          title={dgettext("scenes", "More")}
-          phx-click={JS.toggle(to: "#popover-zone-more-#{@zone.id}", display: "block")}
-        >
-          <.icon name="more-horizontal" class="size-3.5" />
-        </button>
-
-        <div
-          id={"popover-zone-more-#{@zone.id}"}
-          class="toolbar-popover w-72"
-          style="display:none"
-          phx-click-away={JS.hide(to: "#popover-zone-more-#{@zone.id}")}
-        >
-          <div class="p-2 space-y-3">
-            <%!-- Tooltip --%>
-            <div>
-              <label class="block text-xs font-medium text-base-content/60 mb-1">
-                {dgettext("scenes", "Tooltip")}
-              </label>
-              <input
-                type="text"
-                value={@zone.tooltip || ""}
-                phx-blur="update_zone"
-                phx-value-id={@zone.id}
-                phx-value-field="tooltip"
-                placeholder={dgettext("scenes", "Hover text...")}
-                class="input input-xs input-bordered w-full"
-                disabled={!@can_edit}
-              />
-            </div>
-
-            <%!-- Link to: target picker (independent of action_type) --%>
-            <div class="pt-2 border-t border-base-300">
-              <label class="text-xs font-medium text-base-content/60">
-                {dgettext("scenes", "Link to")}
-              </label>
-              <div class="mt-1">
-                <.toolbar_target_picker
-                  id={"zone-target-#{@zone.id}"}
-                  event="update_zone"
-                  element_id={@zone.id}
-                  current_type={@zone.target_type}
-                  current_target_id={@zone.target_id}
-                  target_types={~w(sheet flow map)}
-                  project_scenes={@project_scenes}
-                  project_sheets={@project_sheets}
-                  project_flows={@project_flows}
-                  disabled={!@can_edit}
-                />
-              </div>
-            </div>
-
-            <%!-- Instruction: Expression Editor (Builder | Code) --%>
-            <div :if={@zone.action_type == "instruction"} class="pt-2 border-t border-base-300">
-              <label class="block text-xs font-medium text-base-content/60 mb-1">
-                {dgettext("scenes", "Assignments")}
-              </label>
-              <.expression_editor
-                id={"zone-instruction-#{@zone.id}"}
-                mode="instruction"
-                assignments={@action_data["assignments"] || []}
-                variables={@project_variables}
-                can_edit={@can_edit}
-                context={%{"zone-id" => @zone.id}}
-                event_name="update_zone_assignments"
-                active_tab={Map.get(@panel_sections, "tab_zone-instruction-#{@zone.id}", "builder")}
-              />
-            </div>
-
-            <%!-- Display: variable picker + label --%>
-            <div :if={@zone.action_type == "display"} class="pt-2 border-t border-base-300">
-              <label class="block text-xs font-medium text-base-content/60 mb-1">
-                {dgettext("scenes", "Variable")}
-              </label>
-              <.display_variable_picker
-                id={"zone-display-var-#{@zone.id}"}
-                element_id={@zone.id}
-                event="update_zone_action_data"
-                context_key="zone-id"
-                variables={@project_variables}
-                selected_ref={@action_data["variable_ref"] || ""}
-                can_edit={@can_edit}
-              />
-            </div>
-
-            <%!-- Condition: visibility condition --%>
-            <div class="pt-2 border-t border-base-300">
-              <div class="flex items-center justify-between mb-1">
-                <label class="text-xs font-medium text-base-content/60">
-                  {dgettext("scenes", "Condition")}
-                </label>
-                <select
-                  name="value"
-                  class="select select-xs w-20 text-xs"
-                  phx-change="update_zone_condition_effect"
-                  phx-value-id={@zone.id}
-                  disabled={!@can_edit}
-                >
-                  <option value="hide" selected={(@zone.condition_effect || "hide") == "hide"}>
-                    {dgettext("scenes", "Hide")}
-                  </option>
-                  <option value="disable" selected={(@zone.condition_effect || "hide") == "disable"}>
-                    {dgettext("scenes", "Disable")}
-                  </option>
-                </select>
-              </div>
-              <.condition_builder
-                id={"zone-condition-#{@zone.id}"}
-                condition={@zone.condition}
-                variables={@project_variables}
-                can_edit={@can_edit}
-                event_name="update_zone_condition"
-                context={%{"zone-id" => @zone.id}}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      <%!-- Settings — opens element properties panel --%>
+      <button
+        type="button"
+        class="toolbar-btn"
+        title={dgettext("scenes", "Properties")}
+        phx-click={JS.push("open_element_panel")}
+      >
+        <.icon name="settings" class="size-3.5" />
+      </button>
     </div>
     """
   end
 
   # ---------------------------------------------------------------------------
   # Pin Toolbar
-  # [Label] | [Type▾] [Color▾] [Size S|M|L] | [Layer▾] [Lock] | [… more]
+  # [Label] | [Type▾] [Color▾] [Size S|M|L] | [Layer▾] [Lock] | [⚙]
   # ---------------------------------------------------------------------------
 
   attr :pin, :map, required: true
   attr :layers, :list, default: []
   attr :can_edit, :boolean, default: true
   attr :can_toggle_lock, :boolean, default: true
-  attr :project_scenes, :list, default: []
-  attr :project_sheets, :list, default: []
-  attr :project_flows, :list, default: []
-  attr :project_variables, :list, default: []
-  attr :panel_sections, :map, default: %{}
 
   defp pin_toolbar(assigns) do
-    assigns =
-      assigns
-      |> assign(:pin_types, @pin_types)
-      |> assign(:action_types, @action_types)
-      |> assign(:action_data, assigns.pin.action_data || %{})
+    assigns = assign(assigns, :pin_types, @pin_types)
 
     ~H"""
     <div class="flex items-center gap-0.5">
@@ -466,170 +320,22 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
 
       <span class="toolbar-separator" />
 
-      <%!-- More (…) --%>
-      <div class="relative">
-        <button
-          type="button"
-          class="toolbar-btn"
-          title={dgettext("scenes", "More")}
-          phx-click={JS.toggle(to: "#popover-pin-more-#{@pin.id}", display: "block")}
-        >
-          <.icon name="more-horizontal" class="size-3.5" />
-        </button>
-
-        <div
-          id={"popover-pin-more-#{@pin.id}"}
-          class="toolbar-popover w-72"
-          style="display:none"
-          phx-click-away={JS.hide(to: "#popover-pin-more-#{@pin.id}")}
-        >
-          <div class="p-2 space-y-3">
-            <%!-- Tooltip --%>
-            <div>
-              <label class="block text-xs font-medium text-base-content/60 mb-1">
-                {dgettext("scenes", "Tooltip")}
-              </label>
-              <input
-                type="text"
-                value={@pin.tooltip || ""}
-                phx-blur="update_pin"
-                phx-value-id={@pin.id}
-                phx-value-field="tooltip"
-                placeholder={dgettext("scenes", "Hover text...")}
-                class="input input-xs input-bordered w-full"
-                disabled={!@can_edit}
-              />
-            </div>
-
-            <%!-- Link to: target picker --%>
-            <div class="pt-2 border-t border-base-300">
-              <label class="text-xs font-medium text-base-content/60">
-                {dgettext("scenes", "Link to")}
-              </label>
-              <div class="mt-1">
-                <.toolbar_target_picker
-                  id={"pin-target-#{@pin.id}"}
-                  event="update_pin"
-                  element_id={@pin.id}
-                  current_type={@pin.target_type}
-                  current_target_id={@pin.target_id}
-                  target_types={~w(sheet flow map url)}
-                  project_scenes={@project_scenes}
-                  project_sheets={@project_sheets}
-                  project_flows={@project_flows}
-                  disabled={!@can_edit}
-                />
-              </div>
-            </div>
-
-            <%!-- Action type --%>
-            <div class="pt-2 border-t border-base-300">
-              <label class="block text-xs font-medium text-base-content/60 mb-1">
-                {dgettext("scenes", "Action")}
-              </label>
-              <div class="flex gap-1">
-                <button
-                  :for={type <- @action_types}
-                  type="button"
-                  phx-click={
-                    JS.push("update_pin_action_type",
-                      value: %{"pin-id": @pin.id, "action-type": type}
-                    )
-                  }
-                  class={"flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer hover:bg-base-content/10 #{if type == (@pin.action_type || "none"), do: "font-semibold text-primary bg-base-content/5"}"}
-                  disabled={!@can_edit}
-                >
-                  <.icon name={action_type_icon(type)} class="size-3" />
-                  {action_type_label(type)}
-                </button>
-              </div>
-            </div>
-
-            <%!-- Instruction: Expression Editor (Builder | Code) --%>
-            <div :if={@pin.action_type == "instruction"} class="pt-2 border-t border-base-300">
-              <label class="block text-xs font-medium text-base-content/60 mb-1">
-                {dgettext("scenes", "Assignments")}
-              </label>
-              <.expression_editor
-                id={"pin-instruction-#{@pin.id}"}
-                mode="instruction"
-                assignments={@action_data["assignments"] || []}
-                variables={@project_variables}
-                can_edit={@can_edit}
-                context={%{"pin-id" => @pin.id}}
-                event_name="update_pin_assignments"
-                active_tab={Map.get(@panel_sections, "tab_pin-instruction-#{@pin.id}", "builder")}
-              />
-            </div>
-
-            <%!-- Display: variable picker --%>
-            <div :if={@pin.action_type == "display"} class="pt-2 border-t border-base-300">
-              <label class="block text-xs font-medium text-base-content/60 mb-1">
-                {dgettext("scenes", "Variable")}
-              </label>
-              <.display_variable_picker
-                id={"pin-display-var-#{@pin.id}"}
-                element_id={@pin.id}
-                event="update_pin_action_data"
-                context_key="pin-id"
-                variables={@project_variables}
-                selected_ref={@action_data["variable_ref"] || ""}
-                can_edit={@can_edit}
-              />
-            </div>
-
-            <%!-- Condition: visibility condition --%>
-            <div class="pt-2 border-t border-base-300">
-              <div class="flex items-center justify-between mb-1">
-                <label class="text-xs font-medium text-base-content/60">
-                  {dgettext("scenes", "Condition")}
-                </label>
-                <select
-                  name="value"
-                  class="select select-xs w-20 text-xs"
-                  phx-change="update_pin_condition_effect"
-                  phx-value-id={@pin.id}
-                  disabled={!@can_edit}
-                >
-                  <option value="hide" selected={(@pin.condition_effect || "hide") == "hide"}>
-                    {dgettext("scenes", "Hide")}
-                  </option>
-                  <option value="disable" selected={(@pin.condition_effect || "hide") == "disable"}>
-                    {dgettext("scenes", "Disable")}
-                  </option>
-                </select>
-              </div>
-              <.condition_builder
-                id={"pin-condition-#{@pin.id}"}
-                condition={@pin.condition}
-                variables={@project_variables}
-                can_edit={@can_edit}
-                event_name="update_pin_condition"
-                context={%{"pin-id" => @pin.id}}
-              />
-            </div>
-
-            <%!-- Custom icon --%>
-            <div :if={@can_edit} class="pt-2 border-t border-base-300">
-              <button
-                type="button"
-                phx-click="toggle_pin_icon_upload"
-                class="btn btn-ghost btn-xs w-full"
-              >
-                <.icon name="image" class="size-3" />
-                {dgettext("scenes", "Change Icon")}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <%!-- Settings — opens element properties panel --%>
+      <button
+        type="button"
+        class="toolbar-btn"
+        title={dgettext("scenes", "Properties")}
+        phx-click={JS.push("open_element_panel")}
+      >
+        <.icon name="settings" class="size-3.5" />
+      </button>
     </div>
     """
   end
 
   # ---------------------------------------------------------------------------
   # Connection Toolbar
-  # [Label] | [Style ···] [Color▾] | [Show Label] [Bidirectional] | [… more]
+  # [Label] | [Style ···] [Color▾] | [Show Label] [Bidirectional] | [⚙]
   # ---------------------------------------------------------------------------
 
   attr :connection, :map, required: true
@@ -709,45 +415,15 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
 
       <span class="toolbar-separator" />
 
-      <%!-- More (…) --%>
-      <div class="relative">
-        <button
-          type="button"
-          class="toolbar-btn"
-          title={dgettext("scenes", "More")}
-          phx-click={JS.toggle(to: "#popover-conn-more-#{@connection.id}", display: "block")}
-        >
-          <.icon name="more-horizontal" class="size-3.5" />
-        </button>
-
-        <div
-          id={"popover-conn-more-#{@connection.id}"}
-          class="toolbar-popover"
-          style="display:none"
-          phx-click-away={JS.hide(to: "#popover-conn-more-#{@connection.id}")}
-        >
-          <div class="p-1 min-w-[140px]">
-            <button
-              :if={@can_edit && length(@connection.waypoints || []) > 0}
-              type="button"
-              phx-click={
-                JS.push("clear_connection_waypoints", value: %{id: @connection.id})
-                |> JS.hide(to: "#popover-conn-more-#{@connection.id}")
-              }
-              class="flex items-center gap-2 w-full px-2 py-1 rounded text-sm cursor-pointer hover:bg-base-content/10"
-            >
-              <.icon name="undo-2" class="size-3" />
-              {dgettext("scenes", "Straighten path")}
-            </button>
-            <p
-              :if={length(@connection.waypoints || []) == 0}
-              class="px-2 py-1 text-xs text-base-content/40"
-            >
-              {dgettext("scenes", "No waypoints")}
-            </p>
-          </div>
-        </div>
-      </div>
+      <%!-- Settings — opens element properties panel --%>
+      <button
+        type="button"
+        class="toolbar-btn"
+        title={dgettext("scenes", "Properties")}
+        phx-click={JS.push("open_element_panel")}
+      >
+        <.icon name="settings" class="size-3.5" />
+      </button>
     </div>
     """
   end
@@ -858,91 +534,4 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
   defp action_type_label("instruction"), do: dgettext("scenes", "Action")
   defp action_type_label("display"), do: dgettext("scenes", "Display")
   defp action_type_label(_), do: dgettext("scenes", "None")
-
-  # ---------------------------------------------------------------------------
-  # Display variable picker (searchable select using SearchableSelect hook)
-  # ---------------------------------------------------------------------------
-
-  attr :id, :string, required: true
-  attr :element_id, :integer, required: true
-  attr :event, :string, required: true
-  attr :context_key, :string, required: true
-  attr :variables, :list, required: true
-  attr :selected_ref, :string, default: ""
-  attr :can_edit, :boolean, default: true
-
-  defp display_variable_picker(assigns) do
-    selected_label =
-      if assigns.selected_ref != "" do
-        assigns.selected_ref
-      end
-
-    assigns = assign(assigns, :selected_label, selected_label)
-
-    ~H"""
-    <div id={@id} phx-hook="SearchableSelect">
-      <button
-        data-role="trigger"
-        type="button"
-        class="btn btn-xs btn-ghost gap-1 w-full justify-between font-normal border border-base-300"
-        disabled={!@can_edit}
-      >
-        <span :if={@selected_label} class="text-xs truncate">{@selected_label}</span>
-        <span :if={!@selected_label} class="text-xs opacity-50">
-          {dgettext("scenes", "Select variable...")}
-        </span>
-        <.icon name="chevron-down" class="size-3 opacity-50 shrink-0" />
-      </button>
-      <template data-role="popover-template">
-        <div class="p-2 pb-1">
-          <input
-            data-role="search"
-            type="text"
-            placeholder={dgettext("scenes", "Search variables...")}
-            class="input input-xs input-bordered w-full"
-            autocomplete="off"
-          />
-        </div>
-        <div data-role="list" class="max-h-48 overflow-y-auto p-1">
-          <button
-            :if={@selected_ref != ""}
-            type="button"
-            data-event={@event}
-            data-params={
-              Jason.encode!(%{@context_key => @element_id, "field" => "variable_ref", "value" => ""})
-            }
-            data-search-text=""
-            class="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs text-base-content/50 cursor-pointer hover:bg-base-content/10"
-          >
-            <.icon name="x" class="size-3" />
-            {dgettext("scenes", "Clear")}
-          </button>
-          <button
-            :for={var <- @variables}
-            type="button"
-            data-event={@event}
-            data-params={
-              Jason.encode!(%{
-                @context_key => @element_id,
-                "field" => "variable_ref",
-                "value" => "#{var.sheet_shortcut}.#{var.variable_name}"
-              })
-            }
-            data-search-text={"#{String.downcase(var.sheet_shortcut)}.#{String.downcase(var.variable_name)}"}
-            class={"flex items-center w-full px-2 py-1.5 rounded text-xs cursor-pointer hover:bg-base-content/10 truncate #{if "#{var.sheet_shortcut}.#{var.variable_name}" == @selected_ref, do: "font-semibold text-primary"}"}
-          >
-            <span class="text-base-content/50">{var.sheet_shortcut}.</span>{var.variable_name}
-          </button>
-        </div>
-        <div
-          data-role="empty"
-          class="px-3 py-2 text-xs text-base-content/40 italic"
-          style="display:none"
-        >
-          {dgettext("scenes", "No matches")}
-        </div>
-      </template>
-    </div>
-    """
-  end
 end

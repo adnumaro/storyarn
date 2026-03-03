@@ -93,29 +93,47 @@ defmodule StoryarnWeb.FlowLive.Components.DebugVariablesTab do
           <tr class="text-base-content/50">
             <th class="font-medium relative pr-3 overflow-hidden border-b border-base-content/20">
               {dgettext("flows", "Variable")}
-              <div class="absolute right-0 top-0 w-3 h-full cursor-col-resize group/rh" data-col-resize="variable">
-                <div class="absolute inset-y-0 right-0 w-px bg-base-content/20 group-hover/rh:w-[3px] group-hover/rh:bg-primary/30 transition-all"></div>
+              <div
+                class="absolute right-0 top-0 w-3 h-full cursor-col-resize group/rh"
+                data-col-resize="variable"
+              >
+                <div class="absolute inset-y-0 right-0 w-px bg-base-content/20 group-hover/rh:w-[3px] group-hover/rh:bg-primary/30 transition-all">
+                </div>
               </div>
             </th>
             <th class="font-medium relative pr-3 overflow-hidden border-b border-base-content/20">
               {dgettext("flows", "Type")}
-              <div class="absolute right-0 top-0 w-3 h-full cursor-col-resize group/rh" data-col-resize="type">
-                <div class="absolute inset-y-0 right-0 w-px bg-base-content/20 group-hover/rh:w-[3px] group-hover/rh:bg-primary/30 transition-all"></div>
+              <div
+                class="absolute right-0 top-0 w-3 h-full cursor-col-resize group/rh"
+                data-col-resize="type"
+              >
+                <div class="absolute inset-y-0 right-0 w-px bg-base-content/20 group-hover/rh:w-[3px] group-hover/rh:bg-primary/30 transition-all">
+                </div>
               </div>
             </th>
             <th class="font-medium text-left relative pr-3 overflow-hidden border-b border-base-content/20">
               {dgettext("flows", "Initial")}
-              <div class="absolute right-0 top-0 w-3 h-full cursor-col-resize group/rh" data-col-resize="initial">
-                <div class="absolute inset-y-0 right-0 w-px bg-base-content/20 group-hover/rh:w-[3px] group-hover/rh:bg-primary/30 transition-all"></div>
+              <div
+                class="absolute right-0 top-0 w-3 h-full cursor-col-resize group/rh"
+                data-col-resize="initial"
+              >
+                <div class="absolute inset-y-0 right-0 w-px bg-base-content/20 group-hover/rh:w-[3px] group-hover/rh:bg-primary/30 transition-all">
+                </div>
               </div>
             </th>
             <th class="font-medium text-left relative pr-3 overflow-hidden border-b border-base-content/20">
               {dgettext("flows", "Previous")}
-              <div class="absolute right-0 top-0 w-3 h-full cursor-col-resize group/rh" data-col-resize="previous">
-                <div class="absolute inset-y-0 right-0 w-px bg-base-content/20 group-hover/rh:w-[3px] group-hover/rh:bg-primary/30 transition-all"></div>
+              <div
+                class="absolute right-0 top-0 w-3 h-full cursor-col-resize group/rh"
+                data-col-resize="previous"
+              >
+                <div class="absolute inset-y-0 right-0 w-px bg-base-content/20 group-hover/rh:w-[3px] group-hover/rh:bg-primary/30 transition-all">
+                </div>
               </div>
             </th>
-            <th class="font-medium text-left border-b border-base-content/20">{dgettext("flows", "Current")}</th>
+            <th class="font-medium text-left border-b border-base-content/20">
+              {dgettext("flows", "Current")}
+            </th>
           </tr>
         </thead>
         <tbody class="font-mono">

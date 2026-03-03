@@ -247,14 +247,14 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbarTest do
       assert html =~ "floating-toolbar"
     end
 
-    test "connection with waypoints shows straighten button" do
+    test "connection toolbar renders properties settings button" do
       html =
         render_component(
           &FloatingToolbar.floating_toolbar/1,
           base_assigns("connection", connection_element(%{waypoints: [%{"x" => 1, "y" => 2}]}))
         )
 
-      assert html =~ "Straighten path"
+      assert html =~ "open_element_panel"
     end
 
     test "connection with bidirectional true shows active state" do

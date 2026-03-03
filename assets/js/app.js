@@ -53,6 +53,7 @@ import { FountainImport } from "./hooks/fountain_import";
 import { InstructionBuilder } from "./hooks/instruction_builder";
 import { ReferenceSearch } from "./hooks/reference_search";
 import { SceneCanvas } from "./hooks/scene_canvas";
+import { SceneElementPanel } from "./hooks/scene_element_panel";
 import { ScreenplayEditor } from "./hooks/screenplay_editor";
 import { ScrollCollapse } from "./hooks/scroll_collapse";
 import { SearchableSelect } from "./hooks/searchable_select";
@@ -111,6 +112,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     DetailsPreserveOpen,
     FountainImport,
     SceneCanvas,
+    SceneElementPanel,
     CanvasToolbar,
     ReferenceSearch,
     ScrollCollapse,

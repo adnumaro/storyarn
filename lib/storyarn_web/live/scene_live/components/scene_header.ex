@@ -11,6 +11,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneHeader do
   use Gettext, backend: StoryarnWeb.Gettext
 
   import StoryarnWeb.Components.CoreComponents
+  import StoryarnWeb.Components.FocusLayout, only: [entity_title_pill: 1]
 
   @doc "Actions toolbar (export, settings, play, edit/view toggle) — fixed top-right."
   attr :can_edit, :boolean, required: true
@@ -243,81 +244,71 @@ defmodule StoryarnWeb.SceneLive.Components.SceneHeader do
 
   def map_info_bar(assigns) do
     ~H"""
-    <div class="hidden lg:flex items-center gap-2 surface-panel px-3">
-      <div class="flex items-baseline gap-1">
-        <span
-          :for={{ancestor, idx} <- Enum.with_index(@ancestors)}
-          class="flex items-baseline gap-1 text-xs text-base-content/50"
-        >
-          <span :if={idx > 0} class="opacity-50">/</span>
-          <.link
-            navigate={
-              ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes/#{ancestor.id}"
-            }
-            class="hover:text-base-content truncate max-w-[100px]"
+    <.entity_title_pill
+      name={@scene.name}
+      shortcut={@scene.shortcut}
+      can_edit={@can_edit}
+      name_id="map-title"
+      name_placeholder={dgettext("scenes", "Untitled")}
+      name_data={@scene.name}
+    >
+      <:before>
+        <div :if={@ancestors != []} class="flex items-baseline gap-1">
+          <span
+            :for={{ancestor, idx} <- Enum.with_index(@ancestors)}
+            class="flex items-baseline gap-1 text-xs text-base-content/50"
           >
-            {ancestor.name}
-          </.link>
-        </span>
-        <span :if={@ancestors != []} class="text-xs text-base-content/50 opacity-50">/</span>
-        <h1
-          :if={@can_edit}
-          id="map-title"
-          class="text-sm font-medium outline-none rounded px-1 -mx-1 empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
-          contenteditable="true"
-          phx-hook="EditableTitle"
-          phx-update="ignore"
-          data-placeholder={dgettext("scenes", "Untitled")}
-          data-name={@scene.name}
-        >
-          {@scene.name}
-        </h1>
-        <h1 :if={!@can_edit} class="text-sm font-medium">
-          {@scene.name}
-        </h1>
-      </div>
-      <span
-        :if={@scene.shortcut}
-        class="hidden xl:inline badge badge-ghost font-mono text-xs badge-xs"
-      >
-        #{@scene.shortcut}
-      </span>
-      <div
-        :if={@referencing_flows != []}
-        phx-hook="ToolbarPopover"
-        id="popover-referencing-flows"
-        data-width="14rem"
-        data-placement="bottom-start"
-      >
-        <button data-role="trigger" type="button" class="btn btn-xs btn-ghost gap-1 font-normal">
-          <.icon name="git-branch" class="size-3.5 opacity-60" />
-          <span class="text-xs">
-            {dngettext(
-              "maps",
-              "Used in %{count} flow",
-              "Used in %{count} flows",
-              length(@referencing_flows),
-              count: length(@referencing_flows)
-            )}
+            <span :if={idx > 0} class="opacity-50">/</span>
+            <.link
+              navigate={
+                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes/#{ancestor.id}"
+              }
+              class="hover:text-base-content truncate max-w-[100px]"
+            >
+              {ancestor.name}
+            </.link>
           </span>
-        </button>
-        <template data-role="popover-template">
-          <ul class="menu menu-xs p-1">
-            <li :for={ref <- @referencing_flows}>
-              <button
-                type="button"
-                data-event="navigate_to_referencing_flow"
-                data-params={Jason.encode!(%{"flow-id" => ref.flow_id})}
-                class="flex items-center gap-2"
-              >
-                <.icon name="git-branch" class="size-3.5 opacity-60" />
-                <span class="truncate">{ref.flow_name}</span>
-              </button>
-            </li>
-          </ul>
-        </template>
-      </div>
-    </div>
+          <span class="text-xs text-base-content/50 opacity-50">/</span>
+        </div>
+      </:before>
+      <:extra>
+        <div
+          :if={@referencing_flows != []}
+          phx-hook="ToolbarPopover"
+          id="popover-referencing-flows"
+          data-width="14rem"
+          data-placement="bottom-start"
+        >
+          <button data-role="trigger" type="button" class="btn btn-xs btn-ghost gap-1 font-normal">
+            <.icon name="git-branch" class="size-3.5 opacity-60" />
+            <span class="text-xs">
+              {dngettext(
+                "maps",
+                "Used in %{count} flow",
+                "Used in %{count} flows",
+                length(@referencing_flows),
+                count: length(@referencing_flows)
+              )}
+            </span>
+          </button>
+          <template data-role="popover-template">
+            <ul class="menu menu-xs p-1">
+              <li :for={ref <- @referencing_flows}>
+                <button
+                  type="button"
+                  data-event="navigate_to_referencing_flow"
+                  data-params={Jason.encode!(%{"flow-id" => ref.flow_id})}
+                  class="flex items-center gap-2"
+                >
+                  <.icon name="git-branch" class="size-3.5 opacity-60" />
+                  <span class="truncate">{ref.flow_name}</span>
+                </button>
+              </li>
+            </ul>
+          </template>
+        </div>
+      </:extra>
+    </.entity_title_pill>
     """
   end
 end

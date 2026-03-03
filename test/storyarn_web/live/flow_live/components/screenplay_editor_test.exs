@@ -1194,7 +1194,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditorTest do
       # Should show add response button but no response cards
       assert html =~ "Add response"
       # No response count badge should appear (badge only shown if > 0)
-      refute html =~ "badge-ghost"
+      refute html =~ "badge-ghost ml-1"
     end
 
     test "handles node with empty string audio_asset_id", %{conn: conn, user: user} do

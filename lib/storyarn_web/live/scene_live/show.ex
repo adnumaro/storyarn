@@ -12,6 +12,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.SceneLive.Components.SceneSearchPanel
   import StoryarnWeb.Components.CanvasToolbar
   import StoryarnWeb.SceneLive.Components.FloatingToolbar
+  import StoryarnWeb.SceneLive.Components.SceneElementPanel
 
   alias Storyarn.Assets
   alias Storyarn.Projects
@@ -44,6 +45,13 @@ defmodule StoryarnWeb.SceneLive.Show do
       canvas_mode={true}
     >
       <:tree_content>
+        <.link
+          navigate={~p"/workspaces/#{@workspace.slug}"}
+          class="flex items-center gap-1 text-xs text-base-content/50 hover:text-base-content mb-3 px-1 py-1 -mx-1 rounded transition-colors hover:bg-base-200"
+        >
+          <.icon name="chevron-left" class="size-3.5" />
+          {gettext("Back to workspace")}
+        </.link>
         <div role="tablist" class="tabs tabs-border tabs-sm mb-6">
           <button
             role="tab"
@@ -89,6 +97,11 @@ defmodule StoryarnWeb.SceneLive.Show do
           project={@project}
           can_edit={@can_edit}
           referencing_flows={@referencing_flows}
+        />
+        <.map_search_panel
+          search_query={@search_query}
+          search_filter={@search_filter}
+          search_results={@search_results}
         />
       </:top_bar_extra>
       <:top_bar_extra_right>
@@ -196,18 +209,6 @@ defmodule StoryarnWeb.SceneLive.Show do
             </div>
           </div>
 
-          <%!-- Search panel (below toolbar row) --%>
-          <div class={[
-            "absolute top-[76px] z-[1000] w-64 transition-[left] duration-200",
-            if(@tree_panel_open, do: "left-[264px]", else: "left-3")
-          ]}>
-            <.map_search_panel
-              search_query={@search_query}
-              search_filter={@search_filter}
-              search_results={@search_results}
-            />
-          </div>
-
           <%!-- Bottom dock (edit mode only) --%>
           <.dock :if={@edit_mode} active_tool={@active_tool} pending_sheet={@pending_sheet_for_pin} />
 
@@ -253,13 +254,32 @@ defmodule StoryarnWeb.SceneLive.Show do
               layers={@layers}
               can_edit={not Map.get(@selected_element || %{}, :locked, false)}
               can_toggle_lock={true}
-              project_scenes={@project_scenes}
-              project_sheets={@project_sheets}
-              project_flows={@project_flows}
-              project_variables={@project_variables}
-              panel_sections={@panel_sections}
             />
           </.canvas_toolbar>
+        </div>
+
+        <%!-- Element Properties Sidebar --%>
+        <div
+          :if={@element_panel_open && @selected_element != nil}
+          id="scene-element-panel"
+          phx-hook="SceneElementPanel"
+          class={[
+            "fixed flex flex-col overflow-hidden",
+            "inset-0 z-50 bg-base-100",
+            "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[480px]",
+            "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+          ]}
+        >
+          <.scene_element_panel
+            selected_type={@selected_type}
+            selected_element={@selected_element}
+            can_edit={not Map.get(@selected_element || %{}, :locked, false)}
+            project_scenes={@project_scenes}
+            project_sheets={@project_sheets}
+            project_flows={@project_flows}
+            project_variables={@project_variables}
+            panel_sections={@panel_sections}
+          />
         </div>
       </div>
 
@@ -383,6 +403,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> assign(:active_tool, :select)
     |> assign(:selected_element, nil)
     |> assign(:selected_type, nil)
+    |> assign(:element_panel_open, false)
     |> assign(:active_layer_id, default_layer_id(scene.layers))
     |> assign(:renaming_layer_id, nil)
     |> assign(:show_pin_icon_upload, false)
@@ -533,6 +554,18 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("deselect", _params, socket) do
     CanvasEventHandlers.handle_deselect(socket)
+  end
+
+  # ---------------------------------------------------------------------------
+  # Element properties panel
+  # ---------------------------------------------------------------------------
+
+  def handle_event("open_element_panel", _params, socket) do
+    {:noreply, assign(socket, :element_panel_open, true)}
+  end
+
+  def handle_event("close_element_panel", _params, socket) do
+    {:noreply, assign(socket, :element_panel_open, false)}
   end
 
   # ---------------------------------------------------------------------------

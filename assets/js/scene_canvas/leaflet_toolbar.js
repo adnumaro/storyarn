@@ -56,6 +56,16 @@ export function createFloatingToolbar(hook) {
     position();
   }
 
+  /**
+   * Called from CanvasToolbar hook's updated() — fires after every LiveView patch.
+   * Repositions the toolbar with the freshly-patched server content.
+   */
+  function revealIfPrepared() {
+    if (currentType && currentId && !isDragging) {
+      requestAnimationFrame(() => position());
+    }
+  }
+
   /** Hides during drag, repositions on drag end. */
   function setDragging(dragging) {
     isDragging = dragging;
@@ -187,5 +197,5 @@ export function createFloatingToolbar(hook) {
     }
   }
 
-  return { show, hide, reposition, setDragging };
+  return { show, hide, reposition, revealIfPrepared, setDragging };
 }

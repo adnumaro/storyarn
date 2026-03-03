@@ -76,7 +76,10 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
         class="toolbar-input font-mono text-xs"
       />
     </.form>
-    <span :if={!@can_edit && @form[:technical_id].value != ""} class="text-xs font-mono truncate max-w-[100px]">
+    <span
+      :if={!@can_edit && @form[:technical_id].value != ""}
+      class="text-xs font-mono truncate max-w-[100px]"
+    >
       {@form[:technical_id].value}
     </span>
     <.icon :if={@has_audio} name="volume-2" class="size-3.5 text-info" />
@@ -478,12 +481,14 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       id={"slug-line-setting-#{@node.id}"}
       options={[{"INT/EXT", "int_ext"}, {"INT", "int"}, {"EXT", "ext"}]}
       selected_value={@int_ext}
-      selected_label={case @int_ext do
-        "int" -> "INT"
-        "ext" -> "EXT"
-        "int_ext" -> "INT/EXT"
-        _ -> nil
-      end}
+      selected_label={
+        case @int_ext do
+          "int" -> "INT"
+          "ext" -> "EXT"
+          "int_ext" -> "INT/EXT"
+          _ -> nil
+        end
+      }
       placeholder={dgettext("flows", "Setting…")}
       event="update_node_data"
       event_params_fn={fn value -> %{node: %{int_ext: value}} end}

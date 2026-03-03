@@ -214,6 +214,78 @@ defmodule StoryarnWeb.Components.FocusLayout do
   end
 
   # ============================================================================
+  # Entity Title Pill (shared by flow and scene headers)
+  # ============================================================================
+
+  @doc """
+  Renders the entity name + shortcut pill in the top toolbar.
+
+  Both the name and shortcut can be made editable (for flows) or read-only (for scenes).
+  Extra content (badges, popovers) can be placed via the `:extra` slot.
+  Breadcrumbs or other prefix content can go in the `:before` slot.
+  """
+  attr :name, :string, required: true
+  attr :shortcut, :string, default: nil
+  attr :can_edit, :boolean, default: false
+  attr :name_id, :string, default: nil
+  attr :name_placeholder, :string, default: "Untitled"
+  attr :name_data, :string, default: nil
+  attr :shortcut_id, :string, default: nil
+  attr :shortcut_placeholder, :string, default: "add-shortcut"
+
+  slot :before
+  slot :extra
+
+  def entity_title_pill(assigns) do
+    ~H"""
+    <div class="hidden lg:flex items-center gap-2 surface-panel px-3">
+      {render_slot(@before)}
+      <div class="flex items-baseline gap-1.5">
+        <%!-- Name --%>
+        <h1
+          :if={@can_edit && @name_id}
+          id={@name_id}
+          class="text-sm font-medium outline-none rounded px-1 -mx-1 empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
+          contenteditable="true"
+          phx-hook="EditableTitle"
+          phx-update="ignore"
+          data-placeholder={@name_placeholder}
+          data-name={@name_data || @name}
+        >
+          {@name}
+        </h1>
+        <h1 :if={!(@can_edit && @name_id)} class="text-sm font-medium">{@name}</h1>
+
+        <%!-- Shortcut: static badge --%>
+        <span
+          :if={@shortcut && !(@can_edit && @shortcut_id)}
+          class="hidden xl:inline badge badge-ghost font-mono text-xs badge-xs"
+        >
+          #{@shortcut}
+        </span>
+
+        <%!-- Shortcut: editable badge (flow) --%>
+        <span
+          :if={@can_edit && @shortcut_id}
+          class="hidden xl:inline badge badge-ghost font-mono text-xs badge-xs gap-0 px-1.5"
+        >
+          <span class="select-none">#</span><span
+            id={@shortcut_id}
+            class="outline-none"
+            contenteditable="true"
+            phx-hook="EditableShortcut"
+            phx-update="ignore"
+            data-placeholder={@shortcut_placeholder}
+            data-shortcut={@shortcut || ""}
+          >{@shortcut}</span>
+        </span>
+      </div>
+      {render_slot(@extra)}
+    </div>
+    """
+  end
+
+  # ============================================================================
   # Tool Switcher Dropdown
   # ============================================================================
 

@@ -661,6 +661,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> push_undo(action)
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
+         |> assign(:element_panel_open, false)
          |> push_event("pin_deleted", %{id: pin.id})
          |> put_flash(:info, dgettext("scenes", "Pin deleted. Press Ctrl+Z to undo."))
          |> reload_scene()}
@@ -804,6 +805,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> push_undo({:delete_zone, zone})
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
+         |> assign(:element_panel_open, false)
          |> push_event("zone_deleted", %{id: zone.id})
          |> put_flash(:info, dgettext("scenes", "Zone deleted. Press Ctrl+Z to undo."))
          |> reload_scene()}
@@ -870,6 +872,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> push_undo({:delete_connection, connection})
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
+         |> assign(:element_panel_open, false)
          |> push_event("connection_deleted", %{id: connection.id})
          |> put_flash(:info, dgettext("scenes", "Connection deleted. Press Ctrl+Z to undo."))
          |> reload_scene()}
@@ -929,6 +932,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          )
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
+         |> assign(:element_panel_open, false)
          |> push_event("annotation_deleted", %{id: annotation.id})
          |> put_flash(:info, dgettext("scenes", "Annotation deleted. Press Ctrl+Z to undo."))}
 

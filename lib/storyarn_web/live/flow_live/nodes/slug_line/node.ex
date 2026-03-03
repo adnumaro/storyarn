@@ -57,7 +57,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.SlugLine.Node do
     location_name = get_location_name(socket, node.data["location_sheet_id"])
     int_ext = node.data["int_ext"] || "int"
     slug_line_count = count_slug_line_in_flow(flow, node.id)
-    technical_id = generate_slug_line_technical_id(flow.shortcut, int_ext, location_name, slug_line_count)
+
+    technical_id =
+      generate_slug_line_technical_id(flow.shortcut, int_ext, location_name, slug_line_count)
 
     NodeHelpers.update_node_field(socket, node.id, "technical_id", technical_id)
   end
