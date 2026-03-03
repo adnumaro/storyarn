@@ -74,7 +74,7 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
       {:ok, _view, html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
-      assert html =~ "Back to Workspace"
+      assert html =~ "All workspaces"
       # Check it links to the workspace
       assert html =~ ~r/workspaces\/#{project.workspace.slug}/
     end

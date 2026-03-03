@@ -5,7 +5,8 @@
  * Rete minimap, matching the scene editor's minimap toggle pattern.
  */
 
-import { createElement, LayoutGrid } from "lucide";
+import { createElement, LayoutGrid, Maximize2 } from "lucide";
+import { AreaExtensions } from "rete-area-plugin";
 
 /** CSS injected into the rete-minimap Shadow DOM to fix dark mode colors. */
 const MINIMAP_THEME_CSS = `
@@ -29,6 +30,7 @@ export function createMinimapToggle(hook) {
   let collapsed = false;
   let container = null;
   let themed = false;
+  let fitTransitionTimer = null;
 
   function init() {
     container = document.createElement("div");
@@ -39,6 +41,31 @@ export function createMinimapToggle(hook) {
       right: 24px;
       z-index: 10;
     `;
+
+    const fitBtn = document.createElement("button");
+    fitBtn.className = "map-minimap-toggle";
+    fitBtn.type = "button";
+    fitBtn.title = "Fit all nodes in view";
+    fitBtn.appendChild(createElement(Maximize2, { width: 14, height: 14 }));
+    fitBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const nodes = hook.editor.getNodes();
+      if (nodes.length === 0) return;
+
+      // Temporarily enable a smooth CSS transition on Rete's content holder
+      const holder = hook.area.area?.content?.holder;
+      if (holder) {
+        clearTimeout(fitTransitionTimer);
+        holder.style.transition = "transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+        fitTransitionTimer = setTimeout(() => {
+          holder.style.transition = "";
+          fitTransitionTimer = null;
+        }, 270);
+      }
+
+      AreaExtensions.zoomAt(hook.area, nodes);
+    });
+    container.appendChild(fitBtn);
 
     const btn = document.createElement("button");
     btn.className = "map-minimap-toggle";
@@ -83,26 +110,26 @@ export function createMinimapToggle(hook) {
     applyVisibility();
   }
 
-  /** Shows or hides the rete-minimap element and repositions the toggle button. */
+  /** Shows or hides the rete-minimap element. Button always stays at bottom. */
   function applyVisibility() {
     const reteMinimap = hook.el.querySelector("rete-minimap");
     if (reteMinimap) {
       injectTheme(reteMinimap);
       reteMinimap.style.display = collapsed ? "none" : "";
+      reteMinimap.style.bottom = "";
+      reteMinimap.style.top = "";
+
+      if (!collapsed) {
+        // The inner .minimap div in the Shadow DOM has bottom: 24px via its own CSS.
+        // Override it directly so the map sits above the toggle button.
+        const inner = reteMinimap.shadowRoot?.querySelector(".minimap");
+        if (inner) inner.style.bottom = "68px";
+      }
     }
 
-    if (collapsed || !reteMinimap) {
-      container.style.bottom = "24px";
-      container.style.right = "24px";
-    } else {
-      // Move button above the minimap after it renders
-      requestAnimationFrame(() => {
-        const inner = reteMinimap.shadowRoot?.querySelector(".minimap");
-        const h = inner?.offsetHeight || 240;
-        container.style.bottom = `${24 + h + 4}px`;
-        container.style.right = "24px";
-      });
-    }
+    // Button always stays at bottom
+    container.style.bottom = "24px";
+    container.style.right = "24px";
   }
 
   function destroy() {

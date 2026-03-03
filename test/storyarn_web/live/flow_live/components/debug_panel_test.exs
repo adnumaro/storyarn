@@ -251,7 +251,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanelTest do
   describe "debug_panel/1 tab switching" do
     test "console tab is active by default" do
       html = render_panel(debug_active_tab: "console")
-      assert html =~ "tab-active"
+      assert html =~ "debug-panel-tab active"
     end
 
     test "tab change events have correct phx-value-tab" do

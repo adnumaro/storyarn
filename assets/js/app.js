@@ -39,6 +39,7 @@ import { ColorPicker } from "./hooks/color_picker";
 import { ColumnSortable } from "./hooks/column_sortable";
 import { ConditionBuilder } from "./hooks/condition_builder";
 import { DebugPanelResize } from "./hooks/debug_panel_resize";
+import { DebugVarsResize } from "./hooks/debug_vars_resize";
 import { DetailsPreserveOpen } from "./hooks/details_preserve_open";
 import { DialogueScreenplayEditor } from "./hooks/dialogue_screenplay_editor";
 import { EditableBlockLabel } from "./hooks/editable_block_label";
@@ -106,6 +107,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ColorPicker,
     ConditionBuilder,
     DebugPanelResize,
+    DebugVarsResize,
     DetailsPreserveOpen,
     FountainImport,
     SceneCanvas,

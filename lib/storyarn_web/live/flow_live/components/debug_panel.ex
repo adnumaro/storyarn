@@ -52,7 +52,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
       <%!-- Drag handle --%>
       <div
         data-resize-handle
-        class="h-1 cursor-row-resize bg-transparent hover:bg-accent/30 transition-colors shrink-0"
+        class="h-1 cursor-row-resize bg-transparent hover:bg-primary/30 transition-colors shrink-0"
       >
       </div>
       <%!-- Breadcrumb bar (sub-flow indicator) --%>
@@ -68,106 +68,109 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
         <span class="font-medium">{@debug_current_flow_name || dgettext("flows", "Current")}</span>
       </div>
       <%!-- Controls bar --%>
-      <div class="flex items-center gap-2 px-3 py-1.5 border-b border-base-300 shrink-0">
-        <div class="flex items-center gap-0.5">
-          <button
-            :if={!@debug_auto_playing}
-            type="button"
-            class="btn btn-ghost btn-xs btn-square"
-            phx-click="debug_play"
-            title={dgettext("flows", "Auto-play")}
-            disabled={@debug_state.status == :finished}
-          >
-            <.icon name="fast-forward" class="size-3.5" />
-          </button>
-          <button
-            :if={@debug_auto_playing}
-            type="button"
-            class="btn btn-accent btn-xs btn-square"
-            phx-click="debug_pause"
-            title={dgettext("flows", "Pause")}
-          >
-            <.icon name="pause" class="size-3.5" />
-          </button>
-          <div class="divider divider-horizontal mx-0.5 h-4"></div>
-          <button
-            type="button"
-            class="btn btn-ghost btn-xs btn-square"
-            phx-click="debug_step"
-            title={dgettext("flows", "Step")}
-            disabled={@debug_state.status in [:finished] or @debug_auto_playing}
-          >
-            <.icon name="play" class="size-3.5" />
-          </button>
-          <button
-            type="button"
-            class="btn btn-ghost btn-xs btn-square"
-            phx-click="debug_step_back"
-            title={dgettext("flows", "Step Back")}
-            disabled={@debug_state.snapshots == [] or @debug_auto_playing}
-          >
-            <.icon name="undo-2" class="size-3.5" />
-          </button>
-          <button
-            type="button"
-            class="btn btn-ghost btn-xs btn-square"
-            phx-click="debug_reset"
-            title={dgettext("flows", "Reset")}
-            disabled={@debug_auto_playing}
-          >
-            <.icon name="rotate-ccw" class="size-3.5" />
-          </button>
-          <div class="divider divider-horizontal mx-0.5 h-4"></div>
-          <button
-            type="button"
-            class="btn btn-ghost btn-xs btn-square text-error"
-            phx-click="debug_stop"
-            title={dgettext("flows", "Stop")}
-          >
-            <.icon name="square" class="size-3.5" />
-          </button>
+      <div class="border-b border-base-300 shrink-0">
+        <%!-- Action row --%>
+        <div class="flex items-center gap-2 px-3 py-1.5">
+          <div class="flex items-center gap-0.5">
+            <button
+              :if={!@debug_auto_playing}
+              type="button"
+              class="btn btn-ghost btn-xs btn-square"
+              phx-click="debug_play"
+              title={dgettext("flows", "Auto-play")}
+              disabled={@debug_state.status == :finished}
+            >
+              <.icon name="fast-forward" class="size-3.5" />
+            </button>
+            <button
+              :if={@debug_auto_playing}
+              type="button"
+              class="btn btn-accent btn-xs btn-square"
+              phx-click="debug_pause"
+              title={dgettext("flows", "Pause")}
+            >
+              <.icon name="pause" class="size-3.5" />
+            </button>
+            <div class="divider divider-horizontal mx-0.5 h-4"></div>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs btn-square"
+              phx-click="debug_step"
+              title={dgettext("flows", "Step")}
+              disabled={@debug_state.status in [:finished] or @debug_auto_playing}
+            >
+              <.icon name="play" class="size-3.5" />
+            </button>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs btn-square"
+              phx-click="debug_step_back"
+              title={dgettext("flows", "Step Back")}
+              disabled={@debug_state.snapshots == [] or @debug_auto_playing}
+            >
+              <.icon name="undo-2" class="size-3.5" />
+            </button>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs btn-square"
+              phx-click="debug_reset"
+              title={dgettext("flows", "Reset")}
+              disabled={@debug_auto_playing}
+            >
+              <.icon name="rotate-ccw" class="size-3.5" />
+            </button>
+            <div class="divider divider-horizontal mx-0.5 h-4"></div>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs btn-square text-error"
+              phx-click="debug_stop"
+              title={dgettext("flows", "Stop")}
+            >
+              <.icon name="square" class="size-3.5" />
+            </button>
+          </div>
+
+          <%!-- Status --%>
+          <div class="flex-1 flex items-center gap-2">
+            <span class={["badge badge-xs", status_badge_class(@debug_state.status)]}>
+              {status_label(@debug_state.status)}
+            </span>
+            <span class="text-xs text-base-content/40 tabular-nums">
+              {dgettext("flows", "Step %{count}", count: @debug_state.step_count)}
+            </span>
+            <.start_node_select
+              start_node_id={@debug_state.start_node_id}
+              debug_nodes={@debug_nodes}
+              disabled={@debug_auto_playing}
+            />
+          </div>
+
+          <%!-- Speed slider --%>
+          <div class="flex items-center gap-1.5">
+            <.icon name="gauge" class="size-3 text-base-content/30" />
+            <input
+              type="range"
+              min="200"
+              max="3000"
+              step="100"
+              value={@debug_speed}
+              phx-change="debug_set_speed"
+              name="speed"
+              class="range range-xs w-16"
+              title={dgettext("flows", "%{ms}ms per step", ms: @debug_speed)}
+            />
+            <span class="text-xs text-base-content/30 tabular-nums w-10">
+              {format_speed(@debug_speed)}
+            </span>
+          </div>
         </div>
 
-        <%!-- Status --%>
-        <div class="flex-1 flex items-center gap-2">
-          <span class={["badge badge-xs", status_badge_class(@debug_state.status)]}>
-            {status_label(@debug_state.status)}
-          </span>
-          <span class="text-xs text-base-content/40 tabular-nums">
-            {dgettext("flows", "Step %{count}", count: @debug_state.step_count)}
-          </span>
-          <.start_node_select
-            start_node_id={@debug_state.start_node_id}
-            debug_nodes={@debug_nodes}
-            disabled={@debug_auto_playing}
-          />
-        </div>
-
-        <%!-- Speed slider --%>
-        <div class="flex items-center gap-1.5">
-          <.icon name="gauge" class="size-3 text-base-content/30" />
-          <input
-            type="range"
-            min="200"
-            max="3000"
-            step="100"
-            value={@debug_speed}
-            phx-change="debug_set_speed"
-            name="speed"
-            class="range range-xs w-16"
-            title={dgettext("flows", "%{ms}ms per step", ms: @debug_speed)}
-          />
-          <span class="text-xs text-base-content/30 tabular-nums w-10">
-            {format_speed(@debug_speed)}
-          </span>
-        </div>
-
-        <%!-- Tabs --%>
-        <div role="tablist" class="tabs tabs-boxed tabs-xs bg-base-200">
+        <%!-- Tabs row --%>
+        <div role="tablist" class="debug-panel-tabs border-b border-base-300">
           <button
             type="button"
             role="tab"
-            class={"tab #{if @debug_active_tab == "console", do: "tab-active"}"}
+            class={"debug-panel-tab #{if @debug_active_tab == "console", do: "active"}"}
             phx-click="debug_tab_change"
             phx-value-tab="console"
           >
@@ -176,7 +179,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           <button
             type="button"
             role="tab"
-            class={"tab #{if @debug_active_tab == "variables", do: "tab-active"}"}
+            class={"debug-panel-tab #{if @debug_active_tab == "variables", do: "active"}"}
             phx-click="debug_tab_change"
             phx-value-tab="variables"
           >
@@ -185,7 +188,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           <button
             type="button"
             role="tab"
-            class={"tab #{if @debug_active_tab == "history", do: "tab-active"}"}
+            class={"debug-panel-tab #{if @debug_active_tab == "history", do: "active"}"}
             phx-click="debug_tab_change"
             phx-value-tab="history"
           >
@@ -194,7 +197,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
           <button
             type="button"
             role="tab"
-            class={"tab #{if @debug_active_tab == "path", do: "tab-active"}"}
+            class={"debug-panel-tab #{if @debug_active_tab == "path", do: "active"}"}
             phx-click="debug_tab_change"
             phx-value-tab="path"
           >

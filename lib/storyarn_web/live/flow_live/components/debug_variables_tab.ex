@@ -77,31 +77,62 @@ defmodule StoryarnWeb.FlowLive.Components.DebugVariablesTab do
         </span>
       </div>
 
-      <table class="table table-xs table-pin-rows">
+      <table
+        id="debug-vars-table"
+        phx-hook="DebugVarsResize"
+        class="table table-xs table-pin-rows w-full table-fixed"
+      >
+        <colgroup>
+          <col data-col-id="variable" />
+          <col data-col-id="type" />
+          <col data-col-id="initial" />
+          <col data-col-id="previous" />
+          <col data-col-id="current" />
+        </colgroup>
         <thead>
           <tr class="text-base-content/50">
-            <th class="font-medium">{dgettext("flows", "Variable")}</th>
-            <th class="font-medium w-16">{dgettext("flows", "Type")}</th>
-            <th class="font-medium w-20 text-right">{dgettext("flows", "Initial")}</th>
-            <th class="font-medium w-20 text-right">{dgettext("flows", "Previous")}</th>
-            <th class="font-medium w-24 text-right">{dgettext("flows", "Current")}</th>
+            <th class="font-medium relative pr-3 overflow-hidden border-b border-base-content/20">
+              {dgettext("flows", "Variable")}
+              <div class="absolute right-0 top-0 w-3 h-full cursor-col-resize group/rh" data-col-resize="variable">
+                <div class="absolute inset-y-0 right-0 w-px bg-base-content/20 group-hover/rh:w-[3px] group-hover/rh:bg-primary/30 transition-all"></div>
+              </div>
+            </th>
+            <th class="font-medium relative pr-3 overflow-hidden border-b border-base-content/20">
+              {dgettext("flows", "Type")}
+              <div class="absolute right-0 top-0 w-3 h-full cursor-col-resize group/rh" data-col-resize="type">
+                <div class="absolute inset-y-0 right-0 w-px bg-base-content/20 group-hover/rh:w-[3px] group-hover/rh:bg-primary/30 transition-all"></div>
+              </div>
+            </th>
+            <th class="font-medium text-left relative pr-3 overflow-hidden border-b border-base-content/20">
+              {dgettext("flows", "Initial")}
+              <div class="absolute right-0 top-0 w-3 h-full cursor-col-resize group/rh" data-col-resize="initial">
+                <div class="absolute inset-y-0 right-0 w-px bg-base-content/20 group-hover/rh:w-[3px] group-hover/rh:bg-primary/30 transition-all"></div>
+              </div>
+            </th>
+            <th class="font-medium text-left relative pr-3 overflow-hidden border-b border-base-content/20">
+              {dgettext("flows", "Previous")}
+              <div class="absolute right-0 top-0 w-3 h-full cursor-col-resize group/rh" data-col-resize="previous">
+                <div class="absolute inset-y-0 right-0 w-px bg-base-content/20 group-hover/rh:w-[3px] group-hover/rh:bg-primary/30 transition-all"></div>
+              </div>
+            </th>
+            <th class="font-medium text-left border-b border-base-content/20">{dgettext("flows", "Current")}</th>
           </tr>
         </thead>
         <tbody class="font-mono">
           <tr :for={{key, var} <- @sorted_vars} class="hover:bg-base-200">
-            <td class="truncate max-w-48" title={key}>
+            <td class="truncate overflow-hidden" title={key}>
               <span class="text-base-content/40">{var.sheet_shortcut}.</span>{var.variable_name}
             </td>
-            <td>
-              <span class="badge badge-xs badge-ghost font-sans">{var.block_type}</span>
+            <td class="overflow-hidden">
+              <span class="badge badge-xs badge-ghost font-sans truncate">{var.block_type}</span>
             </td>
-            <td class="text-right text-base-content/50 tabular-nums">
+            <td class="text-left text-base-content/50 tabular-nums truncate overflow-hidden">
               {format_value(var.initial_value)}
             </td>
-            <td class="text-right text-base-content/50 tabular-nums">
+            <td class="text-left text-base-content/50 tabular-nums truncate overflow-hidden">
               {format_value(var.previous_value)}
             </td>
-            <td class={["text-right tabular-nums", var_current_class(var)]}>
+            <td class={["text-left tabular-nums", var_current_class(var)]}>
               <%= if @editing_var == key do %>
                 <.var_edit_input key={key} var={var} />
               <% else %>
@@ -151,7 +182,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugVariablesTab do
     ~H"""
     <select
       name="value"
-      class="select select-xs select-bordered w-full text-right text-info"
+      class="select select-xs select-bordered w-full text-left text-info"
       phx-change="debug_set_variable"
       phx-value-key={@key}
       autofocus
@@ -172,7 +203,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugVariablesTab do
         name="value"
         value={@var.value}
         step="any"
-        class="input input-xs input-bordered w-full text-right text-info tabular-nums"
+        class="input input-xs input-bordered w-full text-left text-info tabular-nums"
         autofocus
         phx-blur="debug_set_variable"
         phx-value-key={@key}
@@ -190,7 +221,7 @@ defmodule StoryarnWeb.FlowLive.Components.DebugVariablesTab do
         type="text"
         name="value"
         value={@var.value}
-        class="input input-xs input-bordered w-full text-right text-info"
+        class="input input-xs input-bordered w-full text-left text-info"
         autofocus
         phx-blur="debug_set_variable"
         phx-value-key={@key}

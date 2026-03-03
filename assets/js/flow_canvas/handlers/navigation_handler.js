@@ -11,11 +11,7 @@ const HIGHLIGHT_DURATION = 2500;
 
 /** Returns the display color for a node: custom color_hex → type config color → grey fallback. */
 function nodeColor(node) {
-  return (
-    node.nodeData?.color_hex ||
-    NODE_CONFIGS[node.nodeType]?.color ||
-    "#6b7280"
-  );
+  return node.nodeData?.color_hex || NODE_CONFIGS[node.nodeType]?.color || "#6b7280";
 }
 
 /**

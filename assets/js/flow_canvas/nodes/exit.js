@@ -6,7 +6,7 @@
  */
 import { html } from "lit";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
-import { ArrowRight, CornerDownLeft, ArrowRightToLine } from "lucide";
+import { ArrowRight, ArrowRightToLine, CornerDownLeft } from "lucide";
 import { createIconHTML, createIconSvg } from "../node_config.js";
 import {
   defaultHeader,

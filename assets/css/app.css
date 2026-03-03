@@ -102,6 +102,42 @@
 /* Story player styles */
 @import "./player.css";
 
+/* Debug panel tabs — browser-style lifted tabs */
+.debug-panel-tabs {
+  display: flex;
+  align-items: flex-end;
+  padding: 4px 8px 0;
+  background: var(--color-base-100);
+}
+
+.debug-panel-tab {
+  padding: 5px 14px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  border-radius: 0.625rem 0.625rem 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: color-mix(in oklch, var(--color-base-content) 40%, transparent);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: color 150ms;
+
+  &:hover {
+    color: color-mix(in oklch, var(--color-base-content) 70%, transparent);
+  }
+
+  &.active {
+    background: var(--color-base-200);
+    border-color: var(--color-base-300);
+    color: var(--color-base-content);
+    font-weight: 500;
+    margin-bottom: -1px;
+    position: relative;
+    z-index: 1;
+  }
+}
+
 /* Tooltip positioned below with left-aligned bubble (arrow at button center,
    bubble extends right). Use when button is near the left viewport edge. */
 /* Delayed tooltip — shows after 600ms hover instead of immediately */
@@ -765,8 +801,8 @@ body.dnd-active [data-toolbar] {
 /* Map Canvas - Mini-map */
 .map-minimap {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-direction: row;
+  align-items: center;
   gap: 4px;
 }
 

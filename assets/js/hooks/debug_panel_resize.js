@@ -58,6 +58,14 @@ export const DebugPanelResize = {
     document.addEventListener("mouseup", this._onMouseUp);
   },
 
+  updated() {
+    // LiveView re-renders reset the inline style — restore the saved height
+    const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+    if (saved >= MIN_HEIGHT && saved <= MAX_HEIGHT) {
+      this.panel.style.height = `${saved}px`;
+    }
+  },
+
   destroyed() {
     if (this.handle) {
       this.handle.removeEventListener("mousedown", this._onMouseDown);

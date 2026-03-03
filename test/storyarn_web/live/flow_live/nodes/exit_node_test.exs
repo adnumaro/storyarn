@@ -17,8 +17,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.NodeTest do
   end
 
   describe "icon_name/0" do
-    test "returns square" do
-      assert ExitNode.icon_name() == "square"
+    test "returns arrow-right-to-line" do
+      assert ExitNode.icon_name() == "arrow-right-to-line"
     end
   end
 
