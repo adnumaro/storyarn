@@ -149,7 +149,7 @@ Sheets.list_project_variables(project_id)
 
 ## Flow Editor
 
-**Node types:** `entry`, `exit`, `dialogue`, `condition`, `instruction`, `hub`, `jump`, `scene`, `subflow`
+**Node types:** `entry`, `exit`, `dialogue`, `condition`, `instruction`, `hub`, `jump`, `slug_line`, `subflow`
 
 **Dialogue node data:**
 ```elixir
@@ -182,45 +182,46 @@ lib/storyarn_web/live/flow_live/
 ├── node_type_registry.ex                # Module lookup map → per-type modules
 ├── nodes/
 │   ├── dialogue/
-│   │   ├── node.ex                      # Metadata + handlers (responses, tech_id, screenplay)
-│   │   └── config_sidebar.ex            # Sidebar panel HTML
+│   │   └── node.ex                      # Metadata + handlers (responses, tech_id, screenplay)
 │   ├── condition/
-│   │   ├── node.ex                      # Metadata + handlers (condition builder, switch mode)
-│   │   └── config_sidebar.ex
+│   │   └── node.ex                      # Metadata + handlers (condition builder, switch mode)
 │   ├── instruction/
-│   │   ├── node.ex                      # Metadata + handlers (instruction builder)
-│   │   └── config_sidebar.ex
+│   │   └── node.ex                      # Metadata + handlers (instruction builder)
 │   ├── hub/
-│   │   ├── node.ex                      # Metadata + on_select (load referencing_jumps)
-│   │   └── config_sidebar.ex
+│   │   └── node.ex                      # Metadata + on_select (load referencing_jumps)
 │   ├── jump/
-│   │   ├── node.ex                      # Metadata only
-│   │   └── config_sidebar.ex
-│   ├── scene/
-│   │   ├── node.ex                      # Metadata + handlers (location, slug line)
-│   │   └── config_sidebar.ex
+│   │   └── node.ex                      # Metadata only
+│   ├── slug_line/
+│   │   └── node.ex                      # Metadata + handlers (location, slug line)
 │   ├── subflow/
-│   │   ├── node.ex                      # Metadata + handlers (flow reference, exits)
-│   │   └── config_sidebar.ex
+│   │   └── node.ex                      # Metadata + handlers (flow reference, exits)
 │   ├── entry/
-│   │   ├── node.ex                      # Metadata + on_select (load referencing_flows)
-│   │   └── config_sidebar.ex
+│   │   └── node.ex                      # Metadata + on_select (load referencing_flows)
 │   └── exit/
-│       ├── node.ex                      # Metadata + handlers (generate_technical_id)
-│       └── config_sidebar.ex
+│       └── node.ex                      # Metadata + handlers (generate_technical_id)
 ├── components/
-│   ├── properties_panels.ex             # Shared frame, delegates to per-type sidebar
+│   ├── flow_toolbar.ex                  # Floating node toolbar (per-type render_toolbar clauses)
+│   ├── flow_header.ex                   # Flow header (scene backdrop, title)
 │   ├── node_type_helpers.ex             # Shared icon component + word_count
-│   └── screenplay_editor.ex             # Dialogue full-screen editor
+│   ├── screenplay_editor.ex             # Dialogue full-screen editor
+│   ├── builder_panel.ex                 # Condition/instruction builder panel
+│   └── debug_panel.ex                   # Debug console + history + variables tabs
 ├── handlers/
 │   ├── generic_node_handlers.ex         # Generic ops (select, move, delete, duplicate, etc.)
 │   ├── editor_info_handlers.ex          # UI state updates
-│   └── collaboration_event_handlers.ex  # Presence, locking
+│   ├── collaboration_event_handlers.ex  # Presence, locking
+│   ├── navigation_handlers.ex           # Flow navigation
+│   ├── debug_handlers.ex                # Debug mode handlers
+│   ├── debug_execution_handlers.ex      # Debug step/run handlers
+│   └── debug_session_handlers.ex        # Debug session lifecycle
 └── helpers/
     ├── node_helpers.ex                  # persist_node_update + shared utils
     ├── form_helpers.ex                  # Form building
     ├── connection_helpers.ex            # Connection validation
     ├── socket_helpers.ex                # Socket utilities
+    ├── html_sanitizer.ex                # XSS-safe HTML sanitizer
+    ├── navigation_history.ex            # Flow navigation history
+    ├── variable_helpers.ex              # Variable resolution helpers
     └── collaboration_helpers.ex         # Presence helpers
 
 assets/js/
@@ -229,19 +230,20 @@ assets/js/
 │   ├── scene_canvas.js                  # Scene editor hook
 │   ├── screenplay_editor.js             # Screenplay editor hook
 │   ├── instruction_builder.js           # Instruction builder hook
-│   ├── tiptap_editor.js                # Rich text editor hook
-│   ├── story_player.js                 # Story player hook
-│   ├── undo_redo.js                    # Undo/redo hook (sheets)
-│   └── ...                              # 41 hooks total (all flat, no subdirs)
+│   ├── tiptap_editor.js                 # Rich text editor hook
+│   ├── story_player.js                  # Story player hook
+│   ├── undo_redo.js                     # Undo/redo hook (sheets)
+│   └── ...                              # All flat, no subdirs
 ├── flow_canvas/                         # Flow editor utilities (non-hooks)
 │   ├── nodes/
 │   │   ├── index.js                     # Registry: type → module lookup
+│   │   ├── render_helpers.js            # Shared rendering utilities
 │   │   ├── dialogue.js                  # Config, pins, rendering, formatting, rebuild check
 │   │   ├── condition.js                 # Config, dynamic outputs, formatting
 │   │   ├── instruction.js               # Config, preview formatting
 │   │   ├── hub.js                       # Config, nav links, color
 │   │   ├── jump.js                      # Config, nav links, indicators
-│   │   ├── scene.js                     # Config, slug line formatting, location
+│   │   ├── slug_line.js                 # Config, slug line formatting, location
 │   │   ├── subflow.js                   # Config, flow reference, dynamic exits
 │   │   ├── entry.js                     # Config, referencing flows, nav links
 │   │   └── exit.js                      # Config, color logic
@@ -262,7 +264,7 @@ assets/js/
     └── mention_extension.js
 ```
 
-**Per-type architecture principle:** Each `nodes/{type}/` directory tells you everything that node type does — read 2 files to understand the full behavior.
+**Per-type architecture principle:** Each `nodes/{type}/` directory contains a single `node.ex` with all metadata and handlers for that node type.
 
 ## Icon Convention
 
