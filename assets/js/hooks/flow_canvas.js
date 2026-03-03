@@ -9,7 +9,6 @@ import { ClassicPreset } from "rete";
 
 import "../flow_canvas/components/index.js";
 import { exitInlineEdit, setupEventHandlers } from "../flow_canvas/event_bindings.js";
-import { createFlowFloatingToolbar } from "../flow_canvas/rete_toolbar.js";
 import { FlowNode } from "../flow_canvas/flow_node.js";
 import {
   createCursorHandler,
@@ -22,7 +21,9 @@ import {
 import { buildBatchPositions } from "../flow_canvas/history_preset.js";
 import { createLodController } from "../flow_canvas/lod_controller.js";
 import { createMinimapToggle } from "../flow_canvas/minimap_toggle.js";
+import { createFlowFloatingToolbar } from "../flow_canvas/rete_toolbar.js";
 import { createPlugins, finalizeSetup } from "../flow_canvas/setup.js";
+import { waitForCss } from "../utils/shadow_styles.js";
 
 export const FlowCanvas = {
   mounted() {
@@ -224,6 +225,12 @@ export const FlowCanvas = {
   async flushDeferredSockets() {
     const deferred = this._deferredSockets;
     this._deferredSockets = [];
+
+    // Wait for Tailwind CSS to be applied to all shadow roots before
+    // calculating socket positions. Without this, socket positions are
+    // measured before Tailwind styles change the layout, leaving
+    // connections at stale coordinates after CSS adoption completes.
+    await waitForCss();
 
     for (const ctx of deferred) {
       await this.area.emit(ctx);
