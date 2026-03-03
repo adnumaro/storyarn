@@ -785,18 +785,18 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       assert branch_conn
       assert branch_conn.target_pin == "input"
 
-      # Branch connects dialogue to child's first node (scene)
+      # Branch connects dialogue to child's first node (slug_line)
       synced = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
-      scene_node = Enum.find(synced, &(&1.type == "scene"))
+      slug_line_node = Enum.find(synced, &(&1.type == "slug_line"))
 
       dialogue_node =
         Enum.find(synced, fn n -> n.type == "dialogue" and n.data["text"] == "Pick one." end)
 
       assert branch_conn.source_node_id == dialogue_node.id
-      assert branch_conn.target_node_id == scene_node.id
+      assert branch_conn.target_node_id == slug_line_node.id
     end
 
-    test "child page scene_heading maps to scene node (not entry)", %{project: project} do
+    test "child page scene_heading maps to slug_line node (not entry)", %{project: project} do
       parent = screenplay_fixture(project)
       element_fixture(parent, %{type: "scene_heading", content: "INT. OFFICE - DAY", position: 0})
       element_fixture(parent, %{type: "character", content: "NPC", position: 1})
@@ -818,7 +818,7 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       {:ok, flow} = FlowSync.sync_to_flow(parent)
       synced = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
 
-      scene = Enum.find(synced, &(&1.type == "scene"))
+      scene = Enum.find(synced, &(&1.type == "slug_line"))
       assert scene
       assert scene.data["description"] == "CAVE"
     end
@@ -1009,7 +1009,7 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
       synced_after = Flows.list_nodes(flow.id) |> Enum.filter(&(&1.source == "screenplay_sync"))
       assert length(synced_after) < count_before
-      refute Enum.any?(synced_after, &(&1.type == "scene"))
+      refute Enum.any?(synced_after, &(&1.type == "slug_line"))
     end
 
     test "re-sync multi-page updates existing branch nodes without duplication", %{
@@ -1072,9 +1072,9 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
           }
         })
 
-      {:ok, scene_node} =
+      {:ok, slug_line_node} =
         Flows.create_node(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{"int_ext" => "int", "description" => "LEFT PATH", "time_of_day" => ""}
         })
 
@@ -1085,7 +1085,7 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
         target_pin: "input"
       })
 
-      Flows.create_connection(flow, dialogue_node, scene_node, %{
+      Flows.create_connection(flow, dialogue_node, slug_line_node, %{
         source_pin: "c1",
         target_pin: "input"
       })
@@ -1171,9 +1171,9 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
           }
         })
 
-      {:ok, scene_node} =
+      {:ok, slug_line_node} =
         Flows.create_node(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{"int_ext" => "int", "description" => "CAVE", "time_of_day" => ""}
         })
 
@@ -1184,7 +1184,7 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
         target_pin: "input"
       })
 
-      Flows.create_connection(flow, dialogue_node, scene_node, %{
+      Flows.create_connection(flow, dialogue_node, slug_line_node, %{
         source_pin: "c1",
         target_pin: "input"
       })
@@ -1231,7 +1231,7 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
 
       {:ok, scene} =
         Flows.create_node(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{"int_ext" => "int", "description" => "DEEP CAVE", "time_of_day" => ""}
         })
 

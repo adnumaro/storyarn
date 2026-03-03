@@ -48,7 +48,7 @@ defmodule Storyarn.Screenplays.PageTreeBuilderTest do
 
       tree = PageTreeBuilder.build(page_data, child_page: true)
 
-      assert Enum.at(tree.node_attrs_list, 0).type == "scene"
+      assert Enum.at(tree.node_attrs_list, 0).type == "slug_line"
       assert Enum.at(tree.node_attrs_list, 1).type == "dialogue"
     end
 
@@ -86,7 +86,7 @@ defmodule Storyarn.Screenplays.PageTreeBuilderTest do
       assert branch.choice_id == "c1"
       assert branch.source_node_index == 1
       assert branch.child.screenplay_id == 2
-      assert hd(branch.child.node_attrs_list).type == "scene"
+      assert hd(branch.child.node_attrs_list).type == "slug_line"
     end
 
     test "empty child page produces no branch" do

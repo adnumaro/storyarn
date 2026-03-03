@@ -743,7 +743,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       html = render_hook(view, "select_element", %{"type" => "pin", "id" => pin.id})
 
-      assert html =~ "floating-toolbar"
+      assert html =~ ~s(class="floating-toolbar")
       assert html =~ "Castle"
       assert html =~ "update_pin"
     end
@@ -761,7 +761,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       html = render_hook(view, "select_element", %{"type" => "zone", "id" => zone.id})
 
-      assert html =~ "floating-toolbar"
+      assert html =~ ~s(class="floating-toolbar")
       assert html =~ "Dark Forest"
       assert html =~ "update_zone"
     end
@@ -780,7 +780,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       render_hook(view, "select_element", %{"type" => "pin", "id" => pin.id})
       html = render_hook(view, "deselect", %{})
 
-      refute html =~ "floating-toolbar"
+      refute html =~ ~s(class="floating-toolbar")
     end
   end
 
@@ -1221,7 +1221,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           "id" => connection.id
         })
 
-      assert html =~ "floating-toolbar"
+      assert html =~ ~s(class="floating-toolbar")
       assert html =~ "update_connection"
     end
 
@@ -2662,7 +2662,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         })
 
       # Floating toolbar should show for the selected pin
-      assert html =~ "floating-toolbar"
+      assert html =~ ~s(class="floating-toolbar")
       assert html =~ "update_pin"
     end
 

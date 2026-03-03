@@ -68,9 +68,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.NodeTest do
   # =============================================================================
 
   describe "on_double_click/1" do
-    test "navigates to referenced flow" do
+    test "returns :toolbar to open the toolbar (navigation via toolbar button)" do
       node = %{data: %{"referenced_flow_id" => 42}}
-      assert SubflowNode.on_double_click(node) == {:navigate, 42}
+      assert SubflowNode.on_double_click(node) == :toolbar
     end
 
     test "returns :toolbar when no reference" do

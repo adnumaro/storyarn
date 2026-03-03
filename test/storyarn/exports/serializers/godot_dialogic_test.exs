@@ -517,18 +517,18 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       assert source =~ "jump side_quest_rescue/"
     end
 
-    test "scene node renders location comment", %{project: project} do
-      flow = flow_fixture(project, %{name: "Scene Flow"})
+    test "slug_line node renders location comment", %{project: project} do
+      flow = flow_fixture(project, %{name: "Slug Line Flow"})
       flow = reload_flow(flow)
       entry = Enum.find(flow.nodes, &(&1.type == "entry"))
 
-      scene =
+      slug_line =
         node_fixture(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{"location" => "Tavern Interior"}
         })
 
-      connection_fixture(flow, entry, scene)
+      connection_fixture(flow, entry, slug_line)
 
       source = dtl_source(export_dialogic(project))
       assert source =~ "# location: Tavern Interior"
@@ -796,14 +796,14 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       assert has_line?(source, "[end_timeline]")
     end
 
-    test "entry -> scene -> dialogue chain", %{project: project} do
-      flow = flow_fixture(project, %{name: "Scene Chain"})
+    test "entry -> slug_line -> dialogue chain", %{project: project} do
+      flow = flow_fixture(project, %{name: "Slug Line Chain"})
       flow = reload_flow(flow)
       entry = Enum.find(flow.nodes, &(&1.type == "entry"))
 
-      scene =
+      slug_line =
         node_fixture(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{"location" => "Dark Forest"}
         })
 
@@ -813,8 +813,8 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
           data: %{"text" => "The forest is dark.", "speaker_sheet_id" => nil, "responses" => []}
         })
 
-      connection_fixture(flow, entry, scene)
-      connection_fixture(flow, scene, dialogue)
+      connection_fixture(flow, entry, slug_line)
+      connection_fixture(flow, slug_line, dialogue)
 
       source = dtl_source(export_dialogic(project))
       assert source =~ "# location: Dark Forest"
@@ -1124,18 +1124,18 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
   describe "additional coverage" do
     setup [:create_project]
 
-    test "scene with slug_line fallback renders location comment", %{project: project} do
-      flow = flow_fixture(project, %{name: "Slug Scene Flow"})
+    test "slug_line node with slug_line field fallback renders location comment", %{project: project} do
+      flow = flow_fixture(project, %{name: "Slug Line Field Flow"})
       flow = reload_flow(flow)
       entry = Enum.find(flow.nodes, &(&1.type == "entry"))
 
-      scene =
+      slug_line =
         node_fixture(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{"slug_line" => "INT. TAVERN"}
         })
 
-      connection_fixture(flow, entry, scene)
+      connection_fixture(flow, entry, slug_line)
 
       source = dtl_source(export_dialogic(project))
       assert has_line?(source, "# location: INT. TAVERN")

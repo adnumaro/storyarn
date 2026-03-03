@@ -529,15 +529,15 @@ defmodule Storyarn.Exports.Serializers.ArticyXMLTest do
   # Scene and subflow node types
   # =============================================================================
 
-  describe "scene and subflow node types" do
+  describe "slug_line and subflow node types" do
     setup [:create_project]
 
-    test "scene node becomes LocationSettings element", %{project: project} do
-      flow = flow_fixture(project, %{name: "Scene Flow"})
+    test "slug_line node becomes LocationSettings element", %{project: project} do
+      flow = flow_fixture(project, %{name: "Slug Line Flow"})
 
-      _scene_node =
+      _slug_line_node =
         node_fixture(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{"location" => "Ancient Temple", "slug_line" => "INT. TEMPLE - DAY"}
         })
 

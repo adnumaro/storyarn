@@ -182,7 +182,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
     end
   end
 
-  defp render_instruction({:scene, node}, _speaker_map, depth) do
+  defp render_instruction({:slug_line, node}, _speaker_map, depth) do
     data = node.data || %{}
     location = data["location"] || data["slug_line"] || ""
     ["#{indent(depth)}# location: #{location}"]

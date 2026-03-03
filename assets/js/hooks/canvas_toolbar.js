@@ -13,7 +13,7 @@ export const CanvasToolbar = {
 
     const canvas = document.getElementById(canvasId);
     if (canvas?.__floatingToolbar) {
-      canvas.__floatingToolbar.reposition();
+      canvas.__floatingToolbar.revealIfPrepared();
     }
   },
 };

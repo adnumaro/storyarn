@@ -19,6 +19,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   attr :all_sheets, :list, default: []
   attr :flow_hubs, :list, default: []
   attr :available_flows, :list, default: []
+  attr :node_select_loading, :boolean, default: false
   attr :flow_search_has_more, :boolean, default: false
   attr :flow_search_deep, :boolean, default: false
   attr :subflow_exits, :list, default: []
@@ -43,6 +44,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
 
     ~H"""
     <.node_type_icon type="entry" />
+    <span class="toolbar-separator"></span>
     <span class="text-xs font-medium opacity-70">{dgettext("flows", "Entry point")}</span>
     <span :if={@ref_count > 0} class="badge badge-xs badge-ghost">
       {dngettext("flows", "%{count} ref", "%{count} refs", @ref_count, count: @ref_count)}
@@ -58,6 +60,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
 
     ~H"""
     <.node_type_icon type="dialogue" />
+    <span class="toolbar-separator"></span>
     <.form
       :if={@can_edit}
       for={@form}
@@ -77,7 +80,6 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       {@form[:technical_id].value}
     </span>
     <.icon :if={@has_audio} name="volume-2" class="size-3.5 text-info" />
-    <span class="toolbar-separator"></span>
     <button
       type="button"
       phx-click="open_screenplay"
@@ -112,6 +114,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
 
     ~H"""
     <.node_type_icon type="condition" />
+    <span class="toolbar-separator"></span>
     <button
       :if={@can_edit}
       type="button"
@@ -124,7 +127,6 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
     <span :if={@rule_count > 0} class="badge badge-xs badge-ghost">
       {dngettext("flows", "%{count} rule", "%{count} rules", @rule_count, count: @rule_count)}
     </span>
-    <span class="toolbar-separator"></span>
     <button
       type="button"
       phx-click="open_builder"
@@ -146,12 +148,12 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
 
     ~H"""
     <.node_type_icon type="instruction" />
+    <span class="toolbar-separator"></span>
     <span :if={@assignment_count > 0} class="badge badge-xs badge-ghost">
       {dngettext("flows", "%{count} assignment", "%{count} assignments", @assignment_count,
         count: @assignment_count
       )}
     </span>
-    <span class="toolbar-separator"></span>
     <button
       type="button"
       phx-click="open_builder"
@@ -172,6 +174,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
 
     ~H"""
     <.node_type_icon type="hub" />
+    <span class="toolbar-separator"></span>
     <.form
       :if={@can_edit}
       for={@form}
@@ -224,6 +227,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
 
     ~H"""
     <.node_type_icon type="jump" />
+    <span class="toolbar-separator"></span>
     <.toolbar_searchable_select
       :if={@can_edit}
       id={"jump-hub-#{@node.id}"}
@@ -409,8 +413,10 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
 
     ~H"""
     <.node_type_icon type="subflow" />
+    <span class="toolbar-separator"></span>
+    <span :if={@node_select_loading} class="loading loading-spinner loading-xs opacity-50" />
     <.toolbar_searchable_select
-      :if={@can_edit}
+      :if={@can_edit && !@node_select_loading}
       id={"subflow-flow-#{@node.id}"}
       options={Enum.map(@available_flows, &{&1.name, &1.id})}
       selected_value={@ref_id}
@@ -443,9 +449,9 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
     """
   end
 
-  # ── Scene ──────────────────────────────────────────────────────────────
+  # ── Slug Line ──────────────────────────────────────────────────────────
 
-  defp render_toolbar("scene", assigns) do
+  defp render_toolbar("slug_line", assigns) do
     location_id = assigns.form[:location_sheet_id].value
     int_ext = assigns.node.data["int_ext"] || ""
     time = assigns.node.data["time_of_day"] || ""
@@ -463,10 +469,26 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       |> assign(:time, time)
 
     ~H"""
-    <.node_type_icon type="scene" />
+    <.node_type_icon type="slug_line" />
+    <span class="toolbar-separator"></span>
     <.toolbar_searchable_select
       :if={@can_edit}
-      id={"scene-location-#{@node.id}"}
+      id={"slug-line-setting-#{@node.id}"}
+      options={[{"INT/EXT", "int_ext"}, {"INT", "int"}, {"EXT", "ext"}]}
+      selected_value={@int_ext}
+      selected_label={case @int_ext do
+        "int" -> "INT"
+        "ext" -> "EXT"
+        "int_ext" -> "INT/EXT"
+        _ -> nil
+      end}
+      placeholder={dgettext("flows", "Setting…")}
+      event="update_node_data"
+      event_params_fn={fn value -> %{node: %{int_ext: value}} end}
+    />
+    <.toolbar_searchable_select
+      :if={@can_edit}
+      id={"slug-line-location-#{@node.id}"}
       options={Enum.map(@all_sheets, &{&1.name, &1.id})}
       selected_value={@location_id}
       selected_label={@selected_location}
@@ -477,19 +499,9 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
     <span :if={!@can_edit && @selected_location} class="text-xs truncate max-w-[100px]">
       {@selected_location}
     </span>
-    <div :if={@can_edit} class="flex items-center gap-0.5">
-      <button
-        :for={mode <- ~w(int ext int_ext)}
-        type="button"
-        phx-click={JS.push("update_node_data", value: %{node: %{int_ext: mode}})}
-        class={"toolbar-btn text-xs #{if @int_ext == mode, do: "toolbar-btn-active"}"}
-      >
-        {String.upcase(mode)}
-      </button>
-    </div>
     <.toolbar_searchable_select
       :if={@can_edit}
-      id={"scene-time-#{@node.id}"}
+      id={"slug-line-time-#{@node.id}"}
       options={Enum.map(~w(day night morning evening continuous), &{String.capitalize(&1), &1})}
       selected_value={@time}
       selected_label={if @time != "", do: String.capitalize(@time)}
@@ -658,7 +670,6 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       |> assign(:selected_value, selected_value)
 
     ~H"""
-    <span class="toolbar-separator"></span>
     <.toolbar_searchable_select
       id={"exit-target-#{@node.id}"}
       options={@target_options}

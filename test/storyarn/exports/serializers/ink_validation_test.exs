@@ -292,23 +292,23 @@ defmodule Storyarn.Exports.Serializers.InkValidationTest do
              "inklecate rejected jump/hub:\n#{inspect(InkCompiler.validate(source))}"
     end
 
-    test "scene command compiles", %{project: project} do
-      flow = flow_fixture(project, %{name: "Scene"})
+    test "slug_line node scene command compiles", %{project: project} do
+      flow = flow_fixture(project, %{name: "Slug Line"})
       flow = reload_flow(flow)
       entry = Enum.find(flow.nodes, &(&1.type == "entry"))
 
-      scene =
+      slug_line =
         node_fixture(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{"location" => "Tavern"}
         })
 
-      connection_fixture(flow, entry, scene)
+      connection_fixture(flow, entry, slug_line)
 
       source = ink_source(export_files(project))
 
       assert InkCompiler.valid?(source),
-             "inklecate rejected scene:\n#{inspect(InkCompiler.validate(source))}"
+             "inklecate rejected slug_line scene command:\n#{inspect(InkCompiler.validate(source))}"
     end
 
     test "conditional choice compiles", %{project: project} do

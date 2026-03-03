@@ -35,8 +35,9 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.Dialogue
   alias StoryarnWeb.FlowLive.Nodes.Exit, as: ExitNode
   alias StoryarnWeb.FlowLive.Nodes.Instruction
-  alias StoryarnWeb.FlowLive.Nodes.Scene
+  alias StoryarnWeb.FlowLive.Nodes.SlugLine
   alias StoryarnWeb.FlowLive.Nodes.Subflow
+  alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   # Filter out entry from user-addable node types (entry is auto-created with flow)
   @node_types Flows.node_types() |> Enum.reject(&(&1 == "entry"))
@@ -147,6 +148,7 @@ defmodule StoryarnWeb.FlowLive.Show do
                 referencing_jumps={@referencing_jumps}
                 referencing_flows={@referencing_flows}
                 project_scenes={@project_scenes}
+                node_select_loading={@node_select_loading}
               />
             </.canvas_toolbar>
           </div>
@@ -530,8 +532,8 @@ defmodule StoryarnWeb.FlowLive.Show do
         node && node.type == "exit" ->
           ExitNode.Node.handle_generate_technical_id(socket)
 
-        node && node.type == "scene" ->
-          Scene.Node.handle_generate_technical_id(socket)
+        node && node.type == "slug_line" ->
+          SlugLine.Node.handle_generate_technical_id(socket)
 
         true ->
           {:noreply, socket}
@@ -1031,6 +1033,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:project_variables, data.project_variables)
       |> assign(:selected_node, nil)
       |> assign(:node_form, nil)
+      |> assign(:node_select_loading, false)
       |> assign(:referencing_jumps, [])
       |> assign(:available_flows, [])
       |> assign(:flow_search_query, "")
@@ -1087,6 +1090,11 @@ defmodule StoryarnWeb.FlowLive.Show do
   @impl true
   def handle_info(:reset_save_status, socket),
     do: EditorInfoHandlers.handle_reset_save_status(socket)
+
+  def handle_info({:load_node_select_data, node}, socket) do
+    socket = NodeTypeRegistry.on_select(node.type, node, socket)
+    {:noreply, assign(socket, :node_select_loading, false)}
+  end
 
   def handle_info({:node_updated, updated_node}, socket),
     do: EditorInfoHandlers.handle_node_updated(updated_node, socket)
@@ -1164,7 +1172,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       jump: dgettext("flows", "Jump"),
       exit: dgettext("flows", "Exit"),
       subflow: dgettext("flows", "Subflow"),
-      scene: dgettext("flows", "Scene"),
+      slug_line: dgettext("flows", "Slug Line"),
       # Node actions
       open_editor_panel: dgettext("flows", "Open editor panel"),
       preview_from_here: dgettext("flows", "Preview from here"),

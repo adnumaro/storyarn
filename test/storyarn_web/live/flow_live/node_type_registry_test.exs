@@ -29,7 +29,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistryTest do
     end
   end
 
-  for type <- ~w(entry exit dialogue hub condition instruction jump scene subflow) do
+  for type <- ~w(entry exit dialogue hub condition instruction jump slug_line subflow) do
     describe "icon_name/1 for #{type}" do
       test "returns a non-empty string" do
         result = NodeTypeRegistry.icon_name(unquote(type))
@@ -134,7 +134,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistryTest do
 
   describe "node_module/1" do
     test "returns a module for each valid type" do
-      for type <- ~w(entry exit dialogue hub condition instruction jump scene subflow) do
+      for type <- ~w(entry exit dialogue hub condition instruction jump slug_line subflow) do
         mod = NodeTypeRegistry.node_module(type)
         assert is_atom(mod) and mod != nil, "Expected module for #{type}"
       end
@@ -174,7 +174,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistryTest do
   # ===========================================================================
 
   describe "on_double_click/2" do
-    for type <- ~w(entry exit dialogue hub condition instruction jump scene subflow) do
+    for type <- ~w(entry exit dialogue hub condition instruction jump slug_line subflow) do
       test "returns valid action for #{type}" do
         data = NodeTypeRegistry.default_data(unquote(type))
         node = %{type: unquote(type), data: data}
@@ -206,7 +206,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistryTest do
   # ===========================================================================
 
   describe "duplicate_data_cleanup/2" do
-    for type <- ~w(entry exit dialogue hub condition instruction jump scene subflow) do
+    for type <- ~w(entry exit dialogue hub condition instruction jump slug_line subflow) do
       test "returns a map for #{type}" do
         data = NodeTypeRegistry.default_data(unquote(type))
         result = NodeTypeRegistry.duplicate_data_cleanup(unquote(type), data)

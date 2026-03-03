@@ -124,7 +124,7 @@ defmodule Storyarn.Screenplays.NodeMapping do
     parsed = parse_scene_heading(ContentUtils.strip_html(element.content || ""))
 
     %{
-      type: "scene",
+      type: "slug_line",
       data: %{
         "location_sheet_id" => nil,
         "int_ext" => parsed.int_ext,

@@ -15,6 +15,7 @@ const TOOLBAR_OFFSET_Y = 12;
  */
 export function createFlowFloatingToolbar(hook) {
   let currentNodeDbId = null;
+  let pendingNodeDbId = null;
   let isDragging = false;
 
   function getToolbarEl() {
@@ -23,12 +24,43 @@ export function createFlowFloatingToolbar(hook) {
 
   function show(nodeDbId) {
     currentNodeDbId = nodeDbId;
+    pendingNodeDbId = null;
     isDragging = false;
     requestAnimationFrame(() => position());
   }
 
+  /**
+   * Called when switching to a different node.
+   * Hides the toolbar immediately to avoid showing stale content,
+   * and stores the target nodeId so revealIfPrepared() can show it
+   * once the LiveView patch arrives.
+   */
+  function prepare(nodeDbId) {
+    pendingNodeDbId = nodeDbId;
+    currentNodeDbId = null;
+    isDragging = false;
+    const el = getToolbarEl();
+    if (el) el.classList.remove("toolbar-visible");
+  }
+
+  /**
+   * Called from CanvasToolbar hook's updated() — fires after every LiveView patch.
+   * If a node was prepared (pending), reveals the toolbar with fresh server content.
+   * Otherwise just repositions the already-visible toolbar.
+   */
+  function revealIfPrepared() {
+    if (pendingNodeDbId) {
+      currentNodeDbId = pendingNodeDbId;
+      pendingNodeDbId = null;
+      requestAnimationFrame(() => position());
+    } else if (currentNodeDbId && !isDragging) {
+      position();
+    }
+  }
+
   function hide() {
     currentNodeDbId = null;
+    pendingNodeDbId = null;
     const el = getToolbarEl();
     if (el) el.classList.remove("toolbar-visible");
   }
@@ -101,5 +133,5 @@ export function createFlowFloatingToolbar(hook) {
     el.style.opacity = "";
   }
 
-  return { show, hide, reposition, setDragging };
+  return { show, prepare, revealIfPrepared, hide, reposition, setDragging };
 }

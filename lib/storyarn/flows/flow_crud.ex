@@ -496,7 +496,7 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   @doc """
-  Lists active scene IDs referenced by scene nodes in a project.
+  Lists active scene IDs referenced by slug_line nodes in a project.
   Delegates to the Scenes context to avoid cross-context schema queries.
   """
   def list_valid_scene_ids_in_project(project_id) do

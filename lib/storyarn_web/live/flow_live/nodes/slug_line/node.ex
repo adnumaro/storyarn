@@ -1,6 +1,6 @@
-defmodule StoryarnWeb.FlowLive.Nodes.Scene.Node do
+defmodule StoryarnWeb.FlowLive.Nodes.SlugLine.Node do
   @moduledoc """
-  Scene node type definition.
+  Slug line node type definition.
 
   A pass-through node (1 input, 1 output) that establishes location and time
   context — the screenplay concept of a slug line. References a location sheet
@@ -15,9 +15,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.Node do
 
   # -- Type metadata --
 
-  def type, do: "scene"
+  def type, do: "slug_line"
   def icon_name, do: "clapperboard"
-  def label, do: dgettext("flows", "Scene")
+  def label, do: dgettext("flows", "Slug Line")
 
   def default_data do
     %{
@@ -50,14 +50,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.Node do
 
   # -- Technical ID generation --
 
-  @doc "Generates a technical ID for a scene node."
+  @doc "Generates a technical ID for a slug line node."
   def handle_generate_technical_id(socket) do
     node = socket.assigns.selected_node
     flow = socket.assigns.flow
     location_name = get_location_name(socket, node.data["location_sheet_id"])
     int_ext = node.data["int_ext"] || "int"
-    scene_count = count_scene_in_flow(flow, node.id)
-    technical_id = generate_scene_technical_id(flow.shortcut, int_ext, location_name, scene_count)
+    slug_line_count = count_slug_line_in_flow(flow, node.id)
+    technical_id = generate_slug_line_technical_id(flow.shortcut, int_ext, location_name, slug_line_count)
 
     NodeHelpers.update_node_field(socket, node.id, "technical_id", technical_id)
   end
@@ -72,27 +72,27 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.Node do
     end)
   end
 
-  defp count_scene_in_flow(flow, current_node_id) do
+  defp count_slug_line_in_flow(flow, current_node_id) do
     nodes = if Ecto.assoc_loaded?(flow.nodes), do: flow.nodes, else: Flows.list_nodes(flow.id)
 
-    scene_nodes =
+    slug_line_nodes =
       nodes
-      |> Enum.filter(&(&1.type == "scene"))
+      |> Enum.filter(&(&1.type == "slug_line"))
       |> Enum.sort_by(& &1.inserted_at)
 
-    case Enum.find_index(scene_nodes, &(&1.id == current_node_id)) do
-      nil -> length(scene_nodes) + 1
+    case Enum.find_index(slug_line_nodes, &(&1.id == current_node_id)) do
+      nil -> length(slug_line_nodes) + 1
       index -> index + 1
     end
   end
 
-  defp generate_scene_technical_id(flow_slug, int_ext, location_name, scene_count) do
+  defp generate_slug_line_technical_id(flow_slug, int_ext, location_name, slug_line_count) do
     flow_part = NodeTypeHelpers.normalize_for_id(flow_slug || "")
     int_ext_part = NodeTypeHelpers.normalize_for_id(int_ext || "")
     location_part = NodeTypeHelpers.normalize_for_id(location_name || "")
-    flow_part = if flow_part == "", do: "scene", else: flow_part
+    flow_part = if flow_part == "", do: "slug", else: flow_part
     int_ext_part = if int_ext_part == "", do: "int", else: int_ext_part
     location_part = if location_part == "", do: "location", else: location_part
-    "#{flow_part}_#{int_ext_part}_#{location_part}_#{scene_count}"
+    "#{flow_part}_#{int_ext_part}_#{location_part}_#{slug_line_count}"
   end
 end

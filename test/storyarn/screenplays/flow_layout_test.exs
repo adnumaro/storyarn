@@ -33,8 +33,8 @@ defmodule Storyarn.Screenplays.FlowLayoutTest do
     end
 
     test "two branches split horizontally below dialogue node" do
-      child_a = make_tree([make_attrs("scene")])
-      child_b = make_tree([make_attrs("scene")])
+      child_a = make_tree([make_attrs("slug_line")])
+      child_b = make_tree([make_attrs("slug_line")])
 
       tree =
         make_tree(
@@ -67,12 +67,12 @@ defmodule Storyarn.Screenplays.FlowLayoutTest do
 
     test "asymmetric branches: wider subtree gets more horizontal space" do
       # Branch A has 2 sub-branches (width = 350)
-      grandchild_1 = make_tree([make_attrs("scene")])
-      grandchild_2 = make_tree([make_attrs("scene")])
+      grandchild_1 = make_tree([make_attrs("slug_line")])
+      grandchild_2 = make_tree([make_attrs("slug_line")])
 
       child_a =
         make_tree(
-          [make_attrs("scene"), make_attrs("dialogue")],
+          [make_attrs("slug_line"), make_attrs("dialogue")],
           [
             make_branch(1, "gc1", grandchild_1),
             make_branch(1, "gc2", grandchild_2)
@@ -80,7 +80,7 @@ defmodule Storyarn.Screenplays.FlowLayoutTest do
         )
 
       # Branch B is a leaf (width = 0)
-      child_b = make_tree([make_attrs("scene")])
+      child_b = make_tree([make_attrs("slug_line")])
 
       tree =
         make_tree(
@@ -108,11 +108,11 @@ defmodule Storyarn.Screenplays.FlowLayoutTest do
     end
 
     test "nested branches produce recursive layout at increasing depth" do
-      grandchild = make_tree([make_attrs("scene"), make_attrs("dialogue")])
+      grandchild = make_tree([make_attrs("slug_line"), make_attrs("dialogue")])
 
       child =
         make_tree(
-          [make_attrs("scene"), make_attrs("dialogue")],
+          [make_attrs("slug_line"), make_attrs("dialogue")],
           [make_branch(1, "c2", grandchild)]
         )
 
@@ -143,8 +143,8 @@ defmodule Storyarn.Screenplays.FlowLayoutTest do
     end
 
     test "branches on different nodes are positioned correctly" do
-      child_a = make_tree([make_attrs("scene")])
-      child_b = make_tree([make_attrs("scene")])
+      child_a = make_tree([make_attrs("slug_line")])
+      child_b = make_tree([make_attrs("slug_line")])
 
       # Branching at node 1 AND node 3 (both are dialogue)
       tree =
@@ -152,7 +152,7 @@ defmodule Storyarn.Screenplays.FlowLayoutTest do
           [
             make_attrs("entry"),
             make_attrs("dialogue"),
-            make_attrs("scene"),
+            make_attrs("slug_line"),
             make_attrs("dialogue")
           ],
           [
@@ -184,8 +184,8 @@ defmodule Storyarn.Screenplays.FlowLayoutTest do
 
     test "parent nodes resume after tallest branch" do
       # Branch A has 3 nodes (tall), Branch B has 1 node (short)
-      child_a = make_tree([make_attrs("scene"), make_attrs("dialogue"), make_attrs("exit")])
-      child_b = make_tree([make_attrs("scene")])
+      child_a = make_tree([make_attrs("slug_line"), make_attrs("dialogue"), make_attrs("exit")])
+      child_b = make_tree([make_attrs("slug_line")])
 
       tree =
         make_tree(

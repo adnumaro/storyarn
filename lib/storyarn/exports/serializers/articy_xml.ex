@@ -292,7 +292,7 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
     ]
   end
 
-  defp build_articy_node(%{type: "scene"} = node, _speaker_map) do
+  defp build_articy_node(%{type: "slug_line"} = node, _speaker_map) do
     data = node.data || %{}
     guid = generate_guid("node:#{node.id}")
     location = data["location"] || data["slug_line"] || ""

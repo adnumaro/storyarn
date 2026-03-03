@@ -48,7 +48,7 @@ const ICONS = {
   jump: createIconHTML(LogOut, { size: ICON_SIZE }),
   exit: createIconHTML(Square, { size: ICON_SIZE }),
   subflow: createIconHTML(Box, { size: ICON_SIZE }),
-  scene: createIconHTML(Clapperboard, { size: ICON_SIZE }),
+  slug_line: createIconHTML(Clapperboard, { size: ICON_SIZE }),
   // Node actions
   pencil: createIconHTML(Pencil, { size: ICON_SIZE }),
   search: createIconHTML(Search, { size: ICON_SIZE }),
@@ -69,7 +69,7 @@ const ADDABLE_TYPES = [
   { type: "jump", labelKey: "jump", icon: ICONS.jump },
   { type: "exit", labelKey: "exit", icon: ICONS.exit },
   { type: "subflow", labelKey: "subflow", icon: ICONS.subflow },
-  { type: "scene", labelKey: "scene", icon: ICONS.scene },
+  { type: "slug_line", labelKey: "slug_line", icon: ICONS.slug_line },
 ];
 
 /**
@@ -254,7 +254,7 @@ export function createContextMenuItems(hook) {
         break;
       }
 
-      case "scene":
+      case "slug_line":
         list.push({
           label: t("generate_technical_id"),
           key: "generate_id",

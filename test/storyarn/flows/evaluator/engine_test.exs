@@ -143,11 +143,11 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
   # Scene pass-through
   # =============================================================================
 
-  describe "scene node" do
+  describe "slug_line node" do
     test "passes through to next node" do
       nodes = %{
         1 => node(1, "entry"),
-        2 => node(2, "scene"),
+        2 => node(2, "slug_line"),
         3 => node(3, "exit")
       }
 

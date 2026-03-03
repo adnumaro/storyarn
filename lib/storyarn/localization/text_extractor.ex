@@ -293,7 +293,7 @@ defmodule Storyarn.Localization.TextExtractor do
     fields ++ response_fields
   end
 
-  defp extract_node_fields(%FlowNode{type: "scene", data: data}) do
+  defp extract_node_fields(%FlowNode{type: "slug_line", data: data}) do
     fields = []
 
     fields =

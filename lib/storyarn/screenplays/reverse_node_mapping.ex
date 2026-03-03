@@ -37,7 +37,7 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   # ---------------------------------------------------------------------------
 
   defp map_node(%FlowNode{type: "entry"} = node), do: map_entry(node)
-  defp map_node(%FlowNode{type: "scene"} = node), do: map_scene(node)
+  defp map_node(%FlowNode{type: "slug_line"} = node), do: map_scene(node)
   defp map_node(%FlowNode{type: "dialogue"} = node), do: map_dialogue(node)
   defp map_node(%FlowNode{type: "condition"} = node), do: map_condition(node)
   defp map_node(%FlowNode{type: "instruction"} = node), do: map_instruction(node)

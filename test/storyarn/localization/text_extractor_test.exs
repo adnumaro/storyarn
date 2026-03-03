@@ -314,16 +314,16 @@ defmodule Storyarn.Localization.TextExtractorTest do
   end
 
   # =============================================================================
-  # Flow Node Extraction — Scene
+  # Flow Node Extraction — Slug Line
   # =============================================================================
 
-  describe "flow node extraction — scene" do
-    test "extracts scene node description", %{project: project} do
+  describe "flow node extraction — slug_line" do
+    test "extracts slug_line node description", %{project: project} do
       flow = flow_fixture(project)
 
       node =
         node_fixture(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{"description" => "A dark forest clearing"}
         })
 
@@ -336,9 +336,9 @@ defmodule Storyarn.Localization.TextExtractorTest do
       assert hd(texts).source_text == "A dark forest clearing"
     end
 
-    test "scene node with blank description produces no texts", %{project: project} do
+    test "slug_line node with blank description produces no texts", %{project: project} do
       flow = flow_fixture(project)
-      node = node_fixture(flow, %{type: "scene", data: %{"description" => ""}})
+      node = node_fixture(flow, %{type: "slug_line", data: %{"description" => ""}})
 
       {:ok, _updated, _} = Flows.update_node_data(node, %{"description" => ""})
 
@@ -346,9 +346,9 @@ defmodule Storyarn.Localization.TextExtractorTest do
       assert texts == []
     end
 
-    test "scene node without description field produces no texts", %{project: project} do
+    test "slug_line node without description field produces no texts", %{project: project} do
       flow = flow_fixture(project)
-      node = node_fixture(flow, %{type: "scene", data: %{}})
+      node = node_fixture(flow, %{type: "slug_line", data: %{}})
 
       {:ok, _updated, _} = Flows.update_node_data(node, %{})
 

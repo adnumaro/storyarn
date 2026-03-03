@@ -138,13 +138,18 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
         socket
       end
 
-    socket = NodeTypeRegistry.on_select(node.type, node, socket)
+    send(self(), {:load_node_select_data, node})
 
     {:noreply,
      socket
      |> assign(:selected_node, node)
      |> assign(:node_form, form)
-     |> assign(:editing_mode, :toolbar)}
+     |> assign(:editing_mode, :toolbar)
+     |> assign(:node_select_loading, true)
+     |> assign(:available_flows, [])
+     |> assign(:subflow_exits, [])
+     |> assign(:referencing_jumps, [])
+     |> assign(:referencing_flows, [])}
   end
 
   @spec handle_node_double_clicked(map(), Phoenix.LiveView.Socket.t()) ::

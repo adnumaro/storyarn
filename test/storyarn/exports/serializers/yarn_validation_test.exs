@@ -300,7 +300,7 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
 
       scene =
         node_fixture(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{"location" => "Tavern"}
         })
 

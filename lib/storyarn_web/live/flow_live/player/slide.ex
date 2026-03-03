@@ -86,7 +86,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     }
   end
 
-  def build(%{type: "scene"} = node, state, sheets_map, _project_id) do
+  def build(%{type: "slug_line"} = node, state, sheets_map, _project_id) do
     data = node.data || %{}
     location = resolve_speaker(data["location_sheet_id"], sheets_map)
 
@@ -97,7 +97,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
       )
 
     %{
-      type: :scene,
+      type: :slug_line,
       setting: data["setting"] || "INT",
       location_name: location.name || data["location_name"] || "",
       sub_location: data["sub_location"] || "",

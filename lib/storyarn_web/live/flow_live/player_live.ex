@@ -492,6 +492,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
   defp show_continue?(%{type: :dialogue, responses: []}), do: true
   defp show_continue?(%{type: :dialogue}), do: false
-  defp show_continue?(%{type: :scene}), do: true
+  defp show_continue?(%{type: :slug_line}), do: true
   defp show_continue?(_), do: false
 end

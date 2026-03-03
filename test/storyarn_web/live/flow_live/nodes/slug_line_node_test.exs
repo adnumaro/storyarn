@@ -1,7 +1,7 @@
-defmodule StoryarnWeb.FlowLive.Nodes.Scene.NodeTest do
+defmodule StoryarnWeb.FlowLive.Nodes.SlugLine.NodeTest do
   use Storyarn.DataCase, async: true
 
-  alias StoryarnWeb.FlowLive.Nodes.Scene.Node, as: SceneNode
+  alias StoryarnWeb.FlowLive.Nodes.SlugLine.Node, as: SlugLineNode
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
@@ -11,20 +11,20 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.NodeTest do
   # =============================================================================
 
   describe "type/0" do
-    test "returns scene" do
-      assert SceneNode.type() == "scene"
+    test "returns slug_line" do
+      assert SlugLineNode.type() == "slug_line"
     end
   end
 
   describe "icon_name/0" do
     test "returns clapperboard" do
-      assert SceneNode.icon_name() == "clapperboard"
+      assert SlugLineNode.icon_name() == "clapperboard"
     end
   end
 
   describe "label/0" do
-    test "returns Scene" do
-      assert SceneNode.label() == "Scene"
+    test "returns Slug Line" do
+      assert SlugLineNode.label() == "Slug Line"
     end
   end
 
@@ -34,7 +34,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.NodeTest do
 
   describe "default_data/0" do
     test "returns map with expected keys and defaults" do
-      data = SceneNode.default_data()
+      data = SlugLineNode.default_data()
 
       assert data["location_sheet_id"] == nil
       assert data["int_ext"] == "int"
@@ -50,30 +50,30 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.NodeTest do
   # =============================================================================
 
   describe "extract_form_data/1" do
-    test "extracts all scene fields from data" do
+    test "extracts all slug line fields from data" do
       data = %{
         "location_sheet_id" => 42,
         "int_ext" => "ext",
         "sub_location" => "Garden",
         "time_of_day" => "Night",
         "description" => "A dark garden",
-        "technical_id" => "scene_ext_garden_1",
+        "technical_id" => "slug_ext_garden_1",
         "extra" => "ignored"
       }
 
-      result = SceneNode.extract_form_data(data)
+      result = SlugLineNode.extract_form_data(data)
 
       assert result["location_sheet_id"] == 42
       assert result["int_ext"] == "ext"
       assert result["sub_location"] == "Garden"
       assert result["time_of_day"] == "Night"
       assert result["description"] == "A dark garden"
-      assert result["technical_id"] == "scene_ext_garden_1"
+      assert result["technical_id"] == "slug_ext_garden_1"
       refute Map.has_key?(result, "extra")
     end
 
     test "provides defaults for missing fields" do
-      result = SceneNode.extract_form_data(%{})
+      result = SlugLineNode.extract_form_data(%{})
 
       assert result["location_sheet_id"] == ""
       assert result["int_ext"] == "int"
@@ -91,25 +91,25 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.NodeTest do
   describe "on_select/2" do
     test "returns socket unchanged" do
       socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}}}
-      assert SceneNode.on_select(%{}, socket) == socket
+      assert SlugLineNode.on_select(%{}, socket) == socket
     end
   end
 
   describe "on_double_click/1" do
     test "returns :toolbar" do
-      assert SceneNode.on_double_click(%{}) == :toolbar
+      assert SlugLineNode.on_double_click(%{}) == :toolbar
     end
   end
 
   describe "duplicate_data_cleanup/1" do
     test "clears technical_id" do
       data = %{
-        "technical_id" => "scene_int_castle_1",
+        "technical_id" => "slug_int_castle_1",
         "int_ext" => "int",
         "description" => "Keep"
       }
 
-      result = SceneNode.duplicate_data_cleanup(data)
+      result = SlugLineNode.duplicate_data_cleanup(data)
 
       assert result["technical_id"] == ""
       assert result["int_ext"] == "int"
@@ -122,13 +122,13 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.NodeTest do
   # =============================================================================
 
   describe "handle_generate_technical_id/1" do
-    setup :setup_scene_socket
+    setup :setup_slug_line_socket
 
     test "generates technical ID with int_ext and location defaults", %{
       socket: socket,
       node: node
     } do
-      {:noreply, result} = SceneNode.handle_generate_technical_id(socket)
+      {:noreply, result} = SlugLineNode.handle_generate_technical_id(socket)
 
       updated = Storyarn.Flows.get_node!(result.assigns.flow.id, node.id)
       assert updated.data["technical_id"] =~ "int"
@@ -155,21 +155,21 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.NodeTest do
         | assigns: %{socket.assigns | all_sheets: [sheet], selected_node: updated_node}
       }
 
-      {:noreply, result} = SceneNode.handle_generate_technical_id(socket)
+      {:noreply, result} = SlugLineNode.handle_generate_technical_id(socket)
 
       updated = Storyarn.Flows.get_node!(result.assigns.flow.id, node.id)
       assert updated.data["technical_id"] =~ "ext"
       assert updated.data["technical_id"] =~ "castle"
     end
 
-    test "includes scene count in technical ID", %{socket: socket, flow: flow, node: node} do
-      # Create another scene node first
+    test "includes slug line count in technical ID", %{socket: socket, flow: flow, node: node} do
+      # Create another slug line node first
       Storyarn.FlowsFixtures.node_fixture(flow, %{
-        type: "scene",
-        data: SceneNode.default_data()
+        type: "slug_line",
+        data: SlugLineNode.default_data()
       })
 
-      {:noreply, result} = SceneNode.handle_generate_technical_id(socket)
+      {:noreply, result} = SlugLineNode.handle_generate_technical_id(socket)
 
       updated = Storyarn.Flows.get_node!(result.assigns.flow.id, node.id)
       # Should end with a number
@@ -181,14 +181,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Scene.NodeTest do
   # Helpers
   # =============================================================================
 
-  defp setup_scene_socket(_context) do
+  defp setup_slug_line_socket(_context) do
     project = project_fixture(user_fixture())
     flow = Storyarn.FlowsFixtures.flow_fixture(project)
 
     node =
       Storyarn.FlowsFixtures.node_fixture(flow, %{
-        type: "scene",
-        data: SceneNode.default_data()
+        type: "slug_line",
+        data: SlugLineNode.default_data()
       })
 
     flow = Storyarn.Flows.get_flow!(project.id, flow.id)

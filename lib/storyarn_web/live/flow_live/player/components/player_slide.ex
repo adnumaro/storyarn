@@ -1,6 +1,6 @@
 defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
   @moduledoc """
-  Dispatches slide rendering based on type (dialogue, scene, empty).
+  Dispatches slide rendering based on type (dialogue, slug_line, empty).
 
   Each clause renders a different visual layout for the Story Player.
   """
@@ -37,9 +37,9 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
     """
   end
 
-  def player_slide(%{slide: %{type: :scene}} = assigns) do
+  def player_slide(%{slide: %{type: :slug_line}} = assigns) do
     ~H"""
-    <div class="player-slide player-slide-scene">
+    <div class="player-slide player-slide-slug-line">
       <div class="player-scene-slug">
         {@slide.setting}. {@slide.location_name}
         <span :if={@slide.sub_location != ""}>{" — #{@slide.sub_location}"}</span>

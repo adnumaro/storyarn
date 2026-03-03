@@ -372,9 +372,9 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     EngineHelpers.follow_output(state, node.id, label, connections)
   end
 
-  defp evaluate_node(%{type: "scene"} = node, state, connections, _nodes) do
+  defp evaluate_node(%{type: "slug_line"} = node, state, connections, _nodes) do
     label = EngineHelpers.node_label(node)
-    state = EngineHelpers.add_console(state, :info, node.id, label, "Scene — pass through")
+    state = EngineHelpers.add_console(state, :info, node.id, label, "Slug Line — pass through")
     EngineHelpers.follow_output(state, node.id, label, connections)
   end
 

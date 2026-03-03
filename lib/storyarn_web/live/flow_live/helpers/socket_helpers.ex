@@ -83,7 +83,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
     data["has_stale_refs"] == true ||
       data["has_type_warnings"] == true ||
       (type == "subflow" && (data["stale_reference"] == true || !data["referenced_flow_id"])) ||
-      (type == "scene" && !data["location_sheet_id"]) ||
+      (type == "slug_line" && !data["location_sheet_id"]) ||
       (type == "dialogue" && has_response_warnings?(data["responses"]))
   end
 

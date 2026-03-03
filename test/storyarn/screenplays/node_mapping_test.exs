@@ -104,7 +104,7 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
       assert result.source == "screenplay_sync"
     end
 
-    test "maps subsequent scene heading to scene node with parsed INT/EXT" do
+    test "maps subsequent scene heading to slug_line node with parsed INT/EXT" do
       group = %{
         type: :scene_heading,
         elements: [el(%{id: 2, type: "scene_heading", content: "EXT. FOREST - DAY"})],
@@ -113,7 +113,7 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
 
       result = NodeMapping.group_to_node_attrs(group, 1)
 
-      assert result.type == "scene"
+      assert result.type == "slug_line"
       assert result.data["int_ext"] == "ext"
       assert result.data["description"] == "FOREST"
       assert result.data["time_of_day"] == "DAY"
@@ -573,9 +573,9 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
 
       result = NodeMapping.groups_to_node_attrs(groups, child_page: true)
 
-      # With child_page: true, offset is 1, so scene_heading at index 1 → scene node
+      # With child_page: true, offset is 1, so scene_heading at index 1 → slug_line node
       assert length(result) == 2
-      assert Enum.at(result, 0).type == "scene"
+      assert Enum.at(result, 0).type == "slug_line"
       assert Enum.at(result, 1).type == "dialogue"
     end
 
@@ -679,7 +679,7 @@ defmodule Storyarn.Screenplays.NodeMappingTest do
 
       result = NodeMapping.group_to_node_attrs(group)
       assert result.data["hub_id"] == ""
-      assert result.data["color"] == "#8b5cf6"
+      assert result.data["color"] == "#be185d"
     end
   end
 

@@ -32,7 +32,7 @@ defmodule Storyarn.Screenplays.ReverseNodeMappingTest do
       data = %{"int_ext" => "int", "description" => "OFFICE", "time_of_day" => "DAY"}
 
       result =
-        ReverseNodeMapping.node_to_element_attrs(build_node(id: 20, type: "scene", data: data))
+        ReverseNodeMapping.node_to_element_attrs(build_node(id: 20, type: "slug_line", data: data))
 
       assert [%{type: "scene_heading", content: "INT. OFFICE - DAY", source_node_id: 20}] = result
     end
@@ -41,7 +41,7 @@ defmodule Storyarn.Screenplays.ReverseNodeMappingTest do
       data = %{"int_ext" => "ext", "description" => "PARK", "time_of_day" => "NIGHT"}
 
       result =
-        ReverseNodeMapping.node_to_element_attrs(build_node(id: 21, type: "scene", data: data))
+        ReverseNodeMapping.node_to_element_attrs(build_node(id: 21, type: "slug_line", data: data))
 
       assert [%{type: "scene_heading", content: "EXT. PARK - NIGHT", source_node_id: 21}] = result
     end
@@ -50,7 +50,7 @@ defmodule Storyarn.Screenplays.ReverseNodeMappingTest do
       data = %{"int_ext" => "int", "description" => "OFFICE", "time_of_day" => ""}
 
       result =
-        ReverseNodeMapping.node_to_element_attrs(build_node(id: 22, type: "scene", data: data))
+        ReverseNodeMapping.node_to_element_attrs(build_node(id: 22, type: "slug_line", data: data))
 
       assert [%{type: "scene_heading", content: "INT. OFFICE", source_node_id: 22}] = result
     end
@@ -59,7 +59,7 @@ defmodule Storyarn.Screenplays.ReverseNodeMappingTest do
       data = %{"int_ext" => "int", "description" => "OFFICE"}
 
       result =
-        ReverseNodeMapping.node_to_element_attrs(build_node(id: 23, type: "scene", data: data))
+        ReverseNodeMapping.node_to_element_attrs(build_node(id: 23, type: "slug_line", data: data))
 
       assert [%{type: "scene_heading", content: "INT. OFFICE", source_node_id: 23}] = result
     end

@@ -236,7 +236,7 @@ defmodule Storyarn.Exports.Serializers.Ink do
     end
   end
 
-  defp render_instruction({:scene, node}, _ctx, depth) do
+  defp render_instruction({:slug_line, node}, _ctx, depth) do
     data = node.data || %{}
     location = data["location"] || data["slug_line"] || ""
     ["#{indent(depth)}# location:#{location}"]

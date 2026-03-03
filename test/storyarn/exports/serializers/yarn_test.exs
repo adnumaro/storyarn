@@ -547,53 +547,53 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
   end
 
   # =============================================================================
-  # Scene node rendering
+  # Slug line node rendering
   # =============================================================================
 
-  describe "scene nodes" do
+  describe "slug_line nodes" do
     setup [:create_project]
 
-    test "scene node renders scene command", %{project: project} do
-      flow = flow_fixture(project, %{name: "Scene Flow"})
+    test "slug_line node renders scene command", %{project: project} do
+      flow = flow_fixture(project, %{name: "Slug Line Flow"})
       flow = reload_flow(flow)
       entry = Enum.find(flow.nodes, &(&1.type == "entry"))
 
-      scene =
+      slug_line =
         node_fixture(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{"location" => "Tavern Interior"}
         })
 
-      connection_fixture(flow, entry, scene)
+      connection_fixture(flow, entry, slug_line)
 
       source = yarn_source(export_yarn(project))
       assert source =~ "<<scene Tavern Interior>>"
     end
 
-    test "scene node falls back to slug_line", %{project: project} do
-      flow = flow_fixture(project, %{name: "Scene Slug Flow"})
+    test "slug_line node falls back to slug_line field", %{project: project} do
+      flow = flow_fixture(project, %{name: "Slug Line Field Flow"})
       flow = reload_flow(flow)
       entry = Enum.find(flow.nodes, &(&1.type == "entry"))
 
-      scene =
+      slug_line =
         node_fixture(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{"slug_line" => "INT. CASTLE - NIGHT"}
         })
 
-      connection_fixture(flow, entry, scene)
+      connection_fixture(flow, entry, slug_line)
 
       source = yarn_source(export_yarn(project))
       assert source =~ "<<scene INT. CASTLE - NIGHT>>"
     end
 
-    test "scene node with empty data renders empty scene", %{project: project} do
-      flow = flow_fixture(project, %{name: "Empty Scene Flow"})
+    test "slug_line node with empty data renders empty scene command", %{project: project} do
+      flow = flow_fixture(project, %{name: "Empty Slug Line Flow"})
       flow = reload_flow(flow)
       entry = Enum.find(flow.nodes, &(&1.type == "entry"))
 
-      scene = node_fixture(flow, %{type: "scene", data: %{}})
-      connection_fixture(flow, entry, scene)
+      slug_line = node_fixture(flow, %{type: "slug_line", data: %{}})
+      connection_fixture(flow, entry, slug_line)
 
       source = yarn_source(export_yarn(project))
       assert source =~ "<<scene >>"
@@ -1105,14 +1105,14 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       assert source =~ "<<set"
     end
 
-    test "entry -> scene -> dialogue chain", %{project: project} do
-      flow = flow_fixture(project, %{name: "Scene Chain Flow"})
+    test "entry -> slug_line -> dialogue chain", %{project: project} do
+      flow = flow_fixture(project, %{name: "Slug Line Chain Flow"})
       flow = reload_flow(flow)
       entry = Enum.find(flow.nodes, &(&1.type == "entry"))
 
-      scene =
+      slug_line =
         node_fixture(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{"location" => "Dark Forest"}
         })
 
@@ -1122,8 +1122,8 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
           data: %{"text" => "The forest is dark.", "speaker_sheet_id" => nil, "responses" => []}
         })
 
-      connection_fixture(flow, entry, scene)
-      connection_fixture(flow, scene, dialogue)
+      connection_fixture(flow, entry, slug_line)
+      connection_fixture(flow, slug_line, dialogue)
 
       source = yarn_source(export_yarn(project))
       assert source =~ "<<scene Dark Forest>>"

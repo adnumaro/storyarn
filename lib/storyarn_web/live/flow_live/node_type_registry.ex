@@ -23,7 +23,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
     "instruction" => Nodes.Instruction.Node,
     "jump" => Nodes.Jump.Node,
     "subflow" => Nodes.Subflow.Node,
-    "scene" => Nodes.Scene.Node
+    "slug_line" => Nodes.SlugLine.Node
   }
 
   @types Map.keys(@node_modules) |> Enum.sort()

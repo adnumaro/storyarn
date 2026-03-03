@@ -457,17 +457,17 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   end
 
   # ===========================================================================
-  # show_continue? with scene node
+  # show_continue? with slug_line node
   # ===========================================================================
 
-  describe "scene node in player" do
-    test "renders scene slide with continue button", %{conn: conn, project: project} do
-      flow = flow_fixture(project, %{name: "Scene Node Flow"})
+  describe "slug_line node in player" do
+    test "renders slug_line slide with continue button", %{conn: conn, project: project} do
+      flow = flow_fixture(project, %{name: "Slug Line Node Flow"})
       {entry, auto_exit} = get_auto_nodes(flow)
 
-      scene_node =
+      slug_line_node =
         node_fixture(flow, %{
-          type: "scene",
+          type: "slug_line",
           data: %{
             "setting" => "INT",
             "location_name" => "Castle",
@@ -479,19 +479,19 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
           position_y: 0.0
         })
 
-      _conn1 = connection_fixture(flow, entry, scene_node)
-      _conn2 = connection_fixture(flow, scene_node, auto_exit)
+      _conn1 = connection_fixture(flow, entry, slug_line_node)
+      _conn2 = connection_fixture(flow, slug_line_node, auto_exit)
 
       {:ok, view, html} = live(conn, player_url(project, flow))
 
-      # Scene slides should show the scene content
+      # Slug line slides should show the content
       assert html =~ "story-player"
 
-      # Scene node should show continue button (show_continue? returns true for :scene type)
-      # Note: depends on whether engine stops at scene nodes
+      # Slug line node should show continue button (show_continue? returns true for :slug_line type)
+      # Note: depends on whether engine stops at slug_line nodes
       assert html =~ "story-player"
 
-      # Continue from scene node should advance to exit
+      # Continue from slug_line node should advance to exit
       html = render_click(view, "continue")
       assert html =~ "story-player"
     end

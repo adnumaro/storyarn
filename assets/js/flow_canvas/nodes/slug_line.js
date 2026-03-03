@@ -1,5 +1,5 @@
 /**
- * Scene node type definition.
+ * Slug Line node type definition.
  *
  * A pass-through node that establishes location and time context.
  * Displays a screenplay slug line (e.g., "INT. LOBBY - NIGHT")
@@ -18,7 +18,7 @@ import {
 
 export default {
   config: {
-    label: "Scene",
+    label: "Slug Line",
     color: "#06b6d4",
     icon: createIconSvg(Clapperboard),
     inputs: ["input"],
@@ -47,18 +47,15 @@ export default {
         ${headerHtml}
         ${
           slugLine
-            ? html`<div class="node-data">
-              <div
-                class="node-data-text"
-                style="font-weight:700;font-size:0.75em;letter-spacing:0.03em"
-              >
+            ? html`<div class="text-[11px] text-base-content/80 px-3 py-2 max-w-[200px] border-b border-base-content/10 break-words">
+              <div class="line-clamp-4 leading-[1.4] font-bold text-xs tracking-wide">
                 ${slugLine}
               </div>
             </div>`
             : ""
         }
         ${renderPreview(description)}
-        <div class="content">${renderSockets(node, nodeData, this, emit)}</div>
+        <div class="py-1">${renderSockets(node, nodeData, this, emit)}</div>
       `,
     );
   },

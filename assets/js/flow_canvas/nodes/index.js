@@ -14,7 +14,7 @@ import exit from "./exit.js";
 import hub from "./hub.js";
 import instruction from "./instruction.js";
 import jump from "./jump.js";
-import scene from "./scene.js";
+import slugLine from "./slug_line.js";
 import subflow from "./subflow.js";
 
 const NODE_DEFS = {
@@ -26,7 +26,7 @@ const NODE_DEFS = {
   instruction,
   jump,
   subflow,
-  scene,
+  slug_line: slugLine,
 };
 
 /**

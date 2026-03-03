@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.FlowLive.Player.PlayerEngine do
   @moduledoc """
   Thin wrapper around the Flows evaluator that auto-advances through
-  non-interactive nodes (entry, hub, condition, instruction, jump, scene)
+  non-interactive nodes (entry, hub, condition, instruction, jump, slug_line)
   until it reaches a dialogue, exit, or error.
 
   The evaluator is a pure functional state machine — this module simply
@@ -13,7 +13,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngine do
 
   @max_auto_steps 100
 
-  @non_interactive_types ~w(entry hub condition instruction jump scene subflow)
+  @non_interactive_types ~w(entry hub condition instruction jump slug_line subflow)
 
   @doc """
   Step the engine forward until it reaches an interactive node (dialogue, exit)

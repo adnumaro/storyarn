@@ -158,13 +158,13 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
   end
 
   # =============================================================================
-  # player_slide/1 — :scene type
+  # player_slide/1 — :slug_line type
   # =============================================================================
 
-  describe "player_slide/1 scene type" do
-    test "renders scene slide with setting and location" do
+  describe "player_slide/1 slug_line type" do
+    test "renders slug_line slide with setting and location" do
       slide = %{
-        type: :scene,
+        type: :slug_line,
         setting: "INT",
         location_name: "Castle Throne Room",
         sub_location: "",
@@ -174,7 +174,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
 
       html = render_component(&PlayerSlide.player_slide/1, %{slide: slide})
 
-      assert html =~ "player-slide-scene"
+      assert html =~ "player-slide-slug-line"
       assert html =~ "player-scene-slug"
       assert html =~ "INT"
       assert html =~ "Castle Throne Room"
@@ -182,7 +182,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
 
     test "renders sub-location when present" do
       slide = %{
-        type: :scene,
+        type: :slug_line,
         setting: "EXT",
         location_name: "Village Square",
         sub_location: "Near the fountain",
@@ -197,7 +197,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
 
     test "does not render sub-location when empty" do
       slide = %{
-        type: :scene,
+        type: :slug_line,
         setting: "INT",
         location_name: "Tavern",
         sub_location: "",
@@ -214,7 +214,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
 
     test "renders time of day in uppercase when present" do
       slide = %{
-        type: :scene,
+        type: :slug_line,
         setting: "EXT",
         location_name: "Forest Path",
         sub_location: "",
@@ -229,7 +229,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
 
     test "does not render time of day when empty" do
       slide = %{
-        type: :scene,
+        type: :slug_line,
         setting: "INT",
         location_name: "Library",
         sub_location: "",
@@ -243,9 +243,9 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
       refute html =~ "DAY"
     end
 
-    test "renders scene description when present" do
+    test "renders slug_line description when present" do
       slide = %{
-        type: :scene,
+        type: :slug_line,
         setting: "EXT",
         location_name: "Beach",
         sub_location: "",
@@ -261,7 +261,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
 
     test "does not render description when empty" do
       slide = %{
-        type: :scene,
+        type: :slug_line,
         setting: "INT",
         location_name: "Office",
         sub_location: "",
@@ -274,9 +274,9 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
       refute html =~ "player-scene-description"
     end
 
-    test "sanitizes HTML in scene description" do
+    test "sanitizes HTML in slug_line description" do
       slide = %{
-        type: :scene,
+        type: :slug_line,
         setting: "INT",
         location_name: "Lab",
         sub_location: "",
@@ -292,7 +292,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
 
     test "renders full slug line with sub-location and time of day" do
       slide = %{
-        type: :scene,
+        type: :slug_line,
         setting: "INT",
         location_name: "Mansion",
         sub_location: "Ballroom",
@@ -335,7 +335,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
 
       assert html =~ "player-slide"
       refute html =~ "player-slide-dialogue"
-      refute html =~ "player-slide-scene"
+      refute html =~ "player-slide-slug-line"
       refute html =~ "player-slide-empty"
     end
 

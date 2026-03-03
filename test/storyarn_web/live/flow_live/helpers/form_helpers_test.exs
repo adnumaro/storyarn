@@ -67,7 +67,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
       form = FormHelpers.node_data_to_form(node)
 
       assert form.params["hub_id"] == ""
-      assert form.params["color"] == "#8b5cf6"
+      assert form.params["color"] == "#be185d"
     end
   end
 

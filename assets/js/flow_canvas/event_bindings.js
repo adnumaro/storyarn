@@ -82,6 +82,7 @@ export function setupEventHandlers(hook) {
         const isDoubleClick =
           hook.lastClickedNodeId === node.nodeId && now - hook.lastNodeClickTime < 300;
 
+        const prevSelectedNodeId = hook.selectedNodeId;
         hook.lastNodeClickTime = now;
         hook.lastClickedNodeId = node.nodeId;
         hook.selectedNodeId = node.nodeId;
@@ -97,8 +98,14 @@ export function setupEventHandlers(hook) {
           hook.pushEvent("node_selected", { id: node.nodeId });
         }
 
-        // Show floating toolbar
-        hook.floatingToolbar?.show(node.nodeId);
+        // If switching to a different node, hide toolbar immediately to avoid
+        // showing stale content — revealIfPrepared() shows it after server patch.
+        // If same node, just reposition (content unchanged).
+        if (prevSelectedNodeId !== node.nodeId) {
+          hook.floatingToolbar?.prepare(node.nodeId);
+        } else {
+          hook.floatingToolbar?.show(node.nodeId);
+        }
       }
     }
     return context;

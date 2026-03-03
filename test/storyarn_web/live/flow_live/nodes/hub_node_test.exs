@@ -40,7 +40,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.NodeTest do
       data = HubNode.default_data()
       assert data["hub_id"] == ""
       assert data["label"] == ""
-      assert data["color"] == "#8b5cf6"
+      assert data["color"] == "#be185d"
     end
   end
 
@@ -71,7 +71,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.NodeTest do
 
       assert result["hub_id"] == ""
       assert result["label"] == ""
-      assert result["color"] == "#8b5cf6"
+      assert result["color"] == "#be185d"
     end
 
     test "handles nil values with defaults" do
@@ -80,7 +80,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.NodeTest do
 
       assert result["hub_id"] == ""
       assert result["label"] == ""
-      assert result["color"] == "#8b5cf6"
+      assert result["color"] == "#be185d"
     end
   end
 
@@ -143,7 +143,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.NodeTest do
       _hub =
         Storyarn.FlowsFixtures.node_fixture(flow, %{
           type: "hub",
-          data: %{"hub_id" => hub_id, "label" => "Test Hub", "color" => "#8b5cf6"}
+          data: %{"hub_id" => hub_id, "label" => "Test Hub", "color" => "#be185d"}
         })
 
       # Create jump nodes referencing this hub
