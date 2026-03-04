@@ -56,7 +56,7 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
             role="button"
             class={"dock-btn #{if @active_shape, do: "dock-btn-active", else: ""}"}
           >
-            <.icon name={if(@active_shape, do: @active_shape.icon, else: "pentagon")} class="size-6" />
+            <.icon name={if(@active_shape, do: @active_shape.icon, else: "pentagon")} class="size-5" />
           </div>
           <div
             tabindex="0"
@@ -99,7 +99,7 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
             role="button"
             class={"dock-btn #{if @active_tool == :pin, do: "dock-btn-active", else: ""}"}
           >
-            <.icon name="map-pin" class="size-6" />
+            <.icon name="map-pin" class="size-5" />
           </div>
           <div
             tabindex="0"
@@ -218,7 +218,7 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
         phx-value-tool={@tool}
         class={"dock-btn #{if @active, do: "dock-btn-active", else: ""}"}
       >
-        <.icon name={@icon} class="size-6" />
+        <.icon name={@icon} class="size-5" />
       </button>
       <%!-- Hover mega-tooltip --%>
       <div class="dock-tooltip">
@@ -231,7 +231,7 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
 
   defp dock_separator(assigns) do
     ~H"""
-    <div class="w-px h-8 bg-base-300 mx-0.5 shrink-0"></div>
+    <div class="w-px h-6 bg-base-300 mx-0.5 shrink-0"></div>
     """
   end
 

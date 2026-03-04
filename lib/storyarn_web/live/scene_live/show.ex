@@ -184,79 +184,82 @@ defmodule StoryarnWeb.SceneLive.Show do
             </div>
           </div>
 
-          <%!-- Upload progress indicator --%>
-          <div
-            :for={
-              entry <-
-                if(@can_edit && @uploads[:background],
-                  do: @uploads.background.entries,
-                  else: []
-                )
-            }
-            class="absolute bottom-20 left-1/2 -translate-x-1/2 z-[1000]
-                   bg-base-100 rounded-lg border border-base-300 shadow-lg px-4 py-2 flex items-center gap-3"
-          >
-            <.icon name="upload" class="size-4 animate-pulse text-primary" />
-            <div class="w-32">
-              <div class="text-xs text-base-content/60 mb-1">{entry.client_name}</div>
-              <div class="w-full bg-base-300 rounded-full h-1.5">
-                <div
-                  class="bg-primary h-1.5 rounded-full transition-all"
-                  style={"width: #{entry.progress}%"}
-                >
-                </div>
+        </div>
+
+        <%!-- UI overlays — outside overflow-hidden wrapper so backdrop-blur works --%>
+
+        <%!-- Upload progress indicator --%>
+        <div
+          :for={
+            entry <-
+              if(@can_edit && @uploads[:background],
+                do: @uploads.background.entries,
+                else: []
+              )
+          }
+          class="absolute bottom-20 left-1/2 -translate-x-1/2 z-[1000]
+                 bg-base-100 rounded-lg border border-base-300 shadow-lg px-4 py-2 flex items-center gap-3"
+        >
+          <.icon name="upload" class="size-4 animate-pulse text-primary" />
+          <div class="w-32">
+            <div class="text-xs text-base-content/60 mb-1">{entry.client_name}</div>
+            <div class="w-full bg-base-300 rounded-full h-1.5">
+              <div
+                class="bg-primary h-1.5 rounded-full transition-all"
+                style={"width: #{entry.progress}%"}
+              >
               </div>
             </div>
           </div>
-
-          <%!-- Bottom dock (edit mode only) --%>
-          <.dock :if={@edit_mode} active_tool={@active_tool} pending_sheet={@pending_sheet_for_pin} />
-
-          <%!-- Sheet picker overlay --%>
-          <div
-            :if={@show_sheet_picker}
-            id="sheet-picker"
-            class="absolute bottom-32 left-1/2 -translate-x-1/2 z-[1001] w-72 bg-base-100 rounded-lg border border-base-300 shadow-lg overflow-hidden"
-          >
-            <div class="p-2 border-b border-base-300 flex items-center justify-between">
-              <span class="text-xs font-medium">{dgettext("scenes", "Select a sheet")}</span>
-              <button
-                type="button"
-                phx-click="cancel_sheet_picker"
-                class="btn btn-ghost btn-xs btn-square"
-              >
-                <.icon name="x" class="size-3" />
-              </button>
-            </div>
-            <div class="max-h-60 overflow-y-auto p-1">
-              <.sheet_picker_list sheets={flatten_sheets(@project_sheets)} />
-            </div>
-          </div>
-
-          <%!-- Legend --%>
-          <.legend
-            pins={@pins}
-            zones={@zones}
-            connections={@connections}
-            legend_open={@legend_open}
-          />
-
-          <%!-- Floating element toolbar --%>
-          <.canvas_toolbar
-            id="scene-floating-toolbar"
-            canvas_id="scene-canvas"
-            visible={@selected_element != nil && @can_edit && @edit_mode}
-            z_class="z-[1050]"
-          >
-            <.floating_toolbar
-              selected_type={@selected_type}
-              selected_element={@selected_element}
-              layers={@layers}
-              can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-              can_toggle_lock={true}
-            />
-          </.canvas_toolbar>
         </div>
+
+        <%!-- Bottom dock (edit mode only) --%>
+        <.dock :if={@edit_mode} active_tool={@active_tool} pending_sheet={@pending_sheet_for_pin} />
+
+        <%!-- Sheet picker overlay --%>
+        <div
+          :if={@show_sheet_picker}
+          id="sheet-picker"
+          class="absolute bottom-32 left-1/2 -translate-x-1/2 z-[1001] w-72 bg-base-100 rounded-lg border border-base-300 shadow-lg overflow-hidden"
+        >
+          <div class="p-2 border-b border-base-300 flex items-center justify-between">
+            <span class="text-xs font-medium">{dgettext("scenes", "Select a sheet")}</span>
+            <button
+              type="button"
+              phx-click="cancel_sheet_picker"
+              class="btn btn-ghost btn-xs btn-square"
+            >
+              <.icon name="x" class="size-3" />
+            </button>
+          </div>
+          <div class="max-h-60 overflow-y-auto p-1">
+            <.sheet_picker_list sheets={flatten_sheets(@project_sheets)} />
+          </div>
+        </div>
+
+        <%!-- Legend --%>
+        <.legend
+          pins={@pins}
+          zones={@zones}
+          connections={@connections}
+          legend_open={@legend_open}
+        />
+
+        <%!-- Floating element toolbar --%>
+        <.canvas_toolbar
+          id="scene-floating-toolbar"
+          canvas_id="scene-canvas"
+          visible={@selected_element != nil && @can_edit && @edit_mode}
+          z_class="z-[1050]"
+        >
+          <.floating_toolbar
+            selected_type={@selected_type}
+            selected_element={@selected_element}
+            layers={@layers}
+            can_edit={not Map.get(@selected_element || %{}, :locked, false)}
+            can_toggle_lock={true}
+          />
+        </.canvas_toolbar>
 
         <%!-- Element Properties Sidebar --%>
         <div
