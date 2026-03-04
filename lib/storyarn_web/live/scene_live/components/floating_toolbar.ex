@@ -31,7 +31,7 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
   @doc "Renders the floating toolbar dispatching to the per-type toolbar variant."
   def floating_toolbar(assigns) do
     ~H"""
-    <div class="floating-toolbar">
+    <div class="flex items-center gap-0.5">
       <.zone_toolbar
         :if={@selected_type == "zone"}
         zone={@selected_element}

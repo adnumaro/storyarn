@@ -917,7 +917,7 @@ body.dnd-active [data-toolbar] {
 /* ===== Map Floating Toolbar ===== */
 
 .floating-toolbar {
-  @apply flex items-center gap-0.5 p-1 bg-base-200 border border-base-300 rounded-xl shadow-lg whitespace-nowrap text-base-content text-sm;
+  @apply flex items-center gap-0.5 p-1 bg-base-200/90 backdrop-blur border border-base-300 rounded-xl shadow-lg whitespace-nowrap text-base-content text-sm;
 }
 
 .canvas-toolbar {
