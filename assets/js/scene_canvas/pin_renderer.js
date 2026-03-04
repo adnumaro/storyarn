@@ -6,9 +6,9 @@
 
 import L from "leaflet";
 import { createElement, Lock, MapPin, Star, User, Zap } from "lucide";
+import { escapeHtml } from "../utils/escape_html.js";
 import { sanitizeColor } from "./color_utils.js";
 import { toLatLng } from "./coordinate_utils.js";
-import { escapeHtml } from "../utils/escape_html.js";
 
 // Pin type → Lucide icon mapping
 const PIN_ICONS = {

@@ -6,9 +6,9 @@
 
 import L from "leaflet";
 import { createElement, Lock } from "lucide";
+import { escapeHtml } from "../utils/escape_html.js";
 import { isValidHexColor } from "./color_utils.js";
 import { toLatLng } from "./coordinate_utils.js";
-import { escapeHtml } from "../utils/escape_html.js";
 
 const VALID_SIZES = new Set(["sm", "md", "lg"]);
 

@@ -58,9 +58,7 @@ describe("escapeHtml", () => {
 
   describe("strings with multiple special characters", () => {
     it("escapes <, >, and & in a mixed string", () => {
-      expect(escapeHtml('a < b & c > d "e"')).toBe(
-        'a &lt; b &amp; c &gt; d "e"',
-      );
+      expect(escapeHtml('a < b & c > d "e"')).toBe('a &lt; b &amp; c &gt; d "e"');
     });
 
     it("escapes consecutive angle brackets", () => {
