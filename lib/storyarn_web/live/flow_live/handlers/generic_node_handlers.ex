@@ -22,7 +22,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
-  import StoryarnWeb.FlowLive.Helpers.SocketHelpers
+  import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
   @spec handle_add_node(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}

@@ -938,35 +938,26 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("create_flow", _params, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
-      case Flows.create_flow(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
-        {:ok, new_flow} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
-           )}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
-      end
+      handle_create_entity(
+        socket,
+        %{name: dgettext("flows", "Untitled")},
+        &Flows.create_flow/2,
+        &flow_path/2,
+        dgettext("flows", "Could not create flow.")
+      )
     end)
   end
 
   def handle_event("create_child_flow", %{"parent-id" => parent_id}, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
-      attrs = %{name: dgettext("flows", "Untitled"), parent_id: parent_id}
-
-      case Flows.create_flow(socket.assigns.project, attrs) do
-        {:ok, new_flow} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
-           )}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
-      end
+      handle_create_child(
+        socket,
+        parent_id,
+        %{name: dgettext("flows", "Untitled")},
+        &Flows.create_flow/2,
+        &flow_path/2,
+        dgettext("flows", "Could not create flow.")
+      )
     end)
   end
 
@@ -986,28 +977,38 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("set_pending_delete_flow", %{"id" => id}, socket) do
-    {:noreply, assign(socket, :pending_delete_id, id)}
+    handle_set_pending_delete(socket, id)
   end
 
   def handle_event("confirm_delete_flow", _params, socket) do
-    if id = socket.assigns[:pending_delete_id] do
-      handle_event("delete_flow", %{"id" => id}, socket)
-    else
-      {:noreply, socket}
-    end
+    handle_confirm_delete(socket, fn socket, id ->
+      with_authorization(socket, :edit_content, fn _socket ->
+        handle_delete_entity(socket, id,
+          current_entity_id: socket.assigns.flow.id,
+          get_fn: &Flows.get_flow!/2,
+          delete_fn: &Flows.delete_flow/1,
+          index_path:
+            ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows",
+          reload_tree_fn: &reload_flows_tree/1,
+          success_msg: dgettext("flows", "Flow moved to trash."),
+          error_msg: dgettext("flows", "Could not delete flow.")
+        )
+      end)
+    end)
   end
 
   def handle_event("delete_flow", %{"id" => flow_id}, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
-      flow = Flows.get_flow!(socket.assigns.project.id, flow_id)
-
-      case Flows.delete_flow(flow) do
-        {:ok, _} ->
-          handle_flow_deleted(socket, flow)
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
-      end
+      handle_delete_entity(socket, flow_id,
+        current_entity_id: socket.assigns.flow.id,
+        get_fn: &Flows.get_flow!/2,
+        delete_fn: &Flows.delete_flow/1,
+        index_path:
+          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows",
+        reload_tree_fn: &reload_flows_tree/1,
+        success_msg: dgettext("flows", "Flow moved to trash."),
+        error_msg: dgettext("flows", "Could not delete flow.")
+      )
     end)
   end
 
@@ -1017,34 +1018,21 @@ defmodule StoryarnWeb.FlowLive.Show do
         socket
       ) do
     with_authorization(socket, :edit_content, fn _socket ->
-      flow = Flows.get_flow!(socket.assigns.project.id, item_id)
-      new_parent_id = Storyarn.Shared.MapUtils.parse_int(new_parent_id)
-      position = Storyarn.Shared.MapUtils.parse_int(position) || 0
-
-      case Flows.move_flow_to_position(flow, new_parent_id, position) do
-        {:ok, _} ->
-          {:noreply,
-           assign(socket, :flows_tree, Flows.list_flows_tree(socket.assigns.project.id))}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not move flow."))}
-      end
+      handle_move_entity(socket, item_id, new_parent_id, position,
+        get_fn: &Flows.get_flow!/2,
+        move_fn: &Flows.move_flow_to_position/3,
+        reload_tree_fn: &reload_flows_tree/1,
+        error_msg: dgettext("flows", "Could not move flow.")
+      )
     end)
   end
 
-  defp handle_flow_deleted(socket, flow) do
-    if to_string(flow.id) == to_string(socket.assigns.flow.id) do
-      {:noreply,
-       push_navigate(socket,
-         to:
-           ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows"
-       )}
-    else
-      {:noreply,
-       socket
-       |> assign(:flows_tree, Flows.list_flows_tree(socket.assigns.project.id))
-       |> put_flash(:info, dgettext("flows", "Flow moved to trash."))}
-    end
+  defp flow_path(socket, flow) do
+    ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow.id}"
+  end
+
+  defp reload_flows_tree(socket) do
+    assign(socket, :flows_tree, Flows.list_flows_tree(socket.assigns.project.id))
   end
 
   # ===========================================================================

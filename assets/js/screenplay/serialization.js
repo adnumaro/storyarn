@@ -46,7 +46,7 @@ const ATOM_TYPES = new Set([
  * Convert a TipTap node type to a server element type.
  * Returns the input unchanged for unknown types.
  */
-export function toServerType(tiptapType) {
+function toServerType(tiptapType) {
   return NODE_TYPE_MAP[tiptapType] || tiptapType;
 }
 
@@ -54,7 +54,7 @@ export function toServerType(tiptapType) {
  * Convert a server element type to a TipTap node type.
  * Returns the input unchanged for unknown types.
  */
-export function toTiptapType(serverType) {
+function toTiptapType(serverType) {
   return REVERSE_MAP[serverType] || serverType;
 }
 

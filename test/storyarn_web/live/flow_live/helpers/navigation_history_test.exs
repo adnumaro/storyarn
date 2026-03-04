@@ -8,8 +8,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NavigationHistoryTest do
       history = NavigationHistory.new(1, "Flow A")
       assert history.index == 0
       assert length(history.entries) == 1
-      assert NavigationHistory.current(history).flow_id == 1
-      assert NavigationHistory.current(history).flow_name == "Flow A"
+      assert Enum.at(history.entries, history.index).flow_id == 1
+      assert Enum.at(history.entries, history.index).flow_name == "Flow A"
     end
   end
 
@@ -20,7 +20,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NavigationHistoryTest do
 
       assert history.index == 1
       assert length(history.entries) == 2
-      assert NavigationHistory.current(history).flow_id == 2
+      assert Enum.at(history.entries, history.index).flow_id == 2
     end
 
     test "does not duplicate current flow" do
@@ -96,22 +96,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NavigationHistoryTest do
     end
   end
 
-  describe "can_go_back?/1 and can_go_forward?/1" do
-    test "reports availability correctly" do
-      history = NavigationHistory.new(1, "A")
-      refute NavigationHistory.can_go_back?(history)
-      refute NavigationHistory.can_go_forward?(history)
-
-      history = NavigationHistory.push(history, 2, "B")
-      assert NavigationHistory.can_go_back?(history)
-      refute NavigationHistory.can_go_forward?(history)
-
-      {:ok, _entry, history} = NavigationHistory.back(history)
-      refute NavigationHistory.can_go_back?(history)
-      assert NavigationHistory.can_go_forward?(history)
-    end
-  end
-
   describe "peek_back/1 and peek_forward/1" do
     test "returns nil when no previous/next" do
       history = NavigationHistory.new(1, "A")
@@ -139,7 +123,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NavigationHistoryTest do
       history = NavigationHistory.push(history, 2, "B")
       history = NavigationHistory.push(history, 3, "C")
 
-      assert NavigationHistory.current(history).flow_id == 3
+      assert Enum.at(history.entries, history.index).flow_id == 3
 
       {:ok, entry, history} = NavigationHistory.back(history)
       assert entry.flow_id == 2

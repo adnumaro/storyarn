@@ -1025,12 +1025,16 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
-  def handle_event("set_pending_delete_scene", params, socket) do
-    TreeHandlers.handle_set_pending_delete_scene(params, socket)
+  def handle_event("set_pending_delete_scene", %{"id" => id}, socket) do
+    handle_set_pending_delete(socket, id)
   end
 
-  def handle_event("confirm_delete_scene", params, socket) do
-    TreeHandlers.handle_confirm_delete_scene(params, socket)
+  def handle_event("confirm_delete_scene", _params, socket) do
+    handle_confirm_delete(socket, fn socket, id ->
+      with_authorization(socket, :edit_content, fn _socket ->
+        TreeHandlers.handle_delete_scene(%{"id" => id}, socket)
+      end)
+    end)
   end
 
   def handle_event("delete_scene", params, socket) do
@@ -1066,10 +1070,6 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   @impl true
-  def handle_info({:background_uploaded, asset}, socket) do
-    process_background_upload(socket, asset)
-  end
-
   def handle_info({:pin_icon_uploaded, asset}, socket) do
     case socket.assigns[:selected_element] do
       %{__struct__: Storyarn.Scenes.ScenePin} = pin ->

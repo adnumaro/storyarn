@@ -10,18 +10,15 @@ defmodule Storyarn.Screenplays do
   - `ElementCrud` — CRUD operations for screenplay elements
   - `ScreenplayQueries` — Read-only queries (get_with_elements, count, drafts)
   - `TreeOperations` — Reordering and moving screenplays in the tree
-  - `ElementGrouping` — Dialogue group computation from adjacency
   """
 
   alias Storyarn.Repo
   alias Storyarn.Sheets
 
   alias Storyarn.Screenplays.{
-    AutoDetect,
     CharacterExtension,
     ContentUtils,
     ElementCrud,
-    ElementGrouping,
     FlowSync,
     LinkedPageCrud,
     Screenplay,
@@ -132,16 +129,6 @@ defmodule Storyarn.Screenplays do
   defdelegate split_element(element, cursor_position, new_type), to: ElementCrud
 
   # =============================================================================
-  # Element Grouping (computed, not stored — Edge Case F)
-  # =============================================================================
-
-  @doc "Computes dialogue groups from element adjacency."
-  defdelegate compute_dialogue_groups(elements), to: ElementGrouping
-
-  @doc "Groups consecutive elements into logical units for flow mapping."
-  defdelegate group_elements(elements), to: ElementGrouping
-
-  # =============================================================================
   # Flow Sync
   # =============================================================================
 
@@ -184,13 +171,6 @@ defmodule Storyarn.Screenplays do
 
   @doc "Updates a choice in a response element by applying update_fn to the matching choice."
   defdelegate update_choice(element, choice_id, update_fn), to: LinkedPageCrud
-
-  # =============================================================================
-  # Auto-Detection
-  # =============================================================================
-
-  @doc "Detects element type from content text patterns. Returns type string or nil."
-  defdelegate detect_type(content), to: AutoDetect
 
   # =============================================================================
   # TiptapSerialization

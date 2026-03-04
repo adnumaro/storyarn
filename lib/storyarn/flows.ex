@@ -459,13 +459,6 @@ defmodule Storyarn.Flows do
   @spec delete_map_pin_references(integer()) :: :ok
   defdelegate delete_map_pin_references(pin_id), to: VariableReferenceTracker
 
-  @doc """
-  Deletes all variable references for a flow node.
-  Called when a node is deleted.
-  """
-  @spec delete_references(integer()) :: :ok
-  defdelegate delete_references(node_id), to: VariableReferenceTracker
-
   # =============================================================================
   # Connections - CRUD Operations
   # =============================================================================

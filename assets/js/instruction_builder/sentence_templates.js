@@ -9,7 +9,7 @@
  * "value_sheet" + separator + "value" (as variable combobox).
  */
 
-export const SENTENCE_TEMPLATES = {
+const SENTENCE_TEMPLATES = {
   set: [
     { type: "verb", value: "Set" },
     { type: "slot", key: "sheet", placeholder: "sheet" },
@@ -100,7 +100,7 @@ export const NO_VALUE_OPERATORS = new Set(["set_true", "set_false", "toggle", "c
 /**
  * Operators available per variable type.
  */
-export const OPERATORS_BY_TYPE = {
+const OPERATORS_BY_TYPE = {
   number: ["set", "add", "subtract"],
   boolean: ["set_true", "set_false", "toggle"],
   text: ["set", "clear"],

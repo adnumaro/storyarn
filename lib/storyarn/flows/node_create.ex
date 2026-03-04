@@ -41,7 +41,7 @@ defmodule Storyarn.Flows.NodeCreate do
     end
   end
 
-  def insert_node(%Flow{} = flow, attrs) do
+  defp insert_node(%Flow{} = flow, attrs) do
     %FlowNode{flow_id: flow.id}
     |> FlowNode.create_changeset(attrs)
     |> Repo.insert()

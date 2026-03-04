@@ -139,11 +139,9 @@ defmodule StoryarnWeb.Components.CollaborationComponents do
 
   defp action_message(:node_added, _), do: gettext("added a node")
   defp action_message(:node_deleted, _), do: gettext("deleted a node")
-  defp action_message(:node_updated, _), do: gettext("updated a node")
   defp action_message(:node_moved, _), do: gettext("moved a node")
   defp action_message(:connection_added, _), do: gettext("added a connection")
   defp action_message(:connection_deleted, _), do: gettext("deleted a connection")
-  defp action_message(:connection_updated, _), do: gettext("updated a connection")
   defp action_message(:user_joined, _), do: gettext("joined the flow")
   defp action_message(:user_left, _), do: gettext("left the flow")
   defp action_message(_, _), do: gettext("made a change")

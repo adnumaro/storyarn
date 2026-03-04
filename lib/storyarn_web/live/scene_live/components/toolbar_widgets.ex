@@ -13,6 +13,7 @@ defmodule StoryarnWeb.SceneLive.Components.ToolbarWidgets do
 
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.ToolbarColorPicker
+  import StoryarnWeb.SceneLive.Helpers.SceneHelpers, only: [flatten_sheets: 1]
 
   # ---------------------------------------------------------------------------
   # Stroke Picker (style + width + color in one popover — for zones & connections)
@@ -523,12 +524,6 @@ defmodule StoryarnWeb.SceneLive.Components.ToolbarWidgets do
   defp target_items("sheet", _maps, sheets, _flows), do: flatten_sheets(sheets)
   defp target_items("flow", _maps, _sheets, flows), do: flows
   defp target_items(_, _, _, _), do: []
-
-  defp flatten_sheets(sheets) do
-    Enum.flat_map(sheets, fn sheet ->
-      [sheet | flatten_sheets(Map.get(sheet, :children, []))]
-    end)
-  end
 
   defp target_display_name(type, target_id, maps, sheets, flows) do
     items = target_items(type, maps, sheets, flows)

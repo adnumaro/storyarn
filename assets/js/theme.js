@@ -55,5 +55,3 @@ document.addEventListener("keydown", (e) => {
     setTheme("toggle");
   }
 });
-
-export { setTheme, getPreferredTheme };

@@ -78,10 +78,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
     })
   end
 
-  def push_remote_change_event(socket, :node_updated, payload) do
-    push_event(socket, "node_updated", %{id: payload.node_id, data: payload.node_data})
-  end
-
   def push_remote_change_event(socket, :node_moved, _payload) do
     # Node position is part of flow_data which is already updated
     socket
@@ -95,14 +91,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
     push_event(socket, "connection_removed", %{
       source_node_id: payload.source_node_id,
       target_node_id: payload.target_node_id
-    })
-  end
-
-  def push_remote_change_event(socket, :connection_updated, payload) do
-    push_event(socket, "connection_updated", %{
-      id: payload.connection_id,
-      label: payload.label,
-      condition: payload.condition
     })
   end
 

@@ -10,7 +10,7 @@
  * Operators available per variable type.
  * Must stay in sync with Condition.operators_for_type/1.
  */
-export const CONDITION_OPERATORS_BY_TYPE = {
+const CONDITION_OPERATORS_BY_TYPE = {
   text: ["equals", "not_equals", "contains", "starts_with", "ends_with", "is_empty"],
   rich_text: ["equals", "not_equals", "contains", "starts_with", "ends_with", "is_empty"],
   number: [

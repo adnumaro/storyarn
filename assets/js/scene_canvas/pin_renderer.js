@@ -8,6 +8,7 @@ import L from "leaflet";
 import { createElement, Lock, MapPin, Star, User, Zap } from "lucide";
 import { sanitizeColor } from "./color_utils.js";
 import { toLatLng } from "./coordinate_utils.js";
+import { escapeHtml } from "../utils/escape_html.js";
 
 // Pin type → Lucide icon mapping
 const PIN_ICONS = {
@@ -39,13 +40,6 @@ function hexWithOpacity(hex, opacity) {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `rgba(${r},${g},${b},${opacity})`;
-}
-
-/** Escapes a string for safe injection into innerHTML. */
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
 }
 
 /**

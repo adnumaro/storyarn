@@ -4,15 +4,15 @@ defmodule Storyarn.Projects.ProjectInvitation do
 
   Invitations are token-based and expire after 7 days.
   """
-  use Ecto.Schema
-  import Ecto.Changeset
-  import Ecto.Query
 
-  alias Storyarn.Accounts.User
+  use Storyarn.Shared.InvitationSchema,
+    parent_key: :project_id,
+    parent_schema: Storyarn.Projects.Project,
+    allowed_roles: ~w(editor viewer),
+    default_role: "editor",
+    verify_preloads: [[project: :workspace], :invited_by]
+
   alias Storyarn.Projects.Project
-  alias Storyarn.Shared.{TokenGenerator, Validations}
-
-  @invitation_validity_in_days 7
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -41,72 +41,4 @@ defmodule Storyarn.Projects.ProjectInvitation do
 
     timestamps(type: :utc_datetime)
   end
-
-  @doc """
-  Changeset for creating an invitation.
-  """
-  def changeset(invitation, attrs) do
-    invitation
-    |> cast(attrs, [:email, :role, :project_id, :invited_by_id])
-    |> validate_required([:email, :role, :project_id, :invited_by_id])
-    |> Validations.validate_email_format()
-    |> validate_inclusion(:role, ~w(editor viewer))
-    |> foreign_key_constraint(:project_id)
-    |> foreign_key_constraint(:invited_by_id)
-  end
-
-  @doc """
-  Builds an invitation with a generated token.
-
-  Returns `{encoded_token, invitation_struct}` where the encoded_token
-  should be sent to the user and the invitation_struct should be inserted
-  into the database.
-  """
-  def build_invitation(project, invited_by, email, role \\ "editor") do
-    {encoded_token, hashed_token} = TokenGenerator.build_hashed_token()
-
-    expires_at =
-      DateTime.utc_now()
-      |> DateTime.add(@invitation_validity_in_days, :day)
-      |> DateTime.truncate(:second)
-
-    invitation = %__MODULE__{
-      project_id: project.id,
-      invited_by_id: invited_by.id,
-      email: String.downcase(email),
-      token: hashed_token,
-      role: role,
-      expires_at: expires_at
-    }
-
-    {encoded_token, invitation}
-  end
-
-  @doc """
-  Verifies a token and returns a query for the invitation if valid.
-
-  Returns `{:ok, query}` if the token is valid, `:error` otherwise.
-  """
-  def verify_token_query(token) do
-    case TokenGenerator.decode_and_hash(token) do
-      {:ok, hashed_token} ->
-        query =
-          from(i in __MODULE__,
-            where: i.token == ^hashed_token,
-            where: i.expires_at > ^DateTime.utc_now(),
-            where: is_nil(i.accepted_at),
-            preload: [[project: :workspace], :invited_by]
-          )
-
-        {:ok, query}
-
-      :error ->
-        :error
-    end
-  end
-
-  @doc """
-  Returns the invitation validity period in days.
-  """
-  def validity_in_days, do: @invitation_validity_in_days
 end

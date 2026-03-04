@@ -1,6 +1,9 @@
 defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
   @moduledoc """
   Undo/redo handlers for the scene LiveView.
+
+  Uses a dispatch map to generalize create/update/delete across element types
+  (pin, zone, connection, annotation), keeping layer and special actions separate.
   """
 
   import Phoenix.Component, only: [assign: 3]
@@ -15,6 +18,119 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
 
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers,
     only: [replace_in_list: 2, maybe_update_selected_element: 3]
+
+  # ---------------------------------------------------------------------------
+  # Element-type dispatch — maps type atoms to context functions, assign keys,
+  # serializer functions, and push event names.
+  # ---------------------------------------------------------------------------
+
+  @type_config %{
+    pin: %{
+      get: &Scenes.get_pin/2,
+      create: &Scenes.create_pin/2,
+      update: &Scenes.update_pin/2,
+      delete: &Scenes.delete_pin/1,
+      assign_key: :pins,
+      type_string: "pin"
+    },
+    zone: %{
+      get: &Scenes.get_zone/2,
+      create: &Scenes.create_zone/2,
+      update: &Scenes.update_zone/2,
+      delete: &Scenes.delete_zone/1,
+      assign_key: :zones,
+      type_string: "zone"
+    },
+    connection: %{
+      get: &Scenes.get_connection/2,
+      create: &Scenes.create_connection/2,
+      update: &Scenes.update_connection/2,
+      delete: &Scenes.delete_connection/1,
+      assign_key: :connections,
+      type_string: "connection"
+    },
+    annotation: %{
+      get: &Scenes.get_annotation/2,
+      create: &Scenes.create_annotation/2,
+      update: &Scenes.update_annotation/2,
+      delete: &Scenes.delete_annotation/1,
+      assign_key: :annotations,
+      type_string: "annotation"
+    }
+  }
+
+  defp type_config(type), do: Map.fetch!(@type_config, type)
+
+  defp serialize(type, element) do
+    case type do
+      :pin -> serialize_pin(element)
+      :zone -> serialize_zone(element)
+      :connection -> serialize_connection(element)
+      :annotation -> serialize_annotation(element)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Attr extraction helpers (used by both undo and redo of creates/deletes)
+  # ---------------------------------------------------------------------------
+
+  defp to_attrs(:pin, el),
+    do: Map.put(ElementHandlers.pin_copyable_attrs(el), "locked", el.locked)
+
+  defp to_attrs(:zone, el),
+    do: Map.put(ElementHandlers.zone_copyable_attrs(el), "locked", el.locked)
+
+  defp to_attrs(:connection, el) do
+    %{
+      "from_pin_id" => el.from_pin_id,
+      "to_pin_id" => el.to_pin_id,
+      "line_style" => el.line_style,
+      "line_width" => el.line_width,
+      "color" => el.color,
+      "label" => el.label,
+      "bidirectional" => el.bidirectional,
+      "show_label" => el.show_label,
+      "waypoints" => el.waypoints || []
+    }
+  end
+
+  defp to_attrs(:annotation, el) do
+    %{
+      "text" => el.text,
+      "position_x" => el.position_x,
+      "position_y" => el.position_y,
+      "font_size" => el.font_size,
+      "color" => el.color,
+      "layer_id" => el.layer_id,
+      "locked" => el.locked
+    }
+  end
+
+  defp layer_to_attrs(layer) do
+    %{
+      "name" => layer.name,
+      "visible" => layer.visible,
+      "fog_enabled" => layer.fog_enabled,
+      "fog_color" => layer.fog_color,
+      "fog_opacity" => layer.fog_opacity
+    }
+  end
+
+  # Per-type flash messages preserve existing gettext entries and Spanish translations
+  # (each type has different grammatical gender in Spanish)
+  defp flash_restored(:pin), do: dgettext("scenes", "Undo: pin restored.")
+  defp flash_restored(:zone), do: dgettext("scenes", "Undo: zone restored.")
+  defp flash_restored(:connection), do: dgettext("scenes", "Undo: connection restored.")
+  defp flash_restored(:annotation), do: dgettext("scenes", "Undo: annotation restored.")
+
+  defp flash_creation_reverted(:pin), do: dgettext("scenes", "Undo: pin creation reverted.")
+  defp flash_creation_reverted(:zone), do: dgettext("scenes", "Undo: zone creation reverted.")
+
+  defp flash_creation_reverted(:connection),
+    do: dgettext("scenes", "Undo: connection creation reverted.")
+
+  defp flash_creation_reverted(:annotation),
+    do: dgettext("scenes", "Undo: annotation creation reverted.")
 
   # ---------------------------------------------------------------------------
   # Public dispatch
@@ -97,113 +213,113 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
   end
 
   # ---------------------------------------------------------------------------
-  # Attr extraction helpers (DRY — used by both undo and redo of creates/deletes)
+  # Generic undo: delete → re-create the deleted element
   # ---------------------------------------------------------------------------
 
-  defp pin_to_attrs(pin) do
-    Map.put(ElementHandlers.pin_copyable_attrs(pin), "locked", pin.locked)
+  for type <- [:pin, :zone, :connection, :annotation] do
+    delete_action = :"delete_#{type}"
+
+    defp undo_action({unquote(delete_action), element}, socket) do
+      undo_delete(unquote(type), element, socket)
+    end
   end
 
-  defp zone_to_attrs(zone) do
-    Map.put(ElementHandlers.zone_copyable_attrs(zone), "locked", zone.locked)
-  end
+  defp undo_delete(type, element, socket) do
+    cfg = type_config(type)
+    scene_id = socket.assigns.scene.id
 
-  defp connection_to_attrs(conn) do
-    %{
-      "from_pin_id" => conn.from_pin_id,
-      "to_pin_id" => conn.to_pin_id,
-      "line_style" => conn.line_style,
-      "line_width" => conn.line_width,
-      "color" => conn.color,
-      "label" => conn.label,
-      "bidirectional" => conn.bidirectional,
-      "show_label" => conn.show_label,
-      "waypoints" => conn.waypoints || []
-    }
-  end
+    case cfg.create.(scene_id, to_attrs(type, element)) do
+      {:ok, new_el} ->
+        action_tag = :"delete_#{type}"
 
-  defp annotation_to_attrs(annotation) do
-    %{
-      "text" => annotation.text,
-      "position_x" => annotation.position_x,
-      "position_y" => annotation.position_y,
-      "font_size" => annotation.font_size,
-      "color" => annotation.color,
-      "layer_id" => annotation.layer_id,
-      "locked" => annotation.locked
-    }
-  end
-
-  defp layer_to_attrs(layer) do
-    %{
-      "name" => layer.name,
-      "visible" => layer.visible,
-      "fog_enabled" => layer.fog_enabled,
-      "fog_color" => layer.fog_color,
-      "fog_opacity" => layer.fog_opacity
-    }
-  end
-
-  # ---------------------------------------------------------------------------
-  # Undo: delete actions (re-create the deleted element)
-  # ---------------------------------------------------------------------------
-
-  defp undo_action({:delete_pin, pin}, socket) do
-    case Scenes.create_pin(socket.assigns.scene.id, pin_to_attrs(pin)) do
-      {:ok, new_pin} ->
         {:ok,
          socket
-         |> assign(:pins, socket.assigns.pins ++ [new_pin])
-         |> push_event("pin_created", serialize_pin(new_pin))
-         |> put_flash(:info, dgettext("scenes", "Undo: pin restored.")), {:delete_pin, new_pin}}
+         |> assign(cfg.assign_key, Map.get(socket.assigns, cfg.assign_key) ++ [new_el])
+         |> push_event("#{cfg.type_string}_created", serialize(type, new_el))
+         |> put_flash(:info, flash_restored(type)), {action_tag, new_el}}
 
       {:error, _} ->
         {:error, put_flash(socket, :error, dgettext("scenes", "Could not undo."))}
     end
   end
 
-  defp undo_action({:delete_zone, zone}, socket) do
-    case Scenes.create_zone(socket.assigns.scene.id, zone_to_attrs(zone)) do
-      {:ok, new_zone} ->
-        {:ok,
-         socket
-         |> assign(:zones, socket.assigns.zones ++ [new_zone])
-         |> push_event("zone_created", serialize_zone(new_zone))
-         |> put_flash(:info, dgettext("scenes", "Undo: zone restored.")),
-         {:delete_zone, new_zone}}
+  # ---------------------------------------------------------------------------
+  # Generic undo: create → delete the created element
+  # ---------------------------------------------------------------------------
 
-      {:error, _} ->
-        {:error, put_flash(socket, :error, dgettext("scenes", "Could not undo."))}
+  for type <- [:pin, :zone, :connection, :annotation] do
+    create_action = :"create_#{type}"
+
+    defp undo_action({unquote(create_action), element}, socket) do
+      undo_create(unquote(type), element, socket)
     end
   end
 
-  defp undo_action({:delete_connection, conn}, socket) do
-    case Scenes.create_connection(socket.assigns.scene.id, connection_to_attrs(conn)) do
-      {:ok, new_conn} ->
-        {:ok,
-         socket
-         |> assign(:connections, socket.assigns.connections ++ [new_conn])
-         |> push_event("connection_created", serialize_connection(new_conn))
-         |> put_flash(:info, dgettext("scenes", "Undo: connection restored.")),
-         {:delete_connection, new_conn}}
+  defp undo_create(type, element, socket) do
+    cfg = type_config(type)
+    list = Map.get(socket.assigns, cfg.assign_key)
 
-      {:error, _} ->
-        {:error, put_flash(socket, :error, dgettext("scenes", "Could not undo."))}
+    case Enum.find(list, &(&1.id == element.id)) do
+      nil ->
+        {:error, socket}
+
+      found ->
+        case cfg.delete.(found) do
+          {:ok, _} ->
+            action_tag = :"create_#{type}"
+
+            {:ok,
+             socket
+             |> assign(cfg.assign_key, Enum.reject(list, &(&1.id == found.id)))
+             |> assign(:selected_element, nil)
+             |> assign(:selected_type, nil)
+             |> push_event("#{cfg.type_string}_deleted", %{id: found.id})
+             |> put_flash(:info, flash_creation_reverted(type)), {action_tag, found}}
+
+          {:error, _} ->
+            {:error, socket}
+        end
     end
   end
 
-  defp undo_action({:delete_annotation, annotation}, socket) do
-    case Scenes.create_annotation(socket.assigns.scene.id, annotation_to_attrs(annotation)) do
-      {:ok, new_ann} ->
-        {:ok,
-         socket
-         |> assign(:annotations, socket.assigns.annotations ++ [new_ann])
-         |> push_event("annotation_created", serialize_annotation(new_ann))
-         |> put_flash(:info, dgettext("scenes", "Undo: annotation restored.")),
-         {:delete_annotation, new_ann}}
+  # ---------------------------------------------------------------------------
+  # Generic undo: update → restore previous attrs
+  # ---------------------------------------------------------------------------
 
-      {:error, _} ->
-        {:error, put_flash(socket, :error, dgettext("scenes", "Could not undo."))}
+  for type <- [:pin, :zone, :connection, :annotation] do
+    update_action = :"update_#{type}"
+
+    defp undo_action({unquote(update_action), id, prev_attrs, new_attrs}, socket) do
+      undo_update(unquote(type), id, prev_attrs, new_attrs, socket)
+    end
+  end
+
+  defp undo_update(type, id, prev_attrs, new_attrs, socket) do
+    cfg = type_config(type)
+    scene_id = socket.assigns.scene.id
+
+    case cfg.get.(scene_id, id) do
+      nil ->
+        {:error, socket}
+
+      element ->
+        case cfg.update.(element, prev_attrs) do
+          {:ok, updated} ->
+            action_tag = :"update_#{type}"
+
+            {:ok,
+             socket
+             |> assign(
+               cfg.assign_key,
+               replace_in_list(Map.get(socket.assigns, cfg.assign_key), updated)
+             )
+             |> maybe_update_selected_element(cfg.type_string, updated)
+             |> push_event("#{cfg.type_string}_updated", serialize(type, updated)),
+             {action_tag, id, prev_attrs, new_attrs}}
+
+          {:error, _} ->
+            {:error, socket}
+        end
     end
   end
 
@@ -238,152 +354,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
   end
 
   # ---------------------------------------------------------------------------
-  # Undo: create actions (delete the created element)
+  # Undo: zone vertices (special update)
   # ---------------------------------------------------------------------------
-
-  defp undo_action({:create_pin, pin}, socket) do
-    case Enum.find(socket.assigns.pins, &(&1.id == pin.id)) do
-      nil ->
-        {:error, socket}
-
-      found ->
-        case Scenes.delete_pin(found) do
-          {:ok, _} ->
-            {:ok,
-             socket
-             |> assign(:pins, Enum.reject(socket.assigns.pins, &(&1.id == found.id)))
-             |> assign(:selected_element, nil)
-             |> assign(:selected_type, nil)
-             |> push_event("pin_deleted", %{id: found.id})
-             |> put_flash(:info, dgettext("scenes", "Undo: pin creation reverted.")),
-             {:create_pin, found}}
-
-          {:error, _} ->
-            {:error, socket}
-        end
-    end
-  end
-
-  defp undo_action({:create_zone, zone}, socket) do
-    case Enum.find(socket.assigns.zones, &(&1.id == zone.id)) do
-      nil ->
-        {:error, socket}
-
-      found ->
-        case Scenes.delete_zone(found) do
-          {:ok, _} ->
-            {:ok,
-             socket
-             |> assign(:zones, Enum.reject(socket.assigns.zones, &(&1.id == found.id)))
-             |> assign(:selected_element, nil)
-             |> assign(:selected_type, nil)
-             |> push_event("zone_deleted", %{id: found.id})
-             |> put_flash(:info, dgettext("scenes", "Undo: zone creation reverted.")),
-             {:create_zone, found}}
-
-          {:error, _} ->
-            {:error, socket}
-        end
-    end
-  end
-
-  defp undo_action({:create_connection, conn}, socket) do
-    case Enum.find(socket.assigns.connections, &(&1.id == conn.id)) do
-      nil ->
-        {:error, socket}
-
-      found ->
-        case Scenes.delete_connection(found) do
-          {:ok, _} ->
-            {:ok,
-             socket
-             |> assign(
-               :connections,
-               Enum.reject(socket.assigns.connections, &(&1.id == found.id))
-             )
-             |> assign(:selected_element, nil)
-             |> assign(:selected_type, nil)
-             |> push_event("connection_deleted", %{id: found.id})
-             |> put_flash(:info, dgettext("scenes", "Undo: connection creation reverted.")),
-             {:create_connection, found}}
-
-          {:error, _} ->
-            {:error, socket}
-        end
-    end
-  end
-
-  defp undo_action({:create_annotation, annotation}, socket) do
-    case Enum.find(socket.assigns.annotations, &(&1.id == annotation.id)) do
-      nil ->
-        {:error, socket}
-
-      found ->
-        case Scenes.delete_annotation(found) do
-          {:ok, _} ->
-            {:ok,
-             socket
-             |> assign(
-               :annotations,
-               Enum.reject(socket.assigns.annotations, &(&1.id == found.id))
-             )
-             |> assign(:selected_element, nil)
-             |> assign(:selected_type, nil)
-             |> push_event("annotation_deleted", %{id: found.id})
-             |> put_flash(:info, dgettext("scenes", "Undo: annotation creation reverted.")),
-             {:create_annotation, found}}
-
-          {:error, _} ->
-            {:error, socket}
-        end
-    end
-  end
-
-  # ---------------------------------------------------------------------------
-  # Undo: update actions (restore previous values)
-  # ---------------------------------------------------------------------------
-
-  defp undo_action({:update_pin, pin_id, prev_attrs, new_attrs}, socket) do
-    case Scenes.get_pin(socket.assigns.scene.id, pin_id) do
-      nil ->
-        {:error, socket}
-
-      pin ->
-        case Scenes.update_pin(pin, prev_attrs) do
-          {:ok, updated} ->
-            {:ok,
-             socket
-             |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
-             |> maybe_update_selected_element("pin", updated)
-             |> push_event("pin_updated", serialize_pin(updated)),
-             {:update_pin, pin_id, prev_attrs, new_attrs}}
-
-          {:error, _} ->
-            {:error, socket}
-        end
-    end
-  end
-
-  defp undo_action({:update_zone, zone_id, prev_attrs, new_attrs}, socket) do
-    case Scenes.get_zone(socket.assigns.scene.id, zone_id) do
-      nil ->
-        {:error, socket}
-
-      zone ->
-        case Scenes.update_zone(zone, prev_attrs) do
-          {:ok, updated} ->
-            {:ok,
-             socket
-             |> assign(:zones, replace_in_list(socket.assigns.zones, updated))
-             |> maybe_update_selected_element("zone", updated)
-             |> push_event("zone_updated", serialize_zone(updated)),
-             {:update_zone, zone_id, prev_attrs, new_attrs}}
-
-          {:error, _} ->
-            {:error, socket}
-        end
-    end
-  end
 
   defp undo_action({:update_zone_vertices, zone_id, prev_vertices, new_vertices}, socket) do
     case Scenes.get_zone(socket.assigns.scene.id, zone_id) do
@@ -406,26 +378,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
     end
   end
 
-  defp undo_action({:update_connection, conn_id, prev_attrs, new_attrs}, socket) do
-    case Scenes.get_connection(socket.assigns.scene.id, conn_id) do
-      nil ->
-        {:error, socket}
-
-      conn ->
-        case Scenes.update_connection(conn, prev_attrs) do
-          {:ok, updated} ->
-            {:ok,
-             socket
-             |> assign(:connections, replace_in_list(socket.assigns.connections, updated))
-             |> maybe_update_selected_element("connection", updated)
-             |> push_event("connection_updated", serialize_connection(updated)),
-             {:update_connection, conn_id, prev_attrs, new_attrs}}
-
-          {:error, _} ->
-            {:error, socket}
-        end
-    end
-  end
+  # ---------------------------------------------------------------------------
+  # Undo: connection waypoints (special update)
+  # ---------------------------------------------------------------------------
 
   defp undo_action({:update_connection_waypoints, conn_id, prev_waypoints, new_waypoints}, socket) do
     case Scenes.get_connection(socket.assigns.scene.id, conn_id) do
@@ -448,29 +403,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
     end
   end
 
-  defp undo_action({:update_annotation, ann_id, prev_attrs, new_attrs}, socket) do
-    case Scenes.get_annotation(socket.assigns.scene.id, ann_id) do
-      nil ->
-        {:error, socket}
-
-      ann ->
-        case Scenes.update_annotation(ann, prev_attrs) do
-          {:ok, updated} ->
-            {:ok,
-             socket
-             |> assign(:annotations, replace_in_list(socket.assigns.annotations, updated))
-             |> maybe_update_selected_element("annotation", updated)
-             |> push_event("annotation_updated", serialize_annotation(updated)),
-             {:update_annotation, ann_id, prev_attrs, new_attrs}}
-
-          {:error, _} ->
-            {:error, socket}
-        end
-    end
-  end
-
   # ---------------------------------------------------------------------------
-  # Undo: layer actions
+  # Undo: layer actions (unique structure — no generic dispatch)
   # ---------------------------------------------------------------------------
 
   defp undo_action({:create_layer, layer}, socket) do
@@ -571,23 +505,36 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
   end
 
   # ---------------------------------------------------------------------------
-  # Redo: delete actions (re-delete the restored element)
+  # Generic redo: delete → re-delete the restored element
   # ---------------------------------------------------------------------------
 
-  defp redo_action({:delete_pin, pin}, socket) do
-    case Enum.find(socket.assigns.pins, &(&1.id == pin.id)) do
+  for type <- [:pin, :zone, :connection, :annotation] do
+    delete_action = :"delete_#{type}"
+
+    defp redo_action({unquote(delete_action), element}, socket) do
+      redo_delete(unquote(type), element, socket)
+    end
+  end
+
+  defp redo_delete(type, element, socket) do
+    cfg = type_config(type)
+    list = Map.get(socket.assigns, cfg.assign_key)
+
+    case Enum.find(list, &(&1.id == element.id)) do
       nil ->
         {:error, socket}
 
       found ->
-        case Scenes.delete_pin(found) do
+        case cfg.delete.(found) do
           {:ok, _} ->
+            action_tag = :"delete_#{type}"
+
             {:ok,
              socket
-             |> assign(:pins, Enum.reject(socket.assigns.pins, &(&1.id == found.id)))
+             |> assign(cfg.assign_key, Enum.reject(list, &(&1.id == found.id)))
              |> assign(:selected_element, nil)
              |> assign(:selected_type, nil)
-             |> push_event("pin_deleted", %{id: found.id}), {:delete_pin, found}}
+             |> push_event("#{cfg.type_string}_deleted", %{id: found.id}), {action_tag, found}}
 
           {:error, _} ->
             {:error, socket}
@@ -595,68 +542,71 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
     end
   end
 
-  defp redo_action({:delete_zone, zone}, socket) do
-    case Enum.find(socket.assigns.zones, &(&1.id == zone.id)) do
-      nil ->
-        {:error, socket}
+  # ---------------------------------------------------------------------------
+  # Generic redo: create → re-create from stored attrs
+  # ---------------------------------------------------------------------------
 
-      found ->
-        case Scenes.delete_zone(found) do
-          {:ok, _} ->
-            {:ok,
-             socket
-             |> assign(:zones, Enum.reject(socket.assigns.zones, &(&1.id == found.id)))
-             |> assign(:selected_element, nil)
-             |> assign(:selected_type, nil)
-             |> push_event("zone_deleted", %{id: found.id}), {:delete_zone, found}}
+  for type <- [:pin, :zone, :connection, :annotation] do
+    create_action = :"create_#{type}"
 
-          {:error, _} ->
-            {:error, socket}
-        end
+    defp redo_action({unquote(create_action), element}, socket) do
+      redo_create(unquote(type), element, socket)
     end
   end
 
-  defp redo_action({:delete_connection, conn}, socket) do
-    case Enum.find(socket.assigns.connections, &(&1.id == conn.id)) do
+  defp redo_create(type, element, socket) do
+    cfg = type_config(type)
+    scene_id = socket.assigns.scene.id
+
+    case cfg.create.(scene_id, to_attrs(type, element)) do
+      {:ok, new_el} ->
+        action_tag = :"create_#{type}"
+
+        {:ok,
+         socket
+         |> assign(cfg.assign_key, Map.get(socket.assigns, cfg.assign_key) ++ [new_el])
+         |> push_event("#{cfg.type_string}_created", serialize(type, new_el)),
+         {action_tag, new_el}}
+
+      {:error, _} ->
+        {:error, socket}
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Generic redo: update → re-apply new attrs
+  # ---------------------------------------------------------------------------
+
+  for type <- [:pin, :zone, :connection, :annotation] do
+    update_action = :"update_#{type}"
+
+    defp redo_action({unquote(update_action), id, prev_attrs, new_attrs}, socket) do
+      redo_update(unquote(type), id, prev_attrs, new_attrs, socket)
+    end
+  end
+
+  defp redo_update(type, id, prev_attrs, new_attrs, socket) do
+    cfg = type_config(type)
+    scene_id = socket.assigns.scene.id
+
+    case cfg.get.(scene_id, id) do
       nil ->
         {:error, socket}
 
-      found ->
-        case Scenes.delete_connection(found) do
-          {:ok, _} ->
+      element ->
+        case cfg.update.(element, new_attrs) do
+          {:ok, updated} ->
+            action_tag = :"update_#{type}"
+
             {:ok,
              socket
              |> assign(
-               :connections,
-               Enum.reject(socket.assigns.connections, &(&1.id == found.id))
+               cfg.assign_key,
+               replace_in_list(Map.get(socket.assigns, cfg.assign_key), updated)
              )
-             |> assign(:selected_element, nil)
-             |> assign(:selected_type, nil)
-             |> push_event("connection_deleted", %{id: found.id}), {:delete_connection, found}}
-
-          {:error, _} ->
-            {:error, socket}
-        end
-    end
-  end
-
-  defp redo_action({:delete_annotation, ann}, socket) do
-    case Enum.find(socket.assigns.annotations, &(&1.id == ann.id)) do
-      nil ->
-        {:error, socket}
-
-      found ->
-        case Scenes.delete_annotation(found) do
-          {:ok, _} ->
-            {:ok,
-             socket
-             |> assign(
-               :annotations,
-               Enum.reject(socket.assigns.annotations, &(&1.id == found.id))
-             )
-             |> assign(:selected_element, nil)
-             |> assign(:selected_type, nil)
-             |> push_event("annotation_deleted", %{id: found.id}), {:delete_annotation, found}}
+             |> maybe_update_selected_element(cfg.type_string, updated)
+             |> push_event("#{cfg.type_string}_updated", serialize(type, updated)),
+             {action_tag, id, prev_attrs, new_attrs}}
 
           {:error, _} ->
             {:error, socket}
@@ -695,108 +645,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
   end
 
   # ---------------------------------------------------------------------------
-  # Redo: create actions (re-create from stored attrs)
+  # Redo: zone vertices (special update)
   # ---------------------------------------------------------------------------
-
-  defp redo_action({:create_pin, pin}, socket) do
-    case Scenes.create_pin(socket.assigns.scene.id, pin_to_attrs(pin)) do
-      {:ok, new_pin} ->
-        {:ok,
-         socket
-         |> assign(:pins, socket.assigns.pins ++ [new_pin])
-         |> push_event("pin_created", serialize_pin(new_pin)), {:create_pin, new_pin}}
-
-      {:error, _} ->
-        {:error, socket}
-    end
-  end
-
-  defp redo_action({:create_zone, zone}, socket) do
-    case Scenes.create_zone(socket.assigns.scene.id, zone_to_attrs(zone)) do
-      {:ok, new_zone} ->
-        {:ok,
-         socket
-         |> assign(:zones, socket.assigns.zones ++ [new_zone])
-         |> push_event("zone_created", serialize_zone(new_zone)), {:create_zone, new_zone}}
-
-      {:error, _} ->
-        {:error, socket}
-    end
-  end
-
-  defp redo_action({:create_connection, conn}, socket) do
-    case Scenes.create_connection(socket.assigns.scene.id, connection_to_attrs(conn)) do
-      {:ok, new_conn} ->
-        {:ok,
-         socket
-         |> assign(:connections, socket.assigns.connections ++ [new_conn])
-         |> push_event("connection_created", serialize_connection(new_conn)),
-         {:create_connection, new_conn}}
-
-      {:error, _} ->
-        {:error, socket}
-    end
-  end
-
-  defp redo_action({:create_annotation, annotation}, socket) do
-    case Scenes.create_annotation(socket.assigns.scene.id, annotation_to_attrs(annotation)) do
-      {:ok, new_ann} ->
-        {:ok,
-         socket
-         |> assign(:annotations, socket.assigns.annotations ++ [new_ann])
-         |> push_event("annotation_created", serialize_annotation(new_ann)),
-         {:create_annotation, new_ann}}
-
-      {:error, _} ->
-        {:error, socket}
-    end
-  end
-
-  # ---------------------------------------------------------------------------
-  # Redo: update actions (re-apply new values)
-  # ---------------------------------------------------------------------------
-
-  defp redo_action({:update_pin, pin_id, prev_attrs, new_attrs}, socket) do
-    case Scenes.get_pin(socket.assigns.scene.id, pin_id) do
-      nil ->
-        {:error, socket}
-
-      pin ->
-        case Scenes.update_pin(pin, new_attrs) do
-          {:ok, updated} ->
-            {:ok,
-             socket
-             |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
-             |> maybe_update_selected_element("pin", updated)
-             |> push_event("pin_updated", serialize_pin(updated)),
-             {:update_pin, pin_id, prev_attrs, new_attrs}}
-
-          {:error, _} ->
-            {:error, socket}
-        end
-    end
-  end
-
-  defp redo_action({:update_zone, zone_id, prev_attrs, new_attrs}, socket) do
-    case Scenes.get_zone(socket.assigns.scene.id, zone_id) do
-      nil ->
-        {:error, socket}
-
-      zone ->
-        case Scenes.update_zone(zone, new_attrs) do
-          {:ok, updated} ->
-            {:ok,
-             socket
-             |> assign(:zones, replace_in_list(socket.assigns.zones, updated))
-             |> maybe_update_selected_element("zone", updated)
-             |> push_event("zone_updated", serialize_zone(updated)),
-             {:update_zone, zone_id, prev_attrs, new_attrs}}
-
-          {:error, _} ->
-            {:error, socket}
-        end
-    end
-  end
 
   defp redo_action({:update_zone_vertices, zone_id, prev_vertices, new_vertices}, socket) do
     case Scenes.get_zone(socket.assigns.scene.id, zone_id) do
@@ -819,26 +669,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
     end
   end
 
-  defp redo_action({:update_connection, conn_id, prev_attrs, new_attrs}, socket) do
-    case Scenes.get_connection(socket.assigns.scene.id, conn_id) do
-      nil ->
-        {:error, socket}
-
-      conn ->
-        case Scenes.update_connection(conn, new_attrs) do
-          {:ok, updated} ->
-            {:ok,
-             socket
-             |> assign(:connections, replace_in_list(socket.assigns.connections, updated))
-             |> maybe_update_selected_element("connection", updated)
-             |> push_event("connection_updated", serialize_connection(updated)),
-             {:update_connection, conn_id, prev_attrs, new_attrs}}
-
-          {:error, _} ->
-            {:error, socket}
-        end
-    end
-  end
+  # ---------------------------------------------------------------------------
+  # Redo: connection waypoints (special update)
+  # ---------------------------------------------------------------------------
 
   defp redo_action({:update_connection_waypoints, conn_id, prev_waypoints, new_waypoints}, socket) do
     case Scenes.get_connection(socket.assigns.scene.id, conn_id) do
@@ -861,29 +694,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
     end
   end
 
-  defp redo_action({:update_annotation, ann_id, prev_attrs, new_attrs}, socket) do
-    case Scenes.get_annotation(socket.assigns.scene.id, ann_id) do
-      nil ->
-        {:error, socket}
-
-      ann ->
-        case Scenes.update_annotation(ann, new_attrs) do
-          {:ok, updated} ->
-            {:ok,
-             socket
-             |> assign(:annotations, replace_in_list(socket.assigns.annotations, updated))
-             |> maybe_update_selected_element("annotation", updated)
-             |> push_event("annotation_updated", serialize_annotation(updated)),
-             {:update_annotation, ann_id, prev_attrs, new_attrs}}
-
-          {:error, _} ->
-            {:error, socket}
-        end
-    end
-  end
-
   # ---------------------------------------------------------------------------
-  # Redo: layer actions
+  # Redo: layer actions (unique structure)
   # ---------------------------------------------------------------------------
 
   defp redo_action({:create_layer, layer}, socket) do

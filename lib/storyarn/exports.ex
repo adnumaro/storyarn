@@ -63,11 +63,6 @@ defmodule Storyarn.Exports do
   defdelegate count_entities(project_id, opts), to: DataCollector, as: :count_entities
 
   @doc """
-  List available export formats with their labels.
-  """
-  defdelegate list_formats(), to: SerializerRegistry, as: :list
-
-  @doc """
   List all formats with display metadata (label, extension, supported sections).
   """
   defdelegate list_formats_with_metadata(), to: SerializerRegistry, as: :list_with_metadata

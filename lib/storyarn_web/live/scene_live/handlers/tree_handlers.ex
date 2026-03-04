@@ -46,18 +46,6 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
     end
   end
 
-  def handle_set_pending_delete_scene(%{"id" => id}, socket) do
-    {:noreply, assign(socket, :pending_delete_id, id)}
-  end
-
-  def handle_confirm_delete_scene(_params, socket) do
-    if id = socket.assigns[:pending_delete_id] do
-      handle_delete_scene(%{"id" => id}, socket)
-    else
-      {:noreply, socket}
-    end
-  end
-
   def handle_delete_scene(%{"id" => scene_id}, socket) do
     case Scenes.get_scene(socket.assigns.project.id, scene_id) do
       nil -> {:noreply, socket}

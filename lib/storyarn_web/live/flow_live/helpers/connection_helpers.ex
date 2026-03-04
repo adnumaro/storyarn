@@ -10,6 +10,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
 
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
+  import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
   # Note: FormHelpers import removed - connection forms no longer need condition fields
 

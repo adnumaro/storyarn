@@ -15,6 +15,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
 
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
+  import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
   @spec handle_reset_save_status(Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}

@@ -326,15 +326,13 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
 
   def handle_event("set_pending_delete_sheet", %{"id" => id}, socket) do
-    {:noreply, assign(socket, :pending_delete_id, id)}
+    handle_set_pending_delete(socket, id)
   end
 
   def handle_event("confirm_delete_sheet", _params, socket) do
-    if id = socket.assigns[:pending_delete_id] do
+    handle_confirm_delete(socket, fn socket, id ->
       with_authorization(socket, :edit_content, &SheetTreeHelpers.delete_sheet(&1, id))
-    else
-      {:noreply, socket}
-    end
+    end)
   end
 
   def handle_event("delete_sheet", %{"id" => sheet_id}, socket) do
@@ -358,20 +356,14 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_event("create_sheet", _params, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
-      attrs = %{name: dgettext("sheets", "Untitled")}
-
-      case Sheets.create_sheet(socket.assigns.project, attrs) do
-        {:ok, new_sheet} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
-           )}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
-      end
+    with_authorization(socket, :edit_content, fn _socket ->
+      handle_create_entity(
+        socket,
+        %{name: dgettext("sheets", "Untitled")},
+        &Sheets.create_sheet/2,
+        &sheet_path/2,
+        dgettext("sheets", "Could not create sheet.")
+      )
     end)
   end
 
@@ -533,4 +525,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
   # Private Functions
   # ===========================================================================
+
+  defp sheet_path(socket, sheet) do
+    ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet.id}"
+  end
 end

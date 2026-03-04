@@ -8,6 +8,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Scenes
+  alias Storyarn.Shared.MapUtils
 
   @element_icons %{
     "pin" => "map-pin",
@@ -73,14 +74,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
   # Parse helpers
   # ---------------------------------------------------------------------------
 
-  def parse_id(id) when is_integer(id), do: id
-
-  def parse_id(id) when is_binary(id) do
-    case Integer.parse(id) do
-      {int, ""} -> int
-      _ -> id
-    end
-  end
+  defdelegate parse_id(id), to: MapUtils, as: :parse_int
 
   def parse_float(val, default \\ 0.85)
   def parse_float("", default), do: default
@@ -138,18 +132,6 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
       socket
     end
   end
-
-  # ---------------------------------------------------------------------------
-  # Panel icon/title helpers
-  # ---------------------------------------------------------------------------
-
-  def panel_icon(type), do: Map.get(@element_icons, type, "settings")
-
-  def panel_title("pin"), do: dgettext("scenes", "Pin Properties")
-  def panel_title("zone"), do: dgettext("scenes", "Zone Properties")
-  def panel_title("connection"), do: dgettext("scenes", "Connection Properties")
-  def panel_title("annotation"), do: dgettext("scenes", "Annotation Properties")
-  def panel_title(_), do: dgettext("scenes", "Properties")
 
   # ---------------------------------------------------------------------------
   # Sheet helpers

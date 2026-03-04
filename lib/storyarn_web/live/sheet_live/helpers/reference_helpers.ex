@@ -6,6 +6,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
   import StoryarnWeb.Helpers.SaveStatusTimer
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
 
   @doc """
@@ -108,7 +109,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
   Returns {:ok, blocks} or {:error, message}.
   """
   def select_reference_value(socket, block_id, target_type, target_id) do
-    block_id = parse_id(block_id)
+    block_id = MapUtils.parse_int(block_id)
     project_id = socket.assigns.project.id
     sheet_id = socket.assigns.sheet.id
     block = Sheets.get_block_in_project!(block_id, project_id)
@@ -143,7 +144,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
   Returns {:ok, blocks} or {:error, message}.
   """
   def clear_reference_value(socket, block_id) do
-    block_id = parse_id(block_id)
+    block_id = MapUtils.parse_int(block_id)
     project_id = socket.assigns.project.id
     sheet_id = socket.assigns.sheet.id
     block = Sheets.get_block_in_project!(block_id, project_id)
@@ -157,9 +158,4 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
         {:error, dgettext("sheets", "Could not clear reference.")}
     end
   end
-
-  # Private functions
-
-  defp parse_id(id) when is_binary(id), do: String.to_integer(id)
-  defp parse_id(id) when is_integer(id), do: id
 end

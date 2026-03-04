@@ -90,14 +90,6 @@ defmodule Storyarn.Accounts do
   @spec register_user(attrs()) :: {:ok, user()} | {:error, changeset()}
   defdelegate register_user(attrs), to: Registration
 
-  @doc """
-  Registers a user without creating a default workspace.
-
-  Used by OAuth flow and services that handle workspace creation separately.
-  """
-  @spec register_user_only(attrs()) :: {:ok, user()} | {:error, changeset()}
-  defdelegate register_user_only(attrs), to: Registration
-
   # =============================================================================
   # OAuth
   # =============================================================================

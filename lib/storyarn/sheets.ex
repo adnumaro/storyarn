@@ -205,19 +205,6 @@ defmodule Storyarn.Sheets do
           {:ok, sheet()} | {:error, validation_error() | changeset()}
   defdelegate move_sheet(sheet, parent_id, position \\ nil), to: SheetCrud
 
-  @doc """
-  Returns a changeset for tracking sheet changes.
-  """
-  @spec change_sheet(sheet(), attrs()) :: changeset()
-  defdelegate change_sheet(sheet, attrs \\ %{}), to: SheetCrud
-
-  @doc """
-  Validates if a parent_id is valid for a sheet.
-  Returns `:ok` if valid, `{:error, reason}` if invalid.
-  """
-  @spec validate_parent(sheet(), id() | nil) :: :ok | {:error, validation_error()}
-  defdelegate validate_parent(sheet, parent_id), to: SheetCrud
-
   # =============================================================================
   # Sheets - Reordering
   # =============================================================================
@@ -303,18 +290,6 @@ defmodule Storyarn.Sheets do
   # =============================================================================
   # Blocks - Type Helpers
   # =============================================================================
-
-  @doc """
-  Returns true if the given block type can act as a variable.
-  """
-  @spec can_be_variable?(String.t()) :: boolean()
-  defdelegate can_be_variable?(block_type), to: Block
-
-  @doc """
-  Returns true if the block is inherited from a parent sheet.
-  """
-  @spec inherited?(block()) :: boolean()
-  defdelegate inherited?(block), to: Block
 
   @doc """
   Parses a string value, clamps to min/max constraints, and formats back to string.
@@ -680,20 +655,6 @@ defmodule Storyarn.Sheets do
   # =============================================================================
 
   alias Storyarn.Sheets.ReferenceTracker
-
-  @doc """
-  Updates references from a block.
-  Called after block content is saved to track mentions and references.
-  """
-  @spec update_block_references(block()) :: :ok
-  defdelegate update_block_references(block), to: ReferenceTracker
-
-  @doc """
-  Deletes all references from a block.
-  Called when a block is deleted.
-  """
-  @spec delete_block_references(id()) :: {integer(), nil}
-  defdelegate delete_block_references(block_id), to: ReferenceTracker
 
   @doc """
   Gets backlinks for a target with resolved source information.

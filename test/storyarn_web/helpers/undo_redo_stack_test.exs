@@ -159,20 +159,6 @@ defmodule StoryarnWeb.Helpers.UndoRedoStackTest do
     end
   end
 
-  describe "can_undo?/1 and can_redo?/1" do
-    test "returns false for empty stacks" do
-      s = socket()
-      refute UndoRedoStack.can_undo?(s)
-      refute UndoRedoStack.can_redo?(s)
-    end
-
-    test "returns true for non-empty stacks" do
-      s = socket(%{undo_stack: [:a], redo_stack: [:b]})
-      assert UndoRedoStack.can_undo?(s)
-      assert UndoRedoStack.can_redo?(s)
-    end
-  end
-
   describe "full undo/redo cycle" do
     test "push → pop_undo → push_redo → pop_redo → push_undo_no_clear" do
       s = socket()

@@ -545,11 +545,7 @@ defmodule Storyarn.Exports.Validator do
     target != nil and not MapSet.member?(valid_ids, target)
   end
 
-  defp strip_html(text) when is_binary(text) do
-    Regex.replace(~r/<[^>]+>/, text, "")
-  end
-
-  defp strip_html(_), do: ""
+  defp strip_html(text), do: Storyarn.Shared.HtmlUtils.strip_html(text)
 
   defp nil_or_empty?(nil), do: true
   defp nil_or_empty?(""), do: true

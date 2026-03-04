@@ -423,15 +423,15 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("set_pending_delete_screenplay", %{"id" => id}, socket) do
-    {:noreply, assign(socket, :pending_delete_id, id)}
+    handle_set_pending_delete(socket, id)
   end
 
   def handle_event("confirm_delete_screenplay", _params, socket) do
-    if id = socket.assigns[:pending_delete_id] do
-      handle_event("delete_screenplay", %{"id" => id}, socket)
-    else
-      {:noreply, socket}
-    end
+    handle_confirm_delete(socket, fn socket, id ->
+      with_authorization(socket, :edit_content, fn _socket ->
+        TreeHandlers.do_delete_screenplay(socket, id)
+      end)
+    end)
   end
 
   def handle_event("delete_screenplay", %{"id" => screenplay_id}, socket) do

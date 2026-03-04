@@ -2,7 +2,7 @@ defmodule Storyarn.ScreenplaysTest do
   use Storyarn.DataCase, async: true
 
   alias Storyarn.Screenplays
-  alias Storyarn.Screenplays.{Screenplay, ScreenplayElement}
+  alias Storyarn.Screenplays.{AutoDetect, ElementGrouping, Screenplay, ScreenplayElement}
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
@@ -64,8 +64,8 @@ defmodule Storyarn.ScreenplaysTest do
       # Count through facade
       assert Screenplays.count_elements(screenplay.id) == 4
 
-      # Group elements through facade
-      groups = Screenplays.group_elements(elements)
+      # Group elements through submodule
+      groups = ElementGrouping.group_elements(elements)
       types = Enum.map(groups, & &1.type)
       assert types == [:scene_heading, :action, :dialogue_group]
     end
@@ -207,7 +207,7 @@ defmodule Storyarn.ScreenplaysTest do
         %ScreenplayElement{id: 2, type: "dialogue", content: "Hello", position: 1}
       ]
 
-      result = Screenplays.compute_dialogue_groups(elements)
+      result = ElementGrouping.compute_dialogue_groups(elements)
 
       assert length(result) == 2
       [{_el1, group1}, {_el2, group2}] = result
@@ -216,7 +216,7 @@ defmodule Storyarn.ScreenplaysTest do
     end
 
     test "returns empty list for empty input" do
-      assert Screenplays.compute_dialogue_groups([]) == []
+      assert ElementGrouping.compute_dialogue_groups([]) == []
     end
   end
 
@@ -228,7 +228,7 @@ defmodule Storyarn.ScreenplaysTest do
         %ScreenplayElement{id: 3, type: "dialogue", content: "Hi", position: 2}
       ]
 
-      groups = Screenplays.group_elements(elements)
+      groups = ElementGrouping.group_elements(elements)
 
       assert length(groups) == 2
       assert Enum.at(groups, 0).type == :scene_heading
@@ -236,7 +236,7 @@ defmodule Storyarn.ScreenplaysTest do
     end
 
     test "returns empty list for empty input" do
-      assert Screenplays.group_elements([]) == []
+      assert ElementGrouping.group_elements([]) == []
     end
   end
 
@@ -246,30 +246,30 @@ defmodule Storyarn.ScreenplaysTest do
 
   describe "detect_type/1" do
     test "detects scene heading" do
-      assert Screenplays.detect_type("INT. LIVING ROOM - DAY") == "scene_heading"
-      assert Screenplays.detect_type("EXT. FOREST - NIGHT") == "scene_heading"
+      assert AutoDetect.detect_type("INT. LIVING ROOM - DAY") == "scene_heading"
+      assert AutoDetect.detect_type("EXT. FOREST - NIGHT") == "scene_heading"
     end
 
     test "detects transition" do
-      assert Screenplays.detect_type("CUT TO:") == "transition"
-      assert Screenplays.detect_type("FADE IN:") == "transition"
+      assert AutoDetect.detect_type("CUT TO:") == "transition"
+      assert AutoDetect.detect_type("FADE IN:") == "transition"
     end
 
     test "detects character" do
-      assert Screenplays.detect_type("JOHN") == "character"
-      assert Screenplays.detect_type("MARY (V.O.)") == "character"
+      assert AutoDetect.detect_type("JOHN") == "character"
+      assert AutoDetect.detect_type("MARY (V.O.)") == "character"
     end
 
     test "detects parenthetical" do
-      assert Screenplays.detect_type("(whispering)") == "parenthetical"
+      assert AutoDetect.detect_type("(whispering)") == "parenthetical"
     end
 
     test "returns nil for plain text" do
-      assert Screenplays.detect_type("He walks away.") == nil
+      assert AutoDetect.detect_type("He walks away.") == nil
     end
 
     test "returns nil for empty string" do
-      assert Screenplays.detect_type("") == nil
+      assert AutoDetect.detect_type("") == nil
     end
   end
 

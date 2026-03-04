@@ -80,21 +80,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NavigationHistory do
   end
 
   @doc """
-  Returns true if back navigation is possible.
-  """
-  @spec can_go_back?(t()) :: boolean()
-  def can_go_back?(%{index: 0}), do: false
-  def can_go_back?(_), do: true
-
-  @doc """
-  Returns true if forward navigation is possible.
-  """
-  @spec can_go_forward?(t()) :: boolean()
-  def can_go_forward?(%{entries: entries, index: index}) do
-    index < length(entries) - 1
-  end
-
-  @doc """
   Returns the previous entry without moving the cursor, or `nil` if at start.
   """
   @spec peek_back(t()) :: entry() | nil
@@ -107,13 +92,5 @@ defmodule StoryarnWeb.FlowLive.Helpers.NavigationHistory do
   @spec peek_forward(t()) :: entry() | nil
   def peek_forward(%{entries: entries, index: index}) do
     if index < length(entries) - 1, do: Enum.at(entries, index + 1)
-  end
-
-  @doc """
-  Returns the current entry.
-  """
-  @spec current(t()) :: entry()
-  def current(%{entries: entries, index: index}) do
-    Enum.at(entries, index)
   end
 end

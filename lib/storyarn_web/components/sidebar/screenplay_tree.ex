@@ -2,19 +2,14 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
   @moduledoc """
   Screenplay tree components for the project sidebar.
 
-  Renders: screenplays section with search, sortable tree, screenplay menu.
+  Thin wrapper around `GenericTree` with screenplay-specific configuration.
   """
 
   use Phoenix.Component
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
-  alias Phoenix.LiveView.JS
-
-  import StoryarnWeb.Components.CoreComponents
-  import StoryarnWeb.Components.TreeComponents
-
-  alias StoryarnWeb.Components.Sidebar.TreeHelpers
+  import StoryarnWeb.Components.Sidebar.GenericTree
 
   attr :screenplays_tree, :list, required: true
   attr :workspace, :map, required: true
@@ -24,207 +19,32 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
 
   def screenplays_section(assigns) do
     ~H"""
-    <div>
-      <%!-- Back to workspace --%>
-      <.link
-        navigate={~p"/workspaces/#{@workspace.slug}"}
-        class="flex items-center gap-1 text-xs text-base-content/50 hover:text-base-content mb-3 px-1 py-1 -mx-1 rounded transition-colors hover:bg-base-200"
-      >
-        <.icon name="chevron-left" class="size-3.5" />
-        {gettext("Back to workspace")}
-      </.link>
-
-      <%!-- Search input --%>
-      <div
-        :if={@screenplays_tree != []}
-        id="screenplays-tree-search"
-        phx-hook="TreeSearch"
-        data-tree-id="screenplays-tree-container"
-        class="mb-2"
-      >
-        <input
-          type="text"
-          data-tree-search-input
-          placeholder={dgettext("screenplays", "Filter screenplays...")}
-          class="input input-sm input-bordered w-full"
-        />
-      </div>
-
-      <div :if={@screenplays_tree == []} class="text-sm text-base-content/50 px-4 py-2">
-        {dgettext("screenplays", "No screenplays yet")}
-      </div>
-
-      <%!-- Tree container with sortable support --%>
-      <div
-        :if={@screenplays_tree != []}
-        id="screenplays-tree-container"
-        phx-hook={if @can_edit, do: "SortableTree", else: nil}
-        data-tree-type="screenplays"
-      >
-        <div data-sortable-container data-parent-id="" class="flex flex-col gap-1">
-          <.screenplay_tree_items
-            :for={screenplay <- @screenplays_tree}
-            screenplay={screenplay}
-            workspace={@workspace}
-            project={@project}
-            selected_screenplay_id={@selected_screenplay_id}
-            can_edit={@can_edit}
-          />
-        </div>
-      </div>
-
-      <%!-- Add new button (full width, below tree) --%>
-      <button
-        :if={@can_edit}
-        type="button"
-        phx-click="create_screenplay"
-        class="btn btn-ghost btn-sm w-full gap-1.5 mt-1 text-base-content/50 hover:text-base-content"
-      >
-        <.icon name="plus" class="size-4" />
-        {dgettext("screenplays", "New Screenplay")}
-      </button>
-
-      <.confirm_modal
-        :if={@can_edit}
-        id="delete-screenplay-sidebar-confirm"
-        title={dgettext("screenplays", "Delete screenplay?")}
-        message={dgettext("screenplays", "Are you sure you want to delete this screenplay?")}
-        confirm_text={dgettext("screenplays", "Delete")}
-        confirm_variant="error"
-        icon="alert-triangle"
-        on_confirm={JS.push("confirm_delete_screenplay")}
-      />
-    </div>
+    <.entity_tree_section
+      tree={@screenplays_tree}
+      workspace={@workspace}
+      project={@project}
+      selected_id={@selected_screenplay_id}
+      can_edit={@can_edit}
+      entity_type="screenplays"
+      search_placeholder={dgettext("screenplays", "Filter screenplays...")}
+      empty_text={dgettext("screenplays", "No screenplays yet")}
+      create_event="create_screenplay"
+      create_label={dgettext("screenplays", "New Screenplay")}
+      delete_title={dgettext("screenplays", "Delete screenplay?")}
+      delete_message={dgettext("screenplays", "Are you sure you want to delete this screenplay?")}
+      delete_confirm_text={dgettext("screenplays", "Delete")}
+      confirm_delete_event="confirm_delete_screenplay"
+      icon="scroll-text"
+      href_fn={&screenplay_href/3}
+      create_child_event="create_child_screenplay"
+      create_child_title={dgettext("screenplays", "Add child screenplay")}
+      set_pending_delete_event="set_pending_delete_screenplay"
+      delete_label={dgettext("screenplays", "Move to Trash")}
+    />
     """
   end
 
-  attr :screenplay, :map, required: true
-  attr :workspace, :map, required: true
-  attr :project, :map, required: true
-  attr :selected_screenplay_id, :string, default: nil
-  attr :can_edit, :boolean, default: false
-
-  def screenplay_tree_items(assigns) do
-    has_children = TreeHelpers.has_children?(assigns.screenplay)
-    is_selected = assigns.selected_screenplay_id == to_string(assigns.screenplay.id)
-
-    is_expanded =
-      has_children and
-        TreeHelpers.has_selected_recursive?(
-          assigns.screenplay.children,
-          assigns.selected_screenplay_id
-        )
-
-    assigns =
-      assigns
-      |> assign(:has_children, has_children)
-      |> assign(:is_selected, is_selected)
-      |> assign(:is_expanded, is_expanded)
-      |> assign(:screenplay_id, to_string(assigns.screenplay.id))
-
-    ~H"""
-    <%= if @has_children do %>
-      <.tree_node
-        id={"screenplay-#{@screenplay.id}"}
-        label={@screenplay.name}
-        icon="scroll-text"
-        active={@is_selected}
-        expanded={@is_expanded}
-        has_children={true}
-        href={
-          ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays/#{@screenplay.id}"
-        }
-        item_id={@screenplay_id}
-        item_name={@screenplay.name}
-        can_drag={@can_edit}
-      >
-        <:actions :if={@can_edit}>
-          <button
-            type="button"
-            phx-click="create_child_screenplay"
-            phx-value-parent-id={@screenplay.id}
-            class="btn btn-ghost btn-xs btn-square"
-            title={dgettext("screenplays", "Add child screenplay")}
-            onclick="event.preventDefault(); event.stopPropagation();"
-          >
-            <.icon name="plus" class="size-3" />
-          </button>
-        </:actions>
-        <:menu :if={@can_edit}>
-          <.screenplay_menu screenplay_id={@screenplay_id} />
-        </:menu>
-        <.screenplay_tree_items
-          :for={child <- @screenplay.children}
-          screenplay={child}
-          workspace={@workspace}
-          project={@project}
-          selected_screenplay_id={@selected_screenplay_id}
-          can_edit={@can_edit}
-        />
-      </.tree_node>
-    <% else %>
-      <.tree_leaf
-        label={@screenplay.name}
-        icon="scroll-text"
-        href={
-          ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/screenplays/#{@screenplay.id}"
-        }
-        active={@is_selected}
-        item_id={@screenplay_id}
-        item_name={@screenplay.name}
-        can_drag={@can_edit}
-      >
-        <:actions :if={@can_edit}>
-          <button
-            type="button"
-            phx-click="create_child_screenplay"
-            phx-value-parent-id={@screenplay.id}
-            class="btn btn-ghost btn-xs btn-square"
-            title={dgettext("screenplays", "Add child screenplay")}
-            onclick="event.preventDefault(); event.stopPropagation();"
-          >
-            <.icon name="plus" class="size-3" />
-          </button>
-        </:actions>
-        <:menu :if={@can_edit}>
-          <.screenplay_menu screenplay_id={@screenplay_id} />
-        </:menu>
-      </.tree_leaf>
-    <% end %>
-    """
-  end
-
-  defp screenplay_menu(assigns) do
-    ~H"""
-    <div class="dropdown dropdown-end">
-      <button
-        type="button"
-        tabindex="0"
-        class="btn btn-ghost btn-xs btn-square"
-        onclick="event.preventDefault(); event.stopPropagation();"
-      >
-        <.icon name="more-horizontal" class="size-4" />
-      </button>
-      <ul
-        tabindex="0"
-        class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-40 z-50"
-      >
-        <li>
-          <button
-            type="button"
-            class="text-error"
-            phx-click={
-              JS.push("set_pending_delete_screenplay", value: %{id: @screenplay_id})
-              |> show_modal("delete-screenplay-sidebar-confirm")
-            }
-            onclick="event.stopPropagation();"
-          >
-            <.icon name="trash-2" class="size-4" />
-            {dgettext("screenplays", "Move to Trash")}
-          </button>
-        </li>
-      </ul>
-    </div>
-    """
+  defp screenplay_href(workspace, project, screenplay) do
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/screenplays/#{screenplay.id}"
   end
 end

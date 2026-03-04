@@ -8,6 +8,7 @@ import L from "leaflet";
 import { createElement, Lock } from "lucide";
 import { isValidHexColor } from "./color_utils.js";
 import { toLatLng } from "./coordinate_utils.js";
+import { escapeHtml } from "../utils/escape_html.js";
 
 const VALID_SIZES = new Set(["sm", "md", "lg"]);
 
@@ -96,10 +97,4 @@ function buildAnnotationHtml(annotation) {
     `<span class="map-annotation-fold"></span>` +
     `</div>`
   );
-}
-
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
 }

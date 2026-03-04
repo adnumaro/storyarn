@@ -14,6 +14,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
+  import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
   @doc """
   Single canonical path for all node data updates.

@@ -46,19 +46,10 @@ defmodule StoryarnWeb.FlowLive.Components.NodeTypeHelpers do
 
   def word_count(text) do
     text
-    |> strip_html()
+    |> String.replace(~r/<[^>]+>/, " ")
     |> String.split(~r/\s+/, trim: true)
     |> length()
   end
-
-  defp strip_html(text) when is_binary(text) do
-    text
-    |> String.replace(~r/<[^>]+>/, " ")
-    |> String.replace(~r/\s+/, " ")
-    |> String.trim()
-  end
-
-  defp strip_html(_), do: ""
 
   @doc """
   Normalizes a text string into a valid technical/localization ID.

@@ -81,12 +81,6 @@ defmodule Storyarn.Workspaces do
   defdelegate get_workspace_by_slug(scope, slug), to: WorkspaceCrud
 
   @doc """
-  Gets a workspace by slug without authorization check.
-  """
-  @spec get_workspace_by_slug!(String.t()) :: workspace()
-  defdelegate get_workspace_by_slug!(slug), to: WorkspaceCrud
-
-  @doc """
   Gets a workspace by ID without authorization check.
   """
   @spec get_workspace!(integer()) :: workspace()

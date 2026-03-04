@@ -2,19 +2,16 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
   @moduledoc """
   Flow tree components for the project sidebar.
 
-  Renders: flows section with search, sortable tree, flow menu.
+  Thin wrapper around `GenericTree` with flow-specific configuration.
+  Includes the "Set as main" extra menu item.
   """
 
   use Phoenix.Component
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
-  alias Phoenix.LiveView.JS
-
   import StoryarnWeb.Components.CoreComponents
-  import StoryarnWeb.Components.TreeComponents
-
-  alias StoryarnWeb.Components.Sidebar.TreeHelpers
+  import StoryarnWeb.Components.Sidebar.GenericTree
 
   attr :flows_tree, :list, required: true
   attr :workspace, :map, required: true
@@ -24,211 +21,46 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
 
   def flows_section(assigns) do
     ~H"""
-    <div>
-      <%!-- Back to workspace --%>
-      <.link
-        navigate={~p"/workspaces/#{@workspace.slug}"}
-        class="flex items-center gap-1 text-xs text-base-content/50 hover:text-base-content mb-3 px-1 py-1 -mx-1 rounded transition-colors hover:bg-base-200"
-      >
-        <.icon name="chevron-left" class="size-3.5" />
-        {gettext("Back to workspace")}
-      </.link>
-
-      <%!-- Search input --%>
-      <div
-        :if={@flows_tree != []}
-        id="flows-tree-search"
-        phx-hook="TreeSearch"
-        data-tree-id="flows-tree-container"
-        class="mb-2"
-      >
-        <input
-          type="text"
-          data-tree-search-input
-          placeholder={dgettext("flows", "Filter flows...")}
-          class="input input-sm input-bordered w-full"
-        />
-      </div>
-
-      <div :if={@flows_tree == []} class="text-sm text-base-content/50 px-4 py-2">
-        {dgettext("flows", "No flows yet")}
-      </div>
-
-      <%!-- Tree container with sortable support --%>
-      <div
-        :if={@flows_tree != []}
-        id="flows-tree-container"
-        phx-hook={if @can_edit, do: "SortableTree", else: nil}
-        data-tree-type="flows"
-      >
-        <div data-sortable-container data-parent-id="" class="flex flex-col gap-1">
-          <.flow_tree_items
-            :for={flow <- @flows_tree}
-            flow={flow}
-            workspace={@workspace}
-            project={@project}
-            selected_flow_id={@selected_flow_id}
-            can_edit={@can_edit}
-          />
-        </div>
-      </div>
-
-      <%!-- Add new button (full width, below tree) --%>
-      <button
-        :if={@can_edit}
-        type="button"
-        phx-click="create_flow"
-        class="btn btn-ghost btn-sm w-full gap-1.5 mt-1 text-base-content/50 hover:text-base-content"
-      >
-        <.icon name="plus" class="size-4" />
-        {dgettext("flows", "New Flow")}
-      </button>
-
-      <.confirm_modal
-        :if={@can_edit}
-        id="delete-flow-sidebar-confirm"
-        title={dgettext("flows", "Delete flow?")}
-        message={dgettext("flows", "Are you sure you want to delete this flow?")}
-        confirm_text={dgettext("flows", "Delete")}
-        confirm_variant="error"
-        icon="alert-triangle"
-        on_confirm={JS.push("confirm_delete_flow")}
-      />
-    </div>
-    """
-  end
-
-  attr :flow, :map, required: true
-  attr :workspace, :map, required: true
-  attr :project, :map, required: true
-  attr :selected_flow_id, :string, default: nil
-  attr :can_edit, :boolean, default: false
-
-  def flow_tree_items(assigns) do
-    has_children = TreeHelpers.has_children?(assigns.flow)
-    is_selected = assigns.selected_flow_id == to_string(assigns.flow.id)
-
-    is_expanded =
-      has_children and
-        TreeHelpers.has_selected_recursive?(assigns.flow.children, assigns.selected_flow_id)
-
-    assigns =
-      assigns
-      |> assign(:has_children, has_children)
-      |> assign(:is_selected, is_selected)
-      |> assign(:is_expanded, is_expanded)
-      |> assign(:flow_id, to_string(assigns.flow.id))
-
-    ~H"""
-    <%= if @has_children do %>
-      <.tree_node
-        id={"flow-#{@flow.id}"}
-        label={@flow.name}
-        icon="git-branch"
-        active={@is_selected}
-        expanded={@is_expanded}
-        has_children={true}
-        href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"}
-        item_id={@flow_id}
-        item_name={@flow.name}
-        can_drag={@can_edit}
-      >
-        <:actions :if={@can_edit}>
-          <button
-            type="button"
-            phx-click="create_child_flow"
-            phx-value-parent-id={@flow.id}
-            class="btn btn-ghost btn-xs btn-square"
-            title={dgettext("flows", "Add child flow")}
-            onclick="event.preventDefault(); event.stopPropagation();"
-          >
-            <.icon name="plus" class="size-3" />
-          </button>
-        </:actions>
-        <:menu :if={@can_edit}>
-          <.flow_menu flow_id={@flow_id} flow={@flow} />
-        </:menu>
-        <.flow_tree_items
-          :for={child <- @flow.children}
-          flow={child}
-          workspace={@workspace}
-          project={@project}
-          selected_flow_id={@selected_flow_id}
-          can_edit={@can_edit}
-        />
-      </.tree_node>
-    <% else %>
-      <.tree_leaf
-        label={@flow.name}
-        icon="git-branch"
-        href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"}
-        active={@is_selected}
-        item_id={@flow_id}
-        item_name={@flow.name}
-        can_drag={@can_edit}
-      >
-        <:actions :if={@can_edit}>
-          <button
-            type="button"
-            phx-click="create_child_flow"
-            phx-value-parent-id={@flow.id}
-            class="btn btn-ghost btn-xs btn-square"
-            title={dgettext("flows", "Add child flow")}
-            onclick="event.preventDefault(); event.stopPropagation();"
-          >
-            <.icon name="plus" class="size-3" />
-          </button>
-        </:actions>
-        <:menu :if={@can_edit}>
-          <.flow_menu flow_id={@flow_id} flow={@flow} />
-        </:menu>
-      </.tree_leaf>
-    <% end %>
-    """
-  end
-
-  defp flow_menu(assigns) do
-    ~H"""
-    <div class="dropdown dropdown-end">
-      <button
-        type="button"
-        tabindex="0"
-        class="btn btn-ghost btn-xs btn-square"
-        onclick="event.preventDefault(); event.stopPropagation();"
-      >
-        <.icon name="more-horizontal" class="size-4" />
-      </button>
-      <ul
-        tabindex="0"
-        class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-40 z-50"
-      >
-        <li :if={!@flow.is_main}>
+    <.entity_tree_section
+      tree={@flows_tree}
+      workspace={@workspace}
+      project={@project}
+      selected_id={@selected_flow_id}
+      can_edit={@can_edit}
+      entity_type="flows"
+      search_placeholder={dgettext("flows", "Filter flows...")}
+      empty_text={dgettext("flows", "No flows yet")}
+      create_event="create_flow"
+      create_label={dgettext("flows", "New Flow")}
+      delete_title={dgettext("flows", "Delete flow?")}
+      delete_message={dgettext("flows", "Are you sure you want to delete this flow?")}
+      delete_confirm_text={dgettext("flows", "Delete")}
+      confirm_delete_event="confirm_delete_flow"
+      icon="git-branch"
+      href_fn={&flow_href/3}
+      create_child_event="create_child_flow"
+      create_child_title={dgettext("flows", "Add child flow")}
+      set_pending_delete_event="set_pending_delete_flow"
+      delete_label={dgettext("flows", "Move to Trash")}
+    >
+      <:extra_menu_items :let={flow}>
+        <li :if={!flow.is_main}>
           <button
             type="button"
             phx-click="set_main_flow"
-            phx-value-id={@flow_id}
+            phx-value-id={to_string(flow.id)}
             onclick="event.stopPropagation();"
           >
             <.icon name="star" class="size-4" />
             {dgettext("flows", "Set as main")}
           </button>
         </li>
-        <li>
-          <button
-            type="button"
-            class="text-error"
-            phx-click={
-              JS.push("set_pending_delete_flow", value: %{id: @flow_id})
-              |> show_modal("delete-flow-sidebar-confirm")
-            }
-            onclick="event.stopPropagation();"
-          >
-            <.icon name="trash-2" class="size-4" />
-            {dgettext("flows", "Move to Trash")}
-          </button>
-        </li>
-      </ul>
-    </div>
+      </:extra_menu_items>
+    </.entity_tree_section>
     """
+  end
+
+  defp flow_href(workspace, project, flow) do
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
   end
 end

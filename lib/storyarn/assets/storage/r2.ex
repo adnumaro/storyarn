@@ -67,47 +67,6 @@ defmodule Storyarn.Assets.Storage.R2 do
     end
   end
 
-  @doc """
-  Generates a presigned URL for downloading a file.
-  """
-  def presigned_download_url(key, opts \\ []) do
-    bucket = bucket()
-    expires_in = Keyword.get(opts, :expires_in, 3600)
-
-    config = ExAws.Config.new(:s3)
-
-    ExAws.S3.presigned_url(config, :get, bucket, key, expires_in: expires_in)
-  end
-
-  @doc """
-  Checks if a file exists in the bucket.
-  """
-  def exists?(key) do
-    bucket = bucket()
-
-    case ExAws.S3.head_object(bucket, key) |> ExAws.request() do
-      {:ok, _response} -> true
-      {:error, _reason} -> false
-    end
-  end
-
-  @doc """
-  Lists objects with a given prefix.
-  """
-  def list_objects(prefix, opts \\ []) do
-    bucket = bucket()
-    max_keys = Keyword.get(opts, :max_keys, 1000)
-
-    case ExAws.S3.list_objects(bucket, prefix: prefix, max_keys: max_keys)
-         |> ExAws.request() do
-      {:ok, %{body: %{contents: contents}}} ->
-        {:ok, contents}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
-
   defp bucket do
     config()[:bucket] || raise "R2_BUCKET not configured"
   end

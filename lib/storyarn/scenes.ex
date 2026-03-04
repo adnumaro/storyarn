@@ -90,13 +90,6 @@ defmodule Storyarn.Scenes do
   defdelegate get_scene!(project_id, scene_id), to: SceneCrud
 
   @doc """
-  Gets a scene by ID without project scoping (no preloads).
-  Used for canvas data enrichment where the scene reference is already project-scoped.
-  """
-  @spec get_scene_by_id(integer()) :: scene_record() | nil
-  defdelegate get_scene_by_id(scene_id), to: SceneCrud
-
-  @doc """
   Gets a scene with only basic fields (no preloads).
   Used for breadcrumbs and lightweight lookups.
   """
@@ -116,13 +109,6 @@ defmodule Storyarn.Scenes do
   """
   @spec get_scene_project_id(integer()) :: integer() | nil
   defdelegate get_scene_project_id(scene_id), to: SceneCrud
-
-  @doc """
-  Gets a scene including soft-deleted ones (for trash/restore).
-  Returns `nil` if not found.
-  """
-  @spec get_scene_including_deleted(integer(), integer()) :: scene_record() | nil
-  defdelegate get_scene_including_deleted(project_id, scene_id), to: SceneCrud
 
   @doc """
   Creates a new scene in a project.
@@ -183,15 +169,6 @@ defmodule Storyarn.Scenes do
   # =============================================================================
   # Tree Operations
   # =============================================================================
-
-  @doc """
-  Reorders scenes within a parent container.
-  Takes a project_id, parent_id (nil for root level), and a list of scene IDs
-  in the desired order.
-  """
-  @spec reorder_scenes(integer(), integer() | nil, [integer()]) ::
-          {:ok, [scene_record()]} | {:error, term()}
-  defdelegate reorder_scenes(project_id, parent_id, scene_ids), to: TreeOperations
 
   @doc """
   Moves a scene to a new parent at a specific position.
@@ -256,12 +233,6 @@ defmodule Storyarn.Scenes do
   @spec reorder_layers(integer(), [integer()]) :: {:ok, [layer()]} | {:error, term()}
   defdelegate reorder_layers(scene_id, layer_ids), to: LayerCrud
 
-  @doc """
-  Returns a changeset for tracking layer changes.
-  """
-  @spec change_layer(layer(), attrs()) :: changeset()
-  defdelegate change_layer(layer, attrs \\ %{}), to: LayerCrud
-
   # =============================================================================
   # Zones
   # =============================================================================
@@ -319,12 +290,6 @@ defmodule Storyarn.Scenes do
   """
   @spec delete_zone(zone()) :: {:ok, zone()} | {:error, changeset()}
   defdelegate delete_zone(zone), to: ZoneCrud
-
-  @doc """
-  Returns a changeset for tracking zone changes.
-  """
-  @spec change_zone(zone(), attrs()) :: changeset()
-  defdelegate change_zone(zone, attrs \\ %{}), to: ZoneCrud
 
   @doc """
   Finds the zone on a parent scene that targets a child scene.
@@ -421,12 +386,6 @@ defmodule Storyarn.Scenes do
   @spec delete_pin(pin()) :: {:ok, pin()} | {:error, changeset()}
   defdelegate delete_pin(pin), to: PinCrud
 
-  @doc """
-  Returns a changeset for tracking pin changes.
-  """
-  @spec change_pin(pin(), attrs()) :: changeset()
-  defdelegate change_pin(pin, attrs \\ %{}), to: PinCrud
-
   # =============================================================================
   # Connections
   # =============================================================================
@@ -472,12 +431,6 @@ defmodule Storyarn.Scenes do
   """
   @spec delete_connection(connection()) :: {:ok, connection()} | {:error, changeset()}
   defdelegate delete_connection(connection), to: ConnectionCrud
-
-  @doc """
-  Returns a changeset for tracking connection changes.
-  """
-  @spec change_connection(connection(), attrs()) :: changeset()
-  defdelegate change_connection(connection, attrs \\ %{}), to: ConnectionCrud
 
   # =============================================================================
   # Annotations

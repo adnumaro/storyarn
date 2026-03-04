@@ -152,42 +152,4 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
     </div>
     """
   end
-
-  @doc """
-  Renders a single reference search result item.
-  Called from LiveView to render search results.
-  """
-  attr :result, :map, required: true
-  attr :block_id, :integer, required: true
-  attr :is_selected, :boolean, default: false
-  attr :target, :any, default: nil
-
-  def reference_result(assigns) do
-    ~H"""
-    <button
-      type="button"
-      class={[
-        "w-full text-left px-2 py-2 hover:bg-base-200 rounded flex items-center gap-2",
-        @is_selected && "bg-primary/10"
-      ]}
-      phx-click="select_reference"
-      phx-value-block-id={@block_id}
-      phx-value-type={@result.type}
-      phx-value-id={@result.id}
-      phx-target={@target}
-    >
-      <span class={[
-        "flex-shrink-0 size-6 rounded flex items-center justify-center text-xs",
-        @result.type == "sheet" && "bg-primary/20 text-primary",
-        @result.type == "flow" && "bg-secondary/20 text-secondary"
-      ]}>
-        <.icon name={if @result.type == "sheet", do: "file-text", else: "git-branch"} class="size-4" />
-      </span>
-      <span class="truncate">{@result.name}</span>
-      <span :if={@result.shortcut} class="text-base-content/50 text-sm ml-auto">
-        #{@result.shortcut}
-      </span>
-    </button>
-    """
-  end
 end

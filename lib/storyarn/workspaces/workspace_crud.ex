@@ -75,13 +75,6 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   end
 
   @doc """
-  Gets a workspace by slug without authorization check.
-  """
-  def get_workspace_by_slug!(slug) do
-    Repo.get_by!(Workspace, slug: slug)
-  end
-
-  @doc """
   Gets a workspace by ID without authorization check.
   """
   def get_workspace!(id), do: Repo.get!(Workspace, id)

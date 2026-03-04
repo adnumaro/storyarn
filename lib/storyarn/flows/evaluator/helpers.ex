@@ -6,18 +6,9 @@ defmodule Storyarn.Flows.Evaluator.Helpers do
   @doc "Strip HTML tags and truncate to `max_length` characters."
   @spec strip_html(binary() | nil, non_neg_integer()) :: String.t() | nil
   def strip_html(text, max_length \\ 40)
-  def strip_html(nil, _), do: nil
 
-  def strip_html(text, max_length) when is_binary(text) do
-    text
-    |> String.replace(~r/<[^>]+>/, "")
-    |> String.trim()
-    |> String.slice(0, max_length)
-    |> case do
-      "" -> nil
-      clean -> clean
-    end
-  end
+  def strip_html(text, max_length),
+    do: Storyarn.Shared.HtmlUtils.strip_and_truncate(text, max_length)
 
   @doc "Format a debug value for display."
   @spec format_value(any()) :: String.t()

@@ -2,19 +2,16 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTree do
   @moduledoc """
   Scene tree components for the project sidebar.
 
-  Renders: scenes section with search, sortable tree, scene menu.
+  Thin wrapper around `GenericTree` with scene-specific configuration.
+  Includes extra children for zones and pins rendered inside each scene node.
   """
 
   use Phoenix.Component
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
-  alias Phoenix.LiveView.JS
-
-  import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.TreeComponents
-
-  alias StoryarnWeb.Components.Sidebar.TreeHelpers
+  import StoryarnWeb.Components.Sidebar.GenericTree
 
   attr :scenes_tree, :list, required: true
   attr :workspace, :map, required: true
@@ -24,200 +21,69 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTree do
 
   def scenes_section(assigns) do
     ~H"""
-    <div>
-      <%!-- Search input --%>
-      <div
-        :if={@scenes_tree != []}
-        id="scenes-tree-search"
-        phx-hook="TreeSearch"
-        data-tree-id="scenes-tree-container"
-        class="mb-2"
-      >
-        <input
-          type="text"
-          data-tree-search-input
-          placeholder={dgettext("scenes", "Filter scenes...")}
-          class="input input-sm input-bordered w-full"
-        />
-      </div>
-
-      <div :if={@scenes_tree == []} class="text-sm text-base-content/50 px-4 py-2">
-        {dgettext("scenes", "No scenes yet")}
-      </div>
-
-      <%!-- Tree container with sortable support --%>
-      <div
-        :if={@scenes_tree != []}
-        id="scenes-tree-container"
-        phx-hook={if @can_edit, do: "SortableTree", else: nil}
-        data-tree-type="scenes"
-      >
-        <div data-sortable-container data-parent-id="" class="flex flex-col gap-1">
-          <.scene_tree_items
-            :for={scene <- @scenes_tree}
-            scene={scene}
-            workspace={@workspace}
-            project={@project}
-            selected_scene_id={@selected_scene_id}
-            can_edit={@can_edit}
-          />
-        </div>
-      </div>
-
-      <%!-- Add new button (full width, below tree) --%>
-      <button
-        :if={@can_edit}
-        type="button"
-        phx-click="create_scene"
-        class="btn btn-ghost btn-sm w-full gap-1.5 mt-1 text-base-content/50 hover:text-base-content"
-      >
-        <.icon name="plus" class="size-4" />
-        {dgettext("scenes", "New Scene")}
-      </button>
-
-      <.confirm_modal
-        :if={@can_edit}
-        id="delete-scene-sidebar-confirm"
-        title={dgettext("scenes", "Delete scene?")}
-        message={dgettext("scenes", "Are you sure you want to delete this scene?")}
-        confirm_text={dgettext("scenes", "Delete")}
-        confirm_variant="error"
-        icon="alert-triangle"
-        on_confirm={JS.push("confirm_delete_scene")}
-      />
-    </div>
-    """
-  end
-
-  attr :scene, :map, required: true
-  attr :workspace, :map, required: true
-  attr :project, :map, required: true
-  attr :selected_scene_id, :string, default: nil
-  attr :can_edit, :boolean, default: false
-
-  def scene_tree_items(assigns) do
-    has_child_scenes = TreeHelpers.has_children?(assigns.scene)
-
-    has_elements =
-      Map.get(assigns.scene, :sidebar_zones, []) != [] or
-        Map.get(assigns.scene, :sidebar_pins, []) != []
-
-    has_children = has_child_scenes or has_elements
-    is_selected = assigns.selected_scene_id == to_string(assigns.scene.id)
-
-    is_expanded =
-      has_children and
-        (has_elements or
-           TreeHelpers.has_selected_recursive?(assigns.scene.children, assigns.selected_scene_id))
-
-    assigns =
-      assigns
-      |> assign(:has_children, has_children)
-      |> assign(:is_selected, is_selected)
-      |> assign(:is_expanded, is_expanded)
-      |> assign(:scene_id_str, to_string(assigns.scene.id))
-
-    ~H"""
-    <%= if @has_children do %>
-      <.tree_node
-        id={"scene-#{@scene.id}"}
-        label={@scene.name}
-        icon="map"
-        active={@is_selected}
-        expanded={@is_expanded}
-        has_children={true}
-        href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes/#{@scene.id}"}
-        item_id={@scene_id_str}
-        item_name={@scene.name}
-        can_drag={@can_edit}
-      >
-        <:actions :if={@can_edit}>
-          <button
-            type="button"
-            phx-click="create_child_scene"
-            phx-value-parent-id={@scene.id}
-            class="btn btn-ghost btn-xs btn-square"
-            title={dgettext("scenes", "Add child scene")}
-            onclick="event.preventDefault(); event.stopPropagation();"
-          >
-            <.icon name="plus" class="size-3" />
-          </button>
-        </:actions>
-        <:menu :if={@can_edit}>
-          <.scene_menu scene_id={@scene_id_str} />
-        </:menu>
-        <.scene_tree_items
-          :for={child <- @scene.children}
-          scene={child}
-          workspace={@workspace}
-          project={@project}
-          selected_scene_id={@selected_scene_id}
-          can_edit={@can_edit}
-        />
-
-        <%!-- Zone element leaves --%>
+    <.entity_tree_section
+      tree={@scenes_tree}
+      workspace={@workspace}
+      project={@project}
+      selected_id={@selected_scene_id}
+      can_edit={@can_edit}
+      entity_type="scenes"
+      search_placeholder={dgettext("scenes", "Filter scenes...")}
+      empty_text={dgettext("scenes", "No scenes yet")}
+      create_event="create_scene"
+      create_label={dgettext("scenes", "New Scene")}
+      delete_title={dgettext("scenes", "Delete scene?")}
+      delete_message={dgettext("scenes", "Are you sure you want to delete this scene?")}
+      delete_confirm_text={dgettext("scenes", "Delete")}
+      confirm_delete_event="confirm_delete_scene"
+      icon="map"
+      href_fn={&scene_href/3}
+      create_child_event="create_child_scene"
+      create_child_title={dgettext("scenes", "Add child scene")}
+      set_pending_delete_event="set_pending_delete_scene"
+      delete_label={dgettext("scenes", "Move to Trash")}
+    >
+      <:extra_children :let={scene}>
         <.element_leaves
-          items={Map.get(@scene, :sidebar_zones, [])}
-          total_count={Map.get(@scene, :zone_count, 0)}
+          items={Map.get(scene, :sidebar_zones, [])}
+          total_count={Map.get(scene, :zone_count, 0)}
           icon="pentagon"
-          scene_id={@scene.id}
+          scene_id={scene.id}
           workspace={@workspace}
           project={@project}
           element_type="zone"
           label_fn={& &1.name}
           more_text={
             dgettext("scenes", "%{count} more zones\u2026",
-              count: Map.get(@scene, :zone_count, 0) - length(Map.get(@scene, :sidebar_zones, []))
+              count: Map.get(scene, :zone_count, 0) - length(Map.get(scene, :sidebar_zones, []))
             )
           }
         />
-
-        <%!-- Pin element leaves --%>
         <.element_leaves
-          items={Map.get(@scene, :sidebar_pins, [])}
-          total_count={Map.get(@scene, :pin_count, 0)}
+          items={Map.get(scene, :sidebar_pins, [])}
+          total_count={Map.get(scene, :pin_count, 0)}
           icon="map-pin"
-          scene_id={@scene.id}
+          scene_id={scene.id}
           workspace={@workspace}
           project={@project}
           element_type="pin"
           label_fn={&(&1.label || dgettext("scenes", "Pin"))}
           more_text={
             dgettext("scenes", "%{count} more pins\u2026",
-              count: Map.get(@scene, :pin_count, 0) - length(Map.get(@scene, :sidebar_pins, []))
+              count: Map.get(scene, :pin_count, 0) - length(Map.get(scene, :sidebar_pins, []))
             )
           }
         />
-      </.tree_node>
-    <% else %>
-      <.tree_leaf
-        label={@scene.name}
-        icon="map"
-        href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes/#{@scene.id}"}
-        active={@is_selected}
-        item_id={@scene_id_str}
-        item_name={@scene.name}
-        can_drag={@can_edit}
-      >
-        <:actions :if={@can_edit}>
-          <button
-            type="button"
-            phx-click="create_child_scene"
-            phx-value-parent-id={@scene.id}
-            class="btn btn-ghost btn-xs btn-square"
-            title={dgettext("scenes", "Add child scene")}
-            onclick="event.preventDefault(); event.stopPropagation();"
-          >
-            <.icon name="plus" class="size-3" />
-          </button>
-        </:actions>
-        <:menu :if={@can_edit}>
-          <.scene_menu scene_id={@scene_id_str} />
-        </:menu>
-      </.tree_leaf>
-    <% end %>
+      </:extra_children>
+    </.entity_tree_section>
     """
   end
+
+  defp scene_href(workspace, project, scene) do
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+  end
+
+  # ── Element leaves (zones/pins) ──────────────────────────────────────
 
   attr :items, :list, required: true
   attr :total_count, :integer, required: true
@@ -255,40 +121,6 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTree do
     />
     <div :if={@total_count > length(@items)} class="text-xs text-base-content/40 pl-8 py-0.5">
       {@more_text}
-    </div>
-    """
-  end
-
-  defp scene_menu(assigns) do
-    ~H"""
-    <div class="dropdown dropdown-end">
-      <button
-        type="button"
-        tabindex="0"
-        class="btn btn-ghost btn-xs btn-square"
-        onclick="event.preventDefault(); event.stopPropagation();"
-      >
-        <.icon name="more-horizontal" class="size-4" />
-      </button>
-      <ul
-        tabindex="0"
-        class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-40 z-50"
-      >
-        <li>
-          <button
-            type="button"
-            class="text-error"
-            phx-click={
-              JS.push("set_pending_delete_scene", value: %{id: @scene_id})
-              |> show_modal("delete-scene-sidebar-confirm")
-            }
-            onclick="event.stopPropagation();"
-          >
-            <.icon name="trash-2" class="size-4" />
-            {dgettext("scenes", "Move to Trash")}
-          </button>
-        </li>
-      </ul>
     </div>
     """
   end

@@ -1,168 +1,41 @@
 defmodule Storyarn.Workspaces.Invitations do
   @moduledoc false
 
-  import Ecto.Query, warn: false
+  alias Storyarn.Shared.InvitationOperations
 
-  alias Storyarn.RateLimiter
-  alias Storyarn.Repo
-  alias Storyarn.Workspaces.{Memberships, Workspace, WorkspaceInvitation, WorkspaceNotifier}
+  alias Storyarn.Workspaces.{
+    Memberships,
+    Workspace,
+    WorkspaceInvitation,
+    WorkspaceMembership,
+    WorkspaceNotifier
+  }
 
-  @doc """
-  Lists pending invitations for a workspace.
-  """
-  def list_pending_invitations(workspace_id) do
-    WorkspaceInvitation
-    |> where(workspace_id: ^workspace_id)
-    |> where([i], is_nil(i.accepted_at))
-    |> where([i], i.expires_at > ^DateTime.utc_now())
-    |> preload(:invited_by)
-    |> order_by([i], desc: i.inserted_at)
-    |> Repo.all()
-  end
+  @config %{
+    invitation_schema: WorkspaceInvitation,
+    membership_schema: WorkspaceMembership,
+    parent_key: :workspace_id,
+    rate_limit_context: "workspace",
+    notifier_module: WorkspaceNotifier,
+    memberships_module: Memberships,
+    preload_after_insert: [:workspace, :invited_by]
+  }
 
-  @doc """
-  Creates an invitation and sends the invitation email.
-  """
-  def create_invitation(%Workspace{} = workspace, invited_by, email, role \\ "member") do
-    with :ok <- check_invitation_rate_limit(workspace.id, invited_by.id) do
-      email = String.downcase(email)
+  def list_pending_invitations(workspace_id),
+    do: InvitationOperations.list_pending_invitations(@config, workspace_id)
 
-      cond do
-        member_exists?(workspace.id, email) ->
-          {:error, :already_member}
+  def create_invitation(%Workspace{} = workspace, invited_by, email, role \\ "member"),
+    do: InvitationOperations.create_invitation(@config, workspace, invited_by, email, role)
 
-        pending_invitation_exists?(workspace.id, email) ->
-          {:error, :already_invited}
+  def get_invitation_by_token(token),
+    do: InvitationOperations.get_invitation_by_token(@config, token)
 
-        true ->
-          do_create_invitation(workspace, invited_by, email, role)
-      end
-    end
-  end
+  def accept_invitation(%WorkspaceInvitation{} = invitation, user),
+    do: InvitationOperations.accept_invitation(@config, invitation, user)
 
-  @doc """
-  Gets an invitation by token.
-  """
-  def get_invitation_by_token(token) do
-    case WorkspaceInvitation.verify_token_query(token) do
-      {:ok, query} ->
-        case Repo.one(query) do
-          nil -> {:error, :invalid_token}
-          invitation -> {:ok, invitation}
-        end
+  def revoke_invitation(%WorkspaceInvitation{} = invitation),
+    do: InvitationOperations.revoke_invitation(invitation)
 
-      :error ->
-        {:error, :invalid_token}
-    end
-  end
-
-  @doc """
-  Accepts an invitation and creates a membership for the user.
-  """
-  def accept_invitation(%WorkspaceInvitation{} = invitation, user) do
-    cond do
-      not is_nil(invitation.accepted_at) ->
-        {:error, :already_accepted}
-
-      DateTime.compare(invitation.expires_at, DateTime.utc_now()) == :lt ->
-        {:error, :expired}
-
-      String.downcase(user.email) != String.downcase(invitation.email) ->
-        {:error, :email_mismatch}
-
-      Memberships.get_membership(invitation.workspace_id, user.id) != nil ->
-        {:error, :already_member}
-
-      true ->
-        do_accept_invitation(invitation, user)
-    end
-  end
-
-  @doc """
-  Revokes a pending invitation.
-  """
-  def revoke_invitation(%WorkspaceInvitation{} = invitation) do
-    Repo.delete(invitation)
-  end
-
-  @doc """
-  Gets a pending invitation by ID.
-  """
-  def get_pending_invitation(id) do
-    WorkspaceInvitation
-    |> where([i], i.id == ^id)
-    |> where([i], is_nil(i.accepted_at))
-    |> where([i], i.expires_at > ^DateTime.utc_now())
-    |> Repo.one()
-  end
-
-  # Private helpers
-
-  defp check_invitation_rate_limit(workspace_id, user_id) do
-    RateLimiter.check_invitation("workspace", workspace_id, user_id)
-  end
-
-  defp member_exists?(workspace_id, email) do
-    from(m in Storyarn.Workspaces.WorkspaceMembership,
-      join: u in assoc(m, :user),
-      where: m.workspace_id == ^workspace_id,
-      where: fragment("lower(?)", u.email) == ^email
-    )
-    |> Repo.exists?()
-  end
-
-  defp pending_invitation_exists?(workspace_id, email) do
-    from(i in WorkspaceInvitation,
-      where: i.workspace_id == ^workspace_id,
-      where: fragment("lower(?)", i.email) == ^email,
-      where: is_nil(i.accepted_at),
-      where: i.expires_at > ^DateTime.utc_now()
-    )
-    |> Repo.exists?()
-  end
-
-  defp do_create_invitation(workspace, invited_by, email, role) do
-    {encoded_token, invitation} =
-      WorkspaceInvitation.build_invitation(workspace, invited_by, email, role)
-
-    case Repo.insert(invitation) do
-      {:ok, invitation} ->
-        invitation = Repo.preload(invitation, [:workspace, :invited_by])
-        WorkspaceNotifier.deliver_invitation(invitation, encoded_token)
-        {:ok, invitation}
-
-      {:error, changeset} ->
-        {:error, changeset}
-    end
-  end
-
-  defp do_accept_invitation(invitation, user) do
-    Repo.transact(fn ->
-      with {:ok, _invitation} <- mark_invitation_accepted(invitation),
-           {:ok, membership} <-
-             Memberships.create_membership(invitation.workspace_id, user.id, invitation.role) do
-        {:ok, membership}
-      else
-        {:error, %Ecto.Changeset{} = changeset} ->
-          handle_membership_error(changeset)
-
-        error ->
-          error
-      end
-    end)
-  end
-
-  defp handle_membership_error(%Ecto.Changeset{errors: errors} = changeset) do
-    if Keyword.has_key?(errors, :workspace_id) do
-      {:error, :already_member}
-    else
-      {:error, changeset}
-    end
-  end
-
-  defp mark_invitation_accepted(invitation) do
-    invitation
-    |> Ecto.Changeset.change(accepted_at: DateTime.utc_now(:second))
-    |> Repo.update()
-  end
+  def get_pending_invitation(id),
+    do: InvitationOperations.get_pending_invitation(@config, id)
 end

@@ -101,14 +101,4 @@ defmodule StoryarnWeb.Helpers.UndoRedoStack do
   def clear(socket) do
     assign(socket, undo_stack: [], redo_stack: [])
   end
-
-  @doc """
-  Returns true if undo stack is non-empty.
-  """
-  def can_undo?(socket), do: socket.assigns.undo_stack != []
-
-  @doc """
-  Returns true if redo stack is non-empty.
-  """
-  def can_redo?(socket), do: socket.assigns.redo_stack != []
 end

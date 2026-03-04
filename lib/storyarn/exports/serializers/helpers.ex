@@ -126,25 +126,9 @@ defmodule Storyarn.Exports.Serializers.Helpers do
   @doc """
   Strips HTML tags from text, preserving plain text content.
 
-  Handles Tiptap HTML output (p, em, strong, br, etc.).
-  Newlines are inserted between block elements.
+  Delegates to `Storyarn.Shared.HtmlUtils.strip_html/1`.
   """
-  def strip_html(nil), do: ""
-  def strip_html(""), do: ""
-
-  def strip_html(html) when is_binary(html) do
-    html
-    |> String.replace(~r/<br\s*\/?>/, "\n")
-    |> String.replace(~r/<\/p>\s*<p>/, "\n")
-    |> String.replace(~r/<[^>]+>/, "")
-    |> String.replace("&amp;", "&")
-    |> String.replace("&lt;", "<")
-    |> String.replace("&gt;", ">")
-    |> String.replace("&quot;", "\"")
-    |> String.replace("&#39;", "'")
-    |> String.replace("&nbsp;", " ")
-    |> String.trim()
-  end
+  defdelegate strip_html(html), to: Storyarn.Shared.HtmlUtils
 
   # ---------------------------------------------------------------------------
   # Identifier sanitization

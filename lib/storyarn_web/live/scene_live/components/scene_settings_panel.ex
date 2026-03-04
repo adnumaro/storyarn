@@ -95,7 +95,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
             <label class="text-xs text-base-content/50">{dgettext("scenes", "Unit")}</label>
             <input
               type="text"
-              value={@scene.scale_value && @scene.scale_unit || ""}
+              value={(@scene.scale_value && @scene.scale_unit) || ""}
               phx-blur="update_scene_scale"
               phx-value-field="scale_unit"
               placeholder="km"

@@ -29,12 +29,6 @@ defmodule Storyarn.Collaboration do
   @spec user_color(integer()) :: String.t()
   defdelegate user_color(user_id), to: Colors, as: :for_user
 
-  @doc """
-  Returns a lighter version of the user's color.
-  """
-  @spec user_color_light(integer()) :: String.t()
-  defdelegate user_color_light(user_id), to: Colors, as: :for_user_light
-
   # =============================================================================
   # Presence
   # =============================================================================
@@ -89,12 +83,6 @@ defmodule Storyarn.Collaboration do
   """
   @spec subscribe_cursors(integer()) :: :ok | {:error, term()}
   defdelegate subscribe_cursors(flow_id), to: CursorTracker, as: :subscribe
-
-  @doc """
-  Unsubscribes from cursor updates for a flow.
-  """
-  @spec unsubscribe_cursors(integer()) :: :ok
-  defdelegate unsubscribe_cursors(flow_id), to: CursorTracker, as: :unsubscribe
 
   # =============================================================================
   # Node Locking

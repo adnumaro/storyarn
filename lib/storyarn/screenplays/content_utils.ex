@@ -8,29 +8,10 @@ defmodule Storyarn.Screenplays.ContentUtils do
   @doc """
   Strips HTML tags and decodes common entities, returning plain text.
 
-  ## Examples
-
-      iex> strip_html("<p>Hello <strong>world</strong></p>")
-      "Hello world"
-
-      iex> strip_html("plain text")
-      "plain text"
-
-      iex> strip_html(nil)
-      ""
+  Delegates to `Storyarn.Shared.HtmlUtils.strip_html/1`.
   """
   @spec strip_html(String.t() | nil) :: String.t()
-  def strip_html(nil), do: ""
-  def strip_html(""), do: ""
-
-  def strip_html(content) when is_binary(content) do
-    content
-    |> String.replace(~r/<br\s*\/?>/, "\n")
-    |> String.replace(~r/<\/p>\s*<p[^>]*>/, "\n")
-    |> String.replace(~r/<[^>]*>/, "")
-    |> decode_entities()
-    |> String.trim()
-  end
+  defdelegate strip_html(content), to: Storyarn.Shared.HtmlUtils
 
   @doc """
   Detects if content contains HTML tags.
@@ -100,17 +81,6 @@ defmodule Storyarn.Screenplays.ContentUtils do
     text
     |> String.split("\n")
     |> Enum.map_join("", fn line -> "<p>#{encode_entities(line)}</p>" end)
-  end
-
-  # Decodes common HTML entities
-  defp decode_entities(text) do
-    text
-    |> String.replace("&amp;", "&")
-    |> String.replace("&lt;", "<")
-    |> String.replace("&gt;", ">")
-    |> String.replace("&quot;", "\"")
-    |> String.replace("&#39;", "'")
-    |> String.replace("&nbsp;", " ")
   end
 
   # Strips tags not in @tiptap_allowed_tags, keeping their text children.

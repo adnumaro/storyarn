@@ -22,16 +22,16 @@ defmodule Storyarn.Shortcuts do
   to ensure uniqueness within the project (e.g., "sheet", "sheet-1", "sheet-2").
   """
   def generate_sheet_shortcut(name, project_id, exclude_id \\ nil),
-    do: generate_unique(name, &list_sheet_shortcuts(project_id, &1), exclude_id)
+    do: generate_unique(name, &list_entity_shortcuts(Sheet, project_id, &1), exclude_id)
 
   def generate_flow_shortcut(name, project_id, exclude_id \\ nil),
-    do: generate_unique(name, &list_flow_shortcuts(project_id, &1), exclude_id)
+    do: generate_unique(name, &list_entity_shortcuts(Flow, project_id, &1), exclude_id)
 
   def generate_screenplay_shortcut(name, project_id, exclude_id \\ nil),
-    do: generate_unique(name, &list_screenplay_shortcuts(project_id, &1), exclude_id)
+    do: generate_unique(name, &list_entity_shortcuts(Screenplay, project_id, &1), exclude_id)
 
   def generate_scene_shortcut(name, project_id, exclude_id \\ nil),
-    do: generate_unique(name, &list_scene_shortcuts(project_id, &1), exclude_id)
+    do: generate_unique(name, &list_entity_shortcuts(Scene, project_id, &1), exclude_id)
 
   defp generate_unique(name, list_fn, exclude_id) do
     base_shortcut = NameNormalizer.shortcutify(name)
@@ -46,79 +46,19 @@ defmodule Storyarn.Shortcuts do
 
   # Private functions
 
-  defp list_sheet_shortcuts(project_id, exclude_sheet_id) do
+  defp list_entity_shortcuts(schema, project_id, exclude_id) do
     query =
-      from(s in Sheet,
+      from(e in schema,
         where:
-          s.project_id == ^project_id and
-            is_nil(s.deleted_at) and
-            not is_nil(s.shortcut),
-        select: s.shortcut
+          e.project_id == ^project_id and
+            is_nil(e.deleted_at) and
+            not is_nil(e.shortcut),
+        select: e.shortcut
       )
 
     query =
-      if exclude_sheet_id do
-        where(query, [s], s.id != ^exclude_sheet_id)
-      else
-        query
-      end
-
-    Repo.all(query)
-  end
-
-  defp list_flow_shortcuts(project_id, exclude_flow_id) do
-    query =
-      from(f in Flow,
-        where:
-          f.project_id == ^project_id and
-            is_nil(f.deleted_at) and
-            not is_nil(f.shortcut),
-        select: f.shortcut
-      )
-
-    query =
-      if exclude_flow_id do
-        where(query, [f], f.id != ^exclude_flow_id)
-      else
-        query
-      end
-
-    Repo.all(query)
-  end
-
-  defp list_screenplay_shortcuts(project_id, exclude_screenplay_id) do
-    query =
-      from(s in Screenplay,
-        where:
-          s.project_id == ^project_id and
-            is_nil(s.deleted_at) and
-            not is_nil(s.shortcut),
-        select: s.shortcut
-      )
-
-    query =
-      if exclude_screenplay_id do
-        where(query, [s], s.id != ^exclude_screenplay_id)
-      else
-        query
-      end
-
-    Repo.all(query)
-  end
-
-  defp list_scene_shortcuts(project_id, exclude_scene_id) do
-    query =
-      from(m in Scene,
-        where:
-          m.project_id == ^project_id and
-            is_nil(m.deleted_at) and
-            not is_nil(m.shortcut),
-        select: m.shortcut
-      )
-
-    query =
-      if exclude_scene_id do
-        where(query, [m], m.id != ^exclude_scene_id)
+      if exclude_id do
+        where(query, [e], e.id != ^exclude_id)
       else
         query
       end

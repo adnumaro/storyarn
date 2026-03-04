@@ -211,11 +211,7 @@ defmodule Storyarn.Localization.ExportImport do
     end
   end
 
-  defp strip_html(nil), do: ""
-
-  defp strip_html(text) do
-    String.replace(text, ~r/<[^>]+>/, "")
-  end
+  defp strip_html(text), do: Storyarn.Shared.HtmlUtils.strip_html(text)
 
   defp csv_escape(nil), do: ""
 

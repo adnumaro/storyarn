@@ -24,15 +24,6 @@ defmodule Storyarn.Accounts.Registration do
     end)
   end
 
-  @doc """
-  Registers a user without creating a default workspace.
-
-  Used by OAuth flow and services that handle workspace creation separately.
-  """
-  def register_user_only(attrs) do
-    insert_user(attrs)
-  end
-
   defp insert_user(attrs) do
     %User{}
     |> User.email_changeset(attrs)

@@ -46,10 +46,6 @@ defmodule Storyarn.CollaborationTest do
     test "user_color/1 delegates to Colors" do
       assert Collaboration.user_color(1) == Colors.for_user(1)
     end
-
-    test "user_color_light/1 delegates to Colors" do
-      assert Collaboration.user_color_light(1) == Colors.for_user_light(1)
-    end
   end
 
   # =============================================================================

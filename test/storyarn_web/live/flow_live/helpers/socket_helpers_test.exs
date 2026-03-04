@@ -7,22 +7,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.FlowsFixtures
 
-  # ── schedule_save_status_reset/0 ──────────────────────────────────
-
-  describe "schedule_save_status_reset/0" do
-    test "sends :reset_save_status message after delay" do
-      SocketHelpers.schedule_save_status_reset()
-
-      assert_receive :reset_save_status, 3000
-    end
-
-    test "does not deliver message immediately" do
-      SocketHelpers.schedule_save_status_reset()
-
-      refute_receive :reset_save_status, 50
-    end
-  end
-
   # ── reload_flow_data/1 ────────────────────────────────────────────
 
   describe "reload_flow_data/1" do

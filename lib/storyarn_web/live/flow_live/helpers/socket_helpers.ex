@@ -4,7 +4,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
 
   Provides common operations used across multiple handler and helper modules:
   - `reload_flow_data/1` - Refreshes flow, flow_data, and flow_hubs assigns
-  - `schedule_save_status_reset/0` - Schedules the save indicator reset
+
+  For save status, use `SaveStatusTimer.schedule_reset/1` instead.
 
   Import this module in any flow_live handler or helper that needs these.
   """
@@ -106,21 +107,5 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
 
   defp node_short_label(%{id: id, type: type}) do
     dgettext("flows", "%{type} #%{id}", type: NodeTypeRegistry.label(type), id: id)
-  end
-
-  @doc """
-  Schedules a message to reset the save status indicator after 2 seconds.
-  """
-  def schedule_save_status_reset do
-    Process.send_after(self(), :reset_save_status, 2000)
-  end
-
-  @doc """
-  Marks the save status as :saved and schedules the automatic reset.
-  Convenience function that combines assign + schedule_save_status_reset.
-  """
-  def mark_saved(socket) do
-    schedule_save_status_reset()
-    assign(socket, :save_status, :saved)
   end
 end

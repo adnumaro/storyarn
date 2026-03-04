@@ -62,12 +62,12 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpersTest do
       assert SceneHelpers.parse_id("42") == 42
     end
 
-    test "returns original string for non-numeric" do
-      assert SceneHelpers.parse_id("abc") == "abc"
+    test "returns nil for non-numeric" do
+      assert SceneHelpers.parse_id("abc") == nil
     end
 
-    test "returns original string for partial number" do
-      assert SceneHelpers.parse_id("42abc") == "42abc"
+    test "returns nil for partial number" do
+      assert SceneHelpers.parse_id("42abc") == nil
     end
 
     test "parses negative number" do
@@ -228,44 +228,6 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpersTest do
       element = %{id: 1, name: "keep"}
       updated = %{id: 2, name: "other"}
       assert SceneHelpers.replace_element(element, updated) == element
-    end
-  end
-
-  # ── panel_icon/1 ────────────────────────────────────────────────────
-
-  describe "panel_icon/1" do
-    test "pin returns map-pin" do
-      assert SceneHelpers.panel_icon("pin") == "map-pin"
-    end
-
-    test "zone returns pentagon" do
-      assert SceneHelpers.panel_icon("zone") == "pentagon"
-    end
-
-    test "connection returns cable" do
-      assert SceneHelpers.panel_icon("connection") == "cable"
-    end
-
-    test "annotation returns sticky-note" do
-      assert SceneHelpers.panel_icon("annotation") == "sticky-note"
-    end
-
-    test "unknown returns settings" do
-      assert SceneHelpers.panel_icon("unknown") == "settings"
-    end
-  end
-
-  # ── panel_title/1 ───────────────────────────────────────────────────
-
-  describe "panel_title/1" do
-    test "returns a string for each known type" do
-      for type <- ~w(pin zone connection annotation) do
-        assert is_binary(SceneHelpers.panel_title(type))
-      end
-    end
-
-    test "returns Properties for unknown type" do
-      assert is_binary(SceneHelpers.panel_title("unknown"))
     end
   end
 

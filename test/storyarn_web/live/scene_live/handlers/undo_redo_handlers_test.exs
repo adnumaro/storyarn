@@ -154,20 +154,6 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlersTest do
     end
   end
 
-  describe "UndoRedoStack.can_undo?/1 and can_redo?/1 (unit)" do
-    test "returns false for empty stacks" do
-      socket = mock_socket()
-      refute UndoRedoStack.can_undo?(socket)
-      refute UndoRedoStack.can_redo?(socket)
-    end
-
-    test "returns true for non-empty stacks" do
-      socket = mock_socket(%{undo_stack: [:something], redo_stack: [:something]})
-      assert UndoRedoStack.can_undo?(socket)
-      assert UndoRedoStack.can_redo?(socket)
-    end
-  end
-
   describe "UndoRedoStack.clear/1 (unit)" do
     test "clears both stacks" do
       socket = UndoRedoStack.clear(mock_socket(%{undo_stack: [:a], redo_stack: [:b]}))
