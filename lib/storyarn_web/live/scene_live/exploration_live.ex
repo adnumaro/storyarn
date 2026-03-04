@@ -51,7 +51,16 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
             — {@active_flow.flow.name}
           </span>
         </div>
-        <div class="player-toolbar-right"></div>
+        <div class="player-toolbar-right">
+          <button
+            type="button"
+            class={"player-toolbar-btn #{if @show_zones, do: "player-toolbar-btn-active"}"}
+            phx-click="toggle_show_zones"
+            title={dgettext("scenes", "Show zones")}
+          >
+            <.icon name="scan" class="size-4" />
+          </button>
+        </div>
       </div>
 
       <div class="player-main relative">
@@ -147,6 +156,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           |> assign(:zones, zones)
           |> assign(:pins, pins)
           |> assign(:exploration_data, serialize_for_exploration(scene, zones, pins))
+          |> assign(:show_zones, false)
           |> assign(:flow_mode, false)
           |> assign(:active_flow, nil)
           |> assign(:flow_nodes, %{})
@@ -166,6 +176,15 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     socket = handle_element_action(params, socket)
     socket = handle_element_target(params, socket)
     {:noreply, socket}
+  end
+
+  def handle_event("toggle_show_zones", _params, socket) do
+    new_val = !socket.assigns.show_zones
+
+    {:noreply,
+     socket
+     |> assign(:show_zones, new_val)
+     |> push_event("toggle_show_zones", %{show: new_val})}
   end
 
   def handle_event("exit_exploration", _params, socket) do

@@ -5,14 +5,14 @@
  */
 
 import L from "leaflet";
-import { BarChart3, createElement, Map as MapIcon, Send, Zap } from "lucide";
+import { BarChart3, Compass, createElement, Map as MapIcon, Zap } from "lucide";
 import { getCssVar } from "./color_utils.js";
 import { toLatLng } from "./coordinate_utils.js";
 
 const ACTION_ICONS = {
+  none: Compass,
   instruction: Zap,
   display: BarChart3,
-  event: Send,
 };
 
 function getDefaultFillColor() {

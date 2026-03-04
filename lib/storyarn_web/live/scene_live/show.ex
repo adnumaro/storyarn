@@ -237,13 +237,16 @@ defmodule StoryarnWeb.SceneLive.Show do
           </div>
         </div>
 
-        <%!-- Legend --%>
-        <.legend
-          pins={@pins}
-          zones={@zones}
-          connections={@connections}
-          legend_open={@legend_open}
-        />
+        <%!-- Bottom-right controls: reset zoom + legend --%>
+        <div class="absolute bottom-3 right-3 z-[1000] flex items-end gap-2">
+          <div id="scene-controls-slot" phx-update="ignore"></div>
+          <.legend
+            pins={@pins}
+            zones={@zones}
+            connections={@connections}
+            legend_open={@legend_open}
+          />
+        </div>
 
         <%!-- Floating element toolbar --%>
         <.canvas_toolbar

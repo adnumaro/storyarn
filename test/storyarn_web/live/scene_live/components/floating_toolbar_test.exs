@@ -111,7 +111,7 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbarTest do
           base_assigns("zone", zone_element())
         )
 
-      assert html =~ "floating-toolbar"
+      assert html =~ "update_zone"
     end
 
     test "zone with action_type instruction shows instruction builder" do
@@ -134,14 +134,14 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbarTest do
       assert html =~ "bar-chart-3"
     end
 
-    test "zone with action_type none shows none icon" do
+    test "zone with action_type none shows navigation icon" do
       html =
         render_component(
           &FloatingToolbar.floating_toolbar/1,
           base_assigns("zone", zone_element(%{action_type: "none"}))
         )
 
-      assert html =~ "circle-off"
+      assert html =~ "compass"
     end
 
     test "zone renders lock toggle when can_toggle_lock" do
@@ -177,7 +177,7 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbarTest do
           base_assigns("pin", pin_element())
         )
 
-      assert html =~ "floating-toolbar"
+      assert html =~ "update_pin"
     end
 
     test "pin with location type shows map-pin icon" do
@@ -244,7 +244,7 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbarTest do
           base_assigns("connection", connection_element())
         )
 
-      assert html =~ "floating-toolbar"
+      assert html =~ "update_connection"
     end
 
     test "connection toolbar renders properties settings button" do
@@ -290,7 +290,7 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbarTest do
           base_assigns("annotation", annotation_element())
         )
 
-      assert html =~ "floating-toolbar"
+      assert html =~ "update_annotation"
     end
   end
 

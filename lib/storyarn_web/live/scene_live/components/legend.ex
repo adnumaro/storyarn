@@ -50,38 +50,23 @@ defmodule StoryarnWeb.SceneLive.Components.Legend do
       |> assign(:has_entries, has_entries)
 
     ~H"""
-    <div :if={@has_entries} id="scene-legend" class="absolute bottom-3 right-3 z-[1000]">
-      <%!-- Collapsed: just the toggle button --%>
+    <div :if={@has_entries} id="scene-legend" class="relative">
+      <%!-- Toggle button (always visible) --%>
       <button
-        :if={!@legend_open}
         type="button"
         phx-click="toggle_legend"
         class="btn btn-sm bg-base-100 border-base-300 shadow-md gap-1.5"
-        title={dgettext("scenes", "Show legend")}
+        title={if(@legend_open, do: dgettext("scenes", "Hide legend"), else: dgettext("scenes", "Show legend"))}
       >
         <.icon name="list" class="size-4" />
         {dgettext("scenes", "Legend")}
       </button>
 
-      <%!-- Expanded: full legend panel --%>
+      <%!-- Expanded: popover above button --%>
       <div
         :if={@legend_open}
-        class="bg-base-100 rounded-lg border border-base-300 shadow-md w-56 max-h-64 overflow-hidden flex flex-col"
+        class="absolute bottom-full right-0 mb-2 bg-base-100 rounded-lg border border-base-300 shadow-md w-56 max-h-64 overflow-hidden flex flex-col"
       >
-        <div class="px-3 py-2 border-b border-base-300 flex items-center justify-between shrink-0">
-          <span class="text-xs font-medium flex items-center gap-1.5">
-            <.icon name="list" class="size-3.5" />
-            {dgettext("scenes", "Legend")}
-          </span>
-          <button
-            type="button"
-            phx-click="toggle_legend"
-            class="btn btn-ghost btn-xs btn-square"
-          >
-            <.icon name="chevron-down" class="size-3" />
-          </button>
-        </div>
-
         <div class="overflow-y-auto p-2 space-y-3">
           <%!-- Pin groups --%>
           <div :if={@pin_groups != []}>

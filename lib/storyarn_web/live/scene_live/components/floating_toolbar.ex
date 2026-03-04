@@ -16,6 +16,9 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
   import StoryarnWeb.Components.ToolbarColorPicker
   import StoryarnWeb.SceneLive.Components.ToolbarWidgets
 
+  import StoryarnWeb.SceneLive.Helpers.SceneHelpers,
+    only: [action_type_icon: 1, action_type_label: 1, action_type_description: 1]
+
   @pin_types ~w(location character event custom)
 
   # ---------------------------------------------------------------------------
@@ -99,7 +102,7 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
           style="display:none"
           phx-click-away={JS.hide(to: "#popover-zone-action-#{@zone.id}")}
         >
-          <div class="p-1 min-w-[120px]">
+          <div class="p-1 w-56">
             <button
               :for={type <- @action_types}
               type="button"
@@ -109,11 +112,14 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
                 )
                 |> JS.hide(to: "#popover-zone-action-#{@zone.id}")
               }
-              class={"flex items-center gap-2 w-full px-2 py-1 rounded text-sm cursor-pointer hover:bg-base-content/10 #{if type == (@zone.action_type || "none"), do: "font-semibold text-primary"}"}
+              class={"flex items-start gap-2.5 w-full px-2.5 py-2 rounded-lg text-start cursor-pointer transition-colors #{if type == (@zone.action_type || "none"), do: "bg-primary/10 text-primary", else: "hover:bg-base-content/5"}"}
               disabled={!@can_edit}
             >
-              <.icon name={action_type_icon(type)} class="size-3.5" />
-              {action_type_label(type)}
+              <.icon name={action_type_icon(type)} class="size-4 mt-0.5 shrink-0" />
+              <div>
+                <div class="text-sm font-medium">{action_type_label(type)}</div>
+                <div class="text-xs opacity-60 font-normal">{action_type_description(type)}</div>
+              </div>
             </button>
           </div>
         </div>
@@ -528,13 +534,4 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
   defp pin_type_label("custom"), do: dgettext("scenes", "Custom")
   defp pin_type_label(other), do: other
 
-  defp action_type_icon("none"), do: "circle-off"
-  defp action_type_icon("instruction"), do: "zap"
-  defp action_type_icon("display"), do: "bar-chart-3"
-  defp action_type_icon(_), do: "circle-off"
-
-  defp action_type_label("none"), do: dgettext("scenes", "None")
-  defp action_type_label("instruction"), do: dgettext("scenes", "Action")
-  defp action_type_label("display"), do: dgettext("scenes", "Display")
-  defp action_type_label(_), do: dgettext("scenes", "None")
 end

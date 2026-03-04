@@ -14,6 +14,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.ExpressionEditor
   import StoryarnWeb.SceneLive.Components.ToolbarWidgets
+  import StoryarnWeb.SceneLive.Helpers.SceneHelpers, only: [action_type_icon: 1, action_type_label: 1]
 
   attr :selected_type, :string, required: true
   attr :selected_element, :map, required: true
@@ -119,7 +120,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
           element_id={@zone.id}
           current_type={@zone.target_type}
           current_target_id={@zone.target_id}
-          target_types={~w(sheet flow map)}
+          target_types={~w(flow scene)}
           project_scenes={@project_scenes}
           project_sheets={@project_sheets}
           project_flows={@project_flows}
@@ -242,7 +243,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
           element_id={@pin.id}
           current_type={@pin.target_type}
           current_target_id={@pin.target_id}
-          target_types={~w(sheet flow map url)}
+          target_types={~w(sheet flow scene url)}
           project_scenes={@project_scenes}
           project_sheets={@project_sheets}
           project_flows={@project_flows}
@@ -485,13 +486,4 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   defp panel_title("annotation"), do: dgettext("scenes", "Annotation Properties")
   defp panel_title(_), do: dgettext("scenes", "Properties")
 
-  defp action_type_icon("none"), do: "circle-off"
-  defp action_type_icon("instruction"), do: "zap"
-  defp action_type_icon("display"), do: "bar-chart-3"
-  defp action_type_icon(_), do: "circle-off"
-
-  defp action_type_label("none"), do: dgettext("scenes", "None")
-  defp action_type_label("instruction"), do: dgettext("scenes", "Action")
-  defp action_type_label("display"), do: dgettext("scenes", "Display")
-  defp action_type_label(_), do: dgettext("scenes", "None")
 end

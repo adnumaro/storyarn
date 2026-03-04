@@ -34,6 +34,7 @@ export const ExplorationPlayer = {
     this.zones = data.zones || [];
     this.pins = data.pins || [];
     this.variables = {};
+    this.showZones = false;
 
     this.render();
 
@@ -41,6 +42,11 @@ export const ExplorationPlayer = {
       this.variables = variables || {};
       this.updateVisibility(zones, pins);
       this.updateDisplayZones();
+    });
+
+    this.handleEvent("toggle_show_zones", ({ show }) => {
+      this.showZones = show;
+      this.applyZoneColors();
     });
   },
 
@@ -118,12 +124,33 @@ export const ExplorationPlayer = {
 
     const fillColor = zone.fill_color || "#3b82f6";
     const opacity = zone.opacity != null ? zone.opacity : 0.3;
-    div.style.backgroundColor = fillColor;
-    div.style.opacity = isDisabled ? opacity * 0.3 : opacity;
+    div.dataset.fillColor = fillColor;
+    div.dataset.fillOpacity = opacity;
+
+    // Transparent by default — "Show Zones" toggle reveals colors
+    if (this.showZones) {
+      div.style.backgroundColor = fillColor;
+      div.style.opacity = isDisabled ? opacity * 0.3 : opacity;
+    } else {
+      div.style.backgroundColor = "transparent";
+      div.style.opacity = "1";
+    }
 
     if (isClickable) {
       div.style.pointerEvents = "auto";
       div.style.cursor = "pointer";
+      div.style.transition = "background-color 0.15s";
+
+      div.addEventListener("mouseenter", () => {
+        if (!this.showZones) {
+          div.style.backgroundColor = "rgba(255,255,255,0.08)";
+        }
+      });
+      div.addEventListener("mouseleave", () => {
+        if (!this.showZones) {
+          div.style.backgroundColor = "transparent";
+        }
+      });
     }
 
     // Click handler — single consolidated event
@@ -355,10 +382,13 @@ export const ExplorationPlayer = {
           group.style.display = "";
           const overlay = group.querySelector(".interaction-zone");
           if (overlay) {
-            // Restore from original zone data
             const zone = this.zones.find((z) => String(z.id) === String(zoneState.id));
-            if (zone) {
+            if (this.showZones && zone) {
+              overlay.style.backgroundColor = zone.fill_color || "#3b82f6";
               overlay.style.opacity = zone.opacity != null ? zone.opacity : 0.3;
+            } else {
+              overlay.style.backgroundColor = "transparent";
+              overlay.style.opacity = "1";
             }
             const actionType =
               overlay.dataset?.actionType || overlay.className.match(/interaction-zone-(\w+)/)?.[1];
@@ -394,6 +424,21 @@ export const ExplorationPlayer = {
           el.style.opacity = "1";
           el.style.pointerEvents = "auto";
         }
+      }
+    }
+  },
+
+  applyZoneColors() {
+    const overlays = this.el.querySelectorAll(".interaction-zone");
+    for (const overlay of overlays) {
+      if (this.showZones) {
+        const fillColor = overlay.dataset.fillColor || "#3b82f6";
+        const opacity = parseFloat(overlay.dataset.fillOpacity) || 0.3;
+        overlay.style.backgroundColor = fillColor;
+        overlay.style.opacity = opacity;
+      } else {
+        overlay.style.backgroundColor = "transparent";
+        overlay.style.opacity = "1";
       }
     }
   },

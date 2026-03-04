@@ -14,7 +14,7 @@ defmodule Storyarn.Scenes.SceneZone do
   alias Storyarn.Scenes.{Scene, SceneLayer}
 
   @valid_border_styles ~w(solid dashed dotted)
-  @valid_target_types ~w(sheet flow scene)
+  @valid_target_types ~w(flow scene)
   @valid_action_types ~w(none instruction display)
 
   @valid_condition_effects ~w(hide disable)

@@ -519,11 +519,11 @@ defmodule Storyarn.ScenesTest do
             %{"x" => 50.0, "y" => 10.0},
             %{"x" => 30.0, "y" => 50.0}
           ],
-          "target_type" => "sheet",
+          "target_type" => "scene",
           "target_id" => 42
         })
 
-      assert zone.target_type == "sheet"
+      assert zone.target_type == "scene"
       assert zone.target_id == 42
     end
   end
@@ -642,11 +642,11 @@ defmodule Storyarn.ScenesTest do
         Scenes.create_zone(scene.id, %{
           "name" => "Nav Zone",
           "vertices" => @triangle,
-          "target_type" => "sheet",
+          "target_type" => "scene",
           "target_id" => 42
         })
 
-      assert zone.target_type == "sheet"
+      assert zone.target_type == "scene"
       assert zone.target_id == 42
 
       {:ok, updated} =
@@ -656,7 +656,7 @@ defmodule Storyarn.ScenesTest do
         })
 
       assert updated.action_type == "instruction"
-      assert updated.target_type == "sheet"
+      assert updated.target_type == "scene"
       assert updated.target_id == 42
     end
 
@@ -1277,7 +1277,7 @@ defmodule Storyarn.ScenesTest do
       _zone =
         zone_fixture(scene, %{
           "name" => "Kingdom Zone",
-          "target_type" => "sheet",
+          "target_type" => "scene",
           "target_id" => 42
         })
 
@@ -1288,15 +1288,17 @@ defmodule Storyarn.ScenesTest do
           "target_id" => 42
         })
 
-      result = Scenes.get_elements_for_target("sheet", 42)
+      result_zones = Scenes.get_elements_for_target("scene", 42)
 
-      assert length(result.zones) == 1
-      assert hd(result.zones).name == "Kingdom Zone"
-      assert hd(result.zones).scene.id == scene.id
+      assert length(result_zones.zones) == 1
+      assert hd(result_zones.zones).name == "Kingdom Zone"
+      assert hd(result_zones.zones).scene.id == scene.id
 
-      assert length(result.pins) == 1
-      assert hd(result.pins).label == "Kingdom Pin"
-      assert hd(result.pins).scene.id == scene.id
+      result_pins = Scenes.get_elements_for_target("sheet", 42)
+
+      assert length(result_pins.pins) == 1
+      assert hd(result_pins.pins).label == "Kingdom Pin"
+      assert hd(result_pins.pins).scene.id == scene.id
     end
 
     test "get_elements_for_target/2 returns empty for unlinked targets" do

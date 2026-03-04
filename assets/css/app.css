@@ -866,14 +866,7 @@ body.dnd-active [data-toolbar] {
   100% { filter: brightness(1); }
 }
 
-/* Map Canvas - Mini-map */
-.map-minimap {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
-}
-
+/* Map Canvas - Reset zoom button */
 .map-minimap-toggle {
   display: flex;
   align-items: center;
@@ -892,14 +885,6 @@ body.dnd-active [data-toolbar] {
 
 .map-minimap-toggle:hover {
   opacity: 1;
-}
-
-.map-minimap-canvas {
-  border-radius: 6px;
-  border: 1px solid var(--color-base-300, #d1d5db);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-  background: var(--color-base-200, #f3f4f6);
 }
 
 /* Ruler measurement labels */
@@ -971,6 +956,7 @@ body.dnd-active [data-toolbar] {
   border: 1px solid var(--color-base-300);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  white-space: normal;
   z-index: 10;
 }
 

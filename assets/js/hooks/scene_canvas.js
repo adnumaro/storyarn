@@ -15,7 +15,7 @@ import { createLayerHandler } from "../scene_canvas/handlers/layer_handler.js";
 import { createPinHandler } from "../scene_canvas/handlers/pin_handler.js";
 import { createZoneHandler } from "../scene_canvas/handlers/zone_handler.js";
 import { createFloatingToolbar } from "../scene_canvas/leaflet_toolbar.js";
-import { createMinimap } from "../scene_canvas/minimap.js";
+import { createResetZoomButton } from "../scene_canvas/reset_zoom.js";
 import { createRuler } from "../scene_canvas/ruler.js";
 import { addGridPlaceholder, initMap } from "../scene_canvas/setup.js";
 
@@ -35,7 +35,7 @@ export const SceneCanvas = {
     }
     if (this.floatingToolbar) this.floatingToolbar.hide();
     if (this.ruler) this.ruler.destroy();
-    if (this.minimap) this.minimap.destroy();
+    if (this.resetZoomBtn) this.resetZoomBtn.destroy();
     if (this.contextMenu) this.contextMenu.destroy();
     if (this.layerHandler) this.layerHandler.destroy();
     if (this.connectionHandler) this.connectionHandler.destroy();
@@ -71,9 +71,8 @@ export const SceneCanvas = {
     this.layerHandler = createLayerHandler(this);
     this.layerHandler.init();
 
-    // Mini-map navigation
-    this.minimap = createMinimap(this);
-    this.minimap.init();
+    // Reset zoom button
+    this.resetZoomBtn = createResetZoomButton(this);
 
     // Ruler / distance measurement
     this.ruler = createRuler(this);
@@ -283,13 +282,10 @@ export const SceneCanvas = {
           if (this.zoneHandler) this.zoneHandler.repositionAll();
           if (this.connectionHandler) this.connectionHandler.repositionAll();
           if (this.annotationHandler) this.annotationHandler.repositionAll();
-
-          if (this.minimap) this.minimap.refreshBackground();
         };
         img.src = url;
       } else {
         this.gridOverlay = addGridPlaceholder(this.leafletMap, this.canvasWidth, this.canvasHeight);
-        if (this.minimap) this.minimap.refreshBackground();
       }
     });
 
