@@ -412,7 +412,6 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp mount_scene(socket, project, membership, can_edit, scene) do
     socket
     |> assign(focus_layout_defaults())
-    |> assign(:tree_panel_pinned, false)
     |> assign(:tree_panel_tab, "scenes")
     |> assign(:project, project)
     |> assign(:workspace, project.workspace)

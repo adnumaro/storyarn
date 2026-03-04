@@ -33,10 +33,12 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlers do
   Handles tree panel events. Call from your LiveView's handle_event/3.
   """
   def handle_tree_panel_event("tree_panel_init", %{"pinned" => pinned}, socket) do
-    # The JS hook tells us the localStorage-persisted pin state.
-    # Only sync the pinned assign — don't touch tree_panel_open,
-    # since the panel is already open if this hook mounted.
-    {:noreply, assign(socket, :tree_panel_pinned, pinned)}
+    # The JS hook reports the localStorage-persisted pin state.
+    # If pinned, also open the panel (server starts closed to avoid flash).
+    {:noreply,
+     socket
+     |> assign(:tree_panel_pinned, pinned)
+     |> assign(:tree_panel_open, pinned)}
   end
 
   def handle_tree_panel_event("tree_panel_toggle", _params, socket) do
@@ -68,8 +70,8 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlers do
   """
   def focus_layout_defaults do
     [
-      tree_panel_open: true,
-      tree_panel_pinned: true,
+      tree_panel_open: false,
+      tree_panel_pinned: false,
       online_users: []
     ]
   end

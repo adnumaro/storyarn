@@ -9,8 +9,8 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
 
   defp build_socket(assigns) do
     defaults = %{
-      tree_panel_open: true,
-      tree_panel_pinned: true,
+      tree_panel_open: false,
+      tree_panel_pinned: false,
       pending_delete_id: nil,
       project: %{id: 1}
     }
@@ -30,7 +30,7 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
   describe "focus_layout_defaults/0" do
     test "returns expected default assigns" do
       assert TreePanelHandlers.focus_layout_defaults() ==
-               [tree_panel_open: true, tree_panel_pinned: true, online_users: []]
+               [tree_panel_open: false, tree_panel_pinned: false, online_users: []]
     end
   end
 
@@ -39,22 +39,24 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
   # ============================================================================
 
   describe "handle_tree_panel_event tree_panel_init" do
-    test "syncs pinned state from client" do
-      socket = build_socket(%{tree_panel_pinned: false})
+    test "syncs pinned state and opens panel when pinned" do
+      socket = build_socket(%{tree_panel_pinned: false, tree_panel_open: false})
 
       {:noreply, result} =
         TreePanelHandlers.handle_tree_panel_event("tree_panel_init", %{"pinned" => true}, socket)
 
       assert result.assigns.tree_panel_pinned == true
+      assert result.assigns.tree_panel_open == true
     end
 
-    test "does not change tree_panel_open" do
-      socket = build_socket(%{tree_panel_open: true, tree_panel_pinned: false})
+    test "keeps panel closed when not pinned" do
+      socket = build_socket(%{tree_panel_pinned: false, tree_panel_open: false})
 
       {:noreply, result} =
-        TreePanelHandlers.handle_tree_panel_event("tree_panel_init", %{"pinned" => true}, socket)
+        TreePanelHandlers.handle_tree_panel_event("tree_panel_init", %{"pinned" => false}, socket)
 
-      assert result.assigns.tree_panel_open == true
+      assert result.assigns.tree_panel_pinned == false
+      assert result.assigns.tree_panel_open == false
     end
   end
 

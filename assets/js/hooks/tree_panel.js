@@ -5,21 +5,45 @@
  * - Entry: translateX(-20px) → translateX(0), opacity 0→1, 280ms ease-out
  * - Exit:  translateX(0) → translateX(-20px), opacity 1→0, 180ms ease-out
  *
- * The server controls open state via data-open and CSS opacity-0/pointer-events-none.
- * JS overrides inline styles during animation (inline > class specificity), then
- * clears them so CSS classes take over when the animation ends.
+ * Pin state is stored per-tool in localStorage:
+ *   storyarn:tree_panel:pinned:{tool} = "true" | "false"
+ *
+ * Defaults: sheets/screenplays = pinned, flows/scenes = unpinned.
  */
 
 const OPEN_DURATION = 280;
 const CLOSE_DURATION = 180;
 const EASING = "ease-out";
 const SLIDE_OFFSET = "-20px";
-const STORAGE_KEY = "storyarn:tree_panel:pinned";
+const KEY_PREFIX = "storyarn:tree_panel:pinned:";
+const OLD_KEY = "storyarn:tree_panel:pinned";
+
+const DEFAULTS = {
+  sheets: true,
+  screenplays: true,
+  flows: false,
+  scenes: false,
+};
+
+function storageKey(tool) {
+  return `${KEY_PREFIX}${tool}`;
+}
+
+function readPinned(tool) {
+  const stored = localStorage.getItem(storageKey(tool));
+  if (stored !== null) return stored === "true";
+  return DEFAULTS[tool] ?? true;
+}
 
 export const TreePanel = {
   mounted() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const pinned = stored === null ? true : stored === "true";
+    // Migrate: remove old shared key
+    localStorage.removeItem(OLD_KEY);
+
+    const tool = this.el.dataset.tool || "sheets";
+    this._tool = tool;
+
+    const pinned = readPinned(tool);
     this.pushEvent("tree_panel_init", { pinned });
 
     this._open = this.el.dataset.open === "true";
@@ -33,7 +57,9 @@ export const TreePanel = {
   updated() {
     // Persist pin state on every update
     const pinned = this.el.dataset.pinned === "true";
-    localStorage.setItem(STORAGE_KEY, String(pinned));
+    const tool = this.el.dataset.tool || this._tool || "sheets";
+    this._tool = tool;
+    localStorage.setItem(storageKey(tool), String(pinned));
 
     // Animate on open/close state change
     const nowOpen = this.el.dataset.open === "true";

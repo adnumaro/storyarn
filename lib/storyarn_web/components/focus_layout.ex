@@ -350,6 +350,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
     <div
       id="tree-panel"
       phx-hook="TreePanel"
+      data-tool={to_string(@active_tool)}
       data-pinned={to_string(@tree_panel_pinned)}
       data-open={to_string(@tree_panel_open)}
       class={[
