@@ -44,114 +44,21 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTreeTest do
     )
   end
 
-  # ── Empty state ────────────────────────────────────────────────
+  # ── SceneTree-unique: icon and URL ───────────────────────────────
 
-  describe "empty state" do
-    test "shows empty message when no scenes" do
-      html = render_section([])
-      assert html =~ "No scenes yet"
-    end
-
-    test "hides search when no scenes" do
-      html = render_section([])
-      refute html =~ "scenes-tree-search"
-    end
-
-    test "shows new scene button when can_edit" do
-      html = render_section([], can_edit: true)
-      assert html =~ "New Scene"
-    end
-
-    test "hides new scene button when cannot edit" do
-      html = render_section([], can_edit: false)
-      refute html =~ "New Scene"
-    end
-  end
-
-  # ── Search ──────────────────────────────────────────────────────
-
-  describe "search" do
-    test "renders search input when scenes exist" do
+  describe "scene-specific tree rendering" do
+    test "renders map icon" do
       html = render_section([make_scene(1)])
-      assert html =~ "scenes-tree-search"
-      assert html =~ "TreeSearch"
-      assert html =~ "Filter scenes"
-    end
-
-    test "search references tree container" do
-      html = render_section([make_scene(1)])
-      assert html =~ ~s(data-tree-id="scenes-tree-container")
-    end
-  end
-
-  # ── Tree rendering ──────────────────────────────────────────────
-
-  describe "tree rendering" do
-    test "renders scene names" do
-      scenes = [make_scene(1, name: "Forest"), make_scene(2, name: "Castle")]
-      html = render_section(scenes)
-      assert html =~ "Forest"
-      assert html =~ "Castle"
+      assert html =~ "lucide-map"
     end
 
     test "renders scene links with correct path" do
       html = render_section([make_scene(1)])
       assert html =~ "/workspaces/test-ws/projects/test-proj/scenes/1"
     end
-
-    test "renders map icon" do
-      html = render_section([make_scene(1)])
-      assert html =~ "lucide-map"
-    end
-
-    test "renders sortable when can_edit" do
-      html = render_section([make_scene(1)], can_edit: true)
-      assert html =~ "SortableTree"
-      assert html =~ ~s(data-tree-type="scenes")
-    end
-
-    test "no sortable hook when cannot edit" do
-      html = render_section([make_scene(1)], can_edit: false)
-      refute html =~ "SortableTree"
-    end
   end
 
-  # ── Child scenes ─────────────────────────────────────────────────
-
-  describe "child scenes" do
-    test "renders children recursively" do
-      scenes = [
-        make_scene(1,
-          name: "World",
-          children: [make_scene(2, name: "Dungeon")]
-        )
-      ]
-
-      html = render_section(scenes)
-      assert html =~ "World"
-      assert html =~ "Dungeon"
-    end
-
-    test "renders add child button when can_edit" do
-      scenes = [
-        make_scene(1, children: [make_scene(2)])
-      ]
-
-      html = render_section(scenes, can_edit: true)
-      assert html =~ "create_child_scene"
-    end
-
-    test "hides add child button when cannot edit" do
-      scenes = [
-        make_scene(1, children: [make_scene(2)])
-      ]
-
-      html = render_section(scenes, can_edit: false)
-      refute html =~ "create_child_scene"
-    end
-  end
-
-  # ── Extra children: zones ─────────────────────────────────────
+  # ── SceneTree-unique: zone extra children ────────────────────────
 
   describe "zone extra children" do
     test "renders zone names inside scene node" do
@@ -166,7 +73,7 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTreeTest do
       assert html =~ "Dark Clearing"
     end
 
-    test "renders zone with pentagon icon" do
+    test "renders zone with pentagon icon and highlight link" do
       scene =
         make_scene(1,
           sidebar_zones: [make_zone(10)],
@@ -175,16 +82,6 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTreeTest do
 
       html = render_section([scene])
       assert html =~ "pentagon"
-    end
-
-    test "renders zone link with highlight parameter" do
-      scene =
-        make_scene(1,
-          sidebar_zones: [make_zone(10)],
-          zone_count: 1
-        )
-
-      html = render_section([scene])
       assert html =~ "highlight=zone:10"
     end
 
@@ -223,7 +120,7 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTreeTest do
     end
   end
 
-  # ── Extra children: pins ──────────────────────────────────────
+  # ── SceneTree-unique: pin extra children ─────────────────────────
 
   describe "pin extra children" do
     test "renders pin with label" do
@@ -248,7 +145,7 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTreeTest do
       assert html =~ "Pin"
     end
 
-    test "renders pin with map-pin icon" do
+    test "renders pin with map-pin icon and highlight link" do
       scene =
         make_scene(1,
           sidebar_pins: [make_pin(20)],
@@ -257,16 +154,6 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTreeTest do
 
       html = render_section([scene])
       assert html =~ "map-pin"
-    end
-
-    test "renders pin link with highlight parameter" do
-      scene =
-        make_scene(1,
-          sidebar_pins: [make_pin(20)],
-          pin_count: 1
-        )
-
-      html = render_section([scene])
       assert html =~ "highlight=pin:20"
     end
 
@@ -293,63 +180,9 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTreeTest do
     end
   end
 
-  # ── New scene button ────────────────────────────────────────────
+  # ── SceneTree-unique: composite rendering ────────────────────────
 
-  describe "new scene button" do
-    test "shows create button when can_edit" do
-      html = render_section([make_scene(1)], can_edit: true)
-      assert html =~ "create_scene"
-      assert html =~ "New Scene"
-    end
-
-    test "hides create button when cannot edit" do
-      html = render_section([make_scene(1)], can_edit: false)
-      refute html =~ "New Scene"
-    end
-  end
-
-  # ── Scene menu ──────────────────────────────────────────────────
-
-  describe "scene menu" do
-    test "shows menu when can_edit" do
-      html = render_section([make_scene(1)], can_edit: true)
-      assert html =~ "more-horizontal"
-    end
-
-    test "hides menu when cannot edit" do
-      html = render_section([make_scene(1)], can_edit: false)
-      refute html =~ "more-horizontal"
-    end
-
-    test "shows trash option" do
-      html = render_section([make_scene(1)], can_edit: true)
-      assert html =~ "Move to Trash"
-      assert html =~ "set_pending_delete_scene"
-    end
-
-    test "renders confirm modal for delete" do
-      html = render_section([make_scene(1)], can_edit: true)
-      assert html =~ "delete-scene-sidebar-confirm"
-      assert html =~ "Delete scene?"
-    end
-  end
-
-  # ── Selection + expansion ──────────────────────────────────────
-
-  describe "selection and expansion" do
-    test "expands parent when child scene is selected" do
-      scenes = [
-        make_scene(1,
-          name: "World",
-          children: [make_scene(2, name: "Dungeon")]
-        )
-      ]
-
-      html = render_section(scenes, selected_scene_id: "2")
-      assert html =~ "World"
-      assert html =~ "Dungeon"
-    end
-
+  describe "composite rendering" do
     test "scene with both children and zones renders correctly" do
       scene =
         make_scene(1,

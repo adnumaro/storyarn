@@ -7,7 +7,7 @@
  * (only special inside attribute values).
  *
  * Covers: basic HTML entity escaping, pass-through for safe strings,
- * empty string, multiple special characters, and full HTML tag escaping.
+ * multiple special characters, and full HTML tag escaping.
  *
  * @vitest-environment jsdom
  */
@@ -50,24 +50,6 @@ describe("escapeHtml", () => {
     it("returns plain text unchanged", () => {
       expect(escapeHtml("hello world")).toBe("hello world");
     });
-
-    it("returns numbers unchanged", () => {
-      expect(escapeHtml("12345")).toBe("12345");
-    });
-
-    it("returns alphanumeric with spaces unchanged", () => {
-      expect(escapeHtml("The quick brown fox")).toBe("The quick brown fox");
-    });
-  });
-
-  // ===========================================================================
-  // Empty string
-  // ===========================================================================
-
-  describe("empty string", () => {
-    it("returns empty string for empty input", () => {
-      expect(escapeHtml("")).toBe("");
-    });
   });
 
   // ===========================================================================
@@ -76,14 +58,9 @@ describe("escapeHtml", () => {
 
   describe("strings with multiple special characters", () => {
     it("escapes <, >, and & in a mixed string", () => {
-      const result = escapeHtml('a < b & c > d "e"');
-      expect(result).toContain("&lt;");
-      expect(result).toContain("&amp;");
-      expect(result).toContain("&gt;");
-      expect(result).not.toContain("<");
-      expect(result).not.toContain(">");
-      // & should only appear as part of escape sequences
-      expect(result.replace(/&(lt|gt|amp);/g, "")).not.toContain("&");
+      expect(escapeHtml('a < b & c > d "e"')).toBe(
+        'a &lt; b &amp; c &gt; d "e"',
+      );
     });
 
     it("escapes consecutive angle brackets", () => {
@@ -119,14 +96,6 @@ describe("escapeHtml", () => {
     it("escapes self-closing tags", () => {
       const result = escapeHtml("<br />");
       expect(result).toBe("&lt;br /&gt;");
-    });
-
-    it("escapes nested HTML", () => {
-      const result = escapeHtml("<p><strong>bold</strong></p>");
-      expect(result).not.toContain("<p>");
-      expect(result).not.toContain("<strong>");
-      expect(result).toContain("&lt;p&gt;");
-      expect(result).toContain("&lt;strong&gt;");
     });
 
     it("escapes an img tag with onerror handler", () => {

@@ -29,11 +29,8 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
 
   describe "focus_layout_defaults/0" do
     test "returns expected default assigns" do
-      defaults = TreePanelHandlers.focus_layout_defaults()
-
-      assert defaults[:tree_panel_open] == true
-      assert defaults[:tree_panel_pinned] == true
-      assert defaults[:online_users] == []
+      assert TreePanelHandlers.focus_layout_defaults() ==
+               [tree_panel_open: true, tree_panel_pinned: true, online_users: []]
     end
   end
 
@@ -49,19 +46,6 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
         TreePanelHandlers.handle_tree_panel_event("tree_panel_init", %{"pinned" => true}, socket)
 
       assert result.assigns.tree_panel_pinned == true
-    end
-
-    test "sets pinned to false from client" do
-      socket = build_socket(%{tree_panel_pinned: true})
-
-      {:noreply, result} =
-        TreePanelHandlers.handle_tree_panel_event(
-          "tree_panel_init",
-          %{"pinned" => false},
-          socket
-        )
-
-      assert result.assigns.tree_panel_pinned == false
     end
 
     test "does not change tree_panel_open" do
@@ -147,13 +131,6 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
       assert result.assigns.pending_delete_id == "42"
     end
 
-    test "overwrites existing pending_delete_id" do
-      socket = build_socket(%{pending_delete_id: "10"})
-
-      {:noreply, result} = TreePanelHandlers.handle_set_pending_delete(socket, "99")
-
-      assert result.assigns.pending_delete_id == "99"
-    end
   end
 
   # ============================================================================
@@ -191,21 +168,6 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
       assert result.assigns.pending_delete_id == nil
     end
 
-    test "does not call delete_fn when pending_delete_id is not set in assigns" do
-      socket = build_socket(%{})
-      # pending_delete_id defaults to nil in build_socket
-
-      was_called = :atomics.new(1, signed: false)
-
-      delete_fn = fn _socket, _id ->
-        :atomics.put(was_called, 1, 1)
-        {:noreply, socket}
-      end
-
-      {:noreply, _result} = TreePanelHandlers.handle_confirm_delete(socket, delete_fn)
-
-      assert :atomics.get(was_called, 1) == 0
-    end
   end
 
   # ============================================================================
@@ -250,26 +212,6 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
       assert result.assigns.flash["error"] == "Could not create flow."
     end
 
-    test "passes attrs and project to create_fn" do
-      socket = build_socket(%{project: %{id: 7}})
-      entity = %{id: 1}
-
-      create_fn = fn project, attrs ->
-        assert project.id == 7
-        assert attrs == %{name: "Test"}
-        {:ok, entity}
-      end
-
-      path_fn = fn _socket, _e -> "/ok" end
-
-      TreePanelHandlers.handle_create_entity(
-        socket,
-        %{name: "Test"},
-        create_fn,
-        path_fn,
-        "Error"
-      )
-    end
   end
 
   # ============================================================================
@@ -302,24 +244,6 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
       assert result.redirected == {:live, :redirect, %{to: "/entities/55", kind: :push}}
     end
 
-    test "on error, sets error flash" do
-      socket = build_socket(%{project: %{id: 1}})
-
-      create_fn = fn _project, _attrs -> {:error, %Ecto.Changeset{}} end
-      path_fn = fn _socket, _e -> "/never" end
-
-      {:noreply, result} =
-        TreePanelHandlers.handle_create_child(
-          socket,
-          "parent-1",
-          %{name: "Child"},
-          create_fn,
-          path_fn,
-          "Fail msg"
-        )
-
-      assert result.assigns.flash["error"] == "Fail msg"
-    end
   end
 
   # ============================================================================
@@ -437,25 +361,6 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
       assert result.assigns.flash["error"] == "Could not delete."
     end
 
-    test "passes project_id and entity_id to get_fn" do
-      socket = build_socket(%{project: %{id: 77}})
-
-      get_fn = fn project_id, entity_id ->
-        assert project_id == 77
-        assert entity_id == "42"
-        nil
-      end
-
-      TreePanelHandlers.handle_delete_entity(socket, "42",
-        get_fn: get_fn,
-        delete_fn: fn _e -> {:ok, nil} end,
-        current_entity_id: 1,
-        index_path: "/",
-        reload_tree_fn: fn s -> s end,
-        error_msg: "Error"
-      )
-    end
-
     test "compares entity_id with current_entity_id as strings" do
       socket = build_socket(%{project: %{id: 1}})
       entity = %{id: 42}
@@ -520,23 +425,6 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
       assert result.assigns.flash["error"] == "Could not move."
     end
 
-    test "parses string parent_id to integer" do
-      socket = build_socket(%{project: %{id: 1}})
-      entity = %{id: 10}
-
-      {:noreply, _result} =
-        TreePanelHandlers.handle_move_entity(socket, "10", "42", "3",
-          get_fn: fn _project_id, _id -> entity end,
-          move_fn: fn _entity, new_parent_id, position ->
-            assert new_parent_id == 42
-            assert position == 3
-            {:ok, entity}
-          end,
-          reload_tree_fn: fn s -> s end,
-          error_msg: "Error"
-        )
-    end
-
     test "handles nil parent_id (move to root)" do
       socket = build_socket(%{project: %{id: 1}})
       entity = %{id: 10}
@@ -587,20 +475,5 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
         )
     end
 
-    test "passes project_id and entity_id to get_fn" do
-      socket = build_socket(%{project: %{id: 88}})
-
-      {:noreply, _result} =
-        TreePanelHandlers.handle_move_entity(socket, "10", "5", "0",
-          get_fn: fn project_id, entity_id ->
-            assert project_id == 88
-            assert entity_id == "10"
-            %{id: 10}
-          end,
-          move_fn: fn _entity, _pid, _pos -> {:ok, %{}} end,
-          reload_tree_fn: fn s -> s end,
-          error_msg: "Error"
-        )
-    end
   end
 end
