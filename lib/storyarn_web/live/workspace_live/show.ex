@@ -162,7 +162,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   defp project_card(assigns) do
     ~H"""
     <.link
-      navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
+      navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets"}
       class="card bg-base-200 hover:bg-base-300 transition-colors cursor-pointer"
     >
       <div class="card-body p-4">
@@ -211,7 +211,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
       socket
       |> put_flash(:info, dgettext("workspaces", "Project created successfully."))
       |> push_navigate(
-        to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}"
+        to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}/sheets"
       )
 
     {:noreply, socket}
