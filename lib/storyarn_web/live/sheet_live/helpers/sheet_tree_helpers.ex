@@ -4,7 +4,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
   """
 
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [put_flash: 3, push_navigate: 2]
+  import Phoenix.LiveView, only: [put_flash: 3, push_navigate: 2, push_patch: 2]
 
   use Gettext, backend: StoryarnWeb.Gettext
   use Phoenix.VerifiedRoutes, endpoint: StoryarnWeb.Endpoint, router: StoryarnWeb.Router
@@ -74,7 +74,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
         {:noreply,
          socket
          |> assign(:sheets_tree, sheets_tree)
-         |> push_navigate(
+         |> push_patch(
            to:
              ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
          )}

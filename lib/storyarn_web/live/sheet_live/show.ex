@@ -51,10 +51,11 @@ defmodule StoryarnWeb.SheetLive.Show do
           sheets_tree={@sheets_tree}
           workspace={@workspace}
           project={@project}
-          selected_sheet_id={to_string(@sheet.id)}
+          selected_sheet_id={@sheet && to_string(@sheet.id)}
           can_edit={@can_edit}
         />
       </:tree_content>
+      <%= if @sheet do %>
       <div
         id="sheet-undo-redo"
         phx-hook="UndoRedo"
@@ -193,13 +194,18 @@ defmodule StoryarnWeb.SheetLive.Show do
           />
         </div>
       </div>
+      <% else %>
+      <div class="flex justify-center py-12">
+        <span class="loading loading-spinner loading-lg text-base-content/30"></span>
+      </div>
+      <% end %>
     </Layouts.focus>
     """
   end
 
   @impl true
   def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => sheet_id},
+        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
         _session,
         socket
       ) do
@@ -209,7 +215,25 @@ defmodule StoryarnWeb.SheetLive.Show do
            project_slug
          ) do
       {:ok, project, membership} ->
-        mount_with_project(socket, workspace_slug, project_slug, sheet_id, project, membership)
+        can_edit = Projects.can?(membership.role, :edit_content)
+
+        {:ok,
+         socket
+         |> assign(focus_layout_defaults())
+         |> assign(:project, project)
+         |> assign(:workspace, project.workspace)
+         |> assign(:membership, membership)
+         |> assign(:can_edit, can_edit)
+         |> assign(:save_status, :idle)
+         |> assign(:current_tab, "content")
+         |> assign(:pending_delete_id, nil)
+         # Defaults — sheet loaded in handle_params
+         |> assign(:sheet, nil)
+         |> assign(:ancestors, [])
+         |> assign(:sheets_tree, [])
+         |> assign(:children, [])
+         |> assign(:blocks, [])
+         |> assign(:sheet_data_loaded, false)}
 
       {:error, _reason} ->
         {:ok,
@@ -219,57 +243,61 @@ defmodule StoryarnWeb.SheetLive.Show do
     end
   end
 
-  defp mount_with_project(socket, workspace_slug, project_slug, sheet_id, project, membership) do
-    case Sheets.get_sheet_full(project.id, sheet_id) do
-      nil ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("sheets", "Sheet not found."))
-         |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets")}
+  @impl true
+  def handle_params(%{"id" => sheet_id}, _url, socket) do
+    current_sheet_id =
+      case socket.assigns.sheet do
+        %{id: id} -> to_string(id)
+        _ -> nil
+      end
 
-      sheet ->
-        {:ok, setup_sheet_view(socket, project, membership, sheet)}
+    if sheet_id == current_sheet_id do
+      {:noreply, socket}
+    else
+      {:noreply, load_sheet(socket, sheet_id)}
     end
   end
 
-  defp setup_sheet_view(socket, project, membership, sheet) do
-    can_edit = Projects.can?(membership.role, :edit_content)
+  defp load_sheet(socket, sheet_id) do
+    %{project: project} = socket.assigns
 
-    # Load ancestors synchronously so the breadcrumb is present on the first
-    # render and does not flash in after the async bundle completes.
-    ancestors =
-      case Sheets.get_sheet_with_ancestors(project.id, sheet.id) do
-        nil -> []
-        list -> List.delete_at(list, -1)
-      end
+    case Sheets.get_sheet_full(project.id, sheet_id) do
+      nil ->
+        socket
+        |> put_flash(:error, dgettext("sheets", "Sheet not found."))
+        |> push_navigate(
+          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
+        )
 
-    socket
-    |> assign(focus_layout_defaults())
-    |> assign(:project, project)
-    |> assign(:workspace, project.workspace)
-    |> assign(:membership, membership)
-    |> assign(:sheet, sheet)
-    |> assign(:can_edit, can_edit)
-    |> assign(:save_status, :idle)
-    |> assign(:current_tab, "content")
-    |> assign(:ancestors, ancestors)
-    # Defaults while async loading
-    |> assign(:sheets_tree, [])
-    |> assign(:children, [])
-    |> assign(:blocks, [])
-    |> assign(:sheet_data_loaded, false)
-    |> start_async(:load_sheet_data, fn ->
-      %{
-        sheets_tree: Sheets.list_sheets_tree(project.id),
-        children: Sheets.get_children(sheet.id),
-        blocks: ReferenceHelpers.load_blocks_with_references(sheet.id, project.id)
-      }
-    end)
-  end
+      sheet ->
+        # Load ancestors synchronously so the breadcrumb is present on the first
+        # render and does not flash in after the async bundle completes.
+        ancestors =
+          case Sheets.get_sheet_with_ancestors(project.id, sheet.id) do
+            nil -> []
+            list -> List.delete_at(list, -1)
+          end
 
-  @impl true
-  def handle_params(_params, _url, socket) do
-    {:noreply, socket}
+        has_tree = socket.assigns.sheets_tree != []
+
+        socket
+        |> assign(:sheet, sheet)
+        |> assign(:ancestors, ancestors)
+        |> assign(:current_tab, "content")
+        |> assign(:save_status, :idle)
+        |> assign(:children, [])
+        |> assign(:blocks, [])
+        |> assign(:sheet_data_loaded, false)
+        |> start_async(:load_sheet_data, fn ->
+          data = %{
+            children: Sheets.get_children(sheet.id),
+            blocks: ReferenceHelpers.load_blocks_with_references(sheet.id, project.id)
+          }
+
+          # Only load tree on first mount, reuse on subsequent patches
+          if has_tree, do: data, else: Map.put(data, :sheets_tree, Sheets.list_sheets_tree(project.id))
+        end)
+    end
   end
 
   # ===========================================================================
@@ -278,13 +306,17 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   @impl true
   def handle_async(:load_sheet_data, {:ok, data}, socket) do
-    {:noreply,
-     socket
-     |> assign(:sheets_tree, data.sheets_tree)
-     |> assign(:children, data.children)
-     |> assign(:blocks, data.blocks)
-     |> assign(:sheet_data_loaded, true)
-     |> UndoRedoStack.init()}
+    socket =
+      socket
+      |> assign(:children, data.children)
+      |> assign(:blocks, data.blocks)
+      |> assign(:sheet_data_loaded, true)
+      |> UndoRedoStack.init()
+
+    # Only update tree if included (first load)
+    socket = if data[:sheets_tree], do: assign(socket, :sheets_tree, data.sheets_tree), else: socket
+
+    {:noreply, socket}
   end
 
   def handle_async(:load_sheet_data, {:exit, _reason}, socket) do
@@ -365,7 +397,8 @@ defmodule StoryarnWeb.SheetLive.Show do
         %{name: dgettext("sheets", "Untitled")},
         &Sheets.create_sheet/2,
         &sheet_path/2,
-        dgettext("sheets", "Could not create sheet.")
+        dgettext("sheets", "Could not create sheet."),
+        patch: true
       )
     end)
   end

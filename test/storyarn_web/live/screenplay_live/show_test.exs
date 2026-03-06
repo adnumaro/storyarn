@@ -32,7 +32,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
-      assert html =~ ~s(id="screenplay-page")
+      assert html =~ "screenplay-page-"
       assert html =~ "screenplay-page"
     end
 
@@ -51,7 +51,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
       # Empty screenplay renders the unified TipTap editor (placeholder is client-side)
-      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "screenplay-editor-"
       assert html =~ ~s(phx-hook="ScreenplayEditor")
     end
 
@@ -66,7 +66,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
       # Text elements are in the unified TipTap editor JSON (data-content)
-      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "screenplay-editor-"
       assert html =~ "sceneHeading"
       assert html =~ "INT. OFFICE - DAY"
       assert html =~ "JOHN"
@@ -79,7 +79,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
       # Text element data is in the TipTap editor JSON (data-content)
-      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "screenplay-editor-"
       assert html =~ "She runs."
       assert html =~ "elementId"
       assert html =~ to_string(el.id)
@@ -96,7 +96,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
       # Stub types are now atom nodes inside the TipTap editor JSON
-      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "screenplay-editor-"
       assert html =~ "hubMarker"
       assert html =~ "jumpMarker"
     end
@@ -108,7 +108,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
       # Page break is an atom node in the TipTap editor JSON
-      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "screenplay-editor-"
       assert html =~ "pageBreak"
     end
 
@@ -169,8 +169,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       view |> render_click("create_screenplay")
 
-      {path, _flash} = assert_redirect(view)
-      assert path =~ "/screenplays/"
+      assert_patch(view)
     end
 
     test "delete_screenplay of another screenplay reloads tree", %{
@@ -236,7 +235,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
       # Conditional is now an atom node in the TipTap editor JSON
-      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "screenplay-editor-"
       assert html =~ "conditional"
     end
 
@@ -268,7 +267,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
       # Conditional data is in the TipTap editor JSON
-      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "screenplay-editor-"
       assert html =~ "conditional"
       assert html =~ "greater_than"
     end
@@ -287,7 +286,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
       # Instruction is now an atom node in the TipTap editor JSON
-      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "screenplay-editor-"
       assert html =~ "instruction"
     end
 
@@ -317,7 +316,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
-      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "screenplay-editor-"
       assert html =~ "instruction"
       assert html =~ "add"
     end
@@ -430,7 +429,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       {:ok, _view, html} = live(conn, show_url(project, screenplay))
 
-      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "screenplay-editor-"
       assert html =~ "titlePage"
     end
 
@@ -717,7 +716,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       html = view |> element(~s(button[phx-click="toggle_read_mode"])) |> render_click()
 
       # TipTap editor stays visible — CSS hides interactive blocks
-      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "screenplay-editor-"
       assert html =~ "screenplay-read-mode"
       # Elements still present in the JSON (hidden by CSS, not removed from DOM)
       assert html =~ "Walk."
@@ -751,7 +750,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       html = view |> element(~s(button[phx-click="toggle_read_mode"])) |> render_click()
 
       # Editor remains with all content in JSON — visible types are not hidden by CSS
-      assert html =~ ~s(id="screenplay-editor")
+      assert html =~ "screenplay-editor-"
       assert html =~ "sceneHeading"
       assert html =~ "INT. OFFICE - DAY"
       assert html =~ "Hello."
@@ -846,12 +845,11 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       {:ok, view, _html} = live(conn, show_url(project, parent))
 
-      assert {:error, {:live_redirect, %{to: to}}} =
-               render_click(view, "create_child_screenplay", %{
-                 "parent-id" => to_string(parent.id)
-               })
+      render_click(view, "create_child_screenplay", %{
+        "parent-id" => to_string(parent.id)
+      })
 
-      assert to =~ "/screenplays/"
+      assert_patch(view)
     end
 
     test "move_to_parent moves a screenplay to a new parent", %{

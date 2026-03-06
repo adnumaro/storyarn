@@ -41,55 +41,57 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           screenplays_tree={@screenplays_tree}
           workspace={@workspace}
           project={@project}
-          selected_screenplay_id={to_string(@screenplay.id)}
+          selected_screenplay_id={@screenplay && to_string(@screenplay.id)}
           can_edit={@can_edit}
         />
       </:tree_content>
-      <div class="screenplay-container">
-        <.screenplay_toolbar
-          screenplay={@screenplay}
-          elements={@elements}
-          workspace={@workspace}
-          project={@project}
-          read_mode={@read_mode}
-          can_edit={@can_edit}
-          link_status={@link_status}
-          linked_flow={@linked_flow}
-        />
-        <div
-          id="screenplay-page"
-          class={[
-            "screenplay-page",
-            @read_mode && "screenplay-read-mode"
-          ]}
-        >
-          <%!-- Unified TipTap editor — always rendered, read mode toggles editable --%>
+      <%= if @screenplay do %>
+        <div class="screenplay-container">
+          <.screenplay_toolbar
+            screenplay={@screenplay}
+            elements={@elements}
+            workspace={@workspace}
+            project={@project}
+            read_mode={@read_mode}
+            can_edit={@can_edit}
+            link_status={@link_status}
+            linked_flow={@linked_flow}
+          />
           <div
-            id="screenplay-editor"
-            phx-hook="ScreenplayEditor"
-            data-content={Jason.encode!(@editor_doc)}
-            data-can-edit={to_string(@can_edit)}
-            data-read-mode={to_string(@read_mode)}
-            data-variables={Jason.encode!(@project_variables)}
-            data-linked-pages={Jason.encode!(@linked_pages)}
-            data-translations={Jason.encode!(screenplay_translations())}
-            data-highlight-element={@highlight_element_id}
-            phx-update="ignore"
+            id={"screenplay-page-#{@screenplay.id}"}
+            class={[
+              "screenplay-page",
+              @read_mode && "screenplay-read-mode"
+            ]}
           >
+            <%!-- Unified TipTap editor — ID includes screenplay to force hook remount on patch --%>
+            <div
+              id={"screenplay-editor-#{@screenplay.id}"}
+              phx-hook="ScreenplayEditor"
+              data-content={Jason.encode!(@editor_doc)}
+              data-can-edit={to_string(@can_edit)}
+              data-read-mode={to_string(@read_mode)}
+              data-variables={Jason.encode!(@project_variables)}
+              data-linked-pages={Jason.encode!(@linked_pages)}
+              data-translations={Jason.encode!(screenplay_translations())}
+              data-highlight-element={@highlight_element_id}
+              phx-update="ignore"
+            >
+            </div>
           </div>
         </div>
-      </div>
+      <% else %>
+        <div class="flex justify-center py-12">
+          <span class="loading loading-spinner loading-lg text-base-content/30"></span>
+        </div>
+      <% end %>
     </Layouts.focus>
     """
   end
 
   @impl true
   def mount(
-        %{
-          "workspace_slug" => workspace_slug,
-          "project_slug" => project_slug,
-          "id" => screenplay_id
-        },
+        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
         _session,
         socket
       ) do
@@ -99,33 +101,28 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
            project_slug
          ) do
       {:ok, project, membership} ->
-        screenplay = Screenplays.get_screenplay!(project.id, screenplay_id)
         can_edit = Projects.can?(membership.role, :edit_content)
 
-        socket =
-          socket
-          |> assign(focus_layout_defaults())
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:screenplay, screenplay)
-          |> assign(:read_mode, false)
-          # Defaults for disconnected render — real data loaded on connect
-          |> assign(:screenplays_tree, [])
-          |> assign(:sheets_map, %{})
-          |> assign(:elements, [])
-          |> assign(:editor_doc, Screenplays.elements_to_doc([]))
-          |> assign(:project_variables, [])
-          |> assign(:link_status, :unlinked)
-          |> assign(:linked_flow, nil)
-          |> assign(:linked_pages, %{})
-          |> assign(:highlight_element_id, nil)
-
-        socket =
-          if connected?(socket), do: load_connected_data(socket, screenplay), else: socket
-
-        {:ok, socket}
+        {:ok,
+         socket
+         |> assign(focus_layout_defaults())
+         |> assign(:project, project)
+         |> assign(:workspace, project.workspace)
+         |> assign(:membership, membership)
+         |> assign(:can_edit, can_edit)
+         |> assign(:read_mode, false)
+         |> assign(:pending_delete_id, nil)
+         # Defaults — screenplay loaded in handle_params
+         |> assign(:screenplay, nil)
+         |> assign(:screenplays_tree, [])
+         |> assign(:sheets_map, %{})
+         |> assign(:elements, [])
+         |> assign(:editor_doc, Screenplays.elements_to_doc([]))
+         |> assign(:project_variables, [])
+         |> assign(:link_status, :unlinked)
+         |> assign(:linked_flow, nil)
+         |> assign(:linked_pages, %{})
+         |> assign(:highlight_element_id, nil)}
 
       {:error, _reason} ->
         {:ok,
@@ -136,8 +133,38 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   @impl true
-  def handle_params(params, _uri, socket) do
+  def handle_params(%{"id" => screenplay_id} = params, _uri, socket) do
+    current_id =
+      case socket.assigns.screenplay do
+        %{id: id} -> to_string(id)
+        _ -> nil
+      end
+
+    socket =
+      if screenplay_id == current_id do
+        socket
+      else
+        load_screenplay(socket, screenplay_id)
+      end
+
     {:noreply, assign(socket, :highlight_element_id, parse_int(params["element"]))}
+  end
+
+  defp load_screenplay(socket, screenplay_id) do
+    %{project: project} = socket.assigns
+    screenplay = Screenplays.get_screenplay!(project.id, screenplay_id)
+
+    socket =
+      socket
+      |> assign(:screenplay, screenplay)
+      |> assign(:read_mode, false)
+      |> assign(:elements, [])
+      |> assign(:editor_doc, Screenplays.elements_to_doc([]))
+      |> assign(:link_status, :unlinked)
+      |> assign(:linked_flow, nil)
+      |> assign(:linked_pages, %{})
+
+    if connected?(socket), do: load_connected_data(socket, screenplay), else: socket
   end
 
   # ---------------------------------------------------------------------------
@@ -465,20 +492,31 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   defp load_connected_data(socket, screenplay) do
     project = socket.assigns.project
     elements = Screenplays.list_elements(screenplay.id)
-    project_variables = Sheets.list_project_variables(project.id)
-    all_sheets = Sheets.list_all_sheets(project.id)
-    sheets_map = Map.new(all_sheets, &{&1.id, &1})
-    screenplays_tree = Screenplays.list_screenplays_tree(project.id)
     {link_status, linked_flow} = FlowSyncHandlers.detect_link_status(screenplay)
 
-    socket
-    |> assign(:screenplays_tree, screenplays_tree)
-    |> assign(:sheets_map, sheets_map)
-    |> assign_elements_with_editor_doc(elements)
-    |> assign(:project_variables, project_variables)
-    |> assign(:link_status, link_status)
-    |> assign(:linked_flow, linked_flow)
-    |> assign(:linked_pages, LinkedPageHandlers.load_linked_pages(screenplay))
+    has_tree = socket.assigns.screenplays_tree != []
+
+    socket =
+      socket
+      |> assign_elements_with_editor_doc(elements)
+      |> assign(:link_status, link_status)
+      |> assign(:linked_flow, linked_flow)
+      |> assign(:linked_pages, LinkedPageHandlers.load_linked_pages(screenplay))
+
+    # Only load shared project data on first mount, reuse on subsequent patches
+    if has_tree do
+      socket
+    else
+      project_variables = Sheets.list_project_variables(project.id)
+      all_sheets = Sheets.list_all_sheets(project.id)
+      sheets_map = Map.new(all_sheets, &{&1.id, &1})
+      screenplays_tree = Screenplays.list_screenplays_tree(project.id)
+
+      socket
+      |> assign(:screenplays_tree, screenplays_tree)
+      |> assign(:sheets_map, sheets_map)
+      |> assign(:project_variables, project_variables)
+    end
   end
 
   defp screenplay_translations do

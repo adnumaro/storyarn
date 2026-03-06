@@ -4,7 +4,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlers do
   """
 
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_navigate: 2, put_flash: 3]
+  import Phoenix.LiveView, only: [push_navigate: 2, push_patch: 2, put_flash: 3]
   use Gettext, backend: StoryarnWeb.Gettext
   use StoryarnWeb.Helpers.Authorize
 
@@ -69,7 +69,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlers do
 
       case Screenplays.create_screenplay(socket.assigns.project, attrs) do
         {:ok, new_screenplay} ->
-          {:noreply, push_navigate(socket, to: screenplays_path(socket, new_screenplay.id))}
+          {:noreply, push_patch(socket, to: screenplays_path(socket, new_screenplay.id))}
 
         {:error, _changeset} ->
           {:noreply,

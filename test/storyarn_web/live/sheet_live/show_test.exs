@@ -504,7 +504,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     test "redirects when sheet does not exist", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:error, {:redirect, %{to: path, flash: flash}}} =
+      {:error, {:live_redirect, %{to: path, flash: flash}}} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/999999"

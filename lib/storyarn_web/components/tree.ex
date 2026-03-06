@@ -40,6 +40,7 @@ defmodule StoryarnWeb.Components.TreeComponents do
   attr :item_id, :string, default: nil
   attr :item_name, :string, default: nil
   attr :can_drag, :boolean, default: false
+  attr :link_type, :atom, default: :navigate, values: [:navigate, :patch]
   slot :inner_block
   slot :menu
   slot :actions
@@ -85,7 +86,8 @@ defmodule StoryarnWeb.Components.TreeComponents do
         <%!-- Node content (clickable if has href) --%>
         <%= if @href do %>
           <.link
-            navigate={@href}
+            navigate={@link_type == :navigate && @href}
+            patch={@link_type == :patch && @href}
             class="flex-1 min-w-0 flex items-center gap-2 px-2 py-1 text-sm truncate"
           >
             <.tree_icon icon={@icon} icon_text={@icon_text} avatar_url={@avatar_url} color={@color} />
@@ -146,6 +148,7 @@ defmodule StoryarnWeb.Components.TreeComponents do
   attr :item_id, :string, default: nil
   attr :item_name, :string, default: nil
   attr :can_drag, :boolean, default: false
+  attr :link_type, :atom, default: :navigate, values: [:navigate, :patch]
   slot :menu
   slot :actions
 
@@ -165,7 +168,8 @@ defmodule StoryarnWeb.Components.TreeComponents do
         <span class="w-5 shrink-0"></span>
 
         <.link
-          navigate={@href}
+          navigate={@link_type == :navigate && @href}
+          patch={@link_type == :patch && @href}
           class="flex-1 min-w-0 flex items-center gap-2 px-2 py-1 text-sm truncate"
         >
           <.tree_icon icon={@icon} icon_text={@icon_text} avatar_url={@avatar_url} color={@color} />
@@ -241,11 +245,13 @@ defmodule StoryarnWeb.Components.TreeComponents do
   attr :icon, :string, default: nil
   attr :active, :boolean, default: false
   attr :class, :string, default: ""
+  attr :link_type, :atom, default: :navigate, values: [:navigate, :patch]
 
   def tree_link(assigns) do
     ~H"""
     <.link
-      navigate={@href}
+      navigate={@link_type == :navigate && @href}
+      patch={@link_type == :patch && @href}
       class={[
         "flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm",
         @active && "bg-base-content/5 font-medium",

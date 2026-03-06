@@ -39,6 +39,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
   attr :icon, :string, default: nil, doc: "Lucide icon name for tree items"
   attr :avatar_fn, :any, default: nil, doc: "function (entity) -> url | nil, for sheet avatars"
   attr :href_fn, :any, required: true, doc: "function (workspace, project, entity) -> path"
+  attr :link_type, :atom, default: :navigate, values: [:navigate, :patch]
   attr :create_child_event, :string, required: true
   attr :create_child_title, :string, required: true
   attr :set_pending_delete_event, :string, required: true
@@ -100,6 +101,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
             icon={@icon}
             avatar_fn={@avatar_fn}
             href_fn={@href_fn}
+            link_type={@link_type}
             create_child_event={@create_child_event}
             create_child_title={@create_child_title}
             set_pending_delete_event={@set_pending_delete_event}
@@ -148,6 +150,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
   attr :icon, :string, default: nil
   attr :avatar_fn, :any, default: nil
   attr :href_fn, :any, required: true
+  attr :link_type, :atom, default: :navigate, values: [:navigate, :patch]
   attr :create_child_event, :string, required: true
   attr :create_child_title, :string, required: true
   attr :set_pending_delete_event, :string, required: true
@@ -209,6 +212,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
         item_id={@entity_id_str}
         item_name={@entity.name}
         can_drag={@can_edit}
+        link_type={@link_type}
       >
         <:actions :if={@can_edit}>
           <button
@@ -244,6 +248,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
           icon={@icon}
           avatar_fn={@avatar_fn}
           href_fn={@href_fn}
+          link_type={@link_type}
           create_child_event={@create_child_event}
           create_child_title={@create_child_title}
           set_pending_delete_event={@set_pending_delete_event}
@@ -265,6 +270,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
         item_id={@entity_id_str}
         item_name={@entity.name}
         can_drag={@can_edit}
+        link_type={@link_type}
       >
         <:actions :if={@can_edit}>
           <button

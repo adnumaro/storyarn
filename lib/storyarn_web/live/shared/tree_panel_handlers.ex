@@ -137,10 +137,15 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlers do
         end)
       end
   """
-  def handle_create_entity(socket, attrs, create_fn, path_fn, error_msg) do
+  def handle_create_entity(socket, attrs, create_fn, path_fn, error_msg, opts \\ []) do
     case create_fn.(socket.assigns.project, attrs) do
       {:ok, entity} ->
-        {:noreply, Phoenix.LiveView.push_navigate(socket, to: path_fn.(socket, entity))}
+        push_fn =
+          if Keyword.get(opts, :patch, false),
+            do: &Phoenix.LiveView.push_patch/2,
+            else: &Phoenix.LiveView.push_navigate/2
+
+        {:noreply, push_fn.(socket, to: path_fn.(socket, entity))}
 
       {:error, _changeset} ->
         {:noreply, Phoenix.LiveView.put_flash(socket, :error, error_msg)}
@@ -165,13 +170,14 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlers do
         end)
       end
   """
-  def handle_create_child(socket, parent_id, attrs, create_fn, path_fn, error_msg) do
+  def handle_create_child(socket, parent_id, attrs, create_fn, path_fn, error_msg, opts \\ []) do
     handle_create_entity(
       socket,
       Map.put(attrs, :parent_id, parent_id),
       create_fn,
       path_fn,
-      error_msg
+      error_msg,
+      opts
     )
   end
 

@@ -36,6 +36,7 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
       confirm_delete_event="confirm_delete_sheet"
       avatar_fn={&get_avatar_url/1}
       href_fn={&sheet_href/3}
+      link_type={:patch}
       create_child_event="create_child_sheet"
       create_child_title={dgettext("sheets", "Add child sheet")}
       set_pending_delete_event="set_pending_delete_sheet"

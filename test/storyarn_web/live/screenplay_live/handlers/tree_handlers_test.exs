@@ -29,10 +29,9 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlersTest do
       screenplay = screenplay_fixture(project)
       {:ok, view, _html} = live(conn, show_url(project, screenplay))
 
-      assert {:error, {:live_redirect, %{to: to}}} =
-               render_click(view, "create_screenplay")
+      render_click(view, "create_screenplay")
 
-      assert to =~ "/screenplays/"
+      assert_patch(view)
     end
 
     test "create_child_screenplay creates with parent_id", %{
@@ -42,12 +41,11 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlersTest do
       screenplay = screenplay_fixture(project)
       {:ok, view, _html} = live(conn, show_url(project, screenplay))
 
-      assert {:error, {:live_redirect, %{to: to}}} =
-               render_click(view, "create_child_screenplay", %{
-                 "parent-id" => to_string(screenplay.id)
-               })
+      render_click(view, "create_child_screenplay", %{
+        "parent-id" => to_string(screenplay.id)
+      })
 
-      assert to =~ "/screenplays/"
+      assert_patch(view)
     end
 
     # ── Delete ────────────────────────────────────────────────────

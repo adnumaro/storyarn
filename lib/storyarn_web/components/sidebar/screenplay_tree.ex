@@ -36,6 +36,7 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
       confirm_delete_event="confirm_delete_screenplay"
       icon="scroll-text"
       href_fn={&screenplay_href/3}
+      link_type={:patch}
       create_child_event="create_child_screenplay"
       create_child_title={dgettext("screenplays", "Add child screenplay")}
       set_pending_delete_event="set_pending_delete_screenplay"
