@@ -68,6 +68,7 @@ defmodule StoryarnWeb.Components.TreeComponents do
           phx-hook="TreeToggle"
           id={"tree-toggle-#{@id}"}
           data-node-id={@id}
+          data-expanded={to_string(@expanded)}
         >
           <span
             class={[
