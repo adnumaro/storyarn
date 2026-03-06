@@ -375,7 +375,14 @@ defmodule StoryarnWeb.SceneLive.Components.ToolbarWidgets do
               :for={item <- target_items(t, @project_scenes, @project_sheets, @project_flows)}
               type="button"
               phx-click={
-                JS.push(@event, value: %{id: @element_id, field: "target_id", value: item.id})
+                JS.push(@event,
+                  value: %{
+                    id: @element_id,
+                    field: "target",
+                    target_type: t,
+                    target_id: item.id
+                  }
+                )
                 |> JS.hide(to: "#popover-target-#{@id}")
                 |> JS.show(to: "#target-step1-#{@id}")
                 |> JS.hide(to: "#target-list-#{@id}-#{t}")

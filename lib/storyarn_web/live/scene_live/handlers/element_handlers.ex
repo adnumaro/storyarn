@@ -156,6 +156,16 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   @doc "Updates a single field on a pin (e.g., label, color, size)."
+  def handle_update_pin(%{"field" => "target"} = params, socket) do
+    id = params["id"] || params["element_id"]
+    attrs = %{"target_type" => params["target_type"], "target_id" => params["target_id"]}
+
+    case Scenes.get_pin(socket.assigns.scene.id, id) do
+      nil -> {:noreply, socket}
+      pin -> do_update_pin_attrs(socket, pin, attrs)
+    end
+  end
+
   def handle_update_pin(%{"field" => field} = params, socket) do
     id = params["id"] || params["element_id"]
 
@@ -224,6 +234,16 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   @doc "Updates a single field on a zone (e.g., name, color, opacity)."
+  def handle_update_zone(%{"field" => "target"} = params, socket) do
+    id = params["id"] || params["element_id"]
+    attrs = %{"target_type" => params["target_type"], "target_id" => params["target_id"]}
+
+    case Scenes.get_zone(socket.assigns.scene.id, id) do
+      nil -> {:noreply, socket}
+      zone -> do_update_zone_attrs(socket, zone, attrs)
+    end
+  end
+
   def handle_update_zone(%{"field" => field} = params, socket) do
     id = params["id"] || params["element_id"]
 
@@ -671,6 +691,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     end
   end
 
+  defp do_update_pin(socket, pin, "target_type", ""),
+    do: do_update_pin_attrs(socket, pin, %{"target_type" => nil, "target_id" => nil})
+
   defp do_update_pin(socket, pin, field, value) do
     prev_value = Map.get(pin, String.to_existing_atom(field))
 
@@ -745,6 +768,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update zone."))}
     end
   end
+
+  defp build_zone_update_attrs(_zone, "target_type", ""),
+    do: %{"target_type" => nil, "target_id" => nil}
 
   defp build_zone_update_attrs(_zone, field, value), do: %{field => value}
 
