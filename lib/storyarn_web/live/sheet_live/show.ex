@@ -155,6 +155,7 @@ defmodule StoryarnWeb.SheetLive.Show do
             children={@children}
             can_edit={@can_edit}
             current_user_id={@current_scope.user.id}
+            current_scope={@current_scope}
           />
 
           <%!-- Tab Content: References (LiveComponent) --%>
@@ -234,6 +235,14 @@ defmodule StoryarnWeb.SheetLive.Show do
   defp setup_sheet_view(socket, project, membership, sheet) do
     can_edit = Projects.can?(membership.role, :edit_content)
 
+    # Load ancestors synchronously so the breadcrumb is present on the first
+    # render and does not flash in after the async bundle completes.
+    ancestors =
+      case Sheets.get_sheet_with_ancestors(project.id, sheet.id) do
+        nil -> []
+        list -> List.delete_at(list, -1)
+      end
+
     socket
     |> assign(focus_layout_defaults())
     |> assign(:project, project)
@@ -243,20 +252,15 @@ defmodule StoryarnWeb.SheetLive.Show do
     |> assign(:can_edit, can_edit)
     |> assign(:save_status, :idle)
     |> assign(:current_tab, "content")
+    |> assign(:ancestors, ancestors)
     # Defaults while async loading
     |> assign(:sheets_tree, [])
-    |> assign(:ancestors, [])
     |> assign(:children, [])
     |> assign(:blocks, [])
     |> assign(:sheet_data_loaded, false)
     |> start_async(:load_sheet_data, fn ->
       %{
         sheets_tree: Sheets.list_sheets_tree(project.id),
-        ancestors:
-          case Sheets.get_sheet_with_ancestors(project.id, sheet.id) do
-            nil -> []
-            list -> List.delete_at(list, -1)
-          end,
         children: Sheets.get_children(sheet.id),
         blocks: ReferenceHelpers.load_blocks_with_references(sheet.id, project.id)
       }
@@ -277,7 +281,6 @@ defmodule StoryarnWeb.SheetLive.Show do
     {:noreply,
      socket
      |> assign(:sheets_tree, data.sheets_tree)
-     |> assign(:ancestors, data.ancestors)
      |> assign(:children, data.children)
      |> assign(:blocks, data.blocks)
      |> assign(:sheet_data_loaded, true)

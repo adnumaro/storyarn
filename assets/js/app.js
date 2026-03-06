@@ -48,6 +48,8 @@ import { EditableTitle } from "./hooks/editable_title";
 import { ExplorationPlayer } from "./hooks/exploration_player";
 import { ExpressionEditor } from "./hooks/expression_editor";
 import { FlowCanvas } from "./hooks/flow_canvas";
+import { GallerySortable } from "./hooks/gallery_sortable";
+import { GalleryUpload } from "./hooks/gallery_upload";
 import { FlowLoader } from "./hooks/flow_loader";
 import { FountainImport } from "./hooks/fountain_import";
 import { InstructionBuilder } from "./hooks/instruction_builder";
@@ -104,6 +106,8 @@ const liveSocket = new LiveSocket("/live", Socket, {
     TwoStateCheckbox,
     FlowCanvas,
     FlowLoader,
+    GallerySortable,
+    GalleryUpload,
     InstructionBuilder,
     ColorPicker,
     ConditionBuilder,

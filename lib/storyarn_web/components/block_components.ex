@@ -21,6 +21,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
   import StoryarnWeb.Components.BlockComponents.BooleanBlocks
   import StoryarnWeb.Components.BlockComponents.ReferenceBlocks
   import StoryarnWeb.Components.BlockComponents.TableBlocks
+  import StoryarnWeb.Components.BlockComponents.GalleryBlocks
 
   # Re-export public components
   defdelegate block_menu(assigns), to: StoryarnWeb.Components.BlockComponents.BlockMenu
@@ -44,6 +45,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
   attr :target, :any, default: nil
   attr :component_id, :string, default: nil
   attr :table_data, :map, default: %{}
+  attr :gallery_data, :map, default: %{}
   attr :reference_options, :list, default: []
 
   def block_component(assigns) do
@@ -157,6 +159,14 @@ defmodule StoryarnWeb.Components.BlockComponents do
               rows={@table_data[@block.id][:rows] || []}
               reference_options={@reference_options}
               target={@target}
+            />
+          <% "gallery" -> %>
+            <.gallery_block
+              block={@block}
+              can_edit={@can_edit}
+              gallery_images={@gallery_data[@block.id] || []}
+              target={@target}
+              component_id={@component_id}
             />
           <% _ -> %>
             <div class="text-base-content/50">{dgettext("sheets", "Unknown block type")}</div>

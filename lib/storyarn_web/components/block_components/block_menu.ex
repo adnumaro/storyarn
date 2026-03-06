@@ -148,6 +148,17 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
             {dgettext("sheets", "Table")}
           </button>
         </li>
+        <li>
+          <button
+            type="button"
+            phx-click="add_block"
+            phx-value-type="gallery"
+            phx-target={@target}
+          >
+            <.icon name="images" class="size-4 opacity-60" />
+            {dgettext("sheets", "Gallery")}
+          </button>
+        </li>
       </ul>
       <%!-- Footer --%>
       <div class="border-t border-base-300 p-1">

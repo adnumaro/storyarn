@@ -54,6 +54,7 @@ defmodule StoryarnWeb.SheetLive.Components.InheritedBlockComponents do
   attr :target, :any, default: nil
   attr :component_id, :string, default: nil
   attr :table_data, :map, default: %{}
+  attr :gallery_data, :map, default: %{}
   attr :reference_options, :list, default: []
 
   def inherited_block_wrapper(assigns) do
@@ -67,6 +68,7 @@ defmodule StoryarnWeb.SheetLive.Components.InheritedBlockComponents do
         target={@target}
         component_id={@component_id}
         table_data={@table_data}
+        gallery_data={@gallery_data}
         reference_options={@reference_options}
       />
       <%!-- Required indicator --%>

@@ -22,8 +22,8 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockToolbar do
 
   alias Storyarn.Sheets.Block
 
-  @non_constant_types ~w(reference table)
-  @no_popover_types ~w(reference table)
+  @non_constant_types ~w(reference table gallery)
+  @no_popover_types ~w(reference table gallery)
 
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false

@@ -14,6 +14,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers
   alias StoryarnWeb.SheetLive.Handlers.BlockToolbarHandlers
+  alias StoryarnWeb.SheetLive.Handlers.GalleryHandlers
   alias StoryarnWeb.SheetLive.Handlers.InheritanceHandlers
   alias StoryarnWeb.SheetLive.Handlers.TableHandlers
   alias StoryarnWeb.SheetLive.Helpers.BlockHelpers
@@ -55,6 +56,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
               target={@myself}
               component_id={@id}
               table_data={@table_data}
+              gallery_data={@gallery_data}
               reference_options={@reference_options}
             />
           </div>
@@ -73,6 +75,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         target={@myself}
         component_id={@id}
         table_data={@table_data}
+        gallery_data={@gallery_data}
         reference_options={@reference_options}
       />
 
@@ -148,6 +151,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
     # Batch-load table data for all table blocks (own + inherited)
     table_data = load_table_data(own_blocks, inherited_groups)
+    gallery_data = load_gallery_data(own_blocks, inherited_groups)
     reference_options = load_reference_options(table_data, project_id)
 
     socket =
@@ -156,6 +160,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       |> assign(:own_blocks, own_blocks)
       |> assign(:layout_items, layout_items)
       |> assign(:table_data, table_data)
+      |> assign(:gallery_data, gallery_data)
       |> assign(:reference_options, reference_options)
 
     {:ok, socket}
@@ -496,6 +501,38 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   end
 
   # ===========================================================================
+  # Gallery Block Events
+  # ===========================================================================
+
+  def handle_event("upload_gallery_image", params, socket) do
+    with_edit_authorization(socket, fn socket ->
+      GalleryHandlers.handle_upload_gallery_image(params, socket, content_helpers())
+    end)
+  end
+
+  def handle_event("upload_gallery_validation_error", params, socket) do
+    GalleryHandlers.handle_upload_validation_error(params, socket)
+  end
+
+  def handle_event("remove_gallery_image", params, socket) do
+    with_edit_authorization(socket, fn socket ->
+      GalleryHandlers.handle_remove_gallery_image(params, socket, content_helpers())
+    end)
+  end
+
+  def handle_event("update_gallery_image", params, socket) do
+    with_edit_authorization(socket, fn socket ->
+      GalleryHandlers.handle_update_gallery_image(params, socket, content_helpers())
+    end)
+  end
+
+  def handle_event("reorder_gallery_images", params, socket) do
+    with_edit_authorization(socket, fn socket ->
+      GalleryHandlers.handle_reorder_gallery_images(params, socket, content_helpers())
+    end)
+  end
+
+  # ===========================================================================
   # Configuration Events (popover-based)
   # ===========================================================================
 
@@ -736,6 +773,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
     # Batch-load table data for all table blocks (own + inherited)
     table_data = load_table_data(own_blocks, inherited_groups)
+    gallery_data = load_gallery_data(own_blocks, inherited_groups)
     reference_options = load_reference_options(table_data, project_id)
 
     socket
@@ -743,6 +781,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     |> assign(:own_blocks, own_blocks)
     |> assign(:layout_items, layout_items)
     |> assign(:table_data, table_data)
+    |> assign(:gallery_data, gallery_data)
     |> assign(:reference_options, reference_options)
   end
 
@@ -784,6 +823,23 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     all_table_ids = own_table_ids ++ inherited_table_ids
 
     if all_table_ids != [], do: Sheets.batch_load_table_data(all_table_ids), else: %{}
+  end
+
+  defp load_gallery_data(own_blocks, inherited_groups) do
+    own_gallery_ids =
+      own_blocks
+      |> Enum.filter(&(&1.type == "gallery"))
+      |> Enum.map(& &1.id)
+
+    inherited_gallery_ids =
+      inherited_groups
+      |> Enum.flat_map(& &1.blocks)
+      |> Enum.filter(&(&1.type == "gallery"))
+      |> Enum.map(& &1.id)
+
+    all_gallery_ids = own_gallery_ids ++ inherited_gallery_ids
+
+    if all_gallery_ids != [], do: Sheets.batch_load_gallery_data(all_gallery_ids), else: %{}
   end
 
   defp load_reference_options(table_data, project_id) do

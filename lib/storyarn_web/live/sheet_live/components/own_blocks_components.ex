@@ -44,6 +44,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
   attr :target, :any, required: true
   attr :component_id, :string, required: true
   attr :table_data, :map, default: %{}
+  attr :gallery_data, :map, default: %{}
   attr :reference_options, :list, default: []
 
   def blocks_container(assigns) do
@@ -81,6 +82,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
                   target={@target}
                   component_id={@component_id}
                   table_data={@table_data}
+                  gallery_data={@gallery_data}
                   reference_options={@reference_options}
                 />
               </div>
@@ -115,6 +117,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
                   target={@target}
                   component_id={@component_id}
                   table_data={@table_data}
+                  gallery_data={@gallery_data}
                   reference_options={@reference_options}
                 />
               </div>

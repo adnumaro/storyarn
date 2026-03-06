@@ -14,6 +14,7 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.{
     Block,
     BlockCrud,
+    GalleryCrud,
     PropertyInheritance,
     Sheet,
     SheetCrud,
@@ -498,6 +499,33 @@ defmodule Storyarn.Sheets do
   defdelegate update_table_cell(row, column_slug, value), to: TableCrud, as: :update_cell
   defdelegate update_table_cells(row, cells_map), to: TableCrud, as: :update_cells
   defdelegate batch_load_table_data(block_ids), to: TableCrud
+
+  # =============================================================================
+  # Gallery Images
+  # =============================================================================
+
+  defdelegate list_gallery_images(block_id), to: GalleryCrud
+  defdelegate get_gallery_image(id), to: GalleryCrud
+  defdelegate add_gallery_image(block, asset_id), to: GalleryCrud
+  defdelegate add_gallery_images(block, asset_ids), to: GalleryCrud
+  defdelegate remove_gallery_image(gallery_image_id), to: GalleryCrud
+  defdelegate update_gallery_image(gallery_image, attrs), to: GalleryCrud
+  defdelegate reorder_gallery_images(block_id, ordered_ids), to: GalleryCrud
+  defdelegate batch_load_gallery_data(block_ids), to: GalleryCrud
+  defdelegate batch_load_gallery_data_by_sheet(project_id), to: GalleryCrud
+  defdelegate get_first_gallery_image(sheet_id), to: GalleryCrud
+
+  @doc """
+  Returns the default image for a sheet using fallback hierarchy:
+  avatar → banner → first gallery image → nil.
+  """
+  def get_sheet_default_image(%Sheet{} = sheet) do
+    cond do
+      sheet.avatar_asset_id -> sheet.avatar_asset
+      sheet.banner_asset_id -> sheet.banner_asset
+      true -> get_first_gallery_image(sheet.id)
+    end
+  end
 
   # =============================================================================
   # Versioning

@@ -47,7 +47,7 @@ defmodule Storyarn.Sheets.Block do
   alias Storyarn.Shared.{NameNormalizer, TimeHelpers}
   alias Storyarn.Sheets.Sheet
 
-  @block_types ~w(text rich_text number select multi_select date boolean reference table)
+  @block_types ~w(text rich_text number select multi_select date boolean reference table gallery)
 
   @default_configs %{
     "text" => %{"label" => "Label", "placeholder" => ""},
@@ -64,7 +64,8 @@ defmodule Storyarn.Sheets.Block do
     "date" => %{"label" => "Label"},
     "boolean" => %{"label" => "Label", "mode" => "two_state"},
     "reference" => %{"label" => "Label", "allowed_types" => ["sheet", "flow"]},
-    "table" => %{"label" => "Label", "collapsed" => false}
+    "table" => %{"label" => "Label", "collapsed" => false},
+    "gallery" => %{"label" => "Label"}
   }
 
   @default_values %{
@@ -76,11 +77,12 @@ defmodule Storyarn.Sheets.Block do
     "date" => %{"content" => nil},
     "boolean" => %{"content" => nil},
     "reference" => %{"target_type" => nil, "target_id" => nil},
-    "table" => %{}
+    "table" => %{},
+    "gallery" => %{}
   }
 
   # Block types that cannot be variables (no meaningful value to expose)
-  @non_variable_types ~w(reference)
+  @non_variable_types ~w(reference gallery)
 
   @scopes ~w(self children)
 
@@ -126,6 +128,7 @@ defmodule Storyarn.Sheets.Block do
     has_many :inherited_instances, __MODULE__, foreign_key: :inherited_from_block_id
     has_many :table_columns, Storyarn.Sheets.TableColumn, foreign_key: :block_id
     has_many :table_rows, Storyarn.Sheets.TableRow, foreign_key: :block_id
+    has_many :gallery_images, Storyarn.Sheets.BlockGalleryImage, foreign_key: :block_id
 
     timestamps(type: :utc_datetime)
   end

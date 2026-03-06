@@ -15,6 +15,7 @@ import { pushWithTarget } from "./event_dispatcher";
  * @param {Function} [config.extraPayload] - Returns extra fields merged into all payloads: () => object
  * @param {string} [config.sizeErrorMessage] - Custom size error message
  * @param {string} [config.typeErrorMessage] - Custom type error message
+ * @param {boolean} [config.multiple] - If true, reads all selected files (pushes one event per file)
  * @returns {Function} Cleanup function to remove the event listener
  */
 export function setupFileUpload(hook, config) {
@@ -28,14 +29,10 @@ export function setupFileUpload(hook, config) {
     extraPayload = null,
     sizeErrorMessage = null,
     typeErrorMessage = null,
+    multiple = false,
   } = config;
 
-  const handleChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const extra = extraPayload ? extraPayload() : {};
-
+  const processFile = (file, extra) => {
     // Type validation
     const typeMatch = acceptTypes.some((type) => file.type.startsWith(type));
     if (!typeMatch) {
@@ -43,7 +40,6 @@ export function setupFileUpload(hook, config) {
       if (errorEventName) {
         pushWithTarget(hook, errorEventName, { message: msg, ...extra });
       }
-      e.target.value = "";
       return;
     }
 
@@ -54,13 +50,7 @@ export function setupFileUpload(hook, config) {
       if (errorEventName) {
         pushWithTarget(hook, errorEventName, { message: msg, ...extra });
       }
-      e.target.value = "";
       return;
-    }
-
-    // Notify upload started
-    if (startedEventName) {
-      pushWithTarget(hook, startedEventName, extra);
     }
 
     // Read file as base64
@@ -88,6 +78,26 @@ export function setupFileUpload(hook, config) {
     };
 
     reader.readAsDataURL(file);
+  };
+
+  const handleChange = (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const extra = extraPayload ? extraPayload() : {};
+
+    // Notify upload started
+    if (startedEventName) {
+      pushWithTarget(hook, startedEventName, extra);
+    }
+
+    if (multiple) {
+      for (const file of files) {
+        processFile(file, extra);
+      }
+    } else {
+      processFile(files[0], extra);
+    }
 
     // Reset input so same file can be selected again
     e.target.value = "";
