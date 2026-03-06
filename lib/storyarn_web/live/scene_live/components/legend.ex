@@ -56,7 +56,12 @@ defmodule StoryarnWeb.SceneLive.Components.Legend do
         type="button"
         phx-click="toggle_legend"
         class="btn btn-sm bg-base-100 border-base-300 shadow-md gap-1.5"
-        title={if(@legend_open, do: dgettext("scenes", "Hide legend"), else: dgettext("scenes", "Show legend"))}
+        title={
+          if(@legend_open,
+            do: dgettext("scenes", "Hide legend"),
+            else: dgettext("scenes", "Show legend")
+          )
+        }
       >
         <.icon name="list" class="size-4" />
         {dgettext("scenes", "Legend")}

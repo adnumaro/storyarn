@@ -14,7 +14,9 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.ExpressionEditor
   import StoryarnWeb.SceneLive.Components.ToolbarWidgets
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers, only: [action_type_icon: 1, action_type_label: 1]
+
+  import StoryarnWeb.SceneLive.Helpers.SceneHelpers,
+    only: [action_type_icon: 1, action_type_label: 1]
 
   attr :selected_type, :string, required: true
   attr :selected_element, :map, required: true
@@ -485,5 +487,4 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   defp panel_title("connection"), do: dgettext("scenes", "Connection Properties")
   defp panel_title("annotation"), do: dgettext("scenes", "Annotation Properties")
   defp panel_title(_), do: dgettext("scenes", "Properties")
-
 end

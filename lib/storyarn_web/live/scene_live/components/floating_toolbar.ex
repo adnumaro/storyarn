@@ -533,5 +533,4 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
   defp pin_type_label("event"), do: dgettext("scenes", "Event")
   defp pin_type_label("custom"), do: dgettext("scenes", "Custom")
   defp pin_type_label(other), do: other
-
 end

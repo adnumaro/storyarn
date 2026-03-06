@@ -183,7 +183,6 @@ defmodule StoryarnWeb.SceneLive.Show do
               </p>
             </div>
           </div>
-
         </div>
 
         <%!-- UI overlays — outside overflow-hidden wrapper so backdrop-blur works --%>
@@ -201,8 +200,11 @@ defmodule StoryarnWeb.SceneLive.Show do
                  bg-base-100 rounded-lg border border-base-300 shadow-lg px-4 py-2 flex items-center gap-3"
         >
           <.icon name="upload" class="size-4 animate-pulse text-primary" />
-          <div class="w-32">
-            <div class="text-xs text-base-content/60 mb-1">{entry.client_name}</div>
+          <div class="w-40">
+            <div class="text-xs text-base-content/60 mb-1 flex min-w-0">
+              <span class="truncate">{Path.rootname(entry.client_name)}</span>
+              <span class="flex-shrink-0">{Path.extname(entry.client_name)}</span>
+            </div>
             <div class="w-full bg-base-300 rounded-full h-1.5">
               <div
                 class="bg-primary h-1.5 rounded-full transition-all"
