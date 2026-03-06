@@ -14,6 +14,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   attr :form, :any, required: true
   attr :can_edit, :boolean, required: true
   attr :all_sheets, :list, default: []
+  attr :gallery_by_sheet, :map, default: %{}
   attr :flow_hubs, :list, default: []
   attr :available_flows, :list, default: []
   attr :node_select_loading, :boolean, default: false
@@ -53,7 +54,23 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
 
   defp render_toolbar("dialogue", assigns) do
     has_audio = assigns.node.data["audio_asset_id"] not in [nil, ""]
-    assigns = assign(assigns, :has_audio, has_audio)
+    speaker_id = assigns.node.data["speaker_sheet_id"]
+
+    gallery_images =
+      if speaker_id do
+        id = if is_binary(speaker_id), do: String.to_integer(speaker_id), else: speaker_id
+        gallery_image_entries(assigns.gallery_by_sheet, id)
+      else
+        []
+      end
+
+    has_override = assigns.node.data["image_override_url"] not in [nil, ""]
+
+    assigns =
+      assigns
+      |> assign(:has_audio, has_audio)
+      |> assign(:gallery_images, gallery_images)
+      |> assign(:has_override, has_override)
 
     ~H"""
     <.node_type_icon type="dialogue" />
@@ -80,6 +97,12 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       {@form[:technical_id].value}
     </span>
     <.icon :if={@has_audio} name="volume-2" class="size-3.5 text-info" />
+    <.image_override_picker
+      :if={@can_edit && @gallery_images != []}
+      id={"dialogue-img-#{@node.id}"}
+      gallery_images={@gallery_images}
+      has_override={@has_override}
+    />
     <button
       type="button"
       phx-click="open_screenplay"
@@ -432,12 +455,26 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
         if to_string(s.id) == to_string(location_id), do: s.name
       end)
 
+    gallery_images =
+      if location_id && location_id != "" do
+        id =
+          if is_binary(location_id), do: String.to_integer(location_id), else: location_id
+
+        gallery_image_entries(assigns.gallery_by_sheet, id)
+      else
+        []
+      end
+
+    has_override = assigns.node.data["image_override_url"] not in [nil, ""]
+
     assigns =
       assigns
       |> assign(:location_id, location_id)
       |> assign(:selected_location, selected_location)
       |> assign(:int_ext, int_ext)
       |> assign(:time, time)
+      |> assign(:gallery_images, gallery_images)
+      |> assign(:has_override, has_override)
 
     ~H"""
     <.node_type_icon type="slug_line" />
@@ -481,6 +518,12 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       placeholder={dgettext("flows", "Time…")}
       event="update_node_data"
       event_params_fn={fn value -> %{node: %{time_of_day: value}} end}
+    />
+    <.image_override_picker
+      :if={@can_edit && @gallery_images != []}
+      id={"slug-img-#{@node.id}"}
+      gallery_images={@gallery_images}
+      has_override={@has_override}
     />
     """
   end
@@ -652,6 +695,80 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       </template>
     </div>
     """
+  end
+
+  # ════════════════════════════════════════════════════════════════════════
+  # Image Override Picker
+  # ════════════════════════════════════════════════════════════════════════
+
+  defp image_override_picker(assigns) do
+    ~H"""
+    <div
+      phx-hook="ToolbarPopover"
+      id={@id}
+      data-width="16rem"
+      data-offset="6"
+    >
+      <button
+        data-role="trigger"
+        type="button"
+        class={"toolbar-btn text-xs #{if @has_override, do: "text-primary"}"}
+        title={dgettext("flows", "Override image")}
+      >
+        <.icon name="image" class="size-3.5" />
+      </button>
+      <template data-role="popover-template">
+        <div class="p-2">
+          <div class="text-xs font-medium text-base-content/60 mb-2">
+            {dgettext("flows", "Override image")}
+          </div>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button
+              :for={img <- @gallery_images}
+              type="button"
+              data-event="update_node_field"
+              data-params={Jason.encode!(%{field: "image_override_url", value: img.url})}
+              class="aspect-square rounded-md overflow-hidden border border-base-content/10 hover:border-primary transition-colors"
+            >
+              <img
+                src={img.url}
+                alt={img.label || ""}
+                class="w-full h-full object-cover"
+              />
+            </button>
+          </div>
+          <button
+            :if={@has_override}
+            type="button"
+            data-event="update_node_field"
+            data-params={Jason.encode!(%{field: "image_override_url", value: ""})}
+            class="flex items-center gap-1.5 w-full mt-2 px-2 py-1.5 rounded text-xs text-base-content/60 hover:bg-base-content/10"
+          >
+            <.icon name="x" class="size-3" />
+            {dgettext("flows", "Clear override")}
+          </button>
+        </div>
+      </template>
+    </div>
+    """
+  end
+
+  defp gallery_image_entries(gallery_by_sheet, sheet_id) do
+    case Map.get(gallery_by_sheet, sheet_id) do
+      nil ->
+        []
+
+      images ->
+        Enum.flat_map(images, fn gi ->
+          case gi.asset do
+            %{url: url} when is_binary(url) ->
+              [%{id: gi.id, url: url, label: gi.label || gi.asset.filename}]
+
+            _ ->
+              []
+          end
+        end)
+    end
   end
 
   # ════════════════════════════════════════════════════════════════════════

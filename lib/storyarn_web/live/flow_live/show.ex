@@ -120,7 +120,7 @@ defmodule StoryarnWeb.FlowLive.Show do
               phx-update="ignore"
               class="absolute inset-0"
               data-flow={Jason.encode!(@flow_data)}
-              data-sheets={Jason.encode!(FormHelpers.sheets_map(@all_sheets))}
+              data-sheets={Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
               data-locks={Jason.encode!(@node_locks)}
               data-user-id={@current_scope.user.id}
               data-user-color={Collaboration.user_color(@current_scope.user.id)}
@@ -142,6 +142,7 @@ defmodule StoryarnWeb.FlowLive.Show do
                   form={@node_form}
                   can_edit={@can_edit}
                   all_sheets={@all_sheets}
+                  gallery_by_sheet={@gallery_by_sheet}
                   flow_hubs={@flow_hubs}
                   available_flows={@available_flows}
                   available_scenes={assigns[:available_scenes] || []}
@@ -377,6 +378,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           flow: full_flow,
           flow_data: Flows.serialize_for_canvas(full_flow),
           all_sheets: Sheets.list_all_sheets(project.id),
+          gallery_by_sheet: Sheets.batch_load_gallery_data_by_sheet(project.id),
           flow_hubs: Flows.list_hubs(flow.id),
           project_variables: Sheets.list_project_variables(project.id),
           flows_tree: Flows.list_flows_tree(project.id),
@@ -1053,6 +1055,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:flows_tree, data.flows_tree)
       |> assign(:node_types, @node_types)
       |> assign(:all_sheets, data.all_sheets)
+      |> assign(:gallery_by_sheet, data.gallery_by_sheet)
       |> assign(:flow_hubs, data.flow_hubs)
       |> assign(:project_variables, data.project_variables)
       |> assign(:selected_node, nil)

@@ -6,14 +6,15 @@
  * and references a location sheet for color and avatar.
  */
 import { html } from "lit";
+import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { Clapperboard } from "lucide";
 import { createIconSvg } from "../node_config.js";
 import {
-  defaultHeader,
+  headerStyle,
   nodeShell,
+  renderIndicators,
   renderPreview,
   renderSockets,
-  speakerHeader,
 } from "./render_helpers.js";
 
 export default {
@@ -35,16 +36,43 @@ export default {
 
     const locId = nodeData.location_sheet_id;
     const locSheet = locId ? sheetsMap?.[String(locId)] : null;
+    const overrideUrl = nodeData.image_override_url;
 
-    const headerHtml = locSheet
-      ? speakerHeader(config, color, locSheet, indicators)
-      : defaultHeader(config, color, indicators);
+    // Header always shows the clapperboard icon + location name
+    const headerLabel = locSheet?.name || config.label;
+    const headerHtml = html`
+      <div class="header px-3 py-2 rounded-t-[10px] flex items-center gap-2 text-white font-medium text-[13px]" style="${headerStyle(color)}">
+        <span class="flex items-center">${unsafeSVG(config.icon)}</span>
+        <span class="overflow-hidden text-ellipsis whitespace-nowrap">${headerLabel}</span>
+        ${renderIndicators(indicators)}
+      </div>
+    `;
+
+    // Visual strip: override → banner → avatar → empty (same pattern as dialogue)
+    const bannerUrl = locSheet?.banner_url;
+    const avatarUrl = locSheet?.avatar_url;
+
+    const visualHtml = overrideUrl
+      ? html`<img src="${overrideUrl}" class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3" alt="" />`
+      : bannerUrl
+        ? html`<img src="${bannerUrl}" class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3" alt="" />`
+        : avatarUrl
+          ? html`<div
+              class="flex items-center justify-center px-3 pt-3"
+              style="background-color: ${color}20"
+            >
+              <img src="${avatarUrl}" class="size-16 rounded-lg object-cover shadow-md" alt="" />
+            </div>`
+          : "";
+
+    const hasContent = slugLine || description || visualHtml !== "";
+    const extraClass = hasContent ? "slug-line min-w-[200px] max-w-[280px]" : "";
 
     return nodeShell(
       color,
       selected,
       html`
-        ${headerHtml}
+        ${headerHtml} ${visualHtml}
         ${
           slugLine
             ? html`<div class="text-[11px] text-base-content/80 px-3 py-2 max-w-[200px] border-b border-base-content/10 break-words">
@@ -57,6 +85,7 @@ export default {
         ${renderPreview(description)}
         <div class="py-1">${renderSockets(node, nodeData, this, emit)}</div>
       `,
+      extraClass,
     );
   },
 
@@ -92,6 +121,7 @@ export default {
 
   needsRebuild(oldData, newData) {
     if (oldData?.location_sheet_id !== newData.location_sheet_id) return true;
+    if (oldData?.image_override_url !== newData.image_override_url) return true;
     if (oldData?.int_ext !== newData.int_ext) return true;
     if (oldData?.sub_location !== newData.sub_location) return true;
     if (oldData?.time_of_day !== newData.time_of_day) return true;

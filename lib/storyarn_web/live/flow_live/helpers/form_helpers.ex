@@ -20,9 +20,12 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
 
   @doc """
   Builds a map of sheets for the canvas (keyed by string ID).
+
+  Optionally accepts `gallery_by_sheet` — a map of `sheet_id => [%BlockGalleryImage{}]`
+  to include gallery images per sheet for the image override picker.
   """
-  @spec sheets_map(list()) :: map()
-  def sheets_map(all_sheets) do
+  @spec sheets_map(list(), map()) :: map()
+  def sheets_map(all_sheets, gallery_by_sheet \\ %{}) do
     Map.new(all_sheets, fn sheet ->
       avatar_url =
         case sheet.avatar_asset do
@@ -36,13 +39,30 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
           _ -> nil
         end
 
+      gallery_images =
+        case Map.get(gallery_by_sheet, sheet.id) do
+          nil ->
+            []
+
+          images ->
+            Enum.map(images, fn gi ->
+              %{
+                id: gi.id,
+                url: gi.asset && gi.asset.url,
+                label: gi.label || (gi.asset && gi.asset.filename)
+              }
+            end)
+            |> Enum.filter(& &1.url)
+        end
+
       {to_string(sheet.id),
        %{
          id: sheet.id,
          name: sheet.name,
          avatar_url: avatar_url,
          banner_url: banner_url,
-         color: sheet.color
+         color: sheet.color,
+         gallery_images: gallery_images
        }}
     end)
   end

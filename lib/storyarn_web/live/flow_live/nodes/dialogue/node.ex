@@ -35,6 +35,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
       "audio_asset_id" => nil,
       "technical_id" => "",
       "localization_id" => generate_localization_id(),
+      "image_override_url" => nil,
       "responses" => []
     }
   end
@@ -47,6 +48,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     "audio_asset_id" => nil,
     "technical_id" => "",
     "localization_id" => "",
+    "image_override_url" => nil,
     "responses" => []
   }
 

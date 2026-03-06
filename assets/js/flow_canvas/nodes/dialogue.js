@@ -35,24 +35,27 @@ export default {
       </div>
     `;
 
+    const overrideUrl = nodeData.image_override_url;
     const bannerUrl = speakerSheet?.banner_url;
     const avatarUrl = speakerSheet?.avatar_url;
 
-    const visualHtml = bannerUrl
-      ? html`<img src="${bannerUrl}" class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3" alt="" />`
-      : avatarUrl
-        ? html`<div
-            class="flex items-center justify-center px-3 pt-3"
-            style="background-color: ${color}20"
-          >
-            <img src="${avatarUrl}" class="size-16 rounded-lg object-cover shadow-md" alt="" />
-          </div>`
-        : speakerSheet
+    const visualHtml = overrideUrl
+      ? html`<img src="${overrideUrl}" class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3" alt="" />`
+      : bannerUrl
+        ? html`<img src="${bannerUrl}" class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3" alt="" />`
+        : avatarUrl
           ? html`<div
               class="flex items-center justify-center px-3 pt-3"
               style="background-color: ${color}20"
-            ></div>`
-          : "";
+            >
+              <img src="${avatarUrl}" class="size-16 rounded-lg object-cover shadow-md" alt="" />
+            </div>`
+          : speakerSheet
+            ? html`<div
+                class="flex items-center justify-center px-3 pt-3"
+                style="background-color: ${color}20"
+              ></div>`
+            : "";
 
     return { color, headerHtml, visualHtml };
   },
@@ -245,6 +248,7 @@ export default {
     // Text/stage_directions are content-only — skip to avoid exiting inline edit mode.
     if (oldData?.speaker_sheet_id !== newData.speaker_sheet_id) return true;
     if (oldData?.audio_asset_id !== newData.audio_asset_id) return true;
+    if (oldData?.image_override_url !== newData.image_override_url) return true;
     if (oldData?.has_stale_refs !== newData.has_stale_refs) return true;
 
     const oldResp = oldData?.responses || [];

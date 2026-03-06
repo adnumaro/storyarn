@@ -95,7 +95,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
                name: "Jaime",
                avatar_url: "https://cdn.test/jaime.png",
                banner_url: "https://cdn.test/jaime-banner.png",
-               color: "#ff0000"
+               color: "#ff0000",
+               gallery_images: []
              }
 
       assert result["2"] == %{
@@ -103,7 +104,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
                name: "Anya",
                avatar_url: nil,
                banner_url: nil,
-               color: "#00ff00"
+               color: "#00ff00",
+               gallery_images: []
              }
     end
 

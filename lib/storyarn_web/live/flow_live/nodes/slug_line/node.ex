@@ -26,7 +26,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.SlugLine.Node do
       "sub_location" => "",
       "time_of_day" => "",
       "description" => "",
-      "technical_id" => ""
+      "technical_id" => "",
+      "image_override_url" => nil
     }
   end
 
@@ -37,7 +38,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.SlugLine.Node do
       "sub_location" => data["sub_location"] || "",
       "time_of_day" => data["time_of_day"] || "",
       "description" => data["description"] || "",
-      "technical_id" => data["technical_id"] || ""
+      "technical_id" => data["technical_id"] || "",
+      "image_override_url" => data["image_override_url"]
     }
   end
 
