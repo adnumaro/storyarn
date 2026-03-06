@@ -44,25 +44,48 @@ export const TreePanel = {
     this._tool = tool;
 
     const pinned = readPinned(tool);
-    this.pushEvent("tree_panel_init", { pinned });
 
-    this._open = this.el.dataset.open === "true";
-
-    // Set initial transform for closed state (no animation on first render)
-    if (!this._open) {
+    if (pinned) {
+      // Show immediately from localStorage — don't wait for server roundtrip.
+      // Override the server-rendered `opacity-0` class with an inline style so
+      // the panel is visible while the tree_panel_init roundtrip completes.
+      this.el.style.opacity = "1";
+      this.el.style.pointerEvents = "auto";
+      this._open = true;
+      this._pendingInit = true;
+    } else {
+      this._open = false;
       this.el.style.transform = `translateX(${SLIDE_OFFSET})`;
     }
+
+    this.pushEvent("tree_panel_init", { pinned });
   },
 
   updated() {
-    // Persist pin state on every update
     const pinned = this.el.dataset.pinned === "true";
     const tool = this.el.dataset.tool || this._tool || "sheets";
     this._tool = tool;
+
+    const nowOpen = this.el.dataset.open === "true";
+
+    if (this._pendingInit) {
+      if (nowOpen) {
+        // Server confirmed open — now data-pinned reflects the real state.
+        // Persist it only now, not during the pending phase where data-pinned
+        // is still the server default (false) and would corrupt localStorage.
+        localStorage.setItem(storageKey(tool), String(pinned));
+        this._pendingInit = false;
+        this.el.style.opacity = "";
+        this.el.style.pointerEvents = "";
+        this._open = true;
+      }
+      // Keep the inline style override active until the server confirms.
+      return;
+    }
+
+    // Normal operation: persist pin state and animate on state change.
     localStorage.setItem(storageKey(tool), String(pinned));
 
-    // Animate on open/close state change
-    const nowOpen = this.el.dataset.open === "true";
     if (nowOpen !== this._open) {
       this._open = nowOpen;
       nowOpen ? this._animateIn() : this._animateOut();
