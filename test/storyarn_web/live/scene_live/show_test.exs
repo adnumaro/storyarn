@@ -38,7 +38,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         )
 
       assert html =~ ~s(phx-hook="SceneCanvas")
-      assert html =~ ~s(id="scene-canvas")
+      assert html =~ "scene-canvas-#{scene.id}"
     end
 
     test "data-scene contains valid JSON with scene fields", %{conn: conn, user: user} do
@@ -1876,7 +1876,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       render_hook(view, "navigate_to_target", %{"type" => "scene", "id" => target_scene.id})
 
-      assert_redirect(
+      assert_patch(
         view,
         ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{target_scene.id}"
       )

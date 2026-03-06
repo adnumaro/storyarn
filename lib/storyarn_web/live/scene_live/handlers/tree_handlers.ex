@@ -4,7 +4,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
   """
 
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, put_flash: 3]
+  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, push_patch: 2, put_flash: 3]
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
@@ -20,7 +20,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
     case Scenes.create_scene(socket.assigns.project, %{name: dgettext("scenes", "Untitled")}) do
       {:ok, new_scene} ->
         {:noreply,
-         push_navigate(socket,
+         socket
+         |> reload_scenes_tree()
+         |> push_patch(
            to:
              ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{new_scene.id}"
          )}
@@ -36,7 +38,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
     case Scenes.create_scene(socket.assigns.project, attrs) do
       {:ok, new_scene} ->
         {:noreply,
-         push_navigate(socket,
+         socket
+         |> reload_scenes_tree()
+         |> push_patch(
            to:
              ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{new_scene.id}"
          )}
@@ -75,7 +79,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
          {:ok, _updated_zone} <-
            Scenes.update_zone(zone, %{target_type: "scene", target_id: child_scene.id}) do
       {:noreply,
-       push_navigate(socket,
+       socket
+       |> reload_scenes_tree()
+       |> push_patch(
          to:
            ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{child_scene.id}"
        )}
@@ -122,7 +128,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
 
       _scene ->
         {:noreply,
-         push_navigate(socket,
+         push_patch(socket,
            to:
              ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}/scenes/#{id}"
          )}
@@ -200,11 +206,12 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
 
           {:noreply,
            socket
+           |> reload_scenes_tree()
            |> put_flash(
              :info,
              dgettext("scenes", "Child scene created. Add a background image to continue.")
            )
-           |> push_navigate(
+           |> push_patch(
              to:
                ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{child_scene.id}"
            )}

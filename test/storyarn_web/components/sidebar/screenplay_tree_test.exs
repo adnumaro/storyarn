@@ -172,7 +172,7 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTreeTest do
     end
 
     test "renders confirm modal for delete" do
-      html = render_section([make_screenplay(1)], can_edit: true)
+      html = render_component(&ScreenplayTree.delete_modal/1, %{})
       assert html =~ "delete-screenplay-sidebar-confirm"
       assert html =~ "Delete screenplay?"
     end

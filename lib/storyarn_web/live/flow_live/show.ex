@@ -51,13 +51,23 @@ defmodule StoryarnWeb.FlowLive.Show do
       project={@project}
       workspace={@workspace}
       active_tool={:flows}
-      has_tree={false}
+      has_tree={@flows_tree != []}
+      tree_panel_open={@tree_panel_open}
+      tree_panel_pinned={@tree_panel_pinned}
+      can_edit={@can_edit}
       canvas_mode={true}
     >
-      <%!-- Minimal shell: the root-layout overlay (#page-loader) provides the
-           animated spinner. This hidden div just hosts the FlowLoader hook
-           that triggers the deferred data fetch. --%>
-      <div id="flow-loader" phx-hook="FlowLoader" class="hidden"></div>
+      <:tree_content>
+        <FlowTree.flows_section
+          flows_tree={@flows_tree}
+          workspace={@workspace}
+          project={@project}
+          selected_flow_id={@flow && to_string(@flow.id)}
+          can_edit={@can_edit}
+        />
+      </:tree_content>
+      <FlowTree.delete_modal :if={@can_edit} />
+      <div id={"flow-loader-#{@flow && @flow.id}"} phx-hook="FlowLoader" class="hidden"></div>
     </Layouts.focus>
     """
   end
@@ -106,16 +116,17 @@ defmodule StoryarnWeb.FlowLive.Show do
           flows_tree={@flows_tree}
           workspace={@workspace}
           project={@project}
-          selected_flow_id={to_string(@flow.id)}
+          selected_flow_id={@flow && to_string(@flow.id)}
           can_edit={@can_edit}
         />
       </:tree_content>
+      <FlowTree.delete_modal :if={@can_edit} />
       <div class="h-full relative">
         <%!-- Canvas fills the entire area --%>
         <div class="absolute inset-0 flex flex-col">
           <div class="flex-1 relative bg-base-200">
             <div
-              id="flow-canvas"
+              id={"flow-canvas-#{@flow.id}"}
               phx-hook="FlowCanvas"
               phx-update="ignore"
               class="absolute inset-0"
@@ -131,7 +142,7 @@ defmodule StoryarnWeb.FlowLive.Show do
             <%!-- Floating Toolbar --%>
             <.canvas_toolbar
               id="flow-floating-toolbar"
-              canvas_id="flow-canvas"
+              canvas_id={"flow-canvas-#{@flow.id}"}
               visible={@selected_node != nil && @editing_mode in [:toolbar, :annotation]}
             >
               <%= if @editing_mode == :annotation do %>
@@ -236,32 +247,12 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   @impl true
   def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => flow_id},
+        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
         _session,
         socket
       ) do
     case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
       {:ok, project, membership} ->
-        mount_with_project(socket, workspace_slug, project_slug, flow_id, project, membership)
-
-      {:error, _reason} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("flows", "You don't have access to this project."))
-         |> redirect(to: ~p"/workspaces")}
-    end
-  end
-
-  defp mount_with_project(socket, workspace_slug, project_slug, flow_id, project, membership) do
-    # Use brief (no preloads) for the loading screen — fast query
-    case Flows.get_flow_brief(project.id, flow_id) do
-      nil ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("flows", "Flow not found."))
-         |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/flows")}
-
-      flow ->
         can_edit = Projects.can?(membership.role, :edit_content)
 
         socket =
@@ -271,8 +262,9 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
-          |> assign(:flow, flow)
           |> assign(:can_edit, can_edit)
+          # Defaults — flow loaded in handle_params
+          |> assign(:flow, nil)
           |> assign(:nav_history, nil)
           |> assign(:flows_tree, [])
           |> assign(:pending_delete_id, nil)
@@ -284,6 +276,12 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:flow_info_nodes, [])
 
         {:ok, socket}
+
+      {:error, _reason} ->
+        {:ok,
+         socket
+         |> put_flash(:error, dgettext("flows", "You don't have access to this project."))
+         |> redirect(to: ~p"/workspaces")}
     end
   end
 
@@ -340,12 +338,50 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   @impl true
-  def handle_params(_params, _url, %{assigns: %{loading: true}} = socket) do
-    {:noreply, socket}
+  def handle_params(%{"id" => flow_id} = params, _url, socket) do
+    current_id =
+      case socket.assigns.flow do
+        %{id: id} -> to_string(id)
+        _ -> nil
+      end
+
+    if flow_id == current_id do
+      # Same flow — just handle ?node= param
+      if socket.assigns.loading do
+        {:noreply, socket}
+      else
+        {:noreply, maybe_navigate_to_node(socket, params["node"])}
+      end
+    else
+      {:noreply, load_flow(socket, flow_id)}
+    end
   end
 
-  def handle_params(params, _url, socket) do
-    {:noreply, maybe_navigate_to_node(socket, params["node"])}
+  defp load_flow(socket, flow_id) do
+    %{project: project} = socket.assigns
+
+    case Flows.get_flow_brief(project.id, flow_id) do
+      nil ->
+        socket
+        |> put_flash(:error, dgettext("flows", "Flow not found."))
+        |> push_navigate(
+          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
+        )
+
+      flow ->
+        # Teardown collaboration for previous flow (if switching)
+        case socket.assigns.flow do
+          %{id: prev_id} when prev_id != flow.id ->
+            CollaborationHelpers.teardown_collaboration(prev_id, socket.assigns.current_scope.user.id)
+
+          _ ->
+            :ok
+        end
+
+        socket
+        |> assign(:loading, true)
+        |> assign(:flow, flow)
+    end
   end
 
   defp maybe_navigate_to_node(socket, nil), do: socket
@@ -686,7 +722,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         store_nav_history(socket, updated_history)
 
         {:noreply,
-         push_navigate(socket,
+         push_patch(socket,
            to:
              ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{entry.flow_id}"
          )}
@@ -706,7 +742,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         store_nav_history(socket, updated_history)
 
         {:noreply,
-         push_navigate(socket,
+         push_patch(socket,
            to:
              ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{entry.flow_id}"
          )}
@@ -730,7 +766,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       case Flows.create_linked_flow(socket.assigns.project, socket.assigns.flow, node) do
         {:ok, %{flow: new_flow}} ->
           {:noreply,
-           push_navigate(socket,
+           push_patch(socket,
              to:
                ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
            )}
@@ -943,7 +979,9 @@ defmodule StoryarnWeb.FlowLive.Show do
         %{name: dgettext("flows", "Untitled")},
         &Flows.create_flow/2,
         &flow_path/2,
-        dgettext("flows", "Could not create flow.")
+        dgettext("flows", "Could not create flow."),
+        patch: true,
+        reload_tree_fn: &reload_flows_tree/1
       )
     end)
   end
@@ -956,7 +994,9 @@ defmodule StoryarnWeb.FlowLive.Show do
         %{name: dgettext("flows", "Untitled")},
         &Flows.create_flow/2,
         &flow_path/2,
-        dgettext("flows", "Could not create flow.")
+        dgettext("flows", "Could not create flow."),
+        patch: true,
+        reload_tree_fn: &reload_flows_tree/1
       )
     end)
   end
@@ -1048,11 +1088,19 @@ defmodule StoryarnWeb.FlowLive.Show do
     CollaborationHelpers.setup_collaboration(socket, flow, user)
     {online_users, node_locks} = CollaborationHelpers.get_initial_collab_state(socket, flow)
 
+    # Reuse tree if already loaded (patch navigation)
+    flows_tree =
+      if socket.assigns.flows_tree != [] do
+        socket.assigns.flows_tree
+      else
+        data.flows_tree
+      end
+
     socket =
       socket
       |> assign(:flow, flow)
       |> assign(:flow_data, data.flow_data)
-      |> assign(:flows_tree, data.flows_tree)
+      |> assign(:flows_tree, flows_tree)
       |> assign(:node_types, @node_types)
       |> assign(:all_sheets, data.all_sheets)
       |> assign(:gallery_by_sheet, data.gallery_by_sheet)

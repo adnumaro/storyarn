@@ -6,7 +6,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlers do
   canvas node-level navigation events.
   """
 
-  import Phoenix.LiveView, only: [push_navigate: 2, put_flash: 3]
+  import Phoenix.LiveView, only: [push_patch: 2, put_flash: 3]
 
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
@@ -24,7 +24,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlers do
 
           _flow ->
             {:noreply,
-             push_navigate(socket,
+             push_patch(socket,
                to:
                  ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
              )}

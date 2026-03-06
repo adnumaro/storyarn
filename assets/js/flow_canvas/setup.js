@@ -249,7 +249,7 @@ reteStyles.textContent = `
     display: block;
   }
 
-  #flow-canvas {
+  [id^="flow-canvas-"] {
     background-color: var(--color-base-100, #1d232a);
     background-image:
       radial-gradient(circle at center, color-mix(in oklch, var(--color-base-content, #a6adbb) 8%, transparent) 1.5px, transparent 1.5px);

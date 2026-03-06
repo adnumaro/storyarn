@@ -45,6 +45,18 @@ defmodule StoryarnWeb.Components.Sidebar.ScreenplayTree do
     """
   end
 
+  def delete_modal(assigns) do
+    ~H"""
+    <.entity_delete_modal
+      entity_type="screenplays"
+      title={dgettext("screenplays", "Delete screenplay?")}
+      message={dgettext("screenplays", "Are you sure you want to delete this screenplay?")}
+      confirm_text={dgettext("screenplays", "Delete")}
+      confirm_event="confirm_delete_screenplay"
+    />
+    """
+  end
+
   defp screenplay_href(workspace, project, screenplay) do
     ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/screenplays/#{screenplay.id}"
   end

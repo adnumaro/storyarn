@@ -10,7 +10,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   """
 
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, put_flash: 3]
+  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, push_patch: 2, put_flash: 3]
 
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
@@ -178,7 +178,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     flow_id = if is_binary(flow_id), do: flow_id, else: to_string(flow_id)
 
     {:noreply,
-     push_navigate(socket,
+     push_patch(socket,
        to:
          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
      )}

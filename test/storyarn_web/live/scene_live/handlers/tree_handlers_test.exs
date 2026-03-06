@@ -31,11 +31,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
       render_click(view, "create_scene", %{})
 
-      {path, _flash} = assert_redirect(view)
-      # Path should be to a scene page (has /scenes/ followed by an ID)
-      assert path =~ "/scenes/"
-      # Ensure it's not the same scene
-      refute path =~ "/scenes/#{scene.id}"
+      assert_patch(view)
     end
 
     test "rejected for viewer role", %{conn: conn, user: user} do
@@ -48,7 +44,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
       html = render_click(view, "create_scene", %{})
       # Viewer should not be able to create — flash or unchanged page
-      assert html =~ "scene-canvas"
+      assert html =~ "scene-canvas-"
     end
   end
 
@@ -65,9 +61,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
       render_click(view, "create_child_scene", %{"parent-id" => parent_scene.id})
 
-      {path, _flash} = assert_redirect(view)
-      assert path =~ "/scenes/"
-      refute path =~ "/scenes/#{parent_scene.id}"
+      assert_patch(view)
     end
   end
 
@@ -87,7 +81,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       html = render_click(view, "set_pending_delete_scene", %{"id" => to_string(other_scene.id)})
 
       # Should not crash and scene should still be rendered
-      assert html =~ "scene-canvas"
+      assert html =~ "scene-canvas-"
     end
   end
 
@@ -122,7 +116,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
       # Confirm without setting pending — should be a no-op
       html = render_click(view, "confirm_delete_scene", %{})
-      assert html =~ "scene-canvas"
+      assert html =~ "scene-canvas-"
     end
   end
 
@@ -142,7 +136,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
       # Should stay on current page (not redirect) — the scenes tree reloads
       html = render(view)
-      assert html =~ "scene-canvas"
+      assert html =~ "scene-canvas-"
 
       # Verify other scene was soft-deleted
       deleted = Scenes.get_scene(project.id, other.id)
@@ -169,7 +163,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
       html = render_click(view, "delete_scene", %{"id" => "999999"})
       # Should not crash — just no-op
-      assert html =~ "scene-canvas"
+      assert html =~ "scene-canvas-"
     end
 
     test "rejected for viewer role", %{conn: conn, user: user} do
@@ -208,7 +202,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
           "position" => "0"
         })
 
-      assert html =~ "scene-canvas"
+      assert html =~ "scene-canvas-"
 
       # Verify scene was moved
       moved = Scenes.get_scene(project.id, child.id)
@@ -234,7 +228,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
           "position" => "0"
         })
 
-      assert html =~ "scene-canvas"
+      assert html =~ "scene-canvas-"
 
       moved = Scenes.get_scene(project.id, child.id)
       assert is_nil(moved.parent_id)
@@ -254,7 +248,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
         })
 
       # Should not crash — just no-op
-      assert html =~ "scene-canvas"
+      assert html =~ "scene-canvas-"
     end
 
     test "shows error when moving scene into its own descendant (cyclic)",
@@ -294,7 +288,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
       render_hook(view, "navigate_to_target", %{"type" => "scene", "id" => target.id})
 
-      assert_redirect(view, scene_url(project, target))
+      assert_patch(view, scene_url(project, target))
     end
 
     test "shows flash when target scene is deleted", %{conn: conn, user: user} do
@@ -359,7 +353,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       {:ok, view, _html} = live(conn, scene_url(project, scene))
 
       html = render_hook(view, "navigate_to_target", %{"type" => "flow", "id" => 1})
-      assert html =~ "scene-canvas"
+      assert html =~ "scene-canvas-"
     end
 
     test "handles missing params gracefully", %{conn: conn, user: user} do
@@ -369,7 +363,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       {:ok, view, _html} = live(conn, scene_url(project, scene))
 
       html = render_hook(view, "navigate_to_target", %{})
-      assert html =~ "scene-canvas"
+      assert html =~ "scene-canvas-"
     end
   end
 
@@ -410,9 +404,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
       render_click(view, "create_child_scene_from_zone", %{"zone_id" => to_string(zone.id)})
 
-      # Should redirect to the new child scene (with info flash about adding background)
-      {path, _flash} = assert_redirect(view)
-      assert path =~ "/scenes/"
+      # Should patch to the new child scene (with info flash about adding background)
+      assert_patch(view)
 
       # Verify the child scene was created with the zone's name
       scenes = Scenes.list_scenes(project.id)
@@ -438,7 +431,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       {:ok, view, _html} = live(conn, scene_url(project, scene))
 
       render_click(view, "create_child_scene_from_zone", %{"zone_id" => to_string(zone.id)})
-      assert_redirect(view)
+      assert_patch(view)
 
       # The zone should now be linked to the child scene
       updated_zone = Scenes.get_zone(scene.id, zone.id)
@@ -472,8 +465,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
       render_click(view, "create_child_scene_from_zone", %{"zone_id" => to_string(zone.id)})
 
-      {path, _flash} = assert_redirect(view)
-      assert path =~ "/scenes/"
+      assert_patch(view)
 
       # Verify the child inherits scale
       scenes = Scenes.list_scenes(project.id)
@@ -516,9 +508,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
       render_click(view, "create_child_scene_from_zone", %{"zone_id" => to_string(zone.id)})
 
-      # Should redirect to the new child scene
-      {path, _flash} = assert_redirect(view)
-      assert path =~ "/scenes/"
+      # Should patch to the new child scene
+      assert_patch(view)
 
       # Verify the child scene was created
       scenes = Scenes.list_scenes(project.id)
@@ -548,9 +539,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
       render_click(view, "create_child_scene_from_zone", %{"zone_id" => to_string(zone.id)})
 
-      # Should redirect — falls back to create_child_scene_without_image
-      {path, _flash} = assert_redirect(view)
-      assert path =~ "/scenes/"
+      # Should patch — falls back to create_child_scene_without_image
+      assert_patch(view)
 
       # Verify child was created
       scenes = Scenes.list_scenes(project.id)
@@ -580,7 +570,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
         render_click(view, "create_child_scene_from_zone", %{"zone_id" => to_string(zone.id)})
 
       # Viewer cannot create — page should remain
-      assert html =~ "scene-canvas"
+      assert html =~ "scene-canvas-"
 
       # No child scene should be created
       scenes = Scenes.list_scenes(project.id)

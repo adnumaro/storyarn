@@ -76,11 +76,11 @@ defmodule StoryarnWeb.SceneLive.Show do
             scenes_tree={@scenes_tree}
             workspace={@workspace}
             project={@project}
-            selected_scene_id={to_string(@scene.id)}
+            selected_scene_id={@scene && to_string(@scene.id)}
             can_edit={@can_edit}
           />
         </div>
-        <div :if={@tree_panel_tab == "layers"}>
+        <div :if={@tree_panel_tab == "layers" && @scene}>
           <.layer_panel
             layers={@layers}
             active_layer_id={@active_layer_id}
@@ -91,29 +91,35 @@ defmodule StoryarnWeb.SceneLive.Show do
         </div>
       </:tree_content>
       <:top_bar_extra>
-        <.map_info_bar
-          scene={@scene}
-          ancestors={@ancestors}
-          workspace={@workspace}
-          project={@project}
-          can_edit={@can_edit}
-          referencing_flows={@referencing_flows}
-        />
-        <.map_search_panel
-          search_query={@search_query}
-          search_filter={@search_filter}
-          search_results={@search_results}
-        />
+        <%= if @scene do %>
+          <.map_info_bar
+            scene={@scene}
+            ancestors={@ancestors}
+            workspace={@workspace}
+            project={@project}
+            can_edit={@can_edit}
+            referencing_flows={@referencing_flows}
+          />
+          <.map_search_panel
+            search_query={@search_query}
+            search_filter={@search_filter}
+            search_results={@search_results}
+          />
+        <% end %>
       </:top_bar_extra>
       <:top_bar_extra_right>
-        <.map_actions
-          can_edit={@can_edit}
-          edit_mode={@edit_mode}
-          workspace={@workspace}
-          project={@project}
-          scene={@scene}
-        />
+        <%= if @scene do %>
+          <.map_actions
+            can_edit={@can_edit}
+            edit_mode={@edit_mode}
+            workspace={@workspace}
+            project={@project}
+            scene={@scene}
+          />
+        <% end %>
       </:top_bar_extra_right>
+      <SceneTree.delete_modal :if={@can_edit} />
+      <%= if @scene do %>
       <div class="h-full relative">
         <%!-- Canvas fills the entire area --%>
         <div
@@ -125,7 +131,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           phx-hook="CanvasDropZone"
         >
           <div
-            id="scene-canvas"
+            id={"scene-canvas-#{@scene.id}"}
             phx-hook="SceneCanvas"
             phx-update="ignore"
             data-scene={Jason.encode!(@scene_data)}
@@ -253,7 +259,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         <%!-- Floating element toolbar --%>
         <.canvas_toolbar
           id="scene-floating-toolbar"
-          canvas_id="scene-canvas"
+          canvas_id={"scene-canvas-#{@scene.id}"}
           visible={@selected_element != nil && @can_edit && @edit_mode}
           z_class="z-[1050]"
         >
@@ -340,6 +346,11 @@ defmodule StoryarnWeb.SceneLive.Show do
           max_file_size={524_288}
         />
       </div>
+      <% else %>
+      <div class="h-full flex items-center justify-center">
+        <span class="loading loading-spinner loading-lg text-base-content/30"></span>
+      </div>
+      <% end %>
 
       <%!-- Confirm modals --%>
       <.confirm_modal
@@ -376,8 +387,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   def mount(
         %{
           "workspace_slug" => workspace_slug,
-          "project_slug" => project_slug,
-          "id" => scene_id
+          "project_slug" => project_slug
         },
         _session,
         socket
@@ -390,18 +400,65 @@ defmodule StoryarnWeb.SceneLive.Show do
       {:ok, project, membership} ->
         can_edit = Projects.can?(membership.role, :edit_content)
 
-        case Scenes.get_scene(project.id, scene_id) do
-          nil ->
-            {:ok,
-             socket
-             |> put_flash(:error, dgettext("scenes", "Scene not found."))
-             |> redirect(
-               to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-             )}
+        socket =
+          socket
+          |> assign(focus_layout_defaults())
+          |> assign(:tree_panel_tab, "scenes")
+          |> assign(:project, project)
+          |> assign(:workspace, project.workspace)
+          |> assign(:membership, membership)
+          |> assign(:can_edit, can_edit)
+          |> assign(:canvas_i18n, canvas_i18n())
+          # Defaults — scene loaded in handle_params
+          |> assign(:scene, nil)
+          |> assign(:ancestors, [])
+          |> assign(:scenes_tree, [])
+          |> assign(:layers, [])
+          |> assign(:zones, [])
+          |> assign(:pins, [])
+          |> assign(:connections, [])
+          |> assign(:annotations, [])
+          |> assign(:scene_data, %{})
+          |> assign(:edit_mode, can_edit)
+          |> assign(:active_tool, :select)
+          |> assign(:selected_element, nil)
+          |> assign(:selected_type, nil)
+          |> assign(:element_panel_open, false)
+          |> assign(:scene_settings_open, false)
+          |> assign(:active_layer_id, nil)
+          |> assign(:renaming_layer_id, nil)
+          |> assign(:show_pin_icon_upload, false)
+          |> assign(:show_sheet_picker, false)
+          |> assign(:pending_sheet_for_pin, nil)
+          |> assign(:search_query, "")
+          |> assign(:search_filter, "all")
+          |> assign(:search_results, [])
+          |> assign(:legend_open, false)
+          |> assign(:undo_stack, [])
+          |> assign(:redo_stack, [])
+          |> assign(:panel_sections, %{})
+          |> assign(:project_scenes, [])
+          |> assign(:project_sheets, [])
+          |> assign(:project_flows, [])
+          |> assign(:project_variables, [])
+          |> assign(:referencing_flows, [])
+          |> assign(:sidebar_loaded, false)
+          |> assign(:pending_delete_id, nil)
+          |> then(fn socket ->
+            if can_edit do
+              allow_upload(socket, :background,
+                accept: ~w(image/jpeg image/png image/gif image/webp),
+                max_entries: 1,
+                max_file_size: 10_485_760,
+                auto_upload: true,
+                progress: fn name, entry, socket -> handle_progress(name, entry, socket) end
+              )
+            else
+              socket
+            end
+          end)
 
-          scene ->
-            {:ok, mount_scene(socket, project, membership, can_edit, scene)}
-        end
+        {:ok, socket}
 
       {:error, _reason} ->
         {:ok,
@@ -411,88 +468,22 @@ defmodule StoryarnWeb.SceneLive.Show do
     end
   end
 
-  defp mount_scene(socket, project, membership, can_edit, scene) do
-    socket
-    |> assign(focus_layout_defaults())
-    |> assign(:tree_panel_tab, "scenes")
-    |> assign(:project, project)
-    |> assign(:workspace, project.workspace)
-    |> assign(:membership, membership)
-    |> assign(:can_edit, can_edit)
-    |> assign(:scene, scene)
-    |> assign(:ancestors, Scenes.list_ancestors(scene))
-    |> assign(:scenes_tree, [])
-    |> assign(:layers, scene.layers || [])
-    |> assign(:zones, scene.zones || [])
-    |> assign(:pins, scene.pins || [])
-    |> assign(:connections, scene.connections || [])
-    |> assign(:annotations, scene.annotations || [])
-    |> assign(:scene_data, build_scene_data(scene, can_edit))
-    |> assign(:edit_mode, can_edit)
-    |> assign(:active_tool, :select)
-    |> assign(:selected_element, nil)
-    |> assign(:selected_type, nil)
-    |> assign(:element_panel_open, false)
-    |> assign(:scene_settings_open, false)
-    |> assign(:active_layer_id, default_layer_id(scene.layers))
-    |> assign(:renaming_layer_id, nil)
-    |> assign(:show_pin_icon_upload, false)
-    |> assign(:show_sheet_picker, false)
-    |> assign(:pending_sheet_for_pin, nil)
-    |> assign(:search_query, "")
-    |> assign(:search_filter, "all")
-    |> assign(:search_results, [])
-    |> assign(:legend_open, false)
-    |> assign(:undo_stack, [])
-    |> assign(:redo_stack, [])
-    |> assign(:panel_sections, %{})
-    |> assign(:project_scenes, [])
-    |> assign(:project_sheets, [])
-    |> assign(:project_flows, [])
-    |> assign(:project_variables, [])
-    |> assign(:referencing_flows, [])
-    |> assign(:sidebar_loaded, false)
-    |> start_async(:load_sidebar_data, fn ->
-      %{
-        scenes_tree: Scenes.list_scenes_tree_with_elements(project.id),
-        project_scenes: Scenes.list_scenes(project.id),
-        project_sheets: Storyarn.Sheets.list_sheets_tree(project.id),
-        project_flows: Storyarn.Flows.list_flows(project.id),
-        project_variables: Storyarn.Sheets.list_project_variables(project.id)
-      }
-    end)
-    |> assign(:canvas_i18n, %{
-      edit_properties: dgettext("scenes", "Edit Properties"),
-      connect_to: dgettext("scenes", "Connect To\u2026"),
-      edit_vertices: dgettext("scenes", "Edit Vertices"),
-      duplicate: dgettext("scenes", "Duplicate"),
-      bring_to_front: dgettext("scenes", "Bring to Front"),
-      send_to_back: dgettext("scenes", "Send to Back"),
-      lock: dgettext("scenes", "Lock"),
-      unlock: dgettext("scenes", "Unlock"),
-      delete: dgettext("scenes", "Delete"),
-      add_pin: dgettext("scenes", "Add Pin Here"),
-      add_annotation: dgettext("scenes", "Add Annotation Here"),
-      create_child_scene: dgettext("scenes", "Create child scene"),
-      name_zone_first: dgettext("scenes", "Name the zone first")
-    })
-    |> then(fn socket ->
-      if can_edit do
-        allow_upload(socket, :background,
-          accept: ~w(image/jpeg image/png image/gif image/webp),
-          max_entries: 1,
-          max_file_size: 10_485_760,
-          auto_upload: true,
-          progress: fn name, entry, socket -> handle_progress(name, entry, socket) end
-        )
-      else
-        socket
-      end
-    end)
-  end
-
   @impl true
-  def handle_params(params, _url, socket) do
+  def handle_params(%{"id" => scene_id} = params, _url, socket) do
+    current_id =
+      case socket.assigns.scene do
+        %{id: id} -> to_string(id)
+        _ -> nil
+      end
+
+    socket =
+      if scene_id == current_id do
+        socket
+      else
+        load_scene(socket, scene_id)
+      end
+
+    # Handle highlight params
     socket =
       case params["highlight"] do
         "pin:" <> id ->
@@ -506,6 +497,84 @@ defmodule StoryarnWeb.SceneLive.Show do
       end
 
     {:noreply, socket}
+  end
+
+  defp load_scene(socket, scene_id) do
+    %{project: project, can_edit: can_edit} = socket.assigns
+
+    case Scenes.get_scene(project.id, scene_id) do
+      nil ->
+        socket
+        |> put_flash(:error, dgettext("scenes", "Scene not found."))
+        |> push_navigate(
+          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
+        )
+
+      scene ->
+        has_tree = socket.assigns.sidebar_loaded
+
+        socket
+        |> assign(:scene, scene)
+        |> assign(:ancestors, Scenes.list_ancestors(scene))
+        |> assign(:layers, scene.layers || [])
+        |> assign(:zones, scene.zones || [])
+        |> assign(:pins, scene.pins || [])
+        |> assign(:connections, scene.connections || [])
+        |> assign(:annotations, scene.annotations || [])
+        |> assign(:scene_data, build_scene_data(scene, can_edit))
+        |> assign(:edit_mode, can_edit)
+        |> assign(:active_tool, :select)
+        |> assign(:selected_element, nil)
+        |> assign(:selected_type, nil)
+        |> assign(:element_panel_open, false)
+        |> assign(:scene_settings_open, false)
+        |> assign(:active_layer_id, default_layer_id(scene.layers))
+        |> assign(:renaming_layer_id, nil)
+        |> assign(:show_pin_icon_upload, false)
+        |> assign(:show_sheet_picker, false)
+        |> assign(:pending_sheet_for_pin, nil)
+        |> assign(:search_query, "")
+        |> assign(:search_filter, "all")
+        |> assign(:search_results, [])
+        |> assign(:legend_open, false)
+        |> assign(:undo_stack, [])
+        |> assign(:redo_stack, [])
+        |> assign(:panel_sections, %{})
+        |> assign(:referencing_flows, [])
+        |> then(fn socket ->
+          if has_tree do
+            socket
+          else
+            start_async(socket, :load_sidebar_data, fn ->
+              %{
+                scenes_tree: Scenes.list_scenes_tree_with_elements(project.id),
+                project_scenes: Scenes.list_scenes(project.id),
+                project_sheets: Storyarn.Sheets.list_sheets_tree(project.id),
+                project_flows: Storyarn.Flows.list_flows(project.id),
+                project_variables: Storyarn.Sheets.list_project_variables(project.id)
+              }
+            end)
+          end
+        end)
+    end
+  end
+
+  defp canvas_i18n do
+    %{
+      edit_properties: dgettext("scenes", "Edit Properties"),
+      connect_to: dgettext("scenes", "Connect To\u2026"),
+      edit_vertices: dgettext("scenes", "Edit Vertices"),
+      duplicate: dgettext("scenes", "Duplicate"),
+      bring_to_front: dgettext("scenes", "Bring to Front"),
+      send_to_back: dgettext("scenes", "Send to Back"),
+      lock: dgettext("scenes", "Lock"),
+      unlock: dgettext("scenes", "Unlock"),
+      delete: dgettext("scenes", "Delete"),
+      add_pin: dgettext("scenes", "Add Pin Here"),
+      add_annotation: dgettext("scenes", "Add Annotation Here"),
+      create_child_scene: dgettext("scenes", "Create child scene"),
+      name_zone_first: dgettext("scenes", "Name the zone first")
+    }
   end
 
   defp parse_highlight_id(id) do

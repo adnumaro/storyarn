@@ -45,6 +45,18 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
     """
   end
 
+  def delete_modal(assigns) do
+    ~H"""
+    <.entity_delete_modal
+      entity_type="sheets"
+      title={dgettext("sheets", "Delete sheet?")}
+      message={dgettext("sheets", "Are you sure you want to delete this sheet?")}
+      confirm_text={dgettext("sheets", "Delete")}
+      confirm_event="confirm_delete_sheet"
+    />
+    """
+  end
+
   defp sheet_href(workspace, project, sheet) do
     ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
   end

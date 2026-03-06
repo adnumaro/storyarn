@@ -34,6 +34,7 @@ defmodule StoryarnWeb.SheetLive.Index do
           can_edit={@can_edit}
         />
       </:tree_content>
+      <SheetTree.delete_modal :if={@can_edit} />
       <div class="text-center mb-8">
         <.header>
           {dgettext("sheets", "Sheets")}

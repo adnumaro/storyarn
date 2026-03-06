@@ -69,7 +69,10 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlers do
 
       case Screenplays.create_screenplay(socket.assigns.project, attrs) do
         {:ok, new_screenplay} ->
-          {:noreply, push_patch(socket, to: screenplays_path(socket, new_screenplay.id))}
+          {:noreply,
+           socket
+           |> reload_screenplays_tree()
+           |> push_patch(to: screenplays_path(socket, new_screenplay.id))}
 
         {:error, _changeset} ->
           {:noreply,

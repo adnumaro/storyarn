@@ -27,6 +27,25 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   end
 
   @doc """
+  Tears down collaboration subscriptions for a flow.
+  Called before switching to a different flow via patch navigation.
+  """
+  @spec teardown_collaboration(integer(), integer()) :: :ok
+  def teardown_collaboration(flow_id, user_id) do
+    alias Storyarn.Collaboration.{CursorTracker, Presence}
+
+    presence_topic = Presence.flow_topic(flow_id)
+    Phoenix.PubSub.unsubscribe(Storyarn.PubSub, presence_topic)
+    Presence.untrack(self(), presence_topic, user_id)
+
+    CursorTracker.unsubscribe(flow_id)
+
+    Phoenix.PubSub.unsubscribe(Storyarn.PubSub, Collaboration.changes_topic(flow_id))
+    Phoenix.PubSub.unsubscribe(Storyarn.PubSub, Collaboration.locks_topic(flow_id))
+    :ok
+  end
+
+  @doc """
   Gets the initial collaboration state (online users and node locks).
   """
   @spec get_initial_collab_state(Phoenix.LiveView.Socket.t(), map()) :: {list(), map()}

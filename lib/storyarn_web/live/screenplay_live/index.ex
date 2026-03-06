@@ -33,6 +33,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
           can_edit={@can_edit}
         />
       </:tree_content>
+      <ScreenplayTree.delete_modal :if={@can_edit} />
       <div class="max-w-4xl mx-auto">
         <.header>
           {dgettext("screenplays", "Screenplays")}

@@ -33,12 +33,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
 
       load_flow(view)
 
-      # Trigger navigate_to_subflow event which delegates to NavigationHandlers
-      assert {:error, {:live_redirect, %{to: redirect_path}}} =
-               render_click(view, "navigate_to_subflow", %{"flow-id" => to_string(target_flow.id)})
+      render_click(view, "navigate_to_subflow", %{"flow-id" => to_string(target_flow.id)})
 
-      assert redirect_path =~
-               "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{target_flow.id}"
+      assert_patch(view)
     end
 
     test "shows error flash for non-existent flow ID",
@@ -104,13 +101,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
 
       load_flow(view)
 
-      assert {:error, {:live_redirect, %{to: redirect_path}}} =
-               render_click(view, "navigate_to_exit_flow", %{
-                 "flow-id" => to_string(target_flow.id)
-               })
+      render_click(view, "navigate_to_exit_flow", %{
+        "flow-id" => to_string(target_flow.id)
+      })
 
-      assert redirect_path =~
-               "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{target_flow.id}"
+      assert_patch(view)
     end
 
     test "shows error for non-existent exit flow",
@@ -148,12 +143,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
 
       load_flow(view)
 
-      assert {:error, {:live_redirect, %{to: redirect_path}}} =
-               render_click(view, "navigate_to_referencing_flow", %{
-                 "flow-id" => to_string(referencing_flow.id)
-               })
+      render_click(view, "navigate_to_referencing_flow", %{
+        "flow-id" => to_string(referencing_flow.id)
+      })
 
-      assert redirect_path =~ "/flows/#{referencing_flow.id}"
+      assert_patch(view)
     end
 
     test "shows error for invalid referencing flow ID",

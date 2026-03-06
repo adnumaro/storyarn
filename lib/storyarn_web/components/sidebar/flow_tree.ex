@@ -28,6 +28,7 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
       selected_id={@selected_flow_id}
       can_edit={@can_edit}
       entity_type="flows"
+      link_type={:patch}
       search_placeholder={dgettext("flows", "Filter flows...")}
       empty_text={dgettext("flows", "No flows yet")}
       create_event="create_flow"
@@ -57,6 +58,18 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
         </li>
       </:extra_menu_items>
     </.entity_tree_section>
+    """
+  end
+
+  def delete_modal(assigns) do
+    ~H"""
+    <.entity_delete_modal
+      entity_type="flows"
+      title={dgettext("flows", "Delete flow?")}
+      message={dgettext("flows", "Are you sure you want to delete this flow?")}
+      confirm_text={dgettext("flows", "Delete")}
+      confirm_event="confirm_delete_flow"
+    />
     """
   end
 

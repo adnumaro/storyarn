@@ -58,6 +58,7 @@ defmodule StoryarnWeb.SceneLive.Index do
           </.empty_state>
         </div>
       </:tree_content>
+      <SceneTree.delete_modal :if={@can_edit} />
       <div class="max-w-4xl mx-auto">
         <.header>
           {dgettext("scenes", "Scenes")}

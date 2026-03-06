@@ -145,6 +145,12 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlers do
             do: &Phoenix.LiveView.push_patch/2,
             else: &Phoenix.LiveView.push_navigate/2
 
+        socket =
+          case Keyword.get(opts, :reload_tree_fn) do
+            nil -> socket
+            reload_fn -> reload_fn.(socket)
+          end
+
         {:noreply, push_fn.(socket, to: path_fn.(socket, entity))}
 
       {:error, _changeset} ->

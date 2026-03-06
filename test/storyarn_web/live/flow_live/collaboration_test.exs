@@ -40,7 +40,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       assert html =~ "data-locks"
 
       # View should have online_users assign
-      assert view |> element("#flow-canvas") |> has_element?()
+      assert html =~ "flow-canvas-#{flow.id}"
     end
 
     test "acquires lock on node selection", %{conn: conn, user: user} do

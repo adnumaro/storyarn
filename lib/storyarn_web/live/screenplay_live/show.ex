@@ -45,6 +45,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
           can_edit={@can_edit}
         />
       </:tree_content>
+      <ScreenplayTree.delete_modal :if={@can_edit} />
       <%= if @screenplay do %>
         <div class="screenplay-container">
           <.screenplay_toolbar

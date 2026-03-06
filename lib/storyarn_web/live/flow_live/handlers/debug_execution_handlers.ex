@@ -6,7 +6,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   """
 
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2]
+  import Phoenix.LiveView, only: [push_event: 3, push_patch: 2]
 
   use StoryarnWeb, :verified_routes
 
@@ -169,7 +169,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     path =
       ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{target_flow_id}"
 
-    {:navigating, push_navigate(socket, to: path)}
+    {:navigating, push_patch(socket, to: path)}
   end
 
   @doc "Schedules the next auto-step timer at the configured speed."

@@ -38,6 +38,7 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTree do
       confirm_delete_event="confirm_delete_scene"
       icon="map"
       href_fn={&scene_href/3}
+      link_type={:patch}
       create_child_event="create_child_scene"
       create_child_title={dgettext("scenes", "Add child scene")}
       set_pending_delete_event="set_pending_delete_scene"
@@ -76,6 +77,18 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTree do
         />
       </:extra_children>
     </.entity_tree_section>
+    """
+  end
+
+  def delete_modal(assigns) do
+    ~H"""
+    <.entity_delete_modal
+      entity_type="scenes"
+      title={dgettext("scenes", "Delete scene?")}
+      message={dgettext("scenes", "Are you sure you want to delete this scene?")}
+      confirm_text={dgettext("scenes", "Delete")}
+      confirm_event="confirm_delete_scene"
+    />
     """
   end
 
@@ -118,6 +131,7 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTree do
       item_id={"#{@element_type}-#{item.id}"}
       item_name={@label_fn.(item)}
       can_drag={false}
+      link_type={:patch}
     />
     <div :if={@total_count > length(@items)} class="text-xs text-base-content/40 pl-8 py-0.5">
       {@more_text}

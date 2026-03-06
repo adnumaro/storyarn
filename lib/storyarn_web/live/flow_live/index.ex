@@ -34,6 +34,7 @@ defmodule StoryarnWeb.FlowLive.Index do
           can_edit={@can_edit}
         />
       </:tree_content>
+      <FlowTree.delete_modal :if={@can_edit} />
       <div class="max-w-4xl mx-auto">
         <.header>
           {dgettext("flows", "Flows")}

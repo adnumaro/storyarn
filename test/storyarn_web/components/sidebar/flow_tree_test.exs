@@ -166,7 +166,7 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTreeTest do
     end
 
     test "renders confirm modal for delete" do
-      html = render_section([make_flow(1)], can_edit: true)
+      html = render_component(&FlowTree.delete_modal/1, %{})
       assert html =~ "delete-flow-sidebar-confirm"
       assert html =~ "Delete flow?"
     end

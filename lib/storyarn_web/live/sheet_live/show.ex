@@ -55,6 +55,7 @@ defmodule StoryarnWeb.SheetLive.Show do
           can_edit={@can_edit}
         />
       </:tree_content>
+      <SheetTree.delete_modal :if={@can_edit} />
       <%= if @sheet do %>
       <div
         id="sheet-undo-redo"
@@ -398,7 +399,8 @@ defmodule StoryarnWeb.SheetLive.Show do
         &Sheets.create_sheet/2,
         &sheet_path/2,
         dgettext("sheets", "Could not create sheet."),
-        patch: true
+        patch: true,
+        reload_tree_fn: &reload_sheets_tree/1
       )
     end)
   end
@@ -564,5 +566,9 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp sheet_path(socket, sheet) do
     ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet.id}"
+  end
+
+  defp reload_sheets_tree(socket) do
+    assign(socket, :sheets_tree, Sheets.list_sheets_tree(socket.assigns.project.id))
   end
 end

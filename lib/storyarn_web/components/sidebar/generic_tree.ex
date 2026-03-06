@@ -124,17 +124,42 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
         {@create_label}
       </button>
 
-      <.confirm_modal
-        :if={@can_edit}
-        id={@delete_modal_id}
-        title={@delete_title}
-        message={@delete_message}
-        confirm_text={@delete_confirm_text}
-        confirm_variant="error"
-        icon="alert-triangle"
-        on_confirm={JS.push(@confirm_delete_event)}
-      />
     </div>
+    """
+  end
+
+  # ── Delete confirmation modal (render outside tree panel) ─────────────
+
+  @doc """
+  Renders the delete confirmation modal for a tree entity type.
+
+  Must be rendered OUTSIDE the tree panel (`:tree_content` slot) because
+  the panel uses `backdrop-blur`, which creates a new containing block and
+  traps `position: fixed` dialogs inside the sidebar.
+
+  Render this in the LiveView's main content area (inside `Layouts.focus`
+  but outside `:tree_content`).
+  """
+  attr :entity_type, :string, required: true
+  attr :title, :string, required: true
+  attr :message, :string, required: true
+  attr :confirm_text, :string, required: true
+  attr :confirm_event, :string, required: true
+
+  def entity_delete_modal(assigns) do
+    singular = String.trim_trailing(assigns.entity_type, "s")
+    assigns = assign(assigns, :modal_id, "delete-#{singular}-sidebar-confirm")
+
+    ~H"""
+    <.confirm_modal
+      id={@modal_id}
+      title={@title}
+      message={@message}
+      confirm_text={@confirm_text}
+      confirm_variant="error"
+      icon="alert-triangle"
+      on_confirm={JS.push(@confirm_event)}
+    />
     """
   end
 
