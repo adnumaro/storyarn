@@ -265,9 +265,16 @@ export function setupEventHandlers(hook) {
       currentValue: currentSpeakerId,
       placeholder: hook.labels?.search || "Search…",
       onSelect: (value) => {
+        const newSpeakerId = value || null;
+        // Optimistic update: apply immediately so the header reflects the new speaker
+        // without waiting for the server round-trip.
+        // (handleNodeUpdated skips re-render while in inline-edit mode to protect text input)
+        reteNode.nodeData = { ...reteNode.nodeData, speaker_sheet_id: newSpeakerId };
+        reteNode._updateTs = Date.now();
+        hook.area.update("node", reteNode.id);
         hook.pushEvent("update_node_field", {
           field: "speaker_sheet_id",
-          value: value || null,
+          value: newSpeakerId,
         });
         hook._speakerPopover = null;
       },
