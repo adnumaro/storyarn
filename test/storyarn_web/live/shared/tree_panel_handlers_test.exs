@@ -132,7 +132,6 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
 
       assert result.assigns.pending_delete_id == "42"
     end
-
   end
 
   # ============================================================================
@@ -169,7 +168,6 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
 
       assert result.assigns.pending_delete_id == nil
     end
-
   end
 
   # ============================================================================
@@ -213,7 +211,6 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
 
       assert result.assigns.flash["error"] == "Could not create flow."
     end
-
   end
 
   # ============================================================================
@@ -245,7 +242,6 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
 
       assert result.redirected == {:live, :redirect, %{to: "/entities/55", kind: :push}}
     end
-
   end
 
   # ============================================================================
@@ -476,6 +472,5 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlersTest do
           error_msg: "Error"
         )
     end
-
   end
 end
