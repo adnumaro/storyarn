@@ -15,7 +15,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
     <div class="flex-1">
       <h1
         :if={@can_edit}
-        id="sheet-title"
+        id={"sheet-title-#{@sheet.id}"}
         class="text-3xl font-bold outline-none rounded px-2 -mx-2 py-1 empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
         contenteditable="true"
         phx-hook="EditableTitle"
@@ -33,7 +33,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
       <div :if={@can_edit} class="flex items-center gap-1 px-2 -mx-2 mt-1">
         <span class="text-base-content/50">#</span>
         <span
-          id="sheet-shortcut"
+          id={"sheet-shortcut-#{@sheet.id}"}
           class="text-sm text-base-content/50 outline-none hover:text-base-content empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
           contenteditable="true"
           phx-hook="EditableShortcut"
