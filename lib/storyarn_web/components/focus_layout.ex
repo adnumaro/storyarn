@@ -358,6 +358,17 @@ defmodule StoryarnWeb.Components.FocusLayout do
         if(@tree_panel_open, do: "", else: "opacity-0 pointer-events-none")
       ]}
     >
+      <%!-- Back to workspace --%>
+      <div class="px-2 pt-2 pb-1 border-b border-base-300">
+        <.link
+          navigate={~p"/workspaces/#{@workspace.slug}"}
+          class="flex items-center gap-1.5 text-xs text-base-content/60 hover:text-base-content transition-colors py-1"
+        >
+          <.icon name="chevron-left" class="size-3" />
+          <span>{gettext("Back to workspace")}</span>
+        </.link>
+      </div>
+
       <%!-- Tree content (scrollable) --%>
       <div class="flex-1 overflow-y-auto p-2">
         {render_slot(@tree_content)}
