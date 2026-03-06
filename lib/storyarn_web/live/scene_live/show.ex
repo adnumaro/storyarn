@@ -46,13 +46,6 @@ defmodule StoryarnWeb.SceneLive.Show do
       canvas_mode={true}
     >
       <:tree_content>
-        <.link
-          navigate={~p"/workspaces/#{@workspace.slug}"}
-          class="flex items-center gap-1 text-xs text-base-content/50 hover:text-base-content mb-3 px-1 py-1 -mx-1 rounded transition-colors hover:bg-base-200"
-        >
-          <.icon name="chevron-left" class="size-3.5" />
-          {gettext("Back to workspace")}
-        </.link>
         <div role="tablist" class="tabs tabs-border tabs-sm mb-6">
           <button
             role="tab"
