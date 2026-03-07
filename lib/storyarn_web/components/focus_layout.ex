@@ -411,7 +411,6 @@ defmodule StoryarnWeb.Components.FocusLayout do
     """
   end
 
-
   defp user_display_name(%{current_scope: %{user: %{display_name: name}}})
        when is_binary(name) and name != "",
        do: name

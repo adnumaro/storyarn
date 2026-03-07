@@ -19,9 +19,9 @@ defmodule StoryarnWeb.RouterTest do
       assert html_response(conn, 200)
     end
 
-    test "registration page is accessible", %{conn: conn} do
+    test "registration page redirects in beta mode", %{conn: conn} do
       conn = get(conn, ~p"/users/register")
-      assert html_response(conn, 200)
+      assert redirected_to(conn) == "/"
     end
   end
 

@@ -95,7 +95,7 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
 
     test "invalid expression returns nil", ctx do
       # Update formula cell with invalid expression
-      {:ok, row1} =
+      {:ok, _row1} =
         Sheets.update_table_cell(ctx.row1, ctx.formula_col.slug, %{
           "expression" => "(invalid",
           "bindings" => %{}
@@ -110,7 +110,7 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
 
     test "missing binding returns nil", ctx do
       # Update formula cell with unbound symbol
-      {:ok, row1} =
+      {:ok, _row1} =
         Sheets.update_table_cell(ctx.row1, ctx.formula_col.slug, %{
           "expression" => "x + 1",
           "bindings" => %{}
@@ -124,7 +124,7 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
     end
 
     test "empty expression returns nil", ctx do
-      {:ok, row1} =
+      {:ok, _row1} =
         Sheets.update_table_cell(ctx.row1, ctx.formula_col.slug, %{
           "expression" => "",
           "bindings" => %{}

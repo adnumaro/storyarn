@@ -249,7 +249,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
     test "renders landing page for unauthenticated user", %{conn: conn} do
       conn
       |> visit("/")
-      |> assert_has("h1", text: "Phoenix Framework")
+      |> assert_has("h1", text: "Craft worlds.")
     end
 
     test "authenticated user is redirected to workspace", %{conn: conn} do

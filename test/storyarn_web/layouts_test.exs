@@ -56,7 +56,7 @@ defmodule StoryarnWeb.LayoutsTest do
       assert html =~ "Public page content"
       assert html =~ "Storyarn"
       assert html =~ "Log in"
-      assert html =~ "Sign up"
+      assert html =~ "Request access"
     end
 
     test "renders Dashboard link when user is logged in" do
@@ -93,7 +93,7 @@ defmodule StoryarnWeb.LayoutsTest do
           inner_block: inner_block("<p>Test</p>")
         )
 
-      assert html =~ ~s(logo.svg)
+      assert html =~ ~s(logo-light-64.png)
       assert html =~ "Storyarn"
     end
   end
@@ -146,7 +146,7 @@ defmodule StoryarnWeb.LayoutsTest do
           inner_block: inner_block("<p>Auth</p>")
         )
 
-      assert html =~ ~s(logo.svg)
+      assert html =~ ~s(logo-light-64.png)
     end
   end
 

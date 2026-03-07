@@ -30,8 +30,8 @@ const DocsScrollSpy = {
     const setActive = (id) => {
       tocLinks.forEach((link) => {
         const isActive = link.dataset.tocId === id;
-        ACTIVE.forEach((c) => link.classList.toggle(c, isActive));
-        INACTIVE.forEach((c) => link.classList.toggle(c, !isActive));
+        for (const c of ACTIVE) link.classList.toggle(c, isActive);
+        for (const c of INACTIVE) link.classList.toggle(c, !isActive);
       });
       history.replaceState(null, "", `#${id}`);
     };
