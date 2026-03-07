@@ -134,7 +134,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpersTest do
     end
 
     test "returns nil for non-ASCII expression" do
-      assert FormulaHelpers.formula_preview_from_cell(%{"expression" => "this shöuld fail"}) == nil
+      assert FormulaHelpers.formula_preview_from_cell(%{"expression" => "this shöuld fail"}) ==
+               nil
     end
   end
 

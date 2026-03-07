@@ -186,5 +186,4 @@ defmodule Storyarn.Shared.FormulaRuntime do
   end
 
   defp resolve_to_number(_variables, _ref), do: 0.0
-
 end

@@ -610,20 +610,22 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
       {:ok, row} = Sheets.update_table_cell(default_row, default_col.slug, "5")
 
       # mid = base * 2
-      {:ok, row} = Sheets.update_table_cell(row, mid_col.slug, %{
-        "expression" => "a * 2",
-        "bindings" => %{
-          "a" => %{"type" => "same_row", "column_slug" => default_col.slug}
-        }
-      })
+      {:ok, row} =
+        Sheets.update_table_cell(row, mid_col.slug, %{
+          "expression" => "a * 2",
+          "bindings" => %{
+            "a" => %{"type" => "same_row", "column_slug" => default_col.slug}
+          }
+        })
 
       # top = mid + 1
-      {:ok, _row} = Sheets.update_table_cell(row, top_col.slug, %{
-        "expression" => "a + 1",
-        "bindings" => %{
-          "a" => %{"type" => "same_row", "column_slug" => mid_col.slug}
-        }
-      })
+      {:ok, _row} =
+        Sheets.update_table_cell(row, top_col.slug, %{
+          "expression" => "a + 1",
+          "bindings" => %{
+            "a" => %{"type" => "same_row", "column_slug" => mid_col.slug}
+          }
+        })
 
       result = VariableHelpers.build_variables(project.id)
 

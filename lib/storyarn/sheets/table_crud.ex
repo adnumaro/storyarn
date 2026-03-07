@@ -627,7 +627,8 @@ defmodule Storyarn.Sheets.TableCrud do
 
       mappings =
         Map.new(child_sheet_ids, fn sheet_id ->
-          {sheet_id, FormulaBindingRewriter.build_var_name_mapping(parent_block.sheet_id, sheet_id)}
+          {sheet_id,
+           FormulaBindingRewriter.build_var_name_mapping(parent_block.sheet_id, sheet_id)}
         end)
 
       now = TimeHelpers.now()

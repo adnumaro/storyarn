@@ -7,6 +7,7 @@ defmodule StoryarnWeb.Components.Sidebar do
   use Gettext, backend: StoryarnWeb.Gettext
 
   import StoryarnWeb.Components.CoreComponents
+  import StoryarnWeb.Components.MemberComponents, only: [user_avatar: 1]
 
   alias Phoenix.LiveView.JS
 
@@ -17,12 +18,9 @@ defmodule StoryarnWeb.Components.Sidebar do
   def sidebar(assigns) do
     ~H"""
     <aside class="w-64 h-screen bg-base-200 flex flex-col border-r border-base-300">
-      <%!-- Logo --%>
-      <div class="p-4 border-b border-base-300">
-        <.link navigate="/" class="flex items-center gap-2">
-          <img src={~p"/images/logo.svg"} alt="Storyarn" class="w-8 h-8" />
-          <span class="text-lg font-bold">Storyarn</span>
-        </.link>
+      <%!-- User menu --%>
+      <div class="p-2 border-b border-base-300">
+        <.user_dropdown current_user={@current_user} />
       </div>
 
       <%!-- Workspaces list --%>
@@ -57,11 +55,6 @@ defmodule StoryarnWeb.Components.Sidebar do
           {gettext("New workspace")}
         </.link>
       </div>
-
-      <%!-- User footer with dropdown --%>
-      <div class="p-2 border-t border-base-300">
-        <.user_dropdown current_user={@current_user} />
-      </div>
     </aside>
     """
   end
@@ -70,13 +63,13 @@ defmodule StoryarnWeb.Components.Sidebar do
 
   def user_dropdown(assigns) do
     ~H"""
-    <div class="dropdown dropdown-top w-full">
+    <div class="dropdown dropdown-bottom w-full">
       <div
         tabindex="0"
         role="button"
         class="flex items-center gap-2 p-2 rounded-lg hover:bg-base-300 w-full cursor-pointer"
       >
-        <.member_avatar user={@current_user} size={:sm} />
+        <.user_avatar user={@current_user} size="sm" />
         <span class="text-sm truncate flex-1">
           {@current_user.display_name || @current_user.email}
         </span>
@@ -84,7 +77,7 @@ defmodule StoryarnWeb.Components.Sidebar do
       </div>
       <ul
         tabindex="0"
-        class="dropdown-content menu bg-base-100 rounded-box w-56 shadow-lg border border-base-300 mb-2 z-50"
+        class="dropdown-content menu bg-base-100 rounded-box w-56 shadow-lg border border-base-300 mt-2 z-50"
       >
         <li>
           <.link navigate={~p"/users/settings"} class="gap-2">
@@ -127,36 +120,4 @@ defmodule StoryarnWeb.Components.Sidebar do
     """
   end
 
-  attr :user, :map, required: true
-  attr :size, :atom, default: :md, values: [:xs, :sm, :md, :lg]
-
-  def member_avatar(assigns) do
-    size_classes = %{
-      xs: "w-6 h-6 text-xs",
-      sm: "w-8 h-8 text-xs",
-      md: "w-10 h-10 text-sm",
-      lg: "w-12 h-12 text-base"
-    }
-
-    assigns = assign(assigns, :size_class, size_classes[assigns.size])
-
-    ~H"""
-    <div class="avatar placeholder">
-      <div class={"bg-neutral text-neutral-content rounded-full #{@size_class}"}>
-        <span>{get_initials(@user)}</span>
-      </div>
-    </div>
-    """
-  end
-
-  defp get_initials(user) do
-    name = user.display_name || user.email || ""
-
-    name
-    |> String.split(~r/[\s@]/, parts: 2)
-    |> Enum.map(&String.first/1)
-    |> Enum.take(2)
-    |> Enum.join()
-    |> String.upcase()
-  end
 end

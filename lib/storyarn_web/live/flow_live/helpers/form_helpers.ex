@@ -50,7 +50,11 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   defp build_gallery_images(images) do
     images
     |> Enum.map(fn gi ->
-      %{id: gi.id, url: gi.asset && gi.asset.url, label: gi.label || (gi.asset && gi.asset.filename)}
+      %{
+        id: gi.id,
+        url: gi.asset && gi.asset.url,
+        label: gi.label || (gi.asset && gi.asset.filename)
+      }
     end)
     |> Enum.filter(& &1.url)
   end

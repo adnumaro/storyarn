@@ -232,7 +232,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
                 "If you renamed sheet shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
               )}
             </p>
-            <.button phx-click={show_modal("repair-refs-confirm")}>
+            <.button variant="primary" phx-click={show_modal("repair-refs-confirm")}>
               {dgettext("projects", "Repair variable references")}
             </.button>
           </div>

@@ -43,9 +43,10 @@ defmodule Storyarn.Sheets.FormulaResolver do
 
   defp compute_all_rows(formula_cols, rows, columns, cross_values) do
     Map.new(rows, fn row ->
-      results = Map.new(formula_cols, fn col ->
-        {col.slug, compute_single(row.cells[col.slug], row.cells, columns, cross_values)}
-      end)
+      results =
+        Map.new(formula_cols, fn col ->
+          {col.slug, compute_single(row.cells[col.slug], row.cells, columns, cross_values)}
+        end)
 
       {row.id, results}
     end)
@@ -107,5 +108,4 @@ defmodule Storyarn.Sheets.FormulaResolver do
   end
 
   defp extract_variable_refs(_), do: []
-
 end

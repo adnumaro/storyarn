@@ -137,5 +137,4 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
                nil
     end
   end
-
 end

@@ -14,6 +14,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
   use Gettext, backend: StoryarnWeb.Gettext
 
   import StoryarnWeb.Components.CoreComponents
+  import StoryarnWeb.Components.MemberComponents, only: [user_avatar: 1]
 
   # ============================================================================
   # Tool definitions
@@ -172,11 +173,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
       <%!-- User avatar --%>
       <div class="dropdown dropdown-end">
         <button tabindex="0" class="btn btn-ghost btn-sm btn-circle">
-          <div class="avatar placeholder">
-            <div class="bg-neutral text-neutral-content rounded-full size-7 content-center">
-              <span class="text-xs">{user_initials(assigns)}</span>
-            </div>
-          </div>
+          <.user_avatar user={@current_scope.user} size="sm" />
         </button>
         <div
           tabindex="0"
@@ -414,15 +411,6 @@ defmodule StoryarnWeb.Components.FocusLayout do
     """
   end
 
-  defp user_initials(%{current_scope: %{user: %{email: email}}}) when is_binary(email) do
-    email
-    |> String.split("@")
-    |> List.first()
-    |> String.slice(0, 2)
-    |> String.upcase()
-  end
-
-  defp user_initials(_), do: "?"
 
   defp user_display_name(%{current_scope: %{user: %{display_name: name}}})
        when is_binary(name) and name != "",

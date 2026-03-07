@@ -67,7 +67,12 @@ defmodule Storyarn.Sheets.FormulaBindingRewriter do
     end)
   end
 
-  defp rewrite_binding(%{"type" => "variable", "ref" => ref} = binding, prefix, child_shortcut, mapping) do
+  defp rewrite_binding(
+         %{"type" => "variable", "ref" => ref} = binding,
+         prefix,
+         child_shortcut,
+         mapping
+       ) do
     if String.starts_with?(ref, prefix) do
       ref
       |> String.slice(String.length(prefix)..-1//1)
@@ -83,8 +88,11 @@ defmodule Storyarn.Sheets.FormulaBindingRewriter do
     case String.split(rest, ".", parts: 2) do
       [block_var_name | rest_parts] ->
         case Map.get(mapping, block_var_name) do
-          nil -> binding
-          child_var_name -> build_rewritten_binding(binding, child_shortcut, child_var_name, rest_parts)
+          nil ->
+            binding
+
+          child_var_name ->
+            build_rewritten_binding(binding, child_shortcut, child_var_name, rest_parts)
         end
 
       _ ->

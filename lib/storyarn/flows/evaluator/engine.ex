@@ -181,7 +181,11 @@ defmodule Storyarn.Flows.Evaluator.Engine do
   defp maybe_execute_response_instruction(selected, state, node_id) do
     cond do
       is_list(selected[:instruction_assignments]) and selected[:instruction_assignments] != [] ->
-        DialogueEvaluator.execute_response_assignments(selected.instruction_assignments, state, node_id)
+        DialogueEvaluator.execute_response_assignments(
+          selected.instruction_assignments,
+          state,
+          node_id
+        )
 
       is_binary(selected[:instruction]) and selected[:instruction] != "" ->
         DialogueEvaluator.execute_response_instruction(selected.instruction, state, node_id)
@@ -199,7 +203,13 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     case conn do
       nil ->
         state =
-          EngineHelpers.add_console(state, :error, node_id, "", "No connection from response #{response_id}")
+          EngineHelpers.add_console(
+            state,
+            :error,
+            node_id,
+            "",
+            "No connection from response #{response_id}"
+          )
 
         {:error, %{state | status: :finished}, :no_connection}
 

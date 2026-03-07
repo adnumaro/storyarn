@@ -748,7 +748,9 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   # Returns nil if no rewriting is needed (zero overhead for non-formula tables).
   defp build_rewrite_context_if_needed(_parent_block, source_rows, instances) do
     has_formulas = FormulaBindingRewriter.any_rows_have_formula_bindings?(source_rows)
-    parent_sheet_id = if has_formulas and instances != [], do: get_parent_sheet_id_from_instance(hd(instances))
+
+    parent_sheet_id =
+      if has_formulas and instances != [], do: get_parent_sheet_id_from_instance(hd(instances))
 
     if parent_sheet_id do
       do_build_rewrite_context(parent_sheet_id, instances)
@@ -838,7 +840,16 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
     if parent_shortcut && child_shortcut && map_size(mapping) > 0 do
       Enum.map(source_rows, fn row ->
-        %{row | cells: FormulaBindingRewriter.rewrite_cells(row.cells, parent_shortcut, child_shortcut, mapping)}
+        %{
+          row
+          | cells:
+              FormulaBindingRewriter.rewrite_cells(
+                row.cells,
+                parent_shortcut,
+                child_shortcut,
+                mapping
+              )
+        }
       end)
     else
       source_rows
