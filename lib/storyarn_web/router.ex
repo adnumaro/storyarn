@@ -60,6 +60,25 @@ defmodule StoryarnWeb.Router do
     end
   end
 
+  ## Documentation (public, isolated context)
+
+  scope "/docs", StoryarnWeb do
+    pipe_through [:browser]
+
+    live_session :docs,
+      on_mount:
+        if(Application.compile_env(:storyarn, :sql_sandbox),
+          do: [StoryarnWeb.LiveSandbox],
+          else: []
+        ) ++
+          [
+            {StoryarnWeb.UserAuth, :mount_current_scope}
+          ] do
+      live "/", DocsLive.Show, :index
+      live "/:category/:slug", DocsLive.Show, :show
+    end
+  end
+
   ## OAuth routes
 
   scope "/auth", StoryarnWeb do

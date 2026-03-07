@@ -1083,3 +1083,134 @@ details[open] > summary .details-chevron {
   transition-delay: 0s;
 }
 
+/* ===== Documentation Content ===== */
+
+.docs-content {
+  font-size: 1rem;
+  line-height: 1.85;
+  color: var(--color-base-content);
+}
+
+.docs-content > * + * {
+  margin-top: 1.5em;
+}
+
+.docs-content h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+.docs-content h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: 2.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.docs-content p {
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+.docs-content hr {
+  border: none;
+  border-top: 1px solid color-mix(in oklch, var(--color-base-content) 10%, transparent);
+  margin: 2.5rem 0;
+}
+
+.docs-content ul,
+.docs-content ol {
+  padding-left: 1.5em;
+  margin: 1.25em 0;
+}
+
+.docs-content ul {
+  list-style-type: disc;
+}
+
+.docs-content ol {
+  list-style-type: decimal;
+}
+
+.docs-content li {
+  margin: 0.6em 0;
+  line-height: 1.75;
+}
+
+.docs-content li > ul,
+.docs-content li > ol {
+  margin: 0.25em 0;
+}
+
+.docs-content strong {
+  font-weight: 600;
+}
+
+.docs-content a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.docs-content a:hover {
+  text-decoration: underline;
+}
+
+.docs-content blockquote {
+  border-left: 3px solid color-mix(in oklch, var(--color-base-content) 15%, transparent);
+  padding: 0.25em 0 0.25em 1.25em;
+  margin: 1.5em 0;
+  color: color-mix(in oklch, var(--color-base-content) 70%, transparent);
+  font-style: italic;
+}
+
+.docs-content code {
+  background: var(--color-base-200);
+  padding: 0.15em 0.4em;
+  border-radius: 0.3em;
+  font-size: 0.875em;
+  font-family: monospace;
+}
+
+.docs-content pre {
+  background: var(--color-base-200);
+  padding: 1em 1.25em;
+  border-radius: 0.5em;
+  overflow-x: auto;
+  margin: 1.5em 0;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.docs-content pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+.docs-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5em 0;
+  font-size: 0.925rem;
+}
+
+.docs-content th {
+  text-align: left;
+  font-weight: 600;
+  padding: 0.6em 1em;
+  border-bottom: 2px solid color-mix(in oklch, var(--color-base-content) 12%, transparent);
+}
+
+.docs-content td {
+  padding: 0.6em 1em;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-base-content) 8%, transparent);
+}
+
+.docs-content tr:last-child td {
+  border-bottom: none;
+}
+

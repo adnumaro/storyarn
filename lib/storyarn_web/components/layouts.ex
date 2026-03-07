@@ -8,6 +8,7 @@ defmodule StoryarnWeb.Layouts do
 
   import StoryarnWeb.Components.FocusLayout
   import StoryarnWeb.Components.Sidebar
+  import StoryarnWeb.DocsLive.Components.DocsSidebar
 
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
@@ -462,6 +463,151 @@ defmodule StoryarnWeb.Layouts do
       end)
 
     [account_section | workspace_sections]
+  end
+
+  @doc """
+  Renders the documentation layout with sidebar navigation.
+
+  Fully independent — does not depend on any domain context.
+
+  ## Examples
+
+      <Layouts.docs
+        flash={@flash}
+        categories={@categories}
+        guides={@guides}
+        guide={@guide}
+      >
+        <div class="prose">{raw(@guide.body)}</div>
+      </Layouts.docs>
+  """
+  attr :flash, :map, required: true
+  attr :current_scope, :map, default: nil
+  attr :categories, :list, required: true
+  attr :guides, :list, required: true
+  attr :guide, :map, default: nil
+  attr :expanded_categories, :any, default: nil
+  attr :search_query, :string, default: ""
+  attr :search_results, :list, default: nil
+  attr :prev, :map, default: nil
+  attr :next, :map, default: nil
+  attr :sidebar_open, :boolean, default: false
+
+  slot :inner_block, required: true
+
+  def docs(assigns) do
+    ~H"""
+    <div class="min-h-screen flex flex-col">
+      <%!-- Header --%>
+      <header class="navbar px-4 sm:px-6 lg:px-8 border-b border-base-300 bg-base-100 sticky top-0 z-30">
+        <div class="flex-none lg:hidden">
+          <button phx-click="toggle_sidebar" class="btn btn-square btn-ghost btn-sm">
+            <.icon name="menu" class="size-5" />
+          </button>
+        </div>
+        <div class="flex-1">
+          <.link navigate={~p"/docs"} class="flex items-center gap-2">
+            <img src={~p"/images/logo.svg"} alt="Storyarn" class="w-6 h-6" />
+            <span class="font-bold">Storyarn</span>
+            <span class="text-sm font-medium text-base-content/50">{gettext("Docs")}</span>
+          </.link>
+        </div>
+        <div class="flex-none flex items-center gap-2">
+          <.theme_toggle />
+          <%= if @current_scope && @current_scope.user do %>
+            <.link navigate={~p"/workspaces"} class="btn btn-ghost btn-sm">
+              {gettext("Dashboard")}
+            </.link>
+          <% else %>
+            <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-sm">
+              {gettext("Log in")}
+            </.link>
+          <% end %>
+        </div>
+      </header>
+
+      <%!-- Main area --%>
+      <div class="flex-1 flex">
+        <%!-- Mobile sidebar overlay --%>
+        <div
+          :if={@sidebar_open}
+          class="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          phx-click="toggle_sidebar"
+        >
+        </div>
+
+        <%!-- Sidebar --%>
+        <aside class={[
+          "w-60 border-r border-base-300 bg-base-100 overflow-y-auto shrink-0",
+          "fixed inset-y-0 left-0 z-50 pt-4 transition-transform lg:relative lg:translate-x-0 lg:z-auto lg:pt-6",
+          if(@sidebar_open, do: "translate-x-0", else: "-translate-x-full")
+        ]}>
+          <.docs_sidebar
+            categories={@categories}
+            guides={@guides}
+            guide={@guide}
+            expanded_categories={@expanded_categories}
+            search_query={@search_query}
+            search_results={@search_results}
+          />
+        </aside>
+
+        <%!-- Content --%>
+        <main class="flex-1 overflow-y-auto">
+          <div class="max-w-4xl mx-auto px-4 sm:px-8 py-8">
+            <%!-- Guide header --%>
+            <div :if={@guide} class="mb-8">
+              <p class="text-xs uppercase tracking-wider text-primary font-semibold mb-1">
+                {@guide.category_label}
+              </p>
+              <h1 class="text-3xl font-bold">{@guide.title}</h1>
+              <p :if={@guide.description} class="text-base-content/60 mt-2">
+                {@guide.description}
+              </p>
+            </div>
+
+            <%!-- Main content --%>
+            {render_slot(@inner_block)}
+
+            <%!-- Prev/Next navigation --%>
+            <nav
+              :if={@prev || @next}
+              class="flex items-center justify-between mt-12 pt-8 border-t border-base-300"
+            >
+              <div>
+                <.link
+                  :if={@prev}
+                  navigate={~p"/docs/#{@prev.category}/#{@prev.slug}"}
+                  class="group flex flex-col items-start"
+                >
+                  <span class="text-xs text-base-content/40 group-hover:text-base-content/60">
+                    <.icon name="arrow-left" class="size-3 inline" />
+                    {gettext("Previous")}
+                  </span>
+                  <span class="text-sm font-medium text-primary">{@prev.title}</span>
+                </.link>
+              </div>
+              <div>
+                <.link
+                  :if={@next}
+                  navigate={~p"/docs/#{@next.category}/#{@next.slug}"}
+                  class="group flex flex-col items-end"
+                >
+                  <span class="text-xs text-base-content/40 group-hover:text-base-content/60">
+                    {gettext("Next")}
+                    <.icon name="arrow-right" class="size-3 inline" />
+                  </span>
+                  <span class="text-sm font-medium text-primary">{@next.title}</span>
+                </.link>
+              </div>
+            </nav>
+          </div>
+        </main>
+      </div>
+
+      <.flash_group flash={@flash} />
+    </div>
+    """
   end
 
   @doc """

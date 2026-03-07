@@ -91,6 +91,12 @@ defmodule Storyarn.MixProject do
       # Excel export for localization
       {:elixlsx, "~> 0.6"},
 
+      # Documentation
+      {:nimble_publisher, "~> 1.1"},
+      {:makeup, "~> 1.2"},
+      {:makeup_elixir, "~> 1.0"},
+      {:mdex, "~> 0.4"},
+
       # Code quality & security
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
