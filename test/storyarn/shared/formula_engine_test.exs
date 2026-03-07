@@ -467,4 +467,81 @@ defmodule Storyarn.Shared.FormulaEngineTest do
       assert FormulaEngine.to_latex(ast) == "\\frac{a}{b}"
     end
   end
+
+  # ===========================================================================
+  # to_latex_substituted/2
+  # ===========================================================================
+
+  describe "to_latex_substituted/2" do
+    test "replaces symbols with numeric values" do
+      {:ok, ast} = FormulaEngine.parse("a * b * 2")
+      result = FormulaEngine.to_latex_substituted(ast, %{"a" => 10.0, "b" => 3.0})
+      assert result == "10 \\times 3 \\times 2"
+    end
+
+    test "keeps unresolved symbols as-is" do
+      {:ok, ast} = FormulaEngine.parse("a + b")
+      result = FormulaEngine.to_latex_substituted(ast, %{"a" => 5.0})
+      assert result == "5 + b"
+    end
+
+    test "works with empty values map" do
+      {:ok, ast} = FormulaEngine.parse("a + b")
+      result = FormulaEngine.to_latex_substituted(ast, %{})
+      assert result == "a + b"
+    end
+
+    test "works with literal-only expressions" do
+      {:ok, ast} = FormulaEngine.parse("2 + 3")
+      result = FormulaEngine.to_latex_substituted(ast, %{})
+      assert result == "2 + 3"
+    end
+
+    test "handles division with substituted values" do
+      {:ok, ast} = FormulaEngine.parse("a / b")
+      result = FormulaEngine.to_latex_substituted(ast, %{"a" => 10.0, "b" => 2.0})
+      assert result == "\\frac{10}{2}"
+    end
+
+    test "handles functions with substituted values" do
+      {:ok, ast} = FormulaEngine.parse("sqrt(a)")
+      result = FormulaEngine.to_latex_substituted(ast, %{"a" => 16.0})
+      assert result == "\\sqrt{16}"
+    end
+
+    test "handles unary negation with substituted values" do
+      {:ok, ast} = FormulaEngine.parse("-a")
+      result = FormulaEngine.to_latex_substituted(ast, %{"a" => 5.0})
+      assert result == "-5"
+    end
+
+    test "handles power with substituted values" do
+      {:ok, ast} = FormulaEngine.parse("a ^ 2")
+      result = FormulaEngine.to_latex_substituted(ast, %{"a" => 3.0})
+      assert result == "{3}^{2}"
+    end
+  end
+
+  # ===========================================================================
+  # parse/1 - UTF-8 error handling
+  # ===========================================================================
+
+  describe "parse/1 - UTF-8 characters" do
+    test "returns valid UTF-8 error for accented characters" do
+      assert {:error, msg} = FormulaEngine.parse("débería")
+      assert String.valid?(msg)
+      assert msg =~ "Unexpected character"
+    end
+
+    test "returns valid UTF-8 error for emoji" do
+      assert {:error, msg} = FormulaEngine.parse("x + 🎲")
+      assert String.valid?(msg)
+    end
+
+    test "returns valid UTF-8 error for CJK characters" do
+      assert {:error, msg} = FormulaEngine.parse("变量")
+      assert String.valid?(msg)
+      assert String.valid?(msg)
+    end
+  end
 end

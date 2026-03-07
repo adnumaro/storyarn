@@ -50,6 +50,7 @@ import { ExpressionEditor } from "./hooks/expression_editor";
 import { FlowCanvas } from "./hooks/flow_canvas";
 import { FlowLoader } from "./hooks/flow_loader";
 import { FormulaBinding } from "./hooks/formula_binding";
+import { FormulaPreview } from "./hooks/formula_preview";
 import { FormulaSidebar } from "./hooks/formula_sidebar";
 import { FountainImport } from "./hooks/fountain_import";
 import { GallerySortable } from "./hooks/gallery_sortable";
@@ -129,6 +130,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ExplorationPlayer,
     ExpressionEditor,
     FormulaBinding,
+    FormulaPreview,
     FormulaSidebar,
     TableCellCheckbox,
     TableCellSelect,

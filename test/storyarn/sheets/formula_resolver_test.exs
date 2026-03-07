@@ -60,9 +60,12 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
       result = FormulaResolver.compute_all(ctx.columns, ctx.rows, ctx.project.id)
 
       # a - 3 where a = 5 → 2.0
-      assert Map.get(result, ctx.row1.id) |> Map.get(ctx.formula_col.slug) == 2.0
+      assert Map.get(result, ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
+               2.0
+
       # a - 3 where a = 7 → 4.0
-      assert Map.get(result, ctx.row2.id) |> Map.get(ctx.formula_col.slug) == 4.0
+      assert Map.get(result, ctx.row2.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
+               4.0
     end
 
     test "returns empty map when no formula columns", ctx do
@@ -86,7 +89,8 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
 
       result = FormulaResolver.compute_all(ctx.columns, rows, ctx.project.id)
       # a - 3 where a = 0 (nil default) → -3.0
-      assert Map.get(result, row3.id) |> Map.get(ctx.formula_col.slug) == -3.0
+      assert Map.get(result, row3.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
+               -3.0
     end
 
     test "invalid expression returns nil", ctx do
@@ -100,7 +104,8 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
       rows = Sheets.list_table_rows(ctx.block.id)
       result = FormulaResolver.compute_all(ctx.columns, rows, ctx.project.id)
 
-      assert Map.get(result, row1.id) |> Map.get(ctx.formula_col.slug) == nil
+      assert Map.get(result, ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
+               nil
     end
 
     test "missing binding returns nil", ctx do
@@ -114,7 +119,8 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
       rows = Sheets.list_table_rows(ctx.block.id)
       result = FormulaResolver.compute_all(ctx.columns, rows, ctx.project.id)
 
-      assert Map.get(result, row1.id) |> Map.get(ctx.formula_col.slug) == nil
+      assert Map.get(result, ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
+               nil
     end
 
     test "empty expression returns nil", ctx do
@@ -127,7 +133,8 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
       rows = Sheets.list_table_rows(ctx.block.id)
       result = FormulaResolver.compute_all(ctx.columns, rows, ctx.project.id)
 
-      assert Map.get(result, row1.id) |> Map.get(ctx.formula_col.slug) == nil
+      assert Map.get(result, ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
+               nil
     end
   end
 

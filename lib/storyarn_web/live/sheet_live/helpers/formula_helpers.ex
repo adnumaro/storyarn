@@ -39,11 +39,28 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
   def formula_preview_from_cell(%{"expression" => expr}) when is_binary(expr) and expr != "" do
     case FormulaEngine.parse(expr) do
       {:ok, ast} -> FormulaEngine.to_latex(ast)
-      {:error, reason} -> "Error: #{reason}"
+      {:error, _reason} -> nil
     end
   end
 
-  def formula_preview_from_cell(_), do: "\u2014"
+  def formula_preview_from_cell(_), do: nil
+
+  @doc "Generate LaTeX result line: values substituted into expression = result."
+  def formula_result_latex(%{"expression" => expr, "__result" => result} = cell)
+      when is_binary(expr) and expr != "" and not is_nil(result) do
+    resolved = Map.get(cell, "__resolved", %{})
+
+    case FormulaEngine.parse(expr) do
+      {:ok, ast} ->
+        substituted = FormulaEngine.to_latex_substituted(ast, resolved)
+        "#{substituted} = #{format_formula_value(result)}"
+
+      {:error, _} ->
+        nil
+    end
+  end
+
+  def formula_result_latex(_), do: nil
 
   @doc "Format a numeric formula result for display."
   def format_formula_value(nil), do: nil

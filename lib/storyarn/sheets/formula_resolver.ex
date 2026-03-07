@@ -60,13 +60,13 @@ defmodule Storyarn.Sheets.FormulaResolver do
     bindings = if is_map(cell_value), do: cell_value["bindings"] || %{}, else: %{}
 
     if is_nil(expression) or expression == "" do
-      nil
+      %{result: nil, resolved: %{}}
     else
       values = resolve_bindings(bindings, row_cells, columns, cross_values)
 
       case FormulaEngine.compute(expression, values) do
-        {:ok, result} -> MapUtils.format_number_result(result)
-        {:error, _} -> nil
+        {:ok, result} -> %{result: MapUtils.format_number_result(result), resolved: values}
+        {:error, _} -> %{result: nil, resolved: values}
       end
     end
   end

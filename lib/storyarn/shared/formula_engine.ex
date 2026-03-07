@@ -78,6 +78,35 @@ defmodule Storyarn.Shared.FormulaEngine do
     ast_to_latex(ast)
   end
 
+  @doc "Generate LaTeX string from AST with symbols replaced by their resolved numeric values."
+  @spec to_latex_substituted(ast(), %{String.t() => number()}) :: String.t()
+  def to_latex_substituted(ast, values) when is_map(values) do
+    ast
+    |> substitute_symbols(values)
+    |> ast_to_latex()
+  end
+
+  defp substitute_symbols({:symbol, name} = node, values) do
+    case Map.fetch(values, name) do
+      {:ok, n} when is_number(n) -> {:number, n / 1}
+      _ -> node
+    end
+  end
+
+  defp substitute_symbols({:binary_op, op, left, right}, values) do
+    {:binary_op, op, substitute_symbols(left, values), substitute_symbols(right, values)}
+  end
+
+  defp substitute_symbols({:unary_op, op, arg}, values) do
+    {:unary_op, op, substitute_symbols(arg, values)}
+  end
+
+  defp substitute_symbols({:func, name, args}, values) do
+    {:func, name, Enum.map(args, &substitute_symbols(&1, values))}
+  end
+
+  defp substitute_symbols(node, _values), do: node
+
   # ===========================================================================
   # Tokenizer
   # ===========================================================================
@@ -142,8 +171,8 @@ defmodule Storyarn.Shared.FormulaEngine do
     tokenize(rest, [{:symbol, sym} | acc])
   end
 
-  defp tokenize(<<c, _rest::binary>>, _acc) do
-    char = <<c>>
+  defp tokenize(<<c::utf8, _rest::binary>>, _acc) do
+    char = <<c::utf8>>
     {:error, "Unexpected character: '#{char}'"}
   end
 

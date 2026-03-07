@@ -491,8 +491,28 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     block_id = ContentTabHelpers.to_integer(params["block-id"])
     slug = params["column-slug"]
 
-    row = Sheets.get_table_row!(row_id)
     table_entry = Map.get(socket.assigns.table_data, block_id, %{columns: [], rows: []})
+    # Use enriched row from table_data (has __result and __resolved from compute_formulas)
+    enriched_row = Enum.find(table_entry.rows, &(&1.id == row_id))
+    # Fallback to DB row if not found in enriched data
+    row = enriched_row || Sheets.get_table_row!(row_id)
+
+    # Resolve names for breadcrumb context
+    all_blocks =
+      socket.assigns.own_blocks ++
+        Enum.flat_map(socket.assigns.inherited_groups, & &1.blocks)
+
+    table_name =
+      case Enum.find(all_blocks, &(&1.id == block_id)) do
+        nil -> nil
+        block -> block.config["label"]
+      end
+
+    column_name =
+      case Enum.find(table_entry.columns, &(&1.slug == slug)) do
+        nil -> nil
+        col -> col.name
+      end
 
     {:noreply,
      assign(socket, :formula_editing, %{
@@ -500,7 +520,10 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
        column_slug: slug,
        block_id: block_id,
        value: row.cells[slug],
-       columns: table_entry.columns
+       columns: table_entry.columns,
+       table_name: table_name,
+       row_name: row.name,
+       column_name: column_name
      })}
   end
 
@@ -970,8 +993,8 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       formula_results = Map.get(computed, row.id, %{})
 
       updated_cells =
-        Enum.reduce(formula_results, row.cells, fn {slug, result}, cells ->
-          enriched = enrich_cell(cells[slug], result)
+        Enum.reduce(formula_results, row.cells, fn {slug, computed}, cells ->
+          enriched = enrich_cell(cells[slug], computed)
           Map.put(cells, slug, enriched)
         end)
 
@@ -979,8 +1002,13 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     end)
   end
 
-  defp enrich_cell(current, result) when is_map(current), do: Map.put(current, "__result", result)
-  defp enrich_cell(_current, result), do: %{"__result" => result}
+  defp enrich_cell(current, %{result: result, resolved: resolved}) when is_map(current) do
+    current |> Map.put("__result", result) |> Map.put("__resolved", resolved)
+  end
+
+  defp enrich_cell(_current, %{result: result, resolved: resolved}) do
+    %{"__result" => result, "__resolved" => resolved}
+  end
 
   defp load_gallery_data(own_blocks, inherited_groups) do
     own_gallery_ids =
@@ -1050,8 +1078,10 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       nil ->
         socket
 
-      %{row_id: row_id, column_slug: slug} = fe ->
-        row = Sheets.get_table_row!(row_id)
+      %{row_id: row_id, column_slug: slug, block_id: block_id} = fe ->
+        table_entry = Map.get(socket.assigns.table_data, block_id, %{columns: [], rows: []})
+        enriched_row = Enum.find(table_entry.rows, &(&1.id == row_id))
+        row = enriched_row || Sheets.get_table_row!(row_id)
         assign(socket, :formula_editing, %{fe | value: row.cells[slug]})
     end
   end
@@ -1069,12 +1099,23 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     vars_by_sheet = Enum.group_by(numeric_vars, & &1.sheet_shortcut)
     same_row_cols = Enum.filter(assigns.formula.columns, &(&1.type in ["number", "formula"]))
 
+    preview_latex = formula_preview_from_cell(assigns.formula.value)
+    result_latex = formula_result_latex(assigns.formula.value)
+
+    expr_error =
+      if expr != "" and is_nil(preview_latex),
+        do: dgettext("sheets", "Invalid expression"),
+        else: nil
+
     assigns =
       assigns
       |> assign(:expr, expr)
       |> assign(:symbols, symbols)
       |> assign(:vars_by_sheet, vars_by_sheet)
       |> assign(:same_row_cols, same_row_cols)
+      |> assign(:preview_latex, preview_latex)
+      |> assign(:result_latex, result_latex)
+      |> assign(:expr_error, expr_error)
 
     ~H"""
     <%!-- Header --%>
@@ -1092,9 +1133,36 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         <.icon name="x" class="size-4" />
       </button>
     </div>
+    <%!-- Cell context breadcrumb --%>
+    <div
+      :if={@formula.table_name || @formula.row_name}
+      class="px-4 py-2 border-b border-base-300 bg-base-200/30"
+    >
+      <div class="flex items-center gap-1 text-xs opacity-60 flex-wrap">
+        <span :if={@formula.table_name} class="font-medium">{@formula.table_name}</span>
+        <span :if={@formula.table_name && @formula.row_name}>&rsaquo;</span>
+        <span :if={@formula.row_name} class="font-medium">{@formula.row_name}</span>
+        <span :if={@formula.row_name && @formula.column_name}>&rsaquo;</span>
+        <span :if={@formula.column_name} class="font-medium">{@formula.column_name}</span>
+      </div>
+    </div>
 
     <%!-- Scrollable content --%>
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
+      <%!-- LaTeX preview --%>
+      <div :if={@preview_latex} class="p-3 bg-base-300/50 rounded-lg">
+        <label class="text-xs font-medium opacity-70 mb-1 block">
+          {dgettext("sheets", "Preview")}
+        </label>
+        <div
+          id={"formula-preview-#{@formula.row_id}-#{@formula.column_slug}"}
+          phx-hook="FormulaPreview"
+          data-latex={@preview_latex}
+          class="text-sm opacity-80"
+        >
+        </div>
+      </div>
+
       <%!-- Expression input --%>
       <div>
         <label class="text-xs font-medium opacity-70 mb-1 block">
@@ -1104,12 +1172,16 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           type="text"
           value={@expr}
           placeholder="a - 3"
-          class="input input-sm input-bordered w-full font-mono"
+          class={[
+            "input input-sm input-bordered w-full font-mono",
+            @expr_error && "input-error"
+          ]}
           phx-blur="save_formula_expression"
           phx-value-row-id={@formula.row_id}
           phx-value-column-slug={@formula.column_slug}
           phx-target={@target}
         />
+        <p :if={@expr_error} class="text-xs text-error mt-1">{@expr_error}</p>
       </div>
 
       <%!-- Symbol bindings (searchable combobox per symbol) --%>
@@ -1139,13 +1211,17 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         </div>
       </div>
 
-      <%!-- LaTeX preview — keep this below bindings --%>
-      <div :if={@expr != ""} class="p-3 bg-base-300/50 rounded-lg">
+      <%!-- Result with substituted values --%>
+      <div :if={@result_latex} class="p-3 bg-base-300/50 rounded-lg">
         <label class="text-xs font-medium opacity-70 mb-1 block">
-          {dgettext("sheets", "Preview")}
+          {dgettext("sheets", "Result")}
         </label>
-        <div class="text-sm font-mono opacity-80">
-          {formula_preview_from_cell(@formula.value)}
+        <div
+          id={"formula-result-#{@formula.row_id}-#{@formula.column_slug}"}
+          phx-hook="FormulaPreview"
+          data-latex={@result_latex}
+          class="text-sm opacity-80"
+        >
         </div>
       </div>
     </div>

@@ -121,17 +121,20 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpersTest do
       assert result != ""
     end
 
-    test "returns em dash for nil cell" do
-      assert FormulaHelpers.formula_preview_from_cell(nil) == "\u2014"
+    test "returns nil for nil cell" do
+      assert FormulaHelpers.formula_preview_from_cell(nil) == nil
     end
 
-    test "returns em dash for empty expression" do
-      assert FormulaHelpers.formula_preview_from_cell(%{"expression" => ""}) == "\u2014"
+    test "returns nil for empty expression" do
+      assert FormulaHelpers.formula_preview_from_cell(%{"expression" => ""}) == nil
     end
 
-    test "returns error message for invalid expression" do
-      result = FormulaHelpers.formula_preview_from_cell(%{"expression" => "+++"})
-      assert String.starts_with?(result, "Error:")
+    test "returns nil for invalid expression" do
+      assert FormulaHelpers.formula_preview_from_cell(%{"expression" => "+++"}) == nil
+    end
+
+    test "returns nil for non-ASCII expression" do
+      assert FormulaHelpers.formula_preview_from_cell(%{"expression" => "this shöuld fail"}) == nil
     end
   end
 
@@ -289,6 +292,74 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpersTest do
       options = FormulaHelpers.build_binding_options([], vars)
       groups = Enum.map(options, & &1.group)
       assert groups == ["aa.sheet", "zz.sheet"]
+    end
+  end
+
+  # ===========================================================================
+  # formula_result_latex/1
+  # ===========================================================================
+
+  describe "formula_result_latex/1" do
+    test "generates result line with substituted values" do
+      cell = %{
+        "expression" => "a * b",
+        "__result" => 15,
+        "__resolved" => %{"a" => 5.0, "b" => 3.0}
+      }
+
+      result = FormulaHelpers.formula_result_latex(cell)
+      assert result =~ "= 15"
+      assert result =~ "5"
+      assert result =~ "3"
+    end
+
+    test "works for literal-only expressions (no symbols)" do
+      cell = %{
+        "expression" => "2 + 2",
+        "__result" => 4,
+        "__resolved" => %{}
+      }
+
+      assert FormulaHelpers.formula_result_latex(cell) == "2 + 2 = 4"
+    end
+
+    test "works without __resolved key" do
+      cell = %{"expression" => "2 + 3", "__result" => 5}
+      assert FormulaHelpers.formula_result_latex(cell) == "2 + 3 = 5"
+    end
+
+    test "returns nil when result is nil" do
+      cell = %{"expression" => "a + b", "__result" => nil, "__resolved" => %{}}
+      assert FormulaHelpers.formula_result_latex(cell) == nil
+    end
+
+    test "returns nil for empty expression" do
+      cell = %{"expression" => "", "__result" => 0}
+      assert FormulaHelpers.formula_result_latex(cell) == nil
+    end
+
+    test "returns nil for invalid expression" do
+      cell = %{"expression" => "+++", "__result" => 0}
+      assert FormulaHelpers.formula_result_latex(cell) == nil
+    end
+
+    test "returns nil for nil cell" do
+      assert FormulaHelpers.formula_result_latex(nil) == nil
+    end
+
+    test "returns nil for cell without expression" do
+      assert FormulaHelpers.formula_result_latex(%{"__result" => 42}) == nil
+    end
+
+    test "formats float result as integer when whole number" do
+      cell = %{"expression" => "2 * 3", "__result" => 6.0}
+      assert FormulaHelpers.formula_result_latex(cell) =~ "= 6"
+      refute FormulaHelpers.formula_result_latex(cell) =~ "6.0"
+    end
+
+    test "formats decimal result to 2 places" do
+      cell = %{"expression" => "1 / 3", "__result" => 0.33}
+      assert FormulaHelpers.formula_result_latex(cell) =~ "= 0.33"
     end
   end
 
