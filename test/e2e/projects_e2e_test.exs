@@ -78,7 +78,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       |> authenticate(user)
       |> visit("/workspaces/#{workspace.slug}")
       |> click_link("New Project")
-      |> assert_has("h1", text: "New Project")
+      |> assert_has("dialog[open] h1", text: "New Project")
     end
 
     test "can create a new project", %{conn: conn} do
@@ -92,7 +92,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       |> fill_in("Project Name", with: "My New Story")
       |> fill_in("Description", with: "A narrative adventure")
       |> click_button("Create Project")
-      |> assert_has("h1", text: "My New Story")
+      |> assert_has("p", text: "Project created successfully")
     end
   end
 

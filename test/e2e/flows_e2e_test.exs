@@ -105,7 +105,7 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
       |> assert_has("h1", text: "Story Flow")
-      |> assert_has("#flow-canvas")
+      |> assert_has("[id^=\"flow-canvas-\"]")
     end
 
     test "shows add node button for editor", %{conn: conn} do

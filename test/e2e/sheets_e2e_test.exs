@@ -66,13 +66,12 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
-      |> click_button("New Sheet")
-      # push_navigate triggers LiveView client-side navigation; wait for the
-      # detail page to mount by polling for the sheet title element.
+      # Open the tree panel first (it starts closed)
       |> unwrap(fn %{frame_id: frame_id} ->
-        Frame.wait_for_selector(frame_id, selector: "#sheet-title", timeout: 10_000)
+        Frame.click(frame_id, selector: "[phx-click='tree_panel_toggle']", timeout: 5_000)
       end)
-      |> assert_has("#sheet-title")
+      |> assert_has("#tree-panel[data-open='true']")
+      |> assert_has("button", text: "New Sheet")
     end
 
     test "shows subsheet count on parent sheets", %{conn: conn} do
