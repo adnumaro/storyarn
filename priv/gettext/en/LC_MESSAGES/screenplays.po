@@ -18,14 +18,14 @@ msgid_plural "%{count} elements"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:138
-#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:174
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:41
 #, elixir-autogen, elixir-format
 msgid "Add child screenplay"
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:82
-#: lib/storyarn_web/live/screenplay_live/index.ex:79
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:34
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:53
+#: lib/storyarn_web/live/screenplay_live/index.ex:80
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to delete this screenplay?"
 msgstr ""
@@ -65,9 +65,9 @@ msgstr ""
 msgid "Could not create linked pages."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:76
-#: lib/storyarn_web/live/screenplay_live/index.ex:270
-#: lib/storyarn_web/live/screenplay_live/index.ex:289
+#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:79
+#: lib/storyarn_web/live/screenplay_live/index.ex:271
+#: lib/storyarn_web/live/screenplay_live/index.ex:290
 #, elixir-autogen, elixir-format
 msgid "Could not create screenplay."
 msgstr ""
@@ -78,7 +78,7 @@ msgid "Could not delete element."
 msgstr ""
 
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:42
-#: lib/storyarn_web/live/screenplay_live/index.ex:247
+#: lib/storyarn_web/live/screenplay_live/index.ex:248
 #, elixir-autogen, elixir-format
 msgid "Could not delete screenplay."
 msgstr ""
@@ -89,7 +89,7 @@ msgid "Could not import file."
 msgstr ""
 
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:61
-#: lib/storyarn_web/live/screenplay_live/index.ex:310
+#: lib/storyarn_web/live/screenplay_live/index.ex:311
 #, elixir-autogen, elixir-format
 msgid "Could not move screenplay."
 msgstr ""
@@ -109,7 +109,7 @@ msgstr ""
 msgid "Could not save instruction."
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:91
+#: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:94
 #, elixir-autogen, elixir-format
 msgid "Could not save screenplay name."
 msgstr ""
@@ -174,15 +174,17 @@ msgstr ""
 msgid "Creating..."
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:83
-#: lib/storyarn_web/live/screenplay_live/index.ex:80
-#: lib/storyarn_web/live/screenplay_live/index.ex:142
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:35
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:54
+#: lib/storyarn_web/live/screenplay_live/index.ex:81
+#: lib/storyarn_web/live/screenplay_live/index.ex:143
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:81
-#: lib/storyarn_web/live/screenplay_live/index.ex:78
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:33
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:52
+#: lib/storyarn_web/live/screenplay_live/index.ex:79
 #, elixir-autogen, elixir-format
 msgid "Delete screenplay?"
 msgstr ""
@@ -212,7 +214,7 @@ msgstr ""
 msgid "Export as Fountain"
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:39
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:29
 #, elixir-autogen, elixir-format
 msgid "Filter screenplays..."
 msgstr ""
@@ -272,7 +274,7 @@ msgstr ""
 msgid "Main Story"
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:214
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:43
 #, elixir-autogen, elixir-format
 msgid "Move to Trash"
 msgstr ""
@@ -282,8 +284,8 @@ msgstr ""
 msgid "Name"
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:75
-#: lib/storyarn_web/live/screenplay_live/index.ex:70
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:32
+#: lib/storyarn_web/live/screenplay_live/index.ex:71
 #, elixir-autogen, elixir-format
 msgid "New Screenplay"
 msgstr ""
@@ -293,12 +295,12 @@ msgstr ""
 msgid "No content found in imported file."
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:45
+#: lib/storyarn_web/components/sidebar/screenplay_tree.ex:30
 #, elixir-autogen, elixir-format
 msgid "No screenplays yet"
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/index.ex:45
+#: lib/storyarn_web/live/screenplay_live/index.ex:46
 #, elixir-autogen, elixir-format
 msgid "No screenplays yet. Create your first screenplay to get started."
 msgstr ""
@@ -318,7 +320,7 @@ msgstr ""
 msgid "Read mode"
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/index.ex:198
+#: lib/storyarn_web/live/screenplay_live/index.ex:199
 #, elixir-autogen, elixir-format
 msgid "Screenplay created successfully."
 msgstr ""
@@ -331,7 +333,7 @@ msgstr ""
 
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:31
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:36
-#: lib/storyarn_web/live/screenplay_live/index.ex:242
+#: lib/storyarn_web/live/screenplay_live/index.ex:243
 #, elixir-autogen, elixir-format
 msgid "Screenplay moved to trash."
 msgstr ""
@@ -352,8 +354,8 @@ msgstr ""
 msgid "Screenplay updated from flow."
 msgstr ""
 
-#: lib/storyarn_web/components/focus_layout.ex:39
-#: lib/storyarn_web/live/screenplay_live/index.ex:38
+#: lib/storyarn_web/components/focus_layout.ex:40
+#: lib/storyarn_web/live/screenplay_live/index.ex:39
 #, elixir-autogen, elixir-format
 msgid "Screenplays"
 msgstr ""
@@ -370,8 +372,8 @@ msgstr ""
 
 #: lib/storyarn_web/live/screenplay_live/components/screenplay_toolbar.ex:32
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:68
-#: lib/storyarn_web/live/screenplay_live/index.ex:259
-#: lib/storyarn_web/live/screenplay_live/index.ex:277
+#: lib/storyarn_web/live/screenplay_live/index.ex:260
+#: lib/storyarn_web/live/screenplay_live/index.ex:278
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr ""
@@ -381,13 +383,13 @@ msgstr ""
 msgid "Update screenplay from flow"
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/index.ex:40
+#: lib/storyarn_web/live/screenplay_live/index.ex:41
 #, elixir-autogen, elixir-format
 msgid "Write and format screenplays with industry-standard formatting"
 msgstr ""
 
-#: lib/storyarn_web/live/screenplay_live/index.ex:184
-#: lib/storyarn_web/live/screenplay_live/show.ex:133
+#: lib/storyarn_web/live/screenplay_live/index.ex:185
+#: lib/storyarn_web/live/screenplay_live/show.ex:131
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
 msgstr ""

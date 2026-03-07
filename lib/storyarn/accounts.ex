@@ -252,4 +252,17 @@ defmodule Storyarn.Accounts do
   """
   @spec sudo_mode?(user(), integer()) :: boolean()
   defdelegate sudo_mode?(user, minutes \\ -20), to: Profiles
+
+  ## Waitlist
+
+  alias Storyarn.Accounts.WaitlistEntry
+
+  @doc """
+  Adds an email to the beta waitlist. Returns `{:ok, entry}` or `{:error, changeset}`.
+  """
+  def join_waitlist(attrs) do
+    %WaitlistEntry{}
+    |> WaitlistEntry.changeset(attrs)
+    |> Storyarn.Repo.insert()
+  end
 end

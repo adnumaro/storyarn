@@ -16,6 +16,15 @@ defmodule StoryarnWeb.Layouts do
   # and other static content.
   embed_templates "layouts/*"
 
+  attr :class, :string, default: "w-8 h-8"
+
+  defp app_logo(assigns) do
+    ~H"""
+    <img src={~p"/images/logo-light-64.png"} alt="Storyarn" class={[@class, "dark:hidden"]} />
+    <img src={~p"/images/logo-dark-64.png"} alt="Storyarn" class={[@class, "hidden dark:block"]} />
+    """
+  end
+
   @doc """
   Renders the main app layout with sidebar.
 
@@ -54,8 +63,8 @@ defmodule StoryarnWeb.Layouts do
           </div>
           <div class="flex-1">
             <.link navigate="/" class="flex items-center gap-2">
-              <img src={~p"/images/logo.svg"} alt="Storyarn" class="w-6 h-6" />
-              <span class="font-bold">Storyarn</span>
+              <.app_logo class="w-6 h-6" />
+              <span class="text-lg brand-logotype">Storyarn</span>
             </.link>
           </div>
           <div class="flex-none">
@@ -272,8 +281,8 @@ defmodule StoryarnWeb.Layouts do
       <header class="navbar px-4 sm:px-6 lg:px-8">
         <div class="flex-1">
           <.link navigate="/" class="flex items-center gap-2">
-            <img src={~p"/images/logo.svg"} alt="Storyarn" class="w-8 h-8" />
-            <span class="text-lg font-bold">Storyarn</span>
+            <.app_logo class="w-8 h-8" />
+            <span class="text-xl brand-logotype">Storyarn</span>
           </.link>
         </div>
         <div class="flex-none">
@@ -316,11 +325,17 @@ defmodule StoryarnWeb.Layouts do
       <header class="navbar px-4 sm:px-6 lg:px-8">
         <div class="flex-1">
           <.link navigate="/" class="flex items-center gap-2">
-            <img src={~p"/images/logo.svg"} alt="Storyarn" class="w-8 h-8" />
-            <span class="text-lg font-bold">Storyarn</span>
+            <.app_logo class="w-8 h-8" />
+            <span class="text-xl brand-logotype">Storyarn</span>
           </.link>
         </div>
         <div class="flex-none flex items-center gap-2">
+          <.link navigate={~p"/docs"} class="btn btn-ghost btn-sm">
+            {gettext("Docs")}
+          </.link>
+          <.link navigate={~p"/contact"} class="btn btn-ghost btn-sm">
+            {gettext("Contact")}
+          </.link>
           <.theme_toggle />
           <%= if @current_scope && @current_scope.user do %>
             <.link navigate={~p"/workspaces"} class="btn btn-ghost btn-sm">
@@ -330,9 +345,9 @@ defmodule StoryarnWeb.Layouts do
             <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-sm">
               {gettext("Log in")}
             </.link>
-            <.link navigate={~p"/users/register"} class="btn btn-primary btn-sm">
-              {gettext("Sign up")}
-            </.link>
+            <a href="#waitlist" class="btn btn-primary btn-sm">
+              {gettext("Request access")}
+            </a>
           <% end %>
         </div>
       </header>
@@ -381,8 +396,8 @@ defmodule StoryarnWeb.Layouts do
       <header class="navbar px-4 sm:px-6 lg:px-8 border-b border-base-300">
         <div class="flex-1">
           <.link navigate="/" class="flex items-center gap-2">
-            <img src={~p"/images/logo.svg"} alt="Storyarn" class="w-8 h-8" />
-            <span class="text-lg font-bold">Storyarn</span>
+            <.app_logo class="w-8 h-8" />
+            <span class="text-xl brand-logotype">Storyarn</span>
           </.link>
         </div>
         <div class="flex-none">
@@ -539,8 +554,8 @@ defmodule StoryarnWeb.Layouts do
         </div>
         <div class="flex-1">
           <.link navigate={~p"/docs"} class="flex items-center gap-2">
-            <img src={~p"/images/logo.svg"} alt="Storyarn" class="w-6 h-6" />
-            <span class="font-bold">Storyarn</span>
+            <.app_logo class="w-6 h-6" />
+            <span class="text-lg brand-logotype">Storyarn</span>
             <span class="text-sm font-medium text-base-content/50">{gettext("Docs")}</span>
           </.link>
         </div>

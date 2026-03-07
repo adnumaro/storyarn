@@ -21,14 +21,7 @@ defmodule StoryarnWeb.UserLive.Login do
                   "You need to reauthenticate to perform sensitive actions on your account."
                 )}
               <% else %>
-                {dgettext("identity", "Don't have an account?")} <.link
-                  navigate={~p"/users/register"}
-                  class="font-semibold text-brand hover:underline"
-                  phx-no-format
-                >{dgettext("identity", "Sign up")}</.link> {dgettext(
-                  "identity",
-                  "for an account now."
-                )}
+                {dgettext("identity", "Enter your email and we'll send you a login link.")}
               <% end %>
             </:subtitle>
           </.header>
@@ -46,10 +39,6 @@ defmodule StoryarnWeb.UserLive.Login do
             </p>
           </div>
         </div>
-
-        <.oauth_buttons class="mb-4" />
-
-        <div class="divider">{dgettext("identity", "or continue with email")}</div>
 
         <.form
           :let={f}
@@ -72,37 +61,6 @@ defmodule StoryarnWeb.UserLive.Login do
           </.button>
         </.form>
 
-        <div class="divider">{dgettext("identity", "or")}</div>
-
-        <.form
-          :let={f}
-          for={@form}
-          id="login_form_password"
-          action={~p"/users/log-in"}
-          phx-submit="submit_password"
-          phx-trigger-action={@trigger_submit}
-        >
-          <.input
-            readonly={!!@current_scope}
-            field={f[:email]}
-            type="email"
-            label={dgettext("identity", "Email")}
-            autocomplete="email"
-            required
-          />
-          <.input
-            field={@form[:password]}
-            type="password"
-            label={dgettext("identity", "Password")}
-            autocomplete="current-password"
-          />
-          <.button class="btn btn-primary w-full" name={@form[:remember_me].name} value="true">
-            {dgettext("identity", "Log in and stay logged in")} <span aria-hidden="true">→</span>
-          </.button>
-          <.button class="btn btn-primary btn-soft w-full mt-2">
-            {dgettext("identity", "Log in only this time")}
-          </.button>
-        </.form>
       </div>
     </Layouts.auth>
     """
@@ -116,14 +74,10 @@ defmodule StoryarnWeb.UserLive.Login do
 
     form = to_form(%{"email" => email}, as: "user")
 
-    {:ok, assign(socket, form: form, trigger_submit: false)}
+    {:ok, assign(socket, form: form)}
   end
 
   @impl true
-  def handle_event("submit_password", _params, socket) do
-    {:noreply, assign(socket, :trigger_submit, true)}
-  end
-
   def handle_event("submit_magic", %{"user" => %{"email" => email}}, socket) do
     case RateLimiter.check_magic_link(email) do
       :ok ->

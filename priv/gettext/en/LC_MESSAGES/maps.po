@@ -16,12 +16,12 @@ msgstr ""
 msgid "Draw connections between two pins. Click the source pin, then the target."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:311
+#: lib/storyarn_web/live/scene_live/show.ex:365
 #, elixir-autogen, elixir-format
 msgid "This layer will be deleted. All elements on this layer will be moved to no layer."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/components/scene_header.ex:295
+#: lib/storyarn_web/live/scene_live/components/scene_header.ex:166
 #, elixir-autogen, elixir-format
 msgid "Used in %{count} flow"
 msgid_plural "Used in %{count} flows"

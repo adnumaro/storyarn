@@ -31,7 +31,7 @@ msgstr "Proyecto eliminado."
 msgid "Asset uploaded successfully."
 msgstr "Perfil actualizado exitosamente."
 
-#: lib/storyarn_web/components/focus_layout.ex:40
+#: lib/storyarn_web/components/focus_layout.ex:41
 #, elixir-autogen, elixir-format
 msgid "Assets"
 msgstr "Recursos"

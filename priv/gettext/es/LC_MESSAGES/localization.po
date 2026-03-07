@@ -66,7 +66,7 @@ msgstr "Volver"
 msgid "Back to Translations"
 msgstr "Volver a traducciones"
 
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:122
+#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:121
 #, elixir-autogen, elixir-format
 msgid "Block"
 msgstr "Bloque"
@@ -97,7 +97,7 @@ msgid "DeepL quota exceeded."
 msgstr "Cuota de DeepL superada."
 
 #: lib/storyarn_web/live/localization_live/edit.ex:74
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:106
+#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:105
 #, elixir-autogen, elixir-format
 msgid "Draft"
 msgstr "Borrador"
@@ -128,12 +128,12 @@ msgid "Failed to add language."
 msgstr "No se pudo añadir el idioma."
 
 #: lib/storyarn_web/live/localization_live/edit.ex:77
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:109
+#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:108
 #, elixir-autogen, elixir-format
 msgid "Final"
 msgstr "Final"
 
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:124
+#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:123
 #, elixir-autogen, elixir-format
 msgid "Flow"
 msgstr "Flujos"
@@ -144,7 +144,7 @@ msgid "Flows"
 msgstr "Flujos"
 
 #: lib/storyarn_web/live/localization_live/edit.ex:75
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:107
+#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:106
 #, elixir-autogen, elixir-format
 msgid "In Progress"
 msgstr "En proceso"
@@ -176,7 +176,7 @@ msgstr "Última traducción: %{time}"
 msgid "Lines"
 msgstr "Líneas"
 
-#: lib/storyarn_web/components/focus_layout.ex:41
+#: lib/storyarn_web/components/focus_layout.ex:42
 #, elixir-autogen, elixir-format
 msgid "Localization"
 msgstr "ID de localización"
@@ -216,7 +216,7 @@ msgstr "No hay idiomas de destino configurados."
 msgid "No translations found matching your filters."
 msgstr "No se han encontrado traducciones con los filtros actuales."
 
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:121
+#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:120
 #, elixir-autogen, elixir-format
 msgid "Node"
 msgstr "Modo"
@@ -242,7 +242,7 @@ msgid "Page %{page} of %{total}"
 msgstr "Página %{page} de %{total}"
 
 #: lib/storyarn_web/live/localization_live/edit.ex:73
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:105
+#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:104
 #, elixir-autogen, elixir-format
 msgid "Pending"
 msgstr "Pendiente"
@@ -295,7 +295,7 @@ msgid "Report"
 msgstr "Informe"
 
 #: lib/storyarn_web/live/localization_live/edit.ex:76
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:108
+#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:107
 #, elixir-autogen, elixir-format
 msgid "Review"
 msgstr "Previsualización:"
@@ -310,7 +310,7 @@ msgstr "Guardado"
 msgid "Saving..."
 msgstr "Guardando..."
 
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:125
+#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:124
 #, elixir-autogen, elixir-format
 msgid "Screenplay"
 msgstr "Guión"
@@ -330,7 +330,7 @@ msgstr "Buscar en original o traducción..."
 msgid "Select language..."
 msgstr "Seleccionar Hub destino..."
 
-#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:123
+#: lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex:122
 #, elixir-autogen, elixir-format
 msgid "Sheet"
 msgstr "Fichas"

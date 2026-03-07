@@ -36,6 +36,8 @@ defmodule StoryarnWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+    get "/contact", PageController, :contact
+    post "/waitlist", PageController, :join_waitlist
   end
 
   # Other scopes may use custom stacks.

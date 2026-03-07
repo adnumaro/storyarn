@@ -58,11 +58,8 @@ defmodule StoryarnWeb.UserLive.Registration do
   end
 
   def mount(_params, _session, socket) do
-    changeset = Accounts.change_user_email(%User{}, %{}, validate_unique: false)
-    ip_address = get_client_ip(socket)
-
-    {:ok, socket |> assign(:ip_address, ip_address) |> assign_form(changeset),
-     temporary_assigns: [form: nil]}
+    # Registration disabled during invite-only beta
+    {:ok, redirect(socket, to: ~p"/")}
   end
 
   @impl true
@@ -112,26 +109,6 @@ defmodule StoryarnWeb.UserLive.Registration do
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign_form(socket, changeset)}
-    end
-  end
-
-  defp get_client_ip(socket) do
-    # Check for X-Forwarded-For header first (common with reverse proxies)
-    x_headers = get_connect_info(socket, :x_headers) || []
-
-    case List.keyfind(x_headers, "x-forwarded-for", 0) do
-      {"x-forwarded-for", forwarded} ->
-        forwarded
-        |> String.split(",")
-        |> List.first()
-        |> String.trim()
-
-      nil ->
-        # Fall back to peer_data
-        case get_connect_info(socket, :peer_data) do
-          %{address: ip} when is_tuple(ip) -> ip |> :inet.ntoa() |> to_string()
-          _ -> "unknown"
-        end
     end
   end
 
