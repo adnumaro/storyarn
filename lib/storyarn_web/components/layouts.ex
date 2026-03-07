@@ -544,19 +544,21 @@ defmodule StoryarnWeb.Layouts do
 
   def docs(assigns) do
     ~H"""
-    <div class="min-h-screen flex flex-col">
+    <div class="h-screen flex flex-col overflow-hidden">
       <%!-- Header --%>
-      <header class="navbar px-4 sm:px-6 lg:px-8 border-b border-base-300 bg-base-100 sticky top-0 z-30">
+      <header class="navbar px-4 sm:px-6 lg:px-8 border-b border-base-300 bg-base-100 shrink-0">
         <div class="flex-none lg:hidden">
           <button phx-click="toggle_sidebar" class="btn btn-square btn-ghost btn-sm">
             <.icon name="menu" class="size-5" />
           </button>
         </div>
-        <div class="flex-1">
-          <.link navigate={~p"/docs"} class="flex items-center gap-2">
+        <div class="flex-1 flex items-center gap-1">
+          <.link href={~p"/"} class="flex items-center gap-2">
             <.app_logo class="w-6 h-6" />
             <span class="text-lg brand-logotype">Storyarn</span>
-            <span class="text-sm font-medium text-base-content/50">{gettext("Docs")}</span>
+          </.link>
+          <.link navigate={~p"/docs"} class="text-xs font-medium text-base-content/50 hover:text-base-content transition-colors self-start mt-1">
+            {gettext("docs")}
           </.link>
         </div>
         <div class="flex-none flex items-center gap-2">
@@ -574,7 +576,7 @@ defmodule StoryarnWeb.Layouts do
       </header>
 
       <%!-- Main area --%>
-      <div class="flex-1 flex">
+      <div class="flex-1 flex overflow-hidden">
         <%!-- Mobile sidebar overlay --%>
         <div
           :if={@sidebar_open}
@@ -600,8 +602,8 @@ defmodule StoryarnWeb.Layouts do
         </aside>
 
         <%!-- Content --%>
-        <main class="flex-1 overflow-y-auto">
-          <div class="max-w-4xl mx-auto px-4 sm:px-8 py-8">
+        <main id="docs-main" class="flex-1 overflow-y-auto" phx-hook="DocsScrollSpy">
+          <div class="max-w-4xl mx-auto px-4 sm:px-8 py-8 xl:mr-56">
             <%!-- Guide header --%>
             <div :if={@guide} class="mb-8">
               <p class="text-xs uppercase tracking-wider text-primary font-semibold mb-1">
@@ -649,6 +651,32 @@ defmodule StoryarnWeb.Layouts do
               </div>
             </nav>
           </div>
+
+          <%!-- Table of contents (right rail) --%>
+          <aside
+            :if={@guide && @guide.toc != []}
+            id="docs-toc"
+            class="hidden xl:block fixed top-16 right-0 w-56 py-8 pr-4 pl-2 overflow-y-auto"
+            style="max-height: calc(100vh - 4rem)"
+          >
+            <p class="text-xs font-semibold uppercase tracking-wider text-base-content/50 mb-3">
+              {gettext("On this page")}
+            </p>
+            <nav class="border-l border-base-300">
+              <a
+                :for={entry <- @guide.toc}
+                href={"##{entry.id}"}
+                data-toc-id={entry.id}
+                class={[
+                  "docs-toc-link block text-sm leading-relaxed transition-colors hover:text-primary",
+                  if(entry.level == 3, do: "pl-5", else: "pl-3"),
+                  "text-base-content/50"
+                ]}
+              >
+                {entry.text}
+              </a>
+            </nav>
+          </aside>
         </main>
       </div>
 

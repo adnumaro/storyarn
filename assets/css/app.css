@@ -1315,3 +1315,49 @@ details[open] > summary .details-chevron {
   border-bottom: none;
 }
 
+.docs-tool-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  background: color-mix(in oklch, var(--color-accent) 15%, transparent);
+  color: var(--color-accent);
+  vertical-align: middle;
+  margin-right: 0.4rem;
+}
+
+.docs-tool-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.docs-accent {
+  color: var(--color-accent);
+}
+
+.docs-image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 12rem;
+  margin: 2rem 0;
+  padding: 1.5rem 2rem;
+  border: 2px dashed color-mix(in oklch, var(--color-base-content) 12%, transparent);
+  border-radius: 0.75rem;
+  background: color-mix(in oklch, var(--color-base-content) 3%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 35%, transparent);
+  font-size: 0.85rem;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.docs-image-placeholder svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+

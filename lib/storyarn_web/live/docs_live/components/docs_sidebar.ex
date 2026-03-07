@@ -15,7 +15,7 @@ defmodule StoryarnWeb.DocsLive.Components.DocsSidebar do
     ~H"""
     <nav class="px-4 space-y-1">
       <div class="mb-5">
-        <div class="relative">
+        <form phx-change="search" phx-submit="search" class="relative">
           <.icon
             name="search"
             class="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
@@ -24,21 +24,19 @@ defmodule StoryarnWeb.DocsLive.Components.DocsSidebar do
             type="text"
             value={@search_query}
             placeholder={gettext("Search docs...")}
-            phx-keyup="search"
-            phx-key="Enter"
-            phx-change="search"
             name="query"
             class="input input-sm input-bordered w-full pl-9 pr-8"
             autocomplete="off"
           />
           <button
             :if={@search_query != ""}
+            type="button"
             phx-click="clear_search"
             class="absolute right-2 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
           >
             <.icon name="x" class="size-4" />
           </button>
-        </div>
+        </form>
       </div>
 
       <div :if={@search_results} class="mb-4">
