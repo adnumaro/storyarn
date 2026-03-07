@@ -6,7 +6,7 @@
 }
 ---
 
-Storyarn is a **narrative design platform** for game developers and interactive storytellers. It brings all your narrative work into one place — characters, dialogue, world maps, scripts, and translations.
+Storyarn is a **narrative design platform** for game designers and interactive storytellers. It brings all your narrative work into one place — characters, dialogue, world maps, scripts, and translations.
 
 Whether you're building an RPG, a visual novel, or an adventure game, Storyarn gives you the tools to design your story visually and collaboratively.
 

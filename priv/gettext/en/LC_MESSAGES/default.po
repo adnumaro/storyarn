@@ -655,7 +655,7 @@ msgstr ""
 msgid "Docs"
 msgstr ""
 
-#: lib/storyarn_web/live/docs_live/show.ex:36
+#: lib/storyarn_web/live/docs_live/show.ex:38
 #, elixir-autogen, elixir-format
 msgid "Documentation"
 msgstr ""
@@ -695,7 +695,7 @@ msgstr ""
 msgid "Get early access"
 msgstr ""
 
-#: lib/storyarn_web/live/docs_live/show.ex:47
+#: lib/storyarn_web/live/docs_live/show.ex:51
 #, elixir-autogen, elixir-format
 msgid "Guide not found"
 msgstr ""
@@ -735,7 +735,7 @@ msgstr ""
 msgid "Next"
 msgstr ""
 
-#: lib/storyarn_web/live/docs_live/show.ex:118
+#: lib/storyarn_web/live/docs_live/show.ex:122
 #, elixir-autogen, elixir-format
 msgid "No documentation available yet."
 msgstr ""
@@ -811,11 +811,6 @@ msgstr ""
 msgid "Structured data for characters, items, locations — with variables, formulas, and property inheritance across your world."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:63
-#, elixir-autogen, elixir-format
-msgid "The open narrative design tool for game developers. Build branching dialogues, manage characters, and localize your stories — all in one place."
-msgstr ""
-
 #: lib/storyarn_web/controllers/page_html/home.html.heex:185
 #, elixir-autogen, elixir-format
 msgid "Translate into every language your game supports. Export flows, screenplays, and localization data for your engine."
@@ -870,4 +865,9 @@ msgstr ""
 #: lib/storyarn_web/controllers/page_html/home.html.heex:213
 #, elixir-autogen, elixir-format
 msgid "you@studio.com"
+msgstr ""
+
+#: lib/storyarn_web/controllers/page_html/home.html.heex:63
+#, elixir-autogen, elixir-format
+msgid "The open narrative design tool for game designers. Build branching dialogues, manage characters, and localize your stories — all in one place."
 msgstr ""
