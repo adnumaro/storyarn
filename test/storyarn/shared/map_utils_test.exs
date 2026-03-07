@@ -108,4 +108,80 @@ defmodule Storyarn.Shared.MapUtilsTest do
       assert MapUtils.parse_int("  ") == nil
     end
   end
+
+  # ===========================================================================
+  # parse_to_number/1
+  # ===========================================================================
+
+  describe "parse_to_number/1" do
+    test "nil → 0.0" do
+      assert MapUtils.parse_to_number(nil) == 0.0
+    end
+
+    test "integer → float" do
+      assert MapUtils.parse_to_number(5) == 5.0
+    end
+
+    test "float → float" do
+      assert MapUtils.parse_to_number(3.14) == 3.14
+    end
+
+    test "numeric string → float" do
+      assert MapUtils.parse_to_number("42") == 42.0
+    end
+
+    test "non-numeric string → 0.0" do
+      assert MapUtils.parse_to_number("hello") == 0.0
+    end
+
+    test "other types → 0.0" do
+      assert MapUtils.parse_to_number([]) == 0.0
+      assert MapUtils.parse_to_number(%{}) == 0.0
+      assert MapUtils.parse_to_number(true) == 0.0
+    end
+  end
+
+  # ===========================================================================
+  # format_number_result/1
+  # ===========================================================================
+
+  describe "format_number_result/1" do
+    test "truncates whole float to integer" do
+      assert MapUtils.format_number_result(10.0) == 10
+      assert MapUtils.format_number_result(0.0) == 0
+      assert MapUtils.format_number_result(1000.0) == 1000
+    end
+
+    test "preserves decimal floats" do
+      assert MapUtils.format_number_result(3.14) == 3.14
+      assert MapUtils.format_number_result(0.5) == 0.5
+      assert MapUtils.format_number_result(99.99) == 99.99
+    end
+
+    test "truncates negative whole float to integer" do
+      assert MapUtils.format_number_result(-5.0) == -5
+      assert MapUtils.format_number_result(-100.0) == -100
+    end
+
+    test "preserves negative decimal floats" do
+      assert MapUtils.format_number_result(-3.14) == -3.14
+    end
+
+    test "passes through integers unchanged" do
+      assert MapUtils.format_number_result(42) == 42
+      assert MapUtils.format_number_result(0) == 0
+      assert MapUtils.format_number_result(-7) == -7
+    end
+
+    test "passes through non-numeric values" do
+      assert MapUtils.format_number_result(nil) == nil
+      assert MapUtils.format_number_result("hello") == "hello"
+    end
+
+    test "preserves floats outside the safe truncation range" do
+      huge = 1.0e16
+      assert MapUtils.format_number_result(huge) == huge
+      assert is_float(MapUtils.format_number_result(huge))
+    end
+  end
 end

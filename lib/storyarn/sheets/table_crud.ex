@@ -7,7 +7,7 @@ defmodule Storyarn.Sheets.TableCrud do
   alias Storyarn.Flows
   alias Storyarn.Repo
   alias Storyarn.Shared.{NameNormalizer, TimeHelpers, TreeOperations}
-  alias Storyarn.Sheets.{Block, TableColumn, TableRow}
+  alias Storyarn.Sheets.{Block, FormulaBindingRewriter, Sheet, TableColumn, TableRow}
 
   # =============================================================================
   # Column Operations
@@ -39,6 +39,8 @@ defmodule Storyarn.Sheets.TableCrud do
   Auto-generates slug, auto-assigns position, and adds empty cell to all existing rows.
   """
   def create_column(%Block{id: block_id, type: "table"} = block, attrs) do
+    # Formula columns are always constant (computed, not referenceable as variables)
+    attrs = maybe_force_formula_constant(attrs)
     position = attrs[:position] || next_column_position(block_id)
     existing_slugs = list_column_slugs(block_id)
 
@@ -80,6 +82,9 @@ defmodule Storyarn.Sheets.TableCrud do
   Updates a column. Handles rename (slug migration) and type change (cell reset).
   """
   def update_column(%TableColumn{} = column, attrs) do
+    # Formula columns are always constant (computed, not referenceable as variables)
+    attrs = maybe_force_formula_constant(attrs)
+
     changeset =
       column
       |> TableColumn.update_changeset(attrs)
@@ -535,25 +540,13 @@ defmodule Storyarn.Sheets.TableCrud do
   end
 
   # Syncs a row creation to non-detached inherited instances.
+  # Rewrites formula bindings if the row contains cross-sheet variable references.
   defp sync_row_to_children(%Block{} = parent_block, %TableRow{} = row, :create) do
-    with_inheriting_instances(parent_block, fn instance_ids ->
-      now = TimeHelpers.now()
-
-      row_entries =
-        Enum.map(instance_ids, fn instance_id ->
-          %{
-            name: row.name,
-            slug: row.slug,
-            position: row.position,
-            cells: row.cells,
-            block_id: instance_id,
-            inserted_at: now,
-            updated_at: now
-          }
-        end)
-
-      Repo.insert_all(TableRow, row_entries)
-    end)
+    if FormulaBindingRewriter.has_formula_variable_bindings?(row.cells) do
+      sync_row_to_children_with_rewrite(parent_block, row)
+    else
+      sync_row_to_children_plain(parent_block, row)
+    end
   end
 
   # Syncs a row deletion to non-detached inherited instances.
@@ -575,6 +568,100 @@ defmodule Storyarn.Sheets.TableCrud do
       )
       |> Repo.update_all(set: [name: row.name, slug: row.slug])
     end)
+  end
+
+  defp sync_row_to_children_plain(parent_block, row) do
+    with_inheriting_instances(parent_block, fn instance_ids ->
+      now = TimeHelpers.now()
+
+      row_entries =
+        Enum.map(instance_ids, fn instance_id ->
+          %{
+            name: row.name,
+            slug: row.slug,
+            position: row.position,
+            cells: row.cells,
+            block_id: instance_id,
+            inserted_at: now,
+            updated_at: now
+          }
+        end)
+
+      Repo.insert_all(TableRow, row_entries)
+    end)
+  end
+
+  # Creates row entries with per-instance formula binding rewriting.
+  defp sync_row_to_children_with_rewrite(%Block{} = parent_block, %TableRow{} = row) do
+    if parent_block.scope != "children", do: throw(:ok)
+
+    # Load instances with their sheet_ids
+    instances =
+      from(b in Block,
+        where:
+          b.inherited_from_block_id == ^parent_block.id and
+            b.detached == false and
+            is_nil(b.deleted_at),
+        select: %{id: b.id, sheet_id: b.sheet_id}
+      )
+      |> Repo.all()
+
+    if instances == [] do
+      :ok
+    else
+      parent_shortcut =
+        from(s in Sheet,
+          join: b in Block,
+          on: b.sheet_id == s.id,
+          where: b.id == ^parent_block.id,
+          select: s.shortcut
+        )
+        |> Repo.one()
+
+      child_sheet_ids = Enum.map(instances, & &1.sheet_id) |> Enum.uniq()
+
+      child_shortcuts =
+        from(s in Sheet, where: s.id in ^child_sheet_ids, select: {s.id, s.shortcut})
+        |> Repo.all()
+        |> Map.new()
+
+      mappings =
+        Map.new(child_sheet_ids, fn sheet_id ->
+          {sheet_id, FormulaBindingRewriter.build_var_name_mapping(parent_block.sheet_id, sheet_id)}
+        end)
+
+      now = TimeHelpers.now()
+
+      row_entries =
+        Enum.map(instances, fn instance ->
+          child_shortcut = Map.get(child_shortcuts, instance.sheet_id)
+          mapping = Map.get(mappings, instance.sheet_id, %{})
+
+          cells =
+            FormulaBindingRewriter.rewrite_cells(
+              row.cells,
+              parent_shortcut,
+              child_shortcut,
+              mapping
+            )
+
+          %{
+            name: row.name,
+            slug: row.slug,
+            position: row.position,
+            cells: cells,
+            block_id: instance.id,
+            inserted_at: now,
+            updated_at: now
+          }
+        end)
+
+      Repo.insert_all(TableRow, row_entries)
+    end
+
+    :ok
+  catch
+    :ok -> :ok
   end
 
   # Resolves non-detached instance block IDs and calls the function if any exist.
@@ -781,5 +868,20 @@ defmodule Storyarn.Sheets.TableCrud do
     %TableRow{block_id: block_id}
     |> TableRow.create_changeset(attrs)
     |> Repo.insert()
+  end
+
+  defp maybe_force_formula_constant(attrs) do
+    type = attrs[:type] || attrs["type"]
+
+    if type == "formula" do
+      # Detect key style (atom or string) and use the same
+      if Map.has_key?(attrs, :type) do
+        Map.put(attrs, :is_constant, true)
+      else
+        Map.put(attrs, "is_constant", true)
+      end
+    else
+      attrs
+    end
   end
 end

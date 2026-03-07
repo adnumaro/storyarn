@@ -48,10 +48,12 @@ import { EditableTitle } from "./hooks/editable_title";
 import { ExplorationPlayer } from "./hooks/exploration_player";
 import { ExpressionEditor } from "./hooks/expression_editor";
 import { FlowCanvas } from "./hooks/flow_canvas";
+import { FlowLoader } from "./hooks/flow_loader";
+import { FormulaBinding } from "./hooks/formula_binding";
+import { FormulaSidebar } from "./hooks/formula_sidebar";
+import { FountainImport } from "./hooks/fountain_import";
 import { GallerySortable } from "./hooks/gallery_sortable";
 import { GalleryUpload } from "./hooks/gallery_upload";
-import { FlowLoader } from "./hooks/flow_loader";
-import { FountainImport } from "./hooks/fountain_import";
 import { InstructionBuilder } from "./hooks/instruction_builder";
 import { ReferenceSearch } from "./hooks/reference_search";
 import { SceneCanvas } from "./hooks/scene_canvas";
@@ -126,6 +128,8 @@ const liveSocket = new LiveSocket("/live", Socket, {
     StoryPlayer,
     ExplorationPlayer,
     ExpressionEditor,
+    FormulaBinding,
+    FormulaSidebar,
     TableCellCheckbox,
     TableCellSelect,
     TableColumnDropdown,

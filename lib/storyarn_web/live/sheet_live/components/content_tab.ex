@@ -10,6 +10,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   import StoryarnWeb.SheetLive.Components.InheritedBlockComponents
   import StoryarnWeb.SheetLive.Components.ChildrenSheetsSection
   import StoryarnWeb.SheetLive.Components.OwnBlocksComponents
+  import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
 
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers
@@ -104,6 +105,27 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         sheet={@sheet}
         target={@myself}
       />
+
+      <%!-- Formula Sidebar (right panel) --%>
+      <div
+        :if={@formula_editing != nil}
+        id="formula-sidebar"
+        phx-hook="FormulaSidebar"
+        data-close-event="close_formula_sidebar"
+        data-phx-target={"##{@id}"}
+        class={[
+          "fixed flex flex-col overflow-hidden",
+          "inset-0 z-[1030] bg-base-100",
+          "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[400px]",
+          "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+        ]}
+      >
+        <.formula_sidebar_content
+          formula={@formula_editing}
+          variables={@project_variables}
+          target={@myself}
+        />
+      </div>
     </div>
     """
   end
@@ -118,6 +140,8 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       |> assign_new(:selected_block_id, fn -> nil end)
       |> assign_new(:block_scope, fn -> "self" end)
       |> assign_new(:propagation_block, fn -> nil end)
+      |> assign_new(:formula_editing, fn -> nil end)
+      |> assign_new(:project_variables, fn -> [] end)
 
     # Split blocks into inherited and own groups using optimized batch query
     {inherited_groups, own_blocks} =
@@ -150,7 +174,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     layout_items = ContentTabHelpers.group_blocks_for_layout(own_blocks)
 
     # Batch-load table data for all table blocks (own + inherited)
-    table_data = load_table_data(own_blocks, inherited_groups)
+    table_data = load_table_data(own_blocks, inherited_groups, project_id)
     gallery_data = load_gallery_data(own_blocks, inherited_groups)
     reference_options = load_reference_options(table_data, project_id)
 
@@ -453,6 +477,93 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   def handle_event("update_number_constraint", params, socket) do
     with_edit_authorization(socket, fn socket ->
       TableHandlers.handle_update_number_constraint(params, socket, content_helpers())
+    end)
+  end
+
+  def handle_event("update_formula_cell", params, socket) do
+    with_edit_authorization(socket, fn socket ->
+      TableHandlers.handle_update_formula_cell(params, socket, content_helpers())
+    end)
+  end
+
+  def handle_event("open_formula_sidebar", params, socket) do
+    row_id = ContentTabHelpers.to_integer(params["row-id"])
+    block_id = ContentTabHelpers.to_integer(params["block-id"])
+    slug = params["column-slug"]
+
+    row = Sheets.get_table_row!(row_id)
+    table_entry = Map.get(socket.assigns.table_data, block_id, %{columns: [], rows: []})
+
+    {:noreply,
+     assign(socket, :formula_editing, %{
+       row_id: row_id,
+       column_slug: slug,
+       block_id: block_id,
+       value: row.cells[slug],
+       columns: table_entry.columns
+     })}
+  end
+
+  def handle_event("close_formula_sidebar", _params, socket) do
+    {:noreply, assign(socket, :formula_editing, nil)}
+  end
+
+  def handle_event("save_formula_expression", %{"value" => expression} = params, socket) do
+    with_edit_authorization(socket, fn socket ->
+      current = socket.assigns.formula_editing
+      current_bindings = if is_map(current.value), do: current.value["bindings"] || %{}, else: %{}
+      raw_bindings = encode_bindings(current_bindings)
+
+      {:noreply, updated_socket} =
+        TableHandlers.handle_update_formula_cell(
+          %{
+            "row-id" => params["row-id"],
+            "column-slug" => params["column-slug"],
+            "expression" => expression,
+            "bindings" => raw_bindings
+          },
+          socket,
+          content_helpers()
+        )
+
+      {:noreply, refresh_formula_editing(updated_socket)}
+    end)
+  end
+
+  def handle_event(
+        "save_formula_binding",
+        %{"binding_value" => value, "symbol" => symbol} = params,
+        socket
+      ) do
+    with_edit_authorization(socket, fn socket ->
+      current = socket.assigns.formula_editing
+      current_value = current.value || %{}
+
+      expression = if is_map(current_value), do: current_value["expression"] || "", else: ""
+      current_bindings = if is_map(current_value), do: current_value["bindings"] || %{}, else: %{}
+
+      binding = parse_binding_value(value)
+
+      updated_bindings =
+        if binding,
+          do: Map.put(current_bindings, symbol, binding),
+          else: Map.delete(current_bindings, symbol)
+
+      raw_bindings = encode_bindings(updated_bindings)
+
+      {:noreply, updated_socket} =
+        TableHandlers.handle_update_formula_cell(
+          %{
+            "row-id" => params["row-id"],
+            "column-slug" => params["column-slug"],
+            "expression" => expression,
+            "bindings" => raw_bindings
+          },
+          socket,
+          content_helpers()
+        )
+
+      {:noreply, refresh_formula_editing(updated_socket)}
     end)
   end
 
@@ -772,7 +883,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     layout_items = ContentTabHelpers.group_blocks_for_layout(own_blocks)
 
     # Batch-load table data for all table blocks (own + inherited)
-    table_data = load_table_data(own_blocks, inherited_groups)
+    table_data = load_table_data(own_blocks, inherited_groups, project_id)
     gallery_data = load_gallery_data(own_blocks, inherited_groups)
     reference_options = load_reference_options(table_data, project_id)
 
@@ -808,7 +919,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     }
   end
 
-  defp load_table_data(own_blocks, inherited_groups) do
+  defp load_table_data(own_blocks, inherited_groups, project_id) do
     own_table_ids =
       own_blocks
       |> Enum.filter(&(&1.type == "table"))
@@ -822,8 +933,54 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
     all_table_ids = own_table_ids ++ inherited_table_ids
 
-    if all_table_ids != [], do: Sheets.batch_load_table_data(all_table_ids), else: %{}
+    table_data =
+      if all_table_ids != [], do: Sheets.batch_load_table_data(all_table_ids), else: %{}
+
+    # Compute formula column values and inject into row cells
+    compute_formulas(table_data, project_id)
   end
+
+  defp compute_formulas(table_data, project_id) do
+    alias Storyarn.Sheets.FormulaResolver
+
+    Map.new(table_data, fn {block_id, %{columns: cols, rows: rows} = data} ->
+      formula_cols = Enum.filter(cols, &(&1.type == "formula"))
+
+      if formula_cols == [] do
+        {block_id, data}
+      else
+        computed = safe_compute_all(cols, rows, project_id)
+        {block_id, %{data | rows: inject_formula_results(rows, computed)}}
+      end
+    end)
+  end
+
+  defp safe_compute_all(cols, rows, project_id) do
+    alias Storyarn.Sheets.FormulaResolver
+
+    try do
+      FormulaResolver.compute_all(cols, rows, project_id)
+    rescue
+      _ -> %{}
+    end
+  end
+
+  defp inject_formula_results(rows, computed) do
+    Enum.map(rows, fn row ->
+      formula_results = Map.get(computed, row.id, %{})
+
+      updated_cells =
+        Enum.reduce(formula_results, row.cells, fn {slug, result}, cells ->
+          enriched = enrich_cell(cells[slug], result)
+          Map.put(cells, slug, enriched)
+        end)
+
+      %{row | cells: updated_cells}
+    end)
+  end
+
+  defp enrich_cell(current, result) when is_map(current), do: Map.put(current, "__result", result)
+  defp enrich_cell(_current, result), do: %{"__result" => result}
 
   defp load_gallery_data(own_blocks, inherited_groups) do
     own_gallery_ids =
@@ -886,5 +1043,112 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       notify_parent: &notify_parent/2,
       push_undo: &push_undo/1
     }
+  end
+
+  defp refresh_formula_editing(socket) do
+    case socket.assigns.formula_editing do
+      nil ->
+        socket
+
+      %{row_id: row_id, column_slug: slug} = fe ->
+        row = Sheets.get_table_row!(row_id)
+        assign(socket, :formula_editing, %{fe | value: row.cells[slug]})
+    end
+  end
+
+  # ===========================================================================
+  # Formula Sidebar Content
+  # ===========================================================================
+
+  defp formula_sidebar_content(assigns) do
+    expr = formula_cell_expression(assigns.formula.value)
+    symbols = formula_symbols(expr)
+
+    # Include number and formula variables (constants are now included in project_variables)
+    numeric_vars = Enum.filter(assigns.variables, &(&1.block_type in ["number", "formula"]))
+    vars_by_sheet = Enum.group_by(numeric_vars, & &1.sheet_shortcut)
+    same_row_cols = Enum.filter(assigns.formula.columns, &(&1.type in ["number", "formula"]))
+
+    assigns =
+      assigns
+      |> assign(:expr, expr)
+      |> assign(:symbols, symbols)
+      |> assign(:vars_by_sheet, vars_by_sheet)
+      |> assign(:same_row_cols, same_row_cols)
+
+    ~H"""
+    <%!-- Header --%>
+    <div class="flex items-center justify-between px-4 py-3 border-b border-base-300">
+      <div class="flex items-center gap-2">
+        <.icon name="sigma" class="size-4 opacity-60" />
+        <span class="font-semibold text-sm">{dgettext("sheets", "Formula Editor")}</span>
+      </div>
+      <button
+        type="button"
+        class="btn btn-ghost btn-xs btn-square"
+        phx-click="close_formula_sidebar"
+        phx-target={@target}
+      >
+        <.icon name="x" class="size-4" />
+      </button>
+    </div>
+
+    <%!-- Scrollable content --%>
+    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+      <%!-- Expression input --%>
+      <div>
+        <label class="text-xs font-medium opacity-70 mb-1 block">
+          {dgettext("sheets", "Expression")}
+        </label>
+        <input
+          type="text"
+          value={@expr}
+          placeholder="a - 3"
+          class="input input-sm input-bordered w-full font-mono"
+          phx-blur="save_formula_expression"
+          phx-value-row-id={@formula.row_id}
+          phx-value-column-slug={@formula.column_slug}
+          phx-target={@target}
+        />
+      </div>
+
+      <%!-- Symbol bindings (searchable combobox per symbol) --%>
+      <div :if={@symbols != []} class="space-y-3">
+        <label class="text-xs font-medium opacity-70 block">
+          {dgettext("sheets", "Variable Bindings")}
+        </label>
+
+        <div :for={sym <- @symbols} class="flex items-center gap-2">
+          <span class="text-sm font-mono font-bold text-primary w-8 text-center shrink-0">
+            {sym}
+          </span>
+          <span class="text-xs opacity-40">=</span>
+          <div
+            id={"formula-binding-#{@formula.row_id}-#{@formula.column_slug}-#{sym}"}
+            phx-hook="FormulaBinding"
+            phx-update="ignore"
+            data-symbol={sym}
+            data-value={formula_cell_binding(@formula.value, sym)}
+            data-display={formula_binding_display(@formula.value, sym, @same_row_cols)}
+            data-options={Jason.encode!(build_binding_options(@same_row_cols, @vars_by_sheet))}
+            data-row-id={@formula.row_id}
+            data-column-slug={@formula.column_slug}
+            class="flex-1"
+          >
+          </div>
+        </div>
+      </div>
+
+      <%!-- LaTeX preview — keep this below bindings --%>
+      <div :if={@expr != ""} class="p-3 bg-base-300/50 rounded-lg">
+        <label class="text-xs font-medium opacity-70 mb-1 block">
+          {dgettext("sheets", "Preview")}
+        </label>
+        <div class="text-sm font-mono opacity-80">
+          {formula_preview_from_cell(@formula.value)}
+        </div>
+      </div>
+    </div>
+    """
   end
 end

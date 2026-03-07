@@ -27,44 +27,32 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   @spec sheets_map(list(), map()) :: map()
   def sheets_map(all_sheets, gallery_by_sheet \\ %{}) do
     Map.new(all_sheets, fn sheet ->
-      avatar_url =
-        case sheet.avatar_asset do
-          %{url: url} when is_binary(url) -> url
-          _ -> nil
-        end
-
-      banner_url =
-        case sheet.banner_asset do
-          %{url: url} when is_binary(url) -> url
-          _ -> nil
-        end
-
-      gallery_images =
-        case Map.get(gallery_by_sheet, sheet.id) do
-          nil ->
-            []
-
-          images ->
-            Enum.map(images, fn gi ->
-              %{
-                id: gi.id,
-                url: gi.asset && gi.asset.url,
-                label: gi.label || (gi.asset && gi.asset.filename)
-              }
-            end)
-            |> Enum.filter(& &1.url)
-        end
-
-      {to_string(sheet.id),
-       %{
-         id: sheet.id,
-         name: sheet.name,
-         avatar_url: avatar_url,
-         banner_url: banner_url,
-         color: sheet.color,
-         gallery_images: gallery_images
-       }}
+      {to_string(sheet.id), build_sheet_entry(sheet, gallery_by_sheet)}
     end)
+  end
+
+  defp build_sheet_entry(sheet, gallery_by_sheet) do
+    %{
+      id: sheet.id,
+      name: sheet.name,
+      avatar_url: extract_asset_url(sheet.avatar_asset),
+      banner_url: extract_asset_url(sheet.banner_asset),
+      color: sheet.color,
+      gallery_images: build_gallery_images(Map.get(gallery_by_sheet, sheet.id))
+    }
+  end
+
+  defp extract_asset_url(%{url: url}) when is_binary(url), do: url
+  defp extract_asset_url(_), do: nil
+
+  defp build_gallery_images(nil), do: []
+
+  defp build_gallery_images(images) do
+    images
+    |> Enum.map(fn gi ->
+      %{id: gi.id, url: gi.asset && gi.asset.url, label: gi.label || (gi.asset && gi.asset.filename)}
+    end)
+    |> Enum.filter(& &1.url)
   end
 
   @doc """

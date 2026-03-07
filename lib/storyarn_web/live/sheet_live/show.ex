@@ -57,148 +57,149 @@ defmodule StoryarnWeb.SheetLive.Show do
       </:tree_content>
       <SheetTree.delete_modal :if={@can_edit} />
       <%= if @sheet do %>
-      <div
-        id="sheet-undo-redo"
-        phx-hook="UndoRedo"
-        class="w-full max-w-[950px] mx-auto bg-base-200 rounded-[20px] p-5 min-h-full"
-      >
-        <%!-- Banner --%>
-        <.live_component
-          module={Banner}
-          id="sheet-banner"
-          sheet={@sheet}
-          project={@project}
-          current_user={@current_scope.user}
-          can_edit={@can_edit}
-        />
+        <div
+          id="sheet-undo-redo"
+          phx-hook="UndoRedo"
+          class="w-full max-w-[950px] mx-auto bg-base-200 rounded-[20px] p-5 min-h-full"
+        >
+          <%!-- Banner --%>
+          <.live_component
+            module={Banner}
+            id="sheet-banner"
+            sheet={@sheet}
+            project={@project}
+            current_user={@current_scope.user}
+            can_edit={@can_edit}
+          />
 
-        <%!-- Sheet Header --%>
-        <div class="relative">
-          <div class="flex items-start gap-4 mb-8">
-            <%!-- Avatar with edit options --%>
-            <.live_component
-              module={SheetAvatar}
-              id="sheet-avatar"
-              sheet={@sheet}
-              project={@project}
-              current_user={@current_scope.user}
-              can_edit={@can_edit}
-            />
-            <div class="flex-1">
+          <%!-- Sheet Header --%>
+          <div class="relative">
+            <div class="flex items-start gap-4 mb-8">
+              <%!-- Avatar with edit options --%>
               <.live_component
-                module={SheetTitle}
-                id="sheet-title"
+                module={SheetAvatar}
+                id="sheet-avatar"
                 sheet={@sheet}
                 project={@project}
-                current_user_id={@current_scope.user.id}
+                current_user={@current_scope.user}
                 can_edit={@can_edit}
               />
+              <div class="flex-1">
+                <.live_component
+                  module={SheetTitle}
+                  id="sheet-title"
+                  sheet={@sheet}
+                  project={@project}
+                  current_user_id={@current_scope.user.id}
+                  can_edit={@can_edit}
+                />
+              </div>
             </div>
+            <%!-- Save indicator (positioned at header level) --%>
+            <.save_indicator status={@save_status} variant={:floating} />
           </div>
-          <%!-- Save indicator (positioned at header level) --%>
-          <.save_indicator status={@save_status} variant={:floating} />
-        </div>
 
-        <%!-- Loading state while async data loads --%>
-        <div :if={!@sheet_data_loaded} class="flex justify-center py-12">
+          <%!-- Loading state while async data loads --%>
+          <div :if={!@sheet_data_loaded} class="flex justify-center py-12">
+            <span class="loading loading-spinner loading-lg text-base-content/30"></span>
+          </div>
+
+          <div :if={@sheet_data_loaded}>
+            <%!-- Tabs Navigation --%>
+            <div role="tablist" class="tabs tabs-border mb-6">
+              <button
+                role="tab"
+                class={["tab", @current_tab == "content" && "tab-active"]}
+                phx-click="switch_tab"
+                phx-value-tab="content"
+              >
+                <.icon name="file-text" class="size-4 mr-2" />
+                {dgettext("sheets", "Content")}
+              </button>
+              <button
+                role="tab"
+                class={["tab", @current_tab == "references" && "tab-active"]}
+                phx-click="switch_tab"
+                phx-value-tab="references"
+              >
+                <.icon name="link" class="size-4 mr-2" />
+                {dgettext("sheets", "References")}
+              </button>
+              <button
+                role="tab"
+                class={["tab", @current_tab == "audio" && "tab-active"]}
+                phx-click="switch_tab"
+                phx-value-tab="audio"
+              >
+                <.icon name="volume-2" class="size-4 mr-2" />
+                {dgettext("sheets", "Audio")}
+              </button>
+              <button
+                role="tab"
+                class={["tab", @current_tab == "history" && "tab-active"]}
+                phx-click="switch_tab"
+                phx-value-tab="history"
+              >
+                <.icon name="clock" class="size-4 mr-2" />
+                {dgettext("sheets", "History")}
+              </button>
+            </div>
+
+            <%!-- Tab Content: Content (LiveComponent) --%>
+            <.live_component
+              :if={@current_tab == "content"}
+              module={ContentTab}
+              id="content-tab"
+              workspace={@workspace}
+              project={@project}
+              sheet={@sheet}
+              blocks={@blocks}
+              children={@children}
+              can_edit={@can_edit}
+              current_user_id={@current_scope.user.id}
+              current_scope={@current_scope}
+              project_variables={@project_variables}
+            />
+
+            <%!-- Tab Content: References (LiveComponent) --%>
+            <.live_component
+              :if={@current_tab == "references"}
+              module={ReferencesTab}
+              id="references-tab"
+              project={@project}
+              workspace={@workspace}
+              sheet={@sheet}
+              blocks={@blocks}
+            />
+
+            <%!-- Tab Content: Audio (LiveComponent) --%>
+            <.live_component
+              :if={@current_tab == "audio"}
+              module={AudioTab}
+              id="audio-tab"
+              project={@project}
+              workspace={@workspace}
+              sheet={@sheet}
+              can_edit={@can_edit}
+              current_user={@current_scope.user}
+            />
+
+            <%!-- Tab Content: History (LiveComponent) --%>
+            <.live_component
+              :if={@current_tab == "history"}
+              module={HistoryTab}
+              id="history-tab"
+              project={@project}
+              sheet={@sheet}
+              can_edit={@can_edit}
+              current_user_id={@current_scope.user.id}
+            />
+          </div>
+        </div>
+      <% else %>
+        <div class="flex justify-center py-12">
           <span class="loading loading-spinner loading-lg text-base-content/30"></span>
         </div>
-
-        <div :if={@sheet_data_loaded}>
-          <%!-- Tabs Navigation --%>
-          <div role="tablist" class="tabs tabs-border mb-6">
-            <button
-              role="tab"
-              class={["tab", @current_tab == "content" && "tab-active"]}
-              phx-click="switch_tab"
-              phx-value-tab="content"
-            >
-              <.icon name="file-text" class="size-4 mr-2" />
-              {dgettext("sheets", "Content")}
-            </button>
-            <button
-              role="tab"
-              class={["tab", @current_tab == "references" && "tab-active"]}
-              phx-click="switch_tab"
-              phx-value-tab="references"
-            >
-              <.icon name="link" class="size-4 mr-2" />
-              {dgettext("sheets", "References")}
-            </button>
-            <button
-              role="tab"
-              class={["tab", @current_tab == "audio" && "tab-active"]}
-              phx-click="switch_tab"
-              phx-value-tab="audio"
-            >
-              <.icon name="volume-2" class="size-4 mr-2" />
-              {dgettext("sheets", "Audio")}
-            </button>
-            <button
-              role="tab"
-              class={["tab", @current_tab == "history" && "tab-active"]}
-              phx-click="switch_tab"
-              phx-value-tab="history"
-            >
-              <.icon name="clock" class="size-4 mr-2" />
-              {dgettext("sheets", "History")}
-            </button>
-          </div>
-
-          <%!-- Tab Content: Content (LiveComponent) --%>
-          <.live_component
-            :if={@current_tab == "content"}
-            module={ContentTab}
-            id="content-tab"
-            workspace={@workspace}
-            project={@project}
-            sheet={@sheet}
-            blocks={@blocks}
-            children={@children}
-            can_edit={@can_edit}
-            current_user_id={@current_scope.user.id}
-            current_scope={@current_scope}
-          />
-
-          <%!-- Tab Content: References (LiveComponent) --%>
-          <.live_component
-            :if={@current_tab == "references"}
-            module={ReferencesTab}
-            id="references-tab"
-            project={@project}
-            workspace={@workspace}
-            sheet={@sheet}
-            blocks={@blocks}
-          />
-
-          <%!-- Tab Content: Audio (LiveComponent) --%>
-          <.live_component
-            :if={@current_tab == "audio"}
-            module={AudioTab}
-            id="audio-tab"
-            project={@project}
-            workspace={@workspace}
-            sheet={@sheet}
-            can_edit={@can_edit}
-            current_user={@current_scope.user}
-          />
-
-          <%!-- Tab Content: History (LiveComponent) --%>
-          <.live_component
-            :if={@current_tab == "history"}
-            module={HistoryTab}
-            id="history-tab"
-            project={@project}
-            sheet={@sheet}
-            can_edit={@can_edit}
-            current_user_id={@current_scope.user.id}
-          />
-        </div>
-      </div>
-      <% else %>
-      <div class="flex justify-center py-12">
-        <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-      </div>
       <% end %>
     </Layouts.focus>
     """
@@ -288,17 +289,22 @@ defmodule StoryarnWeb.SheetLive.Show do
         |> assign(:save_status, :idle)
         |> assign(:children, [])
         |> assign(:blocks, [])
+        |> assign(:project_variables, [])
         |> assign(:sheet_data_loaded, false)
         |> start_async(:load_sheet_data, fn ->
-          data = %{
-            children: Sheets.get_children(sheet.id),
-            blocks: ReferenceHelpers.load_blocks_with_references(sheet.id, project.id)
-          }
-
-          # Only load tree on first mount, reuse on subsequent patches
-          if has_tree, do: data, else: Map.put(data, :sheets_tree, Sheets.list_sheets_tree(project.id))
+          load_sheet_async_data(sheet, project, has_tree)
         end)
     end
+  end
+
+  defp load_sheet_async_data(sheet, project, has_tree) do
+    data = %{
+      children: Sheets.get_children(sheet.id),
+      blocks: ReferenceHelpers.load_blocks_with_references(sheet.id, project.id),
+      project_variables: Sheets.list_project_variables(project.id)
+    }
+
+    if has_tree, do: data, else: Map.put(data, :sheets_tree, Sheets.list_sheets_tree(project.id))
   end
 
   # ===========================================================================
@@ -311,11 +317,13 @@ defmodule StoryarnWeb.SheetLive.Show do
       socket
       |> assign(:children, data.children)
       |> assign(:blocks, data.blocks)
+      |> assign(:project_variables, data.project_variables)
       |> assign(:sheet_data_loaded, true)
       |> UndoRedoStack.init()
 
     # Only update tree if included (first load)
-    socket = if data[:sheets_tree], do: assign(socket, :sheets_tree, data.sheets_tree), else: socket
+    socket =
+      if data[:sheets_tree], do: assign(socket, :sheets_tree, data.sheets_tree), else: socket
 
     {:noreply, socket}
   end

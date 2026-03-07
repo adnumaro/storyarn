@@ -182,4 +182,111 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluatorTest do
       assert final_state.status == :finished
     end
   end
+
+  # =============================================================================
+  # Formula recomputation after instruction
+  # =============================================================================
+
+  describe "evaluate/3 — formula recomputation" do
+    test "recomputes dependent formula after base variable changes" do
+      variables = %{
+        "mc.health" => %{
+          value: 10,
+          type: "number",
+          block_type: "number",
+          source: :initial,
+          previous_value: nil
+        },
+        "mc.t.r.modifier" => %{
+          value: 7,
+          type: "formula",
+          block_type: "formula",
+          source: :initial,
+          previous_value: nil,
+          formula: %{
+            expression: "a - 3",
+            bindings: %{"a" => "mc.health"}
+          }
+        }
+      }
+
+      state = make_state(variables)
+
+      node =
+        make_node(%{
+          "assignments" => [
+            %{
+              "sheet" => "mc",
+              "variable" => "health",
+              "operator" => "set",
+              "value" => "20"
+            }
+          ]
+        })
+
+      result = InstructionEvaluator.evaluate(node, state, [])
+
+      assert {:finished, final_state} = result
+      assert final_state.variables["mc.health"].value == 20
+      # Formula should be recomputed: 20 - 3 = 17
+      assert final_state.variables["mc.t.r.modifier"].value == 17
+    end
+
+    test "recomputes chain of formulas" do
+      variables = %{
+        "s.base" => %{
+          value: 5,
+          type: "number",
+          block_type: "number",
+          source: :initial,
+          previous_value: nil
+        },
+        "s.t.r.mid" => %{
+          value: 10,
+          type: "formula",
+          block_type: "formula",
+          source: :initial,
+          previous_value: nil,
+          formula: %{
+            expression: "a * 2",
+            bindings: %{"a" => "s.base"}
+          }
+        },
+        "s.t.r.top" => %{
+          value: 15,
+          type: "formula",
+          block_type: "formula",
+          source: :initial,
+          previous_value: nil,
+          formula: %{
+            expression: "a + 5",
+            bindings: %{"a" => "s.t.r.mid"}
+          }
+        }
+      }
+
+      state = make_state(variables)
+
+      node =
+        make_node(%{
+          "assignments" => [
+            %{
+              "sheet" => "s",
+              "variable" => "base",
+              "operator" => "set",
+              "value" => "10"
+            }
+          ]
+        })
+
+      result = InstructionEvaluator.evaluate(node, state, [])
+
+      assert {:finished, final_state} = result
+      assert final_state.variables["s.base"].value == 10
+      # mid = 10 * 2 = 20
+      assert final_state.variables["s.t.r.mid"].value == 20
+      # top = 20 + 5 = 25
+      assert final_state.variables["s.t.r.top"].value == 25
+    end
+  end
 end

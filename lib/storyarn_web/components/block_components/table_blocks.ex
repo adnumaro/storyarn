@@ -5,6 +5,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
   use Gettext, backend: StoryarnWeb.Gettext
 
   import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
+  import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
 
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
@@ -272,6 +273,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
                 >
                   <.table_cell
                     column={col}
+                    columns={@columns}
                     row={row}
                     value={row.cells[col.slug]}
                     can_edit={@can_edit}
@@ -448,7 +450,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
           <div class="border-t border-base-300 mb-1"></div>
 
           <%!-- Type list --%>
-          <li :for={type <- ~w(number text boolean select multi_select date reference)}>
+          <li :for={type <- ~w(number text boolean select multi_select date reference formula)}>
             <button
               type="button"
               class={@column.type == type && "active"}
@@ -980,6 +982,22 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
           phx-value-column-slug={@column.slug}
           phx-target={@target}
         />
+      <% "formula" -> %>
+        <% computed = formula_cell_result(@value) %>
+        <button
+          type="button"
+          class="absolute inset-0 px-2 flex items-center gap-1.5 text-sm cursor-pointer text-left hover:bg-base-200/50"
+          phx-click="open_formula_sidebar"
+          phx-value-row-id={@row.id}
+          phx-value-column-slug={@column.slug}
+          phx-value-block-id={@column.block_id}
+          phx-target={@target}
+        >
+          <.icon name="sigma" class="size-3 opacity-30 shrink-0" />
+          <span class={[is_nil(computed) && "text-base-content/40 italic"]}>
+            {display_value(format_formula_value(computed), "\u2014")}
+          </span>
+        </button>
       <% _ -> %>
         <span class="text-base-content/40 text-sm">&mdash;</span>
     <% end %>
@@ -1017,6 +1035,14 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
       <% "date" -> %>
         <span class={["text-sm", @value in [nil, ""] && "text-base-content/40"]}>
           {format_date(@value)}
+        </span>
+      <% "formula" -> %>
+        <% computed = formula_cell_result(@value) %>
+        <span class="text-sm flex items-center gap-1">
+          <.icon name="sigma" class="size-3 opacity-30 shrink-0" />
+          <span class={[is_nil(computed) && "text-base-content/40"]}>
+            {display_value(format_formula_value(computed), "\u2014")}
+          </span>
         </span>
       <% _ -> %>
         <span class="text-base-content/40 text-sm">&mdash;</span>
@@ -1128,6 +1154,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
   defp type_icon("multi_select"), do: "list"
   defp type_icon("date"), do: "calendar"
   defp type_icon("reference"), do: "link"
+  defp type_icon("formula"), do: "sigma"
   defp type_icon(_), do: "columns-2"
 
   defp type_label("number"), do: dgettext("sheets", "Number")
@@ -1137,5 +1164,6 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
   defp type_label("multi_select"), do: dgettext("sheets", "Multi Select")
   defp type_label("date"), do: dgettext("sheets", "Date")
   defp type_label("reference"), do: dgettext("sheets", "Reference")
+  defp type_label("formula"), do: dgettext("sheets", "Formula")
   defp type_label(type), do: type
 end

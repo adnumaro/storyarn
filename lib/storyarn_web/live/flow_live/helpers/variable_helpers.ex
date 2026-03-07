@@ -1,26 +1,53 @@
 defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpers do
   @moduledoc false
 
+  alias Storyarn.Shared.FormulaRuntime
   alias Storyarn.Sheets
 
   def build_variables(project_id) do
-    Sheets.list_project_variables(project_id)
-    |> Enum.reduce(%{}, fn var, acc ->
-      key = "#{var.sheet_shortcut}.#{var.variable_name}"
-      initial = extract_initial_value(var)
+    variables =
+      Sheets.list_project_variables(project_id)
+      |> Enum.reduce(%{}, fn var, acc ->
+        key = "#{var.sheet_shortcut}.#{var.variable_name}"
+        {initial, formula_meta} = extract_initial_and_formula(var, key)
 
-      Map.put(acc, key, %{
-        value: initial,
-        initial_value: initial,
-        previous_value: initial,
-        source: :initial,
-        block_type: var.block_type,
-        block_id: var.block_id,
-        sheet_shortcut: var.sheet_shortcut,
-        variable_name: var.variable_name,
-        constraints: var[:constraints]
-      })
-    end)
+        entry = %{
+          value: initial,
+          initial_value: initial,
+          previous_value: initial,
+          source: :initial,
+          block_type: var.block_type,
+          block_id: var.block_id,
+          sheet_shortcut: var.sheet_shortcut,
+          variable_name: var.variable_name,
+          constraints: var[:constraints]
+        }
+
+        entry = if formula_meta, do: Map.put(entry, :formula, formula_meta), else: entry
+        Map.put(acc, key, entry)
+      end)
+
+    # Recompute all formula values with proper dependency ordering
+    FormulaRuntime.recompute_formulas(variables)
+  end
+
+  # For formula-type variables, extract expression + bindings and translate same_row refs
+  defp extract_initial_and_formula(%{block_type: "formula", cell_value: cell_value} = _var, key)
+       when is_map(cell_value) do
+    expression = cell_value["expression"]
+    raw_bindings = cell_value["bindings"] || %{}
+
+    if is_binary(expression) and expression != "" do
+      translated = FormulaRuntime.translate_same_row(key, raw_bindings)
+      formula = %{expression: expression, bindings: translated}
+      {nil, formula}
+    else
+      {nil, nil}
+    end
+  end
+
+  defp extract_initial_and_formula(var, _key) do
+    {extract_initial_value(var), nil}
   end
 
   # Extract the user-defined value from the block/cell, falling back to type default

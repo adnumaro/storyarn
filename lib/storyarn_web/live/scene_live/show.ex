@@ -113,236 +113,236 @@ defmodule StoryarnWeb.SceneLive.Show do
       </:top_bar_extra_right>
       <SceneTree.delete_modal :if={@can_edit} />
       <%= if @scene do %>
-      <div class="h-full relative">
-        <%!-- Canvas fills the entire area --%>
-        <div
-          id="scene-canvas-wrapper"
-          class="absolute inset-0 overflow-hidden"
-          phx-drop-target={
-            @can_edit && @edit_mode && @uploads[:background] && @uploads.background.ref
-          }
-          phx-hook="CanvasDropZone"
-        >
+        <div class="h-full relative">
+          <%!-- Canvas fills the entire area --%>
           <div
-            id={"scene-canvas-#{@scene.id}"}
-            phx-hook="SceneCanvas"
-            phx-update="ignore"
-            data-scene={Jason.encode!(@scene_data)}
-            data-i18n={Jason.encode!(@canvas_i18n)}
-            class="w-full h-full"
+            id="scene-canvas-wrapper"
+            class="absolute inset-0 overflow-hidden"
+            phx-drop-target={
+              @can_edit && @edit_mode && @uploads[:background] && @uploads.background.ref
+            }
+            phx-hook="CanvasDropZone"
           >
-            <div id="scene-canvas-container" class="w-full h-full"></div>
-          </div>
+            <div
+              id={"scene-canvas-#{@scene.id}"}
+              phx-hook="SceneCanvas"
+              phx-update="ignore"
+              data-scene={Jason.encode!(@scene_data)}
+              data-i18n={Jason.encode!(@canvas_i18n)}
+              class="w-full h-full"
+            >
+              <div id="scene-canvas-container" class="w-full h-full"></div>
+            </div>
 
-          <%!-- Hidden file input for background upload --%>
-          <form
-            :if={@can_edit && @uploads[:background]}
-            id="bg-upload-form"
-            phx-change="validate_bg_upload"
-            class="hidden"
-          >
-            <.live_file_input upload={@uploads.background} />
-          </form>
+            <%!-- Hidden file input for background upload --%>
+            <form
+              :if={@can_edit && @uploads[:background]}
+              id="bg-upload-form"
+              phx-change="validate_bg_upload"
+              class="hidden"
+            >
+              <.live_file_input upload={@uploads.background} />
+            </form>
 
-          <%!-- Empty canvas — upload prompt --%>
-          <div
-            :if={!background_set?(@scene) && @can_edit && @edit_mode && @uploads[:background]}
-            class="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none"
-          >
-            <label
-              for={@uploads.background.ref}
-              class="pointer-events-auto cursor-pointer group flex flex-col items-center gap-3
+            <%!-- Empty canvas — upload prompt --%>
+            <div
+              :if={!background_set?(@scene) && @can_edit && @edit_mode && @uploads[:background]}
+              class="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none"
+            >
+              <label
+                for={@uploads.background.ref}
+                class="pointer-events-auto cursor-pointer group flex flex-col items-center gap-3
                      p-8 rounded-xl border-2 border-dashed border-base-content/15
                      hover:border-primary/40 hover:bg-base-100/50 transition-colors"
-            >
-              <.icon
-                name="image-plus"
-                class="size-10 opacity-20 group-hover:opacity-50 transition-opacity"
-              />
-              <span class="text-sm text-base-content/40 group-hover:text-base-content/60 transition-colors">
-                {dgettext("scenes", "Upload background image")}
-              </span>
-              <span class="text-xs text-base-content/25">
-                {dgettext("scenes", "or drag & drop")}
-              </span>
-            </label>
-          </div>
-
-          <%!-- Drag & drop overlay (shown by CanvasDropZone hook) --%>
-          <div
-            :if={@can_edit && @edit_mode}
-            id="canvas-drop-indicator"
-            class="hidden absolute inset-0 z-[999] bg-primary/5 border-2 border-dashed border-primary/30
-                   flex items-center justify-center pointer-events-none"
-          >
-            <div class="text-center">
-              <.icon name="image-plus" class="size-12 text-primary/50 mx-auto mb-2" />
-              <p class="text-sm font-medium text-primary/60">
-                {dgettext("scenes", "Drop image to set background")}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <%!-- UI overlays — outside overflow-hidden wrapper so backdrop-blur works --%>
-
-        <%!-- Upload progress indicator --%>
-        <div
-          :for={
-            entry <-
-              if(@can_edit && @uploads[:background],
-                do: @uploads.background.entries,
-                else: []
-              )
-          }
-          class="absolute bottom-20 left-1/2 -translate-x-1/2 z-[1000]
-                 bg-base-100 rounded-lg border border-base-300 shadow-lg px-4 py-2 flex items-center gap-3"
-        >
-          <.icon name="upload" class="size-4 animate-pulse text-primary" />
-          <div class="w-40">
-            <div class="text-xs text-base-content/60 mb-1 flex min-w-0">
-              <span class="truncate">{Path.rootname(entry.client_name)}</span>
-              <span class="flex-shrink-0">{Path.extname(entry.client_name)}</span>
-            </div>
-            <div class="w-full bg-base-300 rounded-full h-1.5">
-              <div
-                class="bg-primary h-1.5 rounded-full transition-all"
-                style={"width: #{entry.progress}%"}
               >
+                <.icon
+                  name="image-plus"
+                  class="size-10 opacity-20 group-hover:opacity-50 transition-opacity"
+                />
+                <span class="text-sm text-base-content/40 group-hover:text-base-content/60 transition-colors">
+                  {dgettext("scenes", "Upload background image")}
+                </span>
+                <span class="text-xs text-base-content/25">
+                  {dgettext("scenes", "or drag & drop")}
+                </span>
+              </label>
+            </div>
+
+            <%!-- Drag & drop overlay (shown by CanvasDropZone hook) --%>
+            <div
+              :if={@can_edit && @edit_mode}
+              id="canvas-drop-indicator"
+              class="hidden absolute inset-0 z-[999] bg-primary/5 border-2 border-dashed border-primary/30
+                   flex items-center justify-center pointer-events-none"
+            >
+              <div class="text-center">
+                <.icon name="image-plus" class="size-12 text-primary/50 mx-auto mb-2" />
+                <p class="text-sm font-medium text-primary/60">
+                  {dgettext("scenes", "Drop image to set background")}
+                </p>
               </div>
             </div>
           </div>
+
+          <%!-- UI overlays — outside overflow-hidden wrapper so backdrop-blur works --%>
+
+          <%!-- Upload progress indicator --%>
+          <div
+            :for={
+              entry <-
+                if(@can_edit && @uploads[:background],
+                  do: @uploads.background.entries,
+                  else: []
+                )
+            }
+            class="absolute bottom-20 left-1/2 -translate-x-1/2 z-[1000]
+                 bg-base-100 rounded-lg border border-base-300 shadow-lg px-4 py-2 flex items-center gap-3"
+          >
+            <.icon name="upload" class="size-4 animate-pulse text-primary" />
+            <div class="w-40">
+              <div class="text-xs text-base-content/60 mb-1 flex min-w-0">
+                <span class="truncate">{Path.rootname(entry.client_name)}</span>
+                <span class="flex-shrink-0">{Path.extname(entry.client_name)}</span>
+              </div>
+              <div class="w-full bg-base-300 rounded-full h-1.5">
+                <div
+                  class="bg-primary h-1.5 rounded-full transition-all"
+                  style={"width: #{entry.progress}%"}
+                >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <%!-- Bottom dock (edit mode only) --%>
+          <.dock :if={@edit_mode} active_tool={@active_tool} pending_sheet={@pending_sheet_for_pin} />
+
+          <%!-- Sheet picker overlay --%>
+          <div
+            :if={@show_sheet_picker}
+            id="sheet-picker"
+            class="absolute bottom-32 left-1/2 -translate-x-1/2 z-[1001] w-72 bg-base-100 rounded-lg border border-base-300 shadow-lg overflow-hidden"
+          >
+            <div class="p-2 border-b border-base-300 flex items-center justify-between">
+              <span class="text-xs font-medium">{dgettext("scenes", "Select a sheet")}</span>
+              <button
+                type="button"
+                phx-click="cancel_sheet_picker"
+                class="btn btn-ghost btn-xs btn-square"
+              >
+                <.icon name="x" class="size-3" />
+              </button>
+            </div>
+            <div class="max-h-60 overflow-y-auto p-1">
+              <.sheet_picker_list sheets={flatten_sheets(@project_sheets)} />
+            </div>
+          </div>
+
+          <%!-- Bottom-right controls: reset zoom + legend --%>
+          <div class="absolute bottom-3 right-3 z-[1000] flex items-end gap-2">
+            <div id="scene-controls-slot" phx-update="ignore"></div>
+            <.legend
+              pins={@pins}
+              zones={@zones}
+              connections={@connections}
+              legend_open={@legend_open}
+            />
+          </div>
+
+          <%!-- Floating element toolbar --%>
+          <.canvas_toolbar
+            id="scene-floating-toolbar"
+            canvas_id={"scene-canvas-#{@scene.id}"}
+            visible={@selected_element != nil && @can_edit && @edit_mode}
+            z_class="z-[1050]"
+          >
+            <.floating_toolbar
+              selected_type={@selected_type}
+              selected_element={@selected_element}
+              layers={@layers}
+              can_edit={not Map.get(@selected_element || %{}, :locked, false)}
+              can_toggle_lock={true}
+            />
+          </.canvas_toolbar>
+
+          <%!-- Element Properties Sidebar --%>
+          <div
+            :if={@element_panel_open && @selected_element != nil}
+            id="scene-element-panel"
+            phx-hook="SceneElementPanel"
+            data-close-event="close_element_panel"
+            class={[
+              "fixed flex flex-col overflow-hidden",
+              "inset-0 z-50 bg-base-100",
+              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[480px]",
+              "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+            ]}
+          >
+            <.scene_element_panel
+              selected_type={@selected_type}
+              selected_element={@selected_element}
+              can_edit={not Map.get(@selected_element || %{}, :locked, false)}
+              project_scenes={@project_scenes}
+              project_sheets={@project_sheets}
+              project_flows={@project_flows}
+              project_variables={@project_variables}
+              panel_sections={@panel_sections}
+            />
+          </div>
+
+          <%!-- Scene Settings Sidebar --%>
+          <div
+            :if={@scene_settings_open && @can_edit && @edit_mode}
+            id="scene-settings-panel"
+            phx-hook="SceneElementPanel"
+            data-close-event="close_scene_settings"
+            class={[
+              "fixed flex flex-col overflow-hidden",
+              "inset-0 z-50 bg-base-100",
+              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[320px]",
+              "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+            ]}
+          >
+            <.scene_settings_panel
+              scene={@scene}
+              can_edit={@can_edit}
+              bg_upload_input_id={@uploads[:background] && @uploads.background.ref}
+            />
+          </div>
         </div>
 
-        <%!-- Bottom dock (edit mode only) --%>
-        <.dock :if={@edit_mode} active_tool={@active_tool} pending_sheet={@pending_sheet_for_pin} />
-
-        <%!-- Sheet picker overlay --%>
+        <%!-- Pin icon upload overlay (fixed, outside canvas overflow) --%>
         <div
-          :if={@show_sheet_picker}
-          id="sheet-picker"
-          class="absolute bottom-32 left-1/2 -translate-x-1/2 z-[1001] w-72 bg-base-100 rounded-lg border border-base-300 shadow-lg overflow-hidden"
+          :if={@show_pin_icon_upload && @selected_type == "pin" && @project && @current_scope}
+          id="pin-icon-upload-panel"
+          class="fixed top-16 right-4 z-[1030] w-64 bg-base-200 border border-base-300 rounded-lg
+               shadow-lg p-3"
         >
-          <div class="p-2 border-b border-base-300 flex items-center justify-between">
-            <span class="text-xs font-medium">{dgettext("scenes", "Select a sheet")}</span>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium">{dgettext("scenes", "Upload Icon")}</span>
             <button
               type="button"
-              phx-click="cancel_sheet_picker"
+              phx-click="toggle_pin_icon_upload"
               class="btn btn-ghost btn-xs btn-square"
             >
               <.icon name="x" class="size-3" />
             </button>
           </div>
-          <div class="max-h-60 overflow-y-auto p-1">
-            <.sheet_picker_list sheets={flatten_sheets(@project_sheets)} />
-          </div>
-        </div>
-
-        <%!-- Bottom-right controls: reset zoom + legend --%>
-        <div class="absolute bottom-3 right-3 z-[1000] flex items-end gap-2">
-          <div id="scene-controls-slot" phx-update="ignore"></div>
-          <.legend
-            pins={@pins}
-            zones={@zones}
-            connections={@connections}
-            legend_open={@legend_open}
+          <.live_component
+            module={StoryarnWeb.Components.AssetUpload}
+            id="pin-icon-upload"
+            project={@project}
+            current_user={@current_scope.user}
+            on_upload={fn asset -> send(self(), {:pin_icon_uploaded, asset}) end}
+            accept={~w(image/jpeg image/png image/gif image/webp image/svg+xml)}
+            max_entries={1}
+            max_file_size={524_288}
           />
         </div>
-
-        <%!-- Floating element toolbar --%>
-        <.canvas_toolbar
-          id="scene-floating-toolbar"
-          canvas_id={"scene-canvas-#{@scene.id}"}
-          visible={@selected_element != nil && @can_edit && @edit_mode}
-          z_class="z-[1050]"
-        >
-          <.floating_toolbar
-            selected_type={@selected_type}
-            selected_element={@selected_element}
-            layers={@layers}
-            can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-            can_toggle_lock={true}
-          />
-        </.canvas_toolbar>
-
-        <%!-- Element Properties Sidebar --%>
-        <div
-          :if={@element_panel_open && @selected_element != nil}
-          id="scene-element-panel"
-          phx-hook="SceneElementPanel"
-          data-close-event="close_element_panel"
-          class={[
-            "fixed flex flex-col overflow-hidden",
-            "inset-0 z-50 bg-base-100",
-            "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[480px]",
-            "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
-          ]}
-        >
-          <.scene_element_panel
-            selected_type={@selected_type}
-            selected_element={@selected_element}
-            can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-            project_scenes={@project_scenes}
-            project_sheets={@project_sheets}
-            project_flows={@project_flows}
-            project_variables={@project_variables}
-            panel_sections={@panel_sections}
-          />
-        </div>
-
-        <%!-- Scene Settings Sidebar --%>
-        <div
-          :if={@scene_settings_open && @can_edit && @edit_mode}
-          id="scene-settings-panel"
-          phx-hook="SceneElementPanel"
-          data-close-event="close_scene_settings"
-          class={[
-            "fixed flex flex-col overflow-hidden",
-            "inset-0 z-50 bg-base-100",
-            "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[320px]",
-            "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
-          ]}
-        >
-          <.scene_settings_panel
-            scene={@scene}
-            can_edit={@can_edit}
-            bg_upload_input_id={@uploads[:background] && @uploads.background.ref}
-          />
-        </div>
-      </div>
-
-      <%!-- Pin icon upload overlay (fixed, outside canvas overflow) --%>
-      <div
-        :if={@show_pin_icon_upload && @selected_type == "pin" && @project && @current_scope}
-        id="pin-icon-upload-panel"
-        class="fixed top-16 right-4 z-[1030] w-64 bg-base-200 border border-base-300 rounded-lg
-               shadow-lg p-3"
-      >
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-medium">{dgettext("scenes", "Upload Icon")}</span>
-          <button
-            type="button"
-            phx-click="toggle_pin_icon_upload"
-            class="btn btn-ghost btn-xs btn-square"
-          >
-            <.icon name="x" class="size-3" />
-          </button>
-        </div>
-        <.live_component
-          module={StoryarnWeb.Components.AssetUpload}
-          id="pin-icon-upload"
-          project={@project}
-          current_user={@current_scope.user}
-          on_upload={fn asset -> send(self(), {:pin_icon_uploaded, asset}) end}
-          accept={~w(image/jpeg image/png image/gif image/webp image/svg+xml)}
-          max_entries={1}
-          max_file_size={524_288}
-        />
-      </div>
       <% else %>
-      <div class="h-full flex items-center justify-center">
-        <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-      </div>
+        <div class="h-full flex items-center justify-center">
+          <span class="loading loading-spinner loading-lg text-base-content/30"></span>
+        </div>
       <% end %>
 
       <%!-- Confirm modals --%>
@@ -437,19 +437,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           |> assign(:referencing_flows, [])
           |> assign(:sidebar_loaded, false)
           |> assign(:pending_delete_id, nil)
-          |> then(fn socket ->
-            if can_edit do
-              allow_upload(socket, :background,
-                accept: ~w(image/jpeg image/png image/gif image/webp),
-                max_entries: 1,
-                max_file_size: 10_485_760,
-                auto_upload: true,
-                progress: fn name, entry, socket -> handle_progress(name, entry, socket) end
-              )
-            else
-              socket
-            end
-          end)
+          |> maybe_allow_background_upload(can_edit)
 
         {:ok, socket}
 
@@ -534,22 +522,22 @@ defmodule StoryarnWeb.SceneLive.Show do
         |> assign(:redo_stack, [])
         |> assign(:panel_sections, %{})
         |> assign(:referencing_flows, [])
-        |> then(fn socket ->
-          if has_tree do
-            socket
-          else
-            start_async(socket, :load_sidebar_data, fn ->
-              %{
-                scenes_tree: Scenes.list_scenes_tree_with_elements(project.id),
-                project_scenes: Scenes.list_scenes(project.id),
-                project_sheets: Storyarn.Sheets.list_sheets_tree(project.id),
-                project_flows: Storyarn.Flows.list_flows(project.id),
-                project_variables: Storyarn.Sheets.list_project_variables(project.id)
-              }
-            end)
-          end
-        end)
+        |> maybe_load_sidebar(has_tree, project)
     end
+  end
+
+  defp maybe_load_sidebar(socket, true, _project), do: socket
+
+  defp maybe_load_sidebar(socket, false, project) do
+    start_async(socket, :load_sidebar_data, fn ->
+      %{
+        scenes_tree: Scenes.list_scenes_tree_with_elements(project.id),
+        project_scenes: Scenes.list_scenes(project.id),
+        project_sheets: Storyarn.Sheets.list_sheets_tree(project.id),
+        project_flows: Storyarn.Flows.list_flows(project.id),
+        project_variables: Storyarn.Sheets.list_project_variables(project.id)
+      }
+    end)
   end
 
   defp canvas_i18n do
@@ -1167,6 +1155,18 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
+
+  defp maybe_allow_background_upload(socket, false), do: socket
+
+  defp maybe_allow_background_upload(socket, true) do
+    allow_upload(socket, :background,
+      accept: ~w(image/jpeg image/png image/gif image/webp),
+      max_entries: 1,
+      max_file_size: 10_485_760,
+      auto_upload: true,
+      progress: fn name, entry, socket -> handle_progress(name, entry, socket) end
+    )
+  end
 
   defp handle_progress(:background, entry, socket) do
     if entry.done? do

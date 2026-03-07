@@ -9,7 +9,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Shared.SearchHelpers
+  alias Storyarn.Shared.{FormulaEngine, MapUtils, SearchHelpers}
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
 
@@ -239,9 +239,9 @@ defmodule Storyarn.Sheets.SheetQueries do
           is_nil(s.deleted_at) and
           is_nil(b.deleted_at) and
           b.type in ^variable_types and
+          b.is_constant == false and
           not is_nil(b.variable_name) and
-          b.variable_name != "" and
-          b.is_constant == false,
+          b.variable_name != "",
       select: %{
         sheet_id: s.id,
         sheet_name: s.name,
@@ -261,7 +261,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   end
 
   defp list_table_variables(project_id) do
-    variable_column_types = ~w(number text boolean select multi_select date reference)
+    variable_column_types = ~w(number text boolean select multi_select date reference formula)
 
     raw_vars =
       from(tc in TableColumn,
@@ -274,8 +274,8 @@ defmodule Storyarn.Sheets.SheetQueries do
         where: s.project_id == ^project_id,
         where: is_nil(s.deleted_at) and is_nil(b.deleted_at),
         where: b.type == "table",
-        where: tc.is_constant == false,
         where: tc.type in ^variable_column_types,
+        where: tc.is_constant == false or tc.type == "formula",
         select: %{
           sheet_id: s.id,
           sheet_name: s.name,
@@ -512,7 +512,7 @@ defmodule Storyarn.Sheets.SheetQueries do
         shortcut: coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)),
         table_name: b.variable_name,
         row_slug: tr.slug,
-        values: tr.values
+        cells: tr.cells
       }
     )
   end
@@ -520,7 +520,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   defp match_table_row(rows, entry, acc) do
     case find_matching_row(rows, entry) do
       nil -> acc
-      row -> Map.put(acc, entry.ref, get_in(row.values, [entry.col_slug]))
+      row -> Map.put(acc, entry.ref, resolve_cell_value(row.cells, entry.col_slug))
     end
   end
 
@@ -529,6 +529,43 @@ defmodule Storyarn.Sheets.SheetQueries do
       r.shortcut == entry.shortcut and r.table_name == entry.table_name and
         r.row_slug == entry.row_slug
     end)
+  end
+
+  # Resolve a cell value — if it's a formula map, compute it inline using same-row cells
+  defp resolve_cell_value(cells, col_slug) do
+    case cells[col_slug] do
+      %{"expression" => expr, "bindings" => bindings} when is_binary(expr) and expr != "" ->
+        compute_formula_cell(expr, bindings, cells)
+
+      other ->
+        other
+    end
+  end
+
+  defp compute_formula_cell(expression, bindings, row_cells) do
+    values =
+      Map.new(bindings || %{}, fn {symbol, binding} ->
+        value =
+          case binding do
+            %{"type" => "same_row", "column_slug" => slug} ->
+              MapUtils.parse_to_number(row_cells[slug])
+
+            %{"type" => "variable", "ref" => _ref} ->
+              # Cross-table variable refs in nested formulas fall back to 0
+              # (the outer formula resolver handles cross-table resolution)
+              0.0
+
+            _ ->
+              0.0
+          end
+
+        {symbol, value}
+      end)
+
+    case FormulaEngine.compute(expression, values) do
+      {:ok, result} -> MapUtils.format_number_result(result)
+      {:error, _} -> nil
+    end
   end
 
   defp extract_block_value(%{"content" => content}), do: content

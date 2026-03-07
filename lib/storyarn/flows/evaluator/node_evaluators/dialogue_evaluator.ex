@@ -8,6 +8,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
   """
 
   alias Storyarn.Flows.Evaluator.{ConditionEval, EngineHelpers, InstructionExec}
+  alias Storyarn.Shared.FormulaRuntime
 
   @doc """
   Evaluate a dialogue node. Returns one of:
@@ -29,41 +30,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
     {:ok, new_variables, changes, errors, warnings} =
       InstructionExec.execute_string(instruction_json, state.variables)
 
-    state = %{state | variables: new_variables}
-
-    state =
-      Enum.reduce(changes, state, fn change, acc ->
-        EngineHelpers.add_console(
-          acc,
-          :info,
-          node_id,
-          "",
-          "Response instruction: #{change.variable_ref}: #{EngineHelpers.format_value(change.old_value)} → #{EngineHelpers.format_value(change.new_value)}"
-        )
-      end)
-
-    state = EngineHelpers.add_history_entries(state, node_id, "", changes, :instruction)
-
-    state =
-      Enum.reduce(errors, state, fn error, acc ->
-        EngineHelpers.add_console(
-          acc,
-          :error,
-          node_id,
-          "",
-          "Response instruction error: #{error.reason}"
-        )
-      end)
-
-    Enum.reduce(warnings, state, fn w, acc ->
-      EngineHelpers.add_console(
-        acc,
-        :warning,
-        node_id,
-        "",
-        "Response instruction: #{w.message}"
-      )
-    end)
+    apply_response_results(state, node_id, new_variables, changes, errors, warnings)
   end
 
   @doc """
@@ -73,6 +40,11 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
     {:ok, new_variables, changes, errors, warnings} =
       InstructionExec.execute(assignments, state.variables)
 
+    apply_response_results(state, node_id, new_variables, changes, errors, warnings)
+  end
+
+  defp apply_response_results(state, node_id, new_variables, changes, errors, warnings) do
+    new_variables = FormulaRuntime.recompute_formulas(new_variables)
     state = %{state | variables: new_variables}
 
     state =

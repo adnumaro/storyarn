@@ -16,6 +16,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     Block,
     BlockCrud,
     EntityReference,
+    FormulaBindingRewriter,
     Sheet,
     SheetQueries,
     TableColumn,
@@ -425,14 +426,8 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   # Loads children-scope blocks for an ancestor sheet (used in resolve_inherited_blocks)
   defp ancestor_to_block_group(ancestor, hidden_block_ids) do
     blocks =
-      from(b in Block,
-        where:
-          b.sheet_id == ^ancestor.id and
-            b.scope == "children" and
-            is_nil(b.deleted_at),
-        order_by: [asc: b.position]
-      )
-      |> Repo.all()
+      ancestor
+      |> load_children_scope_blocks()
       |> Enum.reject(fn b -> b.id in hidden_block_ids end)
 
     %{source_sheet: ancestor, blocks: blocks}
@@ -630,10 +625,13 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   # =============================================================================
 
   # Copies table columns and rows from a parent block to all its non-detached instances
-  # that don't already have columns (idempotent).
+  # that don't already have columns (idempotent). Rewrites formula bindings if needed.
   defp copy_table_structure_to_instances(%Block{type: "table"} = parent_block) do
     {source_columns, source_rows} = load_table_structure(parent_block.id)
     instances = list_non_detached_instances(parent_block.id)
+
+    # Only load rewrite context if any formula cells with variable bindings exist
+    rewrite_ctx = build_rewrite_context_if_needed(parent_block, source_rows, instances)
 
     for instance <- instances do
       existing_count =
@@ -641,7 +639,8 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         |> Repo.one()
 
       if existing_count == 0 do
-        insert_table_structure(instance.id, source_columns, source_rows)
+        rows = maybe_rewrite_rows(source_rows, instance, rewrite_ctx)
+        insert_table_structure(instance.id, source_columns, rows)
       end
     end
 
@@ -679,12 +678,15 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   defp maybe_reset_table_structure(result, _source_id), do: result
 
   # Resets table structure on an instance block to match the source block.
+  # Rewrites formula bindings if the source and instance are on different sheets.
   defp reset_table_structure_from_source(instance_block_id, source_block_id) do
     Repo.delete_all(from(c in TableColumn, where: c.block_id == ^instance_block_id))
     Repo.delete_all(from(r in TableRow, where: r.block_id == ^instance_block_id))
 
     {source_columns, source_rows} = load_table_structure(source_block_id)
-    insert_table_structure(instance_block_id, source_columns, source_rows)
+
+    rows = maybe_rewrite_rows_for_single_instance(source_rows, instance_block_id, source_block_id)
+    insert_table_structure(instance_block_id, source_columns, rows)
   end
 
   defp load_table_structure(block_id) do
@@ -736,5 +738,123 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     if row_entries != [], do: Repo.insert_all(TableRow, row_entries)
 
     :ok
+  end
+
+  # =============================================================================
+  # Formula Binding Rewrite Helpers
+  # =============================================================================
+
+  # Builds rewrite context only if source rows contain formula variable bindings.
+  # Returns nil if no rewriting is needed (zero overhead for non-formula tables).
+  defp build_rewrite_context_if_needed(_parent_block, source_rows, instances) do
+    has_formulas = FormulaBindingRewriter.any_rows_have_formula_bindings?(source_rows)
+    parent_sheet_id = if has_formulas and instances != [], do: get_parent_sheet_id_from_instance(hd(instances))
+
+    if parent_sheet_id do
+      do_build_rewrite_context(parent_sheet_id, instances)
+    end
+  end
+
+  defp do_build_rewrite_context(parent_sheet_id, instances) do
+    parent_shortcut = get_sheet_shortcut(parent_sheet_id)
+    child_sheet_ids = instances |> Enum.map(& &1.sheet_id) |> Enum.uniq()
+
+    child_shortcuts =
+      from(s in Sheet, where: s.id in ^child_sheet_ids, select: {s.id, s.shortcut})
+      |> Repo.all()
+      |> Map.new()
+
+    children =
+      Map.new(child_sheet_ids, fn sheet_id ->
+        mapping = FormulaBindingRewriter.build_var_name_mapping(parent_sheet_id, sheet_id)
+        {sheet_id, %{shortcut: Map.get(child_shortcuts, sheet_id), mapping: mapping}}
+      end)
+
+    %{parent_shortcut: parent_shortcut, children: children}
+  end
+
+  # Rewrites rows for a specific instance using the batch rewrite context.
+  # Returns original rows unchanged if rewrite_ctx is nil.
+  defp maybe_rewrite_rows(source_rows, _instance, nil), do: source_rows
+
+  defp maybe_rewrite_rows(source_rows, instance, rewrite_ctx) do
+    case Map.get(rewrite_ctx.children, instance.sheet_id) do
+      nil ->
+        source_rows
+
+      %{shortcut: nil} ->
+        source_rows
+
+      %{shortcut: child_shortcut, mapping: mapping} when map_size(mapping) > 0 ->
+        Enum.map(source_rows, fn row ->
+          new_cells =
+            FormulaBindingRewriter.rewrite_cells(
+              row.cells,
+              rewrite_ctx.parent_shortcut,
+              child_shortcut,
+              mapping
+            )
+
+          %{row | cells: new_cells}
+        end)
+
+      _ ->
+        source_rows
+    end
+  end
+
+  # Rewrites rows for a single instance (used by reset_table_structure_from_source).
+  defp maybe_rewrite_rows_for_single_instance(source_rows, instance_block_id, source_block_id) do
+    if FormulaBindingRewriter.any_rows_have_formula_bindings?(source_rows) do
+      do_rewrite_for_single_instance(source_rows, instance_block_id, source_block_id)
+    else
+      source_rows
+    end
+  end
+
+  defp do_rewrite_for_single_instance(source_rows, instance_block_id, source_block_id) do
+    block_sheets =
+      from(b in Block,
+        where: b.id in ^[instance_block_id, source_block_id],
+        select: {b.id, b.sheet_id}
+      )
+      |> Repo.all()
+      |> Map.new()
+
+    source_sheet_id = Map.get(block_sheets, source_block_id)
+    instance_sheet_id = Map.get(block_sheets, instance_block_id)
+
+    cond do
+      is_nil(source_sheet_id) or is_nil(instance_sheet_id) -> source_rows
+      source_sheet_id == instance_sheet_id -> source_rows
+      true -> apply_single_instance_rewrite(source_rows, source_sheet_id, instance_sheet_id)
+    end
+  end
+
+  defp apply_single_instance_rewrite(source_rows, source_sheet_id, instance_sheet_id) do
+    parent_shortcut = get_sheet_shortcut(source_sheet_id)
+    child_shortcut = get_sheet_shortcut(instance_sheet_id)
+    mapping = FormulaBindingRewriter.build_var_name_mapping(source_sheet_id, instance_sheet_id)
+
+    if parent_shortcut && child_shortcut && map_size(mapping) > 0 do
+      Enum.map(source_rows, fn row ->
+        %{row | cells: FormulaBindingRewriter.rewrite_cells(row.cells, parent_shortcut, child_shortcut, mapping)}
+      end)
+    else
+      source_rows
+    end
+  end
+
+  # Gets the parent sheet ID by looking up the source block of an inherited instance.
+  defp get_parent_sheet_id_from_instance(%Block{inherited_from_block_id: nil}), do: nil
+
+  defp get_parent_sheet_id_from_instance(%Block{inherited_from_block_id: source_id}) do
+    from(b in Block, where: b.id == ^source_id, select: b.sheet_id)
+    |> Repo.one()
+  end
+
+  defp get_sheet_shortcut(sheet_id) do
+    from(s in Sheet, where: s.id == ^sheet_id, select: s.shortcut)
+    |> Repo.one()
   end
 end

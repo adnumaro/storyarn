@@ -841,4 +841,168 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       assert length(positions) == length(Enum.uniq(positions))
     end
   end
+
+  # ===========================================================================
+  # Formula binding rewrite on table inheritance
+  # ===========================================================================
+
+  describe "formula binding rewrite on table inheritance" do
+    setup :setup_hierarchy
+
+    test "rewrites cross-sheet formula bindings when inheriting table to new child", %{
+      project: project,
+      parent: parent
+    } do
+      # 1. Create a non-table inheritable block that formulas will reference
+      _stats_block = inheritable_block_fixture(parent, label: "Strength", type: "number")
+
+      # 2. Create a table block with scope "children"
+      {:ok, table_block} =
+        Sheets.create_block(parent, %{
+          type: "table",
+          scope: "children",
+          config: %{"label" => "Combat Stats", "collapsed" => false}
+        })
+
+      # 3. Add a formula column
+      {:ok, formula_col} =
+        Sheets.create_table_column(table_block, %{name: "Bonus", type: "formula"})
+
+      # 4. Get the default row and update its formula cell with a cross-sheet binding
+      parent_shortcut = parent.shortcut
+      rows = Sheets.list_table_rows(table_block.id)
+      row = hd(rows)
+
+      formula_cell = %{
+        "expression" => "a * 2",
+        "bindings" => %{
+          "a" => %{"type" => "variable", "ref" => "#{parent_shortcut}.strength"}
+        }
+      }
+
+      {:ok, _} = Sheets.update_table_cell(row, formula_col.slug, formula_cell)
+
+      # 5. Create a new child sheet — triggers inherit_blocks_for_new_sheet
+      child = child_sheet_fixture(project, parent, %{name: "Warrior"})
+      child_shortcut = child.shortcut
+
+      # 6. Find the inherited table block on the child
+      child_blocks = Sheets.list_blocks(child.id)
+
+      child_table =
+        Enum.find(child_blocks, fn b ->
+          b.inherited_from_block_id == table_block.id
+        end)
+
+      assert child_table, "Child should have an inherited table block"
+
+      # 7. Check the child's row has rewritten formula bindings
+      child_rows = Sheets.list_table_rows(child_table.id)
+      assert length(child_rows) == 1
+
+      child_row = hd(child_rows)
+      child_formula_cell = child_row.cells[formula_col.slug]
+
+      assert is_map(child_formula_cell)
+      assert child_formula_cell["expression"] == "a * 2"
+
+      child_binding = child_formula_cell["bindings"]["a"]
+      assert child_binding["type"] == "variable"
+      # The ref should be rewritten from parent shortcut to child shortcut
+      assert child_binding["ref"] == "#{child_shortcut}.strength"
+    end
+
+    test "preserves bindings referencing other sheets (not parent)", %{
+      project: project,
+      parent: parent
+    } do
+      # Create a separate sheet with its own variable
+      other_sheet = sheet_fixture(project, %{name: "Global Config"})
+      _other_block = inheritable_block_fixture(other_sheet, label: "Multiplier", type: "number")
+
+      # Create table with formula referencing the OTHER sheet, not the parent
+      {:ok, table_block} =
+        Sheets.create_block(parent, %{
+          type: "table",
+          scope: "children",
+          config: %{"label" => "Formulas", "collapsed" => false}
+        })
+
+      {:ok, formula_col} =
+        Sheets.create_table_column(table_block, %{name: "Result", type: "formula"})
+
+      rows = Sheets.list_table_rows(table_block.id)
+      row = hd(rows)
+      other_shortcut = other_sheet.shortcut
+
+      formula_cell = %{
+        "expression" => "a + 1",
+        "bindings" => %{
+          "a" => %{"type" => "variable", "ref" => "#{other_shortcut}.multiplier"}
+        }
+      }
+
+      {:ok, _} = Sheets.update_table_cell(row, formula_col.slug, formula_cell)
+
+      # Create child — formula references other_sheet, not parent, so should stay unchanged
+      child = child_sheet_fixture(project, parent, %{name: "Child Formulas"})
+
+      child_blocks = Sheets.list_blocks(child.id)
+
+      child_table =
+        Enum.find(child_blocks, &(&1.inherited_from_block_id == table_block.id))
+
+      child_rows = Sheets.list_table_rows(child_table.id)
+      child_formula_cell = hd(child_rows).cells[formula_col.slug]
+
+      # Binding should remain pointing to other_sheet, NOT rewritten
+      assert child_formula_cell["bindings"]["a"]["ref"] == "#{other_shortcut}.multiplier"
+    end
+
+    test "preserves same_row bindings during inheritance", %{
+      project: project,
+      parent: parent
+    } do
+      {:ok, table_block} =
+        Sheets.create_block(parent, %{
+          type: "table",
+          scope: "children",
+          config: %{"label" => "Mixed Bindings", "collapsed" => false}
+        })
+
+      {:ok, _value_col} =
+        Sheets.create_table_column(table_block, %{name: "Base Value", type: "number"})
+
+      {:ok, formula_col} =
+        Sheets.create_table_column(table_block, %{name: "Double", type: "formula"})
+
+      rows = Sheets.list_table_rows(table_block.id)
+      row = hd(rows)
+
+      formula_cell = %{
+        "expression" => "a * 2",
+        "bindings" => %{
+          "a" => %{"type" => "same_row", "column_slug" => "base_value"}
+        }
+      }
+
+      {:ok, _} = Sheets.update_table_cell(row, formula_col.slug, formula_cell)
+
+      child = child_sheet_fixture(project, parent, %{name: "SameRow Child"})
+
+      child_blocks = Sheets.list_blocks(child.id)
+
+      child_table =
+        Enum.find(child_blocks, &(&1.inherited_from_block_id == table_block.id))
+
+      child_rows = Sheets.list_table_rows(child_table.id)
+      child_formula_cell = hd(child_rows).cells[formula_col.slug]
+
+      # same_row binding should pass through unchanged
+      assert child_formula_cell["bindings"]["a"] == %{
+               "type" => "same_row",
+               "column_slug" => "base_value"
+             }
+    end
+  end
 end

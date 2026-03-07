@@ -12,6 +12,8 @@ defmodule Storyarn.Flows.Evaluator.State do
 
   @type status :: :paused | :waiting_input | :finished
 
+  @type formula_meta :: %{expression: String.t(), bindings: map()}
+
   @type variable :: %{
           value: any(),
           initial_value: any(),
@@ -22,6 +24,20 @@ defmodule Storyarn.Flows.Evaluator.State do
           sheet_shortcut: String.t(),
           variable_name: String.t(),
           constraints: map() | nil
+        }
+
+  @typedoc "Variable with optional formula metadata for reactive recomputation."
+  @type formula_variable :: %{
+          value: any(),
+          initial_value: any(),
+          previous_value: any(),
+          source: :initial | :user_override | :instruction,
+          block_type: String.t(),
+          block_id: integer(),
+          sheet_shortcut: String.t(),
+          variable_name: String.t(),
+          constraints: map() | nil,
+          formula: formula_meta()
         }
 
   @type console_entry :: %{

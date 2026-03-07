@@ -39,6 +39,7 @@ export function createCombobox(opts) {
     onSelect,
     freeText = false,
     numeric = false,
+    fixedWidth = false,
   } = opts;
 
   let isOpen = false;
@@ -57,7 +58,7 @@ export function createCombobox(opts) {
   input.spellcheck = false;
   if (numeric) input.inputMode = "decimal";
 
-  adjustInputWidth(input);
+  if (!fixedWidth) adjustInputWidth(input);
 
   // Numeric filter: allow digits, a leading minus, and one decimal point
   if (numeric) {
@@ -128,7 +129,7 @@ export function createCombobox(opts) {
   });
 
   input.addEventListener("input", () => {
-    adjustInputWidth(input);
+    if (!fixedWidth) adjustInputWidth(input);
     // Update width to match input
     dropdown.style.width = `${Math.max(200, input.offsetWidth)}px`;
     if (freeText) {
@@ -233,7 +234,7 @@ export function createCombobox(opts) {
     currentValue = option.value;
     input.value = option.displayValue || option.label || option.value;
     input.classList.add("filled");
-    adjustInputWidth(input);
+    if (!fixedWidth) adjustInputWidth(input);
     closeDropdown();
     if (onSelect) onSelect({ ...option, confirmed: true });
   }
@@ -314,7 +315,7 @@ export function createCombobox(opts) {
       currentValue = val;
       input.value = display || val || "";
       input.classList.toggle("filled", !!val);
-      adjustInputWidth(input);
+      if (!fixedWidth) adjustInputWidth(input);
     },
     focus: () => {
       input.focus();

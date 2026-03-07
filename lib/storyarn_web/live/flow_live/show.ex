@@ -372,7 +372,10 @@ defmodule StoryarnWeb.FlowLive.Show do
         # Teardown collaboration for previous flow (if switching)
         case socket.assigns.flow do
           %{id: prev_id} when prev_id != flow.id ->
-            CollaborationHelpers.teardown_collaboration(prev_id, socket.assigns.current_scope.user.id)
+            CollaborationHelpers.teardown_collaboration(
+              prev_id,
+              socket.assigns.current_scope.user.id
+            )
 
           _ ->
             :ok

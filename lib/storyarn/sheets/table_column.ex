@@ -14,7 +14,7 @@ defmodule Storyarn.Sheets.TableColumn do
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Sheets.Block
 
-  @column_types ~w(number text boolean select multi_select date reference)
+  @column_types ~w(number text boolean select multi_select date reference formula)
 
   schema "table_columns" do
     field :name, :string

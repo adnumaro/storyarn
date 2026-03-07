@@ -750,14 +750,81 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       assert result["mc.health"] == nil
     end
 
-    # NOTE: resolve_table_values tests are skipped because the source code
-    # query_table_rows/2 references `tr.values` but the TableRow schema field
-    # is actually `cells`. This is a known source bug (SheetQueries line 514).
+    test "resolves table cell variable from 4-part ref" do
+      %{project: project} = setup_project()
+
+      sheet = sheet_fixture(project, %{name: "Seven", shortcut: "seven"})
+      table = table_block_fixture(sheet, %{label: "Stats"})
+
+      [default_row] = table.table_rows
+      [default_col] = table.table_columns
+
+      # Set a numeric value in the default cell
+      {:ok, _row} = Sheets.update_table_cell(default_row, default_col.slug, "42")
+
+      ref = "seven.stats.#{default_row.slug}.#{default_col.slug}"
+      result = SheetQueries.resolve_variable_values(project.id, [ref])
+
+      assert result[ref] == "42"
+    end
+
+    test "resolves formula cell in table to computed value (not raw map)" do
+      %{project: project} = setup_project()
+
+      sheet = sheet_fixture(project, %{name: "Seven", shortcut: "seven"})
+      table = table_block_fixture(sheet, %{label: "Stats"})
+
+      # Default column is "Value" (slug: "value", type: "number")
+      [default_col] = table.table_columns
+      modifier_col = table_column_fixture(table, %{name: "Modifier", type: "formula"})
+
+      [default_row] = table.table_rows
+
+      # Set both cells — chain to avoid stale row.cells
+      {:ok, row} = Sheets.update_table_cell(default_row, default_col.slug, "10")
+
+      formula_cell = %{
+        "expression" => "a - 3",
+        "bindings" => %{
+          "a" => %{"type" => "same_row", "column_slug" => default_col.slug}
+        }
+      }
+
+      {:ok, _row} = Sheets.update_table_cell(row, modifier_col.slug, formula_cell)
+
+      ref = "seven.stats.#{default_row.slug}.#{modifier_col.slug}"
+      result = SheetQueries.resolve_variable_values(project.id, [ref])
+
+      # Should resolve to 7 (10 - 3), NOT the raw formula map
+      assert result[ref] == 7
+    end
+
+    test "formula cell with invalid expression returns nil" do
+      %{project: project} = setup_project()
+
+      sheet = sheet_fixture(project, %{name: "Test", shortcut: "test"})
+      table = table_block_fixture(sheet, %{label: "Data"})
+
+      formula_col = table_column_fixture(table, %{name: "Bad", type: "formula"})
+      [default_row] = table.table_rows
+
+      formula_cell = %{
+        "expression" => "",
+        "bindings" => %{}
+      }
+
+      {:ok, _row} = Sheets.update_table_cell(default_row, formula_col.slug, formula_cell)
+
+      ref = "test.data.#{default_row.slug}.#{formula_col.slug}"
+      result = SheetQueries.resolve_variable_values(project.id, [ref])
+
+      # Empty expression should return the raw value (the map as-is)
+      assert result[ref] == formula_cell
+    end
 
     test "handles refs that don't match any table variables gracefully" do
       %{project: project} = setup_project()
 
-      # Only simple refs - no table refs to avoid the values/cells bug
       result = SheetQueries.resolve_variable_values(project.id, ["nonexistent.var"])
 
       assert result == %{}

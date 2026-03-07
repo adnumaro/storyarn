@@ -540,4 +540,145 @@ defmodule Storyarn.Sheets.TableCrudTest do
       end)
     end
   end
+
+  # ===========================================================================
+  # Formula binding rewrite on row sync to children
+  # ===========================================================================
+
+  describe "formula binding rewrite on row sync to children" do
+    test "rewrites formula bindings when syncing new row to child sheets" do
+      user = user_fixture()
+      project = project_fixture(user)
+      parent = sheet_fixture(project, %{name: "Parent"})
+      child = child_sheet_fixture(project, parent, %{name: "Child"})
+
+      parent_shortcut = parent.shortcut
+      child_shortcut = child.shortcut
+
+      # Create a non-table inheritable block that formulas will reference
+      _stats_block = inheritable_block_fixture(parent, label: "Power", type: "number")
+
+      # Create a table block with scope "children" (auto-propagates to child)
+      {:ok, parent_table} =
+        Sheets.create_block(parent, %{
+          type: "table",
+          scope: "children",
+          config: %{"label" => "Abilities", "collapsed" => false}
+        })
+
+      # Add a formula column to the parent table
+      {:ok, formula_col} =
+        Sheets.create_table_column(parent_table, %{name: "Calc", type: "formula"})
+
+      # Create a new row WITH formula cells referencing parent shortcut
+      formula_cell = %{
+        "expression" => "a + 10",
+        "bindings" => %{
+          "a" => %{"type" => "variable", "ref" => "#{parent_shortcut}.power"}
+        }
+      }
+
+      {:ok, _parent_row} =
+        Sheets.create_table_row(parent_table, %{
+          name: "Attack",
+          cells: %{formula_col.slug => formula_cell}
+        })
+
+      # Find the inherited table on the child
+      child_blocks = Sheets.list_blocks(child.id)
+
+      child_table =
+        Enum.find(child_blocks, &(&1.inherited_from_block_id == parent_table.id))
+
+      assert child_table, "Child should have inherited table block"
+
+      # The synced row on child should have rewritten bindings
+      child_rows = Sheets.list_table_rows(child_table.id)
+
+      # Find the synced row (the one created by sync, not the default auto-row)
+      synced_row = Enum.find(child_rows, &(&1.slug == "attack"))
+      assert synced_row, "Child should have synced 'Attack' row"
+
+      child_formula = synced_row.cells[formula_col.slug]
+      assert is_map(child_formula)
+      assert child_formula["expression"] == "a + 10"
+      assert child_formula["bindings"]["a"]["type"] == "variable"
+      assert child_formula["bindings"]["a"]["ref"] == "#{child_shortcut}.power"
+    end
+
+    test "does not rewrite same_row bindings when syncing row" do
+      user = user_fixture()
+      project = project_fixture(user)
+      parent = sheet_fixture(project, %{name: "Parent SR"})
+      child = child_sheet_fixture(project, parent, %{name: "Child SR"})
+
+      {:ok, parent_table} =
+        Sheets.create_block(parent, %{
+          type: "table",
+          scope: "children",
+          config: %{"label" => "SameRow Table", "collapsed" => false}
+        })
+
+      {:ok, _num_col} =
+        Sheets.create_table_column(parent_table, %{name: "Base", type: "number"})
+
+      {:ok, formula_col} =
+        Sheets.create_table_column(parent_table, %{name: "Double", type: "formula"})
+
+      formula_cell = %{
+        "expression" => "a * 2",
+        "bindings" => %{
+          "a" => %{"type" => "same_row", "column_slug" => "base"}
+        }
+      }
+
+      {:ok, _} =
+        Sheets.create_table_row(parent_table, %{
+          name: "Row A",
+          cells: %{formula_col.slug => formula_cell}
+        })
+
+      child_blocks = Sheets.list_blocks(child.id)
+      child_table = Enum.find(child_blocks, &(&1.inherited_from_block_id == parent_table.id))
+      child_rows = Sheets.list_table_rows(child_table.id)
+      synced_row = Enum.find(child_rows, &(&1.slug == "row_a"))
+
+      child_formula = synced_row.cells[formula_col.slug]
+
+      # same_row bindings should pass through unchanged
+      assert child_formula["bindings"]["a"] == %{
+               "type" => "same_row",
+               "column_slug" => "base"
+             }
+    end
+
+    test "does not rewrite non-formula row cells when syncing" do
+      user = user_fixture()
+      project = project_fixture(user)
+      parent = sheet_fixture(project, %{name: "Parent NF"})
+      child = child_sheet_fixture(project, parent, %{name: "Child NF"})
+
+      {:ok, parent_table} =
+        Sheets.create_block(parent, %{
+          type: "table",
+          scope: "children",
+          config: %{"label" => "Plain Table", "collapsed" => false}
+        })
+
+      # Create a row with plain (non-formula) cells
+      {:ok, _} =
+        Sheets.create_table_row(parent_table, %{
+          name: "Plain Row",
+          cells: %{"value" => 42}
+        })
+
+      child_blocks = Sheets.list_blocks(child.id)
+      child_table = Enum.find(child_blocks, &(&1.inherited_from_block_id == parent_table.id))
+      child_rows = Sheets.list_table_rows(child_table.id)
+      synced_row = Enum.find(child_rows, &(&1.slug == "plain_row"))
+
+      # Plain cell values should be passed through unchanged
+      assert synced_row.cells["value"] == 42
+    end
+  end
 end

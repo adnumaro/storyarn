@@ -1,6 +1,7 @@
 defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
   use Storyarn.DataCase, async: true
 
+  alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
 
   import Storyarn.AccountsFixtures
@@ -530,6 +531,130 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
 
       {_key, var} = hd(matching)
       assert var.value == 5
+    end
+  end
+
+  describe "build_variables/1 with formula columns" do
+    test "attaches formula metadata and computes initial value" do
+      %{project: project} = setup_project()
+      sheet = sheet_fixture(project, %{name: "Stats"})
+      table = table_block_fixture(sheet, %{label: "Attrs"})
+
+      # Default column is "Value" (slug: "value", type: "number")
+      [default_col] = table.table_columns
+      modifier_col = table_column_fixture(table, %{name: "Modifier", type: "formula"})
+
+      [default_row] = table.table_rows
+
+      # Chain updates to avoid stale row.cells
+      {:ok, row} = Sheets.update_table_cell(default_row, default_col.slug, "10")
+
+      formula_cell = %{
+        "expression" => "a - 3",
+        "bindings" => %{
+          "a" => %{"type" => "same_row", "column_slug" => default_col.slug}
+        }
+      }
+
+      {:ok, _row} = Sheets.update_table_cell(row, modifier_col.slug, formula_cell)
+
+      result = VariableHelpers.build_variables(project.id)
+
+      # Find the formula variable
+      formula_vars =
+        Enum.filter(result, fn {_key, var} ->
+          var.block_type == "formula"
+        end)
+
+      assert formula_vars != [], "Should have at least one formula variable"
+
+      {_key, var} = hd(formula_vars)
+
+      # Should have formula metadata
+      assert is_map(var[:formula])
+      assert var.formula.expression == "a - 3"
+      assert is_map(var.formula.bindings)
+
+      # Bindings should be translated to full variable refs
+      binding_ref = var.formula.bindings["a"]
+      assert is_binary(binding_ref)
+      assert String.contains?(binding_ref, default_col.slug)
+
+      # Value should be computed (10 - 3 = 7), not nil
+      assert var.value == 7
+
+      # Value column variable should exist and have value 10
+      value_vars =
+        Enum.filter(result, fn {_k, v} ->
+          v.block_type == "number" and String.contains?(v.variable_name, default_col.slug)
+        end)
+
+      assert value_vars != []
+      {_vk, vv} = hd(value_vars)
+      assert vv.value == 10
+    end
+
+    test "formula referencing another formula computes in order" do
+      %{project: project} = setup_project()
+      sheet = sheet_fixture(project, %{name: "Combat"})
+      table = table_block_fixture(sheet, %{label: "Calcs"})
+
+      # Default column is "Value" (slug: "value", type: "number") — use as base
+      [default_col] = table.table_columns
+      mid_col = table_column_fixture(table, %{name: "Mid", type: "formula"})
+      top_col = table_column_fixture(table, %{name: "Top", type: "formula"})
+
+      [default_row] = table.table_rows
+
+      # Chain updates to avoid stale row.cells
+      {:ok, row} = Sheets.update_table_cell(default_row, default_col.slug, "5")
+
+      # mid = base * 2
+      {:ok, row} = Sheets.update_table_cell(row, mid_col.slug, %{
+        "expression" => "a * 2",
+        "bindings" => %{
+          "a" => %{"type" => "same_row", "column_slug" => default_col.slug}
+        }
+      })
+
+      # top = mid + 1
+      {:ok, _row} = Sheets.update_table_cell(row, top_col.slug, %{
+        "expression" => "a + 1",
+        "bindings" => %{
+          "a" => %{"type" => "same_row", "column_slug" => mid_col.slug}
+        }
+      })
+
+      result = VariableHelpers.build_variables(project.id)
+
+      mid_var =
+        Enum.find_value(result, fn {_k, v} ->
+          if v.block_type == "formula" and String.contains?(v.variable_name, mid_col.slug), do: v
+        end)
+
+      top_var =
+        Enum.find_value(result, fn {_k, v} ->
+          if v.block_type == "formula" and String.contains?(v.variable_name, top_col.slug), do: v
+        end)
+
+      assert mid_var.value == 10
+      assert top_var.value == 11
+    end
+
+    test "non-formula variables have no formula key" do
+      %{project: project} = setup_project()
+      sheet = sheet_fixture(project, %{name: "Simple"})
+
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Health"},
+        value: %{"content" => "50"}
+      })
+
+      result = VariableHelpers.build_variables(project.id)
+      {_key, var} = hd(Enum.to_list(result))
+
+      refute Map.has_key?(var, :formula)
     end
   end
 end

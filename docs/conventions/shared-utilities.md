@@ -129,12 +129,13 @@ changeset
 
 **File:** `lib/storyarn/shared/map_utils.ex`
 
-Map transformation utilities for handling mixed atom/string key maps from forms and JSON.
+Map transformation and parsing utilities for handling mixed atom/string key maps from forms and JSON.
 
-| Function           | Purpose                                                                              |
-|--------------------|--------------------------------------------------------------------------------------|
-| `stringify_keys/1` | Convert top-level atom keys to strings (NOT recursive — nested maps keep their keys) |
-| `parse_int/1`      | Safe integer parsing: `"42"` → `42`, `42` → `42`, `nil` → `nil`                      |
+| Function             | Purpose                                                                              |
+|----------------------|--------------------------------------------------------------------------------------|
+| `stringify_keys/1`   | Convert top-level atom keys to strings (NOT recursive — nested maps keep their keys) |
+| `parse_int/1`        | Safe integer parsing: `"42"` → `42`, `42` → `42`, `nil` → `nil`                      |
+| `parse_to_number/1`  | Parse any value to float for formulas: `"42"` → `42.0`, `nil` → `0.0`                |
 
 ```elixir
 MapUtils.stringify_keys(%{name: "test", nested: %{key: "val"}})
@@ -142,6 +143,9 @@ MapUtils.stringify_keys(%{name: "test", nested: %{key: "val"}})
 
 MapUtils.parse_int("42")  # => 42
 MapUtils.parse_int(nil)   # => nil
+
+MapUtils.parse_to_number("42")  # => 42.0
+MapUtils.parse_to_number(nil)   # => 0.0
 ```
 
 ---

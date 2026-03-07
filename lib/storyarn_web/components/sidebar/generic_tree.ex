@@ -123,7 +123,6 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
         <.icon name="plus" class="size-4" />
         {@create_label}
       </button>
-
     </div>
     """
   end

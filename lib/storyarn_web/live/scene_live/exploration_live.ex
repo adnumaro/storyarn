@@ -20,7 +20,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.{FormulaRuntime, MapUtils}
   alias Storyarn.Sheets
 
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
@@ -305,6 +305,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
     case Flows.execute_instructions(assignments, socket.assigns.variables) do
       {:ok, new_variables, _changes, _errors, warnings} ->
+        new_variables = FormulaRuntime.recompute_formulas(new_variables)
         socket = refresh_exploration_state(socket, new_variables)
 
         if warnings != [] do

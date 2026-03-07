@@ -535,6 +535,120 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       assert state.variables["mc.jaime.health"].value == 90.0
     end
 
+    test "executes structured instruction_assignments on response selection" do
+      assignments = [
+        %{
+          "id" => "a1",
+          "sheet" => "mc.jaime",
+          "variable" => "health",
+          "operator" => "subtract",
+          "value" => "25",
+          "value_type" => "literal",
+          "value_sheet" => nil
+        }
+      ]
+
+      nodes = %{
+        1 => node(1, "entry"),
+        2 =>
+          node(2, "dialogue", %{
+            "text" => "Choose",
+            "responses" => [
+              %{
+                "id" => "r1",
+                "text" => "Heavy hit",
+                "condition" => "",
+                "instruction" => "",
+                "instruction_assignments" => assignments
+              },
+              %{
+                "id" => "r2",
+                "text" => "Dodge",
+                "condition" => "",
+                "instruction" => "",
+                "instruction_assignments" => []
+              }
+            ]
+          }),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "r1", 3)]
+      variables = %{"mc.jaime.health" => var(100, "number")}
+      state = Engine.init(variables, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:waiting_input, state} = Engine.step(state, nodes, conns)
+      {:ok, state} = Engine.choose_response(state, "r1", conns)
+
+      # 100 - 25 = 75 (structured assignments subtract 25)
+      assert state.variables["mc.jaime.health"].value == 75.0
+    end
+
+    test "instruction_assignments take priority over instruction JSON" do
+      # When both are present, structured assignments should execute (not JSON)
+      assignments = [
+        %{
+          "id" => "a1",
+          "sheet" => "mc.jaime",
+          "variable" => "health",
+          "operator" => "set",
+          "value" => "50",
+          "value_type" => "literal",
+          "value_sheet" => nil
+        }
+      ]
+
+      instruction_json =
+        Jason.encode!([
+          %{
+            "id" => "a1",
+            "sheet" => "mc.jaime",
+            "variable" => "health",
+            "operator" => "set",
+            "value" => "999",
+            "value_type" => "literal",
+            "value_sheet" => nil
+          }
+        ])
+
+      nodes = %{
+        1 => node(1, "entry"),
+        2 =>
+          node(2, "dialogue", %{
+            "text" => "Choose",
+            "responses" => [
+              %{
+                "id" => "r1",
+                "text" => "Hit",
+                "condition" => "",
+                "instruction" => instruction_json,
+                "instruction_assignments" => assignments
+              },
+              %{
+                "id" => "r2",
+                "text" => "Miss",
+                "condition" => "",
+                "instruction" => "",
+                "instruction_assignments" => []
+              }
+            ]
+          }),
+        3 => node(3, "exit")
+      }
+
+      conns = [conn(1, "default", 2), conn(2, "r1", 3)]
+      variables = %{"mc.jaime.health" => var(100, "number")}
+      state = Engine.init(variables, 1)
+
+      {:ok, state} = Engine.step(state, nodes, conns)
+      {:waiting_input, state} = Engine.step(state, nodes, conns)
+      {:ok, state} = Engine.choose_response(state, "r1", conns)
+
+      # Structured assignments (set 50) take priority over JSON (set 999)
+      assert state.variables["mc.jaime.health"].value == 50
+    end
+
     test "auto-selects and executes instruction for single valid response" do
       instruction_json =
         Jason.encode!([
@@ -1690,6 +1804,44 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       assert var.sheet_shortcut == "mc.jaime"
       assert var.variable_name == "health"
       assert var.initial_value == 100
+    end
+
+    test "recomputes dependent formulas when base variable overridden" do
+      formula_var =
+        var(7, "formula")
+        |> Map.put(:formula, %{expression: "a - 3", bindings: %{"a" => "mc.health"}})
+
+      variables = %{
+        "mc.health" => var(10, "number"),
+        "mc.t.r.mod" => formula_var
+      }
+
+      state = Engine.init(variables, 1)
+
+      {:ok, state} = Engine.set_variable(state, "mc.health", 20)
+
+      assert state.variables["mc.health"].value == 20
+      # Formula: 20 - 3 = 17
+      assert state.variables["mc.t.r.mod"].value == 17
+    end
+
+    test "does NOT recompute when formula variable itself is overridden" do
+      formula_var =
+        var(7, "formula")
+        |> Map.put(:formula, %{expression: "a - 3", bindings: %{"a" => "mc.health"}})
+
+      variables = %{
+        "mc.health" => var(10, "number"),
+        "mc.t.r.mod" => formula_var
+      }
+
+      state = Engine.init(variables, 1)
+
+      # Override the formula variable directly
+      {:ok, state} = Engine.set_variable(state, "mc.t.r.mod", 999)
+
+      # Override should stick — no recompute
+      assert state.variables["mc.t.r.mod"].value == 999
     end
   end
 

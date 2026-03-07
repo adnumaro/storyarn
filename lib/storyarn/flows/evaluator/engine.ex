@@ -25,6 +25,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
   """
 
   alias Storyarn.Flows.Evaluator.{EngineHelpers, State}
+  alias Storyarn.Shared.FormulaRuntime
 
   alias Storyarn.Flows.Evaluator.NodeEvaluators.{
     ConditionNodeEvaluator,
@@ -162,21 +163,35 @@ defmodule Storyarn.Flows.Evaluator.Engine do
         response_id,
         connections
       ) do
-    # Find the selected response to get its instruction and label
     selected = Enum.find(choices.responses, fn r -> r.id == response_id end)
     response_text = if selected, do: selected.text, else: response_id
 
-    # Execute response instruction if present
-    state =
-      if selected && is_binary(selected[:instruction]) && selected[:instruction] != "" do
-        DialogueEvaluator.execute_response_instruction(selected.instruction, state, node_id)
-      else
-        state
-      end
-
+    state = maybe_execute_response_instruction(selected, state, node_id)
     state = EngineHelpers.add_console(state, :info, node_id, "", "Selected: \"#{response_text}\"")
 
-    # Find connection — try response_id as pin, then with "resp_" prefix
+    follow_response_connection(state, node_id, response_id, connections)
+  end
+
+  def choose_response(state, _response_id, _connections) do
+    {:error, state, :not_waiting_input}
+  end
+
+  defp maybe_execute_response_instruction(nil, state, _node_id), do: state
+
+  defp maybe_execute_response_instruction(selected, state, node_id) do
+    cond do
+      is_list(selected[:instruction_assignments]) and selected[:instruction_assignments] != [] ->
+        DialogueEvaluator.execute_response_assignments(selected.instruction_assignments, state, node_id)
+
+      is_binary(selected[:instruction]) and selected[:instruction] != "" ->
+        DialogueEvaluator.execute_response_instruction(selected.instruction, state, node_id)
+
+      true ->
+        state
+    end
+  end
+
+  defp follow_response_connection(state, node_id, response_id, connections) do
     conn =
       EngineHelpers.find_connection(connections, node_id, response_id) ||
         EngineHelpers.find_connection(connections, node_id, "resp_#{response_id}")
@@ -184,23 +199,13 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     case conn do
       nil ->
         state =
-          EngineHelpers.add_console(
-            state,
-            :error,
-            node_id,
-            "",
-            "No connection from response #{response_id}"
-          )
+          EngineHelpers.add_console(state, :error, node_id, "", "No connection from response #{response_id}")
 
         {:error, %{state | status: :finished}, :no_connection}
 
       conn ->
         EngineHelpers.advance_to(state, conn.target_node_id)
     end
-  end
-
-  def choose_response(state, _response_id, _connections) do
-    {:error, state, :not_waiting_input}
   end
 
   @doc """
@@ -219,6 +224,13 @@ defmodule Storyarn.Flows.Evaluator.Engine do
         old_value = var.value
         updated_var = %{var | value: new_value, previous_value: old_value, source: :user_override}
         variables = Map.put(state.variables, variable_ref, updated_var)
+
+        # If user overrides a formula variable, skip recompute (keeps override).
+        # If user overrides a base variable, recompute to cascade to dependent formulas.
+        variables =
+          if updated_var[:formula],
+            do: variables,
+            else: FormulaRuntime.recompute_formulas(variables)
 
         state = %{state | variables: variables}
 

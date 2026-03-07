@@ -12,9 +12,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   """
 
   import Phoenix.LiveView, only: [put_flash: 3]
+  import StoryarnWeb.SheetLive.Helpers.FormulaHelpers, only: [parse_binding_value: 1]
 
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Storyarn.Shared.FormulaEngine
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
   alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
@@ -381,6 +383,54 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     end
   end
 
+  # ===========================================================================
+  # Formula cell events
+  # ===========================================================================
+
+  @doc "Saves a formula (expression + bindings) to a specific cell."
+  def handle_update_formula_cell(params, socket, helpers) do
+    row_id = ContentTabHelpers.to_integer(params["row-id"])
+    column_slug = params["column-slug"]
+    expression = params["expression"] || ""
+    raw_bindings = params["bindings"] || %{}
+
+    row = Sheets.get_table_row!(row_id)
+
+    with :ok <- verify_row_ownership(socket, row) do
+      prev_value = row.cells[column_slug]
+
+      # Parse bindings from JS format ("same_row:slug" or full ref path)
+      bindings =
+        raw_bindings
+        |> Enum.map(fn {symbol, value} -> {symbol, parse_binding_value(value)} end)
+        |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+        |> Map.new()
+
+      # Clean stale bindings (symbols no longer in expression)
+      symbols =
+        case FormulaEngine.parse(expression) do
+          {:ok, ast} -> FormulaEngine.extract_symbols(ast)
+          {:error, _} -> []
+        end
+
+      bindings = Map.take(bindings, symbols)
+
+      formula_value = %{"expression" => expression, "bindings" => bindings}
+
+      case Sheets.update_table_cell(row, column_slug, formula_value) do
+        {:ok, _} ->
+          helpers.push_undo.(
+            {:update_table_cell, row.block_id, row.id, column_slug, prev_value, formula_value}
+          )
+
+          save_and_reload(socket, helpers)
+
+        {:error, _} ->
+          {:noreply, err(socket, :cell_update)}
+      end
+    end
+  end
+
   defp do_toggle_reference_multiple(column, socket, helpers) do
     prev_config = column.config
     new_multiple = !(prev_config["multiple"] || false)
@@ -742,22 +792,28 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   defp update_cell_with_validation(row, column_slug, value, prev_value, socket, helpers) do
     col = find_column_by_slug(socket, row.block_id, column_slug)
 
-    if col && col.required && value_empty?(value) do
-      {:noreply, err(socket, :required_field)}
-    else
-      final_value = maybe_clamp_cell(value, col)
+    cond do
+      # Formula columns are read-only — silently ignore writes
+      col && col.type == "formula" ->
+        {:noreply, socket}
 
-      case Sheets.update_table_cell(row, column_slug, final_value) do
-        {:ok, _} ->
-          helpers.push_undo.(
-            {:update_table_cell, row.block_id, row.id, column_slug, prev_value, final_value}
-          )
+      col && col.required && value_empty?(value) ->
+        {:noreply, err(socket, :required_field)}
 
-          save_and_reload(socket, helpers)
+      true ->
+        final_value = maybe_clamp_cell(value, col)
 
-        {:error, _} ->
-          {:noreply, err(socket, :cell_update)}
-      end
+        case Sheets.update_table_cell(row, column_slug, final_value) do
+          {:ok, _} ->
+            helpers.push_undo.(
+              {:update_table_cell, row.block_id, row.id, column_slug, prev_value, final_value}
+            )
+
+            save_and_reload(socket, helpers)
+
+          {:error, _} ->
+            {:noreply, err(socket, :cell_update)}
+        end
     end
   end
 
