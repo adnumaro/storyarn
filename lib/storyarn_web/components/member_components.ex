@@ -30,21 +30,13 @@ defmodule StoryarnWeb.Components.MemberComponents do
     assigns = assign(assigns, :initials, initials)
 
     ~H"""
-    <div class="avatar placeholder">
-      <div class={[
-        "bg-neutral text-neutral-content rounded-full",
-        @size == "sm" && "size-8",
-        @size == "md" && "size-10",
-        @size == "lg" && "size-12"
-      ]}>
-        <span class={[
-          @size == "sm" && "text-xs",
-          @size == "md" && "text-sm",
-          @size == "lg" && "text-base"
-        ]}>
-          {@initials}
-        </span>
-      </div>
+    <div class={[
+      "flex items-center justify-center bg-neutral text-neutral-content rounded-full shrink-0",
+      @size == "sm" && "size-8 text-xs",
+      @size == "md" && "size-10 text-sm",
+      @size == "lg" && "size-12 text-base"
+    ]}>
+      {@initials}
     </div>
     """
   end

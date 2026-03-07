@@ -5,6 +5,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   use StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.MemberComponents
+  import StoryarnWeb.Components.ColorPicker
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Projects
@@ -114,6 +115,54 @@ defmodule StoryarnWeb.ProjectLive.Settings do
               invitation={invitation}
               on_revoke="revoke_invitation"
             />
+          </div>
+        </section>
+
+        <div class="divider" />
+
+        <%!-- Theme Section --%>
+        <section>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Project Theme")}</h3>
+          <p class="text-sm opacity-70 mb-4">
+            {dgettext("projects", "Customize the primary and accent colors for this project.")}
+          </p>
+          <div class="card bg-base-200 p-4">
+            <div class="flex gap-8 items-start">
+              <div>
+                <label class="text-sm font-medium mb-2 block">
+                  {dgettext("projects", "Primary")}
+                </label>
+                <div class="flex items-center gap-3">
+                  <.color_picker
+                    id="theme-primary"
+                    color={@theme_primary}
+                    event="update_theme_primary"
+                  />
+                  <code class="text-xs opacity-60">{@theme_primary}</code>
+                </div>
+              </div>
+              <div>
+                <label class="text-sm font-medium mb-2 block">
+                  {dgettext("projects", "Accent")}
+                </label>
+                <div class="flex items-center gap-3">
+                  <.color_picker
+                    id="theme-accent"
+                    color={@theme_accent}
+                    event="update_theme_accent"
+                  />
+                  <code class="text-xs opacity-60">{@theme_accent}</code>
+                </div>
+              </div>
+            </div>
+            <div class="flex gap-3 mt-4">
+              <.button variant="primary" phx-click="save_theme">
+                {dgettext("projects", "Apply Theme")}
+              </.button>
+              <.button :if={@has_custom_theme} phx-click="reset_theme">
+                {dgettext("projects", "Reset to Default")}
+              </.button>
+            </div>
           </div>
         </section>
 
@@ -267,6 +316,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
               provider_config != nil && provider_config.api_key_encrypted != nil
             )
             |> assign(:provider_usage, nil)
+            |> assign_theme(project)
 
           {:ok, socket}
         else
@@ -370,5 +420,73 @@ defmodule StoryarnWeb.ProjectLive.Settings do
     with_authorization(socket, :manage_project, fn socket ->
       do_test_provider_connection(socket)
     end)
+  end
+
+  def handle_event("update_theme_primary", %{"color" => color}, socket) do
+    {:noreply, assign(socket, :theme_primary, color)}
+  end
+
+  def handle_event("update_theme_accent", %{"color" => color}, socket) do
+    {:noreply, assign(socket, :theme_accent, color)}
+  end
+
+  def handle_event("save_theme", _params, socket) do
+    with_authorization(socket, :manage_project, fn socket ->
+      project = socket.assigns.project
+      settings = project.settings || %{}
+
+      new_settings =
+        Map.put(settings, "theme", %{
+          "primary" => socket.assigns.theme_primary,
+          "accent" => socket.assigns.theme_accent
+        })
+
+      case Projects.update_project(project, %{settings: new_settings}) do
+        {:ok, project} ->
+          {:noreply,
+           socket
+           |> assign(:project, project)
+           |> assign(:has_custom_theme, true)
+           |> put_flash(:info, dgettext("projects", "Theme saved."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to save theme."))}
+      end
+    end)
+  end
+
+  def handle_event("reset_theme", _params, socket) do
+    with_authorization(socket, :manage_project, fn socket ->
+      project = socket.assigns.project
+      settings = Map.delete(project.settings || %{}, "theme")
+
+      case Projects.update_project(project, %{settings: settings}) do
+        {:ok, project} ->
+          {:noreply,
+           socket
+           |> assign(:project, project)
+           |> assign_theme(project)
+           |> put_flash(:info, dgettext("projects", "Theme reset to default."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to reset theme."))}
+      end
+    end)
+  end
+
+  defp assign_theme(socket, project) do
+    case Storyarn.Projects.Project.theme_colors(project) do
+      %{primary: p, accent: a} ->
+        socket
+        |> assign(:theme_primary, p)
+        |> assign(:theme_accent, a)
+        |> assign(:has_custom_theme, true)
+
+      nil ->
+        socket
+        |> assign(:theme_primary, "#00D4CC")
+        |> assign(:theme_accent, "#E8922F")
+        |> assign(:has_custom_theme, false)
+    end
   end
 end

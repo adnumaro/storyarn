@@ -12,11 +12,87 @@
   themes: light --default, dark --prefersdark;
 }
 
-/* Override daisyUI radius */
+/* ===== Storyarn Custom Theme ===== */
+
 :root,
 [data-theme="light"],
 [data-theme="dark"] {
   --radius-field: 0.5rem;
+}
+
+:root,
+[data-theme="light"] {
+  /* Primary: Cyan brillante */
+  --color-primary: oklch(78% 0.14 185);
+  --color-primary-content: oklch(15% 0.03 200);
+  /* Secondary: Slate azulado */
+  --color-secondary: oklch(45% 0.04 260);
+  --color-secondary-content: oklch(97% 0.005 250);
+  /* Accent: Ámbar eléctrico */
+  --color-accent: oklch(72% 0.16 60);
+  --color-accent-content: oklch(15% 0.03 60);
+  /* Neutral: Azul acero oscuro */
+  --color-neutral: oklch(18% 0.025 260);
+  --color-neutral-content: oklch(93% 0.005 250);
+
+  /* Gradient endpoints (overridable per-project) */
+  --gradient-primary-from: oklch(78% 0.14 185);
+  --gradient-primary-to: oklch(68% 0.12 210);
+  --gradient-secondary-from: oklch(50% 0.04 250);
+  --gradient-secondary-to: oklch(38% 0.05 270);
+  --gradient-accent-from: oklch(75% 0.17 65);
+  --gradient-accent-to: oklch(65% 0.18 40);
+}
+
+[data-theme="dark"] {
+  --color-primary: oklch(78% 0.14 185);
+  --color-primary-content: oklch(15% 0.03 200);
+  --color-secondary: oklch(45% 0.04 260);
+  --color-secondary-content: oklch(92% 0.005 250);
+  --color-accent: oklch(72% 0.16 60);
+  --color-accent-content: oklch(15% 0.03 60);
+  --color-neutral: oklch(18% 0.025 260);
+  --color-neutral-content: oklch(90% 0.005 250);
+
+  --gradient-primary-from: oklch(78% 0.14 185);
+  --gradient-primary-to: oklch(68% 0.12 210);
+  --gradient-secondary-from: oklch(50% 0.04 250);
+  --gradient-secondary-to: oklch(38% 0.05 270);
+  --gradient-accent-from: oklch(75% 0.17 65);
+  --gradient-accent-to: oklch(65% 0.18 40);
+}
+
+/* ===== Gradient Buttons ===== */
+
+.btn-primary {
+  background-image: linear-gradient(135deg, var(--gradient-primary-from), var(--gradient-primary-to));
+  border: none;
+}
+.btn-primary:hover {
+  background-image: linear-gradient(135deg,
+    oklch(from var(--gradient-primary-from) calc(l - 0.05) c h),
+    oklch(from var(--gradient-primary-to) calc(l - 0.05) c h));
+}
+
+.btn-secondary {
+  background-image: linear-gradient(135deg, var(--gradient-secondary-from), var(--gradient-secondary-to));
+  border: none;
+  color: oklch(95% 0.005 250);
+}
+.btn-secondary:hover {
+  background-image: linear-gradient(135deg,
+    oklch(from var(--gradient-secondary-from) calc(l - 0.05) c h),
+    oklch(from var(--gradient-secondary-to) calc(l - 0.05) c h));
+}
+
+.btn-accent {
+  background-image: linear-gradient(135deg, var(--gradient-accent-from), var(--gradient-accent-to));
+  border: none;
+}
+.btn-accent:hover {
+  background-image: linear-gradient(135deg,
+    oklch(from var(--gradient-accent-from) calc(l - 0.05) c h),
+    oklch(from var(--gradient-accent-to) calc(l - 0.05) c h));
 }
 
 /* Expression editor (CodeMirror) — theme-adaptive colors */

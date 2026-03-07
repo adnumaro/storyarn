@@ -76,4 +76,14 @@ defmodule Storyarn.Projects.Project do
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:description, max: 1000)
   end
+
+  @doc """
+  Extracts custom theme colors from project settings.
+  Returns `%{primary: "#hex", accent: "#hex"}` or `nil` if not set.
+  """
+  def theme_colors(%__MODULE__{settings: %{"theme" => %{"primary" => p, "accent" => a}}})
+      when is_binary(p) and is_binary(a),
+      do: %{primary: p, accent: a}
+
+  def theme_colors(_), do: nil
 end
