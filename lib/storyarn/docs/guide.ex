@@ -12,57 +12,63 @@ defmodule Storyarn.Docs.Guide do
     as: :guides,
     highlighters: [:makeup_elixir]
 
-  @doc "List all guides sorted by category order then guide order."
-  def list_guides do
+  @default_locale "en"
+
+  @doc "List all guides for a locale, sorted by category order then guide order."
+  def list_guides(locale \\ @default_locale) do
     @guides
+    |> Enum.filter(&(&1.locale == locale))
     |> Enum.sort_by(fn g ->
       {category_order(g.category), g.order}
     end)
   end
 
   @doc "List categories in display order with their labels."
-  def list_categories do
-    list_guides()
+  def list_categories(locale \\ @default_locale) do
+    list_guides(locale)
     |> Enum.map(fn g -> {g.category, g.category_label} end)
     |> Enum.uniq_by(fn {cat, _} -> cat end)
   end
 
   @doc "Get a single guide by category and slug."
-  def get_guide(category, slug) do
-    Enum.find(@guides, &(&1.category == category && &1.slug == slug))
+  def get_guide(category, slug, locale \\ @default_locale) do
+    Enum.find(@guides, &(&1.locale == locale && &1.category == category && &1.slug == slug))
   end
 
   @doc "Get all guides in a category."
-  def list_by_category(category) do
+  def list_by_category(category, locale \\ @default_locale) do
     @guides
-    |> Enum.filter(&(&1.category == category))
+    |> Enum.filter(&(&1.locale == locale && &1.category == category))
     |> Enum.sort_by(& &1.order)
   end
 
   @doc "Simple text search across title and body."
-  def search(query) when is_binary(query) and byte_size(query) > 0 do
+  def search(query, locale \\ @default_locale)
+
+  def search(query, locale) when is_binary(query) and byte_size(query) > 0 do
     q = String.downcase(query)
 
     @guides
     |> Enum.filter(fn g ->
-      String.contains?(String.downcase(g.title), q) ||
-        String.contains?(String.downcase(g.body), q)
+      g.locale == locale &&
+        (String.contains?(String.downcase(g.title), q) ||
+           String.contains?(String.downcase(g.body), q))
     end)
     |> Enum.sort_by(fn g ->
       if String.contains?(String.downcase(g.title), q), do: 0, else: 1
     end)
   end
 
-  def search(_), do: []
+  def search(_, _), do: []
 
   @doc "Get the first guide (for index redirect)."
-  def first_guide do
-    list_guides() |> List.first()
+  def first_guide(locale \\ @default_locale) do
+    list_guides(locale) |> List.first()
   end
 
   @doc "Get previous and next guides for navigation."
-  def prev_next(category, slug) do
-    guides = list_guides()
+  def prev_next(category, slug, locale \\ @default_locale) do
+    guides = list_guides(locale)
     index = Enum.find_index(guides, &(&1.category == category && &1.slug == slug))
 
     prev = if index && index > 0, do: Enum.at(guides, index - 1)

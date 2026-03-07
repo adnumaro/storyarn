@@ -5,8 +5,9 @@ defmodule StoryarnWeb.DocsLive.Show do
 
   @impl true
   def mount(_params, _session, socket) do
-    categories = Docs.list_categories()
-    guides = Docs.list_guides()
+    locale = docs_locale()
+    categories = Docs.list_categories(locale)
+    guides = Docs.list_guides(locale)
 
     # All categories start expanded
     expanded =
@@ -16,6 +17,7 @@ defmodule StoryarnWeb.DocsLive.Show do
 
     {:ok,
      assign(socket,
+       locale: locale,
        categories: categories,
        guides: guides,
        search_query: "",
@@ -31,7 +33,7 @@ defmodule StoryarnWeb.DocsLive.Show do
   end
 
   defp apply_action(socket, :index, _params) do
-    case Docs.first_guide() do
+    case Docs.first_guide(socket.assigns.locale) do
       nil ->
         assign(socket, page_title: gettext("Documentation"), guide: nil, prev: nil, next: nil)
 
@@ -41,14 +43,16 @@ defmodule StoryarnWeb.DocsLive.Show do
   end
 
   defp apply_action(socket, :show, %{"category" => category, "slug" => slug}) do
-    case Docs.get_guide(category, slug) do
+    locale = socket.assigns.locale
+
+    case Docs.get_guide(category, slug, locale) do
       nil ->
         socket
         |> put_flash(:error, gettext("Guide not found"))
         |> push_navigate(to: ~p"/docs")
 
       guide ->
-        {prev, next} = Docs.prev_next(category, slug)
+        {prev, next} = Docs.prev_next(category, slug, locale)
 
         assign(socket,
           page_title: guide.title,
@@ -66,7 +70,7 @@ defmodule StoryarnWeb.DocsLive.Show do
 
     results =
       if String.length(query) >= 2 do
-        Docs.search(query)
+        Docs.search(query, socket.assigns.locale)
       else
         nil
       end
@@ -119,5 +123,11 @@ defmodule StoryarnWeb.DocsLive.Show do
       </div>
     </Layouts.docs>
     """
+  end
+
+  # Use current Gettext locale if docs exist for it, otherwise fall back to English.
+  defp docs_locale do
+    locale = Gettext.get_locale(StoryarnWeb.Gettext)
+    if Docs.list_guides(locale) != [], do: locale, else: "en"
   end
 end

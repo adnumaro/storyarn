@@ -7,11 +7,12 @@ defmodule Storyarn.Docs.GuideBuilder do
       |> Path.rootname()
       |> Path.split()
 
-    [category, raw_slug] = Enum.take(parts, -2)
+    [locale, category, raw_slug] = Enum.take(parts, -3)
     slug = String.replace(raw_slug, ~r/^\d+-/, "")
 
     %{
       slug: slug,
+      locale: locale,
       title: attrs[:title],
       category: category,
       category_label: attrs[:category_label],
