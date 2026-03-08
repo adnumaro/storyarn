@@ -14,14 +14,14 @@
       name="sentry-dsn"
       content={Application.get_env(:sentry, :dsn)}
     />
+    <script>
+      (()=>{try{const t=localStorage.getItem("phx:theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.setAttribute("data-theme",t)}catch(e){}})();
+    </script>
     <.live_title default="Storyarn" suffix=" · Storyarn">
       {assigns[:page_title]}
     </.live_title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
-    </script>
-    <script>
-      (()=>{try{const t=(window.localStorage&&localStorage.getItem("phx:theme"))||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.setAttribute("data-theme",t)}catch(e){}})();
     </script>
   </head>
   <body class="bg-base-100 antialiased">

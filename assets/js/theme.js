@@ -1,6 +1,12 @@
 /**
  * Theme management module.
  * Handles theme toggling and keyboard shortcuts.
+ *
+ * Theme is stored in localStorage as "phx:theme" = "light" | "dark".
+ * When absent, falls back to OS preference via prefers-color-scheme.
+ *
+ * The theme is applied as data-theme attribute on <html>.
+ * daisyUI uses this attribute to switch CSS variables.
  */
 
 const getPreferredTheme = () => {
@@ -9,20 +15,36 @@ const getPreferredTheme = () => {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };
 
+const applyTheme = () => {
+  document.documentElement.setAttribute("data-theme", getPreferredTheme());
+};
+
 const setTheme = (theme) => {
   if (theme === "system") {
     localStorage.removeItem("phx:theme");
-    document.documentElement.setAttribute("data-theme", getPreferredTheme());
   } else if (theme === "toggle") {
     const current = document.documentElement.getAttribute("data-theme") || getPreferredTheme();
     const newTheme = current === "dark" ? "light" : "dark";
     localStorage.setItem("phx:theme", newTheme);
-    document.documentElement.setAttribute("data-theme", newTheme);
   } else {
     localStorage.setItem("phx:theme", theme);
-    document.documentElement.setAttribute("data-theme", theme);
   }
+  applyTheme();
 };
+
+// Apply theme immediately when this module loads (app.js is deferred,
+// so this runs after DOM is ready but before LiveView connects)
+applyTheme();
+
+// Re-apply after every LiveView navigation (guards against morphdom stripping data-theme)
+window.addEventListener("phx:page-loading-stop", applyTheme);
+
+// Guard against data-theme being removed by morphdom or LiveReloader
+new MutationObserver(() => {
+  if (!document.documentElement.getAttribute("data-theme")) {
+    applyTheme();
+  }
+}).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
 // Listen for storage changes (sync across tabs)
 window.addEventListener("storage", (e) => {
