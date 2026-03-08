@@ -21,6 +21,8 @@ defmodule StoryarnWeb.PageController do
   def join_waitlist(conn, %{"waitlist" => %{"email" => email}}) do
     case Accounts.join_waitlist(%{"email" => email}) do
       {:ok, _entry} ->
+        Accounts.notify_admin_waitlist_signup(email)
+
         conn
         |> put_flash(:info, gettext("You're on the list! We'll reach out when your spot is ready."))
         |> redirect(to: ~p"/")

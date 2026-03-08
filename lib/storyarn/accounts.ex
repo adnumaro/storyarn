@@ -24,6 +24,7 @@ defmodule Storyarn.Accounts do
     Sessions,
     User,
     UserIdentity,
+    UserNotifier,
     Users,
     UserToken
   }
@@ -264,5 +265,12 @@ defmodule Storyarn.Accounts do
     %WaitlistEntry{}
     |> WaitlistEntry.changeset(attrs)
     |> Storyarn.Repo.insert()
+  end
+
+  @doc """
+  Notifies the admin about a new waitlist signup.
+  """
+  def notify_admin_waitlist_signup(email) do
+    UserNotifier.deliver_admin_waitlist_notification(email)
   end
 end

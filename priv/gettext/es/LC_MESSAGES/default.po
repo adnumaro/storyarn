@@ -16,18 +16,18 @@ msgstr ""
 msgid "Actions"
 msgstr "Acciones"
 
-#: lib/storyarn_web/components/layouts.ex:684
-#: lib/storyarn_web/components/layouts.ex:696
+#: lib/storyarn_web/components/layouts.ex:712
+#: lib/storyarn_web/components/layouts.ex:724
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr "Intentando reconectar"
 
-#: lib/storyarn_web/components/layouts.ex:691
+#: lib/storyarn_web/components/layouts.ex:719
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr "¡Algo salió mal!"
 
-#: lib/storyarn_web/components/layouts.ex:679
+#: lib/storyarn_web/components/layouts.ex:707
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr "No podemos encontrar la conexión a internet"
@@ -54,7 +54,7 @@ msgid "Continue with Google"
 msgstr "Continuar con Google"
 
 #: lib/storyarn_web/components/layouts.ex:346
-#: lib/storyarn_web/components/layouts.ex:570
+#: lib/storyarn_web/components/layouts.ex:572
 #, elixir-autogen, elixir-format
 msgid "Log in"
 msgstr "Iniciar sesión"
@@ -133,7 +133,7 @@ msgid "Dark mode"
 msgstr "Modo oscuro"
 
 #: lib/storyarn_web/components/layouts.ex:342
-#: lib/storyarn_web/components/layouts.ex:566
+#: lib/storyarn_web/components/layouts.ex:568
 #, elixir-autogen, elixir-format
 msgid "Dashboard"
 msgstr "Panel"
@@ -602,7 +602,7 @@ msgstr "Advertencias"
 msgid "You need edit permissions to import data."
 msgstr "Necesitas permisos de edición para importar datos."
 
-#: lib/storyarn_web/live/docs_live/components/docs_sidebar.ex:46
+#: lib/storyarn_web/live/docs_live/components/docs_sidebar.ex:44
 #, elixir-autogen, elixir-format
 msgid "%{count} result"
 msgid_plural "%{count} results"
@@ -648,7 +648,6 @@ msgid "Discord"
 msgstr "Discord"
 
 #: lib/storyarn_web/components/layouts.ex:334
-#: lib/storyarn_web/components/layouts.ex:559
 #: lib/storyarn_web/controllers/page_html/contact.html.heex:48
 #: lib/storyarn_web/controllers/page_html/home.html.heex:234
 #, elixir-autogen, elixir-format
@@ -730,7 +729,7 @@ msgstr "Unirse a la lista de espera"
 msgid "Localize and export"
 msgstr "Localiza y exporta"
 
-#: lib/storyarn_web/components/layouts.ex:644
+#: lib/storyarn_web/components/layouts.ex:646
 #, elixir-autogen, elixir-format
 msgid "Next"
 msgstr "Siguiente"
@@ -750,7 +749,7 @@ msgstr "Sin spam. Solo te escribiremos cuando sea el momento."
 msgid "One workspace for your entire narrative. No more scattered docs, no more context switching."
 msgstr "Un espacio de trabajo para toda tu narrativa. Sin documentos dispersos, sin cambiar de contexto."
 
-#: lib/storyarn_web/components/layouts.ex:632
+#: lib/storyarn_web/components/layouts.ex:634
 #, elixir-autogen, elixir-format
 msgid "Previous"
 msgstr "Anterior"
@@ -856,8 +855,8 @@ msgstr "Escribe y lee tu narrativa en formato guion. Importación/exportación F
 msgid "Write branching narratives"
 msgstr "Escribe narrativas ramificadas"
 
-#: lib/storyarn_web/controllers/page_controller.ex:25
-#: lib/storyarn_web/controllers/page_controller.ex:30
+#: lib/storyarn_web/controllers/page_controller.ex:27
+#: lib/storyarn_web/controllers/page_controller.ex:32
 #, elixir-autogen, elixir-format
 msgid "You're on the list! We'll reach out when your spot is ready."
 msgstr "¡Estás en la lista! Te contactaremos cuando tu plaza esté lista."
@@ -871,3 +870,13 @@ msgstr "tu@estudio.com"
 #, elixir-autogen, elixir-format
 msgid "The open narrative design tool for game designers. Build branching dialogues, manage characters, and localize your stories — all in one place."
 msgstr "La herramienta abierta de diseño narrativo para diseñadores de videojuegos. Crea diálogos ramificados, gestiona personajes y localiza tus historias — todo en un solo lugar."
+
+#: lib/storyarn_web/components/layouts.ex:663
+#, elixir-autogen, elixir-format
+msgid "On this page"
+msgstr ""
+
+#: lib/storyarn_web/components/layouts.ex:561
+#, elixir-autogen, elixir-format, fuzzy
+msgid "docs"
+msgstr "Docs"

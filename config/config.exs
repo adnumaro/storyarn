@@ -45,6 +45,7 @@ config :storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Local
 
 # Email sender configuration (name and email address for outgoing emails)
 config :storyarn, :mailer_sender, {"Storyarn", "noreply@storyarn.com"}
+config :storyarn, :admin_email, "adan@storyarn.com"
 
 # Configure Swoosh API client (needed for Resend in production)
 config :swoosh, :api_client, Swoosh.ApiClient.Req

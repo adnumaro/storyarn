@@ -95,6 +95,9 @@ defmodule Storyarn.MixProject do
       {:sentry, "~> 12.0"},
       {:hackney, "~> 1.8"},
 
+      # Email templates (MJML → HTML via Rust NIF)
+      {:mjml, "~> 5.3"},
+
       # Documentation
       {:nimble_publisher, "~> 1.1"},
       {:makeup, "~> 1.2"},

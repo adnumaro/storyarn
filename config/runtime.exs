@@ -25,6 +25,10 @@ if System.get_env("NOINDEX") in ~w(true 1) do
   config :storyarn, noindex: true
 end
 
+if admin_email = System.get_env("ADMIN_EMAIL") do
+  config :storyarn, :admin_email, admin_email
+end
+
 # Sentry error tracking
 if sentry_dsn = System.get_env("SENTRY_DSN") do
   config :sentry, dsn: sentry_dsn

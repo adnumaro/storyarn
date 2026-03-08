@@ -5,11 +5,11 @@ defmodule Storyarn.Projects.ProjectNotifier do
   import Swoosh.Email
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Storyarn.Emails.Templates
   alias Storyarn.Mailer
   alias Storyarn.Projects.ProjectInvitation
 
-  # Delivers the email using the application mailer.
-  defp deliver(recipient, subject, body) do
+  defp deliver(recipient, subject, html_body, text_body) do
     {sender_name, sender_email} = sender()
 
     email =
@@ -17,7 +17,8 @@ defmodule Storyarn.Projects.ProjectNotifier do
       |> to(recipient)
       |> from({sender_name, sender_email})
       |> subject(subject)
-      |> text_body(body)
+      |> html_body(html_body)
+      |> text_body(text_body)
 
     with {:ok, _metadata} <- Mailer.deliver(email) do
       {:ok, email}
@@ -37,38 +38,17 @@ defmodule Storyarn.Projects.ProjectNotifier do
     inviter_name = invitation.invited_by.display_name || invitation.invited_by.email
     days = ProjectInvitation.validity_in_days()
 
-    subject =
-      dgettext("emails", "You've been invited to %{project}", project: project_name)
-
-    body =
-      dgettext(
-        "emails",
-        """
-
-        ==============================
-
-        Hi,
-
-        %{inviter} has invited you to join "%{project}" on Storyarn as %{role}.
-
-        You can accept this invitation by visiting the URL below:
-
-        %{url}
-
-        This invitation will expire in %{days} days.
-
-        If you don't want to join this project, you can ignore this email.
-
-        ==============================
-        """,
-        inviter: inviter_name,
-        project: project_name,
-        role: invitation.role,
-        url: url,
-        days: days
+    {subject, html, text} =
+      Templates.project_invitation(
+        invitation.email,
+        project_name,
+        inviter_name,
+        invitation.role,
+        url,
+        days
       )
 
-    deliver(invitation.email, subject, body)
+    deliver(invitation.email, subject, html, text)
   end
 
   defp invitation_url(token) do
