@@ -672,7 +672,17 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp handle_sheet_remote_change(:sheet_updated, _payload, socket) do
     sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
-    {:noreply, assign(socket, :sheet, sheet)}
+
+    # Push name/shortcut to JS hooks (contenteditable has phx-update="ignore")
+    socket =
+      socket
+      |> assign(:sheet, sheet)
+      |> push_event("restore_page_content", %{
+        name: sheet.name,
+        shortcut: sheet.shortcut
+      })
+
+    {:noreply, socket}
   end
 
   defp handle_sheet_remote_change(_action, _payload, socket) do
