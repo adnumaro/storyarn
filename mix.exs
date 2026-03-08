@@ -82,7 +82,7 @@ defmodule Storyarn.MixProject do
       {:bandit, "~> 1.5"},
 
       # S3-compatible storage (Cloudflare R2)
-      {:ex_aws, "~> 2.5"},
+      {:ex_aws, "~> 2.6"},
       {:ex_aws_s3, "~> 2.5"},
 
       # Image processing (libvips - much safer than ImageMagick)
@@ -90,6 +90,10 @@ defmodule Storyarn.MixProject do
 
       # Excel export for localization
       {:elixlsx, "~> 0.6"},
+
+      # Error tracking
+      {:sentry, "~> 12.0"},
+      {:hackney, "~> 1.8"},
 
       # Documentation
       {:nimble_publisher, "~> 1.1"},

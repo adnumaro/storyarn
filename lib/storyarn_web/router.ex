@@ -12,7 +12,7 @@ defmodule StoryarnWeb.Router do
                 "style-src 'self' 'unsafe-inline'; " <>
                 "img-src 'self' data: blob: https:; " <>
                 "font-src 'self' data:; " <>
-                "connect-src 'self' ws: wss:; " <>
+                "connect-src 'self' ws: wss: https://*.ingest.sentry.io; " <>
                 "frame-ancestors 'self'; " <>
                 "base-uri 'self'; " <>
                 "form-action 'self'"
@@ -74,6 +74,7 @@ defmodule StoryarnWeb.Router do
           else: []
         ) ++
           [
+            Sentry.LiveViewHook,
             {StoryarnWeb.UserAuth, :mount_current_scope}
           ] do
       live "/", DocsLive.Show, :index
@@ -122,6 +123,7 @@ defmodule StoryarnWeb.Router do
           else: []
         ) ++
           [
+            Sentry.LiveViewHook,
             {StoryarnWeb.UserAuth, :require_authenticated},
             {StoryarnWeb.UserAuth, :load_workspaces}
           ] do
@@ -229,6 +231,7 @@ defmodule StoryarnWeb.Router do
           else: []
         ) ++
           [
+            Sentry.LiveViewHook,
             {StoryarnWeb.UserAuth, :mount_current_scope},
             {StoryarnWeb.UserAuth, :load_workspaces}
           ] do

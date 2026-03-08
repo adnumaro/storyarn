@@ -10,6 +10,11 @@ defmodule Storyarn.Application do
     # Ensure Lucideicons atoms are in the atom table before any icon rendering
     Code.ensure_loaded!(Lucideicons)
 
+    # Install Sentry logger handler to capture errors automatically
+    :logger.add_handler(:sentry_handler, Sentry.LoggerHandler, %{
+      config: %{metadata: [:request_id, :user_id]}
+    })
+
     :ets.new(:import_staging, [:set, :public, :named_table, read_concurrency: true])
 
     children = [

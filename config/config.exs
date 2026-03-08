@@ -134,6 +134,14 @@ config :storyarn, Storyarn.Vault,
     }
   ]
 
+# Sentry error tracking (DSN configured in runtime.exs for production)
+config :sentry,
+  client: Sentry.HackneyClient,
+  enable_source_code_context: true,
+  root_source_code_paths: [File.cwd!()],
+  environment_name: config_env(),
+  filter: Storyarn.SentryEventFilter
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

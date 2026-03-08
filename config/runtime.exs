@@ -20,6 +20,15 @@ if System.get_env("PHX_SERVER") do
   config :storyarn, StoryarnWeb.Endpoint, server: true
 end
 
+# Sentry error tracking
+if sentry_dsn = System.get_env("SENTRY_DSN") do
+  config :sentry, dsn: sentry_dsn
+
+  config :logger, :sentry,
+    level: :error,
+    metadata: [:request_id, :user_id]
+end
+
 # Trust X-Forwarded-For header when behind a reverse proxy (CloudFlare, AWS ELB, etc.)
 # Only enable this in production when you're certain you're behind a trusted proxy
 # Without this, rate limiting uses the direct connection IP (more secure default)
@@ -85,32 +94,9 @@ if config_env() == :prod do
 
   config :storyarn, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
-  # Session signing salt - used to sign session cookies
-  # Generate with: mix phx.gen.secret 32
-  session_signing_salt =
-    System.get_env("SESSION_SIGNING_SALT") ||
-      raise """
-      environment variable SESSION_SIGNING_SALT is missing.
-      You can generate one by calling: mix phx.gen.secret 32
-      """
-
-  # Session encryption salt - used to encrypt session cookie contents
-  # Generate with: mix phx.gen.secret 32
-  session_encryption_salt =
-    System.get_env("SESSION_ENCRYPTION_SALT") ||
-      raise """
-      environment variable SESSION_ENCRYPTION_SALT is missing.
-      You can generate one by calling: mix phx.gen.secret 32
-      """
-
-  # LiveView signing salt - used to sign LiveView socket connections
-  # Generate with: mix phx.gen.secret 32
-  live_view_signing_salt =
-    System.get_env("LIVE_VIEW_SIGNING_SALT") ||
-      raise """
-      environment variable LIVE_VIEW_SIGNING_SALT is missing.
-      You can generate one by calling: mix phx.gen.secret 32
-      """
+  # Session and LiveView salts are compile-time values (used in endpoint.ex
+  # with compile_env!). They are set in config.exs and cannot be overridden
+  # at runtime. Security comes from SECRET_KEY_BASE, not these salts.
 
   config :storyarn, StoryarnWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
@@ -122,10 +108,7 @@ if config_env() == :prod do
       ip: {0, 0, 0, 0, 0, 0, 0, 0},
       port: port
     ],
-    secret_key_base: secret_key_base,
-    session_signing_salt: session_signing_salt,
-    session_encryption_salt: session_encryption_salt,
-    live_view: [signing_salt: live_view_signing_salt]
+    secret_key_base: secret_key_base
 
   # ## SSL Support
   #
@@ -172,37 +155,54 @@ if config_env() == :prod do
     email: System.get_env("MAILER_FROM_EMAIL", "noreply@storyarn.com"),
     name: System.get_env("MAILER_FROM_NAME", "Storyarn")
 
-  # Cloudflare R2 Storage Configuration
-  # R2 is S3-compatible, so we use ExAws.S3
-  if r2_access_key = System.get_env("R2_ACCESS_KEY_ID") do
-    r2_secret_key =
-      System.get_env("R2_SECRET_ACCESS_KEY") ||
-        raise "R2_SECRET_ACCESS_KEY is required when R2_ACCESS_KEY_ID is set"
+  # S3-compatible Storage Configuration
+  # Supports Cloudflare R2 (R2_* vars) and Fly Tigris (AWS_* vars)
+  {s3_access_key, s3_secret_key, s3_bucket, s3_endpoint, s3_public_url} =
+    cond do
+      System.get_env("R2_ACCESS_KEY_ID") ->
+        {
+          System.get_env("R2_ACCESS_KEY_ID"),
+          System.get_env("R2_SECRET_ACCESS_KEY") ||
+            raise("R2_SECRET_ACCESS_KEY is required when R2_ACCESS_KEY_ID is set"),
+          System.get_env("R2_BUCKET") ||
+            raise("R2_BUCKET is required when R2_ACCESS_KEY_ID is set"),
+          System.get_env("R2_ENDPOINT_URL") ||
+            raise("R2_ENDPOINT_URL is required when R2_ACCESS_KEY_ID is set"),
+          System.get_env("R2_PUBLIC_URL")
+        }
 
-    r2_bucket =
-      System.get_env("R2_BUCKET") ||
-        raise "R2_BUCKET is required when R2_ACCESS_KEY_ID is set"
+      System.get_env("AWS_ACCESS_KEY_ID") ->
+        {
+          System.get_env("AWS_ACCESS_KEY_ID"),
+          System.get_env("AWS_SECRET_ACCESS_KEY") ||
+            raise("AWS_SECRET_ACCESS_KEY is required when AWS_ACCESS_KEY_ID is set"),
+          System.get_env("BUCKET_NAME") ||
+            raise("BUCKET_NAME is required when AWS_ACCESS_KEY_ID is set"),
+          System.get_env("AWS_ENDPOINT_URL_S3") ||
+            raise("AWS_ENDPOINT_URL_S3 is required when AWS_ACCESS_KEY_ID is set"),
+          System.get_env("AWS_PUBLIC_URL")
+        }
 
-    r2_endpoint =
-      System.get_env("R2_ENDPOINT_URL") ||
-        raise "R2_ENDPOINT_URL is required when R2_ACCESS_KEY_ID is set"
+      true ->
+        {nil, nil, nil, nil, nil}
+    end
 
-    r2_public_url = System.get_env("R2_PUBLIC_URL")
-
-    # Parse the endpoint URL to extract host
-    %URI{host: r2_host} = URI.parse(r2_endpoint)
+  if s3_access_key do
+    %URI{host: s3_host} = URI.parse(s3_endpoint)
 
     config :ex_aws,
-      access_key_id: r2_access_key,
-      secret_access_key: r2_secret_key
+      access_key_id: s3_access_key,
+      secret_access_key: s3_secret_key
 
     config :ex_aws, :s3,
-      host: r2_host,
+      host: s3_host,
       scheme: "https://"
 
     config :storyarn, :r2,
-      bucket: r2_bucket,
-      public_url: r2_public_url,
-      endpoint_url: r2_endpoint
+      bucket: s3_bucket,
+      public_url: s3_public_url,
+      endpoint_url: s3_endpoint
+
+    config :storyarn, :storage, adapter: :r2
   end
 end
