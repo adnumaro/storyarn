@@ -35,10 +35,13 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlers do
   def handle_tree_panel_event("tree_panel_init", %{"pinned" => pinned}, socket) do
     # The JS hook reports the localStorage-persisted pin state.
     # If pinned, also open the panel (server starts closed to avoid flash).
+    # Keep panel open if already open server-side (e.g., index pages).
+    open = pinned or socket.assigns.tree_panel_open
+
     {:noreply,
      socket
      |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+     |> assign(:tree_panel_open, open)}
   end
 
   def handle_tree_panel_event("tree_panel_toggle", _params, socket) do

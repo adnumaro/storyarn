@@ -45,10 +45,12 @@ export const TreePanel = {
 
     const pinned = readPinned(tool);
 
-    if (pinned) {
-      // Show immediately from localStorage — don't wait for server roundtrip.
-      // Override the server-rendered `opacity-0` class with an inline style so
-      // the panel is visible while the tree_panel_init roundtrip completes.
+    const serverOpen = this.el.dataset.open === "true";
+
+    if (pinned || serverOpen) {
+      // Show immediately — either localStorage says pinned, or server rendered open
+      // (e.g., index pages). Override the server-rendered `opacity-0` class with an
+      // inline style so the panel is visible while the tree_panel_init roundtrip completes.
       this.el.style.opacity = "1";
       this.el.style.pointerEvents = "auto";
       this._open = true;

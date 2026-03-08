@@ -24,6 +24,7 @@ defmodule StoryarnWeb.SheetLive.Index do
       has_tree={true}
       tree_panel_open={@tree_panel_open}
       tree_panel_pinned={@tree_panel_pinned}
+      show_pin={false}
       can_edit={@can_edit}
     >
       <:tree_content>
@@ -107,6 +108,7 @@ defmodule StoryarnWeb.SheetLive.Index do
         socket =
           socket
           |> assign(focus_layout_defaults())
+          |> assign(:tree_panel_open, true)
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)

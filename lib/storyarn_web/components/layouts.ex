@@ -136,6 +136,7 @@ defmodule StoryarnWeb.Layouts do
   attr :has_tree, :boolean, default: true, doc: "whether this page has a tree panel"
   attr :tree_panel_open, :boolean, default: false, doc: "whether the tree panel is open"
   attr :tree_panel_pinned, :boolean, default: false, doc: "whether the tree panel is pinned"
+  attr :show_pin, :boolean, default: true, doc: "whether to show pin/close in tree panel footer"
   attr :can_edit, :boolean, default: false, doc: "whether the user can edit content"
   attr :online_users, :list, default: [], doc: "list of online user presence maps"
 
@@ -230,6 +231,7 @@ defmodule StoryarnWeb.Layouts do
         tree_panel_open={@tree_panel_open}
         active_tool={@active_tool}
         tree_panel_pinned={@tree_panel_pinned}
+        show_pin={@show_pin}
         can_edit={@can_edit}
         workspace={@workspace}
         project={@project}

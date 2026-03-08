@@ -350,6 +350,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
   attr :active_tool, :atom, required: true
   attr :tree_panel_open, :boolean, default: false
   attr :tree_panel_pinned, :boolean, default: true
+  attr :show_pin, :boolean, default: true
   attr :can_edit, :boolean, default: false
   attr :workspace, :map, required: true
   attr :project, :map, required: true
@@ -399,6 +400,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
         <div class="flex-1"></div>
 
         <button
+          :if={@show_pin}
           type="button"
           phx-click="tree_panel_pin"
           class={[
@@ -413,6 +415,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
           </span>
         </button>
         <button
+          :if={@show_pin}
           type="button"
           phx-click="tree_panel_toggle"
           class="btn btn-ghost btn-xs btn-square"
