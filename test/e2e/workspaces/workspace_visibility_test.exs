@@ -39,12 +39,11 @@ defmodule StoryarnWeb.E2E.WorkspaceVisibilityTest do
     project_a = project_fixture(owner, %{name: "Alpha Project", workspace: workspace})
     project_b = project_fixture(owner, %{name: "Beta Project", workspace: workspace})
     project_c = project_fixture(owner, %{name: "Gamma Project", workspace: workspace})
-    project_d = project_fixture(owner, %{name: "Delta Project", workspace: workspace})
 
     member = user_fixture()
     membership_fixture(project_a, member, "editor")
-    membership_fixture(project_b, member, "editor")
-    membership_fixture(project_c, member, "viewer")
+    membership_fixture(project_b, member, "viewer")
+    # member has NO access to project_c
 
     %{
       owner: owner,
@@ -52,30 +51,27 @@ defmodule StoryarnWeb.E2E.WorkspaceVisibilityTest do
       workspace: workspace,
       project_a: project_a,
       project_b: project_b,
-      project_c: project_c,
-      project_d: project_d
+      project_c: project_c
     }
   end
 
   describe "project-only member visibility" do
-    test "member sees only the 3 projects they belong to", %{conn: conn} = ctx do
+    test "member sees only the 2 projects they belong to", %{conn: conn} = ctx do
       conn
       |> authenticate(ctx.member)
       |> visit("/workspaces/#{ctx.workspace.slug}")
       |> assert_has("h3", text: "Alpha Project")
       |> assert_has("h3", text: "Beta Project")
-      |> assert_has("h3", text: "Gamma Project")
-      |> refute_has("h3", text: "Delta Project")
+      |> refute_has("h3", text: "Gamma Project")
     end
 
-    test "owner sees all 4 projects", %{conn: conn} = ctx do
+    test "owner sees all projects", %{conn: conn} = ctx do
       conn
       |> authenticate(ctx.owner)
       |> visit("/workspaces/#{ctx.workspace.slug}")
       |> assert_has("h3", text: "Alpha Project")
       |> assert_has("h3", text: "Beta Project")
       |> assert_has("h3", text: "Gamma Project")
-      |> assert_has("h3", text: "Delta Project")
     end
   end
 end

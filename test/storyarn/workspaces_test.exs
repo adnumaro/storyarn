@@ -80,27 +80,27 @@ defmodule Storyarn.WorkspacesTest do
     end
 
     test "create_workspace/2 creates workspace with owner membership" do
+      # Registration already creates a default workspace with owner membership.
+      # Verify the default workspace has the expected structure.
       user = user_fixture()
-      scope = user_scope_fixture(user)
+      workspace = Workspaces.get_default_workspace(user)
 
-      attrs = %{name: "Test Workspace", description: "A test", slug: "test-workspace"}
-      assert {:ok, workspace} = Workspaces.create_workspace(scope, attrs)
-      assert workspace.name == "Test Workspace"
-      assert workspace.description == "A test"
-      assert workspace.slug == "test-workspace"
       assert workspace.owner_id == user.id
 
-      # Check owner membership was created
       membership = Workspaces.get_membership(workspace.id, user.id)
       assert membership.role == "owner"
     end
 
-    test "create_workspace/2 with invalid data returns error" do
+    test "create_workspace/2 blocks when workspace limit reached" do
       user = user_fixture()
       scope = user_scope_fixture(user)
 
-      assert {:error, changeset} = Workspaces.create_workspace(scope, %{name: ""})
-      assert "can't be blank" in errors_on(changeset).name
+      # User already has one workspace from registration (free plan limit is 1)
+      assert {:error, :limit_reached, %{resource: :workspaces_per_user}} =
+               Workspaces.create_workspace(scope, %{
+                 name: "Second Workspace",
+                 slug: "second-workspace"
+               })
     end
 
     test "update_workspace/2 updates the workspace" do

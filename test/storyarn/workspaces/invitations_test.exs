@@ -107,6 +107,21 @@ defmodule Storyarn.Workspaces.InvitationsTest do
     end
   end
 
+  describe "billing limits" do
+    test "create_invitation returns limit_reached when member limit reached" do
+      %{owner: owner, workspace: workspace} = create_workspace_and_owner()
+
+      # Add a second member to reach the limit of 2
+      other_user = user_fixture()
+      _membership = workspace_membership_fixture(workspace, other_user)
+
+      email = unique_user_email()
+
+      assert {:error, :limit_reached, %{resource: :members_per_workspace}} =
+               Workspaces.create_invitation(workspace, owner, email, "member")
+    end
+  end
+
   describe "create_invitation/4" do
     test "creates invitation and returns it" do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()

@@ -312,6 +312,32 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
     end
   end
 
+  describe "billing limits" do
+    setup :register_and_log_in_user
+
+    test "disables New Project button when project limit reached", %{conn: conn, user: user} do
+      workspace = workspace_fixture(user)
+      scope = Storyarn.Accounts.Scope.for_user(user)
+
+      # Create 3 projects to reach the free plan limit
+      for i <- 1..3 do
+        {:ok, _} =
+          Storyarn.Projects.create_project(scope, %{
+            name: "Project #{i}",
+            workspace_id: workspace.id
+          })
+      end
+
+      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+
+      # The button should be disabled with tooltip
+      assert html =~ "btn-disabled"
+      assert html =~ "Project limit reached for your plan"
+      # Should not render the link version
+      refute html =~ ~s(patch="/workspaces/#{workspace.slug}/projects/new")
+    end
+  end
+
   describe "Authentication" do
     test "unauthenticated user gets redirected to login", %{conn: conn} do
       assert {:error, redirect} = live(conn, ~p"/workspaces/some-workspace")

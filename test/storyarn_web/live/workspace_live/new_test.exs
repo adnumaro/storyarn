@@ -27,29 +27,19 @@ defmodule StoryarnWeb.WorkspaceLive.NewTest do
       assert html =~ ~r/href="\/workspaces"/
     end
 
-    test "validates required name field on empty submit", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/workspaces/new")
-
-      html =
-        view
-        |> form("form", %{"workspace" => %{"name" => "", "description" => ""}})
-        |> render_submit()
-
-      assert html =~ "can&#39;t be blank" or html =~ "can't be blank"
-    end
-
-    test "successfully creates a workspace and redirects", %{conn: conn} do
+    test "redirects with limit error when workspace limit reached", %{conn: conn} do
+      # User already has a default workspace from registration (free plan limit is 1)
       {:ok, view, _html} = live(conn, ~p"/workspaces/new")
 
       view
       |> form("form", %{
-        "workspace" => %{"name" => "Test Workspace", "description" => "A workspace for testing"}
+        "workspace" => %{"name" => "Second Workspace", "description" => "Should be blocked"}
       })
       |> render_submit()
 
       {path, flash} = assert_redirect(view)
-      assert path =~ "/workspaces/"
-      assert flash["info"] =~ "created"
+      assert path == "/workspaces"
+      assert flash["error"] =~ "workspace limit"
     end
   end
 

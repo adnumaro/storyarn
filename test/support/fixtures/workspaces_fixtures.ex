@@ -20,18 +20,34 @@ defmodule Storyarn.WorkspacesFixtures do
   end
 
   @doc """
-  Creates a workspace with the given user as owner.
+  Returns the user's default workspace (created during registration).
+
+  For tests that need a workspace, this reuses the existing default workspace
+  rather than creating a new one, which respects the free plan's 1-workspace limit.
+  If attrs are provided (e.g., name), the workspace is updated with them.
   """
   def workspace_fixture(user \\ nil, attrs \\ %{}) do
     user = user || AccountsFixtures.user_fixture()
-    scope = AccountsFixtures.user_scope_fixture(user)
+    workspace = Workspaces.get_default_workspace(user)
 
-    {:ok, workspace} =
-      attrs
-      |> valid_workspace_attributes()
-      |> then(&Workspaces.create_workspace(scope, &1))
+    if attrs == %{} or attrs == [] do
+      workspace
+    else
+      update_attrs = Map.drop(attrs, [:workspace_id])
 
-    workspace
+      # Also update slug if name is provided (update_changeset doesn't cast slug)
+      update_attrs =
+        if Map.has_key?(update_attrs, :name) and not Map.has_key?(update_attrs, :slug) do
+          Map.put(update_attrs, :slug, Workspaces.generate_slug(update_attrs[:name]))
+        else
+          update_attrs
+        end
+
+      # Use direct changeset to also update slug (Workspaces.update_workspace ignores slug)
+      workspace
+      |> Ecto.Changeset.change(update_attrs)
+      |> Storyarn.Repo.update!()
+    end
   end
 
   @doc """

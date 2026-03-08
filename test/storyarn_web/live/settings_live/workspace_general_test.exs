@@ -10,7 +10,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
   describe "mount" do
     test "renders workspace general settings page for owner", %{conn: conn} do
       user = user_fixture()
-      workspace = workspace_fixture(user)
+      workspace = workspace_fixture(user, %{name: "Test Workspace"})
 
       {:ok, _view, html} =
         conn
@@ -25,7 +25,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
 
     test "renders workspace general settings page for admin", %{conn: conn} do
       owner = user_fixture()
-      workspace = workspace_fixture(owner)
+      workspace = workspace_fixture(owner, %{name: "Admin Test Workspace"})
 
       admin = user_fixture()
       workspace_membership_fixture(workspace, admin, "admin")
