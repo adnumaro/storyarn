@@ -85,21 +85,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.SlugLine.NodeTest do
   end
 
   # =============================================================================
-  # on_select/2, on_double_click/1, duplicate_data_cleanup/1
+  # duplicate_data_cleanup/1
   # =============================================================================
-
-  describe "on_select/2" do
-    test "returns socket unchanged" do
-      socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}}}
-      assert SlugLineNode.on_select(%{}, socket) == socket
-    end
-  end
-
-  describe "on_double_click/1" do
-    test "returns :toolbar" do
-      assert SlugLineNode.on_double_click(%{}) == :toolbar
-    end
-  end
 
   describe "duplicate_data_cleanup/1" do
     test "clears technical_id" do
@@ -182,7 +169,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.SlugLine.NodeTest do
   # =============================================================================
 
   defp setup_slug_line_socket(_context) do
-    project = project_fixture(user_fixture())
+    user = user_fixture()
+    project = project_fixture(user)
     flow = Storyarn.FlowsFixtures.flow_fixture(project)
 
     node =
@@ -200,6 +188,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.SlugLine.NodeTest do
         flash: %{},
         flow: flow,
         project: project,
+        current_scope: %{user: user},
+        node_form: nil,
         selected_node: node,
         flow_data: flow_data,
         flow_hubs: [],

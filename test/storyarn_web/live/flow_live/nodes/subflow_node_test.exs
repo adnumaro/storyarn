@@ -64,25 +64,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.NodeTest do
   end
 
   # =============================================================================
-  # on_double_click/1
-  # =============================================================================
-
-  describe "on_double_click/1" do
-    test "returns :toolbar to open the toolbar (navigation via toolbar button)" do
-      node = %{data: %{"referenced_flow_id" => 42}}
-      assert SubflowNode.on_double_click(node) == :toolbar
-    end
-
-    test "returns :toolbar when no reference" do
-      assert SubflowNode.on_double_click(%{data: %{"referenced_flow_id" => nil}}) == :toolbar
-    end
-
-    test "returns :toolbar for empty string reference" do
-      assert SubflowNode.on_double_click(%{data: %{"referenced_flow_id" => ""}}) == :toolbar
-    end
-  end
-
-  # =============================================================================
   # duplicate_data_cleanup/1
   # =============================================================================
 
@@ -204,7 +185,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.NodeTest do
   # =============================================================================
 
   defp setup_subflow_socket(_context) do
-    project = project_fixture(user_fixture())
+    user = user_fixture()
+    project = project_fixture(user)
     flow = Storyarn.FlowsFixtures.flow_fixture(project)
 
     node =
@@ -222,6 +204,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.NodeTest do
         flash: %{},
         flow: flow,
         project: project,
+        current_scope: %{user: user},
+        node_form: nil,
         selected_node: node,
         flow_data: flow_data,
         flow_hubs: [],

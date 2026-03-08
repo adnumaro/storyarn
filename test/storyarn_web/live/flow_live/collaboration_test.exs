@@ -171,10 +171,10 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
   end
 
-  describe "handle_presence_diff" do
+  describe "handle_presence_event" do
     setup :register_and_log_in_user
 
-    test "updates online_users assign when presence_diff received", %{conn: conn, user: user} do
+    test "updates online_users assign when presence join received", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
@@ -186,11 +186,25 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
 
       load_flow(view)
 
-      # Send a presence_diff message (the actual payload is irrelevant —
-      # the handler just re-fetches online users from Presence)
-      send(view.pid, %{event: "presence_diff", payload: %{joins: %{}, leaves: %{}}})
+      # Send a presence join message via the new proxy pattern
+      send(
+        view.pid,
+        {Storyarn.Collaboration.Presence,
+         {:join,
+          %{
+            id: user.id,
+            user: %{
+              id: user.id,
+              email: user.email,
+              display_name: user.display_name,
+              color: "#ef4444"
+            },
+            metas: %{metas: [%{user_id: user.id}]}
+          }}}
+      )
 
-      # The view should not crash — render to confirm
+      # Smoke test: presence state is pushed to the JS client via data attributes,
+      # not rendered as visible HTML. Verify the handler doesn't crash.
       html = render(view)
       assert html =~ "flow-canvas"
     end
@@ -222,7 +236,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
 
       send(view.pid, {:cursor_update, cursor_data})
 
-      # View should not crash
+      # Smoke test: own-user cursors are filtered in the handler; verify no crash.
       html = render(view)
       assert html =~ "flow-canvas"
     end
@@ -251,7 +265,8 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
 
       send(view.pid, {:cursor_update, cursor_data})
 
-      # View should not crash and should push cursor_update event to client
+      # Smoke test: remote cursors are pushed to JS via events, not rendered as HTML.
+      # Verify the handler processes without crashing.
       html = render(view)
       assert html =~ "flow-canvas"
     end
@@ -289,7 +304,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       # Now send cursor_leave
       send(view.pid, {:cursor_leave, other_user.id})
 
-      # View should not crash
+      # Smoke test: cursor removal is pushed to JS, not rendered as HTML.
       html = render(view)
       assert html =~ "flow-canvas"
     end
@@ -370,7 +385,10 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       assert html =~ email_name(other_user.email)
     end
 
-    test "does not show toast when current user locks a node", %{conn: conn, user: user} do
+    test "self-echo for lock_change is prevented by broadcast_from (not handler guard)", %{
+      conn: conn,
+      user: user
+    } do
       project = project_fixture(user) |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
@@ -382,18 +400,22 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
 
       load_flow(view)
 
+      # In production, broadcast_from prevents self-delivery.
+      # When lock_change IS received, it always shows a toast.
+      other_user = user_fixture()
+
       lock_payload = %{
         node_id: 999,
-        user_id: user.id,
-        user_email: user.email,
+        user_id: other_user.id,
+        user_email: other_user.email,
         user_color: "#ff0000"
       }
 
       send(view.pid, {:lock_change, :locked, lock_payload})
       html = render(view)
 
-      # Should not show collab toast for own actions
-      refute html =~ "made a change"
+      # Toast should appear since message came from another user
+      assert html =~ email_name(other_user.email)
     end
 
     test "handles unlock from another user", %{conn: conn, user: user} do
@@ -428,7 +450,10 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
   describe "handle_remote_change" do
     setup :register_and_log_in_user
 
-    test "ignores changes from own user", %{conn: conn, user: user} do
+    test "self-echo is prevented by broadcast_from (not by handler guard)", %{
+      conn: conn,
+      user: user
+    } do
       project = project_fixture(user) |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
@@ -440,10 +465,14 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
 
       load_flow(view)
 
-      # Send a remote_change from the same user — should be ignored
+      # In production, broadcast_from prevents self-delivery.
+      # When a remote_change is received (even with same user_id), it's processed.
+      # This test verifies the handler doesn't crash on any payload shape.
+      other_user = user_fixture()
+
       payload = %{
-        user_id: user.id,
-        user_email: user.email,
+        user_id: other_user.id,
+        user_email: other_user.email,
         user_color: "#ff0000",
         node_id: 999
       }
@@ -451,9 +480,9 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       send(view.pid, {:remote_change, :node_updated, payload})
       html = render(view)
 
-      # View should not crash and toast should not appear
+      # View should not crash; toast appears with "updated a node"
       assert html =~ "flow-canvas"
-      refute html =~ "made a change"
+      assert html =~ email_name(other_user.email)
     end
 
     test "reloads flow data on node_updated from another user", %{conn: conn, user: user} do

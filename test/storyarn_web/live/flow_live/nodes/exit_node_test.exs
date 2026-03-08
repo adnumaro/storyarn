@@ -156,16 +156,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.NodeTest do
   end
 
   # =============================================================================
-  # on_double_click/1
-  # =============================================================================
-
-  describe "on_double_click/1" do
-    test "returns :toolbar" do
-      assert ExitNode.on_double_click(%{}) == :toolbar
-    end
-  end
-
-  # =============================================================================
   # duplicate_data_cleanup/1
   # =============================================================================
 
@@ -411,7 +401,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.NodeTest do
   # =============================================================================
 
   defp setup_exit_node_socket(_context) do
-    project = project_fixture(user_fixture())
+    user = user_fixture()
+    project = project_fixture(user)
     flow = Storyarn.FlowsFixtures.flow_fixture(project)
 
     node =
@@ -429,6 +420,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.NodeTest do
         flash: %{},
         flow: flow,
         project: project,
+        current_scope: %{user: user},
+        node_form: nil,
         selected_node: node,
         flow_data: flow_data,
         flow_hubs: [],

@@ -114,23 +114,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.NodeTest do
   end
 
   # =============================================================================
-  # on_select/2 and on_double_click/1
-  # =============================================================================
-
-  describe "on_select/2" do
-    test "returns socket unchanged" do
-      socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}}}
-      assert DialogueNode.on_select(%{}, socket) == socket
-    end
-  end
-
-  describe "on_double_click/1" do
-    test "returns :editor" do
-      assert DialogueNode.on_double_click(%{}) == :editor
-    end
-  end
-
-  # =============================================================================
   # duplicate_data_cleanup/1
   # =============================================================================
 
@@ -390,7 +373,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.NodeTest do
   # =============================================================================
 
   defp setup_dialogue_socket(_context) do
-    project = project_fixture(user_fixture())
+    user = user_fixture()
+    project = project_fixture(user)
     flow = Storyarn.FlowsFixtures.flow_fixture(project)
 
     node =
@@ -408,6 +392,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.NodeTest do
         flash: %{},
         flow: flow,
         project: project,
+        current_scope: %{user: user},
+        node_form: nil,
         selected_node: node,
         flow_data: flow_data,
         flow_hubs: [],

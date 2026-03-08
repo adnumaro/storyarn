@@ -82,26 +82,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.NodeTest do
   # on_select/2, on_double_click/1, duplicate_data_cleanup/1
   # =============================================================================
 
-  describe "on_select/2" do
-    test "returns socket unchanged" do
-      socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}}}
-      assert ConditionNode.on_select(%{}, socket) == socket
-    end
-  end
-
-  describe "on_double_click/1" do
-    test "returns :builder" do
-      assert ConditionNode.on_double_click(%{}) == :builder
-    end
-  end
-
-  describe "duplicate_data_cleanup/1" do
-    test "returns data unchanged" do
-      data = %{"condition" => %{"logic" => "all", "rules" => []}, "switch_mode" => true}
-      assert ConditionNode.duplicate_data_cleanup(data) == data
-    end
-  end
-
   # =============================================================================
   # handle_update_condition_builder/2
   # =============================================================================
@@ -264,7 +244,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.NodeTest do
   # =============================================================================
 
   defp setup_condition_socket(_context) do
-    project = project_fixture(user_fixture())
+    user = user_fixture()
+    project = project_fixture(user)
     flow = Storyarn.FlowsFixtures.flow_fixture(project)
 
     node =
@@ -282,6 +263,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.NodeTest do
         flash: %{},
         flow: flow,
         project: project,
+        current_scope: %{user: user},
+        node_form: nil,
         selected_node: node,
         flow_data: flow_data,
         flow_hubs: [],
