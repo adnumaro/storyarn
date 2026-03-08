@@ -23,30 +23,59 @@ import { getNodeDef } from "../node_config.js";
 export function createEditorHandlers(hook) {
   return {
     /**
-     * Initializes debounce timers map.
+     * Initializes throttle state for node position broadcasting.
      */
     init() {
-      hook.debounceTimers = {};
+      hook._throttleTimers = {};
+      hook._pendingPositions = {};
     },
 
     /**
-     * Debounces node position updates to avoid flooding the server.
+     * Throttles node position updates for real-time drag broadcasting.
+     * Sends position every 60ms during drag for smooth remote updates.
      * @param {string|number} nodeId - The node ID
      * @param {Object} position - Position with x, y coordinates
      */
-    debounceNodeMoved(nodeId, position) {
-      if (hook.debounceTimers[nodeId]) {
-        clearTimeout(hook.debounceTimers[nodeId]);
+    throttleNodeMoved(nodeId, position) {
+      hook._pendingPositions[nodeId] = position;
+
+      if (hook._throttleTimers[nodeId]) return;
+
+      hook._throttleTimers[nodeId] = setTimeout(() => {
+        const pos = hook._pendingPositions[nodeId];
+        if (pos) {
+          // Broadcast-only (no DB write) for real-time remote preview
+          hook.pushEvent("node_dragging", {
+            id: nodeId,
+            position_x: pos.x,
+            position_y: pos.y,
+          });
+        }
+        delete hook._throttleTimers[nodeId];
+      }, 100);
+    },
+
+    /**
+     * Flushes pending position for a node immediately (called on drag end).
+     * Persists to DB via node_moved event.
+     * @param {string|number} nodeId - The node ID
+     */
+    flushNodeMoved(nodeId) {
+      if (hook._throttleTimers[nodeId]) {
+        clearTimeout(hook._throttleTimers[nodeId]);
+        delete hook._throttleTimers[nodeId];
       }
 
-      hook.debounceTimers[nodeId] = setTimeout(() => {
+      const pos = hook._pendingPositions[nodeId];
+      if (pos) {
+        // Persist to DB + broadcast final position
         hook.pushEvent("node_moved", {
           id: nodeId,
-          position_x: position.x,
-          position_y: position.y,
+          position_x: pos.x,
+          position_y: pos.y,
         });
-        delete hook.debounceTimers[nodeId];
-      }, 300);
+        delete hook._pendingPositions[nodeId];
+      }
     },
 
     /**

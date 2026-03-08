@@ -510,6 +510,12 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  def handle_event("node_dragging", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_node_dragging(params, socket)
+    end)
+  end
+
   def handle_event("node_moved", params, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_node_moved(params, socket)

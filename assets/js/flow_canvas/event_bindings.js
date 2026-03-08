@@ -59,15 +59,20 @@ export function setupEventHandlers(hook) {
   hook.lastNodeClickTime = 0;
   hook.lastClickedNodeId = null;
 
-  // Node position changes (drag) — skip during server-initiated loads
+  // Node position changes (drag) — throttle for real-time collab, skip server loads
   hook.area.addPipe((context) => {
     if (context.type === "nodetranslated") {
       if (hook.isLoadingFromServer) return context;
       const node = hook.editor.getNode(context.data.id);
       if (node?.nodeId) {
-        hook.editorHandlers.debounceNodeMoved(node.nodeId, context.data.position);
-        // Hide toolbar during drag
+        hook.editorHandlers.throttleNodeMoved(node.nodeId, context.data.position);
         hook.floatingToolbar?.setDragging(true);
+      }
+    }
+    if (context.type === "nodedragged") {
+      const node = hook.editor.getNode(context.data.id);
+      if (node?.nodeId) {
+        hook.editorHandlers.flushNodeMoved(node.nodeId);
       }
     }
     return context;

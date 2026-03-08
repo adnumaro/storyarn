@@ -626,7 +626,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       assert html =~ email_name(other_user.email)
     end
 
-    test "handles node_moved from another user", %{conn: conn, user: user} do
+    test "handles node_moved from another user without toast", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
@@ -649,10 +649,12 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
         y: 600.0
       }
 
+      # node_moved is lightweight (position-only) — no toast, just pushes JS event
       send(view.pid, {:remote_change, :node_moved, payload})
       html = render(view)
 
-      assert html =~ email_name(other_user.email)
+      assert html =~ "flow-canvas"
+      refute html =~ email_name(other_user.email)
     end
 
     test "handles flow_refresh from another user", %{conn: conn, user: user} do

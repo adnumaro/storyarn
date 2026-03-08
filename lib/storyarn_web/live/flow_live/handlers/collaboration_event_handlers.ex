@@ -75,6 +75,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
 
   @spec handle_remote_change(atom(), map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
+  # Position-only change — push directly to JS without reloading the flow from DB
+  def handle_remote_change(:node_moved, payload, socket) do
+    {:noreply,
+     socket
+     |> CollaborationHelpers.push_remote_change_event(:node_moved, payload)}
+  end
+
   def handle_remote_change(action, payload, socket) do
     # No echo guard needed — broadcast_from already prevents self-delivery
     flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)

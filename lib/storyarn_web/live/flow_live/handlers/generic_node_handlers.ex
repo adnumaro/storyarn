@@ -363,6 +363,19 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       else: Flows.search_flows(project_id, query, opts)
   end
 
+  @spec handle_node_dragging(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_node_dragging(%{"id" => node_id, "position_x" => x, "position_y" => y}, socket) do
+    # Broadcast-only (no DB write) for real-time drag preview on remote clients.
+    # No node existence check — JS validates via nodeMap, and auth is required.
+    {:noreply,
+     CollaborationHelpers.broadcast_change(socket, :node_moved, %{
+       node_id: node_id,
+       x: x,
+       y: y
+     })}
+  end
+
   @spec handle_node_moved(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_node_moved(%{"id" => node_id, "position_x" => x, "position_y" => y}, socket) do
