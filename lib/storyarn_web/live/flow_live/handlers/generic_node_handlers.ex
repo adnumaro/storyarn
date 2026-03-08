@@ -259,13 +259,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   @spec handle_create_sheet(Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_create_sheet(socket) do
-    case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
+    case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("sheets", "Untitled")}) do
       {:ok, new_sheet} ->
         {:noreply,
          push_navigate(socket,
            to:
              ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
          )}
+
+      {:error, :limit_reached, _details} ->
+        {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create sheet."))}
@@ -459,16 +462,26 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
+  @lock_heartbeat_interval 10_000
+
   defp handle_node_lock_acquisition(socket, node_id, user) do
     alias Storyarn.Collaboration
 
-    case Collaboration.acquire_lock(socket.assigns.flow.id, node_id, user) do
+    scope = {:flow, socket.assigns.flow.id}
+
+    case Collaboration.acquire_lock(scope, node_id, user) do
       {:ok, _lock_info} ->
         CollaborationHelpers.broadcast_lock_change(socket, :node_locked, node_id)
-        node_locks = Collaboration.list_locks(socket.assigns.flow.id)
+        node_locks = Collaboration.list_locks(scope)
+
+        # Cancel any existing heartbeat and start a new one
+        cancel_lock_heartbeat(socket)
+        ref = Process.send_after(self(), :refresh_node_lock, @lock_heartbeat_interval)
 
         socket
         |> assign(:node_locks, node_locks)
+        |> assign(:locked_node_id, node_id)
+        |> assign(:lock_heartbeat_ref, ref)
         |> push_event("locks_updated", %{locks: node_locks})
 
       {:error, :already_locked, lock_info} ->
@@ -485,10 +498,24 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   defp release_node_lock(socket, node_id) do
     alias Storyarn.Collaboration
 
+    scope = {:flow, socket.assigns.flow.id}
     user_id = socket.assigns.current_scope.user.id
-    Collaboration.release_lock(socket.assigns.flow.id, node_id, user_id)
+
+    cancel_lock_heartbeat(socket)
+    Collaboration.release_lock(scope, node_id, user_id)
     CollaborationHelpers.broadcast_lock_change(socket, :node_unlocked, node_id)
-    node_locks = Collaboration.list_locks(socket.assigns.flow.id)
-    socket |> assign(:node_locks, node_locks) |> push_event("locks_updated", %{locks: node_locks})
+    node_locks = Collaboration.list_locks(scope)
+
+    socket
+    |> assign(:node_locks, node_locks)
+    |> assign(:locked_node_id, nil)
+    |> assign(:lock_heartbeat_ref, nil)
+    |> push_event("locks_updated", %{locks: node_locks})
+  end
+
+  defp cancel_lock_heartbeat(socket) do
+    if ref = socket.assigns[:lock_heartbeat_ref] do
+      Process.cancel_timer(ref)
+    end
   end
 end

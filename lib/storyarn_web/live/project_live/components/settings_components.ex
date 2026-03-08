@@ -149,9 +149,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   def do_send_invitation(socket, invite_params) do
     role = invite_params["role"]
 
-    if role not in @project_invite_roles do
-      {:noreply, put_flash(socket, :error, dgettext("projects", "Invalid role."))}
-    else
+    if role in @project_invite_roles do
       project = socket.assigns.project
       user = socket.assigns.current_scope.user
 
@@ -176,6 +174,8 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
         )
 
       {:noreply, socket}
+    else
+      {:noreply, put_flash(socket, :error, dgettext("projects", "Invalid role."))}
     end
   end
 

@@ -11,6 +11,16 @@ defmodule StoryarnWeb.ScreenplayExportController do
         "project_slug" => project_slug,
         "id" => id
       }) do
+    if conn.assigns.current_scope.user.is_super_admin do
+      export_fountain(conn, workspace_slug, project_slug, id)
+    else
+      conn
+      |> put_status(:not_found)
+      |> text(dgettext("screenplays", "Not found"))
+    end
+  end
+
+  defp export_fountain(conn, workspace_slug, project_slug, id) do
     with {:ok, project, _membership} <-
            Projects.get_project_by_slugs(conn.assigns.current_scope, workspace_slug, project_slug),
          screenplay when not is_nil(screenplay) <-

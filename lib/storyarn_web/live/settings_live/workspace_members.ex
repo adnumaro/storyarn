@@ -177,9 +177,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   defp do_send_invitation(socket, invite_params) do
     role = invite_params["role"]
 
-    if role not in @workspace_invite_roles do
-      {:noreply, put_flash(socket, :error, dgettext("workspaces", "Invalid role."))}
-    else
+    if role in @workspace_invite_roles do
       workspace = socket.assigns.workspace
       user = socket.assigns.current_scope.user
 
@@ -204,6 +202,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         )
 
       {:noreply, socket}
+    else
+      {:noreply, put_flash(socket, :error, dgettext("workspaces", "Invalid role."))}
     end
   end
 

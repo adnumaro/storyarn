@@ -157,6 +157,14 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
         _session,
         socket
       ) do
+    if socket.assigns.current_scope.user.is_super_admin do
+      mount_screenplays(workspace_slug, project_slug, socket)
+    else
+      {:ok, socket |> put_flash(:error, gettext("Not found")) |> redirect(to: "/")}
+    end
+  end
+
+  defp mount_screenplays(workspace_slug, project_slug, socket) do
     case Projects.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,
@@ -266,6 +274,10 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
                ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/screenplays/#{new_screenplay.id}"
            )}
 
+        {:error, :limit_reached, _details} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+
         {:error, _changeset} ->
           {:noreply,
            put_flash(socket, :error, dgettext("screenplays", "Could not create screenplay."))}
@@ -284,6 +296,10 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
              to:
                ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/screenplays/#{new_screenplay.id}"
            )}
+
+        {:error, :limit_reached, _details} ->
+          {:noreply,
+           put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
         {:error, _changeset} ->
           {:noreply,

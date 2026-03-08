@@ -153,6 +153,14 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlers do
 
         {:noreply, push_fn.(socket, to: path_fn.(socket, entity))}
 
+      {:error, :limit_reached, _details} ->
+        {:noreply,
+         Phoenix.LiveView.put_flash(
+           socket,
+           :error,
+           Gettext.gettext(StoryarnWeb.Gettext, "Item limit reached for your plan")
+         )}
+
       {:error, _changeset} ->
         {:noreply, Phoenix.LiveView.put_flash(socket, :error, error_msg)}
     end

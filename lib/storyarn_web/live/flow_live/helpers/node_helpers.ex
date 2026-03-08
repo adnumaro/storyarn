@@ -13,6 +13,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
+  use Gettext, backend: StoryarnWeb.Gettext
+
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
   import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
@@ -55,6 +57,18 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
           |> mark_saved()
           |> maybe_refresh_referencing_jumps(updated_node)
           |> push_node_or_flow_update(updated_node, renamed_count)
+
+        # Broadcast node data change to other users
+        socket =
+          if renamed_count > 0 do
+            # Hub rename cascaded — broadcast full flow refresh
+            CollaborationHelpers.broadcast_change(socket, :flow_refresh, %{})
+          else
+            CollaborationHelpers.broadcast_change(socket, :node_updated, %{
+              node_id: updated_node.id,
+              node_data: canvas_data(updated_node, socket.assigns.flow.project_id)
+            })
+          end
 
         # Push undo snapshot only when no cascade occurred.
         # Hub rename cascade triggers flow_updated → history.clear() anyway.
@@ -127,12 +141,20 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          |> push_event("node_added", Map.put(node_data, :self, true))
          |> CollaborationHelpers.broadcast_change(:node_added, %{node_data: node_data})}
 
+      {:error, :limit_reached, _details} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Item limit reached for your plan")
+         )}
+
       {:error, _} ->
         {:noreply,
          put_flash(
            socket,
            :error,
-           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Could not create node.")
+           dgettext("flows", "Could not create node.")
          )}
     end
   end
@@ -186,12 +208,20 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          |> push_event("node_added", Map.put(node_data, :self, true))
          |> CollaborationHelpers.broadcast_change(:node_added, %{node_data: node_data})}
 
+      {:error, :limit_reached, _details} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Item limit reached for your plan")
+         )}
+
       {:error, _} ->
         {:noreply,
          put_flash(
            socket,
            :error,
-           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Could not duplicate node.")
+           dgettext("flows", "Could not duplicate node.")
          )}
     end
   end
