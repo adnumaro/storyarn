@@ -42,7 +42,13 @@ defmodule Storyarn.Workspaces.WorkspaceNotifier do
   def deliver_invitation(%WorkspaceInvitation{} = invitation, encoded_token) do
     url = invitation_url(encoded_token)
     workspace_name = invitation.workspace.name
-    inviter_name = invitation.invited_by.display_name || invitation.invited_by.email
+
+    inviter_name =
+      case invitation.invited_by do
+        nil -> "Storyarn"
+        user -> user.display_name || user.email
+      end
+
     days = WorkspaceInvitation.validity_in_days()
 
     {subject, html, text} =

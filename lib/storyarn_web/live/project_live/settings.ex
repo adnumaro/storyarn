@@ -75,7 +75,10 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
           <%!-- Invite Form --%>
           <div class="card bg-base-200 p-4">
-            <h4 class="font-medium mb-3">{dgettext("projects", "Invite a new member")}</h4>
+            <h4 class="font-medium mb-3">{dgettext("projects", "Request member invitation")}</h4>
+            <p class="text-sm opacity-70 mb-3">
+              {dgettext("projects", "Invitation requests are reviewed by an admin before being sent.")}
+            </p>
             <.form for={@invite_form} id="invite-form" phx-submit="send_invitation">
               <div class="flex gap-3 items-end">
                 <div class="flex-1">
@@ -98,23 +101,11 @@ defmodule StoryarnWeb.ProjectLive.Settings do
                     ]}
                   />
                 </div>
-                <.button variant="primary" class="mb-2">
-                  {dgettext("projects", "Send Invite")}
-                </.button>
               </div>
+              <.button variant="primary">
+                {dgettext("projects", "Request Invitation")}
+              </.button>
             </.form>
-          </div>
-        </section>
-
-        <%!-- Pending Invitations Section --%>
-        <section :if={@pending_invitations != []}>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Pending Invitations")}</h3>
-          <div class="space-y-2">
-            <.invitation_row
-              :for={invitation <- @pending_invitations}
-              invitation={invitation}
-              on_revoke="revoke_invitation"
-            />
           </div>
         </section>
 
@@ -292,7 +283,6 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       {:ok, project, membership} ->
         if Projects.can?(membership.role, :manage_project) do
           members = Projects.list_project_members(project.id)
-          pending_invitations = Projects.list_pending_invitations(project.id)
 
           project_changeset = Projects.change_project(project)
           provider_config = get_provider_config(project.id)
@@ -304,7 +294,6 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             |> assign(:membership, membership)
             |> assign(:current_workspace, project.workspace)
             |> assign(:members, members)
-            |> assign(:pending_invitations, pending_invitations)
             |> assign(:project_form, to_form(project_changeset))
             |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
             |> assign(
@@ -370,12 +359,6 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   def handle_event("send_invitation", %{"invite" => invite_params}, socket) do
     with_authorization(socket, :manage_members, fn socket ->
       do_send_invitation(socket, invite_params)
-    end)
-  end
-
-  def handle_event("revoke_invitation", %{"id" => id}, socket) do
-    with_authorization(socket, :manage_members, fn socket ->
-      do_revoke_invitation(socket, id)
     end)
   end
 

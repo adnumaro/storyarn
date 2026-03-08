@@ -31,12 +31,18 @@ defmodule StoryarnWeb.PageController do
         Accounts.notify_admin_waitlist_signup(email, signup_info)
 
         conn
-        |> put_flash(:info, gettext("You're on the list! We'll reach out when your spot is ready."))
+        |> put_flash(
+          :info,
+          gettext("You're on the list! We'll reach out when your spot is ready.")
+        )
         |> redirect(to: ~p"/")
 
       {:error, _changeset} ->
         conn
-        |> put_flash(:info, gettext("You're on the list! We'll reach out when your spot is ready."))
+        |> put_flash(
+          :info,
+          gettext("You're on the list! We'll reach out when your spot is ready.")
+        )
         |> redirect(to: ~p"/")
     end
   end

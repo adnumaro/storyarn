@@ -60,7 +60,9 @@
           </h1>
         </div>
         <p class="mt-3 text-lg sm:text-xl leading-relaxed text-base-content/60 max-w-lg">
-          {gettext("The open narrative design tool for game designers. Build branching dialogues, manage characters, and localize your stories — all in one place.")}
+          {gettext(
+            "The open narrative design tool for game designers. Build branching dialogues, manage characters, and localize your stories — all in one place."
+          )}
         </p>
         <div class="mt-10 flex flex-wrap gap-4">
           <a href="#waitlist" class="btn btn-primary btn-lg">
@@ -84,7 +86,9 @@
           {gettext("Everything your story needs")}
         </h2>
         <p class="mt-4 text-base-content/60 text-lg">
-          {gettext("One workspace for your entire narrative. No more scattered docs, no more context switching.")}
+          {gettext(
+            "One workspace for your entire narrative. No more scattered docs, no more context switching."
+          )}
         </p>
       </div>
 
@@ -95,7 +99,9 @@
           </div>
           <h3 class="font-semibold text-lg">{gettext("Flow Editor")}</h3>
           <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext("Visual node-based editor for branching dialogues, conditions, and game logic. Nine node types with real-time collaboration.")}
+            {gettext(
+              "Visual node-based editor for branching dialogues, conditions, and game logic. Nine node types with real-time collaboration."
+            )}
           </p>
         </div>
 
@@ -105,7 +111,9 @@
           </div>
           <h3 class="font-semibold text-lg">{gettext("Character Sheets")}</h3>
           <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext("Structured data for characters, items, locations — with variables, formulas, and property inheritance across your world.")}
+            {gettext(
+              "Structured data for characters, items, locations — with variables, formulas, and property inheritance across your world."
+            )}
           </p>
         </div>
 
@@ -115,7 +123,9 @@
           </div>
           <h3 class="font-semibold text-lg">{gettext("Localization")}</h3>
           <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext("Extract, translate, and manage every line of dialogue. DeepL integration, glossary support, and progress tracking per language.")}
+            {gettext(
+              "Extract, translate, and manage every line of dialogue. DeepL integration, glossary support, and progress tracking per language."
+            )}
           </p>
         </div>
 
@@ -125,7 +135,9 @@
           </div>
           <h3 class="font-semibold text-lg">{gettext("Screenplays")}</h3>
           <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext("Write and read your narrative in screenplay format. Fountain import/export and automatic sync with your flow diagrams.")}
+            {gettext(
+              "Write and read your narrative in screenplay format. Fountain import/export and automatic sync with your flow diagrams."
+            )}
           </p>
         </div>
 
@@ -135,7 +147,9 @@
           </div>
           <h3 class="font-semibold text-lg">{gettext("Scene Maps")}</h3>
           <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext("Visual scene editor with layers, zones, and pin annotations. Connect locations to flows and explore your world spatially.")}
+            {gettext(
+              "Visual scene editor with layers, zones, and pin annotations. Connect locations to flows and explore your world spatially."
+            )}
           </p>
         </div>
 
@@ -145,7 +159,9 @@
           </div>
           <h3 class="font-semibold text-lg">{gettext("Real-time Collaboration")}</h3>
           <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext("Work together with your team. Live cursors, presence indicators, and node locking so nobody overwrites anyone's work.")}
+            {gettext(
+              "Work together with your team. Live cursors, presence indicators, and node locking so nobody overwrites anyone's work."
+            )}
           </p>
         </div>
       </div>
@@ -168,21 +184,27 @@
         <div class="text-5xl font-black text-base-content/[0.06] mb-3 leading-none">01</div>
         <h3 class="font-semibold text-lg">{gettext("Structure your world")}</h3>
         <p class="mt-2 text-base-content/60 leading-relaxed">
-          {gettext("Create sheets for characters, factions, and items. Define variables that drive your story's logic.")}
+          {gettext(
+            "Create sheets for characters, factions, and items. Define variables that drive your story's logic."
+          )}
         </p>
       </div>
       <div>
         <div class="text-5xl font-black text-base-content/[0.06] mb-3 leading-none">02</div>
         <h3 class="font-semibold text-lg">{gettext("Write branching narratives")}</h3>
         <p class="mt-2 text-base-content/60 leading-relaxed">
-          {gettext("Use the flow editor to create dialogue trees, condition checks, and instructions. Test with the built-in story player.")}
+          {gettext(
+            "Use the flow editor to create dialogue trees, condition checks, and instructions. Test with the built-in story player."
+          )}
         </p>
       </div>
       <div>
         <div class="text-5xl font-black text-base-content/[0.06] mb-3 leading-none">03</div>
         <h3 class="font-semibold text-lg">{gettext("Localize and export")}</h3>
         <p class="mt-2 text-base-content/60 leading-relaxed">
-          {gettext("Translate into every language your game supports. Export flows, screenplays, and localization data for your engine.")}
+          {gettext(
+            "Translate into every language your game supports. Export flows, screenplays, and localization data for your engine."
+          )}
         </p>
       </div>
     </div>
@@ -203,9 +225,15 @@
         {gettext("Get early access")}
       </h2>
       <p class="mt-4 text-neutral-content/60 text-lg max-w-lg mx-auto">
-        {gettext("We're onboarding a small group of narrative designers and game studios. Join the waitlist and we'll send you an invite when your spot is ready.")}
+        {gettext(
+          "We're onboarding a small group of narrative designers and game studios. Join the waitlist and we'll send you an invite when your spot is ready."
+        )}
       </p>
-      <form action={~p"/waitlist"} method="post" class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
+      <form
+        action={~p"/waitlist"}
+        method="post"
+        class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto"
+      >
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
         <input
           type="email"

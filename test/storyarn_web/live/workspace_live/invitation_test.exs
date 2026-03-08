@@ -5,80 +5,99 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Repo
   alias Storyarn.Workspaces
   alias Storyarn.Workspaces.WorkspaceInvitation
 
   describe "mount with valid token" do
-    setup :register_and_log_in_user
+    test "auto-accepts and redirects to login for existing user", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      invitee = user_fixture()
 
-    test "renders invitation details", %{conn: conn, user: user} do
-      {workspace, _invitation, encoded_token} = create_invitation_for(user)
+      {encoded_token, _invitation} = create_invitation(workspace, owner, invitee.email)
 
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/invitations/#{encoded_token}")
+      assert {:error, {:redirect, %{to: "/users/log-in", flash: flash}}} =
+               live(conn, ~p"/workspaces/invitations/#{encoded_token}")
 
-      assert html =~ workspace.name
-      assert html =~ "Accept Invitation"
+      assert flash["info"] =~ "Invitation accepted"
+      assert flash["info"] =~ invitee.email
     end
 
-    test "shows email mismatch warning when logged in as different user", %{conn: conn} do
-      other_user = user_fixture()
-      {_workspace, invitation, encoded_token} = create_invitation_for(other_user)
+    test "creates user account and accepts invitation for new email", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
 
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/invitations/#{encoded_token}")
+      {encoded_token, _invitation} = create_invitation(workspace, owner, "newuser@example.com")
 
-      assert html =~ invitation.email
-      assert html =~ "logged in as"
+      assert {:error, {:redirect, %{to: "/users/log-in", flash: flash}}} =
+               live(conn, ~p"/workspaces/invitations/#{encoded_token}")
+
+      assert flash["info"] =~ "Invitation accepted"
+
+      # Verify user was created
+      assert Storyarn.Accounts.get_user_by_email("newuser@example.com")
+    end
+
+    test "shows error for already accepted invitation", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      invitee = user_fixture()
+
+      {encoded_token, invitation} = create_invitation(workspace, owner, invitee.email)
+
+      # Accept first — token query filters out accepted invitations
+      Workspaces.accept_invitation(invitation, invitee)
+
+      {:ok, _view, html} = live(conn, ~p"/workspaces/invitations/#{encoded_token}")
+
+      assert html =~ "Invalid Invitation"
+    end
+
+    test "handles already member", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      invitee = user_fixture()
+
+      {encoded_token, _invitation} = create_invitation(workspace, owner, invitee.email)
+
+      # Add as member before accepting
+      workspace_membership_fixture(workspace, invitee, "member")
+
+      assert {:error, {:redirect, %{to: "/users/log-in", flash: flash}}} =
+               live(conn, ~p"/workspaces/invitations/#{encoded_token}")
+
+      assert flash["info"] =~ "already a member"
     end
   end
 
   describe "mount with invalid token" do
-    setup :register_and_log_in_user
-
-    test "renders invalid invitation page", %{conn: conn} do
+    test "renders error page for invalid token", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/workspaces/invitations/invalidtoken123")
       assert html =~ "Invalid Invitation"
     end
-  end
 
-  describe "mount unauthenticated" do
-    test "shows login prompt", %{conn: conn} do
-      user = user_fixture()
-      {_workspace, _invitation, encoded_token} = create_invitation_for(user)
+    test "renders error page for expired invitation", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
 
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/invitations/#{encoded_token}")
+      token = :crypto.strong_rand_bytes(32)
+      hashed_token = :crypto.hash(:sha256, token)
+      encoded_token = Base.url_encode64(token, padding: false)
 
-      assert html =~ "Log in to accept"
-    end
-  end
+      expired_at = DateTime.utc_now() |> DateTime.add(-1, :day) |> DateTime.truncate(:second)
 
-  describe "accept event" do
-    setup :register_and_log_in_user
+      %WorkspaceInvitation{
+        workspace_id: workspace.id,
+        invited_by_id: owner.id,
+        email: "expired@example.com",
+        token: hashed_token,
+        role: "member",
+        expires_at: expired_at
+      }
+      |> Repo.insert!()
 
-    test "accepts invitation and redirects", %{conn: conn, user: user} do
-      {workspace, _invitation, encoded_token} = create_invitation_for(user)
-
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/invitations/#{encoded_token}")
-
-      result = view |> element("button", "Accept Invitation") |> render_click()
-
-      assert {:error, {:live_redirect, %{to: redirect_path}}} = result
-      assert redirect_path =~ "/workspaces/#{workspace.slug}"
-    end
-
-    test "handles already accepted invitation", %{conn: conn, user: user} do
-      {_workspace, invitation, encoded_token} = create_invitation_for(user)
-
-      # Accept first
-      Workspaces.accept_invitation(invitation, user)
-
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/invitations/#{encoded_token}")
-
-      # Already accepted invitation should show as invalid
+      {:ok, _view, html} = live(conn, ~p"/workspaces/invitations/#{encoded_token}")
       assert html =~ "Invalid Invitation"
     end
   end
@@ -87,17 +106,11 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
   # Helpers
   # =============================================================================
 
-  defp create_invitation_for(target_user) do
-    owner = user_fixture()
-    workspace = workspace_fixture(owner)
-
-    # Build invitation manually to capture encoded_token
+  defp create_invitation(workspace, owner, email, role \\ "member") do
     {encoded_token, invitation_struct} =
-      WorkspaceInvitation.build_invitation(workspace, owner, target_user.email)
+      WorkspaceInvitation.build_invitation(workspace, owner, email, role)
 
-    {:ok, invitation} = Storyarn.Repo.insert(invitation_struct)
-    invitation = Storyarn.Repo.preload(invitation, [:workspace, :invited_by])
-
-    {workspace, invitation, encoded_token}
+    {:ok, invitation} = Repo.insert(invitation_struct)
+    {encoded_token, invitation}
   end
 end

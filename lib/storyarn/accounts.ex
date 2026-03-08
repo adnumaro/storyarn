@@ -268,6 +268,19 @@ defmodule Storyarn.Accounts do
   end
 
   @doc """
+  Finds an existing user by email, or registers and auto-confirms a new one.
+  Used for invitation acceptance.
+  """
+  defdelegate find_or_register_confirmed_user(email), to: Registration
+
+  @doc """
+  Notifies the admin about a member invitation request.
+  """
+  def notify_admin_invitation_request(request_info) do
+    UserNotifier.deliver_admin_invitation_request(request_info)
+  end
+
+  @doc """
   Notifies the admin about a new waitlist signup.
   """
   def notify_admin_waitlist_signup(email, signup_info \\ %{}) do

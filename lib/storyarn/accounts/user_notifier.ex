@@ -59,6 +59,35 @@ defmodule Storyarn.Accounts.UserNotifier do
   end
 
   @doc """
+  Deliver admin notification about a member invitation request.
+  """
+  def deliver_admin_invitation_request(request_info) do
+    admin_email = Application.get_env(:storyarn, :admin_email, "adan@storyarn.com")
+    {subject, html, text} = Templates.admin_invitation_request(request_info)
+    deliver(admin_email, subject, html, text)
+  end
+
+  @doc """
+  Deliver waitlist invite email.
+  """
+  def deliver_waitlist_invite(email, login_url) do
+    {subject, html, text} = Templates.waitlist_invite(email, login_url)
+    deliver(email, subject, html, text)
+  end
+
+  @doc """
+  Deliver project/workspace invitation email.
+  """
+  def deliver_invitation(email, type, entity_name, role, url, days) do
+    {subject, html, text} =
+      if type == "project",
+        do: Templates.project_invitation(email, entity_name, "Storyarn", role, url, days),
+        else: Templates.workspace_invitation(email, entity_name, "Storyarn", role, url, days)
+
+    deliver(email, subject, html, text)
+  end
+
+  @doc """
   Deliver admin notification about a new waitlist signup.
   """
   def deliver_admin_waitlist_notification(email, signup_info \\ %{}) do

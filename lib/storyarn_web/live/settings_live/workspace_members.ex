@@ -7,6 +7,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
   import StoryarnWeb.Components.MemberComponents
 
+  alias Storyarn.Accounts
   alias Storyarn.Workspaces
 
   @impl true
@@ -17,7 +18,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
       {:ok, workspace, membership} ->
         if membership.role in ["owner", "admin"] do
           members = Workspaces.list_workspace_members(workspace.id)
-          pending_invitations = Workspaces.list_pending_invitations(workspace.id)
           invite_changeset = invite_changeset(%{})
 
           {:ok,
@@ -27,7 +27,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
            |> assign(:workspace, workspace)
            |> assign(:membership, membership)
            |> assign(:members, members)
-           |> assign(:pending_invitations, pending_invitations)
            |> assign(:invite_form, to_form(invite_changeset, as: "invite"))}
         else
           {:ok,
@@ -95,7 +94,12 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
         <%!-- Invite Form --%>
         <section>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("workspaces", "Invite a new member")}</h3>
+          <h3 class="text-lg font-semibold mb-4">
+            {dgettext("workspaces", "Request member invitation")}
+          </h3>
+          <p class="text-sm opacity-70 mb-3">
+            {dgettext("workspaces", "Invitation requests are reviewed by an admin before being sent.")}
+          </p>
           <.form for={@invite_form} id="invite-form" phx-submit="send_invitation">
             <div class="flex gap-3 items-end">
               <div class="flex-1">
@@ -119,24 +123,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
                   ]}
                 />
               </div>
-              <.button variant="primary" class="mb-2">
-                {dgettext("workspaces", "Send Invite")}
-              </.button>
             </div>
+            <.button variant="primary">
+              {dgettext("workspaces", "Request Invitation")}
+            </.button>
           </.form>
-        </section>
-
-        <%!-- Pending Invitations Section --%>
-        <section :if={@pending_invitations != []}>
-          <div class="divider" />
-          <h3 class="text-lg font-semibold mb-4">{dgettext("workspaces", "Pending Invitations")}</h3>
-          <div class="space-y-2">
-            <.invitation_row
-              :for={invitation <- @pending_invitations}
-              invitation={invitation}
-              on_revoke="revoke_invitation"
-            />
-          </div>
         </section>
       </div>
     </Layouts.settings>
@@ -147,13 +138,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   def handle_event("send_invitation", %{"invite" => invite_params}, socket) do
     with_authorization(socket, :manage_workspace_members, fn socket ->
       do_send_invitation(socket, invite_params)
-    end)
-  end
-
-  @impl true
-  def handle_event("revoke_invitation", %{"id" => id}, socket) do
-    with_authorization(socket, :manage_workspace_members, fn socket ->
-      do_revoke_invitation(socket, id)
     end)
   end
 
@@ -187,73 +171,38 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
   # Private helpers
 
+  @workspace_invite_roles ~w(admin member viewer)
+
   defp do_send_invitation(socket, invite_params) do
-    case Workspaces.create_invitation(
-           socket.assigns.workspace,
-           socket.assigns.current_scope.user,
-           invite_params["email"],
-           invite_params["role"]
-         ) do
-      {:ok, _invitation} ->
-        pending_invitations = Workspaces.list_pending_invitations(socket.assigns.workspace.id)
+    role = invite_params["role"]
 
-        socket =
-          socket
-          |> assign(:pending_invitations, pending_invitations)
-          |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
-          |> put_flash(:info, dgettext("workspaces", "Invitation sent successfully."))
+    if role not in @workspace_invite_roles do
+      {:noreply, put_flash(socket, :error, dgettext("workspaces", "Invalid role."))}
+    else
+      workspace = socket.assigns.workspace
+      user = socket.assigns.current_scope.user
 
-        {:noreply, socket}
+      request_info = %{
+        invitee_email: String.downcase(invite_params["email"]),
+        requester_email: user.email,
+        type: "workspace",
+        entity_name: workspace.name,
+        entity_id: workspace.id,
+        role: role,
+        locale: Gettext.get_locale(StoryarnWeb.Gettext)
+      }
 
-      {:error, :already_member} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("workspaces", "This email is already a member of the workspace.")
-         )}
-
-      {:error, :already_invited} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("workspaces", "An invitation has already been sent to this email.")
-         )}
-
-      {:error, :rate_limited} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("workspaces", "Too many invitations. Please try again later.")
-         )}
-
-      {:error, _changeset} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("workspaces", "Failed to send invitation. Please try again.")
-         )}
-    end
-  end
-
-  defp do_revoke_invitation(socket, id) do
-    invitation = Enum.find(socket.assigns.pending_invitations, &(to_string(&1.id) == id))
-
-    if invitation do
-      {:ok, _} = Workspaces.revoke_invitation(invitation)
-      pending_invitations = Workspaces.list_pending_invitations(socket.assigns.workspace.id)
+      Accounts.notify_admin_invitation_request(request_info)
 
       socket =
         socket
-        |> assign(:pending_invitations, pending_invitations)
-        |> put_flash(:info, dgettext("workspaces", "Invitation revoked."))
+        |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
+        |> put_flash(
+          :info,
+          dgettext("workspaces", "Invitation request sent. An admin will review it shortly.")
+        )
 
       {:noreply, socket}
-    else
-      {:noreply, put_flash(socket, :error, dgettext("workspaces", "Invitation not found."))}
     end
   end
 

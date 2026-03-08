@@ -19,8 +19,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
 
       assert html =~ "Members"
       assert html =~ "Team Members"
-      assert html =~ "Invite a new member"
-      assert html =~ "Send Invite"
+      assert html =~ "Request member invitation"
+      assert html =~ "Request Invitation"
     end
 
     test "renders workspace members page for admin", %{conn: conn} do
@@ -126,7 +126,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
       %{conn: log_in_user(conn, user), user: user, workspace: workspace}
     end
 
-    test "sends invitation successfully", %{conn: conn, workspace: workspace} do
+    test "sends invitation request to admin", %{conn: conn, workspace: workspace} do
       {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
 
       result =
@@ -136,126 +136,25 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
         })
         |> render_submit()
 
-      assert result =~ "Invitation sent successfully."
+      assert result =~ "Invitation request sent"
     end
 
-    test "shows pending invitation after sending", %{conn: conn, workspace: workspace} do
+    test "sends invitation request with different roles", %{conn: conn, workspace: workspace} do
       {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
 
-      view
-      |> form("#invite-form", %{
-        "invite" => %{"email" => "pending@example.com", "role" => "admin"}
-      })
-      |> render_submit()
+      for {email, role} <- [
+            {"admin@example.com", "admin"},
+            {"viewer@example.com", "viewer"}
+          ] do
+        result =
+          view
+          |> form("#invite-form", %{
+            "invite" => %{"email" => email, "role" => role}
+          })
+          |> render_submit()
 
-      html = render(view)
-      assert html =~ "Pending Invitations"
-      assert html =~ "pending@example.com"
-    end
-
-    test "shows error when inviting existing member", %{conn: conn, workspace: workspace} do
-      member = user_fixture()
-      workspace_membership_fixture(workspace, member, "member")
-
-      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
-
-      result =
-        view
-        |> form("#invite-form", %{
-          "invite" => %{"email" => member.email, "role" => "member"}
-        })
-        |> render_submit()
-
-      assert result =~ "This email is already a member of the workspace."
-    end
-
-    test "shows error when inviting already-invited email", %{
-      conn: conn,
-      user: user,
-      workspace: workspace
-    } do
-      # Create first invitation
-      {:ok, _inv} =
-        Workspaces.create_invitation(workspace, user, "duplicate@example.com", "member")
-
-      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
-
-      result =
-        view
-        |> form("#invite-form", %{
-          "invite" => %{"email" => "duplicate@example.com", "role" => "member"}
-        })
-        |> render_submit()
-
-      assert result =~ "An invitation has already been sent to this email."
-    end
-
-    test "sends invitation with admin role", %{conn: conn, workspace: workspace} do
-      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
-
-      result =
-        view
-        |> form("#invite-form", %{
-          "invite" => %{"email" => "admin-invite@example.com", "role" => "admin"}
-        })
-        |> render_submit()
-
-      assert result =~ "Invitation sent successfully."
-
-      pending = Workspaces.list_pending_invitations(workspace.id)
-      assert Enum.any?(pending, fn inv -> inv.email == "admin-invite@example.com" end)
-    end
-
-    test "sends invitation with viewer role", %{conn: conn, workspace: workspace} do
-      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
-
-      result =
-        view
-        |> form("#invite-form", %{
-          "invite" => %{"email" => "viewer-invite@example.com", "role" => "viewer"}
-        })
-        |> render_submit()
-
-      assert result =~ "Invitation sent successfully."
-    end
-  end
-
-  describe "revoke_invitation event" do
-    setup %{conn: conn} do
-      user = user_fixture()
-      workspace = workspace_fixture(user)
-
-      {:ok, invitation} =
-        Workspaces.create_invitation(workspace, user, "revoke@example.com", "member")
-
-      %{conn: log_in_user(conn, user), user: user, workspace: workspace, invitation: invitation}
-    end
-
-    test "revokes a pending invitation", %{
-      conn: conn,
-      workspace: workspace,
-      invitation: invitation
-    } do
-      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
-
-      # Verify invitation is shown
-      html = render(view)
-      assert html =~ "revoke@example.com"
-
-      # Revoke by pushing the event directly
-      result = render_click(view, "revoke_invitation", %{"id" => to_string(invitation.id)})
-      assert result =~ "Invitation revoked."
-
-      # Invitation should no longer be listed
-      pending = Workspaces.list_pending_invitations(workspace.id)
-      refute Enum.any?(pending, fn inv -> inv.email == "revoke@example.com" end)
-    end
-
-    test "shows error for non-existent invitation", %{conn: conn, workspace: workspace} do
-      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
-
-      result = render_click(view, "revoke_invitation", %{"id" => "999999"})
-      assert result =~ "Invitation not found."
+        assert result =~ "Invitation request sent"
+      end
     end
   end
 

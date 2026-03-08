@@ -223,6 +223,13 @@ defmodule Storyarn.Workspaces do
   defdelegate create_invitation(workspace, invited_by, email, role \\ "member"), to: Invitations
 
   @doc """
+  Creates an admin-initiated invitation (no rate limit, no invited_by user).
+  """
+  @spec create_admin_invitation(workspace(), String.t(), String.t()) ::
+          {:ok, invitation()} | {:error, :already_member | changeset()}
+  defdelegate create_admin_invitation(workspace, email, role), to: Invitations
+
+  @doc """
   Gets an invitation by token.
 
   Returns `{:ok, invitation}` if valid, `{:error, :invalid_token}` otherwise.

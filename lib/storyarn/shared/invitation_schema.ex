@@ -35,7 +35,7 @@ defmodule Storyarn.Shared.InvitationSchema do
       def changeset(invitation, attrs) do
         invitation
         |> cast(attrs, [:email, :role, @__parent_key, :invited_by_id])
-        |> validate_required([:email, :role, @__parent_key, :invited_by_id])
+        |> validate_required([:email, :role, @__parent_key])
         |> Validations.validate_email_format()
         |> validate_inclusion(:role, unquote(allowed_roles))
         |> foreign_key_constraint(@__parent_key)
@@ -57,12 +57,14 @@ defmodule Storyarn.Shared.InvitationSchema do
           |> DateTime.add(@invitation_validity_in_days, :day)
           |> DateTime.truncate(:second)
 
+        invited_by_id = if invited_by, do: invited_by.id, else: nil
+
         invitation =
           struct!(
             __MODULE__,
             [{@__parent_key, parent.id}] ++
               [
-                invited_by_id: invited_by.id,
+                invited_by_id: invited_by_id,
                 email: String.downcase(email),
                 token: hashed_token,
                 role: role,

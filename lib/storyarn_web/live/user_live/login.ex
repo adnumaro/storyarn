@@ -60,7 +60,6 @@ defmodule StoryarnWeb.UserLive.Login do
             {dgettext("identity", "Log in with email")} <span aria-hidden="true">→</span>
           </.button>
         </.form>
-
       </div>
     </Layouts.auth>
     """

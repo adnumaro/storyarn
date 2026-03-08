@@ -26,21 +26,11 @@ msgstr "hace %{count} horas"
 msgid "%{count} min ago"
 msgstr "hace %{count} min"
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:35
-#, elixir-autogen, elixir-format
-msgid "Accept Invitation"
-msgstr "Aceptar invitación"
-
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:86
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:116
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:85
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:118
 #, elixir-autogen, elixir-format
 msgid "Admin"
 msgstr "Administrador"
-
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:221
-#, elixir-autogen, elixir-format
-msgid "An invitation has already been sent to this email."
-msgstr "Ya se ha enviado una invitación a este email."
 
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:78
 #, elixir-autogen, elixir-format
@@ -52,12 +42,12 @@ msgstr "URL del banner"
 msgid "Cancel"
 msgstr "Cancelar"
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:284
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:223
 #, elixir-autogen, elixir-format
 msgid "Cannot change the owner's role."
 msgstr "No se puede cambiar el rol del propietario."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:315
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:254
 #, elixir-autogen, elixir-format
 msgid "Cannot remove the workspace owner."
 msgstr "No se puede eliminar al propietario del espacio de trabajo."
@@ -87,11 +77,6 @@ msgstr "Creando..."
 msgid "Danger Zone"
 msgstr "Zona de peligro"
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:38
-#, elixir-autogen, elixir-format
-msgid "Decline"
-msgstr "Rechazar"
-
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:90
 #, elixir-autogen, elixir-format
 msgid "Default source language for new projects in this workspace."
@@ -118,27 +103,17 @@ msgstr "Eliminar espacio de trabajo"
 msgid "Description"
 msgstr "Descripción"
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:105
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:107
 #, elixir-autogen, elixir-format
 msgid "Email address"
 msgstr "Dirección de email"
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:184
-#, elixir-autogen, elixir-format
-msgid "Failed to accept invitation. Please try again."
-msgstr "Error al aceptar la invitación. Intenta de nuevo."
 
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:183
 #, elixir-autogen, elixir-format
 msgid "Failed to delete workspace."
 msgstr "Error al eliminar el espacio de trabajo."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:237
-#, elixir-autogen, elixir-format
-msgid "Failed to send invitation. Please try again."
-msgstr "Error al enviar la invitación. Intenta de nuevo."
-
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:287
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:226
 #, elixir-autogen, elixir-format
 msgid "Failed to update role."
 msgstr "Error al actualizar el rol."
@@ -148,47 +123,17 @@ msgstr "Error al actualizar el rol."
 msgid "General"
 msgstr "General"
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:82
+#: lib/storyarn_web/live/workspace_live/invitation.ex:26
 #, elixir-autogen, elixir-format
 msgid "Go to Homepage"
 msgstr "Ir al inicio"
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:76
+#: lib/storyarn_web/live/workspace_live/invitation.ex:20
 #, elixir-autogen, elixir-format
 msgid "Invalid Invitation"
 msgstr "Invitación inválida"
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:256
-#, elixir-autogen, elixir-format
-msgid "Invitation not found."
-msgstr "Invitación no encontrada."
-
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:252
-#, elixir-autogen, elixir-format
-msgid "Invitation revoked."
-msgstr "Invitación revocada."
-
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:204
-#, elixir-autogen, elixir-format
-msgid "Invitation sent successfully."
-msgstr "Invitación enviada exitosamente."
-
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:98
-#, elixir-autogen, elixir-format
-msgid "Invite a new member"
-msgstr "Invitar a un nuevo miembro"
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:25
-#, elixir-autogen, elixir-format
-msgid "Invited by"
-msgstr "Invitado por"
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:69
-#, elixir-autogen, elixir-format
-msgid "Log in to accept"
-msgstr "Inicia sesión para aceptar"
-
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:70
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:69
 #, elixir-autogen, elixir-format
 msgid "Manage team members for %{name}"
 msgstr "Gestionar miembros del equipo de %{name}"
@@ -198,24 +143,24 @@ msgstr "Gestionar miembros del equipo de %{name}"
 msgid "Manage workspace details for %{name}"
 msgstr "Gestionar detalles del espacio de trabajo de %{name}"
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:87
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:117
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:86
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:119
 #, elixir-autogen, elixir-format
 msgid "Member"
 msgstr "Miembro"
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:266
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:297
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:205
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:236
 #, elixir-autogen, elixir-format
 msgid "Member not found."
 msgstr "Miembro no encontrado."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:309
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:248
 #, elixir-autogen, elixir-format
 msgid "Member removed."
 msgstr "Miembro eliminado."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:68
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:67
 #, elixir-autogen, elixir-format
 msgid "Members"
 msgstr "Miembros"
@@ -246,7 +191,7 @@ msgstr "Sin proyectos aún"
 msgid "Once you delete a workspace, there is no going back. All projects will be deleted."
 msgstr "Una vez que elimines un espacio de trabajo, no hay vuelta atrás. Todos los proyectos serán eliminados."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:167
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:149
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can change member roles."
 msgstr "Solo el propietario del espacio de trabajo puede cambiar roles."
@@ -256,37 +201,22 @@ msgstr "Solo el propietario del espacio de trabajo puede cambiar roles."
 msgid "Only the workspace owner can delete the workspace."
 msgstr "Solo el propietario del espacio de trabajo puede eliminarlo."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:181
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:163
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can remove members."
 msgstr "Solo el propietario del espacio de trabajo puede eliminar miembros."
-
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:132
-#, elixir-autogen, elixir-format
-msgid "Pending Invitations"
-msgstr "Invitaciones pendientes"
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:60
-#, elixir-autogen, elixir-format
-msgid "Please log in or create an account to accept this invitation."
-msgstr "Inicia sesión o crea una cuenta para aceptar esta invitación."
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:52
-#, elixir-autogen, elixir-format
-msgid "Please log in with the correct email address to accept this invitation."
-msgstr "Inicia sesión con el email correcto para aceptar esta invitación."
 
 #: lib/storyarn_web/live/workspace_live/show.ex:212
 #, elixir-autogen, elixir-format
 msgid "Project created successfully."
 msgstr "Proyecto creado exitosamente."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:114
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:116
 #, elixir-autogen, elixir-format
 msgid "Role"
 msgstr "Rol"
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:278
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:217
 #, elixir-autogen, elixir-format
 msgid "Role updated successfully."
 msgstr "Rol actualizado exitosamente."
@@ -311,17 +241,12 @@ msgstr "Buscar proyectos..."
 msgid "Select language..."
 msgstr "Seleccionar Hub destino..."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:123
-#, elixir-autogen, elixir-format
-msgid "Send Invite"
-msgstr "Enviar invitación"
-
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:85
 #, elixir-autogen, elixir-format
 msgid "Source language"
 msgstr "Idioma de origen"
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:76
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:75
 #, elixir-autogen, elixir-format
 msgid "Team Members"
 msgstr "Miembros del equipo"
@@ -331,46 +256,21 @@ msgstr "Miembros del equipo"
 msgid "This action cannot be undone."
 msgstr "Esta acción no se puede deshacer."
 
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:213
-#, elixir-autogen, elixir-format
-msgid "This email is already a member of the workspace."
-msgstr "Este email ya es miembro del espacio de trabajo."
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:165
+#: lib/storyarn_web/live/workspace_live/invitation.ex:64
 #, elixir-autogen, elixir-format
 msgid "This invitation has already been accepted."
 msgstr "Esta invitación ya fue aceptada."
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:176
-#, elixir-autogen, elixir-format
-msgid "This invitation has expired. Please request a new one."
-msgstr "Esta invitación ha expirado. Solicita una nueva."
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:78
+#: lib/storyarn_web/live/workspace_live/invitation.ex:22
 #, elixir-autogen, elixir-format
 msgid "This invitation link is invalid or has expired."
 msgstr "Este enlace de invitación no es válido o ha expirado."
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:45
-#, elixir-autogen, elixir-format
-msgid "This invitation was sent to"
-msgstr "Esta invitación fue enviada a"
-
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:229
-#, elixir-autogen, elixir-format
-msgid "Too many invitations. Please try again later."
-msgstr "Demasiadas invitaciones. Intenta de nuevo más tarde."
-
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:88
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:118
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:87
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:120
 #, elixir-autogen, elixir-format
 msgid "Viewer"
 msgstr "Visor"
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:136
-#, elixir-autogen, elixir-format
-msgid "Welcome to the workspace!"
-msgstr "¡Bienvenido al espacio de trabajo!"
 
 #: lib/storyarn_web/live/workspace_live/new.ex:49
 #, elixir-autogen, elixir-format
@@ -404,7 +304,7 @@ msgid "Workspace name"
 msgstr "Nombre del espacio de trabajo"
 
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:40
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:45
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:44
 #: lib/storyarn_web/live/workspace_live/show.ex:30
 #, elixir-autogen, elixir-format
 msgid "Workspace not found."
@@ -421,42 +321,42 @@ msgid "Workspaces help you organize projects for different teams or purposes."
 msgstr "Los espacios de trabajo te ayudan a organizar proyectos para diferentes equipos o propósitos."
 
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:32
-#: lib/storyarn_web/live/settings_live/workspace_members.ex:37
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:36
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage this workspace."
 msgstr "No tienes permiso para gestionar este espacio de trabajo."
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:154
+#: lib/storyarn_web/live/workspace_live/invitation.ex:73
 #, elixir-autogen, elixir-format
 msgid "You're already a member of this workspace."
 msgstr "Ya eres miembro de este espacio de trabajo."
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:45
-#, elixir-autogen, elixir-format
-msgid "You're logged in as"
-msgstr "Has iniciado sesión como"
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:18
-#, elixir-autogen, elixir-format
-msgid "You've been invited to join a workspace on Storyarn"
-msgstr "Has sido invitado a unirte a un espacio de trabajo en Storyarn"
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:16
-#, elixir-autogen, elixir-format
-msgid "You've been invited!"
-msgstr "¡Has sido invitado!"
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:146
-#, elixir-autogen, elixir-format
-msgid "Your email doesn't match the invitation."
-msgstr "Tu email no coincide con la invitación."
-
-#: lib/storyarn_web/live/workspace_live/invitation.ex:25
-#, elixir-autogen, elixir-format
-msgid "as"
-msgstr "como"
 
 #: lib/storyarn_web/live/workspace_live/show.ex:196
 #, elixir-autogen, elixir-format
 msgid "just now"
 msgstr "justo ahora"
+
+#: lib/storyarn_web/live/workspace_live/invitation.ex:51
+#, elixir-autogen, elixir-format
+msgid "Invitation accepted! Log in with %{email} to get started."
+msgstr "¡Invitación aceptada! Inicia sesión con %{email} para empezar."
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:193
+#, elixir-autogen, elixir-format
+msgid "Invitation request sent. An admin will review it shortly."
+msgstr "Solicitud de invitación enviada. Un administrador la revisará en breve."
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:99
+#, elixir-autogen, elixir-format
+msgid "Invitation requests are reviewed by an admin before being sent."
+msgstr "Las solicitudes de invitación son revisadas por un administrador antes de enviarse."
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:126
+#, elixir-autogen, elixir-format
+msgid "Request Invitation"
+msgstr "Solicitar invitación"
+
+#: lib/storyarn_web/live/settings_live/workspace_members.ex:97
+#, elixir-autogen, elixir-format
+msgid "Request member invitation"
+msgstr "Solicitar invitación de miembro"

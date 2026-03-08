@@ -1,5 +1,10 @@
 defmodule StoryarnWeb.ProjectLive.Invitation do
-  @moduledoc false
+  @moduledoc """
+  Accepts a project invitation on mount.
+
+  Creates the user account (if needed), adds the membership, marks the
+  invitation as accepted, and redirects to login.
+  """
 
   use StoryarnWeb, :live_view
 
@@ -8,79 +13,20 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
+    <Layouts.public flash={@flash}>
       <div class="max-w-lg mx-auto text-center py-12">
-        <%= if @invitation do %>
-          <.icon name="mail-open" class="size-16 mx-auto text-primary mb-6" />
-          <.header>
-            {dgettext("projects", "You've been invited!")}
-            <:subtitle>
-              {dgettext("projects", "You've been invited to join a project on Storyarn")}
-            </:subtitle>
-          </.header>
-
-          <div class="card bg-base-200 mt-8 p-6">
-            <h3 class="text-xl font-bold mb-2">{@invitation.project.name}</h3>
-            <p class="text-sm text-base-content/70 mb-4">
-              {dgettext("projects", "Invited by")} {@inviter_name} {dgettext("projects", "as")}
-              <span class="badge badge-secondary badge-sm ml-1">{@invitation.role}</span>
-            </p>
-
-            <div class="divider" />
-
-            <%= if @current_scope do %>
-              <%= if @email_matches do %>
-                <div class="space-y-3">
-                  <.button variant="primary" class="w-full" phx-click="accept">
-                    {dgettext("projects", "Accept Invitation")}
-                  </.button>
-                  <.link navigate={~p"/workspaces"} class="btn btn-ghost w-full">
-                    {dgettext("projects", "Decline")}
-                  </.link>
-                </div>
-              <% else %>
-                <div class="alert alert-warning">
-                  <.icon name="triangle-alert" class="size-5" />
-                  <span>
-                    {dgettext("projects", "This invitation was sent to")} <strong>{@invitation.email}</strong>. {dgettext(
-                      "projects",
-                      "You're logged in as"
-                    )} <strong>{@current_scope.user.email}</strong>.
-                  </span>
-                </div>
-                <p class="mt-4 text-sm text-base-content/70">
-                  {dgettext(
-                    "projects",
-                    "Please log in with the correct email address to accept this invitation."
-                  )}
-                </p>
-              <% end %>
-            <% else %>
-              <p class="text-sm text-base-content/70 mb-4">
-                {dgettext("projects", "Please log in or create an account to accept this invitation.")}
-              </p>
-              <.link
-                navigate={~p"/users/log-in?return_to=#{@return_path}"}
-                class="btn btn-primary w-full"
-              >
-                {dgettext("projects", "Log in to accept")}
-              </.link>
-            <% end %>
-          </div>
-        <% else %>
-          <.icon name="x-circle" class="size-16 mx-auto text-error mb-6" />
-          <.header>
-            {dgettext("projects", "Invalid Invitation")}
-            <:subtitle>
-              {dgettext("projects", "This invitation link is invalid or has expired.")}
-            </:subtitle>
-          </.header>
-          <.link navigate={~p"/"} class="btn btn-primary mt-8">
-            {dgettext("projects", "Go to Homepage")}
-          </.link>
-        <% end %>
+        <.icon name="x-circle" class="size-16 mx-auto text-error mb-6" />
+        <.header>
+          {dgettext("projects", "Invalid Invitation")}
+          <:subtitle>
+            {dgettext("projects", "This invitation link is invalid or has expired.")}
+          </:subtitle>
+        </.header>
+        <.link navigate={~p"/"} class="btn btn-primary mt-8">
+          {dgettext("projects", "Go to Homepage")}
+        </.link>
       </div>
-    </Layouts.app>
+    </Layouts.public>
     """
   end
 
@@ -88,95 +34,42 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
   def mount(%{"token" => token}, _session, socket) do
     case Projects.get_invitation_by_token(token) do
       {:ok, invitation} ->
-        inviter_name = invitation.invited_by.display_name || invitation.invited_by.email
-
-        email_matches =
-          if socket.assigns.current_scope do
-            String.downcase(socket.assigns.current_scope.user.email) ==
-              String.downcase(invitation.email)
-          else
-            false
-          end
-
-        socket =
-          socket
-          |> assign(:invitation, invitation)
-          |> assign(:token, token)
-          |> assign(:inviter_name, inviter_name)
-          |> assign(:email_matches, email_matches)
-          |> assign(:return_path, ~p"/projects/invitations/#{token}")
-
-        {:ok, socket}
+        accept_and_redirect(socket, invitation)
 
       {:error, :invalid_token} ->
-        socket =
-          socket
-          |> assign(:invitation, nil)
-          |> assign(:token, nil)
-          |> assign(:inviter_name, nil)
-          |> assign(:email_matches, false)
-          |> assign(:return_path, nil)
-
         {:ok, socket}
     end
   end
 
-  @impl true
-  def handle_event("accept", _params, socket) do
-    invitation = socket.assigns.invitation
-    user = socket.assigns.current_scope.user
-
-    project = invitation.project
-    workspace = project.workspace
-
-    case Projects.accept_invitation(invitation, user) do
-      {:ok, _membership} ->
-        socket =
-          socket
-          |> put_flash(:info, dgettext("projects", "Welcome to the project!"))
-          |> push_navigate(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}")
-
-        {:noreply, socket}
-
-      {:error, :email_mismatch} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "Your email doesn't match the invitation.")
-         )}
+  defp accept_and_redirect(socket, invitation) do
+    with {:ok, user} <- Storyarn.Accounts.find_or_register_confirmed_user(invitation.email),
+         {:ok, _membership} <- Projects.accept_invitation(invitation, user) do
+      {:ok,
+       socket
+       |> put_flash(
+         :info,
+         dgettext(
+           "projects",
+           "Invitation accepted! Log in with %{email} to get started.",
+           email: invitation.email
+         )
+       )
+       |> redirect(to: ~p"/users/log-in")}
+    else
+      {:error, :already_accepted} ->
+        {:ok,
+         socket
+         |> put_flash(:info, dgettext("projects", "This invitation has already been accepted."))
+         |> redirect(to: ~p"/users/log-in")}
 
       {:error, :already_member} ->
-        socket =
-          socket
-          |> put_flash(:info, dgettext("projects", "You're already a member of this project."))
-          |> push_navigate(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}")
+        {:ok,
+         socket
+         |> put_flash(:info, dgettext("projects", "You're already a member of this project."))
+         |> redirect(to: ~p"/users/log-in")}
 
-        {:noreply, socket}
-
-      {:error, :already_accepted} ->
-        socket =
-          socket
-          |> put_flash(:info, dgettext("projects", "This invitation has already been accepted."))
-          |> push_navigate(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}")
-
-        {:noreply, socket}
-
-      {:error, :expired} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "This invitation has expired. Please request a new one.")
-         )}
-
-      {:error, _} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "Failed to accept invitation. Please try again.")
-         )}
+      {:error, _reason} ->
+        {:ok, socket}
     end
   end
 end

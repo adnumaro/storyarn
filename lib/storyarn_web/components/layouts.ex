@@ -557,7 +557,10 @@ defmodule StoryarnWeb.Layouts do
             <.app_logo class="w-6 h-6" />
             <span class="text-lg brand-logotype">Storyarn</span>
           </.link>
-          <.link navigate={~p"/docs"} class="text-xs font-medium text-base-content/50 hover:text-base-content transition-colors self-start mt-1">
+          <.link
+            navigate={~p"/docs"}
+            class="text-xs font-medium text-base-content/50 hover:text-base-content transition-colors self-start mt-1"
+          >
             {gettext("docs")}
           </.link>
         </div>

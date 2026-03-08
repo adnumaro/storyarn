@@ -11,6 +11,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   import Phoenix.Component, only: [assign: 3, to_form: 2]
   import Phoenix.LiveView, only: [put_flash: 3]
 
+  alias Storyarn.Accounts
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Projects
@@ -143,73 +144,38 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     end
   end
 
+  @project_invite_roles ~w(editor viewer)
+
   def do_send_invitation(socket, invite_params) do
-    case Projects.create_invitation(
-           socket.assigns.project,
-           socket.assigns.current_scope.user,
-           invite_params["email"],
-           invite_params["role"]
-         ) do
-      {:ok, _invitation} ->
-        pending_invitations = Projects.list_pending_invitations(socket.assigns.project.id)
+    role = invite_params["role"]
 
-        socket =
-          socket
-          |> assign(:pending_invitations, pending_invitations)
-          |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
-          |> put_flash(:info, dgettext("projects", "Invitation sent successfully."))
+    if role not in @project_invite_roles do
+      {:noreply, put_flash(socket, :error, dgettext("projects", "Invalid role."))}
+    else
+      project = socket.assigns.project
+      user = socket.assigns.current_scope.user
 
-        {:noreply, socket}
+      request_info = %{
+        invitee_email: String.downcase(invite_params["email"]),
+        requester_email: user.email,
+        type: "project",
+        entity_name: project.name,
+        entity_id: project.id,
+        role: role,
+        locale: Gettext.get_locale(StoryarnWeb.Gettext)
+      }
 
-      {:error, :already_member} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "This email is already a member of the project.")
-         )}
-
-      {:error, :already_invited} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "An invitation has already been sent to this email.")
-         )}
-
-      {:error, :rate_limited} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "Too many invitations. Please try again later.")
-         )}
-
-      {:error, _changeset} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "Failed to send invitation. Please try again.")
-         )}
-    end
-  end
-
-  def do_revoke_invitation(socket, id) do
-    invitation = Enum.find(socket.assigns.pending_invitations, &(to_string(&1.id) == id))
-
-    if invitation do
-      {:ok, _} = Projects.revoke_invitation(invitation)
-      pending_invitations = Projects.list_pending_invitations(socket.assigns.project.id)
+      Accounts.notify_admin_invitation_request(request_info)
 
       socket =
         socket
-        |> assign(:pending_invitations, pending_invitations)
-        |> put_flash(:info, dgettext("projects", "Invitation revoked."))
+        |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
+        |> put_flash(
+          :info,
+          dgettext("projects", "Invitation request sent. An admin will review it shortly.")
+        )
 
       {:noreply, socket}
-    else
-      {:noreply, put_flash(socket, :error, dgettext("projects", "Invitation not found."))}
     end
   end
 

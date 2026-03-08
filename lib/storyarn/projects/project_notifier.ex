@@ -42,7 +42,13 @@ defmodule Storyarn.Projects.ProjectNotifier do
   def deliver_invitation(%ProjectInvitation{} = invitation, encoded_token) do
     url = invitation_url(encoded_token)
     project_name = invitation.project.name
-    inviter_name = invitation.invited_by.display_name || invitation.invited_by.email
+
+    inviter_name =
+      case invitation.invited_by do
+        nil -> "Storyarn"
+        user -> user.display_name || user.email
+      end
+
     days = ProjectInvitation.validity_in_days()
 
     {subject, html, text} =

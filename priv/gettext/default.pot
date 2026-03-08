@@ -855,8 +855,8 @@ msgstr ""
 msgid "Write branching narratives"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_controller.ex:27
-#: lib/storyarn_web/controllers/page_controller.ex:32
+#: lib/storyarn_web/controllers/page_controller.ex:34
+#: lib/storyarn_web/controllers/page_controller.ex:39
 #, elixir-autogen, elixir-format
 msgid "You're on the list! We'll reach out when your spot is ready."
 msgstr ""

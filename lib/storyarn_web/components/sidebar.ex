@@ -119,5 +119,4 @@ defmodule StoryarnWeb.Components.Sidebar do
     </div>
     """
   end
-
 end

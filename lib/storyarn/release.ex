@@ -28,13 +28,9 @@ defmodule Storyarn.Release do
   def invite_waitlist_user(email, locale \\ "en") when is_binary(email) do
     Gettext.put_locale(StoryarnWeb.Gettext, locale)
 
-    # Ensure user account exists (create + confirm if new)
-    case ensure_user_exists(email) do
-      {:ok, :existing} ->
-        IO.puts("User #{email} already exists, sending invite email")
-
-      {:ok, :created} ->
-        IO.puts("Created and confirmed account for #{email}")
+    case Storyarn.Accounts.find_or_register_confirmed_user(email) do
+      {:ok, _user} ->
+        IO.puts("User account ready for #{email}")
 
       {:error, reason} ->
         IO.puts("Failed to create user: #{inspect(reason)}")
@@ -42,44 +38,62 @@ defmodule Storyarn.Release do
     end
 
     login_url = StoryarnWeb.Endpoint.url() <> "/users/log-in"
-    {subject, html, text} = Storyarn.Emails.Templates.waitlist_invite(email, login_url)
 
-    {sender_name, sender_email} =
-      Application.get_env(:storyarn, :mailer_sender, {"Storyarn", "noreply@storyarn.com"})
-
-    email_struct =
-      Swoosh.Email.new()
-      |> Swoosh.Email.to(email)
-      |> Swoosh.Email.from({sender_name, sender_email})
-      |> Swoosh.Email.subject(subject)
-      |> Swoosh.Email.html_body(html)
-      |> Swoosh.Email.text_body(text)
-
-    case Storyarn.Mailer.deliver(email_struct) do
+    case Storyarn.Accounts.UserNotifier.deliver_waitlist_invite(email, login_url) do
       {:ok, _} -> IO.puts("Invitation sent to #{email}")
       {:error, reason} -> IO.puts("Failed to send: #{inspect(reason)}")
     end
   end
 
-  defp ensure_user_exists(email) do
-    case Storyarn.Accounts.get_user_by_email(email) do
-      %Storyarn.Accounts.User{} ->
-        {:ok, :existing}
+  @project_roles ~w(editor viewer)
+  @workspace_roles ~w(admin member viewer)
 
-      nil ->
-        case Storyarn.Accounts.register_user(%{"email" => email}) do
-          {:ok, user} ->
-            # Auto-confirm so magic link login works (not confirmation flow)
-            user
-            |> Storyarn.Accounts.User.confirm_changeset()
-            |> Storyarn.Repo.update!()
+  @doc """
+  Approve a member invitation request.
 
-            {:ok, :created}
+  Creates an invitation record and sends the invitation email to the invitee.
+  The invitee must click the acceptance link to create their account and join.
 
-          {:error, changeset} ->
-            {:error, changeset}
-        end
+  Usage from Fly SSH (uses rpc to run inside the live node):
+    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_member(\\"user@example.com\\", \\"project\\", 123, \\"editor\\", \\"es\\")"'
+    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_member(\\"user@example.com\\", \\"workspace\\", 456, \\"member\\", \\"en\\")"'
+  """
+  def invite_member(email, type, entity_id, role, locale \\ "en")
+      when is_binary(email) and type in ["project", "workspace"] do
+    allowed_roles = if type == "project", do: @project_roles, else: @workspace_roles
+
+    unless role in allowed_roles do
+      raise ArgumentError,
+            "Invalid role #{inspect(role)} for #{type}. Allowed: #{inspect(allowed_roles)}"
     end
+
+    Gettext.put_locale(StoryarnWeb.Gettext, locale)
+
+    email = String.downcase(email)
+
+    {context_module, entity} = invitation_config(type, entity_id)
+
+    case context_module.create_admin_invitation(entity, email, role) do
+      {:ok, _invitation} ->
+        IO.puts(
+          "Invitation created and email sent to #{email} as #{role} to #{type} ##{entity_id}"
+        )
+
+      {:error, :already_member} ->
+        IO.puts("#{email} is already a member of this #{type}")
+
+      {:error, reason} ->
+        IO.puts("Failed to create invitation: #{inspect(reason)}")
+        raise "Cannot create invitation: #{inspect(reason)}"
+    end
+  end
+
+  defp invitation_config("project", id) do
+    {Storyarn.Projects, Storyarn.Projects.get_project!(id)}
+  end
+
+  defp invitation_config("workspace", id) do
+    {Storyarn.Workspaces, Storyarn.Workspaces.get_workspace!(id)}
   end
 
   defp repos do
@@ -90,5 +104,4 @@ defmodule Storyarn.Release do
     Application.ensure_all_started(:ssl)
     Application.ensure_loaded(@app)
   end
-
 end

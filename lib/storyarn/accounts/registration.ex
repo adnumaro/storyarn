@@ -24,6 +24,25 @@ defmodule Storyarn.Accounts.Registration do
     end)
   end
 
+  @doc """
+  Finds an existing user by email, or registers and auto-confirms a new one.
+
+  Used for invitation acceptance where the user must be able to log in immediately.
+  Returns `{:ok, user}` or `{:error, changeset}`.
+  """
+  def find_or_register_confirmed_user(email) do
+    case Repo.get_by(User, email: String.downcase(email)) do
+      %User{} = user ->
+        {:ok, user}
+
+      nil ->
+        with {:ok, user} <- register_user(%{"email" => email}),
+             {:ok, user} <- Repo.update(User.confirm_changeset(user)) do
+          {:ok, user}
+        end
+    end
+  end
+
   defp insert_user(attrs) do
     %User{}
     |> User.email_changeset(attrs)

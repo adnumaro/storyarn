@@ -53,6 +53,22 @@ defmodule Storyarn.Shared.InvitationOperations do
   end
 
   @doc """
+  Creates an admin-initiated invitation (no rate limit, no invited_by user).
+
+  Used by `Storyarn.Release.invite_member/5` for CLI-approved invitations.
+  """
+  def create_admin_invitation(config, parent, email, role) do
+    parent_id = Map.fetch!(parent, :id)
+    email = String.downcase(email)
+
+    if member_exists?(config, parent_id, email) do
+      {:error, :already_member}
+    else
+      do_create_invitation(config, parent, nil, email, role)
+    end
+  end
+
+  @doc """
   Gets an invitation by token.
   """
   def get_invitation_by_token(config, token) do

@@ -64,7 +64,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert html =~ "editor"
     end
 
-    test "sends invitation", %{conn: conn, user: user} do
+    test "sends invitation request to admin", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       {:ok, view, _html} =
@@ -74,38 +74,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       |> form("#invite-form", invite: %{email: "newmember@example.com", role: "editor"})
       |> render_submit()
 
-      assert render(view) =~ "Invitation sent"
-      assert render(view) =~ "newmember@example.com"
-      assert render(view) =~ "Pending"
-    end
-
-    test "shows error for duplicate invitation", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      _invitation = invitation_fixture(project, user, "existing@example.com")
-
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
-
-      view
-      |> form("#invite-form", invite: %{email: "existing@example.com", role: "editor"})
-      |> render_submit()
-
-      assert render(view) =~ "already been sent"
-    end
-
-    test "revokes invitation", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      invitation = invitation_fixture(project, user, "pending@example.com")
-
-      {:ok, view, html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
-
-      assert html =~ "pending@example.com"
-
-      render_click(view, "revoke_invitation", %{id: to_string(invitation.id)})
-
-      assert render(view) =~ "Invitation revoked"
-      refute render(view) =~ "pending@example.com"
+      assert render(view) =~ "Invitation request sent"
     end
 
     test "removes member", %{conn: conn, user: user} do

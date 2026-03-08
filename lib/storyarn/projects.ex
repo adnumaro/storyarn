@@ -200,6 +200,13 @@ defmodule Storyarn.Projects do
   defdelegate create_invitation(project, invited_by, email, role \\ "editor"), to: Invitations
 
   @doc """
+  Creates an admin-initiated invitation (no rate limit, no invited_by user).
+  """
+  @spec create_admin_invitation(project(), String.t(), String.t()) ::
+          {:ok, invitation()} | {:error, :already_member | changeset()}
+  defdelegate create_admin_invitation(project, email, role), to: Invitations
+
+  @doc """
   Gets an invitation by token.
 
   Returns `{:ok, invitation}` if valid, `{:error, :invalid_token}` otherwise.
