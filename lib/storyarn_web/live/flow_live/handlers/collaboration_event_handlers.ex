@@ -2,7 +2,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
   @moduledoc """
   Handles collaboration-related events and info messages for the flow editor.
 
-  Responsible for: cursor_moved event, presence_diff, cursor_update/leave,
+  Responsible for: cursor_moved event, presence join/leave, cursor_update/leave,
   lock_change, remote_change, and clear_collab_toast info messages.
   Returns `{:noreply, socket}`.
   """
@@ -18,15 +18,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_cursor_moved(%{"x" => x, "y" => y}, socket) do
     user = socket.assigns.current_scope.user
-    Collaboration.broadcast_cursor(socket.assigns.flow.id, user, x, y)
+    Collaboration.broadcast_cursor({:flow, socket.assigns.flow.id}, user, x, y)
     {:noreply, socket}
   end
 
-  @spec handle_presence_diff(Phoenix.LiveView.Socket.t()) ::
+  alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: SharedCollab
+
+  @spec handle_presence_event(tuple(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_presence_diff(socket) do
-    online_users = Collaboration.list_online_users(socket.assigns.flow.id)
-    {:noreply, assign(socket, :online_users, online_users)}
+  def handle_presence_event({:join, presence}, socket) do
+    SharedCollab.handle_presence_join(socket, presence)
+  end
+
+  def handle_presence_event({:leave, presence}, socket) do
+    SharedCollab.handle_presence_leave(socket, presence)
   end
 
   @spec handle_cursor_update(map(), Phoenix.LiveView.Socket.t()) ::
@@ -58,41 +63,31 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
   @spec handle_lock_change(atom(), map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_lock_change(action, payload, socket) do
-    node_locks = Collaboration.list_locks(socket.assigns.flow.id)
+    # No echo guard needed — broadcast_from already prevents self-delivery
+    node_locks = Collaboration.list_locks({:flow, socket.assigns.flow.id})
 
-    socket =
-      socket
-      |> assign(:node_locks, node_locks)
-      |> push_event("locks_updated", %{locks: node_locks})
-
-    socket =
-      if payload.user_id != socket.assigns.current_scope.user.id do
-        CollaborationHelpers.show_collab_toast(socket, action, payload)
-      else
-        socket
-      end
-
-    {:noreply, socket}
+    {:noreply,
+     socket
+     |> assign(:node_locks, node_locks)
+     |> push_event("locks_updated", %{locks: node_locks})
+     |> CollaborationHelpers.show_collab_toast(action, payload)}
   end
 
   @spec handle_remote_change(atom(), map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_remote_change(action, payload, socket) do
-    if payload.user_id == socket.assigns.current_scope.user.id do
-      {:noreply, socket}
-    else
-      flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
-      flow_data = Flows.serialize_for_canvas(flow)
+    # No echo guard needed — broadcast_from already prevents self-delivery
+    flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+    flow_data = Flows.serialize_for_canvas(flow)
 
-      socket =
-        socket
-        |> assign(:flow, flow)
-        |> assign(:flow_data, flow_data)
-        |> CollaborationHelpers.push_remote_change_event(action, payload)
-        |> CollaborationHelpers.show_collab_toast(action, payload)
+    socket =
+      socket
+      |> assign(:flow, flow)
+      |> assign(:flow_data, flow_data)
+      |> CollaborationHelpers.push_remote_change_event(action, payload)
+      |> CollaborationHelpers.show_collab_toast(action, payload)
 
-      {:noreply, socket}
-    end
+    {:noreply, socket}
   end
 
   @spec handle_clear_collab_toast(Phoenix.LiveView.Socket.t()) ::

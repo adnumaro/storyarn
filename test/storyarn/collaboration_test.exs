@@ -54,13 +54,13 @@ defmodule Storyarn.CollaborationTest do
 
   describe "changes_topic/1" do
     test "returns correctly formatted topic" do
-      assert Collaboration.changes_topic(42) == "flow:42:changes"
+      assert Collaboration.changes_topic({:flow, 42}) == "flow:42:changes"
     end
   end
 
   describe "locks_topic/1" do
     test "returns correctly formatted topic" do
-      assert Collaboration.locks_topic(42) == "flow:42:locks"
+      assert Collaboration.locks_topic({:flow, 42}) == "flow:42:locks"
     end
   end
 

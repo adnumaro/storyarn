@@ -38,9 +38,11 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.SlugLine
   alias StoryarnWeb.FlowLive.Nodes.Subflow
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
+  alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
   # Filter out entry and annotation from the "Add Node" dropdown
   @node_types Flows.node_types() |> Enum.reject(&(&1 in ["entry", "annotation"]))
+  @lock_heartbeat_interval 10_000
 
   @impl true
   def render(%{loading: true} = assigns) do
@@ -774,6 +776,9 @@ defmodule StoryarnWeb.FlowLive.Show do
                ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
            )}
 
+        {:error, :limit_reached, _details} ->
+          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+
         {:error, _, _reason, _changes} ->
           {:noreply,
            put_flash(socket, :error, dgettext("flows", "Could not create linked flow."))}
@@ -1126,6 +1131,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:save_status, :idle)
       |> assign(:preview_show, false)
       |> assign(:preview_node, nil)
+      |> assign(:collab_scope, {:flow, flow.id})
       |> assign(:online_users, online_users)
       |> assign(:node_locks, node_locks)
       |> assign(:collab_toast, nil)
@@ -1195,8 +1201,11 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info(:clear_collab_toast, socket),
     do: CollaborationEventHandlers.handle_clear_collab_toast(socket)
 
-  def handle_info(%{event: "presence_diff", payload: _diff}, socket),
-    do: CollaborationEventHandlers.handle_presence_diff(socket)
+  def handle_info({Storyarn.Collaboration.Presence, {:join, _} = event}, socket),
+    do: CollaborationEventHandlers.handle_presence_event(event, socket)
+
+  def handle_info({Storyarn.Collaboration.Presence, {:leave, _} = event}, socket),
+    do: CollaborationEventHandlers.handle_presence_event(event, socket)
 
   def handle_info({:cursor_update, cursor_data}, socket),
     do: CollaborationEventHandlers.handle_cursor_update(cursor_data, socket)
@@ -1226,9 +1235,41 @@ defmodule StoryarnWeb.FlowLive.Show do
     {:noreply, put_flash(socket, :error, message)}
   end
 
+  # Lock heartbeat — refresh lock every 10s to prevent expiry during editing
+  def handle_info(:refresh_node_lock, socket) do
+    if node_id = socket.assigns[:locked_node_id] do
+      Collaboration.refresh_lock(
+        {:flow, socket.assigns.flow.id},
+        node_id,
+        socket.assigns.current_scope.user.id
+      )
+
+      ref = Process.send_after(self(), :refresh_node_lock, @lock_heartbeat_interval)
+      {:noreply, assign(socket, :lock_heartbeat_ref, ref)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   # Ignore EXIT messages from linked processes (e.g. PubSub subscriptions)
   def handle_info({:EXIT, _pid, _reason}, socket) do
     {:noreply, socket}
+  end
+
+  @impl true
+  def terminate(_reason, socket) do
+    if socket.assigns[:flow] do
+      # Cancel heartbeat timer
+      if ref = socket.assigns[:lock_heartbeat_ref] do
+        Process.cancel_timer(ref)
+      end
+
+      # Teardown collaboration (unsubscribe, untrack, release locks)
+      if scope = socket.assigns[:collab_scope] do
+        user_id = socket.assigns.current_scope.user.id
+        Collab.teardown(scope, user_id)
+      end
+    end
   end
 
   # ===========================================================================

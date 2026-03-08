@@ -1,5 +1,12 @@
 defmodule Storyarn.Collaboration.Locks do
-  @moduledoc false
+  @moduledoc """
+  GenServer-based entity locking system.
+
+  Uses ETS for fast reads with auto-expiration. Keys are `{scope, entity_id}`
+  where scope is an editor_scope tuple like `{:flow, 1}` or `{:sheet, 5}`.
+
+  Scope is always an editor_scope tuple like `{:flow, 1}` or `{:sheet, 5}`.
+  """
 
   use GenServer
 
@@ -17,73 +24,63 @@ defmodule Storyarn.Collaboration.Locks do
           expires_at: integer()
         }
 
+  # =============================================================================
   # Client API
+  # =============================================================================
 
-  @doc """
-  Starts the Locks GenServer.
-  """
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
   @doc """
-  Attempts to acquire a lock on a node.
+  Attempts to acquire a lock on an entity.
   Returns {:ok, lock_info} if successful, {:error, :already_locked, lock_info} if locked by another user.
   """
-  @spec acquire(integer(), integer(), map()) ::
-          {:ok, lock_info()} | {:error, :already_locked, lock_info()}
-  def acquire(flow_id, node_id, user) do
-    GenServer.call(__MODULE__, {:acquire, flow_id, node_id, user})
+  def acquire(scope, entity_id, user) do
+    GenServer.call(__MODULE__, {:acquire, scope, entity_id, user})
   end
 
   @doc """
-  Releases a lock on a node.
-  Only the lock holder can release the lock.
+  Releases a lock on an entity. Only the lock holder can release.
   """
-  @spec release(integer(), integer(), integer()) :: :ok | {:error, :not_lock_holder}
-  def release(flow_id, node_id, user_id) do
-    GenServer.call(__MODULE__, {:release, flow_id, node_id, user_id})
+  def release(scope, entity_id, user_id) do
+    GenServer.call(__MODULE__, {:release, scope, entity_id, user_id})
   end
 
   @doc """
-  Releases all locks held by a user in a flow.
+  Releases all locks held by a user in a scope.
   Called when user disconnects.
   """
-  @spec release_all(integer(), integer()) :: :ok
-  def release_all(flow_id, user_id) do
-    GenServer.call(__MODULE__, {:release_all, flow_id, user_id})
+  def release_all(scope, user_id) do
+    GenServer.call(__MODULE__, {:release_all, scope, user_id})
   end
 
   @doc """
   Refreshes the lock timeout (heartbeat).
   """
-  @spec refresh(integer(), integer(), integer()) :: :ok | {:error, :not_lock_holder}
-  def refresh(flow_id, node_id, user_id) do
-    GenServer.call(__MODULE__, {:refresh, flow_id, node_id, user_id})
+  def refresh(scope, entity_id, user_id) do
+    GenServer.call(__MODULE__, {:refresh, scope, entity_id, user_id})
   end
 
   @doc """
-  Gets the current lock holder for a node, if any.
+  Gets the current lock holder for an entity, if any.
   """
-  @spec get_lock(integer(), integer()) :: {:ok, lock_info()} | {:error, :not_locked}
-  def get_lock(flow_id, node_id) do
-    GenServer.call(__MODULE__, {:get_lock, flow_id, node_id})
+  def get_lock(scope, entity_id) do
+    GenServer.call(__MODULE__, {:get_lock, scope, entity_id})
   end
 
   @doc """
-  Gets all locks for a flow.
+  Gets all locks for a scope.
   """
-  @spec list_locks(integer()) :: %{integer() => lock_info()}
-  def list_locks(flow_id) do
-    GenServer.call(__MODULE__, {:list_locks, flow_id})
+  def list_locks(scope) do
+    GenServer.call(__MODULE__, {:list_locks, scope})
   end
 
   @doc """
-  Checks if a node is locked by a different user.
+  Checks if an entity is locked by a different user.
   """
-  @spec locked_by_other?(integer(), integer(), integer()) :: boolean()
-  def locked_by_other?(flow_id, node_id, user_id) do
-    case get_lock(flow_id, node_id) do
+  def locked_by_other?(scope, entity_id, user_id) do
+    case get_lock(scope, entity_id) do
       {:ok, %{user_id: lock_user_id}} -> lock_user_id != user_id
       {:error, :not_locked} -> false
     end
@@ -97,7 +94,9 @@ defmodule Storyarn.Collaboration.Locks do
     GenServer.call(__MODULE__, :clear_all)
   end
 
+  # =============================================================================
   # Server callbacks
+  # =============================================================================
 
   @impl true
   def init(_opts) do
@@ -107,8 +106,8 @@ defmodule Storyarn.Collaboration.Locks do
   end
 
   @impl true
-  def handle_call({:acquire, flow_id, node_id, user}, _from, state) do
-    key = {flow_id, node_id}
+  def handle_call({:acquire, scope, entity_id, user}, _from, state) do
+    key = {scope, entity_id}
     now = System.monotonic_time(:millisecond)
     expires_at = now + @lock_timeout_ms
 
@@ -124,8 +123,8 @@ defmodule Storyarn.Collaboration.Locks do
     {:reply, result, state}
   end
 
-  def handle_call({:release, flow_id, node_id, user_id}, _from, state) do
-    key = {flow_id, node_id}
+  def handle_call({:release, scope, entity_id, user_id}, _from, state) do
+    key = {scope, entity_id}
 
     case :ets.lookup(@table_name, key) do
       [{^key, %{user_id: ^user_id}}] ->
@@ -140,11 +139,10 @@ defmodule Storyarn.Collaboration.Locks do
     end
   end
 
-  def handle_call({:release_all, flow_id, user_id}, _from, state) do
-    # Find and delete all locks for this user in this flow
+  def handle_call({:release_all, scope, user_id}, _from, state) do
     :ets.foldl(
       fn
-        {{^flow_id, _node_id} = key, %{user_id: ^user_id}}, _acc ->
+        {{^scope, _entity_id} = key, %{user_id: ^user_id}}, _acc ->
           :ets.delete(@table_name, key)
 
         _, acc ->
@@ -157,8 +155,8 @@ defmodule Storyarn.Collaboration.Locks do
     {:reply, :ok, state}
   end
 
-  def handle_call({:refresh, flow_id, node_id, user_id}, _from, state) do
-    key = {flow_id, node_id}
+  def handle_call({:refresh, scope, entity_id, user_id}, _from, state) do
+    key = {scope, entity_id}
     now = System.monotonic_time(:millisecond)
     expires_at = now + @lock_timeout_ms
 
@@ -176,8 +174,8 @@ defmodule Storyarn.Collaboration.Locks do
     end
   end
 
-  def handle_call({:get_lock, flow_id, node_id}, _from, state) do
-    key = {flow_id, node_id}
+  def handle_call({:get_lock, scope, entity_id}, _from, state) do
+    key = {scope, entity_id}
     now = System.monotonic_time(:millisecond)
 
     case :ets.lookup(@table_name, key) do
@@ -194,15 +192,15 @@ defmodule Storyarn.Collaboration.Locks do
     end
   end
 
-  def handle_call({:list_locks, flow_id}, _from, state) do
+  def handle_call({:list_locks, scope}, _from, state) do
     now = System.monotonic_time(:millisecond)
 
     locks =
       :ets.foldl(
         fn
-          {{^flow_id, node_id}, lock_info}, acc ->
+          {{^scope, entity_id}, lock_info}, acc ->
             if lock_info.expires_at > now do
-              Map.put(acc, node_id, lock_info)
+              Map.put(acc, entity_id, lock_info)
             else
               acc
             end
@@ -228,29 +226,28 @@ defmodule Storyarn.Collaboration.Locks do
     expired_count = cleanup_expired_locks(now)
 
     if expired_count > 0 do
-      Logger.debug("Cleaned up #{expired_count} expired node locks")
+      Logger.debug("Cleaned up #{expired_count} expired entity locks")
     end
 
     schedule_cleanup()
     {:noreply, state}
   end
 
+  # =============================================================================
   # Private functions
+  # =============================================================================
 
   defp try_acquire_existing(key, lock_info, user, now, expires_at) do
     cond do
       lock_info.expires_at <= now ->
-        # Lock expired, acquire it
         acquire_new_lock(key, user, now, expires_at)
 
       lock_info.user_id == user.id ->
-        # Same user, refresh the lock
         updated_lock = %{lock_info | expires_at: expires_at}
         :ets.insert(@table_name, {key, updated_lock})
         {:ok, updated_lock}
 
       true ->
-        # Different user holds the lock
         {:error, :already_locked, lock_info}
     end
   end
@@ -272,18 +269,36 @@ defmodule Storyarn.Collaboration.Locks do
   end
 
   defp cleanup_expired_locks(now) do
-    :ets.foldl(
-      fn {key, lock_info}, count ->
-        if lock_info.expires_at <= now do
-          :ets.delete(@table_name, key)
-          count + 1
-        else
-          count
-        end
-      end,
-      0,
-      @table_name
-    )
+    expired =
+      :ets.foldl(
+        fn {key, lock_info}, acc ->
+          if lock_info.expires_at <= now do
+            :ets.delete(@table_name, key)
+            [{key, lock_info} | acc]
+          else
+            acc
+          end
+        end,
+        [],
+        @table_name
+      )
+
+    # Notify subscribers about expired locks
+    # Uses PubSub directly to avoid circular dependency with Collaboration facade
+    for {{scope, entity_id}, lock_info} <- expired do
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        "#{elem(scope, 0)}:#{elem(scope, 1)}:locks",
+        {:lock_change, :lock_expired,
+         %{
+           entity_id: entity_id,
+           user_id: lock_info.user_id,
+           user_email: lock_info.user_email
+         }}
+      )
+    end
+
+    length(expired)
   end
 
   defp schedule_cleanup do

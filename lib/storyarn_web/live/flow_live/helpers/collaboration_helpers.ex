@@ -15,15 +15,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   """
   @spec setup_collaboration(Phoenix.LiveView.Socket.t(), map(), map()) :: :ok
   def setup_collaboration(socket, flow, user) do
-    if Phoenix.LiveView.connected?(socket) do
-      Collaboration.subscribe_presence(flow.id)
-      Collaboration.subscribe_cursors(flow.id)
-      Collaboration.subscribe_locks(flow.id)
-      Collaboration.subscribe_changes(flow.id)
-      Collaboration.track_presence(self(), flow.id, user)
-    end
-
-    :ok
+    alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: SharedCollab
+    SharedCollab.setup(socket, {:flow, flow.id}, user, cursors: true, locks: true, changes: true)
   end
 
   @doc """
@@ -32,17 +25,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   """
   @spec teardown_collaboration(integer(), integer()) :: :ok
   def teardown_collaboration(flow_id, user_id) do
-    alias Storyarn.Collaboration.{CursorTracker, Presence}
-
-    presence_topic = Presence.flow_topic(flow_id)
-    Phoenix.PubSub.unsubscribe(Storyarn.PubSub, presence_topic)
-    Presence.untrack(self(), presence_topic, user_id)
-
-    CursorTracker.unsubscribe(flow_id)
-
-    Phoenix.PubSub.unsubscribe(Storyarn.PubSub, Collaboration.changes_topic(flow_id))
-    Phoenix.PubSub.unsubscribe(Storyarn.PubSub, Collaboration.locks_topic(flow_id))
-    :ok
+    alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: SharedCollab
+    SharedCollab.teardown({:flow, flow_id}, user_id)
   end
 
   @doc """
@@ -50,11 +34,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   """
   @spec get_initial_collab_state(Phoenix.LiveView.Socket.t(), map()) :: {list(), map()}
   def get_initial_collab_state(socket, flow) do
-    if Phoenix.LiveView.connected?(socket) do
-      {Collaboration.list_online_users(flow.id), Collaboration.list_locks(flow.id)}
-    else
-      {[], %{}}
-    end
+    alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: SharedCollab
+    SharedCollab.get_initial_state(socket, {:flow, flow.id})
   end
 
   @doc """
@@ -97,13 +78,23 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
     })
   end
 
-  def push_remote_change_event(socket, :node_moved, _payload) do
-    # Node position is part of flow_data which is already updated
-    socket
+  def push_remote_change_event(socket, :node_moved, payload) do
+    push_event(socket, "node_moved", %{
+      node_id: payload.node_id,
+      x: payload.x,
+      y: payload.y
+    })
   end
 
   def push_remote_change_event(socket, :connection_added, payload) do
     push_event(socket, "connection_added", payload.connection_data)
+  end
+
+  def push_remote_change_event(socket, :node_updated, %{node_data: node_data} = payload) do
+    push_event(socket, "node_updated", %{
+      id: payload.node_id,
+      data: node_data
+    })
   end
 
   def push_remote_change_event(socket, :connection_deleted, payload) do
@@ -130,7 +121,13 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
         user_color: Collaboration.user_color(user.id)
       })
 
-    Collaboration.broadcast_change(socket.assigns.flow.id, action, full_payload)
+    Collaboration.broadcast_change_from(
+      self(),
+      {:flow, socket.assigns.flow.id},
+      action,
+      full_payload
+    )
+
     socket
   end
 
@@ -148,7 +145,12 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
       user_color: Collaboration.user_color(user.id)
     }
 
-    Collaboration.broadcast_lock_change(socket.assigns.flow.id, action, payload)
+    Collaboration.broadcast_lock_change_from(
+      self(),
+      {:flow, socket.assigns.flow.id},
+      action,
+      payload
+    )
   end
 
   @doc """
@@ -157,7 +159,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   @spec node_locked_by_other?(Phoenix.LiveView.Socket.t(), any()) :: boolean()
   def node_locked_by_other?(socket, node_id) do
     Collaboration.locked_by_other?(
-      socket.assigns.flow.id,
+      {:flow, socket.assigns.flow.id},
       node_id,
       socket.assigns.current_scope.user.id
     )

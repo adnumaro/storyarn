@@ -2,21 +2,45 @@ defmodule Storyarn.Collaboration do
   @moduledoc """
   The Collaboration context.
 
-  Provides real-time collaboration features for the Flow Editor:
+  Provides real-time collaboration features for all editors:
   - Presence tracking (who's online)
   - Cursor sharing (see other users' cursors)
-  - Node locking (prevent simultaneous edits)
+  - Entity locking (prevent simultaneous edits)
   - Change notifications (see remote changes)
+
+  All functions accept an `editor_scope` tuple `{type, id}` to identify the
+  editor instance. For backward compatibility, bare integers are treated as
+  `{:flow, id}`.
+
+  ## Editor scopes
+
+      {:flow, flow_id}
+      {:sheet, sheet_id}
+      {:scene, scene_id}
+      {:screenplay, screenplay_id}
 
   This module serves as a facade, delegating to specialized submodules:
   - `Colors` - Deterministic user color assignment
   - `Presence` - Phoenix.Presence for online users
-  - `Locks` - GenServer for node locking
+  - `Locks` - GenServer for entity locking
   - `CursorTracker` - PubSub cursor broadcasting
   """
 
   alias Phoenix.PubSub
   alias Storyarn.Collaboration.{Colors, CursorTracker, Locks, Presence}
+
+  @type editor_scope ::
+          {:flow, integer()}
+          | {:sheet, integer()}
+          | {:scene, integer()}
+          | {:screenplay, integer()}
+
+  # =============================================================================
+  # Scope normalization (backward compat)
+  # =============================================================================
+
+  defp normalize_scope({_type, _id} = scope), do: scope
+  defp normalize_scope(id) when is_integer(id), do: {:flow, id}
 
   # =============================================================================
   # Colors
@@ -34,31 +58,69 @@ defmodule Storyarn.Collaboration do
   # =============================================================================
 
   @doc """
-  Tracks a user's presence in a flow.
-  Should be called when user mounts the flow LiveView.
+  Tracks a user's presence in an editor.
+  Should be called when user mounts the LiveView.
   """
-  @spec track_presence(pid(), integer(), Storyarn.Accounts.User.t()) ::
-          {:ok, binary()} | {:error, term()}
-  def track_presence(pid, flow_id, user) do
-    topic = Presence.flow_topic(flow_id)
+  def track_presence(pid, scope, user) do
+    topic = Presence.topic(normalize_scope(scope))
     Presence.track_user(pid, topic, user)
   end
 
   @doc """
-  Subscribes to presence updates for a flow.
+  Subscribes to presence updates for an editor.
+  Subscribes to the proxy topic for efficient join/leave events.
   """
-  @spec subscribe_presence(integer()) :: :ok | {:error, term()}
-  def subscribe_presence(flow_id) do
-    topic = Presence.flow_topic(flow_id)
-    PubSub.subscribe(Storyarn.PubSub, topic)
+  def subscribe_presence(scope) do
+    topic = Presence.topic(normalize_scope(scope))
+    PubSub.subscribe(Storyarn.PubSub, "proxy:#{topic}")
   end
 
   @doc """
-  Returns a list of users currently in a flow.
+  Returns a list of users currently in an editor.
   """
-  @spec list_online_users(integer()) :: [map()]
-  def list_online_users(flow_id) do
-    topic = Presence.flow_topic(flow_id)
+  def list_online_users(scope) do
+    topic = Presence.topic(normalize_scope(scope))
+    Presence.list_users(topic)
+  end
+
+  # =============================================================================
+  # Project-level Presence
+  # =============================================================================
+
+  @doc """
+  Tracks a user's presence at the project level.
+  Used to show "User A is editing Sheet 3" in the project sidebar.
+  """
+  def track_project_presence(pid, project_id, user, meta \\ %{}) do
+    topic = project_presence_topic(project_id)
+    Presence.track_user(pid, topic, user, meta)
+  end
+
+  @doc """
+  Updates a user's project-level presence metadata.
+  Call when the user navigates to a different entity within the same editor.
+  """
+  def update_project_presence(project_id, user_id, meta_update) do
+    topic = project_presence_topic(project_id)
+
+    Presence.update(self(), topic, user_id, fn metas ->
+      Map.merge(metas, meta_update)
+    end)
+  end
+
+  @doc """
+  Subscribes to project-level presence updates.
+  """
+  def subscribe_project_presence(project_id) do
+    topic = project_presence_topic(project_id)
+    PubSub.subscribe(Storyarn.PubSub, "proxy:#{topic}")
+  end
+
+  @doc """
+  Returns a list of users currently in a project.
+  """
+  def list_project_users(project_id) do
+    topic = project_presence_topic(project_id)
     Presence.list_users(topic)
   end
 
@@ -67,125 +129,171 @@ defmodule Storyarn.Collaboration do
   # =============================================================================
 
   @doc """
-  Broadcasts a cursor position update to all users in a flow.
+  Broadcasts a cursor position update to all other users in an editor.
+  Uses `broadcast_from` so the sender does not receive their own cursor.
   """
-  @spec broadcast_cursor(integer(), Storyarn.Accounts.User.t(), float(), float()) :: :ok
-  defdelegate broadcast_cursor(flow_id, user, x, y), to: CursorTracker
+  def broadcast_cursor(scope, user, x, y) do
+    CursorTracker.broadcast_cursor(normalize_scope(scope), user, x, y)
+  end
 
   @doc """
-  Broadcasts that a user's cursor has left the flow.
+  Broadcasts that a user's cursor has left the editor.
   """
-  @spec broadcast_cursor_leave(integer(), integer()) :: :ok
-  defdelegate broadcast_cursor_leave(flow_id, user_id), to: CursorTracker
+  def broadcast_cursor_leave(scope, user_id) do
+    CursorTracker.broadcast_cursor_leave(normalize_scope(scope), user_id)
+  end
 
   @doc """
-  Subscribes to cursor updates for a flow.
+  Subscribes to cursor updates for an editor.
   """
-  @spec subscribe_cursors(integer()) :: :ok | {:error, term()}
-  defdelegate subscribe_cursors(flow_id), to: CursorTracker, as: :subscribe
+  def subscribe_cursors(scope) do
+    CursorTracker.subscribe(normalize_scope(scope))
+  end
+
+  @doc """
+  Unsubscribes from cursor updates for an editor.
+  """
+  def unsubscribe_cursors(scope) do
+    CursorTracker.unsubscribe(normalize_scope(scope))
+  end
 
   # =============================================================================
-  # Node Locking
+  # Entity Locking
   # =============================================================================
 
   @doc """
-  Attempts to acquire a lock on a node.
+  Attempts to acquire a lock on an entity.
   Returns {:ok, lock_info} if successful, {:error, :already_locked, lock_info} if locked by another.
   """
-  @spec acquire_lock(integer(), integer(), map()) ::
-          {:ok, map()} | {:error, :already_locked, map()}
-  defdelegate acquire_lock(flow_id, node_id, user), to: Locks, as: :acquire
+  def acquire_lock(scope, entity_id, user) do
+    Locks.acquire(normalize_scope(scope), entity_id, user)
+  end
 
   @doc """
-  Releases a lock on a node. Only the lock holder can release.
+  Releases a lock on an entity. Only the lock holder can release.
   """
-  @spec release_lock(integer(), integer(), integer()) :: :ok | {:error, :not_lock_holder}
-  defdelegate release_lock(flow_id, node_id, user_id), to: Locks, as: :release
+  def release_lock(scope, entity_id, user_id) do
+    Locks.release(normalize_scope(scope), entity_id, user_id)
+  end
 
   @doc """
-  Releases all locks held by a user in a flow.
+  Releases all locks held by a user in an editor scope.
   Called when user disconnects.
   """
-  @spec release_all_locks(integer(), integer()) :: :ok
-  defdelegate release_all_locks(flow_id, user_id), to: Locks, as: :release_all
+  def release_all_locks(scope, user_id) do
+    Locks.release_all(normalize_scope(scope), user_id)
+  end
 
   @doc """
   Refreshes a lock's timeout (heartbeat).
   """
-  @spec refresh_lock(integer(), integer(), integer()) :: :ok | {:error, :not_lock_holder}
-  defdelegate refresh_lock(flow_id, node_id, user_id), to: Locks, as: :refresh
+  def refresh_lock(scope, entity_id, user_id) do
+    Locks.refresh(normalize_scope(scope), entity_id, user_id)
+  end
 
   @doc """
-  Gets the current lock holder for a node, if any.
+  Gets the current lock holder for an entity, if any.
   """
-  @spec get_lock(integer(), integer()) :: {:ok, map()} | {:error, :not_locked}
-  defdelegate get_lock(flow_id, node_id), to: Locks
+  def get_lock(scope, entity_id) do
+    Locks.get_lock(normalize_scope(scope), entity_id)
+  end
 
   @doc """
-  Gets all locks for a flow.
+  Gets all locks for an editor scope.
   """
-  @spec list_locks(integer()) :: %{integer() => map()}
-  defdelegate list_locks(flow_id), to: Locks
+  def list_locks(scope) do
+    Locks.list_locks(normalize_scope(scope))
+  end
 
   @doc """
-  Checks if a node is locked by a different user.
+  Checks if an entity is locked by a different user.
   """
-  @spec locked_by_other?(integer(), integer(), integer()) :: boolean()
-  defdelegate locked_by_other?(flow_id, node_id, user_id), to: Locks
+  def locked_by_other?(scope, entity_id, user_id) do
+    Locks.locked_by_other?(normalize_scope(scope), entity_id, user_id)
+  end
 
   # =============================================================================
   # Change Notifications
   # =============================================================================
 
   @doc """
-  Broadcasts a change notification to all users in a flow.
+  Broadcasts a change notification to all subscribers (including sender).
+  Prefer `broadcast_change_from/4` in event handlers to avoid echo.
   """
-  @spec broadcast_change(integer(), atom(), map()) :: :ok
-  def broadcast_change(flow_id, action, payload) do
-    PubSub.broadcast(Storyarn.PubSub, changes_topic(flow_id), {:remote_change, action, payload})
+  def broadcast_change(scope, action, payload) do
+    PubSub.broadcast(
+      Storyarn.PubSub,
+      changes_topic(normalize_scope(scope)),
+      {:remote_change, action, payload}
+    )
   end
 
   @doc """
-  Subscribes to change notifications for a flow.
+  Broadcasts a change notification to all subscribers except the sender.
+  Use this in handle_event to avoid receiving your own changes back.
   """
-  @spec subscribe_changes(integer()) :: :ok | {:error, term()}
-  def subscribe_changes(flow_id) do
-    PubSub.subscribe(Storyarn.PubSub, changes_topic(flow_id))
+  def broadcast_change_from(pid, scope, action, payload) do
+    PubSub.broadcast_from(
+      Storyarn.PubSub,
+      pid,
+      changes_topic(normalize_scope(scope)),
+      {:remote_change, action, payload}
+    )
   end
 
   @doc """
-  Broadcasts a lock state change to all users in a flow.
+  Subscribes to change notifications for an editor.
   """
-  @spec broadcast_lock_change(integer(), atom(), map()) :: :ok
-  def broadcast_lock_change(flow_id, action, payload) do
-    PubSub.broadcast(Storyarn.PubSub, locks_topic(flow_id), {:lock_change, action, payload})
+  def subscribe_changes(scope) do
+    PubSub.subscribe(Storyarn.PubSub, changes_topic(normalize_scope(scope)))
   end
 
   @doc """
-  Subscribes to lock state changes for a flow.
+  Broadcasts a lock state change to all subscribers (including sender).
+  Prefer `broadcast_lock_change_from/4` in event handlers.
   """
-  @spec subscribe_locks(integer()) :: :ok | {:error, term()}
-  def subscribe_locks(flow_id) do
-    PubSub.subscribe(Storyarn.PubSub, locks_topic(flow_id))
+  def broadcast_lock_change(scope, action, payload) do
+    PubSub.broadcast(
+      Storyarn.PubSub,
+      locks_topic(normalize_scope(scope)),
+      {:lock_change, action, payload}
+    )
+  end
+
+  @doc """
+  Broadcasts a lock state change to all subscribers except the sender.
+  """
+  def broadcast_lock_change_from(pid, scope, action, payload) do
+    PubSub.broadcast_from(
+      Storyarn.PubSub,
+      pid,
+      locks_topic(normalize_scope(scope)),
+      {:lock_change, action, payload}
+    )
+  end
+
+  @doc """
+  Subscribes to lock state changes for an editor.
+  """
+  def subscribe_locks(scope) do
+    PubSub.subscribe(Storyarn.PubSub, locks_topic(normalize_scope(scope)))
   end
 
   # =============================================================================
   # Topics
   # =============================================================================
 
-  @doc """
-  Returns the topic for a flow's change notifications.
-  """
-  @spec changes_topic(integer()) :: String.t()
-  def changes_topic(flow_id) do
-    "flow:#{flow_id}:changes"
-  end
+  @doc false
+  def changes_topic({type, id}), do: "#{type}:#{id}:changes"
+
+  @doc false
+  def locks_topic({type, id}), do: "#{type}:#{id}:locks"
+
+  @doc false
+  def cursors_topic({type, id}), do: "#{type}:#{id}:cursors"
 
   @doc """
-  Returns the topic for a flow's lock notifications.
+  Returns the topic for project-level presence.
   """
-  @spec locks_topic(integer()) :: String.t()
-  def locks_topic(flow_id) do
-    "flow:#{flow_id}:locks"
-  end
+  def project_presence_topic(project_id), do: "project:#{project_id}:presence"
 end

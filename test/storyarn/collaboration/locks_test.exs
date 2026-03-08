@@ -222,6 +222,144 @@ defmodule Storyarn.Collaboration.LocksTest do
     end
   end
 
+  describe "cross-scope isolation" do
+    test "flow lock does not conflict with sheet lock on same entity_id" do
+      user = make_user(1)
+      entity_id = 42
+
+      assert {:ok, _} = Locks.acquire({:flow, 1}, entity_id, user)
+      assert {:ok, _} = Locks.acquire({:sheet, 1}, entity_id, user)
+
+      flow_locks = Locks.list_locks({:flow, 1})
+      sheet_locks = Locks.list_locks({:sheet, 1})
+
+      assert Map.has_key?(flow_locks, entity_id)
+      assert Map.has_key?(sheet_locks, entity_id)
+    end
+
+    test "different users can lock same entity_id in different scopes" do
+      user1 = make_user(1)
+      user2 = make_user(2)
+      entity_id = 42
+
+      assert {:ok, _} = Locks.acquire({:flow, 1}, entity_id, user1)
+      assert {:ok, _} = Locks.acquire({:sheet, 1}, entity_id, user2)
+
+      flow_locks = Locks.list_locks({:flow, 1})
+      sheet_locks = Locks.list_locks({:sheet, 1})
+
+      assert flow_locks[entity_id].user_id == 1
+      assert sheet_locks[entity_id].user_id == 2
+    end
+
+    test "releasing flow lock does not affect sheet lock" do
+      user = make_user(1)
+      entity_id = 42
+
+      Locks.acquire({:flow, 1}, entity_id, user)
+      Locks.acquire({:sheet, 1}, entity_id, user)
+
+      Locks.release({:flow, 1}, entity_id, user.id)
+
+      assert Locks.list_locks({:flow, 1}) == %{}
+      assert Map.has_key?(Locks.list_locks({:sheet, 1}), entity_id)
+    end
+
+    test "release_all for one scope does not affect other scope" do
+      user = make_user(1)
+
+      Locks.acquire({:flow, 1}, 10, user)
+      Locks.acquire({:flow, 1}, 20, user)
+      Locks.acquire({:sheet, 1}, 10, user)
+
+      Locks.release_all({:flow, 1}, user.id)
+
+      assert Locks.list_locks({:flow, 1}) == %{}
+      assert Map.has_key?(Locks.list_locks({:sheet, 1}), 10)
+    end
+  end
+
+  describe "lock expiration" do
+    test "expired lock is treated as not locked by get_lock" do
+      user = make_user(1)
+      scope = {:flow, 999}
+      entity_id = 1
+
+      # Acquire normally first
+      {:ok, _} = Locks.acquire(scope, entity_id, user)
+      assert {:ok, _} = Locks.get_lock(scope, entity_id)
+
+      # Directly insert an expired entry into ETS to simulate expiration
+      # The ETS table is public, so we can manipulate it
+      key = {scope, entity_id}
+      now = System.monotonic_time(:millisecond)
+
+      expired_lock = %{
+        user_id: user.id,
+        user_email: user.email,
+        user_color: "#ff0000",
+        locked_at: now - 60_000,
+        expires_at: now - 1_000
+      }
+
+      :ets.insert(:storyarn_node_locks, {key, expired_lock})
+
+      # get_lock should return :not_locked for the expired entry
+      assert {:error, :not_locked} = Locks.get_lock(scope, entity_id)
+    end
+
+    test "expired lock allows new acquisition by different user" do
+      user1 = make_user(1)
+      user2 = make_user(2)
+      scope = {:flow, 998}
+      entity_id = 1
+
+      # Insert an expired lock for user1 directly into ETS
+      key = {scope, entity_id}
+      now = System.monotonic_time(:millisecond)
+
+      expired_lock = %{
+        user_id: user1.id,
+        user_email: user1.email,
+        user_color: "#ff0000",
+        locked_at: now - 60_000,
+        expires_at: now - 1_000
+      }
+
+      :ets.insert(:storyarn_node_locks, {key, expired_lock})
+
+      # user2 should be able to acquire since user1's lock is expired
+      assert {:ok, lock_info} = Locks.acquire(scope, entity_id, user2)
+      assert lock_info.user_id == 2
+    end
+
+    test "expired locks are excluded from list_locks" do
+      user = make_user(1)
+      scope = {:flow, 997}
+
+      # Acquire a valid lock on entity 10
+      {:ok, _} = Locks.acquire(scope, 10, user)
+
+      # Insert an expired lock on entity 20
+      key = {scope, 20}
+      now = System.monotonic_time(:millisecond)
+
+      expired_lock = %{
+        user_id: user.id,
+        user_email: user.email,
+        user_color: "#ff0000",
+        locked_at: now - 60_000,
+        expires_at: now - 1_000
+      }
+
+      :ets.insert(:storyarn_node_locks, {key, expired_lock})
+
+      locks = Locks.list_locks(scope)
+      assert Map.has_key?(locks, 10)
+      refute Map.has_key?(locks, 20)
+    end
+  end
+
   describe "clear_all/0" do
     test "removes all locks" do
       user = make_user(1)

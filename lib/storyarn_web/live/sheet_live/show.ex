@@ -9,10 +9,12 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.Helpers.SaveStatusTimer
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
+  alias Storyarn.Collaboration
   alias Storyarn.Projects
   alias Storyarn.Sheets
   alias StoryarnWeb.Components.Sidebar.SheetTree
   alias StoryarnWeb.Helpers.UndoRedoStack
+  alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
   alias StoryarnWeb.SheetLive.Components.AudioTab
   alias StoryarnWeb.SheetLive.Components.Banner
   alias StoryarnWeb.SheetLive.Components.ContentTab
@@ -37,6 +39,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       tree_panel_open={@tree_panel_open}
       tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
+      online_users={@online_users}
     >
       <:top_bar_extra>
         <.sheet_breadcrumb
@@ -159,6 +162,7 @@ defmodule StoryarnWeb.SheetLive.Show do
               current_user_id={@current_scope.user.id}
               current_scope={@current_scope}
               project_variables={@project_variables}
+              block_locks={@block_locks}
             />
 
             <%!-- Tab Content: References (LiveComponent) --%>
@@ -229,6 +233,10 @@ defmodule StoryarnWeb.SheetLive.Show do
          |> assign(:save_status, :idle)
          |> assign(:current_tab, "content")
          |> assign(:pending_delete_id, nil)
+         |> assign(:online_users, [])
+         |> assign(:collab_scope, nil)
+         |> assign(:block_locks, %{})
+         |> assign(:collab_toast, nil)
          # Defaults — sheet loaded in handle_params
          |> assign(:sheet, nil)
          |> assign(:ancestors, [])
@@ -263,6 +271,9 @@ defmodule StoryarnWeb.SheetLive.Show do
   defp load_sheet(socket, sheet_id) do
     %{project: project} = socket.assigns
 
+    # Teardown previous sheet collaboration
+    socket = teardown_sheet_collab(socket)
+
     case Sheets.get_sheet_full(project.id, sheet_id) do
       nil ->
         socket
@@ -282,6 +293,13 @@ defmodule StoryarnWeb.SheetLive.Show do
 
         has_tree = socket.assigns.sheets_tree != []
 
+        # Setup collaboration for new sheet
+        scope = {:sheet, sheet.id}
+        user = socket.assigns.current_scope.user
+
+        Collab.setup(socket, scope, user, cursors: false, locks: true, changes: true)
+        {online_users, block_locks} = Collab.get_initial_state(socket, scope)
+
         socket
         |> assign(:sheet, sheet)
         |> assign(:ancestors, ancestors)
@@ -291,6 +309,9 @@ defmodule StoryarnWeb.SheetLive.Show do
         |> assign(:blocks, [])
         |> assign(:project_variables, [])
         |> assign(:sheet_data_loaded, false)
+        |> assign(:collab_scope, scope)
+        |> assign(:online_users, online_users)
+        |> assign(:block_locks, block_locks)
         |> start_async(:load_sheet_data, fn ->
           load_sheet_async_data(sheet, project, has_tree)
         end)
@@ -435,6 +456,8 @@ defmodule StoryarnWeb.SheetLive.Show do
         updated_sheet =
           Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
 
+        broadcast_sheet_change(socket, :sheet_updated)
+
         {:noreply,
          socket
          |> assign(:sheet, updated_sheet)
@@ -457,6 +480,11 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   # Handle messages from ContentTab LiveComponent
   def handle_info({:content_tab, :saved}, socket) do
+    # Broadcast generic block change to other users
+    if scope = socket.assigns[:collab_scope] do
+      Collab.broadcast_change(socket, scope, :block_updated, %{})
+    end
+
     {:noreply, mark_saved(socket)}
   end
 
@@ -485,6 +513,8 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   # Handle messages from Banner LiveComponent
   def handle_info({:banner, :sheet_updated, sheet}, socket) do
+    broadcast_sheet_change(socket, :sheet_updated)
+
     {:noreply,
      socket
      |> assign(:sheet, sheet)
@@ -502,6 +532,8 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   # Handle messages from SheetAvatar LiveComponent
   def handle_info({:sheet_avatar, :sheet_updated, sheet, sheets_tree}, socket) do
+    broadcast_sheet_change(socket, :sheet_updated)
+
     {:noreply,
      socket
      |> assign(:sheet, sheet)
@@ -516,6 +548,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   # Handle messages from SheetTitle LiveComponent
   def handle_info({:sheet_title, :name_saved, sheet, sheets_tree}, socket) do
     prev_name = socket.assigns.sheet.name
+    broadcast_sheet_change(socket, :sheet_updated)
 
     ancestors =
       case Sheets.get_sheet_with_ancestors(socket.assigns.project.id, sheet.id) do
@@ -534,6 +567,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   def handle_info({:sheet_title, :shortcut_saved, sheet}, socket) do
     prev_shortcut = socket.assigns.sheet.shortcut
+    broadcast_sheet_change(socket, :sheet_updated)
 
     {:noreply,
      socket
@@ -549,6 +583,31 @@ defmodule StoryarnWeb.SheetLive.Show do
   # Handle undo action push from ContentTab LiveComponent
   def handle_info({:content_tab, :push_undo, action}, socket) do
     {:noreply, route_undo_push(socket, action)}
+  end
+
+  # ===========================================================================
+  # Handle Info: Collaboration
+  # ===========================================================================
+
+  def handle_info({Storyarn.Collaboration.Presence, {:join, presence}}, socket) do
+    Collab.handle_presence_join(socket, presence)
+  end
+
+  def handle_info({Storyarn.Collaboration.Presence, {:leave, _} = event}, socket) do
+    Collab.handle_presence_leave(socket, elem(event, 1))
+  end
+
+  def handle_info({:lock_change, _action, _payload}, socket) do
+    block_locks = Collaboration.list_locks(socket.assigns.collab_scope)
+    {:noreply, assign(socket, :block_locks, block_locks)}
+  end
+
+  def handle_info({:remote_change, action, payload}, socket) do
+    handle_sheet_remote_change(action, payload, socket)
+  end
+
+  def handle_info(:clear_collab_toast, socket) do
+    {:noreply, assign(socket, :collab_toast, nil)}
   end
 
   # Ignore EXIT messages from linked processes (e.g. PubSub subscriptions)
@@ -568,9 +627,67 @@ defmodule StoryarnWeb.SheetLive.Show do
     UndoRedoStack.push_undo(socket, action)
   end
 
+  @impl true
+  def terminate(_reason, socket) do
+    teardown_sheet_collab(socket)
+  end
+
+  # ===========================================================================
+  # Private Functions: Collaboration
+  # ===========================================================================
+
+  defp teardown_sheet_collab(socket) do
+    if scope = socket.assigns[:collab_scope] do
+      user_id = socket.assigns.current_scope.user.id
+      Collab.teardown(scope, user_id)
+    end
+
+    socket
+  end
+
+  defp handle_sheet_remote_change(:block_updated, _payload, socket) do
+    blocks = ReferenceHelpers.load_blocks_with_references(socket.assigns.sheet.id, socket.assigns.project.id)
+    {:noreply, assign(socket, :blocks, blocks)}
+  end
+
+  defp handle_sheet_remote_change(:block_created, _payload, socket) do
+    blocks = ReferenceHelpers.load_blocks_with_references(socket.assigns.sheet.id, socket.assigns.project.id)
+    {:noreply, assign(socket, :blocks, blocks)}
+  end
+
+  defp handle_sheet_remote_change(:block_deleted, %{block_id: block_id}, socket) do
+    blocks = Enum.reject(socket.assigns.blocks, &(&1.id == block_id))
+    {:noreply, assign(socket, :blocks, blocks)}
+  end
+
+  defp handle_sheet_remote_change(:block_reordered, _payload, socket) do
+    blocks = ReferenceHelpers.load_blocks_with_references(socket.assigns.sheet.id, socket.assigns.project.id)
+    {:noreply, assign(socket, :blocks, blocks)}
+  end
+
+  defp handle_sheet_remote_change(:block_type_changed, _payload, socket) do
+    blocks = ReferenceHelpers.load_blocks_with_references(socket.assigns.sheet.id, socket.assigns.project.id)
+    {:noreply, assign(socket, :blocks, blocks)}
+  end
+
+  defp handle_sheet_remote_change(:sheet_updated, _payload, socket) do
+    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
+    {:noreply, assign(socket, :sheet, sheet)}
+  end
+
+  defp handle_sheet_remote_change(_action, _payload, socket) do
+    {:noreply, socket}
+  end
+
   # ===========================================================================
   # Private Functions
   # ===========================================================================
+
+  defp broadcast_sheet_change(socket, action) do
+    if scope = socket.assigns[:collab_scope] do
+      Collab.broadcast_change(socket, scope, action, %{})
+    end
+  end
 
   defp sheet_path(socket, sheet) do
     ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet.id}"
