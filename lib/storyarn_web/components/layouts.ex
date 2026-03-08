@@ -383,6 +383,11 @@ defmodule StoryarnWeb.Layouts do
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :current_scope, :map, required: true, doc: "the current scope"
   attr :workspaces, :list, default: [], doc: "list of workspaces for settings nav"
+
+  attr :managed_workspace_slugs, :any,
+    default: MapSet.new(),
+    doc: "MapSet of workspace slugs where user has WorkspaceMembership"
+
   attr :current_path, :string, required: true, doc: "current settings path for nav highlighting"
 
   slot :title, required: true
@@ -418,7 +423,7 @@ defmodule StoryarnWeb.Layouts do
           </.link>
 
           <nav class="space-y-6">
-            <div :for={section <- settings_sections(@workspaces)}>
+            <div :for={section <- settings_sections(@workspaces, @managed_workspace_slugs)}>
               <h3 class="text-xs font-semibold uppercase text-base-content/50 px-2 mb-2">
                 {section.label}
               </h3>
@@ -472,7 +477,7 @@ defmodule StoryarnWeb.Layouts do
     """
   end
 
-  defp settings_sections(workspaces) do
+  defp settings_sections(workspaces, managed_workspace_slugs) do
     account_section = %{
       label: gettext("Account"),
       items: [
@@ -490,8 +495,12 @@ defmodule StoryarnWeb.Layouts do
       ]
     }
 
+    # Only show workspaces where user has actual WorkspaceMembership
+    managed_workspaces =
+      Enum.filter(workspaces, &MapSet.member?(managed_workspace_slugs, &1.slug))
+
     workspace_sections =
-      Enum.map(workspaces, fn workspace ->
+      Enum.map(managed_workspaces, fn workspace ->
         %{
           label: workspace.name,
           items: [

@@ -27,8 +27,8 @@ defmodule Storyarn.Projects.Invitations do
   def create_invitation(%Project{} = project, invited_by, email, role \\ "editor"),
     do: InvitationOperations.create_invitation(@config, project, invited_by, email, role)
 
-  def create_admin_invitation(%Project{} = project, email, role),
-    do: InvitationOperations.create_admin_invitation(@config, project, email, role)
+  def create_admin_invitation(%Project{} = project, email, role, opts \\ []),
+    do: InvitationOperations.create_admin_invitation(@config, project, email, role, opts)
 
   def get_invitation_by_token(token),
     do: InvitationOperations.get_invitation_by_token(@config, token)

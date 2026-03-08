@@ -56,7 +56,7 @@ defmodule Storyarn.Projects.ProjectInvitationTest do
       assert errors_on(cs)[:project_id]
     end
 
-    test "invalid without invited_by_id" do
+    test "valid without invited_by_id (admin invitations)" do
       cs =
         ProjectInvitation.changeset(%ProjectInvitation{}, %{
           email: "user@example.com",
@@ -64,8 +64,7 @@ defmodule Storyarn.Projects.ProjectInvitationTest do
           project_id: 1
         })
 
-      refute cs.valid?
-      assert errors_on(cs)[:invited_by_id]
+      assert cs.valid?
     end
 
     test "validates email format" do

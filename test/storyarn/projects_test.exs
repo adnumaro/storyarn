@@ -407,4 +407,63 @@ defmodule Storyarn.ProjectsTest do
       refute ProjectMembership.can?("viewer", :manage_members)
     end
   end
+
+  describe "project-only workspace visibility" do
+    setup do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      project1 = project_fixture(owner, %{workspace: workspace})
+      project2 = project_fixture(owner, %{workspace: workspace})
+      invitee = user_fixture()
+      invitee_scope = user_scope_fixture(invitee)
+
+      %{
+        owner: owner,
+        workspace: workspace,
+        project1: project1,
+        project2: project2,
+        invitee: invitee,
+        invitee_scope: invitee_scope
+      }
+    end
+
+    test "project-only member sees only their projects", ctx do
+      _pm = membership_fixture(ctx.project1, ctx.invitee, "editor")
+
+      result = Projects.list_projects_for_workspace(ctx.workspace.id, ctx.invitee_scope)
+      project_ids = Enum.map(result, & &1.project.id)
+
+      assert ctx.project1.id in project_ids
+      refute ctx.project2.id in project_ids
+    end
+
+    test "PM in 2 projects of same workspace sees both", ctx do
+      _pm1 = membership_fixture(ctx.project1, ctx.invitee, "editor")
+      _pm2 = membership_fixture(ctx.project2, ctx.invitee, "viewer")
+
+      result = Projects.list_projects_for_workspace(ctx.workspace.id, ctx.invitee_scope)
+      project_ids = Enum.map(result, & &1.project.id)
+
+      assert ctx.project1.id in project_ids
+      assert ctx.project2.id in project_ids
+    end
+
+    test "workspace member sees all projects", ctx do
+      owner_scope = user_scope_fixture(ctx.owner)
+
+      result = Projects.list_projects_for_workspace(ctx.workspace.id, owner_scope)
+      project_ids = Enum.map(result, & &1.project.id)
+
+      assert ctx.project1.id in project_ids
+      assert ctx.project2.id in project_ids
+    end
+
+    test "stranger sees no projects", ctx do
+      stranger = user_fixture()
+      stranger_scope = user_scope_fixture(stranger)
+
+      result = Projects.list_projects_for_workspace(ctx.workspace.id, stranger_scope)
+      assert result == []
+    end
+  end
 end

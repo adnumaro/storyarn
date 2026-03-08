@@ -163,7 +163,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
-      |> assert_has("h4", text: "Invite a new member")
+      |> assert_has("h4", text: "Request member invitation")
       |> assert_has("input[type=email]")
     end
 
@@ -187,61 +187,33 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       |> assert_has("h1", text: "Invalid Invitation")
     end
 
-    test "shows invitation details for valid token", %{conn: conn} do
+    test "valid token auto-accepts and redirects to login", %{conn: conn} do
       owner = user_fixture()
       project = project_fixture(owner, %{name: "Awesome Project"})
 
       {token, _invitation} =
-        create_invitation_with_token(project, owner, "invitee@example.com", "editor")
+        create_invitation_with_token(project, owner, "new-invitee@example.com", "editor")
 
       conn
       |> visit("/projects/invitations/#{token}")
-      |> assert_has("h3", text: "Awesome Project")
-      |> assert_has("span", text: "editor")
+      |> assert_path("/users/log-in")
     end
 
-    test "prompts login for unauthenticated user viewing invitation", %{conn: conn} do
+    test "already accepted invitation shows invalid invitation page", %{conn: conn} do
       owner = user_fixture()
       project = project_fixture(owner)
 
-      {token, _invitation} =
-        create_invitation_with_token(project, owner, "invitee@example.com")
+      {token, invitation} =
+        create_invitation_with_token(project, owner, "double-accept@example.com")
 
+      # Accept the invitation first
+      {:ok, user} = Storyarn.Accounts.find_or_register_confirmed_user("double-accept@example.com")
+      {:ok, _} = Storyarn.Projects.accept_invitation(invitation, user)
+
+      # Already-accepted token is filtered out by verify_token_query, shows invalid page
       conn
       |> visit("/projects/invitations/#{token}")
-      |> assert_has("a", text: "Log in to accept")
-    end
-
-    test "authenticated user can accept invitation", %{conn: conn} do
-      owner = user_fixture()
-      invitee = user_fixture(%{email: "invitee@example.com"})
-
-      project =
-        project_fixture(owner, %{name: "Collaborative Project"}) |> Repo.preload(:workspace)
-
-      {token, _invitation} =
-        create_invitation_with_token(project, owner, "invitee@example.com", "editor")
-
-      conn
-      |> authenticate(invitee)
-      |> visit("/projects/invitations/#{token}")
-      |> assert_has("button", text: "Accept Invitation")
-      |> click_button("Accept Invitation")
-      |> assert_path("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
-    end
-
-    test "shows email mismatch warning when logged in with different email", %{conn: conn} do
-      owner = user_fixture()
-      other_user = user_fixture(%{email: "other@example.com"})
-      project = project_fixture(owner)
-
-      {token, _invitation} =
-        create_invitation_with_token(project, owner, "invitee@example.com")
-
-      conn
-      |> authenticate(other_user)
-      |> visit("/projects/invitations/#{token}")
-      |> assert_has("span", text: "This invitation was sent to")
+      |> assert_has("h1", text: "Invalid Invitation")
     end
   end
 

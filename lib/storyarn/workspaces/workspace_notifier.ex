@@ -39,15 +39,17 @@ defmodule Storyarn.Workspaces.WorkspaceNotifier do
   @doc """
   Delivers a workspace invitation email.
   """
-  def deliver_invitation(%WorkspaceInvitation{} = invitation, encoded_token) do
+  def deliver_invitation(%WorkspaceInvitation{} = invitation, encoded_token, opts \\ []) do
     url = invitation_url(encoded_token)
     workspace_name = invitation.workspace.name
 
     inviter_name =
-      case invitation.invited_by do
-        nil -> "Storyarn"
-        user -> user.display_name || user.email
-      end
+      Keyword.get_lazy(opts, :inviter_name, fn ->
+        case invitation.invited_by do
+          nil -> "Storyarn"
+          user -> user.display_name || user.email
+        end
+      end)
 
     days = WorkspaceInvitation.validity_in_days()
 

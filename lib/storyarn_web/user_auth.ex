@@ -279,14 +279,24 @@ defmodule StoryarnWeb.UserAuth do
 
   defp load_workspaces(socket) do
     if socket.assigns[:current_scope] && socket.assigns.current_scope.user do
-      workspaces = Workspaces.list_workspaces_for_user(socket.assigns.current_scope.user)
+      scope = socket.assigns.current_scope
+      workspace_data = Workspaces.list_workspaces(scope)
+      workspaces = Enum.map(workspace_data, & &1.workspace)
+
+      managed_slugs =
+        workspace_data
+        |> Enum.reject(&is_nil(&1.role))
+        |> Enum.map(& &1.workspace.slug)
+        |> MapSet.new()
 
       socket
       |> Phoenix.Component.assign(:workspaces, workspaces)
+      |> Phoenix.Component.assign(:managed_workspace_slugs, managed_slugs)
       |> Phoenix.Component.assign_new(:current_workspace, fn -> nil end)
     else
       socket
       |> Phoenix.Component.assign(:workspaces, [])
+      |> Phoenix.Component.assign(:managed_workspace_slugs, MapSet.new())
       |> Phoenix.Component.assign_new(:current_workspace, fn -> nil end)
     end
   end

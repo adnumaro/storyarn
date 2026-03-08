@@ -32,7 +32,6 @@ defmodule Storyarn.Workspaces.WorkspaceInvitationTest do
       errors = errors_on(changeset)
       assert "can't be blank" in errors.email
       assert "can't be blank" in errors.workspace_id
-      assert "can't be blank" in errors.invited_by_id
     end
 
     test "role defaults to member" do

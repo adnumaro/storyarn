@@ -39,15 +39,17 @@ defmodule Storyarn.Projects.ProjectNotifier do
   @doc """
   Delivers a project invitation email.
   """
-  def deliver_invitation(%ProjectInvitation{} = invitation, encoded_token) do
+  def deliver_invitation(%ProjectInvitation{} = invitation, encoded_token, opts \\ []) do
     url = invitation_url(encoded_token)
     project_name = invitation.project.name
 
     inviter_name =
-      case invitation.invited_by do
-        nil -> "Storyarn"
-        user -> user.display_name || user.email
-      end
+      Keyword.get_lazy(opts, :inviter_name, fn ->
+        case invitation.invited_by do
+          nil -> "Storyarn"
+          user -> user.display_name || user.email
+        end
+      end)
 
     days = ProjectInvitation.validity_in_days()
 

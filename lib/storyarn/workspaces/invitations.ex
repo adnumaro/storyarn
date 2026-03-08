@@ -27,8 +27,8 @@ defmodule Storyarn.Workspaces.Invitations do
   def create_invitation(%Workspace{} = workspace, invited_by, email, role \\ "member"),
     do: InvitationOperations.create_invitation(@config, workspace, invited_by, email, role)
 
-  def create_admin_invitation(%Workspace{} = workspace, email, role),
-    do: InvitationOperations.create_admin_invitation(@config, workspace, email, role)
+  def create_admin_invitation(%Workspace{} = workspace, email, role, opts \\ []),
+    do: InvitationOperations.create_admin_invitation(@config, workspace, email, role, opts)
 
   def get_invitation_by_token(token),
     do: InvitationOperations.get_invitation_by_token(@config, token)

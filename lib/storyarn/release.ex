@@ -55,10 +55,10 @@ defmodule Storyarn.Release do
   The invitee must click the acceptance link to create their account and join.
 
   Usage from Fly SSH (uses rpc to run inside the live node):
-    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_member(\\"user@example.com\\", \\"project\\", 123, \\"editor\\", \\"es\\")"'
-    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_member(\\"user@example.com\\", \\"workspace\\", 456, \\"member\\", \\"en\\")"'
+    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_member(\\"user@example.com\\", \\"project\\", 123, \\"editor\\", \\"es\\", \\"requester@example.com\\")"'
+    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_member(\\"user@example.com\\", \\"workspace\\", 456, \\"member\\", \\"en\\", \\"requester@example.com\\")"'
   """
-  def invite_member(email, type, entity_id, role, locale \\ "en")
+  def invite_member(email, type, entity_id, role, locale \\ "en", inviter_name \\ "Storyarn")
       when is_binary(email) and type in ["project", "workspace"] do
     allowed_roles = if type == "project", do: @project_roles, else: @workspace_roles
 
@@ -73,7 +73,7 @@ defmodule Storyarn.Release do
 
     {context_module, entity} = invitation_config(type, entity_id)
 
-    case context_module.create_admin_invitation(entity, email, role) do
+    case context_module.create_admin_invitation(entity, email, role, inviter_name: inviter_name) do
       {:ok, _invitation} ->
         IO.puts(
           "Invitation created and email sent to #{email} as #{role} to #{type} ##{entity_id}"

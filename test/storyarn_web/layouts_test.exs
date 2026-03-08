@@ -283,6 +283,7 @@ defmodule StoryarnWeb.LayoutsTest do
           flash: %{},
           current_scope: %{user: user_map()},
           workspaces: workspaces,
+          managed_workspace_slugs: MapSet.new(["team-ws"]),
           current_path: ~p"/users/settings",
           title: slot(:title, "Profile"),
           inner_block: inner_block("<p>Content</p>")

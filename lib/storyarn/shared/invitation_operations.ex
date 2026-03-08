@@ -57,14 +57,14 @@ defmodule Storyarn.Shared.InvitationOperations do
 
   Used by `Storyarn.Release.invite_member/5` for CLI-approved invitations.
   """
-  def create_admin_invitation(config, parent, email, role) do
+  def create_admin_invitation(config, parent, email, role, opts \\ []) do
     parent_id = Map.fetch!(parent, :id)
     email = String.downcase(email)
 
     if member_exists?(config, parent_id, email) do
       {:error, :already_member}
     else
-      do_create_invitation(config, parent, nil, email, role)
+      do_create_invitation(config, parent, nil, email, role, opts)
     end
   end
 
@@ -151,14 +151,14 @@ defmodule Storyarn.Shared.InvitationOperations do
     |> Repo.exists?()
   end
 
-  defp do_create_invitation(config, parent, invited_by, email, role) do
+  defp do_create_invitation(config, parent, invited_by, email, role, opts \\ []) do
     {encoded_token, invitation} =
       config.invitation_schema.build_invitation(parent, invited_by, email, role)
 
     case Repo.insert(invitation) do
       {:ok, invitation} ->
         invitation = Repo.preload(invitation, config.preload_after_insert)
-        config.notifier_module.deliver_invitation(invitation, encoded_token)
+        config.notifier_module.deliver_invitation(invitation, encoded_token, opts)
         {:ok, invitation}
 
       {:error, changeset} ->

@@ -31,6 +31,7 @@ defmodule StoryarnWeb.SettingsLive.Security do
       flash={@flash}
       current_scope={@current_scope}
       workspaces={@workspaces}
+      managed_workspace_slugs={@managed_workspace_slugs}
       current_path={@current_path}
     >
       <:title>{dgettext("settings", "Security")}</:title>

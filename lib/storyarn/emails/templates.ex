@@ -273,8 +273,10 @@ defmodule Storyarn.Emails.Templates do
     safe_role = sanitize_for_shell(role)
     safe_locale = sanitize_for_shell(locale)
 
+    safe_requester = sanitize_for_shell(requester_email)
+
     command =
-      ~s|fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_member(\\"#{safe_email}\\", \\"#{type}\\", #{entity_id}, \\"#{safe_role}\\", \\"#{safe_locale}\\")"'|
+      ~s|fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_member(\\"#{safe_email}\\", \\"#{type}\\", #{entity_id}, \\"#{safe_role}\\", \\"#{safe_locale}\\", \\"#{safe_requester}\\")"'|
 
     subject = "Member invitation request: #{invitee_email} → #{entity_name}"
 

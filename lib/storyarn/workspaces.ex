@@ -44,8 +44,11 @@ defmodule Storyarn.Workspaces do
 
   @doc """
   Lists all workspaces the user has access to.
+
+  Returns a list of maps with `:workspace` and `:role` keys.
+  Role is `nil` for workspaces accessible only through ProjectMembership.
   """
-  @spec list_workspaces(scope()) :: [workspace()]
+  @spec list_workspaces(scope()) :: [%{workspace: workspace(), role: String.t() | nil}]
   defdelegate list_workspaces(scope), to: WorkspaceCrud
 
   @doc """
@@ -225,9 +228,9 @@ defmodule Storyarn.Workspaces do
   @doc """
   Creates an admin-initiated invitation (no rate limit, no invited_by user).
   """
-  @spec create_admin_invitation(workspace(), String.t(), String.t()) ::
+  @spec create_admin_invitation(workspace(), String.t(), String.t(), keyword()) ::
           {:ok, invitation()} | {:error, :already_member | changeset()}
-  defdelegate create_admin_invitation(workspace, email, role), to: Invitations
+  defdelegate create_admin_invitation(workspace, email, role, opts \\ []), to: Invitations
 
   @doc """
   Gets an invitation by token.

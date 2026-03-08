@@ -205,6 +205,116 @@ defmodule Storyarn.WorkspacesTest do
     end
   end
 
+  describe "project-only workspace access" do
+    setup do
+      # Owner creates workspace + project, invitee has only ProjectMembership
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+
+      project =
+        Storyarn.ProjectsFixtures.project_fixture(owner, %{workspace: workspace})
+
+      invitee = user_fixture()
+
+      _pm =
+        Storyarn.ProjectsFixtures.membership_fixture(project, invitee, "editor")
+
+      %{
+        owner: owner,
+        workspace: workspace,
+        project: project,
+        invitee: invitee,
+        invitee_scope: user_scope_fixture(invitee)
+      }
+    end
+
+    test "list_workspaces includes workspace via ProjectMembership with nil role", ctx do
+      result = Workspaces.list_workspaces(ctx.invitee_scope)
+      ws_ids = Enum.map(result, & &1.workspace.id)
+      assert ctx.workspace.id in ws_ids
+
+      entry = Enum.find(result, &(&1.workspace.id == ctx.workspace.id))
+      assert entry.role == nil
+    end
+
+    test "list_workspaces prefers WorkspaceMembership role over project-only access", ctx do
+      # Add workspace membership too
+      _wm = workspace_membership_fixture(ctx.workspace, ctx.invitee, "viewer")
+
+      result = Workspaces.list_workspaces(ctx.invitee_scope)
+
+      matching =
+        Enum.filter(result, &(&1.workspace.id == ctx.workspace.id))
+
+      # No duplicate
+      assert length(matching) == 1
+      # Uses workspace role, not nil
+      assert hd(matching).role == "viewer"
+    end
+
+    test "list_workspaces_for_user includes workspace via ProjectMembership", ctx do
+      workspaces = Workspaces.list_workspaces_for_user(ctx.invitee)
+      ws_ids = Enum.map(workspaces, & &1.id)
+      assert ctx.workspace.id in ws_ids
+    end
+
+    test "get_workspace_by_slug allows access via ProjectMembership", ctx do
+      assert {:ok, workspace, membership} =
+               Workspaces.get_workspace_by_slug(ctx.invitee_scope, ctx.workspace.slug)
+
+      assert workspace.id == ctx.workspace.id
+      # Virtual membership with nil role
+      assert membership.role == nil
+      assert membership.workspace_id == ctx.workspace.id
+      assert membership.user_id == ctx.invitee.id
+    end
+
+    test "get_workspace_by_slug rejects user with no relationship" do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      stranger = user_fixture()
+      stranger_scope = user_scope_fixture(stranger)
+
+      assert {:error, :not_found} =
+               Workspaces.get_workspace_by_slug(stranger_scope, workspace.slug)
+    end
+
+    test "get_workspace allows access via ProjectMembership", ctx do
+      assert {:ok, workspace, membership} =
+               Workspaces.get_workspace(ctx.invitee_scope, ctx.workspace.id)
+
+      assert workspace.id == ctx.workspace.id
+      assert membership.role == nil
+    end
+
+    test "get_default_workspace falls back to workspace via ProjectMembership" do
+      # Create a user with NO workspace membership (delete the auto-created one)
+      invitee = user_fixture()
+      default_ws = Workspaces.get_default_workspace(invitee)
+      {:ok, _} = Workspaces.delete_workspace(default_ws)
+
+      # Create a workspace with a project and give the invitee project membership only
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      project = Storyarn.ProjectsFixtures.project_fixture(owner, %{workspace: workspace})
+      Storyarn.ProjectsFixtures.membership_fixture(project, invitee, "editor")
+
+      result = Workspaces.get_default_workspace(invitee)
+      assert result != nil
+      assert result.id == workspace.id
+    end
+
+    test "virtual membership has no workspace-level permissions", ctx do
+      assert {:ok, _workspace, membership} =
+               Workspaces.get_workspace(ctx.invitee_scope, ctx.workspace.id)
+
+      refute Storyarn.Workspaces.WorkspaceMembership.can?(membership.role, :manage_workspace)
+      refute Storyarn.Workspaces.WorkspaceMembership.can?(membership.role, :manage_members)
+      refute Storyarn.Workspaces.WorkspaceMembership.can?(membership.role, :create_project)
+      refute Storyarn.Workspaces.WorkspaceMembership.can?(membership.role, :view)
+    end
+  end
+
   # NOTE: Invitation tests live in workspaces/invitations_test.exs (382 lines, more thorough)
 
   describe "authorization" do
