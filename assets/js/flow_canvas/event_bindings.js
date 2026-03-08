@@ -155,7 +155,15 @@ export function setupEventHandlers(hook) {
 
   // Handle server events - Editor
   hook.handleEvent("flow_updated", (data) => hook.editorHandlers.handleFlowUpdated(data));
-  hook.handleEvent("node_moved", (data) => hook.editorHandlers.handleNodeMoved(data));
+  // Serialize node_moved events to prevent race conditions when
+  // multiple position updates arrive faster than area.translate() resolves
+  hook._nodeMoveQueue = Promise.resolve();
+  hook.handleEvent("node_moved", (data) => {
+    hook._nodeMoveQueue = hook._nodeMoveQueue
+      .then(() => hook.editorHandlers.handleNodeMoved(data))
+      // biome-ignore lint/suspicious/noConsole: intentional error logging
+      .catch((err) => console.error("node_moved handler error:", err));
+  });
   hook.handleEvent("node_added", (data) => hook.editorHandlers.handleNodeAdded(data));
   hook.handleEvent("node_removed", (data) => hook.editorHandlers.handleNodeRemoved(data));
   hook.handleEvent("node_restored", (data) => hook.editorHandlers.handleNodeRestored(data));
