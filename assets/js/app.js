@@ -1,11 +1,25 @@
 // Guard against missing localStorage/sessionStorage (Safari private browsing, old Safari)
 // LiveView calls localStorage.removeItem in dropLocal() which crashes if storage is undefined
 if (typeof window.localStorage === "undefined") {
-  const noop = { getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}, key: () => null, length: 0 };
+  const noop = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+    clear: () => {},
+    key: () => null,
+    length: 0,
+  };
   Object.defineProperty(window, "localStorage", { value: noop });
 }
 if (typeof window.sessionStorage === "undefined") {
-  const noop = { getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}, key: () => null, length: 0 };
+  const noop = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+    clear: () => {},
+    key: () => null,
+    length: 0,
+  };
   Object.defineProperty(window, "sessionStorage", { value: noop });
 }
 

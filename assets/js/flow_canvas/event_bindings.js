@@ -150,6 +150,7 @@ export function setupEventHandlers(hook) {
 
   // Handle server events - Editor
   hook.handleEvent("flow_updated", (data) => hook.editorHandlers.handleFlowUpdated(data));
+  hook.handleEvent("node_moved", (data) => hook.editorHandlers.handleNodeMoved(data));
   hook.handleEvent("node_added", (data) => hook.editorHandlers.handleNodeAdded(data));
   hook.handleEvent("node_removed", (data) => hook.editorHandlers.handleNodeRemoved(data));
   hook.handleEvent("node_restored", (data) => hook.editorHandlers.handleNodeRestored(data));

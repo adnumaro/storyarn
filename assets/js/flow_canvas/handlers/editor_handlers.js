@@ -50,6 +50,24 @@ export function createEditorHandlers(hook) {
     },
 
     /**
+     * Handles remote node position change from another user.
+     * Translates the node to its new position without triggering a save event.
+     * @param {Object} data - Data with node_id, x, y
+     */
+    async handleNodeMoved(data) {
+      const { node_id, x, y } = data;
+      const node = hook.nodeMap.get(node_id);
+      if (!node) return;
+
+      hook.enterLoadingFromServer();
+      try {
+        await hook.area.translate(node.id, { x, y });
+      } finally {
+        hook.exitLoadingFromServer();
+      }
+    },
+
+    /**
      * Handles complete flow update (reload all nodes/connections).
      * @param {Object} data - Flow data with nodes and connections
      */
@@ -67,6 +85,10 @@ export function createEditorHandlers(hook) {
       hook.connectionDataMap.clear();
       await hook.loadFlow(data);
       await hook.rebuildHubsMap();
+
+      // Wait for Lit elements to render, then sync sizes so nodes aren't tiny
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      await hook.syncAllNodeSizes();
     },
 
     /**

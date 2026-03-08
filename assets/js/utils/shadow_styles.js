@@ -8,9 +8,17 @@ let sharedSheet = null;
 let lastFetchedUrl = null;
 let activeRefresh = null;
 
+function isAppCssLink(el) {
+  // Match both dev (/app.css) and prod (/app-<digest>.css)
+  return el?.tagName === "LINK" && /\/app[\w.-]*\.css/.test(el.getAttribute("href"));
+}
+
 function getAppCssUrl() {
-  const link = document.querySelector('link[rel="stylesheet"][href*="app.css"]');
-  return link?.href || null;
+  const links = document.querySelectorAll('link[rel="stylesheet"]');
+  for (const link of links) {
+    if (isAppCssLink(link)) return link.href;
+  }
+  return null;
 }
 
 function hoistPropertyDeclarations(cssText) {
@@ -73,19 +81,14 @@ function watchForCssReload() {
       if (
         mutation.type === "attributes" &&
         mutation.attributeName === "href" &&
-        mutation.target.tagName === "LINK" &&
-        mutation.target.href?.includes("app.css")
+        isAppCssLink(mutation.target)
       ) {
         refreshSheet(mutation.target.href);
         return;
       }
 
       for (const node of mutation.addedNodes) {
-        if (
-          node.nodeType === Node.ELEMENT_NODE &&
-          node.tagName === "LINK" &&
-          node.href?.includes("app.css")
-        ) {
+        if (node.nodeType === Node.ELEMENT_NODE && isAppCssLink(node)) {
           refreshSheet(node.href);
           return;
         }
