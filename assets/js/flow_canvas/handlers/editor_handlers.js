@@ -149,11 +149,11 @@ export function createEditorHandlers(hook) {
         if (hook._inlineEditingNodeId === node.id) {
           exitInlineEdit(hook);
         }
-        // Cancel any pending debounce timer (e.g. node_moved) to prevent
+        // Cancel any pending throttle timer (e.g. node_dragging) to prevent
         // the timer firing after the node is gone, which would crash the server.
-        if (hook.debounceTimers?.[data.id]) {
-          clearTimeout(hook.debounceTimers[data.id]);
-          delete hook.debounceTimers[data.id];
+        if (hook._throttleTimers?.[data.id]) {
+          clearTimeout(hook._throttleTimers[data.id]);
+          delete hook._throttleTimers[data.id];
         }
 
         // Record in history if this user initiated the delete (not a redo replay)
@@ -458,10 +458,10 @@ export function createEditorHandlers(hook) {
     },
 
     /**
-     * Cleans up debounce timers.
+     * Cleans up throttle timers.
      */
     destroy() {
-      for (const timer of Object.values(hook.debounceTimers)) {
+      for (const timer of Object.values(hook._throttleTimers || {})) {
         clearTimeout(timer);
       }
     },
