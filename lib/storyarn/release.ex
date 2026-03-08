@@ -28,6 +28,19 @@ defmodule Storyarn.Release do
   def invite_waitlist_user(email, locale \\ "en") when is_binary(email) do
     Gettext.put_locale(StoryarnWeb.Gettext, locale)
 
+    # Ensure user account exists (create + confirm if new)
+    case ensure_user_exists(email) do
+      {:ok, :existing} ->
+        IO.puts("User #{email} already exists, sending invite email")
+
+      {:ok, :created} ->
+        IO.puts("Created and confirmed account for #{email}")
+
+      {:error, reason} ->
+        IO.puts("Failed to create user: #{inspect(reason)}")
+        raise "Cannot invite #{email}: user creation failed"
+    end
+
     login_url = StoryarnWeb.Endpoint.url() <> "/users/log-in"
     {subject, html, text} = Storyarn.Emails.Templates.waitlist_invite(email, login_url)
 
@@ -45,6 +58,27 @@ defmodule Storyarn.Release do
     case Storyarn.Mailer.deliver(email_struct) do
       {:ok, _} -> IO.puts("Invitation sent to #{email}")
       {:error, reason} -> IO.puts("Failed to send: #{inspect(reason)}")
+    end
+  end
+
+  defp ensure_user_exists(email) do
+    case Storyarn.Accounts.get_user_by_email(email) do
+      %Storyarn.Accounts.User{} ->
+        {:ok, :existing}
+
+      nil ->
+        case Storyarn.Accounts.register_user(%{"email" => email}) do
+          {:ok, user} ->
+            # Auto-confirm so magic link login works (not confirmation flow)
+            user
+            |> Storyarn.Accounts.User.confirm_changeset()
+            |> Storyarn.Repo.update!()
+
+            {:ok, :created}
+
+          {:error, changeset} ->
+            {:error, changeset}
+        end
     end
   end
 
