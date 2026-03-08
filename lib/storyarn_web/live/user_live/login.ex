@@ -15,14 +15,7 @@ defmodule StoryarnWeb.UserLive.Login do
           <.header>
             <p>{dgettext("identity", "Log in")}</p>
             <:subtitle>
-              <%= if @current_scope do %>
-                {dgettext(
-                  "identity",
-                  "You need to reauthenticate to perform sensitive actions on your account."
-                )}
-              <% else %>
-                {dgettext("identity", "Enter your email and we'll send you a login link.")}
-              <% end %>
+              {dgettext("identity", "Enter your email and we'll send you a login link.")}
             </:subtitle>
           </.header>
         </div>

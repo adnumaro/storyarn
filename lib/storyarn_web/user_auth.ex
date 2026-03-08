@@ -243,16 +243,12 @@ defmodule StoryarnWeb.UserAuth do
   def on_mount(:require_sudo_mode, _params, session, socket) do
     socket = mount_current_scope(socket, session)
 
-    if Accounts.sudo_mode?(socket.assigns.current_scope.user, -10) do
+    if Accounts.sudo_mode?(socket.assigns.current_scope.user, -120) do
       {:cont, socket}
     else
       socket =
         socket
-        |> Phoenix.LiveView.put_flash(
-          :error,
-          dgettext("identity", "You must re-authenticate to access this page.")
-        )
-        |> Phoenix.LiveView.redirect(to: ~p"/users/log-in")
+        |> Phoenix.LiveView.redirect(to: ~p"/users/confirm-access")
 
       {:halt, socket}
     end
@@ -314,6 +310,17 @@ defmodule StoryarnWeb.UserAuth do
   end
 
   def signed_in_path(_), do: ~p"/"
+
+  @doc """
+  Plug that stores the current path as user_return_to for sudo mode re-authentication.
+
+  Only stores for settings paths to avoid overwriting return_to for normal login flow.
+  """
+  def store_sudo_return_to(%{method: "GET", request_path: "/users/settings" <> _} = conn, _opts) do
+    put_session(conn, :user_return_to, current_path(conn))
+  end
+
+  def store_sudo_return_to(conn, _opts), do: conn
 
   @doc """
   Plug for routes that require the user to be authenticated.

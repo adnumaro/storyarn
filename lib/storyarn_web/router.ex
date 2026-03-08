@@ -6,7 +6,7 @@ defmodule StoryarnWeb.Router do
   # Content Security Policy
   # Uses hash for the minimal inline theme script to avoid FOUC
   # 'unsafe-inline' kept for styles (Tailwind dynamic classes)
-  @csp_theme_hash "sha256-7iNU1myL14qKRh0R+cX+kTMGRQbzBP60jwUPVTiyh0U="
+  @csp_theme_hash "sha256-VBvlrfNMMapRs/hR/j9HLjL+LTOzfDelMu/uRDqLgmA="
   @csp_policy "default-src 'self'; " <>
                 "script-src 'self' '#{@csp_theme_hash}'; " <>
                 "style-src 'self' 'unsafe-inline'; " <>
@@ -30,6 +30,10 @@ defmodule StoryarnWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+  end
+
+  pipeline :sudo_return_to do
+    plug :store_sudo_return_to
   end
 
   scope "/", StoryarnWeb do
@@ -102,7 +106,7 @@ defmodule StoryarnWeb.Router do
   ## Authentication routes
 
   scope "/", StoryarnWeb do
-    pipe_through [:browser, :require_authenticated_user]
+    pipe_through [:browser, :require_authenticated_user, :sudo_return_to]
 
     get "/workspaces/:workspace_slug/projects/:project_slug/screenplays/:id/export/fountain",
         ScreenplayExportController,
@@ -238,6 +242,7 @@ defmodule StoryarnWeb.Router do
       live "/users/register", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
       live "/users/log-in/:token", UserLive.Confirmation, :new
+      live "/users/confirm-access", UserLive.ConfirmAccess, :new
 
       # Project invitations (accessible with or without auth)
       live "/projects/invitations/:token", ProjectLive.Invitation, :show
