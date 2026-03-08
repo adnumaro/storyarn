@@ -20,6 +20,11 @@ if System.get_env("PHX_SERVER") do
   config :storyarn, StoryarnWeb.Endpoint, server: true
 end
 
+# Block search engine indexing (staging environments)
+if System.get_env("NOINDEX") in ~w(true 1) do
+  config :storyarn, noindex: true
+end
+
 # Sentry error tracking
 if sentry_dsn = System.get_env("SENTRY_DSN") do
   config :sentry, dsn: sentry_dsn

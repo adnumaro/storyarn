@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta :if={Application.get_env(:storyarn, :noindex, false)} name="robots" content="noindex, nofollow" />
     <meta name="csrf-token" content={get_csrf_token()} />
     <meta
       :if={Application.get_env(:sentry, :dsn)}
