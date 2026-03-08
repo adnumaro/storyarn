@@ -12,7 +12,7 @@ defmodule StoryarnWeb.Router do
                 "style-src 'self' 'unsafe-inline'; " <>
                 "img-src 'self' data: blob: https:; " <>
                 "font-src 'self' data:; " <>
-                "connect-src 'self' ws: wss: https://*.ingest.sentry.io; " <>
+                "connect-src 'self' ws: wss: https://*.ingest.sentry.io https://*.ingest.us.sentry.io; " <>
                 "frame-ancestors 'self'; " <>
                 "base-uri 'self'; " <>
                 "form-action 'self'"
