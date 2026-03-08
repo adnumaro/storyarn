@@ -270,7 +270,7 @@ defmodule Storyarn.Accounts do
   @doc """
   Notifies the admin about a new waitlist signup.
   """
-  def notify_admin_waitlist_signup(email) do
-    UserNotifier.deliver_admin_waitlist_notification(email)
+  def notify_admin_waitlist_signup(email, signup_info \\ %{}) do
+    UserNotifier.deliver_admin_waitlist_notification(email, signup_info)
   end
 end

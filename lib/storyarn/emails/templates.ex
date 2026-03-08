@@ -247,7 +247,12 @@ defmodule Storyarn.Emails.Templates do
   # --- Admin-only templates (no Gettext, always English) ---
 
   @doc "Admin notification when someone joins the waitlist."
-  def admin_waitlist_signup(email) do
+  def admin_waitlist_signup(email, signup_info \\ %{}) do
+    locale = Map.get(signup_info, :locale, "unknown")
+    language = Map.get(signup_info, :accept_language, "unknown")
+    ip = Map.get(signup_info, :ip, "unknown")
+    country = Map.get(signup_info, :country, "unknown")
+
     subject = "New waitlist signup: #{email}"
 
     content = """
@@ -260,21 +265,27 @@ defmodule Storyarn.Emails.Templates do
     <mj-text font-size="16px" font-weight="500" color="#d4a24c">
       #{escape(email)}
     </mj-text>
-    <mj-text font-size="13px" color="#9ca3af">
-      You can invite them by running:<br/>
-      <code>fly ssh console -a storyarn-staging</code><br/>
-      <code>/app/bin/storyarn eval "Storyarn.Release.invite_waitlist_user(\\"#{escape(email)}\\")"</code>
+    <mj-table font-size="13px" color="#d1d5db" cellpadding="4px">
+      <tr><td style="color:#9ca3af;width:100px">Language</td><td>#{escape(locale)} (#{escape(language)})</td></tr>
+      <tr><td style="color:#9ca3af">Region</td><td>#{escape(country)}</td></tr>
+      <tr><td style="color:#9ca3af">IP</td><td>#{escape(ip)}</td></tr>
+    </mj-table>
+    <mj-text font-size="13px" color="#9ca3af" padding-top="16px">
+      Invite with:<br/>
+      <code>fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_waitlist_user(\\"#{escape(email)}\\", \\"#{escape(locale)}\\")"'</code>
     </mj-text>
     """
 
     text = """
     New Waitlist Signup
 
-    Someone just signed up for the Storyarn waitlist: #{email}
+    Email: #{email}
+    Language: #{locale} (#{language})
+    Region: #{country}
+    IP: #{ip}
 
-    To invite them, run:
-    fly ssh console -a storyarn-staging
-    /app/bin/storyarn eval "Storyarn.Release.invite_waitlist_user(\\"#{email}\\")"
+    Invite with:
+    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_waitlist_user(\\"#{email}\\", \\"#{locale}\\")"'
     """
 
     {subject, Layout.render(content, preview: "New waitlist signup: #{email}"), text}

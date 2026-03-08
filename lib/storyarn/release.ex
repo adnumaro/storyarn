@@ -21,12 +21,12 @@ defmodule Storyarn.Release do
   @doc """
   Send a waitlist invitation email to the given address.
 
-  Usage from Fly SSH:
-    fly ssh console -a storyarn-staging
-    /app/bin/storyarn eval "Storyarn.Release.invite_waitlist_user(\"user@example.com\")"
+  Usage from Fly SSH (uses rpc to run inside the live node):
+    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_waitlist_user(\"user@example.com\")"'
+    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_waitlist_user(\"user@example.com\", \"es\")"'
   """
-  def invite_waitlist_user(email) when is_binary(email) do
-    start_app()
+  def invite_waitlist_user(email, locale \\ "en") when is_binary(email) do
+    Gettext.put_locale(StoryarnWeb.Gettext, locale)
 
     login_url = StoryarnWeb.Endpoint.url() <> "/users/log-in"
     {subject, html, text} = Storyarn.Emails.Templates.waitlist_invite(email, login_url)
@@ -57,7 +57,4 @@ defmodule Storyarn.Release do
     Application.ensure_loaded(@app)
   end
 
-  defp start_app do
-    Application.ensure_all_started(@app)
-  end
 end

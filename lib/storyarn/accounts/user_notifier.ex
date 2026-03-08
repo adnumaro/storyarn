@@ -61,9 +61,9 @@ defmodule Storyarn.Accounts.UserNotifier do
   @doc """
   Deliver admin notification about a new waitlist signup.
   """
-  def deliver_admin_waitlist_notification(email) do
+  def deliver_admin_waitlist_notification(email, signup_info \\ %{}) do
     admin_email = Application.get_env(:storyarn, :admin_email, "adan@storyarn.com")
-    {subject, html, text} = Templates.admin_waitlist_signup(email)
+    {subject, html, text} = Templates.admin_waitlist_signup(email, signup_info)
     deliver(admin_email, subject, html, text)
   end
 end

@@ -21,7 +21,14 @@ defmodule StoryarnWeb.PageController do
   def join_waitlist(conn, %{"waitlist" => %{"email" => email}}) do
     case Accounts.join_waitlist(%{"email" => email}) do
       {:ok, _entry} ->
-        Accounts.notify_admin_waitlist_signup(email)
+        signup_info = %{
+          locale: conn.assigns[:locale] || "en",
+          accept_language: List.first(get_req_header(conn, "accept-language")) || "unknown",
+          ip: client_ip(conn),
+          country: List.first(get_req_header(conn, "fly-region")) || "unknown"
+        }
+
+        Accounts.notify_admin_waitlist_signup(email, signup_info)
 
         conn
         |> put_flash(:info, gettext("You're on the list! We'll reach out when your spot is ready."))
@@ -31,6 +38,19 @@ defmodule StoryarnWeb.PageController do
         conn
         |> put_flash(:info, gettext("You're on the list! We'll reach out when your spot is ready."))
         |> redirect(to: ~p"/")
+    end
+  end
+
+  defp client_ip(conn) do
+    case get_req_header(conn, "fly-client-ip") do
+      [ip | _] ->
+        ip
+
+      _ ->
+        case get_req_header(conn, "x-forwarded-for") do
+          [xff | _] -> xff |> String.split(",") |> List.first() |> String.trim()
+          _ -> conn.remote_ip |> :inet.ntoa() |> to_string()
+        end
     end
   end
 
