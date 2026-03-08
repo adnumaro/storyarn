@@ -159,10 +159,10 @@ if config_env() == :prod do
       api_key: resend_api_key
   end
 
-  # Default "from" email address
-  config :storyarn, :mailer_from,
-    email: System.get_env("MAILER_FROM_EMAIL", "noreply@storyarn.com"),
-    name: System.get_env("MAILER_FROM_NAME", "Storyarn")
+  # Default "from" email address (tuple format matching notifier expectations)
+  config :storyarn, :mailer_sender,
+    {System.get_env("MAILER_FROM_NAME", "Storyarn"),
+     System.get_env("MAILER_FROM_EMAIL", "noreply@storyarn.com")}
 
   # S3-compatible Storage Configuration
   # Supports Cloudflare R2 (R2_* vars) and Fly Tigris (AWS_* vars)

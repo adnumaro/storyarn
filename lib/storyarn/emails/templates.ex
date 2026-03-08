@@ -24,13 +24,13 @@ defmodule Storyarn.Emails.Templates do
     <mj-text>
       #{dgettext("emails", "Click the button below to log in to your Storyarn account. This link will expire in 10 minutes.")}
     </mj-text>
-    <mj-button href="#{escape(url)}" background-color="#7c3aed" color="#ffffff">
+    <mj-button href="#{escape(url)}" background-color="#4dd9c0" color="#0a0a0a">
       #{dgettext("emails", "Log in to Storyarn")}
     </mj-button>
-    <mj-text font-size="13px" color="#6b7280">
+    <mj-text font-size="13px" color="#9ca3af">
       #{dgettext("emails", "If you didn't request this email, you can safely ignore it.")}
     </mj-text>
-    <mj-text font-size="13px" color="#6b7280">
+    <mj-text font-size="13px" color="#9ca3af">
       #{dgettext("emails", "Or copy this link: %{url}", url: escape(url))}
     </mj-text>
     """
@@ -61,13 +61,13 @@ defmodule Storyarn.Emails.Templates do
     <mj-text>
       #{dgettext("emails", "Click the button below to confirm your account and get started.")}
     </mj-text>
-    <mj-button href="#{escape(url)}" background-color="#7c3aed" color="#ffffff">
+    <mj-button href="#{escape(url)}" background-color="#4dd9c0" color="#0a0a0a">
       #{dgettext("emails", "Confirm my account")}
     </mj-button>
-    <mj-text font-size="13px" color="#6b7280">
+    <mj-text font-size="13px" color="#9ca3af">
       #{dgettext("emails", "If you didn't create an account, you can safely ignore this.")}
     </mj-text>
-    <mj-text font-size="13px" color="#6b7280">
+    <mj-text font-size="13px" color="#9ca3af">
       #{dgettext("emails", "Or copy this link: %{url}", url: escape(url))}
     </mj-text>
     """
@@ -97,13 +97,13 @@ defmodule Storyarn.Emails.Templates do
     <mj-text>
       #{dgettext("emails", "You requested to change your email address. Click below to confirm the change.")}
     </mj-text>
-    <mj-button href="#{escape(url)}" background-color="#7c3aed" color="#ffffff">
+    <mj-button href="#{escape(url)}" background-color="#4dd9c0" color="#0a0a0a">
       #{dgettext("emails", "Confirm email change")}
     </mj-button>
-    <mj-text font-size="13px" color="#6b7280">
+    <mj-text font-size="13px" color="#9ca3af">
       #{dgettext("emails", "If you didn't request this change, please ignore this email.")}
     </mj-text>
-    <mj-text font-size="13px" color="#6b7280">
+    <mj-text font-size="13px" color="#9ca3af">
       #{dgettext("emails", "Or copy this link: %{url}", url: escape(url))}
     </mj-text>
     """
@@ -134,13 +134,13 @@ defmodule Storyarn.Emails.Templates do
     <mj-text>
       #{dgettext("emails", "<strong>%{inviter}</strong> has invited you to join <strong>%{project}</strong> on Storyarn as <strong>%{role}</strong>.", inviter: escape(inviter_name), project: escape(project_name), role: escape(role))}
     </mj-text>
-    <mj-button href="#{escape(url)}" background-color="#7c3aed" color="#ffffff">
+    <mj-button href="#{escape(url)}" background-color="#4dd9c0" color="#0a0a0a">
       #{dgettext("emails", "Accept invitation")}
     </mj-button>
-    <mj-text font-size="13px" color="#6b7280">
+    <mj-text font-size="13px" color="#9ca3af">
       #{dgettext("emails", "This invitation expires in %{days} days. If you don't want to join, ignore this email.", days: days)}
     </mj-text>
-    <mj-text font-size="13px" color="#6b7280">
+    <mj-text font-size="13px" color="#9ca3af">
       #{dgettext("emails", "Or copy this link: %{url}", url: escape(url))}
     </mj-text>
     """
@@ -177,13 +177,13 @@ defmodule Storyarn.Emails.Templates do
     <mj-text>
       #{dgettext("emails", "<strong>%{inviter}</strong> has invited you to join the <strong>%{workspace}</strong> workspace on Storyarn as <strong>%{role}</strong>.", inviter: escape(inviter_name), workspace: escape(workspace_name), role: escape(role))}
     </mj-text>
-    <mj-button href="#{escape(url)}" background-color="#7c3aed" color="#ffffff">
+    <mj-button href="#{escape(url)}" background-color="#4dd9c0" color="#0a0a0a">
       #{dgettext("emails", "Accept invitation")}
     </mj-button>
-    <mj-text font-size="13px" color="#6b7280">
+    <mj-text font-size="13px" color="#9ca3af">
       #{dgettext("emails", "This invitation expires in %{days} days. If you don't want to join, ignore this email.", days: days)}
     </mj-text>
-    <mj-text font-size="13px" color="#6b7280">
+    <mj-text font-size="13px" color="#9ca3af">
       #{dgettext("emails", "Or copy this link: %{url}", url: escape(url))}
     </mj-text>
     """
@@ -213,7 +213,7 @@ defmodule Storyarn.Emails.Templates do
     subject = dgettext("emails", "You're in! Welcome to Storyarn")
 
     content = """
-    <mj-text font-size="18px" font-weight="600" color="#111827">
+    <mj-text font-size="18px" font-weight="600" color="#f9fafb">
       #{dgettext("emails", "You're in!")}
     </mj-text>
     <mj-text>
@@ -222,10 +222,10 @@ defmodule Storyarn.Emails.Templates do
     <mj-text>
       #{dgettext("emails", "Storyarn is a narrative design platform for game developers and interactive storytellers. Create character sheets, design dialogue flows, write screenplays, and build worlds.")}
     </mj-text>
-    <mj-button href="#{escape(login_url)}" background-color="#7c3aed" color="#ffffff">
+    <mj-button href="#{escape(login_url)}" background-color="#4dd9c0" color="#0a0a0a">
       #{dgettext("emails", "Get started")}
     </mj-button>
-    <mj-text font-size="13px" color="#6b7280">
+    <mj-text font-size="13px" color="#9ca3af">
       #{dgettext("emails", "Just click the button above — you'll be able to log in with this email address (%{email}).", email: escape(email))}
     </mj-text>
     """
@@ -251,16 +251,16 @@ defmodule Storyarn.Emails.Templates do
     subject = "New waitlist signup: #{email}"
 
     content = """
-    <mj-text font-size="18px" font-weight="600" color="#111827">
+    <mj-text font-size="18px" font-weight="600" color="#f9fafb">
       New Waitlist Signup
     </mj-text>
     <mj-text>
       Someone just signed up for the Storyarn waitlist:
     </mj-text>
-    <mj-text font-size="16px" font-weight="500" color="#7c3aed">
+    <mj-text font-size="16px" font-weight="500" color="#d4a24c">
       #{escape(email)}
     </mj-text>
-    <mj-text font-size="13px" color="#6b7280">
+    <mj-text font-size="13px" color="#9ca3af">
       You can invite them by running:<br/>
       <code>fly ssh console -a storyarn-staging</code><br/>
       <code>/app/bin/storyarn eval "Storyarn.Release.invite_waitlist_user(\\"#{escape(email)}\\")"</code>

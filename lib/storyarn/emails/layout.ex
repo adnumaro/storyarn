@@ -14,39 +14,38 @@ defmodule Storyarn.Emails.Layout do
   """
   def render(content, opts \\ []) do
     preview = Keyword.get(opts, :preview, "")
+    logo_url = StoryarnWeb.Endpoint.url() <> "/images/logo-name.png"
 
     mjml = """
     <mjml>
       <mj-head>
         <mj-attributes>
-          <mj-all font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" />
-          <mj-text font-size="15px" line-height="1.6" color="#374151" />
+          <mj-all font-family="system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" />
+          <mj-text font-size="15px" line-height="1.6" color="#d1d5db" />
           <mj-button font-size="15px" font-weight="600" border-radius="8px" inner-padding="12px 28px" />
         </mj-attributes>
         <mj-style>
-          a { color: #7c3aed; }
-          .footer-link { color: #9ca3af !important; text-decoration: none !important; }
+          a { color: #4dd9c0; }
+          .footer-link { color: #6b7280 !important; text-decoration: none !important; }
         </mj-style>
         #{if preview != "", do: "<mj-preview>#{escape(preview)}</mj-preview>", else: ""}
       </mj-head>
-      <mj-body background-color="#f3f4f6">
-        <mj-section padding="30px 0 10px">
+      <mj-body background-color="#0a0a0a">
+        <mj-section padding="40px 0 16px">
           <mj-column>
-            <mj-text align="center" font-size="22px" font-weight="700" color="#111827" letter-spacing="-0.02em">
-              Storyarn
-            </mj-text>
+            <mj-image src="#{logo_url}" alt="Storyarn" width="400px" />
           </mj-column>
         </mj-section>
 
-        <mj-section background-color="#ffffff" border-radius="12px" padding="32px 24px">
+        <mj-section background-color="#18181b" border-radius="12px" padding="32px 24px">
           <mj-column>
             #{content}
           </mj-column>
         </mj-section>
 
-        <mj-section padding="16px 0 30px">
+        <mj-section padding="16px 0 40px">
           <mj-column>
-            <mj-text align="center" font-size="12px" color="#9ca3af">
+            <mj-text align="center" font-size="12px" color="#6b7280">
               Storyarn — Narrative design for games &amp; interactive stories
             </mj-text>
           </mj-column>

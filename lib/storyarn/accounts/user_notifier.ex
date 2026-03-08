@@ -3,6 +3,7 @@ defmodule Storyarn.Accounts.UserNotifier do
   Handles email notifications for user account actions.
   """
   import Swoosh.Email
+  require Logger
 
   alias Storyarn.Accounts.User
   alias Storyarn.Emails.Templates
@@ -19,8 +20,14 @@ defmodule Storyarn.Accounts.UserNotifier do
       |> html_body(html_body)
       |> text_body(text_body)
 
-    with {:ok, _metadata} <- Mailer.deliver(email) do
-      {:ok, email}
+    case Mailer.deliver(email) do
+      {:ok, _metadata} ->
+        Logger.info("Email sent to #{recipient}: #{subject}")
+        {:ok, email}
+
+      {:error, reason} ->
+        Logger.error("Failed to send email to #{recipient}: #{inspect(reason)}")
+        {:error, reason}
     end
   end
 

@@ -3,6 +3,7 @@ defmodule Storyarn.Projects.ProjectNotifier do
   Handles email notifications for project-related actions.
   """
   import Swoosh.Email
+  require Logger
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Emails.Templates
@@ -20,8 +21,14 @@ defmodule Storyarn.Projects.ProjectNotifier do
       |> html_body(html_body)
       |> text_body(text_body)
 
-    with {:ok, _metadata} <- Mailer.deliver(email) do
-      {:ok, email}
+    case Mailer.deliver(email) do
+      {:ok, _metadata} ->
+        Logger.info("Email sent to #{recipient}: #{subject}")
+        {:ok, email}
+
+      {:error, reason} ->
+        Logger.error("Failed to send email to #{recipient}: #{inspect(reason)}")
+        {:error, reason}
     end
   end
 
