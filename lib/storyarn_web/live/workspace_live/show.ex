@@ -5,6 +5,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   use StoryarnWeb, :live_view
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Storyarn.Billing
   alias Storyarn.Projects
   alias Storyarn.Workspaces
 
@@ -15,6 +16,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     case Workspaces.get_workspace_by_slug(scope, workspace_slug) do
       {:ok, workspace, membership} ->
         projects = Projects.list_projects_for_workspace(workspace.id, scope)
+        can_create_project = Billing.can_create_project?(workspace) == :ok
 
         {:ok,
          socket
@@ -22,7 +24,8 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
          |> assign(:workspace, workspace)
          |> assign(:current_workspace, workspace)
          |> assign(:membership, membership)
-         |> assign(:projects, projects)}
+         |> assign(:projects, projects)
+         |> assign(:can_create_project, can_create_project)}
 
       {:error, :not_found} ->
         {:ok,
@@ -104,13 +107,23 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
           </div>
 
           <.link
-            :if={@membership.role in ["owner", "admin", "member"]}
+            :if={@membership.role in ["owner", "admin", "member"] and @can_create_project}
             patch={~p"/workspaces/#{@workspace.slug}/projects/new"}
             class="btn btn-primary btn-sm"
           >
             <.icon name="plus" class="size-4" />
             {dgettext("workspaces", "New Project")}
           </.link>
+          <div
+            :if={@membership.role in ["owner", "admin", "member"] and not @can_create_project}
+            class="tooltip tooltip-left"
+            data-tip={dgettext("workspaces", "Project limit reached for your plan")}
+          >
+            <button class="btn btn-primary btn-sm btn-disabled" disabled>
+              <.icon name="plus" class="size-4" />
+              {dgettext("workspaces", "New Project")}
+            </button>
+          </div>
         </div>
         
     <!-- Projects Grid -->

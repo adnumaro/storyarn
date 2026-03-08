@@ -88,6 +88,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FountainImportHandlers do
   defp create_sheet_for_name(project, name) do
     case Sheets.create_sheet(project, %{name: name}) do
       {:ok, sheet} -> {name, sheet}
+      {:error, :limit_reached, _details} -> {name, nil}
       {:error, _} -> {name, nil}
     end
   end

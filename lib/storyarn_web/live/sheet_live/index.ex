@@ -145,6 +145,9 @@ defmodule StoryarnWeb.SheetLive.Index do
                ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
            )}
 
+        {:error, :limit_reached, _details} ->
+          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
       end
@@ -226,6 +229,9 @@ defmodule StoryarnWeb.SheetLive.Index do
              to:
                ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
            )}
+
+        {:error, :limit_reached, _details} ->
+          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}

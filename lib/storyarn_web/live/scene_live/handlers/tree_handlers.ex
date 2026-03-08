@@ -27,6 +27,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
              ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{new_scene.id}"
          )}
 
+      {:error, :limit_reached, _details} ->
+        {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not create scene."))}
     end
@@ -44,6 +47,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
            to:
              ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{new_scene.id}"
          )}
+
+      {:error, :limit_reached, _details} ->
+        {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not create scene."))}
@@ -102,6 +108,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
 
       {:error, :image_extraction_failed} ->
         create_child_scene_without_image(zone_id, scene, socket)
+
+      {:error, :limit_reached, _details} ->
+        {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not create child scene."))}
@@ -215,6 +224,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
              to:
                ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{child_scene.id}"
            )}
+
+        {:error, :limit_reached, _details} ->
+          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
         {:error, _} ->
           {:noreply,

@@ -303,6 +303,9 @@ defmodule StoryarnWeb.FlowLive.Index do
                ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
            )}
 
+        {:error, :limit_reached, _details} ->
+          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
       end
@@ -320,6 +323,9 @@ defmodule StoryarnWeb.FlowLive.Index do
              to:
                ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
            )}
+
+        {:error, :limit_reached, _details} ->
+          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
@@ -356,6 +362,9 @@ defmodule StoryarnWeb.FlowLive.Index do
              to:
                ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
            )}
+
+        {:error, :limit_reached, _details} ->
+          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create sheet."))}

@@ -78,6 +78,12 @@ defmodule StoryarnWeb.WorkspaceLive.New do
          |> put_flash(:info, dgettext("workspaces", "Workspace created successfully."))
          |> push_navigate(to: ~p"/workspaces/#{workspace.slug}")}
 
+      {:error, :limit_reached, _details} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, dgettext("workspaces", "You have reached the workspace limit for your plan."))
+         |> push_navigate(to: ~p"/workspaces")}
+
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset))}
     end

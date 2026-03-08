@@ -81,6 +81,9 @@ defmodule StoryarnWeb.SceneLive.Form do
           notify_parent({:saved, scene})
           {:noreply, socket}
 
+        {:error, :limit_reached, _details} ->
+          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+
         {:error, changeset} ->
           {:noreply, assign(socket, :form, to_form(changeset))}
       end
