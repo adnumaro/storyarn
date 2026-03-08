@@ -14,6 +14,7 @@ defmodule Storyarn.Shared.InvitationOperations do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Billing
   alias Storyarn.RateLimiter
   alias Storyarn.Repo
 
@@ -47,7 +48,7 @@ defmodule Storyarn.Shared.InvitationOperations do
           {:error, :already_invited}
 
         true ->
-          do_create_invitation(config, parent, invited_by, email, role)
+          create_if_within_limits(config, parent, invited_by, email, role)
       end
     end
   end
@@ -61,10 +62,17 @@ defmodule Storyarn.Shared.InvitationOperations do
     parent_id = Map.fetch!(parent, :id)
     email = String.downcase(email)
 
-    if member_exists?(config, parent_id, email) do
-      {:error, :already_member}
-    else
-      do_create_invitation(config, parent, nil, email, role, opts)
+    cond do
+      member_exists?(config, parent_id, email) ->
+        {:error, :already_member}
+
+      pending_invitation_exists?(config, parent_id, email) ->
+        {:error, :already_invited}
+
+      true ->
+        with :ok <- Billing.can_invite_member?(parent) do
+          do_create_invitation(config, parent, nil, email, role, opts)
+        end
     end
   end
 
@@ -151,20 +159,43 @@ defmodule Storyarn.Shared.InvitationOperations do
     |> Repo.exists?()
   end
 
+  defp create_if_within_limits(config, parent, invited_by, email, role) do
+    with :ok <- Billing.can_invite_member?(parent) do
+      do_create_invitation(config, parent, invited_by, email, role)
+    end
+  end
+
   defp do_create_invitation(config, parent, invited_by, email, role, opts \\ []) do
     {encoded_token, invitation} =
       config.invitation_schema.build_invitation(parent, invited_by, email, role)
 
-    case Repo.insert(invitation) do
+    changeset =
+      invitation
+      |> Ecto.Changeset.change()
+      |> Ecto.Changeset.unique_constraint(:email,
+        name: invitation_unique_index(config.parent_key)
+      )
+
+    case Repo.insert(changeset) do
       {:ok, invitation} ->
         invitation = Repo.preload(invitation, config.preload_after_insert)
         config.notifier_module.deliver_invitation(invitation, encoded_token, opts)
         {:ok, invitation}
 
-      {:error, changeset} ->
-        {:error, changeset}
+      {:error, %Ecto.Changeset{errors: errors}} = error ->
+        if Keyword.has_key?(errors, :email) do
+          {:error, :already_invited}
+        else
+          error
+        end
     end
   end
+
+  defp invitation_unique_index(:project_id),
+    do: "project_invitations_project_id_email_index"
+
+  defp invitation_unique_index(:workspace_id),
+    do: "workspace_invitations_workspace_id_email_index"
 
   defp do_accept_invitation(config, invitation, user) do
     parent_id = Map.fetch!(invitation, config.parent_key)

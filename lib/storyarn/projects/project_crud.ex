@@ -4,6 +4,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Billing
   alias Storyarn.Projects.{Memberships, Project, ProjectMembership}
   alias Storyarn.Repo
   alias Storyarn.Shared.NameNormalizer
@@ -84,6 +85,15 @@ defmodule Storyarn.Projects.ProjectCrud do
   Creates a project and sets up the owner membership.
   """
   def create_project(%Scope{user: user}, attrs) do
+    workspace_id = attrs[:workspace_id] || attrs["workspace_id"]
+    workspace = Repo.get!(Workspace, workspace_id)
+
+    with :ok <- Billing.can_create_project?(workspace) do
+      do_create_project(user, attrs)
+    end
+  end
+
+  defp do_create_project(user, attrs) do
     Repo.transact(fn ->
       with {:ok, project} <- insert_project(user, attrs),
            {:ok, _membership} <- create_owner_membership(project, user) do

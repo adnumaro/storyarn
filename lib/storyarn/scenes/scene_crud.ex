@@ -9,6 +9,7 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Billing
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes.{Scene, SceneLayer, ScenePin, SceneZone, TreeOperations}
@@ -217,6 +218,12 @@ defmodule Storyarn.Scenes.SceneCrud do
   Auto-assigns position if not provided.
   """
   def create_scene(%Project{} = project, attrs) do
+    with :ok <- Billing.can_create_item?(project) do
+      do_create_scene(project, attrs)
+    end
+  end
+
+  defp do_create_scene(project, attrs) do
     # Auto-generate shortcut from name if not provided
     attrs = maybe_generate_shortcut(attrs, project.id, nil)
 

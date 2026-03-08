@@ -6,18 +6,24 @@ defmodule Storyarn.Flows.NodeCreate do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Billing
   alias Storyarn.Flows.{Flow, FlowNode, NodeCrud}
+  alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
 
   def create_node(%Flow{} = flow, attrs) do
-    attrs = stringify_keys(attrs)
+    project = Repo.get!(Project, flow.project_id)
 
-    case attrs["type"] do
-      "entry" -> create_entry_node(flow, attrs)
-      "hub" -> create_hub_node(flow, attrs)
-      "subflow" -> validate_and_insert_subflow(flow, attrs)
-      _ -> insert_node(flow, attrs)
+    with :ok <- Billing.can_create_item?(project) do
+      attrs = stringify_keys(attrs)
+
+      case attrs["type"] do
+        "entry" -> create_entry_node(flow, attrs)
+        "hub" -> create_hub_node(flow, attrs)
+        "subflow" -> validate_and_insert_subflow(flow, attrs)
+        _ -> insert_node(flow, attrs)
+      end
     end
   end
 

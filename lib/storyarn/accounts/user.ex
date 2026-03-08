@@ -27,6 +27,7 @@ defmodule Storyarn.Accounts.User do
     field :authenticated_at, :utc_datetime, virtual: true
     field :display_name, :string
     field :avatar_url, :string
+    field :is_super_admin, :boolean, default: false
 
     has_many :identities, Storyarn.Accounts.UserIdentity
 

@@ -82,6 +82,9 @@ defmodule Storyarn.Release do
       {:error, :already_member} ->
         IO.puts("#{email} is already a member of this #{type}")
 
+      {:error, :already_invited} ->
+        IO.puts("#{email} already has a pending invitation for this #{type}")
+
       {:error, reason} ->
         IO.puts("Failed to create invitation: #{inspect(reason)}")
         raise "Cannot create invitation: #{inspect(reason)}"

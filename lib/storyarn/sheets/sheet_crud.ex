@@ -3,6 +3,7 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Billing
   alias Storyarn.Localization
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
@@ -16,25 +17,27 @@ defmodule Storyarn.Sheets.SheetCrud do
   # =============================================================================
 
   def create_sheet(%Project{} = project, attrs) do
-    # Normalize keys to strings for changeset
-    attrs = stringify_keys(attrs)
-    parent_id = attrs["parent_id"]
-    position = attrs["position"] || next_position(project.id, parent_id)
+    with :ok <- Billing.can_create_item?(project) do
+      # Normalize keys to strings for changeset
+      attrs = stringify_keys(attrs)
+      parent_id = attrs["parent_id"]
+      position = attrs["position"] || next_position(project.id, parent_id)
 
-    # Auto-generate shortcut from name if not provided
-    attrs = maybe_generate_shortcut(attrs, project.id, nil)
+      # Auto-generate shortcut from name if not provided
+      attrs = maybe_generate_shortcut(attrs, project.id, nil)
 
-    result =
-      %Sheet{project_id: project.id}
-      |> Sheet.create_changeset(Map.put(attrs, "position", position))
-      |> Repo.insert()
+      result =
+        %Sheet{project_id: project.id}
+        |> Sheet.create_changeset(Map.put(attrs, "position", position))
+        |> Repo.insert()
 
-    # Auto-inherit blocks from ancestor chain
-    with {:ok, sheet} <- result do
-      PropertyInheritance.inherit_blocks_for_new_sheet(sheet)
+      # Auto-inherit blocks from ancestor chain
+      with {:ok, sheet} <- result do
+        PropertyInheritance.inherit_blocks_for_new_sheet(sheet)
+      end
+
+      result
     end
-
-    result
   end
 
   def update_sheet(%Sheet{} = sheet, attrs) do

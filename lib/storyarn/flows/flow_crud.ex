@@ -3,6 +3,7 @@ defmodule Storyarn.Flows.FlowCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Flows.{Flow, FlowNode, NodeCrud, TreeOperations}
   alias Storyarn.Localization
@@ -201,20 +202,22 @@ defmodule Storyarn.Flows.FlowCrud do
         %FlowNode{} = node,
         opts \\ []
       ) do
-    name = opts[:name] || derive_linked_flow_name(parent_flow, node)
+    with :ok <- Billing.can_create_item?(project) do
+      name = opts[:name] || derive_linked_flow_name(parent_flow, node)
 
-    Ecto.Multi.new()
-    |> Ecto.Multi.run(:flow, fn _repo, _ ->
-      create_flow(project, %{name: name, parent_id: parent_flow.id})
-    end)
-    |> Ecto.Multi.run(:node, fn _repo, %{flow: new_flow} ->
-      new_data = Map.put(node.data, "referenced_flow_id", new_flow.id)
+      Ecto.Multi.new()
+      |> Ecto.Multi.run(:flow, fn _repo, _ ->
+        do_create_flow(project, %{name: name, parent_id: parent_flow.id})
+      end)
+      |> Ecto.Multi.run(:node, fn _repo, %{flow: new_flow} ->
+        new_data = Map.put(node.data, "referenced_flow_id", new_flow.id)
 
-      node
-      |> FlowNode.data_changeset(%{data: new_data})
-      |> Repo.update()
-    end)
-    |> Repo.transaction()
+        node
+        |> FlowNode.data_changeset(%{data: new_data})
+        |> Repo.update()
+      end)
+      |> Repo.transaction()
+    end
   end
 
   defp derive_linked_flow_name(parent_flow, node) do
@@ -223,6 +226,12 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   def create_flow(%Project{} = project, attrs) do
+    with :ok <- Billing.can_create_item?(project) do
+      do_create_flow(project, attrs)
+    end
+  end
+
+  defp do_create_flow(%Project{} = project, attrs) do
     attrs = stringify_keys(attrs)
 
     # Auto-generate shortcut from name if not provided
@@ -352,7 +361,7 @@ defmodule Storyarn.Flows.FlowCrud do
     |> Enum.map(& &1.flow_id)
     |> Enum.uniq()
     |> Enum.each(fn flow_id ->
-      Collaboration.broadcast_change(flow_id, :flow_refresh, %{
+      Collaboration.broadcast_change({:flow, flow_id}, :flow_refresh, %{
         user_id: 0,
         user_email: "System",
         user_color: "#666"

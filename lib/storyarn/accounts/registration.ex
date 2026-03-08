@@ -20,6 +20,9 @@ defmodule Storyarn.Accounts.Registration do
       with {:ok, user} <- insert_user(attrs),
            {:ok, _workspace} <- create_default_workspace(user) do
         {:ok, user}
+      else
+        {:error, :limit_reached, _details} -> {:error, :workspace_limit_reached}
+        {:error, _} = error -> error
       end
     end)
   end
@@ -36,9 +39,8 @@ defmodule Storyarn.Accounts.Registration do
         {:ok, user}
 
       nil ->
-        with {:ok, user} <- register_user(%{"email" => email}),
-             {:ok, user} <- Repo.update(User.confirm_changeset(user)) do
-          {:ok, user}
+        with {:ok, user} <- register_user(%{"email" => email}) do
+          Repo.update(User.confirm_changeset(user))
         end
     end
   end

@@ -13,8 +13,10 @@ defmodule Storyarn.Assets do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.ImageProcessor
   alias Storyarn.Assets.Storage
+  alias Storyarn.Billing
   alias Storyarn.Projects.Project
   alias Storyarn.Shared.SearchHelpers
+  alias Storyarn.Workspaces.Workspace
 
   # =============================================================================
   # Type Definitions
@@ -286,6 +288,14 @@ defmodule Storyarn.Assets do
   @spec upload_and_create_asset(String.t(), Phoenix.LiveView.UploadEntry.t(), project(), user()) ::
           {:ok, asset()} | {:error, term()}
   def upload_and_create_asset(path, entry, %Project{} = project, %User{} = user) do
+    workspace = Repo.get!(Workspace, project.workspace_id)
+
+    with :ok <- Billing.can_upload_asset?(workspace, entry.client_size) do
+      do_upload_and_create_asset(path, entry, project, user)
+    end
+  end
+
+  defp do_upload_and_create_asset(path, entry, project, user) do
     key = generate_key(project, entry.client_name)
     content = File.read!(path)
 

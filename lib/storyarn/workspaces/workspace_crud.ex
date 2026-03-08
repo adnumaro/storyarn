@@ -4,6 +4,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.{Scope, User}
+  alias Storyarn.Billing
   alias Storyarn.Projects.{Project, ProjectMembership}
   alias Storyarn.Repo
   alias Storyarn.Workspaces.{Workspace, WorkspaceMembership}
@@ -128,9 +129,16 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   Creates a workspace with owner membership (for internal use).
   """
   def create_workspace_with_owner(%User{} = user, attrs) do
+    with :ok <- Billing.can_create_workspace?(user) do
+      do_create_workspace_with_owner(user, attrs)
+    end
+  end
+
+  defp do_create_workspace_with_owner(user, attrs) do
     Repo.transact(fn ->
       with {:ok, workspace} <- insert_workspace(user, attrs),
-           {:ok, _membership} <- create_owner_membership(workspace, user) do
+           {:ok, _membership} <- create_owner_membership(workspace, user),
+           {:ok, _subscription} <- Billing.create_subscription(workspace) do
         {:ok, workspace}
       end
     end)
