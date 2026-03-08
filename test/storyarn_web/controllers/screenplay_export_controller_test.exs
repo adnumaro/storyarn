@@ -7,7 +7,7 @@ defmodule StoryarnWeb.ScreenplayExportControllerTest do
 
   alias Storyarn.Repo
 
-  setup :register_and_log_in_user
+  setup :register_and_log_in_super_admin
 
   setup %{user: user} do
     project = project_fixture(user) |> Repo.preload(:workspace)
@@ -138,6 +138,25 @@ defmodule StoryarnWeb.ScreenplayExportControllerTest do
 
       [disposition] = get_resp_header(conn, "content-disposition")
       assert disposition =~ "screenplay.fountain"
+    end
+  end
+
+  describe "super admin guard" do
+    test "returns 404 for non-super-admin", %{project: project} do
+      # Log in as a regular user who is a member of the project
+      regular_user = user_fixture()
+      membership_fixture(project, regular_user)
+
+      conn =
+        build_conn()
+        |> log_in_user(regular_user)
+
+      screenplay = screenplay_fixture(project, %{name: "Guarded"})
+
+      conn = get(conn, export_url(project, screenplay))
+
+      assert conn.status == 404
+      assert conn.resp_body =~ "Not found"
     end
   end
 end

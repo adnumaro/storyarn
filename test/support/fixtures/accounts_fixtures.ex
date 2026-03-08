@@ -78,6 +78,12 @@ defmodule Storyarn.AccountsFixtures do
     {encoded_token, user_token.token}
   end
 
+  def set_super_admin(user, value \\ true) do
+    user
+    |> Ecto.Changeset.change(%{is_super_admin: value})
+    |> Storyarn.Repo.update!()
+  end
+
   def offset_user_token(token, amount_to_add, unit) do
     dt = DateTime.add(DateTime.utc_now(:second), amount_to_add, unit)
 

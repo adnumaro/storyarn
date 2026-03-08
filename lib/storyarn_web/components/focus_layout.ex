@@ -57,6 +57,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
   attr :tree_panel_open, :boolean, default: false
   attr :workspace, :map, required: true
   attr :project, :map, required: true
+  attr :is_super_admin, :boolean, default: false
 
   def left_toolbar(assigns) do
     assigns = assign(assigns, :active_icon, tool_icon(assigns.active_tool))
@@ -94,6 +95,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
           active_tool={@active_tool}
           workspace={@workspace}
           project={@project}
+          is_super_admin={@is_super_admin}
         />
       </div>
     </nav>
@@ -159,14 +161,18 @@ defmodule StoryarnWeb.Components.FocusLayout do
         </div>
       </div>
 
-      <%!-- Presence dots --%>
-      <div :if={@other_users != []} class="flex -space-x-1.5 mx-1.5">
+      <%!-- Online users --%>
+      <div :if={@other_users != []} class="flex -space-x-1 mx-1.5">
         <div
           :for={user <- @other_users}
-          class="size-3.5 rounded-full ring-2 ring-base-200 tooltip tooltip-bottom"
-          style={"background-color: #{user.color};"}
+          class="tooltip tooltip-bottom"
           data-tip={user.display_name || user.email}
         >
+          <.user_avatar
+            user={%{display_name: user.display_name, email: user.email}}
+            size="xs"
+            class="ring-2 ring-base-200"
+          />
         </div>
       </div>
 
@@ -289,9 +295,17 @@ defmodule StoryarnWeb.Components.FocusLayout do
   attr :active_tool, :atom, required: true
   attr :workspace, :map, required: true
   attr :project, :map, required: true
+  attr :is_super_admin, :boolean, default: false
 
   def tool_switcher_dropdown(assigns) do
-    assigns = assign(assigns, :tools, @tools)
+    tools =
+      if assigns.is_super_admin do
+        @tools
+      else
+        Enum.reject(@tools, &(&1.key == :screenplays))
+      end
+
+    assigns = assign(assigns, :tools, tools)
 
     ~H"""
     <ul

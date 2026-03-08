@@ -9,7 +9,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlersTest do
   alias Storyarn.{Repo, Screenplays}
 
   describe "tree operations via LiveView" do
-    setup :register_and_log_in_user
+    setup :register_and_log_in_super_admin
 
     setup %{user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)

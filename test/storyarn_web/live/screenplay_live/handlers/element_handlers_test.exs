@@ -11,7 +11,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlersTest do
   alias Storyarn.Screenplays
 
   describe "ElementHandlers" do
-    setup :register_and_log_in_user
+    setup :register_and_log_in_super_admin
 
     setup %{user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)

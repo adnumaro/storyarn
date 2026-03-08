@@ -58,6 +58,26 @@ defmodule StoryarnWeb.ConnCase do
   end
 
   @doc """
+  Setup helper that registers and logs in a super admin user.
+
+      setup :register_and_log_in_super_admin
+
+  Same as `register_and_log_in_user/1` but sets `is_super_admin: true`.
+  """
+  def register_and_log_in_super_admin(%{conn: conn} = context) do
+    user = Storyarn.AccountsFixtures.user_fixture()
+    user = Storyarn.AccountsFixtures.set_super_admin(user)
+    scope = Storyarn.Accounts.Scope.for_user(user)
+
+    opts =
+      context
+      |> Map.take([:token_authenticated_at])
+      |> Enum.into([])
+
+    %{conn: log_in_user(conn, user, opts), user: user, scope: scope}
+  end
+
+  @doc """
   Logs the given `user` into the `conn`.
 
   It returns an updated `conn`.

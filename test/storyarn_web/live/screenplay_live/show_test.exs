@@ -11,8 +11,25 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
   # Handler behavior tests live in handlers/element_handlers_test.exs
 
-  describe "Show" do
+  describe "super admin guard" do
     setup :register_and_log_in_user
+
+    test "redirects non-super-admin to root", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      screenplay = screenplay_fixture(project, %{name: "Guarded"})
+
+      assert {:error, {:redirect, %{to: "/", flash: flash}}} =
+               live(
+                 conn,
+                 ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays/#{screenplay.id}"
+               )
+
+      assert flash["error"] =~ "Not found"
+    end
+  end
+
+  describe "Show" do
+    setup :register_and_log_in_super_admin
 
     setup %{user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
@@ -169,7 +186,8 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
 
       view |> render_click("create_screenplay")
 
-      assert_patch(view)
+      path = assert_patch(view)
+      assert path =~ "/screenplays/"
     end
 
     test "delete_screenplay of another screenplay reloads tree", %{
@@ -585,7 +603,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
   # -------------------------------------------------------------------------
 
   describe "sync_editor_content" do
-    setup :register_and_log_in_user
+    setup :register_and_log_in_super_admin
 
     setup %{user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
@@ -653,7 +671,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
   # -------------------------------------------------------------------------
 
   describe "read mode" do
-    setup :register_and_log_in_user
+    setup :register_and_log_in_super_admin
 
     setup %{user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
@@ -764,7 +782,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
   # -------------------------------------------------------------------------
 
   describe "tree panel events" do
-    setup :register_and_log_in_user
+    setup :register_and_log_in_super_admin
 
     setup %{user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
@@ -792,7 +810,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
   end
 
   describe "sidebar screenplay management" do
-    setup :register_and_log_in_user
+    setup :register_and_log_in_super_admin
 
     setup %{user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
@@ -830,7 +848,7 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
       render_click(view, "confirm_delete_screenplay")
 
       html = render(view)
-      assert html =~ "trash" or html =~ "screenplay-page"
+      assert html =~ "Screenplay moved to trash"
 
       # The other screenplay should be soft-deleted
       deleted = Storyarn.Screenplays.get_screenplay(project.id, other.id)
@@ -849,7 +867,8 @@ defmodule StoryarnWeb.ScreenplayLive.ShowTest do
         "parent-id" => to_string(parent.id)
       })
 
-      assert_patch(view)
+      path = assert_patch(view)
+      assert path =~ "/screenplays/"
     end
 
     test "move_to_parent moves a screenplay to a new parent", %{

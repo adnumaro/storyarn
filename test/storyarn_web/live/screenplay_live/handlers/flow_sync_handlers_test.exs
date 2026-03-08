@@ -11,7 +11,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.FlowSyncHandlersTest do
   alias Storyarn.Screenplays
 
   describe "FlowSyncHandlers" do
-    setup :register_and_log_in_user
+    setup :register_and_log_in_super_admin
 
     setup %{user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)

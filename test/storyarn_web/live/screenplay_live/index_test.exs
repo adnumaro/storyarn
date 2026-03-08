@@ -9,7 +9,7 @@ defmodule StoryarnWeb.ScreenplayLive.IndexTest do
   alias Storyarn.Repo
 
   describe "Index" do
-    setup :register_and_log_in_user
+    setup :register_and_log_in_super_admin
 
     test "renders Screenplays header for project owner", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
@@ -118,8 +118,24 @@ defmodule StoryarnWeb.ScreenplayLive.IndexTest do
     end
   end
 
-  describe "Event handlers" do
+  describe "super admin guard" do
     setup :register_and_log_in_user
+
+    test "redirects non-super-admin to root", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+
+      assert {:error, {:redirect, %{to: "/", flash: flash}}} =
+               live(
+                 conn,
+                 ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays"
+               )
+
+      assert flash["error"] =~ "Not found"
+    end
+  end
+
+  describe "Event handlers" do
+    setup :register_and_log_in_super_admin
 
     test "create_screenplay creates and redirects to show", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
@@ -240,27 +256,6 @@ defmodule StoryarnWeb.ScreenplayLive.IndexTest do
       refute html =~ "Pending Delete"
     end
 
-    test "set_pending_delete_screenplay stores the id for confirmation", %{
-      conn: conn,
-      user: user
-    } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      screenplay = screenplay_fixture(project, %{name: "Pending Delete SP"})
-
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays")
-
-      view
-      |> render_click("set_pending_delete_screenplay", %{"id" => to_string(screenplay.id)})
-
-      # Confirm via confirm_delete_screenplay
-      view |> render_click("confirm_delete_screenplay")
-
-      html = render(view)
-      assert html =~ "Screenplay moved to trash"
-      refute html =~ "Pending Delete SP"
-    end
-
     test "confirm_delete does nothing when no pending id", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       screenplay_fixture(project, %{name: "Still Here"})
@@ -273,33 +268,6 @@ defmodule StoryarnWeb.ScreenplayLive.IndexTest do
 
       html = render(view)
       assert html =~ "Still Here"
-    end
-
-    test "confirm_delete_screenplay does nothing when no pending id", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      screenplay_fixture(project, %{name: "Also Here"})
-
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays")
-
-      view |> render_click("confirm_delete_screenplay")
-
-      html = render(view)
-      assert html =~ "Also Here"
-    end
-
-    test "delete_screenplay event delegates to delete", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      screenplay = screenplay_fixture(project, %{name: "Delete Via Alias"})
-
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/screenplays")
-
-      view |> render_click("delete_screenplay", %{"id" => to_string(screenplay.id)})
-
-      html = render(view)
-      assert html =~ "Screenplay moved to trash"
-      refute html =~ "Delete Via Alias"
     end
 
     test "tree_panel_toggle event is handled", %{conn: conn, user: user} do

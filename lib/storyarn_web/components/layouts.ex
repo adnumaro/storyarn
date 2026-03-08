@@ -156,6 +156,12 @@ defmodule StoryarnWeb.Layouts do
         _ -> nil
       end
 
+    is_super_admin =
+      case assigns.current_scope do
+        %{user: %{is_super_admin: true}} -> true
+        _ -> false
+      end
+
     project_theme_style =
       case assigns.project do
         %{settings: %{"theme" => %{"primary" => p, "accent" => a}}}
@@ -187,6 +193,7 @@ defmodule StoryarnWeb.Layouts do
     assigns =
       assigns
       |> assign(:current_user_id, current_user_id)
+      |> assign(:is_super_admin, is_super_admin)
       |> assign(:project_theme_style, project_theme_style)
 
     ~H"""
@@ -200,6 +207,7 @@ defmodule StoryarnWeb.Layouts do
           tree_panel_open={@tree_panel_open}
           workspace={@workspace}
           project={@project}
+          is_super_admin={@is_super_admin}
         />
         {render_slot(@top_bar_extra)}
       </div>

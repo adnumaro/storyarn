@@ -22,7 +22,9 @@ defmodule StoryarnWeb.Components.MemberComponents do
   """
   attr :user, :map, default: nil
   attr :email, :string, default: nil
-  attr :size, :string, default: "md", values: ["sm", "md", "lg"]
+  attr :size, :string, default: "md", values: ["xs", "sm", "md", "lg"]
+  attr :class, :string, default: nil
+  attr :rest, :global
 
   def user_avatar(assigns) do
     email = assigns[:email] || (assigns[:user] && assigns[:user].email) || ""
@@ -30,12 +32,17 @@ defmodule StoryarnWeb.Components.MemberComponents do
     assigns = assign(assigns, :initials, initials)
 
     ~H"""
-    <div class={[
-      "flex items-center justify-center bg-neutral text-neutral-content rounded-full shrink-0",
-      @size == "sm" && "size-8 text-xs",
-      @size == "md" && "size-10 text-sm",
-      @size == "lg" && "size-12 text-base"
-    ]}>
+    <div
+      class={[
+        "flex items-center justify-center bg-neutral text-neutral-content rounded-full shrink-0",
+        @size == "xs" && "size-6 text-[10px]",
+        @size == "sm" && "size-8 text-xs",
+        @size == "md" && "size-10 text-sm",
+        @size == "lg" && "size-12 text-base",
+        @class
+      ]}
+      {@rest}
+    >
       {@initials}
     </div>
     """

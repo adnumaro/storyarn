@@ -10,7 +10,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlersTest do
   alias Storyarn.Screenplays
 
   describe "EditorHandlers — sync_editor_content" do
-    setup :register_and_log_in_user
+    setup :register_and_log_in_super_admin
 
     setup %{user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
