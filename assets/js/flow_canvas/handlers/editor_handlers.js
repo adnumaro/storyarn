@@ -104,11 +104,21 @@ export function createEditorHandlers(hook) {
       // Clear history — stale after full refresh
       hook.history?.clear();
 
+      // Use try/catch per item — during LiveView rejoin the editor may be in
+      // an inconsistent state where some IDs no longer exist internally.
       for (const conn of [...hook.editor.getConnections()]) {
-        await hook.editor.removeConnection(conn.id);
+        try {
+          await hook.editor.removeConnection(conn.id);
+        } catch {
+          // Connection already gone — ignore
+        }
       }
       for (const node of [...hook.editor.getNodes()]) {
-        await hook.editor.removeNode(node.id);
+        try {
+          await hook.editor.removeNode(node.id);
+        } catch {
+          // Node already gone — ignore
+        }
       }
       hook.nodeMap.clear();
       hook.connectionDataMap.clear();
