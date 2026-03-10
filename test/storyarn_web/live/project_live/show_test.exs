@@ -10,20 +10,21 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
   describe "Show" do
     setup :register_and_log_in_user
 
-    test "renders project for owner", %{conn: conn, user: user} do
+    test "renders project dashboard for owner", %{conn: conn, user: user} do
       project =
-        project_fixture(user, %{name: "My Project", description: "A description"})
+        project_fixture(user, %{name: "My Project"})
         |> Repo.preload(:workspace)
 
       {:ok, _view, html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
+      # Project name in toolbar
       assert html =~ "My Project"
-      assert html =~ "A description"
-      assert html =~ "Settings"
+      # Dashboard tool is active (icon rendered)
+      assert html =~ "layout-dashboard"
     end
 
-    test "renders project for member", %{conn: conn, user: user} do
+    test "renders project dashboard for member", %{conn: conn, user: user} do
       owner = user_fixture()
       project = project_fixture(owner, %{name: "Shared Project"}) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
@@ -32,29 +33,6 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
       assert html =~ "Shared Project"
-      # Settings button is hidden for non-owners (editors can't manage project)
-      refute html =~ "Settings"
-    end
-
-    test "shows settings link for owner", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
-
-      assert html =~ "Settings"
-    end
-
-    test "hides settings button for non-owner", %{conn: conn, user: user} do
-      owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
-      _membership = membership_fixture(project, user, "editor")
-
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
-
-      # Settings button is hidden for non-owners
-      refute html =~ "Settings"
     end
 
     test "redirects for non-member", %{conn: conn} do
@@ -68,14 +46,15 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
       assert flash["error"] =~ "not found"
     end
 
-    test "shows workspace sidebar with link to workspace", %{conn: conn, user: user} do
+    test "shows tool switcher with other tools", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       {:ok, _view, html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
-      # Layouts.app sidebar has workspace link
-      assert html =~ ~r/workspaces\/#{project.workspace.slug}/
+      # Tool switcher shows other tools (not Dashboard since it's active)
+      assert html =~ "Sheets"
+      assert html =~ "Flows"
     end
   end
 end

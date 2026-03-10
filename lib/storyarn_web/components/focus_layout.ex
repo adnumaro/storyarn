@@ -21,6 +21,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
   # ============================================================================
 
   @tools [
+    %{key: :dashboard, icon: "layout-dashboard", section: "dashboard"},
     %{key: :sheets, icon: "file-text", section: "sheets"},
     %{key: :flows, icon: "git-branch", section: "flows"},
     %{key: :scenes, icon: "map", section: "scenes"},
@@ -33,6 +34,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
 
   defp tool_icon(key), do: Map.get(@tool_icons, key, "layout-grid")
 
+  defp tool_label(:dashboard), do: dgettext("projects", "Dashboard")
   defp tool_label(:sheets), do: dgettext("sheets", "Sheets")
   defp tool_label(:flows), do: dgettext("flows", "Flows")
   defp tool_label(:scenes), do: dgettext("scenes", "Scenes")
@@ -325,6 +327,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
     """
   end
 
+  defp tool_path(ws, proj, "dashboard"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}"
   defp tool_path(ws, proj, "sheets"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/sheets"
   defp tool_path(ws, proj, "flows"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows"
   defp tool_path(ws, proj, "scenes"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/scenes"

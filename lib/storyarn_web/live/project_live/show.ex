@@ -13,31 +13,16 @@ defmodule StoryarnWeb.ProjectLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app
+    <Layouts.focus
       flash={@flash}
       current_scope={@current_scope}
-      workspaces={@workspaces}
-      current_workspace={@workspace}
+      project={@project}
+      workspace={@workspace}
+      active_tool={:dashboard}
+      has_tree={false}
+      can_edit={@can_manage}
     >
       <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        <%!-- Project Header --%>
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold">{@project.name}</h1>
-            <p :if={@project.description} class="text-base-content/60 mt-1">
-              {@project.description}
-            </p>
-          </div>
-          <.link
-            :if={@can_manage}
-            navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings"}
-            class="btn btn-ghost btn-sm"
-          >
-            <.icon name="settings" class="size-4 mr-1" />
-            {dgettext("projects", "Settings")}
-          </.link>
-        </div>
-
         <%!-- Loading State --%>
         <div :if={is_nil(@stats)} class="flex items-center justify-center py-12">
           <span class="loading loading-spinner loading-lg text-primary"></span>
@@ -145,7 +130,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
           </.dashboard_section>
         </div>
       </div>
-    </Layouts.app>
+    </Layouts.focus>
     """
   end
 
@@ -164,7 +149,6 @@ defmodule StoryarnWeb.ProjectLive.Show do
           |> assign(:page_title, project.name)
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
-          |> assign(:current_workspace, project.workspace)
           |> assign(:membership, membership)
           |> assign(:can_manage, can_manage)
           |> assign(:stats, nil)
@@ -229,6 +213,8 @@ defmodule StoryarnWeb.ProjectLive.Show do
     |> Enum.sort_by(& &1.value, :desc)
   end
 
+  defp format_node_distribution(_), do: []
+
   defp node_type_label("dialogue"), do: dgettext("flows", "Dialogue")
   defp node_type_label("condition"), do: dgettext("flows", "Condition")
   defp node_type_label("instruction"), do: dgettext("flows", "Instruction")
@@ -239,8 +225,6 @@ defmodule StoryarnWeb.ProjectLive.Show do
   defp node_type_label("entry"), do: dgettext("flows", "Entry")
   defp node_type_label("exit"), do: dgettext("flows", "Exit")
   defp node_type_label(type), do: type
-
-  defp format_node_distribution(_), do: []
 
   defp format_speakers(speakers, workspace_slug, project_slug) when is_list(speakers) do
     Enum.map(speakers, fn s ->
