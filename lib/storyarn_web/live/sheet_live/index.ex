@@ -25,6 +25,7 @@ defmodule StoryarnWeb.SheetLive.Index do
       project={@project}
       workspace={@workspace}
       active_tool={:sheets}
+      on_dashboard={true}
       has_tree={true}
       tree_panel_open={@tree_panel_open}
       tree_panel_pinned={@tree_panel_pinned}

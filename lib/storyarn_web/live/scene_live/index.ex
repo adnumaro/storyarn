@@ -25,6 +25,7 @@ defmodule StoryarnWeb.SceneLive.Index do
       project={@project}
       workspace={@workspace}
       active_tool={:scenes}
+      on_dashboard={true}
       has_tree={true}
       tree_panel_open={@tree_panel_open}
       tree_panel_pinned={@tree_panel_pinned}

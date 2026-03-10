@@ -422,7 +422,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           # Defaults — scene loaded in handle_params
           |> assign(:scene, nil)
           |> assign(:ancestors, [])
-          |> assign(:scenes_tree, [])
+          |> assign(:scenes_tree, Scenes.list_scenes_tree(project.id))
           |> assign(:layers, [])
           |> assign(:zones, [])
           |> assign(:pins, [])

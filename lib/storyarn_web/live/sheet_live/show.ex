@@ -240,7 +240,7 @@ defmodule StoryarnWeb.SheetLive.Show do
          # Defaults — sheet loaded in handle_params
          |> assign(:sheet, nil)
          |> assign(:ancestors, [])
-         |> assign(:sheets_tree, [])
+         |> assign(:sheets_tree, Sheets.list_sheets_tree(project.id))
          |> assign(:children, [])
          |> assign(:blocks, [])
          |> assign(:sheet_data_loaded, false)}

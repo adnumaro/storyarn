@@ -125,7 +125,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
          |> assign(:pending_delete_id, nil)
          # Defaults — screenplay loaded in handle_params
          |> assign(:screenplay, nil)
-         |> assign(:screenplays_tree, [])
+         |> assign(:screenplays_tree, Screenplays.list_screenplays_tree(project.id))
          |> assign(:sheets_map, %{})
          |> assign(:elements, [])
          |> assign(:editor_doc, Screenplays.elements_to_doc([]))

@@ -140,6 +140,8 @@ defmodule StoryarnWeb.Layouts do
   attr :can_edit, :boolean, default: false, doc: "whether the user can edit content"
   attr :online_users, :list, default: [], doc: "list of online user presence maps"
 
+  attr :on_dashboard, :boolean, default: false, doc: "whether the current page is the tool dashboard"
+
   attr :canvas_mode, :boolean,
     default: false,
     doc: "when true, main area has no padding/scroll (canvas views)"
@@ -230,6 +232,7 @@ defmodule StoryarnWeb.Layouts do
         :if={@has_tree && @tree_content != []}
         tree_panel_open={@tree_panel_open}
         active_tool={@active_tool}
+        on_dashboard={@on_dashboard}
         tree_panel_pinned={@tree_panel_pinned}
         show_pin={@show_pin}
         can_edit={@can_edit}

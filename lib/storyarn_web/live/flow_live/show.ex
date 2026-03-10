@@ -267,7 +267,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           # Defaults — flow loaded in handle_params
           |> assign(:flow, nil)
           |> assign(:nav_history, nil)
-          |> assign(:flows_tree, [])
+          |> assign(:flows_tree, Flows.list_flows_tree(project.id))
           |> assign(:pending_delete_id, nil)
           |> assign(:scene_name, nil)
           |> assign(:scene_inherited, false)

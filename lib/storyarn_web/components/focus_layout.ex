@@ -15,6 +15,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
 
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.MemberComponents, only: [user_avatar: 1]
+  import StoryarnWeb.Components.TreeComponents, only: [tree_link: 1]
 
   # ============================================================================
   # Tool definitions
@@ -351,6 +352,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
   Shows tool name header, search slot, tree content slot, and pin/close footer.
   """
   attr :active_tool, :atom, required: true
+  attr :on_dashboard, :boolean, default: false
   attr :tree_panel_open, :boolean, default: false
   attr :tree_panel_pinned, :boolean, default: true
   attr :show_pin, :boolean, default: true
@@ -373,15 +375,19 @@ defmodule StoryarnWeb.Components.FocusLayout do
         if(@tree_panel_open, do: "", else: "opacity-0 pointer-events-none")
       ]}
     >
-      <%!-- Back to workspace --%>
-      <div class="px-2 pt-2 pb-1 border-b border-base-300">
-        <.link
-          navigate={~p"/workspaces/#{@workspace.slug}"}
-          class="flex items-center gap-1.5 text-xs text-base-content/60 hover:text-base-content transition-colors py-1"
-        >
-          <.icon name="chevron-left" class="size-3" />
-          <span>{gettext("Back to workspace")}</span>
-        </.link>
+      <%!-- Navigation header --%>
+      <div class="px-2 pt-2 pb-2 border-b border-base-300 space-y-1">
+        <.tree_link
+          label={gettext("Back to workspace")}
+          href={~p"/workspaces/#{@workspace.slug}"}
+          icon="chevron-left"
+        />
+        <.tree_link
+          label={tool_label(@active_tool) <> " " <> gettext("dashboard")}
+          href={tool_path(@workspace, @project, to_string(@active_tool))}
+          icon="layout-dashboard"
+          active={@on_dashboard}
+        />
       </div>
 
       <%!-- Tree content (scrollable) --%>
