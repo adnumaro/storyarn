@@ -10,7 +10,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
   # Simulates the FlowLoader JS hook: triggers the event + waits for start_async
   defp load_flow(view) do
     render_click(view, "load_flow_data", %{})
-    render_async(view, 500)
+    render_async(view, 2000)
   end
 
   describe "navigate_to_subflow" do

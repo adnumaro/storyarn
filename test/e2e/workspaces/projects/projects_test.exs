@@ -96,8 +96,8 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
     end
   end
 
-  describe "project show sheet (authenticated)" do
-    test "displays project details", %{conn: conn} do
+  describe "project show (authenticated)" do
+    test "displays project dashboard with stat cards", %{conn: conn} do
       user = user_fixture()
 
       project =
@@ -107,17 +107,19 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
-      |> assert_has("h1", text: "Epic Tale")
+      |> assert_has("p", text: "Sheets")
+      |> assert_has("p", text: "Flows")
     end
 
-    test "shows settings link for owner", %{conn: conn} do
+    test "shows project settings in dropdown for owner", %{conn: conn} do
       user = user_fixture()
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
-      |> assert_has("a", text: "Settings")
+      |> click("button", project.name)
+      |> assert_has("a", "Project settings")
     end
   end
 

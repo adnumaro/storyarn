@@ -39,9 +39,7 @@ export function createCursorHandler(hook) {
       });
 
       // Notify server when mouse leaves canvas
-      hook.leafletMap
-        .getContainer()
-        .addEventListener("mouseleave", this._onMouseLeave);
+      hook.leafletMap.getContainer().addEventListener("mouseleave", this._onMouseLeave);
     },
 
     _onMouseLeave() {
@@ -97,9 +95,7 @@ export function createCursorHandler(hook) {
      * Cleans up all cursor resources.
      */
     destroy() {
-      hook.leafletMap
-        ?.getContainer()
-        ?.removeEventListener("mouseleave", this._onMouseLeave);
+      hook.leafletMap?.getContainer()?.removeEventListener("mouseleave", this._onMouseLeave);
 
       for (const [, entry] of remoteCursors) {
         clearTimeout(entry.fadeTimer);
