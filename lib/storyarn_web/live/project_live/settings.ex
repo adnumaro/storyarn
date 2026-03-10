@@ -7,8 +7,13 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   import StoryarnWeb.Components.MemberComponents
   import StoryarnWeb.Components.ColorPicker
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
+  import StoryarnWeb.ProjectLive.Components.SettingsSidebar
 
   alias Storyarn.Projects
+
+  # ===========================================================================
+  # Render
+  # ===========================================================================
 
   @impl true
   def render(assigns) do
@@ -20,232 +25,31 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       workspace={@workspace}
       active_tool={:sheets}
       has_tree={false}
+      show_tool_switcher={false}
     >
-      <div class="text-center mb-8">
-        <.header>
-          {dgettext("projects", "Project Settings")}
-          <:subtitle>
-            {dgettext("projects", "Manage your project details and team members")}
-          </:subtitle>
-        </.header>
-      </div>
+      <.settings_sidebar
+        workspace={@workspace}
+        project={@project}
+        active={@live_action}
+      />
 
-      <div class="space-y-8 max-w-2xl mx-auto">
-        <%!-- Project Details Section --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Project Details")}</h3>
-          <.form
-            for={@project_form}
-            id="project-form"
-            phx-submit="update_project"
-            phx-change="validate_project"
-          >
-            <.input
-              field={@project_form[:name]}
-              type="text"
-              label={dgettext("projects", "Project Name")}
-              required
-            />
-            <.input
-              field={@project_form[:description]}
-              type="textarea"
-              label={dgettext("projects", "Description")}
-              rows={3}
-            />
-            <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
-              {dgettext("projects", "Save Changes")}
-            </.button>
-          </.form>
-        </section>
-
-        <div class="divider" />
-
-        <%!-- Team Members Section --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Team Members")}</h3>
-          <div class="space-y-3 mb-6">
-            <.member_row
-              :for={member <- @members}
-              member={member}
-              current_user_id={@current_scope.user.id}
-              can_manage={true}
-              on_remove="remove_member"
-            />
-          </div>
-
-          <%!-- Invite Form --%>
-          <div class="card bg-base-200 p-4">
-            <h4 class="font-medium mb-3">{dgettext("projects", "Request member invitation")}</h4>
-            <p class="text-sm opacity-70 mb-3">
-              {dgettext("projects", "Invitation requests are reviewed by an admin before being sent.")}
-            </p>
-            <.form for={@invite_form} id="invite-form" phx-submit="send_invitation">
-              <div class="flex gap-3 items-end">
-                <div class="flex-1">
-                  <.input
-                    field={@invite_form[:email]}
-                    type="email"
-                    label={dgettext("projects", "Email address")}
-                    placeholder="colleague@example.com"
-                    required
-                  />
-                </div>
-                <div class="w-32">
-                  <.input
-                    field={@invite_form[:role]}
-                    type="select"
-                    label={dgettext("projects", "Role")}
-                    options={[
-                      {dgettext("projects", "Editor"), "editor"},
-                      {dgettext("projects", "Viewer"), "viewer"}
-                    ]}
-                  />
-                </div>
-              </div>
-              <.button variant="primary">
-                {dgettext("projects", "Request Invitation")}
-              </.button>
-            </.form>
-          </div>
-        </section>
-
-        <div class="divider" />
-
-        <%!-- Theme Section --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Project Theme")}</h3>
-          <p class="text-sm opacity-70 mb-4">
-            {dgettext("projects", "Customize the primary and accent colors for this project.")}
-          </p>
-          <div class="card bg-base-200 p-4">
-            <div class="flex gap-8 items-start">
-              <div>
-                <label class="text-sm font-medium mb-2 block">
-                  {dgettext("projects", "Primary")}
-                </label>
-                <div class="flex items-center gap-3">
-                  <.color_picker
-                    id="theme-primary"
-                    color={@theme_primary}
-                    event="update_theme_primary"
-                  />
-                  <code class="text-xs opacity-60">{@theme_primary}</code>
-                </div>
-              </div>
-              <div>
-                <label class="text-sm font-medium mb-2 block">
-                  {dgettext("projects", "Accent")}
-                </label>
-                <div class="flex items-center gap-3">
-                  <.color_picker
-                    id="theme-accent"
-                    color={@theme_accent}
-                    event="update_theme_accent"
-                  />
-                  <code class="text-xs opacity-60">{@theme_accent}</code>
-                </div>
-              </div>
-            </div>
-            <div class="flex gap-3 mt-4">
-              <.button variant="primary" phx-click="save_theme">
-                {dgettext("projects", "Apply Theme")}
-              </.button>
-              <.button :if={@has_custom_theme} phx-click="reset_theme">
-                {dgettext("projects", "Reset to Default")}
-              </.button>
-            </div>
-          </div>
-        </section>
-
-        <div class="divider" />
-
-        <%!-- Localization Section --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Localization")}</h3>
-
-          <%!-- DeepL Configuration --%>
-          <div class="card bg-base-200 p-4">
-            <h4 class="font-medium mb-3">{dgettext("projects", "Translation Provider (DeepL)")}</h4>
-
-            <.form
-              for={@provider_form}
-              id="provider-config-form"
-              phx-submit="save_provider_config"
-            >
-              <.input
-                field={@provider_form[:api_key_encrypted]}
-                type="password"
-                label={dgettext("projects", "API Key")}
-                placeholder={if @has_api_key, do: "••••••••", else: ""}
-              />
-              <.input
-                field={@provider_form[:api_endpoint]}
-                type="select"
-                label={dgettext("projects", "API Tier")}
-                options={[
-                  {dgettext("projects", "Free (api-free.deepl.com)"), "https://api-free.deepl.com"},
-                  {dgettext("projects", "Pro (api.deepl.com)"), "https://api.deepl.com"}
-                ]}
-              />
-              <div class="flex items-center gap-3 mt-3">
-                <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
-                  {dgettext("projects", "Save")}
-                </.button>
-                <.button
-                  :if={@has_api_key}
-                  type="button"
-                  phx-click="test_provider_connection"
-                  phx-disable-with={dgettext("projects", "Testing...")}
-                >
-                  {dgettext("projects", "Test Connection")}
-                </.button>
-              </div>
-            </.form>
-
-            <div :if={@provider_usage} class="mt-3 text-sm opacity-70">
-              {dgettext("projects", "Usage: %{used} / %{limit} characters",
-                used: format_number(@provider_usage.character_count),
-                limit: format_number(@provider_usage.character_limit)
-              )}
-            </div>
-          </div>
-        </section>
-
-        <div class="divider" />
-
-        <%!-- Maintenance Section --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Maintenance")}</h3>
-          <div class="card bg-base-200 p-4">
-            <p class="text-sm mb-3">
-              {dgettext(
-                "projects",
-                "If you renamed sheet shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
-              )}
-            </p>
-            <.button variant="primary" phx-click={show_modal("repair-refs-confirm")}>
-              {dgettext("projects", "Repair variable references")}
-            </.button>
-          </div>
-        </section>
-
-        <div class="divider" />
-
-        <%!-- Danger Zone --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4 text-error">{dgettext("projects", "Danger Zone")}</h3>
-          <div class="card bg-error/10 border border-error/30 p-4">
-            <p class="text-sm mb-4">
-              {dgettext(
-                "projects",
-                "Once you delete a project, there is no going back. Please be certain."
-              )}
-            </p>
-            <.button variant="error" phx-click={show_modal("delete-project-confirm")}>
-              {dgettext("projects", "Delete Project")}
-            </.button>
-          </div>
-        </section>
+      <%!-- Main content --%>
+      <div class="pl-[248px]">
+        <div class="max-w-3xl mx-auto">
+          <.section_content
+            live_action={@live_action}
+            project_form={@project_form}
+            members={@members}
+            current_scope={@current_scope}
+            invite_form={@invite_form}
+            theme_primary={@theme_primary}
+            theme_accent={@theme_accent}
+            has_custom_theme={@has_custom_theme}
+            provider_form={@provider_form}
+            has_api_key={@has_api_key}
+            provider_usage={@provider_usage}
+          />
+        </div>
       </div>
 
       <.confirm_modal
@@ -268,6 +72,252 @@ defmodule StoryarnWeb.ProjectLive.Settings do
     </Layouts.focus>
     """
   end
+
+  # ===========================================================================
+  # Section content
+  # ===========================================================================
+
+  defp section_content(%{live_action: :general} = assigns) do
+    ~H"""
+    <.header>
+      {dgettext("projects", "General")}
+      <:subtitle>
+        {dgettext("projects", "Project details, theme, and maintenance")}
+      </:subtitle>
+    </.header>
+
+    <div class="mt-6 space-y-8">
+      <%!-- Project Details --%>
+      <section>
+        <.form
+          for={@project_form}
+          id="project-form"
+          phx-submit="update_project"
+          phx-change="validate_project"
+        >
+          <.input
+            field={@project_form[:name]}
+            type="text"
+            label={dgettext("projects", "Project Name")}
+            required
+          />
+          <.input
+            field={@project_form[:description]}
+            type="textarea"
+            label={dgettext("projects", "Description")}
+            rows={3}
+          />
+          <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
+            {dgettext("projects", "Save Changes")}
+          </.button>
+        </.form>
+      </section>
+
+      <div class="divider" />
+
+      <%!-- Theme --%>
+      <section>
+        <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Project Theme")}</h3>
+        <div class="card bg-base-200 p-4">
+          <div class="flex gap-8 items-start">
+            <div>
+              <label class="text-sm font-medium mb-2 block">
+                {dgettext("projects", "Primary")}
+              </label>
+              <div class="flex items-center gap-3">
+                <.color_picker
+                  id="theme-primary"
+                  color={@theme_primary}
+                  event="update_theme_primary"
+                />
+                <code class="text-xs opacity-60">{@theme_primary}</code>
+              </div>
+            </div>
+            <div>
+              <label class="text-sm font-medium mb-2 block">
+                {dgettext("projects", "Accent")}
+              </label>
+              <div class="flex items-center gap-3">
+                <.color_picker
+                  id="theme-accent"
+                  color={@theme_accent}
+                  event="update_theme_accent"
+                />
+                <code class="text-xs opacity-60">{@theme_accent}</code>
+              </div>
+            </div>
+          </div>
+          <div class="flex gap-3 mt-4">
+            <.button variant="primary" phx-click="save_theme">
+              {dgettext("projects", "Apply Theme")}
+            </.button>
+            <.button :if={@has_custom_theme} phx-click="reset_theme">
+              {dgettext("projects", "Reset to Default")}
+            </.button>
+          </div>
+        </div>
+      </section>
+
+      <div class="divider" />
+
+      <%!-- Maintenance --%>
+      <section>
+        <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Maintenance")}</h3>
+        <div class="card bg-base-200 p-4">
+          <p class="text-sm mb-3">
+            {dgettext(
+              "projects",
+              "If you renamed sheet shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
+            )}
+          </p>
+          <.button variant="primary" phx-click={show_modal("repair-refs-confirm")}>
+            {dgettext("projects", "Repair variable references")}
+          </.button>
+        </div>
+      </section>
+
+      <div class="divider" />
+
+      <%!-- Danger Zone --%>
+      <section>
+        <h3 class="text-lg font-semibold mb-4 text-error">
+          {dgettext("projects", "Danger Zone")}
+        </h3>
+        <div class="card bg-error/10 border border-error/30 p-4">
+          <p class="text-sm mb-4">
+            {dgettext(
+              "projects",
+              "Once you delete a project, there is no going back. Please be certain."
+            )}
+          </p>
+          <.button variant="error" phx-click={show_modal("delete-project-confirm")}>
+            {dgettext("projects", "Delete Project")}
+          </.button>
+        </div>
+      </section>
+    </div>
+    """
+  end
+
+  defp section_content(%{live_action: :localization} = assigns) do
+    ~H"""
+    <.header>
+      {dgettext("projects", "Localization")}
+      <:subtitle>
+        {dgettext("projects", "Translation provider configuration")}
+      </:subtitle>
+    </.header>
+
+    <div class="mt-6">
+      <div class="card bg-base-200 p-4">
+        <h4 class="font-medium mb-3">{dgettext("projects", "Translation Provider (DeepL)")}</h4>
+
+        <.form
+          for={@provider_form}
+          id="provider-config-form"
+          phx-submit="save_provider_config"
+        >
+          <.input
+            field={@provider_form[:api_key_encrypted]}
+            type="password"
+            label={dgettext("projects", "API Key")}
+            placeholder={if @has_api_key, do: "••••••••", else: ""}
+          />
+          <.input
+            field={@provider_form[:api_endpoint]}
+            type="select"
+            label={dgettext("projects", "API Tier")}
+            options={[
+              {dgettext("projects", "Free (api-free.deepl.com)"), "https://api-free.deepl.com"},
+              {dgettext("projects", "Pro (api.deepl.com)"), "https://api.deepl.com"}
+            ]}
+          />
+          <div class="flex items-center gap-3 mt-3">
+            <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
+              {dgettext("projects", "Save")}
+            </.button>
+            <.button
+              :if={@has_api_key}
+              type="button"
+              phx-click="test_provider_connection"
+              phx-disable-with={dgettext("projects", "Testing...")}
+            >
+              {dgettext("projects", "Test Connection")}
+            </.button>
+          </div>
+        </.form>
+
+        <div :if={@provider_usage} class="mt-3 text-sm opacity-70">
+          {dgettext("projects", "Usage: %{used} / %{limit} characters",
+            used: format_number(@provider_usage.character_count),
+            limit: format_number(@provider_usage.character_limit)
+          )}
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  defp section_content(%{live_action: :members} = assigns) do
+    ~H"""
+    <.header>
+      {dgettext("projects", "Members")}
+      <:subtitle>
+        {dgettext("projects", "Manage project members and invitations")}
+      </:subtitle>
+    </.header>
+
+    <div class="mt-6 space-y-6">
+      <div class="space-y-3">
+        <.member_row
+          :for={member <- @members}
+          member={member}
+          current_user_id={@current_scope.user.id}
+          can_manage={true}
+          on_remove="remove_member"
+        />
+      </div>
+
+      <div class="card bg-base-200 p-4">
+        <h4 class="font-medium mb-3">{dgettext("projects", "Request member invitation")}</h4>
+        <p class="text-sm opacity-70 mb-3">
+          {dgettext("projects", "Invitation requests are reviewed by an admin before being sent.")}
+        </p>
+        <.form for={@invite_form} id="invite-form" phx-submit="send_invitation">
+          <div class="flex gap-3 items-end">
+            <div class="flex-1">
+              <.input
+                field={@invite_form[:email]}
+                type="email"
+                label={dgettext("projects", "Email address")}
+                placeholder="colleague@example.com"
+                required
+              />
+            </div>
+            <div class="w-32">
+              <.input
+                field={@invite_form[:role]}
+                type="select"
+                label={dgettext("projects", "Role")}
+                options={[
+                  {dgettext("projects", "Editor"), "editor"},
+                  {dgettext("projects", "Viewer"), "viewer"}
+                ]}
+              />
+            </div>
+          </div>
+          <.button variant="primary">
+            {dgettext("projects", "Request Invitation")}
+          </.button>
+        </.form>
+      </div>
+    </div>
+    """
+  end
+
+  # ===========================================================================
+  # Mount & handle_params
+  # ===========================================================================
 
   @impl true
   def mount(
@@ -327,6 +377,15 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   end
 
   @impl true
+  def handle_params(_params, _url, socket) do
+    {:noreply, assign(socket, :page_title, dgettext("projects", "Project Settings"))}
+  end
+
+  # ===========================================================================
+  # Events
+  # ===========================================================================
+
+  @impl true
   def handle_event("validate_project", %{"project" => project_params}, socket) do
     changeset =
       socket.assigns.project
@@ -380,12 +439,10 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
       case Projects.delete_project(socket.assigns.project) do
         {:ok, _} ->
-          socket =
-            socket
-            |> put_flash(:info, dgettext("projects", "Project deleted."))
-            |> push_navigate(to: ~p"/workspaces/#{workspace.slug}")
-
-          {:noreply, socket}
+          {:noreply,
+           socket
+           |> put_flash(:info, dgettext("projects", "Project deleted."))
+           |> push_navigate(to: ~p"/workspaces/#{workspace.slug}")}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to delete project."))}
@@ -456,6 +513,10 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       end
     end)
   end
+
+  # ===========================================================================
+  # Private
+  # ===========================================================================
 
   defp assign_theme(socket, project) do
     case Storyarn.Projects.Project.theme_colors(project) do

@@ -4,6 +4,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
 
+  import StoryarnWeb.ProjectLive.Components.SettingsSidebar
+
   alias Storyarn.Exports
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Imports
@@ -19,11 +21,19 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
-      active_tool={:export_import}
+      active_tool={:sheets}
       has_tree={false}
+      show_tool_switcher={false}
       can_edit={@can_edit}
     >
-      <div class="max-w-2xl mx-auto mt-6 space-y-8 pb-12">
+      <.settings_sidebar
+        workspace={@workspace}
+        project={@project}
+        active={:export_import}
+      />
+
+      <div class="pl-[248px]">
+      <div class="max-w-3xl mx-auto space-y-8 pb-12">
         <.header>
           {gettext("Export & Import")}
           <:subtitle>
@@ -110,6 +120,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
             </div>
           <% end %>
         </section>
+      </div>
       </div>
     </Layouts.focus>
     """

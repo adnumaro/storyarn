@@ -84,7 +84,7 @@ defmodule StoryarnWeb.RouterTest do
     end
 
     test "redirects to login for unauthenticated export-import access", %{conn: conn} do
-      conn = get(conn, ~p"/workspaces/test-ws/projects/test-proj/export-import")
+      conn = get(conn, ~p"/workspaces/test-ws/projects/test-proj/settings/export-import")
       assert redirected_to(conn) =~ "/users/log-in"
     end
   end

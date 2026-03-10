@@ -16,7 +16,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp export_import_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "renders export/import page", %{conn: conn, project: project} do
@@ -122,7 +122,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp ei_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "lists all available export formats", %{conn: conn, project: project} do
@@ -240,7 +240,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp section_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "toggling sheets off and back on", %{conn: conn, project: project} do
@@ -308,7 +308,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp asset_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "default asset mode is references (no assets param in URL)", %{
@@ -376,7 +376,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp opts_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "toggling validate_before_export off adds validate=false to URL", %{
@@ -445,7 +445,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp validate_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "validate_export renders validation results", %{conn: conn, project: project} do
@@ -476,7 +476,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp strategy_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "set_strategy assigns each valid strategy without crash", %{
@@ -509,7 +509,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp reset_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "reset_import returns to upload step", %{conn: conn, project: project} do
@@ -534,7 +534,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp dl_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "download URL includes workspace and project slugs", %{conn: conn, project: project} do
@@ -595,7 +595,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp counts_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "loads entity counts asynchronously", %{conn: conn, project: project} do
@@ -635,7 +635,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp data_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "validate_export with sheets returns results", %{conn: conn, project: project} do
@@ -684,7 +684,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, _view, html} =
         live(
           conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
         )
 
       # Viewer should not see the file input
@@ -706,7 +706,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, view, html} =
         live(
           conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
         )
 
       # Viewer should still see export controls
@@ -731,7 +731,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, view, _html} =
         live(
           conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
         )
 
       html = view |> render_click("validate_export", %{})
@@ -742,7 +742,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   describe "Authentication and authorization" do
     test "unauthenticated user gets redirected to login", %{conn: conn} do
       assert {:error, redirect} =
-               live(conn, ~p"/workspaces/some-ws/projects/some-proj/export-import")
+               live(conn, ~p"/workspaces/some-ws/projects/some-proj/settings/export-import")
 
       assert {:redirect, %{to: path, flash: flash}} = redirect
       assert path == ~p"/users/log-in"
@@ -759,7 +759,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert {:error, {:redirect, %{to: "/workspaces", flash: %{"error" => error_msg}}}} =
                live(
                  conn,
-                 ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+                 ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
                )
 
       assert error_msg =~ "not found"
@@ -776,7 +776,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, _view, html} =
         live(
           conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
         )
 
       assert html =~ "Export"
@@ -793,7 +793,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, _view, html} =
         live(
           conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
         )
 
       assert html =~ "edit permissions to import"
@@ -810,7 +810,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, _view, html} =
         live(
           conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
         )
 
       assert html =~ ".storyarn.json"
@@ -831,7 +831,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp filesize_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "file upload entry shows KB for kilobyte-sized files", %{
@@ -894,7 +894,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp upload_err_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "not_accepted file type shows appropriate error", %{conn: conn, project: project} do
@@ -929,7 +929,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp val_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "validation passed on empty project shows badge-success and no-issues message", %{
@@ -982,7 +982,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp import_err_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "parse_import with invalid JSON shows error step", %{
@@ -1088,7 +1088,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     defp preview_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export-import"
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
     test "parse_import with valid storyarn JSON shows preview step", %{

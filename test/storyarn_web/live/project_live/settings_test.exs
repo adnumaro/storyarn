@@ -7,18 +7,32 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
   alias Storyarn.Repo
 
-  describe "Settings" do
+  defp settings_path(project, section \\ nil) do
+    base = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings"
+    if section, do: "#{base}/#{section}", else: base
+  end
+
+  describe "General section" do
     setup :register_and_log_in_user
 
-    test "renders project settings for owner", %{conn: conn, user: user} do
+    test "renders settings with sidebar navigation", %{conn: conn, user: user} do
       project = project_fixture(user, %{name: "My Project"}) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
+      {:ok, _view, html} = live(conn, settings_path(project))
 
-      assert html =~ "Project Settings"
+      # Sidebar sections
+      assert html =~ "Back to project"
+      assert html =~ "General"
+      assert html =~ "Integrations"
+      assert html =~ "Localization"
+      assert html =~ "Administration"
+      assert html =~ "Members"
+      assert html =~ "Import &amp; Export"
+
+      # General content
       assert html =~ "My Project"
-      assert html =~ "Team Members"
+      assert html =~ "Project Theme"
+      assert html =~ "Maintenance"
       assert html =~ "Danger Zone"
     end
 
@@ -28,7 +42,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       _membership = membership_fixture(project, user, "editor")
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
+        live(conn, settings_path(project))
 
       assert path =~ "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
       assert flash["error"] =~ "permission"
@@ -37,8 +51,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     test "updates project details", %{conn: conn, user: user} do
       project = project_fixture(user, %{name: "Old Name"}) |> Repo.preload(:workspace)
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
+      {:ok, view, _html} = live(conn, settings_path(project))
 
       html =
         view
@@ -46,17 +59,31 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
         |> render_submit()
 
       assert html =~ "updated successfully"
-      # The form should now show the new name as the value
       assert html =~ ~s(value="New Name")
     end
+
+    test "deletes project from danger zone", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+
+      {:ok, view, _html} = live(conn, settings_path(project))
+
+      render_click(view, "delete_project")
+
+      {path, flash} = assert_redirect(view)
+      assert path == "/workspaces/#{project.workspace.slug}"
+      assert flash["info"] =~ "deleted"
+    end
+  end
+
+  describe "Members section" do
+    setup :register_and_log_in_user
 
     test "lists team members", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       member = user_fixture(%{email: "member@example.com"})
       _membership = membership_fixture(project, member, "editor")
 
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
+      {:ok, _view, html} = live(conn, settings_path(project, "members"))
 
       assert html =~ user.email
       assert html =~ "member@example.com"
@@ -64,11 +91,10 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert html =~ "editor"
     end
 
-    test "sends invitation request to admin", %{conn: conn, user: user} do
+    test "sends invitation request", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
+      {:ok, view, _html} = live(conn, settings_path(project, "members"))
 
       view
       |> form("#invite-form", invite: %{email: "newmember@example.com", role: "editor"})
@@ -82,8 +108,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       member = user_fixture(%{email: "removeme@example.com"})
       membership = membership_fixture(project, member, "editor")
 
-      {:ok, view, html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
+      {:ok, view, html} = live(conn, settings_path(project, "members"))
 
       assert html =~ "removeme@example.com"
 
@@ -91,19 +116,6 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       assert render(view) =~ "Member removed"
       refute render(view) =~ "removeme@example.com"
-    end
-
-    test "deletes project", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
-
-      render_click(view, "delete_project")
-
-      {path, flash} = assert_redirect(view)
-      assert path == "/workspaces/#{project.workspace.slug}"
-      assert flash["info"] =~ "deleted"
     end
   end
 end

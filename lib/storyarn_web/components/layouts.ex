@@ -141,6 +141,7 @@ defmodule StoryarnWeb.Layouts do
   attr :online_users, :list, default: [], doc: "list of online user presence maps"
 
   attr :on_dashboard, :boolean, default: false, doc: "whether the current page is the tool dashboard"
+  attr :show_tool_switcher, :boolean, default: true, doc: "whether to show the tool switcher dropdown"
 
   attr :canvas_mode, :boolean,
     default: false,
@@ -211,6 +212,7 @@ defmodule StoryarnWeb.Layouts do
           workspace={@workspace}
           project={@project}
           is_super_admin={@is_super_admin}
+          show_tool_switcher={@show_tool_switcher}
         />
         {render_slot(@top_bar_extra)}
       </div>

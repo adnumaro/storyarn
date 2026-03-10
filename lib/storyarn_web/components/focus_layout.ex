@@ -59,6 +59,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
   attr :workspace, :map, required: true
   attr :project, :map, required: true
   attr :is_super_admin, :boolean, default: false
+  attr :show_tool_switcher, :boolean, default: true
 
   def left_toolbar(assigns) do
     assigns = assign(assigns, :active_icon, tool_icon(assigns.active_tool))
@@ -100,7 +101,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
           <ul class="menu p-1 text-sm">
             <li>
               <.link navigate={
-                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/export-import"
+                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings/export-import"
               }>
                 <.icon name="package" class="size-5" />
                 {gettext("Export & Import")}
@@ -123,7 +124,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
       </div>
 
       <%!-- Tool switcher: icon + label, opens dropdown to switch tools --%>
-      <div class="dropdown dropdown-bottom">
+      <div :if={@show_tool_switcher} class="dropdown dropdown-bottom">
         <button
           type="button"
           tabindex="0"

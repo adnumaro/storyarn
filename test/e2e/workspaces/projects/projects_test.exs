@@ -131,8 +131,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
-      |> assert_has("h1", text: "Project Settings")
-      |> assert_has("h3", text: "Project Details")
+      |> assert_has("h1", text: "General")
     end
 
     test "owner can update project name", %{conn: conn} do
@@ -142,7 +141,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
-      |> assert_has("h1", text: "Project Settings")
+      |> assert_has("h1", text: "General")
       |> fill_in("Project Name", with: "New Name")
       |> click_button("Save Changes")
       |> assert_has("p", text: "Project updated successfully")
@@ -154,8 +153,8 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
 
       conn
       |> authenticate(user)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
-      |> assert_has("h3", text: "Team Members")
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/members")
+      |> assert_has("h1", text: "Members")
     end
 
     test "shows invite form", %{conn: conn} do
@@ -164,7 +163,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
 
       conn
       |> authenticate(user)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings")
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/members")
       |> assert_has("h4", text: "Request member invitation")
       |> assert_has("input[type=email]")
     end
