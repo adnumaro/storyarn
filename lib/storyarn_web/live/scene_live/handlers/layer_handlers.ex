@@ -19,6 +19,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
         {:noreply,
          socket
          |> push_undo({:create_layer, layer})
+         |> assign(:_broadcast, {:layer_created, %{}})
          |> push_event("layer_created", %{id: layer.id, name: layer.name})
          |> put_flash(:info, dgettext("scenes", "Layer created."))
          |> reload_scene()}
@@ -87,6 +88,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
         {:noreply,
          socket
          |> assign(:scene, updated)
+         |> assign(:_broadcast, {:layer_updated, %{}})
          |> push_event("background_changed", %{url: nil})}
 
       {:error, _} ->
@@ -103,7 +105,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
         {:noreply,
          socket
          |> assign(:scene, updated)
-         |> assign(:scene_data, build_scene_data(updated, socket.assigns.can_edit))}
+         |> assign(:scene_data, build_scene_data(updated, socket.assigns.can_edit))
+         |> assign(:_broadcast, {:layer_updated, %{}})}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update scene scale."))}
@@ -127,6 +130,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
            |> assign(:selected_element, updated)
            |> update_pin_in_list(updated)
            |> assign(:show_pin_icon_upload, false)
+           |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})
            |> push_event("pin_updated", serialize_pin(updated))}
 
         {:error, _} ->
@@ -163,6 +167,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
       {:ok, _updated} ->
         socket
         |> push_undo({:rename_layer, layer.id, prev_name, name})
+        |> assign(:_broadcast, {:layer_updated, %{}})
         |> put_flash(:info, dgettext("scenes", "Layer renamed."))
         |> reload_scene()
 
@@ -176,6 +181,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
       {:ok, updated} ->
         {:noreply,
          socket
+         |> assign(:_broadcast, {:layer_updated, %{}})
          |> push_event("layer_visibility_changed", %{id: updated.id, visible: updated.visible})
          |> reload_scene()}
 
@@ -197,6 +203,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
         {:noreply,
          socket
          |> push_undo({:update_layer_fog, layer.id, %{field => prev_value}, %{field => value}})
+         |> assign(:_broadcast, {:layer_updated, %{}})
          |> push_event("layer_fog_changed", %{
            id: updated.id,
            fog_enabled: updated.fog_enabled,
@@ -217,6 +224,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
         {:noreply,
          socket
          |> push_undo({:delete_layer, layer})
+         |> assign(:_broadcast, {:layer_deleted, %{}})
          |> push_event("layer_deleted", %{id: layer.id})
          |> put_flash(:info, dgettext("scenes", "Layer deleted."))
          |> reload_scene()}

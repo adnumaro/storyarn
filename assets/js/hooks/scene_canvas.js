@@ -11,7 +11,9 @@ import { imageBounds, toPercent } from "../scene_canvas/coordinate_utils.js";
 import { exportPNG, exportSVG } from "../scene_canvas/exporter.js";
 import { createAnnotationHandler } from "../scene_canvas/handlers/annotation_handler.js";
 import { createConnectionHandler } from "../scene_canvas/handlers/connection_handler.js";
+import { createCursorHandler } from "../scene_canvas/handlers/cursor_handler.js";
 import { createLayerHandler } from "../scene_canvas/handlers/layer_handler.js";
+import { createLockHandler } from "../scene_canvas/handlers/lock_handler.js";
 import { createPinHandler } from "../scene_canvas/handlers/pin_handler.js";
 import { createZoneHandler } from "../scene_canvas/handlers/zone_handler.js";
 import { createFloatingToolbar } from "../scene_canvas/leaflet_toolbar.js";
@@ -33,6 +35,8 @@ export const SceneCanvas = {
     if (this._keydownHandler) {
       document.removeEventListener("keydown", this._keydownHandler);
     }
+    if (this.cursorHandler) this.cursorHandler.destroy();
+    if (this.lockHandler) this.lockHandler.destroy();
     if (this.floatingToolbar) this.floatingToolbar.hide();
     if (this.ruler) this.ruler.destroy();
     if (this.resetZoomBtn) this.resetZoomBtn.destroy();
@@ -70,6 +74,15 @@ export const SceneCanvas = {
 
     this.layerHandler = createLayerHandler(this);
     this.layerHandler.init();
+
+    // Collaboration: cursor + lock handlers
+    this.currentUserId = parseInt(this.el.dataset.currentUserId || "0", 10);
+
+    this.cursorHandler = createCursorHandler(this);
+    this.cursorHandler.init();
+
+    this.lockHandler = createLockHandler(this);
+    this.lockHandler.init();
 
     // Reset zoom button
     this.resetZoomBtn = createResetZoomButton(this);
@@ -303,6 +316,19 @@ export const SceneCanvas = {
     // Clipboard: store copied element data in localStorage
     this.handleEvent("element_copied", (data) => {
       localStorage.setItem("storyarn_scene_clipboard", JSON.stringify(data));
+    });
+
+    // Collaboration: remote cursor events
+    this.handleEvent("cursor_update", (data) => {
+      this.cursorHandler?.handleCursorUpdate(data);
+    });
+    this.handleEvent("cursor_leave", (data) => {
+      this.cursorHandler?.handleCursorLeave(data);
+    });
+
+    // Collaboration: lock events
+    this.handleEvent("locks_updated", (data) => {
+      this.lockHandler?.handleLocksUpdated(data);
     });
 
     // Keyboard shortcuts

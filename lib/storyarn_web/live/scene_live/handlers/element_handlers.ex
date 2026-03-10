@@ -94,6 +94,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> assign(:pins, socket.assigns.pins ++ [pin])
          |> assign(:selected_type, "pin")
          |> assign(:selected_element, pin)
+         |> assign(:_broadcast, {:pin_created, %{id: pin.id}})
          |> push_event("pin_created", serialize_pin(pin))
          |> push_event("element_selected", %{type: "pin", id: pin.id})
          |> reset_tool_to_select()}
@@ -223,6 +224,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> assign(:zones, socket.assigns.zones ++ [zone])
          |> assign(:selected_type, "zone")
          |> assign(:selected_element, zone)
+         |> assign(:_broadcast, {:zone_created, %{id: zone.id}})
          |> push_event("zone_created", serialize_zone(zone))
          |> push_event("element_selected", %{type: "zone", id: zone.id})
          |> reset_tool_to_select()}
@@ -439,6 +441,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          socket
          |> push_undo({:create_connection, conn})
          |> assign(:connections, socket.assigns.connections ++ [conn])
+         |> assign(:_broadcast, {:connection_created, %{id: conn.id}})
          |> push_event("connection_created", serialize_connection(conn))}
 
       {:error, _} ->
@@ -508,6 +511,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> assign(:annotations, socket.assigns.annotations ++ [annotation])
          |> assign(:selected_type, "annotation")
          |> assign(:selected_element, annotation)
+         |> assign(:_broadcast, {:annotation_created, %{id: annotation.id}})
          |> push_event("annotation_created", serialize_annotation(annotation))
          |> push_event("element_selected", %{type: "annotation", id: annotation.id})
          |> push_event("focus_annotation_text", %{id: annotation.id})
@@ -636,6 +640,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> assign(:pins, socket.assigns.pins ++ [pin])
          |> assign(:pending_sheet_for_pin, nil)
          |> assign(:active_tool, :select)
+         |> assign(:_broadcast, {:pin_created, %{id: pin.id}})
          |> push_event("pin_created", serialize_pin(pin))
          |> push_event("tool_changed", %{tool: "select"})
          |> push_event("pending_sheet_changed", %{active: false})}
@@ -651,8 +656,11 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     prev = %{x: pin.position_x, y: pin.position_y}
 
     case Scenes.move_pin(pin, x, y) do
-      {:ok, _updated} ->
-        {:noreply, push_undo_coalesced(socket, {:move_pin, pin.id, prev, %{x: x, y: y}})}
+      {:ok, updated} ->
+        {:noreply,
+         socket
+         |> push_undo_coalesced({:move_pin, pin.id, prev, %{x: x, y: y}})
+         |> assign(:_broadcast, {:pin_moved, serialize_pin(updated)})}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not move pin."))}
@@ -682,6 +690,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
          |> assign(:element_panel_open, false)
+         |> assign(:_broadcast, {:pin_deleted, %{id: pin.id}})
          |> push_event("pin_deleted", %{id: pin.id})
          |> put_flash(:info, dgettext("scenes", "Pin deleted. Press Ctrl+Z to undo."))
          |> reload_scene()}
@@ -704,6 +713,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> push_undo({:update_pin, pin.id, %{field => prev_value}, %{field => value}})
          |> assign(:selected_element, updated)
          |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
+         |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})
          |> push_event("pin_updated", serialize_pin(updated))}
 
       {:error, _} ->
@@ -724,6 +734,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> push_undo({:update_pin, pin.id, prev_attrs, new_attrs})
          |> assign(:selected_element, updated)
          |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
+         |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})
          |> push_event("pin_updated", serialize_pin(updated))}
 
       {:error, _} ->
@@ -743,6 +754,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> push_undo({:update_zone_vertices, zone.id, prev_vertices, vertices})
          |> assign(:zones, replace_in_list(socket.assigns.zones, updated))
          |> maybe_update_selected_element("zone", updated)
+         |> assign(:_broadcast, {:zone_vertices_updated, serialize_zone(updated)})
          |> push_event("zone_vertices_updated", serialize_zone(updated))}
 
       {:error, changeset} ->
@@ -762,6 +774,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> push_undo({:update_zone, zone.id, prev_attrs, attrs})
          |> assign(:selected_element, updated)
          |> assign(:zones, replace_in_list(socket.assigns.zones, updated))
+         |> assign(:_broadcast, {:zone_updated, %{id: updated.id}})
          |> push_event("zone_updated", serialize_zone(updated))}
 
       {:error, _} ->
@@ -787,6 +800,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> push_undo({:update_zone, zone.id, prev_attrs, new_attrs})
          |> assign(:selected_element, updated)
          |> assign(:zones, replace_in_list(socket.assigns.zones, updated))
+         |> assign(:_broadcast, {:zone_updated, %{id: updated.id}})
          |> push_event("zone_updated", serialize_zone(updated))}
 
       {:error, _} ->
@@ -811,6 +825,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          socket
          |> push_undo({:create_zone, new_zone})
          |> assign(:zones, socket.assigns.zones ++ [new_zone])
+         |> assign(:_broadcast, {:zone_created, %{id: new_zone.id}})
          |> push_event("zone_created", serialize_zone(new_zone))
          |> put_flash(:info, dgettext("scenes", "Zone duplicated."))}
 
@@ -832,6 +847,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
          |> assign(:element_panel_open, false)
+         |> assign(:_broadcast, {:zone_deleted, %{id: zone.id}})
          |> push_event("zone_deleted", %{id: zone.id})
          |> put_flash(:info, dgettext("scenes", "Zone deleted. Press Ctrl+Z to undo."))
          |> reload_scene()}
@@ -851,6 +867,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> push_undo({:update_connection, conn.id, %{field => prev_value}, %{field => value}})
          |> assign(:selected_element, updated)
          |> assign(:connections, replace_in_list(socket.assigns.connections, updated))
+         |> assign(:_broadcast, {:connection_updated, %{id: updated.id}})
          |> push_event("connection_updated", serialize_connection(updated))}
 
       {:error, _} ->
@@ -867,6 +884,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          socket
          |> push_undo({:update_connection_waypoints, conn.id, prev_waypoints, waypoints})
          |> assign(:selected_element, updated)
+         |> assign(:_broadcast, {:connection_updated, %{id: updated.id}})
          |> push_event("connection_updated", serialize_connection(updated))}
 
       {:error, _} ->
@@ -883,6 +901,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          socket
          |> push_undo({:update_connection_waypoints, conn.id, prev_waypoints, []})
          |> assign(:selected_element, updated)
+         |> assign(:_broadcast, {:connection_updated, %{id: updated.id}})
          |> push_event("connection_updated", serialize_connection(updated))}
 
       {:error, _} ->
@@ -899,6 +918,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
          |> assign(:element_panel_open, false)
+         |> assign(:_broadcast, {:connection_deleted, %{id: connection.id}})
          |> push_event("connection_deleted", %{id: connection.id})
          |> put_flash(:info, dgettext("scenes", "Connection deleted. Press Ctrl+Z to undo."))
          |> reload_scene()}
@@ -920,6 +940,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          )
          |> assign(:annotations, replace_in_list(socket.assigns.annotations, updated))
          |> maybe_update_selected_element("annotation", updated)
+         |> assign(:_broadcast, {:annotation_updated, %{id: updated.id}})
          |> push_event("annotation_updated", serialize_annotation(updated))}
 
       {:error, _} ->
@@ -933,9 +954,11 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     prev = %{x: annotation.position_x, y: annotation.position_y}
 
     case Scenes.move_annotation(annotation, x, y) do
-      {:ok, _updated} ->
+      {:ok, updated} ->
         {:noreply,
-         push_undo_coalesced(socket, {:move_annotation, annotation.id, prev, %{x: x, y: y}})}
+         socket
+         |> push_undo_coalesced({:move_annotation, annotation.id, prev, %{x: x, y: y}})
+         |> assign(:_broadcast, {:annotation_moved, serialize_annotation(updated)})}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not move annotation."))}
@@ -959,6 +982,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> assign(:selected_element, nil)
          |> assign(:selected_type, nil)
          |> assign(:element_panel_open, false)
+         |> assign(:_broadcast, {:annotation_deleted, %{id: annotation.id}})
          |> push_event("annotation_deleted", %{id: annotation.id})
          |> put_flash(:info, dgettext("scenes", "Annotation deleted. Press Ctrl+Z to undo."))}
 
@@ -990,6 +1014,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> assign(:pins, socket.assigns.pins ++ [new_pin])
          |> assign(:selected_type, "pin")
          |> assign(:selected_element, new_pin)
+         |> assign(:_broadcast, {:pin_created, %{id: new_pin.id}})
          |> push_event("pin_created", serialize_pin(new_pin))
          |> push_event("element_selected", %{type: "pin", id: new_pin.id})
          |> put_flash(:info, dgettext("scenes", "Pin duplicated."))}
@@ -1111,6 +1136,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> assign(:pins, socket.assigns.pins ++ [pin])
          |> assign(:selected_type, "pin")
          |> assign(:selected_element, pin)
+         |> assign(:_broadcast, {:pin_created, %{id: pin.id}})
          |> push_event("pin_created", serialize_pin(pin))
          |> push_event("element_selected", %{type: "pin", id: pin.id})
          |> put_flash(:info, dgettext("scenes", "Pin pasted."))}
@@ -1136,6 +1162,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> assign(:zones, socket.assigns.zones ++ [zone])
          |> assign(:selected_type, "zone")
          |> assign(:selected_element, zone)
+         |> assign(:_broadcast, {:zone_created, %{id: zone.id}})
          |> push_event("zone_created", serialize_zone(zone))
          |> push_event("element_selected", %{type: "zone", id: zone.id})
          |> put_flash(:info, dgettext("scenes", "Zone pasted."))}
@@ -1163,6 +1190,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> assign(:annotations, socket.assigns.annotations ++ [annotation])
          |> assign(:selected_type, "annotation")
          |> assign(:selected_element, annotation)
+         |> assign(:_broadcast, {:annotation_created, %{id: annotation.id}})
          |> push_event("annotation_created", serialize_annotation(annotation))
          |> push_event("element_selected", %{type: "annotation", id: annotation.id})
          |> put_flash(:info, dgettext("scenes", "Annotation pasted."))}

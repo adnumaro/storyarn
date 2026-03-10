@@ -27,10 +27,13 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.SceneLive.Helpers.Serializer
 
   alias StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers
+  alias StoryarnWeb.SceneLive.Handlers.CollaborationHandlers
   alias StoryarnWeb.SceneLive.Handlers.ElementHandlers
   alias StoryarnWeb.SceneLive.Handlers.LayerHandlers
   alias StoryarnWeb.SceneLive.Handlers.TreeHandlers
   alias StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers
+
+  @lock_heartbeat_interval 10_000
 
   @impl true
   def render(assigns) do
@@ -129,6 +132,8 @@ defmodule StoryarnWeb.SceneLive.Show do
               phx-update="ignore"
               data-scene={Jason.encode!(@scene_data)}
               data-i18n={Jason.encode!(@canvas_i18n)}
+              data-current-user-id={@current_scope.user.id}
+              data-locks={Jason.encode!(@entity_locks)}
               class="w-full h-full"
             >
               <div id="scene-canvas-container" class="w-full h-full"></div>
@@ -412,6 +417,8 @@ defmodule StoryarnWeb.SceneLive.Show do
           |> assign(:online_users, [])
           |> assign(:collab_scope, nil)
           |> assign(:entity_locks, %{})
+          |> assign(:lock_heartbeat_ref, nil)
+          |> assign(:_broadcast, nil)
           # Defaults — scene loaded in handle_params
           |> assign(:scene, nil)
           |> assign(:ancestors, [])
@@ -518,6 +525,8 @@ defmodule StoryarnWeb.SceneLive.Show do
         |> assign(:collab_scope, scope)
         |> assign(:online_users, online_users)
         |> assign(:entity_locks, entity_locks)
+        |> assign(:_broadcast, nil)
+        |> schedule_lock_heartbeat()
         |> assign(:ancestors, Scenes.list_ancestors(scene))
         |> assign(:layers, scene.layers || [])
         |> assign(:zones, scene.zones || [])
@@ -645,9 +654,12 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("focus_search_result", _params, socket), do: {:noreply, socket}
 
-  def handle_event("select_element", %{"type" => type} = params, socket)
+  def handle_event("select_element", %{"type" => type, "id" => id} = params, socket)
       when type in ~w(pin zone connection annotation) do
+    release_element_lock(socket)
+
     CanvasEventHandlers.handle_select_element(params, socket)
+    |> maybe_acquire_lock(id)
   end
 
   def handle_event("validate_bg_upload", _params, socket), do: {:noreply, socket}
@@ -655,7 +667,20 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("noop", _params, socket), do: {:noreply, socket}
 
   def handle_event("deselect", _params, socket) do
+    release_element_lock(socket)
     CanvasEventHandlers.handle_deselect(socket)
+  end
+
+  # ---------------------------------------------------------------------------
+  # Collaboration: cursor events
+  # ---------------------------------------------------------------------------
+
+  def handle_event("cursor_moved", params, socket) do
+    CollaborationHandlers.handle_cursor_moved(params, socket)
+  end
+
+  def handle_event("cursor_left", _params, socket) do
+    CollaborationHandlers.handle_cursor_left(socket)
   end
 
   # ---------------------------------------------------------------------------
@@ -1165,6 +1190,7 @@ defmodule StoryarnWeb.SceneLive.Show do
              |> assign(:selected_element, updated)
              |> update_pin_in_list(updated)
              |> assign(:show_pin_icon_upload, false)
+             |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})
              |> push_event("pin_updated", serialize_pin(updated))
              |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
             |> broadcast_scene_change()
@@ -1204,12 +1230,22 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_info({:lock_change, _action, _payload}, socket) do
-    entity_locks = Collaboration.list_locks(socket.assigns.collab_scope)
-    {:noreply, assign(socket, :entity_locks, entity_locks)}
+    CollaborationHandlers.handle_lock_change(socket)
   end
 
   def handle_info({:remote_change, action, payload}, socket) do
-    handle_scene_remote_change(action, payload, socket)
+    CollaborationHandlers.handle_remote_change(action, payload, socket)
+  end
+
+  @impl true
+  def handle_info(:refresh_locks, socket) do
+    with scope when not is_nil(scope) <- socket.assigns[:collab_scope],
+         %{id: element_id} <- socket.assigns[:selected_element] do
+      user_id = socket.assigns.current_scope.user.id
+      Collaboration.refresh_lock(scope, element_id, user_id)
+    end
+
+    {:noreply, schedule_lock_heartbeat(socket)}
   end
 
   @impl true
@@ -1222,6 +1258,8 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   defp teardown_scene_collab(socket) do
+    if ref = socket.assigns[:lock_heartbeat_ref], do: Process.cancel_timer(ref)
+
     if scope = socket.assigns[:collab_scope] do
       user_id = socket.assigns.current_scope.user.id
       Collab.teardown(scope, user_id)
@@ -1230,38 +1268,62 @@ defmodule StoryarnWeb.SceneLive.Show do
     socket
   end
 
-  defp broadcast_scene_change({:noreply, socket} = result) do
-    if scope = socket.assigns[:collab_scope] do
-      Collab.broadcast_change(socket, scope, :scene_refreshed, %{})
-    end
-
-    result
+  defp schedule_lock_heartbeat(socket) do
+    if ref = socket.assigns[:lock_heartbeat_ref], do: Process.cancel_timer(ref)
+    ref = Process.send_after(self(), :refresh_locks, @lock_heartbeat_interval)
+    assign(socket, :lock_heartbeat_ref, ref)
   end
 
-  defp handle_scene_remote_change(:scene_refreshed, _payload, socket) do
-    # Full scene reload — covers zone/pin/connection/annotation CRUD + moves
-    scene = Scenes.get_scene(socket.assigns.project.id, socket.assigns.scene.id)
+  defp maybe_acquire_lock({:noreply, socket}, id) do
+    scope = socket.assigns[:collab_scope]
+    parsed_id = parse_element_id(id)
 
-    if scene do
-      scene_data = build_scene_data(scene, socket.assigns.can_edit)
+    if socket.assigns.can_edit && scope && parsed_id do
+      user = socket.assigns.current_scope.user
 
-      {:noreply,
-       socket
-       |> assign(:scene, scene)
-       |> assign(:layers, scene.layers || [])
-       |> assign(:zones, scene.zones || [])
-       |> assign(:pins, scene.pins || [])
-       |> assign(:connections, scene.connections || [])
-       |> assign(:annotations, scene.annotations || [])
-       |> assign(:scene_data, scene_data)
-       |> push_event("scene_data", scene_data)}
-    else
-      {:noreply, socket}
+      case Collaboration.acquire_lock(scope, parsed_id, user) do
+        {:ok, _} ->
+          Collab.broadcast_lock_change(socket, scope, :locked, parsed_id)
+
+        {:error, :already_locked, _lock_info} ->
+          :ok
+      end
     end
-  end
 
-  defp handle_scene_remote_change(_action, _payload, socket) do
     {:noreply, socket}
+  end
+
+  defp release_element_lock(socket) do
+    with %{id: element_id} <- socket.assigns[:selected_element],
+         scope when not is_nil(scope) <- socket.assigns[:collab_scope] do
+      user_id = socket.assigns.current_scope.user.id
+      Collaboration.release_lock(scope, element_id, user_id)
+      Collab.broadcast_lock_change(socket, scope, :unlocked, element_id)
+    end
+
+    :ok
+  end
+
+  defp parse_element_id(id) when is_integer(id), do: id
+
+  defp parse_element_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {int, ""} -> int
+      _ -> nil
+    end
+  end
+
+  defp parse_element_id(_), do: nil
+
+  defp broadcast_scene_change({:noreply, socket} = _result) do
+    {action, payload} =
+      socket.assigns[:_broadcast] || {:scene_refreshed, %{}}
+
+    if scope = socket.assigns[:collab_scope] do
+      Collab.broadcast_change(socket, scope, action, payload)
+    end
+
+    {:noreply, assign(socket, :_broadcast, nil)}
   end
 
   # ---------------------------------------------------------------------------
@@ -1316,6 +1378,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         {:noreply,
          socket
          |> assign(:scene, updated)
+         |> assign(:_broadcast, {:layer_updated, %{}})
          |> push_event("background_changed", %{url: asset.url})
          |> put_flash(:info, dgettext("scenes", "Background image updated."))}
         |> broadcast_scene_change()
