@@ -30,7 +30,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlersTest do
       {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
 
       # Send an invalid tool name — should be a no-op
-      render_click(view, "set_tool", %{"tool" => "invalid_tool_name"})
+      render_click(view, "set_tool", %{"type" => "invalid_tool_name"})
 
       # View should still be alive
       html = render(view)

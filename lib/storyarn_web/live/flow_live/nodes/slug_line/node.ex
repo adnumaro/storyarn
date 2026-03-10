@@ -18,6 +18,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.SlugLine.Node do
   def type, do: "slug_line"
   def icon_name, do: "clapperboard"
   def label, do: dgettext("flows", "Slug Line")
+  def description, do: dgettext("flows", "Scene heading or location marker")
 
   def default_data do
     %{

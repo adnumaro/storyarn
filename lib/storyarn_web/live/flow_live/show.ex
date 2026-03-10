@@ -7,6 +7,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   import StoryarnWeb.Components.CollaborationComponents
   import StoryarnWeb.FlowLive.Components.BuilderPanel
   import StoryarnWeb.FlowLive.Components.DebugPanel
+  import StoryarnWeb.FlowLive.Components.FlowDock
   import StoryarnWeb.FlowLive.Components.FlowHeader
   import StoryarnWeb.Components.CanvasToolbar
   import StoryarnWeb.FlowLive.Components.FlowToolbar
@@ -40,8 +41,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
-  # Filter out entry and annotation from the "Add Node" dropdown
-  @node_types Flows.node_types() |> Enum.reject(&(&1 in ["entry", "annotation"]))
+  # Node types are now rendered by flow_dock.ex
   @lock_heartbeat_interval 10_000
 
   @impl true
@@ -103,16 +103,6 @@ defmodule StoryarnWeb.FlowLive.Show do
           flow_info_nodes={@flow_info_nodes}
         />
       </:top_bar_extra>
-      <:top_bar_extra_right>
-        <.flow_actions
-          flow={@flow}
-          workspace={@workspace}
-          project={@project}
-          can_edit={@can_edit}
-          debug_panel_open={@debug_panel_open}
-          node_types={@node_types}
-        />
-      </:top_bar_extra_right>
       <:tree_content>
         <FlowTree.flows_section
           flows_tree={@flows_tree}
@@ -169,6 +159,15 @@ defmodule StoryarnWeb.FlowLive.Show do
                 />
               <% end %>
             </.canvas_toolbar>
+
+            <%!-- Bottom dock --%>
+            <.flow_dock
+              flow={@flow}
+              workspace={@workspace}
+              project={@project}
+              can_edit={@can_edit}
+              debug_panel_open={@debug_panel_open}
+            />
           </div>
 
           <.debug_panel
@@ -1115,7 +1114,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:flow, flow)
       |> assign(:flow_data, data.flow_data)
       |> assign(:flows_tree, flows_tree)
-      |> assign(:node_types, @node_types)
       |> assign(:all_sheets, data.all_sheets)
       |> assign(:gallery_by_sheet, data.gallery_by_sheet)
       |> assign(:flow_hubs, data.flow_hubs)

@@ -18,6 +18,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   def type, do: "exit"
   def icon_name, do: "arrow-right-to-line"
   def label, do: dgettext("flows", "Exit")
+  def description, do: dgettext("flows", "End point of a flow")
 
   def default_data do
     %{

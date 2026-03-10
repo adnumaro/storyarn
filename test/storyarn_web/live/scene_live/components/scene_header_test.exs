@@ -29,7 +29,8 @@ defmodule StoryarnWeb.SceneLive.Components.SceneHeaderTest do
   end
 
   defp render_actions(overrides \\ %{}) do
-    render_component(&SceneHeader.map_actions/1, base_assigns(overrides))
+    assigns = base_assigns(overrides) |> Map.take([:can_edit, :edit_mode])
+    render_component(&SceneHeader.map_actions/1, assigns)
   end
 
   # =============================================================================
@@ -37,10 +38,9 @@ defmodule StoryarnWeb.SceneLive.Components.SceneHeaderTest do
   # =============================================================================
 
   describe "map_actions/1 — basic" do
-    test "renders play/explore link" do
+    test "does not render play link (moved to dock)" do
       html = render_actions()
-      assert html =~ "play"
-      assert html =~ "explore"
+      refute html =~ "explore"
     end
 
     test "renders export dropdown" do

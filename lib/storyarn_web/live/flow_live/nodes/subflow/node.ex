@@ -18,6 +18,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
   def type, do: "subflow"
   def icon_name, do: "box"
   def label, do: dgettext("flows", "Subflow")
+  def description, do: dgettext("flows", "Embed another flow as a node")
 
   def default_data, do: %{"referenced_flow_id" => nil}
 

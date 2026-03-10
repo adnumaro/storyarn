@@ -13,6 +13,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
   def type, do: "condition"
   def icon_name, do: "git-branch"
   def label, do: dgettext("flows", "Condition")
+  def description, do: dgettext("flows", "Branch based on variable conditions")
 
   def default_data do
     %{

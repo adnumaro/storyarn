@@ -3,79 +3,15 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
 
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
-  use StoryarnWeb, :verified_routes
 
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.FocusLayout, only: [entity_title_pill: 1]
   import StoryarnWeb.Components.SaveIndicator
 
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers,
-    only: [node_type_label: 1, node_type_icon: 1]
+    only: [node_type_icon: 1]
 
   alias StoryarnWeb.FlowLive.Helpers.NavigationHistory
-
-  @doc "Actions toolbar (play, debug, add node) — for top_bar_extra_right slot."
-  attr :flow, :map, required: true
-  attr :workspace, :map, required: true
-  attr :project, :map, required: true
-  attr :can_edit, :boolean, required: true
-  attr :debug_panel_open, :boolean, default: false
-  attr :node_types, :list, default: []
-
-  def flow_actions(assigns) do
-    ~H"""
-    <div class="flex items-center gap-1 px-1.5 py-1 surface-panel">
-      <.link
-        navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}/play"}
-        class="btn btn-ghost btn-sm gap-1.5"
-      >
-        <.icon name="play" class="size-4" />
-        <span class="hidden xl:inline">{dgettext("flows", "Play")}</span>
-      </.link>
-      <button
-        type="button"
-        class={[
-          "btn btn-sm gap-1.5",
-          if(@debug_panel_open, do: "btn-accent", else: "btn-ghost")
-        ]}
-        phx-click={if(@debug_panel_open, do: "debug_stop", else: "debug_start")}
-      >
-        <.icon name="bug" class="size-4" />
-        <span class="hidden xl:inline">
-          {if @debug_panel_open,
-            do: dgettext("flows", "Stop"),
-            else: dgettext("flows", "Debug")}
-        </span>
-      </button>
-      <button
-        :if={@can_edit}
-        type="button"
-        phx-click="add_annotation"
-        class="btn btn-ghost btn-sm"
-        title={dgettext("flows", "Add Note")}
-      >
-        <.icon name="sticky-note" class="size-4" />
-      </button>
-      <div :if={@can_edit} class="dropdown dropdown-end">
-        <button type="button" tabindex="0" class="btn btn-primary btn-sm gap-1.5">
-          <.icon name="plus" class="size-4" />
-          <span class="hidden xl:inline">{dgettext("flows", "Add Node")}</span>
-        </button>
-        <ul
-          tabindex="0"
-          class="dropdown-content menu menu-xs bg-base-100 rounded-box shadow-lg border border-base-300 w-44 z-50 mt-2"
-        >
-          <li :for={type <- @node_types}>
-            <button type="button" phx-click="add_node" phx-value-type={type}>
-              <.node_type_icon type={type} />
-              {node_type_label(type)}
-            </button>
-          </li>
-        </ul>
-      </div>
-    </div>
-    """
-  end
 
   @doc "Flow info bar (nav history + title + stats + scene map + save indicator) — overlays the canvas."
   attr :flow, :map, required: true
@@ -102,7 +38,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
         <button
           :if={back_entry}
           type="button"
-          class="btn btn-ghost btn-sm gap-1 text-base-content/60 max-w-[140px]"
+          class="toolbar-btn gap-1 text-base-content/60 max-w-[140px]"
           phx-click="nav_back"
           title={dgettext("flows", "Alt+Left")}
         >
@@ -112,7 +48,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
         <button
           :if={forward_entry}
           type="button"
-          class="btn btn-ghost btn-sm gap-1 text-base-content/60 max-w-[140px]"
+          class="toolbar-btn gap-1 text-base-content/60 max-w-[140px]"
           phx-click="nav_forward"
           title={dgettext("flows", "Alt+Right")}
         >
@@ -175,14 +111,14 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
       |> assign(:show_scene, assigns.can_edit || assigns.scene_name != nil)
 
     ~H"""
-    <div class="hidden lg:flex flex-col surface-panel text-xs">
-      <%!-- Scene row (top) --%>
+    <div class="hidden lg:flex items-center gap-1 px-1 py-1 surface-panel text-xs">
+      <%!-- Scene selector --%>
       <div :if={@show_scene} class="dropdown dropdown-bottom dropdown-end">
         <button
           type="button"
           tabindex="0"
           class={[
-            "tooltip tooltip-bottom tooltip-delay flex items-center gap-1.5 px-2.5 py-1 w-full rounded-t-xl hover:bg-base-content/5 transition-colors",
+            "toolbar-btn gap-1.5 tooltip tooltip-bottom tooltip-delay",
             if(@scene_name, do: "text-base-content", else: "text-base-content/50")
           ]}
           data-tip={dgettext("flows", "Scene backdrop")}
@@ -223,132 +159,133 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
         </ul>
       </div>
 
-      <%!-- Divider between scene and stats --%>
-      <div :if={@show_scene} class="h-px bg-base-content/10 mx-2"></div>
+      <%!-- Divider --%>
+      <div :if={@show_scene} class="w-px h-5 bg-base-content/10"></div>
 
-      <%!-- Stats row (bottom): word count + health indicator --%>
-      <div class="flex items-center">
-        <div
-          class="tooltip tooltip-bottom flex items-center gap-1.5 px-2.5 py-1 text-base-content/60"
-          data-tip={
-            dngettext(
-              "flows",
-              "%{count} word in this flow",
-              "%{count} words in this flow",
-              @flow_word_count,
-              count: @flow_word_count
-            )
-          }
-        >
-          <.icon name="text" class="size-3.5" />
-          <span>{@flow_word_count}</span>
-        </div>
-        <%!-- Flow health indicator: errors > info > healthy --%>
-        <%= cond do %>
-          <% @error_count > 0 -> %>
-            <div class="dropdown dropdown-bottom">
-              <div
-                tabindex="0"
-                role="button"
-                class="flex items-center border-l border-base-content/10 cursor-pointer rounded-br-xl hover:bg-base-content/5 transition-colors"
-              >
-                <span class="flex items-center gap-1.5 px-2.5 py-1 text-error">
-                  <.icon name="triangle-alert" class="size-3.5" />
-                  <span>{@error_count}</span>
-                </span>
-                <span
-                  :if={@info_count > 0}
-                  class="flex items-center gap-1.5 pr-2.5 py-1 text-info"
-                >
-                  <.icon name="info" class="size-3.5" />
-                  <span>{@info_count}</span>
-                </span>
-              </div>
-              <ul
-                tabindex="0"
-                class="dropdown-content menu menu-xs bg-base-100 rounded-box shadow-lg border border-base-300 z-50 mt-2 max-h-60 overflow-y-auto w-max"
-              >
-                <li :if={@flow_info_nodes != []} class="menu-title text-[10px]">
-                  {dgettext("flows", "Errors")}
-                </li>
-                <li :for={node <- @flow_error_nodes}>
-                  <button
-                    type="button"
-                    phx-click="navigate_to_node"
-                    phx-value-id={node.id}
-                    class="flex items-center gap-2"
-                  >
-                    <.node_type_icon type={node.type} />
-                    <span class="truncate">{node.label}</span>
-                  </button>
-                </li>
-                <li :if={@flow_info_nodes != []} class="menu-title text-[10px] pt-2">
-                  {dgettext("flows", "Info")}
-                </li>
-                <li :for={node <- @flow_info_nodes}>
-                  <button
-                    type="button"
-                    phx-click="navigate_to_node"
-                    phx-value-id={node.id}
-                    class="flex flex-col items-start gap-0.5"
-                  >
-                    <span class="flex items-center gap-2">
-                      <.node_type_icon type={node.type} />
-                      <span class="truncate">{node.label}</span>
-                    </span>
-                    <span class="text-[11px] text-base-content/40 pl-5">{node.reason}</span>
-                  </button>
-                </li>
-              </ul>
-            </div>
-          <% @info_count > 0 -> %>
-            <div class="dropdown dropdown-bottom">
-              <button
-                type="button"
-                tabindex="0"
-                class="flex items-center gap-1.5 px-2.5 py-1 text-info border-l border-base-content/10 rounded-br-xl hover:bg-base-content/5 transition-colors"
-                title={
-                  dngettext(
-                    "flows",
-                    "%{count} node with info",
-                    "%{count} nodes with info",
-                    @info_count,
-                    count: @info_count
-                  )
-                }
+      <%!-- Word count --%>
+      <div
+        class="toolbar-btn gap-1.5 text-base-content/60 tooltip tooltip-bottom"
+        data-tip={
+          dngettext(
+            "flows",
+            "%{count} word in this flow",
+            "%{count} words in this flow",
+            @flow_word_count,
+            count: @flow_word_count
+          )
+        }
+      >
+        <.icon name="text" class="size-3.5" />
+        <span>{@flow_word_count}</span>
+      </div>
+
+      <%!-- Flow health indicator: errors > info > healthy --%>
+      <%= cond do %>
+        <% @error_count > 0 -> %>
+          <div class="dropdown dropdown-bottom">
+            <button
+              type="button"
+              tabindex="0"
+              class="toolbar-btn gap-0 !text-error"
+            >
+              <span class="flex items-center gap-1.5">
+                <.icon name="triangle-alert" class="size-3.5" />
+                <span>{@error_count}</span>
+              </span>
+              <span
+                :if={@info_count > 0}
+                class="flex items-center gap-1.5 ml-2 text-info"
               >
                 <.icon name="info" class="size-3.5" />
                 <span>{@info_count}</span>
-              </button>
-              <ul
-                tabindex="0"
-                class="dropdown-content menu menu-xs bg-base-100 rounded-box shadow-lg border border-base-300 z-50 mt-2 max-h-60 overflow-y-auto w-max"
-              >
-                <li :for={node <- @flow_info_nodes}>
-                  <button
-                    type="button"
-                    phx-click="navigate_to_node"
-                    phx-value-id={node.id}
-                    class="flex flex-col items-start gap-0.5"
-                  >
-                    <span class="flex items-center gap-2">
-                      <.node_type_icon type={node.type} />
-                      <span class="truncate">{node.label}</span>
-                    </span>
-                    <span class="text-[11px] text-base-content/40 pl-5">{node.reason}</span>
-                  </button>
-                </li>
-              </ul>
-            </div>
-          <% true -> %>
-            <div
-              class="flex items-center gap-1.5 px-2.5 py-1 text-success/60 border-l border-base-content/10"
-              title={dgettext("flows", "This flow looks great!")}
+              </span>
+              <.icon name="chevron-down" class="size-3 opacity-50 ml-1" />
+            </button>
+            <ul
+              tabindex="0"
+              class="dropdown-content menu menu-xs bg-base-100 rounded-box shadow-lg border border-base-300 z-50 mt-2 max-h-60 overflow-y-auto w-max"
             >
-              <.icon name="circle-check" class="size-3.5" />
-            </div>
-        <% end %>
-      </div>
+              <li :if={@flow_info_nodes != []} class="menu-title text-[10px]">
+                {dgettext("flows", "Errors")}
+              </li>
+              <li :for={node <- @flow_error_nodes}>
+                <button
+                  type="button"
+                  phx-click="navigate_to_node"
+                  phx-value-id={node.id}
+                  class="flex items-center gap-2"
+                >
+                  <.node_type_icon type={node.type} />
+                  <span class="truncate">{node.label}</span>
+                </button>
+              </li>
+              <li :if={@flow_info_nodes != []} class="menu-title text-[10px] pt-2">
+                {dgettext("flows", "Info")}
+              </li>
+              <li :for={node <- @flow_info_nodes}>
+                <button
+                  type="button"
+                  phx-click="navigate_to_node"
+                  phx-value-id={node.id}
+                  class="flex flex-col items-start gap-0.5"
+                >
+                  <span class="flex items-center gap-2">
+                    <.node_type_icon type={node.type} />
+                    <span class="truncate">{node.label}</span>
+                  </span>
+                  <span class="text-[11px] text-base-content/40 pl-5">{node.reason}</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+        <% @info_count > 0 -> %>
+          <div class="dropdown dropdown-bottom">
+            <button
+              type="button"
+              tabindex="0"
+              class="toolbar-btn gap-1.5 !text-info"
+              title={
+                dngettext(
+                  "flows",
+                  "%{count} node with info",
+                  "%{count} nodes with info",
+                  @info_count,
+                  count: @info_count
+                )
+              }
+            >
+              <.icon name="info" class="size-3.5" />
+              <span>{@info_count}</span>
+              <.icon name="chevron-down" class="size-3 opacity-50" />
+            </button>
+            <ul
+              tabindex="0"
+              class="dropdown-content menu menu-xs bg-base-100 rounded-box shadow-lg border border-base-300 z-50 mt-2 max-h-60 overflow-y-auto w-max"
+            >
+              <li :for={node <- @flow_info_nodes}>
+                <button
+                  type="button"
+                  phx-click="navigate_to_node"
+                  phx-value-id={node.id}
+                  class="flex flex-col items-start gap-0.5"
+                >
+                  <span class="flex items-center gap-2">
+                    <.node_type_icon type={node.type} />
+                    <span class="truncate">{node.label}</span>
+                  </span>
+                  <span class="text-[11px] text-base-content/40 pl-5">{node.reason}</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+        <% true -> %>
+          <div
+            class="toolbar-btn !text-success/60"
+            title={dgettext("flows", "This flow looks great!")}
+          >
+            <.icon name="circle-check" class="size-3.5" />
+          </div>
+      <% end %>
     </div>
     """
   end

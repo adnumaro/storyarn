@@ -59,6 +59,15 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
     end
   end
 
+  @doc "Returns a short description of what the node type does."
+  @spec description(String.t()) :: String.t()
+  def description(type) do
+    case node_module(type) do
+      nil -> ""
+      mod -> mod.description()
+    end
+  end
+
   @doc "Returns the default data map for a given node type."
   @spec default_data(String.t()) :: map()
   def default_data(type) do

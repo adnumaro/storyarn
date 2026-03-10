@@ -108,9 +108,6 @@ defmodule StoryarnWeb.SceneLive.Show do
           <.map_actions
             can_edit={@can_edit}
             edit_mode={@edit_mode}
-            workspace={@workspace}
-            project={@project}
-            scene={@scene}
           />
         <% end %>
       </:top_bar_extra_right>
@@ -218,7 +215,14 @@ defmodule StoryarnWeb.SceneLive.Show do
           </div>
 
           <%!-- Bottom dock (edit mode only) --%>
-          <.dock :if={@edit_mode} active_tool={@active_tool} pending_sheet={@pending_sheet_for_pin} />
+          <.dock
+            :if={@edit_mode}
+            active_tool={@active_tool}
+            pending_sheet={@pending_sheet_for_pin}
+            workspace={@workspace}
+            project={@project}
+            scene={@scene}
+          />
 
           <%!-- Sheet picker overlay --%>
           <div
@@ -601,8 +605,8 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
-  def handle_event("set_tool", %{"tool" => tool} = params, socket) when tool in @valid_tools do
-    CanvasEventHandlers.handle_set_tool(params["tool"], socket)
+  def handle_event("set_tool", %{"type" => tool}, socket) when tool in @valid_tools do
+    CanvasEventHandlers.handle_set_tool(tool, socket)
   end
 
   def handle_event("set_tool", _params, socket), do: {:noreply, socket}
@@ -704,13 +708,15 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("update_connection_waypoints", params, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_connection_waypoints(params, socket) |> broadcast_scene_change()
+      ElementHandlers.handle_update_connection_waypoints(params, socket)
+      |> broadcast_scene_change()
     end)
   end
 
   def handle_event("clear_connection_waypoints", params, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_clear_connection_waypoints(params, socket) |> broadcast_scene_change()
+      ElementHandlers.handle_clear_connection_waypoints(params, socket)
+      |> broadcast_scene_change()
     end)
   end
 
@@ -914,7 +920,8 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("update_zone_condition_effect", %{"value" => _} = params, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone_condition_effect(params, socket) |> broadcast_scene_change()
+      ElementHandlers.handle_update_zone_condition_effect(params, socket)
+      |> broadcast_scene_change()
     end)
   end
 
@@ -954,7 +961,8 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("update_pin_condition_effect", %{"value" => _} = params, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_pin_condition_effect(params, socket) |> broadcast_scene_change()
+      ElementHandlers.handle_update_pin_condition_effect(params, socket)
+      |> broadcast_scene_change()
     end)
   end
 

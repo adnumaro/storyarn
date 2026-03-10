@@ -25,6 +25,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   def type, do: "dialogue"
   def icon_name, do: "message-square"
   def label, do: dgettext("flows", "Dialogue")
+  def description, do: dgettext("flows", "Character speech and player responses")
 
   def default_data do
     %{

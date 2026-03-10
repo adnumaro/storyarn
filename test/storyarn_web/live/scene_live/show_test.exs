@@ -212,7 +212,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       # All 9 tool buttons present
       for tool <- ~w(select pan rectangle triangle circle freeform pin annotation connector) do
-        assert html =~ ~s(phx-value-tool="#{tool}"),
+        assert html =~ ~s(phx-value-type="#{tool}"),
                "Expected tool button for #{tool}"
       end
     end
@@ -243,7 +243,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      html = render_click(view, "set_tool", %{"tool" => "pin"})
+      html = render_click(view, "set_tool", %{"type" => "pin"})
       # Pin button should now be active (btn-primary)
       assert html =~ "btn-primary"
     end
@@ -403,10 +403,10 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      assert html =~ ~s(phx-value-tool="freeform")
-      assert html =~ ~s(phx-value-tool="rectangle")
-      assert html =~ ~s(phx-value-tool="triangle")
-      assert html =~ ~s(phx-value-tool="circle")
+      assert html =~ ~s(phx-value-type="freeform")
+      assert html =~ ~s(phx-value-type="rectangle")
+      assert html =~ ~s(phx-value-type="triangle")
+      assert html =~ ~s(phx-value-type="circle")
     end
 
     test "set_tool freeform activates freeform", %{conn: conn, user: user} do
@@ -419,7 +419,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      html = render_click(view, "set_tool", %{"tool" => "freeform"})
+      html = render_click(view, "set_tool", %{"type" => "freeform"})
       # Freeform button should be active
       assert html =~ "btn-primary"
     end
@@ -1035,7 +1035,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      assert html =~ ~s(phx-value-tool="connector")
+      assert html =~ ~s(phx-value-type="connector")
     end
 
     test "set_tool connector activates connector", %{conn: conn, user: user} do
@@ -1048,7 +1048,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      html = render_click(view, "set_tool", %{"tool" => "connector"})
+      html = render_click(view, "set_tool", %{"type" => "connector"})
       assert html =~ "btn-primary"
     end
   end
@@ -3201,7 +3201,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      assert html =~ "phx-value-tool=\"ruler\""
+      assert html =~ "phx-value-type=\"ruler\""
     end
 
     test "set_tool accepts ruler", %{conn: conn, user: user} do
@@ -3215,7 +3215,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         )
 
       # Should not crash
-      render_click(view, "set_tool", %{"tool" => "ruler"})
+      render_click(view, "set_tool", %{"type" => "ruler"})
     end
   end
 
