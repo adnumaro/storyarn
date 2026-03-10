@@ -66,10 +66,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
-      # Open the tree panel first (it starts closed)
-      |> unwrap(fn %{frame_id: frame_id} ->
-        Frame.click(frame_id, selector: "[phx-click='tree_panel_toggle']", timeout: 5_000)
-      end)
+      # Tree panel starts open on sheets index
       |> assert_has("#tree-panel[data-open='true']")
       |> assert_has("button", text: "New Sheet")
     end

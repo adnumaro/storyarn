@@ -26,8 +26,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
     %{key: :scenes, icon: "map", section: "scenes"},
     %{key: :screenplays, icon: "scroll-text", section: "screenplays"},
     %{key: :assets, icon: "image", section: "assets"},
-    %{key: :localization, icon: "languages", section: "localization"},
-    %{key: :export_import, icon: "package", section: "export-import"}
+    %{key: :localization, icon: "languages", section: "localization"}
   ]
 
   @tool_icons Map.new(@tools, fn t -> {t.key, t.icon} end)
@@ -40,7 +39,6 @@ defmodule StoryarnWeb.Components.FocusLayout do
   defp tool_label(:screenplays), do: dgettext("screenplays", "Screenplays")
   defp tool_label(:assets), do: dgettext("assets", "Assets")
   defp tool_label(:localization), do: dgettext("localization", "Localization")
-  defp tool_label(:export_import), do: gettext("Export & Import")
   defp tool_label(_), do: ""
 
   # ============================================================================
@@ -339,9 +337,6 @@ defmodule StoryarnWeb.Components.FocusLayout do
 
   defp tool_path(ws, proj, "localization"),
     do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/localization"
-
-  defp tool_path(ws, proj, "export-import"),
-    do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/export-import"
 
   # ============================================================================
   # Tree Panel

@@ -108,7 +108,7 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       |> assert_has("[id^=\"flow-canvas-\"]")
     end
 
-    test "shows add node button for editor", %{conn: conn} do
+    test "shows dock with node tools for editor", %{conn: conn} do
       user = user_fixture()
       project = project_fixture(user) |> Repo.preload(:workspace)
       flow = flow_fixture(project)
@@ -116,12 +116,12 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
-      |> assert_has("button", text: "Add Node")
+      |> assert_has("#flow-dock")
     end
   end
 
   describe "flow access control" do
-    test "viewer can see flows but not add node button", %{conn: conn} do
+    test "viewer can see flows but not add node tools", %{conn: conn} do
       owner = user_fixture()
       viewer = user_fixture()
       project = project_fixture(owner) |> Repo.preload(:workspace)
@@ -132,10 +132,10 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       |> authenticate(viewer)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
       |> assert_has("h1", text: "Shared Flow")
-      |> refute_has("button", text: "Add Node")
+      |> refute_has("[phx-click=add_node]")
     end
 
-    test "editor can see and add nodes", %{conn: conn} do
+    test "editor can see node tools in dock", %{conn: conn} do
       owner = user_fixture()
       editor = user_fixture()
       project = project_fixture(owner) |> Repo.preload(:workspace)
@@ -145,7 +145,7 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       conn
       |> authenticate(editor)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
-      |> assert_has("button", text: "Add Node")
+      |> assert_has("#flow-dock")
     end
   end
 end
