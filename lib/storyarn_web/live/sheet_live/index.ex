@@ -264,7 +264,7 @@ defmodule StoryarnWeb.SheetLive.Index do
          ) do
       {:ok, project, membership} ->
         sheets_tree = Sheets.list_sheets_tree(project.id)
-        sheets = Sheets.list_leaf_sheets(project.id)
+        sheets = Sheets.list_all_sheets(project.id)
         can_edit = Projects.can?(membership.role, :edit_content)
 
         socket =
@@ -311,7 +311,7 @@ defmodule StoryarnWeb.SheetLive.Index do
 
   def handle_info(:load_dashboard_data, socket) do
     project_id = socket.assigns.project.id
-    sheets = Sheets.list_leaf_sheets(project_id)
+    sheets = Sheets.list_all_sheets(project_id)
 
     # Run independent queries in parallel with caching
     tasks = [
@@ -335,10 +335,16 @@ defmodule StoryarnWeb.SheetLive.Index do
           end)
 
         {referenced_ids, issues}
+      end),
+      Task.async(fn ->
+        DashboardCache.fetch(project_id, :sheet_total_vars, fn ->
+          Sheets.list_project_variables(project_id) |> length()
+        end)
       end)
     ]
 
-    [{stats, word_counts}, {referenced_ids, issues}] = Task.await_many(tasks, 15_000)
+    [{stats, word_counts}, {referenced_ids, issues}, total_variable_count] =
+      Task.await_many(tasks, 15_000)
 
     table_data =
       Enum.map(sheets, fn sheet ->
@@ -367,7 +373,7 @@ defmodule StoryarnWeb.SheetLive.Index do
     dashboard_stats = %{
       sheet_count: length(sheets),
       block_count: table_data |> Enum.map(& &1.block_count) |> Enum.sum(),
-      variable_count: table_data |> Enum.map(& &1.variable_count) |> Enum.sum(),
+      variable_count: total_variable_count,
       variables_in_use: MapSet.size(referenced_ids),
       word_count: table_data |> Enum.map(& &1.word_count) |> Enum.sum()
     }
@@ -523,7 +529,7 @@ defmodule StoryarnWeb.SheetLive.Index do
       fn s ->
         s
         |> assign(:sheets_tree, Sheets.list_sheets_tree(project_id))
-        |> assign(:sheets, Sheets.list_leaf_sheets(project_id))
+        |> assign(:sheets, Sheets.list_all_sheets(project_id))
       end
     )
   end

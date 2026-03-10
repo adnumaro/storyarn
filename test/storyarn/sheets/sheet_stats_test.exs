@@ -33,7 +33,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
       assert sheet_stats.variable_count == 2
     end
 
-    test "excludes folder sheets (only leaf sheets)", %{project: project} do
+    test "includes all sheets (parents and leaves)", %{project: project} do
       parent = sheet_fixture(project, %{name: "Parent Folder"})
       child = child_sheet_fixture(project, parent, %{name: "Child Leaf"})
 
@@ -42,9 +42,9 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
       stats = SheetStats.sheet_stats_for_project(project.id)
 
-      # Parent is excluded because child references it via parent_id
-      refute Map.has_key?(stats, parent.id)
+      assert Map.has_key?(stats, parent.id)
       assert Map.has_key?(stats, child.id)
+      assert stats[parent.id].block_count == 1
       assert stats[child.id].block_count == 1
     end
 

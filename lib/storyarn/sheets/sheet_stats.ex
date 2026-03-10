@@ -5,7 +5,7 @@ defmodule Storyarn.Sheets.SheetStats do
 
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
-  alias Storyarn.Sheets.{Block, Sheet, SheetQueries}
+  alias Storyarn.Sheets.{Block, Sheet}
 
   @variable_types ~w(text rich_text number select multi_select boolean date)
 
@@ -14,18 +14,14 @@ defmodule Storyarn.Sheets.SheetStats do
   # ===========================================================================
 
   @doc """
-  Returns per-sheet block and variable counts for leaf sheets in a project.
+  Returns per-sheet block and variable counts for all sheets in a project.
   Returns `%{sheet_id => %{block_count, variable_count}}`.
   """
   def sheet_stats_for_project(project_id) do
-    parent_ids_sub = SheetQueries.parent_ids_subquery(project_id)
-
     from(s in Sheet,
       left_join: b in Block,
       on: b.sheet_id == s.id and is_nil(b.deleted_at),
-      where:
-        s.project_id == ^project_id and is_nil(s.deleted_at) and
-          s.id not in subquery(parent_ids_sub),
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
       group_by: s.id,
       select:
         {s.id,
@@ -49,14 +45,10 @@ defmodule Storyarn.Sheets.SheetStats do
   Returns `%{sheet_id => word_count}`.
   """
   def sheet_word_counts(project_id) do
-    parent_ids_sub = SheetQueries.parent_ids_subquery(project_id)
-
     from(b in Block,
       join: s in Sheet,
       on: b.sheet_id == s.id,
-      where:
-        s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at) and
-          s.id not in subquery(parent_ids_sub),
+      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at),
       group_by: s.id,
       select: {s.id, sum(b.word_count)}
     )
@@ -92,7 +84,7 @@ defmodule Storyarn.Sheets.SheetStats do
   Issue types:
   - `:empty_sheet` — leaf sheet with 0 blocks
   - `:unused_variable` — variable block with no references (capped at 10)
-  - `:missing_shortcut` — leaf sheet with nil/empty shortcut
+  - `:missing_shortcut` — sheet with nil/empty shortcut
   """
   def detect_sheet_issues(project_id, referenced_ids \\ nil) do
     empty = detect_empty_sheets(project_id)
@@ -106,14 +98,15 @@ defmodule Storyarn.Sheets.SheetStats do
   # ===========================================================================
 
   defp detect_empty_sheets(project_id) do
-    parent_ids_sub = SheetQueries.parent_ids_subquery(project_id)
-
+    # Sheets with no blocks AND no children are "empty"
     from(s in Sheet,
       left_join: b in Block,
       on: b.sheet_id == s.id and is_nil(b.deleted_at),
+      left_join: child in Sheet,
+      on: child.parent_id == s.id and child.project_id == ^project_id and is_nil(child.deleted_at),
       where:
         s.project_id == ^project_id and is_nil(s.deleted_at) and
-          s.id not in subquery(parent_ids_sub),
+          is_nil(child.id),
       group_by: [s.id, s.name],
       having: count(b.id) == 0,
       select: %{issue_type: :empty_sheet, sheet_id: s.id, sheet_name: s.name}
@@ -153,12 +146,9 @@ defmodule Storyarn.Sheets.SheetStats do
   end
 
   defp detect_missing_shortcuts(project_id) do
-    parent_ids_sub = SheetQueries.parent_ids_subquery(project_id)
-
     from(s in Sheet,
       where:
         s.project_id == ^project_id and is_nil(s.deleted_at) and
-          s.id not in subquery(parent_ids_sub) and
           (is_nil(s.shortcut) or s.shortcut == ""),
       select: %{issue_type: :missing_shortcut, sheet_id: s.id, sheet_name: s.name}
     )
