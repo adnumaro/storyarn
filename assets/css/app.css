@@ -1023,7 +1023,15 @@ body.dnd-active [data-toolbar] {
 }
 
 .toolbar-btn {
-  @apply btn btn-ghost btn-sm;
+  @apply btn btn-ghost btn-sm px-2;
+}
+
+/* @apply doesn't copy @supports blocks from DaisyUI's btn-ghost, so the
+   subtle color-mix hover is lost. Re-declare it here explicitly. */
+@supports (color: color-mix(in lab, red, red)) {
+  .toolbar-btn:hover {
+    background-color: color-mix(in oklab, var(--color-base-content) 5%, transparent);
+  }
 }
 
 .toolbar-btn-active {

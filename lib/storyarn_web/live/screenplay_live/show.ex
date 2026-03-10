@@ -217,7 +217,8 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
   def handle_event("sync_editor_content", %{"elements" => client_elements}, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
-      EditorHandlers.do_sync_editor_content(socket, client_elements) |> broadcast_screenplay_change()
+      EditorHandlers.do_sync_editor_content(socket, client_elements)
+      |> broadcast_screenplay_change()
     end)
   end
 

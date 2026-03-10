@@ -277,8 +277,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
            )}
 
         {:error, :limit_reached, _details} ->
-          {:noreply,
-           put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
         {:error, _changeset} ->
           {:noreply,
@@ -300,8 +299,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
            )}
 
         {:error, :limit_reached, _details} ->
-          {:noreply,
-           put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
         {:error, _changeset} ->
           {:noreply,

@@ -136,5 +136,4 @@ defmodule Storyarn.Collaboration.Presence do
   """
   @spec topic({atom(), integer()}) :: String.t()
   def topic({type, id}), do: "#{type}:#{id}:presence"
-
 end

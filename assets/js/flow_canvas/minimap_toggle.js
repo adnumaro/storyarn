@@ -40,6 +40,8 @@ export function createMinimapToggle(hook) {
       bottom: 24px;
       right: 24px;
       z-index: 10;
+      display: flex;
+      gap: 6px;
     `;
 
     const fitBtn = document.createElement("button");
@@ -123,7 +125,7 @@ export function createMinimapToggle(hook) {
         // The inner .minimap div in the Shadow DOM has bottom: 24px via its own CSS.
         // Override it directly so the map sits above the toggle button.
         const inner = reteMinimap.shadowRoot?.querySelector(".minimap");
-        if (inner) inner.style.bottom = "68px";
+        if (inner) inner.style.bottom = "58px";
       }
     }
 

@@ -57,7 +57,10 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
         </.form>
 
         <div class="text-center">
-          <.link navigate={~p"/workspaces"} class="text-sm text-base-content/60 hover:text-base-content">
+          <.link
+            navigate={~p"/workspaces"}
+            class="text-sm text-base-content/60 hover:text-base-content"
+          >
             {dgettext("identity", "Go back")}
           </.link>
         </div>

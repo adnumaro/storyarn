@@ -646,12 +646,22 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   defp handle_sheet_remote_change(:block_updated, _payload, socket) do
-    blocks = ReferenceHelpers.load_blocks_with_references(socket.assigns.sheet.id, socket.assigns.project.id)
+    blocks =
+      ReferenceHelpers.load_blocks_with_references(
+        socket.assigns.sheet.id,
+        socket.assigns.project.id
+      )
+
     {:noreply, assign(socket, :blocks, blocks)}
   end
 
   defp handle_sheet_remote_change(:block_created, _payload, socket) do
-    blocks = ReferenceHelpers.load_blocks_with_references(socket.assigns.sheet.id, socket.assigns.project.id)
+    blocks =
+      ReferenceHelpers.load_blocks_with_references(
+        socket.assigns.sheet.id,
+        socket.assigns.project.id
+      )
+
     {:noreply, assign(socket, :blocks, blocks)}
   end
 
@@ -661,12 +671,22 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   defp handle_sheet_remote_change(:block_reordered, _payload, socket) do
-    blocks = ReferenceHelpers.load_blocks_with_references(socket.assigns.sheet.id, socket.assigns.project.id)
+    blocks =
+      ReferenceHelpers.load_blocks_with_references(
+        socket.assigns.sheet.id,
+        socket.assigns.project.id
+      )
+
     {:noreply, assign(socket, :blocks, blocks)}
   end
 
   defp handle_sheet_remote_change(:block_type_changed, _payload, socket) do
-    blocks = ReferenceHelpers.load_blocks_with_references(socket.assigns.sheet.id, socket.assigns.project.id)
+    blocks =
+      ReferenceHelpers.load_blocks_with_references(
+        socket.assigns.sheet.id,
+        socket.assigns.project.id
+      )
+
     {:noreply, assign(socket, :blocks, blocks)}
   end
 

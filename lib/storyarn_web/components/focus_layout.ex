@@ -63,14 +63,14 @@ defmodule StoryarnWeb.Components.FocusLayout do
     assigns = assign(assigns, :active_icon, tool_icon(assigns.active_tool))
 
     ~H"""
-    <nav class="flex items-center gap-1 px-2 py-1.5 surface-panel">
+    <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
       <%!-- Tree panel toggle --%>
       <button
         :if={@has_tree}
         type="button"
         phx-click="tree_panel_toggle"
         class={[
-          "btn btn-ghost btn-sm btn-square tooltip tooltip-bottom tooltip-bottom-start",
+          "toolbar-btn btn-square tooltip tooltip-bottom tooltip-bottom-start",
           @tree_panel_open && "bg-base-300"
         ]}
         data-tip={if @tree_panel_open, do: gettext("Hide panel"), else: gettext("Show panel")}
@@ -78,14 +78,55 @@ defmodule StoryarnWeb.Components.FocusLayout do
         <.icon name="panel-left" class="size-4" />
       </button>
 
-      <div class="w-px h-5 bg-base-300"></div>
+      <div :if={@has_tree} class="w-px h-5 bg-base-300"></div>
+
+      <%!-- Project name dropdown --%>
+      <div class="dropdown dropdown-bottom">
+        <button tabindex="0" class="toolbar-btn gap-1.5 font-medium max-w-52">
+          <.icon name="folder" class="size-4 opacity-60 shrink-0" />
+          <span class="hidden xl:inline truncate text-sm toolbar-collapsible">{@project.name}</span>
+          <.icon name="chevron-down" class="size-3 opacity-50" />
+        </button>
+        <div
+          tabindex="0"
+          class="dropdown-content bg-base-200 border border-base-300 rounded-lg shadow-sm w-max max-w-72 z-[60] mt-3"
+        >
+          <div class="px-4 py-3">
+            <p class="text-sm font-medium truncate">{@project.name}</p>
+            <p class="text-xs text-base-content/50 truncate">{@workspace.name}</p>
+          </div>
+          <div class="border-t border-base-300"></div>
+          <ul class="menu p-1 text-sm">
+            <li>
+              <.link navigate={
+                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/export-import"
+              }>
+                <.icon name="package" class="size-5" />
+                {gettext("Export & Import")}
+              </.link>
+            </li>
+            <li>
+              <.link navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings"}>
+                <.icon name="settings" class="size-5" />
+                {gettext("Project settings")}
+              </.link>
+            </li>
+            <li class="border-t border-base-300 mt-1 pt-1">
+              <.link navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/trash"}>
+                <.icon name="trash-2" class="size-5" />
+                {gettext("Trash")}
+              </.link>
+            </li>
+          </ul>
+        </div>
+      </div>
 
       <%!-- Tool switcher: icon + label, opens dropdown to switch tools --%>
       <div class="dropdown dropdown-bottom">
         <button
           type="button"
           tabindex="0"
-          class="btn btn-ghost btn-sm gap-1.5"
+          class="toolbar-btn gap-1.5"
         >
           <.icon name={@active_icon} class="size-4" />
           <span class="hidden xl:inline text-sm font-medium">{tool_label(@active_tool)}</span>
@@ -124,43 +165,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
     assigns = assign(assigns, :other_users, Enum.take(other_users, 5))
 
     ~H"""
-    <nav class="flex items-center gap-1 px-2 py-1.5 surface-panel">
-      <%!-- Project name dropdown --%>
-      <div class="dropdown dropdown-end">
-        <button tabindex="0" class="btn btn-ghost btn-sm gap-1.5 font-medium max-w-52">
-          <.icon name="folder" class="size-4 opacity-60 shrink-0" />
-          <span class="hidden xl:inline truncate text-sm toolbar-collapsible">{@project.name}</span>
-        </button>
-        <div
-          tabindex="0"
-          class="dropdown-content bg-base-200 border border-base-300 rounded-lg shadow-sm w-max max-w-72 z-[60] mt-3"
-        >
-          <%!-- Project info (non-selectable) --%>
-          <div class="px-4 py-3">
-            <p class="text-sm font-medium truncate">{@project.name}</p>
-            <p class="text-xs text-base-content/50 truncate">{@workspace.name}</p>
-          </div>
-          <div class="border-t border-base-300"></div>
-          <%!-- Menu items --%>
-          <ul class="menu p-1 text-sm">
-            <li>
-              <.link navigate={
-                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/export-import"
-              }>
-                <.icon name="package" class="size-5" />
-                {gettext("Export & Import")}
-              </.link>
-            </li>
-            <li>
-              <.link navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings"}>
-                <.icon name="settings" class="size-5" />
-                {gettext("Project settings")}
-              </.link>
-            </li>
-          </ul>
-        </div>
-      </div>
-
+    <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
       <%!-- Online users --%>
       <div :if={@other_users != []} class="flex -space-x-1 mx-1.5">
         <div
@@ -178,7 +183,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
 
       <%!-- User avatar --%>
       <div class="dropdown dropdown-end">
-        <button tabindex="0" class="btn btn-ghost btn-sm btn-circle">
+        <button tabindex="0" class="toolbar-btn btn-circle">
           <.user_avatar user={@current_scope.user} size="sm" />
         </button>
         <div
@@ -386,19 +391,8 @@ defmodule StoryarnWeb.Components.FocusLayout do
         {render_slot(@tree_content)}
       </div>
 
-      <%!-- Footer: Trash / Pin / Close --%>
-      <div class="flex items-center gap-1 px-2 py-1.5 border-t border-base-300">
-        <.link
-          navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/trash"}
-          class="btn btn-ghost btn-xs gap-1"
-          title={gettext("Trash")}
-        >
-          <.icon name="trash-2" class="size-3" />
-          <span class="text-xs">{gettext("Trash")}</span>
-        </.link>
-
-        <div class="flex-1"></div>
-
+      <%!-- Footer: Pin / Close --%>
+      <div class="flex items-center justify-end gap-1 px-2 py-1.5 border-t border-base-300">
         <button
           :if={@show_pin}
           type="button"

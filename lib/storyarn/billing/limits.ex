@@ -61,8 +61,7 @@ defmodule Storyarn.Billing.Limits do
 
     cond do
       is_nil(limit) ->
-        {:error, :limit_reached,
-         %{resource: :storage_bytes_per_workspace, used: used, limit: 0}}
+        {:error, :limit_reached, %{resource: :storage_bytes_per_workspace, used: used, limit: 0}}
 
       new_total <= limit ->
         :ok

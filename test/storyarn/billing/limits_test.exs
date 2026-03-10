@@ -109,7 +109,10 @@ defmodule Storyarn.Billing.LimitsTest do
       assert :ok = Billing.can_create_item?(project)
     end
 
-    test "counts all item types: flows, nodes, sheets, scenes", %{user: user, workspace: workspace} do
+    test "counts all item types: flows, nodes, sheets, scenes", %{
+      user: user,
+      workspace: workspace
+    } do
       project = project_fixture(user, workspace: workspace)
 
       # Create a flow (auto-creates entry + exit nodes) = 3 items
