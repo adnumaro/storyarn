@@ -28,12 +28,12 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
       project = project_fixture(owner, %{name: "Shared Project"}) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
 
-      {:ok, view, html} =
+      {:ok, _view, html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
       assert html =~ "Shared Project"
-      # Settings button in header is hidden for non-owners, but sidebar link is always there
-      refute has_element?(view, "header .btn", "Settings")
+      # Settings button is hidden for non-owners (editors can't manage project)
+      refute html =~ "Settings"
     end
 
     test "shows settings link for owner", %{conn: conn, user: user} do
@@ -45,16 +45,16 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
       assert html =~ "Settings"
     end
 
-    test "hides settings button in header for non-owner", %{conn: conn, user: user} do
+    test "hides settings button for non-owner", %{conn: conn, user: user} do
       owner = user_fixture()
       project = project_fixture(owner) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
 
-      {:ok, view, _html} =
+      {:ok, _view, html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
-      # Settings button in header is hidden for non-owners
-      refute has_element?(view, "header .btn", "Settings")
+      # Settings button is hidden for non-owners
+      refute html =~ "Settings"
     end
 
     test "redirects for non-member", %{conn: conn} do
@@ -68,14 +68,13 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
       assert flash["error"] =~ "not found"
     end
 
-    test "shows back to workspace link", %{conn: conn, user: user} do
+    test "shows workspace sidebar with link to workspace", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       {:ok, _view, html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
-      assert html =~ "All workspaces"
-      # Check it links to the workspace
+      # Layouts.app sidebar has workspace link
       assert html =~ ~r/workspaces\/#{project.workspace.slug}/
     end
   end

@@ -14,6 +14,7 @@ defmodule Storyarn.Projects do
   alias Storyarn.Accounts.{Scope, User}
 
   alias Storyarn.Projects.{
+    Dashboard,
     Invitations,
     Memberships,
     Project,
@@ -234,4 +235,14 @@ defmodule Storyarn.Projects do
   """
   @spec revoke_invitation(invitation()) :: {:ok, invitation()} | {:error, changeset()}
   defdelegate revoke_invitation(invitation), to: Invitations
+
+  # =============================================================================
+  # Dashboard
+  # =============================================================================
+
+  defdelegate project_stats(project_id), to: Dashboard
+  defdelegate count_all_nodes_by_type(project_id), to: Dashboard
+  defdelegate count_dialogue_lines_by_speaker(project_id), to: Dashboard
+  defdelegate detect_issues(project_id, opts), to: Dashboard
+  defdelegate recent_activity(project_id, limit \\ 10), to: Dashboard
 end
