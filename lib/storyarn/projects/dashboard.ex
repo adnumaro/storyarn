@@ -303,74 +303,85 @@ defmodule Storyarn.Projects.Dashboard do
   # (block text/rich_text content is in word_count — NOT loaded here)
 
   defp collect_sheet_metadata(project_id) do
-    sheet_texts =
-      from(s in Sheet,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at),
-        select: [s.name, s.description]
-      )
-      |> Repo.all()
-
-    # Extract only label + placeholder from config (NOT loading value JSONB)
-    block_labels =
-      from(b in Block,
-        join: s in Sheet,
-        on: b.sheet_id == s.id,
-        where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-        select: [fragment("?->>'label'", b.config), fragment("?->>'placeholder'", b.config)]
-      )
-      |> Repo.all()
-
-    # Select/multi_select option values (only blocks that have options)
-    option_values =
-      from(b in Block,
-        join: s in Sheet,
-        on: b.sheet_id == s.id,
-        where:
-          s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at) and
-            b.type in ["select", "multi_select"],
-        select: fragment("?->'options'", b.config)
-      )
-      |> Repo.all()
-      |> Enum.flat_map(fn
-        opts when is_list(opts) -> Enum.map(opts, &Map.get(&1, "value"))
-        _ -> []
-      end)
-
-    table_col_names =
-      from(tc in "table_columns",
-        join: b in "blocks",
-        on: tc.block_id == b.id,
-        join: s in "sheets",
-        on: b.sheet_id == s.id,
-        where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-        select: tc.name
-      )
-      |> Repo.all()
-
-    table_row_names =
-      from(tr in "table_rows",
-        join: b in "blocks",
-        on: tr.block_id == b.id,
-        join: s in "sheets",
-        on: b.sheet_id == s.id,
-        where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-        select: tr.name
-      )
-      |> Repo.all()
-
-    gallery_texts =
-      from(gi in "block_gallery_images",
-        join: b in "blocks",
-        on: gi.block_id == b.id,
-        join: s in "sheets",
-        on: b.sheet_id == s.id,
-        where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-        select: [gi.label, gi.description]
-      )
-      |> Repo.all()
+    sheet_texts = query_sheet_texts(project_id)
+    block_labels = query_block_labels(project_id)
+    option_values = query_block_option_values(project_id)
+    table_col_names = query_table_column_names(project_id)
+    table_row_names = query_table_row_names(project_id)
+    gallery_texts = query_gallery_texts(project_id)
 
     sheet_texts ++ block_labels ++ option_values ++ table_col_names ++ table_row_names ++
       gallery_texts
+  end
+
+  defp query_sheet_texts(project_id) do
+    from(s in Sheet,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
+      select: [s.name, s.description]
+    )
+    |> Repo.all()
+  end
+
+  defp query_block_labels(project_id) do
+    from(b in Block,
+      join: s in Sheet,
+      on: b.sheet_id == s.id,
+      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
+      select: [fragment("?->>'label'", b.config), fragment("?->>'placeholder'", b.config)]
+    )
+    |> Repo.all()
+  end
+
+  defp query_block_option_values(project_id) do
+    from(b in Block,
+      join: s in Sheet,
+      on: b.sheet_id == s.id,
+      where:
+        s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at) and
+          b.type in ["select", "multi_select"],
+      select: fragment("?->'options'", b.config)
+    )
+    |> Repo.all()
+    |> Enum.flat_map(fn
+      opts when is_list(opts) -> Enum.map(opts, &Map.get(&1, "value"))
+      _ -> []
+    end)
+  end
+
+  defp query_table_column_names(project_id) do
+    from(tc in "table_columns",
+      join: b in "blocks",
+      on: tc.block_id == b.id,
+      join: s in "sheets",
+      on: b.sheet_id == s.id,
+      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
+      select: tc.name
+    )
+    |> Repo.all()
+  end
+
+  defp query_table_row_names(project_id) do
+    from(tr in "table_rows",
+      join: b in "blocks",
+      on: tr.block_id == b.id,
+      join: s in "sheets",
+      on: b.sheet_id == s.id,
+      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
+      select: tr.name
+    )
+    |> Repo.all()
+  end
+
+  defp query_gallery_texts(project_id) do
+    from(gi in "block_gallery_images",
+      join: b in "blocks",
+      on: gi.block_id == b.id,
+      join: s in "sheets",
+      on: b.sheet_id == s.id,
+      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
+      select: [gi.label, gi.description]
+    )
+    |> Repo.all()
   end
 
   # -- Scene metadata: names, descriptions, layer/zone/pin/annotation/connection labels

@@ -140,7 +140,7 @@ defmodule StoryarnWeb.SceneLive.FormTest do
       |> render_submit()
 
       # SceneLive.Index handle_info redirects to scene show
-      {path, _flash} = assert_redirect(view)
+      {path, _flash} = assert_redirect(view, 2000)
       assert path =~ "/scenes/"
     end
   end

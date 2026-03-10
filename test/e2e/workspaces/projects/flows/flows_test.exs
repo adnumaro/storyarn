@@ -55,7 +55,7 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
-      |> assert_has("h3", text: "Main Story Flow")
+      |> assert_has("a", text: "Main Story Flow")
     end
 
     test "can open new flow modal", %{conn: conn} do

@@ -131,7 +131,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
       issues = SheetStats.detect_sheet_issues(project.id)
 
       empty_issues = Enum.filter(issues, &(&1.issue_type == :empty_sheet))
-      assert length(empty_issues) >= 1
+      assert empty_issues != []
       assert Enum.any?(empty_issues, &(&1.sheet_name == "Empty One"))
     end
 
@@ -142,7 +142,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
       issues = SheetStats.detect_sheet_issues(project.id)
 
       unused_issues = Enum.filter(issues, &(&1.issue_type == :unused_variable))
-      assert length(unused_issues) >= 1
+      assert unused_issues != []
     end
 
     test "detects missing shortcuts", %{project: project} do
@@ -157,7 +157,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
       issues = SheetStats.detect_sheet_issues(project.id)
 
       missing_issues = Enum.filter(issues, &(&1.issue_type == :missing_shortcut))
-      assert length(missing_issues) >= 1
+      assert missing_issues != []
       assert Enum.any?(missing_issues, &(&1.sheet_name == "No Shortcut"))
     end
   end

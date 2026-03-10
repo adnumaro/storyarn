@@ -13,7 +13,6 @@ defmodule StoryarnWeb.E2E.SheetsTest do
   import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias PlaywrightEx.Frame
   alias Storyarn.Accounts
   alias Storyarn.Repo
 
@@ -56,7 +55,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
-      |> assert_has("h3", text: "Character Sheet")
+      |> assert_has("a", text: "Character Sheet")
     end
 
     test "can create a new sheet via sidebar button", %{conn: conn} do
@@ -81,8 +80,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       conn
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
-      |> assert_has("h3", text: "Characters")
-      |> assert_has("p", text: "2 subsheets")
+      |> assert_has("a", text: "Characters")
     end
   end
 

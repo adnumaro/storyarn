@@ -331,13 +331,8 @@ defmodule StoryarnWeb.FlowLive.Index do
           |> assign(:total_pages, 1)
           |> assign(:pending_delete_id, nil)
 
-        if connected?(socket) do
-          Collaboration.subscribe_dashboard(project.id)
-
-          if flows != [] do
-            send(self(), :load_dashboard_data)
-          end
-        end
+        if connected?(socket), do: Collaboration.subscribe_dashboard(project.id)
+        if connected?(socket) and flows != [], do: send(self(), :load_dashboard_data)
 
         {:ok, socket}
 
@@ -438,6 +433,11 @@ defmodule StoryarnWeb.FlowLive.Index do
      )}
   end
 
+  # Ignore EXIT messages from linked processes (e.g. Task.async in dashboard loading)
+  def handle_info({:EXIT, _pid, _reason}, socket) do
+    {:noreply, socket}
+  end
+
   # ===========================================================================
   # Events
   # ===========================================================================
@@ -473,21 +473,15 @@ defmodule StoryarnWeb.FlowLive.Index do
   def handle_event(event, %{"id" => flow_id}, socket)
       when event in ~w(delete delete_flow) do
     with_authorization(socket, :edit_content, fn socket ->
-      case Flows.get_flow(socket.assigns.project.id, flow_id) do
-        nil ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
-
-        flow ->
-          case Flows.delete_flow(flow) do
-            {:ok, _} ->
-              {:noreply,
-               socket
-               |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
-               |> reload_flows()}
-
-            {:error, _} ->
-              {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
-          end
+      with %{} = flow <- Flows.get_flow(socket.assigns.project.id, flow_id),
+           {:ok, _} <- Flows.delete_flow(flow) do
+        {:noreply,
+         socket
+         |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
+         |> reload_flows()}
+      else
+        nil -> {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
+        {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
       end
     end)
   end
@@ -495,21 +489,15 @@ defmodule StoryarnWeb.FlowLive.Index do
   def handle_event(event, %{"id" => flow_id}, socket)
       when event in ~w(set_main set_main_flow) do
     with_authorization(socket, :edit_content, fn socket ->
-      case Flows.get_flow(socket.assigns.project.id, flow_id) do
-        nil ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
-
-        flow ->
-          case Flows.set_main_flow(flow) do
-            {:ok, _} ->
-              {:noreply,
-               socket
-               |> put_flash(:info, dgettext("flows", "Flow set as main."))
-               |> reload_flows()}
-
-            {:error, _} ->
-              {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
-          end
+      with %{} = flow <- Flows.get_flow(socket.assigns.project.id, flow_id),
+           {:ok, _} <- Flows.set_main_flow(flow) do
+        {:noreply,
+         socket
+         |> put_flash(:info, dgettext("flows", "Flow set as main."))
+         |> reload_flows()}
+      else
+        nil -> {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
+        {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
       end
     end)
   end

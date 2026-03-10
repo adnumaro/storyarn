@@ -287,13 +287,8 @@ defmodule StoryarnWeb.SheetLive.Index do
           |> assign(:total_pages, 1)
           |> assign(:pending_delete_id, nil)
 
-        if connected?(socket) do
-          Collaboration.subscribe_dashboard(project.id)
-
-          if sheets != [] do
-            send(self(), :load_dashboard_data)
-          end
-        end
+        if connected?(socket), do: Collaboration.subscribe_dashboard(project.id)
+        if connected?(socket) and sheets != [], do: send(self(), :load_dashboard_data)
 
         {:ok, socket}
 
@@ -392,6 +387,11 @@ defmodule StoryarnWeb.SheetLive.Index do
 
   # ===========================================================================
   # Events
+  # Ignore EXIT messages from linked processes (e.g. Task.async in dashboard loading)
+  def handle_info({:EXIT, _pid, _reason}, socket) do
+    {:noreply, socket}
+  end
+
   # ===========================================================================
 
   @impl true
@@ -425,21 +425,15 @@ defmodule StoryarnWeb.SheetLive.Index do
   def handle_event(event, %{"id" => sheet_id}, socket)
       when event in ~w(delete delete_sheet) do
     with_authorization(socket, :edit_content, fn socket ->
-      case Sheets.get_sheet(socket.assigns.project.id, sheet_id) do
-        nil ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
-
-        sheet ->
-          case Sheets.delete_sheet(sheet) do
-            {:ok, _} ->
-              {:noreply,
-               socket
-               |> put_flash(:info, dgettext("sheets", "Sheet moved to trash."))
-               |> reload_sheets()}
-
-            {:error, _} ->
-              {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
-          end
+      with %{} = sheet <- Sheets.get_sheet(socket.assigns.project.id, sheet_id),
+           {:ok, _} <- Sheets.delete_sheet(sheet) do
+        {:noreply,
+         socket
+         |> put_flash(:info, dgettext("sheets", "Sheet moved to trash."))
+         |> reload_sheets()}
+      else
+        nil -> {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
+        {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
       end
     end)
   end
@@ -494,29 +488,21 @@ defmodule StoryarnWeb.SheetLive.Index do
         socket
       ) do
     with_authorization(socket, :edit_content, fn socket ->
-      case Sheets.get_sheet(socket.assigns.project.id, sheet_id) do
+      with %{} = sheet <- Sheets.get_sheet(socket.assigns.project.id, sheet_id),
+           parent_id = MapUtils.parse_int(parent_id),
+           position = MapUtils.parse_int(position) || 0,
+           {:ok, _sheet} <- Sheets.move_sheet_to_position(sheet, parent_id, position) do
+        {:noreply, reload_sheets(socket)}
+      else
         nil ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
 
-        sheet ->
-          parent_id = MapUtils.parse_int(parent_id)
-          position = MapUtils.parse_int(position) || 0
+        {:error, :would_create_cycle} ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("sheets", "Cannot move a sheet into its own children."))}
 
-          case Sheets.move_sheet_to_position(sheet, parent_id, position) do
-            {:ok, _sheet} ->
-              {:noreply, reload_sheets(socket)}
-
-            {:error, :would_create_cycle} ->
-              {:noreply,
-               put_flash(
-                 socket,
-                 :error,
-                 dgettext("sheets", "Cannot move a sheet into its own children.")
-               )}
-
-            {:error, _reason} ->
-              {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
-          end
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
       end
     end)
   end

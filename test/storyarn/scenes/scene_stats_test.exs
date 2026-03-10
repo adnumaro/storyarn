@@ -63,7 +63,7 @@ defmodule Storyarn.Scenes.SceneStatsTest do
       issues = SceneStats.detect_scene_issues(project.id)
 
       empty_issues = Enum.filter(issues, &(&1.issue_type == :empty_scene))
-      assert length(empty_issues) >= 1
+      assert empty_issues != []
       assert Enum.any?(empty_issues, &(&1.scene_name == "Empty One"))
     end
 
@@ -83,7 +83,7 @@ defmodule Storyarn.Scenes.SceneStatsTest do
       issues = SceneStats.detect_scene_issues(project.id)
 
       bg_issues = Enum.filter(issues, &(&1.issue_type == :no_background))
-      assert length(bg_issues) >= 1
+      assert bg_issues != []
       assert Enum.any?(bg_issues, &(&1.scene_name == "No Background"))
     end
 
@@ -100,7 +100,7 @@ defmodule Storyarn.Scenes.SceneStatsTest do
       issues = SceneStats.detect_scene_issues(project.id)
 
       missing_issues = Enum.filter(issues, &(&1.issue_type == :missing_shortcut))
-      assert length(missing_issues) >= 1
+      assert missing_issues != []
       assert Enum.any?(missing_issues, &(&1.scene_name == "No Shortcut"))
     end
   end

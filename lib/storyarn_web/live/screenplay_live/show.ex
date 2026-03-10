@@ -126,6 +126,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
          # Defaults — screenplay loaded in handle_params
          |> assign(:screenplay, nil)
          |> assign(:screenplays_tree, Screenplays.list_screenplays_tree(project.id))
+         |> assign(:connected_data_loaded, false)
          |> assign(:sheets_map, %{})
          |> assign(:elements, [])
          |> assign(:editor_doc, Screenplays.elements_to_doc([]))
@@ -595,8 +596,6 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
     Collab.setup(socket, scope, user, cursors: false, locks: true, changes: true)
     {online_users, _locks} = Collab.get_initial_state(socket, scope)
 
-    has_tree = socket.assigns.screenplays_tree != []
-
     socket =
       socket
       |> assign(:collab_scope, scope)
@@ -607,16 +606,15 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       |> assign(:linked_pages, LinkedPageHandlers.load_linked_pages(screenplay))
 
     # Only load shared project data on first mount, reuse on subsequent patches
-    if has_tree do
+    if socket.assigns.connected_data_loaded do
       socket
     else
       project_variables = Sheets.list_project_variables(project.id)
       all_sheets = Sheets.list_all_sheets(project.id)
       sheets_map = Map.new(all_sheets, &{&1.id, &1})
-      screenplays_tree = Screenplays.list_screenplays_tree(project.id)
 
       socket
-      |> assign(:screenplays_tree, screenplays_tree)
+      |> assign(:connected_data_loaded, true)
       |> assign(:sheets_map, sheets_map)
       |> assign(:project_variables, project_variables)
     end

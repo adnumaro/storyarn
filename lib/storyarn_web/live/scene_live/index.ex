@@ -327,13 +327,8 @@ defmodule StoryarnWeb.SceneLive.Index do
           |> assign(:total_pages, 1)
           |> assign(:pending_delete_id, nil)
 
-        if connected?(socket) do
-          Collaboration.subscribe_dashboard(project.id)
-
-          if scenes != [] do
-            send(self(), :load_dashboard_data)
-          end
-        end
+        if connected?(socket), do: Collaboration.subscribe_dashboard(project.id)
+        if connected?(socket) and scenes != [], do: send(self(), :load_dashboard_data)
 
         {:ok, socket}
 
@@ -435,6 +430,11 @@ defmodule StoryarnWeb.SceneLive.Index do
        to:
          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{scene.id}"
      )}
+  end
+
+  # Ignore EXIT messages from linked processes (e.g. Task.async in dashboard loading)
+  def handle_info({:EXIT, _pid, _reason}, socket) do
+    {:noreply, socket}
   end
 
   # ===========================================================================
