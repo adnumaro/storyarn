@@ -152,20 +152,23 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   @spec list_leaf_sheets(integer()) :: [Sheet.t()]
   def list_leaf_sheets(project_id) do
-    parent_ids_subquery =
-      from(s in Sheet,
-        where: s.project_id == ^project_id and not is_nil(s.parent_id) and is_nil(s.deleted_at),
-        select: s.parent_id
-      )
-
     from(s in Sheet,
       where:
-        s.project_id == ^project_id and s.id not in subquery(parent_ids_subquery) and
+        s.project_id == ^project_id and s.id not in subquery(parent_ids_subquery(project_id)) and
           is_nil(s.deleted_at),
       order_by: [asc: s.position, asc: s.name],
       preload: [:avatar_asset]
     )
     |> Repo.all()
+  end
+
+  @doc false
+  @spec parent_ids_subquery(integer()) :: Ecto.Query.t()
+  def parent_ids_subquery(project_id) do
+    from(s in Sheet,
+      where: s.project_id == ^project_id and not is_nil(s.parent_id) and is_nil(s.deleted_at),
+      select: s.parent_id
+    )
   end
 
   # =============================================================================

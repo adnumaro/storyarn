@@ -80,13 +80,21 @@ defmodule StoryarnWeb.FlowLive.Index do
 
           <%!-- Flow table --%>
           <.dashboard_section title={dgettext("flows", "All Flows")}>
-            <.flow_table
-              rows={@flow_table_data}
-              sort_by={@sort_by}
-              sort_dir={@sort_dir}
-              workspace={@workspace}
-              project={@project}
-              can_edit={@can_edit}
+            <.dashboard_table_wrapper>
+              <.flow_table
+                rows={@flow_table_data}
+                sort_by={@sort_by}
+                sort_dir={@sort_dir}
+                workspace={@workspace}
+                project={@project}
+                can_edit={@can_edit}
+              />
+            </.dashboard_table_wrapper>
+            <.pagination
+              page={@page}
+              total_pages={@total_pages}
+              total={length(@all_flow_table_data)}
+              event="page_flows"
             />
           </.dashboard_section>
 
@@ -139,154 +147,136 @@ defmodule StoryarnWeb.FlowLive.Index do
 
   defp flow_table(assigns) do
     ~H"""
-    <div class="overflow-x-auto -mx-5">
-      <table class="table table-sm w-full">
-        <thead>
-          <tr class="text-xs text-base-content/50 uppercase">
-            <th class="font-medium">
-              <button
-                type="button"
-                phx-click="sort_flows"
-                phx-value-column="name"
-                class="flex items-center gap-1 hover:text-base-content"
+    <table class="table table-sm w-full">
+      <thead class="sticky top-0 bg-base-100 z-10">
+        <tr class="text-xs text-base-content/50 uppercase">
+          <th class="font-medium">
+            <button
+              type="button"
+              phx-click="sort_flows"
+              phx-value-column="name"
+              class="flex items-center gap-1 hover:text-base-content"
+            >
+              {dgettext("flows", "Name")}
+              <.sort_indicator column="name" sort_by={@sort_by} sort_dir={@sort_dir} />
+            </button>
+          </th>
+          <th class="font-medium text-right">
+            <button
+              type="button"
+              phx-click="sort_flows"
+              phx-value-column="node_count"
+              class="flex items-center gap-1 ml-auto hover:text-base-content"
+            >
+              {dgettext("flows", "Nodes")}
+              <.sort_indicator column="node_count" sort_by={@sort_by} sort_dir={@sort_dir} />
+            </button>
+          </th>
+          <th class="font-medium text-right hidden sm:table-cell">
+            <button
+              type="button"
+              phx-click="sort_flows"
+              phx-value-column="dialogue_count"
+              class="flex items-center gap-1 ml-auto hover:text-base-content"
+            >
+              {dgettext("flows", "Dialogue")}
+              <.sort_indicator column="dialogue_count" sort_by={@sort_by} sort_dir={@sort_dir} />
+            </button>
+          </th>
+          <th class="font-medium text-right hidden sm:table-cell">
+            <button
+              type="button"
+              phx-click="sort_flows"
+              phx-value-column="condition_count"
+              class="flex items-center gap-1 ml-auto hover:text-base-content"
+            >
+              {dgettext("flows", "Conditions")}
+              <.sort_indicator column="condition_count" sort_by={@sort_by} sort_dir={@sort_dir} />
+            </button>
+          </th>
+          <th class="font-medium text-right hidden md:table-cell">
+            <button
+              type="button"
+              phx-click="sort_flows"
+              phx-value-column="word_count"
+              class="flex items-center gap-1 ml-auto hover:text-base-content"
+            >
+              {dgettext("flows", "Words")}
+              <.sort_indicator column="word_count" sort_by={@sort_by} sort_dir={@sort_dir} />
+            </button>
+          </th>
+          <th class="font-medium text-right hidden md:table-cell">
+            <button
+              type="button"
+              phx-click="sort_flows"
+              phx-value-column="updated_at"
+              class="flex items-center gap-1 ml-auto hover:text-base-content"
+            >
+              {dgettext("flows", "Modified")}
+              <.sort_indicator column="updated_at" sort_by={@sort_by} sort_dir={@sort_dir} />
+            </button>
+          </th>
+          <th :if={@can_edit} class="w-10"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={row <- @rows} class="hover:bg-base-200/50">
+          <td>
+            <.link
+              navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{row.id}"}
+              class="flex items-center gap-2 font-medium hover:underline"
+            >
+              {row.name}
+              <span
+                :if={row.is_main}
+                class="badge badge-primary badge-xs"
+                title={dgettext("flows", "Main flow")}
               >
-                {dgettext("flows", "Name")}
-                <.sort_indicator column="name" sort_by={@sort_by} sort_dir={@sort_dir} />
+                {dgettext("flows", "Main")}
+              </span>
+            </.link>
+          </td>
+          <td class="text-right tabular-nums">{row.node_count}</td>
+          <td class="text-right tabular-nums hidden sm:table-cell">{row.dialogue_count}</td>
+          <td class="text-right tabular-nums hidden sm:table-cell">{row.condition_count}</td>
+          <td class="text-right tabular-nums hidden md:table-cell">{row.word_count}</td>
+          <td class="text-right text-base-content/50 text-xs hidden md:table-cell">
+            {format_relative_time(row.updated_at)}
+          </td>
+          <td :if={@can_edit} class="text-right">
+            <div class="dropdown dropdown-end">
+              <button type="button" tabindex="0" class="btn btn-ghost btn-xs btn-square">
+                <.icon name="more-horizontal" class="size-4" />
               </button>
-            </th>
-            <th class="font-medium text-right">
-              <button
-                type="button"
-                phx-click="sort_flows"
-                phx-value-column="node_count"
-                class="flex items-center gap-1 ml-auto hover:text-base-content"
+              <ul
+                tabindex="0"
+                class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-40 z-50"
               >
-                {dgettext("flows", "Nodes")}
-                <.sort_indicator column="node_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-              </button>
-            </th>
-            <th class="font-medium text-right hidden sm:table-cell">
-              <button
-                type="button"
-                phx-click="sort_flows"
-                phx-value-column="dialogue_count"
-                class="flex items-center gap-1 ml-auto hover:text-base-content"
-              >
-                {dgettext("flows", "Dialogue")}
-                <.sort_indicator column="dialogue_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-              </button>
-            </th>
-            <th class="font-medium text-right hidden sm:table-cell">
-              <button
-                type="button"
-                phx-click="sort_flows"
-                phx-value-column="condition_count"
-                class="flex items-center gap-1 ml-auto hover:text-base-content"
-              >
-                {dgettext("flows", "Conditions")}
-                <.sort_indicator column="condition_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-              </button>
-            </th>
-            <th class="font-medium text-right hidden md:table-cell">
-              <button
-                type="button"
-                phx-click="sort_flows"
-                phx-value-column="word_count"
-                class="flex items-center gap-1 ml-auto hover:text-base-content"
-              >
-                {dgettext("flows", "Words")}
-                <.sort_indicator column="word_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-              </button>
-            </th>
-            <th class="font-medium text-right hidden md:table-cell">
-              <button
-                type="button"
-                phx-click="sort_flows"
-                phx-value-column="updated_at"
-                class="flex items-center gap-1 ml-auto hover:text-base-content"
-              >
-                {dgettext("flows", "Modified")}
-                <.sort_indicator column="updated_at" sort_by={@sort_by} sort_dir={@sort_dir} />
-              </button>
-            </th>
-            <th :if={@can_edit} class="w-10"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr :for={row <- @rows} class="hover:bg-base-200/50">
-            <td>
-              <.link
-                navigate={
-                  ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{row.id}"
-                }
-                class="flex items-center gap-2 font-medium hover:underline"
-              >
-                {row.name}
-                <span
-                  :if={row.is_main}
-                  class="badge badge-primary badge-xs"
-                  title={dgettext("flows", "Main flow")}
-                >
-                  {dgettext("flows", "Main")}
-                </span>
-              </.link>
-            </td>
-            <td class="text-right tabular-nums">{row.node_count}</td>
-            <td class="text-right tabular-nums hidden sm:table-cell">{row.dialogue_count}</td>
-            <td class="text-right tabular-nums hidden sm:table-cell">{row.condition_count}</td>
-            <td class="text-right tabular-nums hidden md:table-cell">{row.word_count}</td>
-            <td class="text-right text-base-content/50 text-xs hidden md:table-cell">
-              {format_relative_time(row.updated_at)}
-            </td>
-            <td :if={@can_edit} class="text-right">
-              <div class="dropdown dropdown-end">
-                <button type="button" tabindex="0" class="btn btn-ghost btn-xs btn-square">
-                  <.icon name="more-horizontal" class="size-4" />
-                </button>
-                <ul
-                  tabindex="0"
-                  class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-40 z-50"
-                >
-                  <li :if={!row.is_main}>
-                    <button type="button" phx-click="set_main" phx-value-id={row.id}>
-                      <.icon name="star" class="size-4" />
-                      {dgettext("flows", "Set as main")}
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      class="text-error"
-                      phx-click={
-                        JS.push("set_pending_delete", value: %{id: row.id})
-                        |> show_modal("delete-flow-confirm")
-                      }
-                    >
-                      <.icon name="trash-2" class="size-4" />
-                      {dgettext("flows", "Delete")}
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    """
-  end
-
-  attr :column, :string, required: true
-  attr :sort_by, :string, required: true
-  attr :sort_dir, :atom, required: true
-
-  defp sort_indicator(assigns) do
-    ~H"""
-    <.icon
-      :if={@sort_by == @column}
-      name={if @sort_dir == :asc, do: "chevron-up", else: "chevron-down"}
-      class="size-3"
-    />
+                <li :if={!row.is_main}>
+                  <button type="button" phx-click="set_main" phx-value-id={row.id}>
+                    <.icon name="star" class="size-4" />
+                    {dgettext("flows", "Set as main")}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    class="text-error"
+                    phx-click={
+                      JS.push("set_pending_delete", value: %{id: row.id})
+                      |> show_modal("delete-flow-confirm")
+                    }
+                  >
+                    <.icon name="trash-2" class="size-4" />
+                    {dgettext("flows", "Delete")}
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
     """
   end
 
@@ -325,10 +315,13 @@ defmodule StoryarnWeb.FlowLive.Index do
           |> assign(:flows, flows)
           |> assign(:flows_tree, flows_tree)
           |> assign(:dashboard_stats, nil)
+          |> assign(:all_flow_table_data, [])
           |> assign(:flow_table_data, [])
           |> assign(:flow_issues, [])
           |> assign(:sort_by, "name")
           |> assign(:sort_dir, :asc)
+          |> assign(:page, 1)
+          |> assign(:total_pages, 1)
           |> assign(:pending_delete_id, nil)
 
         if connected?(socket) and flows != [] do
@@ -382,6 +375,7 @@ defmodule StoryarnWeb.FlowLive.Index do
       end)
 
     sorted_table = sort_flow_table(table_data, socket.assigns.sort_by, socket.assigns.sort_dir)
+    {page_rows, total_pages} = paginate(sorted_table, 1)
 
     # Aggregate stats
     dashboard_stats = %{
@@ -398,7 +392,10 @@ defmodule StoryarnWeb.FlowLive.Index do
     {:noreply,
      socket
      |> assign(:dashboard_stats, dashboard_stats)
-     |> assign(:flow_table_data, sorted_table)
+     |> assign(:all_flow_table_data, sorted_table)
+     |> assign(:flow_table_data, page_rows)
+     |> assign(:page, 1)
+     |> assign(:total_pages, total_pages)
      |> assign(:flow_issues, formatted_issues)}
   end
 
@@ -424,13 +421,28 @@ defmodule StoryarnWeb.FlowLive.Index do
 
   def handle_event("sort_flows", %{"column" => column}, socket) do
     {sort_by, sort_dir} = toggle_sort(column, socket.assigns.sort_by, socket.assigns.sort_dir)
-    sorted = sort_flow_table(socket.assigns.flow_table_data, sort_by, sort_dir)
+    sorted = sort_flow_table(socket.assigns.all_flow_table_data, sort_by, sort_dir)
+    {page_rows, total_pages} = paginate(sorted, 1)
 
     {:noreply,
      socket
      |> assign(:sort_by, sort_by)
      |> assign(:sort_dir, sort_dir)
-     |> assign(:flow_table_data, sorted)}
+     |> assign(:all_flow_table_data, sorted)
+     |> assign(:flow_table_data, page_rows)
+     |> assign(:page, 1)
+     |> assign(:total_pages, total_pages)}
+  end
+
+  def handle_event("page_flows", %{"page" => page}, socket) do
+    page = parse_page(page)
+    {page_rows, total_pages} = paginate(socket.assigns.all_flow_table_data, page)
+
+    {:noreply,
+     socket
+     |> assign(:flow_table_data, page_rows)
+     |> assign(:page, page)
+     |> assign(:total_pages, total_pages)}
   end
 
   def handle_event("set_pending_delete", %{"id" => id}, socket) do
@@ -593,8 +605,11 @@ defmodule StoryarnWeb.FlowLive.Index do
     |> assign(:flows, Flows.list_flows(project_id))
     |> assign(:flows_tree, Flows.list_flows_tree(project_id))
     |> assign(:dashboard_stats, nil)
+    |> assign(:all_flow_table_data, [])
     |> assign(:flow_table_data, [])
     |> assign(:flow_issues, [])
+    |> assign(:page, 1)
+    |> assign(:total_pages, 1)
     |> then(fn socket ->
       if socket.assigns.flows != [] do
         send(self(), :load_dashboard_data)
@@ -617,14 +632,6 @@ defmodule StoryarnWeb.FlowLive.Index do
       end
 
     Enum.sort_by(data, sorter, sort_dir)
-  end
-
-  defp toggle_sort(column, current_by, current_dir) do
-    if column == current_by do
-      {column, if(current_dir == :asc, do: :desc, else: :asc)}
-    else
-      {column, :asc}
-    end
   end
 
   defp format_flow_issues(issues, workspace, project) do

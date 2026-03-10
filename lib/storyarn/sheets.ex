@@ -19,6 +19,7 @@ defmodule Storyarn.Sheets do
     Sheet,
     SheetCrud,
     SheetQueries,
+    SheetStats,
     SheetVersion,
     TableCrud,
     TreeOperations,
@@ -843,4 +844,20 @@ defmodule Storyarn.Sheets do
 
   @doc "Creates a table row for import (raw insert, no side effects)."
   defdelegate import_table_row(block_id, attrs), to: TableCrud, as: :import_row
+
+  # =============================================================================
+  # Dashboard Stats
+  # =============================================================================
+
+  @doc "Returns per-sheet block and variable counts. %{sheet_id => %{block_count, variable_count}}."
+  defdelegate sheet_stats_for_project(project_id), to: SheetStats
+
+  @doc "Returns per-sheet word counts from text/rich_text blocks. %{sheet_id => word_count}."
+  defdelegate sheet_word_counts(project_id), to: SheetStats
+
+  @doc "Returns MapSet of block IDs with at least one variable reference."
+  defdelegate referenced_block_ids_for_project(project_id), to: SheetStats
+
+  @doc "Detects issues in sheets. Returns [%{issue_type, sheet_id, sheet_name, ...}]."
+  defdelegate detect_sheet_issues(project_id), to: SheetStats
 end

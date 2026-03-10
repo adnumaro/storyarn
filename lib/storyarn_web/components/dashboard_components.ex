@@ -227,6 +227,143 @@ defmodule StoryarnWeb.Components.DashboardComponents do
   end
 
   # ===========================================================================
+  # Table Wrapper
+  # ===========================================================================
+
+  @doc """
+  Wraps a dashboard table with max height, vertical scroll, and horizontal scroll.
+  The thead stays sticky at the top.
+  """
+  slot :inner_block, required: true
+
+  def dashboard_table_wrapper(assigns) do
+    ~H"""
+    <div class="overflow-auto max-h-[32rem] -mx-5">
+      {render_slot(@inner_block)}
+    </div>
+    """
+  end
+
+  # ===========================================================================
+  # Sort Indicator
+  # ===========================================================================
+
+  @doc "Renders an up/down chevron when the column matches the current sort."
+  attr :column, :string, required: true
+  attr :sort_by, :string, required: true
+  attr :sort_dir, :atom, required: true
+
+  def sort_indicator(assigns) do
+    ~H"""
+    <.icon
+      :if={@sort_by == @column}
+      name={if @sort_dir == :asc, do: "chevron-up", else: "chevron-down"}
+      class="size-3"
+    />
+    """
+  end
+
+  # ===========================================================================
+  # Pagination
+  # ===========================================================================
+
+  @default_per_page 25
+
+  @doc "Default rows per page for dashboard tables."
+  def default_per_page, do: @default_per_page
+
+  @doc """
+  Paginates a list of rows in-memory. Returns `{page_rows, total_pages}`.
+
+  ## Examples
+
+      {rows, total_pages} = paginate(all_rows, page, per_page)
+  """
+  def paginate(rows, page, per_page \\ @default_per_page) do
+    total = length(rows)
+    total_pages = max(ceil(total / per_page), 1)
+    page = clamp(page, 1, total_pages)
+
+    page_rows =
+      rows
+      |> Enum.drop((page - 1) * per_page)
+      |> Enum.take(per_page)
+
+    {page_rows, total_pages}
+  end
+
+  defp clamp(val, min, _max) when val < min, do: min
+  defp clamp(val, _min, max) when val > max, do: max
+  defp clamp(val, _min, _max), do: val
+
+  @doc """
+  Renders pagination controls (prev/next + page info).
+
+  Emits the `event` with `%{"page" => page}` on click.
+  """
+  attr :page, :integer, required: true
+  attr :total_pages, :integer, required: true
+  attr :total, :integer, required: true
+  attr :event, :string, required: true
+
+  def pagination(assigns) do
+    ~H"""
+    <div :if={@total_pages > 1} class="flex items-center justify-between pt-3 px-1">
+      <span class="text-xs text-base-content/50">
+        {gettext("%{total} items", total: @total)}
+      </span>
+      <div class="flex items-center gap-1">
+        <button
+          type="button"
+          phx-click={@event}
+          phx-value-page={@page - 1}
+          disabled={@page <= 1}
+          class="btn btn-ghost btn-xs btn-square"
+        >
+          <.icon name="chevron-left" class="size-4" />
+        </button>
+        <span class="text-xs text-base-content/60 px-2 tabular-nums">
+          {@page} / {@total_pages}
+        </span>
+        <button
+          type="button"
+          phx-click={@event}
+          phx-value-page={@page + 1}
+          disabled={@page >= @total_pages}
+          class="btn btn-ghost btn-xs btn-square"
+        >
+          <.icon name="chevron-right" class="size-4" />
+        </button>
+      </div>
+    </div>
+    """
+  end
+
+  # ===========================================================================
+  # Shared Helpers
+  # ===========================================================================
+
+  @doc "Toggles sort direction when the same column is clicked; resets to :asc for a new column."
+  def toggle_sort(column, current_by, current_dir) do
+    if column == current_by do
+      {column, if(current_dir == :asc, do: :desc, else: :asc)}
+    else
+      {column, :asc}
+    end
+  end
+
+  @doc "Safely parses a page number from user input. Returns 1 for invalid input."
+  def parse_page(page) when is_binary(page) do
+    case Integer.parse(page) do
+      {n, ""} -> n
+      _ -> 1
+    end
+  end
+
+  def parse_page(page) when is_integer(page), do: page
+  def parse_page(_), do: 1
+
+  # ===========================================================================
   # Time Formatting
   # ===========================================================================
 

@@ -66,6 +66,53 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
       assert html =~ "No sheets yet"
     end
+
+    test "renders dashboard with stat cards when sheets exist", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      sheet = sheet_fixture(project, %{name: "Character Sheet"})
+      block_fixture(sheet, %{type: "text", value: %{"content" => "hello world"}})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
+        )
+
+      # Dashboard loads async, so render to get updated state
+      html = render(view)
+
+      assert html =~ "Character Sheet"
+      assert html =~ "Blocks"
+      assert html =~ "Variables"
+      assert html =~ "Words"
+    end
+
+    test "sort_sheets event toggles table order", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      sheet_fixture(project, %{name: "Alpha Sheet"})
+      sheet_fixture(project, %{name: "Zeta Sheet"})
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
+
+      # Wait for async dashboard data
+      html = render(view)
+
+      # Extract table body to avoid matching sidebar tree occurrences
+      [_, table_body] = String.split(html, "<tbody>", parts: 2)
+
+      # Default: name asc — Alpha before Zeta
+      alpha_pos = :binary.match(table_body, "Alpha Sheet") |> elem(0)
+      zeta_pos = :binary.match(table_body, "Zeta Sheet") |> elem(0)
+      assert alpha_pos < zeta_pos
+
+      # Click Name to toggle to desc — Zeta before Alpha
+      html = view |> element("button", "Name") |> render_click()
+      [_, table_body] = String.split(html, "<tbody>", parts: 2)
+      alpha_pos = :binary.match(table_body, "Alpha Sheet") |> elem(0)
+      zeta_pos = :binary.match(table_body, "Zeta Sheet") |> elem(0)
+      assert zeta_pos < alpha_pos
+    end
   end
 
   describe "Authentication" do
