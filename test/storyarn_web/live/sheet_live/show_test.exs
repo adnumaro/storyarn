@@ -75,9 +75,9 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       render_async(view, 500)
 
       # Simulate move_sheet event
-      render_hook(view, "move_sheet", %{
-        "sheet_id" => sheet2.id,
-        "parent_id" => sheet1.id,
+      render_hook(view, "move_to_parent", %{
+        "item_id" => sheet2.id,
+        "new_parent_id" => sheet1.id,
         "position" => 0
       })
 
@@ -100,9 +100,9 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       render_async(view, 500)
 
       # Move to root level (empty parent_id)
-      render_hook(view, "move_sheet", %{
-        "sheet_id" => child.id,
-        "parent_id" => "",
+      render_hook(view, "move_to_parent", %{
+        "item_id" => child.id,
+        "new_parent_id" => "",
         "position" => 0
       })
 
@@ -125,9 +125,9 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       render_async(view, 500)
 
       # Try to move parent under its child (would create cycle)
-      render_hook(view, "move_sheet", %{
-        "sheet_id" => parent.id,
-        "parent_id" => child.id,
+      render_hook(view, "move_to_parent", %{
+        "item_id" => parent.id,
+        "new_parent_id" => child.id,
         "position" => 0
       })
 
@@ -152,9 +152,9 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       render_async(view, 500)
 
       # Try to move sheet
-      render_hook(view, "move_sheet", %{
-        "sheet_id" => sheet2.id,
-        "parent_id" => sheet1.id,
+      render_hook(view, "move_to_parent", %{
+        "item_id" => sheet2.id,
+        "new_parent_id" => sheet1.id,
         "position" => 0
       })
 

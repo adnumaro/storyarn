@@ -4,6 +4,7 @@ defmodule Storyarn.Sheets.SheetCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Billing
+  alias Storyarn.Collaboration
   alias Storyarn.Localization
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
@@ -36,6 +37,11 @@ defmodule Storyarn.Sheets.SheetCrud do
         PropertyInheritance.inherit_blocks_for_new_sheet(sheet)
       end
 
+      case result do
+        {:ok, _} -> Collaboration.broadcast_dashboard_change(project.id, :sheets)
+        _ -> :ok
+      end
+
       result
     end
   end
@@ -62,7 +68,14 @@ defmodule Storyarn.Sheets.SheetCrud do
   Also soft deletes all descendant sheets.
   """
   def delete_sheet(%Sheet{} = sheet) do
-    trash_sheet(sheet)
+    result = trash_sheet(sheet)
+
+    case result do
+      {:ok, _} -> Collaboration.broadcast_dashboard_change(sheet.project_id, :sheets)
+      _ -> :ok
+    end
+
+    result
   end
 
   @doc """

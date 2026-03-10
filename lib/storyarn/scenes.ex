@@ -28,6 +28,7 @@ defmodule Storyarn.Scenes do
     SceneCrud,
     SceneLayer,
     ScenePin,
+    SceneStats,
     SceneZone,
     TreeOperations,
     ZoneCrud,
@@ -577,4 +578,17 @@ defmodule Storyarn.Scenes do
 
   @doc "Updates a scene's parent_id after import."
   defdelegate link_scene_import_parent(scene, parent_id), to: SceneCrud, as: :link_import_parent
+
+  # =============================================================================
+  # Dashboard Stats
+  # =============================================================================
+
+  @doc "Returns per-scene zone, pin, and connection counts. %{scene_id => %{zone_count, pin_count, connection_count}}."
+  defdelegate scene_stats_for_project(project_id), to: SceneStats
+
+  @doc "Returns the count of scenes that have a background image."
+  defdelegate scenes_with_background_count(project_id), to: SceneStats
+
+  @doc "Detects issues in scenes. Returns [%{issue_type, scene_id, scene_name}]."
+  defdelegate detect_scene_issues(project_id), to: SceneStats
 end

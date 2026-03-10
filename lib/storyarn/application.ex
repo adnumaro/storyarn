@@ -26,6 +26,7 @@ defmodule Storyarn.Application do
       {Phoenix.PubSub, name: Storyarn.PubSub},
       Storyarn.Collaboration.Presence,
       Storyarn.Collaboration.Locks,
+      Storyarn.Dashboards.Cache,
       Storyarn.Flows.DebugSessionStore,
       Storyarn.Flows.NavigationHistoryStore,
       # Start to serve requests, typically the last entry

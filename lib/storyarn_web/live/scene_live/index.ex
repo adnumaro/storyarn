@@ -5,7 +5,12 @@ defmodule StoryarnWeb.SceneLive.Index do
   use StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
+  import StoryarnWeb.Components.DashboardComponents
 
+  use StoryarnWeb.Live.Shared.DashboardHandlers
+
+  alias Storyarn.Collaboration
+  alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Shared.MapUtils
@@ -60,7 +65,7 @@ defmodule StoryarnWeb.SceneLive.Index do
         </div>
       </:tree_content>
       <SceneTree.delete_modal :if={@can_edit} />
-      <div class="max-w-4xl mx-auto">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <.header>
           {dgettext("scenes", "Scenes")}
           <:subtitle>
@@ -72,14 +77,59 @@ defmodule StoryarnWeb.SceneLive.Index do
           {dgettext("scenes", "No scenes yet. Create your first scene to get started.")}
         </.empty_state>
 
-        <div :if={@scenes != []} class="mt-6 space-y-2">
-          <.scene_card
-            :for={scene <- @scenes}
-            scene={scene}
-            project={@project}
-            workspace={@workspace}
-            can_edit={@can_edit}
-          />
+        <div :if={@scenes != [] and is_nil(@dashboard_stats)} class="flex justify-center py-12">
+          <span class="loading loading-spinner loading-md text-base-content/40"></span>
+        </div>
+
+        <div :if={@dashboard_stats} class="space-y-6">
+          <%!-- Stats row --%>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <.stat_card
+              icon="map"
+              label={dgettext("scenes", "Scenes")}
+              value={@dashboard_stats.scene_count}
+            />
+            <.stat_card
+              icon="pentagon"
+              label={dgettext("scenes", "Zones")}
+              value={@dashboard_stats.zone_count}
+            />
+            <.stat_card
+              icon="map-pin"
+              label={dgettext("scenes", "Pins")}
+              value={@dashboard_stats.pin_count}
+            />
+            <.stat_card
+              icon="image"
+              label={dgettext("scenes", "Backgrounds")}
+              value={@dashboard_stats.background_count}
+            />
+          </div>
+
+          <%!-- Scene table --%>
+          <.dashboard_section title={dgettext("scenes", "All Scenes")}>
+            <.dashboard_table_wrapper>
+              <.scene_table
+                rows={@scene_table_data}
+                sort_by={@sort_by}
+                sort_dir={@sort_dir}
+                workspace={@workspace}
+                project={@project}
+                can_edit={@can_edit}
+              />
+            </.dashboard_table_wrapper>
+            <.pagination
+              page={@page}
+              total_pages={@total_pages}
+              total={length(@all_scene_table_data)}
+              event="page_scenes"
+            />
+          </.dashboard_section>
+
+          <%!-- Issues --%>
+          <.dashboard_section :if={@scene_issues != []} title={dgettext("scenes", "Issues")}>
+            <.issue_list issues={@scene_issues} />
+          </.dashboard_section>
         </div>
 
         <.modal
@@ -112,75 +162,132 @@ defmodule StoryarnWeb.SceneLive.Index do
     """
   end
 
-  attr :scene, :map, required: true
-  attr :project, :map, required: true
+  # ===========================================================================
+  # Scene Table
+  # ===========================================================================
+
+  attr :rows, :list, required: true
+  attr :sort_by, :string, required: true
+  attr :sort_dir, :atom, required: true
   attr :workspace, :map, required: true
+  attr :project, :map, required: true
   attr :can_edit, :boolean, default: false
 
-  defp scene_card(assigns) do
+  defp scene_table(assigns) do
     ~H"""
-    <div class="card bg-base-100 border border-base-300 shadow-sm hover:shadow-md transition-shadow">
-      <div class="card-body p-4">
-        <div class="flex items-center justify-between">
-          <.link
-            navigate={
-              ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes/#{@scene.id}"
-            }
-            class="flex items-center gap-3 flex-1 min-w-0"
-          >
-            <div class="rounded-lg bg-primary/10 p-2">
-              <.icon name="map" class="size-5 text-primary" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <h3 class="font-medium truncate flex items-center gap-2">
-                {@scene.name}
-                <span
-                  :if={@scene.shortcut}
-                  class="badge badge-ghost badge-xs font-mono"
-                  title={dgettext("scenes", "Shortcut")}
-                >
-                  #{@scene.shortcut}
-                </span>
-              </h3>
-              <p :if={@scene.description} class="text-sm text-base-content/60 truncate">
-                {@scene.description}
-              </p>
-            </div>
-          </.link>
-          <div :if={@can_edit} class="dropdown dropdown-end">
+    <table class="table table-sm w-full">
+      <thead class="sticky top-0 bg-base-100 z-10">
+        <tr class="text-xs text-base-content/50 uppercase">
+          <th class="font-medium">
             <button
               type="button"
-              tabindex="0"
-              class="btn btn-ghost btn-sm btn-square"
-              onclick="event.stopPropagation();"
+              phx-click="sort_scenes"
+              phx-value-column="name"
+              class="flex items-center gap-1 hover:text-base-content"
             >
-              <.icon name="more-horizontal" class="size-4" />
+              {dgettext("scenes", "Name")}
+              <.sort_indicator column="name" sort_by={@sort_by} sort_dir={@sort_dir} />
             </button>
-            <ul
-              tabindex="0"
-              class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-40 z-50"
+          </th>
+          <th class="font-medium text-right hidden sm:table-cell">
+            <button
+              type="button"
+              phx-click="sort_scenes"
+              phx-value-column="zone_count"
+              class="flex items-center gap-1 ml-auto hover:text-base-content"
             >
-              <li>
-                <button
-                  type="button"
-                  class="text-error"
-                  phx-click={
-                    JS.push("set_pending_delete", value: %{id: @scene.id})
-                    |> show_modal("delete-scene-confirm")
-                  }
-                  onclick="event.stopPropagation();"
-                >
-                  <.icon name="trash-2" class="size-4" />
-                  {dgettext("scenes", "Delete")}
-                </button>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
+              {dgettext("scenes", "Zones")}
+              <.sort_indicator column="zone_count" sort_by={@sort_by} sort_dir={@sort_dir} />
+            </button>
+          </th>
+          <th class="font-medium text-right">
+            <button
+              type="button"
+              phx-click="sort_scenes"
+              phx-value-column="pin_count"
+              class="flex items-center gap-1 ml-auto hover:text-base-content"
+            >
+              {dgettext("scenes", "Pins")}
+              <.sort_indicator column="pin_count" sort_by={@sort_by} sort_dir={@sort_dir} />
+            </button>
+          </th>
+          <th class="font-medium text-right hidden sm:table-cell">
+            <button
+              type="button"
+              phx-click="sort_scenes"
+              phx-value-column="connection_count"
+              class="flex items-center gap-1 ml-auto hover:text-base-content"
+            >
+              {dgettext("scenes", "Connections")}
+              <.sort_indicator
+                column="connection_count"
+                sort_by={@sort_by}
+                sort_dir={@sort_dir}
+              />
+            </button>
+          </th>
+          <th class="font-medium text-right hidden md:table-cell">
+            <button
+              type="button"
+              phx-click="sort_scenes"
+              phx-value-column="updated_at"
+              class="flex items-center gap-1 ml-auto hover:text-base-content"
+            >
+              {dgettext("scenes", "Modified")}
+              <.sort_indicator column="updated_at" sort_by={@sort_by} sort_dir={@sort_dir} />
+            </button>
+          </th>
+          <th :if={@can_edit} class="w-10"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={row <- @rows} class="hover:bg-base-200/50">
+          <td>
+            <.link
+              navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes/#{row.id}"}
+              class="font-medium hover:underline"
+            >
+              {row.name}
+            </.link>
+          </td>
+          <td class="text-right tabular-nums hidden sm:table-cell">{row.zone_count}</td>
+          <td class="text-right tabular-nums">{row.pin_count}</td>
+          <td class="text-right tabular-nums hidden sm:table-cell">{row.connection_count}</td>
+          <td class="text-right text-base-content/50 text-xs hidden md:table-cell">
+            {format_relative_time(row.updated_at)}
+          </td>
+          <td :if={@can_edit} class="text-right">
+            <div phx-hook="TableRowMenu" id={"scene-menu-#{row.id}"}>
+              <button type="button" data-role="trigger" class="btn btn-ghost btn-xs btn-square">
+                <.icon name="more-horizontal" class="size-4" />
+              </button>
+              <template data-role="popover-template">
+                <ul class="menu menu-sm">
+                  <li>
+                    <button
+                      type="button"
+                      class="text-error"
+                      data-event="set_pending_delete"
+                      data-params={Jason.encode!(%{id: row.id})}
+                      data-modal-id="delete-scene-confirm"
+                    >
+                      <.icon name="trash-2" class="size-4" />
+                      {dgettext("scenes", "Delete")}
+                    </button>
+                  </li>
+                </ul>
+              </template>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
     """
   end
+
+  # ===========================================================================
+  # Mount & Lifecycle
+  # ===========================================================================
 
   @impl true
   def mount(
@@ -209,6 +316,23 @@ defmodule StoryarnWeb.SceneLive.Index do
           |> assign(:can_edit, can_edit)
           |> assign(:scenes, scenes)
           |> assign(:scenes_tree, scenes_tree)
+          |> assign(:dashboard_stats, nil)
+          |> assign(:all_scene_table_data, [])
+          |> assign(:scene_table_data, [])
+          |> assign(:scene_issues, [])
+          |> assign(:sort_by, "name")
+          |> assign(:sort_dir, :asc)
+          |> assign(:page, 1)
+          |> assign(:total_pages, 1)
+          |> assign(:pending_delete_id, nil)
+
+        if connected?(socket) do
+          Collaboration.subscribe_dashboard(project.id)
+
+          if scenes != [] do
+            send(self(), :load_dashboard_data)
+          end
+        end
 
         {:ok, socket}
 
@@ -225,6 +349,82 @@ defmodule StoryarnWeb.SceneLive.Index do
     {:noreply, socket}
   end
 
+  # ===========================================================================
+  # Dashboard loading
+  # ===========================================================================
+
+  def handle_info(:load_dashboard_data, socket) do
+    project_id = socket.assigns.project.id
+    scenes = Scenes.list_scenes(project_id)
+
+    # Run independent queries in parallel with caching
+    tasks = [
+      Task.async(fn ->
+        {DashboardCache.fetch(project_id, :scene_stats, fn ->
+           Scenes.scene_stats_for_project(project_id)
+         end),
+         DashboardCache.fetch(project_id, :scene_bg, fn ->
+           Scenes.scenes_with_background_count(project_id)
+         end)}
+      end),
+      Task.async(fn ->
+        DashboardCache.fetch(project_id, :scene_issues, fn ->
+          Scenes.detect_scene_issues(project_id)
+        end)
+      end)
+    ]
+
+    [{stats, bg_count}, issues] = Task.await_many(tasks, 15_000)
+
+    table_data =
+      Enum.map(scenes, fn scene ->
+        scene_stats =
+          Map.get(stats, scene.id, %{
+            zone_count: 0,
+            pin_count: 0,
+            connection_count: 0
+          })
+
+        %{
+          id: scene.id,
+          name: scene.name,
+          zone_count: scene_stats.zone_count,
+          pin_count: scene_stats.pin_count,
+          connection_count: scene_stats.connection_count,
+          updated_at: scene.updated_at
+        }
+      end)
+
+    sorted_table =
+      sort_table(
+        table_data,
+        socket.assigns.sort_by,
+        socket.assigns.sort_dir,
+        scene_sort_columns()
+      )
+
+    {page_rows, total_pages} = paginate(sorted_table, 1)
+
+    dashboard_stats = %{
+      scene_count: length(scenes),
+      zone_count: table_data |> Enum.map(& &1.zone_count) |> Enum.sum(),
+      pin_count: table_data |> Enum.map(& &1.pin_count) |> Enum.sum(),
+      background_count: bg_count
+    }
+
+    formatted_issues =
+      format_scene_issues(issues, socket.assigns.workspace, socket.assigns.project)
+
+    {:noreply,
+     socket
+     |> assign(:dashboard_stats, dashboard_stats)
+     |> assign(:all_scene_table_data, sorted_table)
+     |> assign(:scene_table_data, page_rows)
+     |> assign(:page, 1)
+     |> assign(:total_pages, total_pages)
+     |> assign(:scene_issues, formatted_issues)}
+  end
+
   @impl true
   def handle_info({StoryarnWeb.SceneLive.Form, {:saved, scene}}, socket) do
     {:noreply,
@@ -236,6 +436,10 @@ defmodule StoryarnWeb.SceneLive.Index do
      )}
   end
 
+  # ===========================================================================
+  # Events
+  # ===========================================================================
+
   @impl true
   # Tree panel events (from FocusLayout)
   def handle_event("tree_panel_" <> _ = event, params, socket),
@@ -246,11 +450,22 @@ defmodule StoryarnWeb.SceneLive.Index do
     {:noreply, assign(socket, :tree_panel_tab, tab)}
   end
 
-  def handle_event("set_pending_delete", %{"id" => id}, socket) do
+  def handle_event("sort_scenes", %{"column" => column}, socket) do
+    {:noreply,
+     handle_sort(socket, column, :all_scene_table_data, :scene_table_data, scene_sort_columns())}
+  end
+
+  def handle_event("page_scenes", %{"page" => page}, socket) do
+    {:noreply, handle_page(socket, page, :all_scene_table_data, :scene_table_data)}
+  end
+
+  def handle_event(event, %{"id" => id}, socket)
+      when event in ~w(set_pending_delete set_pending_delete_scene) do
     {:noreply, assign(socket, :pending_delete_id, id)}
   end
 
-  def handle_event("confirm_delete", _params, socket) do
+  def handle_event(event, _params, socket)
+      when event in ~w(confirm_delete confirm_delete_scene) do
     if id = socket.assigns[:pending_delete_id] do
       handle_event("delete", %{"id" => id}, socket)
     else
@@ -258,7 +473,8 @@ defmodule StoryarnWeb.SceneLive.Index do
     end
   end
 
-  def handle_event("delete", %{"id" => scene_id}, socket) do
+  def handle_event(event, %{"id" => scene_id}, socket)
+      when event in ~w(delete delete_scene) do
     with_authorization(socket, :edit_content, fn socket ->
       case Scenes.get_scene(socket.assigns.project.id, scene_id) do
         nil -> {:noreply, put_flash(socket, :error, dgettext("scenes", "Scene not found."))}
@@ -320,6 +536,10 @@ defmodule StoryarnWeb.SceneLive.Index do
     end)
   end
 
+  # ===========================================================================
+  # Private helpers
+  # ===========================================================================
+
   defp do_delete_scene(socket, scene) do
     case Scenes.delete_scene(scene) do
       {:ok, _} ->
@@ -349,8 +569,57 @@ defmodule StoryarnWeb.SceneLive.Index do
   defp reload_scenes(socket) do
     project_id = socket.assigns.project.id
 
-    socket
-    |> assign(:scenes, Scenes.list_scenes(project_id))
-    |> assign(:scenes_tree, Scenes.list_scenes_tree(project_id))
+    reload_dashboard(
+      socket,
+      :scenes,
+      :all_scene_table_data,
+      :scene_table_data,
+      :scene_issues,
+      fn s ->
+        s
+        |> assign(:scenes, Scenes.list_scenes(project_id))
+        |> assign(:scenes_tree, Scenes.list_scenes_tree(project_id))
+      end
+    )
+  end
+
+  defp scene_sort_columns do
+    %{
+      "name" => &String.downcase(&1.name),
+      "zone_count" => & &1.zone_count,
+      "pin_count" => & &1.pin_count,
+      "connection_count" => & &1.connection_count,
+      "updated_at" => &(&1.updated_at || ~U[1970-01-01 00:00:00Z])
+    }
+  end
+
+  defp format_scene_issues(issues, workspace, project) do
+    Enum.map(issues, fn issue ->
+      {severity, message} =
+        case issue.issue_type do
+          :empty_scene ->
+            {:info,
+             dgettext("scenes", "Scene \"%{name}\" has no zones or pins", name: issue.scene_name)}
+
+          :no_background ->
+            {:warning,
+             dgettext("scenes", "Scene \"%{name}\" has no background image",
+               name: issue.scene_name
+             )}
+
+          :missing_shortcut ->
+            {:warning,
+             dgettext("scenes", "Scene \"%{name}\" has no shortcut", name: issue.scene_name)}
+
+          _ ->
+            {:info, gettext("Issue detected")}
+        end
+
+      %{
+        severity: severity,
+        message: message,
+        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{issue.scene_id}"
+      }
+    end)
   end
 end

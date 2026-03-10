@@ -859,5 +859,5 @@ defmodule Storyarn.Sheets do
   defdelegate referenced_block_ids_for_project(project_id), to: SheetStats
 
   @doc "Detects issues in sheets. Returns [%{issue_type, sheet_id, sheet_name, ...}]."
-  defdelegate detect_sheet_issues(project_id), to: SheetStats
+  defdelegate detect_sheet_issues(project_id, referenced_ids \\ nil), to: SheetStats
 end

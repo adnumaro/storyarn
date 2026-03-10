@@ -278,11 +278,9 @@ export const SortableTree = {
         ? this._nestPosition(target, draggedId)
         : this._siblingPosition(target, zone, draggedId);
 
-    const isSheets = this.treeType === "sheets";
-
-    this.pushEvent(isSheets ? "move_sheet" : "move_to_parent", {
-      [isSheets ? "sheet_id" : "item_id"]: draggedId,
-      [isSheets ? "parent_id" : "new_parent_id"]: String(parentId),
+    this.pushEvent("move_to_parent", {
+      item_id: draggedId,
+      new_parent_id: String(parentId),
       position: String(position),
     });
   },

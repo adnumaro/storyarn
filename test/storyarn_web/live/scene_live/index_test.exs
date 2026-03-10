@@ -15,14 +15,17 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       project = project_fixture(user) |> Repo.preload(:workspace)
       scene_fixture(project, %{name: "World Map"})
 
-      {:ok, _view, html} =
+      {:ok, view, html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
         )
 
       assert html =~ "Scenes"
-      assert html =~ "World Map"
+
+      # Scene name appears after async dashboard load
+      _ = render_async(view)
+      assert render(view) =~ "World Map"
     end
 
     test "renders page for editor member", %{conn: conn, user: user} do
@@ -31,14 +34,16 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       _membership = membership_fixture(project, user, "editor")
       scene_fixture(project, %{name: "Shared Scene"})
 
-      {:ok, _view, html} =
+      {:ok, view, html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
         )
 
       assert html =~ "Scenes"
-      assert html =~ "Shared Scene"
+
+      _ = render_async(view)
+      assert render(view) =~ "Shared Scene"
     end
 
     test "redirects non-member", %{conn: conn} do
@@ -139,13 +144,14 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       project = project_fixture(user) |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Doomed Scene"})
 
-      {:ok, view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
         )
 
-      assert html =~ "Doomed Scene"
+      _ = render_async(view)
+      assert render(view) =~ "Doomed Scene"
 
       render_click(view, "set_pending_delete", %{"id" => scene.id})
       render_click(view, "confirm_delete")
@@ -164,6 +170,8 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
         )
+
+      _ = render_async(view)
 
       # Call confirm_delete without set_pending_delete first
       render_click(view, "confirm_delete")
@@ -186,6 +194,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
         )
 
+      _ = render_async(view)
       render_click(view, "delete", %{"id" => scene.id})
 
       html = render(view)
@@ -351,6 +360,68 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
         view,
         ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
       )
+    end
+  end
+
+  describe "dashboard" do
+    setup :register_and_log_in_user
+
+    test "renders dashboard with stat cards when scenes exist", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Dashboard Scene"})
+      zone_fixture(scene)
+      pin_fixture(scene)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
+        )
+
+      # Wait for async dashboard data to load
+      _ = render_async(view)
+      html = render(view)
+
+      assert html =~ "Scenes"
+      assert html =~ "Zones"
+      assert html =~ "Pins"
+      assert html =~ "Backgrounds"
+      assert html =~ "Dashboard Scene"
+    end
+
+    test "sort_scenes event toggles table order", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      scene_a = scene_fixture(project, %{name: "Alpha Scene"})
+      scene_b = scene_fixture(project, %{name: "Zeta Scene"})
+      # Give Zeta more pins to test numeric sort
+      pin_fixture(scene_b)
+      pin_fixture(scene_b)
+      pin_fixture(scene_a)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
+        )
+
+      _ = render_async(view)
+
+      # Default sort: name asc — Alpha before Zeta
+      html = render(view)
+      tbody = html |> Floki.parse_document!() |> Floki.find("tbody") |> Floki.raw_html()
+      assert tbody =~ ~r/Alpha Scene.*Zeta Scene/s
+
+      # Sort by pin_count asc — Alpha (1) before Zeta (2)
+      render_click(view, "sort_scenes", %{"column" => "pin_count"})
+      html = render(view)
+      tbody = html |> Floki.parse_document!() |> Floki.find("tbody") |> Floki.raw_html()
+      assert tbody =~ ~r/Alpha Scene.*Zeta Scene/s
+
+      # Sort by pin_count desc — Zeta (2) before Alpha (1)
+      render_click(view, "sort_scenes", %{"column" => "pin_count"})
+      html = render(view)
+      tbody = html |> Floki.parse_document!() |> Floki.find("tbody") |> Floki.raw_html()
+      assert tbody =~ ~r/Zeta Scene.*Alpha Scene/s
     end
   end
 

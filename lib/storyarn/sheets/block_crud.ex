@@ -4,10 +4,11 @@ defmodule Storyarn.Sheets.BlockCrud do
   import Ecto.Query, warn: false
   require Logger
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Repo
-  alias Storyarn.Shared.{NameNormalizer, TreeOperations}
+  alias Storyarn.Shared.{NameNormalizer, TreeOperations, WordCount}
 
   alias Storyarn.Sheets.{
     Block,
@@ -81,6 +82,11 @@ defmodule Storyarn.Sheets.BlockCrud do
     config = attrs[:config] || Block.default_config(block_type)
     value = attrs[:value] || Block.default_value(block_type)
 
+    word_count =
+      if block_type in ~w(text rich_text),
+        do: WordCount.for_block_value(value),
+        else: 0
+
     result =
       %Block{sheet_id: sheet.id}
       |> Block.create_changeset(
@@ -89,6 +95,7 @@ defmodule Storyarn.Sheets.BlockCrud do
         |> Map.put_new(:config, config)
         |> Map.put_new(:value, value)
       )
+      |> Ecto.Changeset.put_change(:word_count, word_count)
       |> ensure_unique_variable_name(sheet.id, nil)
       |> Repo.insert()
 
@@ -99,6 +106,11 @@ defmodule Storyarn.Sheets.BlockCrud do
     # If block has scope: "children" and is not itself an inherited instance,
     # auto-create instances on all descendant sheets
     maybe_propagate_to_descendants(result, sheet.id)
+
+    case result do
+      {:ok, _} -> broadcast_sheet_change(sheet)
+      _ -> :ok
+    end
 
     result
   end
@@ -160,8 +172,18 @@ defmodule Storyarn.Sheets.BlockCrud do
   defp handle_scope_change(_block, _old_scope), do: :ok
 
   def update_block_value(%Block{} = block, value) do
+    word_count =
+      if block.type in ~w(text rich_text),
+        do: WordCount.for_block_value(value),
+        else: 0
+
     Ecto.Multi.new()
-    |> Ecto.Multi.update(:block, Block.value_changeset(block, %{value: value}))
+    |> Ecto.Multi.update(
+      :block,
+      block
+      |> Block.value_changeset(%{value: value})
+      |> Ecto.Changeset.put_change(:word_count, word_count)
+    )
     |> Ecto.Multi.run(:update_references, fn _repo, %{block: updated_block} ->
       if updated_block.type in ["reference", "rich_text"] do
         ReferenceTracker.update_block_references(updated_block)
@@ -173,6 +195,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     |> case do
       {:ok, %{block: updated_block}} ->
         Localization.extract_block(updated_block)
+        broadcast_block_change(updated_block)
         {:ok, updated_block}
 
       {:error, :block, changeset, _} ->
@@ -233,6 +256,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     case result do
       {:ok, deleted_block} ->
         maybe_dissolve_column_group(deleted_block.sheet_id, deleted_block.column_group_id)
+        broadcast_block_change(deleted_block)
         {:ok, deleted_block}
 
       error ->
@@ -691,6 +715,19 @@ defmodule Storyarn.Sheets.BlockCrud do
     else
       candidate
     end
+  end
+
+  # =============================================================================
+  # Dashboard broadcast helpers
+  # =============================================================================
+
+  defp broadcast_sheet_change(%Sheet{} = sheet) do
+    Collaboration.broadcast_dashboard_change(sheet.project_id, :sheets)
+  end
+
+  defp broadcast_block_change(%Block{} = block) do
+    sheet = Repo.get!(Sheet, block.sheet_id)
+    Collaboration.broadcast_dashboard_change(sheet.project_id, :sheets)
   end
 
   # =============================================================================

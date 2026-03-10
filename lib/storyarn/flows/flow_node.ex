@@ -58,6 +58,7 @@ defmodule Storyarn.Flows.FlowNode do
     field :position_x, :float, default: 0.0
     field :position_y, :float, default: 0.0
     field :data, :map, default: %{}
+    field :word_count, :integer, default: 0
     field :source, :string, default: "manual"
     field :deleted_at, :utc_datetime
 

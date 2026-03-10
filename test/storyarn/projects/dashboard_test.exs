@@ -51,7 +51,7 @@ defmodule Storyarn.Projects.DashboardTest do
       assert stats.dialogue_count == 2
     end
 
-    test "counts words from all text sources stripping HTML", %{project: project} do
+    test "counts words from all user-written text", %{project: project} do
       flow = flow_fixture(project, %{name: "Act One", description: ""})
 
       node_fixture(flow, %{
@@ -67,10 +67,10 @@ defmodule Storyarn.Projects.DashboardTest do
 
       stats = Dashboard.project_stats(project.id)
 
-      # Flow name: "Act One" (2)
-      # Dialogue 1: "Hello beautiful world" (3) + menu: "Choose wisely" (2)
-      # Dialogue 2 text: "One two" (2)
-      # Total: 2 + 3 + 2 + 2 + 2 + 2 = 13
+      # Flow name: "Act One" (2) — metadata
+      # Dialogue 1: "Hello beautiful world" (3) + "Choose wisely" (2) + "Yes please" (2) + "No thanks" (2) = 9
+      # Dialogue 2: "One two" (2) — denormalized word_count
+      # Total: 2 + 9 + 2 = 13
       assert stats.total_word_count == 13
     end
   end

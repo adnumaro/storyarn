@@ -6,7 +6,7 @@ defmodule Storyarn.Flows.NodeUpdate do
   alias Storyarn.Flows.{FlowNode, NodeCrud, VariableReferenceTracker}
   alias Storyarn.Localization
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Shared.{TimeHelpers, WordCount}
   alias Storyarn.Sheets
 
   def update_node(%FlowNode{} = node, attrs) do
@@ -56,15 +56,28 @@ defmodule Storyarn.Flows.NodeUpdate do
   end
 
   def update_node_data(%FlowNode{type: "hub"} = node, data) do
-    update_hub_node_data(node, data)
+    result = update_hub_node_data(node, data)
+    maybe_broadcast_dashboard(result, node)
+    result
   end
 
   def update_node_data(%FlowNode{} = node, data) do
-    case do_update_node_data(node, data) do
-      {:ok, updated_node} -> {:ok, updated_node, %{renamed_jumps: 0}}
-      error -> error
-    end
+    result =
+      case do_update_node_data(node, data) do
+        {:ok, updated_node} -> {:ok, updated_node, %{renamed_jumps: 0}}
+        error -> error
+      end
+
+    maybe_broadcast_dashboard(result, node)
+    result
   end
+
+  defp maybe_broadcast_dashboard({:ok, _, _}, node) do
+    flow = Repo.get!(Storyarn.Flows.Flow, node.flow_id)
+    Storyarn.Collaboration.broadcast_dashboard_change(flow.project_id, :flows)
+  end
+
+  defp maybe_broadcast_dashboard(_, _), do: :ok
 
   def change_node(%FlowNode{} = node, attrs \\ %{}) do
     FlowNode.update_changeset(node, attrs)
@@ -103,10 +116,16 @@ defmodule Storyarn.Flows.NodeUpdate do
   end
 
   defp do_update_node_data(node, data) do
+    word_count =
+      if node.type == "dialogue",
+        do: WordCount.for_node_data(data),
+        else: 0
+
     Repo.transaction(fn ->
       updated_node =
         node
         |> FlowNode.data_changeset(%{data: data})
+        |> Ecto.Changeset.put_change(:word_count, word_count)
         |> Repo.update!()
 
       Sheets.update_flow_node_references(updated_node)

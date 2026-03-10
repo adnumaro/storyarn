@@ -121,6 +121,7 @@ defmodule Storyarn.Sheets.Block do
     field :required, :boolean, default: false
     field :column_group_id, Ecto.UUID
     field :column_index, :integer, default: 0
+    field :word_count, :integer, default: 0
     field :deleted_at, :utc_datetime
 
     belongs_to :sheet, Sheet

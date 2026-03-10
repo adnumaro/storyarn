@@ -7,6 +7,10 @@ defmodule StoryarnWeb.FlowLive.Index do
   import StoryarnWeb.Live.Shared.TreePanelHandlers
   import StoryarnWeb.Components.DashboardComponents
 
+  use StoryarnWeb.Live.Shared.DashboardHandlers
+
+  alias Storyarn.Collaboration
+  alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Shared.MapUtils
@@ -244,34 +248,36 @@ defmodule StoryarnWeb.FlowLive.Index do
             {format_relative_time(row.updated_at)}
           </td>
           <td :if={@can_edit} class="text-right">
-            <div class="dropdown dropdown-end">
-              <button type="button" tabindex="0" class="btn btn-ghost btn-xs btn-square">
+            <div phx-hook="TableRowMenu" id={"flow-menu-#{row.id}"}>
+              <button type="button" data-role="trigger" class="btn btn-ghost btn-xs btn-square">
                 <.icon name="more-horizontal" class="size-4" />
               </button>
-              <ul
-                tabindex="0"
-                class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-40 z-50"
-              >
-                <li :if={!row.is_main}>
-                  <button type="button" phx-click="set_main" phx-value-id={row.id}>
-                    <.icon name="star" class="size-4" />
-                    {dgettext("flows", "Set as main")}
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    class="text-error"
-                    phx-click={
-                      JS.push("set_pending_delete", value: %{id: row.id})
-                      |> show_modal("delete-flow-confirm")
-                    }
-                  >
-                    <.icon name="trash-2" class="size-4" />
-                    {dgettext("flows", "Delete")}
-                  </button>
-                </li>
-              </ul>
+              <template data-role="popover-template">
+                <ul class="menu menu-sm">
+                  <li :if={!row.is_main}>
+                    <button
+                      type="button"
+                      data-event="set_main"
+                      data-params={Jason.encode!(%{id: row.id})}
+                    >
+                      <.icon name="star" class="size-4" />
+                      {dgettext("flows", "Set as main")}
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      class="text-error"
+                      data-event="set_pending_delete"
+                      data-params={Jason.encode!(%{id: row.id})}
+                      data-modal-id="delete-flow-confirm"
+                    >
+                      <.icon name="trash-2" class="size-4" />
+                      {dgettext("flows", "Delete")}
+                    </button>
+                  </li>
+                </ul>
+              </template>
             </div>
           </td>
         </tr>
@@ -324,8 +330,12 @@ defmodule StoryarnWeb.FlowLive.Index do
           |> assign(:total_pages, 1)
           |> assign(:pending_delete_id, nil)
 
-        if connected?(socket) and flows != [] do
-          send(self(), :load_dashboard_data)
+        if connected?(socket) do
+          Collaboration.subscribe_dashboard(project.id)
+
+          if flows != [] do
+            send(self(), :load_dashboard_data)
+          end
         end
 
         {:ok, socket}
@@ -350,11 +360,26 @@ defmodule StoryarnWeb.FlowLive.Index do
   @impl true
   def handle_info(:load_dashboard_data, socket) do
     project_id = socket.assigns.project.id
-    flows = socket.assigns.flows
+    flows = Flows.list_flows(project_id)
 
-    stats = Flows.flow_stats_for_project(project_id)
-    word_counts = Flows.flow_word_counts(project_id)
-    issues = Flows.detect_flow_issues(project_id)
+    # Run independent queries in parallel with caching
+    tasks = [
+      Task.async(fn ->
+        {DashboardCache.fetch(project_id, :flow_stats, fn ->
+           Flows.flow_stats_for_project(project_id)
+         end),
+         DashboardCache.fetch(project_id, :flow_words, fn ->
+           Flows.flow_word_counts(project_id)
+         end)}
+      end),
+      Task.async(fn ->
+        DashboardCache.fetch(project_id, :flow_issues, fn ->
+          Flows.detect_flow_issues(project_id)
+        end)
+      end)
+    ]
+
+    [{stats, word_counts}, issues] = Task.await_many(tasks, 15_000)
 
     # Build table data by merging flow list with stats
     table_data =
@@ -374,7 +399,9 @@ defmodule StoryarnWeb.FlowLive.Index do
         }
       end)
 
-    sorted_table = sort_flow_table(table_data, socket.assigns.sort_by, socket.assigns.sort_dir)
+    sorted_table =
+      sort_table(table_data, socket.assigns.sort_by, socket.assigns.sort_dir, flow_sort_columns())
+
     {page_rows, total_pages} = paginate(sorted_table, 1)
 
     # Aggregate stats
@@ -420,41 +447,21 @@ defmodule StoryarnWeb.FlowLive.Index do
     do: handle_tree_panel_event(event, params, socket)
 
   def handle_event("sort_flows", %{"column" => column}, socket) do
-    {sort_by, sort_dir} = toggle_sort(column, socket.assigns.sort_by, socket.assigns.sort_dir)
-    sorted = sort_flow_table(socket.assigns.all_flow_table_data, sort_by, sort_dir)
-    {page_rows, total_pages} = paginate(sorted, 1)
-
     {:noreply,
-     socket
-     |> assign(:sort_by, sort_by)
-     |> assign(:sort_dir, sort_dir)
-     |> assign(:all_flow_table_data, sorted)
-     |> assign(:flow_table_data, page_rows)
-     |> assign(:page, 1)
-     |> assign(:total_pages, total_pages)}
+     handle_sort(socket, column, :all_flow_table_data, :flow_table_data, flow_sort_columns())}
   end
 
   def handle_event("page_flows", %{"page" => page}, socket) do
-    page = parse_page(page)
-    {page_rows, total_pages} = paginate(socket.assigns.all_flow_table_data, page)
-
-    {:noreply,
-     socket
-     |> assign(:flow_table_data, page_rows)
-     |> assign(:page, page)
-     |> assign(:total_pages, total_pages)}
+    {:noreply, handle_page(socket, page, :all_flow_table_data, :flow_table_data)}
   end
 
-  def handle_event("set_pending_delete", %{"id" => id}, socket) do
+  def handle_event(event, %{"id" => id}, socket)
+      when event in ~w(set_pending_delete set_pending_delete_flow) do
     {:noreply, assign(socket, :pending_delete_id, id)}
   end
 
-  # Alias: sidebar tree dispatches "*_flow" event names
-  def handle_event("set_pending_delete_flow", %{"id" => id}, socket) do
-    {:noreply, assign(socket, :pending_delete_id, id)}
-  end
-
-  def handle_event("confirm_delete", _params, socket) do
+  def handle_event(event, _params, socket)
+      when event in ~w(confirm_delete confirm_delete_flow) do
     if id = socket.assigns[:pending_delete_id] do
       handle_event("delete", %{"id" => id}, socket)
     else
@@ -462,57 +469,48 @@ defmodule StoryarnWeb.FlowLive.Index do
     end
   end
 
-  # Alias: sidebar tree dispatches "*_flow" event names
-  def handle_event("confirm_delete_flow", _params, socket) do
-    if id = socket.assigns[:pending_delete_id] do
-      handle_event("delete", %{"id" => id}, socket)
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event("delete", %{"id" => flow_id}, socket) do
+  def handle_event(event, %{"id" => flow_id}, socket)
+      when event in ~w(delete delete_flow) do
     with_authorization(socket, :edit_content, fn socket ->
-      flow = Flows.get_flow!(socket.assigns.project.id, flow_id)
+      case Flows.get_flow(socket.assigns.project.id, flow_id) do
+        nil ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
 
-      case Flows.delete_flow(flow) do
-        {:ok, _} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
-           |> reload_flows()}
+        flow ->
+          case Flows.delete_flow(flow) do
+            {:ok, _} ->
+              {:noreply,
+               socket
+               |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
+               |> reload_flows()}
 
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
+          end
       end
     end)
   end
 
-  # Alias: sidebar tree dispatches "*_flow" event names
-  def handle_event("delete_flow", %{"id" => flow_id}, socket) do
-    handle_event("delete", %{"id" => flow_id}, socket)
-  end
-
-  def handle_event("set_main", %{"id" => flow_id}, socket) do
+  def handle_event(event, %{"id" => flow_id}, socket)
+      when event in ~w(set_main set_main_flow) do
     with_authorization(socket, :edit_content, fn socket ->
-      flow = Flows.get_flow!(socket.assigns.project.id, flow_id)
+      case Flows.get_flow(socket.assigns.project.id, flow_id) do
+        nil ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
 
-      case Flows.set_main_flow(flow) do
-        {:ok, _} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, dgettext("flows", "Flow set as main."))
-           |> reload_flows()}
+        flow ->
+          case Flows.set_main_flow(flow) do
+            {:ok, _} ->
+              {:noreply,
+               socket
+               |> put_flash(:info, dgettext("flows", "Flow set as main."))
+               |> reload_flows()}
 
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
+          end
       end
     end)
-  end
-
-  # Alias: sidebar tree dispatches "*_flow" event names
-  def handle_event("set_main_flow", %{"id" => flow_id}, socket) do
-    handle_event("set_main", %{"id" => flow_id}, socket)
   end
 
   def handle_event("create_flow", _params, socket) do
@@ -577,7 +575,7 @@ defmodule StoryarnWeb.FlowLive.Index do
 
   def handle_event("create_sheet", _params, socket) do
     with_authorization(socket, :edit_content, fn socket ->
-      case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
+      case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("sheets", "Untitled")}) do
         {:ok, new_sheet} ->
           {:noreply,
            push_navigate(socket,
@@ -589,7 +587,7 @@ defmodule StoryarnWeb.FlowLive.Index do
           {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create sheet."))}
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
       end
     end)
   end
@@ -601,37 +599,22 @@ defmodule StoryarnWeb.FlowLive.Index do
   defp reload_flows(socket) do
     project_id = socket.assigns.project.id
 
-    socket
-    |> assign(:flows, Flows.list_flows(project_id))
-    |> assign(:flows_tree, Flows.list_flows_tree(project_id))
-    |> assign(:dashboard_stats, nil)
-    |> assign(:all_flow_table_data, [])
-    |> assign(:flow_table_data, [])
-    |> assign(:flow_issues, [])
-    |> assign(:page, 1)
-    |> assign(:total_pages, 1)
-    |> then(fn socket ->
-      if socket.assigns.flows != [] do
-        send(self(), :load_dashboard_data)
-      end
-
-      socket
+    reload_dashboard(socket, :flows, :all_flow_table_data, :flow_table_data, :flow_issues, fn s ->
+      s
+      |> assign(:flows, Flows.list_flows(project_id))
+      |> assign(:flows_tree, Flows.list_flows_tree(project_id))
     end)
   end
 
-  defp sort_flow_table(data, sort_by, sort_dir) do
-    sorter =
-      case sort_by do
-        "name" -> &String.downcase(&1.name)
-        "node_count" -> & &1.node_count
-        "dialogue_count" -> & &1.dialogue_count
-        "condition_count" -> & &1.condition_count
-        "word_count" -> & &1.word_count
-        "updated_at" -> &(&1.updated_at || ~U[1970-01-01 00:00:00Z])
-        _ -> &String.downcase(&1.name)
-      end
-
-    Enum.sort_by(data, sorter, sort_dir)
+  defp flow_sort_columns do
+    %{
+      "name" => &String.downcase(&1.name),
+      "node_count" => & &1.node_count,
+      "dialogue_count" => & &1.dialogue_count,
+      "condition_count" => & &1.condition_count,
+      "word_count" => & &1.word_count,
+      "updated_at" => &(&1.updated_at || ~U[1970-01-01 00:00:00Z])
+    }
   end
 
   defp format_flow_issues(issues, workspace, project) do
@@ -648,6 +631,9 @@ defmodule StoryarnWeb.FlowLive.Index do
                name: issue.flow_name,
                count: issue.count
              )}
+
+          _ ->
+            {:info, gettext("Issue detected")}
         end
 
       %{

@@ -5,7 +5,6 @@ defmodule Storyarn.Sheets.SheetStats do
 
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Sheets.{Block, Sheet, SheetQueries}
 
   @variable_types ~w(text rich_text number select multi_select boolean date)
@@ -46,7 +45,7 @@ defmodule Storyarn.Sheets.SheetStats do
   end
 
   @doc """
-  Returns per-sheet word counts from text/rich_text blocks.
+  Returns per-sheet word counts from the denormalized `word_count` column.
   Returns `%{sheet_id => word_count}`.
   """
   def sheet_word_counts(project_id) do
@@ -57,22 +56,12 @@ defmodule Storyarn.Sheets.SheetStats do
       on: b.sheet_id == s.id,
       where:
         s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at) and
-          s.id not in subquery(parent_ids_sub) and
-          b.type in ^~w(text rich_text),
-      select: {s.id, b.value}
+          s.id not in subquery(parent_ids_sub),
+      group_by: s.id,
+      select: {s.id, sum(b.word_count)}
     )
     |> Repo.all()
-    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-    |> Map.new(fn {sheet_id, values} ->
-      words =
-        values
-        |> Enum.map(&get_in(&1, ["content"]))
-        |> Enum.reject(&(is_nil(&1) or &1 == ""))
-        |> Enum.map(&HtmlUtils.word_count/1)
-        |> Enum.sum()
-
-      {sheet_id, words}
-    end)
+    |> Map.new()
   end
 
   @doc """
@@ -105,9 +94,9 @@ defmodule Storyarn.Sheets.SheetStats do
   - `:unused_variable` — variable block with no references (capped at 10)
   - `:missing_shortcut` — leaf sheet with nil/empty shortcut
   """
-  def detect_sheet_issues(project_id) do
+  def detect_sheet_issues(project_id, referenced_ids \\ nil) do
     empty = detect_empty_sheets(project_id)
-    unused = detect_unused_variables(project_id)
+    unused = detect_unused_variables(project_id, referenced_ids)
     missing = detect_missing_shortcuts(project_id)
     empty ++ unused ++ missing
   end
@@ -132,8 +121,8 @@ defmodule Storyarn.Sheets.SheetStats do
     |> Repo.all()
   end
 
-  defp detect_unused_variables(project_id) do
-    referenced_ids = referenced_block_ids_for_project(project_id)
+  defp detect_unused_variables(project_id, referenced_ids) do
+    referenced_ids = referenced_ids || referenced_block_ids_for_project(project_id)
 
     from(b in Block,
       join: s in Sheet,

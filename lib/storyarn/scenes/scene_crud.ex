@@ -10,6 +10,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Billing
+  alias Storyarn.Collaboration
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes.{Scene, SceneLayer, ScenePin, SceneZone, TreeOperations}
@@ -219,7 +220,14 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def create_scene(%Project{} = project, attrs) do
     with :ok <- Billing.can_create_item?(project) do
-      do_create_scene(project, attrs)
+      result = do_create_scene(project, attrs)
+
+      case result do
+        {:ok, _} -> Collaboration.broadcast_dashboard_change(project.id, :scenes)
+        _ -> :ok
+      end
+
+      result
     end
   end
 
@@ -265,18 +273,26 @@ defmodule Storyarn.Scenes.SceneCrud do
   Also soft-deletes all children recursively.
   """
   def delete_scene(%Scene{} = scene) do
-    Repo.transaction(fn ->
-      # Soft delete the scene itself
-      case scene |> Scene.delete_changeset() |> Repo.update() do
-        {:ok, deleted_scene} ->
-          # Also soft-delete all children recursively
-          SoftDelete.soft_delete_children(Scene, scene.project_id, scene.id)
-          deleted_scene
+    result =
+      Repo.transaction(fn ->
+        # Soft delete the scene itself
+        case scene |> Scene.delete_changeset() |> Repo.update() do
+          {:ok, deleted_scene} ->
+            # Also soft-delete all children recursively
+            SoftDelete.soft_delete_children(Scene, scene.project_id, scene.id)
+            deleted_scene
 
-        {:error, changeset} ->
-          Repo.rollback(changeset)
-      end
-    end)
+          {:error, changeset} ->
+            Repo.rollback(changeset)
+        end
+      end)
+
+    case result do
+      {:ok, _} -> Collaboration.broadcast_dashboard_change(scene.project_id, :scenes)
+      _ -> :ok
+    end
+
+    result
   end
 
   @doc """

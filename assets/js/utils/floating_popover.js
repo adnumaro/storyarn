@@ -56,6 +56,7 @@ export function createFloatingPopover(trigger, opts = {}) {
   let cleanupAutoUpdate = null;
   let outsideClickHandler = null;
   let escapeHandler = null;
+  let rafId = null;
   let isOpen = false;
 
   function reposition() {
@@ -76,7 +77,9 @@ export function createFloatingPopover(trigger, opts = {}) {
     cleanupAutoUpdate = autoUpdate(trigger, el, reposition);
 
     // Close on outside click (deferred so the opening click doesn't trigger it)
-    requestAnimationFrame(() => {
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      if (!isOpen) return;
       outsideClickHandler = (e) => {
         if (!el.contains(e.target) && !trigger.contains(e.target)) {
           close();
@@ -104,6 +107,10 @@ export function createFloatingPopover(trigger, opts = {}) {
     cleanupAutoUpdate?.();
     cleanupAutoUpdate = null;
 
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
     if (outsideClickHandler) {
       document.removeEventListener("mousedown", outsideClickHandler);
       outsideClickHandler = null;

@@ -364,10 +364,86 @@ defmodule StoryarnWeb.Components.DashboardComponents do
   def parse_page(_), do: 1
 
   # ===========================================================================
+  # Sort & Pagination Helpers
+  # ===========================================================================
+
+  @doc """
+  Sorts dashboard table data using a column-to-sorter map.
+
+  The `columns` map should have string keys matching column names and
+  function values that extract the sort key from a row.
+
+  Falls back to sorting by downcased name if the column is not in the map.
+  """
+  def sort_table(data, sort_by, sort_dir, columns) do
+    sorter = Map.get(columns, sort_by, &String.downcase(&1.name))
+    Enum.sort_by(data, sorter, sort_dir)
+  end
+
+  @doc """
+  Handles a sort event for a dashboard table. Returns the updated socket.
+
+  `all_data_key` is the assign key for the full (unpaginated) data list.
+  `page_data_key` is the assign key for the current page rows.
+  """
+  def handle_sort(socket, column, all_data_key, page_data_key, sort_columns) do
+    {sort_by, sort_dir} = toggle_sort(column, socket.assigns.sort_by, socket.assigns.sort_dir)
+    sorted = sort_table(socket.assigns[all_data_key], sort_by, sort_dir, sort_columns)
+    {page_rows, total_pages} = paginate(sorted, 1)
+
+    socket
+    |> assign(:sort_by, sort_by)
+    |> assign(:sort_dir, sort_dir)
+    |> assign(all_data_key, sorted)
+    |> assign(page_data_key, page_rows)
+    |> assign(:page, 1)
+    |> assign(:total_pages, total_pages)
+  end
+
+  @doc """
+  Handles a pagination event for a dashboard table. Returns the updated socket.
+  """
+  def handle_page(socket, page, all_data_key, page_data_key) do
+    page = parse_page(page)
+    {page_rows, total_pages} = paginate(socket.assigns[all_data_key], page)
+
+    socket
+    |> assign(page_data_key, page_rows)
+    |> assign(:page, page)
+    |> assign(:total_pages, total_pages)
+  end
+
+  @doc """
+  Resets dashboard state and triggers async reload.
+
+  `reload_fn` receives the socket and must return it with the entity list
+  and tree reassigned (domain-specific queries).
+
+  If the entity list (looked up by `entity_key`) is non-empty after reload,
+  sends `:load_dashboard_data` to self.
+  """
+  def reload_dashboard(socket, entity_key, all_data_key, page_data_key, issues_key, reload_fn) do
+    socket
+    |> reload_fn.()
+    |> assign(:dashboard_stats, nil)
+    |> assign(all_data_key, [])
+    |> assign(page_data_key, [])
+    |> assign(issues_key, [])
+    |> assign(:page, 1)
+    |> assign(:total_pages, 1)
+    |> then(fn s ->
+      if s.assigns[entity_key] != [], do: send(self(), :load_dashboard_data)
+      s
+    end)
+  end
+
+  # ===========================================================================
   # Time Formatting
   # ===========================================================================
 
   @doc "Formats a DateTime as a human-readable relative time string."
+  def format_relative_time(nil), do: "—"
+
   def format_relative_time(datetime) do
     diff = DateTime.diff(DateTime.utc_now(), datetime, :second)
 

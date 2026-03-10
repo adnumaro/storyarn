@@ -10,7 +10,7 @@ defmodule Storyarn.Flows.NodeCreate do
   alias Storyarn.Flows.{Flow, FlowNode, NodeCrud}
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.{MapUtils, WordCount}
 
   def create_node(%Flow{} = flow, attrs) do
     project = Repo.get!(Project, flow.project_id)
@@ -18,12 +18,23 @@ defmodule Storyarn.Flows.NodeCreate do
     with :ok <- Billing.can_create_item?(project) do
       attrs = stringify_keys(attrs)
 
-      case attrs["type"] do
-        "entry" -> create_entry_node(flow, attrs)
-        "hub" -> create_hub_node(flow, attrs)
-        "subflow" -> validate_and_insert_subflow(flow, attrs)
-        _ -> insert_node(flow, attrs)
+      result =
+        case attrs["type"] do
+          "entry" -> create_entry_node(flow, attrs)
+          "hub" -> create_hub_node(flow, attrs)
+          "subflow" -> validate_and_insert_subflow(flow, attrs)
+          _ -> insert_node(flow, attrs)
+        end
+
+      case result do
+        {:ok, _node} ->
+          Storyarn.Collaboration.broadcast_dashboard_change(flow.project_id, :flows)
+
+        _ ->
+          :ok
       end
+
+      result
     end
   end
 
@@ -48,8 +59,14 @@ defmodule Storyarn.Flows.NodeCreate do
   end
 
   defp insert_node(%Flow{} = flow, attrs) do
+    word_count =
+      if attrs["type"] == "dialogue",
+        do: WordCount.for_node_data(attrs["data"]),
+        else: 0
+
     %FlowNode{flow_id: flow.id}
     |> FlowNode.create_changeset(attrs)
+    |> Ecto.Changeset.put_change(:word_count, word_count)
     |> Repo.insert()
   end
 

@@ -296,4 +296,34 @@ defmodule Storyarn.Collaboration do
   Returns the topic for project-level presence.
   """
   def project_presence_topic(project_id), do: "project:#{project_id}:presence"
+
+  # =============================================================================
+  # Dashboard Invalidation
+  # =============================================================================
+
+  @doc """
+  Subscribes to dashboard invalidation events for a project.
+  """
+  def subscribe_dashboard(project_id) do
+    PubSub.subscribe(Storyarn.PubSub, dashboard_topic(project_id))
+  end
+
+  @doc """
+  Broadcasts a dashboard invalidation event for a project.
+  Also directly invalidates the ETS cache.
+
+  `scope` is an atom like `:flows`, `:sheets`, or `:scenes`.
+  """
+  def broadcast_dashboard_change(project_id, scope) do
+    Storyarn.Dashboards.Cache.invalidate(project_id)
+
+    PubSub.broadcast(
+      Storyarn.PubSub,
+      dashboard_topic(project_id),
+      {:dashboard_invalidate, scope}
+    )
+  end
+
+  @doc false
+  def dashboard_topic(project_id), do: "project:#{project_id}:dashboard"
 end

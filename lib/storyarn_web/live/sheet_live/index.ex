@@ -7,6 +7,10 @@ defmodule StoryarnWeb.SheetLive.Index do
   import StoryarnWeb.Live.Shared.TreePanelHandlers
   import StoryarnWeb.Components.DashboardComponents
 
+  use StoryarnWeb.Live.Shared.DashboardHandlers
+
+  alias Storyarn.Collaboration
+  alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Projects
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
@@ -214,28 +218,26 @@ defmodule StoryarnWeb.SheetLive.Index do
             {format_relative_time(row.updated_at)}
           </td>
           <td :if={@can_edit} class="text-right">
-            <div class="dropdown dropdown-end">
-              <button type="button" tabindex="0" class="btn btn-ghost btn-xs btn-square">
+            <div phx-hook="TableRowMenu" id={"sheet-menu-#{row.id}"}>
+              <button type="button" data-role="trigger" class="btn btn-ghost btn-xs btn-square">
                 <.icon name="more-horizontal" class="size-4" />
               </button>
-              <ul
-                tabindex="0"
-                class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-40 z-50"
-              >
-                <li>
-                  <button
-                    type="button"
-                    class="text-error"
-                    phx-click={
-                      JS.push("set_pending_delete", value: %{id: row.id})
-                      |> show_modal("delete-sheet-confirm")
-                    }
-                  >
-                    <.icon name="trash-2" class="size-4" />
-                    {dgettext("sheets", "Delete")}
-                  </button>
-                </li>
-              </ul>
+              <template data-role="popover-template">
+                <ul class="menu menu-sm">
+                  <li>
+                    <button
+                      type="button"
+                      class="text-error"
+                      data-event="set_pending_delete"
+                      data-params={Jason.encode!(%{id: row.id})}
+                      data-modal-id="delete-sheet-confirm"
+                    >
+                      <.icon name="trash-2" class="size-4" />
+                      {dgettext("sheets", "Delete")}
+                    </button>
+                  </li>
+                </ul>
+              </template>
             </div>
           </td>
         </tr>
@@ -284,8 +286,12 @@ defmodule StoryarnWeb.SheetLive.Index do
           |> assign(:total_pages, 1)
           |> assign(:pending_delete_id, nil)
 
-        if connected?(socket) and sheets != [] do
-          send(self(), :load_dashboard_data)
+        if connected?(socket) do
+          Collaboration.subscribe_dashboard(project.id)
+
+          if sheets != [] do
+            send(self(), :load_dashboard_data)
+          end
         end
 
         {:ok, socket}
@@ -307,15 +313,36 @@ defmodule StoryarnWeb.SheetLive.Index do
   # Dashboard loading
   # ===========================================================================
 
-  @impl true
   def handle_info(:load_dashboard_data, socket) do
     project_id = socket.assigns.project.id
-    sheets = socket.assigns.sheets
+    sheets = Sheets.list_leaf_sheets(project_id)
 
-    stats = Sheets.sheet_stats_for_project(project_id)
-    word_counts = Sheets.sheet_word_counts(project_id)
-    referenced_ids = Sheets.referenced_block_ids_for_project(project_id)
-    issues = Sheets.detect_sheet_issues(project_id)
+    # Run independent queries in parallel with caching
+    tasks = [
+      Task.async(fn ->
+        {DashboardCache.fetch(project_id, :sheet_stats, fn ->
+           Sheets.sheet_stats_for_project(project_id)
+         end),
+         DashboardCache.fetch(project_id, :sheet_words, fn ->
+           Sheets.sheet_word_counts(project_id)
+         end)}
+      end),
+      Task.async(fn ->
+        referenced_ids =
+          DashboardCache.fetch(project_id, :sheet_refs, fn ->
+            Sheets.referenced_block_ids_for_project(project_id)
+          end)
+
+        issues =
+          DashboardCache.fetch(project_id, :sheet_issues, fn ->
+            Sheets.detect_sheet_issues(project_id, referenced_ids)
+          end)
+
+        {referenced_ids, issues}
+      end)
+    ]
+
+    [{stats, word_counts}, {referenced_ids, issues}] = Task.await_many(tasks, 15_000)
 
     table_data =
       Enum.map(sheets, fn sheet ->
@@ -331,7 +358,14 @@ defmodule StoryarnWeb.SheetLive.Index do
         }
       end)
 
-    sorted_table = sort_sheet_table(table_data, socket.assigns.sort_by, socket.assigns.sort_dir)
+    sorted_table =
+      sort_table(
+        table_data,
+        socket.assigns.sort_by,
+        socket.assigns.sort_dir,
+        sheet_sort_columns()
+      )
+
     {page_rows, total_pages} = paginate(sorted_table, 1)
 
     dashboard_stats = %{
@@ -365,68 +399,46 @@ defmodule StoryarnWeb.SheetLive.Index do
     do: handle_tree_panel_event(event, params, socket)
 
   def handle_event("sort_sheets", %{"column" => column}, socket) do
-    {sort_by, sort_dir} = toggle_sort(column, socket.assigns.sort_by, socket.assigns.sort_dir)
-    sorted = sort_sheet_table(socket.assigns.all_sheet_table_data, sort_by, sort_dir)
-    {page_rows, total_pages} = paginate(sorted, 1)
-
     {:noreply,
-     socket
-     |> assign(:sort_by, sort_by)
-     |> assign(:sort_dir, sort_dir)
-     |> assign(:all_sheet_table_data, sorted)
-     |> assign(:sheet_table_data, page_rows)
-     |> assign(:page, 1)
-     |> assign(:total_pages, total_pages)}
+     handle_sort(socket, column, :all_sheet_table_data, :sheet_table_data, sheet_sort_columns())}
   end
 
   def handle_event("page_sheets", %{"page" => page}, socket) do
-    page = parse_page(page)
-    {page_rows, total_pages} = paginate(socket.assigns.all_sheet_table_data, page)
-
-    {:noreply,
-     socket
-     |> assign(:sheet_table_data, page_rows)
-     |> assign(:page, page)
-     |> assign(:total_pages, total_pages)}
+    {:noreply, handle_page(socket, page, :all_sheet_table_data, :sheet_table_data)}
   end
 
-  def handle_event("set_pending_delete", %{"id" => id}, socket) do
+  def handle_event(event, %{"id" => id}, socket)
+      when event in ~w(set_pending_delete set_pending_delete_sheet) do
     {:noreply, assign(socket, :pending_delete_id, id)}
   end
 
-  def handle_event("set_pending_delete_sheet", %{"id" => id}, socket) do
-    {:noreply, assign(socket, :pending_delete_id, id)}
-  end
-
-  def handle_event("confirm_delete", _params, socket) do
+  def handle_event(event, _params, socket)
+      when event in ~w(confirm_delete confirm_delete_sheet) do
     if id = socket.assigns[:pending_delete_id] do
-      handle_event("delete_sheet", %{"id" => id}, socket)
+      handle_event("delete", %{"id" => id}, socket)
     else
       {:noreply, socket}
     end
   end
 
-  def handle_event("confirm_delete_sheet", _params, socket) do
-    if id = socket.assigns[:pending_delete_id] do
-      handle_event("delete_sheet", %{"id" => id}, socket)
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event("delete_sheet", %{"id" => sheet_id}, socket) do
+  def handle_event(event, %{"id" => sheet_id}, socket)
+      when event in ~w(delete delete_sheet) do
     with_authorization(socket, :edit_content, fn socket ->
-      sheet = Sheets.get_sheet!(socket.assigns.project.id, sheet_id)
+      case Sheets.get_sheet(socket.assigns.project.id, sheet_id) do
+        nil ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
 
-      case Sheets.delete_sheet(sheet) do
-        {:ok, _} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, dgettext("sheets", "Sheet deleted successfully."))
-           |> reload_sheets()}
+        sheet ->
+          case Sheets.delete_sheet(sheet) do
+            {:ok, _} ->
+              {:noreply,
+               socket
+               |> put_flash(:info, dgettext("sheets", "Sheet moved to trash."))
+               |> reload_sheets()}
 
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
+          end
       end
     end)
   end
@@ -476,29 +488,34 @@ defmodule StoryarnWeb.SheetLive.Index do
   end
 
   def handle_event(
-        "move_sheet",
-        %{"sheet_id" => sheet_id, "parent_id" => parent_id, "position" => position},
+        "move_to_parent",
+        %{"item_id" => sheet_id, "new_parent_id" => parent_id, "position" => position},
         socket
       ) do
     with_authorization(socket, :edit_content, fn socket ->
-      sheet = Sheets.get_sheet!(socket.assigns.project.id, sheet_id)
-      parent_id = MapUtils.parse_int(parent_id)
-      position = MapUtils.parse_int(position) || 0
+      case Sheets.get_sheet(socket.assigns.project.id, sheet_id) do
+        nil ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
 
-      case Sheets.move_sheet_to_position(sheet, parent_id, position) do
-        {:ok, _sheet} ->
-          {:noreply, reload_sheets(socket)}
+        sheet ->
+          parent_id = MapUtils.parse_int(parent_id)
+          position = MapUtils.parse_int(position) || 0
 
-        {:error, :would_create_cycle} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("sheets", "Cannot move a sheet into its own children.")
-           )}
+          case Sheets.move_sheet_to_position(sheet, parent_id, position) do
+            {:ok, _sheet} ->
+              {:noreply, reload_sheets(socket)}
 
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
+            {:error, :would_create_cycle} ->
+              {:noreply,
+               put_flash(
+                 socket,
+                 :error,
+                 dgettext("sheets", "Cannot move a sheet into its own children.")
+               )}
+
+            {:error, _reason} ->
+              {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
+          end
       end
     end)
   end
@@ -510,36 +527,28 @@ defmodule StoryarnWeb.SheetLive.Index do
   defp reload_sheets(socket) do
     project_id = socket.assigns.project.id
 
-    socket
-    |> assign(:sheets_tree, Sheets.list_sheets_tree(project_id))
-    |> assign(:sheets, Sheets.list_leaf_sheets(project_id))
-    |> assign(:dashboard_stats, nil)
-    |> assign(:all_sheet_table_data, [])
-    |> assign(:sheet_table_data, [])
-    |> assign(:sheet_issues, [])
-    |> assign(:page, 1)
-    |> assign(:total_pages, 1)
-    |> then(fn socket ->
-      if socket.assigns.sheets != [] do
-        send(self(), :load_dashboard_data)
+    reload_dashboard(
+      socket,
+      :sheets,
+      :all_sheet_table_data,
+      :sheet_table_data,
+      :sheet_issues,
+      fn s ->
+        s
+        |> assign(:sheets_tree, Sheets.list_sheets_tree(project_id))
+        |> assign(:sheets, Sheets.list_leaf_sheets(project_id))
       end
-
-      socket
-    end)
+    )
   end
 
-  defp sort_sheet_table(data, sort_by, sort_dir) do
-    sorter =
-      case sort_by do
-        "name" -> &String.downcase(&1.name)
-        "block_count" -> & &1.block_count
-        "variable_count" -> & &1.variable_count
-        "word_count" -> & &1.word_count
-        "updated_at" -> &(&1.updated_at || ~U[1970-01-01 00:00:00Z])
-        _ -> &String.downcase(&1.name)
-      end
-
-    Enum.sort_by(data, sorter, sort_dir)
+  defp sheet_sort_columns do
+    %{
+      "name" => &String.downcase(&1.name),
+      "block_count" => & &1.block_count,
+      "variable_count" => & &1.variable_count,
+      "word_count" => & &1.word_count,
+      "updated_at" => &(&1.updated_at || ~U[1970-01-01 00:00:00Z])
+    }
   end
 
   defp format_sheet_issues(issues, workspace, project) do
@@ -559,6 +568,9 @@ defmodule StoryarnWeb.SheetLive.Index do
           :missing_shortcut ->
             {:warning,
              dgettext("sheets", "Sheet \"%{name}\" has no shortcut", name: issue.sheet_name)}
+
+          _ ->
+            {:info, gettext("Issue detected")}
         end
 
       %{

@@ -405,8 +405,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_event(
-        "move_sheet",
-        %{"sheet_id" => sheet_id, "parent_id" => parent_id, "position" => position},
+        "move_to_parent",
+        %{"item_id" => sheet_id, "new_parent_id" => parent_id, "position" => position},
         socket
       ) do
     with_authorization(

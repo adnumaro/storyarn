@@ -19,6 +19,7 @@ defmodule Storyarn.Flows do
     FlowConnection,
     FlowCrud,
     FlowNode,
+    FlowStats,
     HubColors,
     Instruction,
     NavigationHistoryStore,
@@ -878,13 +879,13 @@ defmodule Storyarn.Flows do
   defdelegate count_flows(project_id), to: FlowCrud
 
   @doc "Returns per-flow node stats for a project. %{flow_id => %{node_count, dialogue_count, condition_count}}."
-  defdelegate flow_stats_for_project(project_id), to: FlowCrud
+  defdelegate flow_stats_for_project(project_id), to: FlowStats
 
   @doc "Returns per-flow word counts from dialogue nodes. %{flow_id => word_count}."
-  defdelegate flow_word_counts(project_id), to: FlowCrud
+  defdelegate flow_word_counts(project_id), to: FlowStats
 
   @doc "Detects issues in flows for a project. Returns [%{flow_id, flow_name, issue_type, count}]."
-  defdelegate detect_flow_issues(project_id), to: FlowCrud
+  defdelegate detect_flow_issues(project_id), to: FlowStats
 
   @doc "Counts non-deleted flow nodes across all flows in a project."
   defdelegate count_nodes_for_project(project_id), to: FlowCrud

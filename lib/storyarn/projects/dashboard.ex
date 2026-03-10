@@ -204,210 +204,178 @@ defmodule Storyarn.Projects.Dashboard do
     |> Repo.aggregate(:count)
   end
 
+  # Hybrid word count: SUM(word_count) for heavy content (dialogue, text blocks)
+  # + lightweight text queries for metadata (names, labels, descriptions).
+  # At 800K-word scale, content is 99%+ of total; metadata is ~300KB transfer.
   defp count_total_words(project_id) do
-    texts =
-      collect_flow_texts(project_id) ++
-        collect_sheet_texts(project_id) ++
-        collect_scene_texts(project_id) ++
-        collect_screenplay_texts(project_id)
+    content_words = sum_flow_word_counts(project_id) + sum_block_word_counts(project_id)
 
-    texts
-    |> List.flatten()
-    |> Enum.reject(&(is_nil(&1) or &1 == ""))
-    |> Enum.map(&HtmlUtils.word_count/1)
-    |> Enum.sum()
+    metadata_texts =
+      collect_flow_metadata(project_id) ++
+        collect_sheet_metadata(project_id) ++
+        collect_scene_metadata(project_id) ++
+        collect_screenplay_metadata(project_id)
+
+    metadata_words =
+      metadata_texts
+      |> List.flatten()
+      |> Enum.reject(&(is_nil(&1) or &1 == ""))
+      |> Enum.map(&HtmlUtils.word_count/1)
+      |> Enum.sum()
+
+    content_words + metadata_words
   end
 
-  # -- Flow texts: names, descriptions, dialogue, responses, slug lines, condition labels
-
-  defp collect_flow_texts(project_id) do
-    flow_texts = fetch_flow_texts(project_id)
-    dialogue_texts = fetch_dialogue_texts(project_id)
-    slug_texts = fetch_slug_texts(project_id)
-    case_labels = fetch_case_labels(project_id)
-    conn_labels = fetch_flow_connection_labels(project_id)
-
-    flow_texts ++ dialogue_texts ++ slug_texts ++ case_labels ++ conn_labels
-  end
-
-  defp fetch_flow_texts(project_id) do
-    from(f in Flow,
-      where: f.project_id == ^project_id and is_nil(f.deleted_at),
-      select: [f.name, f.description]
-    )
-    |> Repo.all()
-  end
-
-  defp fetch_dialogue_texts(project_id) do
-    dialogue_data =
-      from(n in FlowNode,
-        join: f in Flow,
-        on: n.flow_id == f.id,
-        where:
-          f.project_id == ^project_id and
-            is_nil(n.deleted_at) and
-            is_nil(f.deleted_at) and
-            n.type == "dialogue",
-        select: n.data
-      )
-      |> Repo.all()
-
-    Enum.flat_map(dialogue_data, fn data ->
-      responses =
-        case Map.get(data, "responses") do
-          rs when is_list(rs) -> Enum.map(rs, &Map.get(&1, "text"))
-          _ -> []
-        end
-
-      [
-        Map.get(data, "text"),
-        Map.get(data, "menu_text"),
-        Map.get(data, "stage_directions")
-        | responses
-      ]
-    end)
-  end
-
-  defp fetch_slug_texts(project_id) do
+  defp sum_flow_word_counts(project_id) do
     from(n in FlowNode,
       join: f in Flow,
       on: n.flow_id == f.id,
-      where:
-        f.project_id == ^project_id and
-          is_nil(n.deleted_at) and
-          is_nil(f.deleted_at) and
-          n.type == "slug_line",
-      select: [
-        fragment("?->>'location'", n.data),
-        fragment("?->>'description'", n.data),
-        fragment("?->>'sub_location'", n.data)
-      ]
+      where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at),
+      select: coalesce(sum(n.word_count), 0)
     )
-    |> Repo.all()
+    |> Repo.one()
   end
 
-  defp fetch_case_labels(project_id) do
-    condition_data =
+  defp sum_block_word_counts(project_id) do
+    from(b in Block,
+      join: s in Sheet,
+      on: b.sheet_id == s.id,
+      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
+      select: coalesce(sum(b.word_count), 0)
+    )
+    |> Repo.one()
+  end
+
+  # -- Flow metadata: names, descriptions, slug line texts, case labels, connection labels
+  # (dialogue/response/menu text is in word_count — NOT loaded here)
+
+  defp collect_flow_metadata(project_id) do
+    flow_texts =
+      from(f in Flow,
+        where: f.project_id == ^project_id and is_nil(f.deleted_at),
+        select: [f.name, f.description]
+      )
+      |> Repo.all()
+
+    slug_texts =
       from(n in FlowNode,
         join: f in Flow,
         on: n.flow_id == f.id,
         where:
-          f.project_id == ^project_id and
-            is_nil(n.deleted_at) and
-            is_nil(f.deleted_at) and
+          f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and
+            n.type == "slug_line",
+        select: [
+          fragment("?->>'location'", n.data),
+          fragment("?->>'description'", n.data),
+          fragment("?->>'sub_location'", n.data)
+        ]
+      )
+      |> Repo.all()
+
+    case_labels =
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where:
+          f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and
             n.type == "condition",
         select: fragment("?->'cases'", n.data)
       )
       |> Repo.all()
+      |> Enum.flat_map(fn
+        cases when is_list(cases) -> Enum.map(cases, &Map.get(&1, "label"))
+        _ -> []
+      end)
 
-    Enum.flat_map(condition_data, fn
-      cases when is_list(cases) -> Enum.map(cases, &Map.get(&1, "label"))
-      _ -> []
-    end)
+    conn_labels =
+      from(c in FlowConnection,
+        join: f in Flow,
+        on: c.flow_id == f.id,
+        where: f.project_id == ^project_id and is_nil(f.deleted_at),
+        select: c.label
+      )
+      |> Repo.all()
+
+    flow_texts ++ slug_texts ++ case_labels ++ conn_labels
   end
 
-  defp fetch_flow_connection_labels(project_id) do
-    from(c in FlowConnection,
-      join: f in Flow,
-      on: c.flow_id == f.id,
-      where: f.project_id == ^project_id and is_nil(f.deleted_at),
-      select: c.label
-    )
-    |> Repo.all()
-  end
+  # -- Sheet metadata: names, descriptions, block labels/placeholders/options
+  # (block text/rich_text content is in word_count — NOT loaded here)
 
-  # -- Sheet texts: names, descriptions, block labels, text values, table names, gallery captions
+  defp collect_sheet_metadata(project_id) do
+    sheet_texts =
+      from(s in Sheet,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
+        select: [s.name, s.description]
+      )
+      |> Repo.all()
 
-  defp collect_sheet_texts(project_id) do
-    sheet_texts = fetch_sheet_texts(project_id)
-    block_texts = fetch_block_texts(project_id)
-    table_col_names = fetch_table_column_names(project_id)
-    table_row_names = fetch_table_row_names(project_id)
-    gallery_texts = fetch_gallery_texts(project_id)
-
-    sheet_texts ++ block_texts ++ table_col_names ++ table_row_names ++ gallery_texts
-  end
-
-  defp fetch_sheet_texts(project_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
-      select: [s.name, s.description]
-    )
-    |> Repo.all()
-  end
-
-  defp fetch_block_texts(project_id) do
-    block_data =
+    # Extract only label + placeholder from config (NOT loading value JSONB)
+    block_labels =
       from(b in Block,
         join: s in Sheet,
         on: b.sheet_id == s.id,
         where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-        select: %{
-          type: b.type,
-          config: b.config,
-          value: b.value
-        }
+        select: [fragment("?->>'label'", b.config), fragment("?->>'placeholder'", b.config)]
       )
       |> Repo.all()
 
-    Enum.flat_map(block_data, fn b ->
-      label = get_in(b.config, ["label"])
-      placeholder = get_in(b.config, ["placeholder"])
+    # Select/multi_select option values (only blocks that have options)
+    option_values =
+      from(b in Block,
+        join: s in Sheet,
+        on: b.sheet_id == s.id,
+        where:
+          s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at) and
+            b.type in ["select", "multi_select"],
+        select: fragment("?->'options'", b.config)
+      )
+      |> Repo.all()
+      |> Enum.flat_map(fn
+        opts when is_list(opts) -> Enum.map(opts, &Map.get(&1, "value"))
+        _ -> []
+      end)
 
-      option_values =
-        case get_in(b.config, ["options"]) do
-          opts when is_list(opts) -> Enum.map(opts, &Map.get(&1, "value"))
-          _ -> []
-        end
+    table_col_names =
+      from(tc in "table_columns",
+        join: b in "blocks",
+        on: tc.block_id == b.id,
+        join: s in "sheets",
+        on: b.sheet_id == s.id,
+        where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
+        select: tc.name
+      )
+      |> Repo.all()
 
-      value_content =
-        if b.type in ["text", "rich_text"],
-          do: [get_in(b.value, ["content"])],
-          else: []
+    table_row_names =
+      from(tr in "table_rows",
+        join: b in "blocks",
+        on: tr.block_id == b.id,
+        join: s in "sheets",
+        on: b.sheet_id == s.id,
+        where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
+        select: tr.name
+      )
+      |> Repo.all()
 
-      [label, placeholder | option_values ++ value_content]
-    end)
+    gallery_texts =
+      from(gi in "block_gallery_images",
+        join: b in "blocks",
+        on: gi.block_id == b.id,
+        join: s in "sheets",
+        on: b.sheet_id == s.id,
+        where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
+        select: [gi.label, gi.description]
+      )
+      |> Repo.all()
+
+    sheet_texts ++ block_labels ++ option_values ++ table_col_names ++ table_row_names ++
+      gallery_texts
   end
 
-  defp fetch_table_column_names(project_id) do
-    from(tc in "table_columns",
-      join: b in "blocks",
-      on: tc.block_id == b.id,
-      join: s in "sheets",
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      select: tc.name
-    )
-    |> Repo.all()
-  end
+  # -- Scene metadata: names, descriptions, layer/zone/pin/annotation/connection labels
 
-  defp fetch_table_row_names(project_id) do
-    from(tr in "table_rows",
-      join: b in "blocks",
-      on: tr.block_id == b.id,
-      join: s in "sheets",
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      select: tr.name
-    )
-    |> Repo.all()
-  end
-
-  defp fetch_gallery_texts(project_id) do
-    from(gi in "block_gallery_images",
-      join: b in "blocks",
-      on: gi.block_id == b.id,
-      join: s in "sheets",
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      select: [gi.label, gi.description]
-    )
-    |> Repo.all()
-  end
-
-  # -- Scene texts: names, descriptions, layer/zone/pin/annotation/connection labels
-
-  defp collect_scene_texts(project_id) do
+  defp collect_scene_metadata(project_id) do
     scene_texts =
       from(s in "scenes",
         where: s.project_id == ^project_id and is_nil(s.deleted_at),
@@ -463,9 +431,9 @@ defmodule Storyarn.Projects.Dashboard do
     scene_texts ++ layer_names ++ zone_texts ++ pin_texts ++ annotation_texts ++ conn_labels
   end
 
-  # -- Screenplay texts: names, descriptions, element content
+  # -- Screenplay metadata: names, descriptions, element content
 
-  defp collect_screenplay_texts(project_id) do
+  defp collect_screenplay_metadata(project_id) do
     screenplay_texts =
       from(sp in "screenplays",
         where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
@@ -515,30 +483,19 @@ defmodule Storyarn.Projects.Dashboard do
 
   @doc "Returns flows with disconnected nodes. Returns `[%{flow_id, flow_name, count}]`."
   def flows_with_disconnected_nodes(project_id) do
-    connected_node_ids =
-      from(c in FlowConnection,
-        join: f in Flow,
-        on: c.flow_id == f.id,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at),
-        select: c.source_node_id
-      )
-      |> union_all(
-        ^from(c in FlowConnection,
-          join: f in Flow,
-          on: c.flow_id == f.id,
-          where: f.project_id == ^project_id and is_nil(f.deleted_at),
-          select: c.target_node_id
-        )
-      )
-
     from(n in FlowNode,
       join: f in Flow,
       on: n.flow_id == f.id,
+      left_join: cs in FlowConnection,
+      on: cs.source_node_id == n.id,
+      left_join: ct in FlowConnection,
+      on: ct.target_node_id == n.id,
       where:
         f.project_id == ^project_id and
           is_nil(n.deleted_at) and
           is_nil(f.deleted_at) and
-          n.id not in subquery(connected_node_ids),
+          is_nil(cs.id) and
+          is_nil(ct.id),
       group_by: [f.id, f.name],
       select: %{flow_id: f.id, flow_name: f.name, count: count(n.id)}
     )

@@ -224,7 +224,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       view |> render_click("confirm_delete_sheet")
 
       html = render(view)
-      assert html =~ "Sheet deleted successfully"
+      assert html =~ "Sheet moved to trash"
       refute html =~ "To Delete"
     end
 
@@ -256,7 +256,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       render_click(view, "delete_sheet", %{"id" => sheet.id})
 
       html = render(view)
-      assert html =~ "Sheet deleted successfully"
+      assert html =~ "Sheet moved to trash"
       refute html =~ "Delete Me"
     end
 
@@ -299,9 +299,9 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
       {:ok, view, _html} = live(conn, url)
 
-      render_click(view, "move_sheet", %{
-        "sheet_id" => child.id,
-        "parent_id" => parent.id,
+      render_click(view, "move_to_parent", %{
+        "item_id" => child.id,
+        "new_parent_id" => parent.id,
         "position" => 0
       })
 
@@ -322,9 +322,9 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
       {:ok, view, _html} = live(conn, url)
 
-      render_click(view, "move_sheet", %{
-        "sheet_id" => child.id,
-        "parent_id" => nil,
+      render_click(view, "move_to_parent", %{
+        "item_id" => child.id,
+        "new_parent_id" => nil,
         "position" => 0
       })
 
@@ -345,9 +345,9 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
       {:ok, view, _html} = live(conn, url)
 
-      render_click(view, "move_sheet", %{
-        "sheet_id" => parent.id,
-        "parent_id" => child.id,
+      render_click(view, "move_to_parent", %{
+        "item_id" => parent.id,
+        "new_parent_id" => child.id,
         "position" => 0
       })
 
@@ -366,9 +366,9 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
       {:ok, view, _html} = live(conn, url)
 
-      render_click(view, "move_sheet", %{
-        "sheet_id" => sheet.id,
-        "parent_id" => nil,
+      render_click(view, "move_to_parent", %{
+        "item_id" => sheet.id,
+        "new_parent_id" => nil,
         "position" => 0
       })
 

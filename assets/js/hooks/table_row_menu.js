@@ -42,8 +42,7 @@ export const TableRowMenu = {
 
     // Create floating popover
     this._fp = createFloatingPopover(this.trigger, {
-      class: "bg-base-200 border border-base-content/20 rounded-lg shadow-lg",
-      width: "11rem",
+      class: "bg-base-200 border border-base-content/20 rounded-lg shadow-lg w-max",
       placement: "bottom-end",
     });
 
@@ -83,6 +82,17 @@ export const TableRowMenu = {
         this.pushEventTo(this._target, event, payload);
       } else {
         this.pushEvent(event, payload);
+      }
+
+      // Open modal if specified (e.g. delete confirmation)
+      const modalId = btn.dataset.modalId;
+      if (modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+          modal.dispatchEvent(new Event("phx:show-modal", { bubbles: true }));
+          const container = document.getElementById(`${modalId}-container`);
+          if (container) container.focus();
+        }
       }
 
       // Close the menu

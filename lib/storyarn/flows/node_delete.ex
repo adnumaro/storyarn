@@ -11,10 +11,27 @@ defmodule Storyarn.Flows.NodeDelete do
   def delete_node(%FlowNode{type: "entry"}), do: {:error, :cannot_delete_entry_node}
 
   def delete_node(%FlowNode{type: "exit"} = node) do
-    if last_exit_node?(node), do: {:error, :cannot_delete_last_exit}, else: do_delete_node(node)
+    if last_exit_node?(node),
+      do: {:error, :cannot_delete_last_exit},
+      else: do_delete_and_broadcast(node)
   end
 
-  def delete_node(%FlowNode{} = node), do: do_delete_node(node)
+  def delete_node(%FlowNode{} = node), do: do_delete_and_broadcast(node)
+
+  defp do_delete_and_broadcast(node) do
+    result = do_delete_node(node)
+
+    case result do
+      {:ok, _, _} ->
+        flow = Repo.get!(Storyarn.Flows.Flow, node.flow_id)
+        Storyarn.Collaboration.broadcast_dashboard_change(flow.project_id, :flows)
+
+      _ ->
+        :ok
+    end
+
+    result
+  end
 
   @doc """
   Restores a soft-deleted node by clearing its deleted_at timestamp.

@@ -7,6 +7,10 @@ defmodule StoryarnWeb.ProjectLive.Show do
 
   import StoryarnWeb.Components.DashboardComponents
 
+  use StoryarnWeb.Live.Shared.DashboardHandlers
+
+  alias Storyarn.Collaboration
+  alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Localization
   alias Storyarn.Projects
 
@@ -159,6 +163,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
           |> assign(:activity, [])
 
         if connected?(socket) do
+          Collaboration.subscribe_dashboard(project.id)
           send(self(), :load_dashboard_data)
         end
 
@@ -172,24 +177,49 @@ defmodule StoryarnWeb.ProjectLive.Show do
     end
   end
 
-  @impl true
   def handle_info(:load_dashboard_data, socket) do
     project = socket.assigns.project
     project_id = project.id
     ws = socket.assigns.workspace.slug
     ps = project.slug
 
-    stats = Projects.project_stats(project_id)
-    node_dist = Projects.count_all_nodes_by_type(project_id)
-    speakers = Projects.count_dialogue_lines_by_speaker(project_id)
-    issues = Projects.detect_issues(project_id, workspace_slug: ws, project_slug: ps)
-    activity = Projects.recent_activity(project_id)
+    # Run independent queries in parallel with caching
+    tasks = [
+      Task.async(fn ->
+        DashboardCache.fetch(project_id, :project_stats, fn ->
+          Projects.project_stats(project_id)
+        end)
+      end),
+      Task.async(fn ->
+        {DashboardCache.fetch(project_id, :node_dist, fn ->
+           Projects.count_all_nodes_by_type(project_id)
+         end),
+         DashboardCache.fetch(project_id, :speakers, fn ->
+           Projects.count_dialogue_lines_by_speaker(project_id)
+         end)}
+      end),
+      Task.async(fn ->
+        DashboardCache.fetch(project_id, :project_issues, fn ->
+          Projects.detect_issues(project_id, workspace_slug: ws, project_slug: ps)
+        end)
+      end),
+      Task.async(fn ->
+        DashboardCache.fetch(project_id, :recent_activity, fn ->
+          Projects.recent_activity(project_id)
+        end)
+      end),
+      Task.async(fn ->
+        DashboardCache.fetch(project_id, :localization_progress, fn ->
+          case Localization.list_languages(project_id) do
+            [] -> []
+            _languages -> Localization.progress_by_language(project_id)
+          end
+        end)
+      end)
+    ]
 
-    localization =
-      case Localization.list_languages(project_id) do
-        [] -> []
-        _languages -> Localization.progress_by_language(project_id)
-      end
+    [stats, {node_dist, speakers}, issues, activity, localization] =
+      Task.await_many(tasks, 15_000)
 
     {:noreply,
      socket
