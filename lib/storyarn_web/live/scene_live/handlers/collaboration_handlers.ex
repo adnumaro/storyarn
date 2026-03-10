@@ -117,7 +117,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
 
   def handle_remote_change(:pin_deleted, payload, socket) do
     case get_in_payload(payload, :id) do
-      nil -> {:noreply, socket}
+      nil ->
+        {:noreply, socket}
+
       id ->
         {:noreply,
          socket
@@ -129,7 +131,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
 
   def handle_remote_change(:zone_deleted, payload, socket) do
     case get_in_payload(payload, :id) do
-      nil -> {:noreply, socket}
+      nil ->
+        {:noreply, socket}
+
       id ->
         {:noreply,
          socket
@@ -141,7 +145,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
 
   def handle_remote_change(:connection_deleted, payload, socket) do
     case get_in_payload(payload, :id) do
-      nil -> {:noreply, socket}
+      nil ->
+        {:noreply, socket}
+
       id ->
         {:noreply,
          socket
@@ -153,7 +159,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
 
   def handle_remote_change(:annotation_deleted, payload, socket) do
     case get_in_payload(payload, :id) do
-      nil -> {:noreply, socket}
+      nil ->
+        {:noreply, socket}
+
       id ->
         {:noreply,
          socket
