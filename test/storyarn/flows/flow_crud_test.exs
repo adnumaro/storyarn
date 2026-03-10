@@ -1072,4 +1072,147 @@ defmodule Storyarn.Flows.FlowCrudTest do
       assert Flows.flow_deleted?(deleted_flow)
     end
   end
+
+  # ===========================================================================
+  # flow_stats_for_project/1
+  # ===========================================================================
+
+  describe "flow_stats_for_project/1" do
+    test "returns correct node counts per flow" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      # flow already has entry + exit nodes from create_flow
+
+      # Add dialogue and condition nodes
+      node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+      node_fixture(flow, %{type: "dialogue", data: %{"text" => "World"}})
+      node_fixture(flow, %{type: "condition", data: %{"expression" => ""}})
+
+      stats = Flows.flow_stats_for_project(project.id)
+      flow_stats = stats[flow.id]
+
+      assert flow_stats.node_count == 5
+      assert flow_stats.dialogue_count == 2
+      assert flow_stats.condition_count == 1
+    end
+
+    test "returns empty map for project with no flows" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert Flows.flow_stats_for_project(project.id) == %{}
+    end
+
+    test "excludes soft-deleted nodes" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hi"}})
+      Flows.delete_node(dialogue)
+
+      stats = Flows.flow_stats_for_project(project.id)
+      flow_stats = stats[flow.id]
+      assert flow_stats.dialogue_count == 0
+    end
+  end
+
+  # ===========================================================================
+  # flow_word_counts/1
+  # ===========================================================================
+
+  describe "flow_word_counts/1" do
+    test "counts words from dialogue text" do
+      %{project: project, flow: flow} = create_project_and_flow()
+
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"text" => "Hello world", "menu_text" => "Choose this", "stage_directions" => ""}
+      })
+
+      counts = Flows.flow_word_counts(project.id)
+      # "Hello world" = 2, "Choose this" = 2
+      assert counts[flow.id] == 4
+    end
+
+    test "strips HTML before counting words" do
+      %{project: project, flow: flow} = create_project_and_flow()
+
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"text" => "<p>Hello <strong>beautiful</strong> world</p>"}
+      })
+
+      counts = Flows.flow_word_counts(project.id)
+      assert counts[flow.id] == 3
+    end
+
+    test "counts response texts" do
+      %{project: project, flow: flow} = create_project_and_flow()
+
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{
+          "text" => "Question here",
+          "responses" => [
+            %{"id" => "r1", "text" => "Yes please"},
+            %{"id" => "r2", "text" => "No thanks"}
+          ]
+        }
+      })
+
+      counts = Flows.flow_word_counts(project.id)
+      # "Question here" = 2, "Yes please" = 2, "No thanks" = 2
+      assert counts[flow.id] == 6
+    end
+
+    test "returns empty map for project with no flows" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert Flows.flow_word_counts(project.id) == %{}
+    end
+  end
+
+  # ===========================================================================
+  # detect_flow_issues/1
+  # ===========================================================================
+
+  describe "detect_flow_issues/1" do
+    test "detects flows without entry nodes" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      # Import a flow without entry node (raw import bypasses auto-creation)
+      {:ok, flow} = Flows.import_flow(project.id, %{name: "No Entry", shortcut: "no-entry"})
+
+      issues = Flows.detect_flow_issues(project.id)
+      no_entry_issues = Enum.filter(issues, &(&1.issue_type == :no_entry))
+
+      assert length(no_entry_issues) >= 1
+      assert Enum.any?(no_entry_issues, &(&1.flow_id == flow.id))
+    end
+
+    test "detects disconnected nodes" do
+      %{project: project, flow: flow} = create_project_and_flow()
+
+      # Add a node with no connections
+      node_fixture(flow, %{type: "dialogue", data: %{"text" => "Orphan"}})
+
+      issues = Flows.detect_flow_issues(project.id)
+      disconnected = Enum.filter(issues, &(&1.issue_type == :disconnected_nodes))
+
+      assert length(disconnected) >= 1
+      assert Enum.any?(disconnected, &(&1.flow_id == flow.id))
+    end
+
+    test "returns empty list for healthy project" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      # Get the auto-created entry and exit nodes, connect them
+      loaded = Flows.get_flow!(project.id, flow.id)
+      entry = Enum.find(loaded.nodes, &(&1.type == "entry"))
+      exit_node = Enum.find(loaded.nodes, &(&1.type == "exit"))
+      Storyarn.FlowsFixtures.connection_fixture(loaded, entry, exit_node)
+
+      issues = Flows.detect_flow_issues(project.id)
+      assert issues == []
+    end
+  end
 end

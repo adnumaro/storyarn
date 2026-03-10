@@ -673,6 +673,161 @@ defmodule Storyarn.Flows.FlowCrud do
     |> Repo.update!()
   end
 
+  # =============================================================================
+  # Dashboard queries
+  # =============================================================================
+
+  @doc """
+  Returns per-flow node stats for a project in a single query.
+  Returns `%{flow_id => %{node_count, dialogue_count, condition_count}}`.
+  """
+  def flow_stats_for_project(project_id) do
+    from(n in FlowNode,
+      join: f in Flow,
+      on: n.flow_id == f.id,
+      where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at),
+      group_by: [n.flow_id, n.type],
+      select: {n.flow_id, n.type, count(n.id)}
+    )
+    |> Repo.all()
+    |> Enum.group_by(&elem(&1, 0))
+    |> Map.new(fn {flow_id, rows} ->
+      type_counts = Map.new(rows, fn {_, type, count} -> {type, count} end)
+
+      {flow_id,
+       %{
+         node_count: rows |> Enum.map(&elem(&1, 2)) |> Enum.sum(),
+         dialogue_count: Map.get(type_counts, "dialogue", 0),
+         condition_count: Map.get(type_counts, "condition", 0)
+       }}
+    end)
+  end
+
+  @doc """
+  Returns per-flow word counts from dialogue nodes for a project.
+  Fetches all dialogue data in one query and counts words in Elixir.
+  Returns `%{flow_id => word_count}`.
+  """
+  def flow_word_counts(project_id) do
+    from(n in FlowNode,
+      join: f in Flow,
+      on: n.flow_id == f.id,
+      where:
+        f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and
+          n.type == "dialogue",
+      select: {n.flow_id, n.data}
+    )
+    |> Repo.all()
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Map.new(fn {flow_id, data_list} ->
+      words =
+        data_list
+        |> Enum.flat_map(&extract_dialogue_texts/1)
+        |> Enum.reject(&(is_nil(&1) or &1 == ""))
+        |> Enum.map(&count_words/1)
+        |> Enum.sum()
+
+      {flow_id, words}
+    end)
+  end
+
+  defp extract_dialogue_texts(data) when is_map(data) do
+    base = [data["text"], data["menu_text"], data["stage_directions"]]
+
+    response_texts =
+      (data["responses"] || [])
+      |> Enum.flat_map(fn r -> [r["text"]] end)
+
+    base ++ response_texts
+  end
+
+  defp extract_dialogue_texts(_), do: []
+
+  defp count_words(text) when is_binary(text) do
+    text
+    |> Storyarn.Shared.HtmlUtils.strip_html()
+    |> String.split(~r/\s+/, trim: true)
+    |> length()
+  end
+
+  defp count_words(_), do: 0
+
+  @doc """
+  Detects issues in flows for a project.
+  Returns `[%{flow_id, flow_name, issue_type, count}]`.
+
+  Issue types:
+  - `:no_entry` — flow has no entry node
+  - `:disconnected_nodes` — flow has nodes with zero connections
+  """
+  def detect_flow_issues(project_id) do
+    no_entry = detect_no_entry_issues(project_id)
+    disconnected = detect_disconnected_issues(project_id)
+    no_entry ++ disconnected
+  end
+
+  defp detect_no_entry_issues(project_id) do
+    flows_with_entry_ids =
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where:
+          f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(n.deleted_at) and
+            n.type == "entry",
+        select: f.id
+      )
+
+    from(f in Flow,
+      where:
+        f.project_id == ^project_id and is_nil(f.deleted_at) and
+          f.id not in subquery(flows_with_entry_ids),
+      select: %{flow_id: f.id, flow_name: f.name}
+    )
+    |> Repo.all()
+    |> Enum.map(fn row ->
+      %{flow_id: row.flow_id, flow_name: row.flow_name, issue_type: :no_entry, count: 1}
+    end)
+  end
+
+  defp detect_disconnected_issues(project_id) do
+    alias Storyarn.Flows.FlowConnection
+
+    connected_node_ids =
+      from(c in FlowConnection,
+        join: f in Flow,
+        on: c.flow_id == f.id,
+        where: f.project_id == ^project_id and is_nil(f.deleted_at),
+        select: c.source_node_id
+      )
+      |> union_all(
+        ^from(c in FlowConnection,
+          join: f in Flow,
+          on: c.flow_id == f.id,
+          where: f.project_id == ^project_id and is_nil(f.deleted_at),
+          select: c.target_node_id
+        )
+      )
+
+    from(n in FlowNode,
+      join: f in Flow,
+      on: n.flow_id == f.id,
+      where:
+        f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and
+          n.id not in subquery(connected_node_ids),
+      group_by: [f.id, f.name],
+      select: %{flow_id: f.id, flow_name: f.name, count: count(n.id)}
+    )
+    |> Repo.all()
+    |> Enum.map(fn row ->
+      %{
+        flow_id: row.flow_id,
+        flow_name: row.flow_name,
+        issue_type: :disconnected_nodes,
+        count: row.count
+      }
+    end)
+  end
+
   defp maybe_filter_export_ids(query, :all), do: query
 
   defp maybe_filter_export_ids(query, ids) when is_list(ids) do
