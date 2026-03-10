@@ -214,7 +214,7 @@ defmodule Storyarn.Projects.Dashboard do
     texts
     |> List.flatten()
     |> Enum.reject(&(is_nil(&1) or &1 == ""))
-    |> Enum.map(&count_words/1)
+    |> Enum.map(&HtmlUtils.word_count/1)
     |> Enum.sum()
   end
 
@@ -485,15 +485,12 @@ defmodule Storyarn.Projects.Dashboard do
     screenplay_texts ++ element_texts
   end
 
-  defp count_words(text) do
-    text |> HtmlUtils.strip_html() |> String.split(~r/\s+/, trim: true) |> length()
-  end
-
   # ---------------------------------------------------------------------------
-  # Issue Detectors
+  # Issue Detectors (public raw queries + private formatters)
   # ---------------------------------------------------------------------------
 
-  defp detect_flows_without_entry(project_id, workspace_slug, project_slug) do
+  @doc "Returns flows without entry nodes. Returns `[%{flow_id, flow_name}]`."
+  def flows_without_entry(project_id) do
     flows_with_entry_ids =
       from(n in FlowNode,
         join: f in Flow,
@@ -506,28 +503,18 @@ defmodule Storyarn.Projects.Dashboard do
         select: f.id
       )
 
-    flows_without_entry =
-      from(f in Flow,
-        where:
-          f.project_id == ^project_id and
-            is_nil(f.deleted_at) and
-            f.id not in subquery(flows_with_entry_ids),
-        select: %{id: f.id, name: f.name}
-      )
-      |> Repo.all()
-
-    Enum.map(flows_without_entry, fn flow ->
-      %{
-        severity: :error,
-        message: "Flow \"#{flow.name}\" has no entry node",
-        href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{flow.id}",
-        count: 1
-      }
-    end)
+    from(f in Flow,
+      where:
+        f.project_id == ^project_id and
+          is_nil(f.deleted_at) and
+          f.id not in subquery(flows_with_entry_ids),
+      select: %{flow_id: f.id, flow_name: f.name}
+    )
+    |> Repo.all()
   end
 
-  defp detect_disconnected_nodes(project_id, workspace_slug, project_slug) do
-    # Nodes that have no connections (neither as source nor as target)
+  @doc "Returns flows with disconnected nodes. Returns `[%{flow_id, flow_name, count}]`."
+  def flows_with_disconnected_nodes(project_id) do
     connected_node_ids =
       from(c in FlowConnection,
         join: f in Flow,
@@ -544,21 +531,37 @@ defmodule Storyarn.Projects.Dashboard do
         )
       )
 
-    disconnected =
-      from(n in FlowNode,
-        join: f in Flow,
-        on: n.flow_id == f.id,
-        where:
-          f.project_id == ^project_id and
-            is_nil(n.deleted_at) and
-            is_nil(f.deleted_at) and
-            n.id not in subquery(connected_node_ids),
-        group_by: [f.id, f.name],
-        select: %{flow_id: f.id, flow_name: f.name, count: count(n.id)}
-      )
-      |> Repo.all()
+    from(n in FlowNode,
+      join: f in Flow,
+      on: n.flow_id == f.id,
+      where:
+        f.project_id == ^project_id and
+          is_nil(n.deleted_at) and
+          is_nil(f.deleted_at) and
+          n.id not in subquery(connected_node_ids),
+      group_by: [f.id, f.name],
+      select: %{flow_id: f.id, flow_name: f.name, count: count(n.id)}
+    )
+    |> Repo.all()
+  end
 
-    Enum.map(disconnected, fn row ->
+  defp detect_flows_without_entry(project_id, workspace_slug, project_slug) do
+    project_id
+    |> flows_without_entry()
+    |> Enum.map(fn flow ->
+      %{
+        severity: :error,
+        message: "Flow \"#{flow.flow_name}\" has no entry node",
+        href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{flow.flow_id}",
+        count: 1
+      }
+    end)
+  end
+
+  defp detect_disconnected_nodes(project_id, workspace_slug, project_slug) do
+    project_id
+    |> flows_with_disconnected_nodes()
+    |> Enum.map(fn row ->
       %{
         severity: :warning,
         message: "Flow \"#{row.flow_name}\" has #{row.count} disconnected node(s)",

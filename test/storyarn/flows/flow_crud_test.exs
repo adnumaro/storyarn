@@ -1161,6 +1161,18 @@ defmodule Storyarn.Flows.FlowCrudTest do
       assert counts[flow.id] == 6
     end
 
+    test "counts stage_directions words" do
+      %{project: project, flow: flow} = create_project_and_flow()
+
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"text" => "", "stage_directions" => "She walks away slowly"}
+      })
+
+      counts = Flows.flow_word_counts(project.id)
+      assert counts[flow.id] == 4
+    end
+
     test "returns empty map for project with no flows" do
       user = user_fixture()
       project = project_fixture(user)
@@ -1183,21 +1195,23 @@ defmodule Storyarn.Flows.FlowCrudTest do
       issues = Flows.detect_flow_issues(project.id)
       no_entry_issues = Enum.filter(issues, &(&1.issue_type == :no_entry))
 
-      assert length(no_entry_issues) >= 1
-      assert Enum.any?(no_entry_issues, &(&1.flow_id == flow.id))
+      assert length(no_entry_issues) == 1
+      assert hd(no_entry_issues).flow_id == flow.id
     end
 
     test "detects disconnected nodes" do
       %{project: project, flow: flow} = create_project_and_flow()
-
-      # Add a node with no connections
+      # flow_fixture auto-creates entry + exit (both disconnected — no connections yet)
+      # Add a third disconnected dialogue node
       node_fixture(flow, %{type: "dialogue", data: %{"text" => "Orphan"}})
 
       issues = Flows.detect_flow_issues(project.id)
       disconnected = Enum.filter(issues, &(&1.issue_type == :disconnected_nodes))
 
-      assert length(disconnected) >= 1
-      assert Enum.any?(disconnected, &(&1.flow_id == flow.id))
+      assert length(disconnected) == 1
+      issue = hd(disconnected)
+      assert issue.flow_id == flow.id
+      assert issue.count == 3
     end
 
     test "returns empty list for healthy project" do

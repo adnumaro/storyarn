@@ -253,16 +253,4 @@ defmodule StoryarnWeb.ProjectLive.Show do
   defp activity_type_label("scene"), do: dgettext("projects", "Scene")
   defp activity_type_label("screenplay"), do: dgettext("projects", "Screenplay")
   defp activity_type_label(type), do: type
-
-  defp format_relative_time(datetime) do
-    diff = DateTime.diff(DateTime.utc_now(), datetime, :second)
-
-    cond do
-      diff < 60 -> dgettext("projects", "just now")
-      diff < 3600 -> dgettext("projects", "%{count}m ago", count: div(diff, 60))
-      diff < 86_400 -> dgettext("projects", "%{count}h ago", count: div(diff, 3600))
-      diff < 604_800 -> dgettext("projects", "%{count}d ago", count: div(diff, 86_400))
-      true -> Calendar.strftime(datetime, "%b %d")
-    end
-  end
 end

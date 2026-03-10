@@ -88,24 +88,31 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
       assert html =~ "Words"
     end
 
-    test "sort_flows event updates table order", %{conn: conn, user: user} do
+    test "sort_flows event toggles table order", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       flow_fixture(project, %{name: "Alpha Flow"})
       flow_fixture(project, %{name: "Zeta Flow"})
 
       {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
-        )
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
 
-      # Wait for async load
-      _ = render(view)
+      # Wait for async dashboard data
+      html = render(view)
 
-      # Sort by name descending
+      # Extract table body to avoid matching sidebar tree occurrences
+      [_, table_body] = String.split(html, "<tbody>", parts: 2)
+
+      # Default: name asc — Alpha before Zeta
+      alpha_pos = :binary.match(table_body, "Alpha Flow") |> elem(0)
+      zeta_pos = :binary.match(table_body, "Zeta Flow") |> elem(0)
+      assert alpha_pos < zeta_pos
+
+      # Click Name to toggle to desc — Zeta before Alpha
       html = view |> element("button", "Name") |> render_click()
-      assert html =~ "Alpha Flow"
-      assert html =~ "Zeta Flow"
+      [_, table_body] = String.split(html, "<tbody>", parts: 2)
+      alpha_pos = :binary.match(table_body, "Alpha Flow") |> elem(0)
+      zeta_pos = :binary.match(table_body, "Zeta Flow") |> elem(0)
+      assert zeta_pos < alpha_pos
     end
   end
 

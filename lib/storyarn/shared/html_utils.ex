@@ -63,6 +63,18 @@ defmodule Storyarn.Shared.HtmlUtils do
     end
   end
 
+  @doc """
+  Counts words in text after stripping HTML tags.
+  Returns 0 for nil or empty input.
+  """
+  @spec word_count(String.t() | nil) :: non_neg_integer()
+  def word_count(nil), do: 0
+  def word_count(""), do: 0
+
+  def word_count(text) when is_binary(text) do
+    text |> strip_html() |> String.split(~r/\s+/, trim: true) |> length()
+  end
+
   # Decodes common HTML entities
   defp decode_entities(text) do
     text

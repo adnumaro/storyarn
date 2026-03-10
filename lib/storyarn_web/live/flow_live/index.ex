@@ -329,6 +329,7 @@ defmodule StoryarnWeb.FlowLive.Index do
           |> assign(:flow_issues, [])
           |> assign(:sort_by, "name")
           |> assign(:sort_dir, :asc)
+          |> assign(:pending_delete_id, nil)
 
         if connected?(socket) and flows != [] do
           send(self(), :load_dashboard_data)
@@ -436,6 +437,7 @@ defmodule StoryarnWeb.FlowLive.Index do
     {:noreply, assign(socket, :pending_delete_id, id)}
   end
 
+  # Alias: sidebar tree dispatches "*_flow" event names
   def handle_event("set_pending_delete_flow", %{"id" => id}, socket) do
     {:noreply, assign(socket, :pending_delete_id, id)}
   end
@@ -448,6 +450,7 @@ defmodule StoryarnWeb.FlowLive.Index do
     end
   end
 
+  # Alias: sidebar tree dispatches "*_flow" event names
   def handle_event("confirm_delete_flow", _params, socket) do
     if id = socket.assigns[:pending_delete_id] do
       handle_event("delete", %{"id" => id}, socket)
@@ -473,6 +476,7 @@ defmodule StoryarnWeb.FlowLive.Index do
     end)
   end
 
+  # Alias: sidebar tree dispatches "*_flow" event names
   def handle_event("delete_flow", %{"id" => flow_id}, socket) do
     handle_event("delete", %{"id" => flow_id}, socket)
   end
@@ -494,6 +498,7 @@ defmodule StoryarnWeb.FlowLive.Index do
     end)
   end
 
+  # Alias: sidebar tree dispatches "*_flow" event names
   def handle_event("set_main_flow", %{"id" => flow_id}, socket) do
     handle_event("set_main", %{"id" => flow_id}, socket)
   end
@@ -607,7 +612,7 @@ defmodule StoryarnWeb.FlowLive.Index do
         "dialogue_count" -> & &1.dialogue_count
         "condition_count" -> & &1.condition_count
         "word_count" -> & &1.word_count
-        "updated_at" -> & &1.updated_at
+        "updated_at" -> &(&1.updated_at || ~U[1970-01-01 00:00:00Z])
         _ -> &String.downcase(&1.name)
       end
 
@@ -644,17 +649,5 @@ defmodule StoryarnWeb.FlowLive.Index do
         href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{issue.flow_id}"
       }
     end)
-  end
-
-  defp format_relative_time(datetime) do
-    diff = DateTime.diff(DateTime.utc_now(), datetime, :second)
-
-    cond do
-      diff < 60 -> dgettext("flows", "just now")
-      diff < 3600 -> dgettext("flows", "%{count}m ago", count: div(diff, 60))
-      diff < 86_400 -> dgettext("flows", "%{count}h ago", count: div(diff, 3600))
-      diff < 604_800 -> dgettext("flows", "%{count}d ago", count: div(diff, 86_400))
-      true -> Calendar.strftime(datetime, "%b %d")
-    end
   end
 end

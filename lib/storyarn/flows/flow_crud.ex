@@ -10,7 +10,17 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
-  alias Storyarn.Shared.{ImportHelpers, MapUtils, SearchHelpers, ShortcutHelpers, SoftDelete}
+  alias Storyarn.Projects.Dashboard
+
+  alias Storyarn.Shared.{
+    HtmlUtils,
+    ImportHelpers,
+    MapUtils,
+    SearchHelpers,
+    ShortcutHelpers,
+    SoftDelete
+  }
+
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets
   alias Storyarn.Shortcuts
@@ -680,6 +690,7 @@ defmodule Storyarn.Flows.FlowCrud do
   @doc """
   Returns per-flow node stats for a project in a single query.
   Returns `%{flow_id => %{node_count, dialogue_count, condition_count}}`.
+  Flows with 0 nodes are absent from the returned map.
   """
   def flow_stats_for_project(project_id) do
     from(n in FlowNode,
@@ -724,7 +735,7 @@ defmodule Storyarn.Flows.FlowCrud do
         data_list
         |> Enum.flat_map(&extract_dialogue_texts/1)
         |> Enum.reject(&(is_nil(&1) or &1 == ""))
-        |> Enum.map(&count_words/1)
+        |> Enum.map(&HtmlUtils.word_count/1)
         |> Enum.sum()
 
       {flow_id, words}
@@ -736,21 +747,12 @@ defmodule Storyarn.Flows.FlowCrud do
 
     response_texts =
       (data["responses"] || [])
-      |> Enum.flat_map(fn r -> [r["text"]] end)
+      |> Enum.map(& &1["text"])
 
     base ++ response_texts
   end
 
   defp extract_dialogue_texts(_), do: []
-
-  defp count_words(text) when is_binary(text) do
-    text
-    |> Storyarn.Shared.HtmlUtils.strip_html()
-    |> String.split(~r/\s+/, trim: true)
-    |> length()
-  end
-
-  defp count_words(_), do: 0
 
   @doc """
   Detects issues in flows for a project.
@@ -767,65 +769,22 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   defp detect_no_entry_issues(project_id) do
-    flows_with_entry_ids =
-      from(n in FlowNode,
-        join: f in Flow,
-        on: n.flow_id == f.id,
-        where:
-          f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(n.deleted_at) and
-            n.type == "entry",
-        select: f.id
-      )
-
-    from(f in Flow,
-      where:
-        f.project_id == ^project_id and is_nil(f.deleted_at) and
-          f.id not in subquery(flows_with_entry_ids),
-      select: %{flow_id: f.id, flow_name: f.name}
-    )
-    |> Repo.all()
-    |> Enum.map(fn row ->
-      %{flow_id: row.flow_id, flow_name: row.flow_name, issue_type: :no_entry, count: 1}
-    end)
+    project_id
+    |> Dashboard.flows_without_entry()
+    |> Enum.map(&%{flow_id: &1.flow_id, flow_name: &1.flow_name, issue_type: :no_entry, count: 1})
   end
 
   defp detect_disconnected_issues(project_id) do
-    alias Storyarn.Flows.FlowConnection
-
-    connected_node_ids =
-      from(c in FlowConnection,
-        join: f in Flow,
-        on: c.flow_id == f.id,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at),
-        select: c.source_node_id
-      )
-      |> union_all(
-        ^from(c in FlowConnection,
-          join: f in Flow,
-          on: c.flow_id == f.id,
-          where: f.project_id == ^project_id and is_nil(f.deleted_at),
-          select: c.target_node_id
-        )
-      )
-
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where:
-        f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and
-          n.id not in subquery(connected_node_ids),
-      group_by: [f.id, f.name],
-      select: %{flow_id: f.id, flow_name: f.name, count: count(n.id)}
-    )
-    |> Repo.all()
-    |> Enum.map(fn row ->
-      %{
-        flow_id: row.flow_id,
-        flow_name: row.flow_name,
+    project_id
+    |> Dashboard.flows_with_disconnected_nodes()
+    |> Enum.map(
+      &%{
+        flow_id: &1.flow_id,
+        flow_name: &1.flow_name,
         issue_type: :disconnected_nodes,
-        count: row.count
+        count: &1.count
       }
-    end)
+    )
   end
 
   defp maybe_filter_export_ids(query, :all), do: query

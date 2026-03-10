@@ -225,4 +225,21 @@ defmodule StoryarnWeb.Components.DashboardComponents do
     </section>
     """
   end
+
+  # ===========================================================================
+  # Time Formatting
+  # ===========================================================================
+
+  @doc "Formats a DateTime as a human-readable relative time string."
+  def format_relative_time(datetime) do
+    diff = DateTime.diff(DateTime.utc_now(), datetime, :second)
+
+    cond do
+      diff < 60 -> gettext("just now")
+      diff < 3600 -> gettext("%{count}m ago", count: div(diff, 60))
+      diff < 86_400 -> gettext("%{count}h ago", count: div(diff, 3600))
+      diff < 604_800 -> gettext("%{count}d ago", count: div(diff, 86_400))
+      true -> Calendar.strftime(datetime, "%b %d")
+    end
+  end
 end
