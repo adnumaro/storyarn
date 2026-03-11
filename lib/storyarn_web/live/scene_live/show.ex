@@ -227,7 +227,35 @@ defmodule StoryarnWeb.SceneLive.Show do
             workspace={@workspace}
             project={@project}
             scene={@scene}
+            versions_panel_open={@versions_panel_open}
           />
+
+          <%!-- Version History Panel --%>
+          <div
+            :if={@versions_panel_open}
+            class="absolute right-4 top-4 bottom-20 w-80 z-30 bg-base-100 rounded-lg shadow-xl border border-base-300 overflow-y-auto p-4"
+          >
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-semibold">{dgettext("scenes", "Version History")}</h3>
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs btn-square"
+                phx-click="toggle_versions_panel"
+              >
+                <.icon name="x" class="size-4" />
+              </button>
+            </div>
+            <.live_component
+              module={StoryarnWeb.Components.VersionsSection}
+              id="scene-versions-section"
+              entity={@scene}
+              entity_type="scene"
+              project_id={@project.id}
+              current_user_id={@current_scope.user.id}
+              can_edit={@can_edit}
+              current_version_id={@scene.current_version_id}
+            />
+          </div>
 
           <%!-- Sheet picker overlay --%>
           <div
@@ -540,6 +568,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         |> assign(:selected_type, nil)
         |> assign(:element_panel_open, false)
         |> assign(:scene_settings_open, false)
+        |> assign(:versions_panel_open, false)
         |> assign(:active_layer_id, default_layer_id(scene.layers))
         |> assign(:renaming_layer_id, nil)
         |> assign(:show_pin_icon_upload, false)
@@ -606,6 +635,10 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("switch_tree_tab", %{"tab" => tab}, socket)
       when tab in ~w(scenes layers) do
     {:noreply, assign(socket, :tree_panel_tab, tab)}
+  end
+
+  def handle_event("toggle_versions_panel", _params, socket) do
+    {:noreply, assign(socket, :versions_panel_open, !socket.assigns.versions_panel_open)}
   end
 
   def handle_event("save_name", params, socket) do
@@ -1243,6 +1276,47 @@ defmodule StoryarnWeb.SceneLive.Show do
       _ ->
         {:noreply, socket}
     end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Handle Info: Version History
+  # ---------------------------------------------------------------------------
+
+  def handle_info({:versions_section, :version_created, %{version: _}}, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_info(
+        {:versions_section, :version_restored, %{entity: updated_scene, version: _}},
+        socket
+      ) do
+    %{project: project, can_edit: can_edit} = socket.assigns
+
+    # Reload scene with all associations
+    scene = Scenes.get_scene(project.id, updated_scene.id)
+    scene_data = build_scene_data(scene, can_edit)
+
+    {:noreply,
+     socket
+     |> assign(:scene, scene)
+     |> assign(:layers, scene.layers || [])
+     |> assign(:zones, scene.zones || [])
+     |> assign(:pins, scene.pins || [])
+     |> assign(:connections, scene.connections || [])
+     |> assign(:annotations, scene.annotations || [])
+     |> assign(:scene_data, scene_data)
+     |> assign(:selected_element, nil)
+     |> assign(:selected_type, nil)
+     |> assign(:element_panel_open, false)
+     |> assign(:scene_settings_open, false)
+     |> assign(:versions_panel_open, false)
+     |> assign(:undo_stack, [])
+     |> assign(:redo_stack, [])
+     |> push_event("scene_restored", %{scene_data: scene_data})}
+  end
+
+  def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
+    {:noreply, socket}
   end
 
   # ---------------------------------------------------------------------------

@@ -6,7 +6,7 @@ defmodule StoryarnWeb.SheetLive.Components.HistoryTab do
 
   use StoryarnWeb, :live_component
 
-  alias StoryarnWeb.SheetLive.Components.VersionsSection
+  alias StoryarnWeb.Components.VersionsSection
 
   @impl true
   def render(assigns) do
@@ -16,10 +16,12 @@ defmodule StoryarnWeb.SheetLive.Components.HistoryTab do
       <.live_component
         module={VersionsSection}
         id="versions-section"
-        sheet={@sheet}
-        project={@project}
+        entity={@sheet}
+        entity_type="sheet"
+        project_id={@project.id}
         current_user_id={@current_user_id}
         can_edit={@can_edit}
+        current_version_id={@sheet.current_version_id}
       />
     </div>
     """

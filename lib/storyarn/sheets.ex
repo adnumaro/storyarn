@@ -20,11 +20,13 @@ defmodule Storyarn.Sheets do
     SheetCrud,
     SheetQueries,
     SheetStats,
-    SheetVersion,
     TableCrud,
-    TreeOperations,
-    Versioning
+    TreeOperations
   }
+
+  alias Storyarn.Repo
+  alias Storyarn.Versioning
+  alias Storyarn.Versioning.EntityVersion
 
   alias Storyarn.Projects.Project
 
@@ -532,73 +534,86 @@ defmodule Storyarn.Sheets do
   # Versioning
   # =============================================================================
 
-  @type version :: SheetVersion.t()
+  @type version :: EntityVersion.t()
 
   @doc """
   Creates a new version snapshot of the given sheet.
-  The snapshot includes sheet metadata and all blocks.
-
-  ## Options
-  - `:title` - Custom title for the version (for manual versions)
-  - `:description` - Optional description of changes
   """
-  @spec create_version(sheet(), Storyarn.Accounts.User.t() | integer() | nil, keyword()) ::
-          {:ok, version()} | {:error, changeset()}
-  defdelegate create_version(sheet, user_or_id, opts \\ []), to: Versioning
+  def create_version(sheet, user_or_id, opts \\ [])
+
+  def create_version(%Sheet{} = sheet, %Storyarn.Accounts.User{} = user, opts) do
+    create_version(sheet, user.id, opts)
+  end
+
+  def create_version(%Sheet{} = sheet, user_id, opts) when is_integer(user_id) do
+    Versioning.create_version("sheet", sheet, sheet.project_id, user_id, opts)
+  end
 
   @doc """
   Lists all versions for a sheet, ordered by version number descending.
   """
-  @spec list_versions(id(), keyword()) :: [version()]
-  defdelegate list_versions(sheet_id, opts \\ []), to: Versioning
+  def list_versions(sheet_id, opts \\ []) do
+    Versioning.list_versions("sheet", sheet_id, opts)
+  end
 
   @doc """
   Gets a specific version by sheet_id and version_number.
   """
-  @spec get_version(id(), integer()) :: version() | nil
-  defdelegate get_version(sheet_id, version_number), to: Versioning
+  def get_version(sheet_id, version_number) do
+    Versioning.get_version("sheet", sheet_id, version_number)
+  end
 
   @doc """
   Gets the latest version for a sheet.
   """
-  @spec get_latest_version(id()) :: version() | nil
-  defdelegate get_latest_version(sheet_id), to: Versioning
+  def get_latest_version(sheet_id) do
+    Versioning.get_latest_version("sheet", sheet_id)
+  end
 
   @doc """
   Returns the total number of versions for a sheet.
   """
-  @spec count_versions(id()) :: integer()
-  defdelegate count_versions(sheet_id), to: Versioning
+  def count_versions(sheet_id) do
+    Versioning.count_versions("sheet", sheet_id)
+  end
 
   @doc """
-  Creates a version if enough time has passed since the last version (rate limited).
-  Returns `{:ok, version}`, `{:skipped, :too_recent}`, or `{:error, changeset}`.
+  Creates a version if enough time has passed since the last version.
   """
-  @spec maybe_create_version(sheet(), Storyarn.Accounts.User.t() | integer() | nil, keyword()) ::
-          {:ok, version()} | {:skipped, :too_recent} | {:error, changeset()}
-  defdelegate maybe_create_version(sheet, user_or_id, opts \\ []), to: Versioning
+  def maybe_create_version(sheet, user_or_id, opts \\ [])
+
+  def maybe_create_version(%Sheet{} = sheet, %Storyarn.Accounts.User{} = user, opts) do
+    maybe_create_version(sheet, user.id, opts)
+  end
+
+  def maybe_create_version(%Sheet{} = sheet, user_id, opts) when is_integer(user_id) do
+    Versioning.maybe_create_version("sheet", sheet, sheet.project_id, user_id, opts)
+  end
 
   @doc """
-  Deletes a version.
-  If the deleted version is the current_version of its sheet, clears the reference.
+  Deletes a version and its snapshot.
   """
-  @spec delete_version(version()) :: {:ok, version()} | {:error, changeset()}
-  defdelegate delete_version(version), to: Versioning
-
-  @doc """
-  Sets the current version for a sheet.
-  This marks the version as "active" without modifying sheet content.
-  """
-  @spec set_current_version(sheet(), version() | nil) :: {:ok, sheet()} | {:error, changeset()}
-  defdelegate set_current_version(sheet, version), to: Versioning
+  def delete_version(version) do
+    Versioning.delete_version(version)
+  end
 
   @doc """
   Restores a sheet to a specific version.
-  Applies the snapshot (metadata and blocks) and sets as current version.
-  Does NOT create a new version.
   """
-  @spec restore_version(sheet(), version()) :: {:ok, sheet()} | {:error, term()}
-  defdelegate restore_version(sheet, version), to: Versioning
+  def restore_version(%Sheet{} = sheet, version) do
+    Versioning.restore_version("sheet", sheet, version)
+  end
+
+  @doc """
+  Sets the current version for a sheet.
+  """
+  def set_current_version(%Sheet{} = sheet, version_or_nil) do
+    version_id = if version_or_nil, do: version_or_nil.id, else: nil
+
+    sheet
+    |> Sheet.version_changeset(%{current_version_id: version_id})
+    |> Repo.update()
+  end
 
   # =============================================================================
   # Reference Search & Validation

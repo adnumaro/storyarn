@@ -167,7 +167,35 @@ defmodule StoryarnWeb.FlowLive.Show do
               project={@project}
               can_edit={@can_edit}
               debug_panel_open={@debug_panel_open}
+              versions_panel_open={@versions_panel_open}
             />
+
+            <%!-- Version History Panel --%>
+            <div
+              :if={@versions_panel_open}
+              class="absolute right-4 top-4 bottom-20 w-80 z-30 bg-base-100 rounded-lg shadow-xl border border-base-300 overflow-y-auto p-4"
+            >
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold">{dgettext("flows", "Version History")}</h3>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs btn-square"
+                  phx-click="toggle_versions_panel"
+                >
+                  <.icon name="x" class="size-4" />
+                </button>
+              </div>
+              <.live_component
+                module={StoryarnWeb.Components.VersionsSection}
+                id="flow-versions-section"
+                entity={@flow}
+                entity_type="flow"
+                project_id={@project.id}
+                current_user_id={@current_scope.user.id}
+                can_edit={@can_edit}
+                current_version_id={@flow.current_version_id}
+              />
+            </div>
           </div>
 
           <.debug_panel
@@ -405,6 +433,10 @@ defmodule StoryarnWeb.FlowLive.Show do
   # Tree panel events (from FocusLayout)
   def handle_event("tree_panel_" <> _ = event, params, socket),
     do: handle_tree_panel_event(event, params, socket)
+
+  def handle_event("toggle_versions_panel", _params, socket) do
+    {:noreply, assign(socket, :versions_panel_open, !socket.assigns.versions_panel_open)}
+  end
 
   # Triggered by the FlowLoader hook after the browser has painted the spinner.
   def handle_event("load_flow_data", _params, socket) do
@@ -1136,6 +1168,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:save_status, :idle)
       |> assign(:preview_show, false)
       |> assign(:preview_node, nil)
+      |> assign(:versions_panel_open, false)
       |> assign(:collab_scope, {:flow, flow.id})
       |> assign(:online_users, online_users)
       |> assign(:node_locks, node_locks)
@@ -1183,6 +1216,35 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:load_node_select_data, node}, socket) do
     socket = NodeTypeRegistry.on_select(node.type, node, socket)
     {:noreply, assign(socket, :node_select_loading, false)}
+  end
+
+  # Handle messages from VersionsSection LiveComponent
+  def handle_info({:versions_section, :version_created, %{version: _}}, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_info(
+        {:versions_section, :version_restored, %{entity: updated_flow, version: _}},
+        socket
+      ) do
+    # Reload full flow data after version restore
+    %{project: project} = socket.assigns
+    full_flow = Flows.get_flow!(project.id, updated_flow.id)
+    project_variables = Sheets.list_project_variables(project.id)
+    flow_data = Flows.serialize_for_canvas(full_flow, project_variables: project_variables)
+
+    {:noreply,
+     socket
+     |> assign(:flow, full_flow)
+     |> assign(:flow_data, flow_data)
+     |> assign(:flow_hubs, Flows.list_hubs(full_flow.id))
+     |> assign(:versions_panel_open, false)
+     |> SocketHelpers.assign_flow_stats(full_flow, flow_data)
+     |> push_event("flow_restored", %{flow_data: flow_data})}
+  end
+
+  def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
+    {:noreply, socket}
   end
 
   def handle_info({:node_updated, updated_node}, socket),

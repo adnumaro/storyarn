@@ -636,7 +636,8 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
 
       {:ok, version} = Sheets.create_version(child, user)
 
-      block_snapshots = version.snapshot["blocks"]
+      {:ok, snapshot} = Storyarn.Versioning.load_version_snapshot(version)
+      block_snapshots = snapshot["blocks"]
       assert [_ | _] = block_snapshots
 
       inherited_snapshot = Enum.find(block_snapshots, & &1["inherited_from_block_id"])

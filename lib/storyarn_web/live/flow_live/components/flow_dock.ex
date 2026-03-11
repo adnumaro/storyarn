@@ -18,6 +18,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowDock do
   attr :project, :map, required: true
   attr :can_edit, :boolean, required: true
   attr :debug_panel_open, :boolean, default: false
+  attr :versions_panel_open, :boolean, default: false
 
   def flow_dock(assigns) do
     assigns = assign(assigns, :groups, build_groups(assigns))
@@ -98,6 +99,14 @@ defmodule StoryarnWeb.FlowLive.Components.FlowDock do
       ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/flows/#{assigns.flow.id}/play"
 
     [
+      %{
+        id: "history",
+        icon: "history",
+        tooltip_title: dgettext("flows", "Version History"),
+        tooltip: dgettext("flows", "View and manage version history"),
+        click: "toggle_versions_panel",
+        active: assigns.versions_panel_open
+      },
       %{
         id: "play",
         icon: "play",

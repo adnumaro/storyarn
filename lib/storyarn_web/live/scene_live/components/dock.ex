@@ -23,6 +23,7 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
   attr :workspace, :map, required: true
   attr :project, :map, required: true
   attr :scene, :map, required: true
+  attr :versions_panel_open, :boolean, default: false
 
   def dock(assigns) do
     assigns = assign(assigns, :groups, build_groups(assigns))
@@ -63,7 +64,7 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
       creation_group(active_tool),
       [connector_item(active_tool)],
       [ruler_item(active_tool)],
-      [play_item(assigns)]
+      [history_item(assigns), play_item(assigns)]
     ]
   end
 
@@ -174,6 +175,17 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
       click: "set_tool",
       value: "ruler",
       active: active_tool == :ruler
+    }
+  end
+
+  defp history_item(assigns) do
+    %{
+      id: "history",
+      icon: "history",
+      tooltip_title: dgettext("scenes", "Version History"),
+      tooltip: dgettext("scenes", "View and manage version history"),
+      click: "toggle_versions_panel",
+      active: assigns.versions_panel_open
     }
   end
 

@@ -489,16 +489,13 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   # Handle messages from VersionsSection LiveComponent
-  def handle_info({:versions_section, :saved}, socket) do
+  def handle_info({:versions_section, :version_created, %{version: _version}}, socket) do
     {:noreply, mark_saved(socket)}
   end
 
-  def handle_info({:versions_section, :sheet_updated, sheet}, socket) do
-    {:noreply, assign(socket, :sheet, sheet)}
-  end
-
-  def handle_info({:versions_section, :version_restored, %{sheet: sheet}}, socket) do
+  def handle_info({:versions_section, :version_restored, %{entity: sheet, version: _}}, socket) do
     # Reload blocks and sheets tree after version restore
+    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
     blocks = ReferenceHelpers.load_blocks_with_references(sheet.id, socket.assigns.project.id)
     sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
 
@@ -508,7 +505,15 @@ defmodule StoryarnWeb.SheetLive.Show do
      |> assign(:blocks, blocks)
      |> assign(:sheets_tree, sheets_tree)
      |> UndoRedoStack.clear()
+     |> push_event("restore_sheet_content", %{
+       name: sheet.name,
+       shortcut: sheet.shortcut || ""
+     })
      |> mark_saved()}
+  end
+
+  def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
+    {:noreply, mark_saved(socket)}
   end
 
   # Handle messages from Banner LiveComponent

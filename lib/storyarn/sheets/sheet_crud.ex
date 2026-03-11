@@ -11,6 +11,7 @@ defmodule Storyarn.Sheets.SheetCrud do
   alias Storyarn.Shared.{MapUtils, ShortcutHelpers, TimeHelpers}
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.{PropertyInheritance, ReferenceTracker, Sheet}
+  alias Storyarn.Versioning.EntityVersion
   alias Storyarn.Shortcuts
 
   # =============================================================================
@@ -139,10 +140,10 @@ defmodule Storyarn.Sheets.SheetCrud do
   Use with caution - this cannot be undone.
   """
   def permanently_delete_sheet(%Sheet{} = sheet) do
-    alias Storyarn.Sheets.{ReferenceTracker, SheetVersion}
-
     # Delete all versions first
-    from(v in SheetVersion, where: v.sheet_id == ^sheet.id)
+    from(v in EntityVersion,
+      where: v.entity_type == "sheet" and v.entity_id == ^sheet.id
+    )
     |> Repo.delete_all()
 
     # Delete references where this sheet is the target

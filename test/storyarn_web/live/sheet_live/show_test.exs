@@ -719,20 +719,14 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       assert html =~ "Audio processing failed"
     end
 
-    test "versions_section :saved sets save status", %{view: view} do
-      send(view.pid, {:versions_section, :saved})
+    test "versions_section :version_created sets save status", %{view: view} do
+      send(view.pid, {:versions_section, :version_created, %{version: %{id: 1}}})
       html = render(view)
       assert html =~ "Info Test Sheet"
     end
 
-    test "versions_section :sheet_updated updates sheet", %{
-      view: view,
-      project: project,
-      sheet: sheet
-    } do
-      updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
-
-      send(view.pid, {:versions_section, :sheet_updated, updated_sheet})
+    test "versions_section :version_deleted sets save status", %{view: view} do
+      send(view.pid, {:versions_section, :version_deleted, %{version: %{id: 1}}})
       html = render(view)
       assert html =~ "Info Test Sheet"
     end
@@ -744,7 +738,12 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     } do
       updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
 
-      send(view.pid, {:versions_section, :version_restored, %{sheet: updated_sheet}})
+      send(
+        view.pid,
+        {:versions_section, :version_restored,
+         %{entity: updated_sheet, version: %{id: 1, version_number: 1}}}
+      )
+
       html = render(view)
       assert html =~ "Info Test Sheet"
     end

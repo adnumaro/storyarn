@@ -20,7 +20,8 @@ defmodule Storyarn.Sheets.Sheet do
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Project
   alias Storyarn.Shared.{HierarchicalSchema, Validations}
-  alias Storyarn.Sheets.{Block, SheetVersion}
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Versioning.EntityVersion
 
   # Color format: hex color with 3, 6, or 8 characters (e.g., #fff, #3b82f6, #3b82f680)
   @color_format ~r/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
@@ -38,7 +39,7 @@ defmodule Storyarn.Sheets.Sheet do
           banner_asset_id: integer() | nil,
           banner_asset: Asset.t() | Ecto.Association.NotLoaded.t() | nil,
           current_version_id: integer() | nil,
-          current_version: SheetVersion.t() | Ecto.Association.NotLoaded.t() | nil,
+          current_version: EntityVersion.t() | Ecto.Association.NotLoaded.t() | nil,
           project_id: integer() | nil,
           project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
           parent_id: integer() | nil,
@@ -63,10 +64,9 @@ defmodule Storyarn.Sheets.Sheet do
     belongs_to :parent, __MODULE__
     belongs_to :avatar_asset, Asset
     belongs_to :banner_asset, Asset
-    belongs_to :current_version, SheetVersion
+    belongs_to :current_version, EntityVersion
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :blocks, Block
-    has_many :versions, SheetVersion
 
     timestamps(type: :utc_datetime)
   end
