@@ -77,9 +77,15 @@ defmodule StoryarnWeb.FlowLive.Index do
               value={@dashboard_stats.dialogue_count}
             />
             <.stat_card
-              icon="type"
+              icon="text-cursor-input"
               label={dgettext("flows", "Words")}
               value={@dashboard_stats.word_count}
+              tooltip={
+                dgettext(
+                  "flows",
+                  "Counts dialogue text, menu text, stage directions, response text, and slug line descriptions"
+                )
+              }
             />
           </div>
 

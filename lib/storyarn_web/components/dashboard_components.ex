@@ -18,14 +18,18 @@ defmodule StoryarnWeb.Components.DashboardComponents do
   @doc """
   Renders a clickable stat card with icon, label, and value.
 
+  Optionally shows an info icon with a tooltip when `tooltip` is provided.
+
   ## Examples
 
       <.stat_card icon="file-text" label="Sheets" value={42} href="/sheets" />
+      <.stat_card icon="type" label="Words" value={36} tooltip="Counts sheet names, ..." />
   """
   attr :icon, :string, required: true
   attr :label, :string, required: true
   attr :value, :integer, required: true
   attr :href, :string, default: nil
+  attr :tooltip, :string, default: nil
 
   def stat_card(assigns) do
     ~H"""
@@ -49,7 +53,16 @@ defmodule StoryarnWeb.Components.DashboardComponents do
         </div>
         <div>
           <p class="text-2xl font-bold">{@value}</p>
-          <p class="text-sm text-base-content/60">{@label}</p>
+          <p class="flex items-center gap-1 text-sm text-base-content/60">
+            {@label}
+            <span
+              :if={@tooltip}
+              class="tooltip tooltip-bottom cursor-help"
+              data-tip={@tooltip}
+            >
+              <.icon name="info" class="size-3.5 opacity-50" />
+            </span>
+          </p>
         </div>
       </div>
     </div>

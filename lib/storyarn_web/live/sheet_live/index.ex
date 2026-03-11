@@ -81,9 +81,15 @@ defmodule StoryarnWeb.SheetLive.Index do
               value={@dashboard_stats.variables_in_use}
             />
             <.stat_card
-              icon="type"
+              icon="text-cursor-input"
               label={dgettext("sheets", "Words")}
               value={@dashboard_stats.word_count}
+              tooltip={
+                dgettext(
+                  "sheets",
+                  "Counts sheet names, text block content, and table row names (excluding inherited)"
+                )
+              }
             />
           </div>
 

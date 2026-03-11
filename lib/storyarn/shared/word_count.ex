@@ -9,15 +9,16 @@ defmodule Storyarn.Shared.WordCount do
   alias Storyarn.Shared.HtmlUtils
 
   @doc """
-  Computes word count for a dialogue flow node's data map.
+  Computes word count for a flow node's data map.
 
-  Counts words in: text, menu_text, stage_directions, and all response texts.
-  Returns 0 for non-dialogue data or nil input.
+  Supports dialogue nodes (text, menu_text, stage_directions, response texts)
+  and slug_line nodes (description, sub_location, time_of_day).
+  Returns 0 for other node types or nil input.
   """
-  @spec for_node_data(map() | nil) :: non_neg_integer()
-  def for_node_data(nil), do: 0
+  @spec for_node_data(String.t(), map() | nil) :: non_neg_integer()
+  def for_node_data(_type, nil), do: 0
 
-  def for_node_data(data) when is_map(data) do
+  def for_node_data("dialogue", data) when is_map(data) do
     base = [data["text"], data["menu_text"], data["stage_directions"]]
 
     response_texts =
@@ -32,6 +33,20 @@ defmodule Storyarn.Shared.WordCount do
     |> Enum.sum()
   end
 
+  def for_node_data("slug_line", data) when is_map(data) do
+    [data["description"], data["sub_location"], data["time_of_day"]]
+    |> Enum.reject(&(is_nil(&1) or &1 == ""))
+    |> Enum.map(&HtmlUtils.word_count/1)
+    |> Enum.sum()
+  end
+
+  def for_node_data(_type, _data), do: 0
+
+  # Backward-compatible arity-1 clause for dialogue-only callers
+  @doc false
+  @spec for_node_data(map() | nil) :: non_neg_integer()
+  def for_node_data(nil), do: 0
+  def for_node_data(data) when is_map(data), do: for_node_data("dialogue", data)
   def for_node_data(_), do: 0
 
   @doc """

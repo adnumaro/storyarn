@@ -59,10 +59,7 @@ defmodule Storyarn.Flows.NodeCreate do
   end
 
   defp insert_node(%Flow{} = flow, attrs) do
-    word_count =
-      if attrs["type"] == "dialogue",
-        do: WordCount.for_node_data(attrs["data"]),
-        else: 0
+    word_count = WordCount.for_node_data(attrs["type"], attrs["data"])
 
     %FlowNode{flow_id: flow.id}
     |> FlowNode.create_changeset(attrs)

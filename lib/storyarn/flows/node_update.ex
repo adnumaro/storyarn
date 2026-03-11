@@ -116,10 +116,7 @@ defmodule Storyarn.Flows.NodeUpdate do
   end
 
   defp do_update_node_data(node, data) do
-    word_count =
-      if node.type == "dialogue",
-        do: WordCount.for_node_data(data),
-        else: 0
+    word_count = WordCount.for_node_data(node.type, data)
 
     Repo.transaction(fn ->
       updated_node =
