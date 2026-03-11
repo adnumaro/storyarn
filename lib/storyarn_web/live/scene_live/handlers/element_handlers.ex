@@ -660,7 +660,10 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
         {:noreply,
          socket
          |> push_undo_coalesced({:move_pin, pin.id, prev, %{x: x, y: y}})
-         |> assign(:_broadcast, {:pin_moved, serialize_pin(updated)})}
+         |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
+         |> maybe_update_selected_element("pin", updated)
+         |> assign(:_broadcast, {:pin_moved, serialize_pin(updated)})
+         |> push_event("pin_updated", serialize_pin(updated))}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not move pin."))}
@@ -958,7 +961,10 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
         {:noreply,
          socket
          |> push_undo_coalesced({:move_annotation, annotation.id, prev, %{x: x, y: y}})
-         |> assign(:_broadcast, {:annotation_moved, serialize_annotation(updated)})}
+         |> assign(:annotations, replace_in_list(socket.assigns.annotations, updated))
+         |> maybe_update_selected_element("annotation", updated)
+         |> assign(:_broadcast, {:annotation_moved, serialize_annotation(updated)})
+         |> push_event("annotation_updated", serialize_annotation(updated))}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not move annotation."))}
