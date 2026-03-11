@@ -166,7 +166,7 @@ defmodule StoryarnWeb.LayoutsTest do
       assert html =~ "Dashboard content"
     end
 
-    test "renders drawer structure for sidebar" do
+    test "renders sidebar structure" do
       html =
         render_component(&Layouts.app/1,
           flash: %{},
@@ -176,8 +176,8 @@ defmodule StoryarnWeb.LayoutsTest do
           inner_block: inner_block("<p>App</p>")
         )
 
-      assert html =~ "drawer"
-      assert html =~ "sidebar-drawer"
+      assert html =~ "app-layout"
+      assert html =~ "app-sidebar-check"
     end
 
     test "renders mobile hamburger menu" do
@@ -205,8 +205,7 @@ defmodule StoryarnWeb.LayoutsTest do
         )
 
       assert html =~ "No sidebar"
-      # Sidebar component won't render without a user
-      assert html =~ "drawer-side"
+      assert html =~ "app-layout"
     end
   end
 
