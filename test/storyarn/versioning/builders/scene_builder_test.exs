@@ -50,7 +50,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       # Check that at least one layer has zones or pins
       has_content =
         Enum.any?(snapshot["layers"], fn l ->
-          length(l["zones"] || []) > 0 or length(l["pins"] || []) > 0
+          (l["zones"] || []) != [] or (l["pins"] || []) != []
         end)
 
       assert has_content
