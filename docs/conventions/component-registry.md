@@ -149,26 +149,31 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 
 ### Other Shared Components
 
-| Module             | Import                                           | Components                                          |
-|--------------------|--------------------------------------------------|-----------------------------------------------------|
-| `ExpressionEditor` | `import StoryarnWeb.Components.ExpressionEditor` | `<.expression_editor>` — tabbed Builder/Code editor |
-| `SheetComponents`  | `import StoryarnWeb.Components.SheetComponents`  | `<.sheet_avatar>`                                   |
-| `Sidebar`          | `import StoryarnWeb.Components.Sidebar`          | `<.sidebar>` — workspace navigation                 |
-| `ProjectSidebar`   | `import StoryarnWeb.Components.ProjectSidebar`   | `<.project_sidebar>` — project navigation           |
+| Module               | Import                                             | Components                                          |
+|----------------------|----------------------------------------------------|-----------------------------------------------------|
+| `ExpressionEditor`   | `import StoryarnWeb.Components.ExpressionEditor`   | `<.expression_editor>` — tabbed Builder/Code editor |
+| `SheetComponents`    | `import StoryarnWeb.Components.SheetComponents`    | `<.sheet_avatar>`                                   |
+| `Sidebar`            | `import StoryarnWeb.Components.Sidebar`            | `<.sidebar>` — workspace navigation                 |
+| `CanvasToolbar`      | `import StoryarnWeb.Components.CanvasToolbar`      | Canvas-aware toolbar component                      |
+| `CanvasDock`         | `import StoryarnWeb.Components.CanvasDock`         | Dockable panels for canvas views                    |
+| `ToolbarColorPicker` | `import StoryarnWeb.Components.ToolbarColorPicker` | Toolbar-specific color picker                       |
+| `DashboardComponents`| `import StoryarnWeb.Components.DashboardComponents`| Dashboard UI components                             |
+| `VersionsSection`    | `import StoryarnWeb.Components.VersionsSection`    | Version history display                             |
+| `FocusLayout`        | `import StoryarnWeb.Components.FocusLayout`        | Focus layout helper components                      |
 
 ---
 
-## Layouts (5 independent, NOT nested)
+## Layouts (6 independent, NOT nested)
 
 ```elixir
 <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
-  # Main app shell with workspace sidebar
+  # Main app shell with workspace sidebar (floating surface-panel toolbars)
 </Layouts.app>
 
-<Layouts.project flash={@flash} current_scope={@current_scope} project={@project}
+<Layouts.focus flash={@flash} current_scope={@current_scope} project={@project}
   workspace={@workspace} sheets_tree={@sheets_tree} active_tool={:sheets}>
-  # Project shell with entity tree sidebar
-</Layouts.project>
+  # Project editor with floating toolbars, pinnable tree panel, canvas support
+</Layouts.focus>
 
 <Layouts.auth flash={@flash}>
   # Centered auth pages (login/register)
@@ -180,11 +185,15 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 
 <Layouts.settings flash={@flash} current_scope={@current_scope} current_path={@current_path}
   workspaces={@workspaces}>
-  # Settings shell with section navigation. Slots: :title (required), :subtitle
+  # Settings shell with floating toolbars, sidebar nav, max-width content. Slots: :title (required), :subtitle
 </Layouts.settings>
+
+<Layouts.docs flash={@flash}>
+  # Documentation layout with sidebar nav and TOC right rail
+</Layouts.docs>
 ```
 
-**Layouts.project** additional attrs: `flows_tree`, `screenplays_tree`, `scenes_tree`, `current_path`, `selected_sheet_id`, `selected_flow_id`, `selected_screenplay_id`, `selected_scene_id`, `can_edit`
+**Layouts.focus** additional attrs: `flows_tree`, `screenplays_tree`, `scenes_tree`, `current_path`, `selected_sheet_id`, `selected_flow_id`, `selected_screenplay_id`, `selected_scene_id`, `can_edit`
 
 ---
 

@@ -41,8 +41,8 @@ Locales: `en` (default), `es`
 
 **NEVER duplicate existing utilities.** Before writing ANY helper, normalizer, validator, or shared function:
 
-1. **Check `lib/storyarn/shared/`** — contains NameNormalizer, ShortcutHelpers, TreeOperations, SoftDelete, Validations, MapUtils, SearchHelpers, TimeHelpers, TokenGenerator
-2. **Check `lib/storyarn_web/helpers/`** — contains Authorize (auth wrappers)
+1. **Check `lib/storyarn/shared/`** — contains NameNormalizer, ShortcutHelpers, TreeOperations, SoftDelete, Validations, MapUtils, SearchHelpers, TimeHelpers, TokenGenerator, ColorUtils, FormulaEngine, FormulaRuntime, HtmlUtils, WordCount, HierarchicalSchema, ImportHelpers, InvitationOperations, MembershipOperations
+2. **Check `lib/storyarn_web/helpers/`** — contains Authorize (auth wrappers), SaveStatusTimer, UndoRedoStack
 3. **Check `lib/storyarn_web/components/`** — contains all reusable UI components
 4. **Read `docs/conventions/shared-utilities.md`** for the full registry with examples
 
@@ -56,15 +56,24 @@ Locales: `en` (default), `es`
 - Writing map key conversion instead of using `MapUtils.stringify_keys/1`
 - Writing shortcut/email validation instead of using `Validations.validate_shortcut/2`
 - Rendering `raw(content)` without `HtmlSanitizer.sanitize_html/1`
+- Writing color conversion logic instead of using `ColorUtils`
+- Writing formula/expression parsing instead of using `FormulaEngine`/`FormulaRuntime`
+- Writing word count logic instead of using `WordCount`
+- Writing HTML stripping instead of using `HtmlUtils`
 
 ## Commands
 
 ```bash
 mix phx.server              # Dev server (localhost:4000)
 mix test                    # Run tests
+mix test --cover            # Tests with coverage (threshold: 85%)
 mix test.e2e                # E2E tests (Playwright)
 mix precommit               # Before commit: format, credo, test
 docker compose up -d        # Start PostgreSQL + Redis + Mailpit
+just quality                # Full checks: Biome fix, Credo, tests, E2E, Vitest
+just js-fix                 # Biome auto-fix JS
+just js-test                # Vitest JS tests
+just js-grammar             # Build Lezer grammar
 ```
 
 ## Architecture
@@ -81,18 +90,32 @@ lib/storyarn/                    # Domain (Contexts)
 ├── localization.ex              # Languages, texts, glossary, DeepL, export/import
 ├── collaboration.ex             # Presence, cursors, locking
 ├── assets.ex                    # File uploads (R2/S3, Local)
+├── billing.ex                   # Plans, subscriptions, usage limits
+├── docs.ex                      # Documentation guides
+├── exports.ex                   # Project export orchestration
+├── imports.ex                   # Project import orchestration
+├── versioning.ex                # Entity version history (flows, scenes, sheets)
+├── shortcuts.ex                 # Centralized shortcut generation
+├── rate_limiter.ex              # Rate limiting
+├── vault.ex                     # Cloak encryption vault
 └── shared/                      # ← REUSABLE UTILITIES (see Convention References)
 
 lib/storyarn_web/
 ├── components/                  # UI components (see docs/conventions/component-registry.md)
-├── helpers/                     # Web helpers (Authorize)
+├── helpers/                     # Web helpers (Authorize, SaveStatusTimer, UndoRedoStack)
 ├── live/
 │   ├── flow_live/               # Flow editor
 │   ├── sheet_live/              # Sheet editor
 │   ├── scene_live/              # Scene editor
 │   ├── screenplay_live/         # Screenplay editor
 │   ├── localization_live/       # Localization editor
-│   └── ...
+│   ├── asset_live/              # Asset gallery, uploads
+│   ├── docs_live/               # Documentation viewer
+│   ├── export_import_live/      # Project import/export
+│   ├── settings_live/           # Unified settings (profile, security, connections)
+│   ├── project_live/            # Project dashboard, settings, trash
+│   ├── workspace_live/          # Workspace CRUD, dashboard
+│   └── user_live/               # Auth pages (login, registration)
 └── router.ex
 ```
 
@@ -149,7 +172,7 @@ Sheets.list_project_variables(project_id)
 
 ## Flow Editor
 
-**Node types:** `entry`, `exit`, `dialogue`, `condition`, `instruction`, `hub`, `jump`, `slug_line`, `subflow`
+**Node types:** `entry`, `exit`, `dialogue`, `condition`, `instruction`, `hub`, `jump`, `slug_line`, `subflow`, `annotation`
 
 **Dialogue node data:**
 ```elixir
@@ -181,6 +204,8 @@ lib/storyarn_web/live/flow_live/
 ├── show.ex                              # Main LiveView (thin dispatcher)
 ├── node_type_registry.ex                # Module lookup map → per-type modules
 ├── nodes/
+│   ├── annotation/
+│   │   └── node.ex                      # Metadata + handlers (comment/note nodes)
 │   ├── dialogue/
 │   │   └── node.ex                      # Metadata + handlers (responses, tech_id, screenplay)
 │   ├── condition/
@@ -202,10 +227,14 @@ lib/storyarn_web/live/flow_live/
 ├── components/
 │   ├── flow_toolbar.ex                  # Floating node toolbar (per-type render_toolbar clauses)
 │   ├── flow_header.ex                   # Flow header (scene backdrop, title)
+│   ├── flow_dock.ex                     # Dockable panels for flow editor
 │   ├── node_type_helpers.ex             # Shared icon component + word_count
 │   ├── screenplay_editor.ex             # Dialogue full-screen editor
 │   ├── builder_panel.ex                 # Condition/instruction builder panel
-│   └── debug_panel.ex                   # Debug console + history + variables tabs
+│   ├── debug_panel.ex                   # Debug panel container
+│   ├── debug_console_tab.ex             # Debug console output tab
+│   ├── debug_history_tab.ex             # Debug execution history tab
+│   └── debug_variables_tab.ex           # Debug variables state tab
 ├── handlers/
 │   ├── generic_node_handlers.ex         # Generic ops (select, move, delete, duplicate, etc.)
 │   ├── editor_info_handlers.ex          # UI state updates
@@ -225,7 +254,7 @@ lib/storyarn_web/live/flow_live/
     └── collaboration_helpers.ex         # Presence helpers
 
 assets/js/
-├── hooks/                               # ONLY Phoenix LiveView hooks (flat)
+├── hooks/                               # ONLY Phoenix LiveView hooks (flat, 54 hooks)
 │   ├── flow_canvas.js                   # Flow editor hook (orchestrator)
 │   ├── scene_canvas.js                  # Scene editor hook
 │   ├── screenplay_editor.js             # Screenplay editor hook
@@ -233,6 +262,13 @@ assets/js/
 │   ├── tiptap_editor.js                 # Rich text editor hook
 │   ├── story_player.js                  # Story player hook
 │   ├── undo_redo.js                     # Undo/redo hook (sheets)
+│   ├── tree_panel.js                    # Tree panel open/close/pin state
+│   ├── settings_sidebar.js              # Settings layout sidebar behavior
+│   ├── exploration_player.js            # Scene exploration mode
+│   ├── expression_editor.js             # Formula expression editor
+│   ├── formula_binding.js               # Formula binding hook
+│   ├── toolbar_popover.js               # Block config popovers
+│   ├── docs_scroll_spy.js               # Docs TOC scroll tracking
 │   └── ...                              # All flat, no subdirs
 ├── flow_canvas/                         # Flow editor utilities (non-hooks)
 │   ├── nodes/
@@ -256,12 +292,26 @@ assets/js/
 │   │   ├── editor_handlers.js           # Generic rebuildNode, per-type needsRebuild
 │   │   └── ...
 │   └── (setup.js, event_bindings.js)
+├── scene_canvas/                        # Scene editor utilities (non-hooks)
+│   ├── annotation_renderer.js           # Annotation rendering
+│   ├── pin_renderer.js                  # Pin rendering
+│   ├── zone_renderer.js                 # Zone rendering
+│   ├── context_menu.js                  # Right-click context menus
+│   ├── drag_broadcast.js                # Real-time drag sync (collaboration)
+│   ├── coordinate_utils.js              # Coordinate utilities
+│   └── ...
+├── expression_editor/                   # Formula expression editor (Lezer parser)
+├── condition_builder/                   # Condition builder utilities
 ├── instruction_builder/                 # Instruction builder utilities (non-hooks)
 │   ├── assignment_row.js
 │   ├── combobox.js
 │   └── sentence_templates.js
-└── tiptap/                              # Tiptap extensions (non-hooks)
-    └── mention_extension.js
+├── screenplay/                          # Screenplay editor utilities
+├── tiptap/                              # Tiptap extensions (non-hooks)
+│   └── mention_extension.js
+└── utils/                               # Shared JS utilities
+    ├── floating_popover.js              # Body-appended popover (floating-ui)
+    └── ...
 ```
 
 **Per-type architecture principle:** Each `nodes/{type}/` directory contains a single `node.ex` with all metadata and handlers for that node type.
@@ -357,13 +407,14 @@ fp.destroy();                  // remove from DOM + cleanup
 
 ## Storyarn-Specific Patterns
 
-**Layouts** (5 independent, not nested):
+**Layouts** (6 independent, not nested):
 ```elixir
-<Layouts.app ...>      # Main app with workspace sidebar
+<Layouts.app ...>      # Main app with workspace sidebar (floating surface-panel toolbars)
 <Layouts.focus ...>    # Project view with tool sidebar (flows, sheets, etc.)
 <Layouts.auth ...>     # Login/register (centered)
 <Layouts.public ...>   # Public/landing pages
-<Layouts.settings ...> # Settings with nav sidebar
+<Layouts.settings ...> # Settings with nav sidebar (floating toolbars)
+<Layouts.docs ...>     # Documentation layout (sidebar nav, TOC right rail)
 ```
 The Story Player and Scene Exploration use `layout: false` with their own fullscreen layout inline.
 
@@ -380,13 +431,21 @@ Actions: `:edit_content`, `:manage_project`, `:manage_members`, `:manage_workspa
 
 **Components** (`StoryarnWeb.Components.*`):
 - `MemberComponents` - user_avatar, member_row, invitation_row
-- `BlockComponents` - Sheet block rendering
+- `BlockComponents` - Sheet block rendering (facade -> submodules in `block_components/`)
 - `TreeComponents` - Notion-style navigation
 - `CollaborationComponents` - Presence, cursors
-- `Sidebar`, `ProjectSidebar`, `SaveIndicator`
+- `Sidebar` - Workspace navigation
+- `SaveIndicator` - Save status display
+- `CanvasToolbar` - Canvas-aware toolbar
+- `CanvasDock` - Dockable panels for canvas views
+- `ToolbarColorPicker` - Toolbar-specific color picker
+- `DashboardComponents` - Dashboard UI
+- `VersionsSection` - Version history display
+- `FocusLayout` - Focus layout helper components
+- `Sidebar.{SheetTree, FlowTree, SceneTree, ScreenplayTree, GenericTree}` - Per-domain sidebar trees
 
 ## Implementation Status
 
-**Completed:** Auth, Workspaces, Projects, Sheets/Blocks (incl. tables, versioning, property inheritance), Assets, Flow Editor (all 9 node types, debug mode, story player, undo/redo), Scenes (canvas, exploration mode, actions/conditions), Screenplays (editor, Fountain import/export, flow sync), Localization (extraction, DeepL, glossary, reports), Collaboration (presence, cursors, locks)
+**Completed:** Auth, Workspaces, Projects, Sheets/Blocks (incl. tables, versioning, property inheritance, formulas), Assets (gallery, uploads), Flow Editor (all 10 node types incl. annotation, debug mode, story player, undo/redo), Scenes (canvas, exploration mode, actions/conditions, zone image extraction), Screenplays (editor, Fountain import/export, flow sync), Localization (extraction, DeepL, glossary, reports), Collaboration (presence, cursors, locks), Versioning (entity snapshots for flows/scenes/sheets), Billing (plans, subscriptions, usage limits), Documentation (guides), Export/Import (project-level data exchange), Expression Editor (Lezer-based formula parser)
 
 **See `docs/CURRENT_FEATURES.md`** for the comprehensive feature reference.

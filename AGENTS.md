@@ -15,7 +15,7 @@ This is a web application written using the Phoenix web framework.
 
 ### Phoenix v1.8 guidelines
 
-- **Always** begin your LiveView templates with `<Layouts.app flash={@flash} ...>` which wraps all inner content
+- **Always** begin your LiveView templates with the appropriate layout wrapper (see CLAUDE.md -> Layouts for all 6: `app`, `focus`, `auth`, `public`, `settings`, `docs`)
 - The `MyAppWeb.Layouts` module is aliased in the `my_app_web.ex` file, so you can use it without needing to alias it again
 - Anytime you run into errors with no `current_scope` assign:
   - You failed to follow the Authenticated Routes guidelines, or you failed to pass `current_scope` to `<Layouts.app>`
@@ -404,7 +404,40 @@ And **never** do this:
 
 ---
 
-## Storyarn-Specific: Event Contracts
+## Storyarn-Specific Patterns
+
+### Quality Commands
+
+```bash
+just quality                # Full: Biome fix, Credo strict, mix test, E2E, Vitest
+just js-fix                 # Biome auto-fix JS
+just js-test                # Vitest JS tests
+just js-grammar             # Build Lezer grammar (expression editor)
+mix test --cover            # Tests with coverage (threshold: 85%)
+```
+
+### Current Contexts
+
+| Context       | Facade                   | Key Submodules                                                                                                                                              |
+|---------------|--------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Accounts      | `Storyarn.Accounts`      | `Users`, `Registration`, `OAuth`, `Sessions`, `MagicLinks`, `Emails`, `Passwords`, `Profiles`                                                               |
+| Workspaces    | `Storyarn.Workspaces`    | `WorkspaceCrud`, `Memberships`, `Invitations`                                                                                                               |
+| Projects      | `Storyarn.Projects`      | `ProjectCrud`, `Memberships`, `Invitations`                                                                                                                 |
+| Sheets        | `Storyarn.Sheets`        | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `PropertyInheritance`, `ReferenceTracker`, `Versioning`, `TreeOperations`                            |
+| Flows         | `Storyarn.Flows`         | `FlowCrud`, `NodeCrud` (-> `NodeCreate`, `NodeUpdate`, `NodeDelete`), `ConnectionCrud`, `TreeOperations`, `VariableReferenceTracker`, `HubColors`           |
+| Scenes        | `Storyarn.Scenes`        | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `TreeOperations`                                                       |
+| Screenplays   | `Storyarn.Screenplays`   | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `TreeOperations`, `ElementGrouping`, `FlowSync`, `LinkedPageCrud`, `AutoDetect`, `Export`, `Import`   |
+| Localization  | `Storyarn.Localization`  | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`                                                   |
+| Collaboration | `Storyarn.Collaboration` | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                              |
+| Assets        | `Storyarn.Assets`        | `Asset`, `Storage` (behaviour), `Storage.Local`, `Storage.R2`, `ImageProcessor`                                                                              |
+| Billing       | `Storyarn.Billing`       | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`                                                                                                         |
+| Docs          | `Storyarn.Docs`          | `Guide`, `GuideBuilder`                                                                                                                                      |
+| Exports       | `Storyarn.Exports`       | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, expression transpiler + serializers                                        |
+| Imports       | `Storyarn.Imports`       | Parsers                                                                                                                                                      |
+| Versioning    | `Storyarn.Versioning`    | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`, builders                                                                               |
+| Shortcuts     | `Storyarn.Shortcuts`     | Centralized shortcut generation for all entity types                                                                                                         |
+
+## Event Contracts
 
 ### Elixir → JS (pushEvent / handleEvent)
 
@@ -461,6 +494,7 @@ And **never** do this:
 
 | Type          | Fields                                                                                                                                                    | Consumed By                                                                      |
 |---------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| `annotation`  | `%{text, color}`                                                                                                                                          | `storyarn_node.js`                                                               |
 | `entry`       | `%{}`                                                                                                                                                     | `node_type_helpers.ex`, `storyarn_node.js`                                       |
 | `exit`        | `%{label, technical_id, outcome_tags, outcome_color, exit_mode, referenced_flow_id, target_type, target_id}`                                              | `properties_panels.ex`, `storyarn_node.js`                                       |
 | `dialogue`    | `%{speaker_sheet_id, text, stage_directions, menu_text, audio_asset_id, technical_id, localization_id, responses: [%{id, text, condition, instruction}]}` | `properties_panels.ex`, `storyarn_node.js`, `node_helpers.ex`, `form_helpers.ex` |
