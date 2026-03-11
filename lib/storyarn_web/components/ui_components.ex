@@ -280,4 +280,54 @@ defmodule StoryarnWeb.Components.UIComponents do
     </div>
     """
   end
+
+  @doc """
+  Renders a danger zone section with consistent styling.
+
+  ## Examples
+
+      <.danger_zone message={gettext("This cannot be undone.")} on_click={show_modal("confirm")}>
+        Delete
+      </.danger_zone>
+  """
+  attr :message, :string, required: true, doc: "warning message"
+  attr :on_click, :any, required: true, doc: "action for the button (JS command or event)"
+  slot :inner_block, required: true, doc: "button label"
+
+  def danger_zone(assigns) do
+    ~H"""
+    <section>
+      <h3 class="text-lg font-semibold mb-4 text-error">{gettext("Danger Zone")}</h3>
+      <div class="border border-error/30 rounded-lg p-4">
+        <p class="text-sm text-base-content/70 mb-4">{@message}</p>
+        <.form_actions>
+          <button type="button" phx-click={@on_click} class="btn btn-error btn-sm">
+            {render_slot(@inner_block)}
+          </button>
+        </.form_actions>
+      </div>
+    </section>
+    """
+  end
+
+  @doc """
+  Renders a right-aligned actions row for form buttons.
+
+  Use at the end of a form to align submit/action buttons consistently.
+
+  ## Examples
+
+      <.form_actions>
+        <.button variant="primary">Save</.button>
+      </.form_actions>
+  """
+  slot :inner_block, required: true
+
+  def form_actions(assigns) do
+    ~H"""
+    <div class="flex justify-end gap-3">
+      {render_slot(@inner_block)}
+    </div>
+    """
+  end
 end

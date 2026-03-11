@@ -125,9 +125,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
                 />
               </div>
             </div>
-            <.button variant="primary">
-              {dgettext("workspaces", "Request Invitation")}
-            </.button>
+            <.form_actions>
+              <.button variant="primary">
+                {dgettext("workspaces", "Request Invitation")}
+              </.button>
+            </.form_actions>
           </.form>
         </section>
       </div>

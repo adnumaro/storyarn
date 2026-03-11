@@ -75,11 +75,11 @@ defmodule StoryarnWeb.SettingsLive.Profile do
               label={dgettext("settings", "Display Name")}
               placeholder={dgettext("settings", "How you want to be called")}
             />
-            <div class="flex justify-end">
+            <.form_actions>
               <.button variant="primary" phx-disable-with={dgettext("settings", "Saving...")}>
                 {dgettext("settings", "Save Profile")}
               </.button>
-            </div>
+            </.form_actions>
           </.form>
         </section>
 
@@ -105,11 +105,11 @@ defmodule StoryarnWeb.SettingsLive.Profile do
               autocomplete="username"
               required
             />
-            <div class="flex justify-end">
+            <.form_actions>
               <.button variant="primary" phx-disable-with={dgettext("settings", "Changing...")}>
                 {dgettext("settings", "Change Email")}
               </.button>
-            </div>
+            </.form_actions>
           </.form>
         </section>
       </div>

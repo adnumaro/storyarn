@@ -74,11 +74,11 @@ defmodule StoryarnWeb.SettingsLive.Security do
               label={dgettext("settings", "Confirm new password")}
               autocomplete="new-password"
             />
-            <div class="flex justify-end">
+            <.form_actions>
               <.button variant="primary" phx-disable-with={dgettext("settings", "Saving...")}>
                 {dgettext("settings", "Update Password")}
               </.button>
-            </div>
+            </.form_actions>
           </.form>
         </section>
 

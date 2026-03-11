@@ -91,6 +91,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
   attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
   attr :class, :string
   attr :variant, :string, values: ~w(primary error)
+  attr :size, :string, default: "sm", values: ~w(xs sm md lg), doc: "button size"
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
@@ -100,9 +101,11 @@ defmodule StoryarnWeb.Components.CoreComponents do
       nil => "btn-primary btn-soft"
     }
 
+    sizes = %{"xs" => "btn-xs", "sm" => "btn-sm", "md" => nil, "lg" => "btn-lg"}
+
     assigns =
       assign_new(assigns, :class, fn ->
-        ["btn", Map.fetch!(variants, assigns[:variant])]
+        ["btn", Map.fetch!(variants, assigns[:variant]), Map.fetch!(sizes, assigns[:size])]
       end)
 
     if rest[:href] || rest[:navigate] || rest[:patch] do

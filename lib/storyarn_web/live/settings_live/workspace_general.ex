@@ -91,7 +91,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
               {dgettext("workspaces", "Default source language for new projects in this workspace.")}
             </p>
 
-            <div class="flex justify-end">
+            <.form_actions>
               <.button
                 type="submit"
                 variant="primary"
@@ -99,33 +99,29 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
               >
                 {dgettext("workspaces", "Save Changes")}
               </.button>
-            </div>
+            </.form_actions>
           </.form>
         </section>
 
         <div class="divider" />
 
-        <section :if={@membership.role == "owner"}>
-          <h3 class="text-lg font-semibold mb-4 text-error">
-            {dgettext("workspaces", "Danger Zone")}
-          </h3>
-
-          <div class="border border-error/30 rounded-lg p-4">
-            <p class="text-sm text-base-content/70 mb-4">
-              {dgettext(
-                "workspaces",
-                "Once you delete a workspace, there is no going back. All projects will be deleted."
-              )}
-            </p>
-            <button
-              type="button"
-              phx-click={show_modal("delete-workspace-confirm")}
-              class="btn btn-error btn-sm"
-            >
-              {dgettext("workspaces", "Delete Workspace")}
-            </button>
+        <%!-- Appearance --%>
+        <section>
+          <h3 class="text-lg font-semibold mb-4">{dgettext("settings", "Appearance")}</h3>
+          <div class="flex items-center gap-3">
+            <.theme_toggle />
           </div>
         </section>
+
+        <div class="divider" />
+
+        <.danger_zone
+          :if={@membership.role == "owner"}
+          message={dgettext("workspaces", "Once you delete a workspace, there is no going back. All projects will be deleted.")}
+          on_click={show_modal("delete-workspace-confirm")}
+        >
+          {dgettext("workspaces", "Delete Workspace")}
+        </.danger_zone>
       </div>
 
       <.confirm_modal

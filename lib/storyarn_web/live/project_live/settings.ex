@@ -90,10 +90,22 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             label={dgettext("projects", "Description")}
             rows={3}
           />
-          <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
-            {dgettext("projects", "Save Changes")}
-          </.button>
+          <.form_actions>
+            <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
+              {dgettext("projects", "Save Changes")}
+            </.button>
+          </.form_actions>
         </.form>
+      </section>
+
+      <div class="divider" />
+
+      <%!-- Appearance --%>
+      <section>
+        <h3 class="text-lg font-semibold mb-4">{dgettext("settings", "Appearance")}</h3>
+        <div class="flex items-center gap-3">
+          <.theme_toggle />
+        </div>
       </section>
 
       <div class="divider" />
@@ -130,14 +142,14 @@ defmodule StoryarnWeb.ProjectLive.Settings do
               </div>
             </div>
           </div>
-          <div class="flex gap-3 mt-4">
-            <.button variant="primary" phx-click="save_theme">
-              {dgettext("projects", "Apply Theme")}
-            </.button>
+          <.form_actions>
             <.button :if={@has_custom_theme} phx-click="reset_theme">
               {dgettext("projects", "Reset to Default")}
             </.button>
-          </div>
+            <.button variant="primary" phx-click="save_theme">
+              {dgettext("projects", "Apply Theme")}
+            </.button>
+          </.form_actions>
         </div>
       </section>
 
@@ -153,31 +165,22 @@ defmodule StoryarnWeb.ProjectLive.Settings do
               "If you renamed sheet shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
             )}
           </p>
-          <.button variant="primary" phx-click={show_modal("repair-refs-confirm")}>
-            {dgettext("projects", "Repair variable references")}
-          </.button>
+          <.form_actions>
+            <.button variant="primary" phx-click={show_modal("repair-refs-confirm")}>
+              {dgettext("projects", "Repair variable references")}
+            </.button>
+          </.form_actions>
         </div>
       </section>
 
       <div class="divider" />
 
-      <%!-- Danger Zone --%>
-      <section>
-        <h3 class="text-lg font-semibold mb-4 text-error">
-          {dgettext("projects", "Danger Zone")}
-        </h3>
-        <div class="card bg-error/10 border border-error/30 p-4">
-          <p class="text-sm mb-4">
-            {dgettext(
-              "projects",
-              "Once you delete a project, there is no going back. Please be certain."
-            )}
-          </p>
-          <.button variant="error" phx-click={show_modal("delete-project-confirm")}>
-            {dgettext("projects", "Delete Project")}
-          </.button>
-        </div>
-      </section>
+      <.danger_zone
+        message={dgettext("projects", "Once you delete a project, there is no going back. Please be certain.")}
+        on_click={show_modal("delete-project-confirm")}
+      >
+        {dgettext("projects", "Delete Project")}
+      </.danger_zone>
     </div>
     """
   end
@@ -208,10 +211,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
               {dgettext("projects", "Pro (api.deepl.com)"), "https://api.deepl.com"}
             ]}
           />
-          <div class="flex items-center gap-3 mt-3">
-            <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
-              {dgettext("projects", "Save")}
-            </.button>
+          <.form_actions>
             <.button
               :if={@has_api_key}
               type="button"
@@ -220,7 +220,10 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             >
               {dgettext("projects", "Test Connection")}
             </.button>
-          </div>
+            <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
+              {dgettext("projects", "Save")}
+            </.button>
+          </.form_actions>
         </.form>
 
         <div :if={@provider_usage} class="mt-3 text-sm opacity-70">
@@ -275,9 +278,11 @@ defmodule StoryarnWeb.ProjectLive.Settings do
               />
             </div>
           </div>
-          <.button variant="primary">
-            {dgettext("projects", "Request Invitation")}
-          </.button>
+          <.form_actions>
+            <.button variant="primary">
+              {dgettext("projects", "Request Invitation")}
+            </.button>
+          </.form_actions>
         </.form>
       </div>
     </div>

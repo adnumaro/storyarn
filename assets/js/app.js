@@ -91,6 +91,7 @@ import { SceneElementPanel } from "./hooks/scene_element_panel";
 import { ScreenplayEditor } from "./hooks/screenplay_editor";
 import { ScrollCollapse } from "./hooks/scroll_collapse";
 import { SearchableSelect } from "./hooks/searchable_select";
+import { SettingsSidebar } from "./hooks/settings_sidebar";
 import { SortableTree } from "./hooks/sortable_tree";
 import { StoryPlayer } from "./hooks/story_player";
 import { TableCellCheckbox } from "./hooks/table_cell_checkbox";
@@ -154,6 +155,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ReferenceSearch,
     ScrollCollapse,
     SearchableSelect,
+    SettingsSidebar,
     DialogueScreenplayEditor,
     ScreenplayEditor,
     StoryPlayer,

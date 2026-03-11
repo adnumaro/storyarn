@@ -433,10 +433,21 @@ defmodule StoryarnWeb.Layouts do
       end)
 
     ~H"""
-    <div id="settings-layout" class="h-screen w-screen overflow-hidden relative bg-base-100">
+    <div id="settings-layout" phx-hook="SettingsSidebar" class="h-screen w-screen overflow-hidden relative bg-base-100">
+      <%!-- Hidden checkbox for mobile sidebar toggle (must be first child for peer-*) --%>
+      <input id="settings-sidebar-check" type="checkbox" class="peer hidden" />
+
       <%!-- Left floating toolbar (top-left) --%>
       <div class="fixed top-3 left-3 z-[1020] flex items-stretch gap-2">
-        <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
+        <nav class="flex items-center gap-1 px-1 py-1 surface-panel w-60">
+          <%!-- Mobile sidebar toggle (hidden on desktop) --%>
+          <div class="contents md:hidden">
+            <label for="settings-sidebar-check" class="toolbar-btn btn-square cursor-pointer">
+              <.icon name="panel-left" class="size-4" />
+            </label>
+            <div class="w-px h-5 bg-base-300"></div>
+          </div>
+
           <.link navigate="/" class="toolbar-btn gap-1.5">
             <.app_logo class="w-5 h-5" />
             <span class="text-sm font-medium brand-logotype">Storyarn</span>
@@ -444,15 +455,18 @@ defmodule StoryarnWeb.Layouts do
         </nav>
       </div>
 
-      <%!-- Right floating toolbar (top-right) --%>
-      <div class="fixed top-3 right-3 z-[1020] flex items-stretch gap-2">
-        <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
-          <.theme_toggle />
-        </nav>
-      </div>
+      <%!-- Mobile overlay (closes sidebar on tap) --%>
+      <label
+        for="settings-sidebar-check"
+        class="fixed inset-0 bg-black/30 z-[1005] hidden peer-checked:block peer-checked:md:hidden cursor-pointer"
+      />
 
       <%!-- Settings sidebar (floating panel) --%>
-      <div class="fixed left-3 top-[76px] bottom-3 z-[1010] w-60 flex flex-col surface-panel overflow-hidden">
+      <div class={[
+        "fixed left-3 top-[76px] bottom-3 z-[1010] w-60 flex flex-col surface-panel overflow-hidden",
+        "transition-transform duration-200",
+        "-translate-x-[calc(100%+0.75rem)] peer-checked:translate-x-0 md:translate-x-0"
+      ]}>
         <div class="px-2 pt-2 pb-2 border-b border-base-300">
           <.link
             navigate={@resolved_back_path}
@@ -488,7 +502,7 @@ defmodule StoryarnWeb.Layouts do
       </div>
 
       <%!-- Main content area --%>
-      <main class="h-full overflow-y-auto pt-[76px] pb-4 px-4 pl-[264px]">
+      <main class="h-full overflow-y-auto pt-[76px] pb-4 px-4 md:pl-[264px]">
         <div class="max-w-3xl mx-auto">
           <.header>
             {render_slot(@title)}
