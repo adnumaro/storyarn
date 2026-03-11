@@ -413,14 +413,16 @@ defmodule StoryarnWeb.FlowLive.Show do
     socket =
       start_async(socket, :load_flow_data, fn ->
         full_flow = Flows.get_flow!(project.id, flow.id)
+        project_variables = Sheets.list_project_variables(project.id)
 
         %{
           flow: full_flow,
-          flow_data: Flows.serialize_for_canvas(full_flow),
+          flow_data:
+            Flows.serialize_for_canvas(full_flow, project_variables: project_variables),
           all_sheets: Sheets.list_all_sheets(project.id),
           gallery_by_sheet: Sheets.batch_load_gallery_data_by_sheet(project.id),
           flow_hubs: Flows.list_hubs(flow.id),
-          project_variables: Sheets.list_project_variables(project.id),
+          project_variables: project_variables,
           flows_tree: Flows.list_flows_tree(project.id),
           available_scenes: Scenes.list_scenes(project.id)
         }

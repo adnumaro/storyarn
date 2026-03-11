@@ -645,10 +645,13 @@ defmodule Storyarn.Flows do
   Returns a map with `nodes` and `connections` arrays in the format expected
   by the JavaScript flow canvas hook.
   """
-  @spec serialize_for_canvas(flow()) :: map()
-  def serialize_for_canvas(%Flow{} = flow) do
+  @spec serialize_for_canvas(flow(), keyword()) :: map()
+  def serialize_for_canvas(%Flow{} = flow, opts \\ []) do
     stale_node_ids = VariableReferenceTracker.list_stale_node_ids(flow.id)
-    project_variables = Storyarn.Sheets.list_project_variables(flow.project_id)
+
+    project_variables =
+      opts[:project_variables] || Storyarn.Sheets.list_project_variables(flow.project_id)
+
     subflow_cache = NodeCrud.batch_resolve_subflow_data(flow.nodes)
     referencing_flows = NodeCrud.list_nodes_referencing_flow(flow.id, flow.project_id)
     unreachable_ids = compute_unreachable_ids(flow.nodes, flow.connections)
