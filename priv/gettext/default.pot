@@ -358,6 +358,7 @@ msgstr ""
 msgid "Export"
 msgstr ""
 
+#: lib/storyarn_web/controllers/page_html/home.html.heex:226
 #: lib/storyarn_web/live/export_import_live/index.ex:25
 #, elixir-autogen, elixir-format
 msgid "Export & Import"
@@ -388,6 +389,7 @@ msgstr ""
 msgid "File is too large (max 50 MB)."
 msgstr ""
 
+#: lib/storyarn_web/controllers/page_html/home.html.heex:112
 #: lib/storyarn_web/live/export_import_live/index.ex:730
 #: lib/storyarn_web/live/export_import_live/index.ex:760
 #: lib/storyarn_web/live/export_import_live/index.ex:781
@@ -456,7 +458,7 @@ msgstr ""
 msgid "Invalid format"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:148
+#: lib/storyarn_web/controllers/page_html/home.html.heex:202
 #: lib/storyarn_web/live/export_import_live/index.ex:733
 #: lib/storyarn_web/live/export_import_live/index.ex:784
 #, elixir-autogen, elixir-format
@@ -530,6 +532,7 @@ msgstr ""
 msgid "Rename — import with a new shortcut"
 msgstr ""
 
+#: lib/storyarn_web/controllers/page_html/home.html.heex:124
 #: lib/storyarn_web/live/export_import_live/index.ex:731
 #: lib/storyarn_web/live/export_import_live/index.ex:762
 #: lib/storyarn_web/live/export_import_live/index.ex:782
@@ -549,6 +552,7 @@ msgstr ""
 msgid "Select a .storyarn.json file"
 msgstr ""
 
+#: lib/storyarn_web/controllers/page_html/home.html.heex:100
 #: lib/storyarn_web/live/export_import_live/index.ex:729
 #: lib/storyarn_web/live/export_import_live/index.ex:759
 #: lib/storyarn_web/live/export_import_live/index.ex:780
@@ -618,16 +622,11 @@ msgstr[1] ""
 msgid "Back to workspace"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:112
-#, elixir-autogen, elixir-format
-msgid "Character Sheets"
-msgstr ""
-
 #: lib/storyarn_web/components/layouts.ex:456
 #: lib/storyarn_web/components/layouts.ex:518
 #: lib/storyarn_web/controllers/page_html/contact.html.heex:5
 #: lib/storyarn_web/controllers/page_html/contact.html.heex:60
-#: lib/storyarn_web/controllers/page_html/home.html.heex:265
+#: lib/storyarn_web/controllers/page_html/home.html.heex:331
 #, elixir-autogen, elixir-format
 msgid "Contact"
 msgstr ""
@@ -637,7 +636,7 @@ msgstr ""
 msgid "Craft worlds."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:187
+#: lib/storyarn_web/controllers/page_html/home.html.heex:253
 #, elixir-autogen, elixir-format
 msgid "Create sheets for characters, factions, and items. Define variables that drive your story's logic."
 msgstr ""
@@ -655,7 +654,7 @@ msgstr ""
 #: lib/storyarn_web/components/layouts.ex:453
 #: lib/storyarn_web/components/layouts.ex:511
 #: lib/storyarn_web/controllers/page_html/contact.html.heex:57
-#: lib/storyarn_web/controllers/page_html/home.html.heex:262
+#: lib/storyarn_web/controllers/page_html/home.html.heex:328
 #, elixir-autogen, elixir-format
 msgid "Docs"
 msgstr ""
@@ -670,19 +669,9 @@ msgstr ""
 msgid "Email"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:86
-#, elixir-autogen, elixir-format
-msgid "Everything your story needs"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:150
+#: lib/storyarn_web/controllers/page_html/home.html.heex:204
 #, elixir-autogen, elixir-format
 msgid "Extract, translate, and manage every line of dialogue. DeepL integration, glossary support, and progress tracking per language."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:124
-#, elixir-autogen, elixir-format
-msgid "Flow Editor"
 msgstr ""
 
 #: lib/storyarn_web/controllers/page_html/contact.html.heex:21
@@ -690,12 +679,12 @@ msgstr ""
 msgid "For general inquiries, feedback, or support."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:175
+#: lib/storyarn_web/controllers/page_html/home.html.heex:241
 #, elixir-autogen, elixir-format
 msgid "From outline to shipped"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:225
+#: lib/storyarn_web/controllers/page_html/home.html.heex:291
 #, elixir-autogen, elixir-format
 msgid "Get early access"
 msgstr ""
@@ -710,7 +699,7 @@ msgstr ""
 msgid "Have questions about Storyarn, want to report a bug, or just want to say hi? Reach out to us."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:222
+#: lib/storyarn_web/controllers/page_html/home.html.heex:288
 #, elixir-autogen, elixir-format
 msgid "Invite-only beta"
 msgstr ""
@@ -725,12 +714,12 @@ msgstr ""
 msgid "Join the community to chat with other narrative designers."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:246
+#: lib/storyarn_web/controllers/page_html/home.html.heex:312
 #, elixir-autogen, elixir-format
 msgid "Join the waitlist"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:203
+#: lib/storyarn_web/controllers/page_html/home.html.heex:269
 #, elixir-autogen, elixir-format
 msgid "Localize and export"
 msgstr ""
@@ -745,7 +734,7 @@ msgstr ""
 msgid "No documentation available yet."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:251
+#: lib/storyarn_web/controllers/page_html/home.html.heex:317
 #, elixir-autogen, elixir-format
 msgid "No spam. We'll only email you when it's time."
 msgstr ""
@@ -765,7 +754,7 @@ msgstr ""
 msgid "Private Beta"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:160
+#: lib/storyarn_web/controllers/page_html/home.html.heex:214
 #, elixir-autogen, elixir-format
 msgid "Real-time Collaboration"
 msgstr ""
@@ -781,11 +770,6 @@ msgstr ""
 msgid "Request early access"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:136
-#, elixir-autogen, elixir-format
-msgid "Scene Maps"
-msgstr ""
-
 #: lib/storyarn_web/live/docs_live/components/docs_sidebar.ex:26
 #, elixir-autogen, elixir-format
 msgid "Search docs..."
@@ -796,48 +780,43 @@ msgstr ""
 msgid "See what's inside"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:178
+#: lib/storyarn_web/controllers/page_html/home.html.heex:244
 #, elixir-autogen, elixir-format
 msgid "Storyarn adapts to how narrative designers actually work."
 msgstr ""
 
 #: lib/storyarn_web/controllers/page_html/contact.html.heex:54
-#: lib/storyarn_web/controllers/page_html/home.html.heex:259
+#: lib/storyarn_web/controllers/page_html/home.html.heex:325
 #, elixir-autogen, elixir-format
 msgid "Storyarn — Open narrative design platform"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:185
+#: lib/storyarn_web/controllers/page_html/home.html.heex:251
 #, elixir-autogen, elixir-format
 msgid "Structure your world"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:114
-#, elixir-autogen, elixir-format
-msgid "Structured data for characters, items, locations — with variables, formulas, and property inheritance across your world."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:205
+#: lib/storyarn_web/controllers/page_html/home.html.heex:271
 #, elixir-autogen, elixir-format
 msgid "Translate into every language your game supports. Export flows, screenplays, and localization data for your engine."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:196
+#: lib/storyarn_web/controllers/page_html/home.html.heex:262
 #, elixir-autogen, elixir-format
 msgid "Use the flow editor to create dialogue trees, condition checks, and instructions. Test with the built-in story player."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:126
+#: lib/storyarn_web/controllers/page_html/home.html.heex:114
 #, elixir-autogen, elixir-format
 msgid "Visual node-based editor for branching dialogues, conditions, and game logic. Nine node types with real-time collaboration."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:138
+#: lib/storyarn_web/controllers/page_html/home.html.heex:126
 #, elixir-autogen, elixir-format
 msgid "Visual scene editor with layers, zones, and pin annotations. Connect locations to flows and explore your world spatially."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:228
+#: lib/storyarn_web/controllers/page_html/home.html.heex:294
 #, elixir-autogen, elixir-format
 msgid "We're onboarding a small group of narrative designers and game studios. Join the waitlist and we'll send you an invite when your spot is ready."
 msgstr ""
@@ -847,12 +826,12 @@ msgstr ""
 msgid "Weave stories."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:162
+#: lib/storyarn_web/controllers/page_html/home.html.heex:216
 #, elixir-autogen, elixir-format
 msgid "Work together with your team. Live cursors, presence indicators, and node locking so nobody overwrites anyone's work."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:194
+#: lib/storyarn_web/controllers/page_html/home.html.heex:260
 #, elixir-autogen, elixir-format
 msgid "Write branching narratives"
 msgstr ""
@@ -863,7 +842,7 @@ msgstr ""
 msgid "You're on the list! We'll reach out when your spot is ready."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:241
+#: lib/storyarn_web/controllers/page_html/home.html.heex:307
 #, elixir-autogen, elixir-format
 msgid "you@studio.com"
 msgstr ""
@@ -903,7 +882,7 @@ msgstr ""
 msgid "%{total} items"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:102
+#: lib/storyarn_web/controllers/page_html/home.html.heex:192
 #, elixir-autogen, elixir-format
 msgid "At-a-glance overview of your project's progress. Word counts, variable usage, localization coverage, and content stats per tool."
 msgstr ""
@@ -918,7 +897,7 @@ msgstr ""
 msgid "Danger Zone"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:100
+#: lib/storyarn_web/controllers/page_html/home.html.heex:190
 #, elixir-autogen, elixir-format
 msgid "Dashboards"
 msgstr ""
@@ -1007,4 +986,59 @@ msgstr ""
 #: lib/storyarn_web/components/collaboration_components.ex:147
 #, elixir-autogen, elixir-format
 msgid "updated the flow"
+msgstr ""
+
+#: lib/storyarn_web/controllers/page_html/home.html.heex:176
+#, elixir-autogen, elixir-format
+msgid "Built-in Features"
+msgstr ""
+
+#: lib/storyarn_web/controllers/page_html/home.html.heex:160
+#, elixir-autogen, elixir-format
+msgid "Debug Mode"
+msgstr ""
+
+#: lib/storyarn_web/controllers/page_html/home.html.heex:102
+#, elixir-autogen, elixir-format
+msgid "Define every element of your world — characters, items, locations, factions. With variables, formulas, and property inheritance."
+msgstr ""
+
+#: lib/storyarn_web/controllers/page_html/home.html.heex:179
+#, elixir-autogen, elixir-format
+msgid "Everything you need to ship your narrative, built right in."
+msgstr ""
+
+#: lib/storyarn_web/controllers/page_html/home.html.heex:148
+#, elixir-autogen, elixir-format
+msgid "Exploration Mode"
+msgstr ""
+
+#: lib/storyarn_web/controllers/page_html/home.html.heex:228
+#, elixir-autogen, elixir-format
+msgid "Export to Yarn Spinner, Ink, Unity, Godot Dialogic, Unreal, and articy:draft. Localization as Excel or CSV. Your data, your engine."
+msgstr ""
+
+#: lib/storyarn_web/controllers/page_html/home.html.heex:150
+#, elixir-autogen, elixir-format
+msgid "Navigate your scenes interactively. Move between zones, trigger actions, and experience your world from a player's perspective."
+msgstr ""
+
+#: lib/storyarn_web/controllers/page_html/home.html.heex:138
+#, elixir-autogen, elixir-format
+msgid "Playtest your dialogues and branching paths in real time. Walk through your story as a player would, right from the editor."
+msgstr ""
+
+#: lib/storyarn_web/controllers/page_html/home.html.heex:162
+#, elixir-autogen, elixir-format
+msgid "Step through your flows node by node. Inspect variables, track conditions, and trace execution paths to find logic issues."
+msgstr ""
+
+#: lib/storyarn_web/controllers/page_html/home.html.heex:136
+#, elixir-autogen, elixir-format
+msgid "Story Player"
+msgstr ""
+
+#: lib/storyarn_web/controllers/page_html/home.html.heex:86
+#, elixir-autogen, elixir-format
+msgid "World Building"
 msgstr ""
