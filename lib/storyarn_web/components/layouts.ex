@@ -7,8 +7,13 @@ defmodule StoryarnWeb.Layouts do
   use Gettext, backend: StoryarnWeb.Gettext
 
   import StoryarnWeb.Components.FocusLayout
-  import StoryarnWeb.Components.Sidebar
+  import StoryarnWeb.Components.MemberComponents, only: [user_avatar: 1]
   import StoryarnWeb.DocsLive.Components.DocsSidebar
+
+  alias Phoenix.LiveView.JS
+
+  # Note: StoryarnWeb.Components.Sidebar is no longer imported here.
+  # The workspace sidebar is now rendered inline in the app layout.
 
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
@@ -50,46 +55,136 @@ defmodule StoryarnWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <div class="drawer lg:drawer-open">
-      <input id="sidebar-drawer" type="checkbox" class="drawer-toggle" />
+    <div id="app-layout" phx-hook="SettingsSidebar" class="h-screen w-screen overflow-hidden relative bg-base-100">
+      <%!-- Hidden checkbox for mobile sidebar toggle --%>
+      <input id="app-sidebar-check" type="checkbox" class="peer hidden" />
 
-      <div class="drawer-content flex flex-col min-h-screen">
-        <%!-- Mobile header with hamburger --%>
-        <header class="navbar bg-base-100 border-b border-base-300 md:hidden">
-          <div class="flex-none">
-            <label for="sidebar-drawer" class="btn btn-square btn-ghost">
-              <.icon name="menu" class="size-6" />
+      <%!-- Left floating toolbar (top-left) --%>
+      <div class="fixed top-3 left-3 z-[1020] flex items-stretch gap-2">
+        <nav class="flex items-center gap-1 px-1 py-1 surface-panel w-60">
+          <%!-- Mobile sidebar toggle --%>
+          <div class="contents md:hidden">
+            <label for="app-sidebar-check" class="toolbar-btn btn-square cursor-pointer">
+              <.icon name="panel-left" class="size-4" />
             </label>
+            <div class="w-px h-5 bg-base-300"></div>
           </div>
-          <div class="flex-1">
-            <.link navigate="/" class="flex items-center gap-2">
-              <.app_logo class="w-6 h-6" />
-              <span class="text-lg brand-logotype">Storyarn</span>
-            </.link>
-          </div>
-          <div class="flex-none">
-            <.theme_toggle />
-          </div>
-        </header>
 
-        <%!-- Main content area --%>
-        <main class="flex-1 overflow-y-auto bg-base-100">
-          {render_slot(@inner_block)}
-        </main>
-
-        <.flash_group flash={@flash} />
+          <%!-- User dropdown --%>
+          <div :if={@current_scope && @current_scope.user} class="dropdown dropdown-bottom flex flex-1 min-w-0">
+            <button tabindex="0" class="toolbar-btn gap-1.5 font-medium flex-1 min-w-0">
+              <.user_avatar user={@current_scope.user} size="xs" />
+              <span class="text-sm truncate">
+                {@current_scope.user.display_name || @current_scope.user.email}
+              </span>
+              <.icon name="chevron-down" class="size-3 opacity-50" />
+            </button>
+            <div
+              tabindex="0"
+              class="dropdown-content bg-base-200 border border-base-300 rounded-lg shadow-sm w-max max-w-72 z-[60] mt-3"
+            >
+              <div class="px-4 py-3">
+                <p class="text-sm font-medium truncate">
+                  {@current_scope.user.display_name || @current_scope.user.email}
+                </p>
+                <p :if={@current_scope.user.display_name} class="text-xs text-base-content/50 truncate">
+                  {@current_scope.user.email}
+                </p>
+              </div>
+              <div class="border-t border-base-300"></div>
+              <ul class="menu p-1 text-sm">
+                <li>
+                  <.link navigate={~p"/users/settings"}>
+                    <.icon name="user" class="size-5" />
+                    {gettext("Account settings")}
+                  </.link>
+                </li>
+                <li>
+                  <button
+                    phx-click={JS.dispatch("phx:set-theme")}
+                    data-phx-theme="toggle"
+                    class="gap-2 justify-between"
+                  >
+                    <span class="flex items-center gap-2">
+                      <.icon name="moon" class="size-5 dark:hidden" />
+                      <.icon name="sun" class="size-5 hidden dark:block" />
+                      {gettext("Dark mode")}
+                    </span>
+                  </button>
+                </li>
+                <div class="divider my-1"></div>
+                <li>
+                  <.link href={~p"/users/log-out"} method="delete">
+                    <.icon name="log-out" class="size-5" />
+                    {gettext("Log out")}
+                  </.link>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </nav>
       </div>
 
-      <%!-- Sidebar drawer --%>
-      <div class="drawer-side z-40">
-        <label for="sidebar-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-        <.sidebar
-          :if={@current_scope && @current_scope.user}
-          current_user={@current_scope.user}
-          workspaces={@workspaces}
-          current_workspace={@current_workspace}
-        />
+      <%!-- Mobile overlay (closes sidebar on tap) --%>
+      <label
+        for="app-sidebar-check"
+        class="fixed inset-0 bg-black/30 z-[1005] hidden peer-checked:block peer-checked:md:hidden cursor-pointer"
+      />
+
+      <%!-- Workspace sidebar (floating panel) --%>
+      <div
+        :if={@current_scope && @current_scope.user}
+        class={[
+          "fixed left-3 top-[76px] bottom-3 z-[1010] w-60 flex flex-col surface-panel overflow-hidden",
+          "transition-transform duration-200",
+          "-translate-x-[calc(100%+0.75rem)] peer-checked:translate-x-0 md:translate-x-0"
+        ]}
+      >
+        <nav class="flex-1 overflow-y-auto p-2 space-y-5">
+          <div>
+            <h3 class="text-xs font-semibold uppercase text-base-content/50 px-2 mb-2">
+              {gettext("Workspaces")}
+            </h3>
+            <ul class="space-y-0.5">
+              <li :for={workspace <- @workspaces}>
+                <.link
+                  navigate={~p"/workspaces/#{workspace.slug}"}
+                  class={[
+                    "flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm",
+                    @current_workspace && @current_workspace.id == workspace.id &&
+                      "bg-base-content/5 font-medium",
+                    !(@current_workspace && @current_workspace.id == workspace.id) &&
+                      "hover:bg-base-content/5"
+                  ]}
+                >
+                  <span
+                    class="w-2 h-2 rounded-full shrink-0"
+                    style={"background: #{workspace.color || "#6366f1"}"}
+                  />
+                  <span class="truncate">{workspace.name}</span>
+                </.link>
+              </li>
+            </ul>
+          </div>
+        </nav>
+
+        <div class="p-2 border-t border-base-300">
+          <.link
+            navigate={~p"/workspaces/new"}
+            class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm hover:bg-base-content/5"
+          >
+            <.icon name="plus" class="size-4" />
+            {gettext("New workspace")}
+          </.link>
+        </div>
       </div>
+
+      <%!-- Main content area --%>
+      <main class="h-full overflow-y-auto pt-[76px] pb-4 px-4 md:pl-[264px]">
+        {render_slot(@inner_block)}
+      </main>
+
+      <.flash_group flash={@flash} />
     </div>
     """
   end

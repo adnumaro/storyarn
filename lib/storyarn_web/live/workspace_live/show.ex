@@ -57,96 +57,92 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
       workspaces={@workspaces}
       current_workspace={@current_workspace}
     >
-      <div>
-        <!-- Workspace Header -->
-        <header class="relative">
-          <div class={[
-            "h-48 overflow-hidden",
-            !@workspace.banner_url && "bg-gradient-to-r from-primary/20 to-secondary/20"
-          ]}>
-            <img
-              :if={@workspace.banner_url}
-              src={@workspace.banner_url}
-              alt=""
-              class="w-full h-full object-cover"
-            />
-          </div>
+      <%!-- Workspace Banner --%>
+      <header class="relative">
+        <div class={[
+          "h-48 overflow-hidden rounded-xl",
+          !@workspace.banner_url && "bg-gradient-to-r from-primary/20 to-secondary/20"
+        ]}>
+          <img
+            :if={@workspace.banner_url}
+            src={@workspace.banner_url}
+            alt=""
+            class="w-full h-full object-cover"
+          />
+        </div>
 
-          <div class="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-base-100/90 to-transparent">
-            <div class="flex items-end justify-between">
-              <div>
-                <h1 class="text-3xl font-bold">{@workspace.name}</h1>
-                <p :if={@workspace.description} class="text-base-content/70 mt-1 max-w-2xl">
-                  {@workspace.description}
-                </p>
-              </div>
-              <.link
-                :if={@membership.role in ["owner", "admin"]}
-                navigate={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
-                class="btn btn-ghost btn-sm"
-              >
-                <.icon name="settings" class="size-4" />
-              </.link>
+        <div class="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-base-100/90 to-transparent">
+          <div class="flex items-end justify-between">
+            <div>
+              <h1 class="text-3xl font-bold">{@workspace.name}</h1>
+              <p :if={@workspace.description} class="text-base-content/70 mt-1 max-w-2xl">
+                {@workspace.description}
+              </p>
             </div>
+            <.link
+              :if={@membership.role in ["owner", "admin"]}
+              navigate={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
+              class="btn btn-ghost btn-sm"
+            >
+              <.icon name="settings" class="size-4" />
+            </.link>
           </div>
-        </header>
-        
-    <!-- Toolbar -->
-        <div class="p-4 flex items-center justify-between border-b border-base-300">
-          <div class="flex items-center gap-2">
-            <div class="form-control">
-              <input
-                type="text"
-                placeholder={dgettext("workspaces", "Search projects...")}
-                class="input input-sm input-bordered w-64"
-                phx-change="search"
-                phx-debounce="300"
-                name="search"
-              />
-            </div>
-          </div>
+        </div>
+      </header>
 
-          <.link
-            :if={@membership.role in ["owner", "admin", "member"] and @can_create_project}
-            patch={~p"/workspaces/#{@workspace.slug}/projects/new"}
-            class="btn btn-primary btn-sm"
-          >
+      <%!-- Toolbar --%>
+      <div class="pt-4 pb-2 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder={dgettext("workspaces", "Search projects...")}
+            class="input input-sm input-bordered w-64"
+            phx-change="search"
+            phx-debounce="300"
+            name="search"
+          />
+        </div>
+
+        <.link
+          :if={@membership.role in ["owner", "admin", "member"] and @can_create_project}
+          patch={~p"/workspaces/#{@workspace.slug}/projects/new"}
+          class="btn btn-primary btn-sm"
+        >
+          <.icon name="plus" class="size-4" />
+          {dgettext("workspaces", "New Project")}
+        </.link>
+        <div
+          :if={@membership.role in ["owner", "admin", "member"] and not @can_create_project}
+          class="tooltip tooltip-left"
+          data-tip={dgettext("workspaces", "Project limit reached for your plan")}
+        >
+          <button class="btn btn-primary btn-sm btn-disabled" disabled>
             <.icon name="plus" class="size-4" />
             {dgettext("workspaces", "New Project")}
-          </.link>
-          <div
-            :if={@membership.role in ["owner", "admin", "member"] and not @can_create_project}
-            class="tooltip tooltip-left"
-            data-tip={dgettext("workspaces", "Project limit reached for your plan")}
-          >
-            <button class="btn btn-primary btn-sm btn-disabled" disabled>
-              <.icon name="plus" class="size-4" />
-              {dgettext("workspaces", "New Project")}
-            </button>
-          </div>
+          </button>
         </div>
-        
-    <!-- Projects Grid -->
-        <div class="p-4">
-          <div
-            :if={@projects != []}
-            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-          >
-            <.project_card
-              :for={project_data <- @projects}
-              project={project_data.project}
-              workspace={@workspace}
-            />
-          </div>
+      </div>
 
-          <.empty_state
-            :if={@projects == []}
-            icon="folder-open"
-            title={dgettext("workspaces", "No projects yet")}
-          >
-            {dgettext("workspaces", "Create your first project to get started")}
-          </.empty_state>
+      <%!-- Projects Grid --%>
+      <div class="pt-2">
+        <div
+          :if={@projects != []}
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
+          <.project_card
+            :for={project_data <- @projects}
+            project={project_data.project}
+            workspace={@workspace}
+          />
         </div>
+
+        <.empty_state
+          :if={@projects == []}
+          icon="folder-open"
+          title={dgettext("workspaces", "No projects yet")}
+        >
+          {dgettext("workspaces", "Create your first project to get started")}
+        </.empty_state>
       </div>
 
       <.modal
