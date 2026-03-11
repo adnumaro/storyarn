@@ -159,7 +159,7 @@ msgstr "Idioma añadido."
 msgid "Language added. Extracted %{count} text."
 msgid_plural "Language added. Extracted %{count} texts."
 msgstr[0] "Idioma añadido. Se extrajo %{count} texto."
-msgstr[1] ""
+msgstr[1] "Idioma añadido. Se extrajeron %{count} textos."
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:32
 #, elixir-autogen, elixir-format
@@ -176,15 +176,15 @@ msgstr "Última traducción: %{time}"
 msgid "Lines"
 msgstr "Líneas"
 
-#: lib/storyarn_web/components/focus_layout.ex:42
+#: lib/storyarn_web/components/focus_layout.ex:44
 #, elixir-autogen, elixir-format
 msgid "Localization"
-msgstr "ID de localización"
+msgstr "Localización"
 
 #: lib/storyarn_web/live/localization_live/report.ex:24
 #, elixir-autogen, elixir-format
 msgid "Localization Report"
-msgstr "ID de localización"
+msgstr "Informe de localización"
 
 #: lib/storyarn_web/live/localization_live/index.ex:305
 #, elixir-autogen, elixir-format
@@ -376,7 +376,7 @@ msgstr "Sincronizar"
 msgid "Synced %{count} text entry."
 msgid_plural "Synced %{count} text entries."
 msgstr[0] "Se sincronizó %{count} entrada de texto."
-msgstr[1] ""
+msgstr[1] "Se sincronizaron %{count} entradas de texto."
 
 #: lib/storyarn_web/live/localization_live/index.ex:130
 #, elixir-autogen, elixir-format
@@ -404,7 +404,7 @@ msgstr "Traducir con DeepL"
 msgid "Translated %{count} string."
 msgid_plural "Translated %{count} strings."
 msgstr[0] "Se tradujo %{count} cadena."
-msgstr[1] ""
+msgstr[1] "Se tradujeron %{count} cadenas."
 
 #: lib/storyarn_web/live/localization_live/edit.ex:98
 #: lib/storyarn_web/live/localization_live/index.ex:66
@@ -475,14 +475,14 @@ msgstr "No tienes permiso para realizar esta acción."
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:36
 #, elixir-autogen, elixir-format
 msgid "Could not remove language."
-msgstr ""
+msgstr "No se pudo eliminar el idioma."
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:122
 #, elixir-autogen, elixir-format
 msgid "Invalid text ID."
-msgstr ""
+msgstr "ID de texto no válido."
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:66
 #, elixir-autogen, elixir-format
 msgid "Sync failed."
-msgstr ""
+msgstr "Error al sincronizar."

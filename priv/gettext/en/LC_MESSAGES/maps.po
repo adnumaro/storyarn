@@ -11,17 +11,17 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/scene_live/components/dock.ex:166
+#: lib/storyarn_web/live/scene_live/components/dock.ex:158
 #, elixir-autogen, elixir-format
 msgid "Draw connections between two pins. Click the source pin, then the target."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:365
+#: lib/storyarn_web/live/scene_live/show.ex:377
 #, elixir-autogen, elixir-format
 msgid "This layer will be deleted. All elements on this layer will be moved to no layer."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/components/scene_header.ex:166
+#: lib/storyarn_web/live/scene_live/components/scene_header.ex:151
 #, elixir-autogen, elixir-format
 msgid "Used in %{count} flow"
 msgid_plural "Used in %{count} flows"

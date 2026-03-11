@@ -176,7 +176,7 @@ msgstr ""
 msgid "Lines"
 msgstr ""
 
-#: lib/storyarn_web/components/focus_layout.ex:42
+#: lib/storyarn_web/components/focus_layout.ex:44
 #, elixir-autogen, elixir-format
 msgid "Localization"
 msgstr ""

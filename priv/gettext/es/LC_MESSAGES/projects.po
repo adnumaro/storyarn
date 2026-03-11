@@ -16,33 +16,33 @@ msgstr ""
 msgid "%{count} day ago"
 msgid_plural "%{count} days ago"
 msgstr[0] "hace %{count} día"
-msgstr[1] ""
+msgstr[1] "hace %{count} días"
 
 #: lib/storyarn_web/live/project_live/trash.ex:169
 #, elixir-autogen, elixir-format
 msgid "%{count} hour ago"
 msgid_plural "%{count} hours ago"
 msgstr[0] "hace %{count} hora"
-msgstr[1] ""
+msgstr[1] "hace %{count} horas"
 
 #: lib/storyarn_web/live/project_live/trash.ex:163
 #, elixir-autogen, elixir-format
 msgid "%{count} minute ago"
 msgid_plural "%{count} minutes ago"
 msgstr[0] "hace %{count} minuto"
-msgstr[1] ""
+msgstr[1] "hace %{count} minutos"
 
 #: lib/storyarn_web/live/project_live/form.ex:35
 #, elixir-autogen, elixir-format
 msgid "A brief description of your project"
 msgstr "Una breve descripción de tu proyecto"
 
-#: lib/storyarn_web/live/project_live/settings.ex:178
+#: lib/storyarn_web/live/project_live/settings.ex:202
 #, elixir-autogen, elixir-format
 msgid "API Key"
 msgstr "Clave API"
 
-#: lib/storyarn_web/live/project_live/settings.ex:184
+#: lib/storyarn_web/live/project_live/settings.ex:208
 #, elixir-autogen, elixir-format
 msgid "API Tier"
 msgstr "Nivel API"
@@ -64,7 +64,7 @@ msgstr "Todas las referencias de variables están actualizadas."
 msgid "Cancel"
 msgstr "Cancelar"
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:194
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:202
 #, elixir-autogen, elixir-format
 msgid "Cannot remove the project owner."
 msgstr "No se puede eliminar al propietario del proyecto."
@@ -79,7 +79,7 @@ msgstr "Conexión fallida. Comprueba tu clave API y el punto de acceso."
 msgid "Connection successful."
 msgstr "Conexión establecida."
 
-#: lib/storyarn_web/live/project_live/settings.ex:255
+#: lib/storyarn_web/live/project_live/settings.ex:49
 #, elixir-autogen, elixir-format
 msgid "Continue"
 msgstr "Continuar"
@@ -89,19 +89,14 @@ msgstr "Continuar"
 msgid "Create Project"
 msgstr "Crear proyecto"
 
-#: lib/storyarn_web/live/project_live/settings.ex:236
-#, elixir-autogen, elixir-format
-msgid "Danger Zone"
-msgstr "Zona de peligro"
-
-#: lib/storyarn_web/live/project_live/settings.ex:263
+#: lib/storyarn_web/live/project_live/settings.ex:57
 #: lib/storyarn_web/live/project_live/trash.ex:72
 #: lib/storyarn_web/live/project_live/trash.ex:145
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr "Eliminar"
 
-#: lib/storyarn_web/live/project_live/settings.ex:245
+#: lib/storyarn_web/live/project_live/settings.ex:182
 #, elixir-autogen, elixir-format
 msgid "Delete Project"
 msgstr "Eliminar proyecto"
@@ -111,7 +106,7 @@ msgstr "Eliminar proyecto"
 msgid "Delete permanently?"
 msgstr "¿Eliminar permanentemente?"
 
-#: lib/storyarn_web/live/project_live/settings.ex:261
+#: lib/storyarn_web/live/project_live/settings.ex:55
 #, elixir-autogen, elixir-format
 msgid "Delete project?"
 msgstr "Eliminar proyecto"
@@ -132,17 +127,17 @@ msgid "Deleted sheets will appear here."
 msgstr "Las fichas eliminadas aparecerán aquí."
 
 #: lib/storyarn_web/live/project_live/form.ex:34
-#: lib/storyarn_web/live/project_live/settings.ex:52
+#: lib/storyarn_web/live/project_live/settings.ex:90
 #, elixir-autogen, elixir-format
 msgid "Description"
 msgstr "Descripción"
 
-#: lib/storyarn_web/live/project_live/settings.ex:99
+#: lib/storyarn_web/live/project_live/settings.ex:275
 #, elixir-autogen, elixir-format
 msgid "Editor"
 msgstr "Editor"
 
-#: lib/storyarn_web/live/project_live/settings.ex:88
+#: lib/storyarn_web/live/project_live/settings.ex:264
 #, elixir-autogen, elixir-format
 msgid "Email address"
 msgstr "Dirección de email"
@@ -158,7 +153,7 @@ msgstr "Vaciar papelera"
 msgid "Empty trash?"
 msgstr "¿Vaciar papelera?"
 
-#: lib/storyarn_web/live/project_live/settings.ex:391
+#: lib/storyarn_web/live/project_live/settings.ex:427
 #, elixir-autogen, elixir-format
 msgid "Failed to delete project."
 msgstr "Error al eliminar el proyecto."
@@ -178,7 +173,7 @@ msgstr "Error al reparar las referencias de variables."
 msgid "Failed to restore sheet."
 msgstr "Error al restaurar la ficha."
 
-#: lib/storyarn_web/live/project_live/settings.ex:186
+#: lib/storyarn_web/live/project_live/settings.ex:210
 #, elixir-autogen, elixir-format
 msgid "Free (api-free.deepl.com)"
 msgstr "Gratis (api-free.deepl.com)"
@@ -188,7 +183,7 @@ msgstr "Gratis (api-free.deepl.com)"
 msgid "Go to Homepage"
 msgstr "Ir al inicio"
 
-#: lib/storyarn_web/live/project_live/settings.ex:221
+#: lib/storyarn_web/live/project_live/settings.ex:163
 #, elixir-autogen, elixir-format
 msgid "If you renamed sheet shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
 msgstr "Si renombraste atajos de fichas o nombres de variables, los nodos de flujo pueden referenciar nombres antiguos. Usa esto para repararlos."
@@ -203,27 +198,24 @@ msgstr "Clave API no válida."
 msgid "Invalid Invitation"
 msgstr "Invitación inválida"
 
-#: lib/storyarn_web/live/project_live/settings.ex:164
+#: lib/storyarn_web/live/export_import_live/index.ex:869
+#: lib/storyarn_web/live/project_live/settings.ex:501
+#: lib/storyarn_web/live/project_live/settings.ex:527
 #, elixir-autogen, elixir-format
 msgid "Localization"
-msgstr "ID de localización"
+msgstr "Localización"
 
-#: lib/storyarn_web/live/project_live/settings.ex:218
+#: lib/storyarn_web/live/project_live/settings.ex:160
 #, elixir-autogen, elixir-format
 msgid "Maintenance"
 msgstr "Mantenimiento"
 
-#: lib/storyarn_web/live/project_live/settings.ex:28
-#, elixir-autogen, elixir-format
-msgid "Manage your project details and team members"
-msgstr "Gestiona los detalles del proyecto y los miembros del equipo"
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:198
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:206
 #, elixir-autogen, elixir-format
 msgid "Member not found."
 msgstr "Miembro no encontrado."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:185
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:193
 #, elixir-autogen, elixir-format
 msgid "Member removed."
 msgstr "Miembro eliminado."
@@ -238,65 +230,55 @@ msgstr "Mi proyecto narrativo"
 msgid "No API key configured."
 msgstr "No hay ninguna clave API configurada."
 
-#: lib/storyarn_web/live/project_live/settings.ex:239
+#: lib/storyarn_web/live/project_live/settings.ex:179
 #, elixir-autogen, elixir-format
 msgid "Once you delete a project, there is no going back. Please be certain."
 msgstr "Una vez que elimines un proyecto, no hay vuelta atrás. Por favor, asegúrate."
 
-#: lib/storyarn_web/live/project_live/settings.ex:187
+#: lib/storyarn_web/live/project_live/settings.ex:211
 #, elixir-autogen, elixir-format
 msgid "Pro (api.deepl.com)"
 msgstr "Pro (api.deepl.com)"
 
-#: lib/storyarn_web/live/project_live/settings.ex:36
-#, elixir-autogen, elixir-format
-msgid "Project Details"
-msgstr "Detalles del proyecto"
-
 #: lib/storyarn_web/live/project_live/form.ex:27
-#: lib/storyarn_web/live/project_live/settings.ex:46
+#: lib/storyarn_web/live/project_live/settings.ex:84
 #, elixir-autogen, elixir-format
 msgid "Project Name"
 msgstr "Nombre del proyecto"
 
-#: lib/storyarn_web/live/project_live/settings.ex:26
+#: lib/storyarn_web/live/project_live/settings.ex:359
 #, elixir-autogen, elixir-format
 msgid "Project Settings"
 msgstr "Configuración del proyecto"
 
-#: lib/storyarn_web/live/project_live/settings.ex:385
+#: lib/storyarn_web/live/project_live/settings.ex:423
 #, elixir-autogen, elixir-format
 msgid "Project deleted."
 msgstr "Proyecto eliminado."
 
-#: lib/storyarn_web/live/project_live/settings.ex:324
-#: lib/storyarn_web/live/project_live/show.ex:88
+#: lib/storyarn_web/live/project_live/settings.ex:348
+#: lib/storyarn_web/live/project_live/show.ex:175
 #: lib/storyarn_web/live/project_live/trash.ex:207
 #, elixir-autogen, elixir-format
 msgid "Project not found."
 msgstr "Proyecto no encontrado."
 
-#: lib/storyarn_web/live/project_live/settings.ex:349
+#: lib/storyarn_web/live/project_live/settings.ex:387
 #, elixir-autogen, elixir-format
 msgid "Project updated successfully."
 msgstr "Proyecto actualizado exitosamente."
-
-#: lib/storyarn_web/live/project_live/show.ex:53
-#, elixir-autogen, elixir-format
-msgid "Project workspace coming soon!"
-msgstr "¡Espacio de trabajo del proyecto próximamente!"
 
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:118
 #, elixir-autogen, elixir-format
 msgid "Provider settings saved."
 msgstr "Configuración del proveedor guardada."
 
-#: lib/storyarn_web/live/project_live/settings.ex:227
+#: lib/storyarn_web/live/project_live/settings.ex:170
 #, elixir-autogen, elixir-format
 msgid "Repair variable references"
 msgstr "Reparar referencias de variables"
 
-#: lib/storyarn_web/live/project_live/settings.ex:253
+#: lib/storyarn_web/live/project_live/settings.ex:47
 #, elixir-autogen, elixir-format
 msgid "Repair variable references?"
 msgstr "Reparar referencias de variables"
@@ -306,39 +288,34 @@ msgstr "Reparar referencias de variables"
 msgid "Repaired %{count} node."
 msgid_plural "Repaired %{count} nodes."
 msgstr[0] "%{count} nodo reparado."
-msgstr[1] ""
+msgstr[1] "%{count} nodos reparados."
 
 #: lib/storyarn_web/live/project_live/trash.ex:134
 #, elixir-autogen, elixir-format
 msgid "Restore"
 msgstr "Restaurar"
 
-#: lib/storyarn_web/live/project_live/settings.ex:97
+#: lib/storyarn_web/live/project_live/settings.ex:273
 #, elixir-autogen, elixir-format
 msgid "Role"
 msgstr "Rol"
 
-#: lib/storyarn_web/live/project_live/settings.ex:192
+#: lib/storyarn_web/live/project_live/settings.ex:224
 #, elixir-autogen, elixir-format
 msgid "Save"
 msgstr "Guardado"
 
-#: lib/storyarn_web/live/project_live/settings.ex:56
+#: lib/storyarn_web/live/project_live/settings.ex:95
 #, elixir-autogen, elixir-format
 msgid "Save Changes"
 msgstr "Guardar cambios"
 
 #: lib/storyarn_web/live/project_live/form.ex:42
-#: lib/storyarn_web/live/project_live/settings.ex:55
-#: lib/storyarn_web/live/project_live/settings.ex:191
+#: lib/storyarn_web/live/project_live/settings.ex:94
+#: lib/storyarn_web/live/project_live/settings.ex:223
 #, elixir-autogen, elixir-format
 msgid "Saving..."
 msgstr "Guardando..."
-
-#: lib/storyarn_web/live/project_live/show.ex:45
-#, elixir-autogen, elixir-format
-msgid "Settings"
-msgstr "Configuración"
 
 #: lib/storyarn_web/live/project_live/trash.ex:258
 #: lib/storyarn_web/live/project_live/trash.ex:282
@@ -361,22 +338,17 @@ msgstr "Ficha restaurada exitosamente."
 msgid "Some sheets could not be deleted."
 msgstr "Algunas fichas no pudieron ser eliminadas."
 
-#: lib/storyarn_web/live/project_live/settings.ex:65
-#, elixir-autogen, elixir-format
-msgid "Team Members"
-msgstr "Miembros del equipo"
-
-#: lib/storyarn_web/live/project_live/settings.ex:200
+#: lib/storyarn_web/live/project_live/settings.ex:221
 #, elixir-autogen, elixir-format
 msgid "Test Connection"
 msgstr "Probar conexión"
 
-#: lib/storyarn_web/live/project_live/settings.ex:198
+#: lib/storyarn_web/live/project_live/settings.ex:219
 #, elixir-autogen, elixir-format
 msgid "Testing..."
-msgstr "Creando..."
+msgstr "Probando..."
 
-#: lib/storyarn_web/live/project_live/settings.ex:262
+#: lib/storyarn_web/live/project_live/settings.ex:56
 #, elixir-autogen, elixir-format
 msgid "This action cannot be undone."
 msgstr "Esta acción no se puede deshacer."
@@ -391,22 +363,17 @@ msgstr "Esta invitación ya fue aceptada."
 msgid "This invitation link is invalid or has expired."
 msgstr "Este enlace de invitación no es válido o ha expirado."
 
-#: lib/storyarn_web/live/project_live/show.ex:55
-#, elixir-autogen, elixir-format
-msgid "This is where you'll design your narrative flows."
-msgstr "Aquí es donde diseñarás tus flujos narrativos."
-
 #: lib/storyarn_web/live/project_live/trash.ex:67
 #, elixir-autogen, elixir-format
 msgid "This sheet will be permanently deleted. This action cannot be undone."
 msgstr "Esta ficha será eliminada permanentemente. Esta acción no se puede deshacer."
 
-#: lib/storyarn_web/live/project_live/settings.ex:254
+#: lib/storyarn_web/live/project_live/settings.ex:48
 #, elixir-autogen, elixir-format
 msgid "This will update node data across the entire project."
 msgstr "Esto actualizará los datos de nodos en todo el proyecto. ¿Continuar?"
 
-#: lib/storyarn_web/live/project_live/settings.ex:168
+#: lib/storyarn_web/live/project_live/settings.ex:192
 #, elixir-autogen, elixir-format
 msgid "Translation Provider (DeepL)"
 msgstr "Proveedor de traducción (DeepL)"
@@ -426,17 +393,17 @@ msgstr "Papelera vaciada exitosamente."
 msgid "Trash is empty"
 msgstr "La papelera está vacía"
 
-#: lib/storyarn_web/live/project_live/settings.ex:206
+#: lib/storyarn_web/live/project_live/settings.ex:230
 #, elixir-autogen, elixir-format
 msgid "Usage: %{used} / %{limit} characters"
 msgstr "Uso: %{used} / %{limit} caracteres"
 
-#: lib/storyarn_web/live/project_live/settings.ex:100
+#: lib/storyarn_web/live/project_live/settings.ex:276
 #, elixir-autogen, elixir-format
 msgid "Viewer"
 msgstr "Visor"
 
-#: lib/storyarn_web/live/project_live/settings.ex:316
+#: lib/storyarn_web/live/project_live/settings.ex:340
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage this project."
 msgstr "No tienes permiso para gestionar este proyecto."
@@ -451,52 +418,47 @@ msgstr "Ya eres miembro de este proyecto."
 msgid "just now"
 msgstr "justo ahora"
 
-#: lib/storyarn_web/live/project_live/settings.ex:137
+#: lib/storyarn_web/live/project_live/settings.ex:133
 #, elixir-autogen, elixir-format
 msgid "Accent"
 msgstr "Acento"
 
-#: lib/storyarn_web/live/project_live/settings.ex:151
+#: lib/storyarn_web/live/project_live/settings.ex:150
 #, elixir-autogen, elixir-format
 msgid "Apply Theme"
 msgstr "Aplicar tema"
 
-#: lib/storyarn_web/live/project_live/settings.ex:118
-#, elixir-autogen, elixir-format
-msgid "Customize the primary and accent colors for this project."
-msgstr "Personaliza los colores primario y de acento de este proyecto."
-
-#: lib/storyarn_web/live/project_live/settings.ex:455
+#: lib/storyarn_web/live/project_live/settings.ex:491
 #, elixir-autogen, elixir-format
 msgid "Failed to reset theme."
 msgstr "Error al restablecer el tema."
 
-#: lib/storyarn_web/live/project_live/settings.ex:436
+#: lib/storyarn_web/live/project_live/settings.ex:472
 #, elixir-autogen, elixir-format
 msgid "Failed to save theme."
 msgstr "Error al guardar el tema."
 
-#: lib/storyarn_web/live/project_live/settings.ex:124
+#: lib/storyarn_web/live/project_live/settings.ex:120
 #, elixir-autogen, elixir-format
 msgid "Primary"
 msgstr "Primario"
 
-#: lib/storyarn_web/live/project_live/settings.ex:116
+#: lib/storyarn_web/live/project_live/settings.ex:115
 #, elixir-autogen, elixir-format
 msgid "Project Theme"
 msgstr "Tema del proyecto"
 
-#: lib/storyarn_web/live/project_live/settings.ex:154
+#: lib/storyarn_web/live/project_live/settings.ex:147
 #, elixir-autogen, elixir-format
 msgid "Reset to Default"
 msgstr "Restablecer por defecto"
 
-#: lib/storyarn_web/live/project_live/settings.ex:452
+#: lib/storyarn_web/live/project_live/settings.ex:488
 #, elixir-autogen, elixir-format
 msgid "Theme reset to default."
 msgstr "Tema restablecido por defecto."
 
-#: lib/storyarn_web/live/project_live/settings.ex:433
+#: lib/storyarn_web/live/project_live/settings.ex:469
 #, elixir-autogen, elixir-format
 msgid "Theme saved."
 msgstr "Tema guardado."
@@ -506,22 +468,187 @@ msgstr "Tema guardado."
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr "¡Invitación aceptada! Inicia sesión con %{email} para empezar."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:168
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:173
 #, elixir-autogen, elixir-format
 msgid "Invitation request sent. An admin will review it shortly."
 msgstr "Solicitud de invitación enviada. Un administrador la revisará en breve."
 
-#: lib/storyarn_web/live/project_live/settings.ex:80
+#: lib/storyarn_web/live/project_live/settings.ex:256
 #, elixir-autogen, elixir-format
 msgid "Invitation requests are reviewed by an admin before being sent."
 msgstr "Las solicitudes de invitación son revisadas por un administrador antes de enviarse."
 
-#: lib/storyarn_web/live/project_live/settings.ex:106
+#: lib/storyarn_web/live/project_live/settings.ex:283
 #, elixir-autogen, elixir-format
 msgid "Request Invitation"
 msgstr "Solicitar invitación"
 
-#: lib/storyarn_web/live/project_live/settings.ex:78
+#: lib/storyarn_web/live/project_live/settings.ex:254
 #, elixir-autogen, elixir-format
 msgid "Request member invitation"
 msgstr "Solicitar invitación de miembro"
+
+#: lib/storyarn_web/live/export_import_live/index.ex:876
+#: lib/storyarn_web/live/project_live/settings.ex:534
+#, elixir-autogen, elixir-format
+msgid "Administration"
+msgstr "Administración"
+
+#: lib/storyarn_web/live/export_import_live/index.ex:22
+#: lib/storyarn_web/live/project_live/settings.ex:25
+#, elixir-autogen, elixir-format
+msgid "Back to project"
+msgstr "Volver al proyecto"
+
+#: lib/storyarn_web/components/focus_layout.ex:38
+#, elixir-autogen, elixir-format
+msgid "Dashboard"
+msgstr "Dashboard"
+
+#: lib/storyarn_web/live/project_live/show.ex:59
+#, elixir-autogen, elixir-format
+msgid "Dialogue Lines"
+msgstr "Líneas de diálogo"
+
+#: lib/storyarn_web/live/project_live/show.ex:287
+#, elixir-autogen, elixir-format
+msgid "Flow"
+msgstr "Flujo"
+
+#: lib/storyarn_web/live/project_live/show.ex:53
+#, elixir-autogen, elixir-format
+msgid "Flows"
+msgstr "Flujos"
+
+#: lib/storyarn_web/live/export_import_live/index.ex:860
+#: lib/storyarn_web/live/export_import_live/index.ex:862
+#: lib/storyarn_web/live/project_live/settings.ex:500
+#: lib/storyarn_web/live/project_live/settings.ex:518
+#: lib/storyarn_web/live/project_live/settings.ex:520
+#, elixir-autogen, elixir-format
+msgid "General"
+msgstr "General"
+
+#: lib/storyarn_web/live/export_import_live/index.ex:880
+#: lib/storyarn_web/live/project_live/settings.ex:538
+#, elixir-autogen, elixir-format
+msgid "Import & Export"
+msgstr "Importar y exportar"
+
+#: lib/storyarn_web/live/export_import_live/index.ex:866
+#: lib/storyarn_web/live/project_live/settings.ex:524
+#, elixir-autogen, elixir-format
+msgid "Integrations"
+msgstr "Integraciones"
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:178
+#, elixir-autogen, elixir-format
+msgid "Invalid role."
+msgstr "Rol no válido."
+
+#: lib/storyarn_web/live/project_live/show.ex:94
+#, elixir-autogen, elixir-format
+msgid "Issues & Warnings"
+msgstr "Problemas y advertencias"
+
+#: lib/storyarn_web/live/project_live/show.ex:104
+#, elixir-autogen, elixir-format
+msgid "Localization Progress"
+msgstr "Progreso de localización"
+
+#: lib/storyarn_web/live/project_live/settings.ex:511
+#, elixir-autogen, elixir-format
+msgid "Manage project members and invitations"
+msgstr "Gestionar miembros e invitaciones del proyecto"
+
+#: lib/storyarn_web/live/export_import_live/index.ex:878
+#: lib/storyarn_web/live/project_live/settings.ex:502
+#: lib/storyarn_web/live/project_live/settings.ex:536
+#, elixir-autogen, elixir-format
+msgid "Members"
+msgstr "Miembros"
+
+#: lib/storyarn_web/live/project_live/show.ex:120
+#, elixir-autogen, elixir-format
+msgid "No activity yet"
+msgstr "Sin actividad todavía"
+
+#: lib/storyarn_web/live/project_live/show.ex:88
+#, elixir-autogen, elixir-format
+msgid "No dialogue with speakers yet"
+msgstr "Sin diálogos con hablantes todavía"
+
+#: lib/storyarn_web/live/project_live/show.ex:81
+#, elixir-autogen, elixir-format
+msgid "No flow nodes yet"
+msgstr "Sin nodos de flujo todavía"
+
+#: lib/storyarn_web/live/project_live/show.ex:97
+#, elixir-autogen, elixir-format
+msgid "No issues detected"
+msgstr "No se detectaron problemas"
+
+#: lib/storyarn_web/live/project_live/show.ex:78
+#, elixir-autogen, elixir-format
+msgid "Node Distribution"
+msgstr "Distribución de nodos"
+
+#: lib/storyarn_web/live/project_live/settings.ex:505
+#, elixir-autogen, elixir-format
+msgid "Project details, theme, and maintenance"
+msgstr "Detalles del proyecto, tema y mantenimiento"
+
+#: lib/storyarn_web/live/project_live/show.ex:118
+#, elixir-autogen, elixir-format
+msgid "Recent Activity"
+msgstr "Actividad reciente"
+
+#: lib/storyarn_web/live/project_live/show.ex:288
+#, elixir-autogen, elixir-format
+msgid "Scene"
+msgstr "Escena"
+
+#: lib/storyarn_web/live/project_live/show.ex:65
+#, elixir-autogen, elixir-format
+msgid "Scenes"
+msgstr "Escenas"
+
+#: lib/storyarn_web/live/project_live/show.ex:289
+#, elixir-autogen, elixir-format
+msgid "Screenplay"
+msgstr "Guion"
+
+#: lib/storyarn_web/live/project_live/show.ex:286
+#, elixir-autogen, elixir-format
+msgid "Sheet"
+msgstr "Ficha"
+
+#: lib/storyarn_web/live/project_live/show.ex:41
+#, elixir-autogen, elixir-format
+msgid "Sheets"
+msgstr "Fichas"
+
+#: lib/storyarn_web/live/project_live/show.ex:85
+#, elixir-autogen, elixir-format
+msgid "Top Speakers"
+msgstr "Hablantes principales"
+
+#: lib/storyarn_web/live/project_live/settings.ex:508
+#, elixir-autogen, elixir-format
+msgid "Translation provider configuration"
+msgstr "Configuración del proveedor de traducción"
+
+#: lib/storyarn_web/live/project_live/show.ex:267
+#, elixir-autogen, elixir-format
+msgid "Unknown Speaker"
+msgstr "Hablante desconocido"
+
+#: lib/storyarn_web/live/project_live/show.ex:47
+#, elixir-autogen, elixir-format
+msgid "Variables"
+msgstr "Variables"
+
+#: lib/storyarn_web/live/project_live/show.ex:71
+#, elixir-autogen, elixir-format
+msgid "Words"
+msgstr "Palabras"

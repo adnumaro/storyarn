@@ -31,7 +31,7 @@ msgstr ""
 msgid "Asset uploaded successfully."
 msgstr ""
 
-#: lib/storyarn_web/components/focus_layout.ex:41
+#: lib/storyarn_web/components/focus_layout.ex:43
 #, elixir-autogen, elixir-format
 msgid "Assets"
 msgstr ""

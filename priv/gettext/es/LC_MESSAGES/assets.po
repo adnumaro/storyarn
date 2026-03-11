@@ -31,7 +31,7 @@ msgstr "Proyecto eliminado."
 msgid "Asset uploaded successfully."
 msgstr "Perfil actualizado exitosamente."
 
-#: lib/storyarn_web/components/focus_layout.ex:41
+#: lib/storyarn_web/components/focus_layout.ex:43
 #, elixir-autogen, elixir-format
 msgid "Assets"
 msgstr "Recursos"
@@ -162,7 +162,7 @@ msgstr "Tamaño"
 msgid "This asset is used in %{count} place. Are you sure you want to delete it?"
 msgid_plural "This asset is used in %{count} places. Are you sure you want to delete it?"
 msgstr[0] "Este recurso se usa en %{count} lugar. ¿Estás seguro de que quieres eliminarlo?"
-msgstr[1] ""
+msgstr[1] "Este recurso se usa en %{count} lugares. ¿Estás seguro de que quieres eliminarlo?"
 
 #: lib/storyarn_web/live/components/asset_upload.ex:289
 #, elixir-autogen, elixir-format
@@ -224,4 +224,4 @@ msgstr "banner"
 #: lib/storyarn_web/live/asset_live/index.ex:260
 #, elixir-autogen, elixir-format
 msgid "File too large (max 20MB)."
-msgstr ""
+msgstr "Archivo demasiado grande (máximo 20MB)."

@@ -11,13 +11,6 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/sheet_live/index.ex:83
-#, elixir-autogen, elixir-format
-msgid "%{count} subsheet"
-msgid_plural "%{count} subsheets"
-msgstr[0] ""
-msgstr[1] ""
-
 #: lib/storyarn_web/live/sheet_live/components/audio_tab.ex:315
 #, elixir-autogen, elixir-format
 msgid "(empty dialogue)"
@@ -60,7 +53,7 @@ msgstr ""
 msgid "Attach voice-over or ambient audio."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:135
+#: lib/storyarn_web/live/sheet_live/show.ex:138
 #, elixir-autogen, elixir-format
 msgid "Audio"
 msgstr ""
@@ -116,7 +109,7 @@ msgid "Cancel"
 msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:53
-#: lib/storyarn_web/live/sheet_live/index.ex:205
+#: lib/storyarn_web/live/sheet_live/index.ex:514
 #, elixir-autogen, elixir-format
 msgid "Cannot move a sheet into its own children."
 msgstr ""
@@ -151,7 +144,7 @@ msgstr ""
 msgid "Configure"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:117
+#: lib/storyarn_web/live/sheet_live/show.ex:120
 #, elixir-autogen, elixir-format
 msgid "Content"
 msgstr ""
@@ -187,10 +180,11 @@ msgstr ""
 msgid "Could not create column group."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:83
-#: lib/storyarn_web/live/sheet_live/index.ex:149
-#: lib/storyarn_web/live/sheet_live/index.ex:231
-#: lib/storyarn_web/live/sheet_live/show.ex:409
+#: lib/storyarn_web/live/flow_live/index.ex:585
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:86
+#: lib/storyarn_web/live/sheet_live/index.ex:469
+#: lib/storyarn_web/live/sheet_live/index.ex:492
+#: lib/storyarn_web/live/sheet_live/show.ex:430
 #, elixir-autogen, elixir-format
 msgid "Could not create sheet."
 msgstr ""
@@ -208,7 +202,7 @@ msgid "Could not delete block."
 msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:28
-#: lib/storyarn_web/live/sheet_live/index.ex:180
+#: lib/storyarn_web/live/sheet_live/index.ex:448
 #, elixir-autogen, elixir-format
 msgid "Could not delete sheet."
 msgstr ""
@@ -230,7 +224,7 @@ msgid "Could not hide property."
 msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:57
-#: lib/storyarn_web/live/sheet_live/index.ex:209
+#: lib/storyarn_web/live/sheet_live/index.ex:517
 #, elixir-autogen, elixir-format
 msgid "Could not move sheet."
 msgstr ""
@@ -315,7 +309,7 @@ msgstr ""
 msgid "Could not update boolean value."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:445
+#: lib/storyarn_web/live/sheet_live/show.ex:468
 #, elixir-autogen, elixir-format
 msgid "Could not update color."
 msgstr ""
@@ -366,7 +360,7 @@ msgstr ""
 msgid "Create a version to save the current state of this sheet."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/index.ex:42
+#: lib/storyarn_web/live/sheet_live/index.ex:48
 #, elixir-autogen, elixir-format
 msgid "Create and organize your project's content"
 msgstr ""
@@ -393,6 +387,8 @@ msgstr ""
 #: lib/storyarn_web/components/sidebar/sheet_tree.ex:35
 #: lib/storyarn_web/components/sidebar/sheet_tree.ex:54
 #: lib/storyarn_web/live/sheet_live/components/versions_section.ex:71
+#: lib/storyarn_web/live/sheet_live/index.ex:127
+#: lib/storyarn_web/live/sheet_live/index.ex:243
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr ""
@@ -449,7 +445,7 @@ msgstr ""
 msgid "Flows"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:144
+#: lib/storyarn_web/live/sheet_live/show.ex:147
 #, elixir-autogen, elixir-format
 msgid "History"
 msgstr ""
@@ -572,7 +568,7 @@ msgstr ""
 
 #: lib/storyarn_web/components/sidebar/sheet_tree.ex:32
 #: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:68
-#: lib/storyarn_web/live/sheet_live/index.ex:216
+#: lib/storyarn_web/live/sheet_live/index.ex:476
 #, elixir-autogen, elixir-format
 msgid "New Sheet"
 msgstr ""
@@ -624,7 +620,7 @@ msgstr ""
 msgid "No sheets yet"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/index.ex:48
+#: lib/storyarn_web/live/sheet_live/index.ex:53
 #, elixir-autogen, elixir-format
 msgid "No sheets yet. Create your first sheet to get started."
 msgstr ""
@@ -746,7 +742,7 @@ msgstr ""
 msgid "Reference target not found."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:126
+#: lib/storyarn_web/live/sheet_live/show.ex:129
 #, elixir-autogen, elixir-format
 msgid "References"
 msgstr ""
@@ -829,20 +825,22 @@ msgstr ""
 msgid "Select..."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:119
-#: lib/storyarn_web/live/sheet_live/index.ex:176
+#: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:122
 #, elixir-autogen, elixir-format
 msgid "Sheet deleted successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:269
+#: lib/storyarn_web/live/sheet_live/index.ex:447
+#: lib/storyarn_web/live/sheet_live/index.ex:510
+#: lib/storyarn_web/live/sheet_live/show.ex:280
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_toolbar.ex:177
-#: lib/storyarn_web/components/focus_layout.ex:37
-#: lib/storyarn_web/live/sheet_live/index.ex:40
+#: lib/storyarn_web/components/focus_layout.ex:39
+#: lib/storyarn_web/live/sheet_live/index.ex:46
+#: lib/storyarn_web/live/sheet_live/index.ex:65
 #, elixir-autogen, elixir-format
 msgid "Sheets"
 msgstr ""
@@ -942,9 +940,11 @@ msgstr ""
 msgid "Unsupported file type."
 msgstr ""
 
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:262
+#: lib/storyarn_web/live/flow_live/index.ex:573
 #: lib/storyarn_web/live/sheet_live/components/sheet_title.ex:23
-#: lib/storyarn_web/live/sheet_live/index.ex:138
-#: lib/storyarn_web/live/sheet_live/show.ex:406
+#: lib/storyarn_web/live/sheet_live/index.ex:455
+#: lib/storyarn_web/live/sheet_live/show.ex:427
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr ""
@@ -1012,8 +1012,8 @@ msgstr ""
 msgid "Yes"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/index.ex:121
-#: lib/storyarn_web/live/sheet_live/show.ex:243
+#: lib/storyarn_web/live/sheet_live/index.ex:304
+#: lib/storyarn_web/live/sheet_live/show.ex:251
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
 msgstr ""
@@ -1259,12 +1259,14 @@ msgstr ""
 
 #: lib/storyarn_web/components/sidebar/sheet_tree.ex:34
 #: lib/storyarn_web/components/sidebar/sheet_tree.ex:53
+#: lib/storyarn_web/live/sheet_live/index.ex:126
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Are you sure you want to delete this sheet?"
 msgstr ""
 
 #: lib/storyarn_web/components/sidebar/sheet_tree.ex:33
 #: lib/storyarn_web/components/sidebar/sheet_tree.ex:52
+#: lib/storyarn_web/live/sheet_live/index.ex:125
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Delete sheet?"
 msgstr ""
@@ -1284,7 +1286,7 @@ msgstr ""
 msgid "Could not duplicate block."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:334
+#: lib/storyarn_web/live/sheet_live/show.ex:355
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Could not load sheet data."
 msgstr ""
@@ -1427,4 +1429,72 @@ msgstr ""
 #: lib/storyarn_web/live/sheet_live/components/content_tab.ex:1190
 #, elixir-autogen, elixir-format
 msgid "Variable Bindings"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:97
+#, elixir-autogen, elixir-format, fuzzy
+msgid "All Sheets"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:70
+#: lib/storyarn_web/live/sheet_live/index.ex:171
+#, elixir-autogen, elixir-format
+msgid "Blocks"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:88
+#, elixir-autogen, elixir-format
+msgid "Counts sheet names, text block content, and table row names (excluding inherited)"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:80
+#, elixir-autogen, elixir-format
+msgid "In Use"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:117
+#, elixir-autogen, elixir-format
+msgid "Issues"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:204
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Modified"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:160
+#, elixir-autogen, elixir-format
+msgid "Name"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:558
+#, elixir-autogen, elixir-format
+msgid "Sheet \"%{name}\" has no blocks"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:569
+#, elixir-autogen, elixir-format
+msgid "Sheet \"%{name}\" has no shortcut"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:444
+#, elixir-autogen, elixir-format
+msgid "Sheet moved to trash."
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:562
+#, elixir-autogen, elixir-format
+msgid "Variable \"%{sheet}.%{variable}\" is never used"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:75
+#: lib/storyarn_web/live/sheet_live/index.ex:182
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Variables"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/index.ex:85
+#: lib/storyarn_web/live/sheet_live/index.ex:193
+#, elixir-autogen, elixir-format
+msgid "Words"
 msgstr ""

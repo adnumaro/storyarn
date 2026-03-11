@@ -94,7 +94,7 @@ msgstr "Confirma tu cuenta de Storyarn"
 msgid "Confirm your account by visiting this URL:"
 msgstr "Confirma tu cuenta visitando esta URL:"
 
-#: lib/storyarn/emails/templates.ex:122
+#: lib/storyarn/emails/templates.ex:121
 #, elixir-autogen, elixir-format
 msgid "Confirm your email change"
 msgstr "Confirma tu cambio de email"
