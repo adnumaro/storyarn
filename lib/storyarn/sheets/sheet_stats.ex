@@ -5,7 +5,8 @@ defmodule Storyarn.Sheets.SheetStats do
 
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
-  alias Storyarn.Sheets.{Block, Sheet}
+  alias Storyarn.Shared.WordCount
+  alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
 
   @variable_types ~w(text rich_text number select multi_select boolean date)
 
@@ -13,47 +14,118 @@ defmodule Storyarn.Sheets.SheetStats do
   # Stats
   # ===========================================================================
 
+  @variable_column_types ~w(number text boolean select multi_select date reference formula)
+
   @doc """
   Returns per-sheet block and variable counts for all sheets in a project.
+  Includes both regular block variables and table cell variables (row × column).
   Returns `%{sheet_id => %{block_count, variable_count}}`.
   """
   def sheet_stats_for_project(project_id) do
-    from(s in Sheet,
-      left_join: b in Block,
-      on: b.sheet_id == s.id and is_nil(b.deleted_at),
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
-      group_by: s.id,
-      select:
-        {s.id,
-         %{
-           block_count: count(b.id),
-           variable_count:
-             fragment(
-               "COUNT(CASE WHEN ? = ANY(?) AND ? = false THEN 1 END)",
-               b.type,
-               ^@variable_types,
-               b.is_constant
-             )
-         }}
-    )
-    |> Repo.all()
-    |> Map.new()
+    # Regular block counts + non-table variable counts
+    base_stats =
+      from(s in Sheet,
+        left_join: b in Block,
+        on: b.sheet_id == s.id and is_nil(b.deleted_at),
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
+        group_by: s.id,
+        select:
+          {s.id,
+           %{
+             block_count: count(b.id),
+             variable_count:
+               fragment(
+                 "COUNT(CASE WHEN ? = ANY(?) AND ? = false THEN 1 END)",
+                 b.type,
+                 ^@variable_types,
+                 b.is_constant
+               )
+           }}
+      )
+      |> Repo.all()
+      |> Map.new()
+
+    # Table cell variable counts: rows × variable columns per table block per sheet
+    table_var_counts =
+      from(tc in TableColumn,
+        join: b in Block,
+        on: tc.block_id == b.id,
+        join: s in Sheet,
+        on: b.sheet_id == s.id,
+        join: tr in TableRow,
+        on: tr.block_id == b.id,
+        where:
+          s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at) and
+            b.type == "table" and
+            tc.type in ^@variable_column_types and
+            (tc.is_constant == false or tc.type == "formula"),
+        group_by: s.id,
+        select: {s.id, count()}
+      )
+      |> Repo.all()
+      |> Map.new()
+
+    # Merge table variable counts into base stats
+    Map.new(base_stats, fn {sheet_id, stats} ->
+      table_vars = Map.get(table_var_counts, sheet_id, 0)
+      {sheet_id, %{stats | variable_count: stats.variable_count + table_vars}}
+    end)
   end
 
   @doc """
-  Returns per-sheet word counts from the denormalized `word_count` column.
+  Returns per-sheet word counts including:
+  - Sheet name words
+  - Text/rich_text block content words (from denormalized `word_count` column)
+  - Table row name words (only from parent table blocks, not inherited instances)
+
   Returns `%{sheet_id => word_count}`.
   """
   def sheet_word_counts(project_id) do
-    from(b in Block,
-      join: s in Sheet,
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at),
-      group_by: s.id,
-      select: {s.id, sum(b.word_count)}
-    )
-    |> Repo.all()
-    |> Map.new()
+    # 1. Sheet name word counts
+    sheet_name_words =
+      from(s in Sheet,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
+        select: {s.id, s.name}
+      )
+      |> Repo.all()
+      |> Map.new(fn {id, name} -> {id, WordCount.for_name(name)} end)
+
+    # 2. Block content word counts (text/rich_text)
+    block_words =
+      from(b in Block,
+        join: s in Sheet,
+        on: b.sheet_id == s.id,
+        where:
+          s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at) and
+            b.word_count > 0,
+        group_by: s.id,
+        select: {s.id, sum(b.word_count)}
+      )
+      |> Repo.all()
+      |> Map.new()
+
+    # 3. Table row name word counts (only non-inherited table blocks)
+    table_row_words =
+      from(tr in TableRow,
+        join: b in Block,
+        on: tr.block_id == b.id,
+        join: s in Sheet,
+        on: b.sheet_id == s.id,
+        where:
+          s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at) and
+            b.type == "table" and is_nil(b.inherited_from_block_id),
+        select: {s.id, tr.name}
+      )
+      |> Repo.all()
+      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+      |> Map.new(fn {sheet_id, names} ->
+        {sheet_id, names |> Enum.map(&WordCount.for_name/1) |> Enum.sum()}
+      end)
+
+    # Merge all three sources
+    sheet_name_words
+    |> Map.merge(block_words, fn _k, v1, v2 -> v1 + v2 end)
+    |> Map.merge(table_row_words, fn _k, v1, v2 -> v1 + v2 end)
   end
 
   @doc """

@@ -48,4 +48,18 @@ defmodule Storyarn.Shared.WordCount do
   end
 
   def for_block_value(_), do: 0
+
+  @doc """
+  Computes word count for a plain-text name (sheet name, table row name, etc.).
+
+  Splits on whitespace and returns the number of words.
+  Returns 0 for nil or empty input.
+  """
+  @spec for_name(String.t() | nil) :: non_neg_integer()
+  def for_name(nil), do: 0
+  def for_name(""), do: 0
+
+  def for_name(name) when is_binary(name) do
+    name |> String.split(~r/\s+/, trim: true) |> length()
+  end
 end
