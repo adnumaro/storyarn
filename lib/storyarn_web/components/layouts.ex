@@ -446,28 +446,93 @@ defmodule StoryarnWeb.Layouts do
             <span class="text-xl brand-logotype">Storyarn</span>
           </.link>
         </div>
-        <div class="flex-none flex items-center gap-2">
-          <.link navigate={~p"/docs"} class="btn btn-ghost btn-sm">
+        <%!-- Desktop nav --%>
+        <div class="flex-none hidden md:flex items-center gap-6">
+          <div class="flex items-center gap-1">
+            <.link navigate={~p"/docs"} class="btn btn-ghost btn-sm">
+              {gettext("Docs")}
+            </.link>
+            <.link navigate={~p"/contact"} class="btn btn-ghost btn-sm">
+              {gettext("Contact")}
+            </.link>
+          </div>
+          <div class="flex items-center gap-1">
+            <%= if @current_scope && @current_scope.user do %>
+              <.link navigate={~p"/workspaces"} class="btn btn-ghost btn-sm">
+                {gettext("Dashboard")}
+              </.link>
+            <% else %>
+              <a href="#waitlist" class="btn btn-primary btn-sm">
+                {gettext("Request access")}
+              </a>
+              <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-sm">
+                {gettext("Log in")}
+              </.link>
+            <% end %>
+          </div>
+        </div>
+        <%!-- Mobile hamburger --%>
+        <div class="flex-none md:hidden">
+          <button
+            phx-click={JS.toggle(to: "#mobile-nav", in: "fade-in", out: "fade-out")}
+            class="btn btn-ghost btn-square btn-sm"
+            aria-label={gettext("Menu")}
+          >
+            <.icon name="menu" class="size-5" />
+          </button>
+        </div>
+      </header>
+
+      <%!-- Mobile nav overlay --%>
+      <nav
+        id="mobile-nav"
+        class="hidden md:hidden fixed inset-0 z-50 bg-base-100"
+        phx-click-away={JS.hide(to: "#mobile-nav", transition: "fade-out")}
+      >
+        <div class="flex items-center justify-between px-4 py-3">
+          <.link navigate="/" class="flex items-center gap-2">
+            <.app_logo class="w-8 h-8" />
+            <span class="text-xl brand-logotype">Storyarn</span>
+          </.link>
+          <button
+            phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
+            class="btn btn-ghost btn-square btn-sm"
+            aria-label={gettext("Close")}
+          >
+            <.icon name="x" class="size-5" />
+          </button>
+        </div>
+        <div class="border-t border-base-300 px-4 py-6 space-y-1">
+          <.link
+            navigate={~p"/docs"}
+            class="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium hover:bg-base-200 transition-colors"
+          >
+            <.icon name="book-open" class="size-5 text-base-content/50" />
             {gettext("Docs")}
           </.link>
-          <.link navigate={~p"/contact"} class="btn btn-ghost btn-sm">
+          <.link
+            navigate={~p"/contact"}
+            class="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium hover:bg-base-200 transition-colors"
+          >
+            <.icon name="mail" class="size-5 text-base-content/50" />
             {gettext("Contact")}
           </.link>
-          <.theme_toggle />
+        </div>
+        <div class="border-t border-base-300 px-4 py-6 space-y-3">
           <%= if @current_scope && @current_scope.user do %>
-            <.link navigate={~p"/workspaces"} class="btn btn-ghost btn-sm">
+            <.link navigate={~p"/workspaces"} class="btn btn-primary btn-block">
               {gettext("Dashboard")}
             </.link>
           <% else %>
-            <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-sm">
-              {gettext("Log in")}
-            </.link>
-            <a href="#waitlist" class="btn btn-primary btn-sm">
+            <a href="#waitlist" class="btn btn-primary btn-block" phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}>
               {gettext("Request access")}
             </a>
+            <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-block">
+              {gettext("Log in")}
+            </.link>
           <% end %>
         </div>
-      </header>
+      </nav>
 
       <main class="flex-1">
         {render_slot(@inner_block)}

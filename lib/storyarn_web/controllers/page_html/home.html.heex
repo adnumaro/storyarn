@@ -94,19 +94,19 @@
 
       <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
         <div>
-          <div class="flex items-center justify-center size-11 rounded-xl bg-primary/10 text-primary mb-4">
-            <.icon name="git-branch" class="size-5" />
+          <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(99,102,241,0.1); color: #6366f1;">
+            <.icon name="layout-dashboard" class="size-5" />
           </div>
-          <h3 class="font-semibold text-lg">{gettext("Flow Editor")}</h3>
+          <h3 class="font-semibold text-lg">{gettext("Dashboards")}</h3>
           <p class="mt-2 text-base-content/60 leading-relaxed">
             {gettext(
-              "Visual node-based editor for branching dialogues, conditions, and game logic. Nine node types with real-time collaboration."
+              "At-a-glance overview of your project's progress. Word counts, variable usage, localization coverage, and content stats per tool."
             )}
           </p>
         </div>
 
         <div>
-          <div class="flex items-center justify-center size-11 rounded-xl bg-accent/10 text-accent mb-4">
+          <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(245,158,11,0.1); color: #f59e0b;">
             <.icon name="database" class="size-5" />
           </div>
           <h3 class="font-semibold text-lg">{gettext("Character Sheets")}</h3>
@@ -118,31 +118,19 @@
         </div>
 
         <div>
-          <div class="flex items-center justify-center size-11 rounded-xl bg-secondary/10 text-secondary-content dark:text-secondary mb-4">
-            <.icon name="languages" class="size-5" />
+          <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(16,185,129,0.1); color: #10b981;">
+            <.icon name="git-branch" class="size-5" />
           </div>
-          <h3 class="font-semibold text-lg">{gettext("Localization")}</h3>
+          <h3 class="font-semibold text-lg">{gettext("Flow Editor")}</h3>
           <p class="mt-2 text-base-content/60 leading-relaxed">
             {gettext(
-              "Extract, translate, and manage every line of dialogue. DeepL integration, glossary support, and progress tracking per language."
+              "Visual node-based editor for branching dialogues, conditions, and game logic. Nine node types with real-time collaboration."
             )}
           </p>
         </div>
 
         <div>
-          <div class="flex items-center justify-center size-11 rounded-xl bg-primary/10 text-primary mb-4">
-            <.icon name="scroll-text" class="size-5" />
-          </div>
-          <h3 class="font-semibold text-lg">{gettext("Screenplays")}</h3>
-          <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext(
-              "Write and read your narrative in screenplay format. Fountain import/export and automatic sync with your flow diagrams."
-            )}
-          </p>
-        </div>
-
-        <div>
-          <div class="flex items-center justify-center size-11 rounded-xl bg-accent/10 text-accent mb-4">
+          <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(236,72,153,0.1); color: #ec4899;">
             <.icon name="map" class="size-5" />
           </div>
           <h3 class="font-semibold text-lg">{gettext("Scene Maps")}</h3>
@@ -154,7 +142,19 @@
         </div>
 
         <div>
-          <div class="flex items-center justify-center size-11 rounded-xl bg-secondary/10 text-secondary-content dark:text-secondary mb-4">
+          <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(14,165,233,0.1); color: #0ea5e9;">
+            <.icon name="languages" class="size-5" />
+          </div>
+          <h3 class="font-semibold text-lg">{gettext("Localization")}</h3>
+          <p class="mt-2 text-base-content/60 leading-relaxed">
+            {gettext(
+              "Extract, translate, and manage every line of dialogue. DeepL integration, glossary support, and progress tracking per language."
+            )}
+          </p>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(168,85,247,0.1); color: #a855f7;">
             <.icon name="users" class="size-5" />
           </div>
           <h3 class="font-semibold text-lg">{gettext("Real-time Collaboration")}</h3>
@@ -181,7 +181,7 @@
 
     <div class="grid sm:grid-cols-3 gap-12">
       <div>
-        <div class="text-5xl font-black text-base-content/[0.06] mb-3 leading-none">01</div>
+        <div class="text-5xl font-black mb-3 leading-none text-cyan-500/20">01</div>
         <h3 class="font-semibold text-lg">{gettext("Structure your world")}</h3>
         <p class="mt-2 text-base-content/60 leading-relaxed">
           {gettext(
@@ -190,7 +190,7 @@
         </p>
       </div>
       <div>
-        <div class="text-5xl font-black text-base-content/[0.06] mb-3 leading-none">02</div>
+        <div class="text-5xl font-black mb-3 leading-none text-accent/20">02</div>
         <h3 class="font-semibold text-lg">{gettext("Write branching narratives")}</h3>
         <p class="mt-2 text-base-content/60 leading-relaxed">
           {gettext(
@@ -199,7 +199,7 @@
         </p>
       </div>
       <div>
-        <div class="text-5xl font-black text-base-content/[0.06] mb-3 leading-none">03</div>
+        <div class="text-5xl font-black mb-3 leading-none text-secondary/20">03</div>
         <h3 class="font-semibold text-lg">{gettext("Localize and export")}</h3>
         <p class="mt-2 text-base-content/60 leading-relaxed">
           {gettext(
