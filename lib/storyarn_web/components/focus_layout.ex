@@ -370,7 +370,11 @@ defmodule StoryarnWeb.Components.FocusLayout do
       data-open={to_string(@tree_panel_open)}
       class={[
         "fixed left-3 top-[76px] bottom-3 z-[1010] w-60 flex flex-col surface-panel overflow-hidden",
-        if(@tree_panel_open, do: "", else: "opacity-0 pointer-events-none")
+        "max-md:transition-transform max-md:duration-200",
+        if(@tree_panel_open,
+          do: "max-md:translate-x-0",
+          else: "max-md:-translate-x-[calc(100%+0.75rem)] md:opacity-0 md:pointer-events-none"
+        )
       ]}
     >
       <%!-- Navigation header --%>
@@ -393,8 +397,8 @@ defmodule StoryarnWeb.Components.FocusLayout do
         {render_slot(@tree_content)}
       </div>
 
-      <%!-- Footer: Pin / Close --%>
-      <div class="flex items-center justify-end gap-1 px-2 py-1.5 border-t border-base-300">
+      <%!-- Footer: Pin / Close (hidden on mobile) --%>
+      <div class="hidden md:flex items-center justify-end gap-1 px-2 py-1.5 border-t border-base-300">
         <button
           :if={@show_pin}
           type="button"

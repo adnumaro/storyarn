@@ -229,6 +229,13 @@ defmodule StoryarnWeb.Layouts do
         />
       </div>
 
+      <%!-- Mobile overlay (closes tree panel on tap) --%>
+      <div
+        :if={@has_tree && @tree_content != [] && @tree_panel_open}
+        class="fixed inset-0 bg-black/30 z-[1005] md:hidden cursor-pointer"
+        phx-click="tree_panel_toggle"
+      />
+
       <%!-- Tree panel (always in DOM for animation, slides in/out) --%>
       <.tree_panel
         :if={@has_tree && @tree_content != []}
@@ -256,7 +263,7 @@ defmodule StoryarnWeb.Layouts do
             do: "overflow-hidden",
             else: [
               "overflow-y-auto pt-[76px] pb-4 px-4 transition-[padding-left] duration-200",
-              @has_tree && @tree_panel_open && "pl-[264px]"
+              @has_tree && @tree_panel_open && "md:pl-[264px]"
             ]
           )
         ]}
