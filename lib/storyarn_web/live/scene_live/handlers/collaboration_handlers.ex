@@ -11,6 +11,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
 
   alias Storyarn.Collaboration
   alias Storyarn.Scenes
+  alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
   import StoryarnWeb.SceneLive.Helpers.Serializer
 
   # ===========================================================================
@@ -42,12 +43,40 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
     {:noreply, socket}
   end
 
+  @doc """
+  Relays an ephemeral drag position to other collaborators via PubSub.
+  No DB write, no authorization — purely transient visual sync.
+  """
+  @spec handle_drag_relay(Phoenix.LiveView.Socket.t(), atom(), map()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_drag_relay(socket, action, params) do
+    if scope = socket.assigns[:collab_scope] do
+      Collab.broadcast_change(socket, scope, action, params)
+    end
+
+    {:noreply, socket}
+  end
+
   # ===========================================================================
   # Remote change handlers (handle_info dispatches)
   # ===========================================================================
 
   @spec handle_remote_change(atom(), map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
+
+  # --- Ephemeral drag relay: forward position to JS without DB reload ---
+
+  def handle_remote_change(:pin_dragging, payload, socket) do
+    {:noreply, push_event(socket, "pin_drag_update", payload)}
+  end
+
+  def handle_remote_change(:annotation_dragging, payload, socket) do
+    {:noreply, push_event(socket, "annotation_drag_update", payload)}
+  end
+
+  def handle_remote_change(:zone_dragging, payload, socket) do
+    {:noreply, push_event(socket, "zone_drag_update", payload)}
+  end
 
   # --- Position-only changes: push directly to JS, no DB reload ---
 

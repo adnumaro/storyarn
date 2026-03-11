@@ -16,6 +16,7 @@ import {
   sendToBackItem,
 } from "../context_menu_builder.js";
 import { toLatLng, toPercent } from "../coordinate_utils.js";
+import { createDragThrottle, ZONE_DRAG_INTERVAL } from "../drag_broadcast.js";
 import { getShapePreset } from "../shape_presets.js";
 import { createVertexEditor } from "../vertex_editor.js";
 import {
@@ -59,6 +60,9 @@ export function createZoneHandler(hook, i18n = {}) {
   let dragStartLatLng = null;
   let dragOriginalLatLngs = null;
 
+  // Real-time drag broadcast state
+  const dragThrottle = createDragThrottle(ZONE_DRAG_INTERVAL);
+
   function init() {
     renderZones();
     setupDrawingHandlers();
@@ -75,6 +79,7 @@ export function createZoneHandler(hook, i18n = {}) {
     cancelDrag();
     polygons.clear();
     labelMarkers.clear();
+    dragThrottle.reset();
   }
 
   /** Renders all initial zones from sceneData, sorted by position for z-ordering. */
@@ -450,6 +455,7 @@ export function createZoneHandler(hook, i18n = {}) {
     }
 
     dragging = false;
+    dragThrottle.reset();
     dragPolygon = null;
     dragStartLatLng = null;
     dragOriginalLatLngs = null;
@@ -479,6 +485,18 @@ export function createZoneHandler(hook, i18n = {}) {
       );
       label.setLatLng(L.latLng(sum.lat / newLatLngs.length, sum.lng / newLatLngs.length));
     }
+
+    // Broadcast drag position to collaborators (throttled)
+    dragThrottle.maybePush(() => {
+      const vertices = newLatLngs.map((ll) => {
+        const p = toPercent(ll, hook.canvasWidth, hook.canvasHeight);
+        return { x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 };
+      });
+      hook.pushEvent("drag_zone", {
+        id: dragPolygon.zoneData.id,
+        vertices,
+      });
+    });
   }
 
   /** Finishes drag: clamps vertices, persists to server. */
@@ -522,18 +540,26 @@ export function createZoneHandler(hook, i18n = {}) {
 
     const zoneId = dragPolygon.zoneData.id;
 
+    // Send final drag broadcast so remote viewers see the exact end position
+    try {
+      hook.pushEvent("drag_zone", { id: zoneId, vertices: clampedVertices });
+    } catch (_) {
+      // LiveView disconnected — safe to ignore
+    }
+
     // Reset cursor
     const el = dragPolygon.getElement();
     if (el) el.style.cursor = "grab";
 
     // Clean up drag state
     dragging = false;
+    dragThrottle.reset();
     hook.floatingToolbar?.setDragging(false);
     dragPolygon = null;
     dragStartLatLng = null;
     dragOriginalLatLngs = null;
 
-    // Push to server
+    // Push to server (persists to DB)
     hook.pushEvent("update_zone_vertices", {
       id: String(zoneId),
       vertices: clampedVertices,
@@ -580,6 +606,30 @@ export function createZoneHandler(hook, i18n = {}) {
 
       reapplyZoneOrder();
       if (hook.layerHandler) hook.layerHandler.rebuildFog();
+    });
+
+    // Ephemeral drag position from another collaborator
+    hook.handleEvent("zone_drag_update", ({ id, vertices }) => {
+      // Skip if we're the one dragging this zone
+      if (dragging && dragPolygon && dragPolygon.zoneData.id === id) return;
+
+      const polygon = polygons.get(id);
+      if (polygon) {
+        updateZoneVertices(polygon, vertices, hook.canvasWidth, hook.canvasHeight);
+
+        // Reposition label to new centroid
+        const label = labelMarkers.get(id);
+        if (label && vertices.length > 0) {
+          const latLngs = vertices.map((v) =>
+            toLatLng(v.x, v.y, hook.canvasWidth, hook.canvasHeight),
+          );
+          const sum = latLngs.reduce(
+            (acc, ll) => ({ lat: acc.lat + ll.lat, lng: acc.lng + ll.lng }),
+            { lat: 0, lng: 0 },
+          );
+          label.setLatLng(L.latLng(sum.lat / latLngs.length, sum.lng / latLngs.length));
+        }
+      }
     });
 
     hook.handleEvent("zone_vertices_updated", (zone) => {

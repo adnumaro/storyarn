@@ -18,6 +18,7 @@ import {
   sendToBackItem,
 } from "../context_menu_builder.js";
 import { toLatLng, toPercent } from "../coordinate_utils.js";
+import { createDragThrottle, MARKER_DRAG_INTERVAL } from "../drag_broadcast.js";
 
 const DRAG_DEBOUNCE_MS = 300;
 
@@ -30,6 +31,10 @@ export function createAnnotationHandler(hook, i18n = {}) {
   const markers = new Map();
   // Per-annotation drag debounce timers (annotation ID → timeout handle)
   const dragTimers = new Map();
+
+  // Real-time drag broadcast state
+  let localDraggingAnnotationId = null;
+  const dragThrottle = createDragThrottle(MARKER_DRAG_INTERVAL);
 
   let baseZoom = 0;
 
@@ -57,6 +62,8 @@ export function createAnnotationHandler(hook, i18n = {}) {
     }
     dragTimers.clear();
     markers.clear();
+    localDraggingAnnotationId = null;
+    dragThrottle.reset();
   }
 
   function renderAnnotations() {
@@ -113,15 +120,41 @@ export function createAnnotationHandler(hook, i18n = {}) {
       enableInlineEditing(marker);
     });
 
-    // Drag start → hide floating toolbar
+    // Drag start → hide floating toolbar + track local drag
     marker.on("dragstart", () => {
+      localDraggingAnnotationId = annotation.id;
       hook.floatingToolbar?.setDragging(true);
+    });
+
+    // Drag → broadcast position to collaborators
+    marker.on("drag", () => {
+      dragThrottle.maybePush(() => {
+        const pos = toPercent(marker.getLatLng(), hook.canvasWidth, hook.canvasHeight);
+        hook.pushEvent("drag_annotation", {
+          id: annotation.id,
+          position_x: pos.x,
+          position_y: pos.y,
+        });
+      });
     });
 
     // Drag end → persist position
     marker.on("dragend", () => {
+      // Send final drag broadcast so remote viewers see the exact end position
+      const finalPos = toPercent(marker.getLatLng(), hook.canvasWidth, hook.canvasHeight);
+      try {
+        hook.pushEvent("drag_annotation", {
+          id: annotation.id,
+          position_x: finalPos.x,
+          position_y: finalPos.y,
+        });
+      } catch (_) {
+        // LiveView disconnected — safe to ignore
+      }
+
+      localDraggingAnnotationId = null;
+      dragThrottle.reset();
       hook.floatingToolbar?.setDragging(false);
-      const pos = toPercent(marker.getLatLng(), hook.canvasWidth, hook.canvasHeight);
       const annId = annotation.id;
       if (dragTimers.has(annId)) clearTimeout(dragTimers.get(annId));
       dragTimers.set(
@@ -131,8 +164,8 @@ export function createAnnotationHandler(hook, i18n = {}) {
           try {
             hook.pushEvent("move_annotation", {
               id: String(marker.annotationData.id),
-              position_x: pos.x,
-              position_y: pos.y,
+              position_x: finalPos.x,
+              position_y: finalPos.y,
             });
           } catch (_) {
             // LiveView disconnected during debounce — safe to ignore
@@ -164,11 +197,27 @@ export function createAnnotationHandler(hook, i18n = {}) {
       addAnnotationToMap(annotation);
     });
 
+    // Ephemeral drag position from another collaborator
+    hook.handleEvent("annotation_drag_update", ({ id, position_x, position_y }) => {
+      if (id === localDraggingAnnotationId) return;
+      const marker = markers.get(id);
+      if (marker) {
+        marker.setLatLng(toLatLng(position_x, position_y, hook.canvasWidth, hook.canvasHeight));
+      }
+    });
+
     hook.handleEvent("annotation_updated", (annotation) => {
       const marker = markers.get(annotation.id);
       if (marker) {
         updateAnnotationMarker(marker, annotation);
-        marker.setLatLng(toLatLng(annotation.position_x, annotation.position_y, hook.canvasWidth, hook.canvasHeight));
+        marker.setLatLng(
+          toLatLng(
+            annotation.position_x,
+            annotation.position_y,
+            hook.canvasWidth,
+            hook.canvasHeight,
+          ),
+        );
         marker.setZIndexOffset((annotation.position || 0) * 10);
 
         // Toggle dragging based on lock state

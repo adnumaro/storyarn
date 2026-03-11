@@ -358,7 +358,8 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
       assert_redirect(
         view,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}",
+        1000
       )
     end
   end

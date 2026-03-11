@@ -13,6 +13,7 @@ import {
   sendToBackItem,
 } from "../context_menu_builder.js";
 import { toLatLng, toPercent } from "../coordinate_utils.js";
+import { createDragThrottle, MARKER_DRAG_INTERVAL } from "../drag_broadcast.js";
 import { createPinMarker, setPinSelected, updatePinMarker } from "../pin_renderer.js";
 
 const DRAG_DEBOUNCE_MS = 300;
@@ -29,6 +30,10 @@ export function createPinHandler(hook, i18n = {}) {
   // Per-pin drag debounce timers (pin ID → timeout handle)
   const dragTimers = new Map();
 
+  // Real-time drag broadcast state
+  let localDraggingPinId = null;
+  const dragThrottle = createDragThrottle(MARKER_DRAG_INTERVAL);
+
   function init() {
     renderPins();
     setupMapClickHandler();
@@ -41,6 +46,8 @@ export function createPinHandler(hook, i18n = {}) {
     }
     dragTimers.clear();
     markers.clear();
+    localDraggingPinId = null;
+    dragThrottle.reset();
   }
 
   /** Renders all initial pins from sceneData, sorted by position for z-ordering. */
@@ -114,27 +121,50 @@ export function createPinHandler(hook, i18n = {}) {
       hook.contextMenu.show(containerPoint.x, containerPoint.y, items);
     });
 
-    // Drag start → hide floating toolbar
+    // Drag start → hide floating toolbar + track local drag
     marker.on("dragstart", () => {
+      localDraggingPinId = pin.id;
       hook.floatingToolbar?.setDragging(true);
     });
 
-    // Drag → update connected lines in real time
+    // Drag → update connected lines in real time + broadcast position
     marker.on("drag", () => {
       if (hook.connectionHandler) {
         hook.connectionHandler.updateEndpointsForPin(pin.id);
       }
+
+      dragThrottle.maybePush(() => {
+        const pos = toPercent(marker.getLatLng(), hook.canvasWidth, hook.canvasHeight);
+        hook.pushEvent("drag_pin", {
+          id: pin.id,
+          position_x: pos.x,
+          position_y: pos.y,
+        });
+      });
     });
 
     // Drag end → persist position
     marker.on("dragend", () => {
+      // Send final drag broadcast so remote viewers see the exact end position
+      const finalPos = toPercent(marker.getLatLng(), hook.canvasWidth, hook.canvasHeight);
+      try {
+        hook.pushEvent("drag_pin", {
+          id: pin.id,
+          position_x: finalPos.x,
+          position_y: finalPos.y,
+        });
+      } catch (_) {
+        // LiveView disconnected — safe to ignore
+      }
+
+      localDraggingPinId = null;
+      dragThrottle.reset();
       hook.floatingToolbar?.setDragging(false);
       // Final endpoint sync
       if (hook.connectionHandler) {
         hook.connectionHandler.updateEndpointsForPin(pin.id);
       }
 
-      const pos = toPercent(marker.getLatLng(), hook.canvasWidth, hook.canvasHeight);
       const pinId = pin.id;
       if (dragTimers.has(pinId)) clearTimeout(dragTimers.get(pinId));
       dragTimers.set(
@@ -144,8 +174,8 @@ export function createPinHandler(hook, i18n = {}) {
           try {
             hook.pushEvent("move_pin", {
               id: String(marker.pinData.id),
-              position_x: pos.x,
-              position_y: pos.y,
+              position_x: finalPos.x,
+              position_y: finalPos.y,
             });
           } catch (_) {
             // LiveView disconnected during debounce — safe to ignore
@@ -187,11 +217,25 @@ export function createPinHandler(hook, i18n = {}) {
       addPinToMap(pin);
     });
 
+    // Ephemeral drag position from another collaborator
+    hook.handleEvent("pin_drag_update", ({ id, position_x, position_y }) => {
+      if (id === localDraggingPinId) return;
+      const marker = markers.get(id);
+      if (marker) {
+        marker.setLatLng(toLatLng(position_x, position_y, hook.canvasWidth, hook.canvasHeight));
+        if (hook.connectionHandler) {
+          hook.connectionHandler.updateEndpointsForPin(id);
+        }
+      }
+    });
+
     hook.handleEvent("pin_updated", (pin) => {
       const marker = markers.get(pin.id);
       if (marker) {
         updatePinMarker(marker, pin);
-        marker.setLatLng(toLatLng(pin.position_x, pin.position_y, hook.canvasWidth, hook.canvasHeight));
+        marker.setLatLng(
+          toLatLng(pin.position_x, pin.position_y, hook.canvasWidth, hook.canvasHeight),
+        );
         marker.setZIndexOffset((pin.position || 0) * 10);
 
         // Update connected lines to follow new position

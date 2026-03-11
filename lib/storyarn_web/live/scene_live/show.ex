@@ -684,6 +684,46 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   # ---------------------------------------------------------------------------
+  # Collaboration: ephemeral drag relay (no DB, no auth)
+  # ---------------------------------------------------------------------------
+
+  def handle_event("drag_pin", %{"id" => id, "position_x" => x, "position_y" => y}, socket)
+      when (is_binary(id) or is_integer(id)) and is_number(x) and is_number(y) do
+    CollaborationHandlers.handle_drag_relay(socket, :pin_dragging, %{
+      id: id,
+      position_x: x,
+      position_y: y
+    })
+  end
+
+  def handle_event("drag_pin", _params, socket), do: {:noreply, socket}
+
+  def handle_event(
+        "drag_annotation",
+        %{"id" => id, "position_x" => x, "position_y" => y},
+        socket
+      )
+      when (is_binary(id) or is_integer(id)) and is_number(x) and is_number(y) do
+    CollaborationHandlers.handle_drag_relay(socket, :annotation_dragging, %{
+      id: id,
+      position_x: x,
+      position_y: y
+    })
+  end
+
+  def handle_event("drag_annotation", _params, socket), do: {:noreply, socket}
+
+  def handle_event("drag_zone", %{"id" => id, "vertices" => vertices}, socket)
+      when (is_binary(id) or is_integer(id)) and is_list(vertices) do
+    CollaborationHandlers.handle_drag_relay(socket, :zone_dragging, %{
+      id: id,
+      vertices: vertices
+    })
+  end
+
+  def handle_event("drag_zone", _params, socket), do: {:noreply, socket}
+
+  # ---------------------------------------------------------------------------
   # Element properties panel
   # ---------------------------------------------------------------------------
 
