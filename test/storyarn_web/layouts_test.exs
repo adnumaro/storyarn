@@ -191,7 +191,7 @@ defmodule StoryarnWeb.LayoutsTest do
         )
 
       assert html =~ "menu"
-      assert html =~ "lg:hidden"
+      assert html =~ "md:hidden"
     end
 
     test "does not render sidebar when no user" do
@@ -271,8 +271,8 @@ defmodule StoryarnWeb.LayoutsTest do
           inner_block: inner_block("<p>Content</p>")
         )
 
-      # Active item has primary color
-      assert html =~ "bg-primary/10"
+      # Active item has highlight style
+      assert html =~ "bg-base-content/5"
     end
 
     test "renders workspace sections in navigation" do

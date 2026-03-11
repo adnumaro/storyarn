@@ -7,7 +7,6 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   import StoryarnWeb.Components.MemberComponents
   import StoryarnWeb.Components.ColorPicker
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
-  import StoryarnWeb.ProjectLive.Components.SettingsSidebar
 
   alias Storyarn.Projects
 
@@ -18,39 +17,30 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.settings
       flash={@flash}
       current_scope={@current_scope}
-      project={@project}
-      workspace={@workspace}
-      active_tool={:sheets}
-      has_tree={false}
-      show_tool_switcher={false}
+      current_path={@current_path}
+      back_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
+      back_label={dgettext("projects", "Back to project")}
+      sidebar_sections={project_settings_sections(@workspace, @project)}
     >
-      <.settings_sidebar
-        workspace={@workspace}
-        project={@project}
-        active={@live_action}
-      />
+      <:title>{section_title(@live_action)}</:title>
+      <:subtitle>{section_subtitle(@live_action)}</:subtitle>
 
-      <%!-- Main content --%>
-      <div class="pl-[248px]">
-        <div class="max-w-3xl mx-auto">
-          <.section_content
-            live_action={@live_action}
-            project_form={@project_form}
-            members={@members}
-            current_scope={@current_scope}
-            invite_form={@invite_form}
-            theme_primary={@theme_primary}
-            theme_accent={@theme_accent}
-            has_custom_theme={@has_custom_theme}
-            provider_form={@provider_form}
-            has_api_key={@has_api_key}
-            provider_usage={@provider_usage}
-          />
-        </div>
-      </div>
+      <.section_content
+        live_action={@live_action}
+        project_form={@project_form}
+        members={@members}
+        current_scope={@current_scope}
+        invite_form={@invite_form}
+        theme_primary={@theme_primary}
+        theme_accent={@theme_accent}
+        has_custom_theme={@has_custom_theme}
+        provider_form={@provider_form}
+        has_api_key={@has_api_key}
+        provider_usage={@provider_usage}
+      />
 
       <.confirm_modal
         id="repair-refs-confirm"
@@ -69,7 +59,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         icon="alert-triangle"
         on_confirm={JS.push("delete_project")}
       />
-    </Layouts.focus>
+    </Layouts.settings>
     """
   end
 
@@ -79,14 +69,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
   defp section_content(%{live_action: :general} = assigns) do
     ~H"""
-    <.header>
-      {dgettext("projects", "General")}
-      <:subtitle>
-        {dgettext("projects", "Project details, theme, and maintenance")}
-      </:subtitle>
-    </.header>
-
-    <div class="mt-6 space-y-8">
+    <div class="space-y-8">
       <%!-- Project Details --%>
       <section>
         <.form
@@ -201,14 +184,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
   defp section_content(%{live_action: :localization} = assigns) do
     ~H"""
-    <.header>
-      {dgettext("projects", "Localization")}
-      <:subtitle>
-        {dgettext("projects", "Translation provider configuration")}
-      </:subtitle>
-    </.header>
-
-    <div class="mt-6">
+    <div>
       <div class="card bg-base-200 p-4">
         <h4 class="font-medium mb-3">{dgettext("projects", "Translation Provider (DeepL)")}</h4>
 
@@ -260,14 +236,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
   defp section_content(%{live_action: :members} = assigns) do
     ~H"""
-    <.header>
-      {dgettext("projects", "Members")}
-      <:subtitle>
-        {dgettext("projects", "Manage project members and invitations")}
-      </:subtitle>
-    </.header>
-
-    <div class="mt-6 space-y-6">
+    <div class="space-y-6">
       <div class="space-y-3">
         <.member_row
           :for={member <- @members}
@@ -377,8 +346,13 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   end
 
   @impl true
-  def handle_params(_params, _url, socket) do
-    {:noreply, assign(socket, :page_title, dgettext("projects", "Project Settings"))}
+  def handle_params(_params, url, socket) do
+    current_path = URI.parse(url).path
+
+    {:noreply,
+     socket
+     |> assign(:page_title, dgettext("projects", "Project Settings"))
+     |> assign(:current_path, current_path)}
   end
 
   # ===========================================================================
@@ -517,6 +491,53 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   # ===========================================================================
   # Private
   # ===========================================================================
+
+  defp section_title(:general), do: dgettext("projects", "General")
+  defp section_title(:localization), do: dgettext("projects", "Localization")
+  defp section_title(:members), do: dgettext("projects", "Members")
+
+  defp section_subtitle(:general),
+    do: dgettext("projects", "Project details, theme, and maintenance")
+
+  defp section_subtitle(:localization),
+    do: dgettext("projects", "Translation provider configuration")
+
+  defp section_subtitle(:members),
+    do: dgettext("projects", "Manage project members and invitations")
+
+  defp project_settings_sections(workspace, project) do
+    base = ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/settings"
+
+    [
+      %{
+        label: dgettext("projects", "General"),
+        items: [
+          %{label: dgettext("projects", "General"), path: base, icon: "settings"}
+        ]
+      },
+      %{
+        label: dgettext("projects", "Integrations"),
+        items: [
+          %{
+            label: dgettext("projects", "Localization"),
+            path: "#{base}/localization",
+            icon: "languages"
+          }
+        ]
+      },
+      %{
+        label: dgettext("projects", "Administration"),
+        items: [
+          %{label: dgettext("projects", "Members"), path: "#{base}/members", icon: "users"},
+          %{
+            label: dgettext("projects", "Import & Export"),
+            path: "#{base}/export-import",
+            icon: "package"
+          }
+        ]
+      }
+    ]
+  end
 
   defp assign_theme(socket, project) do
     case Storyarn.Projects.Project.theme_colors(project) do

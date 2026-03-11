@@ -4,8 +4,6 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
 
-  import StoryarnWeb.ProjectLive.Components.SettingsSidebar
-
   alias Storyarn.Exports
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Imports
@@ -16,30 +14,16 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.settings
       flash={@flash}
       current_scope={@current_scope}
-      project={@project}
-      workspace={@workspace}
-      active_tool={:sheets}
-      has_tree={false}
-      show_tool_switcher={false}
-      can_edit={@can_edit}
+      current_path={@current_path}
+      back_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
+      back_label={dgettext("projects", "Back to project")}
+      sidebar_sections={project_settings_sections(@workspace, @project)}
     >
-      <.settings_sidebar
-        workspace={@workspace}
-        project={@project}
-        active={:export_import}
-      />
-
-      <div class="pl-[248px]">
-      <div class="max-w-3xl mx-auto space-y-8 pb-12">
-        <.header>
-          {gettext("Export & Import")}
-          <:subtitle>
-            {gettext("Export your project data or import from a file.")}
-          </:subtitle>
-        </.header>
+      <:title>{gettext("Export & Import")}</:title>
+      <:subtitle>{gettext("Export your project data or import from a file.")}</:subtitle>
 
         <%!-- ===== Export section ===== --%>
         <section class="space-y-5">
@@ -120,9 +104,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
             </div>
           <% end %>
         </section>
-      </div>
-      </div>
-    </Layouts.focus>
+    </Layouts.settings>
     """
   end
 
@@ -472,6 +454,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:can_edit, can_edit)
+          |> assign(:current_path, "")
           # Export state
           |> assign(:formats, formats)
           |> assign(:selected_format, :storyarn)
@@ -504,6 +487,11 @@ defmodule StoryarnWeb.ExportImportLive.Index do
          |> put_flash(:error, gettext("Project not found."))
          |> redirect(to: ~p"/workspaces")}
     end
+  end
+
+  @impl true
+  def handle_params(_params, url, socket) do
+    {:noreply, assign(socket, :current_path, URI.parse(url).path)}
   end
 
   @impl true
@@ -863,4 +851,38 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   defp maybe_allow_import_upload(socket, false), do: socket
+
+  defp project_settings_sections(workspace, project) do
+    base = ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/settings"
+
+    [
+      %{
+        label: dgettext("projects", "General"),
+        items: [
+          %{label: dgettext("projects", "General"), path: base, icon: "settings"}
+        ]
+      },
+      %{
+        label: dgettext("projects", "Integrations"),
+        items: [
+          %{
+            label: dgettext("projects", "Localization"),
+            path: "#{base}/localization",
+            icon: "languages"
+          }
+        ]
+      },
+      %{
+        label: dgettext("projects", "Administration"),
+        items: [
+          %{label: dgettext("projects", "Members"), path: "#{base}/members", icon: "users"},
+          %{
+            label: dgettext("projects", "Import & Export"),
+            path: "#{base}/export-import",
+            icon: "package"
+          }
+        ]
+      }
+    ]
+  end
 end

@@ -55,7 +55,7 @@ defmodule StoryarnWeb.Layouts do
 
       <div class="drawer-content flex flex-col min-h-screen">
         <%!-- Mobile header with hamburger --%>
-        <header class="navbar bg-base-100 border-b border-base-300 lg:hidden">
+        <header class="navbar bg-base-100 border-b border-base-300 md:hidden">
           <div class="flex-none">
             <label for="sidebar-drawer" class="btn btn-square btn-ghost">
               <.icon name="menu" class="size-6" />
@@ -377,9 +377,13 @@ defmodule StoryarnWeb.Layouts do
   end
 
   @doc """
-  Renders a standalone settings layout without the workspace sidebar.
+  Renders a fullscreen settings layout with floating toolbars and sidebar.
 
-  This layout has its own navigation sidebar for settings sheets only.
+  Visually consistent with `Layouts.focus` — floating surface-panel toolbars
+  and sidebar, fullscreen background.
+
+  Accepts optional `back_path`, `back_label`, and `sidebar_sections` to customize
+  the sidebar. When not provided, defaults to account/workspace navigation.
 
   ## Examples
 
@@ -405,87 +409,99 @@ defmodule StoryarnWeb.Layouts do
 
   attr :current_path, :string, required: true, doc: "current settings path for nav highlighting"
 
+  attr :back_path, :string, default: nil, doc: "custom back link path (defaults to /workspaces)"
+  attr :back_label, :string, default: nil, doc: "custom back link label (defaults to 'Back to app')"
+
+  attr :sidebar_sections, :list,
+    default: nil,
+    doc: "custom sidebar sections list; when nil, uses default account/workspace nav"
+
   slot :title, required: true
   slot :subtitle
   slot :inner_block, required: true
 
   def settings(assigns) do
-    ~H"""
-    <div class="min-h-screen flex flex-col">
-      <%!-- Header --%>
-      <header class="navbar px-4 sm:px-6 lg:px-8 border-b border-base-300">
-        <div class="flex-1">
-          <.link navigate="/" class="flex items-center gap-2">
-            <.app_logo class="w-8 h-8" />
-            <span class="text-xl brand-logotype">Storyarn</span>
-          </.link>
-        </div>
-        <div class="flex-none">
-          <.theme_toggle />
-        </div>
-      </header>
+    assigns =
+      assigns
+      |> assign_new(:resolved_back_path, fn -> assigns.back_path || ~p"/workspaces" end)
+      |> assign_new(:resolved_back_label, fn ->
+        assigns.back_label || gettext("Back to app")
+      end)
+      |> assign_new(:resolved_sections, fn ->
+        assigns.sidebar_sections ||
+          settings_sections(assigns.workspaces, assigns.managed_workspace_slugs)
+      end)
 
-      <%!-- Main content with settings nav --%>
-      <div class="flex-1 flex">
-        <%!-- Settings navigation sidebar --%>
-        <aside class="w-64 border-r border-base-300 p-4 hidden lg:block overflow-y-auto">
+    ~H"""
+    <div id="settings-layout" class="h-screen w-screen overflow-hidden relative bg-base-100">
+      <%!-- Left floating toolbar (top-left) --%>
+      <div class="fixed top-3 left-3 z-[1020] flex items-stretch gap-2">
+        <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
+          <.link navigate="/" class="toolbar-btn gap-1.5">
+            <.app_logo class="w-5 h-5" />
+            <span class="text-sm font-medium brand-logotype">Storyarn</span>
+          </.link>
+        </nav>
+      </div>
+
+      <%!-- Right floating toolbar (top-right) --%>
+      <div class="fixed top-3 right-3 z-[1020] flex items-stretch gap-2">
+        <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
+          <.theme_toggle />
+        </nav>
+      </div>
+
+      <%!-- Settings sidebar (floating panel) --%>
+      <div class="fixed left-3 top-[76px] bottom-3 z-[1010] w-60 flex flex-col surface-panel overflow-hidden">
+        <div class="px-2 pt-2 pb-2 border-b border-base-300">
           <.link
-            navigate={~p"/workspaces"}
-            class="flex items-center gap-2 text-sm text-base-content/70 hover:text-base-content mb-6"
+            navigate={@resolved_back_path}
+            class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-base-content/70 hover:bg-base-content/5"
           >
             <.icon name="chevron-left" class="size-4" />
-            {gettext("Back to app")}
+            {@resolved_back_label}
           </.link>
+        </div>
 
-          <nav class="space-y-6">
-            <div :for={section <- settings_sections(@workspaces, @managed_workspace_slugs)}>
-              <h3 class="text-xs font-semibold uppercase text-base-content/50 px-2 mb-2">
-                {section.label}
-              </h3>
-              <ul class="space-y-1">
-                <li :for={item <- section.items}>
-                  <.link
-                    navigate={item.path}
-                    class={[
-                      "flex items-center gap-2 px-2 py-1.5 rounded text-sm",
-                      @current_path == item.path && "bg-primary/10 text-primary",
-                      @current_path != item.path && "hover:bg-base-200"
-                    ]}
-                  >
-                    <.icon name={item.icon} class="size-4" />
-                    {item.label}
-                  </.link>
-                </li>
-              </ul>
-            </div>
-          </nav>
-        </aside>
-
-        <%!-- Settings content --%>
-        <main class="flex-1 p-8 overflow-y-auto">
-          <div class="max-w-3xl mx-auto">
-            <%!-- Mobile back link --%>
-            <.link
-              navigate={~p"/workspaces"}
-              class="flex items-center gap-2 text-sm text-base-content/70 hover:text-base-content mb-6 lg:hidden"
-            >
-              <.icon name="chevron-left" class="size-4" />
-              {gettext("Back to app")}
-            </.link>
-
-            <.header>
-              {render_slot(@title)}
-              <:subtitle :if={@subtitle != []}>
-                {render_slot(@subtitle)}
-              </:subtitle>
-            </.header>
-
-            <div class="mt-8">
-              {render_slot(@inner_block)}
-            </div>
+        <nav class="flex-1 overflow-y-auto p-2 space-y-5">
+          <div :for={section <- @resolved_sections}>
+            <h3 class="text-xs font-semibold uppercase text-base-content/50 px-2 mb-2">
+              {section.label}
+            </h3>
+            <ul class="space-y-0.5">
+              <li :for={item <- section.items}>
+                <.link
+                  navigate={item.path}
+                  class={[
+                    "flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm",
+                    @current_path == item.path && "bg-base-content/5 font-medium",
+                    @current_path != item.path && "hover:bg-base-content/5"
+                  ]}
+                >
+                  <.icon name={item.icon} class="size-4" />
+                  {item.label}
+                </.link>
+              </li>
+            </ul>
           </div>
-        </main>
+        </nav>
       </div>
+
+      <%!-- Main content area --%>
+      <main class="h-full overflow-y-auto pt-[76px] pb-4 px-4 pl-[264px]">
+        <div class="max-w-3xl mx-auto">
+          <.header>
+            {render_slot(@title)}
+            <:subtitle :if={@subtitle != []}>
+              {render_slot(@subtitle)}
+            </:subtitle>
+          </.header>
+
+          <div class="mt-8">
+            {render_slot(@inner_block)}
+          </div>
+        </div>
+      </main>
 
       <.flash_group flash={@flash} />
     </div>
@@ -571,7 +587,7 @@ defmodule StoryarnWeb.Layouts do
     <div class="h-screen flex flex-col overflow-hidden">
       <%!-- Header --%>
       <header class="navbar px-4 sm:px-6 lg:px-8 border-b border-base-300 bg-base-100 shrink-0">
-        <div class="flex-none lg:hidden">
+        <div class="flex-none md:hidden">
           <button phx-click="toggle_sidebar" class="btn btn-square btn-ghost btn-sm">
             <.icon name="menu" class="size-5" />
           </button>
@@ -607,7 +623,7 @@ defmodule StoryarnWeb.Layouts do
         <%!-- Mobile sidebar overlay --%>
         <div
           :if={@sidebar_open}
-          class="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          class="fixed inset-0 bg-black/50 z-40 md:hidden"
           phx-click="toggle_sidebar"
         >
         </div>

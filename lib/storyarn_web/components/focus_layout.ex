@@ -95,7 +95,12 @@ defmodule StoryarnWeb.Components.FocusLayout do
         >
           <div class="px-4 py-3">
             <p class="text-sm font-medium truncate">{@project.name}</p>
-            <p class="text-xs text-base-content/50 truncate">{@workspace.name}</p>
+            <.link
+              navigate={~p"/workspaces/#{@workspace.slug}"}
+              class="text-xs text-base-content/50 truncate hover:text-base-content/70"
+            >
+              {@workspace.name}
+            </.link>
           </div>
           <div class="border-t border-base-300"></div>
           <ul class="menu p-1 text-sm">
