@@ -21,6 +21,7 @@ defmodule Storyarn.Flows.Flow do
   alias Storyarn.Projects.Project
   alias Storyarn.Scenes
   alias Storyarn.Shared.{HierarchicalSchema, Validations}
+  alias Storyarn.Versioning.EntityVersion
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -39,6 +40,8 @@ defmodule Storyarn.Flows.Flow do
           children: [t()] | Ecto.Association.NotLoaded.t(),
           nodes: [FlowNode.t()] | Ecto.Association.NotLoaded.t(),
           connections: [FlowConnection.t()] | Ecto.Association.NotLoaded.t(),
+          current_version_id: integer() | nil,
+          current_version: EntityVersion.t() | Ecto.Association.NotLoaded.t() | nil,
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -56,6 +59,7 @@ defmodule Storyarn.Flows.Flow do
     belongs_to :project, Project
     belongs_to :parent, __MODULE__
     belongs_to :scene, Scenes.Scene
+    belongs_to :current_version, EntityVersion
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :nodes, FlowNode
     has_many :connections, FlowConnection
@@ -130,6 +134,15 @@ defmodule Storyarn.Flows.Flow do
   Changeset for restoring a soft-deleted flow.
   """
   def restore_changeset(flow), do: HierarchicalSchema.restore_changeset(flow)
+
+  @doc """
+  Changeset for updating the current version pointer.
+  """
+  def version_changeset(flow, attrs) do
+    flow
+    |> cast(attrs, [:current_version_id])
+    |> foreign_key_constraint(:current_version_id)
+  end
 
   @doc """
   Returns true if the flow is soft-deleted.

@@ -486,8 +486,11 @@ defmodule StoryarnWeb.FlowLive.Index do
          |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
          |> reload_flows()}
       else
-        nil -> {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
-        {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
+        nil ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
       end
     end)
   end
@@ -502,8 +505,11 @@ defmodule StoryarnWeb.FlowLive.Index do
          |> put_flash(:info, dgettext("flows", "Flow set as main."))
          |> reload_flows()}
       else
-        nil -> {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
-        {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
+        nil ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
       end
     end)
   end

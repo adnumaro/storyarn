@@ -18,6 +18,12 @@ defmodule Storyarn.Assets.Storage.Local do
   end
 
   @impl true
+  def download(key) do
+    path = file_path(key)
+    File.read(path)
+  end
+
+  @impl true
   def delete(key) do
     path = file_path(key)
 

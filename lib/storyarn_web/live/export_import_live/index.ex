@@ -25,85 +25,85 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       <:title>{gettext("Export & Import")}</:title>
       <:subtitle>{gettext("Export your project data or import from a file.")}</:subtitle>
 
-        <%!-- ===== Export section ===== --%>
-        <section class="space-y-5">
-          <h2 class="text-lg font-semibold">{gettext("Export")}</h2>
+      <%!-- ===== Export section ===== --%>
+      <section class="space-y-5">
+        <h2 class="text-lg font-semibold">{gettext("Export")}</h2>
 
-          <%!-- Format selector --%>
-          <.format_selector
-            formats={@formats}
-            selected_format={@selected_format}
+        <%!-- Format selector --%>
+        <.format_selector
+          formats={@formats}
+          selected_format={@selected_format}
+        />
+
+        <%!-- Content section checkboxes --%>
+        <.content_sections
+          sections={@sections}
+          entity_counts={@entity_counts}
+          supported_sections={@supported_sections}
+        />
+
+        <%!-- Asset mode --%>
+        <.asset_mode_selector asset_mode={@asset_mode} />
+
+        <%!-- Options --%>
+        <.export_options
+          validate_before_export={@validate_before_export}
+          pretty_print={@pretty_print}
+        />
+
+        <%!-- Actions --%>
+        <div class="flex items-center gap-3 pt-2">
+          <button phx-click="validate_export" class="btn btn-sm btn-outline">
+            <.icon name="shield-check" class="size-4" />
+            {gettext("Validate")}
+          </button>
+
+          <a
+            href={export_download_url(assigns)}
+            class="btn btn-sm btn-primary"
+          >
+            <.icon name="download" class="size-4" />
+            {gettext("Download .%{ext}", ext: @selected_extension)}
+          </a>
+        </div>
+
+        <.validation_results :if={@validation_result} result={@validation_result} />
+      </section>
+
+      <div class="divider" />
+
+      <%!-- ===== Import section ===== --%>
+      <section class="space-y-4">
+        <h2 class="text-lg font-semibold">{gettext("Import")}</h2>
+
+        <%= if @can_edit do %>
+          <.import_step_upload
+            :if={@import_step == :upload}
+            uploads={@uploads}
           />
 
-          <%!-- Content section checkboxes --%>
-          <.content_sections
-            sections={@sections}
-            entity_counts={@entity_counts}
-            supported_sections={@supported_sections}
+          <.import_step_preview
+            :if={@import_step == :preview}
+            preview={@import_preview}
+            conflict_strategy={@conflict_strategy}
           />
 
-          <%!-- Asset mode --%>
-          <.asset_mode_selector asset_mode={@asset_mode} />
-
-          <%!-- Options --%>
-          <.export_options
-            validate_before_export={@validate_before_export}
-            pretty_print={@pretty_print}
+          <.import_step_done
+            :if={@import_step == :done}
+            result={@import_result}
           />
 
-          <%!-- Actions --%>
-          <div class="flex items-center gap-3 pt-2">
-            <button phx-click="validate_export" class="btn btn-sm btn-outline">
-              <.icon name="shield-check" class="size-4" />
-              {gettext("Validate")}
-            </button>
-
-            <a
-              href={export_download_url(assigns)}
-              class="btn btn-sm btn-primary"
-            >
-              <.icon name="download" class="size-4" />
-              {gettext("Download .%{ext}", ext: @selected_extension)}
-            </a>
+          <.import_step_error
+            :if={@import_step == :error}
+            error={@import_error}
+          />
+        <% else %>
+          <div class="alert">
+            <.icon name="lock" class="size-4" />
+            <span>{gettext("You need edit permissions to import data.")}</span>
           </div>
-
-          <.validation_results :if={@validation_result} result={@validation_result} />
-        </section>
-
-        <div class="divider" />
-
-        <%!-- ===== Import section ===== --%>
-        <section class="space-y-4">
-          <h2 class="text-lg font-semibold">{gettext("Import")}</h2>
-
-          <%= if @can_edit do %>
-            <.import_step_upload
-              :if={@import_step == :upload}
-              uploads={@uploads}
-            />
-
-            <.import_step_preview
-              :if={@import_step == :preview}
-              preview={@import_preview}
-              conflict_strategy={@conflict_strategy}
-            />
-
-            <.import_step_done
-              :if={@import_step == :done}
-              result={@import_result}
-            />
-
-            <.import_step_error
-              :if={@import_step == :error}
-              error={@import_error}
-            />
-          <% else %>
-            <div class="alert">
-              <.icon name="lock" class="size-4" />
-              <span>{gettext("You need edit permissions to import data.")}</span>
-            </div>
-          <% end %>
-        </section>
+        <% end %>
+      </section>
     </Layouts.settings>
     """
   end

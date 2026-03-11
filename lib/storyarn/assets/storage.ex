@@ -13,6 +13,7 @@ defmodule Storyarn.Assets.Storage do
   @callback upload(key, binary_data, content_type) :: {:ok, url} | {:error, term()}
   @callback delete(key) :: :ok | {:error, term()}
   @callback get_url(key) :: url
+  @callback download(key) :: {:ok, binary_data} | {:error, term()}
   @callback presigned_upload_url(key, content_type, opts :: keyword()) ::
               {:ok, url, map()} | {:error, term()}
 
@@ -33,6 +34,13 @@ defmodule Storyarn.Assets.Storage do
   """
   def upload(key, data, content_type) do
     adapter().upload(key, data, content_type)
+  end
+
+  @doc """
+  Downloads a file from storage, returning the raw binary content.
+  """
+  def download(key) do
+    adapter().download(key)
   end
 
   @doc """

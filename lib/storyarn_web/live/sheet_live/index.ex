@@ -444,8 +444,11 @@ defmodule StoryarnWeb.SheetLive.Index do
          |> put_flash(:info, dgettext("sheets", "Sheet moved to trash."))
          |> reload_sheets()}
       else
-        nil -> {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
-        {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
+        nil ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
       end
     end)
   end
@@ -511,7 +514,11 @@ defmodule StoryarnWeb.SheetLive.Index do
 
         {:error, :would_create_cycle} ->
           {:noreply,
-           put_flash(socket, :error, dgettext("sheets", "Cannot move a sheet into its own children."))}
+           put_flash(
+             socket,
+             :error,
+             dgettext("sheets", "Cannot move a sheet into its own children.")
+           )}
 
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}

@@ -176,7 +176,12 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       <div class="divider" />
 
       <.danger_zone
-        message={dgettext("projects", "Once you delete a project, there is no going back. Please be certain.")}
+        message={
+          dgettext(
+            "projects",
+            "Once you delete a project, there is no going back. Please be certain."
+          )
+        }
         on_click={show_modal("delete-project-confirm")}
       >
         {dgettext("projects", "Delete Project")}

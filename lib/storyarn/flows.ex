@@ -37,6 +37,7 @@ defmodule Storyarn.Flows do
   }
 
   alias Storyarn.Projects.Project
+  alias Storyarn.Repo
 
   # =============================================================================
   # Type Definitions
@@ -935,4 +936,77 @@ defmodule Storyarn.Flows do
 
   @doc "Updates a flow's parent_id after import."
   defdelegate link_flow_import_parent(flow, parent_id), to: FlowCrud, as: :link_import_parent
+
+  # =============================================================================
+  # Versioning
+  # =============================================================================
+
+  alias Storyarn.Versioning
+
+  @doc """
+  Creates a new version snapshot of the given flow.
+  """
+  def create_version(%Flow{} = flow, user_id, opts \\ []) do
+    Versioning.create_version("flow", flow, flow.project_id, user_id, opts)
+  end
+
+  @doc """
+  Lists all versions for a flow.
+  """
+  def list_versions(flow_id, opts \\ []) do
+    Versioning.list_versions("flow", flow_id, opts)
+  end
+
+  @doc """
+  Gets a specific version by flow_id and version_number.
+  """
+  def get_version(flow_id, version_number) do
+    Versioning.get_version("flow", flow_id, version_number)
+  end
+
+  @doc """
+  Gets the latest version for a flow.
+  """
+  def get_latest_version(flow_id) do
+    Versioning.get_latest_version("flow", flow_id)
+  end
+
+  @doc """
+  Returns the total number of versions for a flow.
+  """
+  def count_versions(flow_id) do
+    Versioning.count_versions("flow", flow_id)
+  end
+
+  @doc """
+  Creates a version if enough time has passed since the last version.
+  """
+  def maybe_create_version(%Flow{} = flow, user_id, opts \\ []) do
+    Versioning.maybe_create_version("flow", flow, flow.project_id, user_id, opts)
+  end
+
+  @doc """
+  Deletes a version and its snapshot.
+  """
+  def delete_version(version) do
+    Versioning.delete_version(version)
+  end
+
+  @doc """
+  Restores a flow to a specific version.
+  """
+  def restore_version(%Flow{} = flow, version) do
+    Versioning.restore_version("flow", flow, version)
+  end
+
+  @doc """
+  Sets the current version for a flow.
+  """
+  def set_current_version(%Flow{} = flow, version_or_nil) do
+    version_id = if version_or_nil, do: version_or_nil.id, else: nil
+
+    flow
+    |> Flow.version_changeset(%{current_version_id: version_id})
+    |> Repo.update()
+  end
 end

@@ -22,6 +22,14 @@ defmodule Storyarn.Assets.Storage.R2 do
   end
 
   @impl true
+  def download(key) do
+    case ExAws.S3.get_object(bucket(), key) |> ExAws.request() do
+      {:ok, %{body: body}} -> {:ok, body}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @impl true
   def delete(key) do
     bucket = bucket()
 

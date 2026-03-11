@@ -117,7 +117,12 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
 
         <.danger_zone
           :if={@membership.role == "owner"}
-          message={dgettext("workspaces", "Once you delete a workspace, there is no going back. All projects will be deleted.")}
+          message={
+            dgettext(
+              "workspaces",
+              "Once you delete a workspace, there is no going back. All projects will be deleted."
+            )
+          }
           on_click={show_modal("delete-workspace-confirm")}
         >
           {dgettext("workspaces", "Delete Workspace")}

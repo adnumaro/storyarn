@@ -21,6 +21,7 @@ defmodule Storyarn.Scenes.Scene do
   alias Storyarn.Projects.Project
   alias Storyarn.Scenes.{SceneAnnotation, SceneConnection, SceneLayer, ScenePin, SceneZone}
   alias Storyarn.Shared.{HierarchicalSchema, Validations}
+  alias Storyarn.Versioning.EntityVersion
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -47,6 +48,8 @@ defmodule Storyarn.Scenes.Scene do
           pins: [ScenePin.t()] | Ecto.Association.NotLoaded.t(),
           connections: [SceneConnection.t()] | Ecto.Association.NotLoaded.t(),
           annotations: [SceneAnnotation.t()] | Ecto.Association.NotLoaded.t(),
+          current_version_id: integer() | nil,
+          current_version: EntityVersion.t() | Ecto.Association.NotLoaded.t() | nil,
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -69,6 +72,7 @@ defmodule Storyarn.Scenes.Scene do
     belongs_to :project, Project
     belongs_to :parent, __MODULE__
     belongs_to :background_asset, Asset
+    belongs_to :current_version, EntityVersion
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :layers, SceneLayer, preload_order: [asc: :position, asc: :id]
     has_many :zones, SceneZone
@@ -134,6 +138,15 @@ defmodule Storyarn.Scenes.Scene do
   Changeset for restoring a soft-deleted map.
   """
   def restore_changeset(map), do: HierarchicalSchema.restore_changeset(map)
+
+  @doc """
+  Changeset for updating the current version pointer.
+  """
+  def version_changeset(scene, attrs) do
+    scene
+    |> cast(attrs, [:current_version_id])
+    |> foreign_key_constraint(:current_version_id)
+  end
 
   @doc """
   Returns true if the map is soft-deleted.

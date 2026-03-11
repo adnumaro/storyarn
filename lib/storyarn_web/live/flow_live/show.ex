@@ -417,8 +417,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
         %{
           flow: full_flow,
-          flow_data:
-            Flows.serialize_for_canvas(full_flow, project_variables: project_variables),
+          flow_data: Flows.serialize_for_canvas(full_flow, project_variables: project_variables),
           all_sheets: Sheets.list_all_sheets(project.id),
           gallery_by_sheet: Sheets.batch_load_gallery_data_by_sheet(project.id),
           flow_hubs: Flows.list_hubs(flow.id),

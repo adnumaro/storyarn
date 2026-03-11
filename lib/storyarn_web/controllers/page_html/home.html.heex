@@ -93,78 +93,96 @@
       </div>
 
       <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-          <div>
-            <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(245,158,11,0.1); color: #f59e0b;">
-              <.icon name="database" class="size-5" />
-            </div>
-            <h3 class="font-semibold text-lg">{gettext("Sheets")}</h3>
-            <p class="mt-2 text-base-content/60 leading-relaxed">
-              {gettext(
-                "Define every element of your world — characters, items, locations, factions. With variables, formulas, and property inheritance."
-              )}
-            </p>
+        <div>
+          <div
+            class="flex items-center justify-center size-11 rounded-xl mb-4"
+            style="background: rgba(245,158,11,0.1); color: #f59e0b;"
+          >
+            <.icon name="database" class="size-5" />
           </div>
-
-          <div>
-            <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(16,185,129,0.1); color: #10b981;">
-              <.icon name="git-branch" class="size-5" />
-            </div>
-            <h3 class="font-semibold text-lg">{gettext("Flows")}</h3>
-            <p class="mt-2 text-base-content/60 leading-relaxed">
-              {gettext(
-                "Visual node-based editor for branching dialogues, conditions, and game logic. Nine node types with real-time collaboration."
-              )}
-            </p>
-          </div>
-
-          <div>
-            <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(236,72,153,0.1); color: #ec4899;">
-              <.icon name="map" class="size-5" />
-            </div>
-            <h3 class="font-semibold text-lg">{gettext("Scenes")}</h3>
-            <p class="mt-2 text-base-content/60 leading-relaxed">
-              {gettext(
-                "Visual scene editor with layers, zones, and pin annotations. Connect locations to flows and explore your world spatially."
-              )}
-            </p>
-          </div>
-
-          <div>
-            <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(99,102,241,0.1); color: #6366f1;">
-              <.icon name="play-circle" class="size-5" />
-            </div>
-            <h3 class="font-semibold text-lg">{gettext("Story Player")}</h3>
-            <p class="mt-2 text-base-content/60 leading-relaxed">
-              {gettext(
-                "Playtest your dialogues and branching paths in real time. Walk through your story as a player would, right from the editor."
-              )}
-            </p>
-          </div>
-
-          <div>
-            <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(14,165,233,0.1); color: #0ea5e9;">
-              <.icon name="compass" class="size-5" />
-            </div>
-            <h3 class="font-semibold text-lg">{gettext("Exploration Mode")}</h3>
-            <p class="mt-2 text-base-content/60 leading-relaxed">
-              {gettext(
-                "Navigate your scenes interactively. Move between zones, trigger actions, and experience your world from a player's perspective."
-              )}
-            </p>
-          </div>
-
-          <div>
-            <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(168,85,247,0.1); color: #a855f7;">
-              <.icon name="bug" class="size-5" />
-            </div>
-            <h3 class="font-semibold text-lg">{gettext("Debug Mode")}</h3>
-            <p class="mt-2 text-base-content/60 leading-relaxed">
-              {gettext(
-                "Step through your flows node by node. Inspect variables, track conditions, and trace execution paths to find logic issues."
-              )}
-            </p>
-          </div>
+          <h3 class="font-semibold text-lg">{gettext("Sheets")}</h3>
+          <p class="mt-2 text-base-content/60 leading-relaxed">
+            {gettext(
+              "Define every element of your world — characters, items, locations, factions. With variables, formulas, and property inheritance."
+            )}
+          </p>
         </div>
+
+        <div>
+          <div
+            class="flex items-center justify-center size-11 rounded-xl mb-4"
+            style="background: rgba(16,185,129,0.1); color: #10b981;"
+          >
+            <.icon name="git-branch" class="size-5" />
+          </div>
+          <h3 class="font-semibold text-lg">{gettext("Flows")}</h3>
+          <p class="mt-2 text-base-content/60 leading-relaxed">
+            {gettext(
+              "Visual node-based editor for branching dialogues, conditions, and game logic. Nine node types with real-time collaboration."
+            )}
+          </p>
+        </div>
+
+        <div>
+          <div
+            class="flex items-center justify-center size-11 rounded-xl mb-4"
+            style="background: rgba(236,72,153,0.1); color: #ec4899;"
+          >
+            <.icon name="map" class="size-5" />
+          </div>
+          <h3 class="font-semibold text-lg">{gettext("Scenes")}</h3>
+          <p class="mt-2 text-base-content/60 leading-relaxed">
+            {gettext(
+              "Visual scene editor with layers, zones, and pin annotations. Connect locations to flows and explore your world spatially."
+            )}
+          </p>
+        </div>
+
+        <div>
+          <div
+            class="flex items-center justify-center size-11 rounded-xl mb-4"
+            style="background: rgba(99,102,241,0.1); color: #6366f1;"
+          >
+            <.icon name="play-circle" class="size-5" />
+          </div>
+          <h3 class="font-semibold text-lg">{gettext("Story Player")}</h3>
+          <p class="mt-2 text-base-content/60 leading-relaxed">
+            {gettext(
+              "Playtest your dialogues and branching paths in real time. Walk through your story as a player would, right from the editor."
+            )}
+          </p>
+        </div>
+
+        <div>
+          <div
+            class="flex items-center justify-center size-11 rounded-xl mb-4"
+            style="background: rgba(14,165,233,0.1); color: #0ea5e9;"
+          >
+            <.icon name="compass" class="size-5" />
+          </div>
+          <h3 class="font-semibold text-lg">{gettext("Exploration Mode")}</h3>
+          <p class="mt-2 text-base-content/60 leading-relaxed">
+            {gettext(
+              "Navigate your scenes interactively. Move between zones, trigger actions, and experience your world from a player's perspective."
+            )}
+          </p>
+        </div>
+
+        <div>
+          <div
+            class="flex items-center justify-center size-11 rounded-xl mb-4"
+            style="background: rgba(168,85,247,0.1); color: #a855f7;"
+          >
+            <.icon name="bug" class="size-5" />
+          </div>
+          <h3 class="font-semibold text-lg">{gettext("Debug Mode")}</h3>
+          <p class="mt-2 text-base-content/60 leading-relaxed">
+            {gettext(
+              "Step through your flows node by node. Inspect variables, track conditions, and trace execution paths to find logic issues."
+            )}
+          </p>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -176,61 +194,71 @@
           {gettext("Built-in Features")}
         </h2>
         <p class="mt-4 text-base-content/60 text-lg">
-          {gettext(
-            "Everything you need to ship your narrative, built right in."
-          )}
+          {gettext("Everything you need to ship your narrative, built right in.")}
         </p>
       </div>
 
       <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-          <div>
-            <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(99,102,241,0.1); color: #6366f1;">
-              <.icon name="layout-dashboard" class="size-5" />
-            </div>
-            <h3 class="font-semibold text-lg">{gettext("Dashboards")}</h3>
-            <p class="mt-2 text-base-content/60 leading-relaxed">
-              {gettext(
-                "At-a-glance overview of your project's progress. Word counts, variable usage, localization coverage, and content stats per tool."
-              )}
-            </p>
+        <div>
+          <div
+            class="flex items-center justify-center size-11 rounded-xl mb-4"
+            style="background: rgba(99,102,241,0.1); color: #6366f1;"
+          >
+            <.icon name="layout-dashboard" class="size-5" />
           </div>
-
-          <div>
-            <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(14,165,233,0.1); color: #0ea5e9;">
-              <.icon name="languages" class="size-5" />
-            </div>
-            <h3 class="font-semibold text-lg">{gettext("Localization")}</h3>
-            <p class="mt-2 text-base-content/60 leading-relaxed">
-              {gettext(
-                "Extract, translate, and manage every line of dialogue. DeepL integration, glossary support, and progress tracking per language."
-              )}
-            </p>
-          </div>
-
-          <div>
-            <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(168,85,247,0.1); color: #a855f7;">
-              <.icon name="users" class="size-5" />
-            </div>
-            <h3 class="font-semibold text-lg">{gettext("Real-time Collaboration")}</h3>
-            <p class="mt-2 text-base-content/60 leading-relaxed">
-              {gettext(
-                "Work together with your team. Live cursors, presence indicators, and node locking so nobody overwrites anyone's work."
-              )}
-            </p>
-          </div>
-
-          <div>
-            <div class="flex items-center justify-center size-11 rounded-xl mb-4" style="background: rgba(245,158,11,0.1); color: #f59e0b;">
-              <.icon name="file-output" class="size-5" />
-            </div>
-            <h3 class="font-semibold text-lg">{gettext("Export & Import")}</h3>
-            <p class="mt-2 text-base-content/60 leading-relaxed">
-              {gettext(
-                "Export to Yarn Spinner, Ink, Unity, Godot Dialogic, Unreal, and articy:draft. Localization as Excel or CSV. Your data, your engine."
-              )}
-            </p>
-          </div>
+          <h3 class="font-semibold text-lg">{gettext("Dashboards")}</h3>
+          <p class="mt-2 text-base-content/60 leading-relaxed">
+            {gettext(
+              "At-a-glance overview of your project's progress. Word counts, variable usage, localization coverage, and content stats per tool."
+            )}
+          </p>
         </div>
+
+        <div>
+          <div
+            class="flex items-center justify-center size-11 rounded-xl mb-4"
+            style="background: rgba(14,165,233,0.1); color: #0ea5e9;"
+          >
+            <.icon name="languages" class="size-5" />
+          </div>
+          <h3 class="font-semibold text-lg">{gettext("Localization")}</h3>
+          <p class="mt-2 text-base-content/60 leading-relaxed">
+            {gettext(
+              "Extract, translate, and manage every line of dialogue. DeepL integration, glossary support, and progress tracking per language."
+            )}
+          </p>
+        </div>
+
+        <div>
+          <div
+            class="flex items-center justify-center size-11 rounded-xl mb-4"
+            style="background: rgba(168,85,247,0.1); color: #a855f7;"
+          >
+            <.icon name="users" class="size-5" />
+          </div>
+          <h3 class="font-semibold text-lg">{gettext("Real-time Collaboration")}</h3>
+          <p class="mt-2 text-base-content/60 leading-relaxed">
+            {gettext(
+              "Work together with your team. Live cursors, presence indicators, and node locking so nobody overwrites anyone's work."
+            )}
+          </p>
+        </div>
+
+        <div>
+          <div
+            class="flex items-center justify-center size-11 rounded-xl mb-4"
+            style="background: rgba(245,158,11,0.1); color: #f59e0b;"
+          >
+            <.icon name="file-output" class="size-5" />
+          </div>
+          <h3 class="font-semibold text-lg">{gettext("Export & Import")}</h3>
+          <p class="mt-2 text-base-content/60 leading-relaxed">
+            {gettext(
+              "Export to Yarn Spinner, Ink, Unity, Godot Dialogic, Unreal, and articy:draft. Localization as Excel or CSV. Your data, your engine."
+            )}
+          </p>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -247,7 +275,9 @@
 
     <div class="grid sm:grid-cols-3 gap-12">
       <div>
-        <div class="text-5xl font-black mb-3 leading-none text-cyan-500/30 dark:text-cyan-400/35">01</div>
+        <div class="text-5xl font-black mb-3 leading-none text-cyan-500/30 dark:text-cyan-400/35">
+          01
+        </div>
         <h3 class="font-semibold text-lg">{gettext("Structure your world")}</h3>
         <p class="mt-2 text-base-content/60 leading-relaxed">
           {gettext(
@@ -256,7 +286,9 @@
         </p>
       </div>
       <div>
-        <div class="text-5xl font-black mb-3 leading-none text-accent/30 dark:text-accent/40">02</div>
+        <div class="text-5xl font-black mb-3 leading-none text-accent/30 dark:text-accent/40">
+          02
+        </div>
         <h3 class="font-semibold text-lg">{gettext("Write branching narratives")}</h3>
         <p class="mt-2 text-base-content/60 leading-relaxed">
           {gettext(
@@ -265,7 +297,9 @@
         </p>
       </div>
       <div>
-        <div class="text-5xl font-black mb-3 leading-none text-secondary/30 dark:text-secondary/45">03</div>
+        <div class="text-5xl font-black mb-3 leading-none text-secondary/30 dark:text-secondary/45">
+          03
+        </div>
         <h3 class="font-semibold text-lg">{gettext("Localize and export")}</h3>
         <p class="mt-2 text-base-content/60 leading-relaxed">
           {gettext(

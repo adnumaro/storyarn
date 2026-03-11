@@ -175,7 +175,8 @@ defmodule Storyarn.Sheets.SheetStats do
       left_join: b in Block,
       on: b.sheet_id == s.id and is_nil(b.deleted_at),
       left_join: child in Sheet,
-      on: child.parent_id == s.id and child.project_id == ^project_id and is_nil(child.deleted_at),
+      on:
+        child.parent_id == s.id and child.project_id == ^project_id and is_nil(child.deleted_at),
       where:
         s.project_id == ^project_id and is_nil(s.deleted_at) and
           is_nil(child.id),

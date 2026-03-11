@@ -55,7 +55,11 @@ defmodule StoryarnWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <div id="app-layout" phx-hook="SettingsSidebar" class="h-screen w-screen overflow-hidden relative bg-base-100">
+    <div
+      id="app-layout"
+      phx-hook="SettingsSidebar"
+      class="h-screen w-screen overflow-hidden relative bg-base-100"
+    >
       <%!-- Hidden checkbox for mobile sidebar toggle --%>
       <input id="app-sidebar-check" type="checkbox" class="peer hidden" />
 
@@ -71,7 +75,10 @@ defmodule StoryarnWeb.Layouts do
           </div>
 
           <%!-- User dropdown --%>
-          <div :if={@current_scope && @current_scope.user} class="dropdown dropdown-bottom flex flex-1 min-w-0">
+          <div
+            :if={@current_scope && @current_scope.user}
+            class="dropdown dropdown-bottom flex flex-1 min-w-0"
+          >
             <button tabindex="0" class="toolbar-btn gap-1.5 font-medium flex-1 min-w-0">
               <.user_avatar user={@current_scope.user} size="xs" />
               <span class="text-sm truncate">
@@ -87,7 +94,10 @@ defmodule StoryarnWeb.Layouts do
                 <p class="text-sm font-medium truncate">
                   {@current_scope.user.display_name || @current_scope.user.email}
                 </p>
-                <p :if={@current_scope.user.display_name} class="text-xs text-base-content/50 truncate">
+                <p
+                  :if={@current_scope.user.display_name}
+                  class="text-xs text-base-content/50 truncate"
+                >
                   {@current_scope.user.email}
                 </p>
               </div>
@@ -235,8 +245,13 @@ defmodule StoryarnWeb.Layouts do
   attr :can_edit, :boolean, default: false, doc: "whether the user can edit content"
   attr :online_users, :list, default: [], doc: "list of online user presence maps"
 
-  attr :on_dashboard, :boolean, default: false, doc: "whether the current page is the tool dashboard"
-  attr :show_tool_switcher, :boolean, default: true, doc: "whether to show the tool switcher dropdown"
+  attr :on_dashboard, :boolean,
+    default: false,
+    doc: "whether the current page is the tool dashboard"
+
+  attr :show_tool_switcher, :boolean,
+    default: true,
+    doc: "whether to show the tool switcher dropdown"
 
   attr :canvas_mode, :boolean,
     default: false,
@@ -524,7 +539,11 @@ defmodule StoryarnWeb.Layouts do
               {gettext("Dashboard")}
             </.link>
           <% else %>
-            <a href="#waitlist" class="btn btn-primary btn-block" phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}>
+            <a
+              href="#waitlist"
+              class="btn btn-primary btn-block"
+              phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
+            >
               {gettext("Request access")}
             </a>
             <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-block">
@@ -577,7 +596,10 @@ defmodule StoryarnWeb.Layouts do
   attr :current_path, :string, required: true, doc: "current settings path for nav highlighting"
 
   attr :back_path, :string, default: nil, doc: "custom back link path (defaults to /workspaces)"
-  attr :back_label, :string, default: nil, doc: "custom back link label (defaults to 'Back to app')"
+
+  attr :back_label, :string,
+    default: nil,
+    doc: "custom back link label (defaults to 'Back to app')"
 
   attr :sidebar_sections, :list,
     default: nil,
@@ -600,7 +622,11 @@ defmodule StoryarnWeb.Layouts do
       end)
 
     ~H"""
-    <div id="settings-layout" phx-hook="SettingsSidebar" class="h-screen w-screen overflow-hidden relative bg-base-100">
+    <div
+      id="settings-layout"
+      phx-hook="SettingsSidebar"
+      class="h-screen w-screen overflow-hidden relative bg-base-100"
+    >
       <%!-- Hidden checkbox for mobile sidebar toggle (must be first child for peer-*) --%>
       <input id="settings-sidebar-check" type="checkbox" class="peer hidden" />
 

@@ -310,7 +310,11 @@ defmodule Storyarn.Projects.Dashboard do
     table_row_names = query_table_row_names(project_id)
     gallery_texts = query_gallery_texts(project_id)
 
-    sheet_texts ++ block_labels ++ option_values ++ table_col_names ++ table_row_names ++
+    sheet_texts ++
+      block_labels ++
+      option_values ++
+      table_col_names ++
+      table_row_names ++
       gallery_texts
   end
 

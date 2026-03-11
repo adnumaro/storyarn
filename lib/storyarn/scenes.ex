@@ -591,4 +591,77 @@ defmodule Storyarn.Scenes do
 
   @doc "Detects issues in scenes. Returns [%{issue_type, scene_id, scene_name}]."
   defdelegate detect_scene_issues(project_id), to: SceneStats
+
+  # =============================================================================
+  # Versioning
+  # =============================================================================
+
+  alias Storyarn.Versioning
+
+  @doc """
+  Creates a new version snapshot of the given scene.
+  """
+  def create_version(%Scene{} = scene, user_id, opts \\ []) do
+    Versioning.create_version("scene", scene, scene.project_id, user_id, opts)
+  end
+
+  @doc """
+  Lists all versions for a scene.
+  """
+  def list_versions(scene_id, opts \\ []) do
+    Versioning.list_versions("scene", scene_id, opts)
+  end
+
+  @doc """
+  Gets a specific version by scene_id and version_number.
+  """
+  def get_version(scene_id, version_number) do
+    Versioning.get_version("scene", scene_id, version_number)
+  end
+
+  @doc """
+  Gets the latest version for a scene.
+  """
+  def get_latest_version(scene_id) do
+    Versioning.get_latest_version("scene", scene_id)
+  end
+
+  @doc """
+  Returns the total number of versions for a scene.
+  """
+  def count_versions(scene_id) do
+    Versioning.count_versions("scene", scene_id)
+  end
+
+  @doc """
+  Creates a version if enough time has passed since the last version.
+  """
+  def maybe_create_version(%Scene{} = scene, user_id, opts \\ []) do
+    Versioning.maybe_create_version("scene", scene, scene.project_id, user_id, opts)
+  end
+
+  @doc """
+  Deletes a version and its snapshot.
+  """
+  def delete_version(version) do
+    Versioning.delete_version(version)
+  end
+
+  @doc """
+  Restores a scene to a specific version.
+  """
+  def restore_version(%Scene{} = scene, version) do
+    Versioning.restore_version("scene", scene, version)
+  end
+
+  @doc """
+  Sets the current version for a scene.
+  """
+  def set_current_version(%Scene{} = scene, version_or_nil) do
+    version_id = if version_or_nil, do: version_or_nil.id, else: nil
+
+    scene
+    |> Scene.version_changeset(%{current_version_id: version_id})
+    |> Repo.update()
+  end
 end
