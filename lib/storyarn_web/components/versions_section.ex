@@ -224,7 +224,8 @@ defmodule StoryarnWeb.Components.VersionsSection do
          )}
 
       {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
+        {:noreply,
+         put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
     end
   end
 
@@ -356,7 +357,8 @@ defmodule StoryarnWeb.Components.VersionsSection do
         <div class="flex items-center gap-2 text-xs text-base-content/60 mt-0.5">
           <span>{format_version_date(@version.inserted_at)}</span>
           <span :if={@version.created_by}>
-            · {dgettext("versioning", "by")} {@version.created_by.display_name || @version.created_by.email}
+            · {dgettext("versioning", "by")} {@version.created_by.display_name ||
+              @version.created_by.email}
           </span>
         </div>
       </div>

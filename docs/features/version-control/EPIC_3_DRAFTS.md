@@ -204,12 +204,13 @@ Without lifecycle management, abandoned drafts pile up in the database indefinit
 - Oban job cleans up draft entities for merged/discarded drafts (in case of incomplete cleanup)
 
 **Draft limits:**
-| Plan | Max active drafts per user per project |
-|------|----------------------------------------|
-| Free | 2 |
-| Pro | 10 |
-| Team | 25 |
-| Enterprise | Unlimited |
+
+| Plan       | Max active drafts per user per project  |
+|------------|-----------------------------------------|
+| Free       | 2                                       |
+| Pro        | 10                                      |
+| Team       | 25                                      |
+| Enterprise | Unlimited                               |
 
 ### Acceptance criteria
 - [ ] "My Drafts" panel lists all active drafts

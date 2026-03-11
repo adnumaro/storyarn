@@ -339,13 +339,13 @@ Blind restore is dangerous. A flow referencing a deleted sheet, a scene pointing
 
 ### Conflict types
 
-| Conflict | Example | Resolution |
-|----------|---------|------------|
-| **Missing entity** | Dialogue node references `speaker_sheet_id` that was deleted | Clear the reference (set to nil) |
-| **Missing asset** | Pin uses `icon_asset_id` that was deleted | Clear the reference, use default icon |
-| **Shortcut collision** | Restored entity has shortcut "quest.main" but another entity now uses it | Auto-rename to "quest.main-restored" |
-| **Missing variable** | Condition references `mc.jaime.health` but that sheet/block was deleted | Flag the condition as broken (user must fix manually) |
-| **Missing target** | Zone has `target_flow_id` pointing to deleted flow | Clear the target reference |
+| Conflict               | Example                                                                  | Resolution                                            |
+|------------------------|--------------------------------------------------------------------------|-------------------------------------------------------|
+| **Missing entity**     | Dialogue node references `speaker_sheet_id` that was deleted             | Clear the reference (set to nil)                      |
+| **Missing asset**      | Pin uses `icon_asset_id` that was deleted                                | Clear the reference, use default icon                 |
+| **Shortcut collision** | Restored entity has shortcut "quest.main" but another entity now uses it | Auto-rename to "quest.main-restored"                  |
+| **Missing variable**   | Condition references `mc.jaime.health` but that sheet/block was deleted  | Flag the condition as broken (user must fix manually) |
+| **Missing target**     | Zone has `target_flow_id` pointing to deleted flow                       | Clear the target reference                            |
 
 ### UX flow
 1. User clicks "Restore" on a version

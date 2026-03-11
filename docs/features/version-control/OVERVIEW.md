@@ -10,13 +10,13 @@ Build a version control system that gives narrative designers the safety and fle
 
 Version control is one of the biggest pain points in narrative design tools:
 
-| Tool | What they offer | What's missing |
-|------|----------------|----------------|
-| **articy:draft** | SVN/Perforce partitions, rollback | Binary diffs (useless), no branching, lock-based, Git blocked |
-| **Figma** | Auto-save every 30min, named versions, branching (Enterprise only) | Branching paywalled, merge is all-or-nothing, no selective restore |
-| **Notion** | Auto-snapshot every 10min | No diffs, no named versions, short retention, no branching |
-| **Google Docs** | Per-keystroke OT, timeline, named versions | No branching, no structured data support |
-| **Ink/Twine** | Plain text → Git | Requires technical Git knowledge |
+| Tool             | What they offer                                                    | What's missing                                                     |
+|------------------|--------------------------------------------------------------------|--------------------------------------------------------------------|
+| **articy:draft** | SVN/Perforce partitions, rollback                                  | Binary diffs (useless), no branching, lock-based, Git blocked      |
+| **Figma**        | Auto-save every 30min, named versions, branching (Enterprise only) | Branching paywalled, merge is all-or-nothing, no selective restore |
+| **Notion**       | Auto-snapshot every 10min                                          | No diffs, no named versions, short retention, no branching         |
+| **Google Docs**  | Per-keystroke OT, timeline, named versions                         | No branching, no structured data support                           |
+| **Ink/Twine**    | Plain text → Git                                                   | Requires technical Git knowledge                                   |
 
 **Storyarn's advantage:** We version **structured, relational data** (graphs, trees, entities with cross-references), not flat documents. This lets us build smarter tools: conflict detection on restore, change summaries that understand node/connection semantics, and eventually visual diffs on the canvas.
 
@@ -33,10 +33,10 @@ Version control is one of the biggest pain points in narrative design tools:
 
 **Two-tier storage** to keep PostgreSQL fast and costs low:
 
-| Tier | What | Where | Why |
-|------|------|-------|-----|
-| **Metadata** | Version ID, entity ref, title, summary, author, date, storage key | PostgreSQL | Fast queries, listing, filtering |
-| **Snapshot data** | Full JSON + compressed assets | Cloudflare R2 | Cheap, unlimited, no DB bloat |
+| Tier              | What                                                              | Where         | Why                              |
+|-------------------|-------------------------------------------------------------------|---------------|----------------------------------|
+| **Metadata**      | Version ID, entity ref, title, summary, author, date, storage key | PostgreSQL    | Fast queries, listing, filtering |
+| **Snapshot data** | Full JSON + compressed assets                                     | Cloudflare R2 | Cheap, unlimited, no DB bloat    |
 
 **Content-addressable asset storage:**
 Assets (images, audio) stored by SHA256 hash. 50 snapshots referencing the same avatar = one copy in R2. Storage only grows when assets actually change.
@@ -49,12 +49,12 @@ projects/{project_id}/project_snapshots/{snapshot_id}.tar.gz          # Full pro
 
 ### Retention Policy
 
-| Plan | Auto-snapshots | Named versions | Project snapshots | Post-delete retention |
-|------|---------------|----------------|-------------------|-----------------------|
-| Free | 7 days | 10 | 2 | 30 days |
-| Pro | 30 days | 50 | 10 | 90 days |
-| Team | 90 days | Unlimited | 50 | 1 year |
-| Enterprise | Unlimited | Unlimited | Unlimited | Indefinite |
+| Plan       | Auto-snapshots   | Named versions   | Project snapshots  | Post-delete retention  |
+|------------|------------------|------------------|--------------------|------------------------|
+| Free       | 7 days           | 10               | 2                  | 30 days                |
+| Pro        | 30 days          | 50               | 10                 | 90 days                |
+| Team       | 90 days          | Unlimited        | 50                 | 1 year                 |
+| Enterprise | Unlimited        | Unlimited        | Unlimited          | Indefinite             |
 
 Expired snapshots cleaned by Oban job. Named versions never auto-expire.
 
@@ -65,34 +65,34 @@ Each epic is self-contained. Within each epic, every feature is an independent u
 ### [Epic 1 — Entity Version History](./EPIC_1_ENTITY_VERSION_HISTORY.md)
 > Per-entity snapshots, restore, and named versions for Sheets, Flows, and Scenes
 
-| # | Feature | Standalone Value |
-|---|---------|-----------------|
-| 1 | Generalize versioning system | Extend sheet versioning to Flows and Scenes with shared infrastructure |
-| 2 | Auto-snapshots by significant action | Automatic safety net — never lose more than 15 minutes of work |
-| 3 | Named versions with intent | User-created milestones with title, description, and auto-generated change summary |
-| 4 | Restore with conflict detection | Safe restore that validates cross-entity references before applying |
-| 5 | Content-addressable asset storage | Assets in snapshots without storage explosion |
+| # | Feature                              | Standalone Value                                                                   |
+|---|--------------------------------------|------------------------------------------------------------------------------------|
+| 1 | Generalize versioning system         | Extend sheet versioning to Flows and Scenes with shared infrastructure             |
+| 2 | Auto-snapshots by significant action | Automatic safety net — never lose more than 15 minutes of work                     |
+| 3 | Named versions with intent           | User-created milestones with title, description, and auto-generated change summary |
+| 4 | Restore with conflict detection      | Safe restore that validates cross-entity references before applying                |
+| 5 | Content-addressable asset storage    | Assets in snapshots without storage explosion                                      |
 
 ### [Epic 2 — Project Snapshots](./EPIC_2_PROJECT_SNAPSHOTS.md)
 > Complete project backups that capture absolutely everything
 
-| # | Feature | Standalone Value |
-|---|---------|-----------------|
-| 1 | Manual project snapshots | One-click full backup of the entire project |
-| 2 | Automatic daily snapshots | Background job creates daily backups when changes exist |
+| # | Feature                             | Standalone Value                                           |
+|---|-------------------------------------|------------------------------------------------------------|
+| 1 | Manual project snapshots            | One-click full backup of the entire project                |
+| 2 | Automatic daily snapshots           | Background job creates daily backups when changes exist    |
 | 3 | Project restore with exclusive lock | Safe full-project restoration with collaborator protection |
-| 4 | Deleted project recovery | Restore a deleted project entirely from its backup |
-| 5 | Project snapshot export | Download a self-contained archive of the entire project |
+| 4 | Deleted project recovery            | Restore a deleted project entirely from its backup         |
+| 5 | Project snapshot export             | Download a self-contained archive of the entire project    |
 
 ### [Epic 3 — Drafts](./EPIC_3_DRAFTS.md)
 > Private workspaces for experimentation without risk
 
-| # | Feature | Standalone Value |
-|---|---------|-----------------|
-| 1 | Create draft from entity | Fork a flow/sheet/scene into a private workspace |
-| 2 | Edit draft independently | Full editing capabilities in isolation |
-| 3 | Draft review and merge | Compare draft to current state, accept or discard |
-| 4 | Draft lifecycle management | List, rename, discard drafts with cleanup |
+| # | Feature                    | Standalone Value                                  |
+|---|----------------------------|---------------------------------------------------|
+| 1 | Create draft from entity   | Fork a flow/sheet/scene into a private workspace  |
+| 2 | Edit draft independently   | Full editing capabilities in isolation            |
+| 3 | Draft review and merge     | Compare draft to current state, accept or discard |
+| 4 | Draft lifecycle management | List, rename, discard drafts with cleanup         |
 
 ### Future: Visual Diffs (not planned yet)
 > Side-by-side comparison on the canvas — nodes colored by change type
@@ -109,14 +109,14 @@ This is a killer feature that will be designed and built after the foundation (E
 
 ## Technical Foundation (existing)
 
-| System | How it supports versioning |
-|--------|---------------------------|
-| **Sheet Versioning** | Working snapshot/restore system to generalize |
-| **R2 Storage** | Already configured for asset storage — extend for snapshots |
-| **Oban** | Job infrastructure for auto-snapshots, daily backups, cleanup |
-| **PubSub** | Broadcast restore events to collaborators |
-| **Collaboration locks** | Foundation for exclusive restore mode |
-| **Soft delete** | Projects already soft-delete — snapshots survive deletion |
+| System                  | How it supports versioning                                    |
+|-------------------------|---------------------------------------------------------------|
+| **Sheet Versioning**    | Working snapshot/restore system to generalize                 |
+| **R2 Storage**          | Already configured for asset storage — extend for snapshots   |
+| **Oban**                | Job infrastructure for auto-snapshots, daily backups, cleanup |
+| **PubSub**              | Broadcast restore events to collaborators                     |
+| **Collaboration locks** | Foundation for exclusive restore mode                         |
+| **Soft delete**         | Projects already soft-delete — snapshots survive deletion     |
 
 ## Cross-Entity Reference Strategy
 

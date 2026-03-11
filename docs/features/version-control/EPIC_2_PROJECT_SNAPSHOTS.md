@@ -22,15 +22,15 @@ Before a major milestone (demo, client delivery, QA handoff), designers need a g
 
 ### What's captured (complete list)
 
-| Category | Data | Includes assets? |
-|----------|------|-------------------|
-| **Project** | name, slug, settings, configuration | — |
-| **Sheets** | All sheets + all blocks with values, config, types, order | Avatar blobs, banner blobs |
-| **Flows** | All flows + all nodes + all connections + all node data | Audio blobs in dialogue nodes |
-| **Scenes** | All scenes + layers + zones + pins + connections + annotations | Background blobs, pin icon blobs |
-| **Localization** | Languages, texts, glossary entries | — |
-| **Tree structure** | Complete parent_id + position hierarchy for all entity types | — |
-| **Assets** | Full asset registry with blob hashes | All referenced binary blobs |
+| Category           | Data                                                           | Includes assets?                 |
+|--------------------|----------------------------------------------------------------|----------------------------------|
+| **Project**        | name, slug, settings, configuration                            | —                                |
+| **Sheets**         | All sheets + all blocks with values, config, types, order      | Avatar blobs, banner blobs       |
+| **Flows**          | All flows + all nodes + all connections + all node data        | Audio blobs in dialogue nodes    |
+| **Scenes**         | All scenes + layers + zones + pins + connections + annotations | Background blobs, pin icon blobs |
+| **Localization**   | Languages, texts, glossary entries                             | —                                |
+| **Tree structure** | Complete parent_id + position hierarchy for all entity types   | —                                |
+| **Assets**         | Full asset registry with blob hashes                           | All referenced binary blobs      |
 
 ### Storage format
 
@@ -260,12 +260,12 @@ The most complex part: every internal reference must be updated.
 - External references (to entities outside the project) are left as-is — they may or may not still exist
 
 ### Retention
-| Plan | Snapshots retained after project deletion |
-|------|------------------------------------------|
-| Free | 30 days |
-| Pro | 90 days |
-| Team | 1 year |
-| Enterprise | Indefinite |
+| Plan       | Snapshots retained after project deletion  |
+|------------|--------------------------------------------|
+| Free       | 30 days                                    |
+| Pro        | 90 days                                    |
+| Team       | 1 year                                     |
+| Enterprise | Indefinite                                 |
 
 After retention period, Oban job deletes snapshots and runs blob garbage collection.
 
