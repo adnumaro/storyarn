@@ -164,6 +164,7 @@ export function createAnnotationHandler(hook, i18n = {}) {
       const marker = markers.get(annotation.id);
       if (marker) {
         updateAnnotationMarker(marker, annotation);
+        marker.setLatLng(toLatLng(annotation.position_x, annotation.position_y, hook.canvasWidth, hook.canvasHeight));
         marker.setZIndexOffset((annotation.position || 0) * 10);
 
         // Toggle dragging based on lock state
