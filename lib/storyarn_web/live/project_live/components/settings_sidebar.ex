@@ -21,7 +21,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsSidebar do
       <div class="px-2 pt-2 pb-2 border-b border-base-300">
         <.link
           navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
-          class="flex items-center gap-2 px-2 py-1.5 rounded text-sm text-base-content/70 hover:bg-base-200"
+          class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-base-content/70 hover:bg-base-content/5"
         >
           <.icon name="chevron-left" class="size-4" />
           {dgettext("projects", "Back to project")}
@@ -38,9 +38,9 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsSidebar do
               <.link
                 navigate={item.path}
                 class={[
-                  "flex items-center gap-2 px-2 py-1.5 rounded text-sm",
-                  @active == item.key && "bg-primary/10 text-primary",
-                  @active != item.key && "hover:bg-base-200"
+                  "flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm",
+                  @active == item.key && "bg-base-content/5 font-medium",
+                  @active != item.key && "hover:bg-base-content/5"
                 ]}
               >
                 <.icon name={item.icon} class="size-4" />

@@ -100,14 +100,6 @@ defmodule StoryarnWeb.Components.FocusLayout do
           <div class="border-t border-base-300"></div>
           <ul class="menu p-1 text-sm">
             <li>
-              <.link navigate={
-                ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings/export-import"
-              }>
-                <.icon name="package" class="size-5" />
-                {gettext("Export & Import")}
-              </.link>
-            </li>
-            <li>
               <.link navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings"}>
                 <.icon name="settings" class="size-5" />
                 {gettext("Project settings")}
