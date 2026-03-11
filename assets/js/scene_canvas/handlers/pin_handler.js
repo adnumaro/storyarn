@@ -187,7 +187,13 @@ export function createPinHandler(hook, i18n = {}) {
       const marker = markers.get(pin.id);
       if (marker) {
         updatePinMarker(marker, pin);
+        marker.setLatLng(toLatLng(pin.position_x, pin.position_y, hook.canvasWidth, hook.canvasHeight));
         marker.setZIndexOffset((pin.position || 0) * 10);
+
+        // Update connected lines to follow new position
+        if (hook.connectionHandler) {
+          hook.connectionHandler.updateEndpointsForPin(pin.id);
+        }
 
         // Toggle dragging based on lock state
         if (pin.locked || !hook.editMode) {
