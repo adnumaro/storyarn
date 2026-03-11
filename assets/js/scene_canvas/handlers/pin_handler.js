@@ -141,11 +141,15 @@ export function createPinHandler(hook, i18n = {}) {
         pinId,
         setTimeout(() => {
           dragTimers.delete(pinId);
-          hook.pushEvent("move_pin", {
-            id: String(marker.pinData.id),
-            position_x: pos.x,
-            position_y: pos.y,
-          });
+          try {
+            hook.pushEvent("move_pin", {
+              id: String(marker.pinData.id),
+              position_x: pos.x,
+              position_y: pos.y,
+            });
+          } catch (_) {
+            // LiveView disconnected during debounce — safe to ignore
+          }
         }, DRAG_DEBOUNCE_MS),
       );
     });

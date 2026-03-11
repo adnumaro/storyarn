@@ -128,11 +128,15 @@ export function createAnnotationHandler(hook, i18n = {}) {
         annId,
         setTimeout(() => {
           dragTimers.delete(annId);
-          hook.pushEvent("move_annotation", {
-            id: String(marker.annotationData.id),
-            position_x: pos.x,
-            position_y: pos.y,
-          });
+          try {
+            hook.pushEvent("move_annotation", {
+              id: String(marker.annotationData.id),
+              position_x: pos.x,
+              position_y: pos.y,
+            });
+          } catch (_) {
+            // LiveView disconnected during debounce — safe to ignore
+          }
         }, DRAG_DEBOUNCE_MS),
       );
     });
