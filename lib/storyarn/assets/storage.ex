@@ -17,6 +17,8 @@ defmodule Storyarn.Assets.Storage do
   @callback presigned_upload_url(key, content_type, opts :: keyword()) ::
               {:ok, url, map()} | {:error, term()}
   @callback copy(source_key :: key, dest_key :: key) :: :ok | {:error, term()}
+  @callback presigned_download_url(key, opts :: keyword()) ::
+              {:ok, url} | {:error, term()}
 
   @doc """
   Returns the configured storage adapter.
@@ -73,5 +75,16 @@ defmodule Storyarn.Assets.Storage do
   """
   def copy(source_key, dest_key) do
     adapter().copy(source_key, dest_key)
+  end
+
+  @doc """
+  Generates a presigned URL for direct download.
+
+  Options:
+  - `:expires_in` — URL validity in seconds (default: 3600)
+  - `:filename` — suggested download filename for Content-Disposition
+  """
+  def presigned_download_url(key, opts \\ []) do
+    adapter().presigned_download_url(key, opts)
   end
 end

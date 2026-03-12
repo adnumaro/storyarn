@@ -72,6 +72,16 @@ defmodule Storyarn.Versioning.SnapshotStorage do
   end
 
   @doc """
+  Generates a presigned download URL for a snapshot archive.
+
+  Returns `{:ok, url}` for R2, `{:error, :not_supported}` for local storage.
+  """
+  @spec presigned_download_url(String.t(), keyword()) :: {:ok, String.t()} | {:error, term()}
+  def presigned_download_url(storage_key, opts \\ []) do
+    Storage.presigned_download_url(storage_key, opts)
+  end
+
+  @doc """
   Builds the storage key for a snapshot.
   """
   @spec build_key(integer(), String.t(), integer(), integer()) :: String.t()

@@ -401,6 +401,15 @@ defmodule StoryarnWeb.ProjectLive.Settings do
                 </div>
               </div>
               <div class="flex gap-2 shrink-0">
+                <.button
+                  href={
+                    ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/snapshots/#{snapshot.id}/download"
+                  }
+                  class="btn-xs btn-outline btn-ghost"
+                >
+                  <.icon name="download" class="size-3" />
+                  {dgettext("projects", "Download")}
+                </.button>
                 <button
                   phx-click={show_modal("restore-snapshot-#{snapshot.id}")}
                   class="btn btn-xs btn-outline"

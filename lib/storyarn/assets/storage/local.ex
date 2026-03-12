@@ -57,6 +57,11 @@ defmodule Storyarn.Assets.Storage.Local do
     {:error, :not_supported}
   end
 
+  @impl true
+  def presigned_download_url(_key, _opts) do
+    {:error, :not_supported}
+  end
+
   defp file_path(key) do
     upload_dir = config()[:upload_dir] || "priv/static/uploads"
     Path.join([upload_dir, key])

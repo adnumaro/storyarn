@@ -120,6 +120,10 @@ defmodule StoryarnWeb.Router do
         ExportController,
         :export
 
+    get "/workspaces/:workspace_slug/projects/:project_slug/snapshots/:id/download",
+        SnapshotDownloadController,
+        :download
+
     live_session :require_authenticated_user,
       on_mount:
         if(Application.compile_env(:storyarn, :sql_sandbox),

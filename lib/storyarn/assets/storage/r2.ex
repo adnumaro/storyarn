@@ -85,6 +85,36 @@ defmodule Storyarn.Assets.Storage.R2 do
     end
   end
 
+  @impl true
+  def presigned_download_url(key, opts) do
+    bucket = bucket()
+    expires_in = Keyword.get(opts, :expires_in, 3600)
+    filename = Keyword.get(opts, :filename)
+
+    presign_opts = [
+      expires_in: expires_in,
+      virtual_host: false
+    ]
+
+    presign_opts =
+      if filename do
+        disposition = "attachment; filename=\"#{filename}\""
+
+        Keyword.put(presign_opts, :query_params, [
+          {"response-content-disposition", disposition}
+        ])
+      else
+        presign_opts
+      end
+
+    config = ExAws.Config.new(:s3)
+
+    case ExAws.S3.presigned_url(config, :get, bucket, key, presign_opts) do
+      {:ok, url} -> {:ok, url}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   defp bucket do
     config()[:bucket] || raise "R2_BUCKET not configured"
   end
