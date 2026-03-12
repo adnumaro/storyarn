@@ -73,16 +73,6 @@ Each epic is self-contained. Within each epic, every feature is an independent u
 | 4 | Restore with conflict detection      | Safe restore that validates cross-entity references before applying                |
 | 5 | Content-addressable asset storage    | Assets in snapshots without storage explosion                                      |
 
-### [Epic 1B — Version Changelog & Diff Summaries](./EPIC_1B_VERSION_CHANGELOG.md)
-> Structured change summaries between versions — understand what changed at each point in history
-
-| # | Feature                                  | Standalone Value                                                              |
-|---|------------------------------------------|-------------------------------------------------------------------------------|
-| 1 | Snapshot diff engine                     | Compare two snapshots and produce a structured list of semantic changes       |
-| 2 | Auto-generate change summary on creation | Every version automatically describes what changed vs. the previous version   |
-| 3 | Changelog display in Version History UI  | Version list shows readable changelogs instead of opaque timestamps           |
-| 4 | Version comparison (pick two)            | Select any two versions and see what changed between them                     |
-
 ### [Epic 2 — Project Snapshots](./EPIC_2_PROJECT_SNAPSHOTS.md)
 > Complete project backups that capture absolutely everything
 
@@ -104,18 +94,34 @@ Each epic is self-contained. Within each epic, every feature is an independent u
 | 3 | Draft review and merge     | Compare draft to current state, accept or discard |
 | 4 | Draft lifecycle management | List, rename, discard drafts with cleanup         |
 
-### Future: Visual Diffs (not planned yet)
-> Side-by-side comparison on the canvas — nodes colored by change type
+### [Epic 4 — Version Intelligence](./EPIC_4_VERSION_INTELLIGENCE.md)
+> Smart restore, automatic changelogs, and side-by-side version comparison
 
-This is a killer feature that will be designed and built after the foundation (Epics 1-3) is solid. The architecture in Epics 1-3 is designed with visual diffs in mind: snapshots capture full state including positions, making canvas-level comparison possible.
+| # | Feature                  | Standalone Value                                                                      |
+|---|--------------------------|---------------------------------------------------------------------------------------|
+| 1 | Snapshot diff engine     | Compare two snapshots and produce a structured list of semantic changes                |
+| 2 | Smart pre-restore        | Skip redundant safety snapshots, ask user about unversioned changes before restoring   |
+| 3 | Automatic changelog      | Every version automatically describes what changed vs. the previous version            |
+| 4 | Split view comparison    | Side-by-side editor comparison via iframe — current (editable) vs historical (readonly)|
+
+### [Epic 5 — Visual Diffs](./EPIC_5_VISUAL_DIFFS.md)
+> Diff highlighting on the canvas — nodes and elements colored by change type in split view
+
+| # | Feature                    | Standalone Value                                                          |
+|---|----------------------------|---------------------------------------------------------------------------|
+| 1 | Diff highlighting          | Color-code elements by change status (added/removed/modified) in split view|
+| 2 | Synchronized navigation    | Sync zoom and pan between the two split view panes                        |
+| 3 | Change navigation          | Jump between modified elements with next/previous buttons                 |
 
 ## Execution Strategy
 
 1. **Epic 1 first.** Entity versioning is the foundation everything else depends on.
 2. **Epic 2 second.** Project snapshots build on entity snapshots + add the packaging layer.
 3. **Epic 3 third.** Drafts are the most complex (copy + isolated editing + merge) but also the most differentiating.
-4. **Plan per feature.** Each numbered feature gets its own implementation plan when it's time to build.
-5. **Migrate existing sheet versioning.** Epic 1.1 refactors the current sheet-only system into the shared infrastructure, then extends it.
+4. **Epic 4 fourth.** Version Intelligence improves the existing system — smart restore, changelogs, split view comparison.
+5. **Epic 5 last.** Visual diffs enhance the split view with highlighting — the cherry on top.
+6. **Plan per feature.** Each numbered feature gets its own implementation plan when it's time to build.
+7. **Migrate existing sheet versioning.** Epic 1.1 refactors the current sheet-only system into the shared infrastructure, then extends it.
 
 ## Technical Foundation (existing)
 

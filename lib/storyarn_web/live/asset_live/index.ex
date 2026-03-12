@@ -7,6 +7,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   import StoryarnWeb.AssetLive.Components.AssetComponents
 
   alias Storyarn.Assets
+  alias Storyarn.Collaboration
   alias Storyarn.Projects
 
   @impl true
@@ -136,6 +137,10 @@ defmodule StoryarnWeb.AssetLive.Index do
         can_edit = Projects.can?(membership.role, :edit_content)
         type_counts = Assets.count_assets_by_type(project.id)
 
+        if connected?(socket) do
+          Collaboration.subscribe_changes({:assets, project.id})
+        end
+
         socket =
           socket
           |> assign(:project, project)
@@ -163,6 +168,17 @@ defmodule StoryarnWeb.AssetLive.Index do
   @impl true
   def handle_params(_params, _url, socket) do
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:remote_change, _action, _payload}, socket) do
+    type_counts = Assets.count_assets_by_type(socket.assigns.project.id)
+
+    {:noreply,
+     socket
+     |> assign(:type_counts, type_counts)
+     |> refresh_selected_asset()
+     |> load_assets()}
   end
 
   # ===========================================================================
@@ -294,6 +310,7 @@ defmodule StoryarnWeb.AssetLive.Index do
            {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
         type_counts = Assets.count_assets_by_type(project.id)
         usages = Assets.get_asset_usages(project.id, asset.id)
+        broadcast_asset_change(project.id, :asset_created)
 
         {:noreply,
          socket
@@ -337,6 +354,7 @@ defmodule StoryarnWeb.AssetLive.Index do
         case Assets.delete_asset(asset) do
           {:ok, _} ->
             type_counts = Assets.count_assets_by_type(socket.assigns.project.id)
+            broadcast_asset_change(socket.assigns.project.id, :asset_deleted)
 
             {:noreply,
              socket
@@ -379,6 +397,28 @@ defmodule StoryarnWeb.AssetLive.Index do
       {"image", dgettext("assets", "Images"), image_count},
       {"audio", dgettext("assets", "Audio"), audio_count}
     ]
+  end
+
+  defp broadcast_asset_change(project_id, action) do
+    Collaboration.broadcast_change_from(self(), {:assets, project_id}, action, %{})
+  end
+
+  defp refresh_selected_asset(socket) do
+    case socket.assigns.selected_asset do
+      nil ->
+        socket
+
+      asset ->
+        case Assets.get_asset(socket.assigns.project.id, asset.id) do
+          nil ->
+            socket
+            |> assign(:selected_asset, nil)
+            |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})
+
+          refreshed ->
+            assign(socket, :selected_asset, refreshed)
+        end
+    end
   end
 
   defp delete_confirm_message(usages) do

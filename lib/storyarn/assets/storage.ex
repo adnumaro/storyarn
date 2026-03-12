@@ -16,6 +16,7 @@ defmodule Storyarn.Assets.Storage do
   @callback download(key) :: {:ok, binary_data} | {:error, term()}
   @callback presigned_upload_url(key, content_type, opts :: keyword()) ::
               {:ok, url, map()} | {:error, term()}
+  @callback copy(source_key :: key, dest_key :: key) :: :ok | {:error, term()}
 
   @doc """
   Returns the configured storage adapter.
@@ -65,5 +66,12 @@ defmodule Storyarn.Assets.Storage do
   """
   def presigned_upload_url(key, content_type, opts \\ []) do
     adapter().presigned_upload_url(key, content_type, opts)
+  end
+
+  @doc """
+  Copies a file from one storage key to another.
+  """
+  def copy(source_key, dest_key) do
+    adapter().copy(source_key, dest_key)
   end
 end

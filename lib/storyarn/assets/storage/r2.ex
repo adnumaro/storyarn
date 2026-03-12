@@ -54,6 +54,16 @@ defmodule Storyarn.Assets.Storage.R2 do
   end
 
   @impl true
+  def copy(source_key, dest_key) do
+    bucket = bucket()
+
+    case ExAws.S3.put_object_copy(bucket, dest_key, bucket, source_key) |> ExAws.request() do
+      {:ok, _response} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @impl true
   def presigned_upload_url(key, content_type, opts) do
     bucket = bucket()
     expires_in = Keyword.get(opts, :expires_in, 3600)

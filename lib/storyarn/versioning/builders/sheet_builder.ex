@@ -15,6 +15,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.{Block, Sheet}
+  alias Storyarn.Versioning.Builders.AssetHashResolver
 
   # ========== Build Snapshot ==========
 
@@ -22,12 +23,17 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   def build_snapshot(%Sheet{} = sheet) do
     sheet = Repo.preload(sheet, :blocks)
 
+    asset_ids = [sheet.avatar_asset_id, sheet.banner_asset_id]
+    {hash_map, metadata_map} = AssetHashResolver.resolve_hashes(asset_ids)
+
     %{
       "name" => sheet.name,
       "shortcut" => sheet.shortcut,
       "avatar_asset_id" => sheet.avatar_asset_id,
       "banner_asset_id" => sheet.banner_asset_id,
-      "blocks" => Enum.map(sheet.blocks, &block_to_snapshot/1)
+      "blocks" => Enum.map(sheet.blocks, &block_to_snapshot/1),
+      "asset_blob_hashes" => hash_map,
+      "asset_metadata" => metadata_map
     }
   end
 
@@ -55,8 +61,18 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       Sheet.update_changeset(sheet, %{
         name: snapshot["name"],
         shortcut: snapshot["shortcut"],
-        avatar_asset_id: resolve_fk(snapshot["avatar_asset_id"], Storyarn.Assets.Asset),
-        banner_asset_id: resolve_fk(snapshot["banner_asset_id"], Storyarn.Assets.Asset)
+        avatar_asset_id:
+          AssetHashResolver.resolve_asset_fk(
+            snapshot["avatar_asset_id"],
+            snapshot,
+            sheet.project_id
+          ),
+        banner_asset_id:
+          AssetHashResolver.resolve_asset_fk(
+            snapshot["banner_asset_id"],
+            snapshot,
+            sheet.project_id
+          )
       })
     end)
     |> Multi.delete_all(:delete_blocks, fn _changes ->
@@ -245,11 +261,4 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   defp maybe_add_ref(refs, type, id, context),
     do: [%{type: type, id: id, context: context} | refs]
-
-  # Returns the FK value only if the referenced record still exists, nil otherwise.
-  defp resolve_fk(nil, _schema), do: nil
-
-  defp resolve_fk(id, schema) do
-    if Repo.exists?(from(e in schema, where: e.id == ^id)), do: id, else: nil
-  end
 end

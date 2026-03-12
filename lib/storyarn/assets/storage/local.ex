@@ -41,6 +41,16 @@ defmodule Storyarn.Assets.Storage.Local do
   end
 
   @impl true
+  def copy(source_key, dest_key) do
+    source_path = file_path(source_key)
+    dest_path = file_path(dest_key)
+
+    with :ok <- ensure_directory(dest_path) do
+      File.cp(source_path, dest_path)
+    end
+  end
+
+  @impl true
   def presigned_upload_url(_key, _content_type, _opts) do
     # Local storage doesn't support presigned URLs
     # Files should be uploaded through the server

@@ -15,6 +15,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   alias Ecto.Multi
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Versioning.Builders.AssetHashResolver
 
   alias Storyarn.Scenes.{
     Scene,
@@ -60,6 +61,14 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       end)
       |> Enum.map(&connection_to_snapshot(&1, pin_index_map))
 
+    # Collect asset IDs from scene + pins
+    pin_asset_ids =
+      sorted_layers
+      |> Enum.flat_map(fn layer -> Enum.map(layer.pins, & &1.icon_asset_id) end)
+
+    asset_ids = [scene.background_asset_id | pin_asset_ids]
+    {hash_map, metadata_map} = AssetHashResolver.resolve_hashes(asset_ids)
+
     %{
       "name" => scene.name,
       "shortcut" => scene.shortcut,
@@ -73,7 +82,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "scale_value" => scene.scale_value,
       "background_asset_id" => scene.background_asset_id,
       "layers" => layer_snapshots,
-      "connections" => connection_snapshots
+      "connections" => connection_snapshots,
+      "asset_blob_hashes" => hash_map,
+      "asset_metadata" => metadata_map
     }
   end
 
@@ -204,7 +215,12 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         default_center_y: snapshot["default_center_y"],
         scale_unit: snapshot["scale_unit"],
         scale_value: snapshot["scale_value"],
-        background_asset_id: resolve_fk(snapshot["background_asset_id"], Storyarn.Assets.Asset)
+        background_asset_id:
+          AssetHashResolver.resolve_asset_fk(
+            snapshot["background_asset_id"],
+            snapshot,
+            scene.project_id
+          )
       })
     end)
     |> Multi.delete_all(:delete_connections, fn _changes ->
@@ -223,7 +239,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       from(l in SceneLayer, where: l.scene_id == ^scene.id)
     end)
     |> Multi.run(:restore_layers, fn repo, _changes ->
-      restore_layers(repo, scene.id, snapshot["layers"] || [])
+      restore_layers(repo, scene.id, snapshot["layers"] || [], snapshot, scene.project_id)
     end)
     |> Multi.run(:restore_connections, fn repo, %{restore_layers: layer_data} ->
       restore_connections(repo, scene.id, snapshot["connections"] || [], layer_data)
@@ -243,26 +259,39 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     end
   end
 
-  defp restore_layers(_repo, _scene_id, []), do: {:ok, %{}}
+  defp restore_layers(_repo, _scene_id, [], _snapshot, _project_id), do: {:ok, %{}}
 
-  defp restore_layers(repo, scene_id, layers_data) do
+  defp restore_layers(repo, scene_id, layers_data, snapshot, project_id) do
     now = TimeHelpers.now()
 
     layer_data =
       layers_data
       |> Enum.with_index()
       |> Enum.reduce(%{}, fn {layer_data, layer_idx}, acc ->
-        {layer_id, pin_ids} = restore_single_layer(repo, scene_id, layer_data, layer_idx, now)
+        {layer_id, pin_ids} =
+          restore_single_layer(repo, scene_id, layer_data, layer_idx, now, snapshot, project_id)
+
         Map.put(acc, layer_idx, %{layer_id: layer_id, pin_ids: pin_ids})
       end)
 
     {:ok, layer_data}
   end
 
-  defp restore_single_layer(repo, scene_id, layer_data, layer_idx, now) do
+  defp restore_single_layer(repo, scene_id, layer_data, layer_idx, now, snapshot, project_id) do
     layer_id = insert_layer(repo, scene_id, layer_data, layer_idx, now)
     insert_layer_zones(repo, scene_id, layer_id, layer_data["zones"] || [], now)
-    pin_ids = insert_layer_pins(repo, scene_id, layer_id, layer_data["pins"] || [], now)
+
+    pin_ids =
+      insert_layer_pins(
+        repo,
+        scene_id,
+        layer_id,
+        layer_data["pins"] || [],
+        now,
+        snapshot,
+        project_id
+      )
+
     insert_layer_annotations(repo, scene_id, layer_id, layer_data["annotations"] || [], now)
     {layer_id, pin_ids}
   end
@@ -316,9 +345,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     end)
   end
 
-  defp insert_layer_pins(_repo, _scene_id, _layer_id, [], _now), do: []
+  defp insert_layer_pins(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id), do: []
 
-  defp insert_layer_pins(repo, scene_id, layer_id, pins_data, now) do
+  defp insert_layer_pins(repo, scene_id, layer_id, pins_data, now, snapshot, project_id) do
     Enum.map(pins_data, fn pin_data ->
       attrs = %{
         scene_id: scene_id,
@@ -337,7 +366,12 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         position: pin_data["position"] || 0,
         locked: pin_data["locked"] || false,
         sheet_id: resolve_fk(pin_data["sheet_id"], Storyarn.Sheets.Sheet),
-        icon_asset_id: resolve_fk(pin_data["icon_asset_id"], Storyarn.Assets.Asset),
+        icon_asset_id:
+          AssetHashResolver.resolve_asset_fk(
+            pin_data["icon_asset_id"],
+            snapshot,
+            project_id
+          ),
         action_type: pin_data["action_type"] || "none",
         action_data: pin_data["action_data"] || %{},
         condition: pin_data["condition"],

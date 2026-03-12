@@ -10,6 +10,8 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
   import StoryarnWeb.Components.ColorPicker
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.BlobStore
+  alias Storyarn.Collaboration
   alias Storyarn.Sheets
 
   @impl true
@@ -166,11 +168,16 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
     safe_filename = Assets.sanitize_filename(filename)
     key = Assets.generate_key(project, safe_filename)
 
+    blob_hash = BlobStore.compute_hash(binary_data)
+    ext = BlobStore.ext_from_content_type(content_type)
+    BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data)
+
     asset_attrs = %{
       filename: safe_filename,
       content_type: content_type,
       size: byte_size(binary_data),
-      key: key
+      key: key,
+      blob_hash: blob_hash
     }
 
     with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
@@ -178,6 +185,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
          {:ok, _updated_sheet} <- Sheets.update_sheet(sheet, %{banner_asset_id: asset.id}) do
       updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
       send(self(), {:banner, :sheet_updated, updated_sheet})
+      Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
       {:noreply, assign(socket, :sheet, updated_sheet)}
     else
       {:error, _reason} ->

@@ -15,6 +15,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Flows.{Flow, FlowConnection, FlowNode}
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Versioning.Builders.AssetHashResolver
 
   # ========== Build Snapshot ==========
 
@@ -43,6 +44,16 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       |> Enum.sort_by(&{Map.get(id_to_index, &1.source_node_id), &1.source_pin})
       |> Enum.map(&connection_to_snapshot(&1, id_to_index))
 
+    # Collect asset IDs from node data
+    asset_ids =
+      sorted_nodes
+      |> Enum.flat_map(fn node ->
+        data = node.data || %{}
+        [data["audio_asset_id"]]
+      end)
+
+    {hash_map, metadata_map} = AssetHashResolver.resolve_hashes(asset_ids)
+
     %{
       "name" => flow.name,
       "shortcut" => flow.shortcut,
@@ -51,7 +62,9 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       "settings" => flow.settings,
       "scene_id" => flow.scene_id,
       "nodes" => node_snapshots,
-      "connections" => connection_snapshots
+      "connections" => connection_snapshots,
+      "asset_blob_hashes" => hash_map,
+      "asset_metadata" => metadata_map
     }
   end
 
@@ -98,7 +111,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       from(n in FlowNode, where: n.flow_id == ^flow.id)
     end)
     |> Multi.run(:restore_nodes, fn repo, _changes ->
-      restore_nodes(repo, flow.id, snapshot["nodes"] || [])
+      restore_nodes(repo, flow.id, snapshot["nodes"] || [], snapshot, flow.project_id)
     end)
     |> Multi.run(:restore_connections, fn repo, %{restore_nodes: node_ids} ->
       restore_connections(repo, flow.id, snapshot["connections"] || [], node_ids)
@@ -113,20 +126,22 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     end
   end
 
-  defp restore_nodes(_repo, _flow_id, []), do: {:ok, []}
+  defp restore_nodes(_repo, _flow_id, [], _snapshot, _project_id), do: {:ok, []}
 
-  defp restore_nodes(repo, flow_id, nodes_data) do
+  defp restore_nodes(repo, flow_id, nodes_data, snapshot, project_id) do
     now = TimeHelpers.now()
 
     # Insert nodes one-by-one to get their IDs in order
     node_ids =
       Enum.map(nodes_data, fn node_data ->
+        data = resolve_node_asset_refs(node_data["data"] || %{}, snapshot, project_id)
+
         attrs = %{
           flow_id: flow_id,
           type: node_data["type"],
           position_x: node_data["position_x"] || 0.0,
           position_y: node_data["position_y"] || 0.0,
-          data: node_data["data"] || %{},
+          data: data,
           word_count: node_data["word_count"] || 0,
           source: node_data["source"] || "manual",
           inserted_at: now,
@@ -138,6 +153,17 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       end)
 
     {:ok, node_ids}
+  end
+
+  defp resolve_node_asset_refs(data, snapshot, project_id) do
+    case data["audio_asset_id"] do
+      nil ->
+        data
+
+      audio_id ->
+        resolved = AssetHashResolver.resolve_asset_fk(audio_id, snapshot, project_id)
+        Map.put(data, "audio_asset_id", resolved)
+    end
   end
 
   defp restore_connections(_repo, _flow_id, [], _node_ids), do: {:ok, 0}

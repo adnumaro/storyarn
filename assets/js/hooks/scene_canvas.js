@@ -264,42 +264,7 @@ export const SceneCanvas = {
 
     // Wire background image changes
     this.handleEvent("background_changed", ({ url }) => {
-      // Remove existing background overlay or grid
-      if (this.backgroundOverlay) {
-        this.backgroundOverlay.remove();
-        this.backgroundOverlay = null;
-      }
-      if (this.gridOverlay) {
-        this.gridOverlay.remove();
-        this.gridOverlay = null;
-      }
-
-      if (url) {
-        // Load image to read natural dimensions, then fit canvas to them
-        const img = new Image();
-        img.onload = () => {
-          const natW = img.naturalWidth || this.canvasWidth;
-          const natH = img.naturalHeight || this.canvasHeight;
-          const newBounds = imageBounds(natW, natH);
-
-          this.canvasWidth = natW;
-          this.canvasHeight = natH;
-          this.initialBounds = newBounds;
-
-          this.backgroundOverlay = L.imageOverlay(url, newBounds).addTo(this.leafletMap);
-          this.backgroundOverlay.bringToBack();
-          this.leafletMap.fitBounds(newBounds);
-
-          // Reposition all elements to the new coordinate space
-          if (this.pinHandler) this.pinHandler.repositionAll();
-          if (this.zoneHandler) this.zoneHandler.repositionAll();
-          if (this.connectionHandler) this.connectionHandler.repositionAll();
-          if (this.annotationHandler) this.annotationHandler.repositionAll();
-        };
-        img.src = url;
-      } else {
-        this.gridOverlay = addGridPlaceholder(this.leafletMap, this.canvasWidth, this.canvasHeight);
-      }
+      this._updateBackground(url);
     });
 
     // Wire scene export
@@ -352,6 +317,9 @@ export const SceneCanvas = {
         for (const marker of this.annotationHandler.markers.values()) marker.remove();
         this.annotationHandler.markers.clear();
       }
+
+      // Update background if it changed
+      this._updateBackground(data.background_url);
 
       // Re-render all elements from the new data
       this.pinHandler?.renderPins();
@@ -458,6 +426,49 @@ export const SceneCanvas = {
 
     // Apply initial tool state (disable dragging for select mode)
     this.updateCursor();
+  },
+
+  /** Updates the background image or shows grid placeholder. */
+  _updateBackground(url) {
+    if (this.backgroundOverlay) {
+      this.backgroundOverlay.remove();
+      this.backgroundOverlay = null;
+    }
+    if (this.gridOverlay) {
+      this.gridOverlay.remove();
+      this.gridOverlay = null;
+    }
+
+    if (url) {
+      const img = new Image();
+      img.onload = () => {
+        const natW = img.naturalWidth || this.canvasWidth;
+        const natH = img.naturalHeight || this.canvasHeight;
+        const newBounds = imageBounds(natW, natH);
+
+        this.canvasWidth = natW;
+        this.canvasHeight = natH;
+        this.initialBounds = newBounds;
+
+        this.backgroundOverlay = L.imageOverlay(url, newBounds).addTo(
+          this.leafletMap,
+        );
+        this.backgroundOverlay.bringToBack();
+        this.leafletMap.fitBounds(newBounds);
+
+        if (this.pinHandler) this.pinHandler.repositionAll();
+        if (this.zoneHandler) this.zoneHandler.repositionAll();
+        if (this.connectionHandler) this.connectionHandler.repositionAll();
+        if (this.annotationHandler) this.annotationHandler.repositionAll();
+      };
+      img.src = url;
+    } else {
+      this.gridOverlay = addGridPlaceholder(
+        this.leafletMap,
+        this.canvasWidth,
+        this.canvasHeight,
+      );
+    }
   },
 
   /** Converts a Leaflet LatLng to percentage coordinates. */

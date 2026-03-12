@@ -11,6 +11,7 @@ defmodule Storyarn.Assets do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.ImageProcessor
   alias Storyarn.Assets.Storage
   alias Storyarn.Billing
@@ -299,6 +300,10 @@ defmodule Storyarn.Assets do
     key = generate_key(project, entry.client_name)
     content = File.read!(path)
 
+    blob_hash = BlobStore.compute_hash(content)
+    ext = BlobStore.ext_from_content_type(entry.client_type)
+    BlobStore.ensure_blob(project.id, blob_hash, ext, content)
+
     with {:ok, url} <- Storage.upload(key, content, entry.client_type) do
       metadata = extract_image_metadata(path, entry.client_type)
 
@@ -308,7 +313,8 @@ defmodule Storyarn.Assets do
              size: entry.client_size,
              key: key,
              url: url,
-             metadata: metadata
+             metadata: metadata,
+             blob_hash: blob_hash
            }) do
         {:ok, asset} ->
           {:ok, asset}

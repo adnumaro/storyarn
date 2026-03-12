@@ -30,6 +30,8 @@ defmodule StoryarnWeb.Components.AudioPicker do
   use StoryarnWeb, :live_component
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.BlobStore
+  alias Storyarn.Collaboration
 
   @impl true
   def render(assigns) do
@@ -192,11 +194,16 @@ defmodule StoryarnWeb.Components.AudioPicker do
       safe_filename = Assets.sanitize_filename(filename)
       key = Assets.generate_key(project, safe_filename)
 
+      blob_hash = BlobStore.compute_hash(binary_data)
+      ext = BlobStore.ext_from_content_type(content_type)
+      BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data)
+
       asset_attrs = %{
         filename: safe_filename,
         content_type: content_type,
         size: byte_size(binary_data),
-        key: key
+        key: key,
+        blob_hash: blob_hash
       }
 
       with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
@@ -204,6 +211,7 @@ defmodule StoryarnWeb.Components.AudioPicker do
         audio_assets = [asset | socket.assigns.audio_assets]
 
         send(self(), {:audio_picker, :selected, asset.id})
+        Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
 
         {:noreply,
          assign(socket,

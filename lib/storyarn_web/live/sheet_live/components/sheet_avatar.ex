@@ -10,6 +10,8 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   import StoryarnWeb.Components.SheetComponents
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.BlobStore
+  alias Storyarn.Collaboration
   alias Storyarn.Sheets
 
   @impl true
@@ -129,11 +131,16 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
     safe_filename = Assets.sanitize_filename(filename)
     key = Assets.generate_key(project, safe_filename)
 
+    blob_hash = BlobStore.compute_hash(binary_data)
+    ext = BlobStore.ext_from_content_type(content_type)
+    BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data)
+
     asset_attrs = %{
       filename: safe_filename,
       content_type: content_type,
       size: byte_size(binary_data),
-      key: key
+      key: key,
+      blob_hash: blob_hash
     }
 
     with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
@@ -142,6 +149,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
       updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
       sheets_tree = Sheets.list_sheets_tree(project.id)
       send(self(), {:sheet_avatar, :sheet_updated, updated_sheet, sheets_tree})
+      Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
       {:noreply, assign(socket, :sheet, updated_sheet)}
     else
       {:error, _reason} ->

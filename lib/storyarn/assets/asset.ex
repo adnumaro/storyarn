@@ -48,6 +48,7 @@ defmodule Storyarn.Assets.Asset do
           key: String.t() | nil,
           url: String.t() | nil,
           metadata: map() | nil,
+          blob_hash: String.t() | nil,
           project_id: integer() | nil,
           project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
           uploaded_by_id: integer() | nil,
@@ -63,6 +64,7 @@ defmodule Storyarn.Assets.Asset do
     field :key, :string
     field :url, :string
     field :metadata, :map, default: %{}
+    field :blob_hash, :string
 
     belongs_to :project, Project
     belongs_to :uploaded_by, User
@@ -101,7 +103,7 @@ defmodule Storyarn.Assets.Asset do
   """
   def create_changeset(asset, attrs) do
     asset
-    |> cast(attrs, [:filename, :content_type, :size, :key, :url, :metadata])
+    |> cast(attrs, [:filename, :content_type, :size, :key, :url, :metadata, :blob_hash])
     |> validate_required([:filename, :content_type, :size, :key])
     |> validate_inclusion(:content_type, @allowed_content_types,
       message: "is not a supported file type"

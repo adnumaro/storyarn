@@ -1546,6 +1546,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     case Scenes.update_scene(socket.assigns.scene, %{background_asset_id: asset.id}) do
       {:ok, updated} ->
         updated = Scenes.preload_scene_background(updated)
+        Collaboration.broadcast_change({:assets, socket.assigns.project.id}, :asset_created, %{})
 
         {:noreply,
          socket
