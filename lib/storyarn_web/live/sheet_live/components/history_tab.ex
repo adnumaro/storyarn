@@ -22,6 +22,7 @@ defmodule StoryarnWeb.SheetLive.Components.HistoryTab do
         current_user_id={@current_user_id}
         can_edit={@can_edit}
         current_version_id={@sheet.current_version_id}
+        workspace_id={@workspace_id}
       />
     </div>
     """

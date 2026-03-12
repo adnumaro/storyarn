@@ -43,6 +43,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
     <div
       id="dialogue-screenplay-editor"
       phx-hook="DialogueScreenplayEditor"
+      data-right-panel
       phx-target={@myself}
       class={
         [

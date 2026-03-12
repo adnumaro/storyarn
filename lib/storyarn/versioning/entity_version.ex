@@ -85,6 +85,18 @@ defmodule Storyarn.Versioning.EntityVersion do
   end
 
   @doc """
+  Changeset for updating title and description on an existing version (promotion).
+  Title is required — you cannot un-name a version.
+  """
+  def update_changeset(version, attrs) do
+    version
+    |> cast(attrs, [:title, :description])
+    |> validate_required([:title])
+    |> validate_length(:title, min: 1, max: 255)
+    |> validate_length(:description, max: 500)
+  end
+
+  @doc """
   Returns the list of valid entity types.
   """
   def valid_entity_types, do: @valid_entity_types

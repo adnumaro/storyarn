@@ -10,6 +10,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   import StoryarnWeb.FlowLive.Components.FlowDock
   import StoryarnWeb.FlowLive.Components.FlowHeader
   import StoryarnWeb.Components.CanvasToolbar
+  import StoryarnWeb.Components.RightSidebar
   import StoryarnWeb.FlowLive.Components.FlowToolbar
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
@@ -167,25 +168,30 @@ defmodule StoryarnWeb.FlowLive.Show do
               project={@project}
               can_edit={@can_edit}
               debug_panel_open={@debug_panel_open}
-              versions_panel_open={@versions_panel_open}
             />
 
             <%!-- Version History Panel --%>
-            <div
-              :if={@versions_panel_open}
-              class="absolute right-4 top-4 bottom-20 w-80 z-30 bg-base-100 rounded-lg shadow-xl border border-base-300 overflow-y-auto p-4"
+            <.right_sidebar
+              id="flow-versions-panel"
+              title={dgettext("flows", "Version History")}
+              open_event="open_versions_panel"
+              close_event="close_versions_panel"
+              width="320px"
+              loading={!@versions_panel_open}
             >
-              <div class="flex items-center justify-between mb-4">
-                <h3 class="font-semibold">{dgettext("flows", "Version History")}</h3>
+              <:actions>
                 <button
+                  :if={@can_edit && @versions_panel_open}
                   type="button"
                   class="btn btn-ghost btn-xs btn-square"
-                  phx-click="toggle_versions_panel"
+                  phx-click="show_create_version_modal"
+                  phx-target="#flow-versions-section"
                 >
-                  <.icon name="x" class="size-4" />
+                  <.icon name="plus" class="size-4" />
                 </button>
-              </div>
+              </:actions>
               <.live_component
+                :if={@versions_panel_open}
                 module={StoryarnWeb.Components.VersionsSection}
                 id="flow-versions-section"
                 entity={@flow}
@@ -194,8 +200,9 @@ defmodule StoryarnWeb.FlowLive.Show do
                 current_user_id={@current_scope.user.id}
                 can_edit={@can_edit}
                 current_version_id={@flow.current_version_id}
+                workspace_id={@workspace.id}
               />
-            </div>
+            </.right_sidebar>
           </div>
 
           <.debug_panel
@@ -224,9 +231,11 @@ defmodule StoryarnWeb.FlowLive.Show do
 
       <%!-- Builder Sidebar (condition / instruction nodes) --%>
       <div
-        :if={@selected_node && @editing_mode == :builder}
         id="builder-sidebar"
-        phx-hook="BuilderSidebar"
+        phx-hook="RightSidebar"
+        data-right-panel
+        data-open-event="open_builder"
+        data-close-event="close_builder"
         class={[
           "fixed flex flex-col overflow-hidden",
           "inset-0 z-50 bg-base-100",
@@ -234,13 +243,21 @@ defmodule StoryarnWeb.FlowLive.Show do
           "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
         ]}
       >
-        <.builder_content
-          node={@selected_node}
-          form={@node_form}
-          can_edit={@can_edit}
-          project_variables={@project_variables}
-          panel_sections={@panel_sections}
-        />
+        <div :if={@selected_node && @editing_mode == :builder}>
+          <.builder_content
+            node={@selected_node}
+            form={@node_form}
+            can_edit={@can_edit}
+            project_variables={@project_variables}
+            panel_sections={@panel_sections}
+          />
+        </div>
+        <div
+          :if={!(@selected_node && @editing_mode == :builder)}
+          class="flex items-center justify-center h-full"
+        >
+          <span class="loading loading-spinner loading-md text-base-content/40"></span>
+        </div>
       </div>
 
       <%!-- Screenplay Editor sidebar --%>
@@ -434,8 +451,12 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("tree_panel_" <> _ = event, params, socket),
     do: handle_tree_panel_event(event, params, socket)
 
-  def handle_event("toggle_versions_panel", _params, socket) do
-    {:noreply, assign(socket, :versions_panel_open, !socket.assigns.versions_panel_open)}
+  def handle_event("open_versions_panel", _params, socket) do
+    {:noreply, assign(socket, :versions_panel_open, true)}
+  end
+
+  def handle_event("close_versions_panel", _params, socket) do
+    {:noreply, assign(socket, :versions_panel_open, false)}
   end
 
   # Triggered by the FlowLoader hook after the browser has painted the spinner.

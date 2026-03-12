@@ -283,6 +283,54 @@ defmodule Storyarn.Billing.LimitsTest do
     end
   end
 
+  describe "can_create_named_version?/2" do
+    test "allows under limit", %{user: user, workspace: workspace} do
+      project = project_fixture(user, workspace: workspace)
+      assert :ok = Billing.can_create_named_version?(project.id, workspace.id)
+    end
+
+    test "blocks at limit", %{user: user, workspace: workspace} do
+      project = project_fixture(user, workspace: workspace)
+      sheet = Storyarn.SheetsFixtures.sheet_fixture(project)
+      sheet = Storyarn.Repo.preload(sheet, :blocks, force: true)
+
+      # Create 10 named versions to reach the limit
+      for i <- 1..10 do
+        {:ok, _} =
+          Storyarn.Versioning.create_version("sheet", sheet, project.id, user.id, title: "v#{i}")
+      end
+
+      assert {:error, :limit_reached,
+              %{resource: :named_versions_per_project, used: 10, limit: 10}} =
+               Billing.can_create_named_version?(project.id, workspace.id)
+    end
+
+    test "counts promoted auto-snapshots toward limit", %{user: user, workspace: workspace} do
+      project = project_fixture(user, workspace: workspace)
+      sheet = Storyarn.SheetsFixtures.sheet_fixture(project)
+      sheet = Storyarn.Repo.preload(sheet, :blocks, force: true)
+
+      # Create 9 named + 1 promoted = 10
+      for i <- 1..9 do
+        {:ok, _} =
+          Storyarn.Versioning.create_version("sheet", sheet, project.id, user.id, title: "v#{i}")
+      end
+
+      {:ok, auto} =
+        Storyarn.Versioning.create_version("sheet", sheet, project.id, user.id, is_auto: true)
+
+      # Still under limit (only 9 named, auto has no title)
+      assert :ok = Billing.can_create_named_version?(project.id, workspace.id)
+
+      # Promote the auto-snapshot
+      {:ok, _} = Storyarn.Versioning.update_version(auto, %{title: "Promoted"})
+
+      # Now at limit
+      assert {:error, :limit_reached, _} =
+               Billing.can_create_named_version?(project.id, workspace.id)
+    end
+  end
+
   describe "can_upload_asset? boundary" do
     test "allows upload exactly at limit boundary", %{user: user, workspace: workspace} do
       project = project_fixture(user, workspace: workspace)

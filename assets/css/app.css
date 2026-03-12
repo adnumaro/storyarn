@@ -273,6 +273,19 @@
   @apply bg-base-200/90 backdrop-blur border border-base-300 rounded-xl shadow-sm;
 }
 
+/* Right sidebars — hidden by default, shown when hook sets data-panel-open.
+   The attribute lives outside the template so LiveView patches can't touch it. */
+[phx-hook="RightSidebar"]:not([data-panel-open]) {
+  display: none !important;
+}
+
+/* Right sidebar dynamic width (mobile: full width, desktop: custom) */
+@media (min-width: 1280px) {
+  .right-sidebar {
+    width: var(--rs-width, 320px);
+  }
+}
+
 /* Scroll-collapsible toolbar text (project name fades out on scroll) */
 .toolbar-collapsible {
   max-width: 200px;

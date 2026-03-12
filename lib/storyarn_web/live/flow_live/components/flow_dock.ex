@@ -9,6 +9,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowDock do
   use Gettext, backend: StoryarnWeb.Gettext
   use StoryarnWeb, :verified_routes
 
+  alias Phoenix.LiveView.JS
+
   import StoryarnWeb.Components.CanvasDock
 
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
@@ -18,7 +20,6 @@ defmodule StoryarnWeb.FlowLive.Components.FlowDock do
   attr :project, :map, required: true
   attr :can_edit, :boolean, required: true
   attr :debug_panel_open, :boolean, default: false
-  attr :versions_panel_open, :boolean, default: false
 
   def flow_dock(assigns) do
     assigns = assign(assigns, :groups, build_groups(assigns))
@@ -104,8 +105,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowDock do
         icon: "history",
         tooltip_title: dgettext("flows", "Version History"),
         tooltip: dgettext("flows", "View and manage version history"),
-        click: "toggle_versions_panel",
-        active: assigns.versions_panel_open
+        click: JS.dispatch("panel:toggle", to: "#flow-versions-panel"),
+        panel_trigger: "flow-versions-panel"
       },
       %{
         id: "play",

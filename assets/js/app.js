@@ -59,7 +59,6 @@ import { AvatarUpload } from "./hooks/avatar_upload";
 import { BannerUpload } from "./hooks/banner_upload";
 import { BlockKeyboard } from "./hooks/block_keyboard";
 import { BlockMenu } from "./hooks/block_menu";
-import { BuilderSidebar } from "./hooks/builder_sidebar";
 import { CanvasDropZone } from "./hooks/canvas_drop_zone";
 import { CanvasToolbar } from "./hooks/canvas_toolbar";
 import { ColorPicker } from "./hooks/color_picker";
@@ -80,14 +79,13 @@ import { FlowCanvas } from "./hooks/flow_canvas";
 import { FlowLoader } from "./hooks/flow_loader";
 import { FormulaBinding } from "./hooks/formula_binding";
 import { FormulaPreview } from "./hooks/formula_preview";
-import { FormulaSidebar } from "./hooks/formula_sidebar";
 import { FountainImport } from "./hooks/fountain_import";
 import { GallerySortable } from "./hooks/gallery_sortable";
 import { GalleryUpload } from "./hooks/gallery_upload";
 import { InstructionBuilder } from "./hooks/instruction_builder";
 import { ReferenceSearch } from "./hooks/reference_search";
+import { RightSidebar } from "./hooks/right_sidebar";
 import { SceneCanvas } from "./hooks/scene_canvas";
-import { SceneElementPanel } from "./hooks/scene_element_panel";
 import { ScreenplayEditor } from "./hooks/screenplay_editor";
 import { ScrollCollapse } from "./hooks/scroll_collapse";
 import { SearchableSelect } from "./hooks/searchable_select";
@@ -120,7 +118,6 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ...colocatedHooks,
     AssetUpload,
     AudioUpload,
-    BuilderSidebar,
     CanvasDropZone,
     AvatarUpload,
     BannerUpload,
@@ -150,9 +147,9 @@ const liveSocket = new LiveSocket("/live", Socket, {
     DocsScrollSpy,
     FountainImport,
     SceneCanvas,
-    SceneElementPanel,
     CanvasToolbar,
     ReferenceSearch,
+    RightSidebar,
     ScrollCollapse,
     SearchableSelect,
     SettingsSidebar,
@@ -163,7 +160,6 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ExpressionEditor,
     FormulaBinding,
     FormulaPreview,
-    FormulaSidebar,
     TableCellCheckbox,
     TableCellSelect,
     TableColumnDropdown,
@@ -193,6 +189,18 @@ window.addEventListener("phx:hide-modal", (event) => {
   if (event.target instanceof HTMLDialogElement) {
     event.target.close();
   }
+});
+
+// Handle panel open/close from server push_event
+// Server does: push_event(socket, "panel-open", %{to: "#my-panel"})
+window.addEventListener("phx:panel-open", (event) => {
+  const el = document.querySelector(event.detail.to);
+  if (el) el.dispatchEvent(new Event("panel:open"));
+});
+
+window.addEventListener("phx:panel-close", (event) => {
+  const el = document.querySelector(event.detail.to);
+  if (el) el.dispatchEvent(new Event("panel:close"));
 });
 
 // Handle copy to clipboard via click events

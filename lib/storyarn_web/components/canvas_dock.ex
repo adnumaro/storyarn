@@ -27,7 +27,8 @@ defmodule StoryarnWeb.Components.CanvasDock do
         value: "dialogue",           # phx-value-type for click events
         active: false,               # highlight as active
         disabled: false,             # grayed out
-        children: []                 # if present, renders as dropdown
+        children: [],                # if present, renders as dropdown
+        panel_trigger: "my-panel"    # links button to a RightSidebar panel for active state
       }
 
   Child items:
@@ -87,6 +88,7 @@ defmodule StoryarnWeb.Components.CanvasDock do
           type="button"
           phx-click={@item[:click]}
           phx-value-type={@item[:value]}
+          data-panel-trigger={@item[:panel_trigger]}
           class={dock_btn_class(@item)}
           disabled={@item[:disabled]}
         >

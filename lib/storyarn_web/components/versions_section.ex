@@ -2,11 +2,15 @@ defmodule StoryarnWeb.Components.VersionsSection do
   @moduledoc """
   Shared LiveComponent for version history management.
   Works with any entity type (sheet, flow, scene) through the generalized Versioning context.
+
+  Displays named versions (milestones) prominently at top, with auto-snapshots
+  in a collapsible section below. Supports promoting auto-snapshots to named versions.
   """
 
   use StoryarnWeb, :live_component
   use StoryarnWeb.Helpers.Authorize
 
+  alias Storyarn.Billing
   alias Storyarn.Versioning
 
   @versions_per_page 20
@@ -15,38 +19,62 @@ defmodule StoryarnWeb.Components.VersionsSection do
   def render(assigns) do
     ~H"""
     <section>
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold flex items-center gap-2">
-          <.icon name="history" class="size-5" />
-          {dgettext("versioning", "Version History")}
-        </h2>
-        <button
-          :if={@can_edit}
-          type="button"
-          class="btn btn-sm btn-primary"
-          phx-click="show_create_version_modal"
-          phx-target={@myself}
-        >
-          <.icon name="plus" class="size-4" />
-          {dgettext("versioning", "Create Version")}
-        </button>
-      </div>
-
       <%= if is_nil(@versions) do %>
         <.loading_placeholder />
       <% else %>
         <%= if @versions == [] do %>
           <.empty_versions_state />
         <% else %>
-          <div class="space-y-2">
+          <%!-- Named Versions --%>
+          <div :if={@named_versions != []} class="space-y-2 mb-6">
+            <h3 class="text-sm font-medium text-base-content/70 flex items-center gap-1.5">
+              <.icon name="bookmark" class="size-4" />
+              {dgettext("versioning", "Named Versions")}
+            </h3>
             <.version_row
-              :for={version <- @versions}
+              :for={version <- @named_versions}
               version={version}
+              variant={:named}
               is_current={version.id == @current_version_id}
               can_edit={@can_edit}
+              can_name_version={@can_name_version}
               target={@myself}
             />
           </div>
+
+          <%!-- Auto History --%>
+          <div :if={@auto_versions != []}>
+            <button
+              type="button"
+              class="text-sm text-base-content/60 flex items-center gap-1.5 mb-2 hover:text-base-content/80 transition-colors"
+              phx-click="toggle_auto_versions"
+              phx-target={@myself}
+            >
+              <.icon
+                name={if @show_auto_versions, do: "chevron-down", else: "chevron-right"}
+                class="size-4"
+              />
+              {dngettext(
+                "versioning",
+                "%{count} auto-save",
+                "%{count} auto-saves",
+                length(@auto_versions),
+                count: length(@auto_versions)
+              )}
+            </button>
+            <div :if={@show_auto_versions} class="space-y-2">
+              <.version_row
+                :for={version <- @auto_versions}
+                version={version}
+                variant={:auto}
+                is_current={version.id == @current_version_id}
+                can_edit={@can_edit}
+                can_name_version={@can_name_version}
+                target={@myself}
+              />
+            </div>
+          </div>
+
           <button
             :if={@has_more_versions}
             type="button"
@@ -70,6 +98,16 @@ defmodule StoryarnWeb.Components.VersionsSection do
         <.create_version_form target={@myself} />
       </.modal>
 
+      <%!-- Promote Version Modal --%>
+      <.modal
+        :if={@promote_version != nil}
+        id="promote-version-modal"
+        show
+        on_cancel={JS.push("hide_promote_modal", target: @myself)}
+      >
+        <.promote_version_form version={@promote_version} target={@myself} />
+      </.modal>
+
       <.confirm_modal
         :if={@can_edit}
         id={"delete-version-confirm-#{@entity_type}"}
@@ -90,14 +128,23 @@ defmodule StoryarnWeb.Components.VersionsSection do
       socket
       |> assign(assigns)
       |> assign_new(:versions, fn -> nil end)
+      |> assign_new(:named_versions, fn -> [] end)
+      |> assign_new(:auto_versions, fn -> [] end)
       |> assign_new(:versions_page, fn -> 1 end)
       |> assign_new(:has_more_versions, fn -> false end)
       |> assign_new(:show_create_version_modal, fn -> false end)
+      |> assign_new(:show_auto_versions, fn -> false end)
+      |> assign_new(:promote_version, fn -> nil end)
       |> assign_new(:current_version_id, fn -> nil end)
+      |> assign_new(:can_name_version, fn -> true end)
+      |> assign_new(:limit_message, fn -> nil end)
+      |> assign_new(:pending_delete_version, fn -> nil end)
 
     socket =
       if is_nil(socket.assigns.versions) do
-        load_versions(socket, 1)
+        socket
+        |> load_versions(1)
+        |> check_named_version_limit()
       else
         socket
       end
@@ -124,6 +171,38 @@ defmodule StoryarnWeb.Components.VersionsSection do
     end)
   end
 
+  def handle_event("toggle_auto_versions", _params, socket) do
+    {:noreply, assign(socket, :show_auto_versions, !socket.assigns.show_auto_versions)}
+  end
+
+  def handle_event("show_promote_modal", %{"version" => version_number}, socket) do
+    case parse_version_number(version_number) do
+      {:ok, number} ->
+        version =
+          Enum.find(socket.assigns.versions, &(&1.version_number == number))
+
+        {:noreply, assign(socket, :promote_version, version)}
+
+      :error ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("hide_promote_modal", _params, socket) do
+    {:noreply, assign(socket, :promote_version, nil)}
+  end
+
+  def handle_event("promote_version", params, socket) do
+    with_edit_authorization(socket, fn socket ->
+      promote_version(
+        socket,
+        params["version_number"],
+        params["title"],
+        params["description"]
+      )
+    end)
+  end
+
   def handle_event("restore_version", %{"version" => version_number}, socket) do
     with_edit_authorization(socket, fn socket ->
       restore_version(socket, version_number)
@@ -135,10 +214,14 @@ defmodule StoryarnWeb.Components.VersionsSection do
   end
 
   def handle_event("confirm_delete_version", _params, socket) do
-    if version = socket.assigns[:pending_delete_version] do
-      handle_event("delete_version", %{"version" => to_string(version)}, socket)
-    else
-      {:noreply, socket}
+    case socket.assigns.pending_delete_version do
+      nil ->
+        {:noreply, socket}
+
+      version_number ->
+        with_edit_authorization(socket, fn socket ->
+          delete_version(socket, to_string(version_number))
+        end)
     end
   end
 
@@ -158,13 +241,22 @@ defmodule StoryarnWeb.Components.VersionsSection do
   # ===========================================================================
 
   defp create_version(socket, title, description) do
+    title = if title == "", do: nil, else: title
+    description = if description == "", do: nil, else: description
+
+    if title != nil and not check_named_version_allowed?(socket) do
+      {:noreply,
+       put_flash(socket, :error, dgettext("versioning", "Named version limit reached."))}
+    else
+      do_create_version(socket, title, description)
+    end
+  end
+
+  defp do_create_version(socket, title, description) do
     entity = socket.assigns.entity
     entity_type = socket.assigns.entity_type
     user_id = socket.assigns.current_user_id
     project_id = socket.assigns.project_id
-
-    title = if title == "", do: nil, else: title
-    description = if description == "", do: nil, else: description
 
     case Versioning.create_version(entity_type, entity, project_id, user_id,
            title: title,
@@ -174,6 +266,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
         socket =
           socket
           |> load_versions(1)
+          |> check_named_version_limit()
           |> assign(:show_create_version_modal, false)
 
         notify_parent(:version_created, %{version: version})
@@ -181,6 +274,44 @@ defmodule StoryarnWeb.Components.VersionsSection do
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
+    end
+  end
+
+  defp promote_version(socket, version_number, title, description) do
+    entity_type = socket.assigns.entity_type
+    entity_id = socket.assigns.entity.id
+
+    with {:ok, number} <- parse_version_number(version_number),
+         version when not is_nil(version) <-
+           Versioning.get_version(entity_type, entity_id, number),
+         true <- check_named_version_allowed?(socket) do
+      title = if title == "", do: nil, else: title
+      description = if description == "", do: nil, else: description
+
+      case Versioning.update_version(version, %{title: title, description: description}) do
+        {:ok, _updated} ->
+          socket =
+            socket
+            |> load_versions(1)
+            |> check_named_version_limit()
+            |> assign(:promote_version, nil)
+
+          {:noreply,
+           put_flash(socket, :info, dgettext("versioning", "Version named successfully."))}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
+      end
+    else
+      :error ->
+        {:noreply, put_flash(socket, :error, dgettext("versioning", "Invalid version number."))}
+
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+
+      false ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("versioning", "Named version limit reached."))}
     end
   end
 
@@ -251,7 +382,11 @@ defmodule StoryarnWeb.Components.VersionsSection do
   defp do_delete_version(socket, version) do
     case Versioning.delete_version(version) do
       {:ok, _} ->
-        socket = load_versions(socket, 1)
+        socket =
+          socket
+          |> load_versions(1)
+          |> check_named_version_limit()
+
         notify_parent(:version_deleted, %{version: version})
         {:noreply, put_flash(socket, :info, dgettext("versioning", "Version deleted."))}
 
@@ -285,10 +420,47 @@ defmodule StoryarnWeb.Components.VersionsSection do
         versions
       end
 
+    {named, auto} = Enum.split_with(versions, &(not is_nil(&1.title)))
+
     socket
     |> assign(:versions, versions)
+    |> assign(:named_versions, named)
+    |> assign(:auto_versions, auto)
     |> assign(:versions_page, page_number)
     |> assign(:has_more_versions, has_more)
+  end
+
+  defp check_named_version_allowed?(socket) do
+    case socket.assigns[:workspace_id] do
+      nil ->
+        true
+
+      workspace_id ->
+        Billing.can_create_named_version?(socket.assigns.project_id, workspace_id) == :ok
+    end
+  end
+
+  defp check_named_version_limit(socket) do
+    project_id = socket.assigns.project_id
+    workspace_id = socket.assigns[:workspace_id]
+
+    if workspace_id do
+      case Billing.can_create_named_version?(project_id, workspace_id) do
+        :ok ->
+          assign(socket, can_name_version: true, limit_message: nil)
+
+        {:error, :limit_reached, %{used: used, limit: limit}} ->
+          message =
+            dgettext("versioning", "Named version limit reached (%{used}/%{limit})",
+              used: used,
+              limit: limit
+            )
+
+          assign(socket, can_name_version: false, limit_message: message)
+      end
+    else
+      assign(socket, can_name_version: true, limit_message: nil)
+    end
   end
 
   # ===========================================================================
@@ -324,8 +496,10 @@ defmodule StoryarnWeb.Components.VersionsSection do
   end
 
   attr :version, :map, required: true
+  attr :variant, :atom, default: :named
   attr :is_current, :boolean, default: false
   attr :can_edit, :boolean, default: false
+  attr :can_name_version, :boolean, default: true
   attr :target, :any, default: nil
 
   defp version_row(assigns) do
@@ -338,21 +512,42 @@ defmodule StoryarnWeb.Components.VersionsSection do
       <div class={[
         "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium",
         @is_current && "bg-primary text-primary-content",
-        !@is_current && "bg-base-300"
+        @variant == :named && !@is_current && "bg-accent/20 text-accent",
+        @variant == :auto && !@is_current && "bg-base-300"
       ]}>
-        v{@version.version_number}
+        <%= if @variant == :named do %>
+          <.icon name="bookmark" class="size-4" />
+        <% else %>
+          <span class="text-xs">v{@version.version_number}</span>
+        <% end %>
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
-          <span class="text-sm font-medium">
+          <span class={[
+            "text-sm",
+            @variant == :named && "font-medium",
+            @variant == :auto && "text-base-content/70"
+          ]}>
             {@version.title || @version.change_summary || dgettext("versioning", "No summary")}
           </span>
           <span :if={@is_current} class="badge badge-primary badge-sm">
             {dgettext("versioning", "Current")}
           </span>
+          <span :if={@variant == :named} class="badge badge-accent badge-xs badge-outline">
+            v{@version.version_number}
+          </span>
         </div>
-        <p :if={@version.description} class="text-sm text-base-content/70 mt-0.5">
+        <p
+          :if={@variant == :named && @version.description}
+          class="text-sm text-base-content/70 mt-0.5"
+        >
           {@version.description}
+        </p>
+        <p
+          :if={@variant == :named && @version.change_summary}
+          class="text-xs text-base-content/50 mt-0.5"
+        >
+          {@version.change_summary}
         </p>
         <div class="flex items-center gap-2 text-xs text-base-content/60 mt-0.5">
           <span>{format_version_date(@version.inserted_at)}</span>
@@ -366,6 +561,17 @@ defmodule StoryarnWeb.Components.VersionsSection do
         :if={@can_edit}
         class="flex-shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
       >
+        <button
+          :if={@variant == :auto && @can_name_version}
+          type="button"
+          class="btn btn-ghost btn-xs tooltip"
+          data-tip={dgettext("versioning", "Name this version")}
+          phx-click="show_promote_modal"
+          phx-value-version={@version.version_number}
+          phx-target={@target}
+        >
+          <.icon name="bookmark-plus" class="size-4" />
+        </button>
         <button
           :if={!@is_current}
           type="button"
@@ -412,6 +618,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
           id="version-title"
           class="input input-bordered w-full"
           placeholder={dgettext("versioning", "e.g., Before major refactor")}
+          required
           autofocus
         />
       </div>
@@ -441,6 +648,65 @@ defmodule StoryarnWeb.Components.VersionsSection do
         <button type="submit" class="btn btn-primary">
           <.icon name="save" class="size-4" />
           {dgettext("versioning", "Create Version")}
+        </button>
+      </div>
+    </form>
+    """
+  end
+
+  attr :version, :map, required: true
+  attr :target, :any, default: nil
+
+  defp promote_version_form(assigns) do
+    ~H"""
+    <h3 class="font-bold text-lg mb-4">{dgettext("versioning", "Name This Version")}</h3>
+    <p class="text-sm text-base-content/70 mb-4">
+      {dgettext("versioning", "Give this auto-save a name to make it a milestone.")}
+    </p>
+    <form phx-submit="promote_version" phx-target={@target}>
+      <input type="hidden" name="version_number" value={@version.version_number} />
+      <div class="mb-4">
+        <label class="label" for="promote-version-title">
+          <span class="label-text">{dgettext("versioning", "Title")}</span>
+        </label>
+        <input
+          type="text"
+          name="title"
+          id="promote-version-title"
+          class="input input-bordered w-full"
+          placeholder={
+            @version.change_summary || dgettext("versioning", "e.g., Before major refactor")
+          }
+          required
+          autofocus
+        />
+      </div>
+      <div class="mb-4">
+        <label class="label" for="promote-version-description">
+          <span class="label-text">
+            {dgettext("versioning", "Description")} ({dgettext("versioning", "optional")})
+          </span>
+        </label>
+        <textarea
+          name="description"
+          id="promote-version-description"
+          class="textarea textarea-bordered w-full"
+          rows="3"
+          placeholder={dgettext("versioning", "Describe what this version captures...")}
+        ></textarea>
+      </div>
+      <div class="modal-action">
+        <button
+          type="button"
+          class="btn btn-ghost"
+          phx-click="hide_promote_modal"
+          phx-target={@target}
+        >
+          {dgettext("versioning", "Cancel")}
+        </button>
+        <button type="submit" class="btn btn-primary">
+          <.icon name="bookmark-plus" class="size-4" />
+          {dgettext("versioning", "Name Version")}
         </button>
       </div>
     </form>

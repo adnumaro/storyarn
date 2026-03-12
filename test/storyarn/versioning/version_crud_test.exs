@@ -169,4 +169,84 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       assert Map.has_key?(snapshot, "blocks")
     end
   end
+
+  describe "update_version/2" do
+    test "updates title and description", %{sheet: sheet, project: project, user: user} do
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, is_auto: true)
+
+      assert version.title == nil
+
+      assert {:ok, updated} =
+               Versioning.update_version(version, %{
+                 title: "Milestone 1",
+                 description: "Before refactor"
+               })
+
+      assert updated.title == "Milestone 1"
+      assert updated.description == "Before refactor"
+      # is_auto stays unchanged (promotion doesn't flip it)
+      assert updated.is_auto == true
+    end
+
+    test "requires title", %{sheet: sheet, project: project, user: user} do
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, is_auto: true)
+
+      assert {:error, changeset} = Versioning.update_version(version, %{title: nil})
+      assert errors_on(changeset).title
+    end
+
+    test "rejects empty string title", %{sheet: sheet, project: project, user: user} do
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, is_auto: true)
+
+      assert {:error, changeset} = Versioning.update_version(version, %{title: ""})
+      assert errors_on(changeset).title
+    end
+
+    test "validates title max length", %{sheet: sheet, project: project, user: user} do
+      {:ok, version} = Versioning.create_version("sheet", sheet, project.id, user.id)
+      long_title = String.duplicate("a", 256)
+
+      assert {:error, changeset} = Versioning.update_version(version, %{title: long_title})
+      assert errors_on(changeset).title
+    end
+
+    test "validates description max length", %{sheet: sheet, project: project, user: user} do
+      {:ok, version} = Versioning.create_version("sheet", sheet, project.id, user.id)
+      long_desc = String.duplicate("a", 501)
+
+      assert {:error, changeset} =
+               Versioning.update_version(version, %{title: "OK", description: long_desc})
+
+      assert errors_on(changeset).description
+    end
+  end
+
+  describe "count_named_versions/1" do
+    test "counts versions with non-nil title", %{sheet: sheet, project: project, user: user} do
+      assert Versioning.count_named_versions(project.id) == 0
+
+      # Auto-snapshot (no title)
+      {:ok, _} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, is_auto: true)
+
+      assert Versioning.count_named_versions(project.id) == 0
+
+      # Manual version (with title)
+      {:ok, _} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, title: "v1")
+
+      assert Versioning.count_named_versions(project.id) == 1
+
+      # Promote auto-snapshot (add title)
+      {:ok, auto} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, is_auto: true)
+
+      {:ok, _} = Versioning.update_version(auto, %{title: "Promoted"})
+
+      assert Versioning.count_named_versions(project.id) == 2
+    end
+  end
 end

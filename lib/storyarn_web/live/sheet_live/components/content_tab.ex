@@ -108,9 +108,9 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
       <%!-- Formula Sidebar (right panel) --%>
       <div
-        :if={@formula_editing != nil}
         id="formula-sidebar"
-        phx-hook="FormulaSidebar"
+        phx-hook="RightSidebar"
+        data-right-panel
         data-close-event="close_formula_sidebar"
         data-phx-target={"##{@id}"}
         class={[
@@ -120,11 +120,16 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
           "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
         ]}
       >
-        <.formula_sidebar_content
-          formula={@formula_editing}
-          variables={@project_variables}
-          target={@myself}
-        />
+        <div :if={@formula_editing != nil}>
+          <.formula_sidebar_content
+            formula={@formula_editing}
+            variables={@project_variables}
+            target={@myself}
+          />
+        </div>
+        <div :if={@formula_editing == nil} class="flex items-center justify-center h-full">
+          <span class="loading loading-spinner loading-md text-base-content/40"></span>
+        </div>
       </div>
     </div>
     """
@@ -515,7 +520,8 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       end
 
     {:noreply,
-     assign(socket, :formula_editing, %{
+     socket
+     |> assign(:formula_editing, %{
        row_id: row_id,
        column_slug: slug,
        block_id: block_id,
@@ -524,7 +530,8 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
        table_name: table_name,
        row_name: row.name,
        column_name: column_name
-     })}
+     })
+     |> push_event("panel-open", %{to: "#formula-sidebar"})}
   end
 
   def handle_event("close_formula_sidebar", _params, socket) do

@@ -220,6 +220,32 @@ defmodule Storyarn.Versioning.VersionCrud do
     |> Repo.one()
   end
 
+  # ========== Update ==========
+
+  @doc """
+  Updates a version's title and description.
+  Used to promote auto-snapshots to named versions.
+  """
+  @spec update_version(EntityVersion.t(), map()) ::
+          {:ok, EntityVersion.t()} | {:error, Ecto.Changeset.t()}
+  def update_version(%EntityVersion{} = version, attrs) do
+    version
+    |> EntityVersion.update_changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Counts versions with a non-nil title for a project.
+  Includes both manual versions and promoted auto-snapshots.
+  """
+  @spec count_named_versions(integer()) :: integer()
+  def count_named_versions(project_id) do
+    from(v in EntityVersion,
+      where: v.project_id == ^project_id and not is_nil(v.title)
+    )
+    |> Repo.aggregate(:count)
+  end
+
   # ========== Delete ==========
 
   @doc """

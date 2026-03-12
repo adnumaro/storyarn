@@ -13,7 +13,8 @@ defmodule Storyarn.Billing.Plan do
         projects_per_workspace: 3,
         members_per_workspace: 2,
         items_per_project: 700,
-        storage_bytes_per_workspace: 250 * 1024 * 1024
+        storage_bytes_per_workspace: 250 * 1024 * 1024,
+        named_versions_per_project: 10
       }
     }
   }

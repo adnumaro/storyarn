@@ -58,6 +58,18 @@ defmodule Storyarn.Versioning do
   """
   defdelegate count_versions(entity_type, entity_id), to: VersionCrud
 
+  # ========== Update ==========
+
+  @doc """
+  Updates a version's title and description (promotes auto-snapshots to named versions).
+  """
+  defdelegate update_version(version, attrs), to: VersionCrud
+
+  @doc """
+  Counts named versions (with non-nil title) for a project.
+  """
+  defdelegate count_named_versions(project_id), to: VersionCrud
+
   # ========== Delete ==========
 
   @doc """

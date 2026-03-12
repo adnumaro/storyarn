@@ -14,6 +14,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.SceneLive.Components.FloatingToolbar
   import StoryarnWeb.SceneLive.Components.SceneElementPanel
   import StoryarnWeb.SceneLive.Components.SceneSettingsPanel
+  import StoryarnWeb.Components.RightSidebar
 
   alias Storyarn.Assets
   alias Storyarn.Collaboration
@@ -227,25 +228,30 @@ defmodule StoryarnWeb.SceneLive.Show do
             workspace={@workspace}
             project={@project}
             scene={@scene}
-            versions_panel_open={@versions_panel_open}
           />
 
           <%!-- Version History Panel --%>
-          <div
-            :if={@versions_panel_open}
-            class="absolute right-4 top-4 bottom-20 w-80 z-30 bg-base-100 rounded-lg shadow-xl border border-base-300 overflow-y-auto p-4"
+          <.right_sidebar
+            id="scene-versions-panel"
+            title={dgettext("scenes", "Version History")}
+            open_event="open_versions_panel"
+            close_event="close_versions_panel"
+            width="320px"
+            loading={!@versions_panel_open}
           >
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="font-semibold">{dgettext("scenes", "Version History")}</h3>
+            <:actions>
               <button
+                :if={@can_edit && @versions_panel_open}
                 type="button"
                 class="btn btn-ghost btn-xs btn-square"
-                phx-click="toggle_versions_panel"
+                phx-click="show_create_version_modal"
+                phx-target="#scene-versions-section"
               >
-                <.icon name="x" class="size-4" />
+                <.icon name="plus" class="size-4" />
               </button>
-            </div>
+            </:actions>
             <.live_component
+              :if={@versions_panel_open}
               module={StoryarnWeb.Components.VersionsSection}
               id="scene-versions-section"
               entity={@scene}
@@ -254,8 +260,9 @@ defmodule StoryarnWeb.SceneLive.Show do
               current_user_id={@current_scope.user.id}
               can_edit={@can_edit}
               current_version_id={@scene.current_version_id}
+              workspace_id={@workspace.id}
             />
-          </div>
+          </.right_sidebar>
 
           <%!-- Sheet picker overlay --%>
           <div
@@ -307,9 +314,10 @@ defmodule StoryarnWeb.SceneLive.Show do
 
           <%!-- Element Properties Sidebar --%>
           <div
-            :if={@element_panel_open && @selected_element != nil}
             id="scene-element-panel"
-            phx-hook="SceneElementPanel"
+            phx-hook="RightSidebar"
+            data-right-panel
+            data-open-event="open_element_panel"
             data-close-event="close_element_panel"
             class={[
               "fixed flex flex-col overflow-hidden",
@@ -318,23 +326,32 @@ defmodule StoryarnWeb.SceneLive.Show do
               "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
             ]}
           >
-            <.scene_element_panel
-              selected_type={@selected_type}
-              selected_element={@selected_element}
-              can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-              project_scenes={@project_scenes}
-              project_sheets={@project_sheets}
-              project_flows={@project_flows}
-              project_variables={@project_variables}
-              panel_sections={@panel_sections}
-            />
+            <div :if={@element_panel_open && @selected_element != nil}>
+              <.scene_element_panel
+                selected_type={@selected_type}
+                selected_element={@selected_element}
+                can_edit={not Map.get(@selected_element || %{}, :locked, false)}
+                project_scenes={@project_scenes}
+                project_sheets={@project_sheets}
+                project_flows={@project_flows}
+                project_variables={@project_variables}
+                panel_sections={@panel_sections}
+              />
+            </div>
+            <div
+              :if={!(@element_panel_open && @selected_element != nil)}
+              class="flex items-center justify-center h-full"
+            >
+              <span class="loading loading-spinner loading-md text-base-content/40"></span>
+            </div>
           </div>
 
           <%!-- Scene Settings Sidebar --%>
           <div
-            :if={@scene_settings_open && @can_edit && @edit_mode}
             id="scene-settings-panel"
-            phx-hook="SceneElementPanel"
+            phx-hook="RightSidebar"
+            data-right-panel
+            data-open-event="open_scene_settings"
             data-close-event="close_scene_settings"
             class={[
               "fixed flex flex-col overflow-hidden",
@@ -343,11 +360,19 @@ defmodule StoryarnWeb.SceneLive.Show do
               "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
             ]}
           >
-            <.scene_settings_panel
-              scene={@scene}
-              can_edit={@can_edit}
-              bg_upload_input_id={@uploads[:background] && @uploads.background.ref}
-            />
+            <div :if={@scene_settings_open && @can_edit && @edit_mode}>
+              <.scene_settings_panel
+                scene={@scene}
+                can_edit={@can_edit}
+                bg_upload_input_id={@uploads[:background] && @uploads.background.ref}
+              />
+            </div>
+            <div
+              :if={!(@scene_settings_open && @can_edit && @edit_mode)}
+              class="flex items-center justify-center h-full"
+            >
+              <span class="loading loading-spinner loading-md text-base-content/40"></span>
+            </div>
           </div>
         </div>
 
@@ -639,8 +664,12 @@ defmodule StoryarnWeb.SceneLive.Show do
     {:noreply, assign(socket, :tree_panel_tab, tab)}
   end
 
-  def handle_event("toggle_versions_panel", _params, socket) do
-    {:noreply, assign(socket, :versions_panel_open, !socket.assigns.versions_panel_open)}
+  def handle_event("open_versions_panel", _params, socket) do
+    {:noreply, assign(socket, :versions_panel_open, true)}
+  end
+
+  def handle_event("close_versions_panel", _params, socket) do
+    {:noreply, assign(socket, :versions_panel_open, false)}
   end
 
   def handle_event("save_name", params, socket) do

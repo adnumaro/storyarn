@@ -8,6 +8,8 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Phoenix.LiveView.JS
+
   import StoryarnWeb.Components.CanvasDock
   import StoryarnWeb.Components.CoreComponents
 
@@ -23,7 +25,6 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
   attr :workspace, :map, required: true
   attr :project, :map, required: true
   attr :scene, :map, required: true
-  attr :versions_panel_open, :boolean, default: false
 
   def dock(assigns) do
     assigns = assign(assigns, :groups, build_groups(assigns))
@@ -178,14 +179,14 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
     }
   end
 
-  defp history_item(assigns) do
+  defp history_item(_assigns) do
     %{
       id: "history",
       icon: "history",
       tooltip_title: dgettext("scenes", "Version History"),
       tooltip: dgettext("scenes", "View and manage version history"),
-      click: "toggle_versions_panel",
-      active: assigns.versions_panel_open
+      click: JS.dispatch("panel:toggle", to: "#scene-versions-panel"),
+      panel_trigger: "scene-versions-panel"
     }
   end
 

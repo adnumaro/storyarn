@@ -10,6 +10,8 @@ defmodule StoryarnWeb.SceneLive.Components.SceneHeader do
   use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
+  alias Phoenix.LiveView.JS
+
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.FocusLayout, only: [entity_title_pill: 1]
 
@@ -68,7 +70,8 @@ defmodule StoryarnWeb.SceneLive.Components.SceneHeader do
       <button
         :if={@can_edit && @edit_mode}
         type="button"
-        phx-click="open_scene_settings"
+        phx-click={JS.dispatch("panel:toggle", to: "#scene-settings-panel")}
+        data-panel-trigger="scene-settings-panel"
         class="btn btn-ghost btn-sm btn-square"
         title={dgettext("scenes", "Scene Settings")}
       >

@@ -6,6 +6,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   Dispatches to private type-specific toolbar functions.
   """
   use StoryarnWeb, :html
+  alias Phoenix.LiveView.JS
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers, only: [node_type_icon: 1]
   import StoryarnWeb.Components.ToolbarColorPicker
   import StoryarnWeb.SceneLive.Components.ToolbarWidgets, only: [toolbar_size_picker: 1]
@@ -152,7 +153,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
     </span>
     <button
       type="button"
-      phx-click="open_builder"
+      phx-click={JS.dispatch("panel:toggle", to: "#builder-sidebar")}
+      data-panel-trigger="builder-sidebar"
       class="toolbar-btn text-xs"
       title={dgettext("flows", "Open condition builder")}
     >
@@ -179,7 +181,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
     </span>
     <button
       type="button"
-      phx-click="open_builder"
+      phx-click={JS.dispatch("panel:toggle", to: "#builder-sidebar")}
+      data-panel-trigger="builder-sidebar"
       class="toolbar-btn text-xs"
       title={dgettext("flows", "Open instruction builder")}
     >

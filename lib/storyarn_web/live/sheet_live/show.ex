@@ -197,6 +197,7 @@ defmodule StoryarnWeb.SheetLive.Show do
               sheet={@sheet}
               can_edit={@can_edit}
               current_user_id={@current_scope.user.id}
+              workspace_id={@workspace.id}
             />
           </div>
         </div>

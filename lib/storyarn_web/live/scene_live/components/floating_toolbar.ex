@@ -203,7 +203,8 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
         type="button"
         class="toolbar-btn"
         title={dgettext("scenes", "Properties")}
-        phx-click={JS.push("open_element_panel")}
+        phx-click={JS.dispatch("panel:toggle", to: "#scene-element-panel")}
+        data-panel-trigger="scene-element-panel"
       >
         <.icon name="settings" class="size-3.5" />
       </button>
@@ -333,7 +334,8 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
         type="button"
         class="toolbar-btn"
         title={dgettext("scenes", "Properties")}
-        phx-click={JS.push("open_element_panel")}
+        phx-click={JS.dispatch("panel:toggle", to: "#scene-element-panel")}
+        data-panel-trigger="scene-element-panel"
       >
         <.icon name="settings" class="size-3.5" />
       </button>
@@ -428,7 +430,8 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
         type="button"
         class="toolbar-btn"
         title={dgettext("scenes", "Properties")}
-        phx-click={JS.push("open_element_panel")}
+        phx-click={JS.dispatch("panel:toggle", to: "#scene-element-panel")}
+        data-panel-trigger="scene-element-panel"
       >
         <.icon name="settings" class="size-3.5" />
       </button>
