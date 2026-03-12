@@ -245,6 +245,10 @@ defmodule StoryarnWeb.Layouts do
   attr :can_edit, :boolean, default: false, doc: "whether the user can edit content"
   attr :online_users, :list, default: [], doc: "list of online user presence maps"
 
+  attr :restoration_banner, :map,
+    default: nil,
+    doc: "when set, shows a restoration-in-progress banner"
+
   attr :on_dashboard, :boolean,
     default: false,
     doc: "whether the current page is the tool dashboard"
@@ -313,6 +317,22 @@ defmodule StoryarnWeb.Layouts do
     ~H"""
     {if @project_theme_style, do: @project_theme_style}
     <div id="layout-wrapper" class="h-screen w-screen overflow-hidden relative bg-base-100">
+      <%!-- Restoration Banner --%>
+      <div
+        :if={@restoration_banner}
+        class="fixed top-0 left-0 right-0 z-[1030] flex justify-center pointer-events-none"
+      >
+        <div class="bg-warning text-warning-content px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2 text-sm pointer-events-auto">
+          <.icon name="loader" class="size-4 animate-spin" />
+          <span>
+            {dgettext(
+              "projects",
+              "Project is being restored by %{user}. Editing is temporarily disabled.",
+              user: @restoration_banner.user_email
+            )}
+          </span>
+        </div>
+      </div>
       <%!-- Left floating toolbar row (top-left) --%>
       <div class="fixed top-3 left-3 z-[1020] flex items-stretch gap-2">
         <.left_toolbar

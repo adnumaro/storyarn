@@ -3,7 +3,9 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
+  use StoryarnWeb.Live.Shared.RestorationHandlers
 
+  alias Storyarn.Collaboration
   alias Storyarn.Projects
   alias Storyarn.Screenplays
   alias Storyarn.Sheets
@@ -37,6 +39,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
       online_users={@online_users}
+      restoration_banner={@restoration_banner}
     >
       <:tree_content>
         <ScreenplayTree.screenplays_section
@@ -114,6 +117,10 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
       {:ok, project, membership} ->
         can_edit = Projects.can?(membership.role, :edit_content)
 
+        if connected?(socket), do: Collaboration.subscribe_restoration(project.id)
+
+        {can_edit, restoration_banner} = check_restoration_lock(project.id, can_edit)
+
         {:ok,
          socket
          |> assign(focus_layout_defaults())
@@ -121,6 +128,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
          |> assign(:workspace, project.workspace)
          |> assign(:membership, membership)
          |> assign(:can_edit, can_edit)
+         |> assign(:restoration_banner, restoration_banner)
          |> assign(:read_mode, false)
          |> assign(:pending_delete_id, nil)
          # Defaults — screenplay loaded in handle_params

@@ -8,6 +8,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
   import StoryarnWeb.Components.DashboardComponents
 
   use StoryarnWeb.Live.Shared.DashboardHandlers
+  use StoryarnWeb.Live.Shared.RestorationHandlers
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
@@ -25,6 +26,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
       active_tool={:dashboard}
       has_tree={false}
       can_edit={@can_manage}
+      restoration_banner={@restoration_banner}
     >
       <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <%!-- Loading State --%>
@@ -147,6 +149,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
     case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
       {:ok, project, membership} ->
         can_manage = Projects.can?(membership.role, :manage_project)
+        {_, restoration_banner} = check_restoration_lock(project.id, false)
 
         socket =
           socket
@@ -155,6 +158,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
           |> assign(:can_manage, can_manage)
+          |> assign(:restoration_banner, restoration_banner)
           |> assign(:stats, nil)
           |> assign(:node_dist, nil)
           |> assign(:speakers, nil)
@@ -164,6 +168,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
 
         if connected?(socket) do
           Collaboration.subscribe_dashboard(project.id)
+          Collaboration.subscribe_restoration(project.id)
           send(self(), :load_dashboard_data)
         end
 

@@ -155,6 +155,99 @@ defmodule Storyarn.Projects.ProjectCrud do
   defp auto_version_field(:scene), do: :auto_version_scenes
   defp auto_version_field(:sheet), do: :auto_version_sheets
 
+  # =============================================================================
+  # Restoration Lock
+  # =============================================================================
+
+  @doc """
+  Atomically acquires a restoration lock on a project.
+
+  Returns `{:ok, project}` if the lock was acquired,
+  `{:error, :already_locked}` if another restoration is in progress.
+  """
+  def acquire_restoration_lock(project_id, user_id) do
+    now = Storyarn.Shared.TimeHelpers.now()
+
+    {count, _} =
+      from(p in Project,
+        where: p.id == ^project_id and p.restoration_in_progress == false
+      )
+      |> Repo.update_all(
+        set: [
+          restoration_in_progress: true,
+          restoration_started_by_id: user_id,
+          restoration_started_at: now
+        ]
+      )
+
+    if count == 1 do
+      {:ok, Repo.get!(Project, project_id)}
+    else
+      {:error, :already_locked}
+    end
+  end
+
+  @doc """
+  Releases the restoration lock on a project.
+  """
+  def release_restoration_lock(project_id) do
+    {_count, _} =
+      from(p in Project, where: p.id == ^project_id)
+      |> Repo.update_all(
+        set: [
+          restoration_in_progress: false,
+          restoration_started_by_id: nil,
+          restoration_started_at: nil
+        ]
+      )
+
+    {:ok, Repo.get!(Project, project_id)}
+  end
+
+  @doc """
+  Checks if a restoration is in progress for a project.
+
+  Returns `{true, %{user_id: id, started_at: dt}}` or `false`.
+  """
+  def restoration_in_progress?(project_id) do
+    from(p in Project,
+      where: p.id == ^project_id,
+      select: {p.restoration_in_progress, p.restoration_started_by_id, p.restoration_started_at}
+    )
+    |> Repo.one()
+    |> case do
+      {true, user_id, started_at} ->
+        {true, %{user_id: user_id, started_at: started_at}}
+
+      _ ->
+        false
+    end
+  end
+
+  @doc """
+  Clears a stale restoration lock if it's older than the given timeout.
+  """
+  def clear_stale_restoration_lock(project_id, timeout_minutes \\ 15) do
+    cutoff = DateTime.add(Storyarn.Shared.TimeHelpers.now(), -timeout_minutes * 60, :second)
+
+    {count, _} =
+      from(p in Project,
+        where:
+          p.id == ^project_id and
+            p.restoration_in_progress == true and
+            p.restoration_started_at < ^cutoff
+      )
+      |> Repo.update_all(
+        set: [
+          restoration_in_progress: false,
+          restoration_started_by_id: nil,
+          restoration_started_at: nil
+        ]
+      )
+
+    if count == 1, do: {:ok, :cleared}, else: {:error, :not_stale}
+  end
+
   # Private helpers
 
   defp insert_project(user, attrs) do

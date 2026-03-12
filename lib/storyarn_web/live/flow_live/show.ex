@@ -3,6 +3,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
+  use StoryarnWeb.Live.Shared.RestorationHandlers
 
   import StoryarnWeb.Components.CollaborationComponents
   import StoryarnWeb.FlowLive.Components.BuilderPanel
@@ -59,6 +60,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
       canvas_mode={true}
+      restoration_banner={@restoration_banner}
     >
       <:tree_content>
         <FlowTree.flows_section
@@ -89,6 +91,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       can_edit={@can_edit}
       online_users={@online_users}
       canvas_mode={true}
+      restoration_banner={@restoration_banner}
     >
       <:top_bar_extra>
         <.flow_info_bar
@@ -300,6 +303,10 @@ defmodule StoryarnWeb.FlowLive.Show do
       {:ok, project, membership} ->
         can_edit = Projects.can?(membership.role, :edit_content)
 
+        if connected?(socket), do: Collaboration.subscribe_restoration(project.id)
+
+        {can_edit, restoration_banner} = check_restoration_lock(project.id, can_edit)
+
         socket =
           socket
           |> assign(focus_layout_defaults())
@@ -308,6 +315,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
           |> assign(:can_edit, can_edit)
+          |> assign(:restoration_banner, restoration_banner)
           # Defaults — flow loaded in handle_params
           |> assign(:flow, nil)
           |> assign(:nav_history, nil)

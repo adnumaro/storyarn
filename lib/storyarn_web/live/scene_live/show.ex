@@ -3,6 +3,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   use StoryarnWeb, :live_view
   use StoryarnWeb.Helpers.Authorize
+  use StoryarnWeb.Live.Shared.RestorationHandlers
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
   import StoryarnWeb.SceneLive.Components.Dock
@@ -50,6 +51,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
       canvas_mode={true}
+      restoration_banner={@restoration_banner}
       online_users={@online_users}
     >
       <:tree_content>
@@ -457,6 +459,10 @@ defmodule StoryarnWeb.SceneLive.Show do
       {:ok, project, membership} ->
         can_edit = Projects.can?(membership.role, :edit_content)
 
+        if connected?(socket), do: Collaboration.subscribe_restoration(project.id)
+
+        {can_edit, restoration_banner} = check_restoration_lock(project.id, can_edit)
+
         socket =
           socket
           |> assign(focus_layout_defaults())
@@ -465,6 +471,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
           |> assign(:can_edit, can_edit)
+          |> assign(:restoration_banner, restoration_banner)
           |> assign(:canvas_i18n, canvas_i18n())
           |> assign(:online_users, [])
           |> assign(:collab_scope, nil)

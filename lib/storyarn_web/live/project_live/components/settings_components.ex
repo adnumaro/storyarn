@@ -16,10 +16,12 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
 
   alias Storyarn.Accounts
   alias Storyarn.Billing
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Versioning
+  alias Storyarn.Workers.RestoreProjectWorker
 
   # ---------------------------------------------------------------------------
   # Form changesets
@@ -211,40 +213,40 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
 
   def do_restore_snapshot(socket, snapshot_id) do
     project = socket.assigns.project
-    user_id = socket.assigns.current_scope.user.id
+    user = socket.assigns.current_scope.user
 
     case Versioning.get_project_snapshot(project.id, snapshot_id) do
       nil ->
         {:noreply, put_flash(socket, :error, dgettext("projects", "Snapshot not found."))}
 
-      snapshot ->
-        case Versioning.restore_project_snapshot(project.id, snapshot, user_id: user_id) do
-          {:ok, result} ->
+      _snapshot ->
+        case Projects.acquire_restoration_lock(project.id, user.id) do
+          {:ok, _project} ->
+            Collaboration.broadcast_restoration_started(project.id, %{
+              user_email: user.email
+            })
+
+            %{project_id: project.id, snapshot_id: snapshot_id, user_id: user.id}
+            |> RestoreProjectWorker.new()
+            |> Oban.insert()
+
             {:noreply,
              socket
-             |> assign(:snapshots, Versioning.list_project_snapshots(project.id))
-             |> assign(
-               :can_create_snapshot,
-               Billing.can_create_project_snapshot?(project.id, project.workspace_id) == :ok
-             )
+             |> assign(:restoration_in_progress, true)
              |> put_flash(
                :info,
                dgettext(
                  "projects",
-                 "Project restored. %{restored} entities restored, %{skipped} skipped.",
-                 restored: result.restored,
-                 skipped: result.skipped
+                 "Restoration started. All editors will be notified when complete."
                )
              )}
 
-          {:error, reason} ->
-            Logger.error("Project snapshot restore failed: #{inspect(reason)}")
-
+          {:error, :already_locked} ->
             {:noreply,
              put_flash(
                socket,
                :error,
-               dgettext("projects", "Failed to restore snapshot. Please try again.")
+               dgettext("projects", "A restoration is already in progress.")
              )}
         end
     end

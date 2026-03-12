@@ -9,6 +9,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Billing
+  alias Storyarn.Collaboration
   alias Storyarn.Projects
   alias Storyarn.Versioning
 
@@ -45,6 +46,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         snapshots={@snapshots}
         snapshot_form={@snapshot_form}
         can_create_snapshot={@can_create_snapshot}
+        restoration_in_progress={@restoration_in_progress}
         version_control_form={@version_control_form}
         version_usage={@version_usage}
       />
@@ -304,6 +306,17 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   defp section_content(%{live_action: :snapshots} = assigns) do
     ~H"""
     <div class="space-y-6">
+      <%!-- Restoration In Progress Banner --%>
+      <div :if={@restoration_in_progress} class="alert alert-warning">
+        <.icon name="loader" class="size-5 animate-spin" />
+        <span>
+          {dgettext("projects", "A restoration is in progress. Please wait for it to complete.")}
+        </span>
+        <button phx-click="clear_stale_lock" class="btn btn-xs btn-ghost">
+          {dgettext("projects", "Clear stale lock")}
+        </button>
+      </div>
+
       <%!-- Create Snapshot --%>
       <section>
         <div class="card bg-base-200 p-4">
@@ -324,7 +337,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
               <.button
                 variant="primary"
                 phx-disable-with={dgettext("projects", "Creating...")}
-                disabled={!@can_create_snapshot}
+                disabled={!@can_create_snapshot || @restoration_in_progress}
               >
                 <.icon name="archive" class="size-4" />
                 {dgettext("projects", "Create Snapshot")}
@@ -391,6 +404,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
                 <button
                   phx-click={show_modal("restore-snapshot-#{snapshot.id}")}
                   class="btn btn-xs btn-outline"
+                  disabled={@restoration_in_progress}
                 >
                   <.icon name="rotate-ccw" class="size-3" />
                   {dgettext("projects", "Restore")}
@@ -398,6 +412,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
                 <button
                   phx-click={show_modal("delete-snapshot-#{snapshot.id}")}
                   class="btn btn-xs btn-outline btn-error"
+                  disabled={@restoration_in_progress}
                 >
                   <.icon name="trash-2" class="size-3" />
                 </button>
@@ -623,7 +638,9 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             |> assign(:can_create_snapshot, true)
             |> assign(:version_control_form, nil)
             |> assign(:version_usage, nil)
+            |> assign(:restoration_in_progress, restoration_in_progress?(project.id))
             |> assign_theme(project)
+            |> maybe_subscribe_restoration(project.id)
 
           {:ok, socket}
         else
@@ -881,6 +898,72 @@ defmodule StoryarnWeb.ProjectLive.Settings do
     end)
   end
 
+  def handle_event("clear_stale_lock", _params, socket) do
+    with_authorization(socket, :manage_project, fn socket ->
+      case Projects.clear_stale_restoration_lock(socket.assigns.project.id) do
+        {:ok, :cleared} ->
+          {:noreply,
+           socket
+           |> assign(:restoration_in_progress, false)
+           |> put_flash(:info, dgettext("projects", "Stale restoration lock cleared."))}
+
+        {:error, :not_stale} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             dgettext("projects", "Lock is not stale yet. Please wait or let the restore finish.")
+           )}
+      end
+    end)
+  end
+
+  # ===========================================================================
+  # Handle Info (restoration events)
+  # ===========================================================================
+
+  @impl true
+  def handle_info({:project_restoration_started, _payload}, socket) do
+    {:noreply, assign(socket, :restoration_in_progress, true)}
+  end
+
+  @impl true
+  def handle_info({:project_restoration_completed, payload}, socket) do
+    project = socket.assigns.project
+
+    {:noreply,
+     socket
+     |> assign(:restoration_in_progress, false)
+     |> assign(:snapshots, Versioning.list_project_snapshots(project.id))
+     |> assign(
+       :can_create_snapshot,
+       Billing.can_create_project_snapshot?(project.id, project.workspace_id) == :ok
+     )
+     |> put_flash(
+       :info,
+       dgettext(
+         "projects",
+         "Project restored. %{restored} entities restored, %{skipped} skipped.",
+         restored: payload.restored,
+         skipped: payload.skipped
+       )
+     )}
+  end
+
+  @impl true
+  def handle_info({:project_restoration_failed, _payload}, socket) do
+    {:noreply,
+     socket
+     |> assign(:restoration_in_progress, false)
+     |> put_flash(
+       :error,
+       dgettext("projects", "Project restoration failed. Please try again.")
+     )}
+  end
+
+  @impl true
+  def handle_info(_msg, socket), do: {:noreply, socket}
+
   # ===========================================================================
   # Private
   # ===========================================================================
@@ -915,6 +998,18 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   end
 
   defp sorted_entity_counts(_), do: []
+
+  defp maybe_subscribe_restoration(socket, project_id) do
+    if connected?(socket), do: Collaboration.subscribe_restoration(project_id)
+    socket
+  end
+
+  defp restoration_in_progress?(project_id) do
+    case Projects.restoration_in_progress?(project_id) do
+      {true, _} -> true
+      _ -> false
+    end
+  end
 
   defp assign_theme(socket, project) do
     case Storyarn.Projects.Project.theme_colors(project) do

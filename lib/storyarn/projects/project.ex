@@ -29,6 +29,9 @@ defmodule Storyarn.Projects.Project do
           auto_version_flows: boolean(),
           auto_version_scenes: boolean(),
           auto_version_sheets: boolean(),
+          restoration_in_progress: boolean(),
+          restoration_started_by_id: integer() | nil,
+          restoration_started_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -42,6 +45,10 @@ defmodule Storyarn.Projects.Project do
     field :auto_version_flows, :boolean, default: true
     field :auto_version_scenes, :boolean, default: true
     field :auto_version_sheets, :boolean, default: true
+
+    field :restoration_in_progress, :boolean, default: false
+    belongs_to :restoration_started_by, User
+    field :restoration_started_at, :utc_datetime
 
     belongs_to :owner, User
     belongs_to :workspace, Workspace

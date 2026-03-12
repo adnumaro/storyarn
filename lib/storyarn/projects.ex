@@ -118,6 +118,37 @@ defmodule Storyarn.Projects do
   defdelegate auto_versioning_enabled?(project_id, entity_type), to: ProjectCrud
 
   # =============================================================================
+  # Restoration Lock
+  # =============================================================================
+
+  @doc """
+  Atomically acquires a restoration lock on a project.
+  """
+  @spec acquire_restoration_lock(integer(), integer()) ::
+          {:ok, project()} | {:error, :already_locked}
+  defdelegate acquire_restoration_lock(project_id, user_id), to: ProjectCrud
+
+  @doc """
+  Releases the restoration lock on a project.
+  """
+  @spec release_restoration_lock(integer()) :: {:ok, project()}
+  defdelegate release_restoration_lock(project_id), to: ProjectCrud
+
+  @doc """
+  Checks if a restoration is in progress for a project.
+  """
+  @spec restoration_in_progress?(integer()) ::
+          {true, %{user_id: integer() | nil, started_at: DateTime.t() | nil}} | false
+  defdelegate restoration_in_progress?(project_id), to: ProjectCrud
+
+  @doc """
+  Clears a stale restoration lock if it's older than the given timeout.
+  """
+  @spec clear_stale_restoration_lock(integer(), non_neg_integer()) ::
+          {:ok, :cleared} | {:error, :not_stale}
+  defdelegate clear_stale_restoration_lock(project_id, timeout_minutes \\ 15), to: ProjectCrud
+
+  # =============================================================================
   # Memberships
   # =============================================================================
 
