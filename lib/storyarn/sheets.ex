@@ -587,6 +587,7 @@ defmodule Storyarn.Sheets do
   end
 
   def maybe_create_version(%Sheet{} = sheet, user_id, opts) when is_integer(user_id) do
+    opts = Keyword.put_new(opts, :is_auto, true)
     Versioning.maybe_create_version("sheet", sheet, sheet.project_id, user_id, opts)
   end
 

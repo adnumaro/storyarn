@@ -14,6 +14,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
 
   alias Storyarn.Scenes
 
+  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 1]
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
   import StoryarnWeb.SceneLive.Helpers.Serializer
 
@@ -25,6 +26,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
         {:noreply,
          socket
          |> assign(:scene, updated)
+         |> schedule()
          |> reload_scenes_tree()}
 
       {:error, _} ->

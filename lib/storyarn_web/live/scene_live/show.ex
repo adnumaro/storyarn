@@ -580,6 +580,8 @@ defmodule StoryarnWeb.SceneLive.Show do
         |> assign(:legend_open, false)
         |> assign(:undo_stack, [])
         |> assign(:redo_stack, [])
+        |> assign(:auto_snapshot_ref, nil)
+        |> assign(:auto_snapshot_timer, nil)
         |> assign(:panel_sections, %{})
         |> assign(:referencing_flows, [])
         |> maybe_load_sidebar(has_tree, project)
@@ -1278,6 +1280,17 @@ defmodule StoryarnWeb.SceneLive.Show do
     end
   end
 
+  @impl true
+  def handle_info({:try_auto_snapshot, token}, socket) do
+    if token == socket.assigns[:auto_snapshot_ref] do
+      %{scene: scene, current_scope: scope} = socket.assigns
+      Scenes.maybe_create_version(scene, scope.user.id)
+      {:noreply, socket |> assign(:auto_snapshot_ref, nil) |> assign(:auto_snapshot_timer, nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   # ---------------------------------------------------------------------------
   # Handle Info: Version History
   # ---------------------------------------------------------------------------
@@ -1290,6 +1303,9 @@ defmodule StoryarnWeb.SceneLive.Show do
         {:versions_section, :version_restored, %{entity: updated_scene, version: _}},
         socket
       ) do
+    # Cancel any pending auto-snapshot (stale after restore)
+    socket = StoryarnWeb.Helpers.AutoSnapshot.cancel(socket)
+
     %{project: project, can_edit: can_edit} = socket.assigns
 
     # Reload scene with all associations

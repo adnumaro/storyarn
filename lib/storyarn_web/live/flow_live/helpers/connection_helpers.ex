@@ -11,6 +11,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
 
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
   import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
+  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 1]
 
   # Note: FormHelpers import removed - connection forms no longer need condition fields
 
@@ -47,6 +48,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
          socket
          |> reload_flow_data()
          |> mark_saved()
+         |> schedule()
          |> push_event("connection_added", connection_data)
          |> CollaborationHelpers.broadcast_change(:connection_added, %{
            connection_data: connection_data
@@ -78,6 +80,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
      |> assign(:flow, flow)
      |> assign(:flow_data, flow_data)
      |> mark_saved()
+     |> schedule()
      |> CollaborationHelpers.broadcast_change(:connection_deleted, %{
        source_node_id: source_id,
        target_node_id: target_id

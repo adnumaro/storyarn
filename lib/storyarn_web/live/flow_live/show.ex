@@ -1187,6 +1187,8 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:debug_var_changed_only, false)
       |> assign(:debug_auto_timer, nil)
       |> assign(:debug_step_limit_reached, false)
+      |> assign(:auto_snapshot_ref, nil)
+      |> assign(:auto_snapshot_timer, nil)
       |> assign(:available_scenes, data.available_scenes)
       |> assign(:loading, false)
       |> assign_scene_info(flow)
@@ -1210,6 +1212,16 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   @impl true
+  def handle_info({:try_auto_snapshot, token}, socket) do
+    if token == socket.assigns[:auto_snapshot_ref] do
+      %{flow: flow, current_scope: scope} = socket.assigns
+      Flows.maybe_create_version(flow, scope.user.id)
+      {:noreply, socket |> assign(:auto_snapshot_ref, nil) |> assign(:auto_snapshot_timer, nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info(:reset_save_status, socket),
     do: EditorInfoHandlers.handle_reset_save_status(socket)
 
@@ -1227,6 +1239,9 @@ defmodule StoryarnWeb.FlowLive.Show do
         {:versions_section, :version_restored, %{entity: updated_flow, version: _}},
         socket
       ) do
+    # Cancel any pending auto-snapshot (stale after restore)
+    socket = StoryarnWeb.Helpers.AutoSnapshot.cancel(socket)
+
     # Reload full flow data after version restore
     %{project: project} = socket.assigns
     full_flow = Flows.get_flow!(project.id, updated_flow.id)

@@ -637,6 +637,7 @@ defmodule Storyarn.Scenes do
   Creates a version if enough time has passed since the last version.
   """
   def maybe_create_version(%Scene{} = scene, user_id, opts \\ []) do
+    opts = Keyword.put_new(opts, :is_auto, true)
     Versioning.maybe_create_version("scene", scene, scene.project_id, user_id, opts)
   end
 

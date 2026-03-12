@@ -982,6 +982,7 @@ defmodule Storyarn.Flows do
   Creates a version if enough time has passed since the last version.
   """
   def maybe_create_version(%Flow{} = flow, user_id, opts \\ []) do
+    opts = Keyword.put_new(opts, :is_auto, true)
     Versioning.maybe_create_version("flow", flow, flow.project_id, user_id, opts)
   end
 

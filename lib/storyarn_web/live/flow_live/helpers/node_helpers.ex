@@ -17,6 +17,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
   import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
+  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 1]
 
   @doc """
   Single canonical path for all node data updates.
@@ -55,6 +56,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
           |> assign(:selected_node, updated_node)
           |> assign(:node_form, form)
           |> mark_saved()
+          |> schedule()
           |> maybe_refresh_referencing_jumps(updated_node)
           |> push_node_or_flow_update(updated_node, renamed_count)
 
@@ -138,6 +140,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
         {:noreply,
          socket
          |> reload_flow_data()
+         |> schedule()
          |> push_event("node_added", Map.put(node_data, :self, true))
          |> CollaborationHelpers.broadcast_change(:node_added, %{node_data: node_data})}
 
@@ -205,6 +208,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
         {:noreply,
          socket
          |> reload_flow_data()
+         |> schedule()
          |> push_event("node_added", Map.put(node_data, :self, true))
          |> CollaborationHelpers.broadcast_change(:node_added, %{node_data: node_data})}
 
@@ -487,6 +491,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
         {:noreply,
          socket
+         |> schedule()
          |> assign(:selected_node, nil)
          |> assign(:node_form, nil)
          |> put_flash(
@@ -508,6 +513,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
         {:noreply,
          socket
+         |> schedule()
          |> assign(:selected_node, nil)
          |> assign(:node_form, nil)
          |> push_event("node_removed", %{id: node_id, self: true})

@@ -9,6 +9,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Scenes
+  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 1]
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
   import StoryarnWeb.SceneLive.Helpers.Serializer
   import StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers, only: [push_undo: 2]
@@ -19,6 +20,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
         {:noreply,
          socket
          |> push_undo({:create_layer, layer})
+         |> schedule()
          |> assign(:_broadcast, {:layer_created, %{}})
          |> push_event("layer_created", %{id: layer.id, name: layer.name})
          |> put_flash(:info, dgettext("scenes", "Layer created."))
@@ -88,6 +90,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
         {:noreply,
          socket
          |> assign(:scene, updated)
+         |> schedule()
          |> assign(:_broadcast, {:layer_updated, %{}})
          |> push_event("background_changed", %{url: nil})}
 
@@ -106,6 +109,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
          socket
          |> assign(:scene, updated)
          |> assign(:scene_data, build_scene_data(updated, socket.assigns.can_edit))
+         |> schedule()
          |> assign(:_broadcast, {:layer_updated, %{}})}
 
       {:error, _} ->
@@ -224,6 +228,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
         {:noreply,
          socket
          |> push_undo({:delete_layer, layer})
+         |> schedule()
          |> assign(:_broadcast, {:layer_deleted, %{}})
          |> push_event("layer_deleted", %{id: layer.id})
          |> put_flash(:info, dgettext("scenes", "Layer deleted."))

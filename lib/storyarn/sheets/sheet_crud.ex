@@ -11,8 +11,8 @@ defmodule Storyarn.Sheets.SheetCrud do
   alias Storyarn.Shared.{MapUtils, ShortcutHelpers, TimeHelpers}
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.{PropertyInheritance, ReferenceTracker, Sheet}
-  alias Storyarn.Versioning.EntityVersion
   alias Storyarn.Shortcuts
+  alias Storyarn.Versioning.EntityVersion
 
   # =============================================================================
   # CRUD Operations
