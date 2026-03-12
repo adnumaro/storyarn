@@ -46,7 +46,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     }
 
     %{
-      "format_version" => 1,
+      "format_version" => 2,
       "entity_counts" => entity_counts,
       "sheets" =>
         Enum.map(sheets, fn sheet ->
@@ -60,6 +60,23 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
         Enum.map(scenes, fn scene ->
           %{"id" => scene.id, "snapshot" => SceneBuilder.build_snapshot(scene)}
         end),
+      "tree" => %{
+        "sheets" =>
+          Enum.map(
+            sheets,
+            &%{"id" => &1.id, "parent_id" => &1.parent_id, "position" => &1.position}
+          ),
+        "flows" =>
+          Enum.map(
+            flows,
+            &%{"id" => &1.id, "parent_id" => &1.parent_id, "position" => &1.position}
+          ),
+        "scenes" =>
+          Enum.map(
+            scenes,
+            &%{"id" => &1.id, "parent_id" => &1.parent_id, "position" => &1.position}
+          )
+      },
       "localization" => %{
         "languages" => Enum.map(languages, &language_to_snapshot/1),
         "texts" => Enum.map(texts, &text_to_snapshot/1),

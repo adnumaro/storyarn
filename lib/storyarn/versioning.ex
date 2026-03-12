@@ -16,6 +16,7 @@ defmodule Storyarn.Versioning do
     ChangeDetector,
     ConflictDetector,
     EntityVersion,
+    ProjectRecovery,
     ProjectSnapshot,
     ProjectSnapshotCrud,
     VersionCrud
@@ -173,6 +174,20 @@ defmodule Storyarn.Versioning do
   """
   defdelegate prune_auto_snapshots(project_id),
     to: ProjectSnapshotCrud
+
+  @doc """
+  Deletes auto snapshots older than the given retention period.
+  """
+  defdelegate prune_expired_snapshots(project_id, retention_days),
+    to: ProjectSnapshotCrud
+
+  # ========== Project Recovery ==========
+
+  @doc """
+  Creates a new project from snapshot data with full ID remapping.
+  """
+  defdelegate recover_project(workspace_id, snapshot_data, user_id, opts \\ []),
+    to: ProjectRecovery
 
   # ========== Change Detection ==========
 

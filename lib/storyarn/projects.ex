@@ -105,10 +105,28 @@ defmodule Storyarn.Projects do
   defdelegate update_project(project, attrs), to: ProjectCrud
 
   @doc """
-  Deletes a project.
+  Soft-deletes a project.
   """
-  @spec delete_project(project()) :: {:ok, project()} | {:error, changeset()}
-  defdelegate delete_project(project), to: ProjectCrud
+  @spec delete_project(project(), integer()) :: {:ok, project()} | {:error, changeset()}
+  defdelegate delete_project(project, user_id), to: ProjectCrud
+
+  @doc """
+  Permanently deletes a project (for retention cleanup).
+  """
+  @spec permanently_delete_project(project()) :: {:ok, project()} | {:error, changeset()}
+  defdelegate permanently_delete_project(project), to: ProjectCrud
+
+  @doc """
+  Lists soft-deleted projects in a workspace with snapshot counts.
+  """
+  @spec list_deleted_projects(integer()) :: [project()]
+  defdelegate list_deleted_projects(workspace_id), to: ProjectCrud
+
+  @doc """
+  Gets a single deleted project.
+  """
+  @spec get_deleted_project(integer(), integer()) :: project() | nil
+  defdelegate get_deleted_project(workspace_id, project_id), to: ProjectCrud
 
   @doc """
   Lists all projects with auto snapshots enabled.

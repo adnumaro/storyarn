@@ -39,6 +39,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   defp block_to_snapshot(%Block{} = block) do
     base = %{
+      "original_id" => block.id,
       "type" => block.type,
       "position" => block.position,
       "config" => block.config,

@@ -141,6 +141,10 @@ defmodule StoryarnWeb.Router do
       live "/users/settings/workspaces/:slug/general", SettingsLive.WorkspaceGeneral, :edit
       live "/users/settings/workspaces/:slug/members", SettingsLive.WorkspaceMembers, :edit
 
+      live "/users/settings/workspaces/:slug/deleted-projects",
+           SettingsLive.WorkspaceDeletedProjects,
+           :index
+
       # Workspaces
       live "/workspaces", WorkspaceLive.Index, :index
       live "/workspaces/new", WorkspaceLive.New, :new

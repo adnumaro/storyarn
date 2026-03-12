@@ -105,12 +105,17 @@ defmodule Storyarn.ProjectsTest do
       assert updated.name == "Updated Name"
     end
 
-    test "delete_project/1 deletes the project" do
+    test "delete_project/2 soft-deletes the project" do
       user = user_fixture()
       project = project_fixture(user)
 
-      assert {:ok, _} = Projects.delete_project(project)
-      assert_raise Ecto.NoResultsError, fn -> Projects.get_project!(project.id) end
+      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert deleted.deleted_at
+      assert deleted.deleted_by_id == user.id
+
+      # Project still exists in DB but is filtered from normal queries
+      scope = Storyarn.Accounts.Scope.for_user(user)
+      assert {:error, :not_found} = Projects.get_project(scope, project.id)
     end
 
     test "change_project/2 returns a changeset" do

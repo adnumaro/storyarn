@@ -776,7 +776,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
     with_authorization(socket, :manage_project, fn socket ->
       workspace = socket.assigns.workspace
 
-      case Projects.delete_project(socket.assigns.project) do
+      case Projects.delete_project(socket.assigns.project, socket.assigns.current_scope.user.id) do
         {:ok, _} ->
           {:noreply,
            socket

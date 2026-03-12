@@ -152,7 +152,8 @@ config :storyarn, Oban,
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
     {Oban.Plugins.Cron,
      crontab: [
-       {"0 3 * * *", Storyarn.Workers.DailySnapshotWorker}
+       {"0 3 * * *", Storyarn.Workers.DailySnapshotWorker},
+       {"0 4 * * *", Storyarn.Workers.SnapshotRetentionWorker}
      ]}
   ]
 

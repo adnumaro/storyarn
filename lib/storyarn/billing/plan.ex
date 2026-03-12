@@ -15,7 +15,8 @@ defmodule Storyarn.Billing.Plan do
         items_per_project: 700,
         storage_bytes_per_workspace: 250 * 1024 * 1024,
         named_versions_per_project: 10,
-        project_snapshots_per_project: 10
+        project_snapshots_per_project: 10,
+        snapshot_retention_days: 30
       }
     }
   }

@@ -32,6 +32,8 @@ defmodule Storyarn.Projects.Project do
           restoration_in_progress: boolean(),
           restoration_started_by_id: integer() | nil,
           restoration_started_at: DateTime.t() | nil,
+          deleted_at: DateTime.t() | nil,
+          deleted_by_id: integer() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -49,6 +51,11 @@ defmodule Storyarn.Projects.Project do
     field :restoration_in_progress, :boolean, default: false
     belongs_to :restoration_started_by, User
     field :restoration_started_at, :utc_datetime
+
+    field :deleted_at, :utc_datetime
+    belongs_to :deleted_by, User
+
+    field :snapshot_count, :integer, virtual: true, default: 0
 
     belongs_to :owner, User
     belongs_to :workspace, Workspace
@@ -98,6 +105,23 @@ defmodule Storyarn.Projects.Project do
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:description, max: 1000)
+  end
+
+  @doc """
+  Changeset for soft-deleting a project.
+  """
+  def soft_delete_changeset(project, attrs) do
+    project
+    |> cast(attrs, [:deleted_at, :deleted_by_id])
+    |> validate_required([:deleted_at])
+  end
+
+  @doc """
+  Changeset for restoring a soft-deleted project.
+  """
+  def restore_changeset(project) do
+    project
+    |> change(%{deleted_at: nil, deleted_by_id: nil})
   end
 
   @doc """

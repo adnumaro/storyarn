@@ -26,7 +26,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
     test "includes all entity types", %{project: project} do
       snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
 
-      assert snapshot["format_version"] == 1
+      assert snapshot["format_version"] == 2
       assert is_map(snapshot["entity_counts"])
       assert snapshot["entity_counts"]["sheets"] >= 1
       assert snapshot["entity_counts"]["flows"] >= 1
@@ -70,7 +70,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       empty_project = project_fixture(user)
       snapshot = ProjectSnapshotBuilder.build_snapshot(empty_project.id)
 
-      assert snapshot["format_version"] == 1
+      assert snapshot["format_version"] == 2
       assert snapshot["entity_counts"]["sheets"] == 0
       assert snapshot["entity_counts"]["flows"] == 0
       assert snapshot["entity_counts"]["scenes"] == 0

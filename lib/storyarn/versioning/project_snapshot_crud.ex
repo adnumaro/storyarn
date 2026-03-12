@@ -308,6 +308,44 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
     :ok
   end
 
+  @doc """
+  Deletes all snapshots for a project that are older than the given number of days.
+  Only prunes `is_auto: true` snapshots; manual snapshots are never auto-pruned.
+  Returns the number of snapshots deleted.
+  """
+  @spec prune_expired_snapshots(integer(), integer()) :: integer()
+  def prune_expired_snapshots(project_id, retention_days) do
+    cutoff =
+      DateTime.utc_now()
+      |> DateTime.add(-retention_days * 86_400, :second)
+      |> DateTime.truncate(:second)
+
+    expired =
+      from(s in ProjectSnapshot,
+        where:
+          s.project_id == ^project_id and
+            s.is_auto == true and
+            s.inserted_at < ^cutoff,
+        order_by: [asc: s.version_number]
+      )
+      |> Repo.all()
+
+    Enum.reduce(expired, 0, fn snapshot, count ->
+      case delete_snapshot(snapshot) do
+        {:ok, _} ->
+          Logger.info(
+            "Pruned expired snapshot v#{snapshot.version_number} for project #{project_id}"
+          )
+
+          count + 1
+
+        {:error, reason} ->
+          Logger.warning("Failed to prune expired snapshot: #{inspect(reason)}")
+          count
+      end
+    end)
+  end
+
   # ========== Helpers ==========
 
   @doc """

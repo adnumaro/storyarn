@@ -771,6 +771,11 @@ defmodule StoryarnWeb.Layouts do
               label: gettext("Members"),
               path: ~p"/users/settings/workspaces/#{workspace.slug}/members",
               icon: "users"
+            },
+            %{
+              label: gettext("Deleted Projects"),
+              path: ~p"/users/settings/workspaces/#{workspace.slug}/deleted-projects",
+              icon: "trash-2"
             }
           ]
         }

@@ -70,6 +70,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp node_to_snapshot(%FlowNode{} = node) do
     %{
+      "original_id" => node.id,
       "type" => node.type,
       "position_x" => node.position_x,
       "position_y" => node.position_y,

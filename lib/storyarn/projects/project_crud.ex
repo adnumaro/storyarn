@@ -7,7 +7,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   alias Storyarn.Billing
   alias Storyarn.Projects.{Memberships, Project, ProjectMembership}
   alias Storyarn.Repo
-  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Shared.{NameNormalizer, TimeHelpers}
   alias Storyarn.Workspaces.Workspace
 
   @doc """
@@ -15,6 +15,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   """
   def list_projects(%Scope{user: user}) do
     Project
+    |> where([p], is_nil(p.deleted_at))
     |> join(:inner, [p], m in ProjectMembership,
       on: m.project_id == p.id and m.user_id == ^user.id
     )
@@ -28,7 +29,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   """
   def list_projects_for_workspace(workspace_id, %Scope{user: user}) do
     Project
-    |> where([p], p.workspace_id == ^workspace_id)
+    |> where([p], p.workspace_id == ^workspace_id and is_nil(p.deleted_at))
     |> join(:left, [p], pm in ProjectMembership,
       on: pm.project_id == p.id and pm.user_id == ^user.id
     )
@@ -49,7 +50,11 @@ defmodule Storyarn.Projects.ProjectCrud do
   Gets a single project by ID with authorization check.
   """
   def get_project(%Scope{user: user}, id) do
-    with %Project{} = project <- Repo.get(Project, id),
+    project =
+      from(p in Project, where: p.id == ^id and is_nil(p.deleted_at))
+      |> Repo.one()
+
+    with %Project{} <- project,
          %ProjectMembership{} = membership <- Memberships.get_membership(project.id, user.id) do
       {:ok, project, membership}
     else
@@ -70,7 +75,7 @@ defmodule Storyarn.Projects.ProjectCrud do
       from p in Project,
         join: w in Workspace,
         on: w.id == p.workspace_id,
-        where: w.slug == ^workspace_slug and p.slug == ^project_slug,
+        where: w.slug == ^workspace_slug and p.slug == ^project_slug and is_nil(p.deleted_at),
         preload: [:workspace]
 
     with %Project{} = project <- Repo.one(query),
@@ -119,17 +124,58 @@ defmodule Storyarn.Projects.ProjectCrud do
   end
 
   @doc """
-  Deletes a project.
+  Soft-deletes a project by setting deleted_at and deleted_by_id.
   """
-  def delete_project(%Project{} = project) do
+  def delete_project(%Project{} = project, user_id) do
+    project
+    |> Project.soft_delete_changeset(%{deleted_at: TimeHelpers.now(), deleted_by_id: user_id})
+    |> Repo.update()
+  end
+
+  @doc """
+  Permanently deletes a project (for retention cleanup).
+  """
+  def permanently_delete_project(%Project{} = project) do
     Repo.delete(project)
+  end
+
+  @doc """
+  Lists soft-deleted projects in a workspace.
+  Preloads deleted_by user and includes snapshot count.
+  """
+  def list_deleted_projects(workspace_id) do
+    snapshot_count_query =
+      from(s in Storyarn.Versioning.ProjectSnapshot,
+        where: s.project_id == parent_as(:project).id,
+        select: count(s.id)
+      )
+
+    from(p in Project,
+      as: :project,
+      where: p.workspace_id == ^workspace_id and not is_nil(p.deleted_at),
+      order_by: [desc: p.deleted_at],
+      preload: [:deleted_by],
+      select_merge: %{snapshot_count: subquery(snapshot_count_query)}
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Gets a single deleted project with its snapshots preloaded.
+  """
+  def get_deleted_project(workspace_id, project_id) do
+    from(p in Project,
+      where: p.id == ^project_id and p.workspace_id == ^workspace_id and not is_nil(p.deleted_at),
+      preload: [:deleted_by]
+    )
+    |> Repo.one()
   end
 
   @doc """
   Lists all projects with auto snapshots enabled (for daily cron job).
   """
   def list_projects_with_auto_snapshots do
-    from(p in Project, where: p.auto_snapshots_enabled == true)
+    from(p in Project, where: p.auto_snapshots_enabled == true and is_nil(p.deleted_at))
     |> Repo.all()
   end
 
