@@ -45,6 +45,8 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         snapshots={@snapshots}
         snapshot_form={@snapshot_form}
         can_create_snapshot={@can_create_snapshot}
+        version_control_form={@version_control_form}
+        version_usage={@version_usage}
       />
 
       <.confirm_modal
@@ -438,6 +440,144 @@ defmodule StoryarnWeb.ProjectLive.Settings do
     """
   end
 
+  defp section_content(%{live_action: :version_control} = assigns) do
+    ~H"""
+    <div class="space-y-8">
+      <.form
+        for={@version_control_form}
+        id="version-control-form"
+        phx-submit="save_version_control"
+      >
+        <%!-- Auto Daily Snapshots --%>
+        <section>
+          <h3 class="text-lg font-semibold mb-4">
+            {dgettext("projects", "Automatic Snapshots")}
+          </h3>
+          <div class="card bg-base-200 p-4">
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="hidden" name="version_control[auto_snapshots_enabled]" value="false" />
+              <input
+                type="checkbox"
+                name="version_control[auto_snapshots_enabled]"
+                value="true"
+                checked={@version_control_form[:auto_snapshots_enabled].value}
+                class="checkbox checkbox-sm"
+              />
+              <div>
+                <span class="font-medium">
+                  {dgettext("projects", "Enable daily automatic snapshots")}
+                </span>
+                <p class="text-sm opacity-70">
+                  {dgettext(
+                    "projects",
+                    "Creates a daily backup at 3:00 AM UTC when changes are detected."
+                  )}
+                </p>
+              </div>
+            </label>
+          </div>
+        </section>
+
+        <div class="divider" />
+
+        <%!-- Per-Entity Auto-Versioning --%>
+        <section>
+          <h3 class="text-lg font-semibold mb-4">
+            {dgettext("projects", "Auto-Versioning")}
+          </h3>
+          <p class="text-sm opacity-70 mb-4">
+            {dgettext(
+              "projects",
+              "Automatically create version snapshots when editing entities."
+            )}
+          </p>
+          <div class="card bg-base-200 p-4 space-y-3">
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="hidden" name="version_control[auto_version_flows]" value="false" />
+              <input
+                type="checkbox"
+                name="version_control[auto_version_flows]"
+                value="true"
+                checked={@version_control_form[:auto_version_flows].value}
+                class="checkbox checkbox-sm"
+              />
+              <span>{dgettext("projects", "Flows")}</span>
+            </label>
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="hidden" name="version_control[auto_version_scenes]" value="false" />
+              <input
+                type="checkbox"
+                name="version_control[auto_version_scenes]"
+                value="true"
+                checked={@version_control_form[:auto_version_scenes].value}
+                class="checkbox checkbox-sm"
+              />
+              <span>{dgettext("projects", "Scenes")}</span>
+            </label>
+            <label class="flex items-center gap-3">
+              <input type="hidden" name="version_control[auto_version_sheets]" value="false" />
+              <input
+                type="checkbox"
+                name="version_control[auto_version_sheets]"
+                value="true"
+                checked={@version_control_form[:auto_version_sheets].value}
+                class="checkbox checkbox-sm"
+              />
+              <span>{dgettext("projects", "Sheets")}</span>
+            </label>
+          </div>
+        </section>
+
+        <.form_actions>
+          <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
+            {dgettext("projects", "Save Changes")}
+          </.button>
+        </.form_actions>
+      </.form>
+
+      <div :if={@version_usage} class="divider" />
+
+      <%!-- Usage Breakdown --%>
+      <section :if={@version_usage}>
+        <h3 class="text-lg font-semibold mb-4">
+          {dgettext("projects", "Usage")}
+        </h3>
+        <div class="space-y-4">
+          <.usage_bar
+            label={dgettext("projects", "Project Snapshots")}
+            used={@version_usage.project_snapshots.used}
+            limit={@version_usage.project_snapshots.limit}
+          />
+          <.usage_bar
+            label={dgettext("projects", "Named Versions")}
+            used={@version_usage.named_versions.used}
+            limit={@version_usage.named_versions.limit}
+          />
+        </div>
+      </section>
+    </div>
+    """
+  end
+
+  defp usage_bar(assigns) do
+    pct =
+      if assigns.limit && assigns.limit > 0,
+        do: min(round(assigns.used / assigns.limit * 100), 100),
+        else: 0
+
+    assigns = assign(assigns, :pct, pct)
+
+    ~H"""
+    <div>
+      <div class="flex justify-between text-sm mb-1">
+        <span>{@label}</span>
+        <span class="opacity-70">{@used} / {@limit || "∞"}</span>
+      </div>
+      <progress class="progress progress-primary w-full" value={@pct} max="100" />
+    </div>
+    """
+  end
+
   # ===========================================================================
   # Mount & handle_params
   # ===========================================================================
@@ -481,6 +621,8 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             |> assign(:snapshots, [])
             |> assign(:snapshot_form, to_form(snapshot_changeset(%{}), as: "snapshot"))
             |> assign(:can_create_snapshot, true)
+            |> assign(:version_control_form, nil)
+            |> assign(:version_usage, nil)
             |> assign_theme(project)
 
           {:ok, socket}
@@ -511,6 +653,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       |> assign(:page_title, dgettext("projects", "Project Settings"))
       |> assign(:current_path, current_path)
       |> maybe_load_snapshots()
+      |> maybe_load_version_control()
 
     {:noreply, socket}
   end
@@ -527,6 +670,38 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   end
 
   defp maybe_load_snapshots(socket), do: socket
+
+  defp maybe_load_version_control(%{assigns: %{live_action: :version_control}} = socket) do
+    project = socket.assigns.project
+
+    socket
+    |> assign(
+      :version_control_form,
+      to_form(version_control_changeset(project), as: "version_control")
+    )
+    |> assign(:version_usage, Billing.project_usage(project.id, project.workspace_id))
+  end
+
+  defp maybe_load_version_control(socket), do: socket
+
+  defp version_control_changeset(project) do
+    types = %{
+      auto_snapshots_enabled: :boolean,
+      auto_version_flows: :boolean,
+      auto_version_scenes: :boolean,
+      auto_version_sheets: :boolean
+    }
+
+    data = %{
+      auto_snapshots_enabled: project.auto_snapshots_enabled,
+      auto_version_flows: project.auto_version_flows,
+      auto_version_scenes: project.auto_version_scenes,
+      auto_version_sheets: project.auto_version_sheets
+    }
+
+    {data, types}
+    |> Ecto.Changeset.cast(%{}, Map.keys(types))
+  end
 
   # ===========================================================================
   # Events
@@ -615,6 +790,33 @@ defmodule StoryarnWeb.ProjectLive.Settings do
     end)
   end
 
+  def handle_event("save_version_control", %{"version_control" => params}, socket) do
+    with_authorization(socket, :manage_project, fn socket ->
+      # Checkboxes: absent = false, present = true
+      attrs = %{
+        auto_snapshots_enabled: params["auto_snapshots_enabled"] == "true",
+        auto_version_flows: params["auto_version_flows"] == "true",
+        auto_version_scenes: params["auto_version_scenes"] == "true",
+        auto_version_sheets: params["auto_version_sheets"] == "true"
+      }
+
+      case Projects.update_project(socket.assigns.project, attrs) do
+        {:ok, project} ->
+          {:noreply,
+           socket
+           |> assign(:project, project)
+           |> assign(
+             :version_control_form,
+             to_form(version_control_changeset(project), as: "version_control")
+           )
+           |> put_flash(:info, dgettext("projects", "Version control settings saved."))}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to save settings."))}
+      end
+    end)
+  end
+
   def handle_event("save_provider_config", %{"provider" => params}, socket) do
     with_authorization(socket, :manage_project, fn socket ->
       do_save_provider_config(socket, params)
@@ -687,6 +889,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   defp section_title(:localization), do: dgettext("projects", "Localization")
   defp section_title(:members), do: dgettext("projects", "Members")
   defp section_title(:snapshots), do: dgettext("projects", "Snapshots")
+  defp section_title(:version_control), do: dgettext("projects", "Version Control")
 
   defp section_subtitle(:general),
     do: dgettext("projects", "Project details, theme, and maintenance")
@@ -700,44 +903,8 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   defp section_subtitle(:snapshots),
     do: dgettext("projects", "Create and restore point-in-time project backups")
 
-  defp project_settings_sections(workspace, project) do
-    base = ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/settings"
-
-    [
-      %{
-        label: dgettext("projects", "General"),
-        items: [
-          %{label: dgettext("projects", "General"), path: base, icon: "settings"}
-        ]
-      },
-      %{
-        label: dgettext("projects", "Integrations"),
-        items: [
-          %{
-            label: dgettext("projects", "Localization"),
-            path: "#{base}/localization",
-            icon: "languages"
-          }
-        ]
-      },
-      %{
-        label: dgettext("projects", "Administration"),
-        items: [
-          %{label: dgettext("projects", "Members"), path: "#{base}/members", icon: "users"},
-          %{
-            label: dgettext("projects", "Snapshots"),
-            path: "#{base}/snapshots",
-            icon: "archive"
-          },
-          %{
-            label: dgettext("projects", "Import & Export"),
-            path: "#{base}/export-import",
-            icon: "package"
-          }
-        ]
-      }
-    ]
-  end
+  defp section_subtitle(:version_control),
+    do: dgettext("projects", "Configure automatic snapshots and auto-versioning")
 
   @entity_type_order ~w(sheets flows scenes languages localized_texts glossary_entries)
   defp sorted_entity_counts(counts) when is_map(counts) do

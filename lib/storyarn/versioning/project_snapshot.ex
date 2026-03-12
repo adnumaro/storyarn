@@ -22,6 +22,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
           entity_counts: map(),
           created_by_id: integer() | nil,
           created_by: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          is_auto: boolean(),
           project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil
         }
@@ -33,6 +34,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     field :storage_key, :string
     field :snapshot_size_bytes, :integer
     field :entity_counts, :map, default: %{}
+    field :is_auto, :boolean, default: false
 
     belongs_to :project, Project
     belongs_to :created_by, User
@@ -53,7 +55,8 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :storage_key,
       :snapshot_size_bytes,
       :entity_counts,
-      :created_by_id
+      :created_by_id,
+      :is_auto
     ])
     |> validate_required([
       :project_id,

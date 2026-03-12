@@ -202,6 +202,5 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
       assert length(glossary) == 1
       assert hd(glossary).target_term == "Dragón"
     end
-
   end
 end

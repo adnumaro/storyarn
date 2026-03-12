@@ -110,6 +110,13 @@ defmodule Storyarn.Projects do
   @spec delete_project(project()) :: {:ok, project()} | {:error, changeset()}
   defdelegate delete_project(project), to: ProjectCrud
 
+  @doc """
+  Lists all projects with auto snapshots enabled.
+  """
+  @spec list_projects_with_auto_snapshots() :: [project()]
+  defdelegate list_projects_with_auto_snapshots(), to: ProjectCrud
+  defdelegate auto_versioning_enabled?(project_id, entity_type), to: ProjectCrud
+
   # =============================================================================
   # Memberships
   # =============================================================================

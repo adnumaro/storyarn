@@ -81,6 +81,9 @@ defmodule Storyarn.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
 
+      # Background jobs
+      {:oban, "~> 2.19"},
+
       # S3-compatible storage (Cloudflare R2)
       {:ex_aws, "~> 2.6"},
       {:ex_aws_s3, "~> 2.5"},

@@ -36,6 +36,7 @@ defmodule Storyarn.Flows do
     InstructionExec
   }
 
+  alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
 
@@ -983,7 +984,13 @@ defmodule Storyarn.Flows do
   """
   def maybe_create_version(%Flow{} = flow, user_id, opts \\ []) do
     opts = Keyword.put_new(opts, :is_auto, true)
-    Versioning.maybe_create_version("flow", flow, flow.project_id, user_id, opts)
+
+    if Keyword.get(opts, :is_auto) and
+         not Projects.auto_versioning_enabled?(flow.project_id, :flow) do
+      {:skipped, :auto_versioning_disabled}
+    else
+      Versioning.maybe_create_version("flow", flow, flow.project_id, user_id, opts)
+    end
   end
 
   @doc """

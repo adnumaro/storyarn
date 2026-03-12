@@ -143,6 +143,19 @@ config :sentry,
   environment_name: config_env(),
   filter: Storyarn.SentryEventFilter
 
+# Oban background job processing
+config :storyarn, Oban,
+  engine: Oban.Engines.Basic,
+  repo: Storyarn.Repo,
+  queues: [default: 10, snapshots: 2],
+  plugins: [
+    {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"0 3 * * *", Storyarn.Workers.DailySnapshotWorker}
+     ]}
+  ]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

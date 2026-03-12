@@ -25,6 +25,10 @@ defmodule Storyarn.Projects.Project do
           memberships: [ProjectMembership.t()] | Ecto.Association.NotLoaded.t(),
           members: [User.t()] | Ecto.Association.NotLoaded.t(),
           invitations: [ProjectInvitation.t()] | Ecto.Association.NotLoaded.t(),
+          auto_snapshots_enabled: boolean(),
+          auto_version_flows: boolean(),
+          auto_version_scenes: boolean(),
+          auto_version_sheets: boolean(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -34,6 +38,10 @@ defmodule Storyarn.Projects.Project do
     field :slug, :string
     field :description, :string
     field :settings, :map, default: %{}
+    field :auto_snapshots_enabled, :boolean, default: true
+    field :auto_version_flows, :boolean, default: true
+    field :auto_version_scenes, :boolean, default: true
+    field :auto_version_sheets, :boolean, default: true
 
     belongs_to :owner, User
     belongs_to :workspace, Workspace
@@ -71,7 +79,15 @@ defmodule Storyarn.Projects.Project do
   """
   def update_changeset(project, attrs) do
     project
-    |> cast(attrs, [:name, :description, :settings])
+    |> cast(attrs, [
+      :name,
+      :description,
+      :settings,
+      :auto_snapshots_enabled,
+      :auto_version_flows,
+      :auto_version_scenes,
+      :auto_version_sheets
+    ])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:description, max: 1000)

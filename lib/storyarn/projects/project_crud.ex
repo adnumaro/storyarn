@@ -125,6 +125,36 @@ defmodule Storyarn.Projects.ProjectCrud do
     Repo.delete(project)
   end
 
+  @doc """
+  Lists all projects with auto snapshots enabled (for daily cron job).
+  """
+  def list_projects_with_auto_snapshots do
+    from(p in Project, where: p.auto_snapshots_enabled == true)
+    |> Repo.all()
+  end
+
+  @doc """
+  Checks if auto-versioning is enabled for a given entity type in a project.
+
+  Returns `true` when the project has the corresponding toggle enabled.
+  Uses a lightweight single-column query to avoid loading the full project.
+  """
+  @spec auto_versioning_enabled?(integer(), :flow | :scene | :sheet) :: boolean()
+  def auto_versioning_enabled?(project_id, entity_type) do
+    field = auto_version_field(entity_type)
+
+    from(p in Project,
+      where: p.id == ^project_id,
+      select: field(p, ^field)
+    )
+    |> Repo.one()
+    |> Kernel.||(false)
+  end
+
+  defp auto_version_field(:flow), do: :auto_version_flows
+  defp auto_version_field(:scene), do: :auto_version_scenes
+  defp auto_version_field(:sheet), do: :auto_version_sheets
+
   # Private helpers
 
   defp insert_project(user, attrs) do

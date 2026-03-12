@@ -104,6 +104,24 @@ defmodule Storyarn.Billing.Limits do
   end
 
   @doc """
+  Returns version control usage data for a project.
+  """
+  def project_usage(project_id, workspace_id) do
+    plan = SubscriptionCrud.plan_for_workspace_id(workspace_id)
+
+    %{
+      project_snapshots: %{
+        used: Storyarn.Versioning.count_project_snapshots(project_id),
+        limit: Plan.limit(plan, :project_snapshots_per_project)
+      },
+      named_versions: %{
+        used: Storyarn.Versioning.count_named_versions(project_id),
+        limit: Plan.limit(plan, :named_versions_per_project)
+      }
+    }
+  end
+
+  @doc """
   Returns usage data for a workspace.
   """
   def usage(workspace) do

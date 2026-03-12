@@ -43,7 +43,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
       snapshot: snapshot,
       entity_counts: snapshot["entity_counts"],
       title: Keyword.get(opts, :title),
-      description: Keyword.get(opts, :description)
+      description: Keyword.get(opts, :description),
+      is_auto: Keyword.get(opts, :is_auto, false)
     }
 
     store_and_insert_snapshot(params, _attempt = 1)
@@ -84,7 +85,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
       storage_key: storage_key,
       snapshot_size_bytes: size_bytes,
       entity_counts: params.entity_counts,
-      created_by_id: params.user_id
+      created_by_id: params.user_id,
+      is_auto: params.is_auto
     })
     |> Repo.insert()
   end
@@ -273,6 +275,37 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
       {:error, reason} ->
         Logger.warning("Failed to create post-restore snapshot: #{inspect(reason)}")
     end
+  end
+
+  # ========== Pruning ==========
+
+  @doc """
+  Deletes the oldest auto-generated snapshot for a project.
+  Only prunes `is_auto: true` snapshots, never manual ones.
+  """
+  @spec prune_auto_snapshots(integer()) :: :ok
+  def prune_auto_snapshots(project_id) do
+    oldest_auto =
+      from(s in ProjectSnapshot,
+        where: s.project_id == ^project_id and s.is_auto == true,
+        order_by: [asc: s.version_number],
+        limit: 1
+      )
+      |> Repo.one()
+
+    if oldest_auto do
+      case delete_snapshot(oldest_auto) do
+        {:ok, _} ->
+          Logger.info(
+            "Pruned auto snapshot v#{oldest_auto.version_number} for project #{project_id}"
+          )
+
+        {:error, reason} ->
+          Logger.warning("Failed to prune auto snapshot: #{inspect(reason)}")
+      end
+    end
+
+    :ok
   end
 
   # ========== Helpers ==========

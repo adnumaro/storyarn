@@ -23,7 +23,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
-  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 1]
+  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
 
   @spec handle_add_node(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
@@ -49,7 +49,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          socket
          |> assign(:flow, updated_flow)
          |> mark_saved()
-         |> schedule()
+         |> schedule(:flow)
          |> push_event("flow_meta_changed", %{field: "name", prev: prev_name, new: name})}
 
       {:error, _changeset} ->
@@ -70,7 +70,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          socket
          |> assign(:flow, updated_flow)
          |> mark_saved()
-         |> schedule()
+         |> schedule(:flow)
          |> push_event("flow_meta_changed", %{
            field: "shortcut",
            prev: prev_shortcut,

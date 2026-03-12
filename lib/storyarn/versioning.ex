@@ -13,6 +13,7 @@ defmodule Storyarn.Versioning do
   """
 
   alias Storyarn.Versioning.{
+    ChangeDetector,
     ConflictDetector,
     EntityVersion,
     ProjectSnapshot,
@@ -166,4 +167,22 @@ defmodule Storyarn.Versioning do
   defdelegate count_project_snapshots(project_id),
     to: ProjectSnapshotCrud,
     as: :count_snapshots
+
+  @doc """
+  Prunes the oldest auto-generated snapshot for a project.
+  """
+  defdelegate prune_auto_snapshots(project_id),
+    to: ProjectSnapshotCrud
+
+  # ========== Change Detection ==========
+
+  @doc """
+  Returns true if any entity was modified since the last project snapshot.
+  """
+  defdelegate project_changed_since_last_snapshot?(project_id), to: ChangeDetector
+
+  @doc """
+  Returns true if a manual snapshot was created within the given hours.
+  """
+  defdelegate recent_manual_snapshot?(project_id, hours \\ 6), to: ChangeDetector
 end

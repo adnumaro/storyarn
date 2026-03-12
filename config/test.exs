@@ -37,6 +37,9 @@ config :swoosh, :api_client, false
 # Print only warnings and errors during test
 config :logger, level: :warning
 
+# Oban: inline mode for testing
+config :storyarn, Oban, testing: :manual
+
 # Disable rate limiting in tests
 config :storyarn, Storyarn.RateLimiter, enabled: false
 

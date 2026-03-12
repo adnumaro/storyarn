@@ -1,5 +1,11 @@
 defmodule StoryarnWeb.Helpers.AutoSnapshot do
-  @moduledoc "Debounced auto-snapshot scheduling for entity editors."
+  @moduledoc """
+  Debounced auto-snapshot scheduling for entity editors.
+
+  The entity_type parameter is accepted for interface consistency but
+  auto-versioning gating is handled at the context facade level
+  (e.g. `Flows.maybe_create_version/3`) to avoid double-checking.
+  """
 
   import Phoenix.Component, only: [assign: 3]
 
@@ -7,20 +13,12 @@ defmodule StoryarnWeb.Helpers.AutoSnapshot do
 
   @doc """
   Schedules (or resets) a debounced auto-snapshot timer.
-  Stores the timer in `:auto_snapshot_timer` and a unique token in `:auto_snapshot_ref`.
+
+  Accepts an optional entity_type for interface consistency.
+  The actual auto-versioning gate lives in each context facade's
+  `maybe_create_version/3`, which checks the project setting before persisting.
   """
-  def schedule(socket) do
-    if timer = socket.assigns[:auto_snapshot_timer] do
-      Process.cancel_timer(timer)
-    end
-
-    token = make_ref()
-    timer = Process.send_after(self(), {:try_auto_snapshot, token}, @debounce_ms)
-
-    socket
-    |> assign(:auto_snapshot_timer, timer)
-    |> assign(:auto_snapshot_ref, token)
-  end
+  def schedule(socket, _entity_type), do: do_schedule(socket)
 
   @doc """
   Cancels a pending auto-snapshot timer, if any.
@@ -34,5 +32,18 @@ defmodule StoryarnWeb.Helpers.AutoSnapshot do
     socket
     |> assign(:auto_snapshot_timer, nil)
     |> assign(:auto_snapshot_ref, nil)
+  end
+
+  defp do_schedule(socket) do
+    if timer = socket.assigns[:auto_snapshot_timer] do
+      Process.cancel_timer(timer)
+    end
+
+    token = make_ref()
+    timer = Process.send_after(self(), {:try_auto_snapshot, token}, @debounce_ms)
+
+    socket
+    |> assign(:auto_snapshot_timer, timer)
+    |> assign(:auto_snapshot_ref, token)
   end
 end

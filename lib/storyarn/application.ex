@@ -29,6 +29,7 @@ defmodule Storyarn.Application do
       Storyarn.Dashboards.Cache,
       Storyarn.Flows.DebugSessionStore,
       Storyarn.Flows.NavigationHistoryStore,
+      {Oban, Application.fetch_env!(:storyarn, Oban)},
       # Start to serve requests, typically the last entry
       StoryarnWeb.Endpoint
     ]

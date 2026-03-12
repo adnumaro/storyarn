@@ -853,41 +853,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp maybe_allow_import_upload(socket, false), do: socket
 
   defp project_settings_sections(workspace, project) do
-    base = ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/settings"
-
-    [
-      %{
-        label: dgettext("projects", "General"),
-        items: [
-          %{label: dgettext("projects", "General"), path: base, icon: "settings"}
-        ]
-      },
-      %{
-        label: dgettext("projects", "Integrations"),
-        items: [
-          %{
-            label: dgettext("projects", "Localization"),
-            path: "#{base}/localization",
-            icon: "languages"
-          }
-        ]
-      },
-      %{
-        label: dgettext("projects", "Administration"),
-        items: [
-          %{label: dgettext("projects", "Members"), path: "#{base}/members", icon: "users"},
-          %{
-            label: dgettext("projects", "Snapshots"),
-            path: "#{base}/snapshots",
-            icon: "archive"
-          },
-          %{
-            label: dgettext("projects", "Import & Export"),
-            path: "#{base}/export-import",
-            icon: "package"
-          }
-        ]
-      }
-    ]
+    StoryarnWeb.ProjectLive.Components.SettingsComponents.project_settings_sections(
+      workspace,
+      project
+    )
   end
 end
