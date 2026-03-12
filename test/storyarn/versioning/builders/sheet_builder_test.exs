@@ -80,6 +80,41 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
     end
   end
 
+  describe "scan_references/1" do
+    test "extracts asset and block inheritance refs" do
+      snapshot = %{
+        "avatar_asset_id" => 10,
+        "banner_asset_id" => 20,
+        "blocks" => [
+          %{"inherited_from_block_id" => 30, "type" => "text", "position" => 0},
+          %{"inherited_from_block_id" => nil, "type" => "number", "position" => 1}
+        ]
+      }
+
+      refs = SheetBuilder.scan_references(snapshot)
+
+      types_and_ids = Enum.map(refs, &{&1.type, &1.id}) |> Enum.sort()
+
+      assert {:asset, 10} in types_and_ids
+      assert {:asset, 20} in types_and_ids
+      assert {:block, 30} in types_and_ids
+      assert length(refs) == 3
+    end
+
+    test "skips nil references" do
+      snapshot = %{
+        "avatar_asset_id" => nil,
+        "banner_asset_id" => nil,
+        "blocks" => [
+          %{"inherited_from_block_id" => nil, "type" => "text", "position" => 0}
+        ]
+      }
+
+      refs = SheetBuilder.scan_references(snapshot)
+      assert refs == []
+    end
+  end
+
   describe "diff_snapshots/2" do
     test "detects name change" do
       old = %{"name" => "Old", "shortcut" => "old", "blocks" => []}

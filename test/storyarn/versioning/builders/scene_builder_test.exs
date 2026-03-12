@@ -123,6 +123,73 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
     end
   end
 
+  describe "scan_references/1" do
+    test "extracts background asset, pin, and zone target refs" do
+      snapshot = %{
+        "background_asset_id" => 100,
+        "layers" => [
+          %{
+            "pins" => [
+              %{
+                "sheet_id" => 10,
+                "icon_asset_id" => 20,
+                "target_type" => "flow",
+                "target_id" => 30
+              },
+              %{
+                "sheet_id" => nil,
+                "icon_asset_id" => nil,
+                "target_type" => "url",
+                "target_id" => nil
+              }
+            ],
+            "zones" => [
+              %{
+                "target_type" => "scene",
+                "target_id" => 40
+              }
+            ]
+          }
+        ]
+      }
+
+      refs = SceneBuilder.scan_references(snapshot)
+
+      types_and_ids = Enum.map(refs, &{&1.type, &1.id}) |> Enum.sort()
+
+      assert {:asset, 20} in types_and_ids
+      assert {:asset, 100} in types_and_ids
+      assert {:flow, 30} in types_and_ids
+      assert {:scene, 40} in types_and_ids
+      assert {:sheet, 10} in types_and_ids
+      assert length(refs) == 5
+    end
+
+    test "skips nil references and url targets" do
+      snapshot = %{
+        "background_asset_id" => nil,
+        "layers" => [
+          %{
+            "pins" => [
+              %{
+                "sheet_id" => nil,
+                "icon_asset_id" => nil,
+                "target_type" => "url",
+                "target_id" => nil
+              }
+            ],
+            "zones" => [
+              %{"target_type" => nil, "target_id" => nil}
+            ]
+          }
+        ]
+      }
+
+      refs = SceneBuilder.scan_references(snapshot)
+      assert refs == []
+    end
+  end
+
   describe "diff_snapshots/2" do
     test "detects name change" do
       old = %{"name" => "Old", "shortcut" => "old", "layers" => [], "connections" => []}

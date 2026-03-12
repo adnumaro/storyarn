@@ -108,6 +108,19 @@ defmodule StoryarnWeb.Components.VersionsSection do
         <.promote_version_form version={@promote_version} target={@myself} />
       </.modal>
 
+      <%!-- Restore Conflict Modal --%>
+      <.modal
+        :if={@restore_preview != nil}
+        id="restore-conflict-modal"
+        show
+        on_cancel={JS.push("cancel_restore", target: @myself)}
+      >
+        <.restore_preview_content
+          preview={@restore_preview}
+          target={@myself}
+        />
+      </.modal>
+
       <.confirm_modal
         :if={@can_edit}
         id={"delete-version-confirm-#{@entity_type}"}
@@ -139,6 +152,8 @@ defmodule StoryarnWeb.Components.VersionsSection do
       |> assign_new(:can_name_version, fn -> true end)
       |> assign_new(:limit_message, fn -> nil end)
       |> assign_new(:pending_delete_version, fn -> nil end)
+      |> assign_new(:restore_preview, fn -> nil end)
+      |> assign_new(:restore_loading, fn -> false end)
 
     socket =
       if is_nil(socket.assigns.versions) do
@@ -203,10 +218,20 @@ defmodule StoryarnWeb.Components.VersionsSection do
     end)
   end
 
-  def handle_event("restore_version", %{"version" => version_number}, socket) do
+  def handle_event("preview_restore", %{"version" => version_number}, socket) do
     with_edit_authorization(socket, fn socket ->
-      restore_version(socket, version_number)
+      preview_restore(socket, version_number)
     end)
+  end
+
+  def handle_event("confirm_restore", _params, socket) do
+    with_edit_authorization(socket, fn socket ->
+      confirm_restore(socket)
+    end)
+  end
+
+  def handle_event("cancel_restore", _params, socket) do
+    {:noreply, assign(socket, :restore_preview, nil)}
   end
 
   def handle_event("set_pending_delete_version", %{"version" => version_number}, socket) do
@@ -315,7 +340,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
     end
   end
 
-  defp restore_version(socket, version_number) do
+  defp preview_restore(socket, version_number) do
     case parse_version_number(version_number) do
       {:ok, number} ->
         entity_type = socket.assigns.entity_type
@@ -326,7 +351,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
             {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
 
           version ->
-            restore_from_version(socket, version)
+            detect_and_show_preview(socket, version)
         end
 
       :error ->
@@ -334,29 +359,65 @@ defmodule StoryarnWeb.Components.VersionsSection do
     end
   end
 
-  defp restore_from_version(socket, version) do
+  defp detect_and_show_preview(socket, version) do
     entity = socket.assigns.entity
     entity_type = socket.assigns.entity_type
 
-    case Versioning.restore_version(entity_type, entity, version) do
-      {:ok, updated_entity} ->
-        socket = load_versions(socket, 1)
+    case Versioning.load_version_snapshot(version) do
+      {:ok, snapshot} ->
+        report = Versioning.detect_restore_conflicts(entity_type, snapshot, entity)
 
-        notify_parent(:version_restored, %{
-          entity: updated_entity,
-          version: version
-        })
+        preview = %{
+          version: version,
+          report: report
+        }
 
+        {:noreply, assign(socket, :restore_preview, preview)}
+
+      {:error, _} ->
         {:noreply,
-         put_flash(
-           socket,
-           :info,
-           dgettext("versioning", "Restored to version %{number}", number: version.version_number)
-         )}
+         put_flash(socket, :error, dgettext("versioning", "Could not load version snapshot."))}
+    end
+  end
 
-      {:error, _reason} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
+  defp confirm_restore(socket) do
+    case socket.assigns.restore_preview do
+      nil ->
+        {:noreply, socket}
+
+      %{version: version} ->
+        entity = socket.assigns.entity
+        entity_type = socket.assigns.entity_type
+        user_id = socket.assigns.current_user_id
+
+        case Versioning.restore_version(entity_type, entity, version, user_id: user_id) do
+          {:ok, updated_entity} ->
+            socket =
+              socket
+              |> assign(:restore_preview, nil)
+              |> load_versions(1)
+              |> check_named_version_limit()
+
+            notify_parent(:version_restored, %{
+              entity: updated_entity,
+              version: version
+            })
+
+            {:noreply,
+             put_flash(
+               socket,
+               :info,
+               dgettext("versioning", "Restored to version %{number}",
+                 number: version.version_number
+               )
+             )}
+
+          {:error, _reason} ->
+            {:noreply,
+             socket
+             |> assign(:restore_preview, nil)
+             |> put_flash(:error, dgettext("versioning", "Could not restore version."))}
+        end
     end
   end
 
@@ -577,7 +638,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
           type="button"
           class="btn btn-ghost btn-xs tooltip"
           data-tip={dgettext("versioning", "Restore this version")}
-          phx-click="restore_version"
+          phx-click="preview_restore"
           phx-value-version={@version.version_number}
           phx-target={@target}
         >
@@ -712,6 +773,128 @@ defmodule StoryarnWeb.Components.VersionsSection do
     </form>
     """
   end
+
+  attr :preview, :map, required: true
+  attr :target, :any, default: nil
+
+  defp restore_preview_content(assigns) do
+    ~H"""
+    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+      <.icon name="rotate-ccw" class="size-5" />
+      {dgettext("versioning", "Restore to version %{number}", number: @preview.version.version_number)}
+    </h3>
+
+    <%= if @preview.report.has_conflicts do %>
+      <div class="space-y-3 mb-4">
+        <%!-- Shortcut collision --%>
+        <div :if={@preview.report.shortcut_collision} class="alert alert-warning">
+          <.icon name="alert-triangle" class="size-4" />
+          <span>
+            {dgettext("versioning", "Shortcut collision — will be renamed to \"%{shortcut}\"",
+              shortcut: @preview.report.resolved_shortcut
+            )}
+          </span>
+        </div>
+
+        <%!-- Missing references --%>
+        <div :if={@preview.report.conflicts != []} class="space-y-2">
+          <p class="text-sm font-medium text-warning">
+            <.icon name="alert-triangle" class="size-4 inline" />
+            {dgettext("versioning", "Some referenced entities no longer exist:")}
+          </p>
+
+          <div
+            :for={conflict <- @preview.report.conflicts}
+            class="bg-base-200/50 rounded-lg p-3"
+          >
+            <div class="flex items-center gap-2 text-sm font-medium">
+              <.icon name={conflict_type_icon(conflict.type)} class="size-4 text-warning" />
+              <span>
+                {dgettext("versioning", "Missing %{type} (ID: %{id})",
+                  type: conflict_type_label(conflict.type),
+                  id: conflict.id
+                )}
+              </span>
+            </div>
+            <ul class="mt-1 ml-6 text-xs text-base-content/60 list-disc">
+              <li :for={context <- conflict.contexts}>{context}</li>
+            </ul>
+          </div>
+        </div>
+
+        <p class="text-sm text-base-content/70">
+          {dgettext(
+            "versioning",
+            "Missing references will be cleared. Current state will be saved as a backup."
+          )}
+        </p>
+      </div>
+    <% else %>
+      <p class="text-base-content/70 mb-4">
+        {dgettext(
+          "versioning",
+          "Current state will be saved as a backup before restoring."
+        )}
+      </p>
+    <% end %>
+
+    <%!-- Auto-resolved items --%>
+    <div
+      :if={@preview.report.auto_resolved != []}
+      class="bg-info/10 border border-info/20 rounded-lg p-3 mb-4"
+    >
+      <p class="text-sm font-medium text-info mb-1">
+        <.icon name="info" class="size-4 inline" />
+        {dgettext("versioning", "Auto-resolved:")}
+      </p>
+      <ul class="text-xs text-base-content/70 list-disc ml-5">
+        <li :for={item <- @preview.report.auto_resolved}>{item}</li>
+      </ul>
+    </div>
+
+    <div class="modal-action">
+      <button
+        type="button"
+        class="btn btn-ghost"
+        phx-click="cancel_restore"
+        phx-target={@target}
+      >
+        {dgettext("versioning", "Cancel")}
+      </button>
+      <button
+        type="button"
+        class={[
+          "btn",
+          @preview.report.has_conflicts && "btn-warning",
+          !@preview.report.has_conflicts && "btn-primary"
+        ]}
+        phx-click="confirm_restore"
+        phx-target={@target}
+      >
+        <.icon name="rotate-ccw" class="size-4" />
+        <%= if @preview.report.has_conflicts do %>
+          {dgettext("versioning", "Restore anyway")}
+        <% else %>
+          {dgettext("versioning", "Restore")}
+        <% end %>
+      </button>
+    </div>
+    """
+  end
+
+  defp conflict_type_icon(:asset), do: "image"
+  defp conflict_type_icon(:sheet), do: "file-text"
+  defp conflict_type_icon(:flow), do: "git-branch"
+  defp conflict_type_icon(:scene), do: "map"
+  defp conflict_type_icon(:block), do: "puzzle"
+  defp conflict_type_icon(_), do: "circle-alert"
+
+  defp conflict_type_label(:asset), do: dgettext("versioning", "asset")
+  defp conflict_type_label(:sheet), do: dgettext("versioning", "sheet")
+  defp conflict_type_label(:flow), do: dgettext("versioning", "flow")
+  defp conflict_type_label(:scene), do: dgettext("versioning", "scene")
+  defp conflict_type_label(:block), do: dgettext("versioning", "block")
+  defp conflict_type_label(_), do: dgettext("versioning", "entity")
 
   defp format_version_date(datetime) do
     Calendar.strftime(datetime, "%b %d, %Y at %H:%M")

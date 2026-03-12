@@ -218,6 +218,34 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   defp format_change_summary([]), do: dgettext("sheets", "No changes detected")
   defp format_change_summary(changes), do: changes |> Enum.reverse() |> Enum.join(", ")
 
+  # ========== Scan References ==========
+
+  @impl true
+  def scan_references(snapshot) do
+    refs = []
+
+    refs =
+      refs
+      |> maybe_add_ref(:asset, snapshot["avatar_asset_id"], dgettext("sheets", "Avatar image"))
+      |> maybe_add_ref(:asset, snapshot["banner_asset_id"], dgettext("sheets", "Banner image"))
+
+    (snapshot["blocks"] || [])
+    |> Enum.with_index(1)
+    |> Enum.reduce(refs, fn {block, idx}, acc ->
+      maybe_add_ref(
+        acc,
+        :block,
+        block["inherited_from_block_id"],
+        dgettext("sheets", "Block #%{n} — inherited source", n: idx)
+      )
+    end)
+  end
+
+  defp maybe_add_ref(refs, _type, nil, _context), do: refs
+
+  defp maybe_add_ref(refs, type, id, context),
+    do: [%{type: type, id: id, context: context} | refs]
+
   # Returns the FK value only if the referenced record still exists, nil otherwise.
   defp resolve_fk(nil, _schema), do: nil
 

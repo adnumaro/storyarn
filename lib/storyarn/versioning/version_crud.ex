@@ -277,15 +277,56 @@ defmodule Storyarn.Versioning.VersionCrud do
 
   @doc """
   Loads a version's snapshot from storage and restores the entity.
+
+  ## Options
+  - `:user_id` - If provided, creates a pre-restore safety snapshot and a post-restore version entry
   """
   @spec restore_version(String.t(), struct(), EntityVersion.t(), keyword()) ::
           {:ok, struct()} | {:error, term()}
   def restore_version(entity_type, entity, %EntityVersion{} = version, opts \\ []) do
     builder = get_builder!(entity_type)
+    user_id = Keyword.get(opts, :user_id)
 
     with {:ok, snapshot} <- SnapshotStorage.load_snapshot(version.storage_key) do
-      builder.restore_snapshot(entity, snapshot, opts)
+      maybe_create_pre_restore_snapshot(entity_type, entity, version, user_id)
+      snapshot = maybe_resolve_shortcut_collision(entity_type, entity, snapshot)
+
+      case builder.restore_snapshot(entity, snapshot, opts) do
+        {:ok, updated_entity} ->
+          maybe_create_post_restore_snapshot(
+            entity_type,
+            updated_entity,
+            entity,
+            version,
+            user_id
+          )
+
+          {:ok, updated_entity}
+
+        error ->
+          error
+      end
     end
+  end
+
+  defp maybe_create_pre_restore_snapshot(_entity_type, _entity, _version, nil), do: :noop
+
+  defp maybe_create_pre_restore_snapshot(entity_type, entity, version, user_id) do
+    create_version(entity_type, entity, entity.project_id, user_id,
+      title:
+        dgettext("versioning", "Before restore to v%{number}", number: version.version_number),
+      is_auto: false
+    )
+  end
+
+  defp maybe_create_post_restore_snapshot(_entity_type, _updated, _entity, _version, nil),
+    do: :noop
+
+  defp maybe_create_post_restore_snapshot(entity_type, updated_entity, entity, version, user_id) do
+    create_version(entity_type, updated_entity, entity.project_id, user_id,
+      title: dgettext("versioning", "Restored from v%{number}", number: version.version_number),
+      is_auto: false
+    )
   end
 
   @doc """
@@ -321,6 +362,35 @@ defmodule Storyarn.Versioning.VersionCrud do
       {:ok, builder} -> builder
       :error -> raise ArgumentError, "unknown entity type: #{inspect(entity_type)}"
     end
+  end
+
+  @entity_type_to_schema %{
+    "sheet" => Storyarn.Sheets.Sheet,
+    "flow" => Storyarn.Flows.Flow,
+    "scene" => Storyarn.Scenes.Scene
+  }
+
+  defp maybe_resolve_shortcut_collision(entity_type, entity, snapshot) do
+    shortcut = snapshot["shortcut"]
+
+    if shortcut && shortcut_taken?(entity_type, entity, shortcut) do
+      Map.put(snapshot, "shortcut", shortcut <> "-restored")
+    else
+      snapshot
+    end
+  end
+
+  defp shortcut_taken?(entity_type, entity, shortcut) do
+    schema = Map.fetch!(@entity_type_to_schema, entity_type)
+
+    from(e in schema,
+      where:
+        e.shortcut == ^shortcut and
+          e.project_id == ^entity.project_id and
+          e.id != ^entity.id and
+          is_nil(e.deleted_at)
+    )
+    |> Repo.exists?()
   end
 
   defp generate_change_summary(entity_type, entity_id, current_snapshot, builder) do

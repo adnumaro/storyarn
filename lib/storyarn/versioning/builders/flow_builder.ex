@@ -284,6 +284,48 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   defp format_change_summary([]), do: dgettext("flows", "No changes detected")
   defp format_change_summary(changes), do: changes |> Enum.reverse() |> Enum.join(", ")
 
+  # ========== Scan References ==========
+
+  @impl true
+  def scan_references(snapshot) do
+    refs = []
+
+    refs =
+      maybe_add_ref(refs, :scene, snapshot["scene_id"], dgettext("flows", "Flow backdrop scene"))
+
+    refs =
+      (snapshot["nodes"] || [])
+      |> Enum.with_index(1)
+      |> Enum.reduce(refs, fn {node, idx}, acc ->
+        data = node["data"] || %{}
+        type = node["type"] || "unknown"
+
+        acc
+        |> maybe_add_ref(
+          :sheet,
+          data["speaker_sheet_id"],
+          dgettext("flows", "Node #%{n} (%{type}) — speaker", n: idx, type: type)
+        )
+        |> maybe_add_ref(
+          :flow,
+          data["referenced_flow_id"],
+          dgettext("flows", "Node #%{n} (%{type}) — referenced flow", n: idx, type: type)
+        )
+        |> maybe_add_ref(
+          :asset,
+          data["audio_asset_id"],
+          dgettext("flows", "Node #%{n} (%{type}) — audio", n: idx, type: type)
+        )
+      end)
+
+    refs
+  end
+
+  defp maybe_add_ref(refs, _type, nil, _context), do: refs
+
+  defp maybe_add_ref(refs, type, id, context),
+    do: [%{type: type, id: id, context: context} | refs]
+
   # Returns the FK value only if the referenced record still exists, nil otherwise.
   defp resolve_fk(nil, _schema), do: nil
 

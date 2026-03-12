@@ -69,17 +69,17 @@ defmodule StoryarnWeb.SceneLive.Components.SceneHeaderTest do
 
     test "shows settings button when can_edit and edit_mode" do
       html = render_actions(%{can_edit: true, edit_mode: true})
-      assert html =~ "open_scene_settings"
+      assert html =~ "scene-settings-panel"
     end
 
     test "hides settings button when not in edit mode" do
       html = render_actions(%{can_edit: true, edit_mode: false})
-      refute html =~ "open_scene_settings"
+      refute html =~ "scene-settings-panel"
     end
 
     test "hides settings button when cannot edit" do
       html = render_actions(%{can_edit: false, edit_mode: true})
-      refute html =~ "open_scene_settings"
+      refute html =~ "scene-settings-panel"
     end
   end
 

@@ -88,6 +88,61 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
     end
   end
 
+  describe "scan_references/1" do
+    test "extracts speaker, subflow, and audio refs from nodes" do
+      snapshot = %{
+        "scene_id" => 42,
+        "nodes" => [
+          %{
+            "type" => "dialogue",
+            "data" => %{
+              "speaker_sheet_id" => 10,
+              "audio_asset_id" => 20
+            }
+          },
+          %{
+            "type" => "subflow",
+            "data" => %{
+              "referenced_flow_id" => 30
+            }
+          },
+          %{
+            "type" => "hub",
+            "data" => %{}
+          }
+        ]
+      }
+
+      refs = FlowBuilder.scan_references(snapshot)
+
+      types_and_ids = Enum.map(refs, &{&1.type, &1.id}) |> Enum.sort()
+
+      assert {:asset, 20} in types_and_ids
+      assert {:flow, 30} in types_and_ids
+      assert {:scene, 42} in types_and_ids
+      assert {:sheet, 10} in types_and_ids
+      assert length(refs) == 4
+    end
+
+    test "skips nil references" do
+      snapshot = %{
+        "scene_id" => nil,
+        "nodes" => [
+          %{
+            "type" => "dialogue",
+            "data" => %{
+              "speaker_sheet_id" => nil,
+              "audio_asset_id" => nil
+            }
+          }
+        ]
+      }
+
+      refs = FlowBuilder.scan_references(snapshot)
+      assert refs == []
+    end
+  end
+
   describe "diff_snapshots/2" do
     test "detects name change" do
       old = %{"name" => "Old", "shortcut" => "old", "nodes" => [], "connections" => []}

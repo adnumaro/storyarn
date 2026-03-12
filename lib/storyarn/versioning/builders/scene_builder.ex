@@ -524,6 +524,75 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   defp format_change_summary([]), do: dgettext("scenes", "No changes detected")
   defp format_change_summary(changes), do: changes |> Enum.reverse() |> Enum.join(", ")
 
+  # ========== Scan References ==========
+
+  @impl true
+  def scan_references(snapshot) do
+    refs = []
+
+    refs =
+      maybe_add_ref(
+        refs,
+        :asset,
+        snapshot["background_asset_id"],
+        dgettext("scenes", "Background image")
+      )
+
+    refs =
+      (snapshot["layers"] || [])
+      |> Enum.with_index(1)
+      |> Enum.reduce(refs, fn {layer, layer_idx}, acc ->
+        acc
+        |> scan_pin_refs(layer["pins"] || [], layer_idx)
+        |> scan_zone_refs(layer["zones"] || [], layer_idx)
+      end)
+
+    refs
+  end
+
+  defp scan_pin_refs(refs, pins, layer_idx) do
+    pins
+    |> Enum.with_index(1)
+    |> Enum.reduce(refs, fn {pin, pin_idx}, acc ->
+      prefix =
+        dgettext("scenes", "Layer %{l}, Pin %{p}", l: layer_idx, p: pin_idx)
+
+      acc
+      |> maybe_add_ref(:sheet, pin["sheet_id"], prefix <> " — sheet")
+      |> maybe_add_ref(:asset, pin["icon_asset_id"], prefix <> " — icon asset")
+      |> maybe_add_target_ref(pin["target_type"], pin["target_id"], prefix <> " — target")
+    end)
+  end
+
+  defp scan_zone_refs(refs, zones, layer_idx) do
+    zones
+    |> Enum.with_index(1)
+    |> Enum.reduce(refs, fn {zone, zone_idx}, acc ->
+      prefix =
+        dgettext("scenes", "Layer %{l}, Zone %{z}", l: layer_idx, z: zone_idx)
+
+      maybe_add_target_ref(acc, zone["target_type"], zone["target_id"], prefix <> " — target")
+    end)
+  end
+
+  @target_type_mapping %{
+    "sheet" => :sheet,
+    "flow" => :flow,
+    "scene" => :scene
+  }
+
+  defp maybe_add_target_ref(refs, target_type, target_id, context) do
+    case Map.get(@target_type_mapping, target_type) do
+      nil -> refs
+      type -> maybe_add_ref(refs, type, target_id, context)
+    end
+  end
+
+  defp maybe_add_ref(refs, _type, nil, _context), do: refs
+
+  defp maybe_add_ref(refs, type, id, context),
+    do: [%{type: type, id: id, context: context} | refs]
+
   # Returns the FK value only if the referenced record still exists, nil otherwise.
   defp resolve_fk(nil, _schema), do: nil
 

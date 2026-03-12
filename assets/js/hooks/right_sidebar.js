@@ -40,9 +40,7 @@ export const RightSidebar = {
     this._animating = false;
 
     // Find dock/trigger button that controls this panel
-    this._trigger = document.querySelector(
-      `[data-panel-trigger="${this.el.id}"]`,
-    );
+    this._trigger = document.querySelector(`[data-panel-trigger="${this.el.id}"]`);
 
     // CSS hides us by default (no data-panel-open attr) — nothing to do here.
 
@@ -55,8 +53,7 @@ export const RightSidebar = {
       if (!this._open || this._animating) return;
       if (window.innerWidth < 1280) return;
       if (this.el.contains(e.target)) return;
-      if (e.target.closest("[role='dialog']") || e.target.closest(".modal"))
-        return;
+      if (e.target.closest("[role='dialog']") || e.target.closest(".modal")) return;
       if (e.target.closest(".dock-item")) return;
       if (e.target.closest("[data-panel-trigger]")) return;
       this._doClose();
@@ -93,9 +90,9 @@ export const RightSidebar = {
     this._open = true;
 
     // Close ALL other right-side panels (universal mutual exclusion)
-    document
-      .querySelectorAll("[data-right-panel]:not(#" + this.el.id + ")")
-      .forEach((el) => el.dispatchEvent(new Event("panel:close")));
+    document.querySelectorAll(`[data-right-panel]:not(#${this.el.id})`).forEach((el) => {
+      el.dispatchEvent(new Event("panel:close"));
+    });
 
     this.el.setAttribute("data-panel-open", "");
     if (this._trigger) this._trigger.classList.add("dock-btn-active");

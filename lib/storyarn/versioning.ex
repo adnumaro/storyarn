@@ -12,7 +12,7 @@ defmodule Storyarn.Versioning do
   - `Builders.*` - Entity-specific snapshot building and restoration
   """
 
-  alias Storyarn.Versioning.{EntityVersion, VersionCrud}
+  alias Storyarn.Versioning.{ConflictDetector, EntityVersion, VersionCrud}
 
   @type version :: EntityVersion.t()
 
@@ -78,6 +78,14 @@ defmodule Storyarn.Versioning do
   defdelegate delete_version(version), to: VersionCrud
 
   # ========== Restore ==========
+
+  @doc """
+  Detects conflicts that would occur when restoring from a snapshot.
+  Returns a report with missing references, shortcut collisions, and auto-resolved items.
+  """
+  defdelegate detect_restore_conflicts(entity_type, snapshot, entity),
+    to: ConflictDetector,
+    as: :detect_conflicts
 
   @doc """
   Loads a version's snapshot from storage and restores the entity.

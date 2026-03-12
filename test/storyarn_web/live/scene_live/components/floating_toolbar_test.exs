@@ -254,7 +254,7 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbarTest do
           base_assigns("connection", connection_element(%{waypoints: [%{"x" => 1, "y" => 2}]}))
         )
 
-      assert html =~ "open_element_panel"
+      assert html =~ "scene-element-panel"
     end
 
     test "connection with bidirectional true shows active state" do

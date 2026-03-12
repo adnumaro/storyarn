@@ -224,6 +224,78 @@ defmodule Storyarn.Versioning.VersionCrudTest do
     end
   end
 
+  describe "restore_version/4" do
+    test "creates pre-restore and post-restore versions when user_id provided", %{
+      sheet: sheet,
+      project: project,
+      user: user
+    } do
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, title: "Original")
+
+      # Modify the sheet
+      {:ok, modified_sheet} = Storyarn.Sheets.update_sheet(sheet, %{name: "Modified"})
+      modified_sheet = Storyarn.Repo.preload(modified_sheet, :blocks, force: true)
+
+      # Restore with user_id
+      {:ok, _restored} =
+        Versioning.restore_version("sheet", modified_sheet, version, user_id: user.id)
+
+      # Should have: Original (v1) + Before restore (v2) + Restored from (v3)
+      versions = Versioning.list_versions("sheet", sheet.id)
+      assert length(versions) == 3
+
+      titles = Enum.map(versions, & &1.title)
+      assert Enum.any?(titles, &(&1 =~ "Before restore"))
+      assert Enum.any?(titles, &(&1 =~ "Restored from"))
+    end
+
+    test "skips pre/post versions when user_id is nil", %{
+      sheet: sheet,
+      project: project,
+      user: user
+    } do
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, title: "v1")
+
+      {:ok, _restored} = Versioning.restore_version("sheet", sheet, version)
+
+      # Should only have the original version
+      versions = Versioning.list_versions("sheet", sheet.id)
+      assert length(versions) == 1
+    end
+
+    test "resolves shortcut collision with -restored suffix", %{
+      project: project,
+      user: user
+    } do
+      sheet1 = Storyarn.SheetsFixtures.sheet_fixture(project, %{name: "Alpha"})
+      _block = Storyarn.SheetsFixtures.block_fixture(sheet1, %{type: "text"})
+      sheet1 = Storyarn.Repo.preload(sheet1, :blocks, force: true)
+
+      # Create version of sheet1 with its current shortcut
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet1, project.id, user.id, title: "v1")
+
+      {:ok, snapshot} = Versioning.load_version_snapshot(version)
+      old_shortcut = snapshot["shortcut"]
+
+      # Change sheet1's shortcut to something different
+      {:ok, sheet1} = Storyarn.Sheets.update_sheet(sheet1, %{shortcut: "different-shortcut"})
+
+      # Create sheet2 with the old shortcut to create a collision
+      sheet2 = Storyarn.SheetsFixtures.sheet_fixture(project, %{name: "Beta"})
+      {:ok, _sheet2} = Storyarn.Sheets.update_sheet(sheet2, %{shortcut: old_shortcut})
+
+      # Reload sheet1
+      sheet1 = Storyarn.Repo.preload(sheet1, :blocks, force: true)
+
+      # Restore — should use "-restored" suffix
+      {:ok, restored} = Versioning.restore_version("sheet", sheet1, version)
+      assert restored.shortcut == old_shortcut <> "-restored"
+    end
+  end
+
   describe "count_named_versions/1" do
     test "counts versions with non-nil title", %{sheet: sheet, project: project, user: user} do
       assert Versioning.count_named_versions(project.id) == 0
