@@ -8,13 +8,17 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
 
   use Gettext, backend: StoryarnWeb.Gettext
 
+  require Logger
+
   import Phoenix.Component, only: [assign: 3, to_form: 2]
   import Phoenix.LiveView, only: [put_flash: 3]
 
   alias Storyarn.Accounts
+  alias Storyarn.Billing
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Projects
+  alias Storyarn.Versioning
 
   # ---------------------------------------------------------------------------
   # Form changesets
@@ -141,6 +145,133 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
            :error,
            dgettext("projects", "Failed to repair variable references.")
          )}
+    end
+  end
+
+  def snapshot_changeset(params) do
+    types = %{title: :string, description: :string}
+    defaults = %{title: "", description: ""}
+
+    {defaults, types}
+    |> Ecto.Changeset.cast(params, Map.keys(types))
+    |> Ecto.Changeset.validate_length(:title, max: 255)
+    |> Ecto.Changeset.validate_length(:description, max: 500)
+  end
+
+  def format_snapshot_size(bytes) when is_integer(bytes) and bytes < 1024,
+    do: "#{bytes} B"
+
+  def format_snapshot_size(bytes) when is_integer(bytes) and bytes < 1_048_576,
+    do: "#{Float.round(bytes / 1024, 1)} KB"
+
+  def format_snapshot_size(bytes) when is_integer(bytes),
+    do: "#{Float.round(bytes / 1_048_576, 1)} MB"
+
+  def format_snapshot_size(_), do: "—"
+
+  def do_create_snapshot(socket, params) do
+    project = socket.assigns.project
+    user_id = socket.assigns.current_scope.user.id
+
+    case Billing.can_create_project_snapshot?(project.id, project.workspace_id) do
+      :ok ->
+        opts =
+          [title: params["title"], description: params["description"]]
+          |> Enum.reject(fn {_k, v} -> v == "" or is_nil(v) end)
+
+        case Versioning.create_project_snapshot(project.id, user_id, opts) do
+          {:ok, _snapshot} ->
+            {:noreply,
+             socket
+             |> assign(:snapshots, Versioning.list_project_snapshots(project.id))
+             |> assign(:snapshot_form, to_form(snapshot_changeset(%{}), as: "snapshot"))
+             |> assign(
+               :can_create_snapshot,
+               Billing.can_create_project_snapshot?(project.id, project.workspace_id) == :ok
+             )
+             |> put_flash(:info, dgettext("projects", "Project snapshot created."))}
+
+          {:error, reason} ->
+            Logger.error("Project snapshot creation failed: #{inspect(reason)}")
+
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext("projects", "Failed to create snapshot. Please try again.")
+             )}
+        end
+
+      {:error, :limit_reached, _info} ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("projects", "Snapshot limit reached for your plan."))}
+    end
+  end
+
+  def do_restore_snapshot(socket, snapshot_id) do
+    project = socket.assigns.project
+    user_id = socket.assigns.current_scope.user.id
+
+    case Versioning.get_project_snapshot(project.id, snapshot_id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("projects", "Snapshot not found."))}
+
+      snapshot ->
+        case Versioning.restore_project_snapshot(project.id, snapshot, user_id: user_id) do
+          {:ok, result} ->
+            {:noreply,
+             socket
+             |> assign(:snapshots, Versioning.list_project_snapshots(project.id))
+             |> assign(
+               :can_create_snapshot,
+               Billing.can_create_project_snapshot?(project.id, project.workspace_id) == :ok
+             )
+             |> put_flash(
+               :info,
+               dgettext(
+                 "projects",
+                 "Project restored. %{restored} entities restored, %{skipped} skipped.",
+                 restored: result.restored,
+                 skipped: result.skipped
+               )
+             )}
+
+          {:error, reason} ->
+            Logger.error("Project snapshot restore failed: #{inspect(reason)}")
+
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext("projects", "Failed to restore snapshot. Please try again.")
+             )}
+        end
+    end
+  end
+
+  def do_delete_snapshot(socket, snapshot_id) do
+    project = socket.assigns.project
+
+    case Versioning.get_project_snapshot(project.id, snapshot_id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("projects", "Snapshot not found."))}
+
+      snapshot ->
+        case Versioning.delete_project_snapshot(snapshot) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> assign(:snapshots, Versioning.list_project_snapshots(project.id))
+             |> assign(
+               :can_create_snapshot,
+               Billing.can_create_project_snapshot?(project.id, project.workspace_id) == :ok
+             )
+             |> put_flash(:info, dgettext("projects", "Snapshot deleted."))}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("projects", "Failed to delete snapshot."))}
+        end
     end
   end
 

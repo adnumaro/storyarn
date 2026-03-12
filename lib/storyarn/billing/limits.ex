@@ -84,6 +84,16 @@ defmodule Storyarn.Billing.Limits do
   end
 
   @doc """
+  Checks if a project can have another project snapshot.
+  """
+  def can_create_project_snapshot?(project_id, workspace_id) do
+    plan = SubscriptionCrud.plan_for_workspace_id(workspace_id)
+    limit = Plan.limit(plan, :project_snapshots_per_project)
+    used = Storyarn.Versioning.count_project_snapshots(project_id)
+    check_limit(:project_snapshots_per_project, used, limit)
+  end
+
+  @doc """
   Checks if a project can have another named version.
   """
   def can_create_named_version?(project_id, workspace_id) do

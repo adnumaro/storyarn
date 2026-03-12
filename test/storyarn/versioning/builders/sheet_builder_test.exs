@@ -80,6 +80,68 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
     end
   end
 
+  describe "table data in snapshots" do
+    test "captures table columns and rows in snapshot", %{sheet: sheet} do
+      table_block = table_block_fixture(sheet)
+      _col = table_column_fixture(table_block, %{name: "Age", type: "number"})
+
+      [default_row] = Storyarn.Sheets.list_table_rows(table_block.id)
+
+      Storyarn.Sheets.update_table_cell(default_row, "age", "25")
+
+      snapshot = SheetBuilder.build_snapshot(sheet)
+
+      table_snap =
+        Enum.find(snapshot["blocks"], &(&1["type"] == "table"))
+
+      assert is_map(table_snap["table_data"])
+      assert table_snap["table_data"]["columns"] != []
+      assert table_snap["table_data"]["rows"] != []
+
+      age_col = Enum.find(table_snap["table_data"]["columns"], &(&1["name"] == "Age"))
+      assert age_col["type"] == "number"
+      assert age_col["slug"] == "age"
+    end
+
+    test "restores table columns and rows", %{sheet: sheet} do
+      table_block = table_block_fixture(sheet)
+      col = table_column_fixture(table_block, %{name: "Score", type: "number"})
+
+      [default_row] = Storyarn.Sheets.list_table_rows(table_block.id)
+
+      Storyarn.Sheets.update_table_cell(default_row, col.slug, "99")
+
+      snapshot = SheetBuilder.build_snapshot(sheet)
+
+      # Modify table data
+      Storyarn.Sheets.delete_table_column(col)
+
+      # Restore
+      {:ok, _restored} = SheetBuilder.restore_snapshot(sheet, snapshot)
+
+      # Verify table data was restored
+      blocks = Storyarn.Sheets.list_blocks(sheet.id)
+      table = Enum.find(blocks, &(&1.type == "table"))
+      assert table != nil
+
+      columns = Storyarn.Sheets.list_table_columns(table.id)
+      assert Enum.any?(columns, &(&1.name == "Score"))
+
+      rows = Storyarn.Sheets.list_table_rows(table.id)
+      assert rows != []
+      row = hd(rows)
+      assert row.cells["score"] == "99"
+    end
+
+    test "non-table blocks have no table_data key", %{sheet: sheet} do
+      _block = block_fixture(sheet, %{type: "text", config: %{"label" => "Name"}})
+      snapshot = SheetBuilder.build_snapshot(sheet)
+
+      text_snap = Enum.find(snapshot["blocks"], &(&1["type"] == "text"))
+      refute Map.has_key?(text_snap, "table_data")
+    end
+  end
+
   describe "scan_references/1" do
     test "extracts asset and block inheritance refs" do
       snapshot = %{

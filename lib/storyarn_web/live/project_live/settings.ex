@@ -8,7 +8,9 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   import StoryarnWeb.Components.ColorPicker
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
+  alias Storyarn.Billing
   alias Storyarn.Projects
+  alias Storyarn.Versioning
 
   # ===========================================================================
   # Render
@@ -40,6 +42,9 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         provider_form={@provider_form}
         has_api_key={@has_api_key}
         provider_usage={@provider_usage}
+        snapshots={@snapshots}
+        snapshot_form={@snapshot_form}
+        can_create_snapshot={@can_create_snapshot}
       />
 
       <.confirm_modal
@@ -294,6 +299,145 @@ defmodule StoryarnWeb.ProjectLive.Settings do
     """
   end
 
+  defp section_content(%{live_action: :snapshots} = assigns) do
+    ~H"""
+    <div class="space-y-6">
+      <%!-- Create Snapshot --%>
+      <section>
+        <div class="card bg-base-200 p-4">
+          <.form for={@snapshot_form} id="snapshot-form" phx-submit="create_snapshot">
+            <.input
+              field={@snapshot_form[:title]}
+              type="text"
+              label={dgettext("projects", "Snapshot Title")}
+              placeholder={dgettext("projects", "e.g., Before playtest v2")}
+            />
+            <.input
+              field={@snapshot_form[:description]}
+              type="textarea"
+              label={dgettext("projects", "Description")}
+              rows={2}
+            />
+            <.form_actions>
+              <.button
+                variant="primary"
+                phx-disable-with={dgettext("projects", "Creating...")}
+                disabled={!@can_create_snapshot}
+              >
+                <.icon name="archive" class="size-4" />
+                {dgettext("projects", "Create Snapshot")}
+              </.button>
+            </.form_actions>
+          </.form>
+          <p :if={!@can_create_snapshot} class="text-sm text-error mt-2">
+            {dgettext("projects", "Snapshot limit reached for your plan.")}
+          </p>
+        </div>
+      </section>
+
+      <div class="divider" />
+
+      <%!-- Snapshot List --%>
+      <section>
+        <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Snapshots")}</h3>
+
+        <.empty_state
+          :if={@snapshots == []}
+          icon="archive"
+          title={dgettext("projects", "No snapshots yet")}
+        >
+          {dgettext(
+            "projects",
+            "Create a snapshot to save a point-in-time backup of your entire project."
+          )}
+        </.empty_state>
+
+        <div :if={@snapshots != []} class="space-y-3">
+          <div
+            :for={snapshot <- @snapshots}
+            class="card bg-base-200 p-4"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-sm badge-ghost">
+                    v{snapshot.version_number}
+                  </span>
+                  <span class="font-medium truncate">
+                    {snapshot.title || dgettext("projects", "Untitled Snapshot")}
+                  </span>
+                </div>
+                <p :if={snapshot.description} class="text-sm opacity-70 mt-1">
+                  {snapshot.description}
+                </p>
+                <div class="flex flex-wrap gap-3 mt-2 text-xs opacity-60">
+                  <span :if={snapshot.created_by}>
+                    {snapshot.created_by.email}
+                  </span>
+                  <span>
+                    {Calendar.strftime(snapshot.inserted_at, "%b %d, %Y %H:%M UTC")}
+                  </span>
+                  <span>
+                    {format_snapshot_size(snapshot.snapshot_size_bytes)}
+                  </span>
+                  <span :for={{type, count} <- sorted_entity_counts(snapshot.entity_counts)}>
+                    {count} {type}
+                  </span>
+                </div>
+              </div>
+              <div class="flex gap-2 shrink-0">
+                <button
+                  phx-click={show_modal("restore-snapshot-#{snapshot.id}")}
+                  class="btn btn-xs btn-outline"
+                >
+                  <.icon name="rotate-ccw" class="size-3" />
+                  {dgettext("projects", "Restore")}
+                </button>
+                <button
+                  phx-click={show_modal("delete-snapshot-#{snapshot.id}")}
+                  class="btn btn-xs btn-outline btn-error"
+                >
+                  <.icon name="trash-2" class="size-3" />
+                </button>
+              </div>
+            </div>
+
+            <.confirm_modal
+              id={"restore-snapshot-#{snapshot.id}"}
+              title={dgettext("projects", "Restore project snapshot?")}
+              message={
+                dgettext(
+                  "projects",
+                  "This will overwrite all current project data with the state from this snapshot. A safety snapshot will be created before restoring."
+                )
+              }
+              confirm_text={dgettext("projects", "Restore")}
+              confirm_variant="warning"
+              icon="rotate-ccw"
+              on_confirm={JS.push("restore_snapshot", value: %{id: snapshot.id})}
+            />
+
+            <.confirm_modal
+              id={"delete-snapshot-#{snapshot.id}"}
+              title={dgettext("projects", "Delete snapshot?")}
+              message={
+                dgettext(
+                  "projects",
+                  "This will permanently delete this snapshot. This action cannot be undone."
+                )
+              }
+              confirm_text={dgettext("projects", "Delete")}
+              confirm_variant="error"
+              icon="trash-2"
+              on_confirm={JS.push("delete_snapshot", value: %{id: snapshot.id})}
+            />
+          </div>
+        </div>
+      </section>
+    </div>
+    """
+  end
+
   # ===========================================================================
   # Mount & handle_params
   # ===========================================================================
@@ -334,6 +478,9 @@ defmodule StoryarnWeb.ProjectLive.Settings do
               provider_config != nil && provider_config.api_key_encrypted != nil
             )
             |> assign(:provider_usage, nil)
+            |> assign(:snapshots, [])
+            |> assign(:snapshot_form, to_form(snapshot_changeset(%{}), as: "snapshot"))
+            |> assign(:can_create_snapshot, true)
             |> assign_theme(project)
 
           {:ok, socket}
@@ -359,11 +506,27 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   def handle_params(_params, url, socket) do
     current_path = URI.parse(url).path
 
-    {:noreply,
-     socket
-     |> assign(:page_title, dgettext("projects", "Project Settings"))
-     |> assign(:current_path, current_path)}
+    socket =
+      socket
+      |> assign(:page_title, dgettext("projects", "Project Settings"))
+      |> assign(:current_path, current_path)
+      |> maybe_load_snapshots()
+
+    {:noreply, socket}
   end
+
+  defp maybe_load_snapshots(%{assigns: %{live_action: :snapshots}} = socket) do
+    project = socket.assigns.project
+
+    socket
+    |> assign(:snapshots, Versioning.list_project_snapshots(project.id))
+    |> assign(
+      :can_create_snapshot,
+      Billing.can_create_project_snapshot?(project.id, project.workspace_id) == :ok
+    )
+  end
+
+  defp maybe_load_snapshots(socket), do: socket
 
   # ===========================================================================
   # Events
@@ -431,6 +594,24 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to delete project."))}
       end
+    end)
+  end
+
+  def handle_event("create_snapshot", %{"snapshot" => params}, socket) do
+    with_authorization(socket, :manage_project, fn socket ->
+      do_create_snapshot(socket, params)
+    end)
+  end
+
+  def handle_event("restore_snapshot", %{"id" => id}, socket) do
+    with_authorization(socket, :manage_project, fn socket ->
+      do_restore_snapshot(socket, id)
+    end)
+  end
+
+  def handle_event("delete_snapshot", %{"id" => id}, socket) do
+    with_authorization(socket, :manage_project, fn socket ->
+      do_delete_snapshot(socket, id)
     end)
   end
 
@@ -505,6 +686,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   defp section_title(:general), do: dgettext("projects", "General")
   defp section_title(:localization), do: dgettext("projects", "Localization")
   defp section_title(:members), do: dgettext("projects", "Members")
+  defp section_title(:snapshots), do: dgettext("projects", "Snapshots")
 
   defp section_subtitle(:general),
     do: dgettext("projects", "Project details, theme, and maintenance")
@@ -514,6 +696,9 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
   defp section_subtitle(:members),
     do: dgettext("projects", "Manage project members and invitations")
+
+  defp section_subtitle(:snapshots),
+    do: dgettext("projects", "Create and restore point-in-time project backups")
 
   defp project_settings_sections(workspace, project) do
     base = ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/settings"
@@ -540,6 +725,11 @@ defmodule StoryarnWeb.ProjectLive.Settings do
         items: [
           %{label: dgettext("projects", "Members"), path: "#{base}/members", icon: "users"},
           %{
+            label: dgettext("projects", "Snapshots"),
+            path: "#{base}/snapshots",
+            icon: "archive"
+          },
+          %{
             label: dgettext("projects", "Import & Export"),
             path: "#{base}/export-import",
             icon: "package"
@@ -548,6 +738,16 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       }
     ]
   end
+
+  @entity_type_order ~w(sheets flows scenes languages localized_texts glossary_entries)
+  defp sorted_entity_counts(counts) when is_map(counts) do
+    for type <- @entity_type_order,
+        count = Map.get(counts, type, 0),
+        count > 0,
+        do: {type, count}
+  end
+
+  defp sorted_entity_counts(_), do: []
 
   defp assign_theme(socket, project) do
     case Storyarn.Projects.Project.theme_colors(project) do

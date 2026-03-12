@@ -877,6 +877,11 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         items: [
           %{label: dgettext("projects", "Members"), path: "#{base}/members", icon: "users"},
           %{
+            label: dgettext("projects", "Snapshots"),
+            path: "#{base}/snapshots",
+            icon: "archive"
+          },
+          %{
             label: dgettext("projects", "Import & Export"),
             path: "#{base}/export-import",
             icon: "package"

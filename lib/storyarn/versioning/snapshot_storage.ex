@@ -47,6 +47,23 @@ defmodule Storyarn.Versioning.SnapshotStorage do
   end
 
   @doc """
+  Stores a snapshot map with a pre-built storage key.
+
+  Returns `{:ok, size_bytes}` or `{:error, reason}`.
+  """
+  @spec store_raw(String.t(), map()) :: {:ok, integer()} | {:error, term()}
+  def store_raw(key, snapshot) do
+    json = Jason.encode!(snapshot)
+    compressed = :zlib.gzip(json)
+    size_bytes = byte_size(compressed)
+
+    case Storage.upload(key, compressed, "application/gzip") do
+      {:ok, _url} -> {:ok, size_bytes}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
   Deletes a snapshot from object storage.
   """
   @spec delete_snapshot(String.t()) :: :ok | {:error, term()}

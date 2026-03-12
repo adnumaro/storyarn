@@ -14,14 +14,14 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   alias Ecto.Multi
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Sheets.{Block, Sheet}
+  alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
   alias Storyarn.Versioning.Builders.AssetHashResolver
 
   # ========== Build Snapshot ==========
 
   @impl true
   def build_snapshot(%Sheet{} = sheet) do
-    sheet = Repo.preload(sheet, :blocks)
+    sheet = Repo.preload(sheet, blocks: [:table_columns, :table_rows])
 
     asset_ids = [sheet.avatar_asset_id, sheet.banner_asset_id]
     {hash_map, metadata_map} = AssetHashResolver.resolve_hashes(asset_ids)
@@ -38,7 +38,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   defp block_to_snapshot(%Block{} = block) do
-    %{
+    base = %{
       "type" => block.type,
       "position" => block.position,
       "config" => block.config,
@@ -49,6 +49,36 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       "inherited_from_block_id" => block.inherited_from_block_id,
       "detached" => block.detached,
       "required" => block.required
+    }
+
+    if block.type == "table" do
+      Map.put(base, "table_data", %{
+        "columns" => Enum.map(block.table_columns, &column_to_snapshot/1),
+        "rows" => Enum.map(block.table_rows, &row_to_snapshot/1)
+      })
+    else
+      base
+    end
+  end
+
+  defp column_to_snapshot(%TableColumn{} = col) do
+    %{
+      "name" => col.name,
+      "slug" => col.slug,
+      "type" => col.type,
+      "is_constant" => col.is_constant,
+      "required" => col.required,
+      "position" => col.position,
+      "config" => col.config || %{}
+    }
+  end
+
+  defp row_to_snapshot(%TableRow{} = row) do
+    %{
+      "name" => row.name,
+      "slug" => row.slug,
+      "position" => row.position,
+      "cells" => row.cells || %{}
     }
   end
 
@@ -97,12 +127,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     now = TimeHelpers.now()
     existing_source_ids = load_existing_source_ids(repo, blocks_data)
 
-    blocks =
-      blocks_data
-      |> Enum.sort_by(& &1["position"])
-      |> Enum.map(&snapshot_to_block_entry(&1, sheet_id, existing_source_ids, now))
+    sorted_data = Enum.sort_by(blocks_data, & &1["position"])
 
-    {count, _} = repo.insert_all(Block, blocks)
+    blocks =
+      Enum.map(sorted_data, &snapshot_to_block_entry(&1, sheet_id, existing_source_ids, now))
+
+    {count, inserted} = repo.insert_all(Block, blocks, returning: [:id, :type, :position])
+    restore_table_data(repo, inserted, sorted_data, now)
     {:ok, count}
   end
 
@@ -140,6 +171,64 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       inserted_at: now,
       updated_at: now
     }
+  end
+
+  defp restore_table_data(_repo, [], _sorted_data, _now), do: :ok
+
+  defp restore_table_data(repo, inserted_blocks, sorted_data, now) do
+    inserted_by_position = Map.new(inserted_blocks, &{&1.position, &1})
+
+    sorted_data
+    |> Enum.filter(&(&1["type"] == "table" && is_map(&1["table_data"])))
+    |> Enum.each(fn block_data ->
+      case Map.get(inserted_by_position, block_data["position"]) do
+        nil -> :skip
+        block -> insert_table_data(repo, block.id, block_data["table_data"], now)
+      end
+    end)
+  end
+
+  defp insert_table_data(repo, block_id, table_data, now) do
+    columns = Map.get(table_data, "columns", [])
+
+    if columns != [] do
+      column_entries =
+        Enum.map(columns, fn col ->
+          %{
+            block_id: block_id,
+            name: col["name"],
+            slug: col["slug"],
+            type: col["type"],
+            is_constant: col["is_constant"] || false,
+            required: col["required"] || false,
+            position: col["position"] || 0,
+            config: col["config"] || %{},
+            inserted_at: now,
+            updated_at: now
+          }
+        end)
+
+      repo.insert_all(TableColumn, column_entries)
+    end
+
+    rows = Map.get(table_data, "rows", [])
+
+    if rows != [] do
+      row_entries =
+        Enum.map(rows, fn row ->
+          %{
+            block_id: block_id,
+            name: row["name"],
+            slug: row["slug"],
+            position: row["position"] || 0,
+            cells: row["cells"] || %{},
+            inserted_at: now,
+            updated_at: now
+          }
+        end)
+
+      repo.insert_all(TableRow, row_entries)
+    end
   end
 
   defp resolve_inheritance(block_data, existing_source_ids) do

@@ -162,6 +162,10 @@ defmodule StoryarnWeb.Router do
            ProjectLive.Settings,
            :members
 
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/snapshots",
+           ProjectLive.Settings,
+           :snapshots
+
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/export-import",
            ExportImportLive.Index,
            :index

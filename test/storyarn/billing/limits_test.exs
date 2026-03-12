@@ -331,6 +331,25 @@ defmodule Storyarn.Billing.LimitsTest do
     end
   end
 
+  describe "can_create_project_snapshot?/2" do
+    test "allows under limit", %{user: user, workspace: workspace} do
+      project = project_fixture(user, workspace: workspace)
+      assert :ok = Billing.can_create_project_snapshot?(project.id, workspace.id)
+    end
+
+    test "blocks at limit", %{user: user, workspace: workspace} do
+      project = project_fixture(user, workspace: workspace)
+
+      for _ <- 1..10 do
+        {:ok, _} = Storyarn.Versioning.create_project_snapshot(project.id, user.id)
+      end
+
+      assert {:error, :limit_reached,
+              %{resource: :project_snapshots_per_project, used: 10, limit: 10}} =
+               Billing.can_create_project_snapshot?(project.id, workspace.id)
+    end
+  end
+
   describe "can_upload_asset? boundary" do
     test "allows upload exactly at limit boundary", %{user: user, workspace: workspace} do
       project = project_fixture(user, workspace: workspace)

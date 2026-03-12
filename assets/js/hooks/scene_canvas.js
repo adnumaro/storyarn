@@ -450,9 +450,7 @@ export const SceneCanvas = {
         this.canvasHeight = natH;
         this.initialBounds = newBounds;
 
-        this.backgroundOverlay = L.imageOverlay(url, newBounds).addTo(
-          this.leafletMap,
-        );
+        this.backgroundOverlay = L.imageOverlay(url, newBounds).addTo(this.leafletMap);
         this.backgroundOverlay.bringToBack();
         this.leafletMap.fitBounds(newBounds);
 
@@ -463,11 +461,7 @@ export const SceneCanvas = {
       };
       img.src = url;
     } else {
-      this.gridOverlay = addGridPlaceholder(
-        this.leafletMap,
-        this.canvasWidth,
-        this.canvasHeight,
-      );
+      this.gridOverlay = addGridPlaceholder(this.leafletMap, this.canvasWidth, this.canvasHeight);
     }
   },
 

@@ -24,6 +24,7 @@ defmodule Storyarn.Billing do
   defdelegate can_upload_asset?(workspace, file_size), to: Limits
   defdelegate can_create_item?(project), to: Limits
   defdelegate can_create_named_version?(project_id, workspace_id), to: Limits
+  defdelegate can_create_project_snapshot?(project_id, workspace_id), to: Limits
   defdelegate usage(workspace), to: Limits
 
   # Subscription operations

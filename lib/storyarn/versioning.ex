@@ -12,9 +12,16 @@ defmodule Storyarn.Versioning do
   - `Builders.*` - Entity-specific snapshot building and restoration
   """
 
-  alias Storyarn.Versioning.{ConflictDetector, EntityVersion, VersionCrud}
+  alias Storyarn.Versioning.{
+    ConflictDetector,
+    EntityVersion,
+    ProjectSnapshot,
+    ProjectSnapshotCrud,
+    VersionCrud
+  }
 
   @type version :: EntityVersion.t()
+  @type project_snapshot :: ProjectSnapshot.t()
 
   # ========== Create ==========
 
@@ -108,4 +115,55 @@ defmodule Storyarn.Versioning do
   Returns the builder module for the given entity type.
   """
   defdelegate get_builder!(entity_type), to: VersionCrud
+
+  # ========== Project Snapshots ==========
+
+  @doc """
+  Creates a project-level snapshot of all entities.
+  """
+  defdelegate create_project_snapshot(project_id, user_id, opts \\ []),
+    to: ProjectSnapshotCrud,
+    as: :create_snapshot
+
+  @doc """
+  Lists project snapshots, ordered by version number descending.
+  """
+  defdelegate list_project_snapshots(project_id, opts \\ []),
+    to: ProjectSnapshotCrud,
+    as: :list_snapshots
+
+  @doc """
+  Gets a project snapshot by ID.
+  """
+  defdelegate get_project_snapshot(project_id, id),
+    to: ProjectSnapshotCrud,
+    as: :get_snapshot_by_id
+
+  @doc """
+  Restores all project entities from a snapshot.
+  """
+  defdelegate restore_project_snapshot(project_id, snapshot, opts \\ []),
+    to: ProjectSnapshotCrud,
+    as: :restore_snapshot
+
+  @doc """
+  Deletes a project snapshot and its storage.
+  """
+  defdelegate delete_project_snapshot(snapshot),
+    to: ProjectSnapshotCrud,
+    as: :delete_snapshot
+
+  @doc """
+  Updates a project snapshot's title and description.
+  """
+  defdelegate update_project_snapshot(snapshot, attrs),
+    to: ProjectSnapshotCrud,
+    as: :update_snapshot
+
+  @doc """
+  Counts project snapshots for billing limit checks.
+  """
+  defdelegate count_project_snapshots(project_id),
+    to: ProjectSnapshotCrud,
+    as: :count_snapshots
 end
