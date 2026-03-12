@@ -72,7 +72,10 @@ defmodule Storyarn.Versioning.ConflictDetector do
   defp find_missing_references([]), do: []
 
   defp find_missing_references(references) do
+    # Normalize IDs to integers — snapshot data may store FKs as strings
     references
+    |> Enum.map(&normalize_ref_id/1)
+    |> Enum.reject(&is_nil(&1.id))
     |> Enum.group_by(& &1.type)
     |> Enum.flat_map(fn {type, refs} ->
       schema = Map.fetch!(@type_to_schema, type)
@@ -86,6 +89,17 @@ defmodule Storyarn.Versioning.ConflictDetector do
       Enum.reject(refs, &MapSet.member?(existing_ids, &1.id))
     end)
   end
+
+  defp normalize_ref_id(%{id: id} = ref) when is_integer(id), do: ref
+
+  defp normalize_ref_id(%{id: id} = ref) when is_binary(id) do
+    case Integer.parse(id) do
+      {int_id, ""} -> %{ref | id: int_id}
+      _ -> %{ref | id: nil}
+    end
+  end
+
+  defp normalize_ref_id(%{} = ref), do: %{ref | id: nil}
 
   defp group_conflicts([]), do: []
 

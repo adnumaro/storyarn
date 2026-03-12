@@ -185,7 +185,6 @@ defmodule StoryarnWeb.FlowLive.Show do
                   type="button"
                   class="btn btn-ghost btn-xs btn-square"
                   phx-click="show_create_version_modal"
-                  phx-target="#flow-versions-section"
                 >
                   <.icon name="plus" class="size-4" />
                 </button>
@@ -457,6 +456,15 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("close_versions_panel", _params, socket) do
     {:noreply, assign(socket, :versions_panel_open, false)}
+  end
+
+  def handle_event("show_create_version_modal", _params, socket) do
+    send_update(StoryarnWeb.Components.VersionsSection,
+      id: "flow-versions-section",
+      show_create_version_modal: true
+    )
+
+    {:noreply, socket}
   end
 
   # Triggered by the FlowLoader hook after the browser has painted the spinner.
@@ -1276,7 +1284,9 @@ defmodule StoryarnWeb.FlowLive.Show do
      |> assign(:flow_hubs, Flows.list_hubs(full_flow.id))
      |> assign(:versions_panel_open, false)
      |> SocketHelpers.assign_flow_stats(full_flow, flow_data)
-     |> push_event("flow_restored", %{flow_data: flow_data})}
+     |> push_event("flow_updated", flow_data)
+     |> push_event("panel-close", %{to: "#flow-versions-panel"})
+     |> CollaborationHelpers.broadcast_change(:flow_refresh, %{})}
   end
 
   def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do

@@ -566,41 +566,87 @@ defmodule StoryarnWeb.Components.VersionsSection do
   defp version_row(assigns) do
     ~H"""
     <div class={[
-      "flex items-center gap-4 p-3 rounded-lg group",
+      "flex items-start gap-2.5 p-3 rounded-lg group",
       @is_current && "bg-primary/10 border border-primary/30",
       !@is_current && "hover:bg-base-200/50"
     ]}>
       <div class={[
-        "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium",
+        "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium mt-0.5",
         @is_current && "bg-primary text-primary-content",
         @variant == :named && !@is_current && "bg-accent/20 text-accent",
         @variant == :auto && !@is_current && "bg-base-300"
       ]}>
         <%= if @variant == :named do %>
-          <.icon name="bookmark" class="size-4" />
+          <.icon name="bookmark" class="size-3.5" />
         <% else %>
-          <span class="text-xs">v{@version.version_number}</span>
+          <span class="text-[10px]">v{@version.version_number}</span>
         <% end %>
       </div>
       <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2">
-          <span class={[
-            "text-sm",
-            @variant == :named && "font-medium",
-            @variant == :auto && "text-base-content/70"
-          ]}>
-            {@version.title || @version.change_summary || dgettext("versioning", "No summary")}
-          </span>
-          <span :if={@is_current} class="badge badge-primary badge-sm">
-            {dgettext("versioning", "Current")}
-          </span>
-          <span :if={@variant == :named} class="badge badge-accent badge-xs badge-outline">
-            v{@version.version_number}
-          </span>
+        <div class="flex items-center justify-between gap-1">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class={[
+              "text-sm truncate",
+              @variant == :named && "font-medium",
+              @variant == :auto && "text-base-content/70"
+            ]}>
+              {@version.title || @version.change_summary || dgettext("versioning", "No summary")}
+            </span>
+            <span :if={@is_current} class="badge badge-primary badge-xs flex-shrink-0">
+              {dgettext("versioning", "Current")}
+            </span>
+            <span
+              :if={@variant == :named}
+              class="badge badge-accent badge-xs badge-outline flex-shrink-0"
+            >
+              v{@version.version_number}
+            </span>
+          </div>
+          <div
+            :if={@can_edit}
+            class="flex-shrink-0 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <button
+              :if={@variant == :auto && @can_name_version}
+              type="button"
+              class="btn btn-ghost btn-xs btn-square tooltip"
+              data-tip={dgettext("versioning", "Name this version")}
+              phx-click="show_promote_modal"
+              phx-value-version={@version.version_number}
+              phx-target={@target}
+            >
+              <.icon name="bookmark-plus" class="size-3.5" />
+            </button>
+            <button
+              :if={!@is_current}
+              type="button"
+              class="btn btn-ghost btn-xs btn-square tooltip"
+              data-tip={dgettext("versioning", "Restore this version")}
+              phx-click="preview_restore"
+              phx-value-version={@version.version_number}
+              phx-target={@target}
+            >
+              <.icon name="rotate-ccw" class="size-3.5" />
+            </button>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs btn-square tooltip text-error"
+              data-tip={dgettext("versioning", "Delete version")}
+              phx-click={
+                JS.push("set_pending_delete_version",
+                  value: %{version: @version.version_number},
+                  target: @target
+                )
+                |> show_modal("delete-version-confirm-#{@version.entity_type}")
+              }
+            >
+              <.icon name="trash-2" class="size-3.5" />
+            </button>
+          </div>
         </div>
         <p
           :if={@variant == :named && @version.description}
-          class="text-sm text-base-content/70 mt-0.5"
+          class="text-xs text-base-content/70 mt-0.5"
         >
           {@version.description}
         </p>
@@ -610,54 +656,13 @@ defmodule StoryarnWeb.Components.VersionsSection do
         >
           {@version.change_summary}
         </p>
-        <div class="flex items-center gap-2 text-xs text-base-content/60 mt-0.5">
+        <div class="text-xs text-base-content/60 mt-0.5">
           <span>{format_version_date(@version.inserted_at)}</span>
-          <span :if={@version.created_by}>
-            · {dgettext("versioning", "by")} {@version.created_by.display_name ||
-              @version.created_by.email}
-          </span>
         </div>
-      </div>
-      <div
-        :if={@can_edit}
-        class="flex-shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <button
-          :if={@variant == :auto && @can_name_version}
-          type="button"
-          class="btn btn-ghost btn-xs tooltip"
-          data-tip={dgettext("versioning", "Name this version")}
-          phx-click="show_promote_modal"
-          phx-value-version={@version.version_number}
-          phx-target={@target}
-        >
-          <.icon name="bookmark-plus" class="size-4" />
-        </button>
-        <button
-          :if={!@is_current}
-          type="button"
-          class="btn btn-ghost btn-xs tooltip"
-          data-tip={dgettext("versioning", "Restore this version")}
-          phx-click="preview_restore"
-          phx-value-version={@version.version_number}
-          phx-target={@target}
-        >
-          <.icon name="rotate-ccw" class="size-4" />
-        </button>
-        <button
-          type="button"
-          class="btn btn-ghost btn-xs tooltip text-error"
-          data-tip={dgettext("versioning", "Delete version")}
-          phx-click={
-            JS.push("set_pending_delete_version",
-              value: %{version: @version.version_number},
-              target: @target
-            )
-            |> show_modal("delete-version-confirm-#{@version.entity_type}")
-          }
-        >
-          <.icon name="trash-2" class="size-4" />
-        </button>
+        <div :if={@version.created_by} class="text-xs text-base-content/60 truncate">
+          {dgettext("versioning", "by")} {@version.created_by.display_name ||
+            @version.created_by.email}
+        </div>
       </div>
     </div>
     """

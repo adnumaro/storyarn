@@ -331,6 +331,39 @@ export const SceneCanvas = {
       this.lockHandler?.handleLocksUpdated(data);
     });
 
+    // Full scene reload (version restore, collaboration refresh)
+    this.handleEvent("scene_data", (data) => {
+      this.sceneData = data;
+
+      // Clear all existing elements from the map
+      if (this.pinHandler?.markers) {
+        for (const marker of this.pinHandler.markers.values()) marker.remove();
+        this.pinHandler.markers.clear();
+      }
+      if (this.zoneHandler?.polygons) {
+        for (const poly of this.zoneHandler.polygons.values()) poly.remove();
+        this.zoneHandler.polygons.clear();
+      }
+      if (this.connectionHandler?.lines) {
+        for (const line of this.connectionHandler.lines.values()) line.remove();
+        this.connectionHandler.lines.clear();
+      }
+      if (this.annotationHandler?.markers) {
+        for (const marker of this.annotationHandler.markers.values()) marker.remove();
+        this.annotationHandler.markers.clear();
+      }
+
+      // Re-render all elements from the new data
+      this.pinHandler?.renderPins();
+      this.zoneHandler?.renderZones();
+      this.connectionHandler?.renderConnections();
+      this.annotationHandler?.renderAnnotations();
+      this.layerHandler?.applyVisibility();
+
+      // Hide floating toolbar (selection is stale)
+      this.floatingToolbar?.hide();
+    });
+
     // Keyboard shortcuts
     this._keydownHandler = (e) => {
       if (!this.editMode) return;

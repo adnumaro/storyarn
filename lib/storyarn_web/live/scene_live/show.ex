@@ -245,7 +245,6 @@ defmodule StoryarnWeb.SceneLive.Show do
                 type="button"
                 class="btn btn-ghost btn-xs btn-square"
                 phx-click="show_create_version_modal"
-                phx-target="#scene-versions-section"
               >
                 <.icon name="plus" class="size-4" />
               </button>
@@ -670,6 +669,15 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("close_versions_panel", _params, socket) do
     {:noreply, assign(socket, :versions_panel_open, false)}
+  end
+
+  def handle_event("show_create_version_modal", _params, socket) do
+    send_update(StoryarnWeb.Components.VersionsSection,
+      id: "scene-versions-section",
+      show_create_version_modal: true
+    )
+
+    {:noreply, socket}
   end
 
   def handle_event("save_name", params, socket) do
@@ -1341,23 +1349,28 @@ defmodule StoryarnWeb.SceneLive.Show do
     scene = Scenes.get_scene(project.id, updated_scene.id)
     scene_data = build_scene_data(scene, can_edit)
 
-    {:noreply,
-     socket
-     |> assign(:scene, scene)
-     |> assign(:layers, scene.layers || [])
-     |> assign(:zones, scene.zones || [])
-     |> assign(:pins, scene.pins || [])
-     |> assign(:connections, scene.connections || [])
-     |> assign(:annotations, scene.annotations || [])
-     |> assign(:scene_data, scene_data)
-     |> assign(:selected_element, nil)
-     |> assign(:selected_type, nil)
-     |> assign(:element_panel_open, false)
-     |> assign(:scene_settings_open, false)
-     |> assign(:versions_panel_open, false)
-     |> assign(:undo_stack, [])
-     |> assign(:redo_stack, [])
-     |> push_event("scene_restored", %{scene_data: scene_data})}
+    result =
+      {:noreply,
+       socket
+       |> assign(:scene, scene)
+       |> assign(:layers, scene.layers || [])
+       |> assign(:zones, scene.zones || [])
+       |> assign(:pins, scene.pins || [])
+       |> assign(:connections, scene.connections || [])
+       |> assign(:annotations, scene.annotations || [])
+       |> assign(:scene_data, scene_data)
+       |> assign(:selected_element, nil)
+       |> assign(:selected_type, nil)
+       |> assign(:element_panel_open, false)
+       |> assign(:scene_settings_open, false)
+       |> assign(:versions_panel_open, false)
+       |> assign(:undo_stack, [])
+       |> assign(:redo_stack, [])
+       |> assign(:_broadcast, {:scene_refreshed, %{}})
+       |> push_event("scene_data", scene_data)
+       |> push_event("panel-close", %{to: "#scene-versions-panel"})}
+
+    broadcast_scene_change(result)
   end
 
   def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do

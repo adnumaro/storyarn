@@ -73,6 +73,16 @@ Each epic is self-contained. Within each epic, every feature is an independent u
 | 4 | Restore with conflict detection      | Safe restore that validates cross-entity references before applying                |
 | 5 | Content-addressable asset storage    | Assets in snapshots without storage explosion                                      |
 
+### [Epic 1B — Version Changelog & Diff Summaries](./EPIC_1B_VERSION_CHANGELOG.md)
+> Structured change summaries between versions — understand what changed at each point in history
+
+| # | Feature                                  | Standalone Value                                                              |
+|---|------------------------------------------|-------------------------------------------------------------------------------|
+| 1 | Snapshot diff engine                     | Compare two snapshots and produce a structured list of semantic changes       |
+| 2 | Auto-generate change summary on creation | Every version automatically describes what changed vs. the previous version   |
+| 3 | Changelog display in Version History UI  | Version list shows readable changelogs instead of opaque timestamps           |
+| 4 | Version comparison (pick two)            | Select any two versions and see what changed between them                     |
+
 ### [Epic 2 — Project Snapshots](./EPIC_2_PROJECT_SNAPSHOTS.md)
 > Complete project backups that capture absolutely everything
 

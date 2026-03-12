@@ -495,16 +495,13 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_info({:versions_section, :version_restored, %{entity: sheet, version: _}}, socket) do
-    # Reload blocks and sheets tree after version restore
     sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
-    blocks = ReferenceHelpers.load_blocks_with_references(sheet.id, socket.assigns.project.id)
-    sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
+
+    broadcast_sheet_change(socket, :sheet_restored)
 
     {:noreply,
      socket
-     |> assign(:sheet, sheet)
-     |> assign(:blocks, blocks)
-     |> assign(:sheets_tree, sheets_tree)
+     |> reload_sheet_state(sheet)
      |> UndoRedoStack.clear()
      |> push_event("restore_sheet_content", %{
        name: sheet.name,
@@ -711,6 +708,18 @@ defmodule StoryarnWeb.SheetLive.Show do
     {:noreply, socket}
   end
 
+  defp handle_sheet_remote_change(:sheet_restored, _payload, socket) do
+    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
+
+    {:noreply,
+     socket
+     |> reload_sheet_state(sheet)
+     |> push_event("restore_sheet_content", %{
+       name: sheet.name,
+       shortcut: sheet.shortcut || ""
+     })}
+  end
+
   defp handle_sheet_remote_change(_action, _payload, socket) do
     {:noreply, socket}
   end
@@ -727,6 +736,16 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp sheet_path(socket, sheet) do
     ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet.id}"
+  end
+
+  defp reload_sheet_state(socket, sheet) do
+    blocks = ReferenceHelpers.load_blocks_with_references(sheet.id, socket.assigns.project.id)
+    sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
+
+    socket
+    |> assign(:sheet, sheet)
+    |> assign(:blocks, blocks)
+    |> assign(:sheets_tree, sheets_tree)
   end
 
   defp reload_sheets_tree(socket) do
