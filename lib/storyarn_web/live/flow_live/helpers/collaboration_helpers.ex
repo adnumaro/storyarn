@@ -104,6 +104,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
     })
   end
 
+  def push_remote_change_event(socket, :entity_merged, _payload) do
+    push_event(socket, "flow_updated", socket.assigns.flow_data)
+  end
+
   def push_remote_change_event(socket, _action, _payload), do: socket
 
   @doc """

@@ -419,6 +419,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
       <%!-- Confirm modals --%>
       <DraftComponents.discard_draft_modal is_draft={@is_draft} />
+      <DraftComponents.merge_review_modal is_draft={@is_draft} merge_summary={@merge_summary} />
 
       <.confirm_modal
         :if={@can_edit}
@@ -523,6 +524,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           |> assign(:pending_delete_id, nil)
           |> assign(:is_draft, false)
           |> assign(:draft, nil)
+          |> assign(:merge_summary, nil)
           |> maybe_allow_background_upload(can_edit)
 
         {:ok, socket}
@@ -1337,6 +1339,24 @@ defmodule StoryarnWeb.SceneLive.Show do
         socket,
         ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
       )
+    end)
+  end
+
+  def handle_event("load_merge_summary", _params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      DraftHandlers.handle_load_merge_summary(socket)
+    end)
+  end
+
+  def handle_event("merge_draft", _params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      %{draft: draft} = socket.assigns
+
+      DraftHandlers.handle_merge_draft(socket, fn s ->
+        %{project: p} = s.assigns
+
+        ~p"/workspaces/#{p.workspace.slug}/projects/#{p.slug}/scenes/#{draft.source_entity_id}"
+      end)
     end)
   end
 

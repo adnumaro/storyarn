@@ -62,4 +62,13 @@ defmodule Storyarn.Drafts.Draft do
     draft
     |> change(%{status: "discarded"})
   end
+
+  @doc """
+  Changeset for marking a draft as merged.
+  Only valid when current status is "active".
+  """
+  def merge_changeset(%__MODULE__{status: "active"} = draft) do
+    draft
+    |> change(%{status: "merged", merged_at: Storyarn.Shared.TimeHelpers.now()})
+  end
 end

@@ -6,7 +6,7 @@ defmodule Storyarn.Drafts do
   Only the creator can see and edit their drafts.
   """
 
-  alias Storyarn.Drafts.DraftCrud
+  alias Storyarn.Drafts.{DiffSummary, DraftCrud, MergeEngine}
 
   defdelegate create_draft(project_id, entity_type, source_entity_id, user_id, opts \\ []),
     to: DraftCrud
@@ -17,4 +17,7 @@ defmodule Storyarn.Drafts do
   defdelegate get_draft_entity(draft), to: DraftCrud
   defdelegate discard_draft(draft), to: DraftCrud
   defdelegate can_create_draft?(project_id, user_id), to: DraftCrud
+
+  defdelegate merge_draft(draft, user_id), to: MergeEngine
+  defdelegate build_merge_summary(draft), to: DiffSummary, as: :build_summary
 end

@@ -124,6 +124,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       </:tree_content>
       <FlowTree.delete_modal :if={@can_edit} />
       <DraftComponents.discard_draft_modal is_draft={@is_draft} />
+      <DraftComponents.merge_review_modal is_draft={@is_draft} merge_summary={@merge_summary} />
       <div class="h-full relative">
         <%!-- Canvas fills the entire area --%>
         <div class="absolute inset-0 flex flex-col">
@@ -336,6 +337,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:flow_info_nodes, [])
           |> assign(:is_draft, false)
           |> assign(:draft, nil)
+          |> assign(:merge_summary, nil)
 
         {:ok, socket}
 
@@ -1153,6 +1155,24 @@ defmodule StoryarnWeb.FlowLive.Show do
         socket,
         ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
       )
+    end)
+  end
+
+  def handle_event("load_merge_summary", _params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      DraftHandlers.handle_load_merge_summary(socket)
+    end)
+  end
+
+  def handle_event("merge_draft", _params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      %{draft: draft} = socket.assigns
+
+      DraftHandlers.handle_merge_draft(socket, fn s ->
+        %{project: p} = s.assigns
+
+        ~p"/workspaces/#{p.workspace.slug}/projects/#{p.slug}/flows/#{draft.source_entity_id}"
+      end)
     end)
   end
 

@@ -67,6 +67,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       </:tree_content>
       <SheetTree.delete_modal :if={@can_edit} />
       <DraftComponents.discard_draft_modal is_draft={@is_draft} />
+      <DraftComponents.merge_review_modal is_draft={@is_draft} merge_summary={@merge_summary} />
       <%= if @sheet do %>
         <div
           id="sheet-undo-redo"
@@ -271,7 +272,8 @@ defmodule StoryarnWeb.SheetLive.Show do
          |> assign(:blocks, [])
          |> assign(:sheet_data_loaded, false)
          |> assign(:is_draft, false)
-         |> assign(:draft, nil)}
+         |> assign(:draft, nil)
+         |> assign(:merge_summary, nil)}
 
       {:error, _reason} ->
         {:ok,
@@ -475,6 +477,24 @@ defmodule StoryarnWeb.SheetLive.Show do
         socket,
         ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
       )
+    end)
+  end
+
+  def handle_event("load_merge_summary", _params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      DraftHandlers.handle_load_merge_summary(socket)
+    end)
+  end
+
+  def handle_event("merge_draft", _params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      %{draft: draft} = socket.assigns
+
+      DraftHandlers.handle_merge_draft(socket, fn s ->
+        %{project: p} = s.assigns
+
+        ~p"/workspaces/#{p.workspace.slug}/projects/#{p.slug}/sheets/#{draft.source_entity_id}"
+      end)
     end)
   end
 
@@ -796,6 +816,18 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   defp handle_sheet_remote_change(:sheet_restored, _payload, socket) do
+    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
+
+    {:noreply,
+     socket
+     |> reload_sheet_state(sheet)
+     |> push_event("restore_sheet_content", %{
+       name: sheet.name,
+       shortcut: sheet.shortcut || ""
+     })}
+  end
+
+  defp handle_sheet_remote_change(:entity_merged, _payload, socket) do
     sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
 
     {:noreply,
