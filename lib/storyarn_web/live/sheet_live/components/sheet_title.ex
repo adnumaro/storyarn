@@ -29,8 +29,17 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
       <h1 :if={!@can_edit} class="text-3xl font-bold px-2 -mx-2 py-1">
         {@sheet.name}
       </h1>
-      <%!-- Shortcut --%>
-      <div :if={@can_edit} class="flex items-center gap-1 px-2 -mx-2 mt-1">
+      <%!-- Shortcut: read-only in draft mode (shows original's shortcut) --%>
+      <div
+        :if={@is_draft && @source_shortcut}
+        class="flex items-center gap-1 px-2 -mx-2 mt-1"
+        title={dgettext("drafts", "Shortcut from the original (read-only in draft)")}
+      >
+        <span class="text-base-content/40">#</span>
+        <span class="text-sm text-base-content/40">{@source_shortcut}</span>
+      </div>
+      <%!-- Shortcut: editable (normal mode) --%>
+      <div :if={!@is_draft && @can_edit} class="flex items-center gap-1 px-2 -mx-2 mt-1">
         <span class="text-base-content/50">#</span>
         <span
           id={"sheet-shortcut-#{@sheet.id}"}
@@ -46,7 +55,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
         </span>
       </div>
       <div
-        :if={!@can_edit && @sheet.shortcut}
+        :if={!@is_draft && !@can_edit && @sheet.shortcut}
         class="text-sm text-base-content/50 px-2 -mx-2 mt-1"
       >
         #{@sheet.shortcut}

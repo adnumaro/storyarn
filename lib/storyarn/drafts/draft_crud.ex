@@ -38,13 +38,16 @@ defmodule Storyarn.Drafts.DraftCrud do
     source_name = CloneEngine.get_source_name(entity_type, project_id, source_entity_id)
 
     with {:ok, source_name} <- require_source(source_name),
+         baseline_ids <-
+           CloneEngine.get_baseline_entity_ids(entity_type, project_id, source_entity_id),
          {:ok, draft} <-
            insert_draft(
              project_id,
              entity_type,
              source_entity_id,
              user_id,
-             name || source_name <> " (Draft)"
+             name || source_name <> " (Draft)",
+             baseline_ids
            ),
          {:ok, _cloned} <- CloneEngine.clone(entity_type, project_id, source_entity_id, draft.id) do
       {:ok, Repo.preload(draft, :created_by)}
@@ -54,13 +57,14 @@ defmodule Storyarn.Drafts.DraftCrud do
   defp require_source(nil), do: {:error, :source_not_found}
   defp require_source(name), do: {:ok, name}
 
-  defp insert_draft(project_id, entity_type, source_entity_id, user_id, draft_name) do
+  defp insert_draft(project_id, entity_type, source_entity_id, user_id, draft_name, baseline_ids) do
     %Draft{project_id: project_id, created_by_id: user_id}
     |> Draft.create_changeset(%{
       entity_type: entity_type,
       source_entity_id: source_entity_id,
       name: draft_name
     })
+    |> Ecto.Changeset.put_change(:baseline_entity_ids, baseline_ids)
     |> Repo.insert()
   end
 

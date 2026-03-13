@@ -94,16 +94,79 @@ defmodule Storyarn.Drafts.MergeEngineTest do
   # ===========================================================================
 
   describe "merge_draft/2 with sheets" do
-    test "merges draft into original sheet" do
+    test "merges draft into original sheet preserving shortcut" do
       %{user: user, project: project} = setup_project()
       sheet = sheet_fixture(project)
+      original_shortcut = sheet.shortcut
+      assert original_shortcut != nil
 
       {:ok, draft} = Drafts.create_draft(project.id, "sheet", sheet.id, user.id)
       assert {:ok, updated} = Drafts.merge_draft(draft, user.id)
       assert updated.id == sheet.id
+      assert updated.shortcut == original_shortcut
 
       merged_draft = Drafts.get_draft(draft.id)
       assert merged_draft.status == "merged"
+    end
+
+    test "preserves blocks added to original after draft creation" do
+      %{user: user, project: project} = setup_project()
+      sheet = sheet_fixture(project)
+      _original_block = block_fixture(sheet, config: %{"label" => "Original"})
+
+      # Create draft (captures baseline with _original_block)
+      {:ok, draft} = Drafts.create_draft(project.id, "sheet", sheet.id, user.id)
+
+      # Add a new block to the ORIGINAL after draft was created
+      post_draft_block =
+        block_fixture(sheet, config: %{"label" => "Added After Draft"})
+
+      # Merge the draft
+      assert {:ok, updated} = Drafts.merge_draft(draft, user.id)
+
+      # The block added after draft creation should still exist
+      blocks = Storyarn.Sheets.list_blocks(updated.id)
+      block_var_names = Enum.map(blocks, & &1.variable_name)
+      assert post_draft_block.variable_name in block_var_names
+    end
+
+    test "deletes blocks removed from draft during merge" do
+      %{user: user, project: project} = setup_project()
+      sheet = sheet_fixture(project)
+      block_to_delete = block_fixture(sheet, config: %{"label" => "Will Delete"})
+
+      # Create draft
+      {:ok, draft} = Drafts.create_draft(project.id, "sheet", sheet.id, user.id)
+      draft_entity = Drafts.get_draft_entity(draft)
+
+      # Delete the block from the draft
+      draft_blocks = Storyarn.Sheets.list_blocks(draft_entity.id)
+
+      cloned_block =
+        Enum.find(draft_blocks, fn b ->
+          b.variable_name == block_to_delete.variable_name
+        end)
+
+      assert cloned_block
+      Storyarn.Sheets.delete_block(cloned_block)
+
+      # Merge
+      assert {:ok, updated} = Drafts.merge_draft(draft, user.id)
+
+      # The block should be gone from the original
+      blocks = Storyarn.Sheets.list_blocks(updated.id)
+      block_var_names = Enum.map(blocks, & &1.variable_name)
+      refute block_to_delete.variable_name in block_var_names
+    end
+
+    test "stores baseline_entity_ids on draft creation" do
+      %{user: user, project: project} = setup_project()
+      sheet = sheet_fixture(project)
+      block = block_fixture(sheet)
+
+      {:ok, draft} = Drafts.create_draft(project.id, "sheet", sheet.id, user.id)
+      assert is_list(draft.baseline_entity_ids["block_ids"])
+      assert block.id in draft.baseline_entity_ids["block_ids"]
     end
   end
 

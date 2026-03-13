@@ -107,6 +107,8 @@ defmodule StoryarnWeb.SheetLive.Show do
                   project={@project}
                   current_user_id={@current_scope.user.id}
                   can_edit={@can_edit}
+                  is_draft={@is_draft}
+                  source_shortcut={@source_shortcut}
                 />
               </div>
             </div>
@@ -276,6 +278,7 @@ defmodule StoryarnWeb.SheetLive.Show do
          |> assign(:sheet_data_loaded, false)
          |> assign(:is_draft, false)
          |> assign(:draft, nil)
+         |> assign(:source_shortcut, nil)
          |> assign(:merge_summary, nil)
          |> assign(:renaming_draft, nil)
          |> assign(:_draft_touch_ref, nil)
@@ -320,6 +323,13 @@ defmodule StoryarnWeb.SheetLive.Show do
       # Skip collaboration for drafts
       has_tree = socket.assigns.sheets_tree != []
 
+      # Load original sheet's shortcut so the draft can display it read-only
+      source_shortcut =
+        case Sheets.get_sheet(project.id, draft.source_entity_id) do
+          nil -> nil
+          source -> source.shortcut
+        end
+
       socket
       |> assign(:sheet, entity)
       |> assign(:ancestors, [])
@@ -331,6 +341,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       |> assign(:sheet_data_loaded, false)
       |> assign(:is_draft, true)
       |> assign(:draft, draft)
+      |> assign(:source_shortcut, source_shortcut)
       |> start_async(:load_sheet_data, fn ->
         load_sheet_async_data(entity, project, has_tree)
       end)
@@ -480,11 +491,11 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   def handle_event("discard_draft", _params, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
-      %{project: project} = socket.assigns
+      %{project: project, draft: draft} = socket.assigns
 
       DraftHandlers.handle_discard_draft(
         socket,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{draft.source_entity_id}"
       )
     end)
   end

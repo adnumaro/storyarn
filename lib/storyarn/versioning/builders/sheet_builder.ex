@@ -21,7 +21,10 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   @impl true
   def build_snapshot(%Sheet{} = sheet) do
-    sheet = Repo.preload(sheet, blocks: [:table_columns, :table_rows])
+    active_blocks = from(b in Block, where: is_nil(b.deleted_at), order_by: [asc: b.position])
+
+    sheet =
+      Repo.preload(sheet, [blocks: {active_blocks, [:table_columns, :table_rows]}], force: true)
 
     asset_ids = [sheet.avatar_asset_id, sheet.banner_asset_id]
     {hash_map, metadata_map} = AssetHashResolver.resolve_hashes(asset_ids)
@@ -86,7 +89,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   # ========== Restore Snapshot ==========
 
   @impl true
-  def restore_snapshot(%Sheet{} = sheet, snapshot, _opts \\ []) do
+  def restore_snapshot(%Sheet{} = sheet, snapshot, opts \\ []) do
+    baseline_block_ids = Keyword.get(opts, :baseline_block_ids)
+
     Multi.new()
     |> Multi.update(:sheet, fn _changes ->
       Sheet.update_changeset(sheet, %{
@@ -107,10 +112,10 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       })
     end)
     |> Multi.delete_all(:delete_blocks, fn _changes ->
-      from(b in Block, where: b.sheet_id == ^sheet.id)
+      delete_blocks_query(sheet.id, baseline_block_ids)
     end)
     |> Multi.run(:restore_blocks, fn repo, _changes ->
-      restore_blocks_from_snapshot(repo, sheet.id, snapshot["blocks"] || [])
+      restore_blocks_from_snapshot(repo, sheet.id, snapshot["blocks"] || [], baseline_block_ids)
     end)
     |> Repo.transaction()
     |> case do
@@ -122,20 +127,54 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     end
   end
 
-  defp restore_blocks_from_snapshot(_repo, _sheet_id, []), do: {:ok, 0}
+  # Full replacement (version restore): delete all blocks
+  defp delete_blocks_query(sheet_id, nil) do
+    from(b in Block, where: b.sheet_id == ^sheet_id)
+  end
 
-  defp restore_blocks_from_snapshot(repo, sheet_id, blocks_data) do
+  # Selective merge (draft merge): only delete blocks from the baseline
+  # Blocks added to the original after draft creation are preserved
+  defp delete_blocks_query(sheet_id, baseline_block_ids) do
+    from(b in Block, where: b.sheet_id == ^sheet_id and b.id in ^baseline_block_ids)
+  end
+
+  defp restore_blocks_from_snapshot(_repo, _sheet_id, [], _baseline), do: {:ok, 0}
+
+  defp restore_blocks_from_snapshot(repo, sheet_id, blocks_data, baseline_block_ids) do
     now = TimeHelpers.now()
     existing_source_ids = load_existing_source_ids(repo, blocks_data)
+
+    # When doing selective merge, collect variable names from preserved blocks
+    # (blocks not in the baseline that remain on the original)
+    preserved_var_names = load_preserved_variable_names(repo, sheet_id, baseline_block_ids)
 
     sorted_data = Enum.sort_by(blocks_data, & &1["position"])
 
     blocks =
-      Enum.map(sorted_data, &snapshot_to_block_entry(&1, sheet_id, existing_source_ids, now))
+      sorted_data
+      |> Enum.map(&snapshot_to_block_entry(&1, sheet_id, existing_source_ids, now))
+      |> deduplicate_variable_names(preserved_var_names)
 
     {count, inserted} = repo.insert_all(Block, blocks, returning: [:id, :type, :position])
     restore_table_data(repo, inserted, sorted_data, now)
     {:ok, count}
+  end
+
+  # No preserved blocks in full replacement mode
+  defp load_preserved_variable_names(_repo, _sheet_id, nil), do: MapSet.new()
+
+  # Load variable names from blocks that will survive the merge (not in baseline)
+  defp load_preserved_variable_names(repo, sheet_id, baseline_block_ids) do
+    from(b in Block,
+      where:
+        b.sheet_id == ^sheet_id and
+          b.id not in ^baseline_block_ids and
+          is_nil(b.deleted_at) and
+          not is_nil(b.variable_name),
+      select: b.variable_name
+    )
+    |> repo.all()
+    |> MapSet.new()
   end
 
   defp load_existing_source_ids(repo, blocks_data) do
@@ -152,6 +191,29 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       |> repo.all()
       |> MapSet.new()
     end
+  end
+
+  # Ensure variable_name is unique per sheet — append _2, _3 etc. for duplicates.
+  # `initial_seen` contains variable names from preserved blocks (selective merge).
+  defp deduplicate_variable_names(blocks, initial_seen) do
+    {deduped, _seen} =
+      Enum.map_reduce(blocks, initial_seen, fn block, seen ->
+        vn = block[:variable_name]
+
+        if vn && MapSet.member?(seen, vn) do
+          new_vn = find_unique_name(vn, seen, 2)
+          {%{block | variable_name: new_vn}, MapSet.put(seen, new_vn)}
+        else
+          {block, if(vn, do: MapSet.put(seen, vn), else: seen)}
+        end
+      end)
+
+    deduped
+  end
+
+  defp find_unique_name(base, seen, n) do
+    candidate = "#{base}_#{n}"
+    if MapSet.member?(seen, candidate), do: find_unique_name(base, seen, n + 1), else: candidate
   end
 
   defp snapshot_to_block_entry(block_data, sheet_id, existing_source_ids, now) do

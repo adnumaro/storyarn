@@ -162,17 +162,19 @@ defmodule Storyarn.Drafts.CloneEngineTest do
   # ===========================================================================
 
   describe "clone sheet with inheritance" do
-    test "clears inherited_from_block_id for externally inherited blocks" do
+    test "preserves inherited_from_block_id for cross-sheet inherited blocks" do
       %{user: user, project: project} = setup_project()
 
       parent = sheet_fixture(project, %{name: "Parent"})
       child = child_sheet_fixture(project, parent, %{name: "Child"})
 
-      _parent_block = inheritable_block_fixture(parent, label: "Health")
+      parent_block = inheritable_block_fixture(parent, label: "Health")
 
-      # Child should have an inherited instance
+      # Child should have an inherited instance pointing to parent block
       child_blocks = Sheets.list_blocks(child.id)
-      assert Enum.any?(child_blocks, &(not is_nil(&1.inherited_from_block_id)))
+      inherited_block = Enum.find(child_blocks, &(not is_nil(&1.inherited_from_block_id)))
+      assert inherited_block
+      assert inherited_block.inherited_from_block_id == parent_block.id
 
       # Clone the child sheet as a draft
       {:ok, draft} = Drafts.create_draft(project.id, "sheet", child.id, user.id)
@@ -181,9 +183,11 @@ defmodule Storyarn.Drafts.CloneEngineTest do
       cloned_blocks = Sheets.list_blocks(entity.id)
       assert length(cloned_blocks) == length(child_blocks)
 
-      # Cloned blocks should have inherited_from_block_id cleared
-      # (since the referenced blocks are in the parent sheet, not the cloned sheet)
-      assert Enum.all?(cloned_blocks, &is_nil(&1.inherited_from_block_id))
+      # Cloned blocks must preserve cross-sheet inherited_from_block_id
+      # so inheritance stays intact when the draft is merged back
+      cloned_inherited = Enum.find(cloned_blocks, &(not is_nil(&1.inherited_from_block_id)))
+      assert cloned_inherited
+      assert cloned_inherited.inherited_from_block_id == parent_block.id
     end
   end
 

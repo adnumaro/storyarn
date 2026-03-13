@@ -22,6 +22,7 @@ defmodule Storyarn.Drafts.Draft do
           status: String.t(),
           merged_at: DateTime.t() | nil,
           last_edited_at: DateTime.t() | nil,
+          baseline_entity_ids: map(),
           source_name: String.t() | nil,
           project_id: integer() | nil,
           project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
@@ -41,6 +42,7 @@ defmodule Storyarn.Drafts.Draft do
     field :status, :string, default: "active"
     field :merged_at, :utc_datetime
     field :last_edited_at, :utc_datetime
+    field :baseline_entity_ids, :map, default: %{}
     field :source_name, :string, virtual: true
 
     belongs_to :project, Project

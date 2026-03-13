@@ -41,6 +41,32 @@ defmodule Storyarn.Drafts.CloneEngine do
   end
 
   @doc """
+  Returns the IDs of child entities that existed in the source at clone time.
+  Used to track which entities the draft is "responsible for" during merge.
+  """
+  def get_baseline_entity_ids("sheet", project_id, source_id) do
+    block_ids =
+      from(b in Block,
+        where: b.sheet_id == ^source_id and is_nil(b.deleted_at),
+        select: b.id
+      )
+      |> Repo.all()
+
+    # Also capture the sheet's project_id to verify it belongs to the project
+    if Repo.exists?(
+         from(s in Sheet,
+           where: s.id == ^source_id and s.project_id == ^project_id and is_nil(s.deleted_at)
+         )
+       ) do
+      %{"block_ids" => block_ids}
+    else
+      %{}
+    end
+  end
+
+  def get_baseline_entity_ids(_type, _project_id, _source_id), do: %{}
+
+  @doc """
   Returns the name of the source entity, or nil if not found.
   """
   def get_source_name("sheet", project_id, source_id) do
@@ -167,7 +193,8 @@ defmodule Storyarn.Drafts.CloneEngine do
   defp clone_blocks([], _sheet_id, _now), do: :ok
 
   defp clone_blocks(blocks, sheet_id, now) do
-    # Insert blocks (without inherited_from_block_id first)
+    # Preserve inherited_from_block_id as-is (cross-sheet references stay valid).
+    # Intra-sheet references will be remapped below to point to the cloned blocks.
     block_entries =
       Enum.map(blocks, fn b ->
         %{
@@ -179,7 +206,7 @@ defmodule Storyarn.Drafts.CloneEngine do
           is_constant: b.is_constant,
           variable_name: b.variable_name,
           scope: b.scope,
-          inherited_from_block_id: nil,
+          inherited_from_block_id: b.inherited_from_block_id,
           detached: b.detached,
           required: b.required,
           deleted_at: nil,
@@ -190,13 +217,14 @@ defmodule Storyarn.Drafts.CloneEngine do
 
     {_count, inserted} = Repo.insert_all(Block, block_entries, returning: [:id])
 
-    # Build old_id -> new_id map for internal inheritance references
+    # Build old_id -> new_id map for intra-sheet inheritance remapping
     old_new_map =
       blocks
       |> Enum.zip(inserted)
       |> Map.new(fn {old, new} -> {old.id, new.id} end)
 
-    # Remap inherited_from_block_id (only within same sheet)
+    # Remap intra-sheet inherited_from_block_id to point to cloned blocks.
+    # Cross-sheet references (not in old_new_map) are left as-is.
     blocks
     |> Enum.zip(inserted)
     |> Enum.each(fn {old, new} ->
