@@ -18,7 +18,11 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.Components.Sidebar.FlowTree
   alias StoryarnWeb.FlowLive.Components.ScreenplayEditor
 
+  alias StoryarnWeb.Components.DraftComponents
+  alias StoryarnWeb.Live.Shared.DraftHandlers
+
   alias Storyarn.Collaboration
+  alias Storyarn.Drafts
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
@@ -94,6 +98,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       restoration_banner={@restoration_banner}
     >
       <:top_bar_extra>
+        <DraftComponents.draft_banner is_draft={@is_draft} />
         <.flow_info_bar
           flow={@flow}
           can_edit={@can_edit}
@@ -105,6 +110,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           flow_word_count={@flow_word_count}
           flow_error_nodes={@flow_error_nodes}
           flow_info_nodes={@flow_info_nodes}
+          is_draft={@is_draft}
         />
       </:top_bar_extra>
       <:tree_content>
@@ -117,6 +123,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         />
       </:tree_content>
       <FlowTree.delete_modal :if={@can_edit} />
+      <DraftComponents.discard_draft_modal is_draft={@is_draft} />
       <div class="h-full relative">
         <%!-- Canvas fills the entire area --%>
         <div class="absolute inset-0 flex flex-col">
@@ -327,6 +334,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:flow_word_count, 0)
           |> assign(:flow_error_nodes, [])
           |> assign(:flow_info_nodes, [])
+          |> assign(:is_draft, false)
+          |> assign(:draft, nil)
 
         {:ok, socket}
 
@@ -391,6 +400,10 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   @impl true
+  def handle_params(%{"id" => _flow_id, "draft_id" => draft_id} = _params, _url, socket) do
+    {:noreply, load_draft_flow(socket, draft_id)}
+  end
+
   def handle_params(%{"id" => flow_id} = params, _url, socket) do
     current_id =
       case socket.assigns.flow do
@@ -407,6 +420,27 @@ defmodule StoryarnWeb.FlowLive.Show do
       end
     else
       {:noreply, load_flow(socket, flow_id)}
+    end
+  end
+
+  defp load_draft_flow(socket, draft_id) do
+    %{project: project, current_scope: scope} = socket.assigns
+
+    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id),
+         true <- draft.entity_type == "flow" and draft.status == "active",
+         entity when not is_nil(entity) <- Drafts.get_draft_entity(draft) do
+      socket
+      |> assign(:loading, true)
+      |> assign(:is_draft, true)
+      |> assign(:draft, draft)
+      |> assign(:flow, entity)
+    else
+      _ ->
+        socket
+        |> put_flash(:error, dgettext("flows", "Draft not found."))
+        |> push_navigate(
+          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
+        )
     end
   end
 
@@ -1099,6 +1133,29 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  def handle_event("create_draft", _params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      %{flow: flow} = socket.assigns
+
+      DraftHandlers.handle_create_draft(socket, "flow", flow.id, fn s, draft ->
+        %{project: project} = s.assigns
+
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/drafts/#{draft.id}"
+      end)
+    end)
+  end
+
+  def handle_event("discard_draft", _params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      %{project: project} = socket.assigns
+
+      DraftHandlers.handle_discard_draft(
+        socket,
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
+      )
+    end)
+  end
+
   def handle_event("set_pending_delete_flow", %{"id" => id}, socket) do
     handle_set_pending_delete(socket, id)
   end
@@ -1168,8 +1225,16 @@ defmodule StoryarnWeb.FlowLive.Show do
     flow = data.flow
     user = socket.assigns.current_scope.user
 
-    CollaborationHelpers.setup_collaboration(socket, flow, user)
-    {online_users, node_locks} = CollaborationHelpers.get_initial_collab_state(socket, flow)
+    unless socket.assigns.is_draft do
+      CollaborationHelpers.setup_collaboration(socket, flow, user)
+    end
+
+    {online_users, node_locks} =
+      if socket.assigns.is_draft do
+        {[], %{}}
+      else
+        CollaborationHelpers.get_initial_collab_state(socket, flow)
+      end
 
     # Reuse tree if already loaded (patch navigation)
     flows_tree =
@@ -1206,7 +1271,9 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:preview_show, false)
       |> assign(:preview_node, nil)
       |> assign(:versions_panel_open, false)
-      |> assign(:collab_scope, {:flow, flow.id})
+      |> then(fn s ->
+        if s.assigns.is_draft, do: s, else: assign(s, :collab_scope, {:flow, flow.id})
+      end)
       |> assign(:online_users, online_users)
       |> assign(:node_locks, node_locks)
       |> assign(:collab_toast, nil)

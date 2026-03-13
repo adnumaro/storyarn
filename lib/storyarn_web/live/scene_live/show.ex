@@ -17,8 +17,12 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.SceneLive.Components.SceneSettingsPanel
   import StoryarnWeb.Components.RightSidebar
 
+  alias StoryarnWeb.Components.DraftComponents
+  alias StoryarnWeb.Live.Shared.DraftHandlers
+
   alias Storyarn.Assets
   alias Storyarn.Collaboration
+  alias Storyarn.Drafts
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
@@ -93,6 +97,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         </div>
       </:tree_content>
       <:top_bar_extra>
+        <DraftComponents.draft_banner is_draft={@is_draft} />
         <%= if @scene do %>
           <.map_info_bar
             scene={@scene}
@@ -114,6 +119,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           <.map_actions
             can_edit={@can_edit}
             edit_mode={@edit_mode}
+            is_draft={@is_draft}
           />
         <% end %>
       </:top_bar_extra_right>
@@ -412,6 +418,8 @@ defmodule StoryarnWeb.SceneLive.Show do
       <% end %>
 
       <%!-- Confirm modals --%>
+      <DraftComponents.discard_draft_modal is_draft={@is_draft} />
+
       <.confirm_modal
         :if={@can_edit}
         id="delete-scene-show-confirm"
@@ -513,6 +521,8 @@ defmodule StoryarnWeb.SceneLive.Show do
           |> assign(:referencing_flows, [])
           |> assign(:sidebar_loaded, false)
           |> assign(:pending_delete_id, nil)
+          |> assign(:is_draft, false)
+          |> assign(:draft, nil)
           |> maybe_allow_background_upload(can_edit)
 
         {:ok, socket}
@@ -526,6 +536,10 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   @impl true
+  def handle_params(%{"id" => _scene_id, "draft_id" => draft_id} = _params, _url, socket) do
+    {:noreply, load_draft_scene(socket, draft_id)}
+  end
+
   def handle_params(%{"id" => scene_id} = params, _url, socket) do
     current_id =
       case socket.assigns.scene do
@@ -616,6 +630,57 @@ defmodule StoryarnWeb.SceneLive.Show do
         |> assign(:panel_sections, %{})
         |> assign(:referencing_flows, [])
         |> maybe_load_sidebar(has_tree, project)
+    end
+  end
+
+  defp load_draft_scene(socket, draft_id) do
+    %{project: project, current_scope: scope, can_edit: can_edit} = socket.assigns
+
+    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id),
+         true <- draft.entity_type == "scene" and draft.status == "active",
+         entity when not is_nil(entity) <- Drafts.get_draft_entity(draft) do
+      # Skip collaboration for drafts
+      has_tree = socket.assigns.sidebar_loaded
+
+      socket
+      |> assign(:scene, entity)
+      |> assign(:is_draft, true)
+      |> assign(:draft, draft)
+      |> assign(:ancestors, [])
+      |> assign(:layers, entity.layers || [])
+      |> assign(:zones, entity.zones || [])
+      |> assign(:pins, entity.pins || [])
+      |> assign(:connections, entity.connections || [])
+      |> assign(:annotations, entity.annotations || [])
+      |> assign(:scene_data, build_scene_data(entity, can_edit))
+      |> assign(:edit_mode, can_edit)
+      |> assign(:active_tool, :select)
+      |> assign(:selected_element, nil)
+      |> assign(:selected_type, nil)
+      |> assign(:element_panel_open, false)
+      |> assign(:scene_settings_open, false)
+      |> assign(:versions_panel_open, false)
+      |> assign(:active_layer_id, default_layer_id(entity.layers))
+      |> assign(:renaming_layer_id, nil)
+      |> assign(:show_pin_icon_upload, false)
+      |> assign(:show_sheet_picker, false)
+      |> assign(:pending_sheet_for_pin, nil)
+      |> assign(:search_query, "")
+      |> assign(:search_filter, "all")
+      |> assign(:search_results, [])
+      |> assign(:legend_open, false)
+      |> assign(:undo_stack, [])
+      |> assign(:redo_stack, [])
+      |> assign(:panel_sections, %{})
+      |> assign(:referencing_flows, [])
+      |> maybe_load_sidebar(has_tree, project)
+    else
+      _ ->
+        socket
+        |> put_flash(:error, dgettext("scenes", "Draft not found."))
+        |> push_navigate(
+          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
+        )
     end
   end
 
@@ -1249,6 +1314,29 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("create_child_scene_from_zone", params, socket) do
     with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.handle_create_child_scene_from_zone(params, socket) |> broadcast_scene_change()
+    end)
+  end
+
+  def handle_event("create_draft", _params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      %{scene: scene} = socket.assigns
+
+      DraftHandlers.handle_create_draft(socket, "scene", scene.id, fn s, draft ->
+        %{project: project} = s.assigns
+
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}/drafts/#{draft.id}"
+      end)
+    end)
+  end
+
+  def handle_event("discard_draft", _params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      %{project: project} = socket.assigns
+
+      DraftHandlers.handle_discard_draft(
+        socket,
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
+      )
     end)
   end
 

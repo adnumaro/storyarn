@@ -58,6 +58,7 @@ defmodule Storyarn.Sheets.Sheet do
     field :color, :string
     field :position, :integer, default: 0
     field :hidden_inherited_block_ids, {:array, :integer}, default: []
+    field :draft_id, :integer
     field :deleted_at, :utc_datetime
 
     belongs_to :project, Project

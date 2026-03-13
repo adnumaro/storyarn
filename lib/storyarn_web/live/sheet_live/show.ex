@@ -10,7 +10,11 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.Helpers.SaveStatusTimer
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
+  alias StoryarnWeb.Components.DraftComponents
+  alias StoryarnWeb.Live.Shared.DraftHandlers
+
   alias Storyarn.Collaboration
+  alias Storyarn.Drafts
   alias Storyarn.Projects
   alias Storyarn.Sheets
   alias StoryarnWeb.Components.Sidebar.SheetTree
@@ -44,6 +48,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       restoration_banner={@restoration_banner}
     >
       <:top_bar_extra>
+        <DraftComponents.draft_banner is_draft={@is_draft} />
         <.sheet_breadcrumb
           :if={@ancestors != []}
           ancestors={@ancestors}
@@ -61,6 +66,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         />
       </:tree_content>
       <SheetTree.delete_modal :if={@can_edit} />
+      <DraftComponents.discard_draft_modal is_draft={@is_draft} />
       <%= if @sheet do %>
         <div
           id="sheet-undo-redo"
@@ -100,8 +106,20 @@ defmodule StoryarnWeb.SheetLive.Show do
                 />
               </div>
             </div>
-            <%!-- Save indicator (positioned at header level) --%>
-            <.save_indicator status={@save_status} variant={:floating} />
+            <%!-- Save indicator + draft button (positioned at header level) --%>
+            <div class="absolute top-0 right-0 flex items-center gap-2">
+              <button
+                :if={@can_edit && !@is_draft}
+                type="button"
+                phx-click="create_draft"
+                class="btn btn-ghost btn-xs gap-1.5 text-base-content/60"
+                title={dgettext("drafts", "Create a private draft copy")}
+              >
+                <.icon name="git-branch" class="size-3.5" />
+                <span>{dgettext("drafts", "Draft")}</span>
+              </button>
+              <.save_indicator status={@save_status} variant={:floating} />
+            </div>
           </div>
 
           <%!-- Loading state while async data loads --%>
@@ -251,7 +269,9 @@ defmodule StoryarnWeb.SheetLive.Show do
          |> assign(:sheets_tree, Sheets.list_sheets_tree(project.id))
          |> assign(:children, [])
          |> assign(:blocks, [])
-         |> assign(:sheet_data_loaded, false)}
+         |> assign(:sheet_data_loaded, false)
+         |> assign(:is_draft, false)
+         |> assign(:draft, nil)}
 
       {:error, _reason} ->
         {:ok,
@@ -262,6 +282,10 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   @impl true
+  def handle_params(%{"id" => _sheet_id, "draft_id" => draft_id}, _url, socket) do
+    {:noreply, load_draft_sheet(socket, draft_id)}
+  end
+
   def handle_params(%{"id" => sheet_id}, _url, socket) do
     current_sheet_id =
       case socket.assigns.sheet do
@@ -273,6 +297,39 @@ defmodule StoryarnWeb.SheetLive.Show do
       {:noreply, socket}
     else
       {:noreply, load_sheet(socket, sheet_id)}
+    end
+  end
+
+  defp load_draft_sheet(socket, draft_id) do
+    %{project: project, current_scope: scope} = socket.assigns
+
+    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id),
+         true <- draft.entity_type == "sheet" and draft.status == "active",
+         entity when not is_nil(entity) <- Drafts.get_draft_entity(draft) do
+      # Skip collaboration for drafts
+      has_tree = socket.assigns.sheets_tree != []
+
+      socket
+      |> assign(:sheet, entity)
+      |> assign(:ancestors, [])
+      |> assign(:current_tab, "content")
+      |> assign(:save_status, :idle)
+      |> assign(:children, [])
+      |> assign(:blocks, [])
+      |> assign(:project_variables, [])
+      |> assign(:sheet_data_loaded, false)
+      |> assign(:is_draft, true)
+      |> assign(:draft, draft)
+      |> start_async(:load_sheet_data, fn ->
+        load_sheet_async_data(entity, project, has_tree)
+      end)
+    else
+      _ ->
+        socket
+        |> put_flash(:error, dgettext("sheets", "Draft not found."))
+        |> push_navigate(
+          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
+        )
     end
   end
 
@@ -397,6 +454,29 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
   # Event Handlers: Sheet Tree
   # ===========================================================================
+
+  def handle_event("create_draft", _params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      %{sheet: sheet} = socket.assigns
+
+      DraftHandlers.handle_create_draft(socket, "sheet", sheet.id, fn s, draft ->
+        %{project: project} = s.assigns
+
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/drafts/#{draft.id}"
+      end)
+    end)
+  end
+
+  def handle_event("discard_draft", _params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      %{project: project} = socket.assigns
+
+      DraftHandlers.handle_discard_draft(
+        socket,
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
+      )
+    end)
+  end
 
   def handle_event("set_pending_delete_sheet", %{"id" => id}, socket) do
     handle_set_pending_delete(socket, id)

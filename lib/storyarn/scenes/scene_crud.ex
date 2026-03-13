@@ -24,7 +24,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def list_scenes(project_id) do
     from(m in Scene,
-      where: m.project_id == ^project_id and is_nil(m.deleted_at),
+      where: m.project_id == ^project_id and is_nil(m.deleted_at) and is_nil(m.draft_id),
       order_by: [asc: m.position, asc: m.name]
     )
     |> Repo.all()
@@ -130,7 +130,7 @@ defmodule Storyarn.Scenes.SceneCrud do
 
     if query == "" do
       from(m in Scene,
-        where: m.project_id == ^project_id and is_nil(m.deleted_at),
+        where: m.project_id == ^project_id and is_nil(m.deleted_at) and is_nil(m.draft_id),
         order_by: [desc: m.updated_at],
         limit: 10
       )
@@ -139,7 +139,7 @@ defmodule Storyarn.Scenes.SceneCrud do
       search_term = "%#{SearchHelpers.sanitize_like_query(query)}%"
 
       from(m in Scene,
-        where: m.project_id == ^project_id and is_nil(m.deleted_at),
+        where: m.project_id == ^project_id and is_nil(m.deleted_at) and is_nil(m.draft_id),
         where: ilike(m.name, ^search_term) or ilike(m.shortcut, ^search_term),
         order_by: [asc: m.name],
         limit: 10
@@ -163,7 +163,9 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def get_scene(project_id, scene_id) do
     from(m in Scene,
-      where: m.project_id == ^project_id and m.id == ^scene_id and is_nil(m.deleted_at),
+      where:
+        m.project_id == ^project_id and m.id == ^scene_id and is_nil(m.deleted_at) and
+          is_nil(m.draft_id),
       preload: ^@scene_preloads
     )
     |> Repo.one()
@@ -175,7 +177,9 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def get_scene!(project_id, scene_id) do
     from(m in Scene,
-      where: m.project_id == ^project_id and m.id == ^scene_id and is_nil(m.deleted_at),
+      where:
+        m.project_id == ^project_id and m.id == ^scene_id and is_nil(m.deleted_at) and
+          is_nil(m.draft_id),
       preload: ^@scene_preloads
     )
     |> Repo.one!()
@@ -187,7 +191,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def get_scene_by_id(scene_id) do
     from(m in Scene,
-      where: m.id == ^scene_id and is_nil(m.deleted_at)
+      where: m.id == ^scene_id and is_nil(m.deleted_at) and is_nil(m.draft_id)
     )
     |> Repo.one()
   end
@@ -198,7 +202,9 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def get_scene_brief(project_id, scene_id) do
     from(m in Scene,
-      where: m.project_id == ^project_id and m.id == ^scene_id and is_nil(m.deleted_at)
+      where:
+        m.project_id == ^project_id and m.id == ^scene_id and is_nil(m.deleted_at) and
+          is_nil(m.draft_id)
     )
     |> Repo.one()
   end
@@ -385,7 +391,7 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   defp base_scenes_query(project_id) do
     from(m in Scene,
-      where: m.project_id == ^project_id and is_nil(m.deleted_at),
+      where: m.project_id == ^project_id and is_nil(m.deleted_at) and is_nil(m.draft_id),
       order_by: [asc: m.position, asc: m.name]
     )
   end
@@ -476,7 +482,7 @@ defmodule Storyarn.Scenes.SceneCrud do
 
     query =
       from(s in Scene,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at),
+        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
         preload: [:layers, :pins, :zones, :connections, :annotations],
         order_by: [asc: s.position, asc: s.name]
       )
@@ -490,7 +496,9 @@ defmodule Storyarn.Scenes.SceneCrud do
   Counts non-deleted scenes for a project.
   """
   def count_scenes(project_id) do
-    from(s in Scene, where: s.project_id == ^project_id and is_nil(s.deleted_at))
+    from(s in Scene,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id)
+    )
     |> Repo.aggregate(:count)
   end
 
@@ -798,7 +806,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def list_active_scene_ids(project_id) do
     from(s in Scene,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
+      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
       select: s.id
     )
     |> Repo.all()
@@ -810,7 +818,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def list_shortcuts(project_id) do
     from(s in Scene,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
+      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
       select: s.shortcut
     )
     |> Repo.all()

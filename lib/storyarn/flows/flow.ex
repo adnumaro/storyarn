@@ -54,6 +54,7 @@ defmodule Storyarn.Flows.Flow do
     field :position, :integer, default: 0
     field :is_main, :boolean, default: false
     field :settings, :map, default: %{}
+    field :draft_id, :integer
     field :deleted_at, :utc_datetime
 
     belongs_to :project, Project

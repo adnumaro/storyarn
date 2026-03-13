@@ -202,27 +202,28 @@ defmodule Storyarn.Billing.Limits do
 
   @doc false
   def count_project_items(project_id) do
-    nodes =
-      from(n in FlowNode,
-        join: f in Flow,
-        on: n.flow_id == f.id,
-        where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at)
-      )
-      |> Repo.aggregate(:count)
+    count_nodes(project_id) +
+      count_active(Sheet, project_id) +
+      count_active(Flow, project_id) +
+      count_active(Scene, project_id)
+  end
 
-    sheets =
-      from(s in Sheet, where: s.project_id == ^project_id and is_nil(s.deleted_at))
-      |> Repo.aggregate(:count)
+  defp count_nodes(project_id) do
+    from(n in FlowNode,
+      join: f in Flow,
+      on: n.flow_id == f.id,
+      where:
+        f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and
+          is_nil(f.draft_id)
+    )
+    |> Repo.aggregate(:count)
+  end
 
-    flows =
-      from(f in Flow, where: f.project_id == ^project_id and is_nil(f.deleted_at))
-      |> Repo.aggregate(:count)
-
-    scenes =
-      from(s in Scene, where: s.project_id == ^project_id and is_nil(s.deleted_at))
-      |> Repo.aggregate(:count)
-
-    nodes + sheets + flows + scenes
+  defp count_active(schema, project_id) do
+    from(s in schema,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id)
+    )
+    |> Repo.aggregate(:count)
   end
 
   defp total_workspace_storage(workspace_id) do

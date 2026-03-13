@@ -18,10 +18,22 @@ defmodule StoryarnWeb.SceneLive.Components.SceneHeader do
   @doc "Actions toolbar (export, settings, edit/view toggle) — fixed top-right."
   attr :can_edit, :boolean, required: true
   attr :edit_mode, :boolean, required: true
+  attr :is_draft, :boolean, default: false
 
   def map_actions(assigns) do
     ~H"""
     <div class="flex items-center gap-1 px-1.5 py-1 surface-panel">
+      <%!-- Create Draft button --%>
+      <button
+        :if={@can_edit && !@is_draft}
+        type="button"
+        phx-click="create_draft"
+        class="btn btn-ghost btn-sm gap-1.5"
+        title={dgettext("drafts", "Create a private draft copy")}
+      >
+        <.icon name="git-branch" class="size-4" />
+        <span class="hidden xl:inline">{dgettext("drafts", "Draft")}</span>
+      </button>
       <%!-- Export dropdown --%>
       <div
         phx-hook="ToolbarPopover"

@@ -67,6 +67,7 @@ defmodule Storyarn.Scenes.Scene do
     field :position, :integer, default: 0
     field :scale_unit, :string
     field :scale_value, :float
+    field :draft_id, :integer
     field :deleted_at, :utc_datetime
 
     belongs_to :project, Project

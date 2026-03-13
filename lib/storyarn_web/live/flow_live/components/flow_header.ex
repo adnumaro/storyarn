@@ -24,6 +24,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
   attr :flow_word_count, :integer, default: 0
   attr :flow_error_nodes, :list, default: []
   attr :flow_info_nodes, :list, default: []
+  attr :is_draft, :boolean, default: false
 
   def flow_info_bar(assigns) do
     ~H"""
@@ -88,6 +89,18 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
         can_edit={@can_edit}
         available_scenes={@available_scenes}
       />
+
+      <%!-- Create Draft button --%>
+      <button
+        :if={@can_edit && !@is_draft}
+        type="button"
+        phx-click="create_draft"
+        class="toolbar-btn gap-1 text-base-content/60 tooltip tooltip-bottom tooltip-delay hidden lg:flex"
+        data-tip={dgettext("drafts", "Create a private draft copy")}
+      >
+        <.icon name="git-branch" class="size-3.5" />
+        <span class="text-xs">{dgettext("drafts", "Draft")}</span>
+      </button>
 
       <%!-- Save indicator --%>
       <.save_indicator :if={@can_edit} status={@save_status} />
