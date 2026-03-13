@@ -303,9 +303,8 @@ defmodule StoryarnWeb.AssetLive.Index do
     if Assets.allowed_content_type?(content_type) do
       project = socket.assigns.project
       user = socket.assigns.current_scope.user
-      workspace = Storyarn.Repo.get!(Storyarn.Workspaces.Workspace, project.workspace_id)
 
-      case Storyarn.Billing.can_upload_asset?(workspace, byte_size(binary_data)) do
+      case Storyarn.Billing.can_upload_asset_for_project?(project, byte_size(binary_data)) do
         :ok ->
           do_upload_file(socket, project, user, filename, content_type, binary_data)
 

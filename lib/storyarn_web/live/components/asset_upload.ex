@@ -224,9 +224,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
   end
 
   defp process_upload(path, entry, project, user, on_upload) do
-    workspace = Storyarn.Repo.get!(Storyarn.Workspaces.Workspace, project.workspace_id)
-
-    case Storyarn.Billing.can_upload_asset?(workspace, entry.client_size) do
+    case Storyarn.Billing.can_upload_asset_for_project?(project, entry.client_size) do
       :ok ->
         do_process_upload(path, entry, project, user, on_upload)
 

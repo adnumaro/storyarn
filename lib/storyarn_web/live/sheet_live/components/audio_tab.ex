@@ -166,9 +166,8 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
   defp process_upload(socket, node_id, filename, content_type, binary_data) do
     if Assets.allowed_content_type?(content_type) do
       project = socket.assigns.project
-      workspace = Storyarn.Repo.get!(Storyarn.Workspaces.Workspace, project.workspace_id)
 
-      case Billing.can_upload_asset?(workspace, byte_size(binary_data)) do
+      case Billing.can_upload_asset_for_project?(project, byte_size(binary_data)) do
         :ok ->
           do_process_upload(socket, project, node_id, filename, content_type, binary_data)
 

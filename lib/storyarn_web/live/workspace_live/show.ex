@@ -24,7 +24,9 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
          |> assign(:workspace, workspace)
          |> assign(:current_workspace, workspace)
          |> assign(:membership, membership)
+         |> assign(:all_projects, projects)
          |> assign(:projects, projects)
+         |> assign(:search_query, "")
          |> assign(:can_create_project, can_create_project)}
 
       {:error, :not_found} ->
@@ -100,6 +102,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
             phx-change="search"
             phx-debounce="300"
             name="search"
+            value={@search_query}
           />
         </div>
 
@@ -137,11 +140,19 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         </div>
 
         <.empty_state
-          :if={@projects == []}
+          :if={@projects == [] and @search_query == ""}
           icon="folder-open"
           title={dgettext("workspaces", "No projects yet")}
         >
           {dgettext("workspaces", "Create your first project to get started")}
+        </.empty_state>
+
+        <.empty_state
+          :if={@projects == [] and @search_query != ""}
+          icon="search"
+          title={dgettext("workspaces", "No projects found")}
+        >
+          {dgettext("workspaces", "Try a different search term")}
         </.empty_state>
       </div>
 
@@ -210,8 +221,20 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   end
 
   @impl true
-  def handle_event("search", %{"search" => _query}, socket) do
-    {:noreply, socket}
+  def handle_event("search", %{"search" => query}, socket) do
+    filtered = filter_projects(socket.assigns.all_projects, query)
+    {:noreply, assign(socket, projects: filtered, search_query: query)}
+  end
+
+  defp filter_projects(projects, query) when query in [nil, ""], do: projects
+
+  defp filter_projects(projects, query) do
+    downcased = String.downcase(query)
+
+    Enum.filter(projects, fn %{project: project} ->
+      String.contains?(String.downcase(project.name), downcased) or
+        (project.description && String.contains?(String.downcase(project.description), downcased))
+    end)
   end
 
   @impl true

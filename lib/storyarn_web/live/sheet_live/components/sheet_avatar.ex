@@ -124,9 +124,8 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
 
   defp upload_avatar_file(socket, filename, content_type, binary_data) do
     project = socket.assigns.project
-    workspace = Storyarn.Repo.get!(Storyarn.Workspaces.Workspace, project.workspace_id)
 
-    case Billing.can_upload_asset?(workspace, byte_size(binary_data)) do
+    case Billing.can_upload_asset_for_project?(project, byte_size(binary_data)) do
       :ok ->
         do_upload_avatar_file(socket, project, filename, content_type, binary_data)
 

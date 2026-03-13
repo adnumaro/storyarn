@@ -51,6 +51,15 @@ defmodule Storyarn.Billing.Limits do
   end
 
   @doc """
+  Checks if a project's workspace can accept an asset upload of the given size.
+  Encapsulates the workspace lookup so callers don't need direct Repo access.
+  """
+  def can_upload_asset_for_project?(project, file_size) do
+    workspace = Repo.get!(Workspace, project.workspace_id)
+    can_upload_asset?(workspace, file_size)
+  end
+
+  @doc """
   Checks if a workspace can accept an asset upload of the given size.
   """
   def can_upload_asset?(workspace, file_size) do
