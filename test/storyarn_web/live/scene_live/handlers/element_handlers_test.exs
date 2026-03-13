@@ -1511,4 +1511,136 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
       assert updated.action_data["assignments"] == assignments
     end
   end
+
+  # -------------------------------------------------------------------
+  # Field allowlist validation
+  # -------------------------------------------------------------------
+
+  describe "field allowlist validation" do
+    setup [:register_and_log_in_user, :setup_scene]
+
+    test "pin: valid field update persists to DB", ctx do
+      pin = pin_fixture(ctx.scene, %{"label" => "Original"})
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      render_hook(view, "update_pin", %{
+        "id" => to_string(pin.id),
+        "field" => "label",
+        "value" => "New Label"
+      })
+
+      updated = Scenes.get_pin!(pin.id)
+      assert updated.label == "New Label"
+    end
+
+    test "pin: unknown field is silently rejected", ctx do
+      pin = pin_fixture(ctx.scene, %{"label" => "Unchanged"})
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      render_hook(view, "update_pin", %{
+        "id" => to_string(pin.id),
+        "field" => "evil_field",
+        "value" => "hacked"
+      })
+
+      unchanged = Scenes.get_pin!(pin.id)
+      assert unchanged.label == "Unchanged"
+    end
+
+    test "zone: valid field update persists to DB", ctx do
+      zone = zone_fixture(ctx.scene, %{"name" => "Original Zone"})
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      render_hook(view, "update_zone", %{
+        "id" => to_string(zone.id),
+        "field" => "name",
+        "value" => "New Name"
+      })
+
+      updated = Scenes.get_zone!(zone.id)
+      assert updated.name == "New Name"
+    end
+
+    test "zone: unknown field is silently rejected", ctx do
+      zone = zone_fixture(ctx.scene, %{"name" => "Unchanged Zone"})
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      render_hook(view, "update_zone", %{
+        "id" => to_string(zone.id),
+        "field" => "evil_field",
+        "value" => "hacked"
+      })
+
+      unchanged = Scenes.get_zone!(zone.id)
+      assert unchanged.name == "Unchanged Zone"
+    end
+
+    test "connection: valid field update persists to DB", ctx do
+      pin1 = pin_fixture(ctx.scene, %{"position_x" => 10.0, "position_y" => 10.0})
+      pin2 = pin_fixture(ctx.scene, %{"position_x" => 90.0, "position_y" => 90.0})
+      conn_rec = connection_fixture(ctx.scene, pin1, pin2)
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      render_hook(view, "update_connection", %{
+        "id" => to_string(conn_rec.id),
+        "field" => "label",
+        "value" => "New Label"
+      })
+
+      updated = Scenes.get_connection!(ctx.scene.id, conn_rec.id)
+      assert updated.label == "New Label"
+    end
+
+    test "connection: unknown field is silently rejected", ctx do
+      pin1 = pin_fixture(ctx.scene, %{"position_x" => 10.0, "position_y" => 10.0})
+      pin2 = pin_fixture(ctx.scene, %{"position_x" => 90.0, "position_y" => 90.0})
+      conn_rec = connection_fixture(ctx.scene, pin1, pin2)
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      render_hook(view, "update_connection", %{
+        "id" => to_string(conn_rec.id),
+        "field" => "evil_field",
+        "value" => "hacked"
+      })
+
+      unchanged = Scenes.get_connection!(ctx.scene.id, conn_rec.id)
+      assert unchanged.label == conn_rec.label
+    end
+
+    test "annotation: valid field update persists to DB", ctx do
+      ann = annotation_fixture(ctx.scene, %{"text" => "Original Note"})
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      render_hook(view, "update_annotation", %{
+        "id" => to_string(ann.id),
+        "field" => "text",
+        "value" => "New Text"
+      })
+
+      updated = Scenes.get_annotation!(ctx.scene.id, ann.id)
+      assert updated.text == "New Text"
+    end
+
+    test "annotation: unknown field is silently rejected", ctx do
+      ann = annotation_fixture(ctx.scene, %{"text" => "Unchanged Note"})
+
+      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
+
+      render_hook(view, "update_annotation", %{
+        "id" => to_string(ann.id),
+        "field" => "evil_field",
+        "value" => "hacked"
+      })
+
+      unchanged = Scenes.get_annotation!(ctx.scene.id, ann.id)
+      assert unchanged.text == "Unchanged Note"
+    end
+  end
 end

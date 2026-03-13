@@ -1024,6 +1024,165 @@ defmodule Storyarn.AssetsTest do
     end
   end
 
+  describe "upload_and_create_asset/4 quota enforcement" do
+    setup do
+      user = user_fixture()
+      project = project_fixture(user)
+      %{project: project, user: user}
+    end
+
+    test "rejects upload when workspace storage limit is reached", %{
+      project: project,
+      user: user
+    } do
+      storage_limit = 250 * 1024 * 1024
+
+      # Insert an asset that fills the entire storage limit
+      %Storyarn.Assets.Asset{}
+      |> Ecto.Changeset.change(%{
+        filename: "huge_file.zip",
+        content_type: "application/zip",
+        size: storage_limit,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/huge_file.zip",
+        url: "https://example.com/huge_file.zip",
+        project_id: project.id,
+        uploaded_by_id: user.id
+      })
+      |> Storyarn.Repo.insert!()
+
+      # Create a temp file for the upload attempt
+      tmp_path = Path.join(System.tmp_dir!(), "quota_test_#{Ecto.UUID.generate()}.txt")
+      File.write!(tmp_path, "small content")
+
+      entry = %Phoenix.LiveView.UploadEntry{
+        client_name: "new_file.pdf",
+        client_type: "application/pdf",
+        client_size: 1024
+      }
+
+      try do
+        assert {:error, :limit_reached, %{resource: :storage_bytes_per_workspace}} =
+                 Assets.upload_and_create_asset(tmp_path, entry, project, user)
+      after
+        File.rm(tmp_path)
+      end
+    end
+
+    test "accepts upload when within storage limit", %{project: project, user: user} do
+      tmp_path = Path.join(System.tmp_dir!(), "quota_ok_#{Ecto.UUID.generate()}.txt")
+      File.write!(tmp_path, "small content")
+
+      entry = %Phoenix.LiveView.UploadEntry{
+        client_name: "small_file.pdf",
+        client_type: "application/pdf",
+        client_size: 13
+      }
+
+      try do
+        assert {:ok, asset} = Assets.upload_and_create_asset(tmp_path, entry, project, user)
+        assert asset.filename == "small_file.pdf"
+        assert asset.project_id == project.id
+
+        # Cleanup storage
+        Assets.storage_delete(asset.key)
+      after
+        File.rm(tmp_path)
+      end
+    end
+  end
+
+  describe "blob hash deduplication" do
+    setup do
+      user = user_fixture()
+      project = project_fixture(user)
+      %{project: project, user: user}
+    end
+
+    test "uploading same content twice produces same blob_hash", %{
+      project: project,
+      user: user
+    } do
+      content = "identical content for dedup test"
+
+      tmp_path_a = Path.join(System.tmp_dir!(), "dedup_a_#{Ecto.UUID.generate()}.pdf")
+      tmp_path_b = Path.join(System.tmp_dir!(), "dedup_b_#{Ecto.UUID.generate()}.pdf")
+      File.write!(tmp_path_a, content)
+      File.write!(tmp_path_b, content)
+
+      entry_a = %Phoenix.LiveView.UploadEntry{
+        client_name: "file_a.pdf",
+        client_type: "application/pdf",
+        client_size: byte_size(content)
+      }
+
+      entry_b = %Phoenix.LiveView.UploadEntry{
+        client_name: "file_b.pdf",
+        client_type: "application/pdf",
+        client_size: byte_size(content)
+      }
+
+      try do
+        assert {:ok, asset_a} = Assets.upload_and_create_asset(tmp_path_a, entry_a, project, user)
+        assert {:ok, asset_b} = Assets.upload_and_create_asset(tmp_path_b, entry_b, project, user)
+
+        assert asset_a.blob_hash == asset_b.blob_hash
+        assert asset_a.blob_hash == Storyarn.Assets.BlobStore.compute_hash(content)
+
+        # Different filenames, different keys
+        refute asset_a.key == asset_b.key
+        refute asset_a.id == asset_b.id
+
+        # Cleanup
+        Assets.storage_delete(asset_a.key)
+        Assets.storage_delete(asset_b.key)
+      after
+        File.rm(tmp_path_a)
+        File.rm(tmp_path_b)
+      end
+    end
+
+    test "uploading different content produces different blob_hash", %{
+      project: project,
+      user: user
+    } do
+      content_x = "content version X"
+      content_y = "content version Y"
+
+      tmp_path_x = Path.join(System.tmp_dir!(), "diff_x_#{Ecto.UUID.generate()}.pdf")
+      tmp_path_y = Path.join(System.tmp_dir!(), "diff_y_#{Ecto.UUID.generate()}.pdf")
+      File.write!(tmp_path_x, content_x)
+      File.write!(tmp_path_y, content_y)
+
+      entry_x = %Phoenix.LiveView.UploadEntry{
+        client_name: "file_x.pdf",
+        client_type: "application/pdf",
+        client_size: byte_size(content_x)
+      }
+
+      entry_y = %Phoenix.LiveView.UploadEntry{
+        client_name: "file_y.pdf",
+        client_type: "application/pdf",
+        client_size: byte_size(content_y)
+      }
+
+      try do
+        assert {:ok, asset_x} = Assets.upload_and_create_asset(tmp_path_x, entry_x, project, user)
+        assert {:ok, asset_y} = Assets.upload_and_create_asset(tmp_path_y, entry_y, project, user)
+
+        refute asset_x.blob_hash == asset_y.blob_hash
+        assert asset_x.blob_hash == Storyarn.Assets.BlobStore.compute_hash(content_x)
+        assert asset_y.blob_hash == Storyarn.Assets.BlobStore.compute_hash(content_y)
+
+        # Cleanup
+        Assets.storage_delete(asset_x.key)
+        Assets.storage_delete(asset_y.key)
+      after
+        File.rm(tmp_path_x)
+        File.rm(tmp_path_y)
+      end
+    end
+  end
+
   describe "count_assets_by_type/1 edge cases" do
     test "returns empty map for project without assets" do
       project = project_fixture()

@@ -11,6 +11,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
 
   alias Storyarn.Assets
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Sheets
 
@@ -160,6 +161,23 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
 
   defp upload_banner_file(socket, filename, content_type, binary_data) do
     project = socket.assigns.project
+    workspace = Storyarn.Repo.get!(Storyarn.Workspaces.Workspace, project.workspace_id)
+
+    case Billing.can_upload_asset?(workspace, byte_size(binary_data)) do
+      :ok ->
+        do_upload_banner_file(socket, project, filename, content_type, binary_data)
+
+      {:error, :limit_reached, _details} ->
+        send(
+          self(),
+          {:banner, :error, dgettext("sheets", "Storage limit reached. Upgrade your plan.")}
+        )
+
+        {:noreply, socket}
+    end
+  end
+
+  defp do_upload_banner_file(socket, project, filename, content_type, binary_data) do
     user = socket.assigns.current_user
     sheet = socket.assigns.sheet
     safe_filename = Assets.sanitize_filename(filename)

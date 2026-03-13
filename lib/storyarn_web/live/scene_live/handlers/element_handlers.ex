@@ -18,6 +18,29 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     only: [push_undo: 2, push_undo_coalesced: 2]
 
   # ---------------------------------------------------------------------------
+  # Editable field allowlists (matches schema changeset cast lists,
+  # excluding fields managed by dedicated handlers like position/layer_id)
+  # ---------------------------------------------------------------------------
+
+  @pin_editable_fields ~w(
+    position_x position_y pin_type icon color opacity label
+    target_type target_id tooltip size sheet_id icon_asset_id
+    locked action_type action_data condition condition_effect
+  )
+
+  @zone_editable_fields ~w(
+    name fill_color border_color border_width border_style opacity
+    target_type target_id tooltip
+    locked action_type action_data condition condition_effect
+  )
+
+  @connection_editable_fields ~w(
+    line_style line_width color label bidirectional show_label
+  )
+
+  @annotation_editable_fields ~w(text position_x position_y font_size color locked)
+
+  # ---------------------------------------------------------------------------
   # Safe field-to-atom conversion: avoids ArgumentError on unknown fields
   # ---------------------------------------------------------------------------
 
@@ -187,7 +210,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     end
   end
 
-  def handle_update_pin(%{"field" => field} = params, socket) do
+  def handle_update_pin(%{"field" => field} = params, socket)
+      when field in @pin_editable_fields do
     id = params["id"] || params["element_id"]
 
     case Scenes.get_pin(socket.assigns.scene.id, id) do
@@ -195,6 +219,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       pin -> do_update_pin(socket, pin, field, extract_field_value(params, field))
     end
   end
+
+  def handle_update_pin(%{"field" => _field}, socket), do: {:noreply, socket}
 
   @doc "Marks a pin for pending confirmation-based deletion."
   def handle_set_pending_delete_pin(%{"id" => id}, socket) do
@@ -267,7 +293,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     end
   end
 
-  def handle_update_zone(%{"field" => field} = params, socket) do
+  def handle_update_zone(%{"field" => field} = params, socket)
+      when field in @zone_editable_fields do
     id = params["id"] || params["element_id"]
 
     case Scenes.get_zone(socket.assigns.scene.id, id) do
@@ -275,6 +302,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       zone -> do_update_zone(socket, zone, field, extract_field_value(params, field))
     end
   end
+
+  def handle_update_zone(%{"field" => _field}, socket), do: {:noreply, socket}
 
   @doc "Updates the polygon vertices of a zone after user reshapes it."
   def handle_update_zone_vertices(%{"id" => id, "vertices" => vertices}, socket) do
@@ -472,7 +501,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   @doc "Updates a single field on a connection (e.g., label, color, style)."
-  def handle_update_connection(%{"field" => field} = params, socket) do
+  def handle_update_connection(%{"field" => field} = params, socket)
+      when field in @connection_editable_fields do
     id = params["id"] || params["element_id"]
 
     case Scenes.get_connection(socket.assigns.scene.id, id) do
@@ -480,6 +510,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       conn -> do_update_connection(socket, conn, field, extract_field_value(params, field))
     end
   end
+
+  def handle_update_connection(%{"field" => _field}, socket), do: {:noreply, socket}
 
   @doc "Updates the waypoint list for a connection path."
   def handle_update_connection_waypoints(%{"id" => id, "waypoints" => waypoints}, socket) do
@@ -546,7 +578,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   @doc "Updates a single field on an annotation (e.g., text, font_size, color)."
-  def handle_update_annotation(%{"field" => field} = params, socket) do
+  def handle_update_annotation(%{"field" => field} = params, socket)
+      when field in @annotation_editable_fields do
     id = params["id"] || params["element_id"]
     value = params["value"] || params[field]
 
@@ -555,6 +588,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       annotation -> do_update_annotation(socket, annotation, field, value)
     end
   end
+
+  def handle_update_annotation(%{"field" => _field}, socket), do: {:noreply, socket}
 
   @doc "Moves an annotation to new coordinates. Respects lock state."
   def handle_move_annotation(%{"id" => id, "position_x" => x, "position_y" => y}, socket) do

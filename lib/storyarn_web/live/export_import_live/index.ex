@@ -453,6 +453,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
           socket
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
+          |> assign(:membership, membership)
           |> assign(:can_edit, can_edit)
           |> assign(:current_path, "")
           # Export state

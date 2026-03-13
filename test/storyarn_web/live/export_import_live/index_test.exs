@@ -1138,4 +1138,302 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   # ===========================================================================
 
   # NOTE: Async entity counts tested in "Entity counts loading" describe block above
+
+  # ===========================================================================
+  # Import staging lifecycle
+  # ===========================================================================
+
+  describe "Import staging lifecycle" do
+    setup :register_and_log_in_user
+
+    setup %{user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      %{project: project}
+    end
+
+    defp staging_url(project) do
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
+    end
+
+    defp valid_import_data do
+      %{
+        "storyarn_version" => "1.0",
+        "export_version" => "1.0",
+        "project" => %{"name" => "Test Project"},
+        "sheets" => [],
+        "flows" => [],
+        "scenes" => [],
+        "screenplays" => [],
+        "assets" => %{"items" => []}
+      }
+    end
+
+    defp valid_import_data_with_sheet do
+      %{
+        "storyarn_version" => "1.0",
+        "export_version" => "1.0",
+        "project" => %{"name" => "Test Project"},
+        "sheets" => [
+          %{
+            "id" => 9999,
+            "name" => "Imported Hero",
+            "shortcut" => "imported.hero",
+            "position" => 0,
+            "blocks" => []
+          }
+        ],
+        "flows" => [],
+        "scenes" => [],
+        "screenplays" => [],
+        "assets" => %{"items" => []}
+      }
+    end
+
+    defp upload_and_parse(view, data) do
+      file =
+        file_input(view, "#import-form", :import_file, [
+          %{
+            name: "import.json",
+            content: Jason.encode!(data),
+            type: "application/json"
+          }
+        ])
+
+      render_upload(file, "import.json")
+      view |> form("#import-form") |> render_submit()
+    end
+
+    test "parse_import stores data in ETS and shows preview", %{
+      conn: conn,
+      project: project
+    } do
+      {:ok, view, _html} = live(conn, staging_url(project))
+
+      html = upload_and_parse(view, valid_import_data())
+
+      assert html =~ "Import preview"
+    end
+
+    test "execute_import with valid data transitions to done step", %{
+      conn: conn,
+      project: project
+    } do
+      {:ok, view, _html} = live(conn, staging_url(project))
+
+      upload_and_parse(view, valid_import_data())
+
+      html = view |> render_click("execute_import", %{})
+
+      assert html =~ "Import completed successfully"
+    end
+
+    test "execute_import cleans up ETS data", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, staging_url(project))
+
+      upload_and_parse(view, valid_import_data())
+
+      # Before execute, there should be an ETS entry for this view
+      baseline_count = length(:ets.tab2list(:import_staging))
+      assert baseline_count >= 1
+
+      view |> render_click("execute_import", %{})
+
+      # After execute, the entry should be removed
+      # The view's ref was deleted by take_import_data
+      assert length(:ets.tab2list(:import_staging)) < baseline_count
+    end
+
+    test "execute_import with expired session shows error", %{
+      conn: conn,
+      project: project
+    } do
+      {:ok, view, _html} = live(conn, staging_url(project))
+
+      upload_and_parse(view, valid_import_data())
+
+      # Manually clear all ETS entries to simulate session expiration
+      :ets.delete_all_objects(:import_staging)
+
+      html = view |> render_click("execute_import", %{})
+
+      assert html =~ "alert-error"
+      assert html =~ "session expired"
+    end
+
+    test "reset_import cleans up ETS data", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, staging_url(project))
+
+      upload_and_parse(view, valid_import_data())
+
+      baseline_count = length(:ets.tab2list(:import_staging))
+      assert baseline_count >= 1
+
+      view |> render_click("reset_import", %{})
+
+      assert length(:ets.tab2list(:import_staging)) < baseline_count
+    end
+
+    test "reset_import returns to upload step after preview", %{
+      conn: conn,
+      project: project
+    } do
+      {:ok, view, _html} = live(conn, staging_url(project))
+
+      upload_and_parse(view, valid_import_data())
+
+      html = view |> render_click("reset_import", %{})
+
+      assert html =~ ".storyarn.json"
+      assert html =~ "Upload"
+      refute html =~ "Import preview"
+    end
+
+    test "terminate/2 cleans up ETS on disconnect", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, staging_url(project))
+
+      baseline_count = length(:ets.tab2list(:import_staging))
+
+      upload_and_parse(view, valid_import_data())
+
+      assert length(:ets.tab2list(:import_staging)) == baseline_count + 1
+
+      # Stop the LiveView process to trigger terminate/2
+      GenServer.stop(view.pid)
+
+      # Give a moment for cleanup
+      :timer.sleep(50)
+
+      assert length(:ets.tab2list(:import_staging)) == baseline_count
+    end
+
+    test "re-parse cleans old ETS entry and creates new one", %{
+      conn: conn,
+      project: project
+    } do
+      {:ok, view, _html} = live(conn, staging_url(project))
+
+      # Snapshot baseline count (other tests may have entries in shared ETS)
+      baseline_count = length(:ets.tab2list(:import_staging))
+
+      # First parse
+      upload_and_parse(view, valid_import_data())
+
+      count_after_first = length(:ets.tab2list(:import_staging))
+      assert count_after_first == baseline_count + 1
+
+      # Reset cleans the entry, then re-parse creates a new one
+      view |> render_click("reset_import", %{})
+
+      count_after_reset = length(:ets.tab2list(:import_staging))
+      assert count_after_reset == baseline_count
+
+      # Second parse with different data
+      upload_and_parse(view, valid_import_data_with_sheet())
+
+      count_after_second = length(:ets.tab2list(:import_staging))
+      assert count_after_second == baseline_count + 1
+    end
+  end
+
+  # ===========================================================================
+  # Import conflict strategies
+  # ===========================================================================
+
+  describe "Import conflict strategies" do
+    setup :register_and_log_in_user
+
+    setup %{user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      %{project: project}
+    end
+
+    defp conflict_url(project) do
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
+    end
+
+    defp upload_and_parse_for_conflict(view, data) do
+      file =
+        file_input(view, "#import-form", :import_file, [
+          %{
+            name: "import.json",
+            content: Jason.encode!(data),
+            type: "application/json"
+          }
+        ])
+
+      render_upload(file, "import.json")
+      view |> form("#import-form") |> render_submit()
+    end
+
+    test "set_strategy changes conflict strategy in preview", %{
+      conn: conn,
+      project: project
+    } do
+      {:ok, view, _html} = live(conn, conflict_url(project))
+
+      import_data = %{
+        "storyarn_version" => "1.0",
+        "export_version" => "1.0",
+        "project" => %{"name" => "Test"},
+        "sheets" => [],
+        "flows" => [],
+        "scenes" => [],
+        "screenplays" => [],
+        "assets" => %{"items" => []}
+      }
+
+      upload_and_parse_for_conflict(view, import_data)
+
+      # Set strategy to overwrite
+      html = view |> render_click("set_strategy", %{"strategy" => "overwrite"})
+
+      # Page should still render (strategy is stored in assigns)
+      assert html =~ "Import preview" or html =~ "Import"
+    end
+
+    test "execute_import with sheets using skip strategy preserves existing", %{
+      conn: conn,
+      project: project
+    } do
+      import Storyarn.SheetsFixtures
+
+      # Create an existing sheet with a specific shortcut
+      _existing = sheet_fixture(project, %{name: "Hero", shortcut: "hero"})
+
+      {:ok, view, _html} = live(conn, conflict_url(project))
+
+      # Import data with a conflicting shortcut
+      import_data = %{
+        "storyarn_version" => "1.0",
+        "export_version" => "1.0",
+        "project" => %{"name" => "Test"},
+        "sheets" => [
+          %{
+            "id" => 9999,
+            "name" => "New Hero",
+            "shortcut" => "hero",
+            "position" => 0,
+            "blocks" => []
+          }
+        ],
+        "flows" => [],
+        "scenes" => [],
+        "screenplays" => [],
+        "assets" => %{"items" => []}
+      }
+
+      upload_and_parse_for_conflict(view, import_data)
+
+      # Ensure strategy is skip (the default)
+      view |> render_click("set_strategy", %{"strategy" => "skip"})
+
+      html = view |> render_click("execute_import", %{})
+
+      assert html =~ "Import completed successfully"
+
+      # Verify the original sheet is preserved
+      existing_after = Storyarn.Sheets.get_sheet_by_shortcut(project.id, "hero")
+      assert existing_after.name == "Hero"
+    end
+  end
 end

@@ -10,6 +10,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
 
   alias Storyarn.Assets
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Flows
 
@@ -165,36 +166,53 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
   defp process_upload(socket, node_id, filename, content_type, binary_data) do
     if Assets.allowed_content_type?(content_type) do
       project = socket.assigns.project
-      user = socket.assigns.current_user
-      safe_filename = Assets.sanitize_filename(filename)
-      key = Assets.generate_key(project, safe_filename)
+      workspace = Storyarn.Repo.get!(Storyarn.Workspaces.Workspace, project.workspace_id)
 
-      blob_hash = BlobStore.compute_hash(binary_data)
-      ext = BlobStore.ext_from_content_type(content_type)
-      BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data)
+      case Billing.can_upload_asset?(workspace, byte_size(binary_data)) do
+        :ok ->
+          do_process_upload(socket, project, node_id, filename, content_type, binary_data)
 
-      asset_attrs = %{
-        filename: safe_filename,
-        content_type: content_type,
-        size: byte_size(binary_data),
-        key: key,
-        blob_hash: blob_hash
-      }
+        {:error, :limit_reached, _details} ->
+          send(
+            self(),
+            {:audio_tab, :error, dgettext("sheets", "Storage limit reached. Upgrade your plan.")}
+          )
 
-      with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
-           {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
-        audio_assets = [asset | socket.assigns.audio_assets]
-        socket = assign(socket, audio_assets: audio_assets, uploading_node_id: nil)
-        Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
-        update_node_audio(socket, node_id, asset.id)
-      else
-        {:error, _reason} ->
-          send(self(), {:audio_tab, :error, dgettext("sheets", "Could not upload audio file.")})
           {:noreply, assign(socket, :uploading_node_id, nil)}
       end
     else
       send(self(), {:audio_tab, :error, dgettext("sheets", "Unsupported file type.")})
       {:noreply, assign(socket, :uploading_node_id, nil)}
+    end
+  end
+
+  defp do_process_upload(socket, project, node_id, filename, content_type, binary_data) do
+    user = socket.assigns.current_user
+    safe_filename = Assets.sanitize_filename(filename)
+    key = Assets.generate_key(project, safe_filename)
+
+    blob_hash = BlobStore.compute_hash(binary_data)
+    ext = BlobStore.ext_from_content_type(content_type)
+    BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data)
+
+    asset_attrs = %{
+      filename: safe_filename,
+      content_type: content_type,
+      size: byte_size(binary_data),
+      key: key,
+      blob_hash: blob_hash
+    }
+
+    with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
+         {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
+      audio_assets = [asset | socket.assigns.audio_assets]
+      socket = assign(socket, audio_assets: audio_assets, uploading_node_id: nil)
+      Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
+      update_node_audio(socket, node_id, asset.id)
+    else
+      {:error, _reason} ->
+        send(self(), {:audio_tab, :error, dgettext("sheets", "Could not upload audio file.")})
+        {:noreply, assign(socket, :uploading_node_id, nil)}
     end
   end
 
