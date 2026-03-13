@@ -261,6 +261,9 @@ defmodule StoryarnWeb.Layouts do
     default: false,
     doc: "when true, main area has no padding/scroll (canvas views)"
 
+  attr :my_drafts, :list, default: [], doc: "current user's active drafts for tree panel"
+  attr :renaming_draft, :map, default: nil, doc: "draft currently being renamed inline"
+
   slot :tree_content, doc: "tree panel content (tree component)"
   slot :top_bar_extra, doc: "extra content rendered next to the left toolbar (same row)"
   slot :top_bar_extra_right, doc: "extra content rendered next to the right toolbar (same row)"
@@ -351,6 +354,8 @@ defmodule StoryarnWeb.Layouts do
         can_edit={@can_edit}
         workspace={@workspace}
         project={@project}
+        my_drafts={@my_drafts}
+        renaming_draft={@renaming_draft}
       >
         <:tree_content>
           {render_slot(@tree_content)}

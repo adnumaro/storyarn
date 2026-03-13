@@ -18,6 +18,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.Components.RightSidebar
 
   alias StoryarnWeb.Components.DraftComponents
+  alias StoryarnWeb.Helpers.DraftTouchTimer
   alias StoryarnWeb.Live.Shared.DraftHandlers
 
   alias Storyarn.Assets
@@ -57,6 +58,8 @@ defmodule StoryarnWeb.SceneLive.Show do
       canvas_mode={true}
       restoration_banner={@restoration_banner}
       online_users={@online_users}
+      my_drafts={@my_drafts}
+      renaming_draft={@renaming_draft}
     >
       <:tree_content>
         <div role="tablist" class="tabs tabs-border tabs-sm mb-6">
@@ -524,6 +527,12 @@ defmodule StoryarnWeb.SceneLive.Show do
           |> assign(:pending_delete_id, nil)
           |> assign(:is_draft, false)
           |> assign(:draft, nil)
+          |> assign(:renaming_draft, nil)
+          |> assign(:_draft_touch_ref, nil)
+          |> assign(
+            :my_drafts,
+            Drafts.list_my_drafts(project.id, socket.assigns.current_scope.user.id)
+          )
           |> assign(:merge_summary, nil)
           |> maybe_allow_background_upload(can_edit)
 
@@ -638,7 +647,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp load_draft_scene(socket, draft_id) do
     %{project: project, current_scope: scope, can_edit: can_edit} = socket.assigns
 
-    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id),
+    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id, project.id),
          true <- draft.entity_type == "scene" and draft.status == "active",
          entity when not is_nil(entity) <- Drafts.get_draft_entity(draft) do
       # Skip collaboration for drafts
@@ -748,7 +757,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("show_create_version_modal", _params, socket) do
     send_update(StoryarnWeb.Components.VersionsSection,
       id: "scene-versions-section",
-      show_create_version_modal: true
+      action: :show_create_version_modal
     )
 
     {:noreply, socket}
@@ -1360,6 +1369,28 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
+  def handle_event("rename_draft_inline", %{"draft-id" => draft_id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      DraftHandlers.handle_rename_draft_inline(socket, draft_id)
+    end)
+  end
+
+  def handle_event("submit_rename_draft", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      DraftHandlers.handle_submit_rename_draft(socket, params)
+    end)
+  end
+
+  def handle_event("cancel_rename_draft", _params, socket) do
+    {:noreply, assign(socket, :renaming_draft, nil)}
+  end
+
+  def handle_event("discard_draft_from_list", %{"draft_id" => draft_id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      DraftHandlers.handle_discard_draft_from_list(socket, draft_id)
+    end)
+  end
+
   def handle_event("set_pending_delete_scene", %{"id" => id}, socket) do
     handle_set_pending_delete(socket, id)
   end
@@ -1492,6 +1523,10 @@ defmodule StoryarnWeb.SceneLive.Show do
     {:noreply, socket}
   end
 
+  def handle_info({:versions_section, :flash, %{kind: kind, message: message}}, socket) do
+    {:noreply, put_flash(socket, kind, message)}
+  end
+
   # ---------------------------------------------------------------------------
   # Handle Info: Collaboration
   # ---------------------------------------------------------------------------
@@ -1534,6 +1569,8 @@ defmodule StoryarnWeb.SceneLive.Show do
 
     {:noreply, schedule_lock_heartbeat(socket)}
   end
+
+  def handle_info(:touch_draft, socket), do: DraftHandlers.handle_touch_draft(socket)
 
   @impl true
   def terminate(_reason, socket) do
@@ -1610,7 +1647,10 @@ defmodule StoryarnWeb.SceneLive.Show do
       Collab.broadcast_change(socket, scope, action, payload)
     end
 
-    {:noreply, assign(socket, :_broadcast, nil)}
+    {:noreply,
+     socket
+     |> assign(:_broadcast, nil)
+     |> DraftTouchTimer.schedule_touch()}
   end
 
   # ---------------------------------------------------------------------------

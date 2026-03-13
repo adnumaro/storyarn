@@ -17,10 +17,15 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
   import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
+  alias StoryarnWeb.Helpers.DraftTouchTimer
+
   @spec handle_reset_save_status(Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_reset_save_status(socket) do
-    {:noreply, assign(socket, :save_status, :idle)}
+    {:noreply,
+     socket
+     |> assign(:save_status, :idle)
+     |> DraftTouchTimer.schedule_touch()}
   end
 
   @spec handle_flow_refresh(Phoenix.LiveView.Socket.t()) ::

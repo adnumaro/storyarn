@@ -108,9 +108,9 @@ defmodule Storyarn.Drafts.MergeEngine do
   end
 
   defp mark_as_merged(draft) do
-    case draft |> Draft.merge_changeset() |> Repo.update() do
-      {:ok, _} -> :ok
-      {:error, changeset} -> {:error, changeset}
+    with {:ok, changeset} <- Draft.merge_changeset(draft),
+         {:ok, _} <- Repo.update(changeset) do
+      :ok
     end
   end
 

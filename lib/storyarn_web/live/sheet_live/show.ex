@@ -11,6 +11,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
   alias StoryarnWeb.Components.DraftComponents
+  alias StoryarnWeb.Helpers.DraftTouchTimer
   alias StoryarnWeb.Live.Shared.DraftHandlers
 
   alias Storyarn.Collaboration
@@ -46,6 +47,8 @@ defmodule StoryarnWeb.SheetLive.Show do
       can_edit={@can_edit}
       online_users={@online_users}
       restoration_banner={@restoration_banner}
+      my_drafts={@my_drafts}
+      renaming_draft={@renaming_draft}
     >
       <:top_bar_extra>
         <DraftComponents.draft_banner is_draft={@is_draft} />
@@ -273,7 +276,13 @@ defmodule StoryarnWeb.SheetLive.Show do
          |> assign(:sheet_data_loaded, false)
          |> assign(:is_draft, false)
          |> assign(:draft, nil)
-         |> assign(:merge_summary, nil)}
+         |> assign(:merge_summary, nil)
+         |> assign(:renaming_draft, nil)
+         |> assign(:_draft_touch_ref, nil)
+         |> assign(
+           :my_drafts,
+           Drafts.list_my_drafts(project.id, socket.assigns.current_scope.user.id)
+         )}
 
       {:error, _reason} ->
         {:ok,
@@ -305,7 +314,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   defp load_draft_sheet(socket, draft_id) do
     %{project: project, current_scope: scope} = socket.assigns
 
-    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id),
+    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id, project.id),
          true <- draft.entity_type == "sheet" and draft.status == "active",
          entity when not is_nil(entity) <- Drafts.get_draft_entity(draft) do
       # Skip collaboration for drafts
@@ -498,6 +507,28 @@ defmodule StoryarnWeb.SheetLive.Show do
     end)
   end
 
+  def handle_event("rename_draft_inline", %{"draft-id" => draft_id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      DraftHandlers.handle_rename_draft_inline(socket, draft_id)
+    end)
+  end
+
+  def handle_event("submit_rename_draft", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      DraftHandlers.handle_submit_rename_draft(socket, params)
+    end)
+  end
+
+  def handle_event("cancel_rename_draft", _params, socket) do
+    {:noreply, assign(socket, :renaming_draft, nil)}
+  end
+
+  def handle_event("discard_draft_from_list", %{"draft_id" => draft_id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      DraftHandlers.handle_discard_draft_from_list(socket, draft_id)
+    end)
+  end
+
   def handle_event("set_pending_delete_sheet", %{"id" => id}, socket) do
     handle_set_pending_delete(socket, id)
   end
@@ -583,8 +614,13 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   @impl true
   def handle_info(:reset_save_status, socket) do
-    {:noreply, assign(socket, :save_status, :idle)}
+    {:noreply,
+     socket
+     |> assign(:save_status, :idle)
+     |> DraftTouchTimer.schedule_touch()}
   end
+
+  def handle_info(:touch_draft, socket), do: DraftHandlers.handle_touch_draft(socket)
 
   # Handle messages from ContentTab LiveComponent
   def handle_info({:content_tab, :saved}, socket) do
@@ -619,6 +655,10 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
     {:noreply, mark_saved(socket)}
+  end
+
+  def handle_info({:versions_section, :flash, %{kind: kind, message: message}}, socket) do
+    {:noreply, put_flash(socket, kind, message)}
   end
 
   # Handle messages from Banner LiveComponent

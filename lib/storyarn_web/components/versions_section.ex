@@ -164,6 +164,22 @@ defmodule StoryarnWeb.Components.VersionsSection do
         socket
       end
 
+    socket =
+      case assigns[:action] do
+        :show_create_version_modal ->
+          if socket.assigns.can_name_version do
+            assign(socket, :show_create_version_modal, true)
+          else
+            flash_parent(socket, :error,
+              socket.assigns.limit_message ||
+                dgettext("versioning", "Named version limit reached.")
+            )
+          end
+
+        _ ->
+          socket
+      end
+
     {:ok, socket}
   end
 
@@ -173,7 +189,12 @@ defmodule StoryarnWeb.Components.VersionsSection do
 
   @impl true
   def handle_event("show_create_version_modal", _params, socket) do
-    {:noreply, assign(socket, :show_create_version_modal, true)}
+    if socket.assigns.can_name_version do
+      {:noreply, assign(socket, :show_create_version_modal, true)}
+    else
+      {:noreply,
+       flash_parent(socket, :error, socket.assigns.limit_message || dgettext("versioning", "Named version limit reached."))}
+    end
   end
 
   def handle_event("hide_create_version_modal", _params, socket) do
@@ -271,7 +292,9 @@ defmodule StoryarnWeb.Components.VersionsSection do
 
     if title != nil and not check_named_version_allowed?(socket) do
       {:noreply,
-       put_flash(socket, :error, dgettext("versioning", "Named version limit reached."))}
+       socket
+       |> assign(:show_create_version_modal, false)
+       |> flash_parent(:error, dgettext("versioning", "Named version limit reached."))}
     else
       do_create_version(socket, title, description)
     end
@@ -295,10 +318,13 @@ defmodule StoryarnWeb.Components.VersionsSection do
           |> assign(:show_create_version_modal, false)
 
         notify_parent(:version_created, %{version: version})
-        {:noreply, put_flash(socket, :info, dgettext("versioning", "Version created."))}
+        {:noreply, flash_parent(socket, :info, dgettext("versioning", "Version created."))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
+        {:noreply,
+         socket
+         |> assign(:show_create_version_modal, false)
+         |> flash_parent(:error, dgettext("versioning", "Could not create version."))}
     end
   end
 
@@ -322,21 +348,21 @@ defmodule StoryarnWeb.Components.VersionsSection do
             |> assign(:promote_version, nil)
 
           {:noreply,
-           put_flash(socket, :info, dgettext("versioning", "Version named successfully."))}
+           flash_parent(socket, :info, dgettext("versioning", "Version named successfully."))}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
+          {:noreply, flash_parent(socket, :error, dgettext("versioning", "Could not name version."))}
       end
     else
       :error ->
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Invalid version number."))}
+        {:noreply, flash_parent(socket, :error, dgettext("versioning", "Invalid version number."))}
 
       nil ->
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+        {:noreply, flash_parent(socket, :error, dgettext("versioning", "Version not found."))}
 
       false ->
         {:noreply,
-         put_flash(socket, :error, dgettext("versioning", "Named version limit reached."))}
+         flash_parent(socket, :error, dgettext("versioning", "Named version limit reached."))}
     end
   end
 
@@ -348,14 +374,14 @@ defmodule StoryarnWeb.Components.VersionsSection do
 
         case Versioning.get_version(entity_type, entity_id, number) do
           nil ->
-            {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+            {:noreply, flash_parent(socket, :error, dgettext("versioning", "Version not found."))}
 
           version ->
             detect_and_show_preview(socket, version)
         end
 
       :error ->
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Invalid version number."))}
+        {:noreply, flash_parent(socket, :error, dgettext("versioning", "Invalid version number."))}
     end
   end
 
@@ -376,7 +402,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
 
       {:error, _} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("versioning", "Could not load version snapshot."))}
+         flash_parent(socket, :error, dgettext("versioning", "Could not load version snapshot."))}
     end
   end
 
@@ -404,7 +430,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
             })
 
             {:noreply,
-             put_flash(
+             flash_parent(
                socket,
                :info,
                dgettext("versioning", "Restored to version %{number}",
@@ -416,7 +442,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
             {:noreply,
              socket
              |> assign(:restore_preview, nil)
-             |> put_flash(:error, dgettext("versioning", "Could not restore version."))}
+             |> flash_parent(:error, dgettext("versioning", "Could not restore version."))}
         end
     end
   end
@@ -429,14 +455,14 @@ defmodule StoryarnWeb.Components.VersionsSection do
 
         case Versioning.get_version(entity_type, entity_id, number) do
           nil ->
-            {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+            {:noreply, flash_parent(socket, :error, dgettext("versioning", "Version not found."))}
 
           version ->
             do_delete_version(socket, version)
         end
 
       :error ->
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Invalid version number."))}
+        {:noreply, flash_parent(socket, :error, dgettext("versioning", "Invalid version number."))}
     end
   end
 
@@ -449,10 +475,10 @@ defmodule StoryarnWeb.Components.VersionsSection do
           |> check_named_version_limit()
 
         notify_parent(:version_deleted, %{version: version})
-        {:noreply, put_flash(socket, :info, dgettext("versioning", "Version deleted."))}
+        {:noreply, flash_parent(socket, :info, dgettext("versioning", "Version deleted."))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not delete version."))}
+        {:noreply, flash_parent(socket, :error, dgettext("versioning", "Could not delete version."))}
     end
   end
 
@@ -530,6 +556,11 @@ defmodule StoryarnWeb.Components.VersionsSection do
 
   defp notify_parent(action, data) do
     send(self(), {:versions_section, action, data})
+  end
+
+  defp flash_parent(socket, kind, message) do
+    notify_parent(:flash, %{kind: kind, message: message})
+    socket
   end
 
   # ===========================================================================
@@ -673,7 +704,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
   defp create_version_form(assigns) do
     ~H"""
     <h3 class="font-bold text-lg mb-4">{dgettext("versioning", "Create Version")}</h3>
-    <form phx-submit="create_version" phx-target={@target}>
+    <form id="create-version-form" phx-submit="create_version" phx-target={@target}>
       <div class="mb-4">
         <label class="label" for="version-title">
           <span class="label-text">{dgettext("versioning", "Title")}</span>
@@ -729,7 +760,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
     <p class="text-sm text-base-content/70 mb-4">
       {dgettext("versioning", "Give this auto-save a name to make it a milestone.")}
     </p>
-    <form phx-submit="promote_version" phx-target={@target}>
+    <form id="promote-version-form" phx-submit="promote_version" phx-target={@target}>
       <input type="hidden" name="version_number" value={@version.version_number} />
       <div class="mb-4">
         <label class="label" for="promote-version-title">

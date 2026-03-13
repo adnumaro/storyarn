@@ -127,8 +127,8 @@ defmodule Storyarn.Flows do
   Gets a single flow by ID within a project.
   Raises `Ecto.NoResultsError` if not found.
   """
-  @spec get_flow!(integer(), integer()) :: flow()
-  defdelegate get_flow!(project_id, flow_id), to: FlowCrud
+  @spec get_flow!(integer(), integer(), keyword()) :: flow()
+  defdelegate get_flow!(project_id, flow_id, opts \\ []), to: FlowCrud
 
   @doc """
   Creates a child flow and assigns it to a node's referenced_flow_id.

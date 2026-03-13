@@ -265,16 +265,16 @@ defmodule Storyarn.Drafts.DraftCrudTest do
   end
 
   # ===========================================================================
-  # get_my_draft/2
+  # get_my_draft/3
   # ===========================================================================
 
-  describe "get_my_draft/2" do
-    test "returns draft owned by the user" do
+  describe "get_my_draft/3" do
+    test "returns draft owned by the user in the project" do
       %{user: user, project: project} = setup_project()
       flow = flow_fixture(project)
 
       {:ok, draft} = Drafts.create_draft(project.id, "flow", flow.id, user.id)
-      fetched = Drafts.get_my_draft(draft.id, user.id)
+      fetched = Drafts.get_my_draft(draft.id, user.id, project.id)
 
       assert fetched.id == draft.id
       assert fetched.created_by.id == user.id
@@ -288,11 +288,21 @@ defmodule Storyarn.Drafts.DraftCrudTest do
 
       {:ok, draft} = Drafts.create_draft(project.id, "flow", flow.id, user1.id)
 
-      assert Drafts.get_my_draft(draft.id, user2.id) == nil
+      assert Drafts.get_my_draft(draft.id, user2.id, project.id) == nil
+    end
+
+    test "returns nil for draft in a different project" do
+      %{user: user, project: project1} = setup_project()
+      project2 = project_fixture(user)
+      flow = flow_fixture(project1)
+
+      {:ok, draft} = Drafts.create_draft(project1.id, "flow", flow.id, user.id)
+
+      assert Drafts.get_my_draft(draft.id, user.id, project2.id) == nil
     end
 
     test "returns nil for non-existent draft" do
-      assert Drafts.get_my_draft(-1, -1) == nil
+      assert Drafts.get_my_draft(-1, -1, -1) == nil
     end
   end
 

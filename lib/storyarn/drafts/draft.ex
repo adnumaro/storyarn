@@ -11,6 +11,7 @@ defmodule Storyarn.Drafts.Draft do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Projects.Project
+  alias Storyarn.Shared.TimeHelpers
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -20,6 +21,8 @@ defmodule Storyarn.Drafts.Draft do
           name: String.t() | nil,
           status: String.t(),
           merged_at: DateTime.t() | nil,
+          last_edited_at: DateTime.t() | nil,
+          source_name: String.t() | nil,
           project_id: integer() | nil,
           project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
           created_by_id: integer() | nil,
@@ -37,6 +40,8 @@ defmodule Storyarn.Drafts.Draft do
     field :name, :string
     field :status, :string, default: "active"
     field :merged_at, :utc_datetime
+    field :last_edited_at, :utc_datetime
+    field :source_name, :string, virtual: true
 
     belongs_to :project, Project
     belongs_to :created_by, User
@@ -53,6 +58,17 @@ defmodule Storyarn.Drafts.Draft do
     |> validate_required([:entity_type, :source_entity_id, :name])
     |> validate_inclusion(:entity_type, @valid_entity_types)
     |> validate_length(:name, min: 1, max: 200)
+    |> put_change(:last_edited_at, TimeHelpers.now())
+  end
+
+  @doc """
+  Changeset for renaming a draft.
+  """
+  def rename_changeset(draft, attrs) do
+    draft
+    |> cast(attrs, [:name])
+    |> validate_required([:name])
+    |> validate_length(:name, min: 1, max: 200)
   end
 
   @doc """
@@ -68,7 +84,10 @@ defmodule Storyarn.Drafts.Draft do
   Only valid when current status is "active".
   """
   def merge_changeset(%__MODULE__{status: "active"} = draft) do
-    draft
-    |> change(%{status: "merged", merged_at: Storyarn.Shared.TimeHelpers.now()})
+    {:ok,
+     draft
+     |> change(%{status: "merged", merged_at: TimeHelpers.now()})}
   end
+
+  def merge_changeset(%__MODULE__{}), do: {:error, :not_active}
 end

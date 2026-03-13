@@ -118,6 +118,93 @@ defmodule StoryarnWeb.Live.Shared.DraftHandlers do
     end
   end
 
+  @doc """
+  Handles starting an inline rename of a draft from the drafts list.
+  Sets `:renaming_draft` assign to show the inline input form.
+  """
+  def handle_rename_draft_inline(socket, draft_id) do
+    %{current_scope: scope, project: project} = socket.assigns
+
+    case Drafts.get_my_draft(draft_id, scope.user.id, project.id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("drafts", "Draft not found."))}
+
+      draft ->
+        {:noreply, Phoenix.Component.assign(socket, :renaming_draft, draft)}
+    end
+  end
+
+  @doc """
+  Handles submitting a draft rename.
+  """
+  def handle_submit_rename_draft(socket, %{"name" => name, "draft_id" => draft_id}) do
+    %{current_scope: scope, project: project} = socket.assigns
+
+    case Drafts.get_my_draft(draft_id, scope.user.id, project.id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("drafts", "Draft not found."))}
+
+      draft ->
+        case Drafts.rename_draft(draft, name) do
+          {:ok, updated} ->
+            updated_list =
+              Enum.map(socket.assigns.my_drafts, fn d ->
+                if d.id == updated.id, do: %{d | name: updated.name}, else: d
+              end)
+
+            {:noreply,
+             socket
+             |> Phoenix.Component.assign(:renaming_draft, nil)
+             |> Phoenix.Component.assign(:my_drafts, updated_list)}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, dgettext("drafts", "Could not rename draft."))}
+        end
+    end
+  end
+
+  def handle_submit_rename_draft(socket, _params) do
+    {:noreply, socket}
+  end
+
+  @doc """
+  Handles discarding a draft from the drafts list (not the current draft being edited).
+  """
+  def handle_discard_draft_from_list(socket, draft_id) do
+    %{current_scope: scope, project: project} = socket.assigns
+
+    case Drafts.get_my_draft(draft_id, scope.user.id, project.id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("drafts", "Draft not found."))}
+
+      draft ->
+        case Drafts.discard_draft(draft) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, dgettext("drafts", "Draft discarded."))
+             |> Phoenix.Component.assign(
+               :my_drafts,
+               Drafts.list_my_drafts(project.id, scope.user.id)
+             )}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, dgettext("drafts", "Could not discard draft."))}
+        end
+    end
+  end
+
+  @doc """
+  Handles the `:touch_draft` message. Call from `handle_info(:touch_draft, socket)`.
+  """
+  def handle_touch_draft(socket) do
+    if socket.assigns[:is_draft] && socket.assigns[:draft] do
+      Drafts.touch_draft(socket.assigns.draft.id)
+    end
+
+    {:noreply, socket}
+  end
+
   defp editor_scope_for(%{entity_type: "flow", source_entity_id: id}), do: {:flow, id}
   defp editor_scope_for(%{entity_type: "sheet", source_entity_id: id}), do: {:sheet, id}
   defp editor_scope_for(%{entity_type: "scene", source_entity_id: id}), do: {:scene, id}

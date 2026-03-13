@@ -181,17 +181,22 @@ defmodule Storyarn.Flows.FlowCrud do
     |> Repo.one()
   end
 
-  def get_flow!(project_id, flow_id) do
+  def get_flow!(project_id, flow_id, opts \\ []) do
     active_nodes_query =
       from(n in FlowNode, where: is_nil(n.deleted_at), order_by: [asc: n.inserted_at])
 
-    from(f in Flow,
-      where:
-        f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at) and
-          is_nil(f.draft_id),
-      preload: [:connections, nodes: ^active_nodes_query]
-    )
-    |> Repo.one!()
+    query =
+      from(f in Flow,
+        where: f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at),
+        preload: [:connections, nodes: ^active_nodes_query]
+      )
+
+    query =
+      if Keyword.get(opts, :include_drafts, false),
+        do: query,
+        else: where(query, [f], is_nil(f.draft_id))
+
+    Repo.one!(query)
   end
 
   @doc """

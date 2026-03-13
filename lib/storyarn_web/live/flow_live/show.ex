@@ -65,6 +65,8 @@ defmodule StoryarnWeb.FlowLive.Show do
       can_edit={@can_edit}
       canvas_mode={true}
       restoration_banner={@restoration_banner}
+      my_drafts={@my_drafts}
+      renaming_draft={@renaming_draft}
     >
       <:tree_content>
         <FlowTree.flows_section
@@ -96,6 +98,8 @@ defmodule StoryarnWeb.FlowLive.Show do
       online_users={@online_users}
       canvas_mode={true}
       restoration_banner={@restoration_banner}
+      my_drafts={@my_drafts}
+      renaming_draft={@renaming_draft}
     >
       <:top_bar_extra>
         <DraftComponents.draft_banner is_draft={@is_draft} />
@@ -338,6 +342,12 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:is_draft, false)
           |> assign(:draft, nil)
           |> assign(:merge_summary, nil)
+          |> assign(:renaming_draft, nil)
+          |> assign(:_draft_touch_ref, nil)
+          |> assign(
+            :my_drafts,
+            Drafts.list_my_drafts(project.id, socket.assigns.current_scope.user.id)
+          )
 
         {:ok, socket}
 
@@ -428,7 +438,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   defp load_draft_flow(socket, draft_id) do
     %{project: project, current_scope: scope} = socket.assigns
 
-    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id),
+    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id, project.id),
          true <- draft.entity_type == "flow" and draft.status == "active",
          entity when not is_nil(entity) <- Drafts.get_draft_entity(draft) do
       socket
@@ -505,7 +515,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("show_create_version_modal", _params, socket) do
     send_update(StoryarnWeb.Components.VersionsSection,
       id: "flow-versions-section",
-      show_create_version_modal: true
+      action: :show_create_version_modal
     )
 
     {:noreply, socket}
@@ -513,11 +523,11 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   # Triggered by the FlowLoader hook after the browser has painted the spinner.
   def handle_event("load_flow_data", _params, socket) do
-    %{flow: flow, project: project} = socket.assigns
+    %{flow: flow, project: project, is_draft: is_draft} = socket.assigns
 
     socket =
       start_async(socket, :load_flow_data, fn ->
-        full_flow = Flows.get_flow!(project.id, flow.id)
+        full_flow = Flows.get_flow!(project.id, flow.id, include_drafts: is_draft)
         project_variables = Sheets.list_project_variables(project.id)
 
         %{
@@ -1176,6 +1186,28 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  def handle_event("rename_draft_inline", %{"draft-id" => draft_id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      DraftHandlers.handle_rename_draft_inline(socket, draft_id)
+    end)
+  end
+
+  def handle_event("submit_rename_draft", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      DraftHandlers.handle_submit_rename_draft(socket, params)
+    end)
+  end
+
+  def handle_event("cancel_rename_draft", _params, socket) do
+    {:noreply, assign(socket, :renaming_draft, nil)}
+  end
+
+  def handle_event("discard_draft_from_list", %{"draft_id" => draft_id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      DraftHandlers.handle_discard_draft_from_list(socket, draft_id)
+    end)
+  end
+
   def handle_event("set_pending_delete_flow", %{"id" => id}, socket) do
     handle_set_pending_delete(socket, id)
   end
@@ -1346,8 +1378,12 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
-  def handle_info(:reset_save_status, socket),
-    do: EditorInfoHandlers.handle_reset_save_status(socket)
+  def handle_info(:reset_save_status, socket) do
+    EditorInfoHandlers.handle_reset_save_status(socket)
+  end
+
+  # Scheduled by DraftTouchTimer via EditorInfoHandlers.handle_reset_save_status/1
+  def handle_info(:touch_draft, socket), do: DraftHandlers.handle_touch_draft(socket)
 
   def handle_info({:load_node_select_data, node}, socket) do
     socket = NodeTypeRegistry.on_select(node.type, node, socket)
@@ -1386,6 +1422,10 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
     {:noreply, socket}
+  end
+
+  def handle_info({:versions_section, :flash, %{kind: kind, message: message}}, socket) do
+    {:noreply, put_flash(socket, kind, message)}
   end
 
   def handle_info({:node_updated, updated_node}, socket),

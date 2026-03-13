@@ -17,6 +17,8 @@ defmodule StoryarnWeb.Components.FocusLayout do
   import StoryarnWeb.Components.MemberComponents, only: [user_avatar: 1]
   import StoryarnWeb.Components.TreeComponents, only: [tree_link: 1]
 
+  alias StoryarnWeb.Components.Sidebar.DraftList
+
   # ============================================================================
   # Tool definitions
   # ============================================================================
@@ -357,6 +359,8 @@ defmodule StoryarnWeb.Components.FocusLayout do
   attr :can_edit, :boolean, default: false
   attr :workspace, :map, required: true
   attr :project, :map, required: true
+  attr :my_drafts, :list, default: []
+  attr :renaming_draft, :map, default: nil
 
   slot :tree_content, required: true
 
@@ -395,6 +399,13 @@ defmodule StoryarnWeb.Components.FocusLayout do
       <%!-- Tree content (scrollable) --%>
       <div class="flex-1 overflow-y-auto p-2">
         {render_slot(@tree_content)}
+        <DraftList.drafts_section
+          :if={@my_drafts != []}
+          my_drafts={@my_drafts}
+          workspace={@workspace}
+          project={@project}
+          renaming_draft={@renaming_draft}
+        />
       </div>
 
       <%!-- Footer: Pin / Close (hidden on mobile) --%>

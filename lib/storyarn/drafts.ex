@@ -13,9 +13,11 @@ defmodule Storyarn.Drafts do
 
   defdelegate list_my_drafts(project_id, user_id), to: DraftCrud
   defdelegate get_draft(draft_id), to: DraftCrud
-  defdelegate get_my_draft(draft_id, user_id), to: DraftCrud
+  defdelegate get_my_draft(draft_id, user_id, project_id), to: DraftCrud
   defdelegate get_draft_entity(draft), to: DraftCrud
   defdelegate discard_draft(draft), to: DraftCrud
+  defdelegate rename_draft(draft, name), to: DraftCrud
+  defdelegate touch_draft(draft_id), to: DraftCrud
   defdelegate can_create_draft?(project_id, user_id), to: DraftCrud
 
   defdelegate merge_draft(draft, user_id), to: MergeEngine
