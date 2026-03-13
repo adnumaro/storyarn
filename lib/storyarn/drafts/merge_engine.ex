@@ -33,6 +33,9 @@ defmodule Storyarn.Drafts.MergeEngine do
         {:error, reason} -> Repo.rollback(reason)
       end
     end)
+  rescue
+    e in Postgrex.Error ->
+      {:error, {:db_error, Exception.message(e)}}
   end
 
   def merge_draft(%Draft{}, _user_id), do: {:error, :not_active}

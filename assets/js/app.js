@@ -188,8 +188,37 @@ window.addEventListener("phx:show-modal", (event) => {
 window.addEventListener("phx:hide-modal", (event) => {
   if (event.target instanceof HTMLDialogElement) {
     event.target.close();
+    // Workaround: re-open and re-close to force top layer cleanup (Chrome bug)
+    requestAnimationFrame(() => {
+      if (!event.target.open && event.target.isConnected) {
+        try {
+          event.target.showModal();
+          event.target.close();
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    });
   }
 });
+
+// Safety net: force-clean top layer for dialogs that were opened with showModal().
+// Chrome bug: closing a showModal() dialog can leave ::backdrop stuck in the top layer,
+// blocking all page interaction. The showModal()+close() cycle forces proper cleanup.
+function forceCleanDialogs() {
+  document.querySelectorAll("dialog").forEach((d) => {
+    if (!d.open) {
+      try {
+        d.showModal();
+        d.close();
+      } catch (_) {
+        /* ignore if dialog is not connected to DOM */
+      }
+    }
+  });
+}
+window.addEventListener("phx:page-loading-start", forceCleanDialogs);
+window.addEventListener("phx:page-loading-stop", forceCleanDialogs);
 
 // Handle panel open/close from server push_event
 // Server does: push_event(socket, "panel-open", %{to: "#my-panel"})
