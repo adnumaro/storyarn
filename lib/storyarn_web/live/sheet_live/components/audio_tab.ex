@@ -210,6 +210,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
       update_node_audio(socket, node_id, asset.id)
     else
       {:error, _reason} ->
+        Assets.storage_delete(key)
         send(self(), {:audio_tab, :error, dgettext("sheets", "Could not upload audio file.")})
         {:noreply, assign(socket, :uploading_node_id, nil)}
     end

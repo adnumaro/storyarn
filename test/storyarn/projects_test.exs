@@ -308,6 +308,75 @@ defmodule Storyarn.ProjectsTest do
     end
   end
 
+  describe "inherited workspace access" do
+    setup do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      project = project_fixture(owner, %{workspace: workspace})
+
+      %{owner: owner, workspace: workspace, project: project}
+    end
+
+    test "workspace admin can get_project without direct project membership", ctx do
+      admin = user_fixture()
+      _wm = workspace_membership_fixture(ctx.workspace, admin, "admin")
+
+      scope = user_scope_fixture(admin)
+      assert {:ok, project, membership} = Projects.get_project(scope, ctx.project.id)
+      assert project.id == ctx.project.id
+      assert membership.role == "editor"
+    end
+
+    test "workspace member gets editor role from inherited access", ctx do
+      member = user_fixture()
+      _wm = workspace_membership_fixture(ctx.workspace, member, "member")
+
+      scope = user_scope_fixture(member)
+      assert {:ok, _project, membership} = Projects.get_project(scope, ctx.project.id)
+      assert membership.role == "editor"
+    end
+
+    test "workspace viewer gets viewer role from inherited access", ctx do
+      viewer = user_fixture()
+      _wm = workspace_membership_fixture(ctx.workspace, viewer, "viewer")
+
+      scope = user_scope_fixture(viewer)
+      assert {:ok, _project, membership} = Projects.get_project(scope, ctx.project.id)
+      assert membership.role == "viewer"
+    end
+
+    test "direct project membership takes priority over workspace role", ctx do
+      member = user_fixture()
+      _wm = workspace_membership_fixture(ctx.workspace, member, "viewer")
+      _pm = membership_fixture(ctx.project, member, "editor")
+
+      scope = user_scope_fixture(member)
+      assert {:ok, _project, membership} = Projects.get_project(scope, ctx.project.id)
+      assert membership.role == "editor"
+      assert membership.id != nil
+    end
+
+    test "no membership at all returns not_found", ctx do
+      stranger = user_fixture()
+      scope = user_scope_fixture(stranger)
+
+      assert {:error, :not_found} = Projects.get_project(scope, ctx.project.id)
+    end
+
+    test "workspace admin can get_project_by_slugs without direct membership", ctx do
+      admin = user_fixture()
+      _wm = workspace_membership_fixture(ctx.workspace, admin, "admin")
+
+      scope = user_scope_fixture(admin)
+
+      assert {:ok, project, membership} =
+               Projects.get_project_by_slugs(scope, ctx.workspace.slug, ctx.project.slug)
+
+      assert project.id == ctx.project.id
+      assert membership.role == "editor"
+    end
+  end
+
   describe "authorization" do
     test "authorize/3 returns ok for owner on all actions" do
       owner = user_fixture()

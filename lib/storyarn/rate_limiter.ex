@@ -42,6 +42,10 @@ defmodule Storyarn.RateLimiter do
   @registration_limit 3
   @registration_window_ms 60_000
 
+  # Waitlist: 3 attempts per hour per IP
+  @waitlist_limit 3
+  @waitlist_window_ms 3_600_000
+
   @doc """
   Checks if a login attempt is allowed for the given IP address.
 
@@ -71,6 +75,16 @@ defmodule Storyarn.RateLimiter do
   @spec check_registration(String.t()) :: :ok | {:error, :rate_limited}
   def check_registration(ip_address) do
     check_rate("registration:#{ip_address}", @registration_window_ms, @registration_limit)
+  end
+
+  @doc """
+  Checks if a waitlist signup is allowed for the given IP address.
+
+  Returns `:ok` if allowed, `{:error, :rate_limited}` if blocked.
+  """
+  @spec check_waitlist(String.t()) :: :ok | {:error, :rate_limited}
+  def check_waitlist(ip_address) do
+    check_rate("waitlist:#{ip_address}", @waitlist_window_ms, @waitlist_limit)
   end
 
   @doc """

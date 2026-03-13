@@ -577,29 +577,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   def handle_event("parse_import", _params, socket) do
     with_authorization(socket, :edit_content, fn socket ->
-      [binary] =
-        consume_uploaded_entries(socket, :import_file, fn %{path: path}, _entry ->
-          {:ok, File.read!(path)}
-        end)
-
-      with {:ok, %{data: data}} <- Imports.parse_file(binary),
-           {:ok, preview} <- Imports.preview(socket.assigns.project.id, data) do
-        cleanup_import_staging(socket)
-        ref = make_ref()
-        :ets.insert(:import_staging, {ref, data})
-
-        {:noreply,
-         socket
-         |> assign(:import_step, :preview)
-         |> assign(:import_preview, preview)
-         |> assign(:parsed_data_ref, ref)}
-      else
-        {:error, reason} ->
-          {:noreply,
-           socket
-           |> assign(:import_step, :error)
-           |> assign(:import_error, reason)}
-      end
+      socket
+      |> consume_and_parse_import()
+      |> handle_parse_result(socket)
     end)
   end
 
@@ -639,6 +619,40 @@ defmodule StoryarnWeb.ExportImportLive.Index do
      |> assign(:import_error, nil)
      |> assign(:conflict_strategy, :skip)
      |> assign(:parsed_data_ref, nil)}
+  end
+
+  defp consume_and_parse_import(socket) do
+    case consume_uploaded_entries(socket, :import_file, fn %{path: path}, _entry ->
+           {:ok, File.read!(path)}
+         end) do
+      [binary] ->
+        with {:ok, %{data: data}} <- Imports.parse_file(binary),
+             {:ok, preview} <- Imports.preview(socket.assigns.project.id, data) do
+          {:ok, data, preview}
+        end
+
+      [] ->
+        {:error, :no_file}
+    end
+  end
+
+  defp handle_parse_result({:ok, data, preview}, socket) do
+    cleanup_import_staging(socket)
+    ref = make_ref()
+    :ets.insert(:import_staging, {ref, data})
+
+    {:noreply,
+     socket
+     |> assign(:import_step, :preview)
+     |> assign(:import_preview, preview)
+     |> assign(:parsed_data_ref, ref)}
+  end
+
+  defp handle_parse_result({:error, reason}, socket) do
+    {:noreply,
+     socket
+     |> assign(:import_step, :error)
+     |> assign(:import_error, reason)}
   end
 
   defp take_import_data(ref) do
@@ -802,6 +816,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   defp format_file_size(bytes), do: "#{bytes} B"
 
+  defp format_import_error(:no_file),
+    do: gettext("No file was uploaded. Please select a file and try again.")
+
   defp format_import_error(:session_expired),
     do: gettext("Import session expired. Please upload the file again.")
 
@@ -814,6 +831,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   defp format_import_error({:missing_required_keys, keys}),
     do: gettext("Missing required keys: %{keys}", keys: Enum.join(keys, ", "))
+
+  defp format_import_error({:invalid_field_types, fields}),
+    do: gettext("Invalid field types: %{fields}", fields: Enum.join(fields, ", "))
 
   defp format_import_error({:entity_limits_exceeded, _details}),
     do: gettext("Import file exceeds entity count limits.")

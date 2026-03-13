@@ -55,7 +55,8 @@ defmodule Storyarn.Projects.ProjectCrud do
       |> Repo.one()
 
     with %Project{} <- project,
-         %ProjectMembership{} = membership <- Memberships.get_membership(project.id, user.id) do
+         %ProjectMembership{} = membership <-
+           Memberships.get_effective_membership(project.id, user.id, project.workspace_id) do
       {:ok, project, membership}
     else
       nil -> {:error, :not_found}
@@ -79,7 +80,8 @@ defmodule Storyarn.Projects.ProjectCrud do
         preload: [:workspace]
 
     with %Project{} = project <- Repo.one(query),
-         %ProjectMembership{} = membership <- Memberships.get_membership(project.id, user.id) do
+         %ProjectMembership{} = membership <-
+           Memberships.get_effective_membership(project.id, user.id, project.workspace_id) do
       {:ok, project, membership}
     else
       nil -> {:error, :not_found}

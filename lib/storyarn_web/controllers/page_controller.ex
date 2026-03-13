@@ -2,6 +2,7 @@ defmodule StoryarnWeb.PageController do
   use StoryarnWeb, :controller
 
   alias Storyarn.Accounts
+  alias Storyarn.RateLimiter
   alias Storyarn.Workspaces
 
   def home(conn, _params) do
@@ -19,6 +20,18 @@ defmodule StoryarnWeb.PageController do
   end
 
   def join_waitlist(conn, %{"waitlist" => %{"email" => email}}) do
+    case RateLimiter.check_waitlist(client_ip(conn)) do
+      :ok ->
+        do_join_waitlist(conn, email)
+
+      {:error, :rate_limited} ->
+        conn
+        |> put_flash(:error, gettext("Too many requests. Please try again later."))
+        |> redirect(to: ~p"/")
+    end
+  end
+
+  defp do_join_waitlist(conn, email) do
     case Accounts.join_waitlist(%{"email" => email}) do
       {:ok, _entry} ->
         signup_info = %{

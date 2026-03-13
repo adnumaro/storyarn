@@ -242,6 +242,8 @@ defmodule StoryarnWeb.Components.AudioPicker do
        )}
     else
       {:error, _reason} ->
+        Assets.storage_delete(key)
+
         send(
           self(),
           {:audio_picker, :error, dgettext("sheets", "Could not upload audio file.")}

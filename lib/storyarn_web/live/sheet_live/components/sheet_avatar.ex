@@ -167,6 +167,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
       {:noreply, assign(socket, :sheet, updated_sheet)}
     else
       {:error, _reason} ->
+        Assets.storage_delete(key)
         send(self(), {:sheet_avatar, :error, dgettext("sheets", "Could not upload avatar.")})
         {:noreply, socket}
     end

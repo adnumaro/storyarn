@@ -42,7 +42,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   """
   def parse(binary) when is_binary(binary) do
     with {:ok, data} <- decode_json(binary),
-         :ok <- validate_structure(data) do
+         :ok <- validate_structure(data),
+         :ok <- validate_types(data) do
       {:ok, data}
     end
   end
@@ -62,6 +63,35 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       :ok
     else
       {:error, {:missing_required_keys, missing}}
+    end
+  end
+
+  @array_keys ~w(sheets flows scenes screenplays)
+
+  defp validate_types(data) do
+    bad =
+      @array_keys
+      |> Enum.filter(fn k -> (v = data[k]) != nil and not is_list(v) end)
+
+    loc = data["localization"]
+
+    bad_loc =
+      cond do
+        is_nil(loc) ->
+          []
+
+        not is_map(loc) ->
+          ["localization"]
+
+        true ->
+          ~w(languages texts glossary)
+          |> Enum.filter(fn k -> (v = loc[k]) != nil and not is_list(v) end)
+          |> Enum.map(&"localization.#{&1}")
+      end
+
+    case bad ++ bad_loc do
+      [] -> :ok
+      fields -> {:error, {:invalid_field_types, fields}}
     end
   end
 
@@ -242,8 +272,15 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   end
 
   defp count_translations(entries) do
-    Enum.reduce(entries, 0, fn entry, acc ->
-      acc + map_size(entry["translations"] || %{})
+    Enum.reduce(entries, 0, fn
+      entry, acc when is_map(entry) ->
+        case entry["translations"] do
+          t when is_map(t) -> acc + map_size(t)
+          _ -> acc
+        end
+
+      _, acc ->
+        acc
     end)
   end
 

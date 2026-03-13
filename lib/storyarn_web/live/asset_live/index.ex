@@ -354,6 +354,8 @@ defmodule StoryarnWeb.AssetLive.Index do
        |> put_flash(:info, dgettext("assets", "Asset uploaded successfully."))}
     else
       {:error, reason} ->
+        Assets.storage_delete(key)
+
         {:noreply,
          socket
          |> assign(:uploading, false)

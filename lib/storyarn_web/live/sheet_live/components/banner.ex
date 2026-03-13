@@ -203,6 +203,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
       {:noreply, assign(socket, :sheet, updated_sheet)}
     else
       {:error, _reason} ->
+        Assets.storage_delete(key)
         send(self(), {:banner, :error, dgettext("sheets", "Could not upload banner.")})
         {:noreply, socket}
     end

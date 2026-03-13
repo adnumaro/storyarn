@@ -169,6 +169,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.GalleryHandlers do
         {:noreply, helpers.reload_blocks.(socket)}
       else
         {:error, _} ->
+          Assets.storage_delete(key)
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload image."))}
       end
     else
