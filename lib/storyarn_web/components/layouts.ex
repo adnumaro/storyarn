@@ -280,33 +280,7 @@ defmodule StoryarnWeb.Layouts do
         _ -> false
       end
 
-    project_theme_style =
-      case assigns.project do
-        %{settings: %{"theme" => %{"primary" => p, "accent" => a}}}
-        when is_binary(p) and is_binary(a) ->
-          alias Storyarn.Shared.ColorUtils
-
-          primary = ColorUtils.hex_to_oklch(p)
-          primary_dark = ColorUtils.darken_oklch(p)
-          accent = ColorUtils.hex_to_oklch(a)
-          accent_dark = ColorUtils.darken_oklch(a)
-
-          Phoenix.HTML.raw("""
-          <style>
-            :root, [data-theme="light"], [data-theme="dark"] {
-              --color-primary: #{primary};
-              --color-accent: #{accent};
-              --gradient-primary-from: #{primary};
-              --gradient-primary-to: #{primary_dark};
-              --gradient-accent-from: #{accent};
-              --gradient-accent-to: #{accent_dark};
-            }
-          </style>
-          """)
-
-        _ ->
-          nil
-      end
+    project_theme_style = project_theme_style(assigns.project)
 
     assigns =
       assigns
@@ -1002,4 +976,31 @@ defmodule StoryarnWeb.Layouts do
     </div>
     """
   end
+
+  defp project_theme_style(%{settings: %{"theme" => %{"primary" => p, "accent" => a}}})
+       when is_binary(p) and is_binary(a) do
+    alias Storyarn.Shared.ColorUtils
+
+    if ColorUtils.valid_hex?(p) and ColorUtils.valid_hex?(a) do
+      primary = ColorUtils.hex_to_oklch(p)
+      primary_dark = ColorUtils.darken_oklch(p)
+      accent = ColorUtils.hex_to_oklch(a)
+      accent_dark = ColorUtils.darken_oklch(a)
+
+      Phoenix.HTML.raw("""
+      <style>
+        :root, [data-theme="light"], [data-theme="dark"] {
+          --color-primary: #{primary};
+          --color-accent: #{accent};
+          --gradient-primary-from: #{primary};
+          --gradient-primary-to: #{primary_dark};
+          --gradient-accent-from: #{accent};
+          --gradient-accent-to: #{accent_dark};
+        }
+      </style>
+      """)
+    end
+  end
+
+  defp project_theme_style(_project), do: nil
 end

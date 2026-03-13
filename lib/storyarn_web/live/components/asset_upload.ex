@@ -224,11 +224,27 @@ defmodule StoryarnWeb.Components.AssetUpload do
   end
 
   defp process_upload(path, entry, project, user, on_upload) do
+    workspace = Storyarn.Repo.get!(Storyarn.Workspaces.Workspace, project.workspace_id)
+
+    case Storyarn.Billing.can_upload_asset?(workspace, entry.client_size) do
+      :ok ->
+        do_process_upload(path, entry, project, user, on_upload)
+
+      {:error, :limit_reached, _details} ->
+        {:postpone, nil}
+    end
+  end
+
+  defp do_process_upload(path, entry, project, user, on_upload) do
     key = Assets.generate_key(project, entry.client_name)
     content = File.read!(path)
 
+    blob_hash = Storyarn.Assets.BlobStore.compute_hash(content)
+    ext = Storyarn.Assets.BlobStore.ext_from_content_type(entry.client_type)
+    Storyarn.Assets.BlobStore.ensure_blob(project.id, blob_hash, ext, content)
+
     with {:ok, url} <- Assets.storage_upload(key, content, entry.client_type),
-         {:ok, asset} <- create_asset_record(path, entry, project, user, key, url) do
+         {:ok, asset} <- create_asset_record(path, entry, project, user, key, url, blob_hash) do
       if on_upload, do: on_upload.(asset)
       {:ok, asset}
     else
@@ -237,7 +253,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
     end
   end
 
-  defp create_asset_record(path, entry, project, user, key, url) do
+  defp create_asset_record(path, entry, project, user, key, url, blob_hash) do
     metadata = process_image_metadata(path, entry.client_type)
 
     attrs = %{
@@ -246,7 +262,8 @@ defmodule StoryarnWeb.Components.AssetUpload do
       size: entry.client_size,
       key: key,
       url: url,
-      metadata: metadata
+      metadata: metadata,
+      blob_hash: blob_hash
     }
 
     case Assets.create_asset(project, user, attrs) do

@@ -278,19 +278,21 @@ defmodule Storyarn.Shared.FormulaEngine do
     {:ok, {:number, n}, rest}
   end
 
-  defp parse_primary([{:symbol, name}, :lparen | rest]) do
-    func_atom = String.to_atom(name)
+  @known_functions_map Map.new(@known_functions, fn a -> {Atom.to_string(a), a} end)
 
-    if func_atom in @known_functions do
-      with {:ok, args, rest2} <- parse_args(rest),
-           [:rparen | rest3] <- wrap_expect_rparen(rest2) do
-        {:ok, {:func, func_atom, args}, rest3}
-      else
-        :missing_rparen -> {:error, "Missing closing parenthesis for #{name}()"}
-        {:error, reason} -> {:error, reason}
-      end
-    else
-      {:error, "Unknown function: #{name}"}
+  defp parse_primary([{:symbol, name}, :lparen | rest]) do
+    case Map.fetch(@known_functions_map, name) do
+      {:ok, func_atom} ->
+        with {:ok, args, rest2} <- parse_args(rest),
+             [:rparen | rest3] <- wrap_expect_rparen(rest2) do
+          {:ok, {:func, func_atom, args}, rest3}
+        else
+          :missing_rparen -> {:error, "Missing closing parenthesis for #{name}()"}
+          {:error, reason} -> {:error, reason}
+        end
+
+      :error ->
+        {:error, "Unknown function: #{name}"}
     end
   end
 

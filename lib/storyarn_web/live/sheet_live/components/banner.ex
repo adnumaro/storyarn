@@ -143,14 +143,11 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
         socket
       ) do
     with_edit_authorization(socket, fn socket ->
-      # Extract binary data from base64 data URL
-      [_header, base64_data] = String.split(data, ",", parts: 2)
-
-      case Base.decode64(base64_data) do
-        {:ok, binary_data} ->
-          upload_banner_file(socket, filename, content_type, binary_data)
-
-        :error ->
+      with [_header, base64_data] <- String.split(data, ",", parts: 2),
+           {:ok, binary_data} <- Base.decode64(base64_data) do
+        upload_banner_file(socket, filename, content_type, binary_data)
+      else
+        _ ->
           send(self(), {:banner, :error, dgettext("sheets", "Invalid file data.")})
           {:noreply, socket}
       end

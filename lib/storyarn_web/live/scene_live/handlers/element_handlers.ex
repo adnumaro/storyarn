@@ -18,6 +18,23 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     only: [push_undo: 2, push_undo_coalesced: 2]
 
   # ---------------------------------------------------------------------------
+  # Safe field-to-atom conversion: avoids ArgumentError on unknown fields
+  # ---------------------------------------------------------------------------
+
+  defp safe_to_existing_atom(field) when is_binary(field) do
+    String.to_existing_atom(field)
+  rescue
+    ArgumentError -> nil
+  end
+
+  defp safe_field_get(struct, field) when is_binary(field) do
+    case safe_to_existing_atom(field) do
+      nil -> nil
+      atom -> Map.get(struct, atom)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   # Shared attr extraction (single source of truth for field lists)
   # ---------------------------------------------------------------------------
 
@@ -714,7 +731,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     do: do_update_pin_attrs(socket, pin, %{"target_type" => nil, "target_id" => nil})
 
   defp do_update_pin(socket, pin, field, value) do
-    prev_value = Map.get(pin, String.to_existing_atom(field))
+    prev_value = safe_field_get(pin, field)
 
     case Scenes.update_pin(pin, %{field => value}) do
       {:ok, updated} ->
@@ -734,7 +751,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   defp do_update_pin_attrs(socket, pin, new_attrs) do
     prev_attrs =
       Map.new(new_attrs, fn {key, _val} ->
-        {key, Map.get(pin, String.to_existing_atom(key))}
+        {key, safe_field_get(pin, key)}
       end)
 
     case Scenes.update_pin(pin, new_attrs) do
@@ -776,7 +793,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
 
   defp do_update_zone(socket, zone, field, value) do
     attrs = build_zone_update_attrs(zone, field, value)
-    prev_attrs = Map.new(attrs, fn {k, _} -> {k, Map.get(zone, String.to_existing_atom(k))} end)
+    prev_attrs = Map.new(attrs, fn {k, _} -> {k, safe_field_get(zone, k)} end)
 
     case Scenes.update_zone(zone, attrs) do
       {:ok, updated} ->
@@ -801,7 +818,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   defp do_update_zone_attrs(socket, zone, new_attrs) do
     prev_attrs =
       Map.new(new_attrs, fn {key, _val} ->
-        {key, Map.get(zone, String.to_existing_atom(key))}
+        {key, safe_field_get(zone, key)}
       end)
 
     case Scenes.update_zone(zone, new_attrs) do
@@ -871,7 +888,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   defp do_update_connection(socket, conn, field, value) do
-    prev_value = Map.get(conn, String.to_existing_atom(field))
+    prev_value = safe_field_get(conn, field)
 
     case Scenes.update_connection(conn, %{field => value}) do
       {:ok, updated} ->
@@ -943,7 +960,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   defp do_update_annotation(socket, annotation, field, value) do
-    prev_value = Map.get(annotation, String.to_existing_atom(field))
+    prev_value = safe_field_get(annotation, field)
 
     case Scenes.update_annotation(annotation, %{field => value}) do
       {:ok, updated} ->

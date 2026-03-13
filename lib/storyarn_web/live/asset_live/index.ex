@@ -267,15 +267,22 @@ defmodule StoryarnWeb.AssetLive.Index do
   @max_base64_size 28_000_000
 
   defp process_upload(socket, filename, content_type, data) do
-    [_header, base64_data] = String.split(data, ",", parts: 2)
+    case String.split(data, ",", parts: 2) do
+      [_header, base64_data] ->
+        if byte_size(base64_data) > @max_base64_size do
+          {:noreply,
+           socket
+           |> assign(:uploading, false)
+           |> put_flash(:error, dgettext("assets", "File too large (max 20MB)."))}
+        else
+          decode_and_upload(socket, filename, content_type, base64_data)
+        end
 
-    if byte_size(base64_data) > @max_base64_size do
-      {:noreply,
-       socket
-       |> assign(:uploading, false)
-       |> put_flash(:error, dgettext("assets", "File too large (max 20MB)."))}
-    else
-      decode_and_upload(socket, filename, content_type, base64_data)
+      _ ->
+        {:noreply,
+         socket
+         |> assign(:uploading, false)
+         |> put_flash(:error, dgettext("assets", "Invalid file data."))}
     end
   end
 
@@ -296,42 +303,62 @@ defmodule StoryarnWeb.AssetLive.Index do
     if Assets.allowed_content_type?(content_type) do
       project = socket.assigns.project
       user = socket.assigns.current_scope.user
-      safe_filename = Assets.sanitize_filename(filename)
-      key = Assets.generate_key(project, safe_filename)
+      workspace = Storyarn.Repo.get!(Storyarn.Workspaces.Workspace, project.workspace_id)
 
-      asset_attrs = %{
-        filename: safe_filename,
-        content_type: content_type,
-        size: byte_size(binary_data),
-        key: key
-      }
+      case Storyarn.Billing.can_upload_asset?(workspace, byte_size(binary_data)) do
+        :ok ->
+          do_upload_file(socket, project, user, filename, content_type, binary_data)
 
-      with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
-           {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
-        type_counts = Assets.count_assets_by_type(project.id)
-        usages = Assets.get_asset_usages(project.id, asset.id)
-        broadcast_asset_change(project.id, :asset_created)
-
-        {:noreply,
-         socket
-         |> assign(:uploading, false)
-         |> assign(:type_counts, type_counts)
-         |> assign(:selected_asset, asset)
-         |> assign(:asset_usages, usages)
-         |> load_assets()
-         |> put_flash(:info, dgettext("assets", "Asset uploaded successfully."))}
-      else
-        {:error, reason} ->
+        {:error, :limit_reached, _details} ->
           {:noreply,
            socket
            |> assign(:uploading, false)
-           |> put_flash(:error, upload_error_message(reason))}
+           |> put_flash(:error, dgettext("assets", "Storage limit reached. Upgrade your plan."))}
       end
     else
       {:noreply,
        socket
        |> assign(:uploading, false)
        |> put_flash(:error, dgettext("assets", "Unsupported file type."))}
+    end
+  end
+
+  defp do_upload_file(socket, project, user, filename, content_type, binary_data) do
+    safe_filename = Assets.sanitize_filename(filename)
+    key = Assets.generate_key(project, safe_filename)
+
+    blob_hash = Storyarn.Assets.BlobStore.compute_hash(binary_data)
+    ext = Storyarn.Assets.BlobStore.ext_from_content_type(content_type)
+    Storyarn.Assets.BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data)
+
+    asset_attrs = %{
+      filename: safe_filename,
+      content_type: content_type,
+      size: byte_size(binary_data),
+      key: key,
+      blob_hash: blob_hash
+    }
+
+    with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
+         {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
+      type_counts = Assets.count_assets_by_type(project.id)
+      usages = Assets.get_asset_usages(project.id, asset.id)
+      broadcast_asset_change(project.id, :asset_created)
+
+      {:noreply,
+       socket
+       |> assign(:uploading, false)
+       |> assign(:type_counts, type_counts)
+       |> assign(:selected_asset, asset)
+       |> assign(:asset_usages, usages)
+       |> load_assets()
+       |> put_flash(:info, dgettext("assets", "Asset uploaded successfully."))}
+    else
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> assign(:uploading, false)
+         |> put_flash(:error, upload_error_message(reason))}
     end
   end
 

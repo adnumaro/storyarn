@@ -583,6 +583,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
       with {:ok, %{data: data}} <- Imports.parse_file(binary),
            {:ok, preview} <- Imports.preview(socket.assigns.project.id, data) do
+        cleanup_import_staging(socket)
         ref = make_ref()
         :ets.insert(:import_staging, {ref, data})
 

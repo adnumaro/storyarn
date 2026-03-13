@@ -171,13 +171,11 @@ defmodule StoryarnWeb.Components.AudioPicker do
         %{"filename" => filename, "content_type" => content_type, "data" => data},
         socket
       ) do
-    [_header, base64_data] = String.split(data, ",", parts: 2)
-
-    case Base.decode64(base64_data) do
-      {:ok, binary_data} ->
-        process_upload(socket, filename, content_type, binary_data)
-
-      :error ->
+    with [_header, base64_data] <- String.split(data, ",", parts: 2),
+         {:ok, binary_data} <- Base.decode64(base64_data) do
+      process_upload(socket, filename, content_type, binary_data)
+    else
+      _ ->
         send(self(), {:audio_picker, :error, dgettext("sheets", "Invalid file data.")})
         {:noreply, assign(socket, :uploading, false)}
     end

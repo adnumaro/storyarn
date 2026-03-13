@@ -865,26 +865,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
   def handle_event("save_theme", _params, socket) do
     with_authorization(socket, :manage_project, fn socket ->
-      project = socket.assigns.project
-      settings = project.settings || %{}
-
-      new_settings =
-        Map.put(settings, "theme", %{
-          "primary" => socket.assigns.theme_primary,
-          "accent" => socket.assigns.theme_accent
-        })
-
-      case Projects.update_project(project, %{settings: new_settings}) do
-        {:ok, project} ->
-          {:noreply,
-           socket
-           |> assign(:project, project)
-           |> assign(:has_custom_theme, true)
-           |> put_flash(:info, dgettext("projects", "Theme saved."))}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to save theme."))}
-      end
+      do_save_theme(socket)
     end)
   end
 
@@ -925,6 +906,39 @@ defmodule StoryarnWeb.ProjectLive.Settings do
            )}
       end
     end)
+  end
+
+  defp do_save_theme(socket) do
+    alias Storyarn.Shared.ColorUtils
+
+    primary = socket.assigns.theme_primary
+    accent = socket.assigns.theme_accent
+
+    if ColorUtils.valid_hex?(primary) and ColorUtils.valid_hex?(accent) do
+      project = socket.assigns.project
+      settings = project.settings || %{}
+
+      new_settings =
+        Map.put(settings, "theme", %{
+          "primary" => primary,
+          "accent" => accent
+        })
+
+      case Projects.update_project(project, %{settings: new_settings}) do
+        {:ok, project} ->
+          {:noreply,
+           socket
+           |> assign(:project, project)
+           |> assign(:has_custom_theme, true)
+           |> put_flash(:info, dgettext("projects", "Theme saved."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to save theme."))}
+      end
+    else
+      {:noreply,
+       put_flash(socket, :error, dgettext("projects", "Invalid color format. Use #RRGGBB."))}
+    end
   end
 
   # ===========================================================================

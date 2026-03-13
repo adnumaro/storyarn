@@ -4,6 +4,15 @@ defmodule Storyarn.Shared.ColorUtils do
   Converts hex colors to oklch format for daisyUI v5 compatibility.
   """
 
+  @hex_regex ~r/^#[0-9a-fA-F]{6}$/
+
+  @doc """
+  Returns true if the string is a valid 6-digit hex color (e.g., "#ff0000").
+  """
+  @spec valid_hex?(String.t()) :: boolean()
+  def valid_hex?(hex) when is_binary(hex), do: Regex.match?(@hex_regex, hex)
+  def valid_hex?(_), do: false
+
   @doc """
   Converts a hex color string to an oklch() CSS string.
 

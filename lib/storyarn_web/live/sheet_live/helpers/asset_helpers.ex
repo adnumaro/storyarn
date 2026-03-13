@@ -57,10 +57,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
   Handles upload_avatar event.
   """
   def upload_avatar(socket, filename, content_type, data) do
-    # Extract binary data from base64 data URL
-    [_header, base64_data] = String.split(data, ",", parts: 2)
-
-    case Base.decode64(base64_data) do
+    case decode_data_url(data) do
       {:ok, binary_data} ->
         upload_avatar_file(socket, filename, content_type, binary_data)
 
@@ -93,10 +90,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
   Handles upload_banner event.
   """
   def upload_banner(socket, filename, content_type, data) do
-    # Extract binary data from base64 data URL
-    [_header, base64_data] = String.split(data, ",", parts: 2)
-
-    case Base.decode64(base64_data) do
+    case decode_data_url(data) do
       {:ok, binary_data} ->
         upload_banner_file(socket, filename, content_type, binary_data)
 
@@ -106,6 +100,13 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
   end
 
   # Private functions
+
+  defp decode_data_url(data) do
+    case String.split(data, ",", parts: 2) do
+      [_header, base64_data] -> Base.decode64(base64_data)
+      _ -> :error
+    end
+  end
 
   defp upload_avatar_file(socket, filename, content_type, binary_data) do
     if Assets.allowed_content_type?(content_type) do

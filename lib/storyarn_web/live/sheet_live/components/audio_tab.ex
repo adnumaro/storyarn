@@ -126,13 +126,11 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
         socket
       ) do
     with_edit_authorization(socket, fn socket ->
-      [_header, base64_data] = String.split(data, ",", parts: 2)
-
-      case Base.decode64(base64_data) do
-        {:ok, binary_data} ->
-          process_upload(socket, node_id, filename, content_type, binary_data)
-
-        :error ->
+      with [_header, base64_data] <- String.split(data, ",", parts: 2),
+           {:ok, binary_data} <- Base.decode64(base64_data) do
+        process_upload(socket, node_id, filename, content_type, binary_data)
+      else
+        _ ->
           send(self(), {:audio_tab, :error, dgettext("sheets", "Invalid file data.")})
           {:noreply, assign(socket, :uploading_node_id, nil)}
       end
