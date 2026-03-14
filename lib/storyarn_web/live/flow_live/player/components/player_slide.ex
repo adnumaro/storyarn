@@ -8,7 +8,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
   use Phoenix.Component
   use Gettext, backend: StoryarnWeb.Gettext
 
-  alias StoryarnWeb.FlowLive.Helpers.HtmlSanitizer
+  alias Storyarn.Shared.HtmlSanitizer
 
   attr :slide, :map, required: true
 

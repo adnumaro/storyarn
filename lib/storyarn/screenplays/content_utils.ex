@@ -29,41 +29,14 @@ defmodule Storyarn.Screenplays.ContentUtils do
   def html?(""), do: false
   def html?(content) when is_binary(content), do: Regex.match?(~r/<[a-z][^>]*>/i, content)
 
-  # Tags that TipTap can produce. Anything outside this list is stripped.
-  @tiptap_allowed_tags ~w(p br b i em strong u s del a span div)
-
   @doc """
-  Sanitizes HTML content by stripping unsafe tags and event-handler attributes.
+  Sanitizes HTML content by stripping unsafe tags, event-handler attributes,
+  and dangerous URI schemes.
 
-  Keeps only the tags TipTap can produce (`p`, `br`, inline formatting, etc.)
-  and removes any `on*` event attributes or `javascript:` URLs.
-
-  ## Examples
-
-      iex> sanitize_html("<p>Hello</p>")
-      "<p>Hello</p>"
-
-      iex> sanitize_html("<script>alert('xss')</script><p>Safe</p>")
-      "alert(&#39;xss&#39;)<p>Safe</p>"
-
-      iex> sanitize_html(nil)
-      ""
+  Delegates to `Storyarn.Shared.HtmlSanitizer.sanitize_html/1`.
   """
   @spec sanitize_html(String.t() | nil) :: String.t()
-  def sanitize_html(nil), do: ""
-  def sanitize_html(""), do: ""
-
-  def sanitize_html(content) when is_binary(content) do
-    case Floki.parse_document(content) do
-      {:ok, tree} ->
-        tree
-        |> strip_unsafe_nodes()
-        |> Floki.raw_html()
-
-      _ ->
-        Phoenix.HTML.html_escape(content) |> Phoenix.HTML.safe_to_string()
-    end
-  end
+  defdelegate sanitize_html(content), to: Storyarn.Shared.HtmlSanitizer
 
   @doc """
   Wraps plain text in `<p>` tags for TipTap.
@@ -82,34 +55,6 @@ defmodule Storyarn.Screenplays.ContentUtils do
     |> String.split("\n")
     |> Enum.map_join("", fn line -> "<p>#{encode_entities(line)}</p>" end)
   end
-
-  # Strips tags not in @tiptap_allowed_tags, keeping their text children.
-  defp strip_unsafe_nodes(nodes) when is_list(nodes) do
-    Enum.flat_map(nodes, &strip_unsafe_node/1)
-  end
-
-  defp strip_unsafe_node({tag, attrs, children}) do
-    if tag in @tiptap_allowed_tags do
-      safe_attrs = Enum.reject(attrs, fn {k, v} -> unsafe_attr?(k, v) end)
-      [{tag, safe_attrs, strip_unsafe_nodes(children)}]
-    else
-      strip_unsafe_nodes(children)
-    end
-  end
-
-  defp strip_unsafe_node(text) when is_binary(text), do: [text]
-  defp strip_unsafe_node({:comment, _}), do: []
-  defp strip_unsafe_node(_), do: []
-
-  defp unsafe_attr?(name, value) when is_binary(name) do
-    downcased = String.downcase(name)
-
-    String.starts_with?(downcased, "on") ||
-      downcased in ~w(srcdoc formaction) ||
-      (is_binary(value) and String.contains?(String.downcase(value), "javascript:"))
-  end
-
-  defp unsafe_attr?(_name, _value), do: false
 
   # Encodes characters for HTML
   defp encode_entities(text) do

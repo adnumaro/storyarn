@@ -2,7 +2,7 @@ defmodule StoryarnWeb.DocsLive.Show do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Docs
-  alias StoryarnWeb.FlowLive.Helpers.HtmlSanitizer
+  alias Storyarn.Shared.HtmlSanitizer
 
   @impl true
   def mount(_params, _session, socket) do

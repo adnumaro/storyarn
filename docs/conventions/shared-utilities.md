@@ -204,9 +204,9 @@ field :api_key_encrypted, Storyarn.Shared.EncryptedBinary
 
 ---
 
-## `StoryarnWeb.FlowLive.Helpers.HtmlSanitizer`
+## `Storyarn.Shared.HtmlSanitizer`
 
-**File:** `lib/storyarn_web/live/flow_live/helpers/html_sanitizer.ex`
+**File:** `lib/storyarn/shared/html_sanitizer.ex`
 
 HTML sanitizer with XSS protection. **ALWAYS use when rendering `raw()` content.**
 

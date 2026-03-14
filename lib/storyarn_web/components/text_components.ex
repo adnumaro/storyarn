@@ -3,7 +3,7 @@ defmodule StoryarnWeb.Components.TextComponents do
   Typography helpers for rendered text.
   """
 
-  alias StoryarnWeb.FlowLive.Helpers.HtmlSanitizer
+  alias Storyarn.Shared.HtmlSanitizer
 
   import Phoenix.HTML, only: [html_escape: 1, raw: 1, safe_to_string: 1]
 
