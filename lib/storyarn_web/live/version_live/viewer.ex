@@ -431,64 +431,27 @@ defmodule StoryarnWeb.VersionLive.Viewer do
   defp build_element_index("scene", snapshot) do
     layers = snapshot["layers"] || []
 
-    Enum.reduce(Enum.with_index(layers), %{}, fn {layer, layer_idx}, acc ->
-      layer_name = layer["name"] || ""
+    # Use the same global counter scheme as SnapshotViewer.serialize_scene_layers
+    {_results, {index, _counter}} =
+      layers
+      |> Enum.with_index()
+      |> Enum.map_reduce({%{}, 1}, fn {layer, layer_idx}, {acc, counter} ->
+        layer_name = layer["name"] || ""
 
-      pin_entries =
-        (layer["pins"] || [])
-        |> Enum.with_index()
-        |> Map.new(fn {pin, pin_idx} ->
-          {-(layer_idx * 1000 + pin_idx + 1),
-           %{
-             kind: :pin,
-             type: pin["pin_type"] || "location",
-             label: pin["label"],
-             tooltip: pin["tooltip"],
-             icon: pin["icon"],
-             color: pin["color"],
-             size: pin["size"],
-             layer_name: layer_name,
-             position_x: pin["position_x"],
-             position_y: pin["position_y"],
-             action_type: pin["action_type"],
-             locked: pin["locked"]
-           }}
-        end)
+        {pin_entries, counter} = build_pin_entries(layer, layer_name, counter)
+        {zone_entries, counter} = build_zone_entries(layer, layer_name, counter)
+        {ann_entries, counter} = build_annotation_entries(layer, layer_name, counter)
 
-      zone_entries =
-        (layer["zones"] || [])
-        |> Enum.with_index()
-        |> Map.new(fn {zone, zone_idx} ->
-          {-(layer_idx * 1000 + zone_idx + 1 + 500),
-           %{
-             kind: :zone,
-             name: zone["name"],
-             fill_color: zone["fill_color"],
-             border_color: zone["border_color"],
-             opacity: zone["opacity"],
-             tooltip: zone["tooltip"],
-             layer_name: layer_name,
-             action_type: zone["action_type"],
-             locked: zone["locked"]
-           }}
-        end)
+        merged =
+          acc
+          |> Map.merge(pin_entries)
+          |> Map.merge(zone_entries)
+          |> Map.merge(ann_entries)
 
-      annotation_entries =
-        (layer["annotations"] || [])
-        |> Enum.with_index()
-        |> Map.new(fn {ann, ann_idx} ->
-          {-(layer_idx * 10_000 + ann_idx + 1),
-           %{
-             kind: :annotation,
-             text: ann["text"],
-             font_size: ann["font_size"],
-             color: ann["color"],
-             layer_name: layer_name
-           }}
-        end)
+        {layer_idx, {merged, counter}}
+      end)
 
-      acc |> Map.merge(pin_entries) |> Map.merge(zone_entries) |> Map.merge(annotation_entries)
-    end)
+    index
   end
 
   defp build_element_index("sheet", snapshot) do
@@ -499,56 +462,7 @@ defmodule StoryarnWeb.VersionLive.Viewer do
     |> Map.new(fn {block, idx} ->
       block_id = -(idx + 1)
       config = block["config"] || %{}
-      table_data = block["table_data"]
-
-      {columns, rows} =
-        if table_data do
-          cols = table_data["columns"] || []
-          raw_rows = table_data["rows"] || []
-
-          formula_slugs =
-            cols |> Enum.filter(&(&1["type"] == "formula")) |> MapSet.new(& &1["slug"])
-
-          enriched_cols =
-            Enum.map(cols, fn col ->
-              if MapSet.member?(formula_slugs, col["slug"]) do
-                row_formulas =
-                  raw_rows
-                  |> Enum.map(fn row ->
-                    cell = (row["cells"] || %{})[col["slug"]]
-
-                    %{
-                      row_name: row["name"],
-                      expression: if(is_map(cell), do: cell["expression"]),
-                      bindings: if(is_map(cell), do: cell["bindings"] || %{}, else: %{})
-                    }
-                  end)
-                  |> Enum.filter(&(&1.expression && &1.expression != ""))
-
-                # Group rows by identical expression + bindings
-                grouped =
-                  row_formulas
-                  |> Enum.group_by(fn rf -> {rf.expression, rf.bindings} end)
-                  |> Enum.map(fn {{expr, bindings}, rows} ->
-                    %{
-                      expression: expr,
-                      bindings: bindings,
-                      row_names: Enum.map(rows, & &1.row_name),
-                      all_rows: length(rows) == length(raw_rows)
-                    }
-                  end)
-
-                col
-                |> Map.put("_formula_groups", grouped)
-              else
-                col
-              end
-            end)
-
-          {enriched_cols, raw_rows}
-        else
-          {nil, nil}
-        end
+      {columns, rows} = enrich_table_data(block["table_data"])
 
       {block_id,
        %{
@@ -567,6 +481,115 @@ defmodule StoryarnWeb.VersionLive.Viewer do
          row_count: if(rows, do: length(rows), else: nil)
        }}
     end)
+  end
+
+  defp enrich_table_data(nil), do: {nil, nil}
+
+  defp enrich_table_data(table_data) do
+    cols = table_data["columns"] || []
+    raw_rows = table_data["rows"] || []
+
+    formula_slugs =
+      cols |> Enum.filter(&(&1["type"] == "formula")) |> MapSet.new(& &1["slug"])
+
+    enriched_cols =
+      Enum.map(cols, fn col ->
+        if MapSet.member?(formula_slugs, col["slug"]),
+          do: Map.put(col, "_formula_groups", build_formula_groups(raw_rows, col["slug"])),
+          else: col
+      end)
+
+    {enriched_cols, raw_rows}
+  end
+
+  defp build_formula_groups(rows, slug) do
+    rows
+    |> Enum.map(fn row ->
+      cell = (row["cells"] || %{})[slug]
+
+      %{
+        row_name: row["name"],
+        expression: if(is_map(cell), do: cell["expression"]),
+        bindings: if(is_map(cell), do: cell["bindings"] || %{}, else: %{})
+      }
+    end)
+    |> Enum.filter(&(&1.expression && &1.expression != ""))
+    |> Enum.group_by(fn rf -> {rf.expression, rf.bindings} end)
+    |> Enum.map(fn {{expr, bindings}, grouped_rows} ->
+      %{
+        expression: expr,
+        bindings: bindings,
+        row_names: Enum.map(grouped_rows, & &1.row_name),
+        all_rows: length(grouped_rows) == length(rows)
+      }
+    end)
+  end
+
+  # Scene element index helpers (use same global counter scheme as SnapshotViewer)
+
+  defp build_pin_entries(layer, layer_name, counter) do
+    (layer["pins"] || [])
+    |> Enum.map_reduce(counter, fn pin, c ->
+      entry =
+        {-c,
+         %{
+           kind: :pin,
+           type: pin["pin_type"] || "location",
+           label: pin["label"],
+           tooltip: pin["tooltip"],
+           icon: pin["icon"],
+           color: pin["color"],
+           size: pin["size"],
+           layer_name: layer_name,
+           position_x: pin["position_x"],
+           position_y: pin["position_y"],
+           action_type: pin["action_type"],
+           locked: pin["locked"]
+         }}
+
+      {entry, c + 1}
+    end)
+    |> then(fn {entries, c} -> {Map.new(entries), c} end)
+  end
+
+  defp build_zone_entries(layer, layer_name, counter) do
+    (layer["zones"] || [])
+    |> Enum.map_reduce(counter, fn zone, c ->
+      entry =
+        {-c,
+         %{
+           kind: :zone,
+           name: zone["name"],
+           fill_color: zone["fill_color"],
+           border_color: zone["border_color"],
+           opacity: zone["opacity"],
+           tooltip: zone["tooltip"],
+           layer_name: layer_name,
+           action_type: zone["action_type"],
+           locked: zone["locked"]
+         }}
+
+      {entry, c + 1}
+    end)
+    |> then(fn {entries, c} -> {Map.new(entries), c} end)
+  end
+
+  defp build_annotation_entries(layer, layer_name, counter) do
+    (layer["annotations"] || [])
+    |> Enum.map_reduce(counter, fn ann, c ->
+      entry =
+        {-c,
+         %{
+           kind: :annotation,
+           text: ann["text"],
+           font_size: ann["font_size"],
+           color: ann["color"],
+           layer_name: layer_name
+         }}
+
+      {entry, c + 1}
+    end)
+    |> then(fn {entries, c} -> {Map.new(entries), c} end)
   end
 
   # ========== Private: Property Panel ==========
@@ -820,18 +843,17 @@ defmodule StoryarnWeb.VersionLive.Viewer do
     """
   end
 
-  defp format_block_value(value, _type) when is_map(value) do
-    case value do
-      %{"text" => text} when is_binary(text) and text != "" -> text
-      %{"number" => n} when not is_nil(n) -> to_string(n)
-      %{"boolean" => b} when is_boolean(b) -> to_string(b)
-      %{"selected" => sel} when is_binary(sel) and sel != "" -> sel
-      %{"selected" => sel} when is_list(sel) and sel != [] -> Enum.join(sel, ", ")
-      %{"date" => d} when is_binary(d) and d != "" -> d
-      _ -> nil
-    end
-  end
+  defp format_block_value(%{"text" => text}, _type) when is_binary(text) and text != "", do: text
+  defp format_block_value(%{"number" => n}, _type) when not is_nil(n), do: to_string(n)
+  defp format_block_value(%{"boolean" => b}, _type) when is_boolean(b), do: to_string(b)
 
+  defp format_block_value(%{"selected" => sel}, _type) when is_binary(sel) and sel != "",
+    do: sel
+
+  defp format_block_value(%{"selected" => sel}, _type) when is_list(sel) and sel != [],
+    do: Enum.join(sel, ", ")
+
+  defp format_block_value(%{"date" => d}, _type) when is_binary(d) and d != "", do: d
   defp format_block_value(value, _type) when is_binary(value) and value != "", do: value
   defp format_block_value(_, _), do: nil
 
@@ -1195,17 +1217,19 @@ defmodule StoryarnWeb.VersionLive.Viewer do
         url
 
       meta ->
-        # Try DB lookup first (asset still exists, scoped to project)
-        case Assets.get_asset(project_id, asset_id) do
-          %{url: url} when is_binary(url) ->
-            url
+        resolve_asset_fallback(asset_id, meta, id_str, blob_hashes, project_id)
+    end
+  end
 
-          _ ->
-            # Asset deleted — reconstruct URL from blob hash
-            blob_hash = Map.get(blob_hashes, id_str)
-            content_type = if is_map(meta), do: meta["content_type"]
-            resolve_blob_url(blob_hash, content_type, project_id)
-        end
+  defp resolve_asset_fallback(asset_id, meta, id_str, blob_hashes, project_id) do
+    case Assets.get_asset(project_id, asset_id) do
+      %{url: url} when is_binary(url) ->
+        url
+
+      _ ->
+        blob_hash = Map.get(blob_hashes, id_str)
+        content_type = if is_map(meta), do: meta["content_type"]
+        resolve_blob_url(blob_hash, content_type, project_id)
     end
   end
 

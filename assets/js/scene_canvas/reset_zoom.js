@@ -5,7 +5,7 @@
  * bottom-right controls slot alongside the legend.
  */
 
-import { createElement, Plus, Minus, Maximize } from "lucide";
+import { createElement, Maximize, Minus, Plus } from "lucide";
 
 /**
  * Creates zoom control buttons attached to the hook instance.
@@ -41,7 +41,8 @@ export function createResetZoomButton(hook) {
   if (slot) {
     slot.appendChild(group);
   } else {
-    group.style.cssText = "position: absolute; bottom: 12px; right: 12px; z-index: 1000; display: flex; gap: 4px;";
+    group.style.cssText =
+      "position: absolute; bottom: 12px; right: 12px; z-index: 1000; display: flex; gap: 4px;";
     hook.el.appendChild(group);
   }
 

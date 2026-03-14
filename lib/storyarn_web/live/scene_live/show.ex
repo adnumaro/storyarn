@@ -742,57 +742,67 @@ defmodule StoryarnWeb.SceneLive.Show do
 
       scene ->
         has_tree = socket.assigns.sidebar_loaded
-        compact = socket.assigns.compact
-
-        # Setup collaboration (skip in compact mode)
-        {online_users, entity_locks} =
-          if compact do
-            {[], %{}}
-          else
-            scope = {:scene, scene.id}
-            user = socket.assigns.current_scope.user
-            Collab.setup(socket, scope, user, cursors: true, locks: true, changes: true)
-            Collab.get_initial_state(socket, scope)
-          end
 
         socket
-        |> assign(:scene, scene)
-        |> assign(:collab_scope, if(compact, do: nil, else: {:scene, scene.id}))
-        |> assign(:online_users, online_users)
-        |> assign(:entity_locks, entity_locks)
-        |> assign(:_broadcast, nil)
-        |> then(fn s -> if compact, do: s, else: schedule_lock_heartbeat(s) end)
-        |> assign(:ancestors, Scenes.list_ancestors(scene))
-        |> assign(:layers, scene.layers || [])
-        |> assign(:zones, scene.zones || [])
-        |> assign(:pins, scene.pins || [])
-        |> assign(:connections, scene.connections || [])
-        |> assign(:annotations, scene.annotations || [])
-        |> assign(:scene_data, build_scene_data(scene, can_edit))
-        |> assign(:edit_mode, can_edit)
-        |> assign(:active_tool, :select)
-        |> assign(:selected_element, nil)
-        |> assign(:selected_type, nil)
-        |> assign(:element_panel_open, false)
-        |> assign(:scene_settings_open, false)
-        |> assign(:versions_panel_open, false)
-        |> assign(:active_layer_id, default_layer_id(scene.layers))
-        |> assign(:renaming_layer_id, nil)
-        |> assign(:show_pin_icon_upload, false)
-        |> assign(:show_sheet_picker, false)
-        |> assign(:pending_sheet_for_pin, nil)
-        |> assign(:search_query, "")
-        |> assign(:search_filter, "all")
-        |> assign(:search_results, [])
-        |> assign(:legend_open, false)
-        |> assign(:undo_stack, [])
-        |> assign(:redo_stack, [])
-        |> assign(:auto_snapshot_ref, nil)
-        |> assign(:auto_snapshot_timer, nil)
-        |> assign(:panel_sections, %{})
-        |> assign(:referencing_flows, [])
+        |> setup_scene_collab(scene)
+        |> assign_scene_state(scene, can_edit)
         |> maybe_load_sidebar(has_tree, project)
     end
+  end
+
+  defp setup_scene_collab(socket, scene) do
+    compact = socket.assigns.compact
+
+    {online_users, entity_locks} =
+      if compact do
+        {[], %{}}
+      else
+        scope = {:scene, scene.id}
+        user = socket.assigns.current_scope.user
+        Collab.setup(socket, scope, user, cursors: true, locks: true, changes: true)
+        Collab.get_initial_state(socket, scope)
+      end
+
+    socket
+    |> assign(:collab_scope, if(compact, do: nil, else: {:scene, scene.id}))
+    |> assign(:online_users, online_users)
+    |> assign(:entity_locks, entity_locks)
+    |> assign(:_broadcast, nil)
+    |> then(fn s -> if compact, do: s, else: schedule_lock_heartbeat(s) end)
+  end
+
+  defp assign_scene_state(socket, scene, can_edit) do
+    socket
+    |> assign(:scene, scene)
+    |> assign(:ancestors, Scenes.list_ancestors(scene))
+    |> assign(:layers, scene.layers || [])
+    |> assign(:zones, scene.zones || [])
+    |> assign(:pins, scene.pins || [])
+    |> assign(:connections, scene.connections || [])
+    |> assign(:annotations, scene.annotations || [])
+    |> assign(:scene_data, build_scene_data(scene, can_edit))
+    |> assign(:edit_mode, can_edit)
+    |> assign(:active_tool, :select)
+    |> assign(:selected_element, nil)
+    |> assign(:selected_type, nil)
+    |> assign(:element_panel_open, false)
+    |> assign(:scene_settings_open, false)
+    |> assign(:versions_panel_open, false)
+    |> assign(:active_layer_id, default_layer_id(scene.layers))
+    |> assign(:renaming_layer_id, nil)
+    |> assign(:show_pin_icon_upload, false)
+    |> assign(:show_sheet_picker, false)
+    |> assign(:pending_sheet_for_pin, nil)
+    |> assign(:search_query, "")
+    |> assign(:search_filter, "all")
+    |> assign(:search_results, [])
+    |> assign(:legend_open, false)
+    |> assign(:undo_stack, [])
+    |> assign(:redo_stack, [])
+    |> assign(:auto_snapshot_ref, nil)
+    |> assign(:auto_snapshot_timer, nil)
+    |> assign(:panel_sections, %{})
+    |> assign(:referencing_flows, [])
   end
 
   defp load_draft_scene(socket, draft_id) do

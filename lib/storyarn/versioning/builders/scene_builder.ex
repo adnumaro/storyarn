@@ -362,42 +362,42 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   defp insert_layer_pins(repo, scene_id, layer_id, pins_data, now, snapshot, project_id) do
     Enum.map(pins_data, fn pin_data ->
-      attrs = %{
-        scene_id: scene_id,
-        layer_id: layer_id,
-        position_x: pin_data["position_x"],
-        position_y: pin_data["position_y"],
-        pin_type: pin_data["pin_type"] || "location",
-        icon: pin_data["icon"],
-        color: pin_data["color"],
-        opacity: pin_data["opacity"] || 1.0,
-        label: pin_data["label"],
-        target_type: pin_data["target_type"],
-        target_id: pin_data["target_id"],
-        tooltip: pin_data["tooltip"],
-        size: pin_data["size"] || "md",
-        position: pin_data["position"] || 0,
-        locked: pin_data["locked"] || false,
-        sheet_id: DiffHelpers.resolve_fk(pin_data["sheet_id"], Storyarn.Sheets.Sheet),
-        icon_asset_id:
-          AssetHashResolver.resolve_asset_fk(
-            pin_data["icon_asset_id"],
-            snapshot,
-            project_id
-          ),
-        action_type: pin_data["action_type"] || "none",
-        action_data: pin_data["action_data"] || %{},
-        condition: pin_data["condition"],
-        condition_effect: pin_data["condition_effect"] || "hide",
-        inserted_at: now,
-        updated_at: now
-      }
+      attrs = build_pin_attrs(pin_data, scene_id, layer_id, now, snapshot, project_id)
 
       case repo.insert_all(ScenePin, [attrs], returning: [:id]) do
         {1, [%{id: pin_id}]} -> pin_id
         {0, _} -> raise "Failed to insert scene pin during restore"
       end
     end)
+  end
+
+  defp build_pin_attrs(pin_data, scene_id, layer_id, now, snapshot, project_id) do
+    %{
+      scene_id: scene_id,
+      layer_id: layer_id,
+      position_x: pin_data["position_x"],
+      position_y: pin_data["position_y"],
+      pin_type: pin_data["pin_type"] || "location",
+      icon: pin_data["icon"],
+      color: pin_data["color"],
+      opacity: pin_data["opacity"] || 1.0,
+      label: pin_data["label"],
+      target_type: pin_data["target_type"],
+      target_id: pin_data["target_id"],
+      tooltip: pin_data["tooltip"],
+      size: pin_data["size"] || "md",
+      position: pin_data["position"] || 0,
+      locked: pin_data["locked"] || false,
+      sheet_id: DiffHelpers.resolve_fk(pin_data["sheet_id"], Storyarn.Sheets.Sheet),
+      icon_asset_id:
+        AssetHashResolver.resolve_asset_fk(pin_data["icon_asset_id"], snapshot, project_id),
+      action_type: pin_data["action_type"] || "none",
+      action_data: pin_data["action_data"] || %{},
+      condition: pin_data["condition"],
+      condition_effect: pin_data["condition_effect"] || "hide",
+      inserted_at: now,
+      updated_at: now
+    }
   end
 
   defp insert_layer_annotations(_repo, _scene_id, _layer_id, [], _now), do: :ok

@@ -230,102 +230,130 @@ export function setupEventHandlers(hook) {
   });
 
   // Navigation events (composed from storyarn-node Shadow DOM)
-  hook.el.addEventListener("navigate-to-hub", (e) => {
-    hook.navigationHandler.navigateToHub(e.detail.jumpDbId);
-  }, { signal });
+  hook.el.addEventListener(
+    "navigate-to-hub",
+    (e) => {
+      hook.navigationHandler.navigateToHub(e.detail.jumpDbId);
+    },
+    { signal },
+  );
 
-  hook.el.addEventListener("navigate-to-jumps", (e) => {
-    hook.navigationHandler.navigateToJumps(e.detail.hubDbId);
-  }, { signal });
+  hook.el.addEventListener(
+    "navigate-to-jumps",
+    (e) => {
+      hook.navigationHandler.navigateToJumps(e.detail.hubDbId);
+    },
+    { signal },
+  );
 
   // Subflow navigation (composed from storyarn-node Shadow DOM)
-  hook.el.addEventListener("navigate-to-subflow", (e) => {
-    hook.pushEvent("navigate_to_subflow", { "flow-id": String(e.detail.flowId) });
-  }, { signal });
+  hook.el.addEventListener(
+    "navigate-to-subflow",
+    (e) => {
+      hook.pushEvent("navigate_to_subflow", { "flow-id": String(e.detail.flowId) });
+    },
+    { signal },
+  );
 
   // Exit flow reference navigation (composed from storyarn-node Shadow DOM)
-  hook.el.addEventListener("navigate-to-exit-flow", (e) => {
-    hook.pushEvent("navigate_to_exit_flow", { "flow-id": String(e.detail.flowId) });
-  }, { signal });
+  hook.el.addEventListener(
+    "navigate-to-exit-flow",
+    (e) => {
+      hook.pushEvent("navigate_to_exit_flow", { "flow-id": String(e.detail.flowId) });
+    },
+    { signal },
+  );
 
   // Referencing flow navigation (entry node → subflows that reference this flow)
-  hook.el.addEventListener("navigate-to-referencing-flow", (e) => {
-    hook.pushEvent("navigate_to_referencing_flow", { "flow-id": String(e.detail.flowId) });
-  }, { signal });
+  hook.el.addEventListener(
+    "navigate-to-referencing-flow",
+    (e) => {
+      hook.pushEvent("navigate_to_referencing_flow", { "flow-id": String(e.detail.flowId) });
+    },
+    { signal },
+  );
 
   // Inline edit save (composed from storyarn-node Shadow DOM)
-  hook.el.addEventListener("node-inline-edit", (e) => {
-    const { field, value } = e.detail;
-    const reteNode = hook._inlineEditingNodeId
-      ? hook.editor.getNode(hook._inlineEditingNodeId)
-      : null;
-    if (!reteNode) return;
+  hook.el.addEventListener(
+    "node-inline-edit",
+    (e) => {
+      const { field, value } = e.detail;
+      const reteNode = hook._inlineEditingNodeId
+        ? hook.editor.getNode(hook._inlineEditingNodeId)
+        : null;
+      if (!reteNode) return;
 
-    if (field === "text" && reteNode.nodeType === "annotation") {
-      // Annotations store plain text directly (no rich-text wrapping)
-      reteNode.nodeData = { ...reteNode.nodeData, text: value };
-      hook.pushEvent("update_node_field", { field: "text", value });
-    } else if (field === "text") {
-      // Dialogue: wrap plain text in <p> tags for rich text storage, preserving line breaks
-      const escaped = value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      const content = escaped
-        ? escaped
-            .split("\n")
-            .map((line) => `<p>${line || "<br>"}</p>`)
-            .join("")
-        : "";
-      // Optimistically update local nodeData so view mode shows new text immediately
-      reteNode.nodeData = { ...reteNode.nodeData, text: content };
-      hook.pushEvent("update_node_text", { id: reteNode.nodeId, content });
-    } else {
-      // Optimistically update local nodeData for non-text fields
-      reteNode.nodeData = { ...reteNode.nodeData, [field]: value };
-      hook.pushEvent("update_node_field", { field, value });
-    }
-  }, { signal });
+      if (field === "text" && reteNode.nodeType === "annotation") {
+        // Annotations store plain text directly (no rich-text wrapping)
+        reteNode.nodeData = { ...reteNode.nodeData, text: value };
+        hook.pushEvent("update_node_field", { field: "text", value });
+      } else if (field === "text") {
+        // Dialogue: wrap plain text in <p> tags for rich text storage, preserving line breaks
+        const escaped = value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const content = escaped
+          ? escaped
+              .split("\n")
+              .map((line) => `<p>${line || "<br>"}</p>`)
+              .join("")
+          : "";
+        // Optimistically update local nodeData so view mode shows new text immediately
+        reteNode.nodeData = { ...reteNode.nodeData, text: content };
+        hook.pushEvent("update_node_text", { id: reteNode.nodeId, content });
+      } else {
+        // Optimistically update local nodeData for non-text fields
+        reteNode.nodeData = { ...reteNode.nodeData, [field]: value };
+        hook.pushEvent("update_node_field", { field, value });
+      }
+    },
+    { signal },
+  );
 
   // Speaker combobox — opens a searchable popover from the inline edit header
   hook._speakerPopover = null;
-  hook.el.addEventListener("speaker-select-open", (e) => {
-    const trigger = e.detail.trigger;
-    if (!trigger || !hook._inlineEditingNodeId) return;
+  hook.el.addEventListener(
+    "speaker-select-open",
+    (e) => {
+      const trigger = e.detail.trigger;
+      if (!trigger || !hook._inlineEditingNodeId) return;
 
-    if (hook._speakerPopover?.isOpen) {
-      hook._speakerPopover.destroy();
-      hook._speakerPopover = null;
-      return;
-    }
-
-    const reteNode = hook.editor.getNode(hook._inlineEditingNodeId);
-    if (!reteNode) return;
-
-    const sheetsMap = hook.sheetsMap || {};
-    const noSpeakerLabel = hook.labels?.no_speaker || "Dialogue";
-    const currentSpeakerId = String(reteNode.nodeData?.speaker_sheet_id || "");
-
-    hook._speakerPopover = openSearchableDropdown(trigger, {
-      options: [
-        { value: "", label: noSpeakerLabel, italic: true },
-        ...Object.values(sheetsMap).map((s) => ({ value: String(s.id), label: s.name })),
-      ],
-      currentValue: currentSpeakerId,
-      placeholder: hook.labels?.search || "Search…",
-      onSelect: (value) => {
-        const newSpeakerId = value || null;
-        // Optimistic update: apply immediately so the header reflects the new speaker
-        // without waiting for the server round-trip.
-        // (handleNodeUpdated skips re-render while in inline-edit mode to protect text input)
-        reteNode.nodeData = { ...reteNode.nodeData, speaker_sheet_id: newSpeakerId };
-        reteNode._updateTs = Date.now();
-        hook.area.update("node", reteNode.id);
-        hook.pushEvent("update_node_field", {
-          field: "speaker_sheet_id",
-          value: newSpeakerId,
-        });
+      if (hook._speakerPopover?.isOpen) {
+        hook._speakerPopover.destroy();
         hook._speakerPopover = null;
-      },
-    });
-  }, { signal });
+        return;
+      }
+
+      const reteNode = hook.editor.getNode(hook._inlineEditingNodeId);
+      if (!reteNode) return;
+
+      const sheetsMap = hook.sheetsMap || {};
+      const noSpeakerLabel = hook.labels?.no_speaker || "Dialogue";
+      const currentSpeakerId = String(reteNode.nodeData?.speaker_sheet_id || "");
+
+      hook._speakerPopover = openSearchableDropdown(trigger, {
+        options: [
+          { value: "", label: noSpeakerLabel, italic: true },
+          ...Object.values(sheetsMap).map((s) => ({ value: String(s.id), label: s.name })),
+        ],
+        currentValue: currentSpeakerId,
+        placeholder: hook.labels?.search || "Search…",
+        onSelect: (value) => {
+          const newSpeakerId = value || null;
+          // Optimistic update: apply immediately so the header reflects the new speaker
+          // without waiting for the server round-trip.
+          // (handleNodeUpdated skips re-render while in inline-edit mode to protect text input)
+          reteNode.nodeData = { ...reteNode.nodeData, speaker_sheet_id: newSpeakerId };
+          reteNode._updateTs = Date.now();
+          hook.area.update("node", reteNode.id);
+          hook.pushEvent("update_node_field", {
+            field: "speaker_sheet_id",
+            value: newSpeakerId,
+          });
+          hook._speakerPopover = null;
+        },
+      });
+    },
+    { signal },
+  );
 
   // Handle server events - Debug
   hook.handleEvent("debug_highlight_node", (data) => hook.debugHandler.handleHighlightNode(data));
@@ -391,7 +419,10 @@ export function setupEventHandlers(hook) {
 
     await new Promise((resolve) => {
       function frame(now) {
-        if (!hook.area) { resolve(); return; } // destroyed guard
+        if (!hook.area) {
+          resolve();
+          return;
+        } // destroyed guard
         const elapsed = now - startTime;
         const t = Math.min(elapsed / DURATION, 1);
         const e = easeInOutCubic(t);
@@ -435,36 +466,44 @@ export function setupEventHandlers(hook) {
   });
 
   // Click on empty canvas — deselect node + annotations + hide toolbar
-  hook.el.addEventListener("pointerdown", (e) => {
-    // Only primary button (left click)
-    if (e.button !== 0) return;
-    const storyarnEl = e.composedPath().find((el) => el.tagName === "STORYARN-NODE");
+  hook.el.addEventListener(
+    "pointerdown",
+    (e) => {
+      // Only primary button (left click)
+      if (e.button !== 0) return;
+      const storyarnEl = e.composedPath().find((el) => el.tagName === "STORYARN-NODE");
 
-    if (!storyarnEl && hook.selectedNodeId) {
-      exitInlineEdit(hook);
+      if (!storyarnEl && hook.selectedNodeId) {
+        exitInlineEdit(hook);
 
-      // If a sidebar panel is open, animate it out first.
-      // The screenplay editor hook pushes "deselect_node" after animation.
-      // The builder sidebar hook pushes "close_builder" (back to toolbar, no deselect).
-      const editorEl = document.getElementById("dialogue-screenplay-editor");
-      const builderEl = document.getElementById("builder-sidebar");
+        // If a sidebar panel is open, animate it out first.
+        // The screenplay editor hook pushes "deselect_node" after animation.
+        // The builder sidebar hook pushes "close_builder" (back to toolbar, no deselect).
+        const editorEl = document.getElementById("dialogue-screenplay-editor");
+        const builderEl = document.getElementById("builder-sidebar");
 
-      if (editorEl) {
-        editorEl.dispatchEvent(new CustomEvent("panel:close-deselect"));
-      } else if (builderEl) {
-        // Builder: close sidebar but keep node selected (goes back to toolbar mode)
-        builderEl.dispatchEvent(new CustomEvent("panel:close"));
-      } else {
-        hook.pushEvent("deselect_node", {});
+        if (editorEl) {
+          editorEl.dispatchEvent(new CustomEvent("panel:close-deselect"));
+        } else if (builderEl) {
+          // Builder: close sidebar but keep node selected (goes back to toolbar mode)
+          builderEl.dispatchEvent(new CustomEvent("panel:close"));
+        } else {
+          hook.pushEvent("deselect_node", {});
+        }
+
+        hook.selectedNodeId = null;
+        hook.floatingToolbar?.hide();
       }
-
-      hook.selectedNodeId = null;
-      hook.floatingToolbar?.hide();
-    }
-  }, { signal });
+    },
+    { signal },
+  );
 
   // Detect drag end — show toolbar again after node move
-  hook.el.addEventListener("pointerup", () => {
-    hook.floatingToolbar?.setDragging(false);
-  }, { signal });
+  hook.el.addEventListener(
+    "pointerup",
+    () => {
+      hook.floatingToolbar?.setDragging(false);
+    },
+    { signal },
+  );
 }
